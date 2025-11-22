@@ -1,0 +1,353 @@
+
+entities:
+  site:
+    keys: ["ProjektNr", "Fustel", "EVNr"]
+    columns: [
+        "ProjektNr",
+        "Fustel",
+        "EVNr",
+        "Ort",
+        "Kreis",
+        "Land",
+        "Staat",
+        "FlurStr",
+        "FustelTyp",
+        "Fundstellentyp_Beschreibung",
+        "OFustelTyp",
+        "OFustelTyp Beschreibung",
+        "FustelTyp?",
+        "okFustel",
+        "Limes",
+        "NaturE",
+        "NaturrEinh",
+        "NaturHaupteinheit",
+    ]
+  sample:
+    keys: ["ProjektNr", "Befu", "ProbNr"]
+    columns: [
+        "ProjektNr",
+        "Befu",
+        "ProbNr",
+        "PCODE",
+        "EDatProb",
+        "Strat",
+        "Schi",
+        "Quadr",
+        "Plan",
+        "TiefeVon",
+        "TiefeBis",
+        "Prob_üNN",
+        "KoordX",
+        "KoordY",
+        "KoordZ",
+        "Koordinatensystem",
+        "Easting",
+        "Northing",
+        "Höhe",
+        "TK",
+        "ProbTyp",
+        "ProbTyp Beschreibung",
+        "Expr1042",
+        "SedProb",
+        "FlSchn",
+        "AblaBdgProb",
+        "ChronoDat",
+        "ChronoDat Beschreibung",
+        "ArchDat",
+        "ArchDat_Beschreibung",
+        "Epoche",
+        "Epochen_Beschreibung",
+        "KultGr",
+    ]
+  sample_processing:
+    columns: [
+        "ORG2,0",
+        "ORG1,0",
+        "ORG0,5",
+        "ORG0,25",
+        "MIN2,0",
+        "MIN1,0",
+        "MIN0,5",
+        "MIN0,25",
+    ]
+  feature:
+    keys: ["ProjektNr", "Befu"]
+    columns:  [
+        "ProjektNr",
+        "Fustel",
+        "EVNr",
+        "Befu",
+        "BefuTyp",
+        "GrJahrBefu",
+        "Gebäude",
+        "okBefu",
+    ]
+  natural_regions:
+    columns: ["NaturE", "NaturrEinh", "NaturHaupteinheit"]
+  taxa:
+    keys: ["BNam", "TaxAut"]
+    columns:  [
+        "BNam",
+        "Name D",
+        "Name_E",
+        "Name_F",
+        "Name_I",
+        "Familie",
+        "S_Od",
+        "TaxAut",
+        "Achtung",
+    ]
+  sample_taxa:
+    columns: [
+        "sample_id",
+        "taxon_id",
+        "PCODE",
+        "RTyp",
+        "RTypGrup",
+        "Zust",
+        "Zustand",
+        "SumFAnzahl",
+        "SumFGewicht",
+        "geschätzt",
+        "SumFFrag",
+        "SumPflR",
+        "Vorfu",
+        "BotBest",
+        "BestJa",
+        "cf",
+        "Anmerkung",
+        "BotBear",
+    ]
+  chronology:
+    columns: [
+        "ChronoDat",
+        "ChronoDat Beschreibung",
+        "ArchDat",
+        "ArchDat_Beschreibung",
+        "Epoche",
+        "Epochen_Beschreibung",
+        "KultGr",
+    ]
+  ecocode:
+    columns:  [
+        "BNam",
+        "TaxAut",
+        "L_u",
+        "L",
+        "T_u",
+        "T",
+        "K_u",
+        "K",
+        "F_u",
+        "F",
+        "F_s",
+        "Re_u",
+        "Re",
+        "N_u",
+        "N",
+        "S_u",
+        "S",
+        "SMet",
+        "Leb",
+        "Bl_u",
+        "Bl",
+        "G_u",
+        "G",
+        "Kl_u",
+        "Kl",
+        "O_u",
+        "O",
+        "V_u",
+        "V",
+        "U_u",
+        "U",
+        "Soz_u",
+        "Soz",
+        "Ökogruppe",
+        "Ökogruppe_u",
+        "Dom",
+        "Dom_u",
+        "WUA",
+        "WUE",
+        "BLA",
+        "BLE",
+        "ARE",
+        "Zeig",
+        "Pio",
+        "Roh",
+        "WT",
+        "SozGrup",
+    ]
+  use_categories:
+    columns:  [
+        "BNam",
+        "TaxAut",
+        "Ge",
+        "Hü",
+        "Öl",
+        "Kp",
+        "Imp",
+        "Med",
+        "Ess",
+        "Gar",
+        "Nut",
+        "M",
+        "W",
+        "FW",
+        "TKG",
+    ]
+  actors:
+    columns:  ["ProjektNr", "ArchAusg", "ArchBear", "BotBear", "Aut", "PJahr"]
+
+translation:
+  ProjektNr:	project_number
+  Befu:	feature_number
+  ProbNr:	sample_number
+  PCODE:	sample_code
+  BNam:	species
+  Name D:	name_de
+  Name_E:	name_en
+  Name_F:	name_fr
+  Name_I:	name_it
+  cf:	cf_indicator
+  RTyp:	remain_type
+  RTypGrup:	remain_type_group
+  Zust:	preservation_abbrev
+  Zustand:	preservation_description
+  SumFAnzahl:	find_count
+  SumFGewicht:	find_weight
+  geschätzt:	is_estimated_count
+  SumFFrag:	fragment_count
+  SumPflR:	plant_remain_count
+  Anmerkung:	species_note
+  EDatProb:	sampling_date
+  Strat:	stratigraphy
+  Schi:	layer
+  Quadr:	square
+  Plan:	plan_number
+  TiefeVon:	depth_from
+  TiefeBis:	depth_to
+  Prob_üNN:	elevation_asl_sample
+  KoordX:	coord_x
+  KoordY:	coord_y
+  KoordZ:	coord_z
+  AblaBdgProb:	is_sample_dry_wet
+  ChronoDat:	chronological_date
+  ChronoDat Beschreibung:	chronological_date_description
+  Vorfu:	is_mass_find
+  ArchDat:	archeaologic_period
+  ArchDat_Beschreibung:	archaeological_period_description
+  Epoche:	epoch
+  Epochen_Beschreibung:	epoch_description
+  KultGr:	cultural_group
+  ProbTyp:	sample_type
+  ProbTyp Beschreibung:	sample_type_description
+  Expr1042:	sample_volume
+  ORG2,0:	organic_2mm
+  ORG1,0:	organic_1mm
+  ORG0,5:	organic_0_25mm
+  ORG0,25:	organic_0_5mm
+  MIN2,0:	mineral_2mm
+  MIN1,0:	mineral_1mm
+  MIN0,5:	mineral_0_25mm
+  MIN0,25:	mineral_0_5mm
+  SedProb:	is_subsample_
+  FlSchn:	flotation_channel
+  BefuTyp:	feature_type
+  GrJahrBefu:	construction_year_feature
+  FustelTyp:	site_type
+  Fundstellentyp_Beschreibung:	site_type_description
+  OFustelTyp:	upper_site_type
+  OFustelTyp Beschreibung:	upper_site_type_description
+  FustelTyp?:	is_uncertain_site_type
+  Gebäude:	building
+  okBefu:	feature_ok
+  okErh:	preservation_ok
+  BotBest:	botanical_identification
+  BestJa:	botanical_identification_year
+  Fustel:	site_name
+  Ort:	place
+  Kreis:	district
+  Land:	county
+  Staat:	country
+  FlurStr:	place_street
+  EVNr:	site_reference_number
+  NaturE:	natural_region
+  NaturrEinh:	natural_region_unit
+  NaturHaupteinheit:	natural_major_unit
+  TK:	map_sheet
+  Koordinatensystem:	coordinate_system
+  Easting:	easting
+  Northing:	northing
+  Höhe:	elevation
+  ArchAusg:	archaeological_excavator
+  ArchBear:	archaeological_analyst
+  Limes:	limes_indicator
+  BotBear:	botanical_analyst
+  Aut:	author
+  PJahr:	publication_year
+  okFustel:	is_site_ok
+  Familie:	family
+  S_Od:	system_order
+  TaxAut:	taxon_author
+  Achtung:	warning
+  L_u:	light_requirement_uncertain
+  L:	light_requirement
+  T_u:	temperature_requirement_uncertain
+  T:	temperature_requirement
+  K_u:	continentality_uncertain
+  K:	continentality
+  F_u:	moisture_uncertain
+  F:	moisture
+  F_s:	moisture_special
+  Re_u:	reaction_uncertain
+  Re:	reaction
+  N_u:	nutrients_uncertain
+  N:	nutrients
+  S_u:	salt_tolerance_uncertain
+  S:	salt_tolerance
+  SMet:	heavy_metal_tolerance
+  Leb:	life_form
+  Bl_u:	flowering_time_uncertain
+  Bl:	flowering_time
+  G_u:	growth_form_uncertain
+  G:	growth_form
+  Kl_u:	vegetation_class_uncertain
+  Kl:	vegetation_class
+  O_u:	vegetation_order_uncertain
+  O:	vegetation_order
+  V_u:	association_uncertain
+  V:	association
+  U_u:	subassociation_uncertain
+  U:	subassociation
+  Soz_u:	sociological_group_uncertain
+  Soz:	sociological_group
+  Ökogruppe:	ecological_group
+  Ökogruppe_u:	ecological_group_uncertain
+  Dom_u:	species_dominance
+  Dom:	species_dominance_uncertainty
+  WUA:	weed_indicator
+  WUE:	weed_indicator_extended
+  BLA:	leaf_type
+  BLE:	leaf_habit
+  ARE:	aridity
+  Zeig:	indicator_value
+  Pio:	pioneer
+  Roh:	ruderal
+  WT:	water_tolerance
+  SozGrup:	sociological_group_extended
+  Anm:	annotation
+  Ge:	medicinal
+  Hü:	luxury
+  Öl:	oil_plant
+  Kp:	crop_plant
+  Imp:	imported
+  Med:	medical_use
+  Ess:	edible
+  Gar:	garden_plant
+  Nut:	useful
+  M:	male
+  W:	female
+  FW:	woody_plant
+  TKG:	thousand_kernel_weight
+  
