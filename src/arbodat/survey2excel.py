@@ -413,21 +413,24 @@ def main(
 
 
 if __name__ == "__main__":
-    # main()
-    from click.testing import CliRunner
+    main()
 
-    runner = CliRunner()
-    result: Result = runner.invoke(
-        main,
-        [
-            "--sep",
-            ";",
-            "--translate",
-            "--config-file",
-            "src/arbodat/config.yml",
-            "src/arbodat/arbodat_mal_elena_input.csv",
-            "output.xlsx",
-        ],
-    )
+    # PYTHONPATH=. python src/arbodat/survey2excel.py  --sep ";" --translate --config-file src/arbodat/config.yml src/arbodat/arbodat_mal_elena_input.csv output.xlsx
 
-    print(result.output)
+    # from click.testing import CliRunner
+
+    # runner = CliRunner()
+    # result = runner.invoke(
+    #     main,
+    #     [
+    #         "--sep",
+    #         ";",
+    #         "--translate",
+    #         "--config-file",
+    #         "src/arbodat/config.yml",
+    #         "src/arbodat/arbodat_mal_elena_input.csv",
+    #         "output.xlsx",
+    #     ],
+    # )
+
+    # print(result.output)
