@@ -84,7 +84,8 @@ class TableConfig:
         """Get set of all columns used in keys, columns, and foreign keys."""
         keys_and_data_columns: list[str] = self.columns2
         return keys_and_data_columns + list(x for x in self.fk_column_set if x not in keys_and_data_columns)
-    
+
+
 class TablesConfig:
     """Configuration for database tables."""
 
