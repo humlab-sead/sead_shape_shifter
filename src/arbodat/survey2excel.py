@@ -16,7 +16,6 @@ from unittest import runner
 
 import click
 import pandas as pd
-from click.testing import Result
 from loguru import logger
 
 from src.configuration.resolve import ConfigValue
@@ -28,7 +27,6 @@ def add_surrogate_id(target: pd.DataFrame, id_name: str) -> pd.DataFrame:
     target = target.reset_index(drop=True).copy()
     target[id_name] = range(1, len(target) + 1)
     return target
-
 
 def get_subset(
     source: pd.DataFrame,
