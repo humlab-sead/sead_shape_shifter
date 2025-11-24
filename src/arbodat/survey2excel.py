@@ -11,13 +11,13 @@ Usage:
 import asyncio
 import os
 from pathlib import Path
-from typing import Any, Literal
-from unittest import runner
+from typing import Literal
 
 import click
 import pandas as pd
 from loguru import logger
 
+from src.arbodat.utility import ForeignKeyConfig, TableConfig, TablesConfig, UnnestConfig
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
 
@@ -27,6 +27,7 @@ def add_surrogate_id(target: pd.DataFrame, id_name: str) -> pd.DataFrame:
     target = target.reset_index(drop=True).copy()
     target[id_name] = range(1, len(target) + 1)
     return target
+
 
 def get_subset(
     source: pd.DataFrame,
@@ -63,22 +64,20 @@ def get_subset(
 
 class ArbodatSurveyNormalizer:
 
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self, df: pd.DataFrame) -> None:
         self.data: dict[str, pd.DataFrame] = {"survey": df}
+        self.config: TablesConfig = TablesConfig()
 
     @property
     def survey(self) -> pd.DataFrame:
         return self.data["survey"]
 
     def resolve_source(self, source: pd.DataFrame | str | None = None) -> pd.DataFrame:
-        if source is None:
-            return self.survey
-        elif isinstance(source, str):
+        if isinstance(source, str):
             if not source in self.data:
-                raise ValueError(f"Source DataFrame '{source}' not found in stored data")
+                raise ValueError(f"Source table '{source}' not found in stored data")
             return self.data[source]
-        else:
-            return source
+        return self.survey
 
     def register(self, name: str, df: pd.DataFrame) -> pd.DataFrame:
         self.data[name] = df
@@ -99,77 +98,50 @@ class ArbodatSurveyNormalizer:
         df: pd.DataFrame = pd.read_csv(path, sep=sep, dtype=str, keep_default_na=False)
         return ArbodatSurveyNormalizer(df)
 
-    def get_config_value[T](self, entity: str, key: str, default: T = None) -> T | None:
-        """Get configuration value for the given key."""
-        return ConfigValue[T](f"entities.{entity}.{key}").resolve() or default
-
-    def extract_entity(
-        self,
-        entity_name: str,
-        *,
-        source: pd.DataFrame | str | None = None,
-        surrogate_id: str | None = None,
-        columns: list[str] | None = None,
-        extra_fk_columns: list[str] | None = None,
-        drop_duplicates: bool | list[str] | None = None,
-    ) -> pd.DataFrame:
+    def extract_entity(self, entity_name: str) -> pd.DataFrame:
         """Extract entity DataFrame based on configuration."""
 
-        source = self.resolve_source(source)
+        entity: TableConfig = self.config.get_table(entity_name)
+        source: pd.DataFrame = self.resolve_source(entity.source)
 
-        if columns is None:
-            columns = self.get_config_value(entity_name, "columns", default=[])
+        if not isinstance(entity.columns, list) or not all(isinstance(c, str) for c in entity.columns):
+            raise ValueError(f"Invalid columns configuration for entity '{entity_name}': {entity.columns}")
 
-        if not isinstance(columns, list) or not all(isinstance(c, str) for c in columns):
-            raise ValueError(f"Invalid columns configuration for entity '{entity_name}': {columns}")
-
-        if surrogate_id is None:
-            surrogate_id = self.get_config_value(entity_name, "surrogate_id")
-
-        if drop_duplicates is None:
-            drop_duplicates = self.get_config_value(entity_name, "options.drop_duplicates", default=bool(drop_duplicates)) or False
-
-        if extra_fk_columns is None:
-            foreign_keys: list[dict[str, Any]] = self.get_config_value(entity_name, "foreign_keys", default=[]) or []
-            if foreign_keys is not None:
-                extra_columns: set[str] = set()
-                for fk in foreign_keys:
-                    extra_columns = extra_columns.union(set(fk.get("local_keys", [])))
-                extra_fk_columns = list(extra_columns)
-
-        if extra_fk_columns:
-            # extra foreign key columns to include for future joins to foreign table(s)
-            columns = columns + [column for column in extra_fk_columns if column not in columns]
-
-        data: pd.DataFrame = get_subset(source, columns, drop_duplicates=drop_duplicates, surrogate_id=surrogate_id)
+        data: pd.DataFrame = get_subset(
+            source,
+            entity.usage_columns,
+            drop_duplicates=entity.drop_duplicates,
+            surrogate_id=entity.surrogate_id,
+            raise_if_missing=False,
+        )
 
         return data
 
-    def get_dependencies(self, entity_name: str) -> set[str]:
-        """Get dependencies for the given entity."""
-        return self.get_config_value(entity_name, "depends_on", default=set()) or set()
+    def _find_next_entity_to_process(self) -> str | None:
+        processed: set[str] = set(self.data.keys())
+        for entity_name in set(self.config.table_names) - processed:
+            if not set(self.config.get_table(entity_name).depends_on) - processed:
+                return entity_name
+        return None
 
     def normalize(self) -> None:
         """Extract all configured entities and store them."""
-        unprocessed: list[str] = list(set(ConfigValue[list[str]]("entities").resolve() or []))
+
+        unprocessed: set[str] = set(self.config.table_names)
         while len(unprocessed) > 0:
 
-            entity: str = unprocessed[0]
-            unprocessed = unprocessed[1:]
+            entity: str | None = self._find_next_entity_to_process()
 
-            if entity in self.data:
-                continue
-
-            depends_on: list[str] = self.get_dependencies(entity)
-            if not all(d in self.data for d in depends_on):
-                unprocessed.append(entity)
-                continue
+            if entity is None:
+                raise ValueError(f"Circular or unresolved dependencies detected among entities: {unprocessed}")
 
             logger.info(f"normalizing entity '{entity}'...")
 
             data: pd.DataFrame = self.extract_entity(entity)
-
             self.register(entity, data)
+            self.link_entity(entity)
+
+            unprocessed.discard(entity)
 
     def link(self, is_final: bool = False) -> bool:
         """Link entities based on foreign key configuration."""
@@ -180,17 +152,17 @@ class ArbodatSurveyNormalizer:
 
     def link_entity(self, entity_name: str) -> bool:
 
-        foreign_keys: list[dict[str, Any]] = self.get_config_value(entity_name, "options.foreign_keys", default=[]) or []
+        foreign_keys: list[ForeignKeyConfig] = self.config.get_table(entity_name).foreign_keys or []
 
         deferred: bool = False
 
         for fk in foreign_keys:
 
-            local_keys: list[str] = fk.get("local_keys", [])
-            remote_keys: list[str] = fk.get("remote_keys", [])
-            remote_entity: str = fk.get("entity", "")
+            local_keys: list[str] = fk.local_keys
+            remote_keys: list[str] = fk.remote_keys
+            remote_entity: str = fk.remote_entity
 
-            remote_id: str | None = self.get_config_value(remote_entity, "surrogate_id", default=f"{remote_entity}_id")
+            remote_id: str | None = self.config.get_table(remote_entity).surrogate_id or f"{remote_entity}_id"
             if remote_entity not in self.data or remote_id is None:
                 raise ValueError(f"Remote entity '{remote_entity}' or surrogate_id not found for linking with '{entity_name}'")
 
@@ -229,43 +201,6 @@ class ArbodatSurveyNormalizer:
 
         return deferred
 
-        # link: site -> project
-        # sites = sites.merge(projects[["project_id", "ProjektNr"]], on="ProjektNr", how="left")
-
-        # link: site -> natural_region
-        # columns: list[str] = ConfigValue[list[str]]("entities.natural_regions.columns").resolve()  # type: ignore[assignment]
-        # sites = sites.merge(nat[["natural_region_id"] + columns], on=columns, how="left")
-
-        # link: feature -> site via ProjektNr+Fustel+EVNr
-        # site_key_columns: list[str] = ConfigValue[list[str]]("entities.site.keys").resolve()  # type: ignore[assignment]
-        # feat = feat.merge(sites[["site_id"] + site_key_columns], on=site_key_columns, how="left")
-
-        # link: sample -> feature via ProjektNr+Befu
-        # feature_keys: list[str] = ConfigValue[list[str]]("entities.feature.keys").resolve()  # type: ignore[assignment]
-        # samples: pd.DataFrame = samples.merge(
-        #     features[["feature_id"] + feature_keys],
-        #     on=feature_keys,
-        #     how="left",
-        # )
-
-        # link: chronology -> sample via sample keys
-        #       Attach chronology_id back to samples
-        #       Possibly reverse: attach sample_id to chronology
-        # samples_with_chron: pd.DataFrame = samples.merge(chron, on=cols, how="left")
-        # return chron, samples_with_chron
-
-        # sample -> sample_processing
-        # def build_sample_processing(self) -> pd.DataFrame:
-        #     """Build per-sample processing table, if fraction columns exist."""
-        #     frac_cols: list[str] = ConfigValue[list[str]]("entities.sample_processing.columns").resolve()  # type: ignore[assignment]
-        #     sample_keys: list[str] = ConfigValue[list[str]]("entities.sample.keys").resolve()  # type: ignore[assignment]
-        #     cols: list[str] = sample_keys + [c for c in frac_cols if c in self.survey.columns]
-        #     sample_methods: pd.DataFrame = get_subset(source=self.survey, columns=cols, drop_duplicates=True)
-        #     samples: pd.DataFrame = self.data["sample"]
-        #     sample_methods = sample_methods.merge( samples[["sample_id"] + sample_keys], on=sample_keys, how="left" )
-        #     sample_methods = sample_methods.drop_duplicates(subset=["sample_id"])
-        #     return sample_methods
-
     def store(self, target: str, mode: Literal["xlsx", "csv"]) -> None:
         """Write to Excel or CSV based on the specified mode."""
         if mode == "xlsx":
@@ -284,7 +219,7 @@ class ArbodatSurveyNormalizer:
         """Unnest data frames based on configuration."""
         for entity, table in self.data.items():
 
-            unnest_config: dict[str, Any] = self.get_config_value(entity, "unnest", default={}) or {}
+            unnest_config: UnnestConfig | None = self.config.get_table(entity).unnest
 
             if not unnest_config:
                 continue
@@ -292,27 +227,27 @@ class ArbodatSurveyNormalizer:
             table_unnested: pd.DataFrame = self.unnest_entity(entity, table, unnest_config)
             self.data[entity] = table_unnested
 
-    def unnest_entity(self, entity: str, table: pd.DataFrame, unnest_config: dict[str, Any]) -> pd.DataFrame:
+    def unnest_entity(self, entity: str, table: pd.DataFrame, unnest_config: UnnestConfig) -> pd.DataFrame:
 
-        id_vars: list[str] = unnest_config.get("id_vars", [])
-        value_vars: list[str] = unnest_config.get("value_vars", [])
-        var_name: str = unnest_config.get("var_name", "variable")
-        value_name: str = unnest_config.get("value_name", "value")
+        id_vars: list[str] = unnest_config.id_vars or []
+        value_vars: list[str] = unnest_config.value_vars or []
+        var_name: str = unnest_config.var_name or "variable"
+        value_name: str = unnest_config.value_name or "value"
 
         if value_name in table.columns:
             logger.info(f"Entity '{entity}': is melted already, skipping unnesting")
             return table
-        
+
+        if not id_vars or not value_vars or not var_name or not value_name:
+            raise ValueError(f"Invalid unnest configuration for entity '{entity}': {unnest_config}")
+
         if not all(col in table.columns for col in id_vars):
             missing: list[str] = [col for col in id_vars if col not in table.columns]
-            # check if missing column is a foregin key column
-            foreign_keys: list[dict[str, Any]] = self.get_config_value(entity, "options.foreign_keys", default=[]) or []
-
             raise ValueError(f"Cannot unnest entity '{entity}': missing id_vars columns: {missing}")
 
         if any(col in table.columns for col in value_vars):
             logger.info("Deferring unnesting no value_vars exist in the table")
-    
+
         table_unnested: pd.DataFrame = pd.melt(
             table,
             id_vars=id_vars,
@@ -339,11 +274,11 @@ class ArbodatSurveyNormalizer:
     def drop_foreign_key_columns(self) -> None:
         """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
         for entity_name in self.data.keys():
-            columns: list[str] = self.get_config_value(entity_name, "columns", default=[]) or []
-            foreign_keys: list[dict[str, Any]] = self.get_config_value(entity_name, "options.foreign_keys", default=[]) or []
+            columns: list[str] = self.config.get_table(entity_name).columns or []
+            foreign_keys: list[ForeignKeyConfig] = self.config.get_table(entity_name).foreign_keys or []
             fk_columns: set[str] = set()
             for fk in foreign_keys:
-                local_keys: list[str] = fk.get("local_keys", [])
+                local_keys: list[str] = fk.local_keys or []
                 fk_columns.update(key for key in local_keys if key not in columns)
             if fk_columns:
                 table: pd.DataFrame = self.data[entity_name]
