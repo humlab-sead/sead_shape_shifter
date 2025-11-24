@@ -146,6 +146,26 @@ entities:
       drop_duplicates: true
     depends_on: ["site"]
 
+  taxa:
+    surrogate_id: taxon_id
+    keys: ["BNam", "TaxAut"]
+    columns:
+      [
+        "PCODE",
+        "BNam",
+        "Name D",
+        "Name_E",
+        "Name_F",
+        "Name_I",
+        "Familie",
+        "S_Od",
+        "TaxAut",
+        "Achtung",
+      ]
+    options:
+      drop_duplicates: true
+    depends_on: []
+
   sample:
     surrogate_id: sample_id
     keys: ["ProjektNr", "Befu", "ProbNr"]
@@ -270,25 +290,7 @@ entities:
       - entity: site
         local_keys: "include: entities.site.keys"
         remote_keys: "include: entities.site.keys"
-
-  taxa:
-    surrogate_id: taxon_id
-    keys: ["BNam", "TaxAut"]
-    columns:
-      [
-        "PCODE",
-        "BNam",
-        "Name D",
-        "Name_E",
-        "Name_F",
-        "Name_I",
-        "Familie",
-        "S_Od",
-        "TaxAut",
-        "Achtung",
-      ]
-    options:
-      drop_duplicates: true
+    depends_on: ["site", "feature_type"]
 
   sample_taxa:
     keys: []
