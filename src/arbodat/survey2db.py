@@ -1,7 +1,8 @@
 import csv
+from pathlib import Path
+
 import psycopg
 from psycopg import sql
-from pathlib import Path
 
 
 def sanitise_column_name(name: str) -> str:
@@ -339,7 +340,7 @@ NAME_MAP: dict[str, str] = {
     "W": "female",
     "FW": "woody_plant",
     "TKG": "thousand_kernel_weight",
-    "SOURCE": "source"
+    "SOURCE": "source",
 }
 
 
