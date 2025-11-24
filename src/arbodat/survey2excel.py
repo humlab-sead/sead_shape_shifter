@@ -147,10 +147,9 @@ class ArbodatSurveyNormalizer:
 
         return data
 
-    def get_dependencies(self, entity_name: str) -> list[str]:
-        """Get list of entity dependencies for the given entity."""
-        foreign_keys: list[dict[str, Any]] = self.get_config_value(entity_name, "options.foreign_keys", default=[]) or []
-        return [fk["entity"] for fk in foreign_keys]
+    def get_dependencies(self, entity_name: str) -> set[str]:
+        """Get dependencies for the given entity."""
+        return self.get_config_value(entity_name, "depends_on", default=set()) or set()
 
     def normalize(self) -> None:
         """Extract all configured entities and store them."""
