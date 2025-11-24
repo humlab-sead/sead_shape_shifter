@@ -279,13 +279,39 @@ class ArbodatSurveyNormalizer:
             if not unnest_config:
                 continue
 
-            id_vars: list[str] = unnest_config.get("id_vars", [])
-            value_vars: list[str] = unnest_config.get("value_vars", [])
-            var_name: str = unnest_config.get("var_name", "variable")
-            value_name: str = unnest_config.get("value_name", "value")
-
-            table_unnested: pd.DataFrame = pd.melt(table, id_vars=id_vars, value_vars=value_vars, var_name=var_name, value_name=value_name)
+            table_unnested: pd.DataFrame = self.unnest_entity(entity, table, unnest_config)
             self.data[entity] = table_unnested
+
+    def unnest_entity(self, entity: str, table: pd.DataFrame, unnest_config: dict[str, Any]) -> pd.DataFrame:
+
+        id_vars: list[str] = unnest_config.get("id_vars", [])
+        value_vars: list[str] = unnest_config.get("value_vars", [])
+        var_name: str = unnest_config.get("var_name", "variable")
+        value_name: str = unnest_config.get("value_name", "value")
+
+        if value_name in table.columns:
+            logger.info(f"Entity '{entity}': is melted already, skipping unnesting")
+            return table
+        
+        if not all(col in table.columns for col in id_vars):
+            missing: list[str] = [col for col in id_vars if col not in table.columns]
+            # check if missing column is a foregin key column
+            foreign_keys: list[dict[str, Any]] = self.get_config_value(entity, "options.foreign_keys", default=[]) or []
+
+            raise ValueError(f"Cannot unnest entity '{entity}': missing id_vars columns: {missing}")
+
+        if any(col in table.columns for col in value_vars):
+            logger.info("Deferring unnesting no value_vars exist in the table")
+    
+        table_unnested: pd.DataFrame = pd.melt(
+            table,
+            id_vars=id_vars,
+            value_vars=value_vars,
+            var_name=var_name,
+            value_name=value_name,
+        )
+
+        return table_unnested
 
     def translate(self) -> None:
         """Translate Arbodat column names to english snake-cased names."""
