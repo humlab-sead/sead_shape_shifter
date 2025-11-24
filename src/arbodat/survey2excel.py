@@ -173,51 +173,63 @@ class ArbodatSurveyNormalizer:
 
             self.register(entity, data)
 
-    def link(self, is_final: bool = False) -> None:
+    def link(self, is_final: bool = False) -> bool:
         """Link entities based on foreign key configuration."""
+        deferred: bool = False
         for entity_name in self.data.keys():
-            foreign_keys: list[dict[str, Any]] = self.get_config_value(entity_name, "options.foreign_keys", default=[]) or []
-            for fk in foreign_keys:
-                local_keys: list[str] = fk.get("local_keys", [])
-                remote_keys: list[str] = fk.get("remote_keys", [])
-                remote_entity: str = fk.get("entity", "")
+            deferred = deferred and self.link_entity(entity_name)
+        return deferred
 
-                remote_id: str | None = self.get_config_value(remote_entity, "surrogate_id", default=f"{remote_entity}_id")
-                if remote_entity not in self.data or remote_id is None:
-                    raise ValueError(f"Remote entity '{remote_entity}' or surrogate_id not found for linking with '{entity_name}'")
+    def link_entity(self, entity_name: str) -> bool:
 
-                local_df: pd.DataFrame = self.data[entity_name]
-                remote_df: pd.DataFrame = self.data[remote_entity]
+        foreign_keys: list[dict[str, Any]] = self.get_config_value(entity_name, "options.foreign_keys", default=[]) or []
 
-                # Check that linking keys exist in both dataframes
-                for key in local_keys:
-                    if key not in local_df.columns:
-                        if is_final:
-                            raise ValueError(f"Local key '{key}' not found in entity '{entity_name}'")
-                        logger.info(f"Deferring link since local key '{key}' not found in entity '{entity_name}'")
-                        continue
+        deferred: bool = False
 
-                for key in remote_keys:
-                    if key not in remote_df.columns:
-                        if is_final:
-                            raise ValueError(f"Remote key '{key}' not found in entity '{remote_entity}'")
-                        logger.info(f"Deferring link since remote key '{key}' not found in entity '{remote_entity}'")
-                        continue
+        for fk in foreign_keys:
 
-                if remote_id in local_df.columns:
-                    logger.info(f"Entity '{entity_name}' already has foreign key column '{remote_id}'")
+            local_keys: list[str] = fk.get("local_keys", [])
+            remote_keys: list[str] = fk.get("remote_keys", [])
+            remote_entity: str = fk.get("entity", "")
+
+            remote_id: str | None = self.get_config_value(remote_entity, "surrogate_id", default=f"{remote_entity}_id")
+            if remote_entity not in self.data or remote_id is None:
+                raise ValueError(f"Remote entity '{remote_entity}' or surrogate_id not found for linking with '{entity_name}'")
+
+            local_df: pd.DataFrame = self.data[entity_name]
+            remote_df: pd.DataFrame = self.data[remote_entity]
+
+            # Check that linking keys exist in both dataframes
+            for key in local_keys:
+                if key not in local_df.columns:
+                    logger.info(f"Deferring link since local key '{key}' not found in entity '{entity_name}'")
+                    deferred = True
                     continue
 
-                # Perform the merge to link entities
-                linked_df: pd.DataFrame = local_df.merge(
-                    remote_df[[remote_id] + remote_keys],
-                    left_on=local_keys,
-                    right_on=remote_keys,
-                    how="left",
-                    suffixes=("", f"_{remote_entity}"),
-                )
+            for key in remote_keys:
+                if key not in remote_df.columns:
+                    logger.info(f"Deferring link since remote key '{key}' not found in entity '{remote_entity}'")
+                    deferred = True
+                    continue
 
-                self.data[entity_name] = linked_df
+            if remote_id in local_df.columns:
+                logger.info(f"Entity '{entity_name}' already has foreign key column '{remote_id}'")
+                continue
+
+            # Perform the merge to link entities
+            linked_df: pd.DataFrame = local_df.merge(
+                remote_df[[remote_id] + remote_keys],
+                left_on=local_keys,
+                right_on=remote_keys,
+                how="left",
+                suffixes=("", f"_{remote_entity}"),
+            )
+
+            self.data[entity_name] = linked_df
+
+            logger.info(f"Linked entity '{entity_name}' to '{remote_entity}' via keys {local_keys} -> {remote_keys}")
+
+        return deferred
 
         # link: site -> project
         # sites = sites.merge(projects[["project_id", "ProjektNr"]], on="ProjektNr", how="left")
