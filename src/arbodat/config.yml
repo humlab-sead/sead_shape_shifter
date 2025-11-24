@@ -367,182 +367,182 @@ entities:
       drop_duplicates: "include: entities.chronological_period.keys"
     depends_on: []
 
-sample_chronological_period:
-    surrogate_id: sample_chronological_period_id
+  sample_chronological_period:
+      surrogate_id: sample_chronological_period_id
+      keys: []
+      columns: []
+      foreign_keys:
+        - entity: chronological_period
+          local_keys: "include: entities.chronological_period.keys"
+          remote_keys: "include: entities.chronological_period.keys"
+        - entity: taxa
+          local_keys: "include: entities.taxa.keys"
+          remote_keys: "include: entities.taxa.keys"
+        - entity: sample
+          local_keys: "include: entities.sample.keys"
+          remote_keys: "include: entities.sample.keys"
+      options:
+        drop_duplicates: True
+      depends_on: ["sample", "chronological_period", "taxa"]
+
+  epoch:
+    surrogate_id: epoch_id
+    keys: ["Epoche", "Epochen_Beschreibung"]
+    columns: ["Epoche", "Epochen_Beschreibung"]
+    options:
+      drop_duplicates: "include: entities.epoch.keys"
+    depends_on: []
+
+  sample_epoch:
+    surrogate_id: sample_epoch_id
     keys: []
     columns: []
     foreign_keys:
-      - entity: chronological_period
-        local_keys: "include: entities.chronological_period.keys"
-        remote_keys: "include: entities.chronological_period.keys"
-      - entity: taxa
-        local_keys: "include: entities.taxa.keys"
-        remote_keys: "include: entities.taxa.keys"
+      - entity: epoch
+        local_keys: "include: entities.epoch.keys"
+        remote_keys: "include: entities.epoch.keys"
       - entity: sample
         local_keys: "include: entities.sample.keys"
         remote_keys: "include: entities.sample.keys"
+      - entity: taxa
+        local_keys: "include: entities.taxa.keys"
+        remote_keys: "include: entities.taxa.keys"
     options:
       drop_duplicates: True
-    depends_on: ["sample", "chronological_period", "taxa"]
+    depends_on: ["sample", "epoch", "taxa"]
 
-epoch:
-  surrogate_id: epoch_id
-  keys: ["Epoche", "Epochen_Beschreibung"]
-  columns: ["Epoche", "Epochen_Beschreibung"]
-  options:
-    drop_duplicates: "include: entities.epoch.keys"
-  depends_on: []
+  cultural_groups:
+    surrogate_id: cultural_group_id
+    keys: ["KultGr"]
+    columns: ["KultGr"]
+    options:
+      drop_duplicates: true
+    depends_on: []
 
-sample_epoch:
-  surrogate_id: sample_epoch_id
-  keys: []
-  columns: []
-  foreign_keys:
-    - entity: epoch
-      local_keys: "include: entities.epoch.keys"
-      remote_keys: "include: entities.epoch.keys"
-    - entity: sample
-      local_keys: "include: entities.sample.keys"
-      remote_keys: "include: entities.sample.keys"
-    - entity: taxa
-      local_keys: "include: entities.taxa.keys"
-      remote_keys: "include: entities.taxa.keys"
-  options:
-    drop_duplicates: True
-  depends_on: ["sample", "epoch", "taxa"]
+  sample_cultural_group:
+    surrogate_id: sample_cultural_group_id
+    keys: []
+    columns: []
+    foreign_keys:
+      - entity: cultural_groups
+        local_keys: "include: entities.cultural_groups.keys"
+        remote_keys: "include: entities.cultural_groups.keys"
+      - entity: sample
+        local_keys: "include: entities.sample.keys"
+        remote_keys: "include: entities.sample.keys"
+      - entity: taxa
+        local_keys: "include: entities.taxa.keys"
+        remote_keys: "include: entities.taxa.keys"
+    options:
+      drop_duplicates: True
+    depends_on: ["sample", "cultural_groups", "taxa"]
 
-cultural_groups:
-  surrogate_id: cultural_group_id
-  keys: ["KultGr"]
-  columns: ["KultGr"]
-  options:
-    drop_duplicates: true
-  depends_on: []
+  ecocode:
+    surrogate_id: ecocode_id
+    columns:
+      [
+        "BNam",
+        "TaxAut",
+        "L_u",
+        "L",
+        "T_u",
+        "T",
+        "K_u",
+        "K",
+        "F_u",
+        "F",
+        "F_s",
+        "Re_u",
+        "Re",
+        "N_u",
+        "N",
+        "S_u",
+        "S",
+        "SMet",
+        "Leb",
+        "Bl_u",
+        "Bl",
+        "G_u",
+        "G",
+        "Kl_u",
+        "Kl",
+        "O_u",
+        "O",
+        "V_u",
+        "V",
+        "U_u",
+        "U",
+        "Soz_u",
+        "Soz",
+        "Ökogruppe",
+        "Ökogruppe_u",
+        "Dom",
+        "Dom_u",
+        "WUA",
+        "WUE",
+        "BLA",
+        "BLE",
+        "ARE",
+        "Zeig",
+        "Pio",
+        "Roh",
+        "WT",
+        "SozGrup",
+      ]
+    options:
+      drop_duplicates: ["BNam", "TaxAut"]
+    foreign_keys:
+      - entity: taxa
+        local_keys: "include: entities.taxa.keys"
+        remote_keys: "include: entities.taxa.keys"
+        drop_duplicates: ["taxon_id"]
+      - entity: sample
+        local_keys: "include: entities.sample.keys"
+        remote_keys: "include: entities.sample.keys"
+    depends_on: ["taxa", "sample"]
 
-sample_cultural_group:
-  surrogate_id: sample_cultural_group_id
-  keys: []
-  columns: []
-  foreign_keys:
-    - entity: cultural_groups
-      local_keys: "include: entities.cultural_groups.keys"
-      remote_keys: "include: entities.cultural_groups.keys"
-    - entity: sample
-      local_keys: "include: entities.sample.keys"
-      remote_keys: "include: entities.sample.keys"
-    - entity: taxa
-      local_keys: "include: entities.taxa.keys"
-      remote_keys: "include: entities.taxa.keys"
-  options:
-    drop_duplicates: True
-  depends_on: ["sample", "cultural_groups", "taxa"]
+  use_categories:
+    surrogate_id: use_category_id
+    keys: ["BNam", "TaxAut"]
+    columns:
+      [
+        "BNam",
+        "TaxAut",
+        "Ge",
+        "Hü",
+        "Öl",
+        "Kp",
+        "Imp",
+        "Med",
+        "Ess",
+        "Gar",
+        "Nut",
+        "M",
+        "W",
+        "FW",
+        "TKG",
+      ]
+    foreign_keys:
+      - entity: taxa
+        local_keys: "include: entities.taxa.keys"
+        remote_keys: "include: entities.taxa.keys"
+        drop_duplicates: ["taxon_id"]
+    options:
+      drop_duplicates: True
+    depends_on: ["taxa"]
 
-ecocode:
-  surrogate_id: ecocode_id
-  columns:
-    [
-      "BNam",
-      "TaxAut",
-      "L_u",
-      "L",
-      "T_u",
-      "T",
-      "K_u",
-      "K",
-      "F_u",
-      "F",
-      "F_s",
-      "Re_u",
-      "Re",
-      "N_u",
-      "N",
-      "S_u",
-      "S",
-      "SMet",
-      "Leb",
-      "Bl_u",
-      "Bl",
-      "G_u",
-      "G",
-      "Kl_u",
-      "Kl",
-      "O_u",
-      "O",
-      "V_u",
-      "V",
-      "U_u",
-      "U",
-      "Soz_u",
-      "Soz",
-      "Ökogruppe",
-      "Ökogruppe_u",
-      "Dom",
-      "Dom_u",
-      "WUA",
-      "WUE",
-      "BLA",
-      "BLE",
-      "ARE",
-      "Zeig",
-      "Pio",
-      "Roh",
-      "WT",
-      "SozGrup",
-    ]
-  options:
-    drop_duplicates: ["BNam", "TaxAut"]
-  foreign_keys:
-    - entity: taxa
-      local_keys: "include: entities.taxa.keys"
-      remote_keys: "include: entities.taxa.keys"
-      drop_duplicates: ["taxon_id"]
-    - entity: sample
-      local_keys: "include: entities.sample.keys"
-      remote_keys: "include: entities.sample.keys"
-  depends_on: ["taxa", "sample"]
-
-use_categories:
-  surrogate_id: use_category_id
-  keys: ["BNam", "TaxAut"]
-  columns:
-    [
-      "BNam",
-      "TaxAut",
-      "Ge",
-      "Hü",
-      "Öl",
-      "Kp",
-      "Imp",
-      "Med",
-      "Ess",
-      "Gar",
-      "Nut",
-      "M",
-      "W",
-      "FW",
-      "TKG",
-    ]
-  foreign_keys:
-    - entity: taxa
-      local_keys: "include: entities.taxa.keys"
-      remote_keys: "include: entities.taxa.keys"
-      drop_duplicates: ["taxon_id"]
-  options:
-    drop_duplicates: True
-  depends_on: ["taxa"]
-
-contacts:
-  # FIXME: unnest authors from multiple columns
-  surrogate_id: contact_id
-  keys: ["ProjektNr", "ArchAusg", "ArchBear", "BotBear", "Aut"]
-  columns: ["ProjektNr", "ArchAusg", "ArchBear", "BotBear", "Aut", "PJahr"]
-  options:
-    drop_duplicates: "include: entities.contacts.keys"
-  foreign_keys:
-    - entity: project
-      local_keys: "include: entities.project.keys"
-      remote_keys: "include: entities.project.keys"
-  depends_on: ["project"]
+  contacts:
+    # FIXME: unnest authors from multiple columns
+    surrogate_id: contact_id
+    keys: ["ProjektNr", "ArchAusg", "ArchBear", "BotBear", "Aut"]
+    columns: ["ProjektNr", "ArchAusg", "ArchBear", "BotBear", "Aut", "PJahr"]
+    options:
+      drop_duplicates: "include: entities.contacts.keys"
+    foreign_keys:
+      - entity: project
+        local_keys: "include: entities.project.keys"
+        remote_keys: "include: entities.project.keys"
+    depends_on: ["project"]
 
 translation:
   ProjektNr: project_number
