@@ -160,8 +160,8 @@ entities:
 
   site_natural_region:
     surrogate_id: site_natural_region_id
-    keys: []
-    columns: []
+    keys: [  ]
+    columns: ['NaturE']
     foreign_keys:
       - entity: natural_region
         local_keys: "include: entities.natural_region.keys"
@@ -170,7 +170,7 @@ entities:
         local_keys: "include: entities.site.keys"
         remote_keys: "include: entities.site.keys"
     options:
-      drop_duplicates: "include: entities.site_natural_region.keys"
+      drop_duplicates: "include: entities.natural_region.keys + include: entities.site.keys"
     depends_on: ["site", "natural_region"]
 
   project:
