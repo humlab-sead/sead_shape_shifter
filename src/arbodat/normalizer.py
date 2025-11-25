@@ -15,7 +15,8 @@ from loguru import logger
 
 from src.arbodat.config_model import ForeignKeyConfig, ForeignKeySpecification, TableConfig, TablesConfig, UnnestConfig
 from src.configuration.resolve import ConfigValue
-
+from src.arbodat.unnest import unnest
+from src.arbodat.dispatch import Dispatcher, Dispatchers
 
 def add_surrogate_id(target: pd.DataFrame, id_name: str) -> pd.DataFrame:
     """Add an integer surrogate ID starting at 1."""
@@ -192,7 +193,7 @@ class ArbodatSurveyNormalizer:
 
             if table_cfg.unnest:
                 try:
-                    data = self.unnest_entity(entity, data, table_cfg.unnest)
+                    data = self.unnest_entity(entity=entity)
                 except ValueError as e:
                     logger.warning(f"Skipping unnesting for entity '{entity}': {e}")
 
@@ -289,36 +290,11 @@ class ArbodatSurveyNormalizer:
         for entity in self.data:
             self.data[entity] = self.unnest_entity(entity=entity)
 
-    def unnest_entity(self, entity: str, table: pd.DataFrame, unnest_config: UnnestConfig) -> pd.DataFrame:
-
-        id_vars: list[str] = unnest_config.id_vars or []
-        value_vars: list[str] = unnest_config.value_vars or []
-        var_name: str = unnest_config.var_name or "variable"
-        value_name: str = unnest_config.value_name or "value"
-
-        if value_name in table.columns:
-            logger.info(f"Entity '{entity}': is melted already, skipping unnesting")
-            return table
-
-        if not id_vars or not value_vars or not var_name or not value_name:
-            raise ValueError(f"Invalid unnest configuration for entity '{entity}': {unnest_config}")
-
-        if not all(col in table.columns for col in id_vars):
-            missing: list[str] = [col for col in id_vars if col not in table.columns]
-            raise ValueError(f"Cannot unnest entity '{entity}': missing id_vars columns: {missing}")
-
-        if any(col in table.columns for col in value_vars):
-            logger.info("Deferring unnesting no value_vars exist in the table")
-
-        table_unnested: pd.DataFrame = pd.melt(
-            table,
-            id_vars=id_vars,
-            value_vars=value_vars,
-            var_name=var_name,
-            value_name=value_name,
-        )
-
-        return table_unnested
+    def unnest_entity(self, *, entity: str) -> pd.DataFrame:
+        table_cfg: TableConfig = self.config.get_table(entity)
+        if table_cfg.unnest:
+            self.data[entity] = unnest(entity=entity, table=self.data[entity], table_cfg=table_cfg)
+        return self.data[entity]
 
     def translate(self) -> None:
         """Translate Arbodat column names to english snake-cased names."""
