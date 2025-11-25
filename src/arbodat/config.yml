@@ -19,12 +19,37 @@ entities:
       drop_duplicates: "include: entities.remain_type.keys"
     depends_on: ["remain_type_group"]
 
-  natural_region:
-    surrogate_id: natural_region_id
-    columns: ["NaturE", "NaturrEinh", "NaturHaupteinheit"]
+  natural_region_group:
+    surrogate_id: natural_region_group_id
+    keys: ["NaturrEinh"]
+    columns: ["NaturrEinh"]
     options:
       drop_duplicates: true
     depends_on: []
+
+  natural_region:
+    surrogate_id: natural_region_id
+    keys: ["NaturE"]
+    columns: ["NaturE", "NaturrEinh"]
+    options:
+      drop_duplicates: ["NaturE", "NaturrEinh"]
+    foreign_keys:
+      - entity: natural_region_group
+        local_keys: ["NaturrEinh"]
+        remote_keys: ["NaturrEinh"]
+    depends_on: ['natural_region_group']
+
+  natural_sub_region:
+    surrogate_id: natural_sub_region_id
+    keys: ["NaturHaupteinheit"]
+    columns: ["NaturHaupteinheit", "NaturE"]
+    options:
+      drop_duplicates: ["NaturHaupteinheit", "NaturE"]
+    foreign_keys:
+      - entity: natural_region
+        local_keys: ["NaturE"]
+        remote_keys: ["NaturE"]
+    depends_on: ['natural_region']
 
   location:
     surrogate_id: location_id
