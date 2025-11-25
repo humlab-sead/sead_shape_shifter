@@ -610,7 +610,6 @@ entities:
 # tbl_dataset_submissions
 # tbl_dating_labs
 
-# FIXME: extract
 translation:
   ProjektNr: project_number
   Befu: feature_number
