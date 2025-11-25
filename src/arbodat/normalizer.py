@@ -153,14 +153,14 @@ class ArbodatSurveyNormalizer:
 
     def _find_next_entity_to_process(self) -> str | None:
         processed: set[str] = set(self.data.keys())
-        logger.info(f"Processed entities so far: {processed}")
+        logger.debug(f"Processed entities so far: {processed}")
         for entity_name in set(self.config.table_names) - processed:
-            logger.info(f"Checking if entity '{entity_name}' can be processed...")
+            logger.debug(f"Checking if entity '{entity_name}' can be processed...")
             unmet_dependencies: set[str] = set(self.config.get_table(entity_name).depends_on) - processed
             if unmet_dependencies:
-                logger.info(f"Entity '{entity_name}' has unmet dependencies: {unmet_dependencies}")
+                logger.debug(f"Entity '{entity_name}' has unmet dependencies: {unmet_dependencies}")
                 continue
-            logger.info(f"Entity '{entity_name}' can be processed next.")
+            logger.debug(f"Entity '{entity_name}' can be processed next.")
             return entity_name
         return None
 
