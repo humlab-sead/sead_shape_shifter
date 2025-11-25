@@ -94,41 +94,6 @@ class ArbodatSurveyNormalizer:
         df: pd.DataFrame = pd.read_csv(path, sep=sep, dtype=str, keep_default_na=False)
         return ArbodatSurveyNormalizer(df)
 
-    def create_fixed_data_entity(self, entity_name: str) -> pd.DataFrame:
-        """Create a fixed data entity based on configuration."""
-        table_cfg: TableConfig = self.config.get_table(entity_name)
-
-        if not table_cfg.is_fixed_data:
-            raise ValueError(f"Entity '{entity_name}' is not configured as fixed data")
-
-        if not table_cfg.values:
-            raise ValueError(f"Fixed data entity '{entity_name}' has no values defined")
-
-        if len(table_cfg.columns or []) <= 1:
-            surrogate_name: str = table_cfg.surrogate_name
-            if not surrogate_name:
-
-                if len(table_cfg.columns or []) == 0:
-                    raise ValueError(f"Fixed data entity '{entity_name}' must have a surrogate_name or one column defined")
-
-                surrogate_name = table_cfg.columns[0]
-            data: pd.DataFrame = pd.DataFrame({surrogate_name: table_cfg.values})
-        else:
-            # Multiple columns, values is a list of rows, all having the same length as columns
-            if not isinstance(table_cfg.values, list) or not all(isinstance(row, list) for row in table_cfg.values):
-                raise ValueError(f"Fixed data entity '{entity_name}' with multiple columns must have values as a list of lists")
-
-            if not all(len(row) == len(table_cfg.columns) for row in table_cfg.values):
-                raise ValueError(f"Fixed data entity '{entity_name}' has mismatched number of columns and values")
-
-            data = pd.DataFrame(table_cfg.values, columns=table_cfg.columns)
-
-        if table_cfg.surrogate_id:
-            data = self.add_surrogate_id(data, table_cfg.surrogate_id)
-            return data
-
-        return data
-
     def extract_entity(self, entity_name: str) -> pd.DataFrame:
         """Extract entity DataFrame based on configuration."""
 
@@ -183,7 +148,7 @@ class ArbodatSurveyNormalizer:
             data: pd.DataFrame
 
             if table_cfg.is_fixed_data:
-                data = self.create_fixed_data_entity(entity)
+                data = create_fixed_table(entity_name=entity, table_cfg=table_cfg)
             else:
                 data = self.extract_entity(entity)
 
