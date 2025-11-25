@@ -276,30 +276,18 @@ class ArbodatSurveyNormalizer:
         return deferred
 
     def store(self, target: str, mode: Literal["xlsx", "csv", "db"]) -> None:
-        """Write to Excel or CSV based on the specified mode."""
-        if mode == "xlsx":
-            with pd.ExcelWriter(target, engine="openpyxl") as writer:
-                for entity_name, table in self.data.items():
-                    table.to_excel(writer, sheet_name=entity_name, index=False)
-        elif mode == "csv":
-            output_dir = Path(target)
-            output_dir.mkdir(parents=True, exist_ok=True)
-            for entity_name, table in self.data.items():
-                table.to_csv(output_dir / f"{entity_name}.csv", index=False)
+        """Write to specified target based on the specified mode."""
+        dispatcher_cls: Dispatcher = Dispatchers.get(mode)
+        if dispatcher_cls:
+            dispatcher = dispatcher_cls()   
+            dispatcher.dispatch(target=target, data=self.data)
         else:
-            raise NotImplementedError(f"Unsupported storage mode: {mode}")
+            raise ValueError(f"Unsupported dispatch mode: {mode}")
 
-    def unnest(self) -> None:
-        """Unnest data frames based on configuration."""
-        for entity, table in self.data.items():
-
-            unnest_config: UnnestConfig | None = self.config.get_table(entity).unnest
-
-            if not unnest_config:
-                continue
-
-            table_unnested: pd.DataFrame = self.unnest_entity(entity, table, unnest_config)
-            self.data[entity] = table_unnested
+    def unnest_all(self) -> None:
+        """Unnest dataframes based on configuration."""
+        for entity in self.data:
+            self.data[entity] = self.unnest_entity(entity=entity)
 
     def unnest_entity(self, entity: str, table: pd.DataFrame, unnest_config: UnnestConfig) -> pd.DataFrame:
 
