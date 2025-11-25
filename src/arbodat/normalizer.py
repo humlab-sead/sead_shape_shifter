@@ -13,7 +13,7 @@ from typing import Literal
 import pandas as pd
 from loguru import logger
 
-from src.arbodat.utility import ForeignKeyConfig, ForeignKeySpecification, TableConfig, TablesConfig, UnnestConfig
+from src.arbodat.config_model import ForeignKeyConfig, ForeignKeySpecification, TableConfig, TablesConfig, UnnestConfig
 from src.configuration.resolve import ConfigValue
 
 
