@@ -280,7 +280,7 @@ class ArbodatSurveyNormalizer:
         """Write to specified target based on the specified mode."""
         dispatcher_cls: Dispatcher = Dispatchers.get(mode)
         if dispatcher_cls:
-            dispatcher = dispatcher_cls()   
+            dispatcher = dispatcher_cls()  # type: ignore
             dispatcher.dispatch(target=target, data=self.data)
         else:
             raise ValueError(f"Unsupported dispatch mode: {mode}")
@@ -297,7 +297,7 @@ class ArbodatSurveyNormalizer:
         return self.data[entity]
 
     def translate(self) -> None:
-        """Translate Arbodat column names to english snake-cased names."""
+        """Translate Arbodat column names to english snake_case names."""
         translations: dict[str, str] = ConfigValue[dict[str, str]]("translation").resolve() or {}
 
         def fx(col: str) -> str:
