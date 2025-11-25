@@ -181,7 +181,7 @@ class ArbodatSurveyNormalizer:
             logger.info(f"normalizing entity '{entity}'...")
 
             data: pd.DataFrame
-            
+
             if table_cfg.is_fixed_data:
                 data = self.create_fixed_data_entity(entity)
             else:

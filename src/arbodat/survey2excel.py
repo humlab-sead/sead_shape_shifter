@@ -15,8 +15,8 @@ from typing import Literal
 
 import click
 
-from src.configuration.setup import setup_config_store
 from src.arbodat.workflow import workflow
+from src.configuration.setup import setup_config_store
 
 
 @click.command()

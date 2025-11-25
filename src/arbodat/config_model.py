@@ -35,12 +35,11 @@ class TableConfig:
     @property
     def surrogate_id(self) -> str:
         return self.data.get("surrogate_id", "")
-    
+
     @property
     def surrogate_name(self) -> str:
         """Specifies name field for surrogate id, if any. Ony used for fixed data tables."""
         return self.data.get("surrogate_name", "")
-
 
     @property
     def is_fixed_data(self) -> bool:
@@ -52,13 +51,13 @@ class TableConfig:
         The surrogate_id field specifies the primary key for the table.
         """
         return self.data.get("type", "data") == "fixed"
-    
+
     @property
     def values(self) -> str | None:
         """The fixed values for the table, if it is of fixed data type.
-         These values are specified in the 'values' field of the configuration.
-         The values will be used to populate the table (pd.DataFrame).
-         """
+        These values are specified in the 'values' field of the configuration.
+        The values will be used to populate the table (pd.DataFrame).
+        """
         return self.data.get("values", None)
 
     @cached_property
