@@ -580,6 +580,17 @@ entities:
       drop_duplicates: True
     depends_on: ["taxa"]
 
+  contact_type:
+    source: null
+    type: fixed
+    surrogate_id: contact_type_id
+    surrogate_name: contact_type
+    values:
+      - ArchAusg
+      - ArchBear
+      - BotBear
+      - Aut
+
   contact:
     surrogate_id: contact_id
     keys: ["ArchAusg", "ArchBear", "BotBear", "Aut"]
@@ -591,7 +602,7 @@ entities:
       value_vars: "include: entities.contact.keys"
       var_name: contact_type
       value_name: location_name
-    depends_on: []
+    depends_on: [ "contact_type" ]
 
 # FIXME: add contacts to
 # tbl_dataset_contacts
