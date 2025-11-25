@@ -169,34 +169,12 @@ entities:
   sample:
     surrogate_id: sample_id
     keys: ["ProjektNr", "Befu", "ProbNr"]
-    columns:
-      [
-        "ProjektNr",
-        "Befu",
-        "ProbNr",
+    columns: [
+        "ProjektNr", # project number
+        "Befu", # feature number
+        "ProbNr", # sample number
         # "PCODE", # removed to normalize taxa
-        "EDatProb",
-        "Strat",
-        "Schi",
-        "Quadr",
-        "Plan",
-        "TiefeVon",
-        "TiefeBis",
-        "Prob_üNN",
-        "TK",
-        # "ProbTyp",
-        # "ProbTyp Beschreibung",
-        "Expr1042",
-        "SedProb",
-        "FlSchn",
-        "AblaBdgProb",
-        # "ChronoDat",
-        # "ChronoDat Beschreibung",
-        # "ArchDat",
-        # "ArchDat_Beschreibung",
-        # "Epoche",
-        # "Epochen_Beschreibung",
-        # "KultGr",
+
       ]
     options:
       drop_duplicates: true
