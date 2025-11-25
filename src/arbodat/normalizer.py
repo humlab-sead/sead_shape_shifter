@@ -122,6 +122,10 @@ class ArbodatSurveyNormalizer:
 
             data = pd.DataFrame(table_cfg.values, columns=table_cfg.columns)
 
+        if table_cfg.surrogate_id:
+            data = self.add_surrogate_id(data, table_cfg.surrogate_id)
+            return data
+
         return data
 
     def extract_entity(self, entity_name: str) -> pd.DataFrame:
@@ -131,11 +135,6 @@ class ArbodatSurveyNormalizer:
 
         if table_cfg.is_fixed_data:
             raise ValueError(f"Entity '{entity_name}' is configured as fixed data and cannot be extracted")
-
-        data: pd.DataFrame = pd.DataFrame({table_cfg.surrogate_name: table_cfg.values})
-        if table_cfg.surrogate_id:
-            data = self.add_surrogate_id(data, table_cfg.surrogate_id)
-            return data
 
         source: pd.DataFrame = self.resolve_source(table_cfg.source)
 
