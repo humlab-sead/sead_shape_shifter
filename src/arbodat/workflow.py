@@ -11,7 +11,7 @@ def workflow(
     sep: str,
     verbose: bool,
     translate: bool,
-    mode: Literal["xlsx", "csv"],
+    mode: Literal["xlsx", "csv", "db"],
     drop_foreign_keys: bool,
 ) -> None:
 
@@ -22,16 +22,13 @@ def workflow(
         click.echo("Building normalized tables...")
 
     normalizer.normalize()
-    normalizer.link()
-
-    if translate:
-        normalizer.translate()
 
     if drop_foreign_keys:
         normalizer.drop_foreign_key_columns()
 
-    normalizer.unnest()
-    normalizer.link(is_final=True)
+    if translate:
+        normalizer.translate()
+
     normalizer.store(target=target, mode=mode)
 
     if verbose:

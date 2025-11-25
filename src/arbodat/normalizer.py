@@ -13,7 +13,7 @@ from typing import Literal
 import pandas as pd
 from loguru import logger
 
-from src.arbodat.utility import ForeignKeyConfig, TableConfig, TablesConfig, UnnestConfig
+from src.arbodat.utility import ForeignKeyConfig, ForeignKeySpecification, TableConfig, TablesConfig, UnnestConfig
 from src.configuration.resolve import ConfigValue
 
 
@@ -139,14 +139,14 @@ class ArbodatSurveyNormalizer:
 
         source: pd.DataFrame = self.resolve_source(table_cfg.source)
 
-        if not isinstance(entity.columns, list) or not all(isinstance(c, str) for c in entity.columns):
-            raise ValueError(f"Invalid columns configuration for entity '{entity_name}': {entity.columns}")
+        if not isinstance(table_cfg.columns, list) or not all(isinstance(c, str) for c in table_cfg.columns):
+            raise ValueError(f"Invalid columns configuration for entity '{entity_name}': {table_cfg.columns}")
 
         data: pd.DataFrame = get_subset(
             source,
-            entity.usage_columns,
-            drop_duplicates=entity.drop_duplicates,
-            surrogate_id=entity.surrogate_id,
+            table_cfg.usage_columns,
+            drop_duplicates=table_cfg.drop_duplicates,
+            surrogate_id=table_cfg.surrogate_id,
             raise_if_missing=False,
         )
 
@@ -154,9 +154,15 @@ class ArbodatSurveyNormalizer:
 
     def _find_next_entity_to_process(self) -> str | None:
         processed: set[str] = set(self.data.keys())
+        logger.info(f"Processed entities so far: {processed}")
         for entity_name in set(self.config.table_names) - processed:
-            if not set(self.config.get_table(entity_name).depends_on) - processed:
-                return entity_name
+            logger.info(f"Checking if entity '{entity_name}' can be processed...")
+            unmet_dependencies: set[str] = set(self.config.get_table(entity_name).depends_on) - processed
+            if unmet_dependencies:
+                logger.info(f"Entity '{entity_name}' has unmet dependencies: {unmet_dependencies}")
+                continue
+            logger.info(f"Entity '{entity_name}' can be processed next.")
+            return entity_name
         return None
 
     def normalize(self) -> None:
@@ -166,20 +172,33 @@ class ArbodatSurveyNormalizer:
         while len(unprocessed) > 0:
 
             entity: str | None = self._find_next_entity_to_process()
-            table_cfg: TableConfig = self.config.get_table(entity)  # type: ignore
 
             if entity is None:
                 raise ValueError(f"Circular or unresolved dependencies detected among entities: {unprocessed}")
 
+            table_cfg: TableConfig = self.config.get_table(entity)
+
             logger.info(f"normalizing entity '{entity}'...")
 
-            data: pd.DataFrame = self.extract_entity(entity)
+            data: pd.DataFrame
+            
+            if table_cfg.is_fixed_data:
+                data = self.create_fixed_data_entity(entity)
+            else:
+                data = self.extract_entity(entity)
 
             self.register(entity, data)
-            self.link_entity(entity)
+
+            deferred: bool = self.link_entity(entity)
 
             if table_cfg.unnest:
-                data = self.unnest_entity(entity, data, table_cfg.unnest)
+                try:
+                    data = self.unnest_entity(entity, data, table_cfg.unnest)
+                except ValueError as e:
+                    logger.warning(f"Skipping unnesting for entity '{entity}': {e}")
+
+            if deferred:
+                self.link_entity(entity)
 
             self.link()
 
@@ -196,7 +215,9 @@ class ArbodatSurveyNormalizer:
 
     def link_entity(self, entity_name: str) -> bool:
 
-        foreign_keys: list[ForeignKeyConfig] = self.config.get_table(entity_name).foreign_keys or []
+        table_cfg: TableConfig = self.config.get_table(entity_name)
+        foreign_keys: list[ForeignKeyConfig] = table_cfg.foreign_keys or []
+        specification: ForeignKeySpecification = ForeignKeySpecification()
 
         deferred: bool = False
 
@@ -206,6 +227,11 @@ class ArbodatSurveyNormalizer:
             remote_keys: list[str] = fk.remote_keys
             remote_entity: str = fk.remote_entity
 
+            if len(local_keys) != len(remote_keys):
+                raise ValueError(
+                    f"Foreign key configuration mismatch for entity '{entity_name}': local keys {local_keys} and remote keys {remote_keys} have different lengths"
+                )
+
             remote_id: str | None = self.config.get_table(remote_entity).surrogate_id or f"{remote_entity}_id"
             if remote_entity not in self.data or remote_id is None:
                 raise ValueError(f"Remote entity '{remote_entity}' or surrogate_id not found for linking with '{entity_name}'")
@@ -213,21 +239,26 @@ class ArbodatSurveyNormalizer:
             local_df: pd.DataFrame = self.data[entity_name]
             remote_df: pd.DataFrame = self.data[remote_entity]
 
-            # Check that linking keys exist in both dataframes
-            for key in local_keys:
-                if key not in local_df.columns:
-                    logger.info(f"Deferring link since local key '{key}' not found in entity '{entity_name}'")
-                    deferred = True
-                    continue
-
-            for key in remote_keys:
-                if key not in remote_df.columns:
-                    logger.info(f"Deferring link since remote key '{key}' not found in entity '{remote_entity}'")
-                    deferred = True
-                    continue
+            if entity_name == "site_location":
+                logger.info(f"Debugging site_location linking...")
 
             if remote_id in local_df.columns:
                 logger.info(f"Entity '{entity_name}' already has foreign key column '{remote_id}'")
+                continue
+
+            specification: ForeignKeySpecification = ForeignKeySpecification()
+            satisfied: bool | None = specification.is_satisfied_by(cfg=self.config, fk_cfg=fk)
+            if not satisfied is True:
+                # raise ValueError(f"Foreign key specification not satisfied for entity '{entity_name}' linking to '{remote_entity}'")
+                missing: set[str] = set(local_keys) - set(local_df.columns)
+                if missing:
+                    logger.info(f"Deferring link since local keys '{missing}' not found in entity '{entity_name}'")
+
+                missing_remote: set[str] = set(remote_keys) - set(remote_df.columns)
+                if missing_remote:
+                    logger.info(f"Deferring link since remote keys '{missing_remote}' not found in entity '{remote_entity}'")
+
+                deferred = True
                 continue
 
             # Perform the merge to link entities
@@ -245,7 +276,7 @@ class ArbodatSurveyNormalizer:
 
         return deferred
 
-    def store(self, target: str, mode: Literal["xlsx", "csv"]) -> None:
+    def store(self, target: str, mode: Literal["xlsx", "csv", "db"]) -> None:
         """Write to Excel or CSV based on the specified mode."""
         if mode == "xlsx":
             with pd.ExcelWriter(target, engine="openpyxl") as writer:
@@ -257,7 +288,7 @@ class ArbodatSurveyNormalizer:
             for entity_name, table in self.data.items():
                 table.to_csv(output_dir / f"{entity_name}.csv", index=False)
         else:
-            raise ValueError(f"Unsupported storage mode: {mode}")
+            raise NotImplementedError(f"Unsupported storage mode: {mode}")
 
     def unnest(self) -> None:
         """Unnest data frames based on configuration."""

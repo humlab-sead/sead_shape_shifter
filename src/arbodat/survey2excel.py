@@ -26,7 +26,7 @@ from src.arbodat.workflow import workflow
 @click.option("--config-file", "-c", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to configuration file.")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output.")
 @click.option("--translate", "-t", is_flag=True, help="Enable translation.")
-@click.option("--mode", "-m", type=click.Choice(["xlsx", "csv"]), default="xlsx", show_default=True, help="Output file format.")
+@click.option("--mode", "-m", type=click.Choice(["xlsx", "csv", "db"]), default="xlsx", show_default=True, help="Output file format.")
 @click.option("--drop-foreign-keys", "-d", is_flag=True, help="Drop foreign key columns after linking.")
 def main(
     input_csv: str,
@@ -35,7 +35,7 @@ def main(
     config_file: str,
     verbose: bool,
     translate: bool,
-    mode: Literal["xlsx", "csv"],
+    mode: Literal["xlsx", "csv", "db"],
     drop_foreign_keys: bool,
 ) -> None:
     """
