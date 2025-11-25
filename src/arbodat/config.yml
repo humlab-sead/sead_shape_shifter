@@ -206,6 +206,101 @@ entities:
         remote_keys: ["ProjektNr", "Befu"]
     depends_on: ["feature"]
 
+  sample_property_sheet:
+    surrogate_id: sample_property_id
+    columns: [
+      "ProjektNr",
+      "Befu",
+      "ProbNr",
+      "Vorfu", # is_mass_find
+      "AblaBdgProb", # is_sample_dry_wet
+      "EDatProb", # sampling date
+      "Strat", # stratigraphy
+      "Schi", # layer
+      "Quadr", # square
+      "Plan", # plan number
+      "TiefeVon", # depth from
+      "TiefeBis", # depth to
+      "Prob_üNN", # elevation asl sample
+      "TK", # map sheet
+      "Expr1042", # sample volume
+      "SedProb", # is_subsample_
+      "FlSchn", # flotation channel
+      "AblaBdgProb", # is_sample_dry_wet
+    ]
+    foreign_keys:
+      - entity: sample
+        local_keys: "include: entities.sample.keys"
+        remote_keys: "include: entities.sample.keys"
+    unnest:
+      id_vars: ["include: entities.sample.surrogate_id", "ProjektNr", "Befu", "ProbNr"]
+      value_vars: ["Vorfu", "AblaBdgProb"]
+      var_name: sample_property_type
+      value_name: sample_property_value
+    options:
+      drop_duplicates: true
+    depends_on: ["sample"]
+
+  sample_property_type:
+    source: null
+    type: fixed
+    surrogate_id: sample_property_type_id
+    surrogate_name: sample_property_type
+    values: [
+      "Vorfu",
+      "AblaBdgProb",
+      "EDatProb",
+      "Strat",
+      "Schi",
+      "Quadr",
+      "Plan",
+      "TiefeVon",
+      "TiefeBis",
+      "Prob_üNN",
+      "TK",
+      "Expr1042",
+      "SedProb",
+      "FlSchn",
+      "AblaBdgProb"
+    ]
+
+  sample_property:
+    source: sample_property_sheet
+    surrogate_id: sample_property_id
+    columns: [
+      "sample_id",
+      "ProjektNr",
+      "Befu",
+      "ProbNr",
+      "Vorfu", # is_mass_find
+      "AblaBdgProb", # is_sample_dry_wet
+      "EDatProb", # sampling date
+      "Strat", # stratigraphy
+      "Schi", # layer
+      "Quadr", # square
+      "Plan", # plan number
+      "TiefeVon", # depth from
+      "TiefeBis", # depth to
+      "Prob_üNN", # elevation asl sample
+      "TK", # map sheet
+      "Expr1042", # sample volume
+      "SedProb", # is_subsample_
+      "FlSchn", # flotation channel
+      "AblaBdgProb", # is_sample_dry_wet
+    ]
+    foreign_keys:
+      - entity: sample
+        local_keys: "include: entities.sample.keys"
+        remote_keys: "include: entities.sample.keys"
+    unnest:
+      id_vars: ["include: entities.sample.surrogate_id", "ProjektNr", "Befu", "ProbNr"]
+      value_vars: ["Vorfu", "AblaBdgProb"]
+      var_name: sample_property_type
+      value_name: sample_property_value
+    options:
+      drop_duplicates: true
+    depends_on: ["sample", "sample_property_type"]
+
   sample_coordinates:
     surrogate_id: sample_coordinate_id
     keys: []
