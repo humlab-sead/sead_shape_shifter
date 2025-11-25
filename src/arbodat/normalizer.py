@@ -334,7 +334,7 @@ class ArbodatSurveyNormalizer:
 
     def translate(self) -> None:
         """Translate Arbodat column names to english snake-cased names."""
-        translations: dict[str, str] = ConfigValue[dict[str, str]]("translations").resolve() or {}
+        translations: dict[str, str] = ConfigValue[dict[str, str]]("translation").resolve() or {}
 
         def fx(col: str) -> str:
             return translations.get(col, col)
