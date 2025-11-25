@@ -252,31 +252,6 @@ entities:
     surrogate_id: sample_property_type_id
     surrogate_name: sample_property_type
     values: [
-      "Vorfu",
-      "AblaBdgProb",
-      "EDatProb",
-      "Strat",
-      "Schi",
-      "Quadr",
-      "Plan",
-      "TiefeVon",
-      "TiefeBis",
-      "Prob_üNN",
-      "TK",
-      "Expr1042",
-      "SedProb",
-      "FlSchn",
-      "AblaBdgProb"
-    ]
-
-  sample_property:
-    source: sample_property_sheet
-    surrogate_id: sample_property_id
-    columns: [
-      "sample_id",
-      "ProjektNr",
-      "Befu",
-      "ProbNr",
       "Vorfu", # is_mass_find
       "AblaBdgProb", # is_sample_dry_wet
       "EDatProb", # sampling date
@@ -293,6 +268,11 @@ entities:
       "FlSchn", # flotation channel
       "AblaBdgProb", # is_sample_dry_wet
     ]
+
+  sample_property:
+    source: sample_property_sheet
+    surrogate_id: sample_property_id
+    columns: "[ 'sample_id', 'ProjektNr', 'Befu', 'ProbNr' ] + include: entities.sample_property_type.values"
     foreign_keys:
       - entity: sample
         local_keys: "include: entities.sample.keys"
