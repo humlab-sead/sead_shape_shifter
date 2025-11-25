@@ -1,5 +1,5 @@
-from loguru import logger
 import pandas as pd
+from loguru import logger
 
 from src.arbodat.config_model import TableConfig, UnnestConfig
 

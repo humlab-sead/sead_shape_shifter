@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 import pandas as pd
+
 from src.configuration.resolve import ConfigValue
 from src.utility import Registry, create_db_uri
 
