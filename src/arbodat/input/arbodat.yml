@@ -49,7 +49,20 @@ entities:
       - entity: natural_region
         local_keys: ["NaturE"]
         remote_keys: ["NaturE"]
-    depends_on: ['natural_region']
+    depends_on: ["natural_region"]
+
+  location_type:
+    source: null
+    type: fixed
+    surrogate_id: location_type_id
+    surrogate_name: location_type
+    columns: ["location_type"]
+    values:
+      - Ort
+      - Kreis
+      - Land
+      - Staat
+      - FlurStr
 
   location:
     surrogate_id: location_id
