@@ -1,5 +1,5 @@
-from loguru import logger
 import pandas as pd
+from loguru import logger
 
 
 def add_surrogate_id(target: pd.DataFrame, id_name: str) -> pd.DataFrame:
@@ -23,7 +23,7 @@ def get_subset(
     if any(c not in source.columns for c in columns):
         missing: list[str] = [c for c in columns if c not in source.columns]
         if raise_if_missing:
-            raise ValueError(f"Columns not found in DataFrame: {missing}")
+            raise ValueError(f"Key {surrogate_id}: Columns not found in DataFrame: {missing}")
         else:
             logger.warning(f"Key {surrogate_id}: Columns not found in DataFrame and will be skipped: {missing}")
 
