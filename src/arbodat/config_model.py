@@ -15,8 +15,32 @@ class UnnestConfig:
         self.var_name: str = unnest_data.get("var_name", "") or ""
         self.value_name: str = unnest_data.get("value_name", "") or ""
 
-        if not self.id_vars or not self.value_vars or not self.var_name or not self.value_name:
+        if not self.var_name or not self.value_name:
             raise ValueError(f"Invalid unnest configuration: {data}")
+
+
+class ForeignKeyConfig:
+    """Configuration for a foreign key."""
+
+    def __init__(self, *, cfg: dict[str, dict[str, Any]], local_entity: str, data: dict[str, Any]) -> None:
+        self.config: dict[str, dict[str, Any]] = cfg  # full config
+        self.local_entity: str = local_entity
+        self.local_keys: list[str] = data.get("local_keys", []) or []
+
+        self.remote_entity: str = data.get("entity", "")
+        self.remote_keys: list[str] = data.get("remote_keys", []) or []
+
+        if not self.remote_entity:
+            raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing remote entity")
+
+        if self.remote_entity not in cfg:
+            raise ValueError(f"Foreign key references unknown entity '{self.remote_entity}' from '{local_entity}'")
+
+        self.remote_surrogate_id: str = cfg[self.remote_entity].get("surrogate_id", "")
+        self.remote_drop_duplicates: bool | list[str] = data.get("drop_duplicates", False)
+
+        if not self.remote_keys:
+            raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing remote_keys")
 
 
 class TableConfig:
@@ -64,6 +88,9 @@ class TableConfig:
     def foreign_keys(self) -> list["ForeignKeyConfig"]:
         return [ForeignKeyConfig(cfg=self.config, local_entity=self.entity_name, data=fk_data) for fk_data in self.data.get("foreign_keys", []) or []]
 
+    def get_foreign_key_names(self) -> list[str]:
+        return [self.config[fk.remote_entity].get("surrogate_id", "") for fk in self.foreign_keys]
+
     @property
     def keys(self) -> list[str]:
         return self.data.get("keys", []) or []
@@ -90,6 +117,13 @@ class TableConfig:
         return None
 
     @property
+    def pending_columns(self) -> set[str]:
+        """Get set of columns that are pending (e.g., from unnesting)."""
+        if self.unnest:
+            return {self.unnest.var_name}
+        return set()
+
+    @property
     def depends_on(self) -> list[str]:
         return (self.data.get("depends_on", []) or []) + ([self.source] if self.source else [])
 
@@ -100,6 +134,7 @@ class TableConfig:
 
     @property
     def extra_fk_columns(self) -> set[str]:
+        # FIXME: remove since only used by tests
         """Get set of foreign key columns not in columns or keys."""
         extra_columns: set[str] = set()
         for fk in self.foreign_keys:
@@ -108,9 +143,9 @@ class TableConfig:
 
     @property
     def usage_columns(self) -> list[str]:
-        """Get set of all columns used in keys, columns, and foreign keys."""
+        """Get set of all columns used in keys, columns, and foreign keys, pending unnesting columns excluded)."""
         keys_and_data_columns: list[str] = self.columns2
-        return keys_and_data_columns + list(x for x in self.fk_column_set if x not in keys_and_data_columns)
+        return keys_and_data_columns + list(x for x in self.fk_column_set if x not in keys_and_data_columns and x not in self.pending_columns)
 
 
 class TablesConfig:
@@ -130,59 +165,11 @@ class TablesConfig:
     def table_names(self) -> list[str]:
         return list(self.tables.keys())
 
-
-class ForeignKeyConfig:
-    """Configuration for a foreign key."""
-
-    def __init__(self, *, cfg: dict[str, dict[str, Any]], local_entity: str, data: dict[str, Any]) -> None:
-        self.config: dict[str, dict[str, Any]] = cfg  # full config
-        self.local_entity: str = local_entity
-        self.local_keys: list[str] = data.get("local_keys", []) or []
-
-        self.remote_entity: str = data.get("entity", "")
-        self.remote_keys: list[str] = data.get("remote_keys", []) or []
-
-        if not self.remote_entity:
-            raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing remote entity")
-
-        if self.remote_entity not in cfg:
-            raise ValueError(f"Foreign key references unknown entity '{self.remote_entity}' from '{local_entity}'")
-
-        self.remote_surrogate_id: str = cfg[self.remote_entity].get("surrogate_id", "")
-        self.remote_drop_duplicates: bool | list[str] = data.get("drop_duplicates", False)
-
-        if not self.remote_keys:
-            raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing remote_keys")
-
-
-class ForeignKeySpecification:
-    """Specification that tests if a foreign key relationship is resolveble.
-    Returns True if all local and remote keys exist, False if any are missing,
-    or None if resolvable after unnesting some local keys are in unnest columns.
-    """
-
-    def is_satisfied_by(self, *, cfg: TablesConfig, fk_cfg: ForeignKeyConfig) -> bool | None:
-        local_table: TableConfig = cfg.get_table(fk_cfg.local_entity)
-        remote_table: TableConfig = cfg.get_table(fk_cfg.remote_entity)
-        unnest_columns: set[str] = set()
-        if remote_table.unnest:
-            unnest_columns = set(remote_table.unnest.value_vars)
-            unnest_columns.add(remote_table.unnest.var_name)
-
-        result: bool | None = True
-        # Check that all local keys exist in the local table
-        for key in fk_cfg.local_keys:
-            if key not in local_table.usage_columns:
-                if remote_table.unnest:
-                    if key in unnest_columns:
-                        result = None
-                        continue
-                    return False
-                return False
-
-        # Check that all remote keys exist in the remote table
-        for key in fk_cfg.remote_keys:
-            if key not in remote_table.usage_columns:
-                return False
-
-        return result
+    def get_sorted_columns(self, entity_name: str) -> list[str]:
+        """Return a list of columns with all keys in front of other columns."""
+        table: TableConfig = self.get_table(entity_name)
+        cols_to_move: list[str] = [table.surrogate_id] + [self.get_table(fk.remote_entity).surrogate_id for fk in table.foreign_keys]
+        existing_cols_to_move: list[str] = [col for col in cols_to_move if col in table.columns]
+        other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
+        new_column_order: list[str] = existing_cols_to_move + other_cols
+        return new_column_order
