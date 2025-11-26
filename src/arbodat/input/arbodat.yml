@@ -37,7 +37,7 @@ entities:
       - entity: natural_region_group
         local_keys: ["NaturrEinh"]
         remote_keys: ["NaturrEinh"]
-    depends_on: ['natural_region_group']
+    depends_on: ["natural_region_group"]
 
   natural_sub_region:
     surrogate_id: natural_sub_region_id
@@ -66,16 +66,19 @@ entities:
 
   location:
     surrogate_id: location_id
-    keys: ["Ort", "Kreis", "Land", "Staat", "FlurStr"]
-    columns: "include: entities.location.keys"
+    keys: [ ]
+    columns: "include: entities.location_type.values"
     unnest:
-      id_vars: ["include: entities.location.surrogate_id"]
-      value_vars: "include: entities.location.keys"
+      value_vars: "include: entities.location_type.values"
       var_name: location_type
       value_name: location_name
+    foreign_keys:
+      - entity: location_type
+        local_keys: ["location_type"]
+        remote_keys: ["location_type"]
     options:
       drop_duplicates: "include: entities.location.keys"
-    depends_on: []
+    depends_on: ["location_type"]
 
   site:
     surrogate_id: site_id
@@ -83,11 +86,21 @@ entities:
     columns: ["ProjektNr", "Fustel", "EVNr"]
     foreign_keys:
       - entity: natural_region
-        local_keys: ["NaturE", "NaturrEinh", "NaturHaupteinheit"]
-        remote_keys: ["NaturE", "NaturrEinh", "NaturHaupteinheit"]
+        local_keys: ["NaturE", "NaturrEinh"]
+        remote_keys: ["NaturE", "NaturrEinh"]
     options:
       drop_duplicates: "include: entities.site.keys"
     depends_on: ["natural_region"]
+
+  site_property_type:
+    source: null
+    type: fixed
+    surrogate_id: site_property_type_id
+    surrogate_name: site_property_type
+    values:
+      - FustelTyp? # is_uncertain_site_type
+      - okFustel # is_site_ok
+      - Limes # limes_indicator
 
   site_property:
     surrogate_id: site_property_id
@@ -96,14 +109,17 @@ entities:
       - entity: site
         local_keys: "include: entities.site.keys"
         remote_keys: "include: entities.site.keys"
+      - entity: site_property_type
+        local_keys: ["include: entities.site_property_type.surrogate_name"]
+        remote_keys: ["include: entities.site_property_type.surrogate_name"]
     unnest:
-      id_vars: ["include: entities.site.surrogate_id", "ProjektNr", "Fustel", "EVNr"]
-      value_vars: ["FustelTyp?", "okFustel", "Limes"]
-      var_name: location_type
-      value_name: location_name
+      id_vars: ["ProjektNr", "Fustel", "EVNr"]
+      value_vars: "include: entities.site_property_type.values"
+      var_name: site_property_type
+      value_name: site_property_value
     options:
       drop_duplicates: true
-    depends_on: ["site"]
+    depends_on: ["site" , "site_property_type"]
 
   site_type_group:
     surrogate_id: site_type_group_id
@@ -142,7 +158,17 @@ entities:
 
   site_location:
     keys: []
-    columns: ["ProjektNr", "Fustel", "EVNr", "Ort", "Kreis", "Land", "Staat", "FlurStr"]
+    columns:
+      [
+        "ProjektNr",
+        "Fustel",
+        "EVNr",
+        "Ort",
+        "Kreis",
+        "Land",
+        "Staat",
+        "FlurStr",
+      ]
     foreign_keys:
       - entity: site
         local_keys: "include: entities.site.keys"
@@ -173,8 +199,8 @@ entities:
 
   site_natural_region:
     surrogate_id: site_natural_region_id
-    keys: [  ]
-    columns: ['NaturE']
+    keys: []
+    columns: ["NaturE"]
     foreign_keys:
       - entity: natural_region
         local_keys: "include: entities.natural_region.keys"
@@ -201,7 +227,19 @@ entities:
   taxa:
     surrogate_id: taxon_id
     keys: ["BNam", "TaxAut"]
-    columns: ["PCODE", "BNam", "Name D", "Name_E", "Name_F", "Name_I", "Familie", "S_Od", "TaxAut", "Achtung"]
+    columns:
+      [
+        "PCODE",
+        "BNam",
+        "Name D",
+        "Name_E",
+        "Name_F",
+        "Name_I",
+        "Familie",
+        "S_Od",
+        "TaxAut",
+        "Achtung",
+      ]
     options:
       drop_duplicates: true
     depends_on: []
@@ -227,31 +265,32 @@ entities:
   sample_property_sheet:
     surrogate_id: sample_property_id
     columns: [
-      "ProjektNr",
-      "Befu",
-      "ProbNr",
-      "Vorfu", # is_mass_find
-      "AblaBdgProb", # is_sample_dry_wet
-      "EDatProb", # sampling date
-      "Strat", # stratigraphy
-      "Schi", # layer
-      "Quadr", # square
-      "Plan", # plan number
-      "TiefeVon", # depth from
-      "TiefeBis", # depth to
-      "Prob_üNN", # elevation asl sample
-      "TK", # map sheet
-      "Expr1042", # sample volume
-      "SedProb", # is_subsample_
-      "FlSchn", # flotation channel
-      "AblaBdgProb", # is_sample_dry_wet
-    ]
+        "ProjektNr",
+        "Befu",
+        "ProbNr",
+        "Vorfu", # is_mass_find
+        "AblaBdgProb", # is_sample_dry_wet
+        "EDatProb", # sampling date
+        "Strat", # stratigraphy
+        "Schi", # layer
+        "Quadr", # square
+        "Plan", # plan number
+        "TiefeVon", # depth from
+        "TiefeBis", # depth to
+        "Prob_üNN", # elevation asl sample
+        "TK", # map sheet
+        "Expr1042", # sample volume
+        "SedProb", # is_subsample_
+        "FlSchn", # flotation channel
+        "AblaBdgProb", # is_sample_dry_wet
+      ]
     foreign_keys:
       - entity: sample
         local_keys: "include: entities.sample.keys"
         remote_keys: "include: entities.sample.keys"
     unnest:
-      id_vars: ["include: entities.sample.surrogate_id", "ProjektNr", "Befu", "ProbNr"]
+      id_vars:
+        ["include: entities.sample.surrogate_id", "ProjektNr", "Befu", "ProbNr"]
       value_vars: ["Vorfu", "AblaBdgProb"]
       var_name: sample_property_type
       value_name: sample_property_value
@@ -265,22 +304,22 @@ entities:
     surrogate_id: sample_property_type_id
     surrogate_name: sample_property_type
     values: [
-      "Vorfu", # is_mass_find
-      "AblaBdgProb", # is_sample_dry_wet
-      "EDatProb", # sampling date
-      "Strat", # stratigraphy
-      "Schi", # layer
-      "Quadr", # square
-      "Plan", # plan number
-      "TiefeVon", # depth from
-      "TiefeBis", # depth to
-      "Prob_üNN", # elevation asl sample
-      "TK", # map sheet
-      "Expr1042", # sample volume
-      "SedProb", # is_subsample_
-      "FlSchn", # flotation channel
-      "AblaBdgProb", # is_sample_dry_wet
-    ]
+        "Vorfu", # is_mass_find
+        "AblaBdgProb", # is_sample_dry_wet
+        "EDatProb", # sampling date
+        "Strat", # stratigraphy
+        "Schi", # layer
+        "Quadr", # square
+        "Plan", # plan number
+        "TiefeVon", # depth from
+        "TiefeBis", # depth to
+        "Prob_üNN", # elevation asl sample
+        "TK", # map sheet
+        "Expr1042", # sample volume
+        "SedProb", # is_subsample_
+        "FlSchn", # flotation channel
+        "AblaBdgProb", # is_sample_dry_wet
+      ]
 
   sample_property:
     source: sample_property_sheet
@@ -294,7 +333,8 @@ entities:
         local_keys: ["sample_property_type"]
         remote_keys: ["sample_property_type"]
     unnest:
-      id_vars: ["include: entities.sample.surrogate_id", "ProjektNr", "Befu", "ProbNr"]
+      id_vars:
+        ["include: entities.sample.surrogate_id", "ProjektNr", "Befu", "ProbNr"]
       value_vars: "include: entities.sample_property_type.values"
       var_name: sample_property_type
       value_name: sample_property_value
@@ -340,14 +380,36 @@ entities:
   sample_processing:
     surrogate_id: sample_processing_id
     columns:
-      ["ProjektNr", "Befu", "ProbNr", "ORG2,0", "ORG1,0", "ORG0,5", "ORG0,25", "MIN2,0", "MIN1,0", "MIN0,5", "MIN0,25"]
+      [
+        "ProjektNr",
+        "Befu",
+        "ProbNr",
+        "ORG2,0",
+        "ORG1,0",
+        "ORG0,5",
+        "ORG0,25",
+        "MIN2,0",
+        "MIN1,0",
+        "MIN0,5",
+        "MIN0,25",
+      ]
     foreign_keys:
       - entity: sample
         local_keys: "include: entities.sample.keys"
         remote_keys: "include: entities.sample.keys"
     unnest:
       id_vars: ["ProjektNr", "Befu", "ProbNr"]
-      value_vars: ["ORG2,0", "ORG1,0", "ORG0,5", "ORG0,25", "MIN2,0", "MIN1,0", "MIN0,5", "MIN0,25"]
+      value_vars:
+        [
+          "ORG2,0",
+          "ORG1,0",
+          "ORG0,5",
+          "ORG0,25",
+          "MIN2,0",
+          "MIN1,0",
+          "MIN0,5",
+          "MIN0,25",
+        ]
       var_name: method_type
       value_name: method_name
     options:
@@ -369,7 +431,17 @@ entities:
   feature:
     surrogate_id: feature_id
     keys: ["ProjektNr", "Befu"]
-    columns: ["ProjektNr", "Fustel", "EVNr", "Befu", "BefuTyp", "GrJahrBefu", "Gebäude", "okBefu"]
+    columns:
+      [
+        "ProjektNr",
+        "Fustel",
+        "EVNr",
+        "Befu",
+        "BefuTyp",
+        "GrJahrBefu",
+        "Gebäude",
+        "okBefu",
+      ]
     options:
       drop_duplicates: true
     foreign_keys:
@@ -583,7 +655,24 @@ entities:
   use_categories:
     surrogate_id: use_category_id
     keys: ["BNam", "TaxAut"]
-    columns: ["BNam", "TaxAut", "Ge", "Hü", "Öl", "Kp", "Imp", "Med", "Ess", "Gar", "Nut", "M", "W", "FW", "TKG"]
+    columns:
+      [
+        "BNam",
+        "TaxAut",
+        "Ge",
+        "Hü",
+        "Öl",
+        "Kp",
+        "Imp",
+        "Med",
+        "Ess",
+        "Gar",
+        "Nut",
+        "M",
+        "W",
+        "FW",
+        "TKG",
+      ]
     foreign_keys:
       - entity: taxa
         local_keys: "include: entities.taxa.keys"
@@ -615,7 +704,7 @@ entities:
       value_vars: "include: entities.contact.keys"
       var_name: contact_type
       value_name: location_name
-    depends_on: [ "contact_type" ]
+    depends_on: ["contact_type"]
 
 # FIXME: add contacts to
 # tbl_dataset_contacts
