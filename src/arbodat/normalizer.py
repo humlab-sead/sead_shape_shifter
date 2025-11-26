@@ -244,3 +244,17 @@ class ArbodatSurveyNormalizer:
                 table: pd.DataFrame = self.data[entity_name]
                 table = table.drop(columns=fk_columns, errors="ignore")
                 self.data[entity_name] = table
+
+    def move_keys_to_front(self) -> None:
+        """Move primary key and foreign key columns to the front of the dataframe for better readability."""
+        for entity_name in self.data.keys():
+            if entity_name not in self.config.table_names:
+                continue
+            table_cfg: TableConfig = self.config.get_table(entity_name)
+            table: pd.DataFrame = self.data[entity_name]
+            cols_to_move: list[str] = [table_cfg.surrogate_id] + [self.config.get_table(fk.remote_entity).surrogate_id for fk in table_cfg.foreign_keys]
+            existing_cols_to_move: list[str] = [col for col in cols_to_move if col in table.columns]
+            other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
+            new_column_order: list[str] = existing_cols_to_move + other_cols
+            table = table[new_column_order]
+            self.data[entity_name] = table

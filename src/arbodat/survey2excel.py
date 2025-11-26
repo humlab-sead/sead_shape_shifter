@@ -43,6 +43,7 @@ def workflow(
     if translate:
         normalizer.translate()
 
+    normalizer.move_keys_to_front()
     normalizer.store(target=target, mode=mode)
 
     if verbose:
