@@ -13,12 +13,13 @@ from typing import Literal
 import pandas as pd
 from loguru import logger
 
-from src.arbodat.config_model import ForeignKeyConfig, ForeignKeySpecification, TableConfig, TablesConfig, UnnestConfig
+from src.arbodat.config_model import ForeignKeyConfig, TableConfig, TablesConfig
 from src.arbodat.dispatch import Dispatcher, Dispatchers
-from src.arbodat.unnest import unnest
-from src.configuration.resolve import ConfigValue
 from src.arbodat.fixed import create_fixed_table
-from src.arbodat.utility import get_subset, add_surrogate_id
+from src.arbodat.specifications import ForeignKeyDataSpecification
+from src.arbodat.unnest import unnest
+from src.arbodat.utility import get_subset
+from src.configuration.resolve import ConfigValue
 
 
 class ArbodatSurveyNormalizer:
@@ -100,7 +101,7 @@ class ArbodatSurveyNormalizer:
 
             table_cfg: TableConfig = self.config.get_table(entity)
 
-            logger.info(f"normalizing entity '{entity}'...")
+            logger.debug(f"Normalizing entity '{entity}'...")
 
             data: pd.DataFrame
 
@@ -139,8 +140,6 @@ class ArbodatSurveyNormalizer:
 
         table_cfg: TableConfig = self.config.get_table(entity_name)
         foreign_keys: list[ForeignKeyConfig] = table_cfg.foreign_keys or []
-        specification: ForeignKeySpecification = ForeignKeySpecification()
-
         deferred: bool = False
 
         for fk in foreign_keys:
@@ -161,26 +160,19 @@ class ArbodatSurveyNormalizer:
             local_df: pd.DataFrame = self.data[entity_name]
             remote_df: pd.DataFrame = self.data[remote_entity]
 
-            if entity_name == "site_location":
-                logger.info(f"Debugging site_location linking...")
-
             if remote_id in local_df.columns:
-                logger.info(f"Entity '{entity_name}' already has foreign key column '{remote_id}'")
+                logger.debug(f"Linking {entity_name}: skipped since FK '{remote_id}' already exists.")
                 continue
 
-            specification: ForeignKeySpecification = ForeignKeySpecification()
-            satisfied: bool | None = specification.is_satisfied_by(cfg=self.config, fk_cfg=fk)
-            if not satisfied is True:
-                # raise ValueError(f"Foreign key specification not satisfied for entity '{entity_name}' linking to '{remote_entity}'")
-                missing: set[str] = set(local_keys) - set(local_df.columns)
-                if missing:
-                    logger.info(f"Deferring link since local keys '{missing}' not found in entity '{entity_name}'")
+            specification: ForeignKeyDataSpecification = ForeignKeyDataSpecification(cfg=self.config, table_store=self.data)
 
-                missing_remote: set[str] = set(remote_keys) - set(remote_df.columns)
-                if missing_remote:
-                    logger.info(f"Deferring link since remote keys '{missing_remote}' not found in entity '{remote_entity}'")
+            satisfied: bool | None = specification.is_satisfied_by(fk_cfg=fk)
+            if satisfied is False:
+                logger.error(specification.error)
+                continue
 
-                deferred = True
+            if specification.deferred:
+                deferred = deferred or True
                 continue
 
             # Perform the merge to link entities
@@ -194,7 +186,7 @@ class ArbodatSurveyNormalizer:
 
             self.data[entity_name] = linked_df
 
-            logger.info(f"Linked entity '{entity_name}' to '{remote_entity}' via keys {local_keys} -> {remote_keys}")
+            logger.debug(f"[Linking {entity_name}] added link to '{remote_entity}' via {local_keys} -> {remote_keys}")
 
         return deferred
 
