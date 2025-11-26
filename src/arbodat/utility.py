@@ -25,7 +25,7 @@ def get_subset(
         if raise_if_missing:
             raise ValueError(f"Columns not found in DataFrame: {missing}")
         else:
-            logger.warning(f"Columns not found in DataFrame and will be skipped: {missing}")
+            logger.warning(f"Key {surrogate_id}: Columns not found in DataFrame and will be skipped: {missing}")
 
     existing: list[str] = [c for c in columns if c in source.columns]
     result: pd.DataFrame = source[existing]
