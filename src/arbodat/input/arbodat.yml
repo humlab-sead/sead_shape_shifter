@@ -1,4 +1,19 @@
 entities:
+
+# Pandas drop_duplicates with a list of column names as arguments will:
+#   Look only at the values in col1 and col2 to determine if two rows are duplicates.
+#   Keep the first occurrence of each unique combination by default.
+#   Drop all other rows that have the same values in the specified subset of columns.
+#   Return the full rows — not just the subset — but duplicates are identified only from the subset.
+
+  eco_groups:
+    surrogate_id: eco_group_id
+    keys: ["Ökogruppe"]
+    columns: ["Ökogruppe", "Ökogruppe_u"]
+    options:
+      drop_duplicates: true
+    depends_on: []
+    
   remain_type_group:
     surrogate_id: remain_type_group_id
     keys: ["RTypGrup"]
@@ -68,6 +83,9 @@ entities:
     surrogate_id: location_id
     keys: [ ]
     columns: "include: entities.location_type.values"
+    extra_columns:
+      default_lat_dd: null
+      default_long_dd: null
     unnest:
       value_vars: "include: entities.location_type.values"
       var_name: location_type
@@ -84,6 +102,9 @@ entities:
     surrogate_id: site_id
     keys: ["ProjektNr", "Fustel", "EVNr"]
     columns: ["ProjektNr", "Fustel", "EVNr"]
+    extra_columns:
+      site_name: "Fustel"
+      site_reference_number: "EVNr"
     foreign_keys:
       - entity: natural_region
         local_keys: ["NaturE", "NaturrEinh"]
@@ -251,8 +272,6 @@ entities:
         "ProjektNr", # project number
         "Befu", # feature number
         "ProbNr", # sample number
-        # "PCODE", # removed to normalize taxa
-
       ]
     options:
       drop_duplicates: true
@@ -262,6 +281,19 @@ entities:
         remote_keys: ["ProjektNr", "Befu"]
     depends_on: ["feature"]
 
+  sample_description_type:
+    source: null
+    type: fixed
+    surrogate_id: sample_description_type_id
+    surrogate_name: type_name
+    columns: [ "type_name", "type_description", "arbodat_code"]
+    values:
+      - [ "IsSampleDryWet", "type_description", "AblaBdgProb" ]
+      - [ "IsSampleDryWet", "type_description", "AblaBdgProb" ]
+
+  # TODO: Move columns to tbl_sample_description_types (fixed table woth subset of columns below)
+  # TODO: Move columns to tbl_sample_descriptions
+  # TODO Move 
   sample_property_sheet:
     surrogate_id: sample_property_id
     columns: [
@@ -280,7 +312,7 @@ entities:
         "Prob_üNN", # elevation asl sample
         "TK", # map sheet
         "Expr1042", # sample volume
-        "SedProb", # is_subsample_
+        "SedProb", # is_subsample
         "FlSchn", # flotation channel
         "AblaBdgProb", # is_sample_dry_wet
       ]
@@ -306,18 +338,18 @@ entities:
     values: [
         "Vorfu", # is_mass_find
         "AblaBdgProb", # is_sample_dry_wet
-        "EDatProb", # sampling date
+        "EDatProb", # sampling_date
         "Strat", # stratigraphy
         "Schi", # layer
         "Quadr", # square
-        "Plan", # plan number
-        "TiefeVon", # depth from
-        "TiefeBis", # depth to
-        "Prob_üNN", # elevation asl sample
-        "TK", # map sheet
-        "Expr1042", # sample volume
+        "Plan", # plan_number
+        "TiefeVon", # depth_from
+        "TiefeBis", # depth_to
+        "Prob_üNN", # elevation_asl_sample
+        "TK", # map_sheet
+        "Expr1042", # sample_volume
         "SedProb", # is_subsample_
-        "FlSchn", # flotation channel
+        "FlSchn", # flotation_channel
         "AblaBdgProb", # is_sample_dry_wet
       ]
 
@@ -429,6 +461,7 @@ entities:
     depends_on: ["site"]
 
   feature:
+    # data from befunde that are specfic to that feature
     surrogate_id: feature_id
     keys: ["ProjektNr", "Befu"]
     columns:
@@ -449,6 +482,32 @@ entities:
         local_keys: "include: entities.site.keys"
         remote_keys: "include: entities.site.keys"
     depends_on: ["site", "feature_type"]
+
+  sample_groups:
+    # rule: one-to-one relationship with feature
+    surrogate_id: sample_group_id
+    keys: ["ProjektNr", "Befu", "Fustel"]
+    columns:
+      [
+        "ProjektNr",
+        "Befu",
+        "Fustel",
+        "GrJahrBefu",
+        "Gebäude",
+        "okBefu",
+      ]
+    extra_columns:
+      sample_group_name: "Befu"
+      sample_group_description: null
+      sampling_context_id: null
+      method_id: null
+    options:
+      drop_duplicates: true
+    foreign_keys:
+      - entity: site
+        local_keys: "include: entities.site.keys"
+        remote_keys: "include: entities.site.keys"
+    depends_on: ["site"]
 
   sample_taxa:
     keys: []
@@ -588,12 +647,12 @@ entities:
       drop_duplicates: True
     depends_on: ["sample", "cultural_group", "taxa"]
 
-  ecocode:
-    surrogate_id: ecocode_id
+  abundances:
+    surrogate_id: abundance_id
     columns:
       [
         "BNam",
-        "TaxAut",
+        "TaxAut", 
         "L_u",
         "L",
         "T_u",
@@ -734,10 +793,10 @@ translation:
   SumPflR: plant_remain_count
   Anmerkung: species_note
   EDatProb: sampling_date
-  Strat: stratigraphy
+  Strat: stratum
   Schi: layer
   Quadr: square
-  Plan: plan_number
+  Plan: planum
   TiefeVon: depth_from
   TiefeBis: depth_to
   Prob_üNN: elevation_asl_sample
@@ -785,9 +844,9 @@ translation:
   Staat: country
   FlurStr: place_street
   EVNr: site_reference_number
-  NaturE: natural_region
-  NaturrEinh: natural_region_unit
-  NaturHaupteinheit: natural_major_unit
+  NaturE: natural_landscape_unit
+  NaturrEinh: natural_landscape_sub_unit
+  NaturHaupteinheit: natural_landscape_major_unit
   TK: map_sheet
   Koordinatensystem: coordinate_system
   Easting: easting
