@@ -45,10 +45,7 @@ class ArbodatSurveyNormalizer:
 
     @staticmethod
     def load(path: str | Path, sep: str = "\t") -> "ArbodatSurveyNormalizer":
-        """
-        Read Arbodat CSV (usually tab-separated).
-        If sep='\t' fails badly, you can change to ',' when calling.
-        """
+        """ Read Arbodat CSV (usually tab-separated). """
         df: pd.DataFrame = pd.read_csv(path, sep=sep, dtype=str, keep_default_na=False)
         return ArbodatSurveyNormalizer(df)
 
