@@ -1,6 +1,8 @@
 from functools import cached_property
 from typing import Any
 
+import pandas as pd
+
 from src.configuration.resolve import ConfigValue
 
 
@@ -49,26 +51,26 @@ class ForeignKeyConfig:
         if not self.remote_keys:
             raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing remote_keys")
 
-
     def resolve_extra_columns(self, data: dict[str, Any]) -> dict[str, str]:
         """Resolve extra columns for the foreign key configuration.
         Args:
             data (dict): Foreign key configuration data.
         Returns:
             dict: Resolved extra columns mapping local column names to remote column names.
-        """ 
+        """
         extra_columns: str | list[str] | dict[str, str] = data.get("extra_columns", {}) or {}
         if not extra_columns:
             return {}
         if isinstance(extra_columns, dict):
             return extra_columns
         if isinstance(extra_columns, str):
-            extra_columns = [ extra_columns ]
+            extra_columns = [extra_columns]
         if isinstance(extra_columns, list):
             return {col: col for col in extra_columns}
-        
+
         raise ValueError(f"Invalid extra_columns format in foreign key configuration for entity '{self.local_entity}'")
-    
+
+
 class TableConfig:
     """Configuration for a database table."""
 
@@ -132,7 +134,7 @@ class TableConfig:
     @property
     def extra_column_names(self) -> list[str]:
         return list(self.extra_columns.keys())
-    
+
     @property
     def columns2(self) -> list[str]:
         """Get columns with keys first, followed by other columns."""

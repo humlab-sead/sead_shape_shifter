@@ -144,7 +144,7 @@ class ArbodatSurveyNormalizer:
             local_keys: list[str] = fk.local_keys
             remote_keys: list[str] = fk.remote_keys
             remote_entity: str = fk.remote_entity
-            
+
             if len(local_keys) != len(remote_keys):
                 raise ValueError(
                     f"Foreign key configuration mismatch for entity '{entity_name}': local keys {local_keys} and remote keys {remote_keys} have different lengths"
