@@ -91,7 +91,6 @@ class ArbodatSurveyNormalizer:
 
     def normalize(self) -> None:
         """Extract all configured entities and store them."""
-
         unprocessed: set[str] = set(self.config.table_names)
         while len(unprocessed) > 0:
 
