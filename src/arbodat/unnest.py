@@ -36,7 +36,7 @@ def unnest(entity: str, table: pd.DataFrame, table_cfg: TableConfig) -> pd.DataF
             raise ValueError(f"Cannot unnest entity '{entity}', missing id_vars columns: {missing}")
         opts["id_vars"] = id_vars
 
-    if not value_vars:
+    if value_vars:
         missing_value_vars: list[str] = [col for col in value_vars if col not in table.columns]
         if len(missing_value_vars) > 0:
             logger.info(f"Deferring unnesting of entity '{entity}', missing value_vars found: {missing_value_vars}")
