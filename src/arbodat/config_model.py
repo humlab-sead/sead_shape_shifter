@@ -26,7 +26,8 @@ class ForeignKeyConfig:
         self.config: dict[str, dict[str, Any]] = cfg  # full config
         self.local_entity: str = local_entity
         self.local_keys: list[str] = data.get("local_keys", []) or []
-
+        self.remote_extra_columns: dict[str, str] = self.resolve_extra_columns(data) or {}
+        self.drop_remote_id: bool = data.get("drop_remote_id", False)
         self.remote_entity: str = data.get("entity", "")
         self.remote_keys: list[str] = data.get("remote_keys", []) or []
 
@@ -37,12 +38,30 @@ class ForeignKeyConfig:
             raise ValueError(f"Foreign key references unknown entity '{self.remote_entity}' from '{local_entity}'")
 
         self.remote_surrogate_id: str = cfg[self.remote_entity].get("surrogate_id", "")
-        self.remote_drop_duplicates: bool | list[str] = data.get("drop_duplicates", False)
 
         if not self.remote_keys:
             raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing remote_keys")
 
 
+    def resolve_extra_columns(self, data: dict[str, Any]) -> dict[str, str]:
+        """Resolve extra columns for the foreign key configuration.
+        Args:
+            data (dict): Foreign key configuration data.
+        Returns:
+            dict: Resolved extra columns mapping local column names to remote column names.
+        """ 
+        extra_columns: str | list[str] | dict[str, str] = data.get("extra_columns", {}) or {}
+        if not extra_columns:
+            return {}
+        if isinstance(extra_columns, dict):
+            return extra_columns
+        if isinstance(extra_columns, str):
+            extra_columns = [ extra_columns ]
+        if isinstance(extra_columns, list):
+            return {col: col for col in extra_columns}
+        
+        raise ValueError(f"Invalid extra_columns format in foreign key configuration for entity '{self.local_entity}'")
+    
 class TableConfig:
     """Configuration for a database table."""
 
@@ -100,13 +119,21 @@ class TableConfig:
         return self.data.get("columns", []) or []
 
     @property
+    def extra_columns(self) -> dict[str, Any]:
+        return self.data.get("extra_columns", {}) or {}
+
+    @property
+    def extra_column_names(self) -> list[str]:
+        return list(self.extra_columns.keys())
+    
+    @property
     def columns2(self) -> list[str]:
         """Get columns with keys first, followed by other columns."""
         return self.keys + [col for col in self.columns if col not in self.keys]
 
     @property
     def drop_duplicates(self) -> bool | list[str]:
-        value = self.data.get("options", {}).get("drop_duplicates", False)
+        value = self.data.get("drop_duplicates", False)
         return value if value else False
 
     @property
