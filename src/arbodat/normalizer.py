@@ -68,6 +68,7 @@ class ArbodatSurveyNormalizer:
         data: pd.DataFrame = get_subset(
             source,
             table_cfg.usage_columns,
+            extra_columns=table_cfg.extra_columns,
             drop_duplicates=table_cfg.drop_duplicates,
             surrogate_id=table_cfg.surrogate_id,
             raise_if_missing=False,
@@ -147,7 +148,7 @@ class ArbodatSurveyNormalizer:
             local_keys: list[str] = fk.local_keys
             remote_keys: list[str] = fk.remote_keys
             remote_entity: str = fk.remote_entity
-
+            
             if len(local_keys) != len(remote_keys):
                 raise ValueError(
                     f"Foreign key configuration mismatch for entity '{entity_name}': local keys {local_keys} and remote keys {remote_keys} have different lengths"
@@ -177,12 +178,15 @@ class ArbodatSurveyNormalizer:
 
             # Perform the merge to link entities
             linked_df: pd.DataFrame = local_df.merge(
-                remote_df[[remote_id] + remote_keys],
+                remote_df[[remote_id] + remote_keys + list(fk.remote_extra_columns.keys())],
                 left_on=local_keys,
                 right_on=remote_keys,
                 how="left",
                 suffixes=("", f"_{remote_entity}"),
             )
+
+            if fk.remote_extra_columns and fk.drop_remote_id:
+                linked_df = linked_df.drop(columns=[remote_id], errors="ignore")
 
             self.data[entity_name] = linked_df
 
@@ -238,13 +242,17 @@ class ArbodatSurveyNormalizer:
                 self.data[entity_name] = table
 
     def move_keys_to_front(self) -> None:
-        """Move primary key and foreign key columns to the front of the dataframe for better readability."""
+        """Reorder columns in this order: primary key, foreign key column, extra columns, other columns."""
         for entity_name in self.data.keys():
             if entity_name not in self.config.table_names:
                 continue
             table_cfg: TableConfig = self.config.get_table(entity_name)
             table: pd.DataFrame = self.data[entity_name]
-            cols_to_move: list[str] = [table_cfg.surrogate_id] + [self.config.get_table(fk.remote_entity).surrogate_id for fk in table_cfg.foreign_keys]
+            cols_to_move: list[str] = (
+                [table_cfg.surrogate_id]
+                + [self.config.get_table(fk.remote_entity).surrogate_id for fk in table_cfg.foreign_keys]
+                + table_cfg.extra_column_names
+            )
             existing_cols_to_move: list[str] = [col for col in cols_to_move if col in table.columns]
             other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
             new_column_order: list[str] = existing_cols_to_move + other_cols
