@@ -23,6 +23,13 @@ class ForeignKeyConfig:
     """Configuration for a foreign key."""
 
     def __init__(self, *, cfg: dict[str, dict[str, Any]], local_entity: str, data: dict[str, Any]) -> None:
+        """Initialize ForeignKeyConfig with configuration data.
+        Args:
+            cfg (dict): Full configuration dictionary.
+            local_entity (str): Name of the local entity/table.
+            data (dict): Foreign key configuration data.
+        Raises:
+            ValueError: If required fields are missing or invalid."""
         self.config: dict[str, dict[str, Any]] = cfg  # full config
         self.local_entity: str = local_entity
         self.local_keys: list[str] = data.get("local_keys", []) or []
