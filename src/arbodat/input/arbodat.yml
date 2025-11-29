@@ -10,16 +10,14 @@ entities:
     surrogate_id: eco_group_id
     keys: ["Ökogruppe"]
     columns: ["Ökogruppe", "Ökogruppe_u"]
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     depends_on: []
     
   remain_type_group:
     surrogate_id: remain_type_group_id
     keys: ["RTypGrup"]
     columns: ["RTypGrup"]
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     depends_on: []
 
   remain_type:
@@ -30,24 +28,21 @@ entities:
       - entity: remain_type_group
         local_keys: ["RTypGrup"]
         remote_keys: ["RTypGrup"]
-    options:
-      drop_duplicates: "include: entities.remain_type.keys"
+    drop_duplicates: "include: entities.remain_type.keys"
     depends_on: ["remain_type_group"]
 
   natural_region_group:
     surrogate_id: natural_region_group_id
     keys: ["NaturrEinh"]
     columns: ["NaturrEinh"]
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     depends_on: []
 
   natural_region:
     surrogate_id: natural_region_id
     keys: ["NaturE"]
     columns: ["NaturE", "NaturrEinh"]
-    options:
-      drop_duplicates: ["NaturE", "NaturrEinh"]
+    drop_duplicates: ["NaturE", "NaturrEinh"]
     foreign_keys:
       - entity: natural_region_group
         local_keys: ["NaturrEinh"]
@@ -58,8 +53,7 @@ entities:
     surrogate_id: natural_sub_region_id
     keys: ["NaturHaupteinheit"]
     columns: ["NaturHaupteinheit", "NaturE"]
-    options:
-      drop_duplicates: ["NaturHaupteinheit", "NaturE"]
+    drop_duplicates: ["NaturHaupteinheit", "NaturE"]
     foreign_keys:
       - entity: natural_region
         local_keys: ["NaturE"]
@@ -94,9 +88,20 @@ entities:
       - entity: location_type
         local_keys: ["location_type"]
         remote_keys: ["location_type"]
-    options:
-      drop_duplicates: "include: entities.location.keys"
+    drop_duplicates: "include: entities.location.keys"
     depends_on: ["location_type"]
+
+  site_coordinates:
+    surrogate_id: site_coordinate_id
+    keys: "include: entities.site.keys"
+    columns: ["Koordinatensystem", "Easting", "Northing", "Höhe"]
+    foreign_keys:
+      - entity: site
+        local_keys: "include: entities.site.keys"
+        remote_keys: "include: entities.site.keys"
+    drop_duplicates: "include: entities.site.keys"
+    check_functional_dependency: true
+    depends_on: [ ]
 
   site:
     surrogate_id: site_id
@@ -104,14 +109,22 @@ entities:
     columns: ["ProjektNr", "Fustel", "EVNr"]
     extra_columns:
       site_name: "Fustel"
-      site_reference_number: "EVNr"
+      national_site_identifier: "EVNr"
     foreign_keys:
       - entity: natural_region
         local_keys: ["NaturE", "NaturrEinh"]
         remote_keys: ["NaturE", "NaturrEinh"]
-    options:
-      drop_duplicates: "include: entities.site.keys"
-    depends_on: ["natural_region"]
+      - entity: site_coordinates
+        local_keys: "include: entities.site.keys"
+        remote_keys: "include: entities.site.keys"
+        extra_columns:
+          coordinate_system: "Koordinatensystem"
+          easting: "Easting"
+          northing: "Northing"
+          elevation: "Höhe"
+        drop_remote_id: true
+    drop_duplicates: "include: entities.site.keys"
+    depends_on: ["natural_region", "site_coordinates"]
 
   site_property_type:
     source: null
@@ -138,24 +151,21 @@ entities:
       value_vars: "include: entities.site_property_type.values"
       var_name: site_property_type
       value_name: site_property_value
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     depends_on: ["site" , "site_property_type"]
 
   site_type_group:
     surrogate_id: site_type_group_id
     keys: ["OFustelTyp"]
     columns: ["OFustelTyp", "OFustelTyp Beschreibung"]
-    options:
-      drop_duplicates: True
+    drop_duplicates: True
     depends_on: []
 
   site_type:
     surrogate_id: site_type_id
     keys: ["FustelTyp", "OFustelTyp"]
     columns: ["FustelTyp", "OFustelTyp", "Fundstellentyp_Beschreibung"]
-    options:
-      drop_duplicates: "include: entities.site_type.keys"
+    drop_duplicates: "include: entities.site_type.keys"
     foreign_keys:
       - entity: site_type_group
         local_keys: ["OFustelTyp"]
@@ -173,8 +183,7 @@ entities:
       - entity: site
         local_keys: "include: entities.site.keys"
         remote_keys: "include: entities.site.keys"
-    options:
-      drop_duplicates: True
+    drop_duplicates: True
     depends_on: ["site", "site_type"]
 
   site_location:
@@ -202,21 +211,8 @@ entities:
       value_vars: "include: entities.location.keys"
       var_name: location_type
       value_name: location_name
-    options:
-      drop_duplicates: "include: entities.site_location.keys"
+    drop_duplicates: "include: entities.site_location.keys"
     depends_on: ["site", "location"]
-
-  site_coordinates:
-    surrogate_id: site_coordinate_id
-    keys: []
-    columns: ["Koordinatensystem", "Easting", "Northing", "Höhe"]
-    foreign_keys:
-      - entity: site
-        local_keys: "include: entities.site.keys"
-        remote_keys: "include: entities.site.keys"
-    options:
-      drop_duplicates: True
-    depends_on: ["site"]
 
   site_natural_region:
     surrogate_id: site_natural_region_id
@@ -229,8 +225,7 @@ entities:
       - entity: site
         local_keys: "include: entities.site.keys"
         remote_keys: "include: entities.site.keys"
-    options:
-      drop_duplicates: "include: entities.natural_region.keys + include: entities.site.keys"
+    drop_duplicates: "include: entities.natural_region.keys + include: entities.site.keys"
     depends_on: ["site", "natural_region"]
 
   project:
@@ -241,8 +236,7 @@ entities:
       - entity: site
         local_keys: ["ProjektNr"]
         remote_keys: ["ProjektNr"]
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     depends_on: ["site"]
 
   taxa:
@@ -261,8 +255,7 @@ entities:
         "TaxAut",
         "Achtung",
       ]
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     depends_on: []
 
   sample:
@@ -273,8 +266,7 @@ entities:
         "Befu", # feature number
         "ProbNr", # sample number
       ]
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     foreign_keys:
       - entity: feature
         local_keys: ["ProjektNr", "Befu"]
@@ -326,8 +318,7 @@ entities:
       value_vars: ["Vorfu", "AblaBdgProb"]
       var_name: sample_property_type
       value_name: sample_property_value
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     depends_on: ["sample"]
 
   sample_property_type:
@@ -370,8 +361,7 @@ entities:
       value_vars: "include: entities.sample_property_type.values"
       var_name: sample_property_type
       value_name: sample_property_value
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     depends_on: ["sample", "sample_property_type"]
 
   sample_coordinates:
@@ -382,16 +372,14 @@ entities:
       - entity: sample
         local_keys: "include: entities.sample.keys"
         remote_keys: "include: entities.sample.keys"
-    options:
-      drop_duplicates: True
+    drop_duplicates: True
     depends_on: ["sample"]
 
   sample_type:
     surrogate_id: sample_type_id
     keys: ["ProbTyp"]
     columns: ["ProbTyp", "ProbTyp Beschreibung"]
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     depends_on: []
 
   sample_sample_type:
@@ -405,8 +393,7 @@ entities:
       - entity: sample
         local_keys: "include: entities.sample.keys"
         remote_keys: "include: entities.sample.keys"
-    options:
-      drop_duplicates: True
+    drop_duplicates: True
     depends_on: ["sample", "sample_type"]
 
   sample_processing:
@@ -444,16 +431,14 @@ entities:
         ]
       var_name: method_type
       value_name: method_name
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     depends_on: ["sample"]
 
   feature_type:
     surrogate_id: feature_type_id
     keys: ["ProjektNr", "Befu"]
     columns: ["Befu", "BefuTyp"]
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     foreign_keys:
       - entity: site
         local_keys: "include: entities.site.keys"
@@ -475,8 +460,7 @@ entities:
         "Gebäude",
         "okBefu",
       ]
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     foreign_keys:
       - entity: site
         local_keys: "include: entities.site.keys"
@@ -501,8 +485,7 @@ entities:
       sample_group_description: null
       sampling_context_id: null
       method_id: null
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     foreign_keys:
       - entity: site
         local_keys: "include: entities.site.keys"
@@ -539,16 +522,14 @@ entities:
       - entity: remain_type
         local_keys: "include: entities.remain_type.keys"
         remote_keys: "include: entities.remain_type.keys"
-    options:
-      drop_duplicates: "include: entities.sample_taxa.keys"
+    drop_duplicates: "include: entities.sample_taxa.keys"
     depends_on: ["sample", "taxa"]
 
   archaeological_period:
     surrogate_id: archaeological_period_id
     keys: ["ArchDat", "ArchDat_Beschreibung"]
     columns: ["ArchDat", "ArchDat_Beschreibung"]
-    options:
-      drop_duplicates: "include: entities.archaeological_period.keys"
+    drop_duplicates: "include: entities.archaeological_period.keys"
     depends_on: []
 
   sample_archaeological_period:
@@ -565,16 +546,14 @@ entities:
       - entity: sample
         local_keys: "include: entities.sample.keys"
         remote_keys: "include: entities.sample.keys"
-    options:
-      drop_duplicates: True
+    drop_duplicates: True
     depends_on: ["sample", "archaeological_period"]
 
   chronological_period:
     surrogate_id: chronological_period_id
     keys: ["ChronoDat", "ChronoDat Beschreibung"]
     columns: ["ChronoDat", "ChronoDat Beschreibung"]
-    options:
-      drop_duplicates: "include: entities.chronological_period.keys"
+    drop_duplicates: "include: entities.chronological_period.keys"
     depends_on: []
 
   sample_chronological_period:
@@ -591,16 +570,14 @@ entities:
       - entity: sample
         local_keys: "include: entities.sample.keys"
         remote_keys: "include: entities.sample.keys"
-    options:
-      drop_duplicates: True
+    drop_duplicates: True
     depends_on: ["sample", "chronological_period", "taxa"]
 
   epoch:
     surrogate_id: epoch_id
     keys: ["Epoche", "Epochen_Beschreibung"]
     columns: ["Epoche", "Epochen_Beschreibung"]
-    options:
-      drop_duplicates: "include: entities.epoch.keys"
+    drop_duplicates: "include: entities.epoch.keys"
     depends_on: []
 
   sample_epoch:
@@ -617,16 +594,14 @@ entities:
       - entity: taxa
         local_keys: "include: entities.taxa.keys"
         remote_keys: "include: entities.taxa.keys"
-    options:
-      drop_duplicates: True
+    drop_duplicates: True
     depends_on: ["sample", "epoch", "taxa"]
 
   cultural_group:
     surrogate_id: cultural_group_id
     keys: ["KultGr"]
     columns: ["KultGr"]
-    options:
-      drop_duplicates: true
+    drop_duplicates: true
     depends_on: []
 
   sample_cultural_group:
@@ -643,8 +618,7 @@ entities:
       - entity: taxa
         local_keys: "include: entities.taxa.keys"
         remote_keys: "include: entities.taxa.keys"
-    options:
-      drop_duplicates: True
+    drop_duplicates: True
     depends_on: ["sample", "cultural_group", "taxa"]
 
   abundances:
@@ -699,8 +673,7 @@ entities:
         "WT",
         "SozGrup",
       ]
-    options:
-      drop_duplicates: ["BNam", "TaxAut"]
+    drop_duplicates: ["BNam", "TaxAut"]
     foreign_keys:
       - entity: taxa
         local_keys: "include: entities.taxa.keys"
@@ -737,8 +710,7 @@ entities:
         local_keys: "include: entities.taxa.keys"
         remote_keys: "include: entities.taxa.keys"
         drop_duplicates: ["taxon_id"]
-    options:
-      drop_duplicates: True
+    drop_duplicates: True
     depends_on: ["taxa"]
 
   contact_type:
@@ -756,8 +728,7 @@ entities:
     surrogate_id: contact_id
     keys: ["ArchAusg", "ArchBear", "BotBear", "Aut"]
     columns: ["ArchAusg", "ArchBear", "BotBear", "Aut"]
-    options:
-      drop_duplicates: "include: entities.contact.keys"
+    drop_duplicates: "include: entities.contact.keys"
     unnest:
       id_vars: ["include: entities.contact.surrogate_id"]
       value_vars: "include: entities.contact.keys"
