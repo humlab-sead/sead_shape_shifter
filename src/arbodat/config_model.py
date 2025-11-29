@@ -207,3 +207,16 @@ class TablesConfig:
         other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
         new_column_order: list[str] = existing_cols_to_move + other_cols
         return new_column_order
+
+    def reorder_columns(self, table_cfg: str | TableConfig, table: pd.DataFrame) -> pd.DataFrame:
+        """Reorder columns in the DataFrame to have keys first, then extra columns, then other columns."""
+        if isinstance(table_cfg, str):
+            table_cfg = self.get_table(entity_name=table_cfg)
+        cols_to_move: list[str] = (
+            [table_cfg.surrogate_id] + [self.get_table(fk.remote_entity).surrogate_id for fk in table_cfg.foreign_keys] + table_cfg.extra_column_names
+        )
+        existing_cols_to_move: list[str] = [col for col in cols_to_move if col in table.columns]
+        other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
+        new_column_order: list[str] = existing_cols_to_move + other_cols
+        table = table[new_column_order]
+        return table
