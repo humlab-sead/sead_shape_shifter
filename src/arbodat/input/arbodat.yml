@@ -1,10 +1,37 @@
 entities:
+  # Pandas drop_duplicates with a list of column names as arguments will:
+  #   Look only at the values in col1 and col2 to determine if two rows are duplicates.
+  #   Keep the first occurrence of each unique combination by default.
+  #   Drop all other rows that have the same values in the specified subset of columns.
+  #   Return the full rows — not just the subset — but duplicates are identified only from the subset.
 
-# Pandas drop_duplicates with a list of column names as arguments will:
-#   Look only at the values in col1 and col2 to determine if two rows are duplicates.
-#   Keep the first occurrence of each unique combination by default.
-#   Drop all other rows that have the same values in the specified subset of columns.
-#   Return the full rows — not just the subset — but duplicates are identified only from the subset.
+  cultural_group:
+    surrogate_id: cultural_group_id
+    keys: ["KultGr"]
+    columns: ["KultGr"]
+    drop_duplicates: true
+    depends_on: []
+
+  epoch:
+    surrogate_id: epoch_id
+    keys: ["Epoche", "Epochen_Beschreibung"]
+    columns: ["Epoche", "Epochen_Beschreibung"]
+    drop_duplicates: "include: entities.epoch.keys"
+    depends_on: []
+
+  archaeological_period:
+    surrogate_id: archaeological_period_id
+    keys: ["ArchDat", "ArchDat_Beschreibung"]
+    columns: ["ArchDat", "ArchDat_Beschreibung"]
+    drop_duplicates: "include: entities.archaeological_period.keys"
+    depends_on: []
+
+  chronological_period:
+    surrogate_id: chronological_period_id
+    keys: ["ChronoDat", "ChronoDat Beschreibung"]
+    columns: ["ChronoDat", "ChronoDat Beschreibung"]
+    drop_duplicates: "include: entities.chronological_period.keys"
+    depends_on: []
 
   eco_groups:
     surrogate_id: eco_group_id
@@ -12,7 +39,7 @@ entities:
     columns: ["Ökogruppe", "Ökogruppe_u"]
     drop_duplicates: true
     depends_on: []
-    
+
   remain_type_group:
     surrogate_id: remain_type_group_id
     keys: ["RTypGrup"]
@@ -75,7 +102,7 @@ entities:
 
   location:
     surrogate_id: location_id
-    keys: [ ]
+    keys: []
     columns: "include: entities.location_type.values"
     extra_columns:
       default_lat_dd: null
@@ -101,7 +128,7 @@ entities:
         remote_keys: "include: entities.site.keys"
     drop_duplicates: "include: entities.site.keys"
     check_functional_dependency: true
-    depends_on: [ ]
+    depends_on: []
 
   site:
     surrogate_id: site_id
@@ -132,13 +159,16 @@ entities:
     surrogate_id: site_property_type_id
     surrogate_name: site_property_type
     values:
+      - Limes # limes_indicator
       - FustelTyp? # is_uncertain_site_type
       - okFustel # is_site_ok
-      - Limes # limes_indicator
+      - TK
+      - EVNr
 
   site_property:
     surrogate_id: site_property_id
-    columns: ["ProjektNr", "Fustel", "EVNr", "FustelTyp?", "okFustel", "Limes"]
+    columns:
+      ["ProjektNr", "Fustel", "EVNr", "FustelTyp?", "okFustel", "Limes", "TK"]
     foreign_keys:
       - entity: site
         local_keys: "include: entities.site.keys"
@@ -152,12 +182,15 @@ entities:
       var_name: site_property_type
       value_name: site_property_value
     drop_duplicates: true
-    depends_on: ["site" , "site_property_type"]
+    depends_on: ["site", "site_property_type"]
 
   site_type_group:
     surrogate_id: site_type_group_id
     keys: ["OFustelTyp"]
     columns: ["OFustelTyp", "OFustelTyp Beschreibung"]
+    extra_columns:
+      site_type_group: "OFustelTyp"
+      description: "OFustelTyp Beschreibung"
     drop_duplicates: True
     depends_on: []
 
@@ -165,6 +198,9 @@ entities:
     surrogate_id: site_type_id
     keys: ["FustelTyp", "OFustelTyp"]
     columns: ["FustelTyp", "OFustelTyp", "Fundstellentyp_Beschreibung"]
+    extra_columns:
+      site_type: "FustelTyp"
+      description: "Fundstellentyp_Beschreibung"
     drop_duplicates: "include: entities.site_type.keys"
     foreign_keys:
       - entity: site_type_group
@@ -226,12 +262,19 @@ entities:
         local_keys: "include: entities.site.keys"
         remote_keys: "include: entities.site.keys"
     drop_duplicates: "include: entities.natural_region.keys + include: entities.site.keys"
+    check_functional_dependency: true
     depends_on: ["site", "natural_region"]
 
   project:
     surrogate_id: project_id
     keys: ["ProjektNr"]
     columns: ["ProjektNr"]
+    extra_columns:
+      project_name: "ProjektNr"
+      project_type_id: 0
+      project_stage_id: 0
+      project_abbrev_name: null
+      description: null
     foreign_keys:
       - entity: site
         local_keys: ["ProjektNr"]
@@ -240,7 +283,7 @@ entities:
     depends_on: ["site"]
 
   taxa:
-    surrogate_id: taxon_id
+    surrogate_id: pcode_id
     keys: ["BNam", "TaxAut"]
     columns:
       [
@@ -255,8 +298,156 @@ entities:
         "TaxAut",
         "Achtung",
       ]
-    drop_duplicates: true
+    # foreign_keys:
+    #   - entity: taxon_pcode_mapping
+    #     local_keys: ["PCODE"]
+    #     remote_keys: ["PCODE"]
+    #     extra_columns:
+    #       mapped_taxon_id: "taxon_id"
+    drop_duplicates: ["PCODE"]
+    check_functional_dependency: true
     depends_on: []
+
+  text_use_categories:
+    surrogate_id: use_category_id
+    keys: ["PCODE"]
+    columns:
+      ["PCODE", "Ess", "Gar", "Ge", "Hü", "Imp", "Kp", "Med", "Nut", "Öl"]
+    foreign_keys:
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
+        drop_duplicates: ["taxon_id"]
+    drop_duplicates: True
+    depends_on: ["taxa"]
+
+  taxa_plant_sociological_behaviour:
+    surrogate_id: plant_sociological_behaviour_id
+    keys: ["PCODE"]
+    columns:
+      [
+        "PCODE",
+        "G",
+        "G_u",
+        "Kl",
+        "Kl_u",
+        "O",
+        "O_u",
+        "Soz",
+        "Soz_u",
+        "U",
+        "U_u",
+        "V",
+        "V_u",
+        "Ökogruppe",
+        "Ökogruppe_u",
+      ]
+    foreign_keys:
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
+        drop_duplicates: ["taxon_id"]
+        check_functional_dependency: true
+    drop_duplicates: True
+    depends_on: ["taxa"]
+
+  taxa_dominance:
+    surrogate_id: dominance_id
+    keys: ["PCODE"]
+    columns: ["PCODE", "Dom", "Dom_u"]
+    foreign_keys:
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
+        drop_duplicates: ["taxon_id"]
+        check_functional_dependency: true
+    drop_duplicates: True
+    depends_on: ["taxa"]
+
+  taxa_oberdorfer_characteristics:
+    surrogate_id: oberdorfer_characteristics_id
+    keys: ["PCODE"]
+    columns:
+      [
+        "PCODE",
+        "Anm",
+        "ARE",
+        "BLA",
+        "BLE",
+        "Pio",
+        "Roh",
+        "SozGrup",
+        "WT",
+        "WUA",
+        "WUE",
+        "Zeig",
+      ]
+    foreign_keys:
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
+        drop_duplicates: ["taxon_id"]
+        check_functional_dependency: true
+    drop_duplicates: True
+    depends_on: ["taxa"]
+
+  taxa_persistence:
+    surrogate_id: persistence_id
+    keys: ["PCODE"]
+    columns: ["PCODE", "Bl", "Bl_u", "Leb"]
+    foreign_keys:
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
+        drop_duplicates: ["taxon_id"]
+        check_functional_dependency: true
+    drop_duplicates: True
+    depends_on: ["taxa"]
+
+  taxa_briemle_characteristics:
+    surrogate_id: briemle_characteristics_id
+    keys: ["PCODE"]
+    columns: ["PCODE", "FW", "M", "TKG", "W"]
+    foreign_keys:
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
+        drop_duplicates: ["taxon_id"]
+        check_functional_dependency: true
+    drop_duplicates: True
+    depends_on: ["taxa"]
+
+  taxa_ecological_behaviour:
+    surrogate_id: ecological_behaviour_id
+    keys: ["PCODE"]
+    columns:
+      [
+        "PCODE",
+        "F",
+        "F_s",
+        "F_u",
+        "K",
+        "K_u",
+        "L",
+        "L_u",
+        "N",
+        "N_u",
+        "Re",
+        "Re_u",
+        "S",
+        "S_u",
+        "SMet",
+        "T",
+        "T_u",
+      ]
+    foreign_keys:
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
+        drop_duplicates: ["taxon_id"]
+        check_functional_dependency: true
+    drop_duplicates: True
+    depends_on: ["taxa"]
 
   sample:
     surrogate_id: sample_id
@@ -265,29 +456,167 @@ entities:
         "ProjektNr", # project number
         "Befu", # feature number
         "ProbNr", # sample number
+        "EDatProb", # sampling date
       ]
-    drop_duplicates: true
+    extra_columns:
+      sample_name: "Befu"
+      date_sampled: "EDatProb"
+      alt_ref_type_id: null
+    drop_duplicates: ["ProjektNr", "Befu", "ProbNr"]
+    check_functional_dependency: true
     foreign_keys:
       - entity: feature
         local_keys: ["ProjektNr", "Befu"]
         remote_keys: ["ProjektNr", "Befu"]
-    depends_on: ["feature"]
+      - entity: sample_group
+        local_keys: ["ProjektNr", "Befu"]
+        remote_keys: ["ProjektNr", "Befu"]
+      - entity: sample_type
+        local_keys: "include: entities.sample_type.keys"
+        remote_keys: "include: entities.sample_type.keys"
+    depends_on: ["feature", "sample_group", "sample_type"]
+
+  sample_group:
+    # rule: one-to-one relationship with feature
+    surrogate_id: sample_group_id
+    keys: ["ProjektNr", "Befu", "Fustel"]
+    columns: ["ProjektNr", "Befu", "Fustel", "GrJahrBefu", "Gebäude", "okBefu"]
+    extra_columns:
+      sample_group_name: "Befu"
+      sample_group_description: null
+      sampling_context_id: null
+      method_id: null
+    drop_duplicates: true
+    foreign_keys:
+      - entity: site
+        local_keys: "include: entities.site.keys"
+        remote_keys: "include: entities.site.keys"
+    depends_on: ["site"]
+
+  sample_taxa:
+    keys: []
+    columns: ["PCODE", "ProjektNr", "Befu", "ProbNr"]
+    foreign_keys:
+      - entity: sample
+        local_keys: "include: entities.sample.keys"
+        remote_keys: "include: entities.sample.keys"
+      - entity: taxa
+        local_keys: "include: entities.taxa.keys"
+        remote_keys: "include: entities.taxa.keys"
+    drop_duplicates: "include: entities.sample_taxa.keys"
+    depends_on: ["sample", "taxa"]
+
+  sample_type:
+    surrogate_id: sample_type_id
+    keys: ["ProbTyp"]
+    columns: ["ProbTyp", "ProbTyp Beschreibung"]
+    extra_columns:
+      sample_type_name: "ProbTyp"
+      sample_type_description: "ProbTyp Beschreibung"
+    drop_duplicates: true
+    depends_on: []
+
+  sample_sample_type:
+    surrogate_id: sample_sample_type_id
+    keys: []
+    columns: ["ProbTyp"]
+    extra_columns:
+      type_name: "ProbTyp"
+      description: null
+    foreign_keys:
+      - entity: sample_type
+        local_keys: "include: entities.sample_type.keys"
+        remote_keys: "include: entities.sample_type.keys"
+      - entity: sample
+        local_keys: "include: entities.sample.keys"
+        remote_keys: "include: entities.sample.keys"
+    drop_duplicates: True
+    depends_on: ["sample", "sample_type"]
 
   sample_description_type:
     source: null
     type: fixed
     surrogate_id: sample_description_type_id
     surrogate_name: type_name
-    columns: [ "type_name", "type_description", "arbodat_code"]
+    columns: ["type_name", "type_description", "arbodat_code"]
     values:
-      - [ "IsSampleDryWet", "type_description", "AblaBdgProb" ]
-      - [ "IsSampleDryWet", "type_description", "AblaBdgProb" ]
+      - ["Is mass find?", "Indicates of sample is a mass find.", "Vorfu"]
+      - ["Wet/dry?", "?", "AblaBdgProb"]
+      - ["Sampling date", "Sampling date", "EDatProb"]
+      - ["Stratigraphy", "Stratigraphic unit or description.", "Strat"]
+      - ["Layer", "Layer identifier", "Schi"]
+      - ["Square/Grid", "Excavation square/grid square.", "Quadr"]
+      - ["Planum", "Planum", "Plan"]
+      - ["Elevation ASL", "Elevation of sample above sea level.", "Prob_üNN"]
+      - ["Map sheet", "German topographic map sheet number.", "TK"]
+      - ["Sediment", "Indicates whether the sample is sediment.", "SedProb"]
+      - ["Cultural group", "Cultural group", "KultGr"]
 
-  # TODO: Move columns to tbl_sample_description_types (fixed table woth subset of columns below)
-  # TODO: Move columns to tbl_sample_descriptions
-  # TODO Move 
+  sample_cultural_group:
+    surrogate_id: sample_cultural_group_id
+    keys: []
+    columns: []
+    foreign_keys:
+      - entity: cultural_group
+        local_keys: "include: entities.cultural_group.keys"
+        remote_keys: "include: entities.cultural_group.keys"
+      - entity: sample
+        local_keys: "include: entities.sample.keys"
+        remote_keys: "include: entities.sample.keys"
+    drop_duplicates: True
+    depends_on: ["sample", "cultural_group"]
+
+  # TODO: sample_descriptions
+  ############################## STATUS OK DIVIDER ###############################
+
+  dimensions:
+    surrogate_id: dimension_id
+    type: fixed
+    columns: ["dimension_id", "dimension_name"]
+    drop_duplicates: true
+    depends_on: []
+
+  coordinate_method_dimensions:
+    surrogate_id: coordinate_method_dimension_id
+    type: fixed
+    keys:
+      [
+        "coordinate_type",
+        "limit_lower",
+        "limit_upper",
+        "dimension_id",
+        "method_id",
+      ]
+    columns: ["coordinate_type"]
+    extra_columns:
+      coordinate_type: "coordinate_type"
+    values:
+      - ["KoordX", null, null, null, null]
+      - ["KoordY", null, null, null, null]
+      - ["KoordZ", null, null, null, null]
+      - ["TiefeBis", null, null, null, null]
+      - ["TiefeVon", null, null, null, null]
+
+  sample_coordinates:
+    surrogate_id: sample_coordinate_id
+    keys: []
+    columns: ["KoordX", "KoordY", "KoordZ", "TiefeBis", "TiefeVon"]
+    unnest:
+      id_vars: ["include: entities.sample.surrogate_id"]
+      value_vars: ["KoordX", "KoordY", "KoordZ", "TiefeBis", "TiefeVon"]
+      var_name: coordinate_type
+      value_name: coordinate_value
+    foreign_keys:
+      - entity: sample
+        local_keys: "include: entities.sample.keys"
+        remote_keys: "include: entities.sample.keys"
+    drop_duplicates: True
+    depends_on: ["sample"]
+
+  # TODO Move
   sample_property_sheet:
     surrogate_id: sample_property_id
+    keys: []
     columns: [
         "ProjektNr",
         "Befu",
@@ -321,29 +650,6 @@ entities:
     drop_duplicates: true
     depends_on: ["sample"]
 
-  sample_property_type:
-    source: null
-    type: fixed
-    surrogate_id: sample_property_type_id
-    surrogate_name: sample_property_type
-    values: [
-        "Vorfu", # is_mass_find
-        "AblaBdgProb", # is_sample_dry_wet
-        "EDatProb", # sampling_date
-        "Strat", # stratigraphy
-        "Schi", # layer
-        "Quadr", # square
-        "Plan", # plan_number
-        "TiefeVon", # depth_from
-        "TiefeBis", # depth_to
-        "Prob_üNN", # elevation_asl_sample
-        "TK", # map_sheet
-        "Expr1042", # sample_volume
-        "SedProb", # is_subsample_
-        "FlSchn", # flotation_channel
-        "AblaBdgProb", # is_sample_dry_wet
-      ]
-
   sample_property:
     source: sample_property_sheet
     surrogate_id: sample_property_id
@@ -363,38 +669,6 @@ entities:
       value_name: sample_property_value
     drop_duplicates: true
     depends_on: ["sample", "sample_property_type"]
-
-  sample_coordinates:
-    surrogate_id: sample_coordinate_id
-    keys: []
-    columns: ["KoordX", "KoordY", "KoordZ"]
-    foreign_keys:
-      - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
-    drop_duplicates: True
-    depends_on: ["sample"]
-
-  sample_type:
-    surrogate_id: sample_type_id
-    keys: ["ProbTyp"]
-    columns: ["ProbTyp", "ProbTyp Beschreibung"]
-    drop_duplicates: true
-    depends_on: []
-
-  sample_sample_type:
-    surrogate_id: sample_sample_type_id
-    keys: []
-    columns: []
-    foreign_keys:
-      - entity: sample_type
-        local_keys: "include: entities.sample_type.keys"
-        remote_keys: "include: entities.sample_type.keys"
-      - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
-    drop_duplicates: True
-    depends_on: ["sample", "sample_type"]
 
   sample_processing:
     surrogate_id: sample_processing_id
@@ -434,10 +708,14 @@ entities:
     drop_duplicates: true
     depends_on: ["sample"]
 
+  # status: OK
   feature_type:
     surrogate_id: feature_type_id
     keys: ["ProjektNr", "Befu"]
-    columns: ["Befu", "BefuTyp"]
+    columns: ["BefuTyp"]
+    extra_columns:
+      feature_type_name: "BefuTyp"
+      feature_type_description: null
     drop_duplicates: true
     foreign_keys:
       - entity: site
@@ -467,71 +745,6 @@ entities:
         remote_keys: "include: entities.site.keys"
     depends_on: ["site", "feature_type"]
 
-  sample_groups:
-    # rule: one-to-one relationship with feature
-    surrogate_id: sample_group_id
-    keys: ["ProjektNr", "Befu", "Fustel"]
-    columns:
-      [
-        "ProjektNr",
-        "Befu",
-        "Fustel",
-        "GrJahrBefu",
-        "Gebäude",
-        "okBefu",
-      ]
-    extra_columns:
-      sample_group_name: "Befu"
-      sample_group_description: null
-      sampling_context_id: null
-      method_id: null
-    drop_duplicates: true
-    foreign_keys:
-      - entity: site
-        local_keys: "include: entities.site.keys"
-        remote_keys: "include: entities.site.keys"
-    depends_on: ["site"]
-
-  sample_taxa:
-    keys: []
-    columns:
-      [
-        "PCODE",
-        "RTyp",
-        "Zust",
-        "Zustand",
-        "SumFAnzahl",
-        "SumFGewicht",
-        "geschätzt",
-        "SumFFrag",
-        "SumPflR",
-        "Vorfu",
-        "BotBest",
-        "BestJa",
-        "cf",
-        "Anmerkung",
-        "BotBear",
-      ]
-    foreign_keys:
-      - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
-      - entity: taxa
-        local_keys: "include: entities.taxa.keys"
-        remote_keys: "include: entities.taxa.keys"
-      - entity: remain_type
-        local_keys: "include: entities.remain_type.keys"
-        remote_keys: "include: entities.remain_type.keys"
-    drop_duplicates: "include: entities.sample_taxa.keys"
-    depends_on: ["sample", "taxa"]
-
-  archaeological_period:
-    surrogate_id: archaeological_period_id
-    keys: ["ArchDat", "ArchDat_Beschreibung"]
-    columns: ["ArchDat", "ArchDat_Beschreibung"]
-    drop_duplicates: "include: entities.archaeological_period.keys"
-    depends_on: []
-
   sample_archaeological_period:
     surrogate_id: sample_archaeological_period_id
     keys: []
@@ -548,13 +761,6 @@ entities:
         remote_keys: "include: entities.sample.keys"
     drop_duplicates: True
     depends_on: ["sample", "archaeological_period"]
-
-  chronological_period:
-    surrogate_id: chronological_period_id
-    keys: ["ChronoDat", "ChronoDat Beschreibung"]
-    columns: ["ChronoDat", "ChronoDat Beschreibung"]
-    drop_duplicates: "include: entities.chronological_period.keys"
-    depends_on: []
 
   sample_chronological_period:
     surrogate_id: sample_chronological_period_id
@@ -573,13 +779,6 @@ entities:
     drop_duplicates: True
     depends_on: ["sample", "chronological_period", "taxa"]
 
-  epoch:
-    surrogate_id: epoch_id
-    keys: ["Epoche", "Epochen_Beschreibung"]
-    columns: ["Epoche", "Epochen_Beschreibung"]
-    drop_duplicates: "include: entities.epoch.keys"
-    depends_on: []
-
   sample_epoch:
     surrogate_id: sample_epoch_id
     keys: []
@@ -597,82 +796,9 @@ entities:
     drop_duplicates: True
     depends_on: ["sample", "epoch", "taxa"]
 
-  cultural_group:
-    surrogate_id: cultural_group_id
-    keys: ["KultGr"]
-    columns: ["KultGr"]
-    drop_duplicates: true
-    depends_on: []
-
-  sample_cultural_group:
-    surrogate_id: sample_cultural_group_id
-    keys: []
-    columns: []
-    foreign_keys:
-      - entity: cultural_group
-        local_keys: "include: entities.cultural_group.keys"
-        remote_keys: "include: entities.cultural_group.keys"
-      - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
-      - entity: taxa
-        local_keys: "include: entities.taxa.keys"
-        remote_keys: "include: entities.taxa.keys"
-    drop_duplicates: True
-    depends_on: ["sample", "cultural_group", "taxa"]
-
-  abundances:
-    surrogate_id: abundance_id
-    columns:
-      [
-        "BNam",
-        "TaxAut", 
-        "L_u",
-        "L",
-        "T_u",
-        "T",
-        "K_u",
-        "K",
-        "F_u",
-        "F",
-        "F_s",
-        "Re_u",
-        "Re",
-        "N_u",
-        "N",
-        "S_u",
-        "S",
-        "SMet",
-        "Leb",
-        "Bl_u",
-        "Bl",
-        "G_u",
-        "G",
-        "Kl_u",
-        "Kl",
-        "O_u",
-        "O",
-        "V_u",
-        "V",
-        "U_u",
-        "U",
-        "Soz_u",
-        "Soz",
-        "Ökogruppe",
-        "Ökogruppe_u",
-        "Dom",
-        "Dom_u",
-        "WUA",
-        "WUE",
-        "BLA",
-        "BLE",
-        "ARE",
-        "Zeig",
-        "Pio",
-        "Roh",
-        "WT",
-        "SozGrup",
-      ]
+  result:
+    surrogate_id: result_id
+    columns: ["BNam", "TaxAut"]
     drop_duplicates: ["BNam", "TaxAut"]
     foreign_keys:
       - entity: taxa
@@ -683,35 +809,6 @@ entities:
         local_keys: "include: entities.sample.keys"
         remote_keys: "include: entities.sample.keys"
     depends_on: ["taxa", "sample"]
-
-  use_categories:
-    surrogate_id: use_category_id
-    keys: ["BNam", "TaxAut"]
-    columns:
-      [
-        "BNam",
-        "TaxAut",
-        "Ge",
-        "Hü",
-        "Öl",
-        "Kp",
-        "Imp",
-        "Med",
-        "Ess",
-        "Gar",
-        "Nut",
-        "M",
-        "W",
-        "FW",
-        "TKG",
-      ]
-    foreign_keys:
-      - entity: taxa
-        local_keys: "include: entities.taxa.keys"
-        remote_keys: "include: entities.taxa.keys"
-        drop_duplicates: ["taxon_id"]
-    drop_duplicates: True
-    depends_on: ["taxa"]
 
   contact_type:
     source: null
