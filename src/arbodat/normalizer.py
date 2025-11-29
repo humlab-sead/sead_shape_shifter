@@ -214,16 +214,18 @@ class ArbodatSurveyNormalizer:
         return self.data[entity]
 
     def translate(self) -> None:
-        """Translate Arbodat column names to english snake_case names."""
+        """Translate column names using translation from config."""
         translations: dict[str, str] = ConfigValue[dict[str, str]]("translation").resolve() or {}
 
-        def fx(col: str) -> str:
-            return translations.get(col, col)
+        def fx(col: str, columns: list[str]) -> str:
+            translated_column: str = translations.get(col, col)
+            if translated_column in columns:
+                return col
+            return translated_column
 
         for entity, table in self.data.items():
             columns: list[str] = table.columns.tolist()
-            translated_columns: list[str] = [fx(col) for col in columns]
-            table.columns = translated_columns
+            table.columns = [fx(col, columns) for col in columns]
             self.data[entity] = table
 
     def drop_foreign_key_columns(self) -> None:
