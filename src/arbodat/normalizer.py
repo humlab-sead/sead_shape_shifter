@@ -48,12 +48,12 @@ class ProcessState:
         self.config: TablesConfig = config
         self.unprocessed: set[str] = set(self.config.table_names)
 
-    def get_next_entity_to_process(self, processed: set[str]) -> str | None:
+    def get_next_entity_to_process(self) -> str | None:
         """Get the next entity that can be processed based on dependencies."""
-        logger.debug(f"Processed entities so far: {processed}")
-        for entity_name in set(self.config.table_names) - processed:
+        logger.debug(f"Processed entities so far: {self.processed_entities}")
+        for entity_name in set(self.config.table_names) - self.processed_entities:
             logger.debug(f"Checking if entity '{entity_name}' can be processed...")
-            unmet_dependencies: set[str] = set(self.config.get_table(entity_name).depends_on) - processed
+            unmet_dependencies = self.get_unmet_dependencies(entity=entity_name)
             if unmet_dependencies:
                 logger.debug(f"Entity '{entity_name}' has unmet dependencies: {unmet_dependencies}")
                 continue
@@ -61,23 +61,27 @@ class ProcessState:
             return entity_name
         return None
 
+    def get_unmet_dependencies(self, entity: str) -> set[str]:
+        return set(self.config.get_table(entity_name=entity).depends_on) - self.processed_entities
+
     def discard(self, entity: str) -> None:
         """Mark an entity as processed and remove it from the unprocessed set."""
         self.unprocessed.discard(entity)
 
-    def get_unmet_dependencies(self, processed: set[str]) -> dict[str, set[str]]:
-        unmet_dependencies: dict[str, set[str]] = {}
-        for entity in self.unprocessed:
-            deps: set[str] = set(self.config.get_table(entity).depends_on)
-            unmet: set[str] = deps - set(processed)
-            if unmet:
-                unmet_dependencies[entity] = unmet
-        return unmet_dependencies
+    def get_all_unmet_dependencies(self) -> dict[str, set[str]]:
+        unmet_dependencies: dict[str, set[str]] = {
+            entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed
+        }
+        return {k: v for k, v in unmet_dependencies.items() if v}
 
-    def log_unmet_dependencies(self, processed: set[str]) -> None:
-        unmet_dependencies = self.get_unmet_dependencies(processed)
-        for entity, unmet in unmet_dependencies.items():
+    def log_unmet_dependencies(self) -> None:
+        for entity, unmet in self.get_all_unmet_dependencies().items():
             logger.error(f"Entity '{entity}' has unmet dependencies: {unmet}")
+
+    @property
+    def processed_entities(self) -> set[str]:
+        """Return the set of processed entities."""
+        return set(self.config.table_names) - self.unprocessed
 
 
 class ArbodatSurveyNormalizer:
@@ -136,10 +140,10 @@ class ArbodatSurveyNormalizer:
         """Extract all configured entities and store them."""
         while len(self.state.unprocessed) > 0:
 
-            entity: str | None = self.state.get_next_entity_to_process(processed=set(self.data.keys()))
+            entity: str | None = self.state.get_next_entity_to_process()
 
             if entity is None:
-                self.state.log_unmet_dependencies(processed=set(self.data.keys()))
+                self.state.log_unmet_dependencies()
                 raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed}")
 
             table_cfg: TableConfig = self.config.get_table(entity)
@@ -169,7 +173,7 @@ class ArbodatSurveyNormalizer:
 
     def link(self):
         """Link entities based on foreign key configuration."""
-        for entity_name in self.data.keys():
+        for entity_name in self.state.processed_entities:
             self.link_entity(entity_name=entity_name)
 
     def link_entity(self, entity_name: str) -> bool:
