@@ -56,7 +56,7 @@ class ForeignKeyConfig:
 
         The mapping is defined as "ExtraColumn": "SurveyColumn" in the configuration.
         This function inverts that mapping to "SurveyColumn": "ExtraColumn" for easier lookup during processing.
-        
+
         Args:
             data (dict): Foreign key configuration data.
         Returns:
@@ -66,18 +66,19 @@ class ForeignKeyConfig:
 
         if not cfg_value:
             return {}
-        
+
         if isinstance(cfg_value, str):
-            cfg_value = { cfg_value: cfg_value }
-        
+            cfg_value = {cfg_value: cfg_value}
+
         if isinstance(cfg_value, list):
             # Use an identity mapping
             cfg_value = {col: col for col in cfg_value}
 
         if not isinstance(cfg_value, dict):
             raise ValueError(f"Invalid extra_columns format in FK config for '{self.local_entity}'")
-        
-        return { v: k for k, v in cfg_value.items() }  # invert mapping
+
+        return {v: k for k, v in cfg_value.items()}  # invert mapping
+
 
 class TableConfig:
     """Configuration for a database table."""
@@ -115,7 +116,7 @@ class TableConfig:
     @property
     def is_fixed_sql(self) -> bool:
         return self.is_fixed_data and isinstance(self.values, str) and self.values.strip().startswith("sql:")
-    
+
     @property
     def fixed_sql(self) -> None | str:
         """Get the SQL query string for fixed data, if applicable."""

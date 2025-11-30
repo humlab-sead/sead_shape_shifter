@@ -70,7 +70,7 @@ def get_subset(
     
     Returns:
         pd.DataFrame: Resulting DataFrame with requested columns and modifications.
-        
+
     Examples:
         >>> df = pd.DataFrame({'A': [1, 2], 'B': [3, 4], 'C': [5, 6]})
         >>> # Extract A and B, rename C to D
@@ -82,13 +82,13 @@ def get_subset(
         raise ValueError("Source DataFrame must be provided")
 
     extra_columns = extra_columns or {}
-    
+
     source_column_renames: dict[str, str] = {
         source_col: new_name 
         for new_name, source_col in extra_columns.items() 
         if isinstance(source_col, str) and source_col in source.columns
     }
-    
+
     constant_columns: dict[str, Any] = {
         new_name: value 
         for new_name, value in extra_columns.items() 
@@ -117,7 +117,7 @@ def get_subset(
     # Add constant columns
     for col_name, value in constant_columns.items():
         result[col_name] = value
-            
+
     # Handle duplicate removal
     if drop_duplicates:
         if isinstance(drop_duplicates, list):
@@ -133,6 +133,7 @@ def get_subset(
         result = add_surrogate_id(result, surrogate_id)
 
     return result
+
 
 def _rename_last_occurence(data: pd.DataFrame, rename_map: dict[str, str]) -> list[str]:
     """Rename the last occurrence of each source column in rename_map to the new name."""
