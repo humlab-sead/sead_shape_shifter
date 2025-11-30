@@ -85,7 +85,7 @@ class ArbodatSurveyNormalizer:
 
     @staticmethod
     def load(path: str | Path, sep: str = "\t") -> "ArbodatSurveyNormalizer":
-        """ Read Arbodat CSV (usually tab-separated). """
+        """Read Arbodat CSV (usually tab-separated)."""
         df: pd.DataFrame = pd.read_csv(path, sep=sep, dtype=str, keep_default_na=False)
         return ArbodatSurveyNormalizer(df)
 
@@ -97,14 +97,14 @@ class ArbodatSurveyNormalizer:
         if table_cfg.is_fixed_data:
             raise ValueError(f"Entity '{entity_name}' is configured as fixed data and cannot be extracted")
 
-        source: pd.DataFrame = self.resolve_source(table_cfg.source)
+        source: pd.DataFrame = self.resolve_source(source=table_cfg.source)
 
         if not isinstance(table_cfg.columns, list) or not all(isinstance(c, str) for c in table_cfg.columns):
             raise ValueError(f"Invalid columns configuration for entity '{entity_name}': {table_cfg.columns}")
 
         data: pd.DataFrame = get_subset(
-            source,
-            table_cfg.usage_columns,
+            source=source,
+            columns=table_cfg.usage_columns,
             extra_columns=table_cfg.extra_columns,
             drop_duplicates=table_cfg.drop_duplicates,
             surrogate_id=table_cfg.surrogate_id,
@@ -201,7 +201,7 @@ class ArbodatSurveyNormalizer:
 
             # Perform the merge to link entities
             linked_df: pd.DataFrame = local_df.merge(
-                remote_df[[remote_id] + remote_keys + list(fk.remote_extra_columns.keys())],
+                right=remote_df[[remote_id] + remote_keys + list(fk.remote_extra_columns.values())],
                 left_on=local_keys,
                 right_on=remote_keys,
                 how="left",
