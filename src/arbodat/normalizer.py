@@ -228,16 +228,10 @@ class ArbodatSurveyNormalizer:
     def drop_foreign_key_columns(self) -> None:
         """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
         for entity_name in self.data.keys():
-            columns: list[str] = self.config.get_table(entity_name).columns or []
-            foreign_keys: list[ForeignKeyConfig] = self.config.get_table(entity_name).foreign_keys or []
-            fk_columns: set[str] = set()
-            for fk in foreign_keys:
-                local_keys: list[str] = fk.local_keys or []
-                fk_columns.update(key for key in local_keys if key not in columns)
-            if fk_columns:
-                table: pd.DataFrame = self.data[entity_name]
-                table = table.drop(columns=fk_columns, errors="ignore")
-                self.data[entity_name] = table
+            if entity_name not in self.config.table_names:
+                continue
+            table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
+            self.data[entity_name] = table_cfg.drop_fk_columns(table=self.data[entity_name])
 
     def move_keys_to_front(self) -> None:
         """Reorder columns in this order: primary key, foreign key column, extra columns, other columns."""

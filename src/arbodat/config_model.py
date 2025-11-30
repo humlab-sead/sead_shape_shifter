@@ -203,6 +203,18 @@ class TableConfig:
         keys_and_data_columns: list[str] = self.columns2
         return keys_and_data_columns + list(x for x in self.fk_column_set if x not in keys_and_data_columns and x not in self.pending_columns)
 
+    def drop_fk_columns(self, table: pd.DataFrame) -> pd.DataFrame:
+        """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
+        columns: list[str] = self.columns or []
+        foreign_keys: list[ForeignKeyConfig] = self.foreign_keys or []
+        fk_columns: set[str] = set()
+        for fk in foreign_keys:
+            local_keys: list[str] = fk.local_keys or []
+            fk_columns.update(key for key in local_keys if key not in columns)
+        if fk_columns:
+            table = table.drop(columns=fk_columns, errors="ignore")
+        return table
+
 
 class TablesConfig:
     """Configuration for database tables."""
