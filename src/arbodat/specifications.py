@@ -92,7 +92,7 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
 
         if missing_pending_keys:
             self.deferred = True
-            return False
+            return True
         
         missing_keys = self.get_missing_keys(
             required_keys=set(fk_cfg.remote_keys), columns=set(self.table_store[fk_cfg.remote_entity].columns), pending_columns=set()
