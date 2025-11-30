@@ -1,7 +1,8 @@
 from typing import Any
-from numpy import isin
+
 import pandas as pd
 from loguru import logger
+from numpy import isin
 
 
 def add_surrogate_id(target: pd.DataFrame, id_name: str) -> pd.DataFrame:
@@ -129,9 +130,9 @@ def get_subset(
     # Drop rows that are completely empty after subsetting
     if drop_empty_rows:
         if isinstance(drop_empty_rows, list):
-            result = result.dropna(subset=drop_empty_rows, how='all')
+            result = result.dropna(subset=drop_empty_rows, how="all")
         else:
-            result = result.dropna(how='all')
+            result = result.dropna(how="all")
 
     # Add surrogate ID if requested and not present
     if surrogate_id and surrogate_id not in result.columns:

@@ -69,9 +69,7 @@ class ProcessState:
         self.unprocessed.discard(entity)
 
     def get_all_unmet_dependencies(self) -> dict[str, set[str]]:
-        unmet_dependencies: dict[str, set[str]] = {
-            entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed
-        }
+        unmet_dependencies: dict[str, set[str]] = {entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed}
         return {k: v for k, v in unmet_dependencies.items() if v}
 
     def log_unmet_dependencies(self) -> None:
@@ -139,7 +137,7 @@ class ArbodatSurveyNormalizer:
             data_columns: list[str] = table_cfg.data_columns
             if data_columns:
                 data = data.dropna(subset=data_columns, how="all")
-    
+
         return data
 
     def normalize(self) -> None:
@@ -162,7 +160,7 @@ class ArbodatSurveyNormalizer:
                 data = create_fixed_table(entity_name=entity, table_cfg=table_cfg)
             else:
                 data = self.extract_entity(entity)
-        
+
             self.register(entity, data)
 
             self.link_entity(entity_name=entity)
@@ -200,7 +198,7 @@ class ArbodatSurveyNormalizer:
                 )
             if remote_entity not in self.config.table_names:
                 raise ValueError(f"Remote entity '{remote_entity}' not found in configuration for linking with '{entity_name}'")
-            
+
             remote_cfg: TableConfig = self.config.get_table(remote_entity)
             remote_id: str | None = remote_cfg.surrogate_id or f"{remote_entity}_id"
 
