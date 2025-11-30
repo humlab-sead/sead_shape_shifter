@@ -222,6 +222,7 @@ entities:
     depends_on: ["site", "site_type"]
 
   site_location:
+    surrogate_id: site_location_id
     keys: []
     columns:
       [
