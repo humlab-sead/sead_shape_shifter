@@ -161,6 +161,11 @@ class TableConfig:
         return self.keys + [col for col in self.columns if col not in self.keys]
 
     @property
+    def data_columns(self) -> list[str]:
+        """Get data columns excluding keys, foreign keys, and extra columns."""
+        return [col for col in self.columns if col not in self.keys and col not in self.fk_column_set and not col in self.extra_columns]
+
+    @property
     def drop_duplicates(self) -> bool | list[str]:
         value = self.data.get("drop_duplicates", False)
         return value if value else False
