@@ -307,7 +307,7 @@ entities:
     check_functional_dependency: true
     depends_on: []
 
-  text_use_categories:
+  taxa_use_categories:
     surrogate_id: use_category_id
     keys: ["PCODE"]
     columns:
