@@ -1,6 +1,8 @@
 from functools import cached_property
 from typing import Any
 
+import pandas as pd
+
 from src.configuration.resolve import ConfigValue
 
 
@@ -23,10 +25,18 @@ class ForeignKeyConfig:
     """Configuration for a foreign key."""
 
     def __init__(self, *, cfg: dict[str, dict[str, Any]], local_entity: str, data: dict[str, Any]) -> None:
+        """Initialize ForeignKeyConfig with configuration data.
+        Args:
+            cfg (dict): Full configuration dictionary.
+            local_entity (str): Name of the local entity/table.
+            data (dict): Foreign key configuration data.
+        Raises:
+            ValueError: If required fields are missing or invalid."""
         self.config: dict[str, dict[str, Any]] = cfg  # full config
         self.local_entity: str = local_entity
         self.local_keys: list[str] = data.get("local_keys", []) or []
-
+        self.remote_extra_columns: dict[str, str] = self.resolve_extra_columns(data) or {}
+        self.drop_remote_id: bool = data.get("drop_remote_id", False)
         self.remote_entity: str = data.get("entity", "")
         self.remote_keys: list[str] = data.get("remote_keys", []) or []
 
@@ -37,10 +47,37 @@ class ForeignKeyConfig:
             raise ValueError(f"Foreign key references unknown entity '{self.remote_entity}' from '{local_entity}'")
 
         self.remote_surrogate_id: str = cfg[self.remote_entity].get("surrogate_id", "")
-        self.remote_drop_duplicates: bool | list[str] = data.get("drop_duplicates", False)
 
         if not self.remote_keys:
             raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing remote_keys")
+
+    def resolve_extra_columns(self, data: dict[str, Any]) -> dict[str, str]:
+        """Resolve extra columns for the foreign key configuration.
+
+        The mapping is defined as "ExtraColumn": "SurveyColumn" in the configuration.
+        This function inverts that mapping to "SurveyColumn": "ExtraColumn" for easier lookup during processing.
+
+        Args:
+            data (dict): Foreign key configuration data.
+        Returns:
+            dict: Resolved extra columns mapping local column names to remote column names.
+        """
+        cfg_value: str | list[str] | dict[str, str] = data.get("extra_columns", {}) or {}
+
+        if not cfg_value:
+            return {}
+
+        if isinstance(cfg_value, str):
+            cfg_value = {cfg_value: cfg_value}
+
+        if isinstance(cfg_value, list):
+            # Use an identity mapping
+            cfg_value = {col: col for col in cfg_value}
+
+        if not isinstance(cfg_value, dict):
+            raise ValueError(f"Invalid extra_columns format in FK config for '{self.local_entity}'")
+
+        return {v: k for k, v in cfg_value.items()}  # invert mapping
 
 
 class TableConfig:
@@ -77,6 +114,18 @@ class TableConfig:
         return self.data.get("type", "data") == "fixed"
 
     @property
+    def is_fixed_sql(self) -> bool:
+        return self.is_fixed_data and isinstance(self.values, str) and self.values.strip().startswith("sql:")
+
+    @property
+    def fixed_sql(self) -> None | str:
+        """Get the SQL query string for fixed data, if applicable."""
+        if self.is_fixed_sql:
+            assert isinstance(self.values, str)
+            return self.values.strip()[4:].strip()
+        return None
+
+    @property
     def values(self) -> str | None:
         """The fixed values for the table, if it is of fixed data type.
         These values are specified in the 'values' field of the configuration.
@@ -100,14 +149,31 @@ class TableConfig:
         return self.data.get("columns", []) or []
 
     @property
+    def extra_columns(self) -> dict[str, Any]:
+        return self.data.get("extra_columns", {}) or {}
+
+    @property
+    def extra_column_names(self) -> list[str]:
+        return list(self.extra_columns.keys())
+
+    @property
     def columns2(self) -> list[str]:
         """Get columns with keys first, followed by other columns."""
         return self.keys + [col for col in self.columns if col not in self.keys]
 
     @property
+    def data_columns(self) -> list[str]:
+        """Get data columns excluding keys, foreign keys, and extra columns."""
+        return [col for col in self.columns if col not in self.keys and col not in self.fk_column_set and not col in self.extra_columns]
+
+    @property
     def drop_duplicates(self) -> bool | list[str]:
-        value = self.data.get("options", {}).get("drop_duplicates", False)
+        value = self.data.get("drop_duplicates", False)
         return value if value else False
+
+    @property
+    def drop_empty_rows(self) -> bool:
+        return self.data.get("drop_empty_rows", False)
 
     @property
     def unnest(self) -> UnnestConfig | None:
@@ -147,6 +213,26 @@ class TableConfig:
         keys_and_data_columns: list[str] = self.columns2
         return keys_and_data_columns + list(x for x in self.fk_column_set if x not in keys_and_data_columns and x not in self.pending_columns)
 
+    def drop_fk_columns(self, table: pd.DataFrame) -> pd.DataFrame:
+        """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
+        columns: list[str] = self.columns or []
+        foreign_keys: list[ForeignKeyConfig] = self.foreign_keys or []
+        fk_columns: set[str] = set()
+        for fk in foreign_keys:
+            local_keys: list[str] = fk.local_keys or []
+            fk_columns.update(key for key in local_keys if key not in columns)
+        if fk_columns:
+            table = table.drop(columns=fk_columns, errors="ignore")
+        return table
+
+    def add_system_id_column(self, table: pd.DataFrame) -> pd.DataFrame:
+        """Add a 'system_id' column with the same values as the surrogate_id column, then set surrogate_id to None."""
+        surrogate_id: str = self.surrogate_id
+        if surrogate_id and surrogate_id in table.columns:
+            table["system_id"] = table[surrogate_id]
+            table[surrogate_id] = None
+        return table
+
 
 class TablesConfig:
     """Configuration for database tables."""
@@ -173,3 +259,19 @@ class TablesConfig:
         other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
         new_column_order: list[str] = existing_cols_to_move + other_cols
         return new_column_order
+
+    def reorder_columns(self, table_cfg: str | TableConfig, table: pd.DataFrame) -> pd.DataFrame:
+        """Reorder columns in the DataFrame to have keys first, then extra columns, then other columns."""
+        if isinstance(table_cfg, str):
+            table_cfg = self.get_table(entity_name=table_cfg)
+        cols_to_move: list[str] = (
+            (["system_id"] if "system_id" in table.columns else [])
+            + [table_cfg.surrogate_id]
+            + [self.get_table(fk.remote_entity).surrogate_id for fk in table_cfg.foreign_keys]
+            + table_cfg.extra_column_names
+        )
+        existing_cols_to_move: list[str] = [col for col in cols_to_move if col in table.columns]
+        other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
+        new_column_order: list[str] = existing_cols_to_move + other_cols
+        table = table[new_column_order]
+        return table

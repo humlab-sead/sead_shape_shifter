@@ -4,7 +4,26 @@ and write them as sheets in a single Excel file.
 
 Usage:
     python arbodat_normalize_to_excel.py input.csv output.xlsx
+Strengths
+Clear Separation of Concerns
 
+ProcessState handles dependency resolution
+ArbodatSurveyNormalizer orchestrates the normalization pipeline
+Configuration-driven approach makes it adaptable
+Dependency Management
+
+Topological sorting via get_next_entity_to_process() ensures correct processing order
+Error reporting for circular/unmet dependencies
+Flexible Data Sources
+
+Supports extraction from source spreadsheet
+Fixed/hardcoded tables
+SQL database (via config)
+Previously extracted tables (via resolve_source())
+Comprehensive Transformation Pipeline
+
+Extract → Link → Unnest → Translate → Store
+Each phase is well-defined
 """
 
 from pathlib import Path
@@ -22,11 +41,53 @@ from src.arbodat.utility import get_subset
 from src.configuration.resolve import ConfigValue
 
 
+class ProcessState:
+    """Helper class to track processing state of entities during normalization."""
+
+    def __init__(self, config: TablesConfig) -> None:
+        self.config: TablesConfig = config
+        self.unprocessed: set[str] = set(self.config.table_names)
+
+    def get_next_entity_to_process(self) -> str | None:
+        """Get the next entity that can be processed based on dependencies."""
+        logger.debug(f"Processed entities so far: {self.processed_entities}")
+        for entity_name in set(self.config.table_names) - self.processed_entities:
+            logger.debug(f"Checking if entity '{entity_name}' can be processed...")
+            unmet_dependencies = self.get_unmet_dependencies(entity=entity_name)
+            if unmet_dependencies:
+                logger.debug(f"Entity '{entity_name}' has unmet dependencies: {unmet_dependencies}")
+                continue
+            logger.debug(f"Entity '{entity_name}' can be processed next.")
+            return entity_name
+        return None
+
+    def get_unmet_dependencies(self, entity: str) -> set[str]:
+        return set(self.config.get_table(entity_name=entity).depends_on) - self.processed_entities
+
+    def discard(self, entity: str) -> None:
+        """Mark an entity as processed and remove it from the unprocessed set."""
+        self.unprocessed.discard(entity)
+
+    def get_all_unmet_dependencies(self) -> dict[str, set[str]]:
+        unmet_dependencies: dict[str, set[str]] = {entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed}
+        return {k: v for k, v in unmet_dependencies.items() if v}
+
+    def log_unmet_dependencies(self) -> None:
+        for entity, unmet in self.get_all_unmet_dependencies().items():
+            logger.error(f"Entity '{entity}' has unmet dependencies: {unmet}")
+
+    @property
+    def processed_entities(self) -> set[str]:
+        """Return the set of processed entities."""
+        return set(self.config.table_names) - self.unprocessed
+
+
 class ArbodatSurveyNormalizer:
 
     def __init__(self, df: pd.DataFrame) -> None:
         self.data: dict[str, pd.DataFrame] = {"survey": df}
         self.config: TablesConfig = TablesConfig()
+        self.state: ProcessState = ProcessState(config=self.config)
 
     @property
     def survey(self) -> pd.DataFrame:
@@ -45,10 +106,7 @@ class ArbodatSurveyNormalizer:
 
     @staticmethod
     def load(path: str | Path, sep: str = "\t") -> "ArbodatSurveyNormalizer":
-        """
-        Read Arbodat CSV (usually tab-separated).
-        If sep='\t' fails badly, you can change to ',' when calling.
-        """
+        """Read Arbodat CSV (usually tab-separated)."""
         df: pd.DataFrame = pd.read_csv(path, sep=sep, dtype=str, keep_default_na=False)
         return ArbodatSurveyNormalizer(df)
 
@@ -60,44 +118,37 @@ class ArbodatSurveyNormalizer:
         if table_cfg.is_fixed_data:
             raise ValueError(f"Entity '{entity_name}' is configured as fixed data and cannot be extracted")
 
-        source: pd.DataFrame = self.resolve_source(table_cfg.source)
+        source: pd.DataFrame = self.resolve_source(source=table_cfg.source)
 
         if not isinstance(table_cfg.columns, list) or not all(isinstance(c, str) for c in table_cfg.columns):
             raise ValueError(f"Invalid columns configuration for entity '{entity_name}': {table_cfg.columns}")
 
         data: pd.DataFrame = get_subset(
-            source,
-            table_cfg.usage_columns,
+            source=source,
+            columns=table_cfg.usage_columns,
+            extra_columns=table_cfg.extra_columns,
             drop_duplicates=table_cfg.drop_duplicates,
             surrogate_id=table_cfg.surrogate_id,
             raise_if_missing=False,
         )
 
-        return data
+        if table_cfg.drop_empty_rows:
+            """Discard rows that are empty in all **data** columns (excluding keys and foreign keys)."""
+            data_columns: list[str] = table_cfg.data_columns
+            if data_columns:
+                data = data.dropna(subset=data_columns, how="all")
 
-    def _find_next_entity_to_process(self) -> str | None:
-        processed: set[str] = set(self.data.keys())
-        logger.debug(f"Processed entities so far: {processed}")
-        for entity_name in set(self.config.table_names) - processed:
-            logger.debug(f"Checking if entity '{entity_name}' can be processed...")
-            unmet_dependencies: set[str] = set(self.config.get_table(entity_name).depends_on) - processed
-            if unmet_dependencies:
-                logger.debug(f"Entity '{entity_name}' has unmet dependencies: {unmet_dependencies}")
-                continue
-            logger.debug(f"Entity '{entity_name}' can be processed next.")
-            return entity_name
-        return None
+        return data
 
     def normalize(self) -> None:
         """Extract all configured entities and store them."""
+        while len(self.state.unprocessed) > 0:
 
-        unprocessed: set[str] = set(self.config.table_names)
-        while len(unprocessed) > 0:
-
-            entity: str | None = self._find_next_entity_to_process()
+            entity: str | None = self.state.get_next_entity_to_process()
 
             if entity is None:
-                raise ValueError(f"Circular or unresolved dependencies detected among entities: {unprocessed}")
+                self.state.log_unmet_dependencies()
+                raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed}")
 
             table_cfg: TableConfig = self.config.get_table(entity)
 
@@ -112,7 +163,7 @@ class ArbodatSurveyNormalizer:
 
             self.register(entity, data)
 
-            deferred: bool = self.link_entity(entity)
+            self.link_entity(entity_name=entity)
 
             if table_cfg.unnest:
                 try:
@@ -120,25 +171,18 @@ class ArbodatSurveyNormalizer:
                 except ValueError as e:
                     logger.warning(f"Skipping unnesting for entity '{entity}': {e}")
 
-            if deferred:
-                self.link_entity(entity)
+            self.link()  # Try to resolve any pending deferred links after each entity is processed
 
-            self.link()
+            self.state.discard(entity=entity)
 
-            unprocessed.discard(entity)
-
-        self.link(is_final=True)
-
-    def link(self, is_final: bool = False) -> bool:
+    def link(self):
         """Link entities based on foreign key configuration."""
-        deferred: bool = False
-        for entity_name in self.data.keys():
-            deferred = deferred and self.link_entity(entity_name)
-        return deferred
+        for entity_name in self.state.processed_entities:
+            self.link_entity(entity_name=entity_name)
 
     def link_entity(self, entity_name: str) -> bool:
 
-        table_cfg: TableConfig = self.config.get_table(entity_name)
+        table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
         foreign_keys: list[ForeignKeyConfig] = table_cfg.foreign_keys or []
         deferred: bool = False
 
@@ -152,10 +196,11 @@ class ArbodatSurveyNormalizer:
                 raise ValueError(
                     f"Foreign key configuration mismatch for entity '{entity_name}': local keys {local_keys} and remote keys {remote_keys} have different lengths"
                 )
+            if remote_entity not in self.config.table_names:
+                raise ValueError(f"Remote entity '{remote_entity}' not found in configuration for linking with '{entity_name}'")
 
-            remote_id: str | None = self.config.get_table(remote_entity).surrogate_id or f"{remote_entity}_id"
-            if remote_entity not in self.data or remote_id is None:
-                raise ValueError(f"Remote entity '{remote_entity}' or surrogate_id not found for linking with '{entity_name}'")
+            remote_cfg: TableConfig = self.config.get_table(remote_entity)
+            remote_id: str | None = remote_cfg.surrogate_id or f"{remote_entity}_id"
 
             local_df: pd.DataFrame = self.data[entity_name]
             remote_df: pd.DataFrame = self.data[remote_entity]
@@ -175,14 +220,25 @@ class ArbodatSurveyNormalizer:
                 deferred = deferred or True
                 continue
 
-            # Perform the merge to link entities
+            # Select source columns
+            remote_source_cols: list[str] = remote_keys + list(fk.remote_extra_columns.keys())
+            remote_select_df: pd.DataFrame = remote_df[[remote_id] + remote_source_cols]
+
+            # Rename extra columns to their target names
+            if fk.remote_extra_columns:
+                remote_select_df = remote_select_df.rename(columns=fk.remote_extra_columns)
+
+            # Now merge
             linked_df: pd.DataFrame = local_df.merge(
-                remote_df[[remote_id] + remote_keys],
+                right=remote_select_df,
                 left_on=local_keys,
                 right_on=remote_keys,
                 how="left",
                 suffixes=("", f"_{remote_entity}"),
             )
+
+            if fk.remote_extra_columns and fk.drop_remote_id:
+                linked_df = linked_df.drop(columns=[remote_id], errors="ignore")
 
             self.data[entity_name] = linked_df
 
@@ -211,42 +267,39 @@ class ArbodatSurveyNormalizer:
         return self.data[entity]
 
     def translate(self) -> None:
-        """Translate Arbodat column names to english snake_case names."""
+        """Translate column names using translation from config."""
         translations: dict[str, str] = ConfigValue[dict[str, str]]("translation").resolve() or {}
 
-        def fx(col: str) -> str:
-            return translations.get(col, col)
+        def fx(col: str, columns: list[str]) -> str:
+            translated_column: str = translations.get(col, col)
+            if translated_column in columns:
+                return col
+            return translated_column
 
         for entity, table in self.data.items():
             columns: list[str] = table.columns.tolist()
-            translated_columns: list[str] = [fx(col) for col in columns]
-            table.columns = translated_columns
+            table.columns = [fx(col, columns) for col in columns]
             self.data[entity] = table
 
     def drop_foreign_key_columns(self) -> None:
         """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
         for entity_name in self.data.keys():
-            columns: list[str] = self.config.get_table(entity_name).columns or []
-            foreign_keys: list[ForeignKeyConfig] = self.config.get_table(entity_name).foreign_keys or []
-            fk_columns: set[str] = set()
-            for fk in foreign_keys:
-                local_keys: list[str] = fk.local_keys or []
-                fk_columns.update(key for key in local_keys if key not in columns)
-            if fk_columns:
-                table: pd.DataFrame = self.data[entity_name]
-                table = table.drop(columns=fk_columns, errors="ignore")
-                self.data[entity_name] = table
+            if entity_name not in self.config.table_names:
+                continue
+            table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
+            self.data[entity_name] = table_cfg.drop_fk_columns(table=self.data[entity_name])
 
-    def move_keys_to_front(self) -> None:
-        """Move primary key and foreign key columns to the front of the dataframe for better readability."""
+    def add_system_id_columns(self) -> None:
+        """Add "system_id" with same value as surrogate_id. Set surrogate_id to None."""
         for entity_name in self.data.keys():
             if entity_name not in self.config.table_names:
                 continue
-            table_cfg: TableConfig = self.config.get_table(entity_name)
-            table: pd.DataFrame = self.data[entity_name]
-            cols_to_move: list[str] = [table_cfg.surrogate_id] + [self.config.get_table(fk.remote_entity).surrogate_id for fk in table_cfg.foreign_keys]
-            existing_cols_to_move: list[str] = [col for col in cols_to_move if col in table.columns]
-            other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
-            new_column_order: list[str] = existing_cols_to_move + other_cols
-            table = table[new_column_order]
-            self.data[entity_name] = table
+            table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
+            self.data[entity_name] = table_cfg.add_system_id_column(table=self.data[entity_name])
+
+    def move_keys_to_front(self) -> None:
+        """Reorder columns in this order: primary key, foreign key column, extra columns, other columns."""
+        for entity_name in self.data.keys():
+            if entity_name not in self.config.table_names:
+                continue
+            self.data[entity_name] = self.config.reorder_columns(entity_name, self.data[entity_name])
