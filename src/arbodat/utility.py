@@ -109,11 +109,10 @@ def get_subset(
     columns_to_extract = [c for c in columns_to_extract if c in source.columns]
     result: pd.DataFrame = source[columns_to_extract].copy()
 
-    # Rename columns that were extracted for renaming
     if source_column_renames:
-        rename_map: dict[str, str] = {src: new for src, new in source_column_renames.items() if src in result.columns}
-        if rename_map:
-            result = result.rename(columns=rename_map)
+        # Extra column can be an alias for an existing column, i.e. same column name can exist multiple times,
+        # and we only want to rename the last occurrence (the extracted one)
+        result.columns = _rename_last_occurence(data=result, rename_map=source_column_renames)
 
     # Add constant columns
     for col_name, value in constant_columns.items():
@@ -134,3 +133,17 @@ def get_subset(
         result = add_surrogate_id(result, surrogate_id)
 
     return result
+
+def _rename_last_occurence(data: pd.DataFrame, rename_map: dict[str, str]) -> list[str]:
+    """Rename the last occurrence of each source column in rename_map to the new name."""
+    target_columns: list[str] = data.columns.tolist()
+    for src, new in rename_map.items():
+        if src not in target_columns:
+            continue
+        if new in target_columns:
+            continue
+        for i in range(len(target_columns)-1, -1, -1):
+            if target_columns[i] == src:
+                target_columns[i] = new
+                break
+    return target_columns
