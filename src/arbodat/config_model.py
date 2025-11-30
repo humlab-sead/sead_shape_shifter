@@ -171,6 +171,10 @@ class TableConfig:
         return value if value else False
 
     @property
+    def drop_empty_rows(self) -> bool:
+        return self.data.get("drop_empty_rows", False)
+
+    @property
     def unnest(self) -> UnnestConfig | None:
         """Get unnest configuration if it exists."""
         if "unnest" in self.data:
