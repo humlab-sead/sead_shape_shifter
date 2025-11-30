@@ -134,6 +134,12 @@ class ArbodatSurveyNormalizer:
             raise_if_missing=False,
         )
 
+        if table_cfg.drop_empty_rows:
+            """Discard rows that are empty in all **data** columns (excluding keys and foreign keys)."""
+            data_columns: list[str] = table_cfg.data_columns
+            if data_columns:
+                data = data.dropna(subset=data_columns, how="all")
+    
         return data
 
     def normalize(self) -> None:

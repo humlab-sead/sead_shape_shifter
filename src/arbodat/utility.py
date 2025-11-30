@@ -51,6 +51,7 @@ def get_subset(
     fd_check: bool = False,
     raise_if_missing: bool = True,
     surrogate_id: str | None = None,
+    drop_empty_rows: bool | list[str] = False,
 ) -> pd.DataFrame:
     """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
     Args:
@@ -67,7 +68,8 @@ def get_subset(
         fd_check (bool): Whether to check functional dependency when dropping duplicates.
         raise_if_missing (bool): Whether to raise an error if requested columns are missing.
         surrogate_id (str | None): Name of surrogate ID column to add if not already present.
-    
+        drop_empty_rows (bool): Whether to drop rows that are completely empty after subsetting.
+
     Returns:
         pd.DataFrame: Resulting DataFrame with requested columns and modifications.
 
@@ -127,6 +129,13 @@ def get_subset(
             result = result.drop_duplicates(subset=drop_duplicates)
         else:
             result = result.drop_duplicates()
+
+    # Drop rows that are completely empty after subsetting
+    if drop_empty_rows:
+        if isinstance(drop_empty_rows, list):
+            result = result.dropna(subset=drop_empty_rows, how='all')
+        else:
+            result = result.dropna(how='all')
 
     # Add surrogate ID if requested and not present
     if surrogate_id and surrogate_id not in result.columns:
