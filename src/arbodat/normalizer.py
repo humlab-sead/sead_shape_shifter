@@ -291,6 +291,14 @@ class ArbodatSurveyNormalizer:
             table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
             self.data[entity_name] = table_cfg.drop_fk_columns(table=self.data[entity_name])
 
+    def add_system_id_columns(self) -> None:
+        """Add "system_id" with same value as surrogate_id. Set surrogate_id to None."""
+        for entity_name in self.data.keys():
+            if entity_name not in self.config.table_names:
+                continue
+            table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
+            self.data[entity_name] = table_cfg.add_system_id_column(table=self.data[entity_name])
+
     def move_keys_to_front(self) -> None:
         """Reorder columns in this order: primary key, foreign key column, extra columns, other columns."""
         for entity_name in self.data.keys():
