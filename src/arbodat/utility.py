@@ -111,7 +111,7 @@ def get_subset(
 
     # Rename columns that were extracted for renaming
     if source_column_renames:
-        rename_map = {src: new for src, new in source_column_renames.items() if src in result.columns}
+        rename_map: dict[str, str] = {src: new for src, new in source_column_renames.items() if src in result.columns}
         if rename_map:
             result = result.rename(columns=rename_map)
 
