@@ -224,6 +224,14 @@ class TableConfig:
             table = table.drop(columns=fk_columns, errors="ignore")
         return table
 
+    def add_system_id_column(self, table: pd.DataFrame) -> pd.DataFrame:
+        """Add a 'system_id' column with the same values as the surrogate_id column, then set surrogate_id to None."""
+        surrogate_id: str = self.surrogate_id
+        if surrogate_id and surrogate_id in table.columns:
+            table["system_id"] = table[surrogate_id]
+            table[surrogate_id] = None
+        return table
+
 
 class TablesConfig:
     """Configuration for database tables."""
