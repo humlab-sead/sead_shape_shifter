@@ -50,17 +50,31 @@ def get_subset(
     raise_if_missing: bool = True,
     surrogate_id: str | None = None,
 ) -> pd.DataFrame:
-    """Return data with only the columns that actually exist and drop duplicates if requested.
+    """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
     Args:
         source (pd.DataFrame): Source DataFrame.
-        columns (list[str]): List of column names to include.
-        extra_columns (dict[str, Any] | None): Extra columns to add. Values can be column names or constants.
-        drop_duplicates (bool | list[str]): Whether to drop duplicates. If list, drop duplicates based on those columns.
+        columns (list[str]): List of column names to include from source.
+        extra_columns (dict[str, Any] | None): Extra columns mapping: 
+            {new_column_name: source_column_name_or_constant}
+            - If value is a string matching source column: extract and rename
+            - Otherwise: add new column with the constant value
+        drop_duplicates (bool | list[str]): Whether to drop duplicates. 
+            - If True: drop all duplicate rows
+            - If list: drop duplicates based on those columns
+            - If False: keep all rows
         fd_check (bool): Whether to check functional dependency when dropping duplicates.
         raise_if_missing (bool): Whether to raise an error if requested columns are missing.
-        surrogate_id (str | None): Name of surrogate ID column to add if not present.
+        surrogate_id (str | None): Name of surrogate ID column to add if not already present.
+    
     Returns:
         pd.DataFrame: Resulting DataFrame with requested columns and modifications.
+        
+    Examples:
+        >>> df = pd.DataFrame({'A': [1, 2], 'B': [3, 4], 'C': [5, 6]})
+        >>> # Extract A and B, rename C to D
+        >>> get_subset(df, ['A', 'B'], extra_columns={'D': 'C'})
+        >>> # Extract A and B, add constant column D
+        >>> get_subset(df, ['A', 'B'], extra_columns={'D': 'constant_value'})
     """
     if source is None:
         raise ValueError("Source DataFrame must be provided")
