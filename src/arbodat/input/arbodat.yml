@@ -154,12 +154,15 @@ entities:
     type: fixed
     surrogate_id: site_property_type_id
     surrogate_name: site_property_type
+    columns: ["include: entities.site_property_type.surrogate_name"]
+    extra_columns:
+      description: site_property_type
     values:
-      - Limes # limes_indicator
-      - FustelTyp? # is_uncertain_site_type
-      - okFustel # is_site_ok
-      - TK
-      - EVNr
+      - "Limes"
+      - "FustelTyp?"
+      - "okFustel"
+      - "TK"
+      - "EVNr"
 
   site_property:
     surrogate_id: site_property_id
