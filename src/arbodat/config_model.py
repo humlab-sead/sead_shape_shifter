@@ -113,6 +113,18 @@ class TableConfig:
         return self.data.get("type", "data") == "fixed"
 
     @property
+    def is_fixed_sql(self) -> bool:
+        return self.is_fixed_data and isinstance(self.values, str) and self.values.strip().startswith("sql:")
+    
+    @property
+    def fixed_sql(self) -> None | str:
+        """Get the SQL query string for fixed data, if applicable."""
+        if self.is_fixed_sql:
+            assert isinstance(self.values, str)
+            return self.values.strip()[4:].strip()
+        return None
+
+    @property
     def values(self) -> str | None:
         """The fixed values for the table, if it is of fixed data type.
         These values are specified in the 'values' field of the configuration.
