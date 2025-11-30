@@ -468,7 +468,7 @@ entities:
       - entity: sample_type
         local_keys: "include: entities.sample_type.keys"
         remote_keys: "include: entities.sample_type.keys"
-    depends_on: ["sample_group", "sample_type"]
+    depends_on: ["feature", "sample_group", "sample_type"]
 
   sample_group:
     # rule: one-to-one relationship with feature
@@ -674,7 +674,7 @@ entities:
         "method_id",
         ]
     extra_columns:
-      - coordinate_method_dimension_id: null
+      coordinate_method_dimension_id: null
     values:
       - ["KoordX", null, null, null, null]
       - ["KoordY", null, null, null, null]
