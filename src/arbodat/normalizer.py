@@ -22,11 +22,51 @@ from src.arbodat.utility import get_subset
 from src.configuration.resolve import ConfigValue
 
 
+class ProcessState:
+    """Helper class to track processing state of entities during normalization."""
+
+    def __init__(self, config: TablesConfig) -> None:
+        self.config: TablesConfig = config
+        self.unprocessed: set[str] = set(self.config.table_names)
+
+    def get_next_entity_to_process(self, processed: set[str]) -> str | None:
+        """Get the next entity that can be processed based on dependencies."""
+        logger.debug(f"Processed entities so far: {processed}")
+        for entity_name in set(self.config.table_names) - processed:
+            logger.debug(f"Checking if entity '{entity_name}' can be processed...")
+            unmet_dependencies: set[str] = set(self.config.get_table(entity_name).depends_on) - processed
+            if unmet_dependencies:
+                logger.debug(f"Entity '{entity_name}' has unmet dependencies: {unmet_dependencies}")
+                continue
+            logger.debug(f"Entity '{entity_name}' can be processed next.")
+            return entity_name
+        return None
+
+    def discard(self, entity: str) -> None:
+        """Mark an entity as processed and remove it from the unprocessed set."""
+        self.unprocessed.discard(entity)
+
+
+    def get_unmet_dependencies(self, processed: set[str]) -> dict[str, set[str]]:
+        unmet_dependencies: dict[str, set[str]] = {}
+        for entity in self.unprocessed:
+            deps: set[str] = set(self.config.get_table(entity).depends_on)
+            unmet: set[str] = deps - set(processed)
+            if unmet:
+                unmet_dependencies[entity] = unmet
+        return unmet_dependencies
+
+    def log_unmet_dependencies(self, processed: set[str]) -> None:
+        unmet_dependencies = self.get_unmet_dependencies(processed)
+        for entity, unmet in unmet_dependencies.items():
+            logger.error(f"Entity '{entity}' has unmet dependencies: {unmet}")
+
 class ArbodatSurveyNormalizer:
 
     def __init__(self, df: pd.DataFrame) -> None:
         self.data: dict[str, pd.DataFrame] = {"survey": df}
         self.config: TablesConfig = TablesConfig()
+        self.state: ProcessState = ProcessState(config=self.config)
 
     @property
     def survey(self) -> pd.DataFrame:
@@ -73,28 +113,15 @@ class ArbodatSurveyNormalizer:
 
         return data
 
-    def _find_next_entity_to_process(self) -> str | None:
-        processed: set[str] = set(self.data.keys())
-        logger.debug(f"Processed entities so far: {processed}")
-        for entity_name in set(self.config.table_names) - processed:
-            logger.debug(f"Checking if entity '{entity_name}' can be processed...")
-            unmet_dependencies: set[str] = set(self.config.get_table(entity_name).depends_on) - processed
-            if unmet_dependencies:
-                logger.debug(f"Entity '{entity_name}' has unmet dependencies: {unmet_dependencies}")
-                continue
-            logger.debug(f"Entity '{entity_name}' can be processed next.")
-            return entity_name
-        return None
-
     def normalize(self) -> None:
         """Extract all configured entities and store them."""
-        unprocessed: set[str] = set(self.config.table_names)
-        while len(unprocessed) > 0:
+        while len(self.state.unprocessed) > 0:
 
-            entity: str | None = self._find_next_entity_to_process()
+            entity: str | None = self.state.get_next_entity_to_process(processed=set(self.data.keys()))
 
             if entity is None:
-                raise ValueError(f"Circular or unresolved dependencies detected among entities: {unprocessed}")
+                self.state.log_unmet_dependencies(processed=set(self.data.keys()))
+                raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed}")
 
             table_cfg: TableConfig = self.config.get_table(entity)
 
@@ -122,7 +149,7 @@ class ArbodatSurveyNormalizer:
 
             self.link()
 
-            unprocessed.discard(entity)
+            self.state.discard(entity=entity)
 
         self.link(is_final=True)
 
