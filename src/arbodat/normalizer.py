@@ -4,7 +4,26 @@ and write them as sheets in a single Excel file.
 
 Usage:
     python arbodat_normalize_to_excel.py input.csv output.xlsx
+Strengths
+Clear Separation of Concerns
 
+ProcessState handles dependency resolution
+ArbodatSurveyNormalizer orchestrates the normalization pipeline
+Configuration-driven approach makes it adaptable
+Dependency Management
+
+Topological sorting via get_next_entity_to_process() ensures correct processing order
+Error reporting for circular/unmet dependencies
+Flexible Data Sources
+
+Supports extraction from source spreadsheet
+Fixed/hardcoded tables
+SQL database (via config)
+Previously extracted tables (via resolve_source())
+Comprehensive Transformation Pipeline
+
+Extract → Link → Unnest → Translate → Store
+Each phase is well-defined
 """
 
 from pathlib import Path
@@ -46,7 +65,6 @@ class ProcessState:
         """Mark an entity as processed and remove it from the unprocessed set."""
         self.unprocessed.discard(entity)
 
-
     def get_unmet_dependencies(self, processed: set[str]) -> dict[str, set[str]]:
         unmet_dependencies: dict[str, set[str]] = {}
         for entity in self.unprocessed:
@@ -60,6 +78,7 @@ class ProcessState:
         unmet_dependencies = self.get_unmet_dependencies(processed)
         for entity, unmet in unmet_dependencies.items():
             logger.error(f"Entity '{entity}' has unmet dependencies: {unmet}")
+
 
 class ArbodatSurveyNormalizer:
 
@@ -136,7 +155,7 @@ class ArbodatSurveyNormalizer:
 
             self.register(entity, data)
 
-            deferred: bool = self.link_entity(entity)
+            self.link_entity(entity_name=entity)
 
             if table_cfg.unnest:
                 try:
@@ -144,21 +163,14 @@ class ArbodatSurveyNormalizer:
                 except ValueError as e:
                     logger.warning(f"Skipping unnesting for entity '{entity}': {e}")
 
-            if deferred:
-                self.link_entity(entity)
-
-            self.link()
+            self.link()  # Try to resolve any pending deferred links after each entity is processed
 
             self.state.discard(entity=entity)
 
-        self.link(is_final=True)
-
-    def link(self, is_final: bool = False) -> bool:
+    def link(self):
         """Link entities based on foreign key configuration."""
-        deferred: bool = False
         for entity_name in self.data.keys():
-            deferred = deferred and self.link_entity(entity_name)
-        return deferred
+            self.link_entity(entity_name=entity_name)
 
     def link_entity(self, entity_name: str) -> bool:
 
@@ -178,7 +190,7 @@ class ArbodatSurveyNormalizer:
                 )
 
             remote_id: str | None = self.config.get_table(remote_entity).surrogate_id or f"{remote_entity}_id"
-            if remote_entity not in self.data or remote_id is None:
+            if remote_entity not in self.data:
                 raise ValueError(f"Remote entity '{remote_entity}' or surrogate_id not found for linking with '{entity_name}'")
 
             local_df: pd.DataFrame = self.data[entity_name]
@@ -199,9 +211,17 @@ class ArbodatSurveyNormalizer:
                 deferred = deferred or True
                 continue
 
-            # Perform the merge to link entities
+            # Select source columns
+            remote_source_cols: list[str] = remote_keys + list(fk.remote_extra_columns.keys())
+            remote_select_df: pd.DataFrame = remote_df[[remote_id] + remote_source_cols]
+
+            # Rename extra columns to their target names
+            if fk.remote_extra_columns:
+                remote_select_df = remote_select_df.rename(columns=fk.remote_extra_columns)
+
+            # Now merge
             linked_df: pd.DataFrame = local_df.merge(
-                right=remote_df[[remote_id] + remote_keys + list(fk.remote_extra_columns.values())],
+                right=remote_select_df,
                 left_on=local_keys,
                 right_on=remote_keys,
                 how="left",
