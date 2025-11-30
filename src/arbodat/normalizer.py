@@ -162,7 +162,7 @@ class ArbodatSurveyNormalizer:
                 data = create_fixed_table(entity_name=entity, table_cfg=table_cfg)
             else:
                 data = self.extract_entity(entity)
-
+        
             self.register(entity, data)
 
             self.link_entity(entity_name=entity)
