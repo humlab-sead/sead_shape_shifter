@@ -178,7 +178,7 @@ class ArbodatSurveyNormalizer:
 
     def link_entity(self, entity_name: str) -> bool:
 
-        table_cfg: TableConfig = self.config.get_table(entity_name)
+        table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
         foreign_keys: list[ForeignKeyConfig] = table_cfg.foreign_keys or []
         deferred: bool = False
 
@@ -192,10 +192,11 @@ class ArbodatSurveyNormalizer:
                 raise ValueError(
                     f"Foreign key configuration mismatch for entity '{entity_name}': local keys {local_keys} and remote keys {remote_keys} have different lengths"
                 )
-
-            remote_id: str | None = self.config.get_table(remote_entity).surrogate_id or f"{remote_entity}_id"
-            if remote_entity not in self.data:
-                raise ValueError(f"Remote entity '{remote_entity}' or surrogate_id not found for linking with '{entity_name}'")
+            if remote_entity not in self.config.table_names:
+                raise ValueError(f"Remote entity '{remote_entity}' not found in configuration for linking with '{entity_name}'")
+            
+            remote_cfg: TableConfig = self.config.get_table(remote_entity)
+            remote_id: str | None = remote_cfg.surrogate_id or f"{remote_entity}_id"
 
             local_df: pd.DataFrame = self.data[entity_name]
             remote_df: pd.DataFrame = self.data[remote_entity]
