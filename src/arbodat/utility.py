@@ -57,11 +57,11 @@ def get_subset(
     Args:
         source (pd.DataFrame): Source DataFrame.
         columns (list[str]): List of column names to include from source.
-        extra_columns (dict[str, Any] | None): Extra columns mapping: 
+        extra_columns (dict[str, Any] | None): Extra columns mapping:
             {new_column_name: source_column_name_or_constant}
             - If value is a string matching source column: extract and rename
             - Otherwise: add new column with the constant value
-        drop_duplicates (bool | list[str]): Whether to drop duplicates. 
+        drop_duplicates (bool | list[str]): Whether to drop duplicates.
             - If True: drop all duplicate rows
             - If list: drop duplicates based on those columns
             - If False: keep all rows
@@ -86,15 +86,11 @@ def get_subset(
     extra_columns = extra_columns or {}
 
     source_column_renames: dict[str, str] = {
-        source_col: new_name 
-        for new_name, source_col in extra_columns.items() 
-        if isinstance(source_col, str) and source_col in source.columns
+        source_col: new_name for new_name, source_col in extra_columns.items() if isinstance(source_col, str) and source_col in source.columns
     }
 
     constant_columns: dict[str, Any] = {
-        new_name: value 
-        for new_name, value in extra_columns.items() 
-        if new_name not in [v for v in source_column_renames.values()]
+        new_name: value for new_name, value in extra_columns.items() if new_name not in [v for v in source_column_renames.values()]
     }
 
     columns_to_extract: list[str] = columns + list(source_column_renames.keys())
@@ -152,7 +148,7 @@ def _rename_last_occurence(data: pd.DataFrame, rename_map: dict[str, str]) -> li
             continue
         if new in target_columns:
             continue
-        for i in range(len(target_columns)-1, -1, -1):
+        for i in range(len(target_columns) - 1, -1, -1):
             if target_columns[i] == src:
                 target_columns[i] = new
                 break
