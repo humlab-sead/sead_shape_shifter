@@ -283,7 +283,7 @@ entities:
     depends_on: ["site"]
 
   taxa:
-    surrogate_id: pcode_id
+    surrogate_id: taxon_id
     keys: ["BNam", "TaxAut"]
     columns:
       [
@@ -298,12 +298,11 @@ entities:
         "TaxAut",
         "Achtung",
       ]
-    # foreign_keys:
-    #   - entity: taxon_pcode_mapping
-    #     local_keys: ["PCODE"]
-    #     remote_keys: ["PCODE"]
-    #     extra_columns:
-    #       mapped_taxon_id: "taxon_id"
+    extra_columns:
+      system_id: 0
+      author_id: 0
+      genus_id: 0
+      species: "Bnam"
     drop_duplicates: ["PCODE"]
     check_functional_dependency: true
     depends_on: []
