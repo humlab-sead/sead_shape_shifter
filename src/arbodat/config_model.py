@@ -53,23 +53,31 @@ class ForeignKeyConfig:
 
     def resolve_extra_columns(self, data: dict[str, Any]) -> dict[str, str]:
         """Resolve extra columns for the foreign key configuration.
+
+        The mapping is defined as "ExtraColumn": "SurveyColumn" in the configuration.
+        This function inverts that mapping to "SurveyColumn": "ExtraColumn" for easier lookup during processing.
+        
         Args:
             data (dict): Foreign key configuration data.
         Returns:
             dict: Resolved extra columns mapping local column names to remote column names.
         """
-        extra_columns: str | list[str] | dict[str, str] = data.get("extra_columns", {}) or {}
-        if not extra_columns:
+        cfg_value: str | list[str] | dict[str, str] = data.get("extra_columns", {}) or {}
+
+        if not cfg_value:
             return {}
-        if isinstance(extra_columns, dict):
-            return extra_columns
-        if isinstance(extra_columns, str):
-            extra_columns = [extra_columns]
-        if isinstance(extra_columns, list):
-            return {col: col for col in extra_columns}
+        
+        if isinstance(cfg_value, str):
+            cfg_value = { cfg_value: cfg_value }
+        
+        if isinstance(cfg_value, list):
+            # Use an identity mapping
+            cfg_value = {col: col for col in cfg_value}
 
-        raise ValueError(f"Invalid extra_columns format in foreign key configuration for entity '{self.local_entity}'")
-
+        if not isinstance(cfg_value, dict):
+            raise ValueError(f"Invalid extra_columns format in FK config for '{self.local_entity}'")
+        
+        return { v: k for k, v in cfg_value.items() }  # invert mapping
 
 class TableConfig:
     """Configuration for a database table."""

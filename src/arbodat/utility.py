@@ -1,4 +1,5 @@
 from typing import Any
+from numpy import isin
 import pandas as pd
 from loguru import logger
 
@@ -9,7 +10,8 @@ def add_surrogate_id(target: pd.DataFrame, id_name: str) -> pd.DataFrame:
     target[id_name] = range(1, len(target) + 1)
     return target
 
-def check_functional_dependency(df: pd.DataFrame, determinant_columns: list[str], raise_error: bool =True) -> bool:
+
+def check_functional_dependency(df: pd.DataFrame, determinant_columns: list[str], raise_error: bool = True) -> bool:
     """Check functional dependency: for each unique combination of subset columns,
     the other columns should have consistent values.
     Args:
@@ -25,7 +27,7 @@ def check_functional_dependency(df: pd.DataFrame, determinant_columns: list[str]
 
     if len(dependent_columns) == 0:
         return True
-    
+
     bad_keys: list = []
     for keys, group in df.groupby(determinant_columns):
         if (group[dependent_columns].nunique(dropna=False) > 1).any():
@@ -79,28 +81,55 @@ def get_subset(
     if source is None:
         raise ValueError("Source DataFrame must be provided")
 
-    if any(c not in source.columns for c in columns):
-        missing: list[str] = [c for c in columns if c not in source.columns]
+    extra_columns = extra_columns or {}
+    
+    source_column_renames: dict[str, str] = {
+        source_col: new_name 
+        for new_name, source_col in extra_columns.items() 
+        if isinstance(source_col, str) and source_col in source.columns
+    }
+    
+    constant_columns: dict[str, Any] = {
+        new_name: value 
+        for new_name, value in extra_columns.items() 
+        if new_name not in [v for v in source_column_renames.values()]
+    }
+
+    columns_to_extract: list[str] = columns + list(source_column_renames.keys())
+
+    # Check for missing required columns
+    if any(c not in source.columns for c in columns_to_extract):
+        missing: list[str] = [c for c in columns_to_extract if c not in source.columns]
         if raise_if_missing:
             raise ValueError(f"Key {surrogate_id}: Columns not found in DataFrame: {missing}")
         else:
             logger.warning(f"Key {surrogate_id}: Columns not found in DataFrame and will be skipped: {missing}")
 
-    existing: list[str] = [c for c in columns if c in source.columns]
-    result: pd.DataFrame = source[existing]
+    # Extract only columns that exist
+    columns_to_extract = [c for c in columns_to_extract if c in source.columns]
+    result: pd.DataFrame = source[columns_to_extract].copy()
 
-    for c, v in (extra_columns or {}).items():
-        result[c] = source[v] if isinstance(v, str) and v in source.columns else v
+    # Rename columns that were extracted for renaming
+    if source_column_renames:
+        rename_map = {src: new for src, new in source_column_renames.items() if src in result.columns}
+        if rename_map:
+            result = result.rename(columns=rename_map)
 
+    # Add constant columns
+    for col_name, value in constant_columns.items():
+        result[col_name] = value
+            
+    # Handle duplicate removal
     if drop_duplicates:
         if isinstance(drop_duplicates, list):
+            # Check functional dependency BEFORE dropping duplicates
+            if fd_check:
+                check_functional_dependency(result, determinant_columns=drop_duplicates, raise_error=True)
             result = result.drop_duplicates(subset=drop_duplicates)
-        if fd_check:
-            check_functional_dependency(result, determinant_columns=existing, raise_error=True)
         else:
             result = result.drop_duplicates()
 
-
+    # Add surrogate ID if requested and not present
     if surrogate_id and surrogate_id not in result.columns:
         result = add_surrogate_id(result, surrogate_id)
 
