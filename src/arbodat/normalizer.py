@@ -217,6 +217,13 @@ class ArbodatSurveyNormalizer:
                 continue
 
             remote_extra_cols: list[str] = fk.remote_keys + list(fk.remote_extra_columns.keys())
+            missing_remote_cols: list[str] = [col for col in remote_extra_cols if col not in remote_df.columns]
+            if missing_remote_cols:
+                logger.warning(
+                    f"Skipping extra link columns for entity '{entity_name}' to '{fk.remote_entity}': missing remote columns {missing_remote_cols} in remote table"
+                )
+                remote_extra_cols = [col for col in remote_extra_cols if col in remote_df.columns]
+
             remote_select_df: pd.DataFrame = remote_df[[remote_id] + remote_extra_cols]
 
             # Rename extra columns to their target names
