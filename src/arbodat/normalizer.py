@@ -185,6 +185,7 @@ class ArbodatSurveyNormalizer:
         table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
         foreign_keys: list[ForeignKeyConfig] = table_cfg.foreign_keys or []
         deferred: bool = False
+        local_df: pd.DataFrame = self.data[entity_name]
 
         for fk in foreign_keys:
 
@@ -198,7 +199,6 @@ class ArbodatSurveyNormalizer:
 
             remote_cfg: TableConfig = self.config.get_table(fk.remote_entity)
             remote_id: str | None = remote_cfg.surrogate_id or f"{fk.remote_entity}_id"
-            local_df: pd.DataFrame = self.data[entity_name]
             remote_df: pd.DataFrame = self.data[fk.remote_entity]
 
             if remote_id in local_df.columns:
@@ -223,6 +223,7 @@ class ArbodatSurveyNormalizer:
             if fk.remote_extra_columns:
                 remote_select_df = remote_select_df.rename(columns=fk.remote_extra_columns)
 
+            size_before_merge: int = len(local_df)
             linked_df: pd.DataFrame = local_df.merge(
                 right=remote_select_df,
                 left_on=fk.local_keys,
@@ -230,13 +231,16 @@ class ArbodatSurveyNormalizer:
                 how=fk.how or "inner",
                 suffixes=("", f"_{fk.remote_entity}"),
             )
+            size_after_merge: int = len(linked_df)
+            logger.debug(f"[Linking {entity_name}] merge size: before={size_before_merge}, after={size_after_merge}")
 
             if fk.remote_extra_columns and fk.drop_remote_id:
                 linked_df = linked_df.drop(columns=[remote_id], errors="ignore")
 
-            self.data[entity_name] = linked_df
-
+            local_df = linked_df
             logger.debug(f"[Linking {entity_name}] added link to '{fk.remote_entity}' via {fk.local_keys} -> {fk.remote_keys}")
+
+        self.data[entity_name] = local_df
 
         return deferred
 
