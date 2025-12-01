@@ -21,6 +21,7 @@ from src.arbodat.utility import extract_translation_map
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
 
+
 def workflow(
     input_csv: str,
     target: str,
