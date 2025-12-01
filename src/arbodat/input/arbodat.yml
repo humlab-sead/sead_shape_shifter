@@ -954,5 +954,5 @@ translation: "@load: options.translations"
 
 options:
   translations:
-    filename: translations.csv
+    filename: translations.tsv
     delimiter: "\t"
