@@ -748,10 +748,16 @@ entities:
   master_dataset:
     surrogate_id: master_dataset_id
     type: fixed
-    columns: ["master_dataset_id", "contact_id", "biblio_id", "master_name", "master_notes", "url"]
-    values: [
-      [1, null, null, "ArboDat Pilot", null, null]
-    ]
+    columns:
+      [
+        "master_dataset_id",
+        "contact_id",
+        "biblio_id",
+        "master_name",
+        "master_notes",
+        "url",
+      ]
+    values: [[1, null, null, "ArboDat Pilot", null, null]]
     depends_on: []
 
   dataset:
