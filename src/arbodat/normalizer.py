@@ -37,8 +37,7 @@ from src.arbodat.dispatch import Dispatcher, Dispatchers
 from src.arbodat.fixed import create_fixed_table
 from src.arbodat.specifications import ForeignKeyDataSpecification
 from src.arbodat.unnest import unnest
-from src.arbodat.utility import get_subset
-from src.configuration.resolve import ConfigValue
+from src.arbodat.utility import get_subset, translate
 
 
 class ProcessState:
@@ -153,6 +152,8 @@ class ArbodatSurveyNormalizer:
             table_cfg: TableConfig = self.config.get_table(entity)
 
             logger.debug(f"Normalizing entity '{entity}'...")
+            if entity == "location":
+                logger.debug(f"Debugging: {entity}")
 
             data: pd.DataFrame
 
@@ -168,6 +169,7 @@ class ArbodatSurveyNormalizer:
             if table_cfg.unnest:
                 try:
                     data = self.unnest_entity(entity=entity)
+                    self.link_entity(entity_name=entity)
                 except ValueError as e:
                     logger.warning(f"Skipping unnesting for entity '{entity}': {e}")
 
@@ -190,10 +192,8 @@ class ArbodatSurveyNormalizer:
         for fk in foreign_keys:
 
             if len(fk.local_keys) != len(fk.remote_keys):
-                raise ValueError(
-                    f"Foreign key for entity '{entity_name}': local keys {fk.local_keys}, remote keys {fk.remote_keys}"
-                )
-            
+                raise ValueError(f"Foreign key for entity '{entity_name}': local keys {fk.local_keys}, remote keys {fk.remote_keys}")
+
             if fk.remote_entity not in self.config.table_names:
                 raise ValueError(f"Remote entity '{fk.remote_entity}' not found in configuration for linking with '{entity_name}'")
 
@@ -271,20 +271,9 @@ class ArbodatSurveyNormalizer:
             self.data[entity] = unnest(entity=entity, table=self.data[entity], table_cfg=table_cfg)
         return self.data[entity]
 
-    def translate(self) -> None:
+    def translate(self, translations_map: dict[str, str]) -> None:
         """Translate column names using translation from config."""
-        translations: dict[str, str] = ConfigValue[dict[str, str]]("translation").resolve() or {}
-
-        def fx(col: str, columns: list[str]) -> str:
-            translated_column: str = translations.get(col, col)
-            if translated_column in columns:
-                return col
-            return translated_column
-
-        for entity, table in self.data.items():
-            columns: list[str] = table.columns.tolist()
-            table.columns = [fx(col, columns) for col in columns]
-            self.data[entity] = table
+        self.data = translate(self.data, translations_map=translations_map)
 
     def drop_foreign_key_columns(self) -> None:
         """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
