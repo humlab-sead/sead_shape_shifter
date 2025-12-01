@@ -32,10 +32,10 @@ from typing import Literal
 import pandas as pd
 from loguru import logger
 
-from src.arbodat.config_model import ForeignKeyConfig, TableConfig, TablesConfig
+from src.arbodat.config_model import TableConfig, TablesConfig
 from src.arbodat.dispatch import Dispatcher, Dispatchers
-from src.arbodat.fixed import create_fixed_table
-from src.arbodat.specifications import ForeignKeyDataSpecification
+from src.arbodat.create_fixed import create_fixed_table
+from src.arbodat.link import link_entity
 from src.arbodat.unnest import unnest
 from src.arbodat.utility import get_subset, translate
 
@@ -152,7 +152,7 @@ class ArbodatSurveyNormalizer:
             table_cfg: TableConfig = self.config.get_table(entity)
 
             logger.debug(f"Normalizing entity '{entity}'...")
-            if entity == "location":
+            if entity == "dataset":
                 logger.debug(f"Debugging: {entity}")
 
             data: pd.DataFrame
