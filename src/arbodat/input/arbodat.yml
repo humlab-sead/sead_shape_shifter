@@ -802,6 +802,9 @@ entities:
       - entity: sample
         local_keys: "include: entities.sample.keys"
         remote_keys: "include: entities.sample.keys"
+      - entity: method
+        local_keys: ["method_name"]
+        remote_keys: ["arbodat_code"]
     unnest:
       id_vars: "include: entities.sample.keys + [ 'sample_method_id' ]"
       value_vars: "include: entities.method.process_names"
@@ -828,19 +831,21 @@ entities:
       [
         "biblio_id",
         "description",
+        "method_name",
         "method_abbrev_or_alt_name",
         "method_group_id",
+        "arbodat_code"
       ]
     values:
       [
-        [null, "Organic remains >2.0 mm", "ORG2,0", null],
-        [null, "Organic remains 1.0-2.0 mm", "ORG1,0", null],
-        [null, "Organic remains 0.5-1.0 mm", "ORG0,5", null],
-        [null, "Organic remains 0.25-0.5 mm", "ORG0,25", null],
-        [null, "Mineral remains >2.0 mm", "MIN2,0", null],
-        [null, "Mineral remains 1.0-2.0 mm", "MIN1,0", null],
-        [null, "Mineral remains 0.5-1.0 mm", "MIN0,5", null],
-        [null, "Mineral remains 0.25-0.5 mm", "MIN0,25", null],
+        [null, "Organic remains >2.0 mm", "ORG2,0", "ORG2,0", null, "ORG2,0"],
+        [null, "Organic remains 1.0-2.0 mm", "ORG1,0", "ORG1,0", null, "ORG1,0"],
+        [null, "Organic remains 0.5-1.0 mm", "ORG0,5", "ORG0,5", null, "ORG0,5"],
+        [null, "Organic remains 0.25-0.5 mm", "ORG0,25", "ORG0,25", null, "ORG0,25"],
+        [null, "Mineral remains >2.0 mm", "MIN2,0", "MIN2,0", null, "MIN2,0"],
+        [null, "Mineral remains 1.0-2.0 mm", "MIN1,0", "MIN1,0", null, "MIN1,0"],
+        [null, "Mineral remains 0.5-1.0 mm", "MIN0,5", "MIN0,5", null, "MIN0,5"],
+        [null, "Mineral remains 0.25-0.5 mm", "MIN0,25", "MIN0,25", null, "MIN0,25"],
       ]
     depends_on: []
 
