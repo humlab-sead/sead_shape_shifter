@@ -14,8 +14,11 @@ from pathlib import Path
 from typing import Literal
 
 import click
+from loguru import logger
 
 from src.arbodat.normalizer import ArbodatSurveyNormalizer
+from src.arbodat.utility import extract_translation_map
+from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
 
 
@@ -41,7 +44,9 @@ def workflow(
         normalizer.drop_foreign_key_columns()
 
     if translate:
-        normalizer.translate()
+        fields_metadata: list[dict[str, str]] = ConfigValue[list[dict[str, str]]]("translation").resolve() or []
+        translations_map: dict[str, str] = extract_translation_map(fields_metadata=fields_metadata)
+        normalizer.translate(translations_map=translations_map)
 
     normalizer.add_system_id_columns()
     normalizer.move_keys_to_front()

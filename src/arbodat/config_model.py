@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import Any
+from typing import Any, Literal
 
 import pandas as pd
 
@@ -39,6 +39,7 @@ class ForeignKeyConfig:
         self.drop_remote_id: bool = data.get("drop_remote_id", False)
         self.remote_entity: str = data.get("entity", "")
         self.remote_keys: list[str] = data.get("remote_keys", []) or []
+        self.how: Literal["left", "inner", "outer", "right"] = data.get("how", "inner")
 
         if not self.remote_entity:
             raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing remote entity")

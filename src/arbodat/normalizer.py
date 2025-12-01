@@ -37,8 +37,7 @@ from src.arbodat.dispatch import Dispatcher, Dispatchers
 from src.arbodat.fixed import create_fixed_table
 from src.arbodat.specifications import ForeignKeyDataSpecification
 from src.arbodat.unnest import unnest
-from src.arbodat.utility import get_subset
-from src.configuration.resolve import ConfigValue
+from src.arbodat.utility import get_subset, translate
 
 
 class ProcessState:
@@ -153,6 +152,8 @@ class ArbodatSurveyNormalizer:
             table_cfg: TableConfig = self.config.get_table(entity)
 
             logger.debug(f"Normalizing entity '{entity}'...")
+            if entity == "location":
+                logger.debug(f"Debugging: {entity}")
 
             data: pd.DataFrame
 
@@ -168,6 +169,7 @@ class ArbodatSurveyNormalizer:
             if table_cfg.unnest:
                 try:
                     data = self.unnest_entity(entity=entity)
+                    self.link_entity(entity_name=entity)
                 except ValueError as e:
                     logger.warning(f"Skipping unnesting for entity '{entity}': {e}")
 
@@ -185,25 +187,19 @@ class ArbodatSurveyNormalizer:
         table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
         foreign_keys: list[ForeignKeyConfig] = table_cfg.foreign_keys or []
         deferred: bool = False
+        local_df: pd.DataFrame = self.data[entity_name]
 
         for fk in foreign_keys:
 
-            local_keys: list[str] = fk.local_keys
-            remote_keys: list[str] = fk.remote_keys
-            remote_entity: str = fk.remote_entity
+            if len(fk.local_keys) != len(fk.remote_keys):
+                raise ValueError(f"Foreign key for entity '{entity_name}': local keys {fk.local_keys}, remote keys {fk.remote_keys}")
 
-            if len(local_keys) != len(remote_keys):
-                raise ValueError(
-                    f"Foreign key configuration mismatch for entity '{entity_name}': local keys {local_keys} and remote keys {remote_keys} have different lengths"
-                )
-            if remote_entity not in self.config.table_names:
-                raise ValueError(f"Remote entity '{remote_entity}' not found in configuration for linking with '{entity_name}'")
+            if fk.remote_entity not in self.config.table_names:
+                raise ValueError(f"Remote entity '{fk.remote_entity}' not found in configuration for linking with '{entity_name}'")
 
-            remote_cfg: TableConfig = self.config.get_table(remote_entity)
-            remote_id: str | None = remote_cfg.surrogate_id or f"{remote_entity}_id"
-
-            local_df: pd.DataFrame = self.data[entity_name]
-            remote_df: pd.DataFrame = self.data[remote_entity]
+            remote_cfg: TableConfig = self.config.get_table(fk.remote_entity)
+            remote_id: str | None = remote_cfg.surrogate_id or f"{fk.remote_entity}_id"
+            remote_df: pd.DataFrame = self.data[fk.remote_entity]
 
             if remote_id in local_df.columns:
                 logger.debug(f"Linking {entity_name}: skipped since FK '{remote_id}' already exists.")
@@ -217,32 +213,41 @@ class ArbodatSurveyNormalizer:
                 continue
 
             if specification.deferred:
-                deferred = deferred or True
+                deferred = True
                 continue
 
-            # Select source columns
-            remote_source_cols: list[str] = remote_keys + list(fk.remote_extra_columns.keys())
-            remote_select_df: pd.DataFrame = remote_df[[remote_id] + remote_source_cols]
+            remote_extra_cols: list[str] = fk.remote_keys + list(fk.remote_extra_columns.keys())
+            missing_remote_cols: list[str] = [col for col in remote_extra_cols if col not in remote_df.columns]
+            if missing_remote_cols:
+                logger.warning(
+                    f"Skipping extra link columns for entity '{entity_name}' to '{fk.remote_entity}': missing remote columns {missing_remote_cols} in remote table"
+                )
+                remote_extra_cols = [col for col in remote_extra_cols if col in remote_df.columns]
+
+            remote_select_df: pd.DataFrame = remote_df[[remote_id] + remote_extra_cols]
 
             # Rename extra columns to their target names
             if fk.remote_extra_columns:
                 remote_select_df = remote_select_df.rename(columns=fk.remote_extra_columns)
 
-            # Now merge
+            size_before_merge: int = len(local_df)
             linked_df: pd.DataFrame = local_df.merge(
                 right=remote_select_df,
-                left_on=local_keys,
-                right_on=remote_keys,
-                how="left",
-                suffixes=("", f"_{remote_entity}"),
+                left_on=fk.local_keys,
+                right_on=fk.remote_keys,
+                how=fk.how or "inner",
+                suffixes=("", f"_{fk.remote_entity}"),
             )
+            size_after_merge: int = len(linked_df)
+            logger.debug(f"[Linking {entity_name}] merge size: before={size_before_merge}, after={size_after_merge}")
 
             if fk.remote_extra_columns and fk.drop_remote_id:
                 linked_df = linked_df.drop(columns=[remote_id], errors="ignore")
 
-            self.data[entity_name] = linked_df
+            local_df = linked_df
+            logger.debug(f"[Linking {entity_name}] added link to '{fk.remote_entity}' via {fk.local_keys} -> {fk.remote_keys}")
 
-            logger.debug(f"[Linking {entity_name}] added link to '{remote_entity}' via {local_keys} -> {remote_keys}")
+        self.data[entity_name] = local_df
 
         return deferred
 
@@ -266,20 +271,9 @@ class ArbodatSurveyNormalizer:
             self.data[entity] = unnest(entity=entity, table=self.data[entity], table_cfg=table_cfg)
         return self.data[entity]
 
-    def translate(self) -> None:
+    def translate(self, translations_map: dict[str, str]) -> None:
         """Translate column names using translation from config."""
-        translations: dict[str, str] = ConfigValue[dict[str, str]]("translation").resolve() or {}
-
-        def fx(col: str, columns: list[str]) -> str:
-            translated_column: str = translations.get(col, col)
-            if translated_column in columns:
-                return col
-            return translated_column
-
-        for entity, table in self.data.items():
-            columns: list[str] = table.columns.tolist()
-            table.columns = [fx(col, columns) for col in columns]
-            self.data[entity] = table
+        self.data = translate(self.data, translations_map=translations_map)
 
     def drop_foreign_key_columns(self) -> None:
         """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
