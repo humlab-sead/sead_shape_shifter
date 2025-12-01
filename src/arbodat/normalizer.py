@@ -188,22 +188,18 @@ class ArbodatSurveyNormalizer:
 
         for fk in foreign_keys:
 
-            local_keys: list[str] = fk.local_keys
-            remote_keys: list[str] = fk.remote_keys
-            remote_entity: str = fk.remote_entity
-
-            if len(local_keys) != len(remote_keys):
+            if len(fk.local_keys) != len(fk.remote_keys):
                 raise ValueError(
-                    f"Foreign key configuration mismatch for entity '{entity_name}': local keys {local_keys} and remote keys {remote_keys} have different lengths"
+                    f"Foreign key for entity '{entity_name}': local keys {fk.local_keys}, remote keys {fk.remote_keys}"
                 )
-            if remote_entity not in self.config.table_names:
-                raise ValueError(f"Remote entity '{remote_entity}' not found in configuration for linking with '{entity_name}'")
+            
+            if fk.remote_entity not in self.config.table_names:
+                raise ValueError(f"Remote entity '{fk.remote_entity}' not found in configuration for linking with '{entity_name}'")
 
-            remote_cfg: TableConfig = self.config.get_table(remote_entity)
-            remote_id: str | None = remote_cfg.surrogate_id or f"{remote_entity}_id"
-
+            remote_cfg: TableConfig = self.config.get_table(fk.remote_entity)
+            remote_id: str | None = remote_cfg.surrogate_id or f"{fk.remote_entity}_id"
             local_df: pd.DataFrame = self.data[entity_name]
-            remote_df: pd.DataFrame = self.data[remote_entity]
+            remote_df: pd.DataFrame = self.data[fk.remote_entity]
 
             if remote_id in local_df.columns:
                 logger.debug(f"Linking {entity_name}: skipped since FK '{remote_id}' already exists.")
@@ -217,24 +213,22 @@ class ArbodatSurveyNormalizer:
                 continue
 
             if specification.deferred:
-                deferred = deferred or True
+                deferred = True
                 continue
 
-            # Select source columns
-            remote_source_cols: list[str] = remote_keys + list(fk.remote_extra_columns.keys())
-            remote_select_df: pd.DataFrame = remote_df[[remote_id] + remote_source_cols]
+            remote_extra_cols: list[str] = fk.remote_keys + list(fk.remote_extra_columns.keys())
+            remote_select_df: pd.DataFrame = remote_df[[remote_id] + remote_extra_cols]
 
             # Rename extra columns to their target names
             if fk.remote_extra_columns:
                 remote_select_df = remote_select_df.rename(columns=fk.remote_extra_columns)
 
-            # Now merge
             linked_df: pd.DataFrame = local_df.merge(
                 right=remote_select_df,
-                left_on=local_keys,
-                right_on=remote_keys,
-                how="left",
-                suffixes=("", f"_{remote_entity}"),
+                left_on=fk.local_keys,
+                right_on=fk.remote_keys,
+                how=fk.how or "inner",
+                suffixes=("", f"_{fk.remote_entity}"),
             )
 
             if fk.remote_extra_columns and fk.drop_remote_id:
@@ -242,7 +236,7 @@ class ArbodatSurveyNormalizer:
 
             self.data[entity_name] = linked_df
 
-            logger.debug(f"[Linking {entity_name}] added link to '{remote_entity}' via {local_keys} -> {remote_keys}")
+            logger.debug(f"[Linking {entity_name}] added link to '{fk.remote_entity}' via {fk.local_keys} -> {fk.remote_keys}")
 
         return deferred
 
