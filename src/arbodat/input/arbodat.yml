@@ -585,8 +585,8 @@ entities:
 
   contact:
     surrogate_id: contact_id
-    keys: ["ArchAusg", "ArchBear", "BotBear", "Aut"]
-    columns: ["ArchAusg", "ArchBear", "BotBear", "Aut"]
+    keys: ["ArchAusg", "ArchBear", "BotBear", "Aut", "BotBest"]
+    columns: ["ArchAusg", "ArchBear", "BotBear", "Aut", "BotBest"]
     drop_duplicates: "include: entities.contact.keys"
     unnest:
       id_vars: ["include: entities.contact.surrogate_id"]
@@ -600,13 +600,14 @@ entities:
     type: fixed
     surrogate_id: contact_type_id
     surrogate_name: contact_type
-    extra_columns:
-      arbodat_code: contact_type
-    values:
-      - ArchAusg
-      - ArchBear
-      - BotBear
-      - Aut
+    columns: ["contact_type_name", "description", "arbodat_code"] 
+    values: [
+      ["ArchBear", null, "ArchBear"],
+      ["BotBear", null, "BotBear"],
+      ["Aut", null, "Aut"],
+      ["BotBest", null, "BotBest"],
+      ["ArchAusg", null, "ArchAusg"]
+    ]
 
   dimensions:
     surrogate_id: "dimension_id"
