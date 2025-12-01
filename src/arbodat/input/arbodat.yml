@@ -901,20 +901,6 @@ entities:
   #   drop_duplicates: True
   #   depends_on: ["sample", "epoch", "taxa"]
 
-  # result:
-  #   surrogate_id: result_id
-  #   columns: ["BNam", "TaxAut"]
-  #   drop_duplicates: ["BNam", "TaxAut"]
-  #   foreign_keys:
-  #     - entity: taxa
-  #       local_keys: "include: entities.taxa.keys"
-  #       remote_keys: "include: entities.taxa.keys"
-  #       drop_duplicates: ["taxon_id"]
-  #     - entity: sample
-  #       local_keys: "include: entities.sample.keys"
-  #       remote_keys: "include: entities.sample.keys"
-  #   depends_on: ["taxa", "sample"]
-
 # FIXME: add contacts to
 # tbl_dataset_contacts
 # tbl_dataset_masters
