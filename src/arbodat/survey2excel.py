@@ -61,12 +61,12 @@ def workflow(
 @click.command()
 @click.argument("input_csv")  # type=click.Path(exists=True, dir_okay=False, readable=True))
 @click.argument("target")  # type=click.Path(dir_okay=False, writable=True))
-@click.option("--sep", "-s", default=";", show_default=True, help='Field separator character. Use "," for comma-separated files.')
+@click.option("--sep", "-s", show_default=True, help='Field separator character. Use "," for comma-separated files.', default=";")
 @click.option("--config-file", "-c", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to configuration file.")
-@click.option("--verbose", "-v", is_flag=True, help="Enable verbose output.")
-@click.option("--translate", "-t", is_flag=True, help="Enable translation.")
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose output.", default=False)
+@click.option("--translate", "-t", is_flag=True, help="Enable translation.", default=False)
 @click.option("--mode", "-m", type=click.Choice(["xlsx", "csv", "db"]), default="xlsx", show_default=True, help="Output file format.")
-@click.option("--drop-foreign-keys", "-d", is_flag=True, help="Drop foreign key columns after linking.")
+@click.option("--drop-foreign-keys", "-d", is_flag=True, help="Drop foreign key columns after linking.", default=False)
 def main(
     input_csv: str,
     target: str,
