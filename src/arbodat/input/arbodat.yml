@@ -592,7 +592,7 @@ entities:
       id_vars: ["include: entities.contact.surrogate_id"]
       value_vars: "include: entities.contact.keys"
       var_name: contact_type
-      value_name: location_name
+      value_name: contact_name
     depends_on: ["contact_type"]
 
   contact_type:
