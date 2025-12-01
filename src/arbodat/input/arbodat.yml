@@ -168,8 +168,7 @@ entities:
 
   site_property:
     surrogate_id: site_property_id
-    columns:
-      ["ProjektNr", "Fustel", "EVNr", "FustelTyp?", "okFustel", "Limes", "TK"]
+    columns: ["ProjektNr", "Fustel", "EVNr", "FustelTyp?", "okFustel", "Limes", "TK"]
     foreign_keys:
       - entity: site
         local_keys: "@value: entities.site.keys"
@@ -226,17 +225,7 @@ entities:
   site_location:
     surrogate_id: site_location_id
     keys: []
-    columns:
-      [
-        "ProjektNr",
-        "Fustel",
-        "EVNr",
-        "Ort",
-        "Kreis",
-        "Land",
-        "Staat",
-        "FlurStr",
-      ]
+    columns: ["ProjektNr", "Fustel", "EVNr", "Ort", "Kreis", "Land", "Staat", "FlurStr"]
     foreign_keys:
       - entity: site
         local_keys: "@value: entities.site.keys"
@@ -287,19 +276,7 @@ entities:
   taxa:
     surrogate_id: taxon_id
     keys: ["BNam", "TaxAut"]
-    columns:
-      [
-        "PCODE",
-        "BNam",
-        "Name D",
-        "Name_E",
-        "Name_F",
-        "Name_I",
-        "Familie",
-        "S_Od",
-        "TaxAut",
-        "Achtung",
-      ]
+    columns: ["PCODE", "BNam", "Name D", "Name_E", "Name_F", "Name_I", "Familie", "S_Od", "TaxAut", "Achtung"]
     extra_columns:
       system_id: 0
       author_id: 0
@@ -312,8 +289,7 @@ entities:
   taxa_use_categories:
     surrogate_id: use_category_id
     keys: ["PCODE"]
-    columns:
-      ["PCODE", "Ess", "Gar", "Ge", "Hü", "Imp", "Kp", "Med", "Nut", "Öl"]
+    columns: ["PCODE", "Ess", "Gar", "Ge", "Hü", "Imp", "Kp", "Med", "Nut", "Öl"]
     foreign_keys:
       - entity: taxa
         local_keys: ["PCODE"]
@@ -371,21 +347,7 @@ entities:
   taxa_oberdorfer_characteristics:
     surrogate_id: oberdorfer_characteristics_id
     keys: ["PCODE"]
-    columns:
-      [
-        "PCODE",
-        "Anm",
-        "ARE",
-        "BLA",
-        "BLE",
-        "Pio",
-        "Roh",
-        "SozGrup",
-        "WT",
-        "WUA",
-        "WUE",
-        "Zeig",
-      ]
+    columns: ["PCODE", "Anm", "ARE", "BLA", "BLE", "Pio", "Roh", "SozGrup", "WT", "WUA", "WUE", "Zeig"]
     foreign_keys:
       - entity: taxa
         local_keys: ["PCODE"]
@@ -428,25 +390,7 @@ entities:
     surrogate_id: ecological_behaviour_id
     keys: ["PCODE"]
     columns:
-      [
-        "PCODE",
-        "F",
-        "F_s",
-        "F_u",
-        "K",
-        "K_u",
-        "L",
-        "L_u",
-        "N",
-        "N_u",
-        "Re",
-        "Re_u",
-        "S",
-        "S_u",
-        "SMet",
-        "T",
-        "T_u",
-      ]
+      ["PCODE", "F", "F_s", "F_u", "K", "K_u", "L", "L_u", "N", "N_u", "Re", "Re_u", "S", "S_u", "SMet", "T", "T_u"]
     foreign_keys:
       - entity: taxa
         local_keys: ["PCODE"]
@@ -543,19 +487,7 @@ entities:
     surrogate_name: type_name
     columns: ["type_name", "type_description", "arbodat_code"]
     type_names:
-      [
-        "Vorfu",
-        "AblaBdgProb",
-        "EDatProb",
-        "Strat",
-        "Schi",
-        "Quadr",
-        "Plan",
-        "Prob_üNN",
-        "TK",
-        "SedProb",
-        "KultGr",
-      ]
+      ["Vorfu", "AblaBdgProb", "EDatProb", "Strat", "Schi", "Quadr", "Plan", "Prob_üNN", "TK", "SedProb", "KultGr"]
     values:
       - ["Is mass find?", "Indicates of sample is a mass find.", "Vorfu"]
       - ["Wet/dry?", "?", "AblaBdgProb"]
@@ -638,17 +570,7 @@ entities:
   feature:
     surrogate_id: feature_id
     keys: ["ProjektNr", "Befu"]
-    columns:
-      [
-        "ProjektNr",
-        "Fustel",
-        "EVNr",
-        "Befu",
-        "BefuTyp",
-        "GrJahrBefu",
-        "Gebäude",
-        "okBefu",
-      ]
+    columns: ["ProjektNr", "Fustel", "EVNr", "Befu", "BefuTyp", "GrJahrBefu", "Gebäude", "okBefu"]
     drop_duplicates: true
     foreign_keys:
       - entity: site
@@ -693,14 +615,7 @@ entities:
   coordinate_method_dimension:
     surrogate_id: "coordinate_method_dimension_id"
     type: fixed
-    columns:
-      [
-        "coordinate_type",
-        "limit_lower",
-        "limit_upper",
-        "dimension_id",
-        "method_id",
-      ]
+    columns: ["coordinate_type", "limit_lower", "limit_upper", "dimension_id", "method_id"]
     values:
       - ["KoordX", null, null, null, null]
       - ["KoordY", null, null, null, null]
@@ -750,41 +665,27 @@ entities:
   master_dataset:
     surrogate_id: master_dataset_id
     type: fixed
-    columns:
-      [
-        "master_dataset_id",
-        "contact_id",
-        "biblio_id",
-        "master_name",
-        "master_notes",
-        "url",
-      ]
+    columns: ["master_dataset_id", "contact_id", "biblio_id", "master_name", "master_notes", "url"]
     values: [[1, null, null, "ArboDat Pilot", null, null]]
     depends_on: []
 
   dataset:
+    source: method
     surrogate_id: dataset_id
-    keys: "@value: entities.sample.keys + [ 'method_name', 'method_type' ]"
-    columns: "@value: entities.sample.keys + [ 'method_name', 'method_type' ]"
+    keys: ["method_name", "method_id"]
+    columns: []
     extra_columns:
       dataset_type_id: null
-      dataset_name: null
+      dataset_name: "method_name"
       master_set_id: 1
-      data_status_id: 1
+      data_type_id: null
+      biblio_id: null
     foreign_keys:
-      - entity: sample
-        local_keys: "@value: entities.sample.keys"
-        remote_keys: "@value: entities.sample.keys"
-      - entity: sample_method
-        local_keys: "@value: entities.sample.keys"
-        remote_keys: "@value: entities.sample.keys"
-        extra_columns:
-          method_name: "method_id"
       - entity: project
-        local_keys: "@value: entities.project.keys"
-        remote_keys: "@value: entities.project.keys"
-    drop_duplicates: true
-    depends_on: ["sample", "sample_method", "project"]
+        local_keys: null
+        remote_keys: null
+        how: "cross"
+    depends_on: ["method", "project"]
 
   method_group:
     type: fixed
@@ -817,78 +718,18 @@ entities:
   method:
     surrogate_id: method_id
     type: fixed
-    process_names:
-      [
-        "ORG2,0",
-        "ORG1,0",
-        "ORG0,5",
-        "ORG0,25",
-        "MIN2,0",
-        "MIN1,0",
-        "MIN0,5",
-        "MIN0,25",
-      ]
-    columns:
-      [
-        "biblio_id",
-        "description",
-        "method_name",
-        "method_abbrev_or_alt_name",
-        "method_group_id",
-        "arbodat_code",
-      ]
+    process_names: ["ORG2,0", "ORG1,0", "ORG0,5", "ORG0,25", "MIN2,0", "MIN1,0", "MIN0,5", "MIN0,25"]
+    columns: ["biblio_id", "description", "method_name", "method_abbrev_or_alt_name", "method_group_id", "arbodat_code"]
     values:
       [
         [null, "Organic remains >2.0 mm", "ORG2,0", "ORG2,0", null, "ORG2,0"],
-        [
-          null,
-          "Organic remains 1.0-2.0 mm",
-          "ORG1,0",
-          "ORG1,0",
-          null,
-          "ORG1,0",
-        ],
-        [
-          null,
-          "Organic remains 0.5-1.0 mm",
-          "ORG0,5",
-          "ORG0,5",
-          null,
-          "ORG0,5",
-        ],
-        [
-          null,
-          "Organic remains 0.25-0.5 mm",
-          "ORG0,25",
-          "ORG0,25",
-          null,
-          "ORG0,25",
-        ],
+        [null, "Organic remains 1.0-2.0 mm", "ORG1,0", "ORG1,0", null, "ORG1,0"],
+        [null, "Organic remains 0.5-1.0 mm", "ORG0,5", "ORG0,5", null, "ORG0,5"],
+        [null, "Organic remains 0.25-0.5 mm", "ORG0,25", "ORG0,25", null, "ORG0,25"],
         [null, "Mineral remains >2.0 mm", "MIN2,0", "MIN2,0", null, "MIN2,0"],
-        [
-          null,
-          "Mineral remains 1.0-2.0 mm",
-          "MIN1,0",
-          "MIN1,0",
-          null,
-          "MIN1,0",
-        ],
-        [
-          null,
-          "Mineral remains 0.5-1.0 mm",
-          "MIN0,5",
-          "MIN0,5",
-          null,
-          "MIN0,5",
-        ],
-        [
-          null,
-          "Mineral remains 0.25-0.5 mm",
-          "MIN0,25",
-          "MIN0,25",
-          null,
-          "MIN0,25",
-        ],
+        [null, "Mineral remains 1.0-2.0 mm", "MIN1,0", "MIN1,0", null, "MIN1,0"],
+        [null, "Mineral remains 0.5-1.0 mm", "MIN0,5", "MIN0,5", null, "MIN0,5"],
+        [null, "Mineral remains 0.25-0.5 mm", "MIN0,25", "MIN0,25", null, "MIN0,25"],
       ]
     depends_on: []
 
@@ -905,8 +746,7 @@ entities:
   result:
     surrogate_id: result_id
     analysis_keys: ["Fraction", "cf", "RTyp", "Zustand"]
-    value_columns:
-      ["SumFAnzahl", "SumFFrag", "SumFGewicht", "SumPflR", "Zust", "geschätzt"]
+    value_columns: ["SumFAnzahl", "SumFFrag", "SumFGewicht", "SumPflR", "Zust", "geschätzt"]
     keys: "@value: entities.sample.keys + ['PCODE'] + @value: entities.result.analysis_keys"
     columns: "@value: entities.sample_taxa.keys + @value: entities.result.value_columns"
     foreign_keys:
@@ -922,29 +762,12 @@ entities:
       - entity: remain_type
         local_keys: ["RTyp"]
         remote_keys: ["RTyp"]
+      - entity: dataset
+        local_keys: "@value: entities.dataset.keys"
+        remote_keys: "@value: entities.dataset.keys"
     drop_empty_rows: ["SumFAnzahl", "SumFFrag", "SumFGewicht", "SumPflR"]
-    depends_on: ["taxa", "sample", "modification_type", "remain_type"]
+    depends_on: ["taxa", "sample", "modification_type", "remain_type", "dataset"]
 
-  ############################## STATUS OK DIVIDER ###############################
-
-  # sample_epoch:
-  #   surrogate_id: sample_epoch_id
-  #   keys: []
-  #   columns: []
-  #   foreign_keys:
-  #     - entity: epoch
-  #       local_keys: "@value: entities.epoch.keys"
-  #       remote_keys: "@value: entities.epoch.keys"
-  #     - entity: sample
-  #       local_keys: "@value: entities.sample.keys"
-  #       remote_keys: "@value: entities.sample.keys"
-  #     - entity: taxa
-  #       local_keys: "@value: entities.taxa.keys"
-  #       remote_keys: "@value: entities.taxa.keys"
-  #   drop_duplicates: True
-  #   depends_on: ["sample", "epoch", "taxa"]
-
-# FIXME: add contacts to
 # tbl_dataset_contacts
 # tbl_dataset_masters
 # tbl_dataset_submissions
