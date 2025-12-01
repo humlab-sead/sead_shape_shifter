@@ -16,21 +16,21 @@ entities:
     surrogate_id: epoch_id
     keys: ["Epoche", "Epochen_Beschreibung"]
     columns: ["Epoche", "Epochen_Beschreibung"]
-    drop_duplicates: "include: entities.epoch.keys"
+    drop_duplicates: "@value: entities.epoch.keys"
     depends_on: []
 
   archaeological_period:
     surrogate_id: archaeological_period_id
     keys: ["ArchDat", "ArchDat_Beschreibung"]
     columns: ["ArchDat", "ArchDat_Beschreibung"]
-    drop_duplicates: "include: entities.archaeological_period.keys"
+    drop_duplicates: "@value: entities.archaeological_period.keys"
     depends_on: []
 
   chronological_period:
     surrogate_id: chronological_period_id
     keys: ["ChronoDat", "ChronoDat Beschreibung"]
     columns: ["ChronoDat", "ChronoDat Beschreibung"]
-    drop_duplicates: "include: entities.chronological_period.keys"
+    drop_duplicates: "@value: entities.chronological_period.keys"
     depends_on: []
 
   eco_groups:
@@ -55,7 +55,7 @@ entities:
       - entity: remain_type_group
         local_keys: ["RTypGrup"]
         remote_keys: ["RTypGrup"]
-    drop_duplicates: "include: entities.remain_type.keys"
+    drop_duplicates: "@value: entities.remain_type.keys"
     depends_on: ["remain_type_group"]
 
   natural_region_group:
@@ -105,26 +105,26 @@ entities:
   location:
     surrogate_id: location_id
     keys: []
-    columns: "include: entities.location_type.values"
+    columns: "@value: entities.location_type.values"
     extra_columns:
       default_lat_dd: null
       default_long_dd: null
     unnest:
-      value_vars: "include: entities.location_type.values"
+      value_vars: "@value: entities.location_type.values"
       var_name: location_type
       value_name: location_name
     foreign_keys:
       - entity: location_type
         local_keys: ["location_type"]
         remote_keys: ["location_type"]
-    drop_duplicates: "include: entities.location.keys"
+    drop_duplicates: "@value: entities.location.keys"
     depends_on: ["location_type"]
 
   site_coordinate:
     surrogate_id: site_coordinate_id
-    keys: "include: entities.site.keys"
+    keys: "@value: entities.site.keys"
     columns: ["Koordinatensystem", "Easting", "Northing", "Höhe"]
-    drop_duplicates: "include: entities.site.keys"
+    drop_duplicates: "@value: entities.site.keys"
     check_functional_dependency: true
     depends_on: []
 
@@ -140,15 +140,15 @@ entities:
         local_keys: ["NaturE", "NaturrEinh"]
         remote_keys: ["NaturE", "NaturrEinh"]
       - entity: site_coordinate
-        local_keys: "include: entities.site.keys"
-        remote_keys: "include: entities.site.keys"
+        local_keys: "@value: entities.site.keys"
+        remote_keys: "@value: entities.site.keys"
         extra_columns:
           coordinate_system: "Koordinatensystem"
           easting: "Easting"
           northing: "Northing"
           elevation: "Höhe"
         drop_remote_id: true
-    drop_duplicates: "include: entities.site.keys"
+    drop_duplicates: "@value: entities.site.keys"
     depends_on: ["natural_region", "site_coordinate"]
 
   site_property_type:
@@ -156,7 +156,7 @@ entities:
     type: fixed
     surrogate_id: site_property_type_id
     surrogate_name: site_property_type
-    columns: ["include: entities.site_property_type.surrogate_name"]
+    columns: ["@value: entities.site_property_type.surrogate_name"]
     extra_columns:
       description: site_property_type
     values:
@@ -172,14 +172,14 @@ entities:
       ["ProjektNr", "Fustel", "EVNr", "FustelTyp?", "okFustel", "Limes", "TK"]
     foreign_keys:
       - entity: site
-        local_keys: "include: entities.site.keys"
-        remote_keys: "include: entities.site.keys"
+        local_keys: "@value: entities.site.keys"
+        remote_keys: "@value: entities.site.keys"
       - entity: site_property_type
-        local_keys: ["include: entities.site_property_type.surrogate_name"]
-        remote_keys: ["include: entities.site_property_type.surrogate_name"]
+        local_keys: ["@value: entities.site_property_type.surrogate_name"]
+        remote_keys: ["@value: entities.site_property_type.surrogate_name"]
     unnest:
       id_vars: ["ProjektNr", "Fustel", "EVNr"]
-      value_vars: "include: entities.site_property_type.values"
+      value_vars: "@value: entities.site_property_type.values"
       var_name: site_property_type
       value_name: site_property_value
     drop_duplicates: true
@@ -202,7 +202,7 @@ entities:
     extra_columns:
       site_type: "FustelTyp"
       description: "Fundstellentyp_Beschreibung"
-    drop_duplicates: "include: entities.site_type.keys"
+    drop_duplicates: "@value: entities.site_type.keys"
     foreign_keys:
       - entity: site_type_group
         local_keys: ["OFustelTyp"]
@@ -215,11 +215,11 @@ entities:
     columns: []
     foreign_keys:
       - entity: site_type
-        local_keys: "include: entities.site_type.keys"
-        remote_keys: "include: entities.site_type.keys"
+        local_keys: "@value: entities.site_type.keys"
+        remote_keys: "@value: entities.site_type.keys"
       - entity: site
-        local_keys: "include: entities.site.keys"
-        remote_keys: "include: entities.site.keys"
+        local_keys: "@value: entities.site.keys"
+        remote_keys: "@value: entities.site.keys"
     drop_duplicates: True
     depends_on: ["site", "site_type"]
 
@@ -239,17 +239,17 @@ entities:
       ]
     foreign_keys:
       - entity: site
-        local_keys: "include: entities.site.keys"
-        remote_keys: "include: entities.site.keys"
+        local_keys: "@value: entities.site.keys"
+        remote_keys: "@value: entities.site.keys"
       - entity: location
         local_keys: ["location_type", "location_name"]
         remote_keys: ["location_type", "location_name"]
     unnest:
-      id_vars: ["include: entities.site.surrogate_id"]
-      value_vars: "include: entities.location.keys"
+      id_vars: ["@value: entities.site.surrogate_id"]
+      value_vars: "@value: entities.location.keys"
       var_name: location_type
       value_name: location_name
-    drop_duplicates: "include: entities.site_location.keys"
+    drop_duplicates: "@value: entities.site_location.keys"
     depends_on: ["site", "location"]
 
   site_natural_region:
@@ -258,12 +258,12 @@ entities:
     columns: ["NaturE"]
     foreign_keys:
       - entity: natural_region
-        local_keys: "include: entities.natural_region.keys"
-        remote_keys: "include: entities.natural_region.keys"
+        local_keys: "@value: entities.natural_region.keys"
+        remote_keys: "@value: entities.natural_region.keys"
       - entity: site
-        local_keys: "include: entities.site.keys"
-        remote_keys: "include: entities.site.keys"
-    drop_duplicates: "include: entities.natural_region.keys + include: entities.site.keys"
+        local_keys: "@value: entities.site.keys"
+        remote_keys: "@value: entities.site.keys"
+    drop_duplicates: "@value: entities.natural_region.keys + @value: entities.site.keys"
     check_functional_dependency: true
     depends_on: ["site", "natural_region"]
 
@@ -475,8 +475,8 @@ entities:
         local_keys: ["ProjektNr", "Befu"]
         remote_keys: ["ProjektNr", "Befu"]
       - entity: sample_type
-        local_keys: "include: entities.sample_type.keys"
-        remote_keys: "include: entities.sample_type.keys"
+        local_keys: "@value: entities.sample_type.keys"
+        remote_keys: "@value: entities.sample_type.keys"
     depends_on: ["feature", "sample_group", "sample_type"]
 
   sample_group:
@@ -492,8 +492,8 @@ entities:
     drop_duplicates: true
     foreign_keys:
       - entity: site
-        local_keys: "include: entities.site.keys"
-        remote_keys: "include: entities.site.keys"
+        local_keys: "@value: entities.site.keys"
+        remote_keys: "@value: entities.site.keys"
     depends_on: ["site"]
 
   sample_taxa:
@@ -501,12 +501,12 @@ entities:
     columns: ["PCODE", "ProjektNr", "Befu", "ProbNr"]
     foreign_keys:
       - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
       - entity: taxa
-        local_keys: "include: entities.taxa.keys"
-        remote_keys: "include: entities.taxa.keys"
-    drop_duplicates: "include: entities.sample_taxa.keys"
+        local_keys: "@value: entities.taxa.keys"
+        remote_keys: "@value: entities.taxa.keys"
+    drop_duplicates: "@value: entities.sample_taxa.keys"
     depends_on: ["sample", "taxa"]
 
   sample_type:
@@ -528,11 +528,11 @@ entities:
       description: null
     foreign_keys:
       - entity: sample_type
-        local_keys: "include: entities.sample_type.keys"
-        remote_keys: "include: entities.sample_type.keys"
+        local_keys: "@value: entities.sample_type.keys"
+        remote_keys: "@value: entities.sample_type.keys"
       - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
     drop_duplicates: True
     depends_on: ["sample", "sample_type"]
 
@@ -575,11 +575,11 @@ entities:
     columns: []
     foreign_keys:
       - entity: cultural_group
-        local_keys: "include: entities.cultural_group.keys"
-        remote_keys: "include: entities.cultural_group.keys"
+        local_keys: "@value: entities.cultural_group.keys"
+        remote_keys: "@value: entities.cultural_group.keys"
       - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
     drop_duplicates: True
     depends_on: ["sample", "cultural_group"]
 
@@ -587,10 +587,10 @@ entities:
     surrogate_id: contact_id
     keys: ["ArchAusg", "ArchBear", "BotBear", "Aut", "BotBest"]
     columns: ["ArchAusg", "ArchBear", "BotBear", "Aut", "BotBest"]
-    drop_duplicates: "include: entities.contact.keys"
+    drop_duplicates: "@value: entities.contact.keys"
     unnest:
-      id_vars: ["include: entities.contact.surrogate_id"]
-      value_vars: "include: entities.contact.keys"
+      id_vars: ["@value: entities.contact.surrogate_id"]
+      value_vars: "@value: entities.contact.keys"
       var_name: contact_type
       value_name: contact_name
     depends_on: ["contact_type"]
@@ -600,14 +600,15 @@ entities:
     type: fixed
     surrogate_id: contact_type_id
     surrogate_name: contact_type
-    columns: ["contact_type_name", "description", "arbodat_code"] 
-    values: [
-      ["ArchBear", null, "ArchBear"],
-      ["BotBear", null, "BotBear"],
-      ["Aut", null, "Aut"],
-      ["BotBest", null, "BotBest"],
-      ["ArchAusg", null, "ArchAusg"]
-    ]
+    columns: ["contact_type_name", "description", "arbodat_code"]
+    values:
+      [
+        ["ArchBear", null, "ArchBear"],
+        ["BotBear", null, "BotBear"],
+        ["Aut", null, "Aut"],
+        ["BotBest", null, "BotBest"],
+        ["ArchAusg", null, "ArchAusg"],
+      ]
 
   dimensions:
     surrogate_id: "dimension_id"
@@ -630,8 +631,8 @@ entities:
     drop_duplicates: true
     foreign_keys:
       - entity: site
-        local_keys: "include: entities.site.keys"
-        remote_keys: "include: entities.site.keys"
+        local_keys: "@value: entities.site.keys"
+        remote_keys: "@value: entities.site.keys"
     depends_on: ["site"]
 
   feature:
@@ -651,8 +652,8 @@ entities:
     drop_duplicates: true
     foreign_keys:
       - entity: site
-        local_keys: "include: entities.site.keys"
-        remote_keys: "include: entities.site.keys"
+        local_keys: "@value: entities.site.keys"
+        remote_keys: "@value: entities.site.keys"
     depends_on: ["site", "feature_type"]
 
   sample_archaeological_period:
@@ -661,14 +662,14 @@ entities:
     columns: []
     foreign_keys:
       - entity: archaeological_period
-        local_keys: "include: entities.archaeological_period.keys"
-        remote_keys: "include: entities.archaeological_period.keys"
+        local_keys: "@value: entities.archaeological_period.keys"
+        remote_keys: "@value: entities.archaeological_period.keys"
       - entity: taxa
-        local_keys: "include: entities.taxa.keys"
-        remote_keys: "include: entities.taxa.keys"
+        local_keys: "@value: entities.taxa.keys"
+        remote_keys: "@value: entities.taxa.keys"
       - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
     drop_duplicates: True
     depends_on: ["sample", "archaeological_period"]
 
@@ -678,14 +679,14 @@ entities:
     columns: []
     foreign_keys:
       - entity: chronological_period
-        local_keys: "include: entities.chronological_period.keys"
-        remote_keys: "include: entities.chronological_period.keys"
+        local_keys: "@value: entities.chronological_period.keys"
+        remote_keys: "@value: entities.chronological_period.keys"
       - entity: taxa
-        local_keys: "include: entities.taxa.keys"
-        remote_keys: "include: entities.taxa.keys"
+        local_keys: "@value: entities.taxa.keys"
+        remote_keys: "@value: entities.taxa.keys"
       - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
     drop_duplicates: True
     depends_on: ["sample", "chronological_period", "taxa"]
 
@@ -712,34 +713,34 @@ entities:
     keys: []
     columns: ["KoordX", "KoordY", "KoordZ", "TiefeBis", "TiefeVon"]
     unnest:
-      id_vars: "include: entities.sample.keys"
+      id_vars: "@value: entities.sample.keys"
       value_vars: ["KoordX", "KoordY", "KoordZ", "TiefeBis", "TiefeVon"]
       var_name: coordinate_type
       value_name: coordinate_value
     foreign_keys:
       - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
       - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
     drop_duplicates: True
     depends_on: ["sample", "coordinate_method_dimension"]
 
   sample_description:
     surrogate_id: sample_description_id
     keys: []
-    columns: "include: entities.sample_description_type.type_names"
+    columns: "@value: entities.sample_description_type.type_names"
     foreign_keys:
       - entity: sample_description_type
         local_keys: ["type_name"]
         remote_keys: ["arbodat_code"]
       - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
     unnest:
-      id_vars: "include: entities.sample.keys"
-      value_vars: "include: entities.sample_description_type.type_names"
+      id_vars: "@value: entities.sample.keys"
+      value_vars: "@value: entities.sample_description_type.type_names"
       var_name: type_name
       value_name: description_value
     drop_duplicates: True
@@ -763,8 +764,8 @@ entities:
 
   dataset:
     surrogate_id: dataset_id
-    keys: "include: entities.sample.keys + [ 'method_name', 'method_type' ]"
-    columns: "include: entities.sample.keys + [ 'method_name', 'method_type' ]"
+    keys: "@value: entities.sample.keys + [ 'method_name', 'method_type' ]"
+    columns: "@value: entities.sample.keys + [ 'method_name', 'method_type' ]"
     extra_columns:
       dataset_type_id: null
       dataset_name: null
@@ -772,16 +773,16 @@ entities:
       data_status_id: 1
     foreign_keys:
       - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
       - entity: sample_method
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
         extra_columns:
           method_name: "method_id"
       - entity: project
-        local_keys: "include: entities.project.keys"
-        remote_keys: "include: entities.project.keys"
+        local_keys: "@value: entities.project.keys"
+        remote_keys: "@value: entities.project.keys"
     drop_duplicates: true
     depends_on: ["sample", "sample_method", "project"]
 
@@ -797,17 +798,17 @@ entities:
   sample_method:
     surrogate_id: sample_method_id
     keys: []
-    columns: "include: entities.method.process_names"
+    columns: "@value: entities.method.process_names"
     foreign_keys:
       - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
       - entity: method
         local_keys: ["method_name"]
         remote_keys: ["arbodat_code"]
     unnest:
-      id_vars: "include: entities.sample.keys + [ 'sample_method_id' ]"
-      value_vars: "include: entities.method.process_names"
+      id_vars: "@value: entities.sample.keys + [ 'sample_method_id' ]"
+      value_vars: "@value: entities.method.process_names"
       var_name: method_type
       value_name: method_name
     drop_duplicates: true
@@ -834,18 +835,60 @@ entities:
         "method_name",
         "method_abbrev_or_alt_name",
         "method_group_id",
-        "arbodat_code"
+        "arbodat_code",
       ]
     values:
       [
         [null, "Organic remains >2.0 mm", "ORG2,0", "ORG2,0", null, "ORG2,0"],
-        [null, "Organic remains 1.0-2.0 mm", "ORG1,0", "ORG1,0", null, "ORG1,0"],
-        [null, "Organic remains 0.5-1.0 mm", "ORG0,5", "ORG0,5", null, "ORG0,5"],
-        [null, "Organic remains 0.25-0.5 mm", "ORG0,25", "ORG0,25", null, "ORG0,25"],
+        [
+          null,
+          "Organic remains 1.0-2.0 mm",
+          "ORG1,0",
+          "ORG1,0",
+          null,
+          "ORG1,0",
+        ],
+        [
+          null,
+          "Organic remains 0.5-1.0 mm",
+          "ORG0,5",
+          "ORG0,5",
+          null,
+          "ORG0,5",
+        ],
+        [
+          null,
+          "Organic remains 0.25-0.5 mm",
+          "ORG0,25",
+          "ORG0,25",
+          null,
+          "ORG0,25",
+        ],
         [null, "Mineral remains >2.0 mm", "MIN2,0", "MIN2,0", null, "MIN2,0"],
-        [null, "Mineral remains 1.0-2.0 mm", "MIN1,0", "MIN1,0", null, "MIN1,0"],
-        [null, "Mineral remains 0.5-1.0 mm", "MIN0,5", "MIN0,5", null, "MIN0,5"],
-        [null, "Mineral remains 0.25-0.5 mm", "MIN0,25", "MIN0,25", null, "MIN0,25"],
+        [
+          null,
+          "Mineral remains 1.0-2.0 mm",
+          "MIN1,0",
+          "MIN1,0",
+          null,
+          "MIN1,0",
+        ],
+        [
+          null,
+          "Mineral remains 0.5-1.0 mm",
+          "MIN0,5",
+          "MIN0,5",
+          null,
+          "MIN0,5",
+        ],
+        [
+          null,
+          "Mineral remains 0.25-0.5 mm",
+          "MIN0,25",
+          "MIN0,25",
+          null,
+          "MIN0,25",
+        ],
       ]
     depends_on: []
 
@@ -864,15 +907,15 @@ entities:
     analysis_keys: ["Fraction", "cf", "RTyp", "Zustand"]
     value_columns:
       ["SumFAnzahl", "SumFFrag", "SumFGewicht", "SumPflR", "Zust", "geschätzt"]
-    keys: "include: entities.sample.keys + ['PCODE'] + include: entities.result.analysis_keys"
-    columns: "include: entities.sample_taxa.keys + include: entities.result.value_columns"
+    keys: "@value: entities.sample.keys + ['PCODE'] + @value: entities.result.analysis_keys"
+    columns: "@value: entities.sample_taxa.keys + @value: entities.result.value_columns"
     foreign_keys:
       - entity: taxa
         local_keys: ["PCODE"]
         remote_keys: ["PCODE"]
       - entity: sample
-        local_keys: "include: entities.sample.keys"
-        remote_keys: "include: entities.sample.keys"
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
       - entity: modification_type
         local_keys: ["Zust"]
         remote_keys: ["Zust"]
@@ -890,14 +933,14 @@ entities:
   #   columns: []
   #   foreign_keys:
   #     - entity: epoch
-  #       local_keys: "include: entities.epoch.keys"
-  #       remote_keys: "include: entities.epoch.keys"
+  #       local_keys: "@value: entities.epoch.keys"
+  #       remote_keys: "@value: entities.epoch.keys"
   #     - entity: sample
-  #       local_keys: "include: entities.sample.keys"
-  #       remote_keys: "include: entities.sample.keys"
+  #       local_keys: "@value: entities.sample.keys"
+  #       remote_keys: "@value: entities.sample.keys"
   #     - entity: taxa
-  #       local_keys: "include: entities.taxa.keys"
-  #       remote_keys: "include: entities.taxa.keys"
+  #       local_keys: "@value: entities.taxa.keys"
+  #       remote_keys: "@value: entities.taxa.keys"
   #   drop_duplicates: True
   #   depends_on: ["sample", "epoch", "taxa"]
 
