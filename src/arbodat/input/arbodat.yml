@@ -765,7 +765,7 @@ entities:
     keys: "include: entities.sample.keys + [ 'method_name', 'method_type' ]"
     columns: "include: entities.sample.keys + [ 'method_name', 'method_type' ]"
     extra_columns:
-      dataset_type_id: null 
+      dataset_type_id: null
       dataset_name: null
       master_set_id: 1
       data_status_id: 1
@@ -786,7 +786,7 @@ entities:
 
   method_group:
     type: fixed
-    columns: [ "method_group_id", "group_name", "description"]
+    columns: ["method_group_id", "group_name", "description"]
     values: |
       sql: 
       select "method_group_id", "group_name", "description"
@@ -795,7 +795,7 @@ entities:
 
   sample_method:
     surrogate_id: sample_method_id
-    keys: [ ]
+    keys: []
     columns: "include: entities.method.process_names"
     foreign_keys:
       - entity: sample
@@ -823,23 +823,60 @@ entities:
         "MIN0,5",
         "MIN0,25",
       ]
-    columns: ["biblio_id", "description", "method_abbrev_or_alt_name", "method_group_id"]
-    values: [
-      [null, "Organic remains >2.0 mm", "ORG2,0", null],
-      [null, "Organic remains 1.0-2.0 mm", "ORG1,0", null],
-      [null, "Organic remains 0.5-1.0 mm", "ORG0,5", null],
-      [null, "Organic remains 0.25-0.5 mm", "ORG0,25", null],
-      [null, "Mineral remains >2.0 mm", "MIN2,0", null],
-      [null, "Mineral remains 1.0-2.0 mm", "MIN1,0", null],
-      [null, "Mineral remains 0.5-1.0 mm", "MIN0,5", null],
-      [null, "Mineral remains 0.25-0.5 mm", "MIN0,25", null],
-    ]
-    depends_on: [  ]
+    columns:
+      [
+        "biblio_id",
+        "description",
+        "method_abbrev_or_alt_name",
+        "method_group_id",
+      ]
+    values:
+      [
+        [null, "Organic remains >2.0 mm", "ORG2,0", null],
+        [null, "Organic remains 1.0-2.0 mm", "ORG1,0", null],
+        [null, "Organic remains 0.5-1.0 mm", "ORG0,5", null],
+        [null, "Organic remains 0.25-0.5 mm", "ORG0,25", null],
+        [null, "Mineral remains >2.0 mm", "MIN2,0", null],
+        [null, "Mineral remains 1.0-2.0 mm", "MIN1,0", null],
+        [null, "Mineral remains 0.5-1.0 mm", "MIN0,5", null],
+        [null, "Mineral remains 0.25-0.5 mm", "MIN0,25", null],
+      ]
+    depends_on: []
 
+  modification_type:
+    surrogate_id: modification_type_id
+    keys: ["Zust"]
+    columns: ["Zust", "Zustand"]
+    extra_columns:
+      modification_type_name: "Zust"
+      modification_type_description: "Zustand"
+    drop_duplicates: ["Zust"]
+    depends_on: []
 
-  # TODO: sample_descriptions
+  result:
+    surrogate_id: result_id
+    analysis_keys: ["Fraction", "cf", "RTyp", "Zustand"]
+    value_columns:
+      ["SumFAnzahl", "SumFFrag", "SumFGewicht", "SumPflR", "Zust", "geschätzt"]
+    keys: "include: entities.sample.keys + ['PCODE'] + include: entities.result.analysis_keys"
+    columns: "include: entities.sample_taxa.keys + include: entities.result.value_columns"
+    foreign_keys:
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
+      - entity: sample
+        local_keys: "include: entities.sample.keys"
+        remote_keys: "include: entities.sample.keys"
+      - entity: modification_type
+        local_keys: ["Zust"]
+        remote_keys: ["Zust"]
+      - entity: remain_type
+        local_keys: ["RTyp"]
+        remote_keys: ["RTyp"]
+    drop_empty_rows: ["SumFAnzahl", "SumFFrag", "SumFGewicht", "SumPflR"]
+    depends_on: ["taxa", "sample", "modification_type", "remain_type"]
+
   ############################## STATUS OK DIVIDER ###############################
-
 
   # sample_epoch:
   #   surrogate_id: sample_epoch_id
