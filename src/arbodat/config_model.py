@@ -119,14 +119,14 @@ class TableConfig:
 
     @property
     def is_fixed_sql(self) -> bool:
-        return self.is_fixed_data and isinstance(self.values, str) and self.values.strip().startswith("sql:")
+        return self.data.get("type", "data") == "sql"
 
     @property
     def fixed_sql(self) -> None | str:
         """Get the SQL query string for fixed data, if applicable."""
         if self.is_fixed_sql:
             assert isinstance(self.values, str)
-            return self.values.strip()[4:].strip()
+            return self.values.lstrip("sql:").strip()
         return None
 
     @property

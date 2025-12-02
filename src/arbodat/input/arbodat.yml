@@ -544,7 +544,7 @@ entities:
 
   dimensions:
     surrogate_id: "dimension_id"
-    type: fixed
+    type: sql
     columns: ["dimension_id", "dimension_name"]
     drop_duplicates: true
     depends_on: []
@@ -718,7 +718,7 @@ entities:
     depends_on: ["method", "project"]
 
   method_group:
-    type: fixed
+    type: sql
     columns: ["method_group_id", "group_name", "description"]
     values: |
       sql: 
@@ -775,7 +775,7 @@ entities:
 
   identification_level:
     surrogate_id: identification_level_id
-    type: fixed
+    type: sql
     columns: ["identification_level_id", "identification_level_abbrev", "identification_level_name", "notes"]
     drop_duplicates: false
     values: |
