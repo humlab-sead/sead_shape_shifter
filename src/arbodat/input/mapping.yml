@@ -1,0 +1,23 @@
+taxa:
+  local_keys: ['PCODE']
+  remote_keys: ['taxon_id']
+  mapping:
+    xyz: taxon_id12345
+
+location_type:
+  local_keys: "location_type"
+  remote_keys: ['location_type_name']
+  remote_id: location_type_id
+  mapping:
+    "Ort": "XXX"
+    "Kreis": "YYY"
+    "Land": "ZZZ"
+    "Staat": "AAA"
+    "FlurStr": "BBB"
+  
+method:
+  local_keys: ['arbodat_code']
+  remote_keys: ['method_id']
+  mapping:
+    "ORG0,25": 1234567
+    "ORG0,5": 12345678  
