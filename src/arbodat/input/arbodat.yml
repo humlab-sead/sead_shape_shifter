@@ -553,6 +553,17 @@ entities:
       select dimension_id, dimension_name
       from public.tbl_dimensions
 
+  feature_property_type:
+    surrogate_id: feature_property_type_id
+    surrogate_name: "arbodat_code"
+    type: fixed
+    columns: ["arbodat_code"]
+    extra_columns:
+      feature_property_type: 1
+      feature_property_name: 1
+      feature_property_description: 1
+    values: [ "GrJahrBefu", "Gebäude", "okBefu", "okErh", "BestJa", "FlSchn", "EVNr?" ]
+
   feature_type:
     surrogate_id: feature_type_id
     keys: ["ProjektNr", "Befu"]
@@ -570,13 +581,32 @@ entities:
   feature:
     surrogate_id: feature_id
     keys: ["ProjektNr", "Befu"]
-    columns: ["ProjektNr", "Fustel", "EVNr", "Befu", "BefuTyp", "GrJahrBefu", "Gebäude", "okBefu"]
+    columns: ["ProjektNr", "Fustel", "Befu", "BefuTyp"]
     drop_duplicates: true
     foreign_keys:
       - entity: site
         local_keys: "@value: entities.site.keys"
         remote_keys: "@value: entities.site.keys"
     depends_on: ["site", "feature_type"]
+
+  feature_property:
+    surrogate_id: feature_property_id
+    keys: []
+    columns: "@value: entities.feature.keys"
+    foreign_keys:
+      - entity: feature
+        local_keys: "@value: entities.feature.keys"
+        remote_keys: "@value: entities.feature.keys"
+      - entity: feature_property_type
+        local_keys: ["feature_property_type"]
+        remote_keys: ["arbodat_code"]
+    unnest:
+      id_vars: "@value: entities.feature.keys"
+      value_vars: "@value: entities.feature_property_type.values"
+      var_name: feature_property_type
+      value_name: feature_property_value
+    drop_duplicates: True
+    depends_on: ["feature", "feature_property_type"]
 
   sample_archaeological_period:
     surrogate_id: sample_archaeological_period_id
@@ -742,6 +772,28 @@ entities:
       modification_type_description: "Zustand"
     drop_duplicates: ["Zust"]
     depends_on: []
+
+  identification_level:
+    surrogate_id: identification_level_id
+    type: fixed
+    columns: ["identification_level_id", "identification_level_abbrev", "identification_level_name", "notes"]
+    drop_duplicates: false
+    values: |
+      sql: 
+      select identification_level_id, identification_level_abbrev, identification_level_name, notes
+      from public.tbl_identification_levels
+    depends_on: []
+
+  dating:
+    surrogate_id: dating_id
+    keys: ["ProjektNr", "Befu", "ProbNr"]
+    columns: ["ProjektNr", "Befu", "ProbNr", "ChronoDat", "ArchDat"]
+    foreign_keys:
+      - entity: sample
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
+    drop_duplicates: "@value: entities.dating.keys"
+    depends_on: ["sample"]
 
   result:
     surrogate_id: result_id
