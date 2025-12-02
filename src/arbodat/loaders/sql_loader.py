@@ -5,9 +5,10 @@ from sqlalchemy import create_engine
 
 from src.arbodat.config_model import TableConfig
 from src.arbodat.utility import add_surrogate_id
-from .interface import DataLoader
 from src.configuration.resolve import ConfigValue
 from src.utility import create_db_uri
+
+from .interface import DataLoader
 
 
 def read_sql(sql: str) -> pd.DataFrame:

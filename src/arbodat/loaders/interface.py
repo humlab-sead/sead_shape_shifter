@@ -1,4 +1,5 @@
 import abc
+
 import pandas as pd
 
 from src.arbodat.config_model import TableConfig

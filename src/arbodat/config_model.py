@@ -53,7 +53,9 @@ class ForeignKeyConfig:
             if not self.local_keys or not self.remote_keys:
                 raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing local and/or remote keys")
             if len(self.local_keys) != len(self.remote_keys):
-                raise ValueError(f"Foreign key configuration mismatch for entity '{local_entity}': number of local keys ({len(self.local_keys)}) does not match number of remote keys ({len(self.remote_keys)})")
+                raise ValueError(
+                    f"Foreign key configuration mismatch for entity '{local_entity}': number of local keys ({len(self.local_keys)}) does not match number of remote keys ({len(self.remote_keys)})"
+                )
 
     def resolve_extra_columns(self, data: dict[str, Any]) -> dict[str, str]:
         """Resolve extra columns for the foreign key configuration.

@@ -10,8 +10,8 @@ Usage:
 
 import asyncio
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 from time import time
 from typing import Literal
 
@@ -22,6 +22,7 @@ from src.arbodat.normalizer import ArbodatSurveyNormalizer
 from src.arbodat.utility import extract_translation_map
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
+
 
 async def workflow(
     input_csv: str,
@@ -58,45 +59,50 @@ async def workflow(
         for name, table in normalizer.data.items():
             click.echo(f"  - {name}: {len(table)} rows")
 
+
 # Global dictionary to track duplicate log messages
 _last_seen_messages: dict[str, float] = {}
 
 
 def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
     """Configure loguru logging with appropriate handlers and filters.
-    
+
     Args:
         verbose: If True, set log level to DEBUG and show all messages.
                 If False, set to INFO and filter duplicate messages.
         log_file: Optional path to log file. If provided, logs are written to file.
     """
     global _last_seen_messages
-    
+
     level = "DEBUG" if verbose else "INFO"
-    
+
     logger.remove()
-    
+
     # Define filter for duplicate messages (only in non-verbose mode)
     def filter_once_per_message(record) -> bool:
         """Filter to show each unique message only once per second."""
         if verbose:
             return True
-            
+
         msg = record["message"]
         now = time()
         if msg not in _last_seen_messages or now - _last_seen_messages[msg] > 1.0:
             _last_seen_messages[msg] = now
             return True
         return False
-    
+
     # Format string for logs
     log_format = (
-        "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-        "<level>{level: <8}</level> | "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-        "<level>{message}</level>"
-    ) if verbose else "<level>{message}</level>"
-    
+        (
+            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+            "<level>{message}</level>"
+        )
+        if verbose
+        else "<level>{message}</level>"
+    )
+
     # Add console handler
     logger.add(
         sys.stderr,
@@ -105,7 +111,7 @@ def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
         filter=filter_once_per_message,
         colorize=True,
     )
-    
+
     # Add file handler if specified
     if log_file:
         logger.add(
@@ -116,7 +122,7 @@ def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
             retention="7 days",
             compression="zip",
         )
-    
+
     if verbose:
         logger.debug("Verbose logging enabled")
 

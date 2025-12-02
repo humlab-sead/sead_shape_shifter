@@ -1,7 +1,10 @@
 import pandas as pd
+
 from src.arbodat.config_model import TableConfig
 from src.arbodat.utility import add_surrogate_id
+
 from .interface import DataLoader
+
 
 class FixedLoader(DataLoader):
     """Loader for fixed data entities."""
@@ -35,7 +38,7 @@ class FixedLoader(DataLoader):
                 raise ValueError(f"Fixed data entity '{entity_name}' has mismatched number of columns and values")
 
             data = pd.DataFrame(table_cfg.values, columns=table_cfg.columns)
-            
+
         if table_cfg.surrogate_id:
             data = add_surrogate_id(data, table_cfg.surrogate_id)
 

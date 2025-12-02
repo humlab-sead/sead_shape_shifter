@@ -134,7 +134,7 @@ class ArbodatSurveyNormalizer:
                 source = await SqlLoader().load(entity_name=entity, table_cfg=table_cfg)
             else:
                 source = self.resolve_source(source=table_cfg.source)
-    
+
             #####
 
             if not isinstance(table_cfg.columns, list) or not all(isinstance(c, str) for c in table_cfg.columns):
