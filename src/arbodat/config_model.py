@@ -39,7 +39,7 @@ class ForeignKeyConfig:
         self.drop_remote_id: bool = data.get("drop_remote_id", False)
         self.remote_entity: str = data.get("entity", "")
         self.remote_keys: list[str] = data.get("remote_keys", []) or []
-        self.how: Literal["left", "inner", "outer", "right"] = data.get("how", "inner")
+        self.how: Literal["left", "inner", "outer", "right", "cross"] = data.get("how", "inner")
 
         if not self.remote_entity:
             raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing remote entity")
@@ -49,8 +49,11 @@ class ForeignKeyConfig:
 
         self.remote_surrogate_id: str = cfg[self.remote_entity].get("surrogate_id", "")
 
-        if not self.remote_keys:
-            raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing remote_keys")
+        if self.how != "cross":
+            if not self.local_keys or not self.remote_keys:
+                raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing local and/or remote keys")
+            if len(self.local_keys) != len(self.remote_keys):
+                raise ValueError(f"Foreign key configuration mismatch for entity '{local_entity}': number of local keys ({len(self.local_keys)}) does not match number of remote keys ({len(self.remote_keys)})")
 
     def resolve_extra_columns(self, data: dict[str, Any]) -> dict[str, str]:
         """Resolve extra columns for the foreign key configuration.
