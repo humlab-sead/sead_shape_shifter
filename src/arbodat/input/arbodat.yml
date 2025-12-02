@@ -119,6 +119,7 @@ entities:
         remote_keys: ["location_type"]
     drop_duplicates: "@value: entities.location.keys"
     depends_on: ["location_type"]
+  
 
   site_coordinate:
     surrogate_id: site_coordinate_id
@@ -820,12 +821,26 @@ entities:
     drop_empty_rows: ["SumFAnzahl", "SumFFrag", "SumFGewicht", "SumPflR"]
     depends_on: ["taxa", "sample", "modification_type", "remain_type", "dataset"]
 
+  dataset_contact:
+    surrogate_id: dataset_contact_id
+    keys: []
+    columns: []
+    foreign_keys:
+      - entity: dataset
+        local_keys: "@value: entities.dataset.keys"
+        remote_keys: "@value: entities.dataset.keys"
+      - entity: contact
+        local_keys: "@value: entities.contact.keys"
+        remote_keys: "@value: entities.contact.keys"
+    drop_duplicates: True
+    depends_on: ["dataset", "contact"]
+
 # tbl_dataset_contacts
 # tbl_dataset_masters
 # tbl_dataset_submissions
 # tbl_dating_labs
 
-translation: "@load: options.translations"
+translation: "@load: potions.translations"
 
 options:
   translations:
