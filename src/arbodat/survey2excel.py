@@ -23,7 +23,7 @@ from src.arbodat.utility import extract_translation_map
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
 
-def workflow(
+async def workflow(
     input_csv: str,
     target: str,
     sep: str,
@@ -39,7 +39,7 @@ def workflow(
         click.echo(f"Loaded {len(normalizer.survey)} rows with {len(normalizer.survey.columns)} columns")
         click.echo("Building normalized tables...")
 
-    normalizer.normalize()
+    await normalizer.normalize()
 
     if drop_foreign_keys:
         normalizer.drop_foreign_key_columns()
