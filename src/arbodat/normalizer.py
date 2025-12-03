@@ -93,11 +93,22 @@ class ArbodatSurveyNormalizer:
     def survey(self) -> pd.DataFrame:
         return self.data["survey"]
 
-    def resolve_source(self, source: pd.DataFrame | str | None = None) -> pd.DataFrame:
-        if isinstance(source, str):
-            if not source in self.data:
-                raise ValueError(f"Source table '{source}' not found in stored data")
-            return self.data[source]
+    async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
+        """Resolve the source DataFrame for the given entity based on its configuration."""
+
+        # TODO: Make pluggable, identify loaders dynamically based on table_cfg.type (and possibly source)
+        # TODO: implement CSVLoader (force is a CSV-file specification), MS Access DB loader, ExcelLoader (read one or more sheets), BugsImport loader etc.
+        if table_cfg.is_fixed_data:
+            return await FixedLoader().load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
+        
+        if table_cfg.is_fixed_sql:
+            return await SqlLoader().load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
+
+        if isinstance(table_cfg.source, str):
+            if not table_cfg.source in self.data:
+                raise ValueError(f"Source table '{table_cfg.source}' not found in stored data")
+            return self.data[table_cfg.source]
+
         return self.survey
 
     def register(self, name: str, df: pd.DataFrame) -> pd.DataFrame:
@@ -126,16 +137,7 @@ class ArbodatSurveyNormalizer:
             if entity == "dataset":
                 logger.debug(f"Debugging: {entity}")
 
-            source: pd.DataFrame
-
-            if table_cfg.is_fixed_data:
-                source = await FixedLoader().load(entity_name=entity, table_cfg=table_cfg)
-            elif table_cfg.is_fixed_sql:
-                source = await SqlLoader().load(entity_name=entity, table_cfg=table_cfg)
-            else:
-                source = self.resolve_source(source=table_cfg.source)
-
-            #####
+            source: pd.DataFrame = await self.resolve_source(table_cfg=table_cfg)
 
             if not isinstance(table_cfg.columns, list) or not all(isinstance(c, str) for c in table_cfg.columns):
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': {table_cfg.columns}")
@@ -154,7 +156,6 @@ class ArbodatSurveyNormalizer:
                 data_columns: list[str] = table_cfg.data_columns
                 if data_columns:
                     data = data.dropna(subset=data_columns, how="all")
-            #####
 
             if table_cfg.surrogate_id:
                 data = add_surrogate_id(data, table_cfg.surrogate_id)
