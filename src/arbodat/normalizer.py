@@ -32,11 +32,11 @@ from typing import Literal
 import pandas as pd
 from loguru import logger
 
-from src.arbodat.config_model import TableConfig, TablesConfig
+from src.arbodat.config_model import DataSourceConfig, TableConfig, TablesConfig
 from src.arbodat.dispatch import Dispatcher, Dispatchers
 from src.arbodat.link import link_entity
+from src.arbodat.loaders.database_loaders import SqlLoader, SqlLoaderFactory
 from src.arbodat.loaders.fixed_loader import FixedLoader
-from src.arbodat.loaders.sql_loader import SqlLoader
 from src.arbodat.unnest import unnest
 from src.arbodat.utility import add_surrogate_id, get_subset, translate
 
@@ -96,13 +96,18 @@ class ArbodatSurveyNormalizer:
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
 
-        # TODO: Make pluggable, identify loaders dynamically based on table_cfg.type (and possibly source)
-        # TODO: implement CSVLoader (force is a CSV-file specification), MS Access DB loader, ExcelLoader (read one or more sheets), BugsImport loader etc.
         if table_cfg.is_fixed_data:
             return await FixedLoader().load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
-        
-        if table_cfg.is_fixed_sql:
-            return await SqlLoader().load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
+
+        if table_cfg.is_sql_data:
+
+            if not table_cfg.data_source:
+                raise ValueError(f"Entity source must be set to a valid data source for entity '{table_cfg.entity_name}'")
+            
+            data_source_cfg: DataSourceConfig = self.config.get_data_source_config(table_cfg.data_source)
+            loader: SqlLoader = SqlLoaderFactory().create_loader(driver=data_source_cfg.driver, db_opts=data_source_cfg.options)
+
+            return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
 
         if isinstance(table_cfg.source, str):
             if not table_cfg.source in self.data:
