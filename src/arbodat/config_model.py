@@ -249,17 +249,24 @@ class TableConfig:
 class TablesConfig:
     """Configuration for database tables."""
 
-    def __init__(self, *, cfg: None | dict[str, dict[str, Any]] = None) -> None:
-        self.config: dict[str, dict[str, Any]] = cfg or ConfigValue[dict[str, dict[str, Any]]]("entities").resolve() or {}
-        self.tables: dict[str, TableConfig] = {entity_name: TableConfig(cfg=self.config, entity_name=entity_name) for entity_name in self.config.keys()}
-        self.options: dict[str, Any] = dotget(cfg or {}, "options", {})
-        self.data_sources: dict[str, Any] = dotget(cfg or {}, "options.data_sources", {})
+    def __init__(self, *, entities_cfg: None | dict[str, dict[str, Any]] = None, options: dict[str, Any] | None = None) -> None:
+
+        self.entities_cfg: dict[str, dict[str, Any]] = entities_cfg or ConfigValue[dict[str, dict[str, Any]]]("entities", default={}).resolve() or {}
+        self.options: dict[str, Any] = options or ConfigValue[dict[str, Any]]("options", default={}).resolve() or {}
+
+        self.tables: dict[str, TableConfig] = {key: TableConfig(cfg=self.entities_cfg, entity_name=key) for key in self.entities_cfg.keys()}
+        self.data_sources: dict[str, Any] = self.options.get("data_sources", {})
 
     def get_table(self, entity_name: str) -> "TableConfig":
         return self.tables[entity_name]
 
     def has_table(self, entity_name: str) -> bool:
         return entity_name in self.tables
+
+    def get_data_source(self, name: str) -> "DataSourceConfig":
+        if name not in self.data_sources:
+            raise ValueError(f"Data source 'options.data_sources.{name}' not found in configuration")
+        return DataSourceConfig(cfg=self.data_sources[name], name=name)
 
     @cached_property
     def table_names(self) -> list[str]:
@@ -289,11 +296,6 @@ class TablesConfig:
         new_column_order: list[str] = existing_cols_to_move + other_cols
         table = table[new_column_order]
         return table
-
-    def get_data_source_config(self, name: str) -> "DataSourceConfig":
-        if name not in self.data_sources:
-            raise ValueError(f"Data source 'options.data_sources.{name}' not found in configuration")
-        return DataSourceConfig(cfg=self.data_sources[name], name=name)
 
 
 class DataSourceConfig:
