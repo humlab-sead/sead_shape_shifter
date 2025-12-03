@@ -137,7 +137,7 @@ def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
 @click.option("--mode", "-m", type=click.Choice(["xlsx", "csv", "db"]), default="xlsx", show_default=True, help="Output file format.")
 @click.option("--drop-foreign-keys", "-d", is_flag=True, help="Drop foreign key columns after linking.", default=False)
 @click.option("--log-file", "-l", type=click.Path(), help="Path to log file (optional).")
-def main(
+async def main(
     input_csv: str,
     target: str,
     sep: str,
@@ -173,7 +173,7 @@ def main(
 
     asyncio.run(setup_config_store(config_file))
 
-    workflow(
+    await workflow(
         input_csv=input_csv,
         target=target,
         sep=sep,
