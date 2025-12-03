@@ -544,6 +544,7 @@ entities:
       ]
 
   dimensions:
+    data_source: sead
     surrogate_id: "dimension_id"
     type: sql
     columns: ["dimension_id", "dimension_name"]
@@ -719,6 +720,7 @@ entities:
     depends_on: ["method", "project"]
 
   method_group:
+    data_source: sead
     type: sql
     columns: ["method_group_id", "group_name", "description"]
     values: |
@@ -775,6 +777,7 @@ entities:
     depends_on: []
 
   identification_level:
+    data_source: sead
     surrogate_id: identification_level_id
     type: sql
     columns: ["identification_level_id", "identification_level_abbrev", "identification_level_name", "notes"]
@@ -840,9 +843,14 @@ entities:
 # tbl_dataset_submissions
 # tbl_dating_labs
 
-translation: "@load: potions.translations"
+translation: "@load: options.translations"
 
 options:
+
   translations:
     filename: translations.tsv
     delimiter: "\t"
+
+  data_sources:
+    sead: "@include: sead-options.yml"
+    arbodat: "@include: arbodat-options.yml"
