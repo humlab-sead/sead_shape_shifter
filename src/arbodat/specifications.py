@@ -36,11 +36,11 @@ class ForeignKeyConfigSpecification:
         if len(fk_cfg.local_keys) == 0 or len(fk_cfg.remote_keys) == 0:
             self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: local_keys and remote_keys must be specified for non-cross joins"
             return False
-          
+
         if len(fk_cfg.local_keys) != len(fk_cfg.remote_keys):
             self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: number of local_keys ({len(fk_cfg.local_keys)}) does not match number of remote_keys ({len(fk_cfg.remote_keys)})"
             return False
-        
+
         missing_keys = self.get_missing_keys(
             required_keys=set(fk_cfg.local_keys), columns=set(cfg_local_table.usage_columns) | set(cfg_local_table.pending_columns), pending_columns=set()
         )

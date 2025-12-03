@@ -10,8 +10,8 @@ Usage:
 
 import asyncio
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 from time import time
 from typing import Literal
 
@@ -23,7 +23,8 @@ from src.arbodat.utility import extract_translation_map
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
 
-def workflow(
+
+async def workflow(
     input_csv: str,
     target: str,
     sep: str,
@@ -39,7 +40,7 @@ def workflow(
         click.echo(f"Loaded {len(normalizer.survey)} rows with {len(normalizer.survey.columns)} columns")
         click.echo("Building normalized tables...")
 
-    normalizer.normalize()
+    await normalizer.normalize()
 
     if drop_foreign_keys:
         normalizer.drop_foreign_key_columns()
@@ -58,45 +59,50 @@ def workflow(
         for name, table in normalizer.data.items():
             click.echo(f"  - {name}: {len(table)} rows")
 
+
 # Global dictionary to track duplicate log messages
 _last_seen_messages: dict[str, float] = {}
 
 
 def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
     """Configure loguru logging with appropriate handlers and filters.
-    
+
     Args:
         verbose: If True, set log level to DEBUG and show all messages.
                 If False, set to INFO and filter duplicate messages.
         log_file: Optional path to log file. If provided, logs are written to file.
     """
     global _last_seen_messages
-    
+
     level = "DEBUG" if verbose else "INFO"
-    
+
     logger.remove()
-    
+
     # Define filter for duplicate messages (only in non-verbose mode)
     def filter_once_per_message(record) -> bool:
         """Filter to show each unique message only once per second."""
         if verbose:
             return True
-            
+
         msg = record["message"]
         now = time()
         if msg not in _last_seen_messages or now - _last_seen_messages[msg] > 1.0:
             _last_seen_messages[msg] = now
             return True
         return False
-    
+
     # Format string for logs
     log_format = (
-        "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-        "<level>{level: <8}</level> | "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-        "<level>{message}</level>"
-    ) if verbose else "<level>{message}</level>"
-    
+        (
+            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+            "<level>{message}</level>"
+        )
+        if verbose
+        else "<level>{message}</level>"
+    )
+
     # Add console handler
     logger.add(
         sys.stderr,
@@ -105,7 +111,7 @@ def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
         filter=filter_once_per_message,
         colorize=True,
     )
-    
+
     # Add file handler if specified
     if log_file:
         logger.add(
@@ -116,7 +122,7 @@ def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
             retention="7 days",
             compression="zip",
         )
-    
+
     if verbose:
         logger.debug("Verbose logging enabled")
 
@@ -126,16 +132,18 @@ def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
 @click.argument("target")  # type=click.Path(dir_okay=False, writable=True))
 @click.option("--sep", "-s", show_default=True, help='Field separator character. Use "," for comma-separated files.', default=";")
 @click.option("--config-file", "-c", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to configuration file.")
+@click.option("--env-file", "-e", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to environment variables file.")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output.", default=False)
 @click.option("--translate", "-t", is_flag=True, help="Enable translation.", default=False)
 @click.option("--mode", "-m", type=click.Choice(["xlsx", "csv", "db"]), default="xlsx", show_default=True, help="Output file format.")
 @click.option("--drop-foreign-keys", "-d", is_flag=True, help="Drop foreign key columns after linking.", default=False)
 @click.option("--log-file", "-l", type=click.Path(), help="Path to log file (optional).")
-def main(
+async def main(
     input_csv: str,
     target: str,
     sep: str,
     config_file: str,
+    env_file: str,
     verbose: bool,
     translate: bool,
     mode: Literal["xlsx", "csv", "db"],
@@ -165,9 +173,14 @@ def main(
     if not config_file or not Path(config_file).exists():
         raise FileNotFoundError(f"Configuration file not found: {config_file or 'undefined'}")
 
-    asyncio.run(setup_config_store(config_file))
+    asyncio.run(setup_config_store(
+        config_file,
+        env_prefix="SEAD_NORMALIZER",
+        env_filename=env_file or os.path.join(os.path.dirname(__file__), "input", ".env"),
+        db_opts_path="",
+    ))
 
-    workflow(
+    await workflow(
         input_csv=input_csv,
         target=target,
         sep=sep,

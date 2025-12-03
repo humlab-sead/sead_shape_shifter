@@ -32,12 +32,13 @@ from typing import Literal
 import pandas as pd
 from loguru import logger
 
-from src.arbodat.config_model import TableConfig, TablesConfig
+from src.arbodat.config_model import DataSourceConfig, TableConfig, TablesConfig
 from src.arbodat.dispatch import Dispatcher, Dispatchers
-from src.arbodat.create_fixed import create_fixed_table
 from src.arbodat.link import link_entity
+from src.arbodat.loaders.database_loaders import SqlLoader, SqlLoaderFactory
+from src.arbodat.loaders.fixed_loader import FixedLoader
 from src.arbodat.unnest import unnest
-from src.arbodat.utility import get_subset, translate
+from src.arbodat.utility import add_surrogate_id, get_subset, translate
 
 
 class ProcessState:
@@ -92,11 +93,27 @@ class ArbodatSurveyNormalizer:
     def survey(self) -> pd.DataFrame:
         return self.data["survey"]
 
-    def resolve_source(self, source: pd.DataFrame | str | None = None) -> pd.DataFrame:
-        if isinstance(source, str):
-            if not source in self.data:
-                raise ValueError(f"Source table '{source}' not found in stored data")
-            return self.data[source]
+    async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
+        """Resolve the source DataFrame for the given entity based on its configuration."""
+
+        if table_cfg.is_fixed_data:
+            return await FixedLoader().load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
+
+        if table_cfg.is_sql_data:
+
+            if not table_cfg.data_source:
+                raise ValueError(f"Entity source must be set to a valid data source for entity '{table_cfg.entity_name}'")
+            
+            data_source_cfg: DataSourceConfig = self.config.get_data_source_config(table_cfg.data_source)
+            loader: SqlLoader = SqlLoaderFactory().create_loader(driver=data_source_cfg.driver, db_opts=data_source_cfg.options)
+
+            return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
+
+        if isinstance(table_cfg.source, str):
+            if not table_cfg.source in self.data:
+                raise ValueError(f"Source table '{table_cfg.source}' not found in stored data")
+            return self.data[table_cfg.source]
+
         return self.survey
 
     def register(self, name: str, df: pd.DataFrame) -> pd.DataFrame:
@@ -109,37 +126,7 @@ class ArbodatSurveyNormalizer:
         df: pd.DataFrame = pd.read_csv(path, sep=sep, dtype=str, keep_default_na=False)
         return ArbodatSurveyNormalizer(df)
 
-    def extract_entity(self, entity_name: str) -> pd.DataFrame:
-        """Extract entity DataFrame based on configuration."""
-
-        table_cfg: TableConfig = self.config.get_table(entity_name)
-
-        if table_cfg.is_fixed_data:
-            raise ValueError(f"Entity '{entity_name}' is configured as fixed data and cannot be extracted")
-
-        source: pd.DataFrame = self.resolve_source(source=table_cfg.source)
-
-        if not isinstance(table_cfg.columns, list) or not all(isinstance(c, str) for c in table_cfg.columns):
-            raise ValueError(f"Invalid columns configuration for entity '{entity_name}': {table_cfg.columns}")
-
-        data: pd.DataFrame = get_subset(
-            source=source,
-            columns=table_cfg.usage_columns,
-            extra_columns=table_cfg.extra_columns,
-            drop_duplicates=table_cfg.drop_duplicates,
-            surrogate_id=table_cfg.surrogate_id,
-            raise_if_missing=False,
-        )
-
-        if table_cfg.drop_empty_rows:
-            """Discard rows that are empty in all **data** columns (excluding keys and foreign keys)."""
-            data_columns: list[str] = table_cfg.data_columns
-            if data_columns:
-                data = data.dropna(subset=data_columns, how="all")
-
-        return data
-
-    def normalize(self) -> None:
+    async def normalize(self) -> None:
         """Extract all configured entities and store them."""
         while len(self.state.unprocessed) > 0:
 
@@ -155,12 +142,28 @@ class ArbodatSurveyNormalizer:
             if entity == "dataset":
                 logger.debug(f"Debugging: {entity}")
 
-            data: pd.DataFrame
+            source: pd.DataFrame = await self.resolve_source(table_cfg=table_cfg)
 
-            if table_cfg.is_fixed_data:
-                data = create_fixed_table(entity_name=entity, table_cfg=table_cfg)
-            else:
-                data = self.extract_entity(entity)
+            if not isinstance(table_cfg.columns, list) or not all(isinstance(c, str) for c in table_cfg.columns):
+                raise ValueError(f"Invalid columns configuration for entity '{entity}': {table_cfg.columns}")
+
+            data: pd.DataFrame = get_subset(
+                source=source,
+                columns=table_cfg.usage_columns,
+                extra_columns=table_cfg.extra_columns,
+                drop_duplicates=table_cfg.drop_duplicates,
+                surrogate_id=table_cfg.surrogate_id,
+                raise_if_missing=False,
+            )
+
+            if table_cfg.drop_empty_rows:
+                """Discard rows that are empty in all **data** columns (excluding keys and foreign keys)."""
+                data_columns: list[str] = table_cfg.data_columns
+                if data_columns:
+                    data = data.dropna(subset=data_columns, how="all")
+
+            if table_cfg.surrogate_id:
+                data = add_surrogate_id(data, table_cfg.surrogate_id)
 
             self.register(entity, data)
 

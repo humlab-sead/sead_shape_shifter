@@ -4,6 +4,7 @@ from typing import Any, Literal
 import pandas as pd
 
 from src.configuration.resolve import ConfigValue
+from src.utility import dotget
 
 
 class UnnestConfig:
@@ -53,7 +54,9 @@ class ForeignKeyConfig:
             if not self.local_keys or not self.remote_keys:
                 raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing local and/or remote keys")
             if len(self.local_keys) != len(self.remote_keys):
-                raise ValueError(f"Foreign key configuration mismatch for entity '{local_entity}': number of local keys ({len(self.local_keys)}) does not match number of remote keys ({len(self.remote_keys)})")
+                raise ValueError(
+                    f"Foreign key configuration mismatch for entity '{local_entity}': number of local keys ({len(self.local_keys)}) does not match number of remote keys ({len(self.remote_keys)})"
+                )
 
     def resolve_extra_columns(self, data: dict[str, Any]) -> dict[str, str]:
         """Resolve extra columns for the foreign key configuration.
@@ -118,16 +121,21 @@ class TableConfig:
         return self.data.get("type", "data") == "fixed"
 
     @property
-    def is_fixed_sql(self) -> bool:
-        return self.is_fixed_data and isinstance(self.values, str) and self.values.strip().startswith("sql:")
+    def is_sql_data(self) -> bool:
+        return self.data.get("type", "data") == "sql"
 
     @property
     def fixed_sql(self) -> None | str:
         """Get the SQL query string for fixed data, if applicable."""
-        if self.is_fixed_sql:
+        if self.is_sql_data:
             assert isinstance(self.values, str)
-            return self.values.strip()[4:].strip()
+            return self.values.lstrip("sql:").strip()
         return None
+
+    @property
+    def data_source(self) -> str | None:
+        """Get the data source name for SQL data tables."""
+        return self.data.get("data_source", None)
 
     @property
     def values(self) -> str | None:
@@ -244,6 +252,8 @@ class TablesConfig:
     def __init__(self, *, cfg: None | dict[str, dict[str, Any]] = None) -> None:
         self.config: dict[str, dict[str, Any]] = cfg or ConfigValue[dict[str, dict[str, Any]]]("entities").resolve() or {}
         self.tables: dict[str, TableConfig] = {entity_name: TableConfig(cfg=self.config, entity_name=entity_name) for entity_name in self.config.keys()}
+        self.options: dict[str, Any] = dotget(cfg or {}, "options", {})
+        self.data_sources: dict[str, Any] = dotget(cfg or {}, "options.data_sources", {})
 
     def get_table(self, entity_name: str) -> "TableConfig":
         return self.tables[entity_name]
@@ -279,3 +289,23 @@ class TablesConfig:
         new_column_order: list[str] = existing_cols_to_move + other_cols
         table = table[new_column_order]
         return table
+
+    def get_data_source_config(self, name: str) -> "DataSourceConfig":
+        if name not in self.data_sources:
+            raise ValueError(f"Data source 'options.data_sources.{name}' not found in configuration")
+        return DataSourceConfig(cfg=self.data_sources[name], name=name)
+
+
+class DataSourceConfig:
+    """Configuration for data sources."""
+
+    def __init__(self, *, cfg: None | dict[str, Any], name: str) -> None:
+        self.data_source_cfg: dict[str, Any] = cfg or {}
+
+    @property
+    def driver(self) -> str:
+        return self.data_source_cfg.get("driver", "")
+
+    @property
+    def options(self) -> dict[str, Any]:
+        return self.data_source_cfg.get("options", {})

@@ -1,0 +1,4 @@
+driver: ucanaccess
+options:
+  filename: ArchBotDaten.mdb
+  ucanaccess_dir: src/arbodat/lib/ucanaccess

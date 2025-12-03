@@ -1,7 +1,7 @@
 from typing import Any
-from loguru import logger
 
 import pandas as pd
+from loguru import logger
 
 from src.arbodat.config_model import ForeignKeyConfig, TableConfig, TablesConfig
 from src.arbodat.specifications import ForeignKeyDataSpecification

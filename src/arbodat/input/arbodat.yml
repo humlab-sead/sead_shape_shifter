@@ -119,6 +119,7 @@ entities:
         remote_keys: ["location_type"]
     drop_duplicates: "@value: entities.location.keys"
     depends_on: ["location_type"]
+  
 
   site_coordinate:
     surrogate_id: site_coordinate_id
@@ -543,8 +544,9 @@ entities:
       ]
 
   dimensions:
+    data_source: sead
     surrogate_id: "dimension_id"
-    type: fixed
+    type: sql
     columns: ["dimension_id", "dimension_name"]
     drop_duplicates: true
     depends_on: []
@@ -718,7 +720,8 @@ entities:
     depends_on: ["method", "project"]
 
   method_group:
-    type: fixed
+    data_source: sead
+    type: sql
     columns: ["method_group_id", "group_name", "description"]
     values: |
       sql: 
@@ -774,8 +777,9 @@ entities:
     depends_on: []
 
   identification_level:
+    data_source: sead
     surrogate_id: identification_level_id
-    type: fixed
+    type: sql
     columns: ["identification_level_id", "identification_level_abbrev", "identification_level_name", "notes"]
     drop_duplicates: false
     values: |
@@ -820,6 +824,20 @@ entities:
     drop_empty_rows: ["SumFAnzahl", "SumFFrag", "SumFGewicht", "SumPflR"]
     depends_on: ["taxa", "sample", "modification_type", "remain_type", "dataset"]
 
+  dataset_contact:
+    surrogate_id: dataset_contact_id
+    keys: []
+    columns: []
+    foreign_keys:
+      - entity: dataset
+        local_keys: "@value: entities.dataset.keys"
+        remote_keys: "@value: entities.dataset.keys"
+      - entity: contact
+        local_keys: "@value: entities.contact.keys"
+        remote_keys: "@value: entities.contact.keys"
+    drop_duplicates: True
+    depends_on: ["dataset", "contact"]
+
 # tbl_dataset_contacts
 # tbl_dataset_masters
 # tbl_dataset_submissions
@@ -828,6 +846,11 @@ entities:
 translation: "@load: options.translations"
 
 options:
+
   translations:
     filename: translations.tsv
     delimiter: "\t"
+
+  data_sources:
+    sead: "@include: sead-options.yml"
+    arbodat: "@include: arbodat-options.yml"
