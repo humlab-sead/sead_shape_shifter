@@ -103,7 +103,7 @@ class ArbodatSurveyNormalizer:
 
             if not table_cfg.data_source:
                 raise ValueError(f"Entity source must be set to a valid data source for entity '{table_cfg.entity_name}'")
-            
+
             data_source_cfg: DataSourceConfig = self.config.get_data_source_config(table_cfg.data_source)
             loader: SqlLoader = SqlLoaderFactory().create_loader(driver=data_source_cfg.driver, db_opts=data_source_cfg.options)
 

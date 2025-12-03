@@ -173,12 +173,14 @@ async def main(
     if not config_file or not Path(config_file).exists():
         raise FileNotFoundError(f"Configuration file not found: {config_file or 'undefined'}")
 
-    asyncio.run(setup_config_store(
-        config_file,
-        env_prefix="SEAD_NORMALIZER",
-        env_filename=env_file or os.path.join(os.path.dirname(__file__), "input", ".env"),
-        db_opts_path="",
-    ))
+    asyncio.run(
+        setup_config_store(
+            config_file,
+            env_prefix="SEAD_NORMALIZER",
+            env_filename=env_file or os.path.join(os.path.dirname(__file__), "input", ".env"),
+            db_opts_path="",
+        )
+    )
 
     await workflow(
         input_csv=input_csv,
