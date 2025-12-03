@@ -132,6 +132,7 @@ def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
 @click.argument("target")  # type=click.Path(dir_okay=False, writable=True))
 @click.option("--sep", "-s", show_default=True, help='Field separator character. Use "," for comma-separated files.', default=";")
 @click.option("--config-file", "-c", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to configuration file.")
+@click.option("--env-file", "-e", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to environment variables file.")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output.", default=False)
 @click.option("--translate", "-t", is_flag=True, help="Enable translation.", default=False)
 @click.option("--mode", "-m", type=click.Choice(["xlsx", "csv", "db"]), default="xlsx", show_default=True, help="Output file format.")
@@ -142,6 +143,7 @@ async def main(
     target: str,
     sep: str,
     config_file: str,
+    env_file: str,
     verbose: bool,
     translate: bool,
     mode: Literal["xlsx", "csv", "db"],
@@ -171,7 +173,12 @@ async def main(
     if not config_file or not Path(config_file).exists():
         raise FileNotFoundError(f"Configuration file not found: {config_file or 'undefined'}")
 
-    asyncio.run(setup_config_store(config_file))
+    asyncio.run(setup_config_store(
+        config_file,
+        env_prefix="SEAD_NORMALIZER",
+        env_filename=env_file or os.path.join(os.path.dirname(__file__), "input", ".env"),
+        db_opts_path="",
+    ))
 
     await workflow(
         input_csv=input_csv,
