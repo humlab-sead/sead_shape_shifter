@@ -252,7 +252,11 @@ class TablesConfig:
     def __init__(self, *, entities_cfg: None | dict[str, dict[str, Any]] = None, options: dict[str, Any] | None = None) -> None:
 
         self.entities_cfg: dict[str, dict[str, Any]] = entities_cfg or ConfigValue[dict[str, dict[str, Any]]]("entities", default={}).resolve() or {}
-        self.options: dict[str, Any] = options or ConfigValue[dict[str, Any]]("options", default={}).resolve() or {}
+        self.options: dict[str, Any]
+        if options is None:
+            self.options = ConfigValue[dict[str, Any]]("options", default={}).resolve() or {}
+        else:
+            self.options = options or {}
 
         self.tables: dict[str, TableConfig] = {key: TableConfig(cfg=self.entities_cfg, entity_name=key) for key in self.entities_cfg.keys()}
         self.data_sources: dict[str, Any] = self.options.get("data_sources", {})
