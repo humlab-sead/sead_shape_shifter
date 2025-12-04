@@ -30,19 +30,19 @@ class ForeignKeyConfigSpecification:
         if fk_cfg.how == "cross":
             if fk_cfg.local_keys or fk_cfg.remote_keys:
                 self.error = (
-                    f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: 'cross' join should not specify local_keys or remote_keys"
+                    f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: 'cross' join should not specify local_keys or remote_keys"
                 )
                 return False
             return True
 
         if len(fk_cfg.local_keys) == 0 or len(fk_cfg.remote_keys) == 0:
             self.error = (
-                f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: local_keys and remote_keys must be specified for non-cross joins"
+                f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local_keys and remote_keys must be specified for non-cross joins"
             )
             return False
 
         if len(fk_cfg.local_keys) != len(fk_cfg.remote_keys):
-            self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: number of local_keys ({len(fk_cfg.local_keys)}) does not match number of remote_keys ({len(fk_cfg.remote_keys)})"
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: number of local_keys ({len(fk_cfg.local_keys)}) does not match number of remote_keys ({len(fk_cfg.remote_keys)})"
             return False
 
         missing_keys = self.get_missing_keys(
@@ -52,7 +52,7 @@ class ForeignKeyConfigSpecification:
         )
 
         if missing_keys:
-            self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: local keys {missing_keys} not found in local entity '{fk_cfg.local_entity}'"
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local keys {missing_keys} not found in local entity '{fk_cfg.local_entity}'"
             return False
 
         missing_keys: set[str] = self.get_missing_keys(
@@ -60,7 +60,7 @@ class ForeignKeyConfigSpecification:
         )
 
         if missing_keys:
-            self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: remote keys {missing_keys} not found in remote entity '{fk_cfg.remote_entity}'"
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: remote keys {missing_keys} not found in remote entity '{fk_cfg.remote_entity}'"
             return False
 
         return True
@@ -100,7 +100,7 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
             if missing_keys == self.cfg.get_table(fk_cfg.local_entity).unnest_columns:
                 self.deferred = True
             else:
-                self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: local keys {missing_keys} not found in local entity data '{fk_cfg.local_entity}'"
+                self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local keys {missing_keys} not found in local entity data '{fk_cfg.local_entity}'"
                 return False
 
         missing_pending_keys: set[str] = self.get_missing_keys(
@@ -113,9 +113,6 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
             self.deferred = True
             return True
 
-        missing_keys = self.get_missing_keys(
-            required_keys=set(fk_cfg.remote_keys), columns=set(self.table_store[fk_cfg.remote_entity].columns), pending_columns=set()
-        )
         if not self.check_missing_remote_keys( fk_cfg=fk_cfg):
             return False
 
