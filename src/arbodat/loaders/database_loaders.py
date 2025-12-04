@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 
 from src.arbodat.config_model import TableConfig
 from src.arbodat.utility import add_surrogate_id
-from src.utility import create_db_uri
+from src.utility import create_db_uri, dotget
 
 from .interface import DataLoader
 
@@ -41,8 +41,16 @@ class PostgresSqlLoader(SqlLoader):
     driver: str = "postgres"
 
     def __init__(self, db_opts: dict[str, Any] | None = None) -> None:
-        self.db_opts: dict[str, Any] = db_opts or {}
-        self.db_url: str = create_db_uri(**self.db_opts, driver="postgresql+psycopg")
+        if db_opts is None:
+            db_opts = {}
+        clean_opts: dict[str, Any] = {
+            "host": dotget(db_opts, "host,hostname,dbhost", "localhost"),
+            "port": dotget(db_opts, "port", 5432),
+            "user": dotget(db_opts, "user,username,dbuser", "postgres"),
+            "dbname": dotget(db_opts, "dbname,database", "postgres"),
+        }
+        self.db_opts: dict[str, Any] = clean_opts
+        self.db_url: str = create_db_uri(**clean_opts, driver="postgresql+psycopg")
 
     async def read_sql(self, sql: str) -> pd.DataFrame:
         """Read SQL query into a DataFrame using the provided connection."""
