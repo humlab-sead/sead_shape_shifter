@@ -36,9 +36,9 @@ def check_functional_dependency(df: pd.DataFrame, determinant_columns: list[str]
     if bad_keys:
         msg: str = f"inconsistent non-subset values for keys: {bad_keys}"
         if raise_error:
-            raise ValueError(msg)
+            raise ValueError(f"[fd_check]: {msg}")
         else:
-            logger.warning(msg)
+            logger.warning(f"[fd_check]: {msg}")
 
     return len(bad_keys) == 0
 
@@ -99,9 +99,9 @@ def get_subset(
     if any(c not in source.columns for c in columns_to_extract):
         missing: list[str] = [c for c in columns_to_extract if c not in source.columns]
         if raise_if_missing:
-            raise ValueError(f"Key {surrogate_id}: Columns not found in DataFrame: {missing}")
+            raise ValueError(f"{entity_name}[subsetting]: Columns not found in DataFrame: {missing}")
         else:
-            logger.warning(f"Key {surrogate_id}: Columns not found in DataFrame and will be skipped: {missing}")
+            logger.warning(f"{entity_name}[subsetting]: Columns not found in DataFrame and will be skipped: {missing}")
 
     # Extract only columns that exist
     columns_to_extract = [c for c in columns_to_extract if c in source.columns]
@@ -162,7 +162,7 @@ def extract_translation_map(fields_metadata: list[dict[str, str]], from_field: s
         return {}
 
     if any(c not in fields_metadata[0] for c in [from_field, to_field]):
-        logger.warning(f"Translation config is missing required keys '{from_field}' and '{to_field}'. Skipping translation.")
+        logger.warning(f"[translation] Translation config is missing required keys '{from_field}' and '{to_field}'. Skipping translation.")
         return {}
 
     translations_map: dict[str, str] = {t[from_field]: t[to_field] for t in fields_metadata if from_field in t and to_field in t}

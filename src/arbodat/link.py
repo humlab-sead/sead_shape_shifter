@@ -12,7 +12,7 @@ def link_foreign_key(entity_name: str, local_df: pd.DataFrame, fk, remote_id: st
     missing_remote_cols: list[str] = [col for col in remote_extra_cols if col not in remote_df.columns]
     if missing_remote_cols:
         logger.warning(
-            f"Skipping extra link columns for entity '{entity_name}' to '{fk.remote_entity}': missing remote columns {missing_remote_cols} in remote table"
+            f"{entity_name}[linking]: Skipping extra link columns for entity '{entity_name}' to '{fk.remote_entity}': missing remote columns {missing_remote_cols} in remote table"
         )
         remote_extra_cols = [col for col in remote_extra_cols if col in remote_df.columns]
 
@@ -30,7 +30,7 @@ def link_foreign_key(entity_name: str, local_df: pd.DataFrame, fk, remote_id: st
     size_before_merge: int = len(local_df)
     linked_df: pd.DataFrame = local_df.merge(remote_select_df, **opts)
     size_after_merge: int = len(linked_df)
-    logger.debug(f"[Linking {entity_name}] merge size: before={size_before_merge}, after={size_after_merge}")
+    logger.debug(f"{entity_name}[linking]: merge size: before={size_before_merge}, after={size_after_merge}")
 
     if fk.remote_extra_columns and fk.drop_remote_id:
         linked_df = linked_df.drop(columns=[remote_id], errors="ignore")
@@ -57,14 +57,14 @@ def link_entity(entity_name: str, config: TablesConfig, data: dict[str, pd.DataF
         remote_df: pd.DataFrame = data[fk.remote_entity]
 
         if remote_id in local_df.columns:
-            logger.debug(f"Linking {entity_name}: skipped since FK '{remote_id}' already exists.")
+            logger.debug(f"{entity_name}[linking]: skipped since FK '{remote_id}' already exists.")
             continue
 
         specification: ForeignKeyDataSpecification = ForeignKeyDataSpecification(cfg=config, table_store=data)
 
         satisfied: bool | None = specification.is_satisfied_by(fk_cfg=fk)
         if satisfied is False:
-            logger.error(specification.error)
+            logger.error(f"{entity_name}[linking]: {specification.error}")
             continue
 
         if specification.deferred:
@@ -74,7 +74,7 @@ def link_entity(entity_name: str, config: TablesConfig, data: dict[str, pd.DataF
         linked_df: pd.DataFrame = link_foreign_key(entity_name, local_df, fk, remote_id, remote_df)
 
         local_df = linked_df
-        logger.debug(f"[Linking {entity_name}] added link to '{fk.remote_entity}' via {fk.local_keys} -> {fk.remote_keys}")
+        logger.debug(f"{entity_name}[linking]: added link to '{fk.remote_entity}' via {fk.local_keys} -> {fk.remote_keys}")
 
     data[entity_name] = local_df
 

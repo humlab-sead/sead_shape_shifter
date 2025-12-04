@@ -52,12 +52,12 @@ class ProcessState:
         """Get the next entity that can be processed based on dependencies."""
         logger.debug(f"Processed entities so far: {self.processed_entities}")
         for entity_name in set(self.config.table_names) - self.processed_entities:
-            logger.debug(f"Checking if entity '{entity_name}' can be processed...")
+            logger.debug(f"{entity_name}[check]: Checking if entity '{entity_name}' can be processed...")
             unmet_dependencies = self.get_unmet_dependencies(entity=entity_name)
             if unmet_dependencies:
-                logger.debug(f"Entity '{entity_name}' has unmet dependencies: {unmet_dependencies}")
+                logger.debug(f"{entity_name}[check]: Entity has unmet dependencies: {unmet_dependencies}")
                 continue
-            logger.debug(f"Entity '{entity_name}' can be processed next.")
+            logger.debug(f"{entity_name}[check]: Entity can be processed next.")
             return entity_name
         return None
 
@@ -74,7 +74,7 @@ class ProcessState:
 
     def log_unmet_dependencies(self) -> None:
         for entity, unmet in self.get_all_unmet_dependencies().items():
-            logger.error(f"Entity '{entity}' has unmet dependencies: {unmet}")
+            logger.error(f"{entity}[check]: Entity has unmet dependencies: {unmet}")
 
     @property
     def processed_entities(self) -> set[str]:
@@ -138,9 +138,9 @@ class ArbodatSurveyNormalizer:
 
             table_cfg: TableConfig = self.config.get_table(entity)
 
-            logger.debug(f"Normalizing entity '{entity}'...")
+            logger.debug(f"{entity}[normalizing]: Normalizing entity...")
             if entity == "dataset":
-                logger.debug(f"Debugging: {entity}")
+                logger.debug(f"{entity}[debugging]: breakpoint for dataset entity")
 
             source: pd.DataFrame = await self.resolve_source(table_cfg=table_cfg)
 
