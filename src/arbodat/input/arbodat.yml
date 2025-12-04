@@ -1005,4 +1005,4 @@ options:
     sead: "@include: sead-options.yml"
     arbodat: "@include: arbodat-options.yml"
 
-mappings: "@include: mapping.yml"
+mappings: "@include: mappings.yml"
