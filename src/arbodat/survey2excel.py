@@ -16,7 +16,7 @@ from typing import Any, Literal
 import click
 
 from src.arbodat.normalizer import ArbodatSurveyNormalizer
-from src.arbodat.utility import extract_translation_map, setup_logging
+from src.arbodat.extract import extract_translation_map, setup_logging
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
 

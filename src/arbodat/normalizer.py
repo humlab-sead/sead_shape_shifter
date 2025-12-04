@@ -39,7 +39,7 @@ from src.arbodat.loaders.database_loaders import SqlLoader, SqlLoaderFactory
 from src.arbodat.loaders.fixed_loader import FixedLoader
 from src.arbodat.mapping import LinkToRemoteService
 from src.arbodat.unnest import unnest
-from src.arbodat.utility import add_surrogate_id, get_subset, translate
+from src.arbodat.extract import add_surrogate_id, get_subset, translate
 
 
 class ProcessState:
