@@ -27,7 +27,7 @@ Each phase is well-defined
 """
 
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import pandas as pd
 from loguru import logger
@@ -151,6 +151,7 @@ class ArbodatSurveyNormalizer:
             data: pd.DataFrame = get_subset(
                 source=source,
                 columns=table_cfg.usage_columns,
+                entity_name=entity,
                 extra_columns=table_cfg.extra_columns,
                 drop_duplicates=table_cfg.drop_duplicates,
                 surrogate_id=table_cfg.surrogate_id,
@@ -175,7 +176,7 @@ class ArbodatSurveyNormalizer:
                     data = self.unnest_entity(entity=entity)
                     link_entity(entity_name=entity, config=self.config, data=self.data)
                 except ValueError as e:
-                    logger.warning(f"Skipping unnesting for entity '{entity}': {e}")
+                    logger.warning(f"{entity}[normalizing]: Skipping unnesting: {e}")
 
             self.link()  # Try to resolve any pending deferred links after each entity is processed
 

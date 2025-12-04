@@ -1,3 +1,4 @@
+import sys
 from typing import Any
 
 import pandas as pd
@@ -46,6 +47,8 @@ def check_functional_dependency(df: pd.DataFrame, determinant_columns: list[str]
 def get_subset(
     source: pd.DataFrame,
     columns: list[str],
+    *,
+    entity_name: str | None = None,
     extra_columns: None | dict[str, Any] = None,
     drop_duplicates: bool | list[str] = False,
     fd_check: bool = False,
@@ -82,6 +85,8 @@ def get_subset(
     """
     if source is None:
         raise ValueError("Source DataFrame must be provided")
+
+    entity_name = entity_name or (surrogate_id.rstrip("_id") if surrogate_id else "unspecified")
 
     extra_columns = extra_columns or {}
 
