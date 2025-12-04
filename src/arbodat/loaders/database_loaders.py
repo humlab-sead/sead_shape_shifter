@@ -47,7 +47,7 @@ class PostgresSqlLoader(SqlLoader):
     async def read_sql(self, sql: str) -> pd.DataFrame:
         """Read SQL query into a DataFrame using the provided connection."""
         with create_engine(url=self.db_url).begin() as connection:
-            data: pd.DataFrame = await pd.read_sql_query(sql=sql, con=connection)  # type: ignore[arg-type]
+            data: pd.DataFrame = pd.read_sql_query(sql=sql, con=connection)  # type: ignore[arg-type]
         return data
 
 
