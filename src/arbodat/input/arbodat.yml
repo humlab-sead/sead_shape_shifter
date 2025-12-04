@@ -805,6 +805,7 @@ entities:
         local_keys: null
         remote_keys: null
         how: "cross"
+    drop_duplicates: true
     depends_on: ["method", "project"]
 
   method_group:
