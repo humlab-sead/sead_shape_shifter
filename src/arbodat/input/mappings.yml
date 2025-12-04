@@ -8,16 +8,16 @@ feature_type:
   local_keys: ["BefuTyp"]
   remote_keys: ["feature_type_id"]
   mapping:
-    BefuTyp? : 27
+    "BefuTyp?": 27
     "": 27
     null: 27
-    KultLauf : 14
-    Gr : 7
+    KultLauf: 14
+    Gr: 7
     Pfo: 26
-    Kult : 40
-    Schi : 5
-    Of : 37
-    BrGrab : 6
+    Kult: 40
+    Schi: 5
+    Of: 37
+    BrGrab: 6
     Bod: 580
     Bru: 9
     Her: 19
