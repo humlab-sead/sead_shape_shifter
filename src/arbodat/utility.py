@@ -99,9 +99,8 @@ def get_subset(
     constant_columns: dict[str, Any] = {
         new_name: value for new_name, value in extra_columns.items() if new_name not in [v for v in source_column_renames.values()]
     }
-
     columns_to_extract: list[str] = columns + list(source_column_renames.keys())
-
+    
     # Check for missing required columns
     if any(c not in source.columns for c in columns_to_extract):
         missing: list[str] = [c for c in columns_to_extract if c not in source.columns]
