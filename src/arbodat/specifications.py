@@ -47,7 +47,7 @@ class ForeignKeyConfigSpecification:
 
         missing_keys = self.get_missing_keys(
             required_keys=set(fk_cfg.local_keys),
-            columns=set(cfg_local_table.usage_columns) | set(cfg_local_table.pending_columns),
+            columns=set(cfg_local_table.usage_columns) | set(cfg_local_table.unnest_columns),
             pending_columns=set(),
         )
 
@@ -94,17 +94,17 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
         missing_keys = self.get_missing_keys(
             required_keys=set(fk_cfg.local_keys),
             columns=set(table.columns),
-            pending_columns=set(self.cfg.get_table(fk_cfg.local_entity).pending_columns),
+            pending_columns=set(self.cfg.get_table(fk_cfg.local_entity).unnest_columns),
         )
         if missing_keys:
-            if missing_keys == self.cfg.get_table(fk_cfg.local_entity).pending_columns:
+            if missing_keys == self.cfg.get_table(fk_cfg.local_entity).unnest_columns:
                 self.deferred = True
             else:
                 self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: local keys {missing_keys} not found in local entity data '{fk_cfg.local_entity}'"
                 return False
 
         missing_pending_keys: set[str] = self.get_missing_keys(
-            required_keys=self.cfg.get_table(fk_cfg.local_entity).pending_columns,
+            required_keys=self.cfg.get_table(fk_cfg.local_entity).unnest_columns,
             columns=set(table.columns),
             pending_columns=set(),
         )

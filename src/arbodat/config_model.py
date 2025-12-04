@@ -198,12 +198,18 @@ class TableConfig:
         return None
 
     @property
-    def pending_columns(self) -> set[str]:
+    def unnest_columns(self) -> set[str]:
         """Get set of columns that are pending (e.g., from unnesting)."""
         if self.unnest:
-            return {self.unnest.var_name}
+            return {self.unnest.var_name , self.unnest.value_name}
         return set()
 
+    def is_unnested(self, table: pd.DataFrame) -> bool:
+        """Check if the table has been unnested based on the presence of unnest columns."""
+        if not self.unnest:
+            return False
+        return all(col in table.columns for col in [self.unnest.var_name, self.unnest.value_name])
+    
     @property
     def depends_on(self) -> list[str]:
         return (self.data.get("depends_on", []) or []) + ([self.source] if self.source else [])
@@ -227,7 +233,7 @@ class TableConfig:
         """Get set of all columns used in keys, columns, and foreign keys, pending unnesting columns excluded)."""
         keys_and_data_columns: list[str] = self.columns2
         return keys_and_data_columns + list(
-            x for x in self.fk_column_set if x not in keys_and_data_columns and x not in self.pending_columns
+            x for x in self.fk_column_set if x not in keys_and_data_columns and x not in self.unnest_columns
         )
 
     def drop_fk_columns(self, table: pd.DataFrame) -> pd.DataFrame:
