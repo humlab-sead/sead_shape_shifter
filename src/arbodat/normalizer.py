@@ -37,6 +37,7 @@ from src.arbodat.dispatch import Dispatcher, Dispatchers
 from src.arbodat.link import link_entity
 from src.arbodat.loaders.database_loaders import SqlLoader, SqlLoaderFactory
 from src.arbodat.loaders.fixed_loader import FixedLoader
+from src.arbodat.mapping import LinkToRemoteService
 from src.arbodat.unnest import unnest
 from src.arbodat.utility import add_surrogate_id, get_subset, translate
 
@@ -231,3 +232,13 @@ class ArbodatSurveyNormalizer:
             if entity_name not in self.config.table_names:
                 continue
             self.data[entity_name] = self.config.reorder_columns(entity_name, self.data[entity_name])
+
+    def map_to_remote(self, link_cfgs: dict[str, dict[str, Any]]) -> None:
+        """Map local Arbodat PK values to SEAD identities using mapping configuration."""
+        if not link_cfgs:
+            return
+        service = LinkToRemoteService(remote_link_cfgs=link_cfgs)
+        for entity_name in self.data.keys():
+            if entity_name not in link_cfgs:
+                continue
+            self.data[entity_name] = service.link_to_remote(entity_name, self.data[entity_name])

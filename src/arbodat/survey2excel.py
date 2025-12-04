@@ -52,6 +52,10 @@ async def workflow(
 
     normalizer.add_system_id_columns()
     normalizer.move_keys_to_front()
+
+    link_cfgs: dict[str, dict[str, Any]] = ConfigValue[dict[str, dict[str, dict[str, int]]]]("mappings").resolve() or {}
+    normalizer.map_to_remote(link_cfgs)
+
     normalizer.store(target=target, mode=mode)
 
     if verbose:
