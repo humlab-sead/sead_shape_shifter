@@ -19,7 +19,7 @@ import click
 from loguru import logger
 
 from src.arbodat.normalizer import ArbodatSurveyNormalizer
-from src.arbodat.utility import extract_translation_map
+from src.arbodat.utility import extract_translation_map, setup_logging
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
 
@@ -60,73 +60,6 @@ async def workflow(
             click.echo(f"  - {name}: {len(table)} rows")
 
 
-# Global dictionary to track duplicate log messages
-_last_seen_messages: dict[str, float] = {}
-
-
-def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
-    """Configure loguru logging with appropriate handlers and filters.
-
-    Args:
-        verbose: If True, set log level to DEBUG and show all messages.
-                If False, set to INFO and filter duplicate messages.
-        log_file: Optional path to log file. If provided, logs are written to file.
-    """
-    global _last_seen_messages
-
-    level = "DEBUG" if verbose else "INFO"
-
-    logger.remove()
-
-    # Define filter for duplicate messages (only in non-verbose mode)
-    def filter_once_per_message(record) -> bool:
-        """Filter to show each unique message only once per second."""
-        if verbose:
-            return True
-
-        msg = record["message"]
-        now = time()
-        if msg not in _last_seen_messages or now - _last_seen_messages[msg] > 1.0:
-            _last_seen_messages[msg] = now
-            return True
-        return False
-
-    # Format string for logs
-    log_format = (
-        (
-            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-            "<level>{level: <8}</level> | "
-            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-            "<level>{message}</level>"
-        )
-        if verbose
-        else "<level>{message}</level>"
-    )
-
-    # Add console handler
-    logger.add(
-        sys.stderr,
-        level=level,
-        format=log_format,
-        filter=filter_once_per_message,
-        colorize=True,
-    )
-
-    # Add file handler if specified
-    if log_file:
-        logger.add(
-            log_file,
-            level="DEBUG",
-            format=log_format,
-            rotation="10 MB",
-            retention="7 days",
-            compression="zip",
-        )
-
-    if verbose:
-        logger.debug("Verbose logging enabled")
-
-
 @click.command()
 @click.argument("input_csv")  # type=click.Path(exists=True, dir_okay=False, readable=True))
 @click.argument("target")  # type=click.Path(dir_okay=False, writable=True))
@@ -158,8 +91,6 @@ async def main(
     The input CSV should contain one row per Sample × Taxon combination, with
     columns identifying projects, sites, features, samples, and taxa.
     """
-    setup_logging(verbose=verbose, log_file=log_file)
-
     if verbose:
         logger.info(f"Reading Arbodat CSV from: {input_csv}")
         logger.info(f"Using separator: {repr(sep)}")
