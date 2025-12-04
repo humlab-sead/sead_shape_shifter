@@ -23,7 +23,7 @@ class ForeignKeyConfigSpecification:
 
     def is_satisfied_by(self, *, fk_cfg: ForeignKeyConfig) -> bool | None:
         self.clear()
-        missing_keys: set[str]
+        missing_fields: set[str]
         cfg_local_table: TableConfig = self.cfg.get_table(fk_cfg.local_entity)
         cfg_remote_table: TableConfig = self.cfg.get_table(fk_cfg.remote_entity)
 
@@ -45,31 +45,28 @@ class ForeignKeyConfigSpecification:
             self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: number of local_keys ({len(fk_cfg.local_keys)}) does not match number of remote_keys ({len(fk_cfg.remote_keys)})"
             return False
 
-        missing_keys = self.get_missing_keys(
-            required_keys=set(fk_cfg.local_keys),
-            columns=set(cfg_local_table.usage_columns) | set(cfg_local_table.unnest_columns),
-            pending_columns=set(),
+        missing_fields = self.get_missing_fields(
+            required_fields=set(fk_cfg.local_keys),
+            available_fields=set(cfg_local_table.usage_columns) | set(cfg_local_table.unnest_columns),
         )
 
-        if missing_keys:
-            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local keys {missing_keys} not found in local entity '{fk_cfg.local_entity}'"
+        if missing_fields:
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local keys {missing_fields} not found in local entity '{fk_cfg.local_entity}'"
             return False
 
-        missing_keys: set[str] = self.get_missing_keys(
-            required_keys=set(fk_cfg.remote_keys), columns=set(cfg_remote_table.usage_columns), pending_columns=set()
+        missing_fields: set[str] = self.get_missing_fields(
+            required_fields=set(fk_cfg.remote_keys), available_fields=set(cfg_remote_table.usage_columns)
         )
 
-        if missing_keys:
-            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: remote keys {missing_keys} not found in remote entity '{fk_cfg.remote_entity}'"
+        if missing_fields:
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: remote keys {missing_fields} not found in remote entity '{fk_cfg.remote_entity}'"
             return False
 
         return True
 
-    def get_missing_keys(self, *, required_keys: set[str], columns: set[str], pending_columns) -> set[str]:
-
-        missing_keys: set[str] = {key for key in required_keys if key not in columns.union(pending_columns)}
-
-        return missing_keys
+    def get_missing_fields(self, *, required_fields: set[str], available_fields: set[str]) -> set[str]:
+        """Return the set of required keys that are missing from found keys."""
+        return {key for key in required_fields if key not in available_fields}
 
 
 class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
@@ -80,7 +77,7 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
         self.table_store: dict[str, pd.DataFrame] = table_store
 
     def is_satisfied_by(self, *, fk_cfg: ForeignKeyConfig) -> bool:
-        missing_keys: set[str]
+        missing_fields: set[str]
 
         assert fk_cfg.local_entity in self.table_store, f"Local DataFrame for entity '{fk_cfg.local_entity}' not found"
         assert fk_cfg.remote_entity in self.table_store, f"Remote DataFrame for entity '{fk_cfg.remote_entity}' not found"
@@ -89,45 +86,44 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
         if is_config_ok is not True:
             return False
 
-        table: pd.DataFrame = self.table_store[fk_cfg.local_entity]
-
-        missing_keys = self.get_missing_keys(
-            required_keys=set(fk_cfg.local_keys),
-            columns=set(table.columns),
-            pending_columns=set(self.cfg.get_table(fk_cfg.local_entity).unnest_columns),
-        )
-        if missing_keys:
-            if missing_keys == self.cfg.get_table(fk_cfg.local_entity).unnest_columns:
+        if (missing_fields := self.get_missing_local_fields(fk_cfg=fk_cfg)):
+            if missing_fields == self.cfg.get_table(fk_cfg.local_entity).unnest_columns:
                 self.deferred = True
             else:
-                self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local keys {missing_keys} not found in local entity data '{fk_cfg.local_entity}'"
+                self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local keys {missing_fields} not found in local entity data '{fk_cfg.local_entity}'"
                 return False
 
-        missing_pending_keys: set[str] = self.get_missing_keys(
-            required_keys=self.cfg.get_table(fk_cfg.local_entity).unnest_columns,
-            columns=set(table.columns),
-            pending_columns=set(),
-        )
-
-        if missing_pending_keys:
+        if self.get_missing_pending_fields(fk_cfg=fk_cfg):
             self.deferred = True
             return True
 
-        if not self.check_missing_remote_keys( fk_cfg=fk_cfg):
+        if (missing_fields := self.get_missing_remote_fields(fk_cfg=fk_cfg)):
+            self.error = f"{fk_cfg.local_entity}[linking]: -> {fk_cfg.remote_entity}: remote keys {missing_fields} not found in remote entity data '{fk_cfg.remote_entity}'"
             return False
 
         return True
-
-    def check_missing_remote_keys(self, *, fk_cfg: ForeignKeyConfig) -> bool:
-        """Check for missing remote keys in the remote entity data."""
-        missing_keys: set[str] = self.get_missing_keys(
-            required_keys=set(fk_cfg.remote_keys), columns=set(self.table_store[fk_cfg.remote_entity].columns), pending_columns=set()
+    
+    def get_missing_local_fields(self, *, fk_cfg: ForeignKeyConfig) -> set[str]:
+        """Check for missing local keys in the local entity data."""
+        table: pd.DataFrame = self.table_store[fk_cfg.local_entity]
+        return self.get_missing_fields(
+            required_fields=set(fk_cfg.local_keys),
+            available_fields=set(table.columns).union(self.cfg.get_table(fk_cfg.local_entity).unnest_columns),
         )
-        if missing_keys:
-            self.error = f"{fk_cfg.local_entity}[linking]: -> {fk_cfg.remote_entity}: remote keys {missing_keys} not found in remote entity data '{fk_cfg.remote_entity}'"
-            return False
 
-        return True
+    
+    def get_missing_pending_fields(self, *, fk_cfg: ForeignKeyConfig) -> set[str]:
+        """Check for missing pending keys in the local entity data."""
+        return self.get_missing_fields(
+            required_fields=set(self.cfg.get_table(fk_cfg.local_entity).unnest_columns),
+            available_fields=set(self.table_store[fk_cfg.local_entity].columns),
+        )
+
+    def get_missing_remote_fields(self, *, fk_cfg: ForeignKeyConfig) -> set[str]:
+        """Check for missing remote keys in the remote entity data."""
+        return self.get_missing_fields(
+            required_fields=set(fk_cfg.remote_keys), available_fields=set(self.table_store[fk_cfg.remote_entity].columns)
+        )
 
 
 # ============================================================================
