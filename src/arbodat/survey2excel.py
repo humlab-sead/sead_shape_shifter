@@ -10,13 +10,10 @@ Usage:
 
 import asyncio
 import os
-import sys
 from pathlib import Path
-from time import time
-from typing import Literal
+from typing import Any, Literal
 
 import click
-from loguru import logger
 
 from src.arbodat.normalizer import ArbodatSurveyNormalizer
 from src.arbodat.utility import extract_translation_map, setup_logging
@@ -65,8 +62,8 @@ async def workflow(
 
 
 @click.command()
-@click.argument("input_csv")  # type=click.Path(exists=True, dir_okay=False, readable=True))
-@click.argument("target")  # type=click.Path(dir_okay=False, writable=True))
+@click.argument("input_csv")
+@click.argument("target")
 @click.option("--sep", "-s", show_default=True, help='Field separator character. Use "," for comma-separated files.', default=";")
 @click.option("--config-file", "-c", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to configuration file.")
 @click.option("--env-file", "-e", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to environment variables file.")
@@ -75,7 +72,7 @@ async def workflow(
 @click.option("--mode", "-m", type=click.Choice(["xlsx", "csv", "db"]), default="xlsx", show_default=True, help="Output file format.")
 @click.option("--drop-foreign-keys", "-d", is_flag=True, help="Drop foreign key columns after linking.", default=False)
 @click.option("--log-file", "-l", type=click.Path(), help="Path to log file (optional).")
-async def main(
+def main(
     input_csv: str,
     target: str,
     sep: str,
@@ -96,11 +93,11 @@ async def main(
     columns identifying projects, sites, features, samples, and taxa.
     """
     if verbose:
-        logger.info(f"Reading Arbodat CSV from: {input_csv}")
-        logger.info(f"Using separator: {repr(sep)}")
+        click.echo(f"Reading Arbodat CSV from: {input_csv}")
+        click.echo(f"Using separator: {repr(sep)}")
 
     if config_file:
-        logger.info(f"Using configuration file: {config_file}")
+        click.echo(f"Using configuration file: {config_file}")
 
     if not config_file:
         config_file = os.path.join(os.path.dirname(__file__), "config.yml")
