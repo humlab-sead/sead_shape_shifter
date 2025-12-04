@@ -69,7 +69,9 @@ class UCanAccessSqlLoader(SqlLoader):
         self.filename: str = self.db_opts.get("filename", "")
         self.ucanaccess_dir: str = self.db_opts.get("ucanaccess_dir", "")
         self.jars: list[str] = [
-            jj(self.ucanaccess_dir, f) for f in os.listdir(self.ucanaccess_dir) if os.path.isfile(jj(self.ucanaccess_dir, f)) and f.lower().endswith(".jar")
+            jj(self.ucanaccess_dir, f)
+            for f in os.listdir(self.ucanaccess_dir)
+            if os.path.isfile(jj(self.ucanaccess_dir, f)) and f.lower().endswith(".jar")
         ]
 
     async def read_sql(self, sql: str) -> pd.DataFrame:

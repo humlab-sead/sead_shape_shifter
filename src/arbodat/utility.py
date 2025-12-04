@@ -91,7 +91,9 @@ def get_subset(
     extra_columns = extra_columns or {}
 
     source_column_renames: dict[str, str] = {
-        source_col: new_name for new_name, source_col in extra_columns.items() if isinstance(source_col, str) and source_col in source.columns
+        source_col: new_name
+        for new_name, source_col in extra_columns.items()
+        if isinstance(source_col, str) and source_col in source.columns
     }
 
     constant_columns: dict[str, Any] = {
@@ -160,7 +162,9 @@ def _rename_last_occurence(data: pd.DataFrame, rename_map: dict[str, str]) -> li
     return target_columns
 
 
-def extract_translation_map(fields_metadata: list[dict[str, str]], from_field: str = "arbodat_field", to_field: str = "english_column_name") -> dict[str, str]:
+def extract_translation_map(
+    fields_metadata: list[dict[str, str]], from_field: str = "arbodat_field", to_field: str = "english_column_name"
+) -> dict[str, str]:
     """Get translation map from config."""
 
     if not fields_metadata:

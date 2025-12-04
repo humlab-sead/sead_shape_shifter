@@ -29,12 +29,16 @@ class ForeignKeyConfigSpecification:
 
         if fk_cfg.how == "cross":
             if fk_cfg.local_keys or fk_cfg.remote_keys:
-                self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: 'cross' join should not specify local_keys or remote_keys"
+                self.error = (
+                    f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: 'cross' join should not specify local_keys or remote_keys"
+                )
                 return False
             return True
 
         if len(fk_cfg.local_keys) == 0 or len(fk_cfg.remote_keys) == 0:
-            self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: local_keys and remote_keys must be specified for non-cross joins"
+            self.error = (
+                f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: local_keys and remote_keys must be specified for non-cross joins"
+            )
             return False
 
         if len(fk_cfg.local_keys) != len(fk_cfg.remote_keys):
@@ -42,7 +46,9 @@ class ForeignKeyConfigSpecification:
             return False
 
         missing_keys = self.get_missing_keys(
-            required_keys=set(fk_cfg.local_keys), columns=set(cfg_local_table.usage_columns) | set(cfg_local_table.pending_columns), pending_columns=set()
+            required_keys=set(fk_cfg.local_keys),
+            columns=set(cfg_local_table.usage_columns) | set(cfg_local_table.pending_columns),
+            pending_columns=set(),
         )
 
         if missing_keys:
@@ -54,9 +60,7 @@ class ForeignKeyConfigSpecification:
         )
 
         if missing_keys:
-            self.error = (
-                f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: remote keys {missing_keys} not found in remote entity '{fk_cfg.remote_entity}'"
-            )
+            self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: remote keys {missing_keys} not found in remote entity '{fk_cfg.remote_entity}'"
             return False
 
         return True
@@ -96,9 +100,7 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
             if missing_keys == self.cfg.get_table(fk_cfg.local_entity).pending_columns:
                 self.deferred = True
             else:
-                self.error = (
-                    f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: local keys {missing_keys} not found in local entity data '{fk_cfg.local_entity}'"
-                )
+                self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: local keys {missing_keys} not found in local entity data '{fk_cfg.local_entity}'"
                 return False
 
         missing_pending_keys: set[str] = self.get_missing_keys(
@@ -115,9 +117,7 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
             required_keys=set(fk_cfg.remote_keys), columns=set(self.table_store[fk_cfg.remote_entity].columns), pending_columns=set()
         )
         if missing_keys:
-            self.error = (
-                f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: remote keys {missing_keys} not found in remote entity data '{fk_cfg.remote_entity}'"
-            )
+            self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: remote keys {missing_keys} not found in remote entity data '{fk_cfg.remote_entity}'"
             return False
 
         return True
@@ -343,7 +343,9 @@ class ForeignKeySpecification(ConfigSpecification):
                 remote_keys = fk.get("remote_keys", []) or []
 
                 if len(local_keys) != len(remote_keys):
-                    self.add_error(f"{fk_id}: 'local_keys' length ({len(local_keys)}) does not match 'remote_keys' length ({len(remote_keys)})")
+                    self.add_error(
+                        f"{fk_id}: 'local_keys' length ({len(local_keys)}) does not match 'remote_keys' length ({len(remote_keys)})"
+                    )
                     valid = False
 
                 # Validate extra_columns format
@@ -436,7 +438,9 @@ class SurrogateIdSpecification(ConfigSpecification):
             if surrogate_id:
                 # Check naming convention (should end with _id)
                 if not surrogate_id.endswith("_id"):
-                    self.add_warning(f"Entity '{entity_name}': surrogate_id '{surrogate_id}' does not follow convention (should end with '_id')")
+                    self.add_warning(
+                        f"Entity '{entity_name}': surrogate_id '{surrogate_id}' does not follow convention (should end with '_id')"
+                    )
 
                 # Track for uniqueness check
                 if surrogate_id not in surrogate_ids:
@@ -492,7 +496,9 @@ class FixedDataSpecification(ConfigSpecification):
                     for idx, value_row in enumerate(values):
                         if isinstance(value_row, list):
                             if len(value_row) != len(columns):
-                                self.add_error(f"Entity '{entity_name}': value row {idx + 1} has {len(value_row)} items but {len(columns)} columns defined")
+                                self.add_error(
+                                    f"Entity '{entity_name}': value row {idx + 1} has {len(value_row)} items but {len(columns)} columns defined"
+                                )
                                 valid = False
 
                 # Warn if source is not None (shouldn't be used for fixed data)

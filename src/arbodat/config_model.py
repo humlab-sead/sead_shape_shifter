@@ -147,7 +147,10 @@ class TableConfig:
 
     @cached_property
     def foreign_keys(self) -> list["ForeignKeyConfig"]:
-        return [ForeignKeyConfig(cfg=self.config, local_entity=self.entity_name, data=fk_data) for fk_data in self.data.get("foreign_keys", []) or []]
+        return [
+            ForeignKeyConfig(cfg=self.config, local_entity=self.entity_name, data=fk_data)
+            for fk_data in self.data.get("foreign_keys", []) or []
+        ]
 
     def get_foreign_key_names(self) -> list[str]:
         return [self.config[fk.remote_entity].get("surrogate_id", "") for fk in self.foreign_keys]
@@ -223,7 +226,9 @@ class TableConfig:
     def usage_columns(self) -> list[str]:
         """Get set of all columns used in keys, columns, and foreign keys, pending unnesting columns excluded)."""
         keys_and_data_columns: list[str] = self.columns2
-        return keys_and_data_columns + list(x for x in self.fk_column_set if x not in keys_and_data_columns and x not in self.pending_columns)
+        return keys_and_data_columns + list(
+            x for x in self.fk_column_set if x not in keys_and_data_columns and x not in self.pending_columns
+        )
 
     def drop_fk_columns(self, table: pd.DataFrame) -> pd.DataFrame:
         """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
@@ -251,7 +256,9 @@ class TablesConfig:
 
     def __init__(self, *, entities_cfg: None | dict[str, dict[str, Any]] = None, options: dict[str, Any] | None = None) -> None:
 
-        self.entities_cfg: dict[str, dict[str, Any]] = entities_cfg or ConfigValue[dict[str, dict[str, Any]]]("entities", default={}).resolve() or {}
+        self.entities_cfg: dict[str, dict[str, Any]] = (
+            entities_cfg or ConfigValue[dict[str, dict[str, Any]]]("entities", default={}).resolve() or {}
+        )
         self.options: dict[str, Any]
         if options is None:
             self.options = ConfigValue[dict[str, Any]]("options", default={}).resolve() or {}
