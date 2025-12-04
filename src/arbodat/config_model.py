@@ -306,6 +306,7 @@ class DataSourceConfig:
     """Configuration for data sources."""
 
     def __init__(self, *, cfg: None | dict[str, Any], name: str) -> None:
+        self.name: str = name
         self.data_source_cfg: dict[str, Any] = cfg or {}
 
     @property
