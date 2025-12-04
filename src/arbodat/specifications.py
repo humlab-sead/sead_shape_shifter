@@ -116,8 +116,18 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
         missing_keys = self.get_missing_keys(
             required_keys=set(fk_cfg.remote_keys), columns=set(self.table_store[fk_cfg.remote_entity].columns), pending_columns=set()
         )
+        if not self.check_missing_remote_keys( fk_cfg=fk_cfg):
+            return False
+
+        return True
+
+    def check_missing_remote_keys(self, *, fk_cfg: ForeignKeyConfig) -> bool:
+        """Check for missing remote keys in the remote entity data."""
+        missing_keys: set[str] = self.get_missing_keys(
+            required_keys=set(fk_cfg.remote_keys), columns=set(self.table_store[fk_cfg.remote_entity].columns), pending_columns=set()
+        )
         if missing_keys:
-            self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: remote keys {missing_keys} not found in remote entity data '{fk_cfg.remote_entity}'"
+            self.error = f"{fk_cfg.local_entity}[linking]: -> {fk_cfg.remote_entity}: remote keys {missing_keys} not found in remote entity data '{fk_cfg.remote_entity}'"
             return False
 
         return True
