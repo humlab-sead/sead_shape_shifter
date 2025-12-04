@@ -1,3 +1,4 @@
+from enum import unique
 import sys
 from typing import Any
 
@@ -89,37 +90,31 @@ def get_subset(
     entity_name = entity_name or (surrogate_id.rstrip("_id") if surrogate_id else "unspecified")
 
     extra_columns = extra_columns or {}
-
-    source_column_renames: dict[str, str] = {
-        source_col: new_name
-        for new_name, source_col in extra_columns.items()
-        if isinstance(source_col, str) and source_col in source.columns
+    extra_source_columns: dict[str, str] = {k: v for k, v in extra_columns.items() if isinstance(v, str) and v in source.columns}
+    extra_constant_columns: dict[str, Any] = {
+        new_name: value for new_name, value in extra_columns.items() if new_name not in extra_source_columns
     }
-
-    constant_columns: dict[str, Any] = {
-        new_name: value for new_name, value in extra_columns.items() if new_name not in [v for v in source_column_renames.values()]
-    }
-    columns_to_extract: list[str] = columns + list(source_column_renames.keys())
-    
-    # Check for missing required columns
-    if any(c not in source.columns for c in columns_to_extract):
-        missing: list[str] = [c for c in columns_to_extract if c not in source.columns]
+    all_requested_columns: list[str] = list(set(columns).union(extra_source_columns.values()))
+    missing_requested_columns: list[str] = [c for c in all_requested_columns if c not in source.columns]
+    if missing_requested_columns:
         if raise_if_missing:
-            raise ValueError(f"{entity_name}[subsetting]: Columns not found in DataFrame: {missing}")
+            raise ValueError(f"{entity_name}[subsetting]: Columns not found in DataFrame: {missing_requested_columns}")
         else:
-            logger.warning(f"{entity_name}[subsetting]: Columns not found in DataFrame and will be skipped: {missing}")
+            logger.warning(f"{entity_name}[subsetting]: Columns not found in DataFrame and will be skipped: {missing_requested_columns}")
 
-    # Extract only columns that exist
-    columns_to_extract = [c for c in columns_to_extract if c in source.columns]
+    columns_to_extract: list[str] = [c for c in source.columns if c in all_requested_columns]
+
+    # Extract only columns that exist, and uniqueify
+    columns_to_extract = [c for c in source.columns if c in columns_to_extract]
     result: pd.DataFrame = source[columns_to_extract].copy()
 
-    if source_column_renames:
+    if extra_source_columns:
         # Extra column can be an alias for an existing column, i.e. same column name can exist multiple times,
-        # and we only want to rename the last occurrence (the extracted one)
-        result.columns = _rename_last_occurence(data=result, rename_map=source_column_renames)
+        for col_name, existing_col_name in extra_source_columns.items():
+            result[col_name] = result[existing_col_name]
 
     # Add constant columns
-    for col_name, value in constant_columns.items():
+    for col_name, value in extra_constant_columns.items():
         result[col_name] = value
 
     # Handle duplicate removal
@@ -128,9 +123,24 @@ def get_subset(
             # Check functional dependency BEFORE dropping duplicates
             if fd_check:
                 check_functional_dependency(result, determinant_columns=drop_duplicates, raise_error=True)
-            result = result.drop_duplicates(subset=drop_duplicates)
+            if set(drop_duplicates).difference(result.columns):
+                missing_rquested_columns = set(drop_duplicates).difference(result.columns)
+                logger.warning(
+                    f"{entity_name}[subsetting]: Some columns specified for drop_duplicates are missing from DataFrame and will be ignored: {missing_rquested_columns}"
+                )
+            drop_duplicates = [c for c in drop_duplicates if c in result.columns]
+            if not drop_duplicates:
+                logger.warning(
+                    f"{entity_name}[subsetting]: No valid columns specified for drop_duplicates after filtering missing columns. No duplicates will be dropped."
+                )
+            else:
+                result = result.drop_duplicates(subset=drop_duplicates)
         else:
             result = result.drop_duplicates()
+
+    # reorder columns to match requested order
+    columns_in_result: list[str] = [c for c in columns if c in result.columns] + [c for c in result.columns if c not in columns]
+    result = result[columns_in_result]
 
     # Drop rows that are completely empty after subsetting
     if drop_empty_rows:
