@@ -113,14 +113,19 @@ async def main(
         )
     )
 
-    await workflow(
-        input_csv=input_csv,
-        target=target,
-        sep=sep,
-        verbose=verbose,
-        translate=translate,
-        mode=mode,
-        drop_foreign_keys=drop_foreign_keys,
+    # Configure logging AFTER setup_config_store to override its logging configuration
+    setup_logging(verbose=verbose, log_file=log_file)
+
+    asyncio.run(
+        workflow(
+            input_csv=input_csv,
+            target=target,
+            sep=sep,
+            verbose=verbose,
+            translate=translate,
+            mode=mode,
+            drop_foreign_keys=drop_foreign_keys,
+        )
     )
 
     click.secho(f"✓ Successfully written normalized workbook to {target}", fg="green")
