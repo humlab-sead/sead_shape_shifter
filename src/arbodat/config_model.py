@@ -2,10 +2,10 @@ from functools import cached_property
 from typing import Any, Literal
 
 import pandas as pd
+from loguru import logger
 
 from src.arbodat.utility import unique
 from src.configuration.resolve import ConfigValue
-from src.utility import dotget
 
 
 class UnnestConfig:
@@ -118,6 +118,7 @@ class ForeignKeyConfig:
         self.remote_entity: str = data.get("entity", "")
         self.remote_keys: list[str] = unique(data.get("remote_keys"))
         self.how: Literal["left", "inner", "outer", "right", "cross"] = data.get("how", "inner")
+        self.constraints: ForeignKeyConstraints = ForeignKeyConstraints(data.get("constraints"))
 
         if not self.remote_entity:
             raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing remote entity")
@@ -243,8 +244,8 @@ class TableConfig:
             for fk_data in self.data.get("foreign_keys", []) or []
         ]
 
-    def get_foreign_key_names(self) -> list[str]:
-        return [self.config[fk.remote_entity].get("surrogate_id", "") for fk in self.foreign_keys]
+    # def get_foreign_key_names(self) -> set[str]:
+    #     return {self.config[fk.remote_entity].get("surrogate_id", "") for fk in self.foreign_keys}
 
     @property
     def keys(self) -> set[str]:
@@ -292,7 +293,7 @@ class TableConfig:
     def unnest_columns(self) -> set[str]:
         """Get set of columns that are pending (e.g., from unnesting)."""
         if self.unnest:
-            return {self.unnest.var_name , self.unnest.value_name}
+            return {self.unnest.var_name, self.unnest.value_name}
         return set()
 
     def is_unnested(self, table: pd.DataFrame) -> bool:
@@ -317,7 +318,6 @@ class TableConfig:
 
     @property
     def extra_fk_columns(self) -> set[str]:
-        # FIXME: remove since only used by tests
         """Get set of foreign key columns not in columns or keys."""
         extra_columns: set[str] = set()
         for fk in self.foreign_keys:
