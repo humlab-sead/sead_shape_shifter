@@ -140,8 +140,6 @@ class ArbodatSurveyNormalizer:
             table_cfg: TableConfig = self.config.get_table(entity)
 
             logger.debug(f"{entity}[normalizing]: Normalizing entity...")
-            if entity == "dataset":
-                logger.debug(f"{entity}[debugging]: breakpoint for dataset entity")
 
             source: pd.DataFrame = await self.resolve_source(table_cfg=table_cfg)
 
