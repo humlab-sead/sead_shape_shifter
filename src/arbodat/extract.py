@@ -1,5 +1,4 @@
-from enum import unique
-import sys
+from turtle import rt
 from typing import Any
 
 import pandas as pd
@@ -45,6 +44,145 @@ def check_functional_dependency(df: pd.DataFrame, determinant_columns: list[str]
     return len(bad_keys) == 0
 
 
+class SubsetService:
+    """Class for extracting subsets from DataFrames with various options."""
+
+    def get_subset(
+        self,
+        source: pd.DataFrame,
+        columns: list[str],
+        *,
+        entity_name: str | None = None,
+        extra_columns: None | dict[str, Any] = None,
+        drop_duplicates: bool | list[str] = False,
+        fd_check: bool = False,
+        raise_if_missing: bool = True,
+        surrogate_id: str | None = None,
+        drop_empty_rows: bool | list[str] = False,
+    ) -> pd.DataFrame:
+        """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
+        Args:
+            source (pd.DataFrame): Source DataFrame.
+            columns (list[str]): List of column names to include from source.
+            extra_columns (dict[str, Any] | None): Extra columns mapping:
+                {new_column_name: source_column_name_or_constant}
+                - If value is a string matching source column, then copy that column
+                - Otherwise: add new column with the constant value
+            drop_duplicates (bool | list[str]): Whether to drop duplicates.
+                - If True: drop all duplicate rows
+                - If list: drop duplicates based on those columns
+                - If False: keep all rows
+            fd_check (bool): Whether to check functional dependency when dropping duplicates.
+            raise_if_missing (bool): Whether to raise an error if requested columns are missing.
+            surrogate_id (str | None): Name of surrogate ID column to add if not already present.
+            drop_empty_rows (bool): Whether to drop rows that are completely empty after subsetting.
+
+        Returns:
+            pd.DataFrame: Resulting DataFrame with requested columns and modifications.
+
+        Examples:
+            >>> df = pd.DataFrame({'A': [1, 2], 'B': [3, 4], 'C': [5, 6]})
+            >>> # Extract A and B, add copy of C to D
+            >>> get_subset(df, ['A', 'B'], extra_columns={'D': 'C'})
+            >>> # Extract A and B, add constant column D
+            >>> get_subset(df, ['A', 'B'], extra_columns={'D': 'constant_value'})
+        """
+        if source is None:
+            raise ValueError("Source DataFrame must be provided")
+
+        entity_name = entity_name or (surrogate_id.rstrip("_id") if surrogate_id else "unspecified")
+        columns = list(set(columns))  # Uniqueify columns
+        extra_columns = extra_columns or {}
+
+        extra_source_columns, extra_constant_columns = self._split_extra_columns(source, extra_columns)
+        all_requested_columns: set[str] = set(columns).union(extra_source_columns.values())
+
+        self._check_if_missing_requested_columns(source, entity_name, raise_if_missing, all_requested_columns)
+
+        columns_to_extract: list[str] = [c for c in source.columns if c in all_requested_columns]
+
+        # Extract only columns that exist, and uniqueify
+        columns_to_extract = [c for c in source.columns if c in columns_to_extract]
+        result: pd.DataFrame = source[columns_to_extract].copy()
+
+        # Add extra columns that are copies of existing columns
+        for col_name, existing_col_name in extra_source_columns.items():
+            result[col_name] = result[existing_col_name]
+
+        # Add constant columns
+        for col_name, value in extra_constant_columns.items():
+            result[col_name] = value
+
+        # Handle duplicate removal
+        if drop_duplicates:
+            result = self._drop_duplicates(result, columns=drop_duplicates, fd_check=fd_check, entity_name=entity_name)
+
+        result = self._restore_columns_order(result, columns)
+
+        # Drop rows that are completely empty after subsetting
+        if drop_empty_rows:
+            result = self._drop_empty_rows(result, subset=None if drop_empty_rows is True else drop_empty_rows)
+
+        # Add surrogate ID if requested and not present
+        if surrogate_id and surrogate_id not in result.columns:
+            result = add_surrogate_id(result, surrogate_id)
+
+        return result
+
+    def _split_extra_columns(self, source, extra_columns) -> tuple[dict[str, str], dict[str, Any]]:
+        """Split extra columns into those that copy existing source columns and those that are constants."""
+        extra_source_columns: dict[str, str] = {k: v for k, v in extra_columns.items() if isinstance(v, str) and v in source.columns}
+        extra_constant_columns: dict[str, Any] = {
+            new_name: value for new_name, value in extra_columns.items() if new_name not in extra_source_columns
+        }
+
+        return extra_source_columns, extra_constant_columns
+
+    def _check_if_missing_requested_columns(
+        self, source: pd.DataFrame, entity_name: str, raise_if_missing: bool, all_requested_columns: set[str]
+    ) -> None:
+        missing_requested_columns: list[str] = [c for c in all_requested_columns if c not in source.columns]
+        if missing_requested_columns:
+            if raise_if_missing:
+                raise ValueError(f"{entity_name}[subsetting]: Columns not found in DataFrame: {missing_requested_columns}")
+            else:
+                logger.warning(
+                    f"{entity_name}[subsetting]: Columns not found in DataFrame and will be skipped: {missing_requested_columns}"
+                )
+
+    def _restore_columns_order(self, data: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+        """Reorder columns in DataFrame to match specified order."""
+        columns_in_result: list[str] = [c for c in columns if c in data.columns] + [c for c in data.columns if c not in columns]
+        return data[columns_in_result]
+
+    def _drop_empty_rows(self, data: pd.DataFrame, subset: list[str] | None = None) -> pd.DataFrame:
+        """Drop rows that are completely empty in the DataFrame or in the specified subset of columns."""
+        if isinstance(subset, list):
+            return data.dropna(subset=subset, how="all")
+        return data.dropna(how="all")
+
+    def _drop_duplicates(
+        self, data: pd.DataFrame, columns: bool | list[str] = False, fd_check: bool = False, entity_name: str | None = None
+    ) -> pd.DataFrame:
+        if not isinstance(columns, list):
+            return data.drop_duplicates()
+        if set(columns).difference(data.columns):
+            missing_rquested_columns = set(columns).difference(data.columns)
+            logger.warning(
+                f"{entity_name}[subsetting]: Some columns specified for drop_duplicates are missing from DataFrame and will be ignored: {missing_rquested_columns}"
+            )
+        columns = [c for c in columns if c in data.columns]
+        if not columns:
+            logger.warning(
+                f"{entity_name}[subsetting]: No valid columns specified for drop_duplicates after filtering missing columns. No duplicates will be dropped."
+            )
+            return data
+        if fd_check:
+            check_functional_dependency(data, determinant_columns=columns, raise_error=True)
+        data = data.drop_duplicates(subset=columns)
+        return data
+
+
 def get_subset(
     source: pd.DataFrame,
     columns: list[str],
@@ -57,103 +195,18 @@ def get_subset(
     surrogate_id: str | None = None,
     drop_empty_rows: bool | list[str] = False,
 ) -> pd.DataFrame:
-    """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
-    Args:
-        source (pd.DataFrame): Source DataFrame.
-        columns (list[str]): List of column names to include from source.
-        extra_columns (dict[str, Any] | None): Extra columns mapping:
-            {new_column_name: source_column_name_or_constant}
-            - If value is a string matching source column: extract and rename
-            - Otherwise: add new column with the constant value
-        drop_duplicates (bool | list[str]): Whether to drop duplicates.
-            - If True: drop all duplicate rows
-            - If list: drop duplicates based on those columns
-            - If False: keep all rows
-        fd_check (bool): Whether to check functional dependency when dropping duplicates.
-        raise_if_missing (bool): Whether to raise an error if requested columns are missing.
-        surrogate_id (str | None): Name of surrogate ID column to add if not already present.
-        drop_empty_rows (bool): Whether to drop rows that are completely empty after subsetting.
-
-    Returns:
-        pd.DataFrame: Resulting DataFrame with requested columns and modifications.
-
-    Examples:
-        >>> df = pd.DataFrame({'A': [1, 2], 'B': [3, 4], 'C': [5, 6]})
-        >>> # Extract A and B, rename C to D
-        >>> get_subset(df, ['A', 'B'], extra_columns={'D': 'C'})
-        >>> # Extract A and B, add constant column D
-        >>> get_subset(df, ['A', 'B'], extra_columns={'D': 'constant_value'})
-    """
-    if source is None:
-        raise ValueError("Source DataFrame must be provided")
-
-    entity_name = entity_name or (surrogate_id.rstrip("_id") if surrogate_id else "unspecified")
-
-    extra_columns = extra_columns or {}
-    extra_source_columns: dict[str, str] = {k: v for k, v in extra_columns.items() if isinstance(v, str) and v in source.columns}
-    extra_constant_columns: dict[str, Any] = {
-        new_name: value for new_name, value in extra_columns.items() if new_name not in extra_source_columns
-    }
-    all_requested_columns: list[str] = list(set(columns).union(extra_source_columns.values()))
-    missing_requested_columns: list[str] = [c for c in all_requested_columns if c not in source.columns]
-    if missing_requested_columns:
-        if raise_if_missing:
-            raise ValueError(f"{entity_name}[subsetting]: Columns not found in DataFrame: {missing_requested_columns}")
-        else:
-            logger.warning(f"{entity_name}[subsetting]: Columns not found in DataFrame and will be skipped: {missing_requested_columns}")
-
-    columns_to_extract: list[str] = [c for c in source.columns if c in all_requested_columns]
-
-    # Extract only columns that exist, and uniqueify
-    columns_to_extract = [c for c in source.columns if c in columns_to_extract]
-    result: pd.DataFrame = source[columns_to_extract].copy()
-
-    if extra_source_columns:
-        # Extra column can be an alias for an existing column, i.e. same column name can exist multiple times,
-        for col_name, existing_col_name in extra_source_columns.items():
-            result[col_name] = result[existing_col_name]
-
-    # Add constant columns
-    for col_name, value in extra_constant_columns.items():
-        result[col_name] = value
-
-    # Handle duplicate removal
-    if drop_duplicates:
-        if isinstance(drop_duplicates, list):
-            # Check functional dependency BEFORE dropping duplicates
-            if fd_check:
-                check_functional_dependency(result, determinant_columns=drop_duplicates, raise_error=True)
-            if set(drop_duplicates).difference(result.columns):
-                missing_rquested_columns = set(drop_duplicates).difference(result.columns)
-                logger.warning(
-                    f"{entity_name}[subsetting]: Some columns specified for drop_duplicates are missing from DataFrame and will be ignored: {missing_rquested_columns}"
-                )
-            drop_duplicates = [c for c in drop_duplicates if c in result.columns]
-            if not drop_duplicates:
-                logger.warning(
-                    f"{entity_name}[subsetting]: No valid columns specified for drop_duplicates after filtering missing columns. No duplicates will be dropped."
-                )
-            else:
-                result = result.drop_duplicates(subset=drop_duplicates)
-        else:
-            result = result.drop_duplicates()
-
-    # reorder columns to match requested order
-    columns_in_result: list[str] = [c for c in columns if c in result.columns] + [c for c in result.columns if c not in columns]
-    result = result[columns_in_result]
-
-    # Drop rows that are completely empty after subsetting
-    if drop_empty_rows:
-        if isinstance(drop_empty_rows, list):
-            result = result.dropna(subset=drop_empty_rows, how="all")
-        else:
-            result = result.dropna(how="all")
-
-    # Add surrogate ID if requested and not present
-    if surrogate_id and surrogate_id not in result.columns:
-        result = add_surrogate_id(result, surrogate_id)
-
-    return result
+    """Backward-compatible convenience function to get subset using SubsetService."""
+    return SubsetService().get_subset(
+        source=source,
+        columns=columns,
+        entity_name=entity_name,
+        extra_columns=extra_columns,
+        drop_duplicates=drop_duplicates,
+        fd_check=fd_check,
+        raise_if_missing=raise_if_missing,
+        surrogate_id=surrogate_id,
+        drop_empty_rows=drop_empty_rows,
+    )
 
 
 def _rename_last_occurence(data: pd.DataFrame, rename_map: dict[str, str]) -> list[str]:
@@ -206,76 +259,3 @@ def translate(data: dict[str, pd.DataFrame], translations_map: dict[str, str] | 
         data[entity] = table
 
     return data
-
-
-# Global set to track seen log messages (for deduplication)
-_seen_messages: set[str] = set()
-
-
-def filter_once_per_message(record) -> bool:
-    """Filter to show each unique message only once during the run."""
-    global _seen_messages
-
-    msg = record["message"]
-    level_name = record["level"].name
-    key = f"{level_name}:{msg}"
-
-    if key not in _seen_messages:
-        _seen_messages.add(key)
-        return True
-    return False
-
-
-def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
-    """Configure loguru logging with appropriate handlers and filters.
-
-    Args:
-        verbose: If True, set log level to DEBUG and show all messages.
-                If False, set to INFO and filter duplicate messages.
-        log_file: Optional path to log file. If provided, logs are written to file.
-    """
-    global _seen_messages
-
-    _seen_messages = set()
-
-    level = "DEBUG" if verbose else "INFO"
-
-    logger.remove()
-
-    log_format = (
-        (
-            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-            "<level>{level: <8}</level> | "
-            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-            "<level>{message}</level>"
-        )
-        if verbose
-        else "<level>{message}</level>"
-    )
-
-    # Add console handler with filter only if not verbose
-    logger.add(
-        sys.stderr,
-        level=level,
-        format=log_format,
-        filter=filter_once_per_message if not verbose else None,
-        colorize=True,
-        enqueue=False,
-    )
-
-    # Add file handler if specified (always show all messages in log file)
-    if log_file:
-        logger.add(
-            log_file,
-            level="DEBUG",
-            format=(
-                "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-                "<level>{level: <8}</level> | "
-                "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-                "<level>{message}</level>"
-            ),
-            enqueue=False,
-        )
-
-    if verbose:
-        logger.debug("Verbose logging enabled")
