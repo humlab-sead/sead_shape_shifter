@@ -121,7 +121,7 @@ class SubsetService:
 
         # Drop rows that are completely empty after subsetting
         if drop_empty_rows:
-            result = self._drop_empty_rows(result, subset=None if drop_empty_rows is True else drop_empty_rows)
+            result = self._drop_empty_rows(data=result, entity_name=entity_name, subset=None if drop_empty_rows is True else drop_empty_rows)
 
         # Add surrogate ID if requested and not present
         if surrogate_id and surrogate_id not in result.columns:
@@ -155,9 +155,13 @@ class SubsetService:
         columns_in_result: list[str] = [c for c in columns if c in data.columns] + [c for c in data.columns if c not in columns]
         return data[columns_in_result]
 
-    def _drop_empty_rows(self, data: pd.DataFrame, subset: list[str] | None = None) -> pd.DataFrame:
+    def _drop_empty_rows(self, *, data: pd.DataFrame, entity_name: str, subset: list[str] | None = None) -> pd.DataFrame:
         """Drop rows that are completely empty in the DataFrame or in the specified subset of columns."""
         if isinstance(subset, list):
+            missing_requested_columns: list[str] = [c for c in subset if c not in data.columns]
+            if missing_requested_columns:
+                logger.warning(f"{entity_name}[subsetting]: Columns missing for drop_empty_rows: {missing_requested_columns}")
+                return data
             return data.dropna(subset=subset, how="all")
         return data.dropna(how="all")
 
