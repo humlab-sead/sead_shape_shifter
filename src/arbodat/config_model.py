@@ -209,10 +209,13 @@ class TableConfig:
         if not self.unnest:
             return False
         return all(col in table.columns for col in [self.unnest.var_name, self.unnest.value_name])
-    
+
     @property
-    def depends_on(self) -> list[str]:
-        return (self.data.get("depends_on", []) or []) + ([self.source] if self.source else [])
+    def depends_on(self) -> set[str]:
+        dependees: set[str] = set(self.data.get("depends_on", []) or []) | ({self.source} if self.source else set()) | {
+            fk.remote_entity for fk in self.foreign_keys
+        }
+        return dependees
 
     @property
     def fk_column_set(self) -> set[str]:
