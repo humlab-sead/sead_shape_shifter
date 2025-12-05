@@ -3,6 +3,7 @@ from typing import Any, Literal
 
 import pandas as pd
 
+from src.arbodat.utility import unique
 from src.configuration.resolve import ConfigValue
 from src.utility import dotget
 
@@ -35,11 +36,11 @@ class ForeignKeyConfig:
             ValueError: If required fields are missing or invalid."""
         self.config: dict[str, dict[str, Any]] = cfg  # full config
         self.local_entity: str = local_entity
-        self.local_keys: list[str] = data.get("local_keys", []) or []
+        self.local_keys: list[str] = unique(data.get("local_keys"))
         self.remote_extra_columns: dict[str, str] = self.resolve_extra_columns(data) or {}
         self.drop_remote_id: bool = data.get("drop_remote_id", False)
         self.remote_entity: str = data.get("entity", "")
-        self.remote_keys: list[str] = data.get("remote_keys", []) or []
+        self.remote_keys: list[str] = unique(data.get("remote_keys"))
         self.how: Literal["left", "inner", "outer", "right", "cross"] = data.get("how", "inner")
 
         if not self.remote_entity:
@@ -156,12 +157,12 @@ class TableConfig:
         return [self.config[fk.remote_entity].get("surrogate_id", "") for fk in self.foreign_keys]
 
     @property
-    def keys(self) -> list[str]:
-        return self.data.get("keys", []) or []
+    def keys(self) -> set[str]:
+        return set(self.data.get("keys", []) or [])
 
     @property
     def columns(self) -> list[str]:
-        return self.data.get("columns", []) or []
+        return unique(self.data.get("columns"))
 
     @property
     def extra_columns(self) -> dict[str, Any]:
@@ -174,7 +175,7 @@ class TableConfig:
     @property
     def columns2(self) -> list[str]:
         """Get columns with keys first, followed by other columns."""
-        return self.keys + [col for col in self.columns if col not in self.keys]
+        return list(self.keys) + [col for col in self.columns if col not in self.keys]
 
     @property
     def data_columns(self) -> list[str]:
@@ -212,9 +213,11 @@ class TableConfig:
 
     @property
     def depends_on(self) -> set[str]:
-        dependees: set[str] = set(self.data.get("depends_on", []) or []) | ({self.source} if self.source else set()) | {
-            fk.remote_entity for fk in self.foreign_keys
-        }
+        dependees: set[str] = (
+            set(self.data.get("depends_on", []) or [])
+            | ({self.source} if self.source else set())
+            | {fk.remote_entity for fk in self.foreign_keys}
+        )
         return dependees
 
     @property
@@ -235,8 +238,8 @@ class TableConfig:
     def usage_columns(self) -> list[str]:
         """Get set of all columns used in keys, columns, and foreign keys, pending unnesting columns excluded)."""
         keys_and_data_columns: list[str] = self.columns2
-        return keys_and_data_columns + list(
-            x for x in self.fk_column_set if x not in keys_and_data_columns and x not in self.unnest_columns
+        return keys_and_data_columns + unique(
+            list(x for x in self.fk_column_set if x not in keys_and_data_columns and x not in self.unnest_columns)
         )
 
     def drop_fk_columns(self, table: pd.DataFrame) -> pd.DataFrame:
@@ -299,7 +302,7 @@ class TablesConfig:
         existing_cols_to_move: list[str] = [col for col in cols_to_move if col in table.columns]
         other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
         new_column_order: list[str] = existing_cols_to_move + other_cols
-        return new_column_order
+        return unique(new_column_order)
 
     def reorder_columns(self, table_cfg: str | TableConfig, table: pd.DataFrame) -> pd.DataFrame:
         """Reorder columns in the DataFrame to have keys first, then extra columns, then other columns."""

@@ -1,9 +1,18 @@
 import sys
+from typing import Any, Callable
 
 from loguru import logger
 
 # Global set to track seen log messages (for deduplication)
 _seen_messages: set[str] = set()
+
+
+def unique(seq: list[Any]|None) -> list[Any]:
+    if seq is None:
+        return []
+    seen: set[Any] = set()
+    gx: Callable[[Any], None] = seen.add
+    return [x for x in seq if not (x in seen or gx(x))]
 
 
 def filter_once_per_message(record) -> bool:
