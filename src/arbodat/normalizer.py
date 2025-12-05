@@ -156,16 +156,8 @@ class ArbodatSurveyNormalizer:
                 drop_duplicates=table_cfg.drop_duplicates,
                 surrogate_id=table_cfg.surrogate_id,
                 raise_if_missing=False,
+                drop_empty_rows=table_cfg.drop_empty_rows
             )
-
-            if table_cfg.drop_empty_rows:
-                """Discard rows that are empty in all **data** columns (excluding keys and foreign keys)."""
-                data_columns: list[str] = table_cfg.data_columns
-                if data_columns:
-                    data = data.dropna(subset=data_columns, how="all")
-
-            if table_cfg.surrogate_id:
-                data = add_surrogate_id(data, table_cfg.surrogate_id)
 
             self.register(entity, data)
 
