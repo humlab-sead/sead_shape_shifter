@@ -7,7 +7,7 @@ from loguru import logger
 _seen_messages: set[str] = set()
 
 
-def unique(seq: list[Any]|None) -> list[Any]:
+def unique(seq: list[Any] | None) -> list[Any]:
     if seq is None:
         return []
     seen: set[Any] = set()

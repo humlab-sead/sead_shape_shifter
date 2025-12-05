@@ -34,12 +34,12 @@ from loguru import logger
 
 from src.arbodat.config_model import DataSourceConfig, TableConfig, TablesConfig
 from src.arbodat.dispatch import Dispatcher, Dispatchers
+from src.arbodat.extract import get_subset, translate
 from src.arbodat.link import link_entity
 from src.arbodat.loaders.database_loaders import SqlLoader, SqlLoaderFactory
 from src.arbodat.loaders.fixed_loader import FixedLoader
 from src.arbodat.mapping import LinkToRemoteService
 from src.arbodat.unnest import unnest
-from src.arbodat.extract import add_surrogate_id, get_subset, translate
 
 
 class ProcessState:
@@ -63,7 +63,7 @@ class ProcessState:
         return None
 
     def get_unmet_dependencies(self, entity: str) -> set[str]:
-        return set(self.config.get_table(entity_name=entity).depends_on) - self.processed_entities
+        return self.config.get_table(entity_name=entity).depends_on - self.processed_entities
 
     def discard(self, entity: str) -> None:
         """Mark an entity as processed and remove it from the unprocessed set."""
@@ -154,7 +154,7 @@ class ArbodatSurveyNormalizer:
                 drop_duplicates=table_cfg.drop_duplicates,
                 surrogate_id=table_cfg.surrogate_id,
                 raise_if_missing=False,
-                drop_empty_rows=table_cfg.drop_empty_rows
+                drop_empty_rows=table_cfg.drop_empty_rows,
             )
 
             self.register(entity, data)

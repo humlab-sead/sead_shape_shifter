@@ -121,7 +121,9 @@ class SubsetService:
 
         # Drop rows that are completely empty after subsetting
         if drop_empty_rows:
-            result = self._drop_empty_rows(data=result, entity_name=entity_name, subset=None if drop_empty_rows is True else drop_empty_rows)
+            result = self._drop_empty_rows(
+                data=result, entity_name=entity_name, subset=None if drop_empty_rows is True else drop_empty_rows
+            )
 
         # Add surrogate ID if requested and not present
         if surrogate_id and surrogate_id not in result.columns:
