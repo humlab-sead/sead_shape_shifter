@@ -56,8 +56,8 @@ def link_entity(entity_name: str, config: TablesConfig, data: dict[str, pd.DataF
         remote_id: str | None = remote_cfg.surrogate_id or f"{fk.remote_entity}_id"
         remote_df: pd.DataFrame = data[fk.remote_entity]
 
-        if remote_id in local_df.columns:
-            logger.debug(f"{entity_name}[linking]: skipped since FK '{remote_id}' already exists.")
+        if remote_id in local_df.columns or all(col in local_df.columns for col in fk.remote_extra_columns.values()):
+            logger.debug(f"{entity_name}[linking]: skipped since FK '{remote_id}' and/or extra columns already exist.")
             continue
 
         specification: ForeignKeyDataSpecification = ForeignKeyDataSpecification(cfg=config, table_store=data)
