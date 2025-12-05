@@ -1,8 +1,9 @@
-from turtle import rt
 from typing import Any
 
 import pandas as pd
 from loguru import logger
+
+from src.arbodat.utility import unique
 
 
 def add_surrogate_id(target: pd.DataFrame, id_name: str) -> pd.DataFrame:
@@ -91,7 +92,7 @@ class SubsetService:
             raise ValueError("Source DataFrame must be provided")
 
         entity_name = entity_name or (surrogate_id.rstrip("_id") if surrogate_id else "unspecified")
-        columns = list(set(columns))  # Uniqueify columns
+        columns = unique(columns)
         extra_columns = extra_columns or {}
 
         extra_source_columns, extra_constant_columns = self._split_extra_columns(source, extra_columns)
