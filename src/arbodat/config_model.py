@@ -23,6 +23,82 @@ class UnnestConfig:
             raise ValueError(f"Invalid unnest configuration: {data}")
 
 
+class ForeignKeyConstraints:
+    """Constraints for foreign key relationships."""
+
+    def __init__(self, data: dict[str, Any] | None = None) -> None:
+        """Initialize constraints from configuration data."""
+        self.data: dict[str, Any] = data or {}
+
+    @property
+    def cardinality(self) -> Literal["one_to_one", "many_to_one", "one_to_many", "many_to_many"] | None:
+        """Get cardinality constraint."""
+        # Cardinality constraints
+        return self.data.get("cardinality")
+
+    @property
+    def allow_unmatched_left(self) -> bool | None:
+        return self.data.get("allow_unmatched_left")
+
+    @property
+    def allow_unmatched_right(self) -> bool | None:
+        return self.data.get("allow_unmatched_right")
+
+    @property
+    def require_all_left_matched(self) -> bool:
+        return self.data.get("require_all_left_matched", False)
+
+    @property
+    def require_all_right_matched(self) -> bool:
+        return self.data.get("require_all_right_matched", False)
+
+    @property
+    def max_row_increase_pct(self) -> float | None:
+        return self.data.get("max_row_increase_pct")
+
+    @property
+    def max_row_increase_abs(self) -> int | None:
+        return self.data.get("max_row_increase_abs")
+
+    @property
+    def allow_row_decrease(self) -> bool | None:
+        return self.data.get("allow_row_decrease")
+
+    @property
+    def min_match_rate(self) -> float | None:
+        return self.data.get("min_match_rate")
+
+    @property
+    def require_unique_left(self) -> bool:
+        return self.data.get("require_unique_left", False)
+
+    @property
+    def require_unique_right(self) -> bool:
+        return self.data.get("require_unique_right", False)
+
+    @property
+    def allow_null_keys(self) -> bool:
+        return self.data.get("allow_null_keys", True)
+
+    @property
+    def is_empty(self) -> bool:
+        """Check if no constraints are set."""
+        return bool(self.data) == False
+
+    @property
+    def has_constraints(self) -> bool:
+        return not self.is_empty
+
+    def has_match_constraints(self) -> bool:
+        return (
+            self.allow_unmatched_left is not None
+            or self.allow_unmatched_right is not None
+            or self.require_all_left_matched
+            or self.require_all_right_matched
+            or self.min_match_rate is not None
+        )
+
+
 class ForeignKeyConfig:
     """Configuration for a foreign key."""
 
@@ -86,6 +162,20 @@ class ForeignKeyConfig:
             raise ValueError(f"Invalid extra_columns format in FK config for '{self.local_entity}'")
 
         return {v: k for k, v in cfg_value.items()}  # invert mapping
+
+    @property
+    def has_constraints(self) -> bool:
+        return self.constraints and self.constraints.has_constraints
+
+    def get_valid_remote_columns(self, df: pd.DataFrame) -> Any | list[str]:
+        columns: list[str] = unique(self.remote_keys + list(self.remote_extra_columns.keys()))
+        missing_columns: list[str] = [col for col in columns if col not in df.columns]
+        if missing_columns:
+            logger.warning(
+                f"{self.local_entity}[linking]: Skipping extra link columns for entity '{self.local_entity}' to '{self.remote_entity}': missing remote columns {missing_columns} in remote table"
+            )
+            columns = [col for col in columns if col in df.columns]
+        return columns
 
 
 class TableConfig:
