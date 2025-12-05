@@ -165,7 +165,7 @@ class SubsetService:
         self, data: pd.DataFrame, columns: bool | list[str] = False, fd_check: bool = False, entity_name: str | None = None
     ) -> pd.DataFrame:
         if not isinstance(columns, list):
-            return data.drop_duplicates()
+            return data.drop_duplicates().reset_index(drop=True)
         if set(columns).difference(data.columns):
             missing_rquested_columns = set(columns).difference(data.columns)
             logger.warning(
@@ -179,7 +179,7 @@ class SubsetService:
             return data
         if fd_check:
             check_functional_dependency(data, determinant_columns=columns, raise_error=True)
-        data = data.drop_duplicates(subset=columns)
+        data = data.drop_duplicates(subset=columns).reset_index(drop=True)
         return data
 
 
