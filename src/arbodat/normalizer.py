@@ -164,11 +164,8 @@ class ArbodatSurveyNormalizer:
             link_entity(entity_name=entity, config=self.config, data=self.data)
 
             if table_cfg.unnest:
-                try:
-                    data = self.unnest_entity(entity=entity)
-                    link_entity(entity_name=entity, config=self.config, data=self.data)
-                except ValueError as e:
-                    logger.warning(f"{entity}[normalizing]: Skipping unnesting: {e}")
+                self.unnest_entity(entity=entity)
+                link_entity(entity_name=entity, config=self.config, data=self.data)
 
             self.link()  # Try to resolve any pending deferred links after each entity is processed
 
@@ -194,11 +191,20 @@ class ArbodatSurveyNormalizer:
             self.data[entity] = self.unnest_entity(entity=entity)
 
     def unnest_entity(self, *, entity: str) -> pd.DataFrame:
-        table_cfg: TableConfig = self.config.get_table(entity)
-        if table_cfg.unnest:
-            self.data[entity] = unnest(entity=entity, table=self.data[entity], table_cfg=table_cfg)
-        return self.data[entity]
-
+        try:
+            table_cfg: TableConfig = self.config.get_table(entity)
+            if table_cfg.unnest:
+                data: pd.DataFrame = self.data[entity]
+                data = unnest(entity=entity, table=data, table_cfg=table_cfg)
+                if table_cfg.surrogate_id:
+                    """Update surrogate ID after unnesting to get unique IDs."""
+                    data = add_surrogate_id(target=data, id_name=table_cfg.surrogate_id)
+                self.data[entity] = data
+        except Exception as e:
+            logger.error(f"Error unnesting entity {entity}: {e}")
+        finally:
+            return self.data[entity]
+        
     def translate(self, translations_map: dict[str, str]) -> None:
         """Translate column names using translation from config."""
         self.data = translate(self.data, translations_map=translations_map)
