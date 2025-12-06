@@ -1,0 +1,6 @@
+system_id,location_type_id,arbodat_code,location_type,location_type_name
+1,,Ort,Ort,2
+2,,Kreis,Kreis,2
+3,,Land,Land,2
+4,,Staat,Staat,1
+5,,FlurStr,FlurStr,10

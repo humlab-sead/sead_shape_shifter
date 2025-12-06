@@ -1,0 +1,2365 @@
+PCODE,ProjektNr,Befu,ProbNr,TaxAut,BNam
+AECYN,18_0025,P16,18_0025_0003,L.,Aethusa cynapium
+ALNU,18_0025,P16,18_0025_0003,Gaertn.,Alnus spec.
+APIAC,18_0025,P16,18_0025_0003,,Apiaceae
+ATRI,18_0025,P16,18_0025_0003,L.,Atriplex spec.
+CERA,18_0025,P16,18_0025_0003,L.,Cerastium spec.
+CHALB,18_0025,P16,18_0025_0003,L.,Chenopodium album
+FRVES,18_0025,P16,18_0025_0003,L.,Fragaria vesca
+GAIS,18_0025,P16,18_0025_0003,L.,Galeopsis spec.
+GLHEH,18_0025,P16,18_0025_0003,L.,Glechoma hederacea
+HELE,18_0025,P16,18_0025_0003,,Eleocharis
+PLMAJ,18_0025,P16,18_0025_0003,L.,Plantago major s.l.
+POAVI,18_0025,P16,18_0025_0003,,Polygonum aviculare agg.
+POLCO,18_0025,P16,18_0025_0003,(L.) A. Löve,Polygonum convolvulus
+POLPE,18_0025,P16,18_0025_0003,L./L.,Polygonum lapathifolium/persicaria
+PRPAD,18_0025,P16,18_0025_0003,L.,Prunus padus
+RANU,18_0025,P16,18_0025_0003,L.,Ranunculus spec.
+RUIDA,18_0025,P16,18_0025_0003,L.,Rubus idaeus
+SILE,18_0025,P16,18_0025_0003,L.,Silene spec.
+SOLA,18_0025,P16,18_0025_0003,L.,Solanum spec.
+SPARV,18_0025,P16,18_0025_0003,L.,Spergula arvensis
+STGRA,18_0025,P16,18_0025_0003,L.,Stellaria graminea
+STMES,18_0025,P16,18_0025_0003,,Stellaria media
+TOJAP,18_0025,P16,18_0025_0003,(Houtt.) DC.,Torilis japonica
+URDIO,18_0025,P16,18_0025_0003,L.,Urtica dioica
+AECYN,18_0025,P18,18_0025_0004,L.,Aethusa cynapium
+ALGLI,18_0025,P18,18_0025_0004,,Alnus glutinosa/incana
+ATRI,18_0025,P18,18_0025_0004,L.,Atriplex spec.
+BITRI,18_0025,P18,18_0025_0004,L.,Bidens tripartita
+CHALB,18_0025,P18,18_0025_0004,L.,Chenopodium album
+COAVE,18_0025,P18,18_0025_0004,L.,Corylus avellana
+FIULM,18_0025,P18,18_0025_0004,(L.) Maxim.,Filipendula ulmaria
+GAIS,18_0025,P18,18_0025_0004,L.,Galeopsis spec.
+HULUP,18_0025,P18,18_0025_0004,L.,Humulus lupulus
+POLCO,18_0025,P18,18_0025_0004,(L.) A. Löve,Polygonum convolvulus
+POLPE,18_0025,P18,18_0025_0004,L./L.,Polygonum lapathifolium/persicaria
+RAFIC,18_0025,P18,18_0025_0004,L.,Ranunculus ficaria
+RANU,18_0025,P18,18_0025_0004,L.,Ranunculus spec.
+RUIDA,18_0025,P18,18_0025_0004,L.,Rubus idaeus
+SCSIL,18_0025,P18,18_0025_0004,L.,Scirpus sylvaticus
+SIDIO,18_0025,P18,18_0025_0004,(L.) Clairv.,Silene dioica
+STAC,18_0025,P18,18_0025_0004,L.,Stachys spec.
+STEL,18_0025,P18,18_0025_0004,L.,Stellaria spec.
+URDIO,18_0025,P18,18_0025_0004,L.,Urtica dioica
+ALGLI,18_0025,P20,18_0025_0005,,Alnus glutinosa/incana
+APIAC,18_0025,P20,18_0025_0005,,Apiaceae
+ATRI,18_0025,P20,18_0025_0005,L.,Atriplex spec.
+CARE,18_0025,P20,18_0025_0005,,Carex spec.
+CHALB,18_0025,P20,18_0025_0005,L.,Chenopodium album
+GAIS,18_0025,P20,18_0025_0005,L.,Galeopsis spec.
+GLHEH,18_0025,P20,18_0025_0005,L.,Glechoma hederacea
+INDET,18_0025,P20,18_0025_0005,,Indeterminata
+POAVI,18_0025,P20,18_0025_0005,,Polygonum aviculare agg.
+POLCO,18_0025,P20,18_0025_0005,(L.) A. Löve,Polygonum convolvulus
+POLPE,18_0025,P20,18_0025_0005,L./L.,Polygonum lapathifolium/persicaria
+RANU,18_0025,P20,18_0025_0005,L.,Ranunculus spec.
+RUIDA,18_0025,P20,18_0025_0005,L.,Rubus idaeus
+SCSIL,18_0025,P20,18_0025_0005,L.,Scirpus sylvaticus
+SIDIO,18_0025,P20,18_0025_0005,(L.) Clairv.,Silene dioica
+SOLA,18_0025,P20,18_0025_0005,L.,Solanum spec.
+SPAR,18_0025,P20,18_0025_0005,,Sparganium
+STGRA,18_0025,P20,18_0025_0005,L.,Stellaria graminea
+STMES,18_0025,P20,18_0025_0005,,Stellaria media
+TOJAP,18_0025,P20,18_0025_0005,(Houtt.) DC.,Torilis japonica
+ALNU,18_0025,P5,18_0025_0001,Gaertn.,Alnus spec.
+ATRI,18_0025,P5,18_0025_0001,L.,Atriplex spec.
+BETU,18_0025,P5,18_0025_0001,,Betula
+BITRI,18_0025,P5,18_0025_0001,L.,Bidens tripartita
+CHALB,18_0025,P5,18_0025_0001,L.,Chenopodium album
+COAVE,18_0025,P5,18_0025_0001,L.,Corylus avellana
+FRAX,18_0025,P5,18_0025_0001,,Fraxinus spec.
+GAIS,18_0025,P5,18_0025_0001,L.,Galeopsis spec.
+HELE,18_0025,P5,18_0025_0001,,Eleocharis
+INDET,18_0025,P5,18_0025_0001,,Indeterminata
+PINU,18_0025,P5,18_0025_0001,L.,Pinus spec.
+PLMAJ,18_0025,P5,18_0025_0001,L.,Plantago major s.l.
+POAVI,18_0025,P5,18_0025_0001,,Polygonum aviculare agg.
+POLCO,18_0025,P5,18_0025_0001,(L.) A. Löve,Polygonum convolvulus
+POLPE,18_0025,P5,18_0025_0001,L./L.,Polygonum lapathifolium/persicaria
+PRUN,18_0025,P5,18_0025_0001,L.,Prunus spec.
+RANU,18_0025,P5,18_0025_0001,L.,Ranunculus spec.
+RUIDA,18_0025,P5,18_0025_0001,L.,Rubus idaeus
+SOLA,18_0025,P5,18_0025_0001,L.,Solanum spec.
+STMES,18_0025,P5,18_0025_0001,,Stellaria media
+ALGLI,18_0025,P6,18_0025_0002,,Alnus glutinosa/incana
+ALNU,18_0025,P6,18_0025_0002,Gaertn.,Alnus spec.
+APIAC,18_0025,P6,18_0025_0002,,Apiaceae
+ATRI,18_0025,P6,18_0025_0002,L.,Atriplex spec.
+BITRI,18_0025,P6,18_0025_0002,L.,Bidens tripartita
+CARE,18_0025,P6,18_0025_0002,,Carex spec.
+CHALB,18_0025,P6,18_0025_0002,L.,Chenopodium album
+GAIS,18_0025,P6,18_0025_0002,L.,Galeopsis spec.
+GLHEH,18_0025,P6,18_0025_0002,L.,Glechoma hederacea
+HELE,18_0025,P6,18_0025_0002,,Eleocharis
+POLCO,18_0025,P6,18_0025_0002,(L.) A. Löve,Polygonum convolvulus
+POLPE,18_0025,P6,18_0025_0002,L./L.,Polygonum lapathifolium/persicaria
+PRPAD,18_0025,P6,18_0025_0002,L.,Prunus padus
+RANU,18_0025,P6,18_0025_0002,L.,Ranunculus spec.
+RUCRI,18_0025,P6,18_0025_0002,L.,Rumex crispus
+RUIDA,18_0025,P6,18_0025_0002,L.,Rubus idaeus
+SIDIO,18_0025,P6,18_0025_0002,(L.) Clairv.,Silene dioica
+SOLA,18_0025,P6,18_0025_0002,L.,Solanum spec.
+STGRA,18_0025,P6,18_0025_0002,L.,Stellaria graminea
+URDIO,18_0025,P6,18_0025_0002,L.,Urtica dioica
+AVSAT,19_0013,A11148,19_0013_0013,L.,Avena sativa
+CARE,19_0013,A11148,19_0013_0013,,Carex spec.
+CEREA,19_0013,A11148,19_0013_0013,,Cerealia indet.
+CHALB,19_0013,A11148,19_0013_0013,L.,Chenopodium album
+GASPU,19_0013,A11148,19_0013_0013,L.,Galium spurium
+HODIV,19_0013,A11148,19_0013_0013,L./L.,Hordeum distichon/vulgare
+HODVN,19_0013,A11148,19_0013_0013,,Hordeum distichon/vulgare Nacktgerste
+HODVS,19_0013,A11148,19_0013_0013,,Hordeum distichon/vulgare Spelzgerste
+INDET,19_0013,A11148,19_0013_0013,,Indeterminata
+LAMI,19_0013,A11148,19_0013_0013,L.,Lamium spec.
+POLAP,19_0013,A11148,19_0013_0013,L.,Polygonum lapathifolium agg.
+POLCO,19_0013,A11148,19_0013_0013,(L.) A. Löve,Polygonum convolvulus
+SILE,19_0013,A11148,19_0013_0013,L.,Silene spec.
+SPARV,19_0013,A11148,19_0013_0013,L.,Spergula arvensis
+STGRA,19_0013,A11148,19_0013_0013,L.,Stellaria graminea
+STMES,19_0013,A11148,19_0013_0013,,Stellaria media
+AVSAT,19_0013,A11148,19_0013_0014,L.,Avena sativa
+CARE,19_0013,A11148,19_0013_0014,,Carex spec.
+CATRI,19_0013,A11148,19_0013_0014,,Carex spec. tricarpellat
+CEREA,19_0013,A11148,19_0013_0014,,Cerealia indet.
+CHALB,19_0013,A11148,19_0013_0014,L.,Chenopodium album
+COAVE,19_0013,A11148,19_0013_0014,L.,Corylus avellana
+GAIS,19_0013,A11148,19_0013_0014,L.,Galeopsis spec.
+GASPU,19_0013,A11148,19_0013_0014,L.,Galium spurium
+HODVN,19_0013,A11148,19_0013_0014,,Hordeum distichon/vulgare Nacktgerste
+HODVS,19_0013,A11148,19_0013_0014,,Hordeum distichon/vulgare Spelzgerste
+INDET,19_0013,A11148,19_0013_0014,,Indeterminata
+POACE,19_0013,A11148,19_0013_0014,,Poaceae
+POLAP,19_0013,A11148,19_0013_0014,L.,Polygonum lapathifolium agg.
+POLCO,19_0013,A11148,19_0013_0014,(L.) A. Löve,Polygonum convolvulus
+RUCRI,19_0013,A11148,19_0013_0014,L.,Rumex crispus
+RUMAC,19_0013,A11148,19_0013_0014,,Rumex acetosella agg.
+SPARV,19_0013,A11148,19_0013_0014,L.,Spergula arvensis
+STGRA,19_0013,A11148,19_0013_0014,L.,Stellaria graminea
+STMES,19_0013,A11148,19_0013_0014,,Stellaria media
+THARV,19_0013,A11148,19_0013_0014,L.,Thlaspi arvense
+CEREA,19_0013,A11148,19_0013_0015,,Cerealia indet.
+CHALB,19_0013,A11148,19_0013_0015,L.,Chenopodium album
+INDET,19_0013,A11148,19_0013_0015,,Indeterminata
+INDET,19_0013,A11148,19_0013_0015,,Indeterminata
+POLAP,19_0013,A11148,19_0013_0015,L.,Polygonum lapathifolium agg.
+POLCO,19_0013,A11148,19_0013_0015,(L.) A. Löve,Polygonum convolvulus
+SPARV,19_0013,A11148,19_0013_0015,L.,Spergula arvensis
+STMES,19_0013,A11148,19_0013_0015,,Stellaria media
+CARE,19_0013,A11148,19_0013_0020,,Carex spec.
+CEREA,19_0013,A11148,19_0013_0020,,Cerealia indet.
+CHALB,19_0013,A11148,19_0013_0020,L.,Chenopodium album
+GAIS,19_0013,A11148,19_0013_0020,L.,Galeopsis spec.
+GALI,19_0013,A11148,19_0013_0020,L.,Galium spec.
+POACE,19_0013,A11148,19_0013_0020,,Poaceae
+POLAP,19_0013,A11148,19_0013_0020,L.,Polygonum lapathifolium agg.
+POLCO,19_0013,A11148,19_0013_0020,(L.) A. Löve,Polygonum convolvulus
+RUMAC,19_0013,A11148,19_0013_0020,,Rumex acetosella agg.
+RUME,19_0013,A11148,19_0013_0020,L.,Rumex spec.
+SPARV,19_0013,A11148,19_0013_0020,L.,Spergula arvensis
+STMES,19_0013,A11148,19_0013_0020,,Stellaria media
+CARE,19_0013,A479,19_0013_0010,,Carex spec.
+CEREA,19_0013,A479,19_0013_0010,,Cerealia indet.
+GAIS,19_0013,A479,19_0013_0010,L.,Galeopsis spec.
+GASPU,19_0013,A479,19_0013_0010,L.,Galium spurium
+HODIV,19_0013,A479,19_0013_0010,L./L.,Hordeum distichon/vulgare
+HODVS,19_0013,A479,19_0013_0010,,Hordeum distichon/vulgare Spelzgerste
+INDET,19_0013,A479,19_0013_0010,,Indeterminata
+POLAP,19_0013,A479,19_0013_0010,L.,Polygonum lapathifolium agg.
+SPARV,19_0013,A479,19_0013_0010,L.,Spergula arvensis
+STMES,19_0013,A479,19_0013_0010,,Stellaria media
+CATRI,19_0013,A479,19_0013_0011,,Carex spec. tricarpellat
+CEREA,19_0013,A479,19_0013_0011,,Cerealia indet.
+CHALB,19_0013,A479,19_0013_0011,L.,Chenopodium album
+GASPU,19_0013,A479,19_0013_0011,L.,Galium spurium
+HELE,19_0013,A479,19_0013_0011,,Eleocharis
+HODVS,19_0013,A479,19_0013_0011,,Hordeum distichon/vulgare Spelzgerste
+INDET,19_0013,A479,19_0013_0011,,Indeterminata
+INDET,19_0013,A479,19_0013_0011,,Indeterminata
+POACE,19_0013,A479,19_0013_0011,,Poaceae
+POLAP,19_0013,A479,19_0013_0011,L.,Polygonum lapathifolium agg.
+SPARV,19_0013,A479,19_0013_0011,L.,Spergula arvensis
+STMES,19_0013,A479,19_0013_0011,,Stellaria media
+THARV,19_0013,A479,19_0013_0011,L.,Thlaspi arvense
+CARE,19_0013,A479,19_0013_0012,,Carex spec.
+CEREA,19_0013,A479,19_0013_0012,,Cerealia indet.
+CHALB,19_0013,A479,19_0013_0012,L.,Chenopodium album
+GASPU,19_0013,A479,19_0013_0012,L.,Galium spurium
+HODIV,19_0013,A479,19_0013_0012,L./L.,Hordeum distichon/vulgare
+RUIDA,19_0013,A479,19_0013_0012,L.,Rubus idaeus
+SPARV,19_0013,A479,19_0013_0012,L.,Spergula arvensis
+STMES,19_0013,A479,19_0013_0012,,Stellaria media
+AVSAT,19_0013,A479,19_0013_0019,L.,Avena sativa
+CARE,19_0013,A479,19_0013_0019,,Carex spec.
+CEREA,19_0013,A479,19_0013_0019,,Cerealia indet.
+CHALB,19_0013,A479,19_0013_0019,L.,Chenopodium album
+COAVE,19_0013,A479,19_0013_0019,L.,Corylus avellana
+GASPU,19_0013,A479,19_0013_0019,L.,Galium spurium
+POLAP,19_0013,A479,19_0013_0019,L.,Polygonum lapathifolium agg.
+SPARV,19_0013,A479,19_0013_0019,L.,Spergula arvensis
+STMES,19_0013,A479,19_0013_0019,,Stellaria media
+CEREA,19_0013,A6214,19_0013_0007,,Cerealia indet.
+CHALB,19_0013,A6214,19_0013_0007,L.,Chenopodium album
+COAVE,19_0013,A6214,19_0013_0007,L.,Corylus avellana
+GASPU,19_0013,A6214,19_0013_0007,L.,Galium spurium
+POLAP,19_0013,A6214,19_0013_0007,L.,Polygonum lapathifolium agg.
+RANU,19_0013,A6214,19_0013_0007,L.,Ranunculus spec.
+SONIG,19_0013,A6214,19_0013_0007,L.,Solanum nigrum
+SPARV,19_0013,A6214,19_0013_0007,L.,Spergula arvensis
+STMES,19_0013,A6214,19_0013_0007,,Stellaria media
+BRAS,19_0013,A6214,19_0013_0008,L.,Brassica spec.
+CEREA,19_0013,A6214,19_0013_0008,,Cerealia indet.
+CHALB,19_0013,A6214,19_0013_0008,L.,Chenopodium album
+HODIV,19_0013,A6214,19_0013_0008,L./L.,Hordeum distichon/vulgare
+INDET,19_0013,A6214,19_0013_0008,,Indeterminata
+POLAP,19_0013,A6214,19_0013_0008,L.,Polygonum lapathifolium agg.
+STMES,19_0013,A6214,19_0013_0008,,Stellaria media
+TRAED,19_0013,A6214,19_0013_0008,L./L.,Triticum aestivum s.l./durum/turgidum
+CARE,19_0013,A6214,19_0013_0009,,Carex spec.
+CEREA,19_0013,A6214,19_0013_0009,,Cerealia indet.
+CHALB,19_0013,A6214,19_0013_0009,L.,Chenopodium album
+COAVE,19_0013,A6214,19_0013_0009,L.,Corylus avellana
+GASPU,19_0013,A6214,19_0013_0009,L.,Galium spurium
+HODIV,19_0013,A6214,19_0013_0009,L./L.,Hordeum distichon/vulgare
+STMES,19_0013,A6214,19_0013_0009,,Stellaria media
+BRAS,19_0013,A6214,19_0013_0018,L.,Brassica spec.
+CEREA,19_0013,A6214,19_0013_0018,,Cerealia indet.
+CHALB,19_0013,A6214,19_0013_0018,L.,Chenopodium album
+GASPU,19_0013,A6214,19_0013_0018,L.,Galium spurium
+INDET,19_0013,A6214,19_0013_0018,,Indeterminata
+POLAP,19_0013,A6214,19_0013_0018,L.,Polygonum lapathifolium agg.
+CEREA,19_0013,A8090,19_0013_0004,,Cerealia indet.
+CHALB,19_0013,A8090,19_0013_0004,L.,Chenopodium album
+GASPU,19_0013,A8090,19_0013_0004,L.,Galium spurium
+HODVS,19_0013,A8090,19_0013_0004,,Hordeum distichon/vulgare Spelzgerste
+RUME,19_0013,A8090,19_0013_0004,L.,Rumex spec.
+STMES,19_0013,A8090,19_0013_0004,,Stellaria media
+TRAED,19_0013,A8090,19_0013_0004,L./L.,Triticum aestivum s.l./durum/turgidum
+CATRI,19_0013,A8090,19_0013_0005,,Carex spec. tricarpellat
+CEREA,19_0013,A8090,19_0013_0005,,Cerealia indet.
+CHALB,19_0013,A8090,19_0013_0005,L.,Chenopodium album
+GASPU,19_0013,A8090,19_0013_0005,L.,Galium spurium
+HODIV,19_0013,A8090,19_0013_0005,L./L.,Hordeum distichon/vulgare
+HODVS,19_0013,A8090,19_0013_0005,,Hordeum distichon/vulgare Spelzgerste
+INDET,19_0013,A8090,19_0013_0005,,Indeterminata
+STMES,19_0013,A8090,19_0013_0005,,Stellaria media
+CEREA,19_0013,A8090,19_0013_0006,,Cerealia indet.
+CHALB,19_0013,A8090,19_0013_0006,L.,Chenopodium album
+INDET,19_0013,A8090,19_0013_0006,,Indeterminata
+POLAP,19_0013,A8090,19_0013_0006,L.,Polygonum lapathifolium agg.
+CATRI,19_0013,A8090,19_0013_0017,,Carex spec. tricarpellat
+CEREA,19_0013,A8090,19_0013_0017,,Cerealia indet.
+CHALB,19_0013,A8090,19_0013_0017,L.,Chenopodium album
+COAVE,19_0013,A8090,19_0013_0017,L.,Corylus avellana
+INDET,19_0013,A8090,19_0013_0017,,Indeterminata
+CEREA,19_0013,A9063,19_0013_0001,,Cerealia indet.
+CHALB,19_0013,A9063,19_0013_0001,L.,Chenopodium album
+HODIV,19_0013,A9063,19_0013_0001,L./L.,Hordeum distichon/vulgare
+HODVS,19_0013,A9063,19_0013_0001,,Hordeum distichon/vulgare Spelzgerste
+INDET,19_0013,A9063,19_0013_0001,,Indeterminata
+LIUSI,19_0013,A9063,19_0013_0001,L.,Linum usitatissimum
+MEDME,19_0013,A9063,19_0013_0001,,Medicago/Melilotus
+BRAS,19_0013,A9063,19_0013_0002,L.,Brassica spec.
+CEREA,19_0013,A9063,19_0013_0002,,Cerealia indet.
+CHALB,19_0013,A9063,19_0013_0002,L.,Chenopodium album
+GAIS,19_0013,A9063,19_0013_0002,L.,Galeopsis spec.
+GASPU,19_0013,A9063,19_0013_0002,L.,Galium spurium
+SOLA,19_0013,A9063,19_0013_0002,L.,Solanum spec.
+SPARV,19_0013,A9063,19_0013_0002,L.,Spergula arvensis
+CEREA,19_0013,A9063,19_0013_0003,,Cerealia indet.
+CHALB,19_0013,A9063,19_0013_0003,L.,Chenopodium album
+GASPU,19_0013,A9063,19_0013_0003,L.,Galium spurium
+HODIV,19_0013,A9063,19_0013_0003,L./L.,Hordeum distichon/vulgare
+HODVS,19_0013,A9063,19_0013_0003,,Hordeum distichon/vulgare Spelzgerste
+POLAP,19_0013,A9063,19_0013_0003,L.,Polygonum lapathifolium agg.
+STGRA,19_0013,A9063,19_0013_0003,L.,Stellaria graminea
+STMES,19_0013,A9063,19_0013_0003,,Stellaria media
+CEREA,19_0013,A9063,19_0013_0016,,Cerealia indet.
+CHALB,19_0013,A9063,19_0013_0016,L.,Chenopodium album
+INDET,19_0013,A9063,19_0013_0016,,Indeterminata
+TRIT,19_0013,A9063,19_0013_0016,L.,Triticum spec.
+CEREA,19_0014,A10143,19_0014_0040,,Cerealia indet.
+CHALB,19_0014,A10143,19_0014_0040,L.,Chenopodium album
+GASPU,19_0014,A10143,19_0014_0040,L.,Galium spurium
+HODIV,19_0014,A10143,19_0014_0040,L./L.,Hordeum distichon/vulgare
+CEREA,19_0014,A10153,19_0014_0037,,Cerealia indet.
+CHALB,19_0014,A10153,19_0014_0037,L.,Chenopodium album
+GASPU,19_0014,A10153,19_0014_0037,L.,Galium spurium
+CEREA,19_0014,A10189,19_0014_0042,,Cerealia indet.
+GASPU,19_0014,A10189,19_0014_0042,L.,Galium spurium
+SPARV,19_0014,A10189,19_0014_0042,L.,Spergula arvensis
+STMES,19_0014,A10189,19_0014_0042,,Stellaria media
+CEREA,19_0014,A10229,19_0014_0039,,Cerealia indet.
+CHALB,19_0014,A10229,19_0014_0039,L.,Chenopodium album
+GASPU,19_0014,A10229,19_0014_0039,L.,Galium spurium
+HODIV,19_0014,A10229,19_0014_0039,L./L.,Hordeum distichon/vulgare
+PRVUL,19_0014,A10229,19_0014_0039,L.,Prunella vulgaris
+STMES,19_0014,A10229,19_0014_0039,,Stellaria media
+CEREA,19_0014,A10697,19_0014_0067,,Cerealia indet.
+CHALB,19_0014,A10697,19_0014_0067,L.,Chenopodium album
+INDET,19_0014,A10697,19_0014_0067,,Indeterminata
+MELI,19_0014,A10697,19_0014_0067,Mill.,Melilotus spec.
+SIDIO,19_0014,A10697,19_0014_0067,(L.) Clairv.,Silene dioica
+STMES,19_0014,A10697,19_0014_0067,,Stellaria media
+CHALB,19_0014,A10990,19_0014_0055,L.,Chenopodium album
+CATRI,19_0014,A11339,19_0014_0068,,Carex spec. tricarpellat
+CEREA,19_0014,A11339,19_0014_0068,,Cerealia indet.
+CHALB,19_0014,A11339,19_0014_0068,L.,Chenopodium album
+HODVS,19_0014,A11339,19_0014_0068,,Hordeum distichon/vulgare Spelzgerste
+INDET,19_0014,A11339,19_0014_0068,,Indeterminata
+POAVI,19_0014,A11339,19_0014_0068,,Polygonum aviculare agg.
+POLAP,19_0014,A11339,19_0014_0068,L.,Polygonum lapathifolium agg.
+POLCO,19_0014,A11339,19_0014_0068,(L.) A. Löve,Polygonum convolvulus
+RANU,19_0014,A11339,19_0014_0068,L.,Ranunculus spec.
+RUMAC,19_0014,A11339,19_0014_0068,,Rumex acetosella agg.
+SPARV,19_0014,A11339,19_0014_0068,L.,Spergula arvensis
+STMES,19_0014,A11339,19_0014_0068,,Stellaria media
+VIOL,19_0014,A11339,19_0014_0068,L.,Viola spec.
+CHALB,19_0014,A1196,19_0014_0044,L.,Chenopodium album
+CARE,19_0014,A12024,19_0014_0056,,Carex spec.
+CHALB,19_0014,A12024,19_0014_0056,L.,Chenopodium album
+FUOFF,19_0014,A12024,19_0014_0056,L.,Fumaria officinalis
+GAIS,19_0014,A12024,19_0014_0056,L.,Galeopsis spec.
+PIEXC,19_0014,A12024,19_0014_0056,(L.) H. Karst.,Picea abies
+POAVI,19_0014,A12024,19_0014_0056,,Polygonum aviculare agg.
+POLCO,19_0014,A12024,19_0014_0056,(L.) A. Löve,Polygonum convolvulus
+CEREA,19_0014,A12024,19_0014_0057,,Cerealia indet.
+CHALB,19_0014,A12024,19_0014_0057,L.,Chenopodium album
+FUOFF,19_0014,A12024,19_0014_0057,L.,Fumaria officinalis
+GAIS,19_0014,A12024,19_0014_0057,L.,Galeopsis spec.
+POAVI,19_0014,A12024,19_0014_0057,,Polygonum aviculare agg.
+POLAP,19_0014,A12024,19_0014_0057,L.,Polygonum lapathifolium agg.
+POLCO,19_0014,A12024,19_0014_0057,(L.) A. Löve,Polygonum convolvulus
+SPARV,19_0014,A12024,19_0014_0057,L.,Spergula arvensis
+CARE,19_0014,A12034,19_0014_0058,,Carex spec.
+CATRI,19_0014,A12034,19_0014_0058,,Carex spec. tricarpellat
+CENT,19_0014,A12034,19_0014_0058,L.,Centaurea spec.
+CEREA,19_0014,A12034,19_0014_0058,,Cerealia indet.
+CHALB,19_0014,A12034,19_0014_0058,L.,Chenopodium album
+EUHEL,19_0014,A12034,19_0014_0058,L.,Euphorbia helioscopia
+FABAC,19_0014,A12034,19_0014_0058,,Fabaceae
+FUOFF,19_0014,A12034,19_0014_0058,L.,Fumaria officinalis
+GAIS,19_0014,A12034,19_0014_0058,L.,Galeopsis spec.
+GASPU,19_0014,A12034,19_0014_0058,L.,Galium spurium
+HELE,19_0014,A12034,19_0014_0058,,Eleocharis
+HODIV,19_0014,A12034,19_0014_0058,L./L.,Hordeum distichon/vulgare
+HODVS,19_0014,A12034,19_0014_0058,,Hordeum distichon/vulgare Spelzgerste
+INDET,19_0014,A12034,19_0014_0058,,Indeterminata
+JUCOC,19_0014,A12034,19_0014_0058,L.,Juniperus communis
+PHLE,19_0014,A12034,19_0014_0058,,Phleum
+POACE,19_0014,A12034,19_0014_0058,,Poaceae
+POAVI,19_0014,A12034,19_0014_0058,,Polygonum aviculare agg.
+POLAP,19_0014,A12034,19_0014_0058,L.,Polygonum lapathifolium agg.
+POLCO,19_0014,A12034,19_0014_0058,(L.) A. Löve,Polygonum convolvulus
+POPER,19_0014,A12034,19_0014_0058,L.,Polygonum persicaria
+POTE,19_0014,A12034,19_0014_0058,L.,Potentilla spec.
+RANU,19_0014,A12034,19_0014_0058,L.,Ranunculus spec.
+SOLA,19_0014,A12034,19_0014_0058,L.,Solanum spec.
+SPARV,19_0014,A12034,19_0014_0058,L.,Spergula arvensis
+STMES,19_0014,A12034,19_0014_0058,,Stellaria media
+TRIF,19_0014,A12034,19_0014_0058,L.,Trifolium spec.
+TYARU,19_0014,A12034,19_0014_0058,L.,Phalaris arundinacea
+CARE,19_0014,A12435,19_0014_0069,,Carex spec.
+CEREA,19_0014,A12435,19_0014_0069,,Cerealia indet.
+CHALB,19_0014,A12435,19_0014_0069,L.,Chenopodium album
+GASPU,19_0014,A12435,19_0014_0069,L.,Galium spurium
+POLAP,19_0014,A12435,19_0014_0069,L.,Polygonum lapathifolium agg.
+STMES,19_0014,A12435,19_0014_0069,,Stellaria media
+CEREA,19_0014,A13064,19_0014_0071,,Cerealia indet.
+CHALB,19_0014,A13064,19_0014_0071,L.,Chenopodium album
+COAVE,19_0014,A13064,19_0014_0071,L.,Corylus avellana
+GAIS,19_0014,A13064,19_0014_0071,L.,Galeopsis spec.
+HODVN,19_0014,A13064,19_0014_0071,,Hordeum distichon/vulgare Nacktgerste
+HODVS,19_0014,A13064,19_0014_0071,,Hordeum distichon/vulgare Spelzgerste
+INDET,19_0014,A13064,19_0014_0071,,Indeterminata
+MELI,19_0014,A13064,19_0014_0071,Mill.,Melilotus spec.
+POLAP,19_0014,A13064,19_0014_0071,L.,Polygonum lapathifolium agg.
+POLCO,19_0014,A13064,19_0014_0071,(L.) A. Löve,Polygonum convolvulus
+STMES,19_0014,A13064,19_0014_0071,,Stellaria media
+TRDSP,19_0014,A13064,19_0014_0071,Schrank/L.,Triticum dicoccum/spelta
+CEREA,19_0014,A13200,19_0014_0041,,Cerealia indet.
+POLAP,19_0014,A13200,19_0014_0041,L.,Polygonum lapathifolium agg.
+SPARV,19_0014,A13200,19_0014_0041,L.,Spergula arvensis
+TRDSP,19_0014,A13200,19_0014_0041,Schrank/L.,Triticum dicoccum/spelta
+HODIV,19_0014,A13299,19_0014_0072,L./L.,Hordeum distichon/vulgare
+POACE,19_0014,A13837,19_0014_0060,,Poaceae
+STMES,19_0014,A13837,19_0014_0060,,Stellaria media
+CHALB,19_0014,A15333,19_0014_0061,L.,Chenopodium album
+FUOFF,19_0014,A15333,19_0014_0061,L.,Fumaria officinalis
+POACE,19_0014,A15333,19_0014_0061,,Poaceae
+POLAP,19_0014,A15333,19_0014_0061,L.,Polygonum lapathifolium agg.
+CHALB,19_0014,A15344,19_0014_0074,L.,Chenopodium album
+HODVS,19_0014,A15554,19_0014_0075,,Hordeum distichon/vulgare Spelzgerste
+POLCO,19_0014,A15554,19_0014_0075,(L.) A. Löve,Polygonum convolvulus
+STMES,19_0014,A15554,19_0014_0075,,Stellaria media
+ALCH,19_0014,A15736,19_0014_0059,L. (bearb. v. Lippert),Alchemilla spec.
+ATRI,19_0014,A15736,19_0014_0059,L.,Atriplex spec.
+CARE,19_0014,A15736,19_0014_0059,,Carex spec.
+CEREA,19_0014,A15736,19_0014_0059,,Cerealia indet.
+CHALB,19_0014,A15736,19_0014_0059,L.,Chenopodium album
+EUHEL,19_0014,A15736,19_0014_0059,L.,Euphorbia helioscopia
+FUOFF,19_0014,A15736,19_0014_0059,L.,Fumaria officinalis
+GAIS,19_0014,A15736,19_0014_0059,L.,Galeopsis spec.
+GASPU,19_0014,A15736,19_0014_0059,L.,Galium spurium
+MELI,19_0014,A15736,19_0014_0059,Mill.,Melilotus spec.
+PIEXC,19_0014,A15736,19_0014_0059,(L.) H. Karst.,Picea abies
+POACE,19_0014,A15736,19_0014_0059,,Poaceae
+POAVI,19_0014,A15736,19_0014_0059,,Polygonum aviculare agg.
+POLAP,19_0014,A15736,19_0014_0059,L.,Polygonum lapathifolium agg.
+POLCO,19_0014,A15736,19_0014_0059,(L.) A. Löve,Polygonum convolvulus
+RANU,19_0014,A15736,19_0014_0059,L.,Ranunculus spec.
+RUCRI,19_0014,A15736,19_0014_0059,L.,Rumex crispus
+RUIDA,19_0014,A15736,19_0014_0059,L.,Rubus idaeus
+SOLA,19_0014,A15736,19_0014_0059,L.,Solanum spec.
+SPARV,19_0014,A15736,19_0014_0059,L.,Spergula arvensis
+CEREA,19_0014,A16771,19_0014_0008,,Cerealia indet.
+CHALB,19_0014,A16771,19_0014_0008,L.,Chenopodium album
+GALAS,19_0014,A16771,19_0014_0008,L./L.,Galium aparine/spurium
+HODVN,19_0014,A16771,19_0014_0008,,Hordeum distichon/vulgare Nacktgerste
+POLAP,19_0014,A16771,19_0014_0008,L.,Polygonum lapathifolium agg.
+RUIDA,19_0014,A16771,19_0014_0008,L.,Rubus idaeus
+STMES,19_0014,A16771,19_0014_0008,,Stellaria media
+CEREA,19_0014,A16783,19_0014_0005,,Cerealia indet.
+CHALB,19_0014,A16783,19_0014_0005,L.,Chenopodium album
+HODVS,19_0014,A16783,19_0014_0005,,Hordeum distichon/vulgare Spelzgerste
+SPARV,19_0014,A16783,19_0014_0005,L.,Spergula arvensis
+TRDSP,19_0014,A16783,19_0014_0005,Schrank/L.,Triticum dicoccum/spelta
+CEREA,19_0014,A17294,19_0014_0016,,Cerealia indet.
+CHALB,19_0014,A17294,19_0014_0016,L.,Chenopodium album
+COAVE,19_0014,A17294,19_0014_0016,L.,Corylus avellana
+GALAS,19_0014,A17294,19_0014_0016,L./L.,Galium aparine/spurium
+HODVS,19_0014,A17294,19_0014_0016,,Hordeum distichon/vulgare Spelzgerste
+POACE,19_0014,A17294,19_0014_0016,,Poaceae
+POLAP,19_0014,A17294,19_0014_0016,L.,Polygonum lapathifolium agg.
+STMES,19_0014,A17294,19_0014_0016,,Stellaria media
+CARE,19_0014,A1875,19_0014_0046,,Carex spec.
+CEREA,19_0014,A1875,19_0014_0046,,Cerealia indet.
+CHALB,19_0014,A1875,19_0014_0046,L.,Chenopodium album
+GASPU,19_0014,A1875,19_0014_0046,L.,Galium spurium
+POLCO,19_0014,A1875,19_0014_0046,(L.) A. Löve,Polygonum convolvulus
+SPARV,19_0014,A1875,19_0014_0046,L.,Spergula arvensis
+STMES,19_0014,A1875,19_0014_0046,,Stellaria media
+CHALB,19_0014,A1931,19_0014_0047,L.,Chenopodium album
+GASPU,19_0014,A1931,19_0014_0047,L.,Galium spurium
+POLAP,19_0014,A1931,19_0014_0047,L.,Polygonum lapathifolium agg.
+CEREA,19_0014,A1998,19_0014_0048,,Cerealia indet.
+CHALB,19_0014,A1998,19_0014_0048,L.,Chenopodium album
+STMES,19_0014,A1998,19_0014_0048,,Stellaria media
+CEREA,19_0014,A2019,19_0014_0049,,Cerealia indet.
+GAAPA,19_0014,A2019,19_0014_0049,L.,Galium aparine
+STMES,19_0014,A2019,19_0014_0049,,Stellaria media
+CEREA,19_0014,A2029,19_0014_0050,,Cerealia indet.
+CHALB,19_0014,A2029,19_0014_0050,L.,Chenopodium album
+CHALB,19_0014,A2114,19_0014_0051,L.,Chenopodium album
+LAPIV,19_0014,A2114,19_0014_0051,L./L./L.,Lathyrus/Pisum/Vicia
+CHALB,19_0014,A3019,19_0014_0052,L.,Chenopodium album
+HODIV,19_0014,A3019,19_0014_0052,L./L.,Hordeum distichon/vulgare
+HODVN,19_0014,A3019,19_0014_0052,,Hordeum distichon/vulgare Nacktgerste
+POLCO,19_0014,A3019,19_0014_0052,(L.) A. Löve,Polygonum convolvulus
+CEREA,19_0014,A3170,19_0014_0066,,Cerealia indet.
+CHALB,19_0014,A3170,19_0014_0066,L.,Chenopodium album
+RANU,19_0014,A3170,19_0014_0066,L.,Ranunculus spec.
+SOLA,19_0014,A3170,19_0014_0066,L.,Solanum spec.
+STMES,19_0014,A3170,19_0014_0066,,Stellaria media
+CEREA,19_0014,A3650,19_0014_0053,,Cerealia indet.
+CHALB,19_0014,A3650,19_0014_0053,L.,Chenopodium album
+GASPU,19_0014,A3650,19_0014_0053,L.,Galium spurium
+HODIV,19_0014,A3650,19_0014_0053,L./L.,Hordeum distichon/vulgare
+SIDIO,19_0014,A3650,19_0014_0053,(L.) Clairv.,Silene dioica
+CATRI,19_0014,A4115,19_0014_0023,,Carex spec. tricarpellat
+CEREA,19_0014,A4115,19_0014_0023,,Cerealia indet.
+CHALB,19_0014,A4115,19_0014_0023,L.,Chenopodium album
+GALAS,19_0014,A4115,19_0014_0023,L./L.,Galium aparine/spurium
+HODIV,19_0014,A4115,19_0014_0023,L./L.,Hordeum distichon/vulgare
+POLAP,19_0014,A4115,19_0014_0023,L.,Polygonum lapathifolium agg.
+POLCO,19_0014,A4115,19_0014_0023,(L.) A. Löve,Polygonum convolvulus
+RUCRI,19_0014,A4115,19_0014_0023,L.,Rumex crispus
+STMES,19_0014,A4115,19_0014_0023,,Stellaria media
+GASPU,19_0014,A4365,19_0014_0054,L.,Galium spurium
+CARE,19_0014,A5192,19_0014_0020,,Carex spec.
+CEREA,19_0014,A5192,19_0014_0020,,Cerealia indet.
+CHALB,19_0014,A5192,19_0014_0020,L.,Chenopodium album
+GALAS,19_0014,A5192,19_0014_0020,L./L.,Galium aparine/spurium
+HODIV,19_0014,A5192,19_0014_0020,L./L.,Hordeum distichon/vulgare
+POLAP,19_0014,A5192,19_0014_0020,L.,Polygonum lapathifolium agg.
+TRDSP,19_0014,A5192,19_0014_0020,Schrank/L.,Triticum dicoccum/spelta
+CATRI,19_0014,A5213,19_0014_0019,,Carex spec. tricarpellat
+CEREA,19_0014,A5213,19_0014_0019,,Cerealia indet.
+CHALB,19_0014,A5213,19_0014_0019,L.,Chenopodium album
+COAVE,19_0014,A5213,19_0014_0019,L.,Corylus avellana
+GALAS,19_0014,A5213,19_0014_0019,L./L.,Galium aparine/spurium
+HODIV,19_0014,A5213,19_0014_0019,L./L.,Hordeum distichon/vulgare
+HODVN,19_0014,A5213,19_0014_0019,,Hordeum distichon/vulgare Nacktgerste
+POLAP,19_0014,A5213,19_0014_0019,L.,Polygonum lapathifolium agg.
+RANU,19_0014,A5213,19_0014_0019,L.,Ranunculus spec.
+STMES,19_0014,A5213,19_0014_0019,,Stellaria media
+CAMSA,19_0014,A5223,19_0014_0018,(L.) Crantz,Camelina sativa
+CARE,19_0014,A5223,19_0014_0018,,Carex spec.
+CEREA,19_0014,A5223,19_0014_0018,,Cerealia indet.
+CHALB,19_0014,A5223,19_0014_0018,L.,Chenopodium album
+GALAS,19_0014,A5223,19_0014_0018,L./L.,Galium aparine/spurium
+HODVS,19_0014,A5223,19_0014_0018,,Hordeum distichon/vulgare Spelzgerste
+INDET,19_0014,A5223,19_0014_0018,,Indeterminata
+POLAP,19_0014,A5223,19_0014_0018,L.,Polygonum lapathifolium agg.
+RUMAC,19_0014,A5223,19_0014_0018,,Rumex acetosella agg.
+STMES,19_0014,A5223,19_0014_0018,,Stellaria media
+THARV,19_0014,A5223,19_0014_0018,L.,Thlaspi arvense
+CEREA,19_0014,A5254,19_0014_0029,,Cerealia indet.
+CHALB,19_0014,A5254,19_0014_0029,L.,Chenopodium album
+GASPU,19_0014,A5254,19_0014_0029,L.,Galium spurium
+HODIV,19_0014,A5254,19_0014_0029,L./L.,Hordeum distichon/vulgare
+POLCO,19_0014,A5254,19_0014_0029,(L.) A. Löve,Polygonum convolvulus
+CEREA,19_0014,A5282,19_0014_0021,,Cerealia indet.
+CHALB,19_0014,A5282,19_0014_0021,L.,Chenopodium album
+GALAS,19_0014,A5282,19_0014_0021,L./L.,Galium aparine/spurium
+HODIV,19_0014,A5282,19_0014_0021,L./L.,Hordeum distichon/vulgare
+HODVS,19_0014,A5282,19_0014_0021,,Hordeum distichon/vulgare Spelzgerste
+STMES,19_0014,A5282,19_0014_0021,,Stellaria media
+THARV,19_0014,A5282,19_0014_0021,L.,Thlaspi arvense
+CEREA,19_0014,A5294,19_0014_0022,,Cerealia indet.
+CHALB,19_0014,A5294,19_0014_0022,L.,Chenopodium album
+GALAS,19_0014,A5294,19_0014_0022,L./L.,Galium aparine/spurium
+HODIV,19_0014,A5294,19_0014_0022,L./L.,Hordeum distichon/vulgare
+HODVS,19_0014,A5294,19_0014_0022,,Hordeum distichon/vulgare Spelzgerste
+POLAP,19_0014,A5294,19_0014_0022,L.,Polygonum lapathifolium agg.
+GALAS,19_0014,A5307,19_0014_0024,L./L.,Galium aparine/spurium
+HODIV,19_0014,A5307,19_0014_0024,L./L.,Hordeum distichon/vulgare
+POLAP,19_0014,A5307,19_0014_0024,L.,Polygonum lapathifolium agg.
+STMES,19_0014,A5307,19_0014_0024,,Stellaria media
+CATRI,19_0014,A5334,19_0014_0063,,Carex spec. tricarpellat
+CHALB,19_0014,A5334,19_0014_0063,L.,Chenopodium album
+GAIS,19_0014,A5334,19_0014_0063,L.,Galeopsis spec.
+GASPU,19_0014,A5334,19_0014_0063,L.,Galium spurium
+HODVS,19_0014,A5334,19_0014_0063,,Hordeum distichon/vulgare Spelzgerste
+INDET,19_0014,A5334,19_0014_0063,,Indeterminata
+LAPIV,19_0014,A5334,19_0014_0063,L./L./L.,Lathyrus/Pisum/Vicia
+POACE,19_0014,A5334,19_0014_0063,,Poaceae
+POLAP,19_0014,A5334,19_0014_0063,L.,Polygonum lapathifolium agg.
+POTE,19_0014,A5334,19_0014_0063,L.,Potentilla spec.
+RUMAC,19_0014,A5334,19_0014_0063,,Rumex acetosella agg.
+STMES,19_0014,A5334,19_0014_0063,,Stellaria media
+CEREA,19_0014,A6041,19_0014_0034,,Cerealia indet.
+CHALB,19_0014,A6041,19_0014_0034,L.,Chenopodium album
+GAIS,19_0014,A6041,19_0014_0034,L.,Galeopsis spec.
+GASPU,19_0014,A6041,19_0014_0034,L.,Galium spurium
+HODIV,19_0014,A6041,19_0014_0034,L./L.,Hordeum distichon/vulgare
+POLAP,19_0014,A6041,19_0014_0034,L.,Polygonum lapathifolium agg.
+POLCO,19_0014,A6041,19_0014_0034,(L.) A. Löve,Polygonum convolvulus
+SIDIO,19_0014,A6041,19_0014_0034,(L.) Clairv.,Silene dioica
+SPARV,19_0014,A6041,19_0014_0034,L.,Spergula arvensis
+STMES,19_0014,A6041,19_0014_0034,,Stellaria media
+TRIT,19_0014,A6041,19_0014_0034,L.,Triticum spec.
+CEREA,19_0014,A6135,19_0014_0015,,Cerealia indet.
+CHALB,19_0014,A6135,19_0014_0015,L.,Chenopodium album
+GALAS,19_0014,A6135,19_0014_0015,L./L.,Galium aparine/spurium
+HODVS,19_0014,A6135,19_0014_0015,,Hordeum distichon/vulgare Spelzgerste
+POLAP,19_0014,A6135,19_0014_0015,L.,Polygonum lapathifolium agg.
+RUCRI,19_0014,A6135,19_0014_0015,L.,Rumex crispus
+STMES,19_0014,A6135,19_0014_0015,,Stellaria media
+CEREA,19_0014,A6146,19_0014_0033,,Cerealia indet.
+HODVS,19_0014,A6146,19_0014_0033,,Hordeum distichon/vulgare Spelzgerste
+LAPIV,19_0014,A6146,19_0014_0033,L./L./L.,Lathyrus/Pisum/Vicia
+POLAP,19_0014,A6146,19_0014_0033,L.,Polygonum lapathifolium agg.
+CEREA,19_0014,A6157,19_0014_0035,,Cerealia indet.
+CHALB,19_0014,A6157,19_0014_0035,L.,Chenopodium album
+GASPU,19_0014,A6157,19_0014_0035,L.,Galium spurium
+POLAP,19_0014,A6157,19_0014_0035,L.,Polygonum lapathifolium agg.
+RANU,19_0014,A6157,19_0014_0035,L.,Ranunculus spec.
+STMES,19_0014,A6157,19_0014_0035,,Stellaria media
+CARE,19_0014,A6178,19_0014_0017,,Carex spec.
+CEREA,19_0014,A6178,19_0014_0017,,Cerealia indet.
+CHALB,19_0014,A6178,19_0014_0017,L.,Chenopodium album
+GALAS,19_0014,A6178,19_0014_0017,L./L.,Galium aparine/spurium
+HODVS,19_0014,A6178,19_0014_0017,,Hordeum distichon/vulgare Spelzgerste
+POLAP,19_0014,A6178,19_0014_0017,L.,Polygonum lapathifolium agg.
+STMES,19_0014,A6178,19_0014_0017,,Stellaria media
+CEREA,19_0014,A6194,19_0014_0025,,Cerealia indet.
+CHALB,19_0014,A6194,19_0014_0025,L.,Chenopodium album
+FABAC,19_0014,A6194,19_0014_0025,,Fabaceae
+GALAS,19_0014,A6194,19_0014_0025,L./L.,Galium aparine/spurium
+HODVN,19_0014,A6194,19_0014_0025,,Hordeum distichon/vulgare Nacktgerste
+HODVS,19_0014,A6194,19_0014_0025,,Hordeum distichon/vulgare Spelzgerste
+TRDSP,19_0014,A6194,19_0014_0025,Schrank/L.,Triticum dicoccum/spelta
+CEREA,19_0014,A7199,19_0014_0032,,Cerealia indet.
+HODIV,19_0014,A7199,19_0014_0032,L./L.,Hordeum distichon/vulgare
+CEREA,19_0014,A7253,19_0014_0014,,Cerealia indet.
+CEREA,19_0014,A7253,19_0014_0014,,Cerealia indet.
+CHALB,19_0014,A7253,19_0014_0014,L.,Chenopodium album
+HODIV,19_0014,A7253,19_0014_0014,L./L.,Hordeum distichon/vulgare
+CEREA,19_0014,A7263,19_0014_0030,,Cerealia indet.
+CHALB,19_0014,A7263,19_0014_0030,L.,Chenopodium album
+GASPU,19_0014,A7263,19_0014_0030,L.,Galium spurium
+HODVS,19_0014,A7263,19_0014_0030,,Hordeum distichon/vulgare Spelzgerste
+CARE,19_0014,A7294,19_0014_0013,,Carex spec.
+CEREA,19_0014,A7294,19_0014_0013,,Cerealia indet.
+CHALB,19_0014,A7294,19_0014_0013,L.,Chenopodium album
+EUHEL,19_0014,A7294,19_0014_0013,L.,Euphorbia helioscopia
+FUOFF,19_0014,A7294,19_0014_0013,L.,Fumaria officinalis
+HODIV,19_0014,A7294,19_0014_0013,L./L.,Hordeum distichon/vulgare
+HODIV,19_0014,A7294,19_0014_0013,L./L.,Hordeum distichon/vulgare
+POLAP,19_0014,A7294,19_0014_0013,L.,Polygonum lapathifolium agg.
+POLCO,19_0014,A7294,19_0014_0013,(L.) A. Löve,Polygonum convolvulus
+RANU,19_0014,A7294,19_0014_0013,L.,Ranunculus spec.
+RUCRI,19_0014,A7294,19_0014_0013,L.,Rumex crispus
+STMES,19_0014,A7294,19_0014_0013,,Stellaria media
+TRIT,19_0014,A7294,19_0014_0013,L.,Triticum spec.
+CEREA,19_0014,A7306,19_0014_0036,,Cerealia indet.
+CHALB,19_0014,A7306,19_0014_0036,L.,Chenopodium album
+CHALB,19_0014,A785,19_0014_0043,L.,Chenopodium album
+HODIV,19_0014,A785,19_0014_0043,L./L.,Hordeum distichon/vulgare
+CEREA,19_0014,A8079,19_0014_0007,,Cerealia indet.
+CHALB,19_0014,A8079,19_0014_0007,L.,Chenopodium album
+GALAS,19_0014,A8079,19_0014_0007,L./L.,Galium aparine/spurium
+HODVS,19_0014,A8079,19_0014_0007,,Hordeum distichon/vulgare Spelzgerste
+STMES,19_0014,A8079,19_0014_0007,,Stellaria media
+TRDSP,19_0014,A8079,19_0014_0007,Schrank/L.,Triticum dicoccum/spelta
+CEREA,19_0014,A8103,19_0014_0009,,Cerealia indet.
+CHALB,19_0014,A8103,19_0014_0009,L.,Chenopodium album
+HODVS,19_0014,A8103,19_0014_0009,,Hordeum distichon/vulgare Spelzgerste
+TRDSP,19_0014,A8103,19_0014_0009,Schrank/L.,Triticum dicoccum/spelta
+CHALB,19_0014,A8114,19_0014_0011,L.,Chenopodium album
+FABAC,19_0014,A8114,19_0014_0011,,Fabaceae
+GALAS,19_0014,A8114,19_0014_0011,L./L.,Galium aparine/spurium
+HODIV,19_0014,A8114,19_0014_0011,L./L.,Hordeum distichon/vulgare
+HODIV,19_0014,A8114,19_0014_0011,L./L.,Hordeum distichon/vulgare
+POLAP,19_0014,A8114,19_0014_0011,L.,Polygonum lapathifolium agg.
+POLCO,19_0014,A8114,19_0014_0011,(L.) A. Löve,Polygonum convolvulus
+STMES,19_0014,A8114,19_0014_0011,,Stellaria media
+TRDSP,19_0014,A8114,19_0014_0011,Schrank/L.,Triticum dicoccum/spelta
+CATRI,19_0014,A8142,19_0014_0026,,Carex spec. tricarpellat
+CEREA,19_0014,A8142,19_0014_0026,,Cerealia indet.
+CHALB,19_0014,A8142,19_0014_0026,L.,Chenopodium album
+GALAS,19_0014,A8142,19_0014_0026,L./L.,Galium aparine/spurium
+HODVS,19_0014,A8142,19_0014_0026,,Hordeum distichon/vulgare Spelzgerste
+POAVI,19_0014,A8142,19_0014_0026,,Polygonum aviculare agg.
+POLAP,19_0014,A8142,19_0014_0026,L.,Polygonum lapathifolium agg.
+STMES,19_0014,A8142,19_0014_0026,,Stellaria media
+CEREA,19_0014,A8178,19_0014_0031,,Cerealia indet.
+CHALB,19_0014,A8178,19_0014_0031,L.,Chenopodium album
+CHALB,19_0014,A8189,19_0014_0012,L.,Chenopodium album
+RUCRI,19_0014,A8189,19_0014_0012,L.,Rumex crispus
+RUME,19_0014,A8189,19_0014_0012,L.,Rumex spec.
+CEREA,19_0014,A8234,19_0014_0010,,Cerealia indet.
+CHALB,19_0014,A8234,19_0014_0010,L.,Chenopodium album
+RUCRI,19_0014,A8234,19_0014_0010,L.,Rumex crispus
+TRDSP,19_0014,A8234,19_0014_0010,Schrank/L.,Triticum dicoccum/spelta
+CEREA,19_0014,A9000,19_0014_0027,,Cerealia indet.
+CHALB,19_0014,A9000,19_0014_0027,L.,Chenopodium album
+GALAS,19_0014,A9000,19_0014_0027,L./L.,Galium aparine/spurium
+HODIV,19_0014,A9000,19_0014_0027,L./L.,Hordeum distichon/vulgare
+POLAP,19_0014,A9000,19_0014_0027,L.,Polygonum lapathifolium agg.
+CEREA,19_0014,A9052,19_0014_0028,,Cerealia indet.
+CHALB,19_0014,A9052,19_0014_0028,L.,Chenopodium album
+COAVE,19_0014,A9052,19_0014_0028,L.,Corylus avellana
+GALAS,19_0014,A9052,19_0014_0028,L./L.,Galium aparine/spurium
+HODVS,19_0014,A9052,19_0014_0028,,Hordeum distichon/vulgare Spelzgerste
+RANU,19_0014,A9052,19_0014_0028,L.,Ranunculus spec.
+STMES,19_0014,A9052,19_0014_0028,,Stellaria media
+AVSAT,19_0014,A9075,19_0014_0003,L.,Avena sativa
+CEREA,19_0014,A9075,19_0014_0003,,Cerealia indet.
+GAIS,19_0014,A9075,19_0014_0003,L.,Galeopsis spec.
+GALAS,19_0014,A9075,19_0014_0003,L./L.,Galium aparine/spurium
+HODVS,19_0014,A9075,19_0014_0003,,Hordeum distichon/vulgare Spelzgerste
+INDET,19_0014,A9075,19_0014_0003,,Indeterminata
+POACE,19_0014,A9075,19_0014_0003,,Poaceae
+POLAP,19_0014,A9075,19_0014_0003,L.,Polygonum lapathifolium agg.
+RUMAC,19_0014,A9075,19_0014_0003,,Rumex acetosella agg.
+SPARV,19_0014,A9075,19_0014_0003,L.,Spergula arvensis
+STMES,19_0014,A9075,19_0014_0003,,Stellaria media
+THARV,19_0014,A9075,19_0014_0003,L.,Thlaspi arvense
+CEREA,19_0014,A9111,19_0014_0001,,Cerealia indet.
+COAVE,19_0014,A9111,19_0014_0001,L.,Corylus avellana
+GALAS,19_0014,A9111,19_0014_0001,L./L.,Galium aparine/spurium
+HODIV,19_0014,A9111,19_0014_0001,L./L.,Hordeum distichon/vulgare
+INDET,19_0014,A9111,19_0014_0001,,Indeterminata
+POLAP,19_0014,A9111,19_0014_0001,L.,Polygonum lapathifolium agg.
+RANU,19_0014,A9111,19_0014_0001,L.,Ranunculus spec.
+SPARV,19_0014,A9111,19_0014_0001,L.,Spergula arvensis
+AVSAT,19_0014,A9126,19_0014_0004,L.,Avena sativa
+CEREA,19_0014,A9126,19_0014_0004,,Cerealia indet.
+CHALB,19_0014,A9126,19_0014_0004,L.,Chenopodium album
+GALAS,19_0014,A9126,19_0014_0004,L./L.,Galium aparine/spurium
+INDET,19_0014,A9126,19_0014_0004,,Indeterminata
+POLAP,19_0014,A9126,19_0014_0004,L.,Polygonum lapathifolium agg.
+RUCRI,19_0014,A9126,19_0014_0004,L.,Rumex crispus
+RUMAC,19_0014,A9126,19_0014_0004,,Rumex acetosella agg.
+SPARV,19_0014,A9126,19_0014_0004,L.,Spergula arvensis
+STMES,19_0014,A9126,19_0014_0004,,Stellaria media
+BROM,19_0014,A9199,19_0014_0006,L.,Bromus spec.
+CAMSA,19_0014,A9199,19_0014_0006,(L.) Crantz,Camelina sativa
+CATRI,19_0014,A9199,19_0014_0006,,Carex spec. tricarpellat
+CEREA,19_0014,A9199,19_0014_0006,,Cerealia indet.
+CHALB,19_0014,A9199,19_0014_0006,L.,Chenopodium album
+EUHEL,19_0014,A9199,19_0014_0006,L.,Euphorbia helioscopia
+POLAP,19_0014,A9199,19_0014_0006,L.,Polygonum lapathifolium agg.
+CEREA,19_0014,A957,19_0014_0064,,Cerealia indet.
+CHALB,19_0014,A957,19_0014_0064,L.,Chenopodium album
+GAAPA,19_0014,A957,19_0014_0064,L.,Galium aparine
+INDET,19_0014,A957,19_0014_0064,,Indeterminata
+POAVI,19_0014,A957,19_0014_0064,,Polygonum aviculare agg.
+RANU,19_0014,A957,19_0014_0064,L.,Ranunculus spec.
+SPARV,19_0014,A957,19_0014_0064,L.,Spergula arvensis
+STMES,19_0014,A957,19_0014_0064,,Stellaria media
+AVSAT,19_0014,A973,19_0014_0065,L.,Avena sativa
+CEREA,19_0014,A973,19_0014_0065,,Cerealia indet.
+CHALB,19_0014,A973,19_0014_0065,L.,Chenopodium album
+GAAPA,19_0014,A973,19_0014_0065,L.,Galium aparine
+GASPU,19_0014,A973,19_0014_0065,L.,Galium spurium
+HODVN,19_0014,A973,19_0014_0065,,Hordeum distichon/vulgare Nacktgerste
+HODVS,19_0014,A973,19_0014_0065,,Hordeum distichon/vulgare Spelzgerste
+SPARV,19_0014,A973,19_0014_0065,L.,Spergula arvensis
+STMES,19_0014,A973,19_0014_0065,,Stellaria media
+CEREA,19_0014,A9847,19_0014_0002,,Cerealia indet.
+GALAS,19_0014,A9847,19_0014_0002,L./L.,Galium aparine/spurium
+HODIV,19_0014,A9847,19_0014_0002,L./L.,Hordeum distichon/vulgare
+INDET,19_0014,A9847,19_0014_0002,,Indeterminata
+POLAP,19_0014,A9847,19_0014_0002,L.,Polygonum lapathifolium agg.
+RUCRI,19_0014,A9847,19_0014_0002,L.,Rumex crispus
+STMES,19_0014,A9847,19_0014_0002,,Stellaria media
+ATRI,22_0005,11200,22_0005_0001,L.,Atriplex spec.
+CHEN,22_0005,11200,22_0005_0001,L.,Chenopodium spec.
+INDET,22_0005,11200,22_0005_0001,,Indeterminata
+PHLE,22_0005,11200,22_0005_0001,,Phleum
+POAVI,22_0005,11200,22_0005_0001,,Polygonum aviculare agg.
+RUMAC,22_0005,11200,22_0005_0001,,Rumex acetosella agg.
+SILE,22_0005,11200,22_0005_0001,L.,Silene spec.
+STMES,22_0005,11200,22_0005_0001,,Stellaria media
+COAVE,22_0005,11201,22_0005_0002,L.,Corylus avellana
+INDET,22_0005,11201,22_0005_0002,,Indeterminata
+RUIDA,22_0005,11201,22_0005_0002,L.,Rubus idaeus
+CABIC,22_0005,11221,22_0005_0003,,Carex spec. bicarpellat
+CHEN,22_0005,11221,22_0005_0003,L.,Chenopodium spec.
+COAVE,22_0005,11221,22_0005_0003,L.,Corylus avellana
+INDET,22_0005,11221,22_0005_0003,,Indeterminata
+AECYN,22_0005,12026,22_0005_0004,L.,Aethusa cynapium
+ALGLU,22_0005,12026,22_0005_0004,(L.) Gaertn.,Alnus glutinosa
+ARCMI,22_0005,12026,22_0005_0004,(Hill) Bernh.,Arctium minus s.l.
+ASTER,22_0005,12026,22_0005_0004,,Asteraceae
+AVSAT,22_0005,12026,22_0005_0004,L.,Avena sativa
+BRSEC,22_0005,12026,22_0005_0004,L.,Bromus secalinus
+CABIC,22_0005,12026,22_0005_0004,,Carex spec. bicarpellat
+CATRI,22_0005,12026,22_0005_0004,,Carex spec. tricarpellat
+CECYA,22_0005,12026,22_0005_0004,L.,Centaurea cyanus
+CHALB,22_0005,12026,22_0005_0004,L.,Chenopodium album
+COAVE,22_0005,12026,22_0005_0004,L.,Corylus avellana
+COMA,22_0005,12026,22_0005_0004,,Comarum
+FRVES,22_0005,12026,22_0005_0004,L.,Fragaria vesca
+GAIS,22_0005,12026,22_0005_0004,L.,Galeopsis spec.
+HEPAL,22_0005,12026,22_0005_0004,(L.)R. et Sch.,Eleocharis palustris agg.
+HULUP,22_0005,12026,22_0005_0004,L.,Humulus lupulus
+INDET,22_0005,12026,22_0005_0004,,Indeterminata
+JUCOC,22_0005,12026,22_0005_0004,L.,Juniperus communis
+LAMI,22_0005,12026,22_0005_0004,L.,Lamium spec.
+LIUSI,22_0005,12026,22_0005_0004,L.,Linum usitatissimum
+OXACE,22_0005,12026,22_0005_0004,L.,Oxalis acetosella
+PIEXC,22_0005,12026,22_0005_0004,(L.) H. Karst.,Picea abies
+POACE,22_0005,12026,22_0005_0004,,Poaceae
+POAVI,22_0005,12026,22_0005_0004,,Polygonum aviculare agg.
+POERE,22_0005,12026,22_0005_0004,(L.) Raeusch.,Potentilla erecta
+POLAP,22_0005,12026,22_0005_0004,L.,Polygonum lapathifolium agg.
+POLCO,22_0005,12026,22_0005_0004,(L.) A. Löve,Polygonum convolvulus
+PRVUL,22_0005,12026,22_0005_0004,L.,Prunella vulgaris
+RAARE,22_0005,12026,22_0005_0004,L./L.,Ranunculus acris/repens
+RASCE,22_0005,12026,22_0005_0004,L.,Ranunculus sceleratus
+RUFRU,22_0005,12026,22_0005_0004,,Rubus fruticosus agg.
+RUIDA,22_0005,12026,22_0005_0004,L.,Rubus idaeus
+RUMAC,22_0005,12026,22_0005_0004,,Rumex acetosella agg.
+RUME,22_0005,12026,22_0005_0004,L.,Rumex spec.
+SCTAB,22_0005,12026,22_0005_0004,(C. C. Gmel.) Palla,Schoenoplectus tabernaemontani
+SILE,22_0005,12026,22_0005_0004,L.,Silene spec.
+SISEL,22_0005,12026,22_0005_0004,(L.) Schinz & Thell.,Silaum silaus
+SPARV,22_0005,12026,22_0005_0004,L.,Spergula arvensis
+STGRA,22_0005,12026,22_0005_0004,L.,Stellaria graminea
+STMES,22_0005,12026,22_0005_0004,,Stellaria media
+THARV,22_0005,12026,22_0005_0004,L.,Thlaspi arvense
+URDIO,22_0005,12026,22_0005_0004,L.,Urtica dioica
+URURE,22_0005,12026,22_0005_0004,L.,Urtica urens
+AECYN,22_0005,200125,22_0005_0012,L.,Aethusa cynapium
+ALCH,22_0005,200125,22_0005_0012,L. (bearb. v. Lippert),Alchemilla spec.
+CABIC,22_0005,200125,22_0005_0012,,Carex spec. bicarpellat
+CATRI,22_0005,200125,22_0005_0012,,Carex spec. tricarpellat
+CEREA,22_0005,200125,22_0005_0012,,Cerealia indet.
+CHALB,22_0005,200125,22_0005_0012,L.,Chenopodium album
+CHEN,22_0005,200125,22_0005_0012,L.,Chenopodium spec.
+EUPEP,22_0005,200125,22_0005_0012,L.,Euphorbia peplus
+FICAR,22_0005,200125,22_0005_0012,L.,Ficus carica
+INDET,22_0005,200125,22_0005_0012,,Indeterminata
+LAMI,22_0005,200125,22_0005_0012,L.,Lamium spec.
+LUMUL,22_0005,200125,22_0005_0012,(Retz.) Lej.,Luzula multiflora
+PAPA,22_0005,200125,22_0005_0012,L.,Papaver spec.
+POAVI,22_0005,200125,22_0005_0012,,Polygonum aviculare agg.
+POTE,22_0005,200125,22_0005_0012,L.,Potentilla spec.
+RASCE,22_0005,200125,22_0005_0012,L.,Ranunculus sceleratus
+RUFRU,22_0005,200125,22_0005_0012,,Rubus fruticosus agg.
+RUIDA,22_0005,200125,22_0005_0012,L.,Rubus idaeus
+RUMAC,22_0005,200125,22_0005_0012,,Rumex acetosella agg.
+SANIG,22_0005,200125,22_0005_0012,L.,Sambucus nigra
+SECER,22_0005,200125,22_0005_0012,L.,Secale cereale
+SILE,22_0005,200125,22_0005_0012,L.,Silene spec.
+SODUL,22_0005,200125,22_0005_0012,L.,Solanum dulcamara
+STMES,22_0005,200125,22_0005_0012,,Stellaria media
+STPAL,22_0005,200125,22_0005_0012,Retz.,Stellaria palustris
+TARA,22_0005,200125,22_0005_0012,Zinn,Taraxacum spec.
+TRAED,22_0005,200125,22_0005_0012,L./L.,Triticum aestivum s.l./durum/turgidum
+URDIO,22_0005,200125,22_0005_0012,L.,Urtica dioica
+ALCH,22_0005,200149,22_0005_0013,L. (bearb. v. Lippert),Alchemilla spec.
+ARCMI,22_0005,200149,22_0005_0013,(Hill) Bernh.,Arctium minus s.l.
+BRAS,22_0005,200149,22_0005_0013,L.,Brassica spec.
+CABIC,22_0005,200149,22_0005_0013,,Carex spec. bicarpellat
+CATRI,22_0005,200149,22_0005_0013,,Carex spec. tricarpellat
+CHALB,22_0005,200149,22_0005_0013,L.,Chenopodium album
+COAVE,22_0005,200149,22_0005_0013,L.,Corylus avellana
+FUOFF,22_0005,200149,22_0005_0013,L.,Fumaria officinalis
+GAIS,22_0005,200149,22_0005_0013,L.,Galeopsis spec.
+HULUP,22_0005,200149,22_0005_0013,L.,Humulus lupulus
+HYNIG,22_0005,200149,22_0005_0013,L.,Hyoscyamus niger
+INDET,22_0005,200149,22_0005_0013,,Indeterminata
+PIEXC,22_0005,200149,22_0005_0013,(L.) H. Karst.,Picea abies
+PLMAJ,22_0005,200149,22_0005_0013,L.,Plantago major s.l.
+POAVI,22_0005,200149,22_0005_0013,,Polygonum aviculare agg.
+POLAP,22_0005,200149,22_0005_0013,L.,Polygonum lapathifolium agg.
+POLCO,22_0005,200149,22_0005_0013,(L.) A. Löve,Polygonum convolvulus
+RANU,22_0005,200149,22_0005_0013,L.,Ranunculus spec.
+RASCE,22_0005,200149,22_0005_0013,L.,Ranunculus sceleratus
+RUFRU,22_0005,200149,22_0005_0013,,Rubus fruticosus agg.
+RUIDA,22_0005,200149,22_0005_0013,L.,Rubus idaeus
+RUMAC,22_0005,200149,22_0005_0013,,Rumex acetosella agg.
+SASAG,22_0005,200149,22_0005_0013,L.,Sagittaria sagittifolia
+SILE,22_0005,200149,22_0005_0013,L.,Silene spec.
+STMES,22_0005,200149,22_0005_0013,,Stellaria media
+STPAL,22_0005,200149,22_0005_0013,Retz.,Stellaria palustris
+THARV,22_0005,200149,22_0005_0013,L.,Thlaspi arvense
+URDIO,22_0005,200149,22_0005_0013,L.,Urtica dioica
+URURE,22_0005,200149,22_0005_0013,L.,Urtica urens
+ALCH,22_0005,200177,22_0005_0009,L. (bearb. v. Lippert),Alchemilla spec.
+ARCMI,22_0005,200177,22_0005_0009,(Hill) Bernh.,Arctium minus s.l.
+ASTER,22_0005,200177,22_0005_0009,,Asteraceae
+CABIC,22_0005,200177,22_0005_0009,,Carex spec. bicarpellat
+CATRI,22_0005,200177,22_0005_0009,,Carex spec. tricarpellat
+CHALB,22_0005,200177,22_0005_0009,L.,Chenopodium album
+CHEN,22_0005,200177,22_0005_0009,L.,Chenopodium spec.
+COAVE,22_0005,200177,22_0005_0009,L.,Corylus avellana
+EUHEL,22_0005,200177,22_0005_0009,L.,Euphorbia helioscopia
+FICAR,22_0005,200177,22_0005_0009,L.,Ficus carica
+FIULM,22_0005,200177,22_0005_0009,(L.) Maxim.,Filipendula ulmaria
+FRVES,22_0005,200177,22_0005_0009,L.,Fragaria vesca
+HEPAL,22_0005,200177,22_0005_0009,(L.)R. et Sch.,Eleocharis palustris agg.
+HULUP,22_0005,200177,22_0005_0009,L.,Humulus lupulus
+LUMUL,22_0005,200177,22_0005_0009,(Retz.) Lej.,Luzula multiflora
+PIEXC,22_0005,200177,22_0005_0009,(L.) H. Karst.,Picea abies
+POAVI,22_0005,200177,22_0005_0009,,Polygonum aviculare agg.
+POERE,22_0005,200177,22_0005_0009,(L.) Raeusch.,Potentilla erecta
+POLAP,22_0005,200177,22_0005_0009,L.,Polygonum lapathifolium agg.
+POLCO,22_0005,200177,22_0005_0009,(L.) A. Löve,Polygonum convolvulus
+POTA,22_0005,200177,22_0005_0009,L.,Potamogeton spec.
+PRVUL,22_0005,200177,22_0005_0009,L.,Prunella vulgaris
+RAARE,22_0005,200177,22_0005_0009,L./L.,Ranunculus acris/repens
+RUACE,22_0005,200177,22_0005_0009,L.,Rumex acetosa
+RUFRU,22_0005,200177,22_0005_0009,,Rubus fruticosus agg.
+RUIDA,22_0005,200177,22_0005_0009,L.,Rubus idaeus
+RUMAC,22_0005,200177,22_0005_0009,,Rumex acetosella agg.
+SOLA,22_0005,200177,22_0005_0009,L.,Solanum spec.
+STMES,22_0005,200177,22_0005_0009,,Stellaria media
+STPAL,22_0005,200177,22_0005_0009,Retz.,Stellaria palustris
+THARV,22_0005,200177,22_0005_0009,L.,Thlaspi arvense
+TRIF,22_0005,200177,22_0005_0009,L.,Trifolium spec.
+URURE,22_0005,200177,22_0005_0009,L.,Urtica urens
+ALGLU,22_0005,200473,22_0005_0005,(L.) Gaertn.,Alnus glutinosa
+APIAC,22_0005,200473,22_0005_0005,,Apiaceae
+ASTER,22_0005,200473,22_0005_0005,,Asteraceae
+AVSAT,22_0005,200473,22_0005_0005,L.,Avena sativa
+CABIC,22_0005,200473,22_0005_0005,,Carex spec. bicarpellat
+CATRI,22_0005,200473,22_0005_0005,,Carex spec. tricarpellat
+CERA,22_0005,200473,22_0005_0005,L.,Cerastium spec.
+CHALB,22_0005,200473,22_0005_0005,L.,Chenopodium album
+COAVE,22_0005,200473,22_0005_0005,L.,Corylus avellana
+EUHEL,22_0005,200473,22_0005_0005,L.,Euphorbia helioscopia
+FICAR,22_0005,200473,22_0005_0005,L.,Ficus carica
+FRVES,22_0005,200473,22_0005_0005,L.,Fragaria vesca
+FUOFF,22_0005,200473,22_0005_0005,L.,Fumaria officinalis
+GAIS,22_0005,200473,22_0005_0005,L.,Galeopsis spec.
+GEUM,22_0005,200473,22_0005_0005,,Geum
+HEPAL,22_0005,200473,22_0005_0005,(L.)R. et Sch.,Eleocharis palustris agg.
+HYNIG,22_0005,200473,22_0005_0005,L.,Hyoscyamus niger
+INDET,22_0005,200473,22_0005_0005,,Indeterminata
+LEON,22_0005,200473,22_0005_0005,L.,Leontodon spec.
+LUMUL,22_0005,200473,22_0005_0005,(Retz.) Lej.,Luzula multiflora
+METRI,22_0005,200473,22_0005_0005,L.,Menyanthes trifoliata
+OXACE,22_0005,200473,22_0005_0005,L.,Oxalis acetosella
+POACE,22_0005,200473,22_0005_0005,,Poaceae
+POAVI,22_0005,200473,22_0005_0005,,Polygonum aviculare agg.
+POLAP,22_0005,200473,22_0005_0005,L.,Polygonum lapathifolium agg.
+POLCO,22_0005,200473,22_0005_0005,(L.) A. Löve,Polygonum convolvulus
+POTA,22_0005,200473,22_0005_0005,L.,Potamogeton spec.
+RAARE,22_0005,200473,22_0005_0005,L./L.,Ranunculus acris/repens
+RUIDA,22_0005,200473,22_0005_0005,L.,Rubus idaeus
+RUMAC,22_0005,200473,22_0005_0005,,Rumex acetosella agg.
+RUME,22_0005,200473,22_0005_0005,L.,Rumex spec.
+RUMMA,22_0005,200473,22_0005_0005,L.,Ruppia maritima
+SCTAB,22_0005,200473,22_0005_0005,(C. C. Gmel.) Palla,Schoenoplectus tabernaemontani
+SILE,22_0005,200473,22_0005_0005,L.,Silene spec.
+SOLA,22_0005,200473,22_0005_0005,L.,Solanum spec.
+SPARV,22_0005,200473,22_0005_0005,L.,Spergula arvensis
+STGRA,22_0005,200473,22_0005_0005,L.,Stellaria graminea
+STMES,22_0005,200473,22_0005_0005,,Stellaria media
+THARV,22_0005,200473,22_0005_0005,L.,Thlaspi arvense
+THFLA,22_0005,200473,22_0005_0005,L.,Thalictrum flavum
+TRIEU,22_0005,200473,22_0005_0005,L.,Trientalis europaea
+URDIO,22_0005,200473,22_0005_0005,L.,Urtica dioica
+URURE,22_0005,200473,22_0005_0005,L.,Urtica urens
+VIOL,22_0005,200473,22_0005_0005,L.,Viola spec.
+ALGLU,22_0005,200475,22_0005_0006,(L.) Gaertn.,Alnus glutinosa
+AVSAT,22_0005,200475,22_0005_0006,L.,Avena sativa
+CABIC,22_0005,200475,22_0005_0006,,Carex spec. bicarpellat
+CATRI,22_0005,200475,22_0005_0006,,Carex spec. tricarpellat
+CERA,22_0005,200475,22_0005_0006,L.,Cerastium spec.
+CHEN,22_0005,200475,22_0005_0006,L.,Chenopodium spec.
+CIRS,22_0005,200475,22_0005_0006,Mill.,Cirsium spec.
+COAVE,22_0005,200475,22_0005_0006,L.,Corylus avellana
+EUHEL,22_0005,200475,22_0005_0006,L.,Euphorbia helioscopia
+FICAR,22_0005,200475,22_0005_0006,L.,Ficus carica
+FRVES,22_0005,200475,22_0005_0006,L.,Fragaria vesca
+HEPAL,22_0005,200475,22_0005_0006,(L.)R. et Sch.,Eleocharis palustris agg.
+HULUP,22_0005,200475,22_0005_0006,L.,Humulus lupulus
+INDET,22_0005,200475,22_0005_0006,,Indeterminata
+LUMUL,22_0005,200475,22_0005_0006,(Retz.) Lej.,Luzula multiflora
+PIEXC,22_0005,200475,22_0005_0006,(L.) H. Karst.,Picea abies
+POAVI,22_0005,200475,22_0005_0006,,Polygonum aviculare agg.
+POERE,22_0005,200475,22_0005_0006,(L.) Raeusch.,Potentilla erecta
+POLAP,22_0005,200475,22_0005_0006,L.,Polygonum lapathifolium agg.
+POTA,22_0005,200475,22_0005_0006,L.,Potamogeton spec.
+PRVUL,22_0005,200475,22_0005_0006,L.,Prunella vulgaris
+RANU,22_0005,200475,22_0005_0006,L.,Ranunculus spec.
+RUFRU,22_0005,200475,22_0005_0006,,Rubus fruticosus agg.
+RUIDA,22_0005,200475,22_0005_0006,L.,Rubus idaeus
+RUMAC,22_0005,200475,22_0005_0006,,Rumex acetosella agg.
+RUMMA,22_0005,200475,22_0005_0006,L.,Ruppia maritima
+SANIG,22_0005,200475,22_0005_0006,L.,Sambucus nigra
+SCTAB,22_0005,200475,22_0005_0006,(C. C. Gmel.) Palla,Schoenoplectus tabernaemontani
+SPARV,22_0005,200475,22_0005_0006,L.,Spergula arvensis
+STMES,22_0005,200475,22_0005_0006,,Stellaria media
+TARA,22_0005,200475,22_0005_0006,Zinn,Taraxacum spec.
+THARV,22_0005,200475,22_0005_0006,L.,Thlaspi arvense
+URDIO,22_0005,200475,22_0005_0006,L.,Urtica dioica
+CHALB,22_0005,23362,22_0005_0010,L.,Chenopodium album
+COAVE,22_0005,23362,22_0005_0010,L.,Corylus avellana
+RAARE,22_0005,23362,22_0005_0010,L./L.,Ranunculus acris/repens
+RASCE,22_0005,23362,22_0005_0010,L.,Ranunculus sceleratus
+RUIDA,22_0005,23362,22_0005_0010,L.,Rubus idaeus
+SOLA,22_0005,23362,22_0005_0010,L.,Solanum spec.
+STMES,22_0005,23362,22_0005_0010,,Stellaria media
+URDIO,22_0005,23362,22_0005_0010,L.,Urtica dioica
+ALOP,22_0005,23434,22_0005_0007,,Alopecurus
+AVSAT,22_0005,23434,22_0005_0007,L.,Avena sativa
+CATRI,22_0005,23434,22_0005_0007,,Carex spec. tricarpellat
+CERA,22_0005,23434,22_0005_0007,L.,Cerastium spec.
+CHAE,22_0005,23434,22_0005_0007,,Chaerophyllum
+CHALB,22_0005,23434,22_0005_0007,L.,Chenopodium album
+CIRS,22_0005,23434,22_0005_0007,Mill.,Cirsium spec.
+COAVE,22_0005,23434,22_0005_0007,L.,Corylus avellana
+INDET,22_0005,23434,22_0005_0007,,Indeterminata
+PIEXC,22_0005,23434,22_0005_0007,(L.) H. Karst.,Picea abies
+PLMAJ,22_0005,23434,22_0005_0007,L.,Plantago major s.l.
+POAVI,22_0005,23434,22_0005_0007,,Polygonum aviculare agg.
+POLAP,22_0005,23434,22_0005_0007,L.,Polygonum lapathifolium agg.
+POTE,22_0005,23434,22_0005_0007,L.,Potentilla spec.
+RAARE,22_0005,23434,22_0005_0007,L./L.,Ranunculus acris/repens
+RASCE,22_0005,23434,22_0005_0007,L.,Ranunculus sceleratus
+RUACE,22_0005,23434,22_0005_0007,L.,Rumex acetosa
+RUCRI,22_0005,23434,22_0005_0007,L.,Rumex crispus
+RUIDA,22_0005,23434,22_0005_0007,L.,Rubus idaeus
+SORB,22_0005,23434,22_0005_0007,L.,Sorbus spec.
+URDIO,22_0005,23434,22_0005_0007,L.,Urtica dioica
+CATRI,22_0005,23491,22_0005_0008,,Carex spec. tricarpellat
+CHEN,22_0005,23491,22_0005_0008,L.,Chenopodium spec.
+POAVI,22_0005,23491,22_0005_0008,,Polygonum aviculare agg.
+POLAP,22_0005,23491,22_0005_0008,L.,Polygonum lapathifolium agg.
+PRCER,22_0005,23491,22_0005_0008,L.,Prunus cerasus s.l.
+RAARE,22_0005,23491,22_0005_0008,L./L.,Ranunculus acris/repens
+RASCE,22_0005,23491,22_0005_0008,L.,Ranunculus sceleratus
+RUIDA,22_0005,23491,22_0005_0008,L.,Rubus idaeus
+RUMAC,22_0005,23491,22_0005_0008,,Rumex acetosella agg.
+STMES,22_0005,23491,22_0005_0008,,Stellaria media
+URDIO,22_0005,23491,22_0005_0008,L.,Urtica dioica
+ASTER,22_0005,23988,22_0005_0011,,Asteraceae
+BEPUB,22_0005,23988,22_0005_0011,Ehrh.,Betula pubescens
+CABIC,22_0005,23988,22_0005_0011,,Carex spec. bicarpellat
+CATRI,22_0005,23988,22_0005_0011,,Carex spec. tricarpellat
+CHEN,22_0005,23988,22_0005_0011,L.,Chenopodium spec.
+CLIN,22_0005,23988,22_0005_0011,,Clinopodium
+LEON,22_0005,23988,22_0005_0011,L.,Leontodon spec.
+PAPA,22_0005,23988,22_0005_0011,L.,Papaver spec.
+PEDPA,22_0005,23988,22_0005_0011,L.,Pedicularis palustris
+PIEXC,22_0005,23988,22_0005_0011,(L.) H. Karst.,Picea abies
+PLMAJ,22_0005,23988,22_0005_0011,L.,Plantago major s.l.
+POACE,22_0005,23988,22_0005_0011,,Poaceae
+POAVI,22_0005,23988,22_0005_0011,,Polygonum aviculare agg.
+POPER,22_0005,23988,22_0005_0011,L.,Polygonum persicaria
+PRVUL,22_0005,23988,22_0005_0011,L.,Prunella vulgaris
+RAARE,22_0005,23988,22_0005_0011,L./L.,Ranunculus acris/repens
+RUCRI,22_0005,23988,22_0005_0011,L.,Rumex crispus
+RUMAC,22_0005,23988,22_0005_0011,,Rumex acetosella agg.
+SASAG,22_0005,23988,22_0005_0011,L.,Sagittaria sagittifolia
+STPAL,22_0005,23988,22_0005_0011,Retz.,Stellaria palustris
+TARA,22_0005,23988,22_0005_0011,Zinn,Taraxacum spec.
+URDIO,22_0005,23988,22_0005_0011,L.,Urtica dioica
+INDET,22_0015,A2076,22_0015_0017,,Indeterminata
+CHALB,22_0015,A2154,22_0015_0020,L.,Chenopodium album
+INDET,22_0015,A2154,22_0015_0020,,Indeterminata
+POLCO,22_0015,A2154,22_0015_0020,(L.) A. Löve,Polygonum convolvulus
+COAVE,22_0015,A2874 G2976,22_0015_0014,L.,Corylus avellana
+INDET,22_0015,A2874 G2976,22_0015_0014,,Indeterminata
+INDET,22_0015,A2874 G2976,22_0015_0014,,Indeterminata
+VICI,22_0015,A2874 G2976,22_0015_0014,L.,Vicia spec.
+INDET,22_0015,A4796,22_0015_0013,,Indeterminata
+CHEN,22_0015,M153 St 1,22_0015_0006,L.,Chenopodium spec.
+COAVE,22_0015,M153 St 1,22_0015_0006,L.,Corylus avellana
+INDET,22_0015,M153 St 1,22_0015_0006,,Indeterminata
+INDET,22_0015,M153 St 1,22_0015_0006,,Indeterminata
+VICI,22_0015,M153 St 1,22_0015_0006,L.,Vicia spec.
+COAVE,22_0015,M153 St 2,22_0015_0007,L.,Corylus avellana
+INDET,22_0015,M153 St 2,22_0015_0007,,Indeterminata
+CHALB,22_0015,M160 St 1,22_0015_0001,L.,Chenopodium album
+INDET,22_0015,M160 St 1,22_0015_0001,,Indeterminata
+POACE,22_0015,M160 St 1,22_0015_0001,,Poaceae
+POLCO,22_0015,M160 St 1,22_0015_0001,(L.) A. Löve,Polygonum convolvulus
+CARE,22_0015,M167 St 1,22_0015_0002,,Carex spec.
+CHEN,22_0015,M167 St 1,22_0015_0002,L.,Chenopodium spec.
+GALI,22_0015,M167 St 1,22_0015_0002,L.,Galium spec.
+INDET,22_0015,M167 St 1,22_0015_0002,,Indeterminata
+INDET,22_0015,M167 St 1,22_0015_0002,,Indeterminata
+INDET,22_0015,M167 St 1,22_0015_0002,,Indeterminata
+POLCO,22_0015,M167 St 1,22_0015_0002,(L.) A. Löve,Polygonum convolvulus
+CARE,22_0015,M167 St 2,22_0015_0003,,Carex spec.
+CHALB,22_0015,M167 St 2,22_0015_0003,L.,Chenopodium album
+COAVE,22_0015,M167 St 2,22_0015_0003,L.,Corylus avellana
+FABAC,22_0015,M167 St 2,22_0015_0003,,Fabaceae
+FEALT,22_0015,M167 St 2,22_0015_0003,All.,Festuca altissima
+GALI,22_0015,M167 St 2,22_0015_0003,L.,Galium spec.
+INDET,22_0015,M167 St 2,22_0015_0003,,Indeterminata
+INDET,22_0015,M167 St 2,22_0015_0003,,Indeterminata
+INDET,22_0015,M167 St 2,22_0015_0003,,Indeterminata
+RUCRI,22_0015,M167 St 2,22_0015_0003,L.,Rumex crispus
+VICI,22_0015,M167 St 2,22_0015_0003,L.,Vicia spec.
+COAVE,22_0015,M167 St 3,22_0015_0004,L.,Corylus avellana
+FABAC,22_0015,M167 St 3,22_0015_0004,,Fabaceae
+INDET,22_0015,M167 St 3,22_0015_0004,,Indeterminata
+INDET,22_0015,M167 St 3,22_0015_0004,,Indeterminata
+ARUVA,22_0015,M167 St 4,22_0015_0005,(L.) Spreng.,Arctostaphylos uva-ursi
+COAVE,22_0015,M167 St 4,22_0015_0005,L.,Corylus avellana
+PINU,22_0015,M167 St 4,22_0015_0005,L.,Pinus spec.
+COAVE,22_0015,M32 Undre del,2022_0015_0009,L.,Corylus avellana
+INDET,22_0015,M32 Undre del,2022_0015_0009,,Indeterminata
+APIAC,22_0015,M32 Övre del,2022_0015_0008,,Apiaceae
+COAVE,22_0015,M32 Övre del,2022_0015_0008,L.,Corylus avellana
+FABAC,22_0015,M32 Övre del,2022_0015_0008,,Fabaceae
+INDET,22_0015,M32 Övre del,2022_0015_0008,,Indeterminata
+FABAC,22_0015,M99 A5085,2022_0015_0010,,Fabaceae
+INDET,22_0015,M99 A5085,2022_0015_0010,,Indeterminata
+INDET,22_0015,M99 A5085,2022_0015_0010,,Indeterminata
+INDET,22_0015,M99 A5085,2022_0015_0012,,Indeterminata
+RAFIC,22_0015,M99 A5085,2022_0015_0012,L.,Ranunculus ficaria
+CEREA,DanaBunar2,31,17 depth 0.10-0.20,,Cerealia indet.
+CEREA,DanaBunar2,31,17a depth 0.00-0.20,,Cerealia indet.
+FABAC,DanaBunar2,31,17a depth 0.00-0.20,,Fabaceae
+TRMOD,DanaBunar2,31,17a depth 0.00-0.20,L./Schrank,Triticum monococcum/dicoccum
+VIVIN,DanaBunar2,31,17a depth 0.00-0.20,L.,Vitis vinifera
+CEREA,DanaBunar2,32,51 depth 0.00-0.10,,Cerealia indet.
+CEREA,DanaBunar2,32,52 depth 0.10-0.20,,Cerealia indet.
+EUPH,DanaBunar2,32,52 depth 0.10-0.20,L.,Euphorbia
+CHALB,DanaBunar2,32,53 depth 0.00-0.10,L.,Chenopodium album
+POOLE,DanaBunar2,32,53 depth 0.00-0.10,L.,Portulaca oleracea s.l.
+TRDIC,DanaBunar2,32,53 depth 0.00-0.10,(Schrank) Schübl.,Triticum dicoccum
+CHALB,DanaBunar2,33,18 depth 0.20-0.30,L.,Chenopodium album
+SEVEV,DanaBunar2,33,18 depth 0.20-0.30,(L.) P. Beauv./(L.) P. Beauv.,Setaria verticillata/viridis
+TRIT,DanaBunar2,33,18 depth 0.20-0.30,L.,Triticum spec.
+CEREA,DanaBunar2,33,19 depth 0.00-0.10,,Cerealia indet.
+INDET,DanaBunar2,33,19 depth 0.00-0.10,,Indeterminata
+TRIT,DanaBunar2,33,19 depth 0.00-0.10,L.,Triticum spec.
+FABAC,DanaBunar2,33,20 depth 0.10-0.30,,Fabaceae
+TRDIC,DanaBunar2,33,20 depth 0.10-0.30,(Schrank) Schübl.,Triticum dicoccum
+FABAC,DanaBunar2,33,21 depth 0.30-0.40,,Fabaceae
+SAMB,DanaBunar2,33,21 depth 0.30-0.40,L.,Sambucus spec.
+TRIT,DanaBunar2,33,21 depth 0.30-0.40,L.,Triticum spec.
+TRMOD,DanaBunar2,33,21 depth 0.30-0.40,L./Schrank,Triticum monococcum/dicoccum
+POACE,DanaBunar2,33,22 depth 0.20-0.30,,Poaceae
+TRAED,DanaBunar2,33,22 depth 0.20-0.30,L./L.,Triticum aestivum s.l./durum/turgidum
+TRIT,DanaBunar2,33,22 depth 0.20-0.30,L.,Triticum spec.
+INDET,DanaBunar2,37,39 depth 0.10-0.20,,Indeterminata
+SEVEV,DanaBunar2,37,39 depth 0.10-0.20,(L.) P. Beauv./(L.) P. Beauv.,Setaria verticillata/viridis
+TRMOD,DanaBunar2,37,39 depth 0.10-0.20,L./Schrank,Triticum monococcum/dicoccum
+TRMOD,DanaBunar2,37,39 depth 0.10-0.20,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,37,40 depth 0.20-0.30,,Cerealia indet.
+GALI,DanaBunar2,37,40 depth 0.20-0.30,L.,Galium spec.
+HODIV,DanaBunar2,37,40 depth 0.20-0.30,L./L.,Hordeum distichon/vulgare
+INDET,DanaBunar2,37,40 depth 0.20-0.30,,Indeterminata
+TRIT,DanaBunar2,37,40 depth 0.20-0.30,L.,Triticum spec.
+TRMOC,DanaBunar2,37,40 depth 0.20-0.30,L.,Triticum monococcum
+TRMOD,DanaBunar2,37,40 depth 0.20-0.30,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,37,41 depth 0.00-0.10,,Cerealia indet.
+POLCO,DanaBunar2,37,41 depth 0.00-0.10,(L.) A. Löve,Polygonum convolvulus
+TRMOD,DanaBunar2,37,41 depth 0.00-0.10,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,37,42 depth 0.00-0.10,,Cerealia indet.
+INDET,DanaBunar2,37,42 depth 0.00-0.10,,Indeterminata
+TRMOC,DanaBunar2,37,42 depth 0.00-0.10,L.,Triticum monococcum
+TRMOD,DanaBunar2,37,42 depth 0.00-0.10,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,38,1 depth 0.48-0.58,,Cerealia indet.
+CHALB,DanaBunar2,38,1 depth 0.48-0.58,L.,Chenopodium album
+EUPH,DanaBunar2,38,1 depth 0.48-0.58,L.,Euphorbia
+FABAC,DanaBunar2,38,1 depth 0.48-0.58,,Fabaceae
+GALI,DanaBunar2,38,1 depth 0.48-0.58,L.,Galium spec.
+INDET,DanaBunar2,38,1 depth 0.48-0.58,,Indeterminata
+LECUL,DanaBunar2,38,1 depth 0.48-0.58,Medik.,Lens culinaris
+RUME,DanaBunar2,38,1 depth 0.48-0.58,L.,Rumex spec.
+SEVEV,DanaBunar2,38,1 depth 0.48-0.58,(L.) P. Beauv./(L.) P. Beauv.,Setaria verticillata/viridis
+TRIF,DanaBunar2,38,1 depth 0.48-0.58,L.,Trifolium spec.
+CEREA,DanaBunar2,38,2 depth 0.35-0.45,,Cerealia indet.
+INDET,DanaBunar2,38,2 depth 0.35-0.45,,Indeterminata
+PAMIL,DanaBunar2,38,2 depth 0.35-0.45,L.,Panicum miliaceum
+PHPRP,DanaBunar2,38,2 depth 0.35-0.45,L.,Phleum pratense s.str.
+PISAT,DanaBunar2,38,2 depth 0.35-0.45,L.,Pisum sativum
+TRMOD,DanaBunar2,38,2 depth 0.35-0.45,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,38,3 depth 0.35-0.45,,Cerealia indet.
+HODIV,DanaBunar2,38,3 depth 0.35-0.45,L./L.,Hordeum distichon/vulgare
+INDET,DanaBunar2,38,3 depth 0.35-0.45,,Indeterminata
+PAMIL,DanaBunar2,38,3 depth 0.35-0.45,L.,Panicum miliaceum
+SCANA,DanaBunar2,38,3 depth 0.35-0.45,L.,Scleranthus annuus s.str.
+CEREA,DanaBunar2,38,4 depth 0.00-0.10,,Cerealia indet.
+CHALB,DanaBunar2,38,4 depth 0.00-0.10,L.,Chenopodium album
+CHRUB,DanaBunar2,38,4 depth 0.00-0.10,L.,Chenopodium rubrum
+ECCRU,DanaBunar2,38,4 depth 0.00-0.10,(L.) P. Beauv.,Echinochloa crus-galli
+FABAC,DanaBunar2,38,4 depth 0.00-0.10,,Fabaceae
+GALI,DanaBunar2,38,4 depth 0.00-0.10,L.,Galium spec.
+PAMIL,DanaBunar2,38,4 depth 0.00-0.10,L.,Panicum miliaceum
+POOLE,DanaBunar2,38,4 depth 0.00-0.10,L.,Portulaca oleracea s.l.
+RUME,DanaBunar2,38,4 depth 0.00-0.10,L.,Rumex spec.
+CEREA,DanaBunar2,38,5 depth 0.30-0.50,,Cerealia indet.
+PAMIL,DanaBunar2,38,5 depth 0.30-0.50,L.,Panicum miliaceum
+CEREA,DanaBunar2,39,47 depth 0.00-0.10,,Cerealia indet.
+LECUL,DanaBunar2,39,47 depth 0.00-0.10,Medik.,Lens culinaris
+TRMOD,DanaBunar2,39,47 depth 0.00-0.10,L./Schrank,Triticum monococcum/dicoccum
+PAMIL,DanaBunar2,39,48 depth 0.10-0.20,L.,Panicum miliaceum
+TRMOD,DanaBunar2,39,48 depth 0.10-0.20,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,41,44 depth 0.00-0.10,,Cerealia indet.
+FABAC,DanaBunar2,41,44 depth 0.00-0.10,,Fabaceae
+CEREA,DanaBunar2,41,46 depth 0.30-0.40,,Cerealia indet.
+HODIV,DanaBunar2,41,46 depth 0.30-0.40,L./L.,Hordeum distichon/vulgare
+POOLE,DanaBunar2,41,46 depth 0.30-0.40,L.,Portulaca oleracea s.l.
+CEREA,DanaBunar2,42,10 depth 0.10-0.20,,Cerealia indet.
+FABAC,DanaBunar2,42,10 depth 0.10-0.20,,Fabaceae
+HODIV,DanaBunar2,42,10 depth 0.10-0.20,L./L.,Hordeum distichon/vulgare
+INDET,DanaBunar2,42,10 depth 0.10-0.20,,Indeterminata
+LECUL,DanaBunar2,42,10 depth 0.10-0.20,Medik.,Lens culinaris
+LITAR,DanaBunar2,42,10 depth 0.10-0.20,(L.) I. M. Johnst.,Buglossoides arvensis
+MALV,DanaBunar2,42,10 depth 0.10-0.20,L.,Malva spec.
+TRIF,DanaBunar2,42,10 depth 0.10-0.20,L.,Trifolium spec.
+TRIT,DanaBunar2,42,10 depth 0.10-0.20,L.,Triticum spec.
+CEREA,DanaBunar2,42,6 depth 0.00-0.10,,Cerealia indet.
+CHALB,DanaBunar2,42,6 depth 0.00-0.10,L.,Chenopodium album
+INDET,DanaBunar2,42,6 depth 0.00-0.10,,Indeterminata
+TRMOD,DanaBunar2,42,6 depth 0.00-0.10,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,42,7 depth 0.00-0.10,,Cerealia indet.
+CHALB,DanaBunar2,42,7 depth 0.00-0.10,L.,Chenopodium album
+PAMIL,DanaBunar2,42,7 depth 0.00-0.10,L.,Panicum miliaceum
+CEREA,DanaBunar2,42,8 depth 0.10-0.20,,Cerealia indet.
+CHALB,DanaBunar2,42,8 depth 0.10-0.20,L.,Chenopodium album
+INDET,DanaBunar2,42,8 depth 0.10-0.20,,Indeterminata
+VIERV,DanaBunar2,42,8 depth 0.10-0.20,(L.) Willd.,Vicia ervilia
+CEREA,DanaBunar2,42,9 depth 0.10-0.20,,Cerealia indet.
+FABAC,DanaBunar2,42,9 depth 0.10-0.20,,Fabaceae
+INDET,DanaBunar2,42,9 depth 0.10-0.20,,Indeterminata
+TRMOD,DanaBunar2,42,9 depth 0.10-0.20,L./Schrank,Triticum monococcum/dicoccum
+APIAC,DanaBunar2,44,87 depth 0.06-0.16,,Apiaceae
+CEREA,DanaBunar2,44,87 depth 0.06-0.16,,Cerealia indet.
+CHALB,DanaBunar2,44,87 depth 0.06-0.16,L.,Chenopodium album
+CUMSA,DanaBunar2,44,87 depth 0.06-0.16,L./L.,Cucumis melo/sativus
+GALI,DanaBunar2,44,87 depth 0.06-0.16,L.,Galium spec.
+HODIV,DanaBunar2,44,87 depth 0.06-0.16,L./L.,Hordeum distichon/vulgare
+LACIS,DanaBunar2,44,87 depth 0.06-0.16,L./L.,Lathyrus cicera/sativus
+CEREA,DanaBunar2,44,88 depth 0.20-0.30,,Cerealia indet.
+CHALB,DanaBunar2,44,88 depth 0.20-0.30,L.,Chenopodium album
+FABAC,DanaBunar2,44,88 depth 0.20-0.30,,Fabaceae
+HODIV,DanaBunar2,44,88 depth 0.20-0.30,L./L.,Hordeum distichon/vulgare
+INDET,DanaBunar2,44,88 depth 0.20-0.30,,Indeterminata
+INDET,DanaBunar2,44,88 depth 0.20-0.30,,Indeterminata
+LABIA,DanaBunar2,44,88 depth 0.20-0.30,,Lamiaceae
+PHLE,DanaBunar2,44,88 depth 0.20-0.30,,Phleum
+POOLE,DanaBunar2,44,88 depth 0.20-0.30,L.,Portulaca oleracea s.l.
+SEITA,DanaBunar2,44,88 depth 0.20-0.30,(L.) P. Beauv.,Setaria italica
+TRIF,DanaBunar2,44,88 depth 0.20-0.30,L.,Trifolium spec.
+TRMOC,DanaBunar2,44,88 depth 0.20-0.30,L.,Triticum monococcum
+TRMOD,DanaBunar2,44,88 depth 0.20-0.30,L./Schrank,Triticum monococcum/dicoccum
+CARE,DanaBunar2,44,89 depth 0.30-0.40,,Carex spec.
+CEREA,DanaBunar2,44,89 depth 0.30-0.40,,Cerealia indet.
+CHALB,DanaBunar2,44,89 depth 0.30-0.40,L.,Chenopodium album
+HEPAL,DanaBunar2,44,89 depth 0.30-0.40,(L.)R. et Sch.,Eleocharis palustris agg.
+HODIV,DanaBunar2,44,89 depth 0.30-0.40,L./L.,Hordeum distichon/vulgare
+INDET,DanaBunar2,44,89 depth 0.30-0.40,,Indeterminata
+MEDI,DanaBunar2,44,89 depth 0.30-0.40,,Medicago
+PAMIL,DanaBunar2,44,89 depth 0.30-0.40,L.,Panicum miliaceum
+POOLE,DanaBunar2,44,89 depth 0.30-0.40,L.,Portulaca oleracea s.l.
+TRMOC,DanaBunar2,44,89 depth 0.30-0.40,L.,Triticum monococcum
+TRMOD,DanaBunar2,44,89 depth 0.30-0.40,L./Schrank,Triticum monococcum/dicoccum
+TRMOD,DanaBunar2,44,89 depth 0.30-0.40,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,44,90 depth 0.16-0.26,,Cerealia indet.
+CHALB,DanaBunar2,44,90 depth 0.16-0.26,L.,Chenopodium album
+HODIV,DanaBunar2,44,90 depth 0.16-0.26,L./L.,Hordeum distichon/vulgare
+INDET,DanaBunar2,44,90 depth 0.16-0.26,,Indeterminata
+Laleib,DanaBunar2,44,90 depth 0.16-0.26,,Lallemantia iberica
+PAMIL,DanaBunar2,44,90 depth 0.16-0.26,L.,Panicum miliaceum
+POACE,DanaBunar2,44,90 depth 0.16-0.26,,Poaceae
+POOLE,DanaBunar2,44,90 depth 0.16-0.26,L.,Portulaca oleracea s.l.
+TRMOC,DanaBunar2,44,90 depth 0.16-0.26,L.,Triticum monococcum
+TRMOD,DanaBunar2,44,90 depth 0.16-0.26,L./Schrank,Triticum monococcum/dicoccum
+TRMOD,DanaBunar2,44,90 depth 0.16-0.26,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,44,91 depth 0.10-0.20,,Cerealia indet.
+FABAC,DanaBunar2,44,91 depth 0.10-0.20,,Fabaceae
+HODIV,DanaBunar2,44,91 depth 0.10-0.20,L./L.,Hordeum distichon/vulgare
+INDET,DanaBunar2,44,91 depth 0.10-0.20,,Indeterminata
+LACIS,DanaBunar2,44,91 depth 0.10-0.20,L./L.,Lathyrus cicera/sativus
+PAMIL,DanaBunar2,44,91 depth 0.10-0.20,L.,Panicum miliaceum
+PRUN,DanaBunar2,44,91 depth 0.10-0.20,L.,Prunus spec.
+TRIT,DanaBunar2,44,91 depth 0.10-0.20,L.,Triticum spec.
+CEREA,DanaBunar2,44,92 depth 0.00-0.10,,Cerealia indet.
+CHALB,DanaBunar2,44,92 depth 0.00-0.10,L.,Chenopodium album
+GALI,DanaBunar2,44,92 depth 0.00-0.10,L.,Galium spec.
+GASPU,DanaBunar2,44,92 depth 0.00-0.10,L.,Galium spurium
+HODIV,DanaBunar2,44,92 depth 0.00-0.10,L./L.,Hordeum distichon/vulgare
+LABIA,DanaBunar2,44,92 depth 0.00-0.10,,Lamiaceae
+LECUL,DanaBunar2,44,92 depth 0.00-0.10,Medik.,Lens culinaris
+MALV,DanaBunar2,44,92 depth 0.00-0.10,L.,Malva spec.
+SALV,DanaBunar2,44,92 depth 0.00-0.10,L.,Salvia spec.
+SCHO,DanaBunar2,44,92 depth 0.00-0.10,(Rchb.) Palla,Schoenoplectus spec.
+CEREA,DanaBunar2,44,93 depth 0.30-0.40,,Cerealia indet.
+CHALB,DanaBunar2,44,93 depth 0.30-0.40,L.,Chenopodium album
+GALI,DanaBunar2,44,93 depth 0.30-0.40,L.,Galium spec.
+HODIV,DanaBunar2,44,93 depth 0.30-0.40,L./L.,Hordeum distichon/vulgare
+INDET,DanaBunar2,44,93 depth 0.30-0.40,,Indeterminata
+LACIS,DanaBunar2,44,93 depth 0.30-0.40,L./L.,Lathyrus cicera/sativus
+PAMIL,DanaBunar2,44,93 depth 0.30-0.40,L.,Panicum miliaceum
+POOLE,DanaBunar2,44,93 depth 0.30-0.40,L.,Portulaca oleracea s.l.
+SEGLA,DanaBunar2,44,93 depth 0.30-0.40,(Poir.) Roem. & Schult.,Setaria pumila
+TRMOC,DanaBunar2,44,93 depth 0.30-0.40,L.,Triticum monococcum
+CEREA,DanaBunar2,46,30 depth 0.60-0.70,,Cerealia indet.
+CHALB,DanaBunar2,46,30 depth 0.60-0.70,L.,Chenopodium album
+FABAC,DanaBunar2,46,30 depth 0.60-0.70,,Fabaceae
+LABIA,DanaBunar2,46,30 depth 0.60-0.70,,Lamiaceae
+PAMIL,DanaBunar2,46,30 depth 0.60-0.70,L.,Panicum miliaceum
+CEREA,DanaBunar2,46,31 depth 0.50-0.60,,Cerealia indet.
+HODIV,DanaBunar2,46,31 depth 0.50-0.60,L./L.,Hordeum distichon/vulgare
+INDET,DanaBunar2,46,31 depth 0.50-0.60,,Indeterminata
+PAMIL,DanaBunar2,46,31 depth 0.50-0.60,L.,Panicum miliaceum
+POLCO,DanaBunar2,46,31 depth 0.50-0.60,(L.) A. Löve,Polygonum convolvulus
+POOLE,DanaBunar2,46,31 depth 0.50-0.60,L.,Portulaca oleracea s.l.
+SETA,DanaBunar2,46,31 depth 0.50-0.60,P.B.,Setaria spec.
+SEVEV,DanaBunar2,46,31 depth 0.50-0.60,(L.) P. Beauv./(L.) P. Beauv.,Setaria verticillata/viridis
+TRMOC,DanaBunar2,46,31 depth 0.50-0.60,L.,Triticum monococcum
+TRMOD,DanaBunar2,46,31 depth 0.50-0.60,L./Schrank,Triticum monococcum/dicoccum
+TRMOD,DanaBunar2,46,31 depth 0.50-0.60,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,46,32 depth 0.60-0.70,,Cerealia indet.
+CHALB,DanaBunar2,46,32 depth 0.60-0.70,L.,Chenopodium album
+HODIV,DanaBunar2,46,32 depth 0.60-0.70,L./L.,Hordeum distichon/vulgare
+LACIS,DanaBunar2,46,32 depth 0.60-0.70,L./L.,Lathyrus cicera/sativus
+RUME,DanaBunar2,46,32 depth 0.60-0.70,L.,Rumex spec.
+TRMOD,DanaBunar2,46,32 depth 0.60-0.70,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,46,33 depth 0.30-0.40,,Cerealia indet.
+HODIV,DanaBunar2,46,33 depth 0.30-0.40,L./L.,Hordeum distichon/vulgare
+POACE,DanaBunar2,46,33 depth 0.30-0.40,,Poaceae
+CEREA,DanaBunar2,46,34 depth 0.40-0.50,,Cerealia indet.
+HODIV,DanaBunar2,46,34 depth 0.40-0.50,L./L.,Hordeum distichon/vulgare
+INDET,DanaBunar2,46,34 depth 0.40-0.50,,Indeterminata
+CEREA,DanaBunar2,46,35 depth 0.30-0.40,,Cerealia indet.
+CHALB,DanaBunar2,46,35 depth 0.30-0.40,L.,Chenopodium album
+GALI,DanaBunar2,46,35 depth 0.30-0.40,L.,Galium spec.
+HODIV,DanaBunar2,46,35 depth 0.30-0.40,L./L.,Hordeum distichon/vulgare
+LABIA,DanaBunar2,46,35 depth 0.30-0.40,,Lamiaceae
+PAMIL,DanaBunar2,46,35 depth 0.30-0.40,L.,Panicum miliaceum
+TRIT,DanaBunar2,46,35 depth 0.30-0.40,L.,Triticum spec.
+CHALB,DanaBunar2,47,49 depth 0.10-0.20,L.,Chenopodium album
+CEREA,DanaBunar2,47,50 depth 0.10-0.20,,Cerealia indet.
+LACIS,DanaBunar2,47,50 depth 0.10-0.20,L./L.,Lathyrus cicera/sativus
+CEREA,DanaBunar2,55,54 depth 1.00-1.10,,Cerealia indet.
+GALI,DanaBunar2,55,54 depth 1.00-1.10,L.,Galium spec.
+INDET,DanaBunar2,55,54 depth 1.00-1.10,,Indeterminata
+INDET,DanaBunar2,55,54 depth 1.00-1.10,,Indeterminata
+TRIF,DanaBunar2,55,54 depth 1.00-1.10,L.,Trifolium spec.
+CEREA,DanaBunar2,55,55 depth 1.00-1.10,,Cerealia indet.
+INDET,DanaBunar2,55,55 depth 1.00-1.10,,Indeterminata
+LACIS,DanaBunar2,55,55 depth 1.00-1.10,L./L.,Lathyrus cicera/sativus
+TRMOD,DanaBunar2,55,55 depth 1.00-1.10,L./Schrank,Triticum monococcum/dicoccum
+TRMOD,DanaBunar2,55,55 depth 1.00-1.10,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,58,23 depth 0.10-0.20,,Cerealia indet.
+PAMIL,DanaBunar2,58,23 depth 0.10-0.20,L.,Panicum miliaceum
+POLCO,DanaBunar2,58,23 depth 0.10-0.20,(L.) A. Löve,Polygonum convolvulus
+TRIF,DanaBunar2,58,23 depth 0.10-0.20,L.,Trifolium spec.
+TRMOC,DanaBunar2,58,23 depth 0.10-0.20,L.,Triticum monococcum
+TRMOD,DanaBunar2,58,23 depth 0.10-0.20,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,58,24 depth 0.30-0.40,,Cerealia indet.
+CHALB,DanaBunar2,58,24 depth 0.30-0.40,L.,Chenopodium album
+GALI,DanaBunar2,58,24 depth 0.30-0.40,L.,Galium spec.
+TRIF,DanaBunar2,58,24 depth 0.30-0.40,L.,Trifolium spec.
+CEREA,DanaBunar2,58,25 depth 0.00-0.10,,Cerealia indet.
+CHALB,DanaBunar2,58,25 depth 0.00-0.10,L.,Chenopodium album
+HODIV,DanaBunar2,58,25 depth 0.00-0.10,L./L.,Hordeum distichon/vulgare
+PAMIL,DanaBunar2,58,25 depth 0.00-0.10,L.,Panicum miliaceum
+TRIF,DanaBunar2,58,25 depth 0.00-0.10,L.,Trifolium spec.
+TRMOC,DanaBunar2,58,25 depth 0.00-0.10,L.,Triticum monococcum
+TRMOC,DanaBunar2,58,25 depth 0.00-0.10,L.,Triticum monococcum
+TRMOD,DanaBunar2,58,25 depth 0.00-0.10,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,58,26 depth 0.10-0.20,,Cerealia indet.
+FABAC,DanaBunar2,58,26 depth 0.10-0.20,,Fabaceae
+PAMIL,DanaBunar2,58,26 depth 0.10-0.20,L.,Panicum miliaceum
+TRIF,DanaBunar2,58,26 depth 0.10-0.20,L.,Trifolium spec.
+TRMOC,DanaBunar2,58,26 depth 0.10-0.20,L.,Triticum monococcum
+TRMOD,DanaBunar2,58,26 depth 0.10-0.20,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,58,27 depth 0.30-0.40,,Cerealia indet.
+PAMIL,DanaBunar2,58,27 depth 0.30-0.40,L.,Panicum miliaceum
+TRIF,DanaBunar2,58,27 depth 0.30-0.40,L.,Trifolium spec.
+TRMOC,DanaBunar2,58,27 depth 0.30-0.40,L.,Triticum monococcum
+TRMOD,DanaBunar2,58,27 depth 0.30-0.40,L./Schrank,Triticum monococcum/dicoccum
+LACIS,DanaBunar2,58,28 depth 0.20-0.30,L./L.,Lathyrus cicera/sativus
+PAMIL,DanaBunar2,58,28 depth 0.20-0.30,L.,Panicum miliaceum
+TRDIC,DanaBunar2,58,28 depth 0.20-0.30,(Schrank) Schübl.,Triticum dicoccum
+TRIF,DanaBunar2,58,28 depth 0.20-0.30,L.,Trifolium spec.
+TRMOC,DanaBunar2,58,28 depth 0.20-0.30,L.,Triticum monococcum
+TRMOD,DanaBunar2,58,28 depth 0.20-0.30,L./Schrank,Triticum monococcum/dicoccum
+TRMOD,DanaBunar2,58,28 depth 0.20-0.30,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,64,11 depth 0.10-0.20,,Cerealia indet.
+CHALB,DanaBunar2,64,11 depth 0.10-0.20,L.,Chenopodium album
+INDET,DanaBunar2,64,11 depth 0.10-0.20,,Indeterminata
+LECUL,DanaBunar2,64,11 depth 0.10-0.20,Medik.,Lens culinaris
+BROM,DanaBunar2,64,12 depth 0.36-0.46,L.,Bromus spec.
+CEREA,DanaBunar2,64,12 depth 0.36-0.46,,Cerealia indet.
+CHALB,DanaBunar2,64,12 depth 0.36-0.46,L.,Chenopodium album
+TRMOD,DanaBunar2,64,12 depth 0.36-0.46,L./Schrank,Triticum monococcum/dicoccum
+CEREA,DanaBunar2,64,13 depth 0.26-0.36,,Cerealia indet.
+FABAC,DanaBunar2,64,13 depth 0.26-0.36,,Fabaceae
+HODIV,DanaBunar2,64,13 depth 0.26-0.36,L./L.,Hordeum distichon/vulgare
+RUME,DanaBunar2,64,13 depth 0.26-0.36,L.,Rumex spec.
+TRIF,DanaBunar2,64,13 depth 0.26-0.36,L.,Trifolium spec.
+BROM,DanaBunar2,64,16 depth 0.48-0.58,L.,Bromus spec.
+CHALB,DanaBunar2,64,16 depth 0.48-0.58,L.,Chenopodium album
+CEREA,Iswid,2709_fond,Isw 2013/32,,Cerealia indet.
+HOVUL,Iswid,2709_fond,Isw 2013/32,L.,Hordeum vulgare undiff.
+INDET,Iswid,2709_fond,Isw 2013/32,,Indeterminata
+LACIS,Iswid,2709_fond,Isw 2013/32,L./L.,Lathyrus cicera/sativus
+LOTEM,Iswid,2709_fond,Isw 2013/32,L.,Lolium temulentum
+Phami,Iswid,2709_fond,Isw 2013/32,,Phalaris minor
+PISAT,Iswid,2709_fond,Isw 2013/32,L.,Pisum sativum
+POACE,Iswid,2709_fond,Isw 2013/32,,Poaceae
+POLAP,Iswid,2709_fond,Isw 2013/32,L.,Polygonum lapathifolium agg.
+TRDIC,Iswid,2709_fond,Isw 2013/32,(Schrank) Schübl.,Triticum dicoccum
+HOVUL,Iswid,2905 fond,Isw 2013/26,L.,Hordeum vulgare undiff.
+INDET,Iswid,2905 fond,Isw 2013/26,,Indeterminata
+INDET,Iswid,2905 fond,Isw 2013/26,,Indeterminata
+LOLI,Iswid,2905 fond,Isw 2013/26,,Lolium spec.
+PHAL,Iswid,2905 fond,Isw 2013/26,,Phalaris
+POACE,Iswid,2905 fond,Isw 2013/26,,Poaceae
+Polypo,Iswid,2905 fond,Isw 2013/26,,Polypogon
+CEREA,Iswid,2913 fond,Isw 2013/33,,Cerealia indet.
+CEREA,Iswid,2913 fond,Isw 2013/33,,Cerealia indet.
+HELE,Iswid,2913 fond,Isw 2013/33,,Eleocharis
+INDET,Iswid,2913 fond,Isw 2013/33,,Indeterminata
+INDET,Iswid,2913 fond,Isw 2013/33,,Indeterminata
+INDET,Iswid,2913 fond,Isw 2013/33,,Indeterminata
+INDET,Iswid,2913 fond,Isw 2013/33,,Indeterminata
+INDET,Iswid,2913 fond,Isw 2013/33,,Indeterminata
+LOLI,Iswid,2913 fond,Isw 2013/33,,Lolium spec.
+Phami,Iswid,2913 fond,Isw 2013/33,,Phalaris minor
+POACE,Iswid,2913 fond,Isw 2013/33,,Poaceae
+POACE,Iswid,2913 fond,Isw 2013/33,,Poaceae
+POLPE,Iswid,2913 fond,Isw 2013/33,L./L.,Polygonum lapathifolium/persicaria
+TRDIC,Iswid,2913 fond,Isw 2013/33,(Schrank) Schübl.,Triticum dicoccum
+ACAC,Iswid,foyer 2174,Isw 2013/15,,Acacia sp.
+ANGMO,Iswid,foyer 2174,Isw 2013/15,,Angiospermae Monocotyledonae
+ASTER,Iswid,foyer 2174,Isw 2013/15,,Asteraceae
+CEREA,Iswid,foyer 2174,Isw 2013/15,,Cerealia indet.
+CYPE,Iswid,foyer 2174,Isw 2013/15,,Cyperus
+CYPER,Iswid,foyer 2174,Isw 2013/15,,Cyperaceae
+HOVUL,Iswid,foyer 2174,Isw 2013/15,L.,Hordeum vulgare undiff.
+INDET,Iswid,foyer 2174,Isw 2013/15,,Indeterminata
+LOTEM,Iswid,foyer 2174,Isw 2013/15,L.,Lolium temulentum
+Phami,Iswid,foyer 2174,Isw 2013/15,,Phalaris minor
+PHRA,Iswid,foyer 2174,Isw 2013/15,,Phragmites
+POACE,Iswid,foyer 2174,Isw 2013/15,,Poaceae
+POACE,Iswid,foyer 2174,Isw 2013/15,,Poaceae
+POLPE,Iswid,foyer 2174,Isw 2013/15,L./L.,Polygonum lapathifolium/persicaria
+Rucrden,Iswid,foyer 2174,Isw 2013/15,,Rumex crispus/dentatus
+RUME,Iswid,foyer 2174,Isw 2013/15,L.,Rumex spec.
+SETA,Iswid,foyer 2174,Isw 2013/15,P.B.,Setaria spec.
+SOLAN,Iswid,foyer 2174,Isw 2013/15,,Solanaceae
+TAMA,Iswid,foyer 2174,Isw 2013/15,,Tamarix
+TRDIC,Iswid,foyer 2174,Isw 2013/15,(Schrank) Schübl.,Triticum dicoccum
+ANGMO,Iswid,US 10503,Isw 2013/8,,Angiospermae Monocotyledonae
+CEREA,Iswid,US 10503,Isw 2013/8,,Cerealia indet.
+CUMEL,Iswid,US 10503,Isw 2013/8,L.,Cucumis melo
+CUMEL,Iswid,US 10503,Isw 2013/8,L.,Cucumis melo
+HOVUL,Iswid,US 10503,Isw 2013/8,L.,Hordeum vulgare undiff.
+HOVUS,Iswid,US 10503,Isw 2013/8,,Hordeum vulgare Spelzgerste
+INDET,Iswid,US 10503,Isw 2013/8,,Indeterminata
+INDET,Iswid,US 10503,Isw 2013/8,,Indeterminata
+LOLI,Iswid,US 10503,Isw 2013/8,,Lolium spec.
+LOTEM,Iswid,US 10503,Isw 2013/8,L.,Lolium temulentum
+Phami,Iswid,US 10503,Isw 2013/8,,Phalaris minor
+POACE,Iswid,US 10503,Isw 2013/8,,Poaceae
+POLPE,Iswid,US 10503,Isw 2013/8,L./L.,Polygonum lapathifolium/persicaria
+RUME,Iswid,US 10503,Isw 2013/8,L.,Rumex spec.
+TRDIC,Iswid,US 10503,Isw 2013/8,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 10503,Isw 2013/8,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 10503,Isw 2013/8,L.,Trifolium spec.
+VICKF,Iswid,US 10503,Isw 2013/8,,Vicia klein-früchtig
+ACAC,Iswid,US 10521,Isw 2013/20,,Acacia sp.
+ANGMO,Iswid,US 10521,Isw 2013/20,,Angiospermae Monocotyledonae
+CEREA,Iswid,US 10521,Isw 2013/20,,Cerealia indet.
+CEREA,Iswid,US 10521,Isw 2013/20,,Cerealia indet.
+CYPE,Iswid,US 10521,Isw 2013/20,,Cyperus
+CYPER,Iswid,US 10521,Isw 2013/20,,Cyperaceae
+CYPER,Iswid,US 10521,Isw 2013/20,,Cyperaceae
+FABAK,Iswid,US 10521,Isw 2013/20,,Fabaceae (kult.)
+HELE,Iswid,US 10521,Isw 2013/20,,Eleocharis
+HOVUL,Iswid,US 10521,Isw 2013/20,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 10521,Isw 2013/20,,Indeterminata
+INDET,Iswid,US 10521,Isw 2013/20,,Indeterminata
+INDET,Iswid,US 10521,Isw 2013/20,,Indeterminata
+INDET,Iswid,US 10521,Isw 2013/20,,Indeterminata
+LahVi,Iswid,US 10521,Isw 2013/20,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 10521,Isw 2013/20,L.,Lolium temulentum
+Phami,Iswid,US 10521,Isw 2013/20,,Phalaris minor
+POACE,Iswid,US 10521,Isw 2013/20,,Poaceae
+RUME,Iswid,US 10521,Isw 2013/20,L.,Rumex spec.
+TAMA,Iswid,US 10521,Isw 2013/20,,Tamarix
+TRDIC,Iswid,US 10521,Isw 2013/20,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 10521,Isw 2013/20,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 10521,Isw 2013/20,L.,Trifolium spec.
+VIVIN,Iswid,US 10521,Isw 2013/20,L.,Vitis vinifera
+CEREA,Iswid,US 10534,Isw 2013/21,,Cerealia indet.
+CYROT,Iswid,US 10534,Isw 2013/21,L.,Cyperus rotundus
+FABAK,Iswid,US 10534,Isw 2013/21,,Fabaceae (kult.)
+HOVUL,Iswid,US 10534,Isw 2013/21,L.,Hordeum vulgare undiff.
+LOTEM,Iswid,US 10534,Isw 2013/21,L.,Lolium temulentum
+Phami,Iswid,US 10534,Isw 2013/21,,Phalaris minor
+POACE,Iswid,US 10534,Isw 2013/21,,Poaceae
+RUME,Iswid,US 10534,Isw 2013/21,L.,Rumex spec.
+TRDIC,Iswid,US 10534,Isw 2013/21,(Schrank) Schübl.,Triticum dicoccum
+VICI,Iswid,US 10534,Isw 2013/21,L.,Vicia spec.
+BROM,Iswid,US 10610,Isw 2013/25,L.,Bromus spec.
+HOVUL,Iswid,US 10610,Isw 2013/25,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 10610,Isw 2013/25,,Indeterminata
+INDET,Iswid,US 10610,Isw 2013/25,,Indeterminata
+POACE,Iswid,US 10610,Isw 2013/25,,Poaceae
+TRDIC,Iswid,US 10610,Isw 2013/25,(Schrank) Schübl.,Triticum dicoccum
+ANGMO,Iswid,US 11004,Isw 2013/22,,Angiospermae Monocotyledonae
+CEREA,Iswid,US 11004,Isw 2013/22,,Cerealia indet.
+FABAC,Iswid,US 11004,Isw 2013/22,,Fabaceae
+HORD4,Iswid,US 11004,Isw 2013/22,,Hordeum vulgare 4-zeilig
+INDET,Iswid,US 11004,Isw 2013/22,,Indeterminata
+INDET,Iswid,US 11004,Isw 2013/22,,Indeterminata
+INDET,Iswid,US 11004,Isw 2013/22,,Indeterminata
+LOLI,Iswid,US 11004,Isw 2013/22,,Lolium spec.
+PHAL,Iswid,US 11004,Isw 2013/22,,Phalaris
+POACE,Iswid,US 11004,Isw 2013/22,,Poaceae
+POGO,Iswid,US 11004,Isw 2013/22,L.,Polygonum spec.
+Rucrden,Iswid,US 11004,Isw 2013/22,,Rumex crispus/dentatus
+TRMOD,Iswid,US 11004,Isw 2013/22,L./Schrank,Triticum monococcum/dicoccum
+TRMOD,Iswid,US 11004,Isw 2013/22,L./Schrank,Triticum monococcum/dicoccum
+VIHIT,Iswid,US 11004,Isw 2013/22,(L.)S.F.Gray/(L.)Schreb,Vicia hirsuta/tetrasperma
+HOVUL,Iswid,US 11012,Isw 2013/27,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 11012,Isw 2013/27,,Indeterminata
+LOLI,Iswid,US 11012,Isw 2013/27,,Lolium spec.
+PHAL,Iswid,US 11012,Isw 2013/27,,Phalaris
+POACE,Iswid,US 11012,Isw 2013/27,,Poaceae
+CEREA,Iswid,US 11067,Isw 2013/28,,Cerealia indet.
+HOVUS,Iswid,US 11067,Isw 2013/28,,Hordeum vulgare Spelzgerste
+INDET,Iswid,US 11067,Isw 2013/28,,Indeterminata
+INDET,Iswid,US 11067,Isw 2013/28,,Indeterminata
+INDET,Iswid,US 11067,Isw 2013/28,,Indeterminata
+ISOL,Iswid,US 11067,Isw 2013/28,,Isolepis
+LOTEM,Iswid,US 11067,Isw 2013/28,L.,Lolium temulentum
+Phami,Iswid,US 11067,Isw 2013/28,,Phalaris minor
+PISAT,Iswid,US 11067,Isw 2013/28,L.,Pisum sativum
+POLPE,Iswid,US 11067,Isw 2013/28,L./L.,Polygonum lapathifolium/persicaria
+RUME,Iswid,US 11067,Isw 2013/28,L.,Rumex spec.
+TRDIC,Iswid,US 11067,Isw 2013/28,(Schrank) Schübl.,Triticum dicoccum
+BOLB,Iswid,US 12025,Isw 2013/25,,Bolboschoenus
+CEREA,Iswid,US 12025,Isw 2013/25,,Cerealia indet.
+CYROT,Iswid,US 12025,Isw 2013/25,L.,Cyperus rotundus
+HOVUL,Iswid,US 12025,Isw 2013/25,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 12025,Isw 2013/25,,Indeterminata
+INDET,Iswid,US 12025,Isw 2013/25,,Indeterminata
+INDET,Iswid,US 12025,Isw 2013/25,,Indeterminata
+LAHIR,Iswid,US 12025,Isw 2013/25,L.,Lathyrus hirsutus
+LahVi,Iswid,US 12025,Isw 2013/25,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 12025,Isw 2013/25,L.,Lolium temulentum
+POLPE,Iswid,US 12025,Isw 2013/25,L./L.,Polygonum lapathifolium/persicaria
+RUME,Iswid,US 12025,Isw 2013/25,L.,Rumex spec.
+TAMA,Iswid,US 12025,Isw 2013/25,,Tamarix
+TRDIC,Iswid,US 12025,Isw 2013/25,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 12025,Isw 2013/25,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 12025,Isw 2013/25,L.,Trifolium spec.
+CEREA,Iswid,US 12040,Isw 2013/29,,Cerealia indet.
+LOTEM,Iswid,US 12040,Isw 2013/29,L.,Lolium temulentum
+Phami,Iswid,US 12040,Isw 2013/29,,Phalaris minor
+POACE,Iswid,US 12040,Isw 2013/29,,Poaceae
+POACE,Iswid,US 12040,Isw 2013/29,,Poaceae
+RUME,Iswid,US 12040,Isw 2013/29,L.,Rumex spec.
+TRDIC,Iswid,US 12040,Isw 2013/29,(Schrank) Schübl.,Triticum dicoccum
+VICKF,Iswid,US 12040,Isw 2013/29,,Vicia klein-früchtig
+ANGMO,Iswid,US 12047,Isw 2013/30,,Angiospermae Monocotyledonae
+CEREA,Iswid,US 12047,Isw 2013/30,,Cerealia indet.
+CEREA,Iswid,US 12047,Isw 2013/30,,Cerealia indet.
+Fisyc,Iswid,US 12047,Isw 2013/30,,Ficus sycomorus
+INDET,Iswid,US 12047,Isw 2013/30,,Indeterminata
+INDET,Iswid,US 12047,Isw 2013/30,,Indeterminata
+INDET,Iswid,US 12047,Isw 2013/30,,Indeterminata
+LahVi,Iswid,US 12047,Isw 2013/30,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 12047,Isw 2013/30,L.,Lolium temulentum
+MALV,Iswid,US 12047,Isw 2013/30,L.,Malva spec.
+Phami,Iswid,US 12047,Isw 2013/30,,Phalaris minor
+POACE,Iswid,US 12047,Isw 2013/30,,Poaceae
+POACE,Iswid,US 12047,Isw 2013/30,,Poaceae
+RUME,Iswid,US 12047,Isw 2013/30,L.,Rumex spec.
+SETA,Iswid,US 12047,Isw 2013/30,P.B.,Setaria spec.
+TRDIC,Iswid,US 12047,Isw 2013/30,(Schrank) Schübl.,Triticum dicoccum
+ANGMO,Iswid,US 12504,Isw 2013/31,,Angiospermae Monocotyledonae
+CEREA,Iswid,US 12504,Isw 2013/31,,Cerealia indet.
+CYPER,Iswid,US 12504,Isw 2013/31,,Cyperaceae
+HOVUL,Iswid,US 12504,Isw 2013/31,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 12504,Isw 2013/31,,Indeterminata
+INDET,Iswid,US 12504,Isw 2013/31,,Indeterminata
+LOTEM,Iswid,US 12504,Isw 2013/31,L.,Lolium temulentum
+Phami,Iswid,US 12504,Isw 2013/31,,Phalaris minor
+POACE,Iswid,US 12504,Isw 2013/31,,Poaceae
+POLPE,Iswid,US 12504,Isw 2013/31,L./L.,Polygonum lapathifolium/persicaria
+RUME,Iswid,US 12504,Isw 2013/31,L.,Rumex spec.
+TRDIC,Iswid,US 12504,Isw 2013/31,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 12504,Isw 2013/31,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 12504,Isw 2013/31,L.,Trifolium spec.
+VICKF,Iswid,US 12504,Isw 2013/31,,Vicia klein-früchtig
+INDET,Iswid,US 13017,Isw 2015/18,,Indeterminata
+CEREA,Iswid,US 13017,Isw 2016/41,,Cerealia indet.
+CHEN,Iswid,US 13017,Isw 2016/41,L.,Chenopodium spec.
+INDET,Iswid,US 13017,Isw 2016/41,,Indeterminata
+LahVi,Iswid,US 13017,Isw 2016/41,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 13017,Isw 2016/41,L.,Lolium temulentum
+Phami,Iswid,US 13017,Isw 2016/41,,Phalaris minor
+TRDIC,Iswid,US 13017,Isw 2016/41,(Schrank) Schübl.,Triticum dicoccum
+Anpse,Iswid,US 13065,Isw 2015/25,Boiss.,Anthemis pseudocotula
+APIAC,Iswid,US 13065,Isw 2015/25,,Apiaceae
+ASTER,Iswid,US 13065,Isw 2015/25,,Asteraceae
+BROM,Iswid,US 13065,Isw 2015/25,L.,Bromus spec.
+CEREA,Iswid,US 13065,Isw 2015/25,,Cerealia indet.
+CHEN,Iswid,US 13065,Isw 2015/25,L.,Chenopodium spec.
+Cornilot,Iswid,US 13065,Isw 2015/25,,Coronupus niloticus
+CYPER,Iswid,US 13065,Isw 2015/25,,Cyperaceae
+CYPER,Iswid,US 13065,Isw 2015/25,,Cyperaceae
+FABAK,Iswid,US 13065,Isw 2015/25,,Fabaceae (kult.)
+FICAR,Iswid,US 13065,Isw 2015/25,L.,Ficus carica
+Glilot,Iswid,US 13065,Isw 2015/25,,Glinus lotoides
+HELE,Iswid,US 13065,Isw 2015/25,,Eleocharis
+HELE,Iswid,US 13065,Isw 2015/25,,Eleocharis
+HORD,Iswid,US 13065,Isw 2015/25,,Hordeum spec.
+INDET,Iswid,US 13065,Isw 2015/25,,Indeterminata
+INDET,Iswid,US 13065,Isw 2015/25,,Indeterminata
+INDET,Iswid,US 13065,Isw 2015/25,,Indeterminata
+LACIS,Iswid,US 13065,Isw 2015/25,L./L.,Lathyrus cicera/sativus
+LahVi,Iswid,US 13065,Isw 2015/25,,Lathyrus hirsutus/Vicia (klien)
+LITH,Iswid,US 13065,Isw 2015/25,L.,Lithospermum/Buglossoides spec.
+LOTEM,Iswid,US 13065,Isw 2015/25,L.,Lolium temulentum
+MALV,Iswid,US 13065,Isw 2015/25,L.,Malva spec.
+Phami,Iswid,US 13065,Isw 2015/25,,Phalaris minor
+PHRA,Iswid,US 13065,Isw 2015/25,,Phragmites
+POACE,Iswid,US 13065,Isw 2015/25,,Poaceae
+POACE,Iswid,US 13065,Isw 2015/25,,Poaceae
+Polypo,Iswid,US 13065,Isw 2015/25,,Polypogon
+Rucrden,Iswid,US 13065,Isw 2015/25,,Rumex crispus/dentatus
+TRDIC,Iswid,US 13065,Isw 2015/25,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 13065,Isw 2015/25,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 13065,Isw 2015/25,L.,Trifolium spec.
+CEREA,Iswid,US 13066,Isw 2015/4,,Cerealia indet.
+CEREA,Iswid,US 13066,Isw 2015/4,,Cerealia indet.
+FABAK,Iswid,US 13066,Isw 2015/4,,Fabaceae (kult.)
+LahVi,Iswid,US 13066,Isw 2015/4,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 13066,Isw 2015/4,L.,Lolium temulentum
+Aelur,Iswid,US 13083,Isw 2015/22,,Aeluropus lithoralis
+ANGRA,Iswid,US 13083,Isw 2015/22,L.,Anethum graveolens
+Anpse,Iswid,US 13083,Isw 2015/22,Boiss.,Anthemis pseudocotula
+BOLB,Iswid,US 13083,Isw 2015/22,,Bolboschoenus
+CEREA,Iswid,US 13083,Isw 2015/22,,Cerealia indet.
+CEREA,Iswid,US 13083,Isw 2015/22,,Cerealia indet.
+CYPER,Iswid,US 13083,Isw 2015/22,,Cyperaceae
+CYPER,Iswid,US 13083,Isw 2015/22,,Cyperaceae
+FABAC,Iswid,US 13083,Isw 2015/22,,Fabaceae
+Ficus,Iswid,US 13083,Isw 2015/22,,Ficus sp.
+FIMB,Iswid,US 13083,Isw 2015/22,,Fimbristylis
+HELE,Iswid,US 13083,Isw 2015/22,,Eleocharis
+HELE,Iswid,US 13083,Isw 2015/22,,Eleocharis
+HOVUL,Iswid,US 13083,Isw 2015/22,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 13083,Isw 2015/22,,Indeterminata
+INDET,Iswid,US 13083,Isw 2015/22,,Indeterminata
+INDET,Iswid,US 13083,Isw 2015/22,,Indeterminata
+LahVi,Iswid,US 13083,Isw 2015/22,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 13083,Isw 2015/22,L.,Lolium temulentum
+MALV,Iswid,US 13083,Isw 2015/22,L.,Malva spec.
+Oryzm,Iswid,US 13083,Isw 2015/22,,Oryzopsis milliaceum
+Pelaplan,Iswid,US 13083,Isw 2015/22,,Persicaria lanigera/lapatifolia
+PISAT,Iswid,US 13083,Isw 2015/22,L.,Pisum sativum
+POACE,Iswid,US 13083,Isw 2015/22,,Poaceae
+Polypo,Iswid,US 13083,Isw 2015/22,,Polypogon
+Rucrden,Iswid,US 13083,Isw 2015/22,,Rumex crispus/dentatus
+SCORP,Iswid,US 13083,Isw 2015/22,,Scorpiurus sp.
+SEVEV,Iswid,US 13083,Isw 2015/22,(L.) P. Beauv./(L.) P. Beauv.,Setaria verticillata/viridis
+TRDIC,Iswid,US 13083,Isw 2015/22,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 13083,Isw 2015/22,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 13083,Isw 2015/22,L.,Trifolium spec.
+FICAR,Iswid,US 13099,Isw 2015/9,L.,Ficus carica
+HOVUL,Iswid,US 13099,Isw 2015/9,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 13099,Isw 2015/9,,Indeterminata
+LOTEM,Iswid,US 13099,Isw 2015/9,L.,Lolium temulentum
+Phami,Iswid,US 13099,Isw 2015/9,,Phalaris minor
+POACE,Iswid,US 13099,Isw 2015/9,,Poaceae
+Rucrden,Iswid,US 13099,Isw 2015/9,,Rumex crispus/dentatus
+ANGRA,Iswid,US 13145,Isw 2015/21,L.,Anethum graveolens
+APIAC,Iswid,US 13145,Isw 2015/21,,Apiaceae
+BRASS,Iswid,US 13145,Isw 2015/21,,Brassicaceae
+CEREA,Iswid,US 13145,Isw 2015/21,,Cerealia indet.
+CHEN,Iswid,US 13145,Isw 2015/21,L.,Chenopodium spec.
+CYPER,Iswid,US 13145,Isw 2015/21,,Cyperaceae
+FABAK,Iswid,US 13145,Isw 2015/21,,Fabaceae (kult.)
+HOVUL,Iswid,US 13145,Isw 2015/21,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 13145,Isw 2015/21,,Indeterminata
+INDET,Iswid,US 13145,Isw 2015/21,,Indeterminata
+INDET,Iswid,US 13145,Isw 2015/21,,Indeterminata
+LahVi,Iswid,US 13145,Isw 2015/21,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 13145,Isw 2015/21,L.,Lolium temulentum
+ORIG,Iswid,US 13145,Isw 2015/21,,Origanum
+ORNI,Iswid,US 13145,Isw 2015/21,,Ornithogalum
+Pelaplan,Iswid,US 13145,Isw 2015/21,,Persicaria lanigera/lapatifolia
+Phami,Iswid,US 13145,Isw 2015/21,,Phalaris minor
+PISAT,Iswid,US 13145,Isw 2015/21,L.,Pisum sativum
+POACE,Iswid,US 13145,Isw 2015/21,,Poaceae
+POACE,Iswid,US 13145,Isw 2015/21,,Poaceae
+Rucrden,Iswid,US 13145,Isw 2015/21,,Rumex crispus/dentatus
+SEVEV,Iswid,US 13145,Isw 2015/21,(L.) P. Beauv./(L.) P. Beauv.,Setaria verticillata/viridis
+TRDIC,Iswid,US 13145,Isw 2015/21,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 13145,Isw 2015/21,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 13145,Isw 2015/21,L.,Trifolium spec.
+CEREA,Iswid,US 13516,Isw 2015/8,,Cerealia indet.
+INDET,Iswid,US 13516,Isw 2015/8,,Indeterminata
+LOTEM,Iswid,US 13516,Isw 2015/8,L.,Lolium temulentum
+Phami,Iswid,US 13516,Isw 2015/8,,Phalaris minor
+POACE,Iswid,US 13516,Isw 2015/8,,Poaceae
+TRDIC,Iswid,US 13516,Isw 2015/8,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 13516,Isw 2015/8,(Schrank) Schübl.,Triticum dicoccum
+CEREA,Iswid,US 13526,Isw 2015/2,,Cerealia indet.
+CEREA,Iswid,US 13526,Isw 2015/2,,Cerealia indet.
+HOVUL,Iswid,US 13526,Isw 2015/2,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 13526,Isw 2015/2,,Indeterminata
+INDET,Iswid,US 13526,Isw 2015/2,,Indeterminata
+LACIS,Iswid,US 13526,Isw 2015/2,L./L.,Lathyrus cicera/sativus
+LOTEM,Iswid,US 13526,Isw 2015/2,L.,Lolium temulentum
+Phami,Iswid,US 13526,Isw 2015/2,,Phalaris minor
+PHRA,Iswid,US 13526,Isw 2015/2,,Phragmites
+POACE,Iswid,US 13526,Isw 2015/2,,Poaceae
+Rucrden,Iswid,US 13526,Isw 2015/2,,Rumex crispus/dentatus
+TRDIC,Iswid,US 13526,Isw 2015/2,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 13526,Isw 2015/2,(Schrank) Schübl.,Triticum dicoccum
+HOVUL,Iswid,US 13572,Isw 2015/12,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 13572,Isw 2015/12,,Indeterminata
+LahVi,Iswid,US 13572,Isw 2015/12,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 13572,Isw 2015/12,L.,Lolium temulentum
+Phami,Iswid,US 13572,Isw 2015/12,,Phalaris minor
+CEREA,Iswid,US 13610,Isw 2015/11,,Cerealia indet.
+CYPER,Iswid,US 13610,Isw 2015/11,,Cyperaceae
+FABAK,Iswid,US 13610,Isw 2015/11,,Fabaceae (kult.)
+HIVUL,Iswid,US 13610,Isw 2015/11,L.,Hippuris vulgaris
+LOTEM,Iswid,US 13610,Isw 2015/11,L.,Lolium temulentum
+Phami,Iswid,US 13610,Isw 2015/11,,Phalaris minor
+POACE,Iswid,US 13610,Isw 2015/11,,Poaceae
+TRDIC,Iswid,US 13610,Isw 2015/11,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 13610,Isw 2015/11,(Schrank) Schübl.,Triticum dicoccum
+CEREA,Iswid,US 13632,Isw 2016/15,,Cerealia indet.
+HOVUL,Iswid,US 13632,Isw 2016/15,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 13632,Isw 2016/15,,Indeterminata
+LahVi,Iswid,US 13632,Isw 2016/15,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 13632,Isw 2016/15,L.,Lolium temulentum
+Rucrden,Iswid,US 13632,Isw 2016/15,,Rumex crispus/dentatus
+TRDIC,Iswid,US 13632,Isw 2016/15,(Schrank) Schübl.,Triticum dicoccum
+VIVIN,Iswid,US 13632,Isw 2016/15,L.,Vitis vinifera
+CEREA,Iswid,US 13639,Isw2015/26,,Cerealia indet.
+CEREA,Iswid,US 13639,Isw2015/26,,Cerealia indet.
+HOVUL,Iswid,US 13639,Isw2015/26,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 13639,Isw2015/26,,Indeterminata
+INDET,Iswid,US 13639,Isw2015/26,,Indeterminata
+LahVi,Iswid,US 13639,Isw2015/26,,Lathyrus hirsutus/Vicia (klien)
+LOLI,Iswid,US 13639,Isw2015/26,,Lolium spec.
+Rucrden,Iswid,US 13639,Isw2015/26,,Rumex crispus/dentatus
+TRDIC,Iswid,US 13639,Isw2015/26,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 13639,Isw2015/26,(Schrank) Schübl.,Triticum dicoccum
+ZIJUJ,Iswid,US 13639,Isw2015/26,Mill.,Ziziphus jujuba
+CEREA,Iswid,US 13657,Isw 2015/17,,Cerealia indet.
+INDET,Iswid,US 13657,Isw 2015/17,,Indeterminata
+Rucrden,Iswid,US 13657,Isw 2015/17,,Rumex crispus/dentatus
+CEREA,Iswid,US 13705,Isw 2015/10,,Cerealia indet.
+CEREA,Iswid,US 13705,Isw 2015/10,,Cerealia indet.
+LahVi,Iswid,US 13705,Isw 2015/10,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 13705,Isw 2015/10,L.,Lolium temulentum
+Rucrden,Iswid,US 13705,Isw 2015/10,,Rumex crispus/dentatus
+TRDIC,Iswid,US 13705,Isw 2015/10,(Schrank) Schübl.,Triticum dicoccum
+CEREA,Iswid,US 13791,Isw 2015/5,,Cerealia indet.
+INDET,Iswid,US 13791,Isw 2015/5,,Indeterminata
+INDET,Iswid,US 13791,Isw 2015/5,,Indeterminata
+LOTEM,Iswid,US 13791,Isw 2015/5,L.,Lolium temulentum
+Pelaplan,Iswid,US 13791,Isw 2015/5,,Persicaria lanigera/lapatifolia
+PHRA,Iswid,US 13791,Isw 2015/5,,Phragmites
+POACE,Iswid,US 13791,Isw 2015/5,,Poaceae
+Rucrden,Iswid,US 13791,Isw 2015/5,,Rumex crispus/dentatus
+TRDIC,Iswid,US 13791,Isw 2015/5,(Schrank) Schübl.,Triticum dicoccum
+ACAC,Iswid,US 13791 (3),Isw 2015/7,,Acacia sp.
+CEREA,Iswid,US 13791 (3),Isw 2015/7,,Cerealia indet.
+INDET,Iswid,US 13791 (3),Isw 2015/7,,Indeterminata
+INDET,Iswid,US 13791 (3),Isw 2015/7,,Indeterminata
+INDET,Iswid,US 13791 (3),Isw 2015/7,,Indeterminata
+INDET,Iswid,US 13791 (3),Isw 2015/7,,Indeterminata
+INDET,Iswid,US 13791 (3),Isw 2015/7,,Indeterminata
+LahVi,Iswid,US 13791 (3),Isw 2015/7,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 13791 (3),Isw 2015/7,L.,Lolium temulentum
+POACE,Iswid,US 13791 (3),Isw 2015/7,,Poaceae
+Rucrden,Iswid,US 13791 (3),Isw 2015/7,,Rumex crispus/dentatus
+TRDIC,Iswid,US 13791 (3),Isw 2015/7,(Schrank) Schübl.,Triticum dicoccum
+CEREA,Iswid,US 13802,Isw 2015/20,,Cerealia indet.
+CYPER,Iswid,US 13802,Isw 2015/20,,Cyperaceae
+HOVUL,Iswid,US 13802,Isw 2015/20,L.,Hordeum vulgare undiff.
+LOTEM,Iswid,US 13802,Isw 2015/20,L.,Lolium temulentum
+POACE,Iswid,US 13802,Isw 2015/20,,Poaceae
+POACE,Iswid,US 13802,Isw 2015/20,,Poaceae
+ACAC,Iswid,US 13971,Isw 2015/7,,Acacia sp.
+CEREA,Iswid,US 13971,Isw 2015/7,,Cerealia indet.
+INDET,Iswid,US 13971,Isw 2015/7,,Indeterminata
+INDET,Iswid,US 13971,Isw 2015/7,,Indeterminata
+INDET,Iswid,US 13971,Isw 2015/7,,Indeterminata
+INDET,Iswid,US 13971,Isw 2015/7,,Indeterminata
+LahVi,Iswid,US 13971,Isw 2015/7,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 13971,Isw 2015/7,L.,Lolium temulentum
+POACE,Iswid,US 13971,Isw 2015/7,,Poaceae
+Rucrden,Iswid,US 13971,Isw 2015/7,,Rumex crispus/dentatus
+TRDIC,Iswid,US 13971,Isw 2015/7,(Schrank) Schübl.,Triticum dicoccum
+BROM,Iswid,US 14021,Isw 2015/1,L.,Bromus spec.
+CEREA,Iswid,US 14021,Isw 2015/1,,Cerealia indet.
+CYPER,Iswid,US 14021,Isw 2015/1,,Cyperaceae
+DIGI,Iswid,US 14021,Isw 2015/1,Haller,Digitaria spec.
+FABAK,Iswid,US 14021,Isw 2015/1,,Fabaceae (kult.)
+HELE,Iswid,US 14021,Isw 2015/1,,Eleocharis
+HOVUL,Iswid,US 14021,Isw 2015/1,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 14021,Isw 2015/1,,Indeterminata
+INDET,Iswid,US 14021,Isw 2015/1,,Indeterminata
+LABIA,Iswid,US 14021,Isw 2015/1,,Lamiaceae
+LahVi,Iswid,US 14021,Isw 2015/1,,Lathyrus hirsutus/Vicia (klien)
+LECUL,Iswid,US 14021,Isw 2015/1,Medik.,Lens culinaris
+LOTEM,Iswid,US 14021,Isw 2015/1,L.,Lolium temulentum
+Pelaplan,Iswid,US 14021,Isw 2015/1,,Persicaria lanigera/lapatifolia
+Phami,Iswid,US 14021,Isw 2015/1,,Phalaris minor
+POACE,Iswid,US 14021,Isw 2015/1,,Poaceae
+POACE,Iswid,US 14021,Isw 2015/1,,Poaceae
+Rucrden,Iswid,US 14021,Isw 2015/1,,Rumex crispus/dentatus
+SETA,Iswid,US 14021,Isw 2015/1,P.B.,Setaria spec.
+TRIF,Iswid,US 14021,Isw 2015/1,L.,Trifolium spec.
+TRMOD,Iswid,US 14021,Isw 2015/1,L./Schrank,Triticum monococcum/dicoccum
+VIHIT,Iswid,US 14021,Isw 2015/1,(L.)S.F.Gray/(L.)Schreb,Vicia hirsuta/tetrasperma
+ACAC,Iswid,US 14038,Isw 2015/3,,Acacia sp.
+CEREA,Iswid,US 14038,Isw 2015/3,,Cerealia indet.
+FABAK,Iswid,US 14038,Isw 2015/3,,Fabaceae (kult.)
+HOVUL,Iswid,US 14038,Isw 2015/3,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 14038,Isw 2015/3,,Indeterminata
+INDET,Iswid,US 14038,Isw 2015/3,,Indeterminata
+LOTEM,Iswid,US 14038,Isw 2015/3,L.,Lolium temulentum
+ORIG,Iswid,US 14038,Isw 2015/3,,Origanum
+Phami,Iswid,US 14038,Isw 2015/3,,Phalaris minor
+PHRA,Iswid,US 14038,Isw 2015/3,,Phragmites
+PISAT,Iswid,US 14038,Isw 2015/3,L.,Pisum sativum
+POACE,Iswid,US 14038,Isw 2015/3,,Poaceae
+POACE,Iswid,US 14038,Isw 2015/3,,Poaceae
+POACE,Iswid,US 14038,Isw 2015/3,,Poaceae
+Rucrden,Iswid,US 14038,Isw 2015/3,,Rumex crispus/dentatus
+TAMA,Iswid,US 14038,Isw 2015/3,,Tamarix
+TRDIC,Iswid,US 14038,Isw 2015/3,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 14038,Isw 2015/3,L.,Trifolium spec.
+TRMOD,Iswid,US 14038,Isw 2015/3,L./Schrank,Triticum monococcum/dicoccum
+VIHIT,Iswid,US 14038,Isw 2015/3,(L.)S.F.Gray/(L.)Schreb,Vicia hirsuta/tetrasperma
+ACAC,Iswid,US 14050,Isw 2015/24,,Acacia sp.
+ASTER,Iswid,US 14050,Isw 2015/24,,Asteraceae
+BOLB,Iswid,US 14050,Isw 2015/24,,Bolboschoenus
+CEREA,Iswid,US 14050,Isw 2015/24,,Cerealia indet.
+CYPER,Iswid,US 14050,Isw 2015/24,,Cyperaceae
+CYPER,Iswid,US 14050,Isw 2015/24,,Cyperaceae
+FABAK,Iswid,US 14050,Isw 2015/24,,Fabaceae (kult.)
+HELE,Iswid,US 14050,Isw 2015/24,,Eleocharis
+HOVUL,Iswid,US 14050,Isw 2015/24,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 14050,Isw 2015/24,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 14050,Isw 2015/24,,Indeterminata
+INDET,Iswid,US 14050,Isw 2015/24,,Indeterminata
+LAHIR,Iswid,US 14050,Isw 2015/24,L.,Lathyrus hirsutus
+LahVi,Iswid,US 14050,Isw 2015/24,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 14050,Isw 2015/24,L.,Lolium temulentum
+Pelaplan,Iswid,US 14050,Isw 2015/24,,Persicaria lanigera/lapatifolia
+Phami,Iswid,US 14050,Isw 2015/24,,Phalaris minor
+PHRA,Iswid,US 14050,Isw 2015/24,,Phragmites
+PHRA,Iswid,US 14050,Isw 2015/24,,Phragmites
+PISAT,Iswid,US 14050,Isw 2015/24,L.,Pisum sativum
+POACE,Iswid,US 14050,Isw 2015/24,,Poaceae
+POACE,Iswid,US 14050,Isw 2015/24,,Poaceae
+POACE,Iswid,US 14050,Isw 2015/24,,Poaceae
+Polypo,Iswid,US 14050,Isw 2015/24,,Polypogon
+Rucrden,Iswid,US 14050,Isw 2015/24,,Rumex crispus/dentatus
+TAMA,Iswid,US 14050,Isw 2015/24,,Tamarix
+TRDIC,Iswid,US 14050,Isw 2015/24,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 14050,Isw 2015/24,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 14050,Isw 2015/24,L.,Trifolium spec.
+LahVi,Iswid,US 14078,Isw 2916/23,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 14078,Isw 2916/23,L.,Lolium temulentum
+Pelaplan,Iswid,US 14078,Isw 2916/23,,Persicaria lanigera/lapatifolia
+POACE,Iswid,US 14078,Isw 2916/23,,Poaceae
+TRDIC,Iswid,US 14078,Isw 2916/23,(Schrank) Schübl.,Triticum dicoccum
+INDET,Iswid,US 14131,Isw 2015/13,,Indeterminata
+INDET,Iswid,US 14131,Isw 2015/13,,Indeterminata
+LahVi,Iswid,US 14131,Isw 2015/13,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 14131,Isw 2015/13,L.,Lolium temulentum
+Phami,Iswid,US 14131,Isw 2015/13,,Phalaris minor
+POACE,Iswid,US 14131,Isw 2015/13,,Poaceae
+Rucrden,Iswid,US 14131,Isw 2015/13,,Rumex crispus/dentatus
+TRDIC,Iswid,US 14131,Isw 2015/13,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 14131,Isw 2015/13,L.,Trifolium spec.
+VIHIT,Iswid,US 14131,Isw 2015/13,(L.)S.F.Gray/(L.)Schreb,Vicia hirsuta/tetrasperma
+BROM,Iswid,US 14131,Isw 2016/12,L.,Bromus spec.
+CEREA,Iswid,US 14131,Isw 2016/12,,Cerealia indet.
+ECHSE,Iswid,US 14131,Isw 2016/12,P. B./P. B.,Echinochloa/Setaria
+HOVUL,Iswid,US 14131,Isw 2016/12,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 14131,Isw 2016/12,,Indeterminata
+INDET,Iswid,US 14131,Isw 2016/12,,Indeterminata
+INDET,Iswid,US 14131,Isw 2016/12,,Indeterminata
+INDET,Iswid,US 14131,Isw 2016/12,,Indeterminata
+INDET,Iswid,US 14131,Isw 2016/12,,Indeterminata
+LahVi,Iswid,US 14131,Isw 2016/12,,Lathyrus hirsutus/Vicia (klien)
+Phami,Iswid,US 14131,Isw 2016/12,,Phalaris minor
+Polypo,Iswid,US 14131,Isw 2016/12,,Polypogon
+Rucrden,Iswid,US 14131,Isw 2016/12,,Rumex crispus/dentatus
+SETA,Iswid,US 14131,Isw 2016/12,P.B.,Setaria spec.
+TRDIC,Iswid,US 14131,Isw 2016/12,(Schrank) Schübl.,Triticum dicoccum
+CEREA,Iswid,US 14158,Isw 2015/14,,Cerealia indet.
+LahVi,Iswid,US 14158,Isw 2015/14,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 14158,Isw 2015/14,L.,Lolium temulentum
+Phami,Iswid,US 14158,Isw 2015/14,,Phalaris minor
+POACE,Iswid,US 14158,Isw 2015/14,,Poaceae
+LOTEM,Iswid,US 14418,Isw 2016/34,L.,Lolium temulentum
+Phami,Iswid,US 14418,Isw 2016/34,,Phalaris minor
+TRDIC,Iswid,US 14418,Isw 2016/34,(Schrank) Schübl.,Triticum dicoccum
+BOLB,Iswid,US 14495,Isw 16/37,,Bolboschoenus
+CEREA,Iswid,US 14495,Isw 16/37,,Cerealia indet.
+HELE,Iswid,US 14495,Isw 16/37,,Eleocharis
+HOVUL,Iswid,US 14495,Isw 16/37,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 14495,Isw 16/37,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 14495,Isw 16/37,,Indeterminata
+LahVi,Iswid,US 14495,Isw 16/37,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 14495,Isw 16/37,L.,Lolium temulentum
+Pelaplan,Iswid,US 14495,Isw 16/37,,Persicaria lanigera/lapatifolia
+Phami,Iswid,US 14495,Isw 16/37,,Phalaris minor
+PISAT,Iswid,US 14495,Isw 16/37,L.,Pisum sativum
+POACE,Iswid,US 14495,Isw 16/37,,Poaceae
+Rucrden,Iswid,US 14495,Isw 16/37,,Rumex crispus/dentatus
+SCORP,Iswid,US 14495,Isw 16/37,,Scorpiurus sp.
+TAMA,Iswid,US 14495,Isw 16/37,,Tamarix
+TRDIC,Iswid,US 14495,Isw 16/37,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 14495,Isw 16/37,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 14495,Isw 16/37,L.,Trifolium spec.
+TRIF,Iswid,US 14495,Isw 16/37,L.,Trifolium spec.
+CEREA,Iswid,US 14509,16-Jan,,Cerealia indet.
+CEREA,Iswid,US 14509,16-Jan,,Cerealia indet.
+HOVUL,Iswid,US 14509,16-Jan,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 14509,16-Jan,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 14509,16-Jan,,Indeterminata
+INDET,Iswid,US 14509,16-Jan,,Indeterminata
+LahVi,Iswid,US 14509,16-Jan,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 14509,16-Jan,L.,Lolium temulentum
+POACE,Iswid,US 14509,16-Jan,,Poaceae
+TRDIC,Iswid,US 14509,16-Jan,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 14509,16-Jan,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 14509,16-Jan,L.,Trifolium spec.
+Aelur,Iswid,US 14636,Isw 16/35,,Aeluropus lithoralis
+ANGMO,Iswid,US 14636,Isw 16/35,,Angiospermae Monocotyledonae
+APIAC,Iswid,US 14636,Isw 16/35,,Apiaceae
+BOLB,Iswid,US 14636,Isw 16/35,,Bolboschoenus
+CEREA,Iswid,US 14636,Isw 16/35,,Cerealia indet.
+CYPER,Iswid,US 14636,Isw 16/35,,Cyperaceae
+FABAK,Iswid,US 14636,Isw 16/35,,Fabaceae (kult.)
+HOVUL,Iswid,US 14636,Isw 16/35,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 14636,Isw 16/35,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 14636,Isw 16/35,,Indeterminata
+INDET,Iswid,US 14636,Isw 16/35,,Indeterminata
+LahVi,Iswid,US 14636,Isw 16/35,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 14636,Isw 16/35,L.,Lolium temulentum
+ORNI,Iswid,US 14636,Isw 16/35,,Ornithogalum
+Pelaplan,Iswid,US 14636,Isw 16/35,,Persicaria lanigera/lapatifolia
+Phami,Iswid,US 14636,Isw 16/35,,Phalaris minor
+Rucrden,Iswid,US 14636,Isw 16/35,,Rumex crispus/dentatus
+TRDIC,Iswid,US 14636,Isw 16/35,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 14636,Isw 16/35,(Schrank) Schübl.,Triticum dicoccum
+ANGMO,Iswid,US 15067,Isw 2017/7,,Angiospermae Monocotyledonae
+CEREA,Iswid,US 15067,Isw 2017/7,,Cerealia indet.
+CYPER,Iswid,US 15067,Isw 2017/7,,Cyperaceae
+CYPER,Iswid,US 15067,Isw 2017/7,,Cyperaceae
+FICAR,Iswid,US 15067,Isw 2017/7,L.,Ficus carica
+FICAR,Iswid,US 15067,Isw 2017/7,L.,Ficus carica
+HELE,Iswid,US 15067,Isw 2017/7,,Eleocharis
+HELE,Iswid,US 15067,Isw 2017/7,,Eleocharis
+HOVUL,Iswid,US 15067,Isw 2017/7,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 15067,Isw 2017/7,,Indeterminata
+INDET,Iswid,US 15067,Isw 2017/7,,Indeterminata
+INDET,Iswid,US 15067,Isw 2017/7,,Indeterminata
+INDET,Iswid,US 15067,Isw 2017/7,,Indeterminata
+LAHIR,Iswid,US 15067,Isw 2017/7,L.,Lathyrus hirsutus
+LahVi,Iswid,US 15067,Isw 2017/7,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 15067,Isw 2017/7,L.,Lolium temulentum
+MEDTR,Iswid,US 15067,Isw 2017/7,L./L.,Medicago/Trifolium
+Pelaplan,Iswid,US 15067,Isw 2017/7,,Persicaria lanigera/lapatifolia
+Phami,Iswid,US 15067,Isw 2017/7,,Phalaris minor
+POACE,Iswid,US 15067,Isw 2017/7,,Poaceae
+Rucrden,Iswid,US 15067,Isw 2017/7,,Rumex crispus/dentatus
+TRDIC,Iswid,US 15067,Isw 2017/7,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 15067,Isw 2017/7,L.,Trifolium spec.
+VITET,Iswid,US 15067,Isw 2017/7,(L.) Schreb.,Vicia tetrasperma
+BOLB,Iswid,US 15071,Isw 17/4,,Bolboschoenus
+CEREA,Iswid,US 15071,Isw 17/4,,Cerealia indet.
+CEREA,Iswid,US 15071,Isw 17/4,,Cerealia indet.
+DIGI,Iswid,US 15071,Isw 17/4,Haller,Digitaria spec.
+FABAC,Iswid,US 15071,Isw 17/4,,Fabaceae
+FABAK,Iswid,US 15071,Isw 17/4,,Fabaceae (kult.)
+HELE,Iswid,US 15071,Isw 17/4,,Eleocharis
+HOVUL,Iswid,US 15071,Isw 17/4,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 15071,Isw 17/4,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 15071,Isw 17/4,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 15071,Isw 17/4,,Indeterminata
+INDET,Iswid,US 15071,Isw 17/4,,Indeterminata
+LahVi,Iswid,US 15071,Isw 17/4,,Lathyrus hirsutus/Vicia (klien)
+LECUL,Iswid,US 15071,Isw 17/4,Medik.,Lens culinaris
+LOTEM,Iswid,US 15071,Isw 17/4,L.,Lolium temulentum
+Pelaplan,Iswid,US 15071,Isw 17/4,,Persicaria lanigera/lapatifolia
+Phami,Iswid,US 15071,Isw 17/4,,Phalaris minor
+POACE,Iswid,US 15071,Isw 17/4,,Poaceae
+RUME,Iswid,US 15071,Isw 17/4,L.,Rumex spec.
+TRDIC,Iswid,US 15071,Isw 17/4,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 15071,Isw 17/4,L.,Trifolium spec.
+CEREA,Iswid,US 15108,Isw 17/1,,Cerealia indet.
+ECHSE,Iswid,US 15108,Isw 17/1,P. B./P. B.,Echinochloa/Setaria
+HOVUL,Iswid,US 15108,Isw 17/1,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 15108,Isw 17/1,,Indeterminata
+LahVi,Iswid,US 15108,Isw 17/1,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 15108,Isw 17/1,L.,Lolium temulentum
+Phami,Iswid,US 15108,Isw 17/1,,Phalaris minor
+POACE,Iswid,US 15108,Isw 17/1,,Poaceae
+Rucrden,Iswid,US 15108,Isw 17/1,,Rumex crispus/dentatus
+RUME,Iswid,US 15108,Isw 17/1,L.,Rumex spec.
+TRDIC,Iswid,US 15108,Isw 17/1,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 15108,Isw 17/1,L.,Trifolium spec.
+CEREA,Iswid,US 15140,Isw17/26,,Cerealia indet.
+CEREA,Iswid,US 15140,Isw17/26,,Cerealia indet.
+HOVUL,Iswid,US 15140,Isw17/26,L.,Hordeum vulgare undiff.
+LAHIR,Iswid,US 15140,Isw17/26,L.,Lathyrus hirsutus
+LahVi,Iswid,US 15140,Isw17/26,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 15140,Isw17/26,L.,Lolium temulentum
+PISAT,Iswid,US 15140,Isw17/26,L.,Pisum sativum
+Rucrden,Iswid,US 15140,Isw17/26,,Rumex crispus/dentatus
+TRDIC,Iswid,US 15140,Isw17/26,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 15140,Isw17/26,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 15140,Isw17/26,L.,Trifolium spec.
+ANGMO,Iswid,US 16183,Isw 2017/8,,Angiospermae Monocotyledonae
+BROM,Iswid,US 16183,Isw 2017/8,L.,Bromus spec.
+CEREA,Iswid,US 16183,Isw 2017/8,,Cerealia indet.
+CHEN,Iswid,US 16183,Isw 2017/8,L.,Chenopodium spec.
+CYPER,Iswid,US 16183,Isw 2017/8,,Cyperaceae
+ECCRU,Iswid,US 16183,Isw 2017/8,(L.) P. Beauv.,Echinochloa crus-galli
+HELE,Iswid,US 16183,Isw 2017/8,,Eleocharis
+HOVUL,Iswid,US 16183,Isw 2017/8,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 16183,Isw 2017/8,,Indeterminata
+LahVi,Iswid,US 16183,Isw 2017/8,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 16183,Isw 2017/8,L.,Lolium temulentum
+Phami,Iswid,US 16183,Isw 2017/8,,Phalaris minor
+POACE,Iswid,US 16183,Isw 2017/8,,Poaceae
+Rucrden,Iswid,US 16183,Isw 2017/8,,Rumex crispus/dentatus
+TRDIC,Iswid,US 16183,Isw 2017/8,(Schrank) Schübl.,Triticum dicoccum
+VIERV,Iswid,US 16183,Isw 2017/8,(L.) Willd.,Vicia ervilia
+BOLB,Iswid,US 16287_F4185 (TR.),Isw 17/23,,Bolboschoenus
+CEREA,Iswid,US 16287_F4185 (TR.),Isw 17/23,,Cerealia indet.
+LahVi,Iswid,US 16287_F4185 (TR.),Isw 17/23,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 16287_F4185 (TR.),Isw 17/23,L.,Lolium temulentum
+Phami,Iswid,US 16287_F4185 (TR.),Isw 17/23,,Phalaris minor
+Polypo,Iswid,US 16287_F4185 (TR.),Isw 17/23,,Polypogon
+Rucrden,Iswid,US 16287_F4185 (TR.),Isw 17/23,,Rumex crispus/dentatus
+TRDIC,Iswid,US 16287_F4185 (TR.),Isw 17/23,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 16287_F4185 (TR.),Isw 17/23,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 16287_F4185 (TR.),Isw 17/23,(Schrank) Schübl.,Triticum dicoccum
+BOLB,Iswid,US 16323_F4199(foye,Isw 17/29,,Bolboschoenus
+CEREA,Iswid,US 16323_F4199(foye,Isw 17/29,,Cerealia indet.
+CEREA,Iswid,US 16323_F4199(foye,Isw 17/29,,Cerealia indet.
+CEREA,Iswid,US 16323_F4199(foye,Isw 17/29,,Cerealia indet.
+CYPER,Iswid,US 16323_F4199(foye,Isw 17/29,,Cyperaceae
+HOVUL,Iswid,US 16323_F4199(foye,Isw 17/29,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 16323_F4199(foye,Isw 17/29,L.,Hordeum vulgare undiff.
+LOTEM,Iswid,US 16323_F4199(foye,Isw 17/29,L.,Lolium temulentum
+Phami,Iswid,US 16323_F4199(foye,Isw 17/29,,Phalaris minor
+Polypo,Iswid,US 16323_F4199(foye,Isw 17/29,,Polypogon
+Rucrden,Iswid,US 16323_F4199(foye,Isw 17/29,,Rumex crispus/dentatus
+TRDIC,Iswid,US 16323_F4199(foye,Isw 17/29,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 16323_F4199(foye,Isw 17/29,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 16323_F4199(foye,Isw 17/29,(Schrank) Schübl.,Triticum dicoccum
+ANGMO,Iswid,US 6712,Isw 2013/13,,Angiospermae Monocotyledonae
+CEREA,Iswid,US 6712,Isw 2013/13,,Cerealia indet.
+CYPER,Iswid,US 6712,Isw 2013/13,,Cyperaceae
+CYPER,Iswid,US 6712,Isw 2013/13,,Cyperaceae
+HELE,Iswid,US 6712,Isw 2013/13,,Eleocharis
+HOVUL,Iswid,US 6712,Isw 2013/13,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 6712,Isw 2013/13,,Indeterminata
+INDET,Iswid,US 6712,Isw 2013/13,,Indeterminata
+INDET,Iswid,US 6712,Isw 2013/13,,Indeterminata
+INDET,Iswid,US 6712,Isw 2013/13,,Indeterminata
+LAHIR,Iswid,US 6712,Isw 2013/13,L.,Lathyrus hirsutus
+LahVi,Iswid,US 6712,Isw 2013/13,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 6712,Isw 2013/13,L.,Lolium temulentum
+Phami,Iswid,US 6712,Isw 2013/13,,Phalaris minor
+PHRA,Iswid,US 6712,Isw 2013/13,,Phragmites
+POACE,Iswid,US 6712,Isw 2013/13,,Poaceae
+POACE,Iswid,US 6712,Isw 2013/13,,Poaceae
+Rucrden,Iswid,US 6712,Isw 2013/13,,Rumex crispus/dentatus
+TAMA,Iswid,US 6712,Isw 2013/13,,Tamarix
+TAMA,Iswid,US 6712,Isw 2013/13,,Tamarix
+TRDIC,Iswid,US 6712,Isw 2013/13,(Schrank) Schübl.,Triticum dicoccum
+ANGMO,Iswid,US 6773,Isw 2013/7,,Angiospermae Monocotyledonae
+BRASS,Iswid,US 6773,Isw 2013/7,,Brassicaceae
+CEREA,Iswid,US 6773,Isw 2013/7,,Cerealia indet.
+CHEN,Iswid,US 6773,Isw 2013/7,L.,Chenopodium spec.
+CYPER,Iswid,US 6773,Isw 2013/7,,Cyperaceae
+CYPER,Iswid,US 6773,Isw 2013/7,,Cyperaceae
+ECHSE,Iswid,US 6773,Isw 2013/7,P. B./P. B.,Echinochloa/Setaria
+HELE,Iswid,US 6773,Isw 2013/7,,Eleocharis
+HOVUL,Iswid,US 6773,Isw 2013/7,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 6773,Isw 2013/7,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 6773,Isw 2013/7,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 6773,Isw 2013/7,,Indeterminata
+LahVi,Iswid,US 6773,Isw 2013/7,,Lathyrus hirsutus/Vicia (klien)
+LOLI,Iswid,US 6773,Isw 2013/7,,Lolium spec.
+LOTEM,Iswid,US 6773,Isw 2013/7,L.,Lolium temulentum
+PHAL,Iswid,US 6773,Isw 2013/7,,Phalaris
+Phami,Iswid,US 6773,Isw 2013/7,,Phalaris minor
+PISAT,Iswid,US 6773,Isw 2013/7,L.,Pisum sativum
+POACE,Iswid,US 6773,Isw 2013/7,,Poaceae
+POACE,Iswid,US 6773,Isw 2013/7,,Poaceae
+POLPE,Iswid,US 6773,Isw 2013/7,L./L.,Polygonum lapathifolium/persicaria
+Polypo,Iswid,US 6773,Isw 2013/7,,Polypogon
+PULI,Iswid,US 6773,Isw 2013/7,,Pulicaria
+RUME,Iswid,US 6773,Isw 2013/7,L.,Rumex spec.
+TRDIC,Iswid,US 6773,Isw 2013/7,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 6773,Isw 2013/7,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 6773,Isw 2013/7,L.,Trifolium spec.
+VICKF,Iswid,US 6773,Isw 2013/7,,Vicia klein-früchtig
+ARNE,Iswid,US 6803,Isw 2013/10,,Arnebia
+ASTER,Iswid,US 6803,Isw 2013/10,,Asteraceae
+ASTER,Iswid,US 6803,Isw 2013/10,,Asteraceae
+BOLB,Iswid,US 6803,Isw 2013/10,,Bolboschoenus
+CEREA,Iswid,US 6803,Isw 2013/10,,Cerealia indet.
+CEREA,Iswid,US 6803,Isw 2013/10,,Cerealia indet.
+CHENO,Iswid,US 6803,Isw 2013/10,,Chenopodiaceae
+CYPER,Iswid,US 6803,Isw 2013/10,,Cyperaceae
+ECHSE,Iswid,US 6803,Isw 2013/10,P. B./P. B.,Echinochloa/Setaria
+FABAC,Iswid,US 6803,Isw 2013/10,,Fabaceae
+Ficus,Iswid,US 6803,Isw 2013/10,,Ficus sp.
+HELE,Iswid,US 6803,Isw 2013/10,,Eleocharis
+HORD,Iswid,US 6803,Isw 2013/10,,Hordeum spec.
+HOVUL,Iswid,US 6803,Isw 2013/10,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 6803,Isw 2013/10,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 6803,Isw 2013/10,,Indeterminata
+INDET,Iswid,US 6803,Isw 2013/10,,Indeterminata
+INDET,Iswid,US 6803,Isw 2013/10,,Indeterminata
+INDET,Iswid,US 6803,Isw 2013/10,,Indeterminata
+ISOL,Iswid,US 6803,Isw 2013/10,,Isolepis
+LOTEM,Iswid,US 6803,Isw 2013/10,L.,Lolium temulentum
+MEDTR,Iswid,US 6803,Isw 2013/10,L./L.,Medicago/Trifolium
+Phami,Iswid,US 6803,Isw 2013/10,,Phalaris minor
+PHRA,Iswid,US 6803,Isw 2013/10,,Phragmites
+PISAT,Iswid,US 6803,Isw 2013/10,L.,Pisum sativum
+POACE,Iswid,US 6803,Isw 2013/10,,Poaceae
+POLPE,Iswid,US 6803,Isw 2013/10,L./L.,Polygonum lapathifolium/persicaria
+PULI,Iswid,US 6803,Isw 2013/10,,Pulicaria
+RUME,Iswid,US 6803,Isw 2013/10,L.,Rumex spec.
+SETA,Iswid,US 6803,Isw 2013/10,P.B.,Setaria spec.
+SHER,Iswid,US 6803,Isw 2013/10,,Sherardia
+TAMA,Iswid,US 6803,Isw 2013/10,,Tamarix
+TRDIC,Iswid,US 6803,Isw 2013/10,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 6803,Isw 2013/10,L.,Trifolium spec.
+ACAC,Iswid,US 6810,Isw 2013/5,,Acacia sp.
+Aelur,Iswid,US 6810,Isw 2013/5,,Aeluropus lithoralis
+BOLB,Iswid,US 6810,Isw 2013/5,,Bolboschoenus
+CARE,Iswid,US 6810,Isw 2013/5,,Carex spec.
+CEREA,Iswid,US 6810,Isw 2013/5,,Cerealia indet.
+CEREA,Iswid,US 6810,Isw 2013/5,,Cerealia indet.
+ECHSE,Iswid,US 6810,Isw 2013/5,P. B./P. B.,Echinochloa/Setaria
+FABAK,Iswid,US 6810,Isw 2013/5,,Fabaceae (kult.)
+Ficus,Iswid,US 6810,Isw 2013/5,,Ficus sp.
+HELE,Iswid,US 6810,Isw 2013/5,,Eleocharis
+HOVUL,Iswid,US 6810,Isw 2013/5,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 6810,Isw 2013/5,,Indeterminata
+INDET,Iswid,US 6810,Isw 2013/5,,Indeterminata
+LIUSI,Iswid,US 6810,Isw 2013/5,L.,Linum usitatissimum
+LOTEM,Iswid,US 6810,Isw 2013/5,L.,Lolium temulentum
+PANIC,Iswid,US 6810,Isw 2013/5,R. Br.,Panicoideae
+Phami,Iswid,US 6810,Isw 2013/5,,Phalaris minor
+PISAT,Iswid,US 6810,Isw 2013/5,L.,Pisum sativum
+POLPE,Iswid,US 6810,Isw 2013/5,L./L.,Polygonum lapathifolium/persicaria
+PULI,Iswid,US 6810,Isw 2013/5,,Pulicaria
+RUME,Iswid,US 6810,Isw 2013/5,L.,Rumex spec.
+TAMA,Iswid,US 6810,Isw 2013/5,,Tamarix
+TRDIC,Iswid,US 6810,Isw 2013/5,(Schrank) Schübl.,Triticum dicoccum
+ANGMO,Iswid,US 6827,Isw 2013/2,,Angiospermae Monocotyledonae
+CEREA,Iswid,US 6827,Isw 2013/2,,Cerealia indet.
+CEREA,Iswid,US 6827,Isw 2013/2,,Cerealia indet.
+CYPER,Iswid,US 6827,Isw 2013/2,,Cyperaceae
+FABAC,Iswid,US 6827,Isw 2013/2,,Fabaceae
+HELE,Iswid,US 6827,Isw 2013/2,,Eleocharis
+HOVUL,Iswid,US 6827,Isw 2013/2,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 6827,Isw 2013/2,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 6827,Isw 2013/2,,Indeterminata
+INDET,Iswid,US 6827,Isw 2013/2,,Indeterminata
+LOTEM,Iswid,US 6827,Isw 2013/2,L.,Lolium temulentum
+PANIC,Iswid,US 6827,Isw 2013/2,R. Br.,Panicoideae
+Phami,Iswid,US 6827,Isw 2013/2,,Phalaris minor
+PHRA,Iswid,US 6827,Isw 2013/2,,Phragmites
+POACE,Iswid,US 6827,Isw 2013/2,,Poaceae
+PULI,Iswid,US 6827,Isw 2013/2,,Pulicaria
+RUME,Iswid,US 6827,Isw 2013/2,L.,Rumex spec.
+TRDIC,Iswid,US 6827,Isw 2013/2,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 6827,Isw 2013/2,(Schrank) Schübl.,Triticum dicoccum
+VICKF,Iswid,US 6827,Isw 2013/2,,Vicia klein-früchtig
+ANGMO,Iswid,US 6854,Isw 2013/4,,Angiospermae Monocotyledonae
+ANGMO,Iswid,US 6854,Isw 2013/4,,Angiospermae Monocotyledonae
+CEREA,Iswid,US 6854,Isw 2013/4,,Cerealia indet.
+FABAK,Iswid,US 6854,Isw 2013/4,,Fabaceae (kult.)
+HELE,Iswid,US 6854,Isw 2013/4,,Eleocharis
+HOVUL,Iswid,US 6854,Isw 2013/4,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 6854,Isw 2013/4,L.,Hordeum vulgare undiff.
+LahVi,Iswid,US 6854,Isw 2013/4,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 6854,Isw 2013/4,L.,Lolium temulentum
+PHRA,Iswid,US 6854,Isw 2013/4,,Phragmites
+POACE,Iswid,US 6854,Isw 2013/4,,Poaceae
+RUME,Iswid,US 6854,Isw 2013/4,L.,Rumex spec.
+TRDIC,Iswid,US 6854,Isw 2013/4,(Schrank) Schübl.,Triticum dicoccum
+CEREA,Iswid,US 6863,Isw 2013/12,,Cerealia indet.
+CYPER,Iswid,US 6863,Isw 2013/12,,Cyperaceae
+FABAC,Iswid,US 6863,Isw 2013/12,,Fabaceae
+LINU,Iswid,US 6863,Isw 2013/12,L.,Linum spec.
+LOLI,Iswid,US 6863,Isw 2013/12,,Lolium spec.
+PHAL,Iswid,US 6863,Isw 2013/12,,Phalaris
+POACE,Iswid,US 6863,Isw 2013/12,,Poaceae
+POGO,Iswid,US 6863,Isw 2013/12,L.,Polygonum spec.
+Rucrden,Iswid,US 6863,Isw 2013/12,,Rumex crispus/dentatus
+TAMA,Iswid,US 6863,Isw 2013/12,,Tamarix
+TRMOD,Iswid,US 6863,Isw 2013/12,L./Schrank,Triticum monococcum/dicoccum
+VICI,Iswid,US 6863,Isw 2013/12,L.,Vicia spec.
+ACAC,Iswid,US 6875,Isw 2013/14,,Acacia sp.
+ANGMO,Iswid,US 6875,Isw 2013/14,,Angiospermae Monocotyledonae
+CEREA,Iswid,US 6875,Isw 2013/14,,Cerealia indet.
+CEREA,Iswid,US 6875,Isw 2013/14,,Cerealia indet.
+CYPE,Iswid,US 6875,Isw 2013/14,,Cyperus
+CYPER,Iswid,US 6875,Isw 2013/14,,Cyperaceae
+CYPER,Iswid,US 6875,Isw 2013/14,,Cyperaceae
+HELE,Iswid,US 6875,Isw 2013/14,,Eleocharis
+HOVUL,Iswid,US 6875,Isw 2013/14,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 6875,Isw 2013/14,,Indeterminata
+INDET,Iswid,US 6875,Isw 2013/14,,Indeterminata
+INDET,Iswid,US 6875,Isw 2013/14,,Indeterminata
+INDET,Iswid,US 6875,Isw 2013/14,,Indeterminata
+ISOL,Iswid,US 6875,Isw 2013/14,,Isolepis
+JUNC,Iswid,US 6875,Isw 2013/14,L.,Juncus spec.
+LOTEM,Iswid,US 6875,Isw 2013/14,L.,Lolium temulentum
+Phami,Iswid,US 6875,Isw 2013/14,,Phalaris minor
+POACE,Iswid,US 6875,Isw 2013/14,,Poaceae
+POLPE,Iswid,US 6875,Isw 2013/14,L./L.,Polygonum lapathifolium/persicaria
+RUME,Iswid,US 6875,Isw 2013/14,L.,Rumex spec.
+TAMA,Iswid,US 6875,Isw 2013/14,,Tamarix
+TAMA,Iswid,US 6875,Isw 2013/14,,Tamarix
+TRDIC,Iswid,US 6875,Isw 2013/14,(Schrank) Schübl.,Triticum dicoccum
+ANGMO,Iswid,US 9036,Isw 2013/3,,Angiospermae Monocotyledonae
+Anpse,Iswid,US 9036,Isw 2013/3,Boiss.,Anthemis pseudocotula
+ASTER,Iswid,US 9036,Isw 2013/3,,Asteraceae
+CEREA,Iswid,US 9036,Isw 2013/3,,Cerealia indet.
+CHENO,Iswid,US 9036,Isw 2013/3,,Chenopodiaceae
+CYPER,Iswid,US 9036,Isw 2013/3,,Cyperaceae
+CYPER,Iswid,US 9036,Isw 2013/3,,Cyperaceae
+HELE,Iswid,US 9036,Isw 2013/3,,Eleocharis
+HOVUL,Iswid,US 9036,Isw 2013/3,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 9036,Isw 2013/3,L.,Hordeum vulgare undiff.
+ISOL,Iswid,US 9036,Isw 2013/3,,Isolepis
+LOTEM,Iswid,US 9036,Isw 2013/3,L.,Lolium temulentum
+Phami,Iswid,US 9036,Isw 2013/3,,Phalaris minor
+PHRA,Iswid,US 9036,Isw 2013/3,,Phragmites
+POACE,Iswid,US 9036,Isw 2013/3,,Poaceae
+POLPE,Iswid,US 9036,Isw 2013/3,L./L.,Polygonum lapathifolium/persicaria
+PORT,Iswid,US 9036,Isw 2013/3,,Portulaca
+PULI,Iswid,US 9036,Isw 2013/3,,Pulicaria
+RUME,Iswid,US 9036,Isw 2013/3,L.,Rumex spec.
+TRDIC,Iswid,US 9036,Isw 2013/3,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 9036,Isw 2013/3,L.,Trifolium spec.
+ANCOT,Iswid,US 9200,Isw 2013/1,L.,Anthemis cotula
+ANGMO,Iswid,US 9200,Isw 2013/1,,Angiospermae Monocotyledonae
+Anpse,Iswid,US 9200,Isw 2013/1,Boiss.,Anthemis pseudocotula
+BRASS,Iswid,US 9200,Isw 2013/1,,Brassicaceae
+CEREA,Iswid,US 9200,Isw 2013/1,,Cerealia indet.
+CYROT,Iswid,US 9200,Isw 2013/1,L.,Cyperus rotundus
+ECHSE,Iswid,US 9200,Isw 2013/1,P. B./P. B.,Echinochloa/Setaria
+HELE,Iswid,US 9200,Isw 2013/1,,Eleocharis
+HOVUL,Iswid,US 9200,Isw 2013/1,L.,Hordeum vulgare undiff.
+HOVUS,Iswid,US 9200,Isw 2013/1,,Hordeum vulgare Spelzgerste
+INDET,Iswid,US 9200,Isw 2013/1,,Indeterminata
+INDET,Iswid,US 9200,Isw 2013/1,,Indeterminata
+ISOL,Iswid,US 9200,Isw 2013/1,,Isolepis
+LIUSI,Iswid,US 9200,Isw 2013/1,L.,Linum usitatissimum
+LOTEM,Iswid,US 9200,Isw 2013/1,L.,Lolium temulentum
+Oryzm,Iswid,US 9200,Isw 2013/1,,Oryzopsis milliaceum
+Phami,Iswid,US 9200,Isw 2013/1,,Phalaris minor
+POACE,Iswid,US 9200,Isw 2013/1,,Poaceae
+POACE,Iswid,US 9200,Isw 2013/1,,Poaceae
+RUME,Iswid,US 9200,Isw 2013/1,L.,Rumex spec.
+TRDIC,Iswid,US 9200,Isw 2013/1,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 9200,Isw 2013/1,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 9200,Isw 2013/1,L.,Trifolium spec.
+VICKF,Iswid,US 9200,Isw 2013/1,,Vicia klein-früchtig
+ACAC,Iswid,US 9321,Isw 2013/6,,Acacia sp.
+ASTER,Iswid,US 9321,Isw 2013/6,,Asteraceae
+BOLB,Iswid,US 9321,Isw 2013/6,,Bolboschoenus
+CEREA,Iswid,US 9321,Isw 2013/6,,Cerealia indet.
+CYPE,Iswid,US 9321,Isw 2013/6,,Cyperus
+CYPER,Iswid,US 9321,Isw 2013/6,,Cyperaceae
+Glilot,Iswid,US 9321,Isw 2013/6,,Glinus lotoides
+HELE,Iswid,US 9321,Isw 2013/6,,Eleocharis
+HELE,Iswid,US 9321,Isw 2013/6,,Eleocharis
+HOVUL,Iswid,US 9321,Isw 2013/6,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 9321,Isw 2013/6,L.,Hordeum vulgare undiff.
+ISOL,Iswid,US 9321,Isw 2013/6,,Isolepis
+LAPIV,Iswid,US 9321,Isw 2013/6,L./L./L.,Lathyrus/Pisum/Vicia
+LOTEM,Iswid,US 9321,Isw 2013/6,L.,Lolium temulentum
+Phami,Iswid,US 9321,Isw 2013/6,,Phalaris minor
+PHRA,Iswid,US 9321,Isw 2013/6,,Phragmites
+POACE,Iswid,US 9321,Isw 2013/6,,Poaceae
+POACE,Iswid,US 9321,Isw 2013/6,,Poaceae
+PULI,Iswid,US 9321,Isw 2013/6,,Pulicaria
+RUME,Iswid,US 9321,Isw 2013/6,L.,Rumex spec.
+TAMA,Iswid,US 9321,Isw 2013/6,,Tamarix
+TRDIC,Iswid,US 9321,Isw 2013/6,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 9321,Isw 2013/6,L.,Trifolium spec.
+VICKF,Iswid,US 9321,Isw 2013/6,,Vicia klein-früchtig
+ANGMO,Iswid,US 9404_foyer 2093,Isw 2013/17,,Angiospermae Monocotyledonae
+CEREA,Iswid,US 9404_foyer 2093,Isw 2013/17,,Cerealia indet.
+CEREA,Iswid,US 9404_foyer 2093,Isw 2013/17,,Cerealia indet.
+HELE,Iswid,US 9404_foyer 2093,Isw 2013/17,,Eleocharis
+INDET,Iswid,US 9404_foyer 2093,Isw 2013/17,,Indeterminata
+INDET,Iswid,US 9404_foyer 2093,Isw 2013/17,,Indeterminata
+INDET,Iswid,US 9404_foyer 2093,Isw 2013/17,,Indeterminata
+LahVi,Iswid,US 9404_foyer 2093,Isw 2013/17,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 9404_foyer 2093,Isw 2013/17,L.,Lolium temulentum
+Phami,Iswid,US 9404_foyer 2093,Isw 2013/17,,Phalaris minor
+POACE,Iswid,US 9404_foyer 2093,Isw 2013/17,,Poaceae
+POACE,Iswid,US 9404_foyer 2093,Isw 2013/17,,Poaceae
+POLPE,Iswid,US 9404_foyer 2093,Isw 2013/17,L./L.,Polygonum lapathifolium/persicaria
+TRDIC,Iswid,US 9404_foyer 2093,Isw 2013/17,(Schrank) Schübl.,Triticum dicoccum
+AMVIS,Iswid,US 9519,Isw 2013/11,Lam.,Ammi visnaga
+ANGRA,Iswid,US 9519,Isw 2013/11,L.,Anethum graveolens
+Anpse,Iswid,US 9519,Isw 2013/11,Boiss.,Anthemis pseudocotula
+ASTER,Iswid,US 9519,Isw 2013/11,,Asteraceae
+BEERE,Iswid,US 9519,Isw 2013/11,(Huds.) Coville,Berula erecta
+BROM,Iswid,US 9519,Isw 2013/11,L.,Bromus spec.
+CEREA,Iswid,US 9519,Isw 2013/11,,Cerealia indet.
+CEREA,Iswid,US 9519,Isw 2013/11,,Cerealia indet.
+CYPER,Iswid,US 9519,Isw 2013/11,,Cyperaceae
+CYPER,Iswid,US 9519,Isw 2013/11,,Cyperaceae
+FABAK,Iswid,US 9519,Isw 2013/11,,Fabaceae (kult.)
+HELE,Iswid,US 9519,Isw 2013/11,,Eleocharis
+HOVUL,Iswid,US 9519,Isw 2013/11,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 9519,Isw 2013/11,,Indeterminata
+INDET,Iswid,US 9519,Isw 2013/11,,Indeterminata
+ISOL,Iswid,US 9519,Isw 2013/11,,Isolepis
+LAHIR,Iswid,US 9519,Isw 2013/11,L.,Lathyrus hirsutus
+LahVi,Iswid,US 9519,Isw 2013/11,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 9519,Isw 2013/11,L.,Lolium temulentum
+Phami,Iswid,US 9519,Isw 2013/11,,Phalaris minor
+PHRA,Iswid,US 9519,Isw 2013/11,,Phragmites
+PISAT,Iswid,US 9519,Isw 2013/11,L.,Pisum sativum
+POACE,Iswid,US 9519,Isw 2013/11,,Poaceae
+POLPE,Iswid,US 9519,Isw 2013/11,L./L.,Polygonum lapathifolium/persicaria
+RUME,Iswid,US 9519,Isw 2013/11,L.,Rumex spec.
+TRDIC,Iswid,US 9519,Isw 2013/11,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 9519,Isw 2013/11,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 9519,Isw 2013/11,L.,Trifolium spec.
+VICKF,Iswid,US 9519,Isw 2013/11,,Vicia klein-früchtig
+CAPP,Iswid,US 9859/9860,Isw 2013/16,,Capparis
+CEREA,Iswid,US 9859/9860,Isw 2013/16,,Cerealia indet.
+CYPER,Iswid,US 9859/9860,Isw 2013/16,,Cyperaceae
+CYPER,Iswid,US 9859/9860,Isw 2013/16,,Cyperaceae
+ECHSE,Iswid,US 9859/9860,Isw 2013/16,P. B./P. B.,Echinochloa/Setaria
+FABAK,Iswid,US 9859/9860,Isw 2013/16,,Fabaceae (kult.)
+Ficus,Iswid,US 9859/9860,Isw 2013/16,,Ficus sp.
+Fisyc,Iswid,US 9859/9860,Isw 2013/16,,Ficus sycomorus
+GYMNO,Iswid,US 9859/9860,Isw 2013/16,,Gymnospermae
+HELE,Iswid,US 9859/9860,Isw 2013/16,,Eleocharis
+HELE,Iswid,US 9859/9860,Isw 2013/16,,Eleocharis
+HOVUL,Iswid,US 9859/9860,Isw 2013/16,L.,Hordeum vulgare undiff.
+HOVUL,Iswid,US 9859/9860,Isw 2013/16,L.,Hordeum vulgare undiff.
+HOVUS,Iswid,US 9859/9860,Isw 2013/16,,Hordeum vulgare Spelzgerste
+INDET,Iswid,US 9859/9860,Isw 2013/16,,Indeterminata
+INDET,Iswid,US 9859/9860,Isw 2013/16,,Indeterminata
+INDET,Iswid,US 9859/9860,Isw 2013/16,,Indeterminata
+ISOL,Iswid,US 9859/9860,Isw 2013/16,,Isolepis
+LahVi,Iswid,US 9859/9860,Isw 2013/16,,Lathyrus hirsutus/Vicia (klien)
+LOTEM,Iswid,US 9859/9860,Isw 2013/16,L.,Lolium temulentum
+Oryzm,Iswid,US 9859/9860,Isw 2013/16,,Oryzopsis milliaceum
+Phami,Iswid,US 9859/9860,Isw 2013/16,,Phalaris minor
+POACE,Iswid,US 9859/9860,Isw 2013/16,,Poaceae
+POLPE,Iswid,US 9859/9860,Isw 2013/16,L./L.,Polygonum lapathifolium/persicaria
+PULI,Iswid,US 9859/9860,Isw 2013/16,,Pulicaria
+Rucrden,Iswid,US 9859/9860,Isw 2013/16,,Rumex crispus/dentatus
+SETA,Iswid,US 9859/9860,Isw 2013/16,P.B.,Setaria spec.
+TAMA,Iswid,US 9859/9860,Isw 2013/16,,Tamarix
+TRDIC,Iswid,US 9859/9860,Isw 2013/16,(Schrank) Schübl.,Triticum dicoccum
+TRDIC,Iswid,US 9859/9860,Isw 2013/16,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 9859/9860,Isw 2013/16,L.,Trifolium spec.
+VIHIT,Iswid,US 9859/9860,Isw 2013/16,(L.)S.F.Gray/(L.)Schreb,Vicia hirsuta/tetrasperma
+VIVIN,Iswid,US 9859/9860,Isw 2013/16,L.,Vitis vinifera
+CEREA,Iswid,US 9870_foyer2163,1,,Cerealia indet.
+CYPER,Iswid,US 9870_foyer2163,1,,Cyperaceae
+CYPER,Iswid,US 9870_foyer2163,1,,Cyperaceae
+CYROT,Iswid,US 9870_foyer2163,1,L.,Cyperus rotundus
+INDET,Iswid,US 9870_foyer2163,1,,Indeterminata
+INDET,Iswid,US 9870_foyer2163,1,,Indeterminata
+INDET,Iswid,US 9870_foyer2163,1,,Indeterminata
+INDET,Iswid,US 9870_foyer2163,1,,Indeterminata
+LOTEM,Iswid,US 9870_foyer2163,1,L.,Lolium temulentum
+Phami,Iswid,US 9870_foyer2163,1,,Phalaris minor
+PISAT,Iswid,US 9870_foyer2163,1,L.,Pisum sativum
+POACE,Iswid,US 9870_foyer2163,1,,Poaceae
+RUME,Iswid,US 9870_foyer2163,1,L.,Rumex spec.
+TRDIC,Iswid,US 9870_foyer2163,1,(Schrank) Schübl.,Triticum dicoccum
+VIVIN,Iswid,US 9870_foyer2163,1,L.,Vitis vinifera
+APIAC,Iswid,US 9880_foyer 2166,Isw 2013/19,,Apiaceae
+BOLB,Iswid,US 9880_foyer 2166,Isw 2013/19,,Bolboschoenus
+CAPP,Iswid,US 9880_foyer 2166,Isw 2013/19,,Capparis
+CEREA,Iswid,US 9880_foyer 2166,Isw 2013/19,,Cerealia indet.
+Ficus,Iswid,US 9880_foyer 2166,Isw 2013/19,,Ficus sp.
+GYMNO,Iswid,US 9880_foyer 2166,Isw 2013/19,,Gymnospermae
+HELE,Iswid,US 9880_foyer 2166,Isw 2013/19,,Eleocharis
+HOVUL,Iswid,US 9880_foyer 2166,Isw 2013/19,L.,Hordeum vulgare undiff.
+INDET,Iswid,US 9880_foyer 2166,Isw 2013/19,,Indeterminata
+INDET,Iswid,US 9880_foyer 2166,Isw 2013/19,,Indeterminata
+ISOL,Iswid,US 9880_foyer 2166,Isw 2013/19,,Isolepis
+LOTEM,Iswid,US 9880_foyer 2166,Isw 2013/19,L.,Lolium temulentum
+Phami,Iswid,US 9880_foyer 2166,Isw 2013/19,,Phalaris minor
+PULI,Iswid,US 9880_foyer 2166,Isw 2013/19,,Pulicaria
+RUME,Iswid,US 9880_foyer 2166,Isw 2013/19,L.,Rumex spec.
+TAMA,Iswid,US 9880_foyer 2166,Isw 2013/19,,Tamarix
+TRDIC,Iswid,US 9880_foyer 2166,Isw 2013/19,(Schrank) Schübl.,Triticum dicoccum
+TRIF,Iswid,US 9880_foyer 2166,Isw 2013/19,L.,Trifolium spec.
+VITI,Iswid,US 9880_foyer 2166,Isw 2013/19,L.,Vitis spec.

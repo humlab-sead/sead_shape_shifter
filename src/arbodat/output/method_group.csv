@@ -1,0 +1,17 @@
+method_group_id,group_name,description
+1,Palaeobiological,Analysis methods based on the use of (sub)fossil biological organisms or their remains.
+2,Palaeo chemical/physical,Analysis methods based on the use of the chemical or physical properties of materials or sediments.
+4,Modern biological,Analysis methods which look at living or recently living biological organisms.
+9,Biological/Chemical/Physical,Composite or ambiguous methods which cannot be classified entirely as one or the other.
+13,Sampling,Methods used to extract sediments either from in situ deposits or as subsamples of existing samples.
+14,Size measurement,"Methods for the measurement of (sample) dimensions, such as length and weight."
+15,Colour,Methods for defining or describing colours. Includes quantitative and qualitative methods.
+17,Coordinate and altitude systems,"Methods for spatial location of objects, samples or sites in 2 or 3 dimensional space. Includes both geographical (Worldwide) and local (e.g. site) or regional coordinate systems and altitude or vertical displacement."
+18,Soil horizons,Methods for classification of soil horizons
+3,Dating by radiometric methods,"Methods used to determine the age of remains or sediments based on the decay of radioactive isotopes. Ages are usually established by comparing the observed level of the isotope in the artefact/sediment with the expected level for a zero age object. E.g. radiocarbon dating, uranium-series Th230/U234, lead 210. This group also for theoretically similar methods which compare observed energy with expected values, such as luminescence dating."
+19,Dating to period,Methods used to determing the age of a material to a chronological or cultural period.
+20,Dating to calendar year(s),"Methods capable of allocating a calendar, or absolute age to a material. E.g. varve counting, dendrochronology, historical records. Dates may also include a range of possible years or termini (i.e. oldest/youngest possible)."
+21,Dating by other method,"Dating methods not assignable to calendar, radiometric or period based. Includes methods based on geological properties other than stratigraphic correlation (e.g. palaeomagnetism, weathering), curve matching (e.g. wiggle matching of 14C dates) or less common methods such as fission tracking or hydration."
+22,Dating by radiation exposure methods,"Dating methods which rely on the accumulation of energy in the material to be dated post genesis, heating or deposition."
+16,Preparation method,"Sample preparation method. Method used to extract identifiable elements/specimens/analysed sample from the physical sample (e.g. paraffin floatation, centrifugation).
+In some parts of the database multiple preparation methods may be given for a sample, as separate entries (e.g. 1. HF treatment; 2. centrifugation; 3. Slide preparation)"

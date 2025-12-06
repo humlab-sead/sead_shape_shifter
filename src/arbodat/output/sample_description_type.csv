@@ -1,0 +1,12 @@
+system_id,sample_description_type_id,type_name,type_description,arbodat_code
+1,,Is mass find?,Indicates of sample is a mass find.,Vorfu
+2,,Wet/dry?,?,AblaBdgProb
+3,,Sampling date,Sampling date,EDatProb
+4,,Stratigraphy,Stratigraphic unit or description.,Strat
+5,,Layer,Layer identifier,Schi
+6,,Square/Grid,Excavation square/grid square.,Quadr
+7,,Planum,Planum,Plan
+8,,Elevation ASL,Elevation of sample above sea level.,Prob_üNN
+9,,Map sheet,German topographic map sheet number.,TK
+10,,Sediment,Indicates whether the sample is sediment.,SedProb
+11,,Cultural group,Cultural group,KultGr

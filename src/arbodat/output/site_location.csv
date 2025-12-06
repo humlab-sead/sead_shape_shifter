@@ -1,0 +1,36 @@
+system_id,site_location_id,ProjektNr,Fustel,EVNr,location_type,location_name
+1,,18_0025,Kville 1502,,Ort,Kville
+2,,19_0013,Blaker kirkegård,224073,Ort,Foss Nordre 121/5
+3,,19_0014,Blaker kirkegård,224073,Ort,Foss nordre 121/5
+4,,22_0005,Göteborg 342,L1960:2928,Ort,Göteborgs stad
+5,,22_0015,Sandarna Gbg 15:1,L1969:1130,Ort,Göteborg
+6,,DanaBunar2,,,Ort,
+7,,Iswid,ISW,,Ort,
+8,,18_0025,Kville 1502,,Kreis,Tanum
+9,,19_0013,Blaker kirkegård,224073,Kreis,Sørum
+10,,19_0014,Blaker kirkegård,224073,Kreis,Sørum
+11,,22_0005,Göteborg 342,L1960:2928,Kreis,Göteborg
+12,,22_0015,Sandarna Gbg 15:1,L1969:1130,Kreis,Göteborg
+13,,DanaBunar2,,,Kreis,
+14,,Iswid,ISW,,Kreis,Sharqiyah
+15,,18_0025,Kville 1502,,Land,Bohuslän
+16,,19_0013,Blaker kirkegård,224073,Land,Akershus
+17,,19_0014,Blaker kirkegård,224073,Land,Akershus
+18,,22_0005,Göteborg 342,L1960:2928,Land,Västra Götaland
+19,,22_0015,Sandarna Gbg 15:1,L1969:1130,Land,Västra Götaland
+20,,DanaBunar2,,,Land,Hessen
+21,,Iswid,ISW,,Land,
+22,,18_0025,Kville 1502,,Staat,Sweden
+23,,19_0013,Blaker kirkegård,224073,Staat,Norway
+24,,19_0014,Blaker kirkegård,224073,Staat,Norway
+25,,22_0005,Göteborg 342,L1960:2928,Staat,Sverige
+26,,22_0015,Sandarna Gbg 15:1,L1969:1130,Staat,Sverige
+27,,DanaBunar2,,,Staat,
+28,,Iswid,ISW,,Staat,Egypt
+29,,18_0025,Kville 1502,,FlurStr,Hjälpesten
+30,,19_0013,Blaker kirkegård,224073,FlurStr,2017/9030
+31,,19_0014,Blaker kirkegård,224073,FlurStr,2017/9030
+32,,22_0005,Göteborg 342,L1960:2928,FlurStr,
+33,,22_0015,Sandarna Gbg 15:1,L1969:1130,FlurStr,
+34,,DanaBunar2,,,FlurStr,
+35,,Iswid,ISW,,FlurStr,

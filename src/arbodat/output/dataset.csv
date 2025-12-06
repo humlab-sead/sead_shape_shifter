@@ -1,0 +1,9 @@
+system_id,dataset_id,dataset_type_id,dataset_name,master_set_id,data_type_id,biblio_id,method_name,method_id
+1,,,"ORG2,0",1,,,"ORG2,0",1
+2,,,"ORG1,0",1,,,"ORG1,0",2
+3,,,"ORG0,5",1,,,"ORG0,5",3
+4,,,"ORG0,25",1,,,"ORG0,25",4
+5,,,"MIN2,0",1,,,"MIN2,0",5
+6,,,"MIN1,0",1,,,"MIN1,0",6
+7,,,"MIN0,5",1,,,"MIN0,5",7
+8,,,"MIN0,25",1,,,"MIN0,25",8

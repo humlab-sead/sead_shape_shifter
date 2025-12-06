@@ -1,0 +1,3147 @@
+system_id,sample_description_id,ProjektNr,Befu,ProbNr,type_name,description_value
+1,,18_0025,P16,18_0025_0003,Vorfu,
+2,,18_0025,P18,18_0025_0004,Vorfu,
+3,,18_0025,P20,18_0025_0005,Vorfu,
+4,,18_0025,P5,18_0025_0001,Vorfu,
+5,,18_0025,P5,18_0025_0001,Vorfu,
+6,,18_0025,P6,18_0025_0002,Vorfu,
+7,,19_0013,A11148,19_0013_0013,Vorfu,
+8,,19_0013,A11148,19_0013_0014,Vorfu,
+9,,19_0013,A11148,19_0013_0015,Vorfu,
+10,,19_0013,A11148,19_0013_0020,Vorfu,
+11,,19_0013,A479,19_0013_0010,Vorfu,
+12,,19_0013,A479,19_0013_0011,Vorfu,
+13,,19_0013,A479,19_0013_0012,Vorfu,
+14,,19_0013,A479,19_0013_0019,Vorfu,
+15,,19_0013,A6214,19_0013_0007,Vorfu,
+16,,19_0013,A6214,19_0013_0008,Vorfu,
+17,,19_0013,A6214,19_0013_0009,Vorfu,
+18,,19_0013,A6214,19_0013_0018,Vorfu,
+19,,19_0013,A8090,19_0013_0004,Vorfu,
+20,,19_0013,A8090,19_0013_0005,Vorfu,
+21,,19_0013,A8090,19_0013_0006,Vorfu,
+22,,19_0013,A8090,19_0013_0017,Vorfu,
+23,,19_0013,A9063,19_0013_0001,Vorfu,
+24,,19_0013,A9063,19_0013_0002,Vorfu,
+25,,19_0013,A9063,19_0013_0003,Vorfu,
+26,,19_0013,A9063,19_0013_0016,Vorfu,
+27,,19_0013,A9063,19_0013_0016,Vorfu,
+28,,19_0014,A10143,19_0014_0040,Vorfu,
+29,,19_0014,A10153,19_0014_0037,Vorfu,
+30,,19_0014,A10189,19_0014_0042,Vorfu,
+31,,19_0014,A10229,19_0014_0039,Vorfu,
+32,,19_0014,A10697,19_0014_0067,Vorfu,
+33,,19_0014,A10990,19_0014_0055,Vorfu,
+34,,19_0014,A11339,19_0014_0068,Vorfu,
+35,,19_0014,A1196,19_0014_0044,Vorfu,
+36,,19_0014,A12024,19_0014_0056,Vorfu,
+37,,19_0014,A12024,19_0014_0057,Vorfu,
+38,,19_0014,A12034,19_0014_0058,Vorfu,
+39,,19_0014,A12435,19_0014_0069,Vorfu,
+40,,19_0014,A13064,19_0014_0071,Vorfu,
+41,,19_0014,A13200,19_0014_0041,Vorfu,
+42,,19_0014,A13299,19_0014_0072,Vorfu,
+43,,19_0014,A13837,19_0014_0060,Vorfu,
+44,,19_0014,A15333,19_0014_0061,Vorfu,
+45,,19_0014,A15344,19_0014_0074,Vorfu,
+46,,19_0014,A15554,19_0014_0075,Vorfu,
+47,,19_0014,A15736,19_0014_0059,Vorfu,
+48,,19_0014,A16771,19_0014_0008,Vorfu,
+49,,19_0014,A16783,19_0014_0005,Vorfu,
+50,,19_0014,A17294,19_0014_0016,Vorfu,
+51,,19_0014,A1875,19_0014_0046,Vorfu,
+52,,19_0014,A1931,19_0014_0047,Vorfu,
+53,,19_0014,A1998,19_0014_0048,Vorfu,
+54,,19_0014,A2019,19_0014_0049,Vorfu,
+55,,19_0014,A2029,19_0014_0050,Vorfu,
+56,,19_0014,A2114,19_0014_0051,Vorfu,
+57,,19_0014,A3019,19_0014_0052,Vorfu,
+58,,19_0014,A3170,19_0014_0066,Vorfu,
+59,,19_0014,A3650,19_0014_0053,Vorfu,
+60,,19_0014,A4115,19_0014_0023,Vorfu,
+61,,19_0014,A4365,19_0014_0054,Vorfu,
+62,,19_0014,A5192,19_0014_0020,Vorfu,
+63,,19_0014,A5213,19_0014_0019,Vorfu,
+64,,19_0014,A5223,19_0014_0018,Vorfu,
+65,,19_0014,A5254,19_0014_0029,Vorfu,
+66,,19_0014,A5282,19_0014_0021,Vorfu,
+67,,19_0014,A5294,19_0014_0022,Vorfu,
+68,,19_0014,A5307,19_0014_0024,Vorfu,
+69,,19_0014,A5334,19_0014_0063,Vorfu,
+70,,19_0014,A6041,19_0014_0034,Vorfu,
+71,,19_0014,A6135,19_0014_0015,Vorfu,
+72,,19_0014,A6146,19_0014_0033,Vorfu,
+73,,19_0014,A6157,19_0014_0035,Vorfu,
+74,,19_0014,A6178,19_0014_0017,Vorfu,
+75,,19_0014,A6194,19_0014_0025,Vorfu,
+76,,19_0014,A7199,19_0014_0032,Vorfu,
+77,,19_0014,A7253,19_0014_0014,Vorfu,
+78,,19_0014,A7263,19_0014_0030,Vorfu,
+79,,19_0014,A7294,19_0014_0013,Vorfu,
+80,,19_0014,A7306,19_0014_0036,Vorfu,
+81,,19_0014,A785,19_0014_0043,Vorfu,
+82,,19_0014,A8079,19_0014_0007,Vorfu,
+83,,19_0014,A8103,19_0014_0009,Vorfu,
+84,,19_0014,A8114,19_0014_0011,Vorfu,
+85,,19_0014,A8142,19_0014_0026,Vorfu,
+86,,19_0014,A8178,19_0014_0031,Vorfu,
+87,,19_0014,A8189,19_0014_0012,Vorfu,
+88,,19_0014,A8234,19_0014_0010,Vorfu,
+89,,19_0014,A9000,19_0014_0027,Vorfu,
+90,,19_0014,A9052,19_0014_0028,Vorfu,
+91,,19_0014,A9075,19_0014_0003,Vorfu,
+92,,19_0014,A9111,19_0014_0001,Vorfu,
+93,,19_0014,A9126,19_0014_0004,Vorfu,
+94,,19_0014,A9199,19_0014_0006,Vorfu,
+95,,19_0014,A957,19_0014_0064,Vorfu,
+96,,19_0014,A973,19_0014_0065,Vorfu,
+97,,19_0014,A9847,19_0014_0002,Vorfu,
+98,,22_0005,11200,22_0005_0001,Vorfu,
+99,,22_0005,11201,22_0005_0002,Vorfu,
+100,,22_0005,11221,22_0005_0003,Vorfu,
+101,,22_0005,12026,22_0005_0004,Vorfu,
+102,,22_0005,200125,22_0005_0012,Vorfu,
+103,,22_0005,200149,22_0005_0013,Vorfu,
+104,,22_0005,200177,22_0005_0009,Vorfu,
+105,,22_0005,200473,22_0005_0005,Vorfu,
+106,,22_0005,200475,22_0005_0006,Vorfu,
+107,,22_0005,23362,22_0005_0010,Vorfu,
+108,,22_0005,23434,22_0005_0007,Vorfu,
+109,,22_0005,23491,22_0005_0008,Vorfu,
+110,,22_0005,23988,22_0005_0011,Vorfu,
+111,,22_0015,A2076,22_0015_0017,Vorfu,
+112,,22_0015,A2154,22_0015_0020,Vorfu,
+113,,22_0015,A2874 G2976,22_0015_0014,Vorfu,
+114,,22_0015,A4796,22_0015_0013,Vorfu,
+115,,22_0015,M153 St 1,22_0015_0006,Vorfu,
+116,,22_0015,M153 St 2,22_0015_0007,Vorfu,
+117,,22_0015,M160 St 1,22_0015_0001,Vorfu,
+118,,22_0015,M160 St 1,22_0015_0001,Vorfu,
+119,,22_0015,M160 St 1,22_0015_0001,Vorfu,
+120,,22_0015,M167 St 1,22_0015_0002,Vorfu,
+121,,22_0015,M167 St 2,22_0015_0003,Vorfu,
+122,,22_0015,M167 St 2,22_0015_0003,Vorfu,
+123,,22_0015,M167 St 3,22_0015_0004,Vorfu,
+124,,22_0015,M167 St 4,22_0015_0005,Vorfu,
+125,,22_0015,M32 Undre del,2022_0015_0009,Vorfu,
+126,,22_0015,M32 Övre del,2022_0015_0008,Vorfu,
+127,,22_0015,M99 A5085,2022_0015_0010,Vorfu,
+128,,22_0015,M99 A5085,2022_0015_0012,Vorfu,
+129,,DanaBunar2,31,17 depth 0.10-0.20,Vorfu,
+130,,DanaBunar2,31,17a depth 0.00-0.20,Vorfu,
+131,,DanaBunar2,32,51 depth 0.00-0.10,Vorfu,
+132,,DanaBunar2,32,52 depth 0.10-0.20,Vorfu,
+133,,DanaBunar2,32,53 depth 0.00-0.10,Vorfu,
+134,,DanaBunar2,33,18 depth 0.20-0.30,Vorfu,
+135,,DanaBunar2,33,19 depth 0.00-0.10,Vorfu,
+136,,DanaBunar2,33,20 depth 0.10-0.30,Vorfu,
+137,,DanaBunar2,33,21 depth 0.30-0.40,Vorfu,
+138,,DanaBunar2,33,22 depth 0.20-0.30,Vorfu,
+139,,DanaBunar2,37,39 depth 0.10-0.20,Vorfu,
+140,,DanaBunar2,37,40 depth 0.20-0.30,Vorfu,
+141,,DanaBunar2,37,41 depth 0.00-0.10,Vorfu,
+142,,DanaBunar2,37,42 depth 0.00-0.10,Vorfu,
+143,,DanaBunar2,38,1 depth 0.48-0.58,Vorfu,
+144,,DanaBunar2,38,2 depth 0.35-0.45,Vorfu,
+145,,DanaBunar2,38,3 depth 0.35-0.45,Vorfu,
+146,,DanaBunar2,38,4 depth 0.00-0.10,Vorfu,
+147,,DanaBunar2,38,5 depth 0.30-0.50,Vorfu,
+148,,DanaBunar2,39,47 depth 0.00-0.10,Vorfu,
+149,,DanaBunar2,39,48 depth 0.10-0.20,Vorfu,
+150,,DanaBunar2,41,44 depth 0.00-0.10,Vorfu,
+151,,DanaBunar2,41,46 depth 0.30-0.40,Vorfu,
+152,,DanaBunar2,42,10 depth 0.10-0.20,Vorfu,
+153,,DanaBunar2,42,6 depth 0.00-0.10,Vorfu,
+154,,DanaBunar2,42,7 depth 0.00-0.10,Vorfu,
+155,,DanaBunar2,42,8 depth 0.10-0.20,Vorfu,
+156,,DanaBunar2,42,9 depth 0.10-0.20,Vorfu,
+157,,DanaBunar2,44,87 depth 0.06-0.16,Vorfu,
+158,,DanaBunar2,44,88 depth 0.20-0.30,Vorfu,
+159,,DanaBunar2,44,89 depth 0.30-0.40,Vorfu,
+160,,DanaBunar2,44,90 depth 0.16-0.26,Vorfu,
+161,,DanaBunar2,44,91 depth 0.10-0.20,Vorfu,
+162,,DanaBunar2,44,92 depth 0.00-0.10,Vorfu,
+163,,DanaBunar2,44,93 depth 0.30-0.40,Vorfu,
+164,,DanaBunar2,46,30 depth 0.60-0.70,Vorfu,
+165,,DanaBunar2,46,31 depth 0.50-0.60,Vorfu,
+166,,DanaBunar2,46,32 depth 0.60-0.70,Vorfu,
+167,,DanaBunar2,46,33 depth 0.30-0.40,Vorfu,
+168,,DanaBunar2,46,34 depth 0.40-0.50,Vorfu,
+169,,DanaBunar2,46,35 depth 0.30-0.40,Vorfu,
+170,,DanaBunar2,47,49 depth 0.10-0.20,Vorfu,
+171,,DanaBunar2,47,50 depth 0.10-0.20,Vorfu,
+172,,DanaBunar2,55,54 depth 1.00-1.10,Vorfu,
+173,,DanaBunar2,55,55 depth 1.00-1.10,Vorfu,
+174,,DanaBunar2,58,23 depth 0.10-0.20,Vorfu,
+175,,DanaBunar2,58,24 depth 0.30-0.40,Vorfu,
+176,,DanaBunar2,58,25 depth 0.00-0.10,Vorfu,
+177,,DanaBunar2,58,26 depth 0.10-0.20,Vorfu,
+178,,DanaBunar2,58,27 depth 0.30-0.40,Vorfu,
+179,,DanaBunar2,58,28 depth 0.20-0.30,Vorfu,
+180,,DanaBunar2,64,11 depth 0.10-0.20,Vorfu,
+181,,DanaBunar2,64,12 depth 0.36-0.46,Vorfu,
+182,,DanaBunar2,64,13 depth 0.26-0.36,Vorfu,
+183,,DanaBunar2,64,16 depth 0.48-0.58,Vorfu,
+184,,Iswid,2709_fond,Isw 2013/32,Vorfu,
+185,,Iswid,2905 fond,Isw 2013/26,Vorfu,
+186,,Iswid,2913 fond,Isw 2013/33,Vorfu,
+187,,Iswid,foyer 2174,Isw 2013/15,Vorfu,
+188,,Iswid,foyer 2174,Isw 2013/15,Vorfu,
+189,,Iswid,US 10503,Isw 2013/8,Vorfu,
+190,,Iswid,US 10503,Isw 2013/8,Vorfu,
+191,,Iswid,US 10503,Isw 2013/8,Vorfu,
+192,,Iswid,US 10521,Isw 2013/20,Vorfu,
+193,,Iswid,US 10521,Isw 2013/20,Vorfu,
+194,,Iswid,US 10521,Isw 2013/20,Vorfu,
+195,,Iswid,US 10534,Isw 2013/21,Vorfu,
+196,,Iswid,US 10534,Isw 2013/21,Vorfu,
+197,,Iswid,US 10610,Isw 2013/25,Vorfu,
+198,,Iswid,US 10610,Isw 2013/25,Vorfu,
+199,,Iswid,US 11004,Isw 2013/22,Vorfu,
+200,,Iswid,US 11004,Isw 2013/22,Vorfu,
+201,,Iswid,US 11012,Isw 2013/27,Vorfu,
+202,,Iswid,US 11067,Isw 2013/28,Vorfu,
+203,,Iswid,US 12025,Isw 2013/25,Vorfu,
+204,,Iswid,US 12025,Isw 2013/25,Vorfu,
+205,,Iswid,US 12040,Isw 2013/29,Vorfu,
+206,,Iswid,US 12047,Isw 2013/30,Vorfu,
+207,,Iswid,US 12047,Isw 2013/30,Vorfu,
+208,,Iswid,US 12504,Isw 2013/31,Vorfu,
+209,,Iswid,US 13017,Isw 2015/18,Vorfu,
+210,,Iswid,US 13017,Isw 2016/41,Vorfu,
+211,,Iswid,US 13065,Isw 2015/25,Vorfu,
+212,,Iswid,US 13065,Isw 2015/25,Vorfu,
+213,,Iswid,US 13066,Isw 2015/4,Vorfu,
+214,,Iswid,US 13066,Isw 2015/4,Vorfu,
+215,,Iswid,US 13083,Isw 2015/22,Vorfu,
+216,,Iswid,US 13099,Isw 2015/9,Vorfu,
+217,,Iswid,US 13145,Isw 2015/21,Vorfu,
+218,,Iswid,US 13145,Isw 2015/21,Vorfu,
+219,,Iswid,US 13516,Isw 2015/8,Vorfu,
+220,,Iswid,US 13516,Isw 2015/8,Vorfu,
+221,,Iswid,US 13526,Isw 2015/2,Vorfu,
+222,,Iswid,US 13572,Isw 2015/12,Vorfu,
+223,,Iswid,US 13610,Isw 2015/11,Vorfu,
+224,,Iswid,US 13632,Isw 2016/15,Vorfu,
+225,,Iswid,US 13632,Isw 2016/15,Vorfu,
+226,,Iswid,US 13639,Isw2015/26,Vorfu,
+227,,Iswid,US 13657,Isw 2015/17,Vorfu,
+228,,Iswid,US 13705,Isw 2015/10,Vorfu,
+229,,Iswid,US 13791,Isw 2015/5,Vorfu,
+230,,Iswid,US 13791 (3),Isw 2015/7,Vorfu,
+231,,Iswid,US 13802,Isw 2015/20,Vorfu,
+232,,Iswid,US 13971,Isw 2015/7,Vorfu,
+233,,Iswid,US 14021,Isw 2015/1,Vorfu,
+234,,Iswid,US 14021,Isw 2015/1,Vorfu,
+235,,Iswid,US 14038,Isw 2015/3,Vorfu,
+236,,Iswid,US 14050,Isw 2015/24,Vorfu,
+237,,Iswid,US 14050,Isw 2015/24,Vorfu,
+238,,Iswid,US 14050,Isw 2015/24,Vorfu,
+239,,Iswid,US 14078,Isw 2916/23,Vorfu,
+240,,Iswid,US 14131,Isw 2015/13,Vorfu,
+241,,Iswid,US 14131,Isw 2016/12,Vorfu,
+242,,Iswid,US 14158,Isw 2015/14,Vorfu,
+243,,Iswid,US 14418,Isw 2016/34,Vorfu,
+244,,Iswid,US 14495,Isw 16/37,Vorfu,
+245,,Iswid,US 14509,16-Jan,Vorfu,
+246,,Iswid,US 14636,Isw 16/35,Vorfu,
+247,,Iswid,US 14636,Isw 16/35,Vorfu,
+248,,Iswid,US 15067,Isw 2017/7,Vorfu,
+249,,Iswid,US 15071,Isw 17/4,Vorfu,
+250,,Iswid,US 15108,Isw 17/1,Vorfu,
+251,,Iswid,US 15140,Isw17/26,Vorfu,
+252,,Iswid,US 16183,Isw 2017/8,Vorfu,
+253,,Iswid,US 16183,Isw 2017/8,Vorfu,
+254,,Iswid,US 16287_F4185 (TR.),Isw 17/23,Vorfu,
+255,,Iswid,US 16323_F4199(foye,Isw 17/29,Vorfu,
+256,,Iswid,US 16323_F4199(foye,Isw 17/29,Vorfu,
+257,,Iswid,US 6712,Isw 2013/13,Vorfu,
+258,,Iswid,US 6712,Isw 2013/13,Vorfu,
+259,,Iswid,US 6773,Isw 2013/7,Vorfu,
+260,,Iswid,US 6773,Isw 2013/7,Vorfu,
+261,,Iswid,US 6803,Isw 2013/10,Vorfu,
+262,,Iswid,US 6810,Isw 2013/5,Vorfu,
+263,,Iswid,US 6827,Isw 2013/2,Vorfu,
+264,,Iswid,US 6854,Isw 2013/4,Vorfu,
+265,,Iswid,US 6863,Isw 2013/12,Vorfu,
+266,,Iswid,US 6863,Isw 2013/12,Vorfu,
+267,,Iswid,US 6875,Isw 2013/14,Vorfu,
+268,,Iswid,US 6875,Isw 2013/14,Vorfu,
+269,,Iswid,US 6875,Isw 2013/14,Vorfu,
+270,,Iswid,US 9036,Isw 2013/3,Vorfu,
+271,,Iswid,US 9036,Isw 2013/3,Vorfu,
+272,,Iswid,US 9200,Isw 2013/1,Vorfu,
+273,,Iswid,US 9200,Isw 2013/1,Vorfu,
+274,,Iswid,US 9200,Isw 2013/1,Vorfu,
+275,,Iswid,US 9200,Isw 2013/1,Vorfu,
+276,,Iswid,US 9321,Isw 2013/6,Vorfu,
+277,,Iswid,US 9321,Isw 2013/6,Vorfu,
+278,,Iswid,US 9404_foyer 2093,Isw 2013/17,Vorfu,
+279,,Iswid,US 9519,Isw 2013/11,Vorfu,
+280,,Iswid,US 9519,Isw 2013/11,Vorfu,
+281,,Iswid,US 9859/9860,Isw 2013/16,Vorfu,
+282,,Iswid,US 9859/9860,Isw 2013/16,Vorfu,
+283,,Iswid,US 9859/9860,Isw 2013/16,Vorfu,
+284,,Iswid,US 9870_foyer2163,1,Vorfu,
+285,,Iswid,US 9870_foyer2163,1,Vorfu,
+286,,Iswid,US 9880_foyer 2166,Isw 2013/19,Vorfu,
+287,,18_0025,P16,18_0025_0003,AblaBdgProb,feucht
+288,,18_0025,P18,18_0025_0004,AblaBdgProb,feucht
+289,,18_0025,P20,18_0025_0005,AblaBdgProb,feucht
+290,,18_0025,P5,18_0025_0001,AblaBdgProb,feucht
+291,,18_0025,P5,18_0025_0001,AblaBdgProb,feucht
+292,,18_0025,P6,18_0025_0002,AblaBdgProb,feucht
+293,,19_0013,A11148,19_0013_0013,AblaBdgProb,trocken
+294,,19_0013,A11148,19_0013_0014,AblaBdgProb,trocken
+295,,19_0013,A11148,19_0013_0015,AblaBdgProb,trocken
+296,,19_0013,A11148,19_0013_0020,AblaBdgProb,trocken
+297,,19_0013,A479,19_0013_0010,AblaBdgProb,trocken
+298,,19_0013,A479,19_0013_0011,AblaBdgProb,trocken
+299,,19_0013,A479,19_0013_0012,AblaBdgProb,trocken
+300,,19_0013,A479,19_0013_0019,AblaBdgProb,trocken
+301,,19_0013,A6214,19_0013_0007,AblaBdgProb,trocken
+302,,19_0013,A6214,19_0013_0008,AblaBdgProb,trocken
+303,,19_0013,A6214,19_0013_0009,AblaBdgProb,trocken
+304,,19_0013,A6214,19_0013_0018,AblaBdgProb,trocken
+305,,19_0013,A8090,19_0013_0004,AblaBdgProb,trocken
+306,,19_0013,A8090,19_0013_0005,AblaBdgProb,trocken
+307,,19_0013,A8090,19_0013_0006,AblaBdgProb,trocken
+308,,19_0013,A8090,19_0013_0017,AblaBdgProb,trocken
+309,,19_0013,A9063,19_0013_0001,AblaBdgProb,trocken
+310,,19_0013,A9063,19_0013_0002,AblaBdgProb,trocken
+311,,19_0013,A9063,19_0013_0003,AblaBdgProb,trocken
+312,,19_0013,A9063,19_0013_0016,AblaBdgProb,trocken
+313,,19_0013,A9063,19_0013_0016,AblaBdgProb,trocken
+314,,19_0014,A10143,19_0014_0040,AblaBdgProb,trocken
+315,,19_0014,A10153,19_0014_0037,AblaBdgProb,trocken
+316,,19_0014,A10189,19_0014_0042,AblaBdgProb,trocken
+317,,19_0014,A10229,19_0014_0039,AblaBdgProb,trocken
+318,,19_0014,A10697,19_0014_0067,AblaBdgProb,trocken
+319,,19_0014,A10990,19_0014_0055,AblaBdgProb,trocken
+320,,19_0014,A11339,19_0014_0068,AblaBdgProb,trocken
+321,,19_0014,A1196,19_0014_0044,AblaBdgProb,trocken
+322,,19_0014,A12024,19_0014_0056,AblaBdgProb,trocken
+323,,19_0014,A12024,19_0014_0057,AblaBdgProb,trocken
+324,,19_0014,A12034,19_0014_0058,AblaBdgProb,trocken
+325,,19_0014,A12435,19_0014_0069,AblaBdgProb,trocken
+326,,19_0014,A13064,19_0014_0071,AblaBdgProb,trocken
+327,,19_0014,A13200,19_0014_0041,AblaBdgProb,trocken
+328,,19_0014,A13299,19_0014_0072,AblaBdgProb,trocken
+329,,19_0014,A13837,19_0014_0060,AblaBdgProb,trocken
+330,,19_0014,A15333,19_0014_0061,AblaBdgProb,trocken
+331,,19_0014,A15344,19_0014_0074,AblaBdgProb,trocken
+332,,19_0014,A15554,19_0014_0075,AblaBdgProb,trocken
+333,,19_0014,A15736,19_0014_0059,AblaBdgProb,trocken
+334,,19_0014,A16771,19_0014_0008,AblaBdgProb,trocken
+335,,19_0014,A16783,19_0014_0005,AblaBdgProb,trocken
+336,,19_0014,A17294,19_0014_0016,AblaBdgProb,trocken
+337,,19_0014,A1875,19_0014_0046,AblaBdgProb,trocken
+338,,19_0014,A1931,19_0014_0047,AblaBdgProb,trocken
+339,,19_0014,A1998,19_0014_0048,AblaBdgProb,trocken
+340,,19_0014,A2019,19_0014_0049,AblaBdgProb,trocken
+341,,19_0014,A2029,19_0014_0050,AblaBdgProb,trocken
+342,,19_0014,A2114,19_0014_0051,AblaBdgProb,trocken
+343,,19_0014,A3019,19_0014_0052,AblaBdgProb,trocken
+344,,19_0014,A3170,19_0014_0066,AblaBdgProb,trocken
+345,,19_0014,A3650,19_0014_0053,AblaBdgProb,trocken
+346,,19_0014,A4115,19_0014_0023,AblaBdgProb,trocken
+347,,19_0014,A4365,19_0014_0054,AblaBdgProb,trocken
+348,,19_0014,A5192,19_0014_0020,AblaBdgProb,trocken
+349,,19_0014,A5213,19_0014_0019,AblaBdgProb,trocken
+350,,19_0014,A5223,19_0014_0018,AblaBdgProb,trocken
+351,,19_0014,A5254,19_0014_0029,AblaBdgProb,trocken
+352,,19_0014,A5282,19_0014_0021,AblaBdgProb,trocken
+353,,19_0014,A5294,19_0014_0022,AblaBdgProb,trocken
+354,,19_0014,A5307,19_0014_0024,AblaBdgProb,trocken
+355,,19_0014,A5334,19_0014_0063,AblaBdgProb,trocken
+356,,19_0014,A6041,19_0014_0034,AblaBdgProb,trocken
+357,,19_0014,A6135,19_0014_0015,AblaBdgProb,trocken
+358,,19_0014,A6146,19_0014_0033,AblaBdgProb,trocken
+359,,19_0014,A6157,19_0014_0035,AblaBdgProb,trocken
+360,,19_0014,A6178,19_0014_0017,AblaBdgProb,trocken
+361,,19_0014,A6194,19_0014_0025,AblaBdgProb,trocken
+362,,19_0014,A7199,19_0014_0032,AblaBdgProb,trocken
+363,,19_0014,A7253,19_0014_0014,AblaBdgProb,trocken
+364,,19_0014,A7263,19_0014_0030,AblaBdgProb,trocken
+365,,19_0014,A7294,19_0014_0013,AblaBdgProb,trocken
+366,,19_0014,A7306,19_0014_0036,AblaBdgProb,trocken
+367,,19_0014,A785,19_0014_0043,AblaBdgProb,trocken
+368,,19_0014,A8079,19_0014_0007,AblaBdgProb,trocken
+369,,19_0014,A8103,19_0014_0009,AblaBdgProb,trocken
+370,,19_0014,A8114,19_0014_0011,AblaBdgProb,trocken
+371,,19_0014,A8142,19_0014_0026,AblaBdgProb,trocken
+372,,19_0014,A8178,19_0014_0031,AblaBdgProb,trocken
+373,,19_0014,A8189,19_0014_0012,AblaBdgProb,trocken
+374,,19_0014,A8234,19_0014_0010,AblaBdgProb,trocken
+375,,19_0014,A9000,19_0014_0027,AblaBdgProb,trocken
+376,,19_0014,A9052,19_0014_0028,AblaBdgProb,trocken
+377,,19_0014,A9075,19_0014_0003,AblaBdgProb,trocken
+378,,19_0014,A9111,19_0014_0001,AblaBdgProb,trocken
+379,,19_0014,A9126,19_0014_0004,AblaBdgProb,trocken
+380,,19_0014,A9199,19_0014_0006,AblaBdgProb,trocken
+381,,19_0014,A957,19_0014_0064,AblaBdgProb,trocken
+382,,19_0014,A973,19_0014_0065,AblaBdgProb,trocken
+383,,19_0014,A9847,19_0014_0002,AblaBdgProb,trocken
+384,,22_0005,11200,22_0005_0001,AblaBdgProb,feucht
+385,,22_0005,11201,22_0005_0002,AblaBdgProb,feucht
+386,,22_0005,11221,22_0005_0003,AblaBdgProb,feucht
+387,,22_0005,12026,22_0005_0004,AblaBdgProb,feucht
+388,,22_0005,200125,22_0005_0012,AblaBdgProb,feucht
+389,,22_0005,200149,22_0005_0013,AblaBdgProb,feucht
+390,,22_0005,200177,22_0005_0009,AblaBdgProb,feucht
+391,,22_0005,200473,22_0005_0005,AblaBdgProb,feucht
+392,,22_0005,200475,22_0005_0006,AblaBdgProb,feucht
+393,,22_0005,23362,22_0005_0010,AblaBdgProb,feucht
+394,,22_0005,23434,22_0005_0007,AblaBdgProb,feucht
+395,,22_0005,23491,22_0005_0008,AblaBdgProb,feucht
+396,,22_0005,23988,22_0005_0011,AblaBdgProb,feucht
+397,,22_0015,A2076,22_0015_0017,AblaBdgProb,trocken
+398,,22_0015,A2154,22_0015_0020,AblaBdgProb,trocken
+399,,22_0015,A2874 G2976,22_0015_0014,AblaBdgProb,trocken
+400,,22_0015,A4796,22_0015_0013,AblaBdgProb,trocken
+401,,22_0015,M153 St 1,22_0015_0006,AblaBdgProb,trocken
+402,,22_0015,M153 St 2,22_0015_0007,AblaBdgProb,trocken
+403,,22_0015,M160 St 1,22_0015_0001,AblaBdgProb,trocken
+404,,22_0015,M160 St 1,22_0015_0001,AblaBdgProb,trocken
+405,,22_0015,M160 St 1,22_0015_0001,AblaBdgProb,trocken
+406,,22_0015,M167 St 1,22_0015_0002,AblaBdgProb,trocken
+407,,22_0015,M167 St 2,22_0015_0003,AblaBdgProb,trocken
+408,,22_0015,M167 St 2,22_0015_0003,AblaBdgProb,trocken
+409,,22_0015,M167 St 3,22_0015_0004,AblaBdgProb,trocken
+410,,22_0015,M167 St 4,22_0015_0005,AblaBdgProb,trocken
+411,,22_0015,M32 Undre del,2022_0015_0009,AblaBdgProb,trocken
+412,,22_0015,M32 Övre del,2022_0015_0008,AblaBdgProb,trocken
+413,,22_0015,M99 A5085,2022_0015_0010,AblaBdgProb,trocken
+414,,22_0015,M99 A5085,2022_0015_0012,AblaBdgProb,trocken
+415,,DanaBunar2,31,17 depth 0.10-0.20,AblaBdgProb,trocken
+416,,DanaBunar2,31,17a depth 0.00-0.20,AblaBdgProb,trocken
+417,,DanaBunar2,32,51 depth 0.00-0.10,AblaBdgProb,trocken
+418,,DanaBunar2,32,52 depth 0.10-0.20,AblaBdgProb,trocken
+419,,DanaBunar2,32,53 depth 0.00-0.10,AblaBdgProb,trocken
+420,,DanaBunar2,33,18 depth 0.20-0.30,AblaBdgProb,trocken
+421,,DanaBunar2,33,19 depth 0.00-0.10,AblaBdgProb,trocken
+422,,DanaBunar2,33,20 depth 0.10-0.30,AblaBdgProb,trocken
+423,,DanaBunar2,33,21 depth 0.30-0.40,AblaBdgProb,trocken
+424,,DanaBunar2,33,22 depth 0.20-0.30,AblaBdgProb,trocken
+425,,DanaBunar2,37,39 depth 0.10-0.20,AblaBdgProb,trocken
+426,,DanaBunar2,37,40 depth 0.20-0.30,AblaBdgProb,trocken
+427,,DanaBunar2,37,41 depth 0.00-0.10,AblaBdgProb,trocken
+428,,DanaBunar2,37,42 depth 0.00-0.10,AblaBdgProb,trocken
+429,,DanaBunar2,38,1 depth 0.48-0.58,AblaBdgProb,trocken
+430,,DanaBunar2,38,2 depth 0.35-0.45,AblaBdgProb,trocken
+431,,DanaBunar2,38,3 depth 0.35-0.45,AblaBdgProb,trocken
+432,,DanaBunar2,38,4 depth 0.00-0.10,AblaBdgProb,trocken
+433,,DanaBunar2,38,5 depth 0.30-0.50,AblaBdgProb,trocken
+434,,DanaBunar2,39,47 depth 0.00-0.10,AblaBdgProb,trocken
+435,,DanaBunar2,39,48 depth 0.10-0.20,AblaBdgProb,trocken
+436,,DanaBunar2,41,44 depth 0.00-0.10,AblaBdgProb,trocken
+437,,DanaBunar2,41,46 depth 0.30-0.40,AblaBdgProb,trocken
+438,,DanaBunar2,42,10 depth 0.10-0.20,AblaBdgProb,trocken
+439,,DanaBunar2,42,6 depth 0.00-0.10,AblaBdgProb,trocken
+440,,DanaBunar2,42,7 depth 0.00-0.10,AblaBdgProb,trocken
+441,,DanaBunar2,42,8 depth 0.10-0.20,AblaBdgProb,trocken
+442,,DanaBunar2,42,9 depth 0.10-0.20,AblaBdgProb,trocken
+443,,DanaBunar2,44,87 depth 0.06-0.16,AblaBdgProb,trocken
+444,,DanaBunar2,44,88 depth 0.20-0.30,AblaBdgProb,trocken
+445,,DanaBunar2,44,89 depth 0.30-0.40,AblaBdgProb,trocken
+446,,DanaBunar2,44,90 depth 0.16-0.26,AblaBdgProb,trocken
+447,,DanaBunar2,44,91 depth 0.10-0.20,AblaBdgProb,trocken
+448,,DanaBunar2,44,92 depth 0.00-0.10,AblaBdgProb,trocken
+449,,DanaBunar2,44,93 depth 0.30-0.40,AblaBdgProb,trocken
+450,,DanaBunar2,46,30 depth 0.60-0.70,AblaBdgProb,trocken
+451,,DanaBunar2,46,31 depth 0.50-0.60,AblaBdgProb,trocken
+452,,DanaBunar2,46,32 depth 0.60-0.70,AblaBdgProb,trocken
+453,,DanaBunar2,46,33 depth 0.30-0.40,AblaBdgProb,trocken
+454,,DanaBunar2,46,34 depth 0.40-0.50,AblaBdgProb,trocken
+455,,DanaBunar2,46,35 depth 0.30-0.40,AblaBdgProb,trocken
+456,,DanaBunar2,47,49 depth 0.10-0.20,AblaBdgProb,trocken
+457,,DanaBunar2,47,50 depth 0.10-0.20,AblaBdgProb,trocken
+458,,DanaBunar2,55,54 depth 1.00-1.10,AblaBdgProb,trocken
+459,,DanaBunar2,55,55 depth 1.00-1.10,AblaBdgProb,trocken
+460,,DanaBunar2,58,23 depth 0.10-0.20,AblaBdgProb,trocken
+461,,DanaBunar2,58,24 depth 0.30-0.40,AblaBdgProb,trocken
+462,,DanaBunar2,58,25 depth 0.00-0.10,AblaBdgProb,trocken
+463,,DanaBunar2,58,26 depth 0.10-0.20,AblaBdgProb,trocken
+464,,DanaBunar2,58,27 depth 0.30-0.40,AblaBdgProb,trocken
+465,,DanaBunar2,58,28 depth 0.20-0.30,AblaBdgProb,trocken
+466,,DanaBunar2,64,11 depth 0.10-0.20,AblaBdgProb,trocken
+467,,DanaBunar2,64,12 depth 0.36-0.46,AblaBdgProb,trocken
+468,,DanaBunar2,64,13 depth 0.26-0.36,AblaBdgProb,trocken
+469,,DanaBunar2,64,16 depth 0.48-0.58,AblaBdgProb,trocken
+470,,Iswid,2709_fond,Isw 2013/32,AblaBdgProb,trocken
+471,,Iswid,2905 fond,Isw 2013/26,AblaBdgProb,trocken
+472,,Iswid,2913 fond,Isw 2013/33,AblaBdgProb,trocken
+473,,Iswid,foyer 2174,Isw 2013/15,AblaBdgProb,trocken
+474,,Iswid,foyer 2174,Isw 2013/15,AblaBdgProb,trocken
+475,,Iswid,US 10503,Isw 2013/8,AblaBdgProb,trocken
+476,,Iswid,US 10503,Isw 2013/8,AblaBdgProb,trocken
+477,,Iswid,US 10503,Isw 2013/8,AblaBdgProb,trocken
+478,,Iswid,US 10521,Isw 2013/20,AblaBdgProb,trocken
+479,,Iswid,US 10521,Isw 2013/20,AblaBdgProb,trocken
+480,,Iswid,US 10521,Isw 2013/20,AblaBdgProb,trocken
+481,,Iswid,US 10534,Isw 2013/21,AblaBdgProb,trocken
+482,,Iswid,US 10534,Isw 2013/21,AblaBdgProb,trocken
+483,,Iswid,US 10610,Isw 2013/25,AblaBdgProb,trocken
+484,,Iswid,US 10610,Isw 2013/25,AblaBdgProb,trocken
+485,,Iswid,US 11004,Isw 2013/22,AblaBdgProb,trocken
+486,,Iswid,US 11004,Isw 2013/22,AblaBdgProb,trocken
+487,,Iswid,US 11012,Isw 2013/27,AblaBdgProb,trocken
+488,,Iswid,US 11067,Isw 2013/28,AblaBdgProb,trocken
+489,,Iswid,US 12025,Isw 2013/25,AblaBdgProb,trocken
+490,,Iswid,US 12025,Isw 2013/25,AblaBdgProb,trocken
+491,,Iswid,US 12040,Isw 2013/29,AblaBdgProb,trocken
+492,,Iswid,US 12047,Isw 2013/30,AblaBdgProb,trocken
+493,,Iswid,US 12047,Isw 2013/30,AblaBdgProb,trocken
+494,,Iswid,US 12504,Isw 2013/31,AblaBdgProb,trocken
+495,,Iswid,US 13017,Isw 2015/18,AblaBdgProb,trocken
+496,,Iswid,US 13017,Isw 2016/41,AblaBdgProb,trocken
+497,,Iswid,US 13065,Isw 2015/25,AblaBdgProb,trocken
+498,,Iswid,US 13065,Isw 2015/25,AblaBdgProb,trocken
+499,,Iswid,US 13066,Isw 2015/4,AblaBdgProb,trocken
+500,,Iswid,US 13066,Isw 2015/4,AblaBdgProb,trocken
+501,,Iswid,US 13083,Isw 2015/22,AblaBdgProb,trocken
+502,,Iswid,US 13099,Isw 2015/9,AblaBdgProb,trocken
+503,,Iswid,US 13145,Isw 2015/21,AblaBdgProb,trocken
+504,,Iswid,US 13145,Isw 2015/21,AblaBdgProb,trocken
+505,,Iswid,US 13516,Isw 2015/8,AblaBdgProb,trocken
+506,,Iswid,US 13516,Isw 2015/8,AblaBdgProb,trocken
+507,,Iswid,US 13526,Isw 2015/2,AblaBdgProb,trocken
+508,,Iswid,US 13572,Isw 2015/12,AblaBdgProb,trocken
+509,,Iswid,US 13610,Isw 2015/11,AblaBdgProb,trocken
+510,,Iswid,US 13632,Isw 2016/15,AblaBdgProb,trocken
+511,,Iswid,US 13632,Isw 2016/15,AblaBdgProb,trocken
+512,,Iswid,US 13639,Isw2015/26,AblaBdgProb,trocken
+513,,Iswid,US 13657,Isw 2015/17,AblaBdgProb,trocken
+514,,Iswid,US 13705,Isw 2015/10,AblaBdgProb,trocken
+515,,Iswid,US 13791,Isw 2015/5,AblaBdgProb,trocken
+516,,Iswid,US 13791 (3),Isw 2015/7,AblaBdgProb,trocken
+517,,Iswid,US 13802,Isw 2015/20,AblaBdgProb,trocken
+518,,Iswid,US 13971,Isw 2015/7,AblaBdgProb,trocken
+519,,Iswid,US 14021,Isw 2015/1,AblaBdgProb,trocken
+520,,Iswid,US 14021,Isw 2015/1,AblaBdgProb,trocken
+521,,Iswid,US 14038,Isw 2015/3,AblaBdgProb,trocken
+522,,Iswid,US 14050,Isw 2015/24,AblaBdgProb,trocken
+523,,Iswid,US 14050,Isw 2015/24,AblaBdgProb,trocken
+524,,Iswid,US 14050,Isw 2015/24,AblaBdgProb,trocken
+525,,Iswid,US 14078,Isw 2916/23,AblaBdgProb,trocken
+526,,Iswid,US 14131,Isw 2015/13,AblaBdgProb,trocken
+527,,Iswid,US 14131,Isw 2016/12,AblaBdgProb,trocken
+528,,Iswid,US 14158,Isw 2015/14,AblaBdgProb,trocken
+529,,Iswid,US 14418,Isw 2016/34,AblaBdgProb,trocken
+530,,Iswid,US 14495,Isw 16/37,AblaBdgProb,trocken
+531,,Iswid,US 14509,16-Jan,AblaBdgProb,trocken
+532,,Iswid,US 14636,Isw 16/35,AblaBdgProb,trocken
+533,,Iswid,US 14636,Isw 16/35,AblaBdgProb,trocken
+534,,Iswid,US 15067,Isw 2017/7,AblaBdgProb,trocken
+535,,Iswid,US 15071,Isw 17/4,AblaBdgProb,trocken
+536,,Iswid,US 15108,Isw 17/1,AblaBdgProb,trocken
+537,,Iswid,US 15140,Isw17/26,AblaBdgProb,trocken
+538,,Iswid,US 16183,Isw 2017/8,AblaBdgProb,trocken
+539,,Iswid,US 16183,Isw 2017/8,AblaBdgProb,trocken
+540,,Iswid,US 16287_F4185 (TR.),Isw 17/23,AblaBdgProb,trocken
+541,,Iswid,US 16323_F4199(foye,Isw 17/29,AblaBdgProb,trocken
+542,,Iswid,US 16323_F4199(foye,Isw 17/29,AblaBdgProb,trocken
+543,,Iswid,US 6712,Isw 2013/13,AblaBdgProb,trocken
+544,,Iswid,US 6712,Isw 2013/13,AblaBdgProb,trocken
+545,,Iswid,US 6773,Isw 2013/7,AblaBdgProb,trocken
+546,,Iswid,US 6773,Isw 2013/7,AblaBdgProb,trocken
+547,,Iswid,US 6803,Isw 2013/10,AblaBdgProb,trocken
+548,,Iswid,US 6810,Isw 2013/5,AblaBdgProb,trocken
+549,,Iswid,US 6827,Isw 2013/2,AblaBdgProb,trocken
+550,,Iswid,US 6854,Isw 2013/4,AblaBdgProb,trocken
+551,,Iswid,US 6863,Isw 2013/12,AblaBdgProb,trocken
+552,,Iswid,US 6863,Isw 2013/12,AblaBdgProb,trocken
+553,,Iswid,US 6875,Isw 2013/14,AblaBdgProb,trocken
+554,,Iswid,US 6875,Isw 2013/14,AblaBdgProb,trocken
+555,,Iswid,US 6875,Isw 2013/14,AblaBdgProb,trocken
+556,,Iswid,US 9036,Isw 2013/3,AblaBdgProb,trocken
+557,,Iswid,US 9036,Isw 2013/3,AblaBdgProb,trocken
+558,,Iswid,US 9200,Isw 2013/1,AblaBdgProb,trocken
+559,,Iswid,US 9200,Isw 2013/1,AblaBdgProb,trocken
+560,,Iswid,US 9200,Isw 2013/1,AblaBdgProb,trocken
+561,,Iswid,US 9200,Isw 2013/1,AblaBdgProb,trocken
+562,,Iswid,US 9321,Isw 2013/6,AblaBdgProb,trocken
+563,,Iswid,US 9321,Isw 2013/6,AblaBdgProb,trocken
+564,,Iswid,US 9404_foyer 2093,Isw 2013/17,AblaBdgProb,trocken
+565,,Iswid,US 9519,Isw 2013/11,AblaBdgProb,trocken
+566,,Iswid,US 9519,Isw 2013/11,AblaBdgProb,trocken
+567,,Iswid,US 9859/9860,Isw 2013/16,AblaBdgProb,trocken
+568,,Iswid,US 9859/9860,Isw 2013/16,AblaBdgProb,trocken
+569,,Iswid,US 9859/9860,Isw 2013/16,AblaBdgProb,trocken
+570,,Iswid,US 9870_foyer2163,1,AblaBdgProb,trocken
+571,,Iswid,US 9870_foyer2163,1,AblaBdgProb,trocken
+572,,Iswid,US 9880_foyer 2166,Isw 2013/19,AblaBdgProb,trocken
+573,,18_0025,P16,18_0025_0003,EDatProb,2021-12-07
+574,,18_0025,P18,18_0025_0004,EDatProb,2021-12-07
+575,,18_0025,P20,18_0025_0005,EDatProb,2021-12-07
+576,,18_0025,P5,18_0025_0001,EDatProb,2021-12-07
+577,,18_0025,P5,18_0025_0001,EDatProb,2022-05-03
+578,,18_0025,P6,18_0025_0002,EDatProb,2021-12-07
+579,,19_0013,A11148,19_0013_0013,EDatProb,2022-05-05
+580,,19_0013,A11148,19_0013_0014,EDatProb,2022-05-05
+581,,19_0013,A11148,19_0013_0015,EDatProb,2022-05-05
+582,,19_0013,A11148,19_0013_0020,EDatProb,2022-05-05
+583,,19_0013,A479,19_0013_0010,EDatProb,2022-05-05
+584,,19_0013,A479,19_0013_0011,EDatProb,2022-05-05
+585,,19_0013,A479,19_0013_0012,EDatProb,2022-05-05
+586,,19_0013,A479,19_0013_0019,EDatProb,2022-05-05
+587,,19_0013,A6214,19_0013_0007,EDatProb,2022-05-05
+588,,19_0013,A6214,19_0013_0008,EDatProb,2022-05-05
+589,,19_0013,A6214,19_0013_0009,EDatProb,2022-05-05
+590,,19_0013,A6214,19_0013_0018,EDatProb,2022-05-05
+591,,19_0013,A8090,19_0013_0004,EDatProb,2022-05-05
+592,,19_0013,A8090,19_0013_0005,EDatProb,2022-05-05
+593,,19_0013,A8090,19_0013_0006,EDatProb,2022-05-05
+594,,19_0013,A8090,19_0013_0017,EDatProb,2022-05-05
+595,,19_0013,A9063,19_0013_0001,EDatProb,2022-05-05
+596,,19_0013,A9063,19_0013_0002,EDatProb,2022-05-05
+597,,19_0013,A9063,19_0013_0003,EDatProb,2022-05-05
+598,,19_0013,A9063,19_0013_0016,EDatProb,2022-05-05
+599,,19_0013,A9063,19_0013_0016,EDatProb,2025-09-24
+600,,19_0014,A10143,19_0014_0040,EDatProb,2022-05-04
+601,,19_0014,A10153,19_0014_0037,EDatProb,2022-05-04
+602,,19_0014,A10189,19_0014_0042,EDatProb,2022-05-04
+603,,19_0014,A10229,19_0014_0039,EDatProb,2022-05-04
+604,,19_0014,A10697,19_0014_0067,EDatProb,2022-05-04
+605,,19_0014,A10990,19_0014_0055,EDatProb,2022-05-04
+606,,19_0014,A11339,19_0014_0068,EDatProb,2022-05-04
+607,,19_0014,A1196,19_0014_0044,EDatProb,2022-05-04
+608,,19_0014,A12024,19_0014_0056,EDatProb,2022-05-04
+609,,19_0014,A12024,19_0014_0057,EDatProb,2022-05-04
+610,,19_0014,A12034,19_0014_0058,EDatProb,2022-05-04
+611,,19_0014,A12435,19_0014_0069,EDatProb,2022-05-04
+612,,19_0014,A13064,19_0014_0071,EDatProb,2022-05-04
+613,,19_0014,A13200,19_0014_0041,EDatProb,2022-05-04
+614,,19_0014,A13299,19_0014_0072,EDatProb,2022-05-04
+615,,19_0014,A13837,19_0014_0060,EDatProb,2022-05-04
+616,,19_0014,A15333,19_0014_0061,EDatProb,2022-05-04
+617,,19_0014,A15344,19_0014_0074,EDatProb,2022-05-04
+618,,19_0014,A15554,19_0014_0075,EDatProb,2022-05-04
+619,,19_0014,A15736,19_0014_0059,EDatProb,2022-05-04
+620,,19_0014,A16771,19_0014_0008,EDatProb,2022-05-04
+621,,19_0014,A16783,19_0014_0005,EDatProb,2022-05-04
+622,,19_0014,A17294,19_0014_0016,EDatProb,2022-05-04
+623,,19_0014,A1875,19_0014_0046,EDatProb,2022-05-04
+624,,19_0014,A1931,19_0014_0047,EDatProb,2022-05-04
+625,,19_0014,A1998,19_0014_0048,EDatProb,2022-05-04
+626,,19_0014,A2019,19_0014_0049,EDatProb,2022-05-04
+627,,19_0014,A2029,19_0014_0050,EDatProb,2022-05-04
+628,,19_0014,A2114,19_0014_0051,EDatProb,2022-05-04
+629,,19_0014,A3019,19_0014_0052,EDatProb,2022-05-04
+630,,19_0014,A3170,19_0014_0066,EDatProb,2022-05-04
+631,,19_0014,A3650,19_0014_0053,EDatProb,2022-05-04
+632,,19_0014,A4115,19_0014_0023,EDatProb,2022-05-04
+633,,19_0014,A4365,19_0014_0054,EDatProb,2022-05-04
+634,,19_0014,A5192,19_0014_0020,EDatProb,2022-05-04
+635,,19_0014,A5213,19_0014_0019,EDatProb,2022-05-04
+636,,19_0014,A5223,19_0014_0018,EDatProb,2022-05-04
+637,,19_0014,A5254,19_0014_0029,EDatProb,2022-05-04
+638,,19_0014,A5282,19_0014_0021,EDatProb,2022-05-04
+639,,19_0014,A5294,19_0014_0022,EDatProb,2022-05-04
+640,,19_0014,A5307,19_0014_0024,EDatProb,2022-05-04
+641,,19_0014,A5334,19_0014_0063,EDatProb,2022-05-04
+642,,19_0014,A6041,19_0014_0034,EDatProb,2022-05-04
+643,,19_0014,A6135,19_0014_0015,EDatProb,2022-05-04
+644,,19_0014,A6146,19_0014_0033,EDatProb,2022-05-04
+645,,19_0014,A6157,19_0014_0035,EDatProb,2022-05-04
+646,,19_0014,A6178,19_0014_0017,EDatProb,2022-05-04
+647,,19_0014,A6194,19_0014_0025,EDatProb,2022-05-04
+648,,19_0014,A7199,19_0014_0032,EDatProb,2022-05-04
+649,,19_0014,A7253,19_0014_0014,EDatProb,2022-05-04
+650,,19_0014,A7263,19_0014_0030,EDatProb,2022-05-04
+651,,19_0014,A7294,19_0014_0013,EDatProb,2022-05-04
+652,,19_0014,A7306,19_0014_0036,EDatProb,2022-05-04
+653,,19_0014,A785,19_0014_0043,EDatProb,2022-05-04
+654,,19_0014,A8079,19_0014_0007,EDatProb,2022-05-04
+655,,19_0014,A8103,19_0014_0009,EDatProb,2022-05-04
+656,,19_0014,A8114,19_0014_0011,EDatProb,2022-05-04
+657,,19_0014,A8142,19_0014_0026,EDatProb,2022-05-04
+658,,19_0014,A8178,19_0014_0031,EDatProb,2022-05-04
+659,,19_0014,A8189,19_0014_0012,EDatProb,2022-05-04
+660,,19_0014,A8234,19_0014_0010,EDatProb,2022-05-04
+661,,19_0014,A9000,19_0014_0027,EDatProb,2022-05-04
+662,,19_0014,A9052,19_0014_0028,EDatProb,2022-05-04
+663,,19_0014,A9075,19_0014_0003,EDatProb,2022-05-04
+664,,19_0014,A9111,19_0014_0001,EDatProb,2022-05-04
+665,,19_0014,A9126,19_0014_0004,EDatProb,2022-05-04
+666,,19_0014,A9199,19_0014_0006,EDatProb,2022-05-04
+667,,19_0014,A957,19_0014_0064,EDatProb,2022-05-04
+668,,19_0014,A973,19_0014_0065,EDatProb,2022-05-04
+669,,19_0014,A9847,19_0014_0002,EDatProb,2022-05-04
+670,,22_0005,11200,22_0005_0001,EDatProb,2023-04-18
+671,,22_0005,11201,22_0005_0002,EDatProb,2023-04-18
+672,,22_0005,11221,22_0005_0003,EDatProb,2023-04-18
+673,,22_0005,12026,22_0005_0004,EDatProb,2023-04-18
+674,,22_0005,200125,22_0005_0012,EDatProb,2023-04-18
+675,,22_0005,200149,22_0005_0013,EDatProb,2023-04-18
+676,,22_0005,200177,22_0005_0009,EDatProb,2023-04-18
+677,,22_0005,200473,22_0005_0005,EDatProb,2023-04-18
+678,,22_0005,200475,22_0005_0006,EDatProb,2023-04-18
+679,,22_0005,23362,22_0005_0010,EDatProb,2023-04-18
+680,,22_0005,23434,22_0005_0007,EDatProb,2023-04-18
+681,,22_0005,23491,22_0005_0008,EDatProb,2023-04-18
+682,,22_0005,23988,22_0005_0011,EDatProb,2023-04-18
+683,,22_0015,A2076,22_0015_0017,EDatProb,2023-06-16
+684,,22_0015,A2154,22_0015_0020,EDatProb,2023-06-16
+685,,22_0015,A2874 G2976,22_0015_0014,EDatProb,2023-06-16
+686,,22_0015,A4796,22_0015_0013,EDatProb,2023-06-16
+687,,22_0015,M153 St 1,22_0015_0006,EDatProb,2023-04-19
+688,,22_0015,M153 St 2,22_0015_0007,EDatProb,2023-04-19
+689,,22_0015,M160 St 1,22_0015_0001,EDatProb,2023-04-06
+690,,22_0015,M160 St 1,22_0015_0001,EDatProb,2023-04-18
+691,,22_0015,M160 St 1,22_0015_0001,EDatProb,2023-04-13
+692,,22_0015,M167 St 1,22_0015_0002,EDatProb,2023-04-19
+693,,22_0015,M167 St 2,22_0015_0003,EDatProb,2023-04-19
+694,,22_0015,M167 St 2,22_0015_0003,EDatProb,2023-06-16
+695,,22_0015,M167 St 3,22_0015_0004,EDatProb,2023-04-19
+696,,22_0015,M167 St 4,22_0015_0005,EDatProb,2023-04-19
+697,,22_0015,M32 Undre del,2022_0015_0009,EDatProb,2023-06-16
+698,,22_0015,M32 Övre del,2022_0015_0008,EDatProb,2023-06-16
+699,,22_0015,M99 A5085,2022_0015_0010,EDatProb,2023-06-16
+700,,22_0015,M99 A5085,2022_0015_0012,EDatProb,2023-06-16
+701,,DanaBunar2,31,17 depth 0.10-0.20,EDatProb,2021-11-16
+702,,DanaBunar2,31,17a depth 0.00-0.20,EDatProb,2021-11-16
+703,,DanaBunar2,32,51 depth 0.00-0.10,EDatProb,2021-11-16
+704,,DanaBunar2,32,52 depth 0.10-0.20,EDatProb,2021-11-16
+705,,DanaBunar2,32,53 depth 0.00-0.10,EDatProb,2021-11-16
+706,,DanaBunar2,33,18 depth 0.20-0.30,EDatProb,2021-11-16
+707,,DanaBunar2,33,19 depth 0.00-0.10,EDatProb,2021-11-16
+708,,DanaBunar2,33,20 depth 0.10-0.30,EDatProb,2021-11-16
+709,,DanaBunar2,33,21 depth 0.30-0.40,EDatProb,2021-11-16
+710,,DanaBunar2,33,22 depth 0.20-0.30,EDatProb,2021-11-16
+711,,DanaBunar2,37,39 depth 0.10-0.20,EDatProb,2021-11-16
+712,,DanaBunar2,37,40 depth 0.20-0.30,EDatProb,2021-11-16
+713,,DanaBunar2,37,41 depth 0.00-0.10,EDatProb,2021-11-16
+714,,DanaBunar2,37,42 depth 0.00-0.10,EDatProb,2021-11-16
+715,,DanaBunar2,38,1 depth 0.48-0.58,EDatProb,2021-11-16
+716,,DanaBunar2,38,2 depth 0.35-0.45,EDatProb,2021-11-16
+717,,DanaBunar2,38,3 depth 0.35-0.45,EDatProb,2021-11-16
+718,,DanaBunar2,38,4 depth 0.00-0.10,EDatProb,2021-11-16
+719,,DanaBunar2,38,5 depth 0.30-0.50,EDatProb,2021-11-16
+720,,DanaBunar2,39,47 depth 0.00-0.10,EDatProb,2021-11-16
+721,,DanaBunar2,39,48 depth 0.10-0.20,EDatProb,2021-11-16
+722,,DanaBunar2,41,44 depth 0.00-0.10,EDatProb,2021-11-16
+723,,DanaBunar2,41,46 depth 0.30-0.40,EDatProb,2021-11-16
+724,,DanaBunar2,42,10 depth 0.10-0.20,EDatProb,2021-11-16
+725,,DanaBunar2,42,6 depth 0.00-0.10,EDatProb,2021-11-16
+726,,DanaBunar2,42,7 depth 0.00-0.10,EDatProb,2021-11-16
+727,,DanaBunar2,42,8 depth 0.10-0.20,EDatProb,2021-11-16
+728,,DanaBunar2,42,9 depth 0.10-0.20,EDatProb,2021-11-16
+729,,DanaBunar2,44,87 depth 0.06-0.16,EDatProb,2021-11-16
+730,,DanaBunar2,44,88 depth 0.20-0.30,EDatProb,2021-11-16
+731,,DanaBunar2,44,89 depth 0.30-0.40,EDatProb,2021-11-16
+732,,DanaBunar2,44,90 depth 0.16-0.26,EDatProb,2021-11-16
+733,,DanaBunar2,44,91 depth 0.10-0.20,EDatProb,2021-11-16
+734,,DanaBunar2,44,92 depth 0.00-0.10,EDatProb,2021-11-16
+735,,DanaBunar2,44,93 depth 0.30-0.40,EDatProb,2021-11-16
+736,,DanaBunar2,46,30 depth 0.60-0.70,EDatProb,2021-11-16
+737,,DanaBunar2,46,31 depth 0.50-0.60,EDatProb,2021-11-16
+738,,DanaBunar2,46,32 depth 0.60-0.70,EDatProb,2021-11-16
+739,,DanaBunar2,46,33 depth 0.30-0.40,EDatProb,2021-11-16
+740,,DanaBunar2,46,34 depth 0.40-0.50,EDatProb,2021-11-16
+741,,DanaBunar2,46,35 depth 0.30-0.40,EDatProb,2021-11-16
+742,,DanaBunar2,47,49 depth 0.10-0.20,EDatProb,2021-11-16
+743,,DanaBunar2,47,50 depth 0.10-0.20,EDatProb,2021-11-16
+744,,DanaBunar2,55,54 depth 1.00-1.10,EDatProb,2021-11-16
+745,,DanaBunar2,55,55 depth 1.00-1.10,EDatProb,2021-11-16
+746,,DanaBunar2,58,23 depth 0.10-0.20,EDatProb,2021-11-16
+747,,DanaBunar2,58,24 depth 0.30-0.40,EDatProb,2021-11-16
+748,,DanaBunar2,58,25 depth 0.00-0.10,EDatProb,2021-11-16
+749,,DanaBunar2,58,26 depth 0.10-0.20,EDatProb,2021-11-16
+750,,DanaBunar2,58,27 depth 0.30-0.40,EDatProb,2021-11-16
+751,,DanaBunar2,58,28 depth 0.20-0.30,EDatProb,2021-11-16
+752,,DanaBunar2,64,11 depth 0.10-0.20,EDatProb,2021-11-16
+753,,DanaBunar2,64,12 depth 0.36-0.46,EDatProb,2021-11-16
+754,,DanaBunar2,64,13 depth 0.26-0.36,EDatProb,2021-11-16
+755,,DanaBunar2,64,16 depth 0.48-0.58,EDatProb,2021-11-16
+756,,Iswid,2709_fond,Isw 2013/32,EDatProb,2020-07-11
+757,,Iswid,2905 fond,Isw 2013/26,EDatProb,2014-09-23
+758,,Iswid,2913 fond,Isw 2013/33,EDatProb,2014-07-20
+759,,Iswid,foyer 2174,Isw 2013/15,EDatProb,2014-10-10
+760,,Iswid,foyer 2174,Isw 2013/15,EDatProb,2014-07-20
+761,,Iswid,US 10503,Isw 2013/8,EDatProb,2014-07-19
+762,,Iswid,US 10503,Isw 2013/8,EDatProb,2010-03-20
+763,,Iswid,US 10503,Isw 2013/8,EDatProb,2014-04-01
+764,,Iswid,US 10521,Isw 2013/20,EDatProb,2014-07-20
+765,,Iswid,US 10521,Isw 2013/20,EDatProb,2014-07-21
+766,,Iswid,US 10521,Isw 2013/20,EDatProb,2014-10-10
+767,,Iswid,US 10534,Isw 2013/21,EDatProb,2014-07-20
+768,,Iswid,US 10534,Isw 2013/21,EDatProb,2014-10-10
+769,,Iswid,US 10610,Isw 2013/25,EDatProb,2014-09-23
+770,,Iswid,US 10610,Isw 2013/25,EDatProb,2014-10-10
+771,,Iswid,US 11004,Isw 2013/22,EDatProb,2014-09-23
+772,,Iswid,US 11004,Isw 2013/22,EDatProb,2014-10-10
+773,,Iswid,US 11012,Isw 2013/27,EDatProb,2014-09-23
+774,,Iswid,US 11067,Isw 2013/28,EDatProb,2014-07-19
+775,,Iswid,US 12025,Isw 2013/25,EDatProb,2014-07-20
+776,,Iswid,US 12025,Isw 2013/25,EDatProb,2014-10-13
+777,,Iswid,US 12040,Isw 2013/29,EDatProb,2014-07-20
+778,,Iswid,US 12047,Isw 2013/30,EDatProb,2014-07-20
+779,,Iswid,US 12047,Isw 2013/30,EDatProb,2014-07-21
+780,,Iswid,US 12504,Isw 2013/31,EDatProb,2014-07-20
+781,,Iswid,US 13017,Isw 2015/18,EDatProb,2016-08-18
+782,,Iswid,US 13017,Isw 2016/41,EDatProb,2017-07-14
+783,,Iswid,US 13065,Isw 2015/25,EDatProb,2016-04-15
+784,,Iswid,US 13065,Isw 2015/25,EDatProb,2016-04-11
+785,,Iswid,US 13066,Isw 2015/4,EDatProb,2016-08-18
+786,,Iswid,US 13066,Isw 2015/4,EDatProb,2017-07-01
+787,,Iswid,US 13083,Isw 2015/22,EDatProb,2016-04-15
+788,,Iswid,US 13099,Isw 2015/9,EDatProb,2016-08-19
+789,,Iswid,US 13145,Isw 2015/21,EDatProb,2016-08-19
+790,,Iswid,US 13145,Isw 2015/21,EDatProb,2017-07-01
+791,,Iswid,US 13516,Isw 2015/8,EDatProb,2017-04-11
+792,,Iswid,US 13516,Isw 2015/8,EDatProb,2016-04-10
+793,,Iswid,US 13526,Isw 2015/2,EDatProb,2016-04-11
+794,,Iswid,US 13572,Isw 2015/12,EDatProb,2016-04-10
+795,,Iswid,US 13610,Isw 2015/11,EDatProb,2016-04-10
+796,,Iswid,US 13632,Isw 2016/15,EDatProb,2017-04-11
+797,,Iswid,US 13632,Isw 2016/15,EDatProb,2016-04-10
+798,,Iswid,US 13639,Isw2015/26,EDatProb,2016-04-07
+799,,Iswid,US 13657,Isw 2015/17,EDatProb,2016-04-10
+800,,Iswid,US 13705,Isw 2015/10,EDatProb,2016-04-10
+801,,Iswid,US 13791,Isw 2015/5,EDatProb,2016-04-10
+802,,Iswid,US 13791 (3),Isw 2015/7,EDatProb,2016-08-20
+803,,Iswid,US 13802,Isw 2015/20,EDatProb,2016-04-09
+804,,Iswid,US 13971,Isw 2015/7,EDatProb,2016-04-10
+805,,Iswid,US 14021,Isw 2015/1,EDatProb,2016-08-18
+806,,Iswid,US 14021,Isw 2015/1,EDatProb,2017-07-01
+807,,Iswid,US 14038,Isw 2015/3,EDatProb,2016-08-19
+808,,Iswid,US 14050,Isw 2015/24,EDatProb,2016-08-19
+809,,Iswid,US 14050,Isw 2015/24,EDatProb,2017-07-01
+810,,Iswid,US 14050,Isw 2015/24,EDatProb,2016-08-22
+811,,Iswid,US 14078,Isw 2916/23,EDatProb,2017-07-01
+812,,Iswid,US 14131,Isw 2015/13,EDatProb,2016-08-19
+813,,Iswid,US 14131,Isw 2016/12,EDatProb,2017-07-14
+814,,Iswid,US 14158,Isw 2015/14,EDatProb,2016-04-10
+815,,Iswid,US 14418,Isw 2016/34,EDatProb,2017-07-01
+816,,Iswid,US 14495,Isw 16/37,EDatProb,2017-07-13
+817,,Iswid,US 14509,16-Jan,EDatProb,2017-07-14
+818,,Iswid,US 14636,Isw 16/35,EDatProb,2017-07-14
+819,,Iswid,US 14636,Isw 16/35,EDatProb,2017-07-13
+820,,Iswid,US 15067,Isw 2017/7,EDatProb,2017-04-14
+821,,Iswid,US 15071,Isw 17/4,EDatProb,2017-04-14
+822,,Iswid,US 15108,Isw 17/1,EDatProb,2017-04-14
+823,,Iswid,US 15140,Isw17/26,EDatProb,2017-07-01
+824,,Iswid,US 16183,Isw 2017/8,EDatProb,2017-04-14
+825,,Iswid,US 16183,Isw 2017/8,EDatProb,2017-07-15
+826,,Iswid,US 16287_F4185 (TR.),Isw 17/23,EDatProb,2017-07-12
+827,,Iswid,US 16323_F4199(foye,Isw 17/29,EDatProb,2017-07-13
+828,,Iswid,US 16323_F4199(foye,Isw 17/29,EDatProb,2017-07-12
+829,,Iswid,US 6712,Isw 2013/13,EDatProb,2014-07-20
+830,,Iswid,US 6712,Isw 2013/13,EDatProb,2014-10-10
+831,,Iswid,US 6773,Isw 2013/7,EDatProb,2014-07-20
+832,,Iswid,US 6773,Isw 2013/7,EDatProb,2014-07-22
+833,,Iswid,US 6803,Isw 2013/10,EDatProb,2014-07-20
+834,,Iswid,US 6810,Isw 2013/5,EDatProb,2014-07-19
+835,,Iswid,US 6827,Isw 2013/2,EDatProb,2014-07-20
+836,,Iswid,US 6854,Isw 2013/4,EDatProb,2014-07-20
+837,,Iswid,US 6863,Isw 2013/12,EDatProb,2014-09-23
+838,,Iswid,US 6863,Isw 2013/12,EDatProb,2014-10-10
+839,,Iswid,US 6875,Isw 2013/14,EDatProb,2014-07-20
+840,,Iswid,US 6875,Isw 2013/14,EDatProb,2014-10-10
+841,,Iswid,US 6875,Isw 2013/14,EDatProb,2014-07-21
+842,,Iswid,US 9036,Isw 2013/3,EDatProb,2014-07-20
+843,,Iswid,US 9036,Isw 2013/3,EDatProb,2014-07-19
+844,,Iswid,US 9200,Isw 2013/1,EDatProb,2014-07-19
+845,,Iswid,US 9200,Isw 2013/1,EDatProb,2014-07-20
+846,,Iswid,US 9200,Isw 2013/1,EDatProb,2016-05-20
+847,,Iswid,US 9200,Isw 2013/1,EDatProb,2014-10-10
+848,,Iswid,US 9321,Isw 2013/6,EDatProb,2014-07-20
+849,,Iswid,US 9321,Isw 2013/6,EDatProb,2014-07-21
+850,,Iswid,US 9404_foyer 2093,Isw 2013/17,EDatProb,2014-07-20
+851,,Iswid,US 9519,Isw 2013/11,EDatProb,2014-10-10
+852,,Iswid,US 9519,Isw 2013/11,EDatProb,2014-07-20
+853,,Iswid,US 9859/9860,Isw 2013/16,EDatProb,2014-07-20
+854,,Iswid,US 9859/9860,Isw 2013/16,EDatProb,2014-07-21
+855,,Iswid,US 9859/9860,Isw 2013/16,EDatProb,2014-07-22
+856,,Iswid,US 9870_foyer2163,1,EDatProb,2014-07-19
+857,,Iswid,US 9870_foyer2163,1,EDatProb,2014-10-13
+858,,Iswid,US 9880_foyer 2166,Isw 2013/19,EDatProb,2014-07-20
+859,,18_0025,P16,18_0025_0003,Strat,
+860,,18_0025,P18,18_0025_0004,Strat,
+861,,18_0025,P20,18_0025_0005,Strat,
+862,,18_0025,P5,18_0025_0001,Strat,
+863,,18_0025,P5,18_0025_0001,Strat,
+864,,18_0025,P6,18_0025_0002,Strat,
+865,,19_0013,A11148,19_0013_0013,Strat,
+866,,19_0013,A11148,19_0013_0014,Strat,
+867,,19_0013,A11148,19_0013_0015,Strat,
+868,,19_0013,A11148,19_0013_0020,Strat,
+869,,19_0013,A479,19_0013_0010,Strat,
+870,,19_0013,A479,19_0013_0011,Strat,
+871,,19_0013,A479,19_0013_0012,Strat,
+872,,19_0013,A479,19_0013_0019,Strat,
+873,,19_0013,A6214,19_0013_0007,Strat,
+874,,19_0013,A6214,19_0013_0008,Strat,
+875,,19_0013,A6214,19_0013_0009,Strat,
+876,,19_0013,A6214,19_0013_0018,Strat,
+877,,19_0013,A8090,19_0013_0004,Strat,
+878,,19_0013,A8090,19_0013_0005,Strat,
+879,,19_0013,A8090,19_0013_0006,Strat,
+880,,19_0013,A8090,19_0013_0017,Strat,
+881,,19_0013,A9063,19_0013_0001,Strat,
+882,,19_0013,A9063,19_0013_0002,Strat,
+883,,19_0013,A9063,19_0013_0003,Strat,
+884,,19_0013,A9063,19_0013_0016,Strat,
+885,,19_0013,A9063,19_0013_0016,Strat,
+886,,19_0014,A10143,19_0014_0040,Strat,
+887,,19_0014,A10153,19_0014_0037,Strat,
+888,,19_0014,A10189,19_0014_0042,Strat,
+889,,19_0014,A10229,19_0014_0039,Strat,
+890,,19_0014,A10697,19_0014_0067,Strat,
+891,,19_0014,A10990,19_0014_0055,Strat,
+892,,19_0014,A11339,19_0014_0068,Strat,
+893,,19_0014,A1196,19_0014_0044,Strat,
+894,,19_0014,A12024,19_0014_0056,Strat,
+895,,19_0014,A12024,19_0014_0057,Strat,
+896,,19_0014,A12034,19_0014_0058,Strat,
+897,,19_0014,A12435,19_0014_0069,Strat,
+898,,19_0014,A13064,19_0014_0071,Strat,
+899,,19_0014,A13200,19_0014_0041,Strat,
+900,,19_0014,A13299,19_0014_0072,Strat,
+901,,19_0014,A13837,19_0014_0060,Strat,
+902,,19_0014,A15333,19_0014_0061,Strat,
+903,,19_0014,A15344,19_0014_0074,Strat,
+904,,19_0014,A15554,19_0014_0075,Strat,
+905,,19_0014,A15736,19_0014_0059,Strat,
+906,,19_0014,A16771,19_0014_0008,Strat,
+907,,19_0014,A16783,19_0014_0005,Strat,
+908,,19_0014,A17294,19_0014_0016,Strat,
+909,,19_0014,A1875,19_0014_0046,Strat,
+910,,19_0014,A1931,19_0014_0047,Strat,
+911,,19_0014,A1998,19_0014_0048,Strat,
+912,,19_0014,A2019,19_0014_0049,Strat,
+913,,19_0014,A2029,19_0014_0050,Strat,
+914,,19_0014,A2114,19_0014_0051,Strat,
+915,,19_0014,A3019,19_0014_0052,Strat,
+916,,19_0014,A3170,19_0014_0066,Strat,
+917,,19_0014,A3650,19_0014_0053,Strat,
+918,,19_0014,A4115,19_0014_0023,Strat,
+919,,19_0014,A4365,19_0014_0054,Strat,
+920,,19_0014,A5192,19_0014_0020,Strat,
+921,,19_0014,A5213,19_0014_0019,Strat,
+922,,19_0014,A5223,19_0014_0018,Strat,
+923,,19_0014,A5254,19_0014_0029,Strat,
+924,,19_0014,A5282,19_0014_0021,Strat,
+925,,19_0014,A5294,19_0014_0022,Strat,
+926,,19_0014,A5307,19_0014_0024,Strat,
+927,,19_0014,A5334,19_0014_0063,Strat,
+928,,19_0014,A6041,19_0014_0034,Strat,
+929,,19_0014,A6135,19_0014_0015,Strat,
+930,,19_0014,A6146,19_0014_0033,Strat,
+931,,19_0014,A6157,19_0014_0035,Strat,
+932,,19_0014,A6178,19_0014_0017,Strat,
+933,,19_0014,A6194,19_0014_0025,Strat,
+934,,19_0014,A7199,19_0014_0032,Strat,
+935,,19_0014,A7253,19_0014_0014,Strat,
+936,,19_0014,A7263,19_0014_0030,Strat,
+937,,19_0014,A7294,19_0014_0013,Strat,
+938,,19_0014,A7306,19_0014_0036,Strat,
+939,,19_0014,A785,19_0014_0043,Strat,
+940,,19_0014,A8079,19_0014_0007,Strat,
+941,,19_0014,A8103,19_0014_0009,Strat,
+942,,19_0014,A8114,19_0014_0011,Strat,
+943,,19_0014,A8142,19_0014_0026,Strat,
+944,,19_0014,A8178,19_0014_0031,Strat,
+945,,19_0014,A8189,19_0014_0012,Strat,
+946,,19_0014,A8234,19_0014_0010,Strat,
+947,,19_0014,A9000,19_0014_0027,Strat,
+948,,19_0014,A9052,19_0014_0028,Strat,
+949,,19_0014,A9075,19_0014_0003,Strat,
+950,,19_0014,A9111,19_0014_0001,Strat,
+951,,19_0014,A9126,19_0014_0004,Strat,
+952,,19_0014,A9199,19_0014_0006,Strat,
+953,,19_0014,A957,19_0014_0064,Strat,
+954,,19_0014,A973,19_0014_0065,Strat,
+955,,19_0014,A9847,19_0014_0002,Strat,
+956,,22_0005,11200,22_0005_0001,Strat,
+957,,22_0005,11201,22_0005_0002,Strat,
+958,,22_0005,11221,22_0005_0003,Strat,
+959,,22_0005,12026,22_0005_0004,Strat,
+960,,22_0005,200125,22_0005_0012,Strat,
+961,,22_0005,200149,22_0005_0013,Strat,
+962,,22_0005,200177,22_0005_0009,Strat,
+963,,22_0005,200473,22_0005_0005,Strat,
+964,,22_0005,200475,22_0005_0006,Strat,
+965,,22_0005,23362,22_0005_0010,Strat,
+966,,22_0005,23434,22_0005_0007,Strat,
+967,,22_0005,23491,22_0005_0008,Strat,
+968,,22_0005,23988,22_0005_0011,Strat,
+969,,22_0015,A2076,22_0015_0017,Strat,
+970,,22_0015,A2154,22_0015_0020,Strat,
+971,,22_0015,A2874 G2976,22_0015_0014,Strat,
+972,,22_0015,A4796,22_0015_0013,Strat,
+973,,22_0015,M153 St 1,22_0015_0006,Strat,1.0
+974,,22_0015,M153 St 2,22_0015_0007,Strat,2.0
+975,,22_0015,M160 St 1,22_0015_0001,Strat,
+976,,22_0015,M160 St 1,22_0015_0001,Strat,
+977,,22_0015,M160 St 1,22_0015_0001,Strat,
+978,,22_0015,M167 St 1,22_0015_0002,Strat,1.0
+979,,22_0015,M167 St 2,22_0015_0003,Strat,2.0
+980,,22_0015,M167 St 2,22_0015_0003,Strat,2.0
+981,,22_0015,M167 St 3,22_0015_0004,Strat,3.0
+982,,22_0015,M167 St 4,22_0015_0005,Strat,4.0
+983,,22_0015,M32 Undre del,2022_0015_0009,Strat,
+984,,22_0015,M32 Övre del,2022_0015_0008,Strat,
+985,,22_0015,M99 A5085,2022_0015_0010,Strat,
+986,,22_0015,M99 A5085,2022_0015_0012,Strat,
+987,,DanaBunar2,31,17 depth 0.10-0.20,Strat,
+988,,DanaBunar2,31,17a depth 0.00-0.20,Strat,
+989,,DanaBunar2,32,51 depth 0.00-0.10,Strat,
+990,,DanaBunar2,32,52 depth 0.10-0.20,Strat,
+991,,DanaBunar2,32,53 depth 0.00-0.10,Strat,
+992,,DanaBunar2,33,18 depth 0.20-0.30,Strat,
+993,,DanaBunar2,33,19 depth 0.00-0.10,Strat,
+994,,DanaBunar2,33,20 depth 0.10-0.30,Strat,
+995,,DanaBunar2,33,21 depth 0.30-0.40,Strat,
+996,,DanaBunar2,33,22 depth 0.20-0.30,Strat,
+997,,DanaBunar2,37,39 depth 0.10-0.20,Strat,
+998,,DanaBunar2,37,40 depth 0.20-0.30,Strat,
+999,,DanaBunar2,37,41 depth 0.00-0.10,Strat,
+1000,,DanaBunar2,37,42 depth 0.00-0.10,Strat,
+1001,,DanaBunar2,38,1 depth 0.48-0.58,Strat,
+1002,,DanaBunar2,38,2 depth 0.35-0.45,Strat,
+1003,,DanaBunar2,38,3 depth 0.35-0.45,Strat,
+1004,,DanaBunar2,38,4 depth 0.00-0.10,Strat,
+1005,,DanaBunar2,38,5 depth 0.30-0.50,Strat,
+1006,,DanaBunar2,39,47 depth 0.00-0.10,Strat,
+1007,,DanaBunar2,39,48 depth 0.10-0.20,Strat,
+1008,,DanaBunar2,41,44 depth 0.00-0.10,Strat,
+1009,,DanaBunar2,41,46 depth 0.30-0.40,Strat,
+1010,,DanaBunar2,42,10 depth 0.10-0.20,Strat,
+1011,,DanaBunar2,42,6 depth 0.00-0.10,Strat,
+1012,,DanaBunar2,42,7 depth 0.00-0.10,Strat,
+1013,,DanaBunar2,42,8 depth 0.10-0.20,Strat,
+1014,,DanaBunar2,42,9 depth 0.10-0.20,Strat,
+1015,,DanaBunar2,44,87 depth 0.06-0.16,Strat,
+1016,,DanaBunar2,44,88 depth 0.20-0.30,Strat,
+1017,,DanaBunar2,44,89 depth 0.30-0.40,Strat,
+1018,,DanaBunar2,44,90 depth 0.16-0.26,Strat,
+1019,,DanaBunar2,44,91 depth 0.10-0.20,Strat,
+1020,,DanaBunar2,44,92 depth 0.00-0.10,Strat,
+1021,,DanaBunar2,44,93 depth 0.30-0.40,Strat,
+1022,,DanaBunar2,46,30 depth 0.60-0.70,Strat,
+1023,,DanaBunar2,46,31 depth 0.50-0.60,Strat,
+1024,,DanaBunar2,46,32 depth 0.60-0.70,Strat,
+1025,,DanaBunar2,46,33 depth 0.30-0.40,Strat,
+1026,,DanaBunar2,46,34 depth 0.40-0.50,Strat,
+1027,,DanaBunar2,46,35 depth 0.30-0.40,Strat,
+1028,,DanaBunar2,47,49 depth 0.10-0.20,Strat,
+1029,,DanaBunar2,47,50 depth 0.10-0.20,Strat,
+1030,,DanaBunar2,55,54 depth 1.00-1.10,Strat,
+1031,,DanaBunar2,55,55 depth 1.00-1.10,Strat,
+1032,,DanaBunar2,58,23 depth 0.10-0.20,Strat,
+1033,,DanaBunar2,58,24 depth 0.30-0.40,Strat,
+1034,,DanaBunar2,58,25 depth 0.00-0.10,Strat,
+1035,,DanaBunar2,58,26 depth 0.10-0.20,Strat,
+1036,,DanaBunar2,58,27 depth 0.30-0.40,Strat,
+1037,,DanaBunar2,58,28 depth 0.20-0.30,Strat,
+1038,,DanaBunar2,64,11 depth 0.10-0.20,Strat,
+1039,,DanaBunar2,64,12 depth 0.36-0.46,Strat,
+1040,,DanaBunar2,64,13 depth 0.26-0.36,Strat,
+1041,,DanaBunar2,64,16 depth 0.48-0.58,Strat,
+1042,,Iswid,2709_fond,Isw 2013/32,Strat,
+1043,,Iswid,2905 fond,Isw 2013/26,Strat,
+1044,,Iswid,2913 fond,Isw 2013/33,Strat,
+1045,,Iswid,foyer 2174,Isw 2013/15,Strat,
+1046,,Iswid,foyer 2174,Isw 2013/15,Strat,
+1047,,Iswid,US 10503,Isw 2013/8,Strat,
+1048,,Iswid,US 10503,Isw 2013/8,Strat,
+1049,,Iswid,US 10503,Isw 2013/8,Strat,
+1050,,Iswid,US 10521,Isw 2013/20,Strat,
+1051,,Iswid,US 10521,Isw 2013/20,Strat,
+1052,,Iswid,US 10521,Isw 2013/20,Strat,
+1053,,Iswid,US 10534,Isw 2013/21,Strat,
+1054,,Iswid,US 10534,Isw 2013/21,Strat,
+1055,,Iswid,US 10610,Isw 2013/25,Strat,
+1056,,Iswid,US 10610,Isw 2013/25,Strat,
+1057,,Iswid,US 11004,Isw 2013/22,Strat,
+1058,,Iswid,US 11004,Isw 2013/22,Strat,
+1059,,Iswid,US 11012,Isw 2013/27,Strat,
+1060,,Iswid,US 11067,Isw 2013/28,Strat,
+1061,,Iswid,US 12025,Isw 2013/25,Strat,
+1062,,Iswid,US 12025,Isw 2013/25,Strat,
+1063,,Iswid,US 12040,Isw 2013/29,Strat,
+1064,,Iswid,US 12047,Isw 2013/30,Strat,
+1065,,Iswid,US 12047,Isw 2013/30,Strat,
+1066,,Iswid,US 12504,Isw 2013/31,Strat,
+1067,,Iswid,US 13017,Isw 2015/18,Strat,
+1068,,Iswid,US 13017,Isw 2016/41,Strat,
+1069,,Iswid,US 13065,Isw 2015/25,Strat,
+1070,,Iswid,US 13065,Isw 2015/25,Strat,
+1071,,Iswid,US 13066,Isw 2015/4,Strat,
+1072,,Iswid,US 13066,Isw 2015/4,Strat,
+1073,,Iswid,US 13083,Isw 2015/22,Strat,
+1074,,Iswid,US 13099,Isw 2015/9,Strat,
+1075,,Iswid,US 13145,Isw 2015/21,Strat,
+1076,,Iswid,US 13145,Isw 2015/21,Strat,
+1077,,Iswid,US 13516,Isw 2015/8,Strat,
+1078,,Iswid,US 13516,Isw 2015/8,Strat,
+1079,,Iswid,US 13526,Isw 2015/2,Strat,
+1080,,Iswid,US 13572,Isw 2015/12,Strat,
+1081,,Iswid,US 13610,Isw 2015/11,Strat,
+1082,,Iswid,US 13632,Isw 2016/15,Strat,
+1083,,Iswid,US 13632,Isw 2016/15,Strat,
+1084,,Iswid,US 13639,Isw2015/26,Strat,
+1085,,Iswid,US 13657,Isw 2015/17,Strat,
+1086,,Iswid,US 13705,Isw 2015/10,Strat,
+1087,,Iswid,US 13791,Isw 2015/5,Strat,
+1088,,Iswid,US 13791 (3),Isw 2015/7,Strat,
+1089,,Iswid,US 13802,Isw 2015/20,Strat,
+1090,,Iswid,US 13971,Isw 2015/7,Strat,
+1091,,Iswid,US 14021,Isw 2015/1,Strat,
+1092,,Iswid,US 14021,Isw 2015/1,Strat,
+1093,,Iswid,US 14038,Isw 2015/3,Strat,
+1094,,Iswid,US 14050,Isw 2015/24,Strat,
+1095,,Iswid,US 14050,Isw 2015/24,Strat,
+1096,,Iswid,US 14050,Isw 2015/24,Strat,
+1097,,Iswid,US 14078,Isw 2916/23,Strat,
+1098,,Iswid,US 14131,Isw 2015/13,Strat,
+1099,,Iswid,US 14131,Isw 2016/12,Strat,
+1100,,Iswid,US 14158,Isw 2015/14,Strat,
+1101,,Iswid,US 14418,Isw 2016/34,Strat,
+1102,,Iswid,US 14495,Isw 16/37,Strat,
+1103,,Iswid,US 14509,16-Jan,Strat,
+1104,,Iswid,US 14636,Isw 16/35,Strat,
+1105,,Iswid,US 14636,Isw 16/35,Strat,
+1106,,Iswid,US 15067,Isw 2017/7,Strat,
+1107,,Iswid,US 15071,Isw 17/4,Strat,
+1108,,Iswid,US 15108,Isw 17/1,Strat,
+1109,,Iswid,US 15140,Isw17/26,Strat,
+1110,,Iswid,US 16183,Isw 2017/8,Strat,
+1111,,Iswid,US 16183,Isw 2017/8,Strat,
+1112,,Iswid,US 16287_F4185 (TR.),Isw 17/23,Strat,
+1113,,Iswid,US 16323_F4199(foye,Isw 17/29,Strat,
+1114,,Iswid,US 16323_F4199(foye,Isw 17/29,Strat,
+1115,,Iswid,US 6712,Isw 2013/13,Strat,
+1116,,Iswid,US 6712,Isw 2013/13,Strat,
+1117,,Iswid,US 6773,Isw 2013/7,Strat,
+1118,,Iswid,US 6773,Isw 2013/7,Strat,
+1119,,Iswid,US 6803,Isw 2013/10,Strat,
+1120,,Iswid,US 6810,Isw 2013/5,Strat,
+1121,,Iswid,US 6827,Isw 2013/2,Strat,
+1122,,Iswid,US 6854,Isw 2013/4,Strat,
+1123,,Iswid,US 6863,Isw 2013/12,Strat,
+1124,,Iswid,US 6863,Isw 2013/12,Strat,
+1125,,Iswid,US 6875,Isw 2013/14,Strat,
+1126,,Iswid,US 6875,Isw 2013/14,Strat,
+1127,,Iswid,US 6875,Isw 2013/14,Strat,
+1128,,Iswid,US 9036,Isw 2013/3,Strat,
+1129,,Iswid,US 9036,Isw 2013/3,Strat,
+1130,,Iswid,US 9200,Isw 2013/1,Strat,
+1131,,Iswid,US 9200,Isw 2013/1,Strat,
+1132,,Iswid,US 9200,Isw 2013/1,Strat,
+1133,,Iswid,US 9200,Isw 2013/1,Strat,
+1134,,Iswid,US 9321,Isw 2013/6,Strat,
+1135,,Iswid,US 9321,Isw 2013/6,Strat,
+1136,,Iswid,US 9404_foyer 2093,Isw 2013/17,Strat,
+1137,,Iswid,US 9519,Isw 2013/11,Strat,
+1138,,Iswid,US 9519,Isw 2013/11,Strat,
+1139,,Iswid,US 9859/9860,Isw 2013/16,Strat,
+1140,,Iswid,US 9859/9860,Isw 2013/16,Strat,
+1141,,Iswid,US 9859/9860,Isw 2013/16,Strat,
+1142,,Iswid,US 9870_foyer2163,1,Strat,
+1143,,Iswid,US 9870_foyer2163,1,Strat,
+1144,,Iswid,US 9880_foyer 2166,Isw 2013/19,Strat,
+1145,,18_0025,P16,18_0025_0003,Schi,
+1146,,18_0025,P18,18_0025_0004,Schi,
+1147,,18_0025,P20,18_0025_0005,Schi,
+1148,,18_0025,P5,18_0025_0001,Schi,
+1149,,18_0025,P5,18_0025_0001,Schi,
+1150,,18_0025,P6,18_0025_0002,Schi,
+1151,,19_0013,A11148,19_0013_0013,Schi,
+1152,,19_0013,A11148,19_0013_0014,Schi,
+1153,,19_0013,A11148,19_0013_0015,Schi,
+1154,,19_0013,A11148,19_0013_0020,Schi,
+1155,,19_0013,A479,19_0013_0010,Schi,
+1156,,19_0013,A479,19_0013_0011,Schi,
+1157,,19_0013,A479,19_0013_0012,Schi,
+1158,,19_0013,A479,19_0013_0019,Schi,
+1159,,19_0013,A6214,19_0013_0007,Schi,
+1160,,19_0013,A6214,19_0013_0008,Schi,
+1161,,19_0013,A6214,19_0013_0009,Schi,
+1162,,19_0013,A6214,19_0013_0018,Schi,
+1163,,19_0013,A8090,19_0013_0004,Schi,
+1164,,19_0013,A8090,19_0013_0005,Schi,
+1165,,19_0013,A8090,19_0013_0006,Schi,
+1166,,19_0013,A8090,19_0013_0017,Schi,
+1167,,19_0013,A9063,19_0013_0001,Schi,
+1168,,19_0013,A9063,19_0013_0002,Schi,
+1169,,19_0013,A9063,19_0013_0003,Schi,
+1170,,19_0013,A9063,19_0013_0016,Schi,
+1171,,19_0013,A9063,19_0013_0016,Schi,
+1172,,19_0014,A10143,19_0014_0040,Schi,
+1173,,19_0014,A10153,19_0014_0037,Schi,
+1174,,19_0014,A10189,19_0014_0042,Schi,
+1175,,19_0014,A10229,19_0014_0039,Schi,
+1176,,19_0014,A10697,19_0014_0067,Schi,
+1177,,19_0014,A10990,19_0014_0055,Schi,
+1178,,19_0014,A11339,19_0014_0068,Schi,
+1179,,19_0014,A1196,19_0014_0044,Schi,
+1180,,19_0014,A12024,19_0014_0056,Schi,
+1181,,19_0014,A12024,19_0014_0057,Schi,
+1182,,19_0014,A12034,19_0014_0058,Schi,
+1183,,19_0014,A12435,19_0014_0069,Schi,
+1184,,19_0014,A13064,19_0014_0071,Schi,
+1185,,19_0014,A13200,19_0014_0041,Schi,
+1186,,19_0014,A13299,19_0014_0072,Schi,
+1187,,19_0014,A13837,19_0014_0060,Schi,
+1188,,19_0014,A15333,19_0014_0061,Schi,
+1189,,19_0014,A15344,19_0014_0074,Schi,
+1190,,19_0014,A15554,19_0014_0075,Schi,
+1191,,19_0014,A15736,19_0014_0059,Schi,
+1192,,19_0014,A16771,19_0014_0008,Schi,
+1193,,19_0014,A16783,19_0014_0005,Schi,
+1194,,19_0014,A17294,19_0014_0016,Schi,
+1195,,19_0014,A1875,19_0014_0046,Schi,
+1196,,19_0014,A1931,19_0014_0047,Schi,
+1197,,19_0014,A1998,19_0014_0048,Schi,
+1198,,19_0014,A2019,19_0014_0049,Schi,
+1199,,19_0014,A2029,19_0014_0050,Schi,
+1200,,19_0014,A2114,19_0014_0051,Schi,
+1201,,19_0014,A3019,19_0014_0052,Schi,
+1202,,19_0014,A3170,19_0014_0066,Schi,
+1203,,19_0014,A3650,19_0014_0053,Schi,
+1204,,19_0014,A4115,19_0014_0023,Schi,
+1205,,19_0014,A4365,19_0014_0054,Schi,
+1206,,19_0014,A5192,19_0014_0020,Schi,
+1207,,19_0014,A5213,19_0014_0019,Schi,
+1208,,19_0014,A5223,19_0014_0018,Schi,
+1209,,19_0014,A5254,19_0014_0029,Schi,
+1210,,19_0014,A5282,19_0014_0021,Schi,
+1211,,19_0014,A5294,19_0014_0022,Schi,
+1212,,19_0014,A5307,19_0014_0024,Schi,
+1213,,19_0014,A5334,19_0014_0063,Schi,
+1214,,19_0014,A6041,19_0014_0034,Schi,
+1215,,19_0014,A6135,19_0014_0015,Schi,
+1216,,19_0014,A6146,19_0014_0033,Schi,
+1217,,19_0014,A6157,19_0014_0035,Schi,
+1218,,19_0014,A6178,19_0014_0017,Schi,
+1219,,19_0014,A6194,19_0014_0025,Schi,
+1220,,19_0014,A7199,19_0014_0032,Schi,
+1221,,19_0014,A7253,19_0014_0014,Schi,
+1222,,19_0014,A7263,19_0014_0030,Schi,
+1223,,19_0014,A7294,19_0014_0013,Schi,
+1224,,19_0014,A7306,19_0014_0036,Schi,
+1225,,19_0014,A785,19_0014_0043,Schi,
+1226,,19_0014,A8079,19_0014_0007,Schi,
+1227,,19_0014,A8103,19_0014_0009,Schi,
+1228,,19_0014,A8114,19_0014_0011,Schi,
+1229,,19_0014,A8142,19_0014_0026,Schi,
+1230,,19_0014,A8178,19_0014_0031,Schi,
+1231,,19_0014,A8189,19_0014_0012,Schi,
+1232,,19_0014,A8234,19_0014_0010,Schi,
+1233,,19_0014,A9000,19_0014_0027,Schi,
+1234,,19_0014,A9052,19_0014_0028,Schi,
+1235,,19_0014,A9075,19_0014_0003,Schi,
+1236,,19_0014,A9111,19_0014_0001,Schi,
+1237,,19_0014,A9126,19_0014_0004,Schi,
+1238,,19_0014,A9199,19_0014_0006,Schi,
+1239,,19_0014,A957,19_0014_0064,Schi,
+1240,,19_0014,A973,19_0014_0065,Schi,
+1241,,19_0014,A9847,19_0014_0002,Schi,
+1242,,22_0005,11200,22_0005_0001,Schi,
+1243,,22_0005,11201,22_0005_0002,Schi,
+1244,,22_0005,11221,22_0005_0003,Schi,
+1245,,22_0005,12026,22_0005_0004,Schi,
+1246,,22_0005,200125,22_0005_0012,Schi,
+1247,,22_0005,200149,22_0005_0013,Schi,
+1248,,22_0005,200177,22_0005_0009,Schi,
+1249,,22_0005,200473,22_0005_0005,Schi,
+1250,,22_0005,200475,22_0005_0006,Schi,
+1251,,22_0005,23362,22_0005_0010,Schi,
+1252,,22_0005,23434,22_0005_0007,Schi,
+1253,,22_0005,23491,22_0005_0008,Schi,
+1254,,22_0005,23988,22_0005_0011,Schi,
+1255,,22_0015,A2076,22_0015_0017,Schi,
+1256,,22_0015,A2154,22_0015_0020,Schi,
+1257,,22_0015,A2874 G2976,22_0015_0014,Schi,
+1258,,22_0015,A4796,22_0015_0013,Schi,
+1259,,22_0015,M153 St 1,22_0015_0006,Schi,
+1260,,22_0015,M153 St 2,22_0015_0007,Schi,
+1261,,22_0015,M160 St 1,22_0015_0001,Schi,
+1262,,22_0015,M160 St 1,22_0015_0001,Schi,
+1263,,22_0015,M160 St 1,22_0015_0001,Schi,
+1264,,22_0015,M167 St 1,22_0015_0002,Schi,
+1265,,22_0015,M167 St 2,22_0015_0003,Schi,
+1266,,22_0015,M167 St 2,22_0015_0003,Schi,
+1267,,22_0015,M167 St 3,22_0015_0004,Schi,
+1268,,22_0015,M167 St 4,22_0015_0005,Schi,
+1269,,22_0015,M32 Undre del,2022_0015_0009,Schi,
+1270,,22_0015,M32 Övre del,2022_0015_0008,Schi,
+1271,,22_0015,M99 A5085,2022_0015_0010,Schi,
+1272,,22_0015,M99 A5085,2022_0015_0012,Schi,
+1273,,DanaBunar2,31,17 depth 0.10-0.20,Schi,
+1274,,DanaBunar2,31,17a depth 0.00-0.20,Schi,
+1275,,DanaBunar2,32,51 depth 0.00-0.10,Schi,
+1276,,DanaBunar2,32,52 depth 0.10-0.20,Schi,
+1277,,DanaBunar2,32,53 depth 0.00-0.10,Schi,
+1278,,DanaBunar2,33,18 depth 0.20-0.30,Schi,
+1279,,DanaBunar2,33,19 depth 0.00-0.10,Schi,
+1280,,DanaBunar2,33,20 depth 0.10-0.30,Schi,
+1281,,DanaBunar2,33,21 depth 0.30-0.40,Schi,
+1282,,DanaBunar2,33,22 depth 0.20-0.30,Schi,
+1283,,DanaBunar2,37,39 depth 0.10-0.20,Schi,
+1284,,DanaBunar2,37,40 depth 0.20-0.30,Schi,
+1285,,DanaBunar2,37,41 depth 0.00-0.10,Schi,
+1286,,DanaBunar2,37,42 depth 0.00-0.10,Schi,
+1287,,DanaBunar2,38,1 depth 0.48-0.58,Schi,
+1288,,DanaBunar2,38,2 depth 0.35-0.45,Schi,
+1289,,DanaBunar2,38,3 depth 0.35-0.45,Schi,
+1290,,DanaBunar2,38,4 depth 0.00-0.10,Schi,
+1291,,DanaBunar2,38,5 depth 0.30-0.50,Schi,
+1292,,DanaBunar2,39,47 depth 0.00-0.10,Schi,
+1293,,DanaBunar2,39,48 depth 0.10-0.20,Schi,
+1294,,DanaBunar2,41,44 depth 0.00-0.10,Schi,
+1295,,DanaBunar2,41,46 depth 0.30-0.40,Schi,
+1296,,DanaBunar2,42,10 depth 0.10-0.20,Schi,
+1297,,DanaBunar2,42,6 depth 0.00-0.10,Schi,
+1298,,DanaBunar2,42,7 depth 0.00-0.10,Schi,
+1299,,DanaBunar2,42,8 depth 0.10-0.20,Schi,
+1300,,DanaBunar2,42,9 depth 0.10-0.20,Schi,
+1301,,DanaBunar2,44,87 depth 0.06-0.16,Schi,
+1302,,DanaBunar2,44,88 depth 0.20-0.30,Schi,
+1303,,DanaBunar2,44,89 depth 0.30-0.40,Schi,
+1304,,DanaBunar2,44,90 depth 0.16-0.26,Schi,
+1305,,DanaBunar2,44,91 depth 0.10-0.20,Schi,
+1306,,DanaBunar2,44,92 depth 0.00-0.10,Schi,
+1307,,DanaBunar2,44,93 depth 0.30-0.40,Schi,
+1308,,DanaBunar2,46,30 depth 0.60-0.70,Schi,
+1309,,DanaBunar2,46,31 depth 0.50-0.60,Schi,
+1310,,DanaBunar2,46,32 depth 0.60-0.70,Schi,
+1311,,DanaBunar2,46,33 depth 0.30-0.40,Schi,
+1312,,DanaBunar2,46,34 depth 0.40-0.50,Schi,
+1313,,DanaBunar2,46,35 depth 0.30-0.40,Schi,
+1314,,DanaBunar2,47,49 depth 0.10-0.20,Schi,
+1315,,DanaBunar2,47,50 depth 0.10-0.20,Schi,
+1316,,DanaBunar2,55,54 depth 1.00-1.10,Schi,
+1317,,DanaBunar2,55,55 depth 1.00-1.10,Schi,
+1318,,DanaBunar2,58,23 depth 0.10-0.20,Schi,
+1319,,DanaBunar2,58,24 depth 0.30-0.40,Schi,
+1320,,DanaBunar2,58,25 depth 0.00-0.10,Schi,
+1321,,DanaBunar2,58,26 depth 0.10-0.20,Schi,
+1322,,DanaBunar2,58,27 depth 0.30-0.40,Schi,
+1323,,DanaBunar2,58,28 depth 0.20-0.30,Schi,
+1324,,DanaBunar2,64,11 depth 0.10-0.20,Schi,
+1325,,DanaBunar2,64,12 depth 0.36-0.46,Schi,
+1326,,DanaBunar2,64,13 depth 0.26-0.36,Schi,
+1327,,DanaBunar2,64,16 depth 0.48-0.58,Schi,
+1328,,Iswid,2709_fond,Isw 2013/32,Schi,
+1329,,Iswid,2905 fond,Isw 2013/26,Schi,
+1330,,Iswid,2913 fond,Isw 2013/33,Schi,
+1331,,Iswid,foyer 2174,Isw 2013/15,Schi,
+1332,,Iswid,foyer 2174,Isw 2013/15,Schi,
+1333,,Iswid,US 10503,Isw 2013/8,Schi,
+1334,,Iswid,US 10503,Isw 2013/8,Schi,
+1335,,Iswid,US 10503,Isw 2013/8,Schi,
+1336,,Iswid,US 10521,Isw 2013/20,Schi,
+1337,,Iswid,US 10521,Isw 2013/20,Schi,
+1338,,Iswid,US 10521,Isw 2013/20,Schi,
+1339,,Iswid,US 10534,Isw 2013/21,Schi,
+1340,,Iswid,US 10534,Isw 2013/21,Schi,
+1341,,Iswid,US 10610,Isw 2013/25,Schi,
+1342,,Iswid,US 10610,Isw 2013/25,Schi,
+1343,,Iswid,US 11004,Isw 2013/22,Schi,
+1344,,Iswid,US 11004,Isw 2013/22,Schi,
+1345,,Iswid,US 11012,Isw 2013/27,Schi,
+1346,,Iswid,US 11067,Isw 2013/28,Schi,
+1347,,Iswid,US 12025,Isw 2013/25,Schi,
+1348,,Iswid,US 12025,Isw 2013/25,Schi,
+1349,,Iswid,US 12040,Isw 2013/29,Schi,
+1350,,Iswid,US 12047,Isw 2013/30,Schi,
+1351,,Iswid,US 12047,Isw 2013/30,Schi,
+1352,,Iswid,US 12504,Isw 2013/31,Schi,
+1353,,Iswid,US 13017,Isw 2015/18,Schi,
+1354,,Iswid,US 13017,Isw 2016/41,Schi,
+1355,,Iswid,US 13065,Isw 2015/25,Schi,
+1356,,Iswid,US 13065,Isw 2015/25,Schi,
+1357,,Iswid,US 13066,Isw 2015/4,Schi,
+1358,,Iswid,US 13066,Isw 2015/4,Schi,
+1359,,Iswid,US 13083,Isw 2015/22,Schi,
+1360,,Iswid,US 13099,Isw 2015/9,Schi,
+1361,,Iswid,US 13145,Isw 2015/21,Schi,
+1362,,Iswid,US 13145,Isw 2015/21,Schi,
+1363,,Iswid,US 13516,Isw 2015/8,Schi,
+1364,,Iswid,US 13516,Isw 2015/8,Schi,
+1365,,Iswid,US 13526,Isw 2015/2,Schi,
+1366,,Iswid,US 13572,Isw 2015/12,Schi,
+1367,,Iswid,US 13610,Isw 2015/11,Schi,
+1368,,Iswid,US 13632,Isw 2016/15,Schi,
+1369,,Iswid,US 13632,Isw 2016/15,Schi,
+1370,,Iswid,US 13639,Isw2015/26,Schi,
+1371,,Iswid,US 13657,Isw 2015/17,Schi,
+1372,,Iswid,US 13705,Isw 2015/10,Schi,
+1373,,Iswid,US 13791,Isw 2015/5,Schi,
+1374,,Iswid,US 13791 (3),Isw 2015/7,Schi,
+1375,,Iswid,US 13802,Isw 2015/20,Schi,
+1376,,Iswid,US 13971,Isw 2015/7,Schi,
+1377,,Iswid,US 14021,Isw 2015/1,Schi,
+1378,,Iswid,US 14021,Isw 2015/1,Schi,
+1379,,Iswid,US 14038,Isw 2015/3,Schi,
+1380,,Iswid,US 14050,Isw 2015/24,Schi,
+1381,,Iswid,US 14050,Isw 2015/24,Schi,
+1382,,Iswid,US 14050,Isw 2015/24,Schi,
+1383,,Iswid,US 14078,Isw 2916/23,Schi,
+1384,,Iswid,US 14131,Isw 2015/13,Schi,
+1385,,Iswid,US 14131,Isw 2016/12,Schi,
+1386,,Iswid,US 14158,Isw 2015/14,Schi,
+1387,,Iswid,US 14418,Isw 2016/34,Schi,
+1388,,Iswid,US 14495,Isw 16/37,Schi,
+1389,,Iswid,US 14509,16-Jan,Schi,
+1390,,Iswid,US 14636,Isw 16/35,Schi,
+1391,,Iswid,US 14636,Isw 16/35,Schi,
+1392,,Iswid,US 15067,Isw 2017/7,Schi,
+1393,,Iswid,US 15071,Isw 17/4,Schi,
+1394,,Iswid,US 15108,Isw 17/1,Schi,
+1395,,Iswid,US 15140,Isw17/26,Schi,
+1396,,Iswid,US 16183,Isw 2017/8,Schi,
+1397,,Iswid,US 16183,Isw 2017/8,Schi,
+1398,,Iswid,US 16287_F4185 (TR.),Isw 17/23,Schi,
+1399,,Iswid,US 16323_F4199(foye,Isw 17/29,Schi,
+1400,,Iswid,US 16323_F4199(foye,Isw 17/29,Schi,
+1401,,Iswid,US 6712,Isw 2013/13,Schi,
+1402,,Iswid,US 6712,Isw 2013/13,Schi,
+1403,,Iswid,US 6773,Isw 2013/7,Schi,
+1404,,Iswid,US 6773,Isw 2013/7,Schi,
+1405,,Iswid,US 6803,Isw 2013/10,Schi,
+1406,,Iswid,US 6810,Isw 2013/5,Schi,
+1407,,Iswid,US 6827,Isw 2013/2,Schi,
+1408,,Iswid,US 6854,Isw 2013/4,Schi,
+1409,,Iswid,US 6863,Isw 2013/12,Schi,
+1410,,Iswid,US 6863,Isw 2013/12,Schi,
+1411,,Iswid,US 6875,Isw 2013/14,Schi,
+1412,,Iswid,US 6875,Isw 2013/14,Schi,
+1413,,Iswid,US 6875,Isw 2013/14,Schi,
+1414,,Iswid,US 9036,Isw 2013/3,Schi,
+1415,,Iswid,US 9036,Isw 2013/3,Schi,
+1416,,Iswid,US 9200,Isw 2013/1,Schi,
+1417,,Iswid,US 9200,Isw 2013/1,Schi,
+1418,,Iswid,US 9200,Isw 2013/1,Schi,
+1419,,Iswid,US 9200,Isw 2013/1,Schi,
+1420,,Iswid,US 9321,Isw 2013/6,Schi,
+1421,,Iswid,US 9321,Isw 2013/6,Schi,
+1422,,Iswid,US 9404_foyer 2093,Isw 2013/17,Schi,
+1423,,Iswid,US 9519,Isw 2013/11,Schi,
+1424,,Iswid,US 9519,Isw 2013/11,Schi,
+1425,,Iswid,US 9859/9860,Isw 2013/16,Schi,
+1426,,Iswid,US 9859/9860,Isw 2013/16,Schi,
+1427,,Iswid,US 9859/9860,Isw 2013/16,Schi,
+1428,,Iswid,US 9870_foyer2163,1,Schi,
+1429,,Iswid,US 9870_foyer2163,1,Schi,
+1430,,Iswid,US 9880_foyer 2166,Isw 2013/19,Schi,
+1431,,18_0025,P16,18_0025_0003,Quadr,
+1432,,18_0025,P18,18_0025_0004,Quadr,
+1433,,18_0025,P20,18_0025_0005,Quadr,
+1434,,18_0025,P5,18_0025_0001,Quadr,
+1435,,18_0025,P5,18_0025_0001,Quadr,
+1436,,18_0025,P6,18_0025_0002,Quadr,
+1437,,19_0013,A11148,19_0013_0013,Quadr,
+1438,,19_0013,A11148,19_0013_0014,Quadr,
+1439,,19_0013,A11148,19_0013_0015,Quadr,
+1440,,19_0013,A11148,19_0013_0020,Quadr,
+1441,,19_0013,A479,19_0013_0010,Quadr,
+1442,,19_0013,A479,19_0013_0011,Quadr,
+1443,,19_0013,A479,19_0013_0012,Quadr,
+1444,,19_0013,A479,19_0013_0019,Quadr,
+1445,,19_0013,A6214,19_0013_0007,Quadr,
+1446,,19_0013,A6214,19_0013_0008,Quadr,
+1447,,19_0013,A6214,19_0013_0009,Quadr,
+1448,,19_0013,A6214,19_0013_0018,Quadr,
+1449,,19_0013,A8090,19_0013_0004,Quadr,
+1450,,19_0013,A8090,19_0013_0005,Quadr,
+1451,,19_0013,A8090,19_0013_0006,Quadr,
+1452,,19_0013,A8090,19_0013_0017,Quadr,
+1453,,19_0013,A9063,19_0013_0001,Quadr,
+1454,,19_0013,A9063,19_0013_0002,Quadr,
+1455,,19_0013,A9063,19_0013_0003,Quadr,
+1456,,19_0013,A9063,19_0013_0016,Quadr,
+1457,,19_0013,A9063,19_0013_0016,Quadr,
+1458,,19_0014,A10143,19_0014_0040,Quadr,
+1459,,19_0014,A10153,19_0014_0037,Quadr,
+1460,,19_0014,A10189,19_0014_0042,Quadr,
+1461,,19_0014,A10229,19_0014_0039,Quadr,
+1462,,19_0014,A10697,19_0014_0067,Quadr,
+1463,,19_0014,A10990,19_0014_0055,Quadr,
+1464,,19_0014,A11339,19_0014_0068,Quadr,
+1465,,19_0014,A1196,19_0014_0044,Quadr,
+1466,,19_0014,A12024,19_0014_0056,Quadr,
+1467,,19_0014,A12024,19_0014_0057,Quadr,
+1468,,19_0014,A12034,19_0014_0058,Quadr,
+1469,,19_0014,A12435,19_0014_0069,Quadr,
+1470,,19_0014,A13064,19_0014_0071,Quadr,
+1471,,19_0014,A13200,19_0014_0041,Quadr,
+1472,,19_0014,A13299,19_0014_0072,Quadr,
+1473,,19_0014,A13837,19_0014_0060,Quadr,
+1474,,19_0014,A15333,19_0014_0061,Quadr,
+1475,,19_0014,A15344,19_0014_0074,Quadr,
+1476,,19_0014,A15554,19_0014_0075,Quadr,
+1477,,19_0014,A15736,19_0014_0059,Quadr,
+1478,,19_0014,A16771,19_0014_0008,Quadr,
+1479,,19_0014,A16783,19_0014_0005,Quadr,
+1480,,19_0014,A17294,19_0014_0016,Quadr,
+1481,,19_0014,A1875,19_0014_0046,Quadr,
+1482,,19_0014,A1931,19_0014_0047,Quadr,
+1483,,19_0014,A1998,19_0014_0048,Quadr,
+1484,,19_0014,A2019,19_0014_0049,Quadr,
+1485,,19_0014,A2029,19_0014_0050,Quadr,
+1486,,19_0014,A2114,19_0014_0051,Quadr,
+1487,,19_0014,A3019,19_0014_0052,Quadr,
+1488,,19_0014,A3170,19_0014_0066,Quadr,
+1489,,19_0014,A3650,19_0014_0053,Quadr,
+1490,,19_0014,A4115,19_0014_0023,Quadr,
+1491,,19_0014,A4365,19_0014_0054,Quadr,
+1492,,19_0014,A5192,19_0014_0020,Quadr,
+1493,,19_0014,A5213,19_0014_0019,Quadr,
+1494,,19_0014,A5223,19_0014_0018,Quadr,
+1495,,19_0014,A5254,19_0014_0029,Quadr,
+1496,,19_0014,A5282,19_0014_0021,Quadr,
+1497,,19_0014,A5294,19_0014_0022,Quadr,
+1498,,19_0014,A5307,19_0014_0024,Quadr,
+1499,,19_0014,A5334,19_0014_0063,Quadr,
+1500,,19_0014,A6041,19_0014_0034,Quadr,
+1501,,19_0014,A6135,19_0014_0015,Quadr,
+1502,,19_0014,A6146,19_0014_0033,Quadr,
+1503,,19_0014,A6157,19_0014_0035,Quadr,
+1504,,19_0014,A6178,19_0014_0017,Quadr,
+1505,,19_0014,A6194,19_0014_0025,Quadr,
+1506,,19_0014,A7199,19_0014_0032,Quadr,
+1507,,19_0014,A7253,19_0014_0014,Quadr,
+1508,,19_0014,A7263,19_0014_0030,Quadr,
+1509,,19_0014,A7294,19_0014_0013,Quadr,
+1510,,19_0014,A7306,19_0014_0036,Quadr,
+1511,,19_0014,A785,19_0014_0043,Quadr,
+1512,,19_0014,A8079,19_0014_0007,Quadr,
+1513,,19_0014,A8103,19_0014_0009,Quadr,
+1514,,19_0014,A8114,19_0014_0011,Quadr,
+1515,,19_0014,A8142,19_0014_0026,Quadr,
+1516,,19_0014,A8178,19_0014_0031,Quadr,
+1517,,19_0014,A8189,19_0014_0012,Quadr,
+1518,,19_0014,A8234,19_0014_0010,Quadr,
+1519,,19_0014,A9000,19_0014_0027,Quadr,
+1520,,19_0014,A9052,19_0014_0028,Quadr,
+1521,,19_0014,A9075,19_0014_0003,Quadr,
+1522,,19_0014,A9111,19_0014_0001,Quadr,
+1523,,19_0014,A9126,19_0014_0004,Quadr,
+1524,,19_0014,A9199,19_0014_0006,Quadr,
+1525,,19_0014,A957,19_0014_0064,Quadr,
+1526,,19_0014,A973,19_0014_0065,Quadr,
+1527,,19_0014,A9847,19_0014_0002,Quadr,
+1528,,22_0005,11200,22_0005_0001,Quadr,
+1529,,22_0005,11201,22_0005_0002,Quadr,
+1530,,22_0005,11221,22_0005_0003,Quadr,
+1531,,22_0005,12026,22_0005_0004,Quadr,
+1532,,22_0005,200125,22_0005_0012,Quadr,
+1533,,22_0005,200149,22_0005_0013,Quadr,
+1534,,22_0005,200177,22_0005_0009,Quadr,
+1535,,22_0005,200473,22_0005_0005,Quadr,
+1536,,22_0005,200475,22_0005_0006,Quadr,
+1537,,22_0005,23362,22_0005_0010,Quadr,
+1538,,22_0005,23434,22_0005_0007,Quadr,
+1539,,22_0005,23491,22_0005_0008,Quadr,
+1540,,22_0005,23988,22_0005_0011,Quadr,
+1541,,22_0015,A2076,22_0015_0017,Quadr,
+1542,,22_0015,A2154,22_0015_0020,Quadr,
+1543,,22_0015,A2874 G2976,22_0015_0014,Quadr,
+1544,,22_0015,A4796,22_0015_0013,Quadr,
+1545,,22_0015,M153 St 1,22_0015_0006,Quadr,
+1546,,22_0015,M153 St 2,22_0015_0007,Quadr,
+1547,,22_0015,M160 St 1,22_0015_0001,Quadr,
+1548,,22_0015,M160 St 1,22_0015_0001,Quadr,
+1549,,22_0015,M160 St 1,22_0015_0001,Quadr,
+1550,,22_0015,M167 St 1,22_0015_0002,Quadr,
+1551,,22_0015,M167 St 2,22_0015_0003,Quadr,
+1552,,22_0015,M167 St 2,22_0015_0003,Quadr,
+1553,,22_0015,M167 St 3,22_0015_0004,Quadr,
+1554,,22_0015,M167 St 4,22_0015_0005,Quadr,
+1555,,22_0015,M32 Undre del,2022_0015_0009,Quadr,
+1556,,22_0015,M32 Övre del,2022_0015_0008,Quadr,
+1557,,22_0015,M99 A5085,2022_0015_0010,Quadr,
+1558,,22_0015,M99 A5085,2022_0015_0012,Quadr,
+1559,,DanaBunar2,31,17 depth 0.10-0.20,Quadr,
+1560,,DanaBunar2,31,17a depth 0.00-0.20,Quadr,
+1561,,DanaBunar2,32,51 depth 0.00-0.10,Quadr,
+1562,,DanaBunar2,32,52 depth 0.10-0.20,Quadr,
+1563,,DanaBunar2,32,53 depth 0.00-0.10,Quadr,
+1564,,DanaBunar2,33,18 depth 0.20-0.30,Quadr,
+1565,,DanaBunar2,33,19 depth 0.00-0.10,Quadr,
+1566,,DanaBunar2,33,20 depth 0.10-0.30,Quadr,
+1567,,DanaBunar2,33,21 depth 0.30-0.40,Quadr,
+1568,,DanaBunar2,33,22 depth 0.20-0.30,Quadr,
+1569,,DanaBunar2,37,39 depth 0.10-0.20,Quadr,
+1570,,DanaBunar2,37,40 depth 0.20-0.30,Quadr,
+1571,,DanaBunar2,37,41 depth 0.00-0.10,Quadr,
+1572,,DanaBunar2,37,42 depth 0.00-0.10,Quadr,
+1573,,DanaBunar2,38,1 depth 0.48-0.58,Quadr,
+1574,,DanaBunar2,38,2 depth 0.35-0.45,Quadr,
+1575,,DanaBunar2,38,3 depth 0.35-0.45,Quadr,
+1576,,DanaBunar2,38,4 depth 0.00-0.10,Quadr,
+1577,,DanaBunar2,38,5 depth 0.30-0.50,Quadr,
+1578,,DanaBunar2,39,47 depth 0.00-0.10,Quadr,
+1579,,DanaBunar2,39,48 depth 0.10-0.20,Quadr,
+1580,,DanaBunar2,41,44 depth 0.00-0.10,Quadr,
+1581,,DanaBunar2,41,46 depth 0.30-0.40,Quadr,
+1582,,DanaBunar2,42,10 depth 0.10-0.20,Quadr,
+1583,,DanaBunar2,42,6 depth 0.00-0.10,Quadr,
+1584,,DanaBunar2,42,7 depth 0.00-0.10,Quadr,
+1585,,DanaBunar2,42,8 depth 0.10-0.20,Quadr,
+1586,,DanaBunar2,42,9 depth 0.10-0.20,Quadr,
+1587,,DanaBunar2,44,87 depth 0.06-0.16,Quadr,
+1588,,DanaBunar2,44,88 depth 0.20-0.30,Quadr,
+1589,,DanaBunar2,44,89 depth 0.30-0.40,Quadr,
+1590,,DanaBunar2,44,90 depth 0.16-0.26,Quadr,
+1591,,DanaBunar2,44,91 depth 0.10-0.20,Quadr,
+1592,,DanaBunar2,44,92 depth 0.00-0.10,Quadr,
+1593,,DanaBunar2,44,93 depth 0.30-0.40,Quadr,
+1594,,DanaBunar2,46,30 depth 0.60-0.70,Quadr,
+1595,,DanaBunar2,46,31 depth 0.50-0.60,Quadr,
+1596,,DanaBunar2,46,32 depth 0.60-0.70,Quadr,
+1597,,DanaBunar2,46,33 depth 0.30-0.40,Quadr,
+1598,,DanaBunar2,46,34 depth 0.40-0.50,Quadr,
+1599,,DanaBunar2,46,35 depth 0.30-0.40,Quadr,
+1600,,DanaBunar2,47,49 depth 0.10-0.20,Quadr,
+1601,,DanaBunar2,47,50 depth 0.10-0.20,Quadr,
+1602,,DanaBunar2,55,54 depth 1.00-1.10,Quadr,
+1603,,DanaBunar2,55,55 depth 1.00-1.10,Quadr,
+1604,,DanaBunar2,58,23 depth 0.10-0.20,Quadr,
+1605,,DanaBunar2,58,24 depth 0.30-0.40,Quadr,
+1606,,DanaBunar2,58,25 depth 0.00-0.10,Quadr,
+1607,,DanaBunar2,58,26 depth 0.10-0.20,Quadr,
+1608,,DanaBunar2,58,27 depth 0.30-0.40,Quadr,
+1609,,DanaBunar2,58,28 depth 0.20-0.30,Quadr,
+1610,,DanaBunar2,64,11 depth 0.10-0.20,Quadr,
+1611,,DanaBunar2,64,12 depth 0.36-0.46,Quadr,
+1612,,DanaBunar2,64,13 depth 0.26-0.36,Quadr,
+1613,,DanaBunar2,64,16 depth 0.48-0.58,Quadr,
+1614,,Iswid,2709_fond,Isw 2013/32,Quadr,
+1615,,Iswid,2905 fond,Isw 2013/26,Quadr,
+1616,,Iswid,2913 fond,Isw 2013/33,Quadr,
+1617,,Iswid,foyer 2174,Isw 2013/15,Quadr,
+1618,,Iswid,foyer 2174,Isw 2013/15,Quadr,
+1619,,Iswid,US 10503,Isw 2013/8,Quadr,
+1620,,Iswid,US 10503,Isw 2013/8,Quadr,
+1621,,Iswid,US 10503,Isw 2013/8,Quadr,
+1622,,Iswid,US 10521,Isw 2013/20,Quadr,4/B2
+1623,,Iswid,US 10521,Isw 2013/20,Quadr,4/B2
+1624,,Iswid,US 10521,Isw 2013/20,Quadr,4/B2
+1625,,Iswid,US 10534,Isw 2013/21,Quadr,
+1626,,Iswid,US 10534,Isw 2013/21,Quadr,
+1627,,Iswid,US 10610,Isw 2013/25,Quadr,
+1628,,Iswid,US 10610,Isw 2013/25,Quadr,
+1629,,Iswid,US 11004,Isw 2013/22,Quadr,
+1630,,Iswid,US 11004,Isw 2013/22,Quadr,
+1631,,Iswid,US 11012,Isw 2013/27,Quadr,
+1632,,Iswid,US 11067,Isw 2013/28,Quadr,
+1633,,Iswid,US 12025,Isw 2013/25,Quadr,D2
+1634,,Iswid,US 12025,Isw 2013/25,Quadr,D2
+1635,,Iswid,US 12040,Isw 2013/29,Quadr,
+1636,,Iswid,US 12047,Isw 2013/30,Quadr,
+1637,,Iswid,US 12047,Isw 2013/30,Quadr,
+1638,,Iswid,US 12504,Isw 2013/31,Quadr,C2
+1639,,Iswid,US 13017,Isw 2015/18,Quadr,
+1640,,Iswid,US 13017,Isw 2016/41,Quadr,
+1641,,Iswid,US 13065,Isw 2015/25,Quadr,
+1642,,Iswid,US 13065,Isw 2015/25,Quadr,
+1643,,Iswid,US 13066,Isw 2015/4,Quadr,
+1644,,Iswid,US 13066,Isw 2015/4,Quadr,
+1645,,Iswid,US 13083,Isw 2015/22,Quadr,
+1646,,Iswid,US 13099,Isw 2015/9,Quadr,
+1647,,Iswid,US 13145,Isw 2015/21,Quadr,
+1648,,Iswid,US 13145,Isw 2015/21,Quadr,
+1649,,Iswid,US 13516,Isw 2015/8,Quadr,
+1650,,Iswid,US 13516,Isw 2015/8,Quadr,
+1651,,Iswid,US 13526,Isw 2015/2,Quadr,
+1652,,Iswid,US 13572,Isw 2015/12,Quadr,
+1653,,Iswid,US 13610,Isw 2015/11,Quadr,
+1654,,Iswid,US 13632,Isw 2016/15,Quadr,
+1655,,Iswid,US 13632,Isw 2016/15,Quadr,
+1656,,Iswid,US 13639,Isw2015/26,Quadr,
+1657,,Iswid,US 13657,Isw 2015/17,Quadr,
+1658,,Iswid,US 13705,Isw 2015/10,Quadr,
+1659,,Iswid,US 13791,Isw 2015/5,Quadr,
+1660,,Iswid,US 13791 (3),Isw 2015/7,Quadr,
+1661,,Iswid,US 13802,Isw 2015/20,Quadr,
+1662,,Iswid,US 13971,Isw 2015/7,Quadr,
+1663,,Iswid,US 14021,Isw 2015/1,Quadr,
+1664,,Iswid,US 14021,Isw 2015/1,Quadr,
+1665,,Iswid,US 14038,Isw 2015/3,Quadr,
+1666,,Iswid,US 14050,Isw 2015/24,Quadr,
+1667,,Iswid,US 14050,Isw 2015/24,Quadr,
+1668,,Iswid,US 14050,Isw 2015/24,Quadr,
+1669,,Iswid,US 14078,Isw 2916/23,Quadr,
+1670,,Iswid,US 14131,Isw 2015/13,Quadr,
+1671,,Iswid,US 14131,Isw 2016/12,Quadr,
+1672,,Iswid,US 14158,Isw 2015/14,Quadr,
+1673,,Iswid,US 14418,Isw 2016/34,Quadr,
+1674,,Iswid,US 14495,Isw 16/37,Quadr,
+1675,,Iswid,US 14509,16-Jan,Quadr,
+1676,,Iswid,US 14636,Isw 16/35,Quadr,
+1677,,Iswid,US 14636,Isw 16/35,Quadr,
+1678,,Iswid,US 15067,Isw 2017/7,Quadr,
+1679,,Iswid,US 15071,Isw 17/4,Quadr,
+1680,,Iswid,US 15108,Isw 17/1,Quadr,
+1681,,Iswid,US 15140,Isw17/26,Quadr,
+1682,,Iswid,US 16183,Isw 2017/8,Quadr,
+1683,,Iswid,US 16183,Isw 2017/8,Quadr,
+1684,,Iswid,US 16287_F4185 (TR.),Isw 17/23,Quadr,
+1685,,Iswid,US 16323_F4199(foye,Isw 17/29,Quadr,
+1686,,Iswid,US 16323_F4199(foye,Isw 17/29,Quadr,
+1687,,Iswid,US 6712,Isw 2013/13,Quadr,1
+1688,,Iswid,US 6712,Isw 2013/13,Quadr,1
+1689,,Iswid,US 6773,Isw 2013/7,Quadr,1
+1690,,Iswid,US 6773,Isw 2013/7,Quadr,1
+1691,,Iswid,US 6803,Isw 2013/10,Quadr,
+1692,,Iswid,US 6810,Isw 2013/5,Quadr,
+1693,,Iswid,US 6827,Isw 2013/2,Quadr,1
+1694,,Iswid,US 6854,Isw 2013/4,Quadr,1/B
+1695,,Iswid,US 6863,Isw 2013/12,Quadr,
+1696,,Iswid,US 6863,Isw 2013/12,Quadr,
+1697,,Iswid,US 6875,Isw 2013/14,Quadr,1
+1698,,Iswid,US 6875,Isw 2013/14,Quadr,1
+1699,,Iswid,US 6875,Isw 2013/14,Quadr,1
+1700,,Iswid,US 9036,Isw 2013/3,Quadr,4
+1701,,Iswid,US 9036,Isw 2013/3,Quadr,4
+1702,,Iswid,US 9200,Isw 2013/1,Quadr,4
+1703,,Iswid,US 9200,Isw 2013/1,Quadr,4
+1704,,Iswid,US 9200,Isw 2013/1,Quadr,4
+1705,,Iswid,US 9200,Isw 2013/1,Quadr,4
+1706,,Iswid,US 9321,Isw 2013/6,Quadr,
+1707,,Iswid,US 9321,Isw 2013/6,Quadr,
+1708,,Iswid,US 9404_foyer 2093,Isw 2013/17,Quadr,4
+1709,,Iswid,US 9519,Isw 2013/11,Quadr,4
+1710,,Iswid,US 9519,Isw 2013/11,Quadr,4
+1711,,Iswid,US 9859/9860,Isw 2013/16,Quadr,4/b2
+1712,,Iswid,US 9859/9860,Isw 2013/16,Quadr,4/b2
+1713,,Iswid,US 9859/9860,Isw 2013/16,Quadr,4/b2
+1714,,Iswid,US 9870_foyer2163,1,Quadr,4
+1715,,Iswid,US 9870_foyer2163,1,Quadr,4
+1716,,Iswid,US 9880_foyer 2166,Isw 2013/19,Quadr,4
+1717,,18_0025,P16,18_0025_0003,Plan,
+1718,,18_0025,P18,18_0025_0004,Plan,
+1719,,18_0025,P20,18_0025_0005,Plan,
+1720,,18_0025,P5,18_0025_0001,Plan,
+1721,,18_0025,P5,18_0025_0001,Plan,
+1722,,18_0025,P6,18_0025_0002,Plan,
+1723,,19_0013,A11148,19_0013_0013,Plan,
+1724,,19_0013,A11148,19_0013_0014,Plan,
+1725,,19_0013,A11148,19_0013_0015,Plan,
+1726,,19_0013,A11148,19_0013_0020,Plan,
+1727,,19_0013,A479,19_0013_0010,Plan,
+1728,,19_0013,A479,19_0013_0011,Plan,
+1729,,19_0013,A479,19_0013_0012,Plan,
+1730,,19_0013,A479,19_0013_0019,Plan,
+1731,,19_0013,A6214,19_0013_0007,Plan,
+1732,,19_0013,A6214,19_0013_0008,Plan,
+1733,,19_0013,A6214,19_0013_0009,Plan,
+1734,,19_0013,A6214,19_0013_0018,Plan,
+1735,,19_0013,A8090,19_0013_0004,Plan,
+1736,,19_0013,A8090,19_0013_0005,Plan,
+1737,,19_0013,A8090,19_0013_0006,Plan,
+1738,,19_0013,A8090,19_0013_0017,Plan,
+1739,,19_0013,A9063,19_0013_0001,Plan,
+1740,,19_0013,A9063,19_0013_0002,Plan,
+1741,,19_0013,A9063,19_0013_0003,Plan,
+1742,,19_0013,A9063,19_0013_0016,Plan,
+1743,,19_0013,A9063,19_0013_0016,Plan,
+1744,,19_0014,A10143,19_0014_0040,Plan,
+1745,,19_0014,A10153,19_0014_0037,Plan,
+1746,,19_0014,A10189,19_0014_0042,Plan,
+1747,,19_0014,A10229,19_0014_0039,Plan,
+1748,,19_0014,A10697,19_0014_0067,Plan,
+1749,,19_0014,A10990,19_0014_0055,Plan,
+1750,,19_0014,A11339,19_0014_0068,Plan,
+1751,,19_0014,A1196,19_0014_0044,Plan,
+1752,,19_0014,A12024,19_0014_0056,Plan,
+1753,,19_0014,A12024,19_0014_0057,Plan,
+1754,,19_0014,A12034,19_0014_0058,Plan,
+1755,,19_0014,A12435,19_0014_0069,Plan,
+1756,,19_0014,A13064,19_0014_0071,Plan,
+1757,,19_0014,A13200,19_0014_0041,Plan,
+1758,,19_0014,A13299,19_0014_0072,Plan,
+1759,,19_0014,A13837,19_0014_0060,Plan,
+1760,,19_0014,A15333,19_0014_0061,Plan,
+1761,,19_0014,A15344,19_0014_0074,Plan,
+1762,,19_0014,A15554,19_0014_0075,Plan,
+1763,,19_0014,A15736,19_0014_0059,Plan,
+1764,,19_0014,A16771,19_0014_0008,Plan,
+1765,,19_0014,A16783,19_0014_0005,Plan,
+1766,,19_0014,A17294,19_0014_0016,Plan,
+1767,,19_0014,A1875,19_0014_0046,Plan,
+1768,,19_0014,A1931,19_0014_0047,Plan,
+1769,,19_0014,A1998,19_0014_0048,Plan,
+1770,,19_0014,A2019,19_0014_0049,Plan,
+1771,,19_0014,A2029,19_0014_0050,Plan,
+1772,,19_0014,A2114,19_0014_0051,Plan,
+1773,,19_0014,A3019,19_0014_0052,Plan,
+1774,,19_0014,A3170,19_0014_0066,Plan,
+1775,,19_0014,A3650,19_0014_0053,Plan,
+1776,,19_0014,A4115,19_0014_0023,Plan,
+1777,,19_0014,A4365,19_0014_0054,Plan,
+1778,,19_0014,A5192,19_0014_0020,Plan,
+1779,,19_0014,A5213,19_0014_0019,Plan,
+1780,,19_0014,A5223,19_0014_0018,Plan,
+1781,,19_0014,A5254,19_0014_0029,Plan,
+1782,,19_0014,A5282,19_0014_0021,Plan,
+1783,,19_0014,A5294,19_0014_0022,Plan,
+1784,,19_0014,A5307,19_0014_0024,Plan,
+1785,,19_0014,A5334,19_0014_0063,Plan,
+1786,,19_0014,A6041,19_0014_0034,Plan,
+1787,,19_0014,A6135,19_0014_0015,Plan,
+1788,,19_0014,A6146,19_0014_0033,Plan,
+1789,,19_0014,A6157,19_0014_0035,Plan,
+1790,,19_0014,A6178,19_0014_0017,Plan,
+1791,,19_0014,A6194,19_0014_0025,Plan,
+1792,,19_0014,A7199,19_0014_0032,Plan,
+1793,,19_0014,A7253,19_0014_0014,Plan,
+1794,,19_0014,A7263,19_0014_0030,Plan,
+1795,,19_0014,A7294,19_0014_0013,Plan,
+1796,,19_0014,A7306,19_0014_0036,Plan,
+1797,,19_0014,A785,19_0014_0043,Plan,
+1798,,19_0014,A8079,19_0014_0007,Plan,
+1799,,19_0014,A8103,19_0014_0009,Plan,
+1800,,19_0014,A8114,19_0014_0011,Plan,
+1801,,19_0014,A8142,19_0014_0026,Plan,
+1802,,19_0014,A8178,19_0014_0031,Plan,
+1803,,19_0014,A8189,19_0014_0012,Plan,
+1804,,19_0014,A8234,19_0014_0010,Plan,
+1805,,19_0014,A9000,19_0014_0027,Plan,
+1806,,19_0014,A9052,19_0014_0028,Plan,
+1807,,19_0014,A9075,19_0014_0003,Plan,
+1808,,19_0014,A9111,19_0014_0001,Plan,
+1809,,19_0014,A9126,19_0014_0004,Plan,
+1810,,19_0014,A9199,19_0014_0006,Plan,
+1811,,19_0014,A957,19_0014_0064,Plan,
+1812,,19_0014,A973,19_0014_0065,Plan,
+1813,,19_0014,A9847,19_0014_0002,Plan,
+1814,,22_0005,11200,22_0005_0001,Plan,
+1815,,22_0005,11201,22_0005_0002,Plan,
+1816,,22_0005,11221,22_0005_0003,Plan,
+1817,,22_0005,12026,22_0005_0004,Plan,
+1818,,22_0005,200125,22_0005_0012,Plan,
+1819,,22_0005,200149,22_0005_0013,Plan,
+1820,,22_0005,200177,22_0005_0009,Plan,
+1821,,22_0005,200473,22_0005_0005,Plan,
+1822,,22_0005,200475,22_0005_0006,Plan,
+1823,,22_0005,23362,22_0005_0010,Plan,
+1824,,22_0005,23434,22_0005_0007,Plan,
+1825,,22_0005,23491,22_0005_0008,Plan,
+1826,,22_0005,23988,22_0005_0011,Plan,
+1827,,22_0015,A2076,22_0015_0017,Plan,
+1828,,22_0015,A2154,22_0015_0020,Plan,
+1829,,22_0015,A2874 G2976,22_0015_0014,Plan,
+1830,,22_0015,A4796,22_0015_0013,Plan,
+1831,,22_0015,M153 St 1,22_0015_0006,Plan,
+1832,,22_0015,M153 St 2,22_0015_0007,Plan,
+1833,,22_0015,M160 St 1,22_0015_0001,Plan,
+1834,,22_0015,M160 St 1,22_0015_0001,Plan,
+1835,,22_0015,M160 St 1,22_0015_0001,Plan,
+1836,,22_0015,M167 St 1,22_0015_0002,Plan,
+1837,,22_0015,M167 St 2,22_0015_0003,Plan,
+1838,,22_0015,M167 St 2,22_0015_0003,Plan,
+1839,,22_0015,M167 St 3,22_0015_0004,Plan,
+1840,,22_0015,M167 St 4,22_0015_0005,Plan,
+1841,,22_0015,M32 Undre del,2022_0015_0009,Plan,
+1842,,22_0015,M32 Övre del,2022_0015_0008,Plan,
+1843,,22_0015,M99 A5085,2022_0015_0010,Plan,
+1844,,22_0015,M99 A5085,2022_0015_0012,Plan,
+1845,,DanaBunar2,31,17 depth 0.10-0.20,Plan,
+1846,,DanaBunar2,31,17a depth 0.00-0.20,Plan,
+1847,,DanaBunar2,32,51 depth 0.00-0.10,Plan,
+1848,,DanaBunar2,32,52 depth 0.10-0.20,Plan,
+1849,,DanaBunar2,32,53 depth 0.00-0.10,Plan,
+1850,,DanaBunar2,33,18 depth 0.20-0.30,Plan,
+1851,,DanaBunar2,33,19 depth 0.00-0.10,Plan,
+1852,,DanaBunar2,33,20 depth 0.10-0.30,Plan,
+1853,,DanaBunar2,33,21 depth 0.30-0.40,Plan,
+1854,,DanaBunar2,33,22 depth 0.20-0.30,Plan,
+1855,,DanaBunar2,37,39 depth 0.10-0.20,Plan,
+1856,,DanaBunar2,37,40 depth 0.20-0.30,Plan,
+1857,,DanaBunar2,37,41 depth 0.00-0.10,Plan,
+1858,,DanaBunar2,37,42 depth 0.00-0.10,Plan,
+1859,,DanaBunar2,38,1 depth 0.48-0.58,Plan,
+1860,,DanaBunar2,38,2 depth 0.35-0.45,Plan,
+1861,,DanaBunar2,38,3 depth 0.35-0.45,Plan,
+1862,,DanaBunar2,38,4 depth 0.00-0.10,Plan,
+1863,,DanaBunar2,38,5 depth 0.30-0.50,Plan,
+1864,,DanaBunar2,39,47 depth 0.00-0.10,Plan,
+1865,,DanaBunar2,39,48 depth 0.10-0.20,Plan,
+1866,,DanaBunar2,41,44 depth 0.00-0.10,Plan,
+1867,,DanaBunar2,41,46 depth 0.30-0.40,Plan,
+1868,,DanaBunar2,42,10 depth 0.10-0.20,Plan,
+1869,,DanaBunar2,42,6 depth 0.00-0.10,Plan,
+1870,,DanaBunar2,42,7 depth 0.00-0.10,Plan,
+1871,,DanaBunar2,42,8 depth 0.10-0.20,Plan,
+1872,,DanaBunar2,42,9 depth 0.10-0.20,Plan,
+1873,,DanaBunar2,44,87 depth 0.06-0.16,Plan,
+1874,,DanaBunar2,44,88 depth 0.20-0.30,Plan,
+1875,,DanaBunar2,44,89 depth 0.30-0.40,Plan,
+1876,,DanaBunar2,44,90 depth 0.16-0.26,Plan,
+1877,,DanaBunar2,44,91 depth 0.10-0.20,Plan,
+1878,,DanaBunar2,44,92 depth 0.00-0.10,Plan,
+1879,,DanaBunar2,44,93 depth 0.30-0.40,Plan,
+1880,,DanaBunar2,46,30 depth 0.60-0.70,Plan,
+1881,,DanaBunar2,46,31 depth 0.50-0.60,Plan,
+1882,,DanaBunar2,46,32 depth 0.60-0.70,Plan,
+1883,,DanaBunar2,46,33 depth 0.30-0.40,Plan,
+1884,,DanaBunar2,46,34 depth 0.40-0.50,Plan,
+1885,,DanaBunar2,46,35 depth 0.30-0.40,Plan,
+1886,,DanaBunar2,47,49 depth 0.10-0.20,Plan,
+1887,,DanaBunar2,47,50 depth 0.10-0.20,Plan,
+1888,,DanaBunar2,55,54 depth 1.00-1.10,Plan,
+1889,,DanaBunar2,55,55 depth 1.00-1.10,Plan,
+1890,,DanaBunar2,58,23 depth 0.10-0.20,Plan,
+1891,,DanaBunar2,58,24 depth 0.30-0.40,Plan,
+1892,,DanaBunar2,58,25 depth 0.00-0.10,Plan,
+1893,,DanaBunar2,58,26 depth 0.10-0.20,Plan,
+1894,,DanaBunar2,58,27 depth 0.30-0.40,Plan,
+1895,,DanaBunar2,58,28 depth 0.20-0.30,Plan,
+1896,,DanaBunar2,64,11 depth 0.10-0.20,Plan,
+1897,,DanaBunar2,64,12 depth 0.36-0.46,Plan,
+1898,,DanaBunar2,64,13 depth 0.26-0.36,Plan,
+1899,,DanaBunar2,64,16 depth 0.48-0.58,Plan,
+1900,,Iswid,2709_fond,Isw 2013/32,Plan,
+1901,,Iswid,2905 fond,Isw 2013/26,Plan,
+1902,,Iswid,2913 fond,Isw 2013/33,Plan,
+1903,,Iswid,foyer 2174,Isw 2013/15,Plan,
+1904,,Iswid,foyer 2174,Isw 2013/15,Plan,
+1905,,Iswid,US 10503,Isw 2013/8,Plan,
+1906,,Iswid,US 10503,Isw 2013/8,Plan,
+1907,,Iswid,US 10503,Isw 2013/8,Plan,
+1908,,Iswid,US 10521,Isw 2013/20,Plan,
+1909,,Iswid,US 10521,Isw 2013/20,Plan,
+1910,,Iswid,US 10521,Isw 2013/20,Plan,
+1911,,Iswid,US 10534,Isw 2013/21,Plan,
+1912,,Iswid,US 10534,Isw 2013/21,Plan,
+1913,,Iswid,US 10610,Isw 2013/25,Plan,
+1914,,Iswid,US 10610,Isw 2013/25,Plan,
+1915,,Iswid,US 11004,Isw 2013/22,Plan,
+1916,,Iswid,US 11004,Isw 2013/22,Plan,
+1917,,Iswid,US 11012,Isw 2013/27,Plan,
+1918,,Iswid,US 11067,Isw 2013/28,Plan,
+1919,,Iswid,US 12025,Isw 2013/25,Plan,
+1920,,Iswid,US 12025,Isw 2013/25,Plan,
+1921,,Iswid,US 12040,Isw 2013/29,Plan,
+1922,,Iswid,US 12047,Isw 2013/30,Plan,
+1923,,Iswid,US 12047,Isw 2013/30,Plan,
+1924,,Iswid,US 12504,Isw 2013/31,Plan,
+1925,,Iswid,US 13017,Isw 2015/18,Plan,
+1926,,Iswid,US 13017,Isw 2016/41,Plan,
+1927,,Iswid,US 13065,Isw 2015/25,Plan,
+1928,,Iswid,US 13065,Isw 2015/25,Plan,
+1929,,Iswid,US 13066,Isw 2015/4,Plan,
+1930,,Iswid,US 13066,Isw 2015/4,Plan,
+1931,,Iswid,US 13083,Isw 2015/22,Plan,
+1932,,Iswid,US 13099,Isw 2015/9,Plan,
+1933,,Iswid,US 13145,Isw 2015/21,Plan,
+1934,,Iswid,US 13145,Isw 2015/21,Plan,
+1935,,Iswid,US 13516,Isw 2015/8,Plan,
+1936,,Iswid,US 13516,Isw 2015/8,Plan,
+1937,,Iswid,US 13526,Isw 2015/2,Plan,
+1938,,Iswid,US 13572,Isw 2015/12,Plan,
+1939,,Iswid,US 13610,Isw 2015/11,Plan,
+1940,,Iswid,US 13632,Isw 2016/15,Plan,
+1941,,Iswid,US 13632,Isw 2016/15,Plan,
+1942,,Iswid,US 13639,Isw2015/26,Plan,
+1943,,Iswid,US 13657,Isw 2015/17,Plan,
+1944,,Iswid,US 13705,Isw 2015/10,Plan,
+1945,,Iswid,US 13791,Isw 2015/5,Plan,
+1946,,Iswid,US 13791 (3),Isw 2015/7,Plan,
+1947,,Iswid,US 13802,Isw 2015/20,Plan,
+1948,,Iswid,US 13971,Isw 2015/7,Plan,
+1949,,Iswid,US 14021,Isw 2015/1,Plan,
+1950,,Iswid,US 14021,Isw 2015/1,Plan,
+1951,,Iswid,US 14038,Isw 2015/3,Plan,
+1952,,Iswid,US 14050,Isw 2015/24,Plan,
+1953,,Iswid,US 14050,Isw 2015/24,Plan,
+1954,,Iswid,US 14050,Isw 2015/24,Plan,
+1955,,Iswid,US 14078,Isw 2916/23,Plan,
+1956,,Iswid,US 14131,Isw 2015/13,Plan,
+1957,,Iswid,US 14131,Isw 2016/12,Plan,
+1958,,Iswid,US 14158,Isw 2015/14,Plan,
+1959,,Iswid,US 14418,Isw 2016/34,Plan,
+1960,,Iswid,US 14495,Isw 16/37,Plan,
+1961,,Iswid,US 14509,16-Jan,Plan,
+1962,,Iswid,US 14636,Isw 16/35,Plan,
+1963,,Iswid,US 14636,Isw 16/35,Plan,
+1964,,Iswid,US 15067,Isw 2017/7,Plan,
+1965,,Iswid,US 15071,Isw 17/4,Plan,
+1966,,Iswid,US 15108,Isw 17/1,Plan,
+1967,,Iswid,US 15140,Isw17/26,Plan,
+1968,,Iswid,US 16183,Isw 2017/8,Plan,
+1969,,Iswid,US 16183,Isw 2017/8,Plan,
+1970,,Iswid,US 16287_F4185 (TR.),Isw 17/23,Plan,
+1971,,Iswid,US 16323_F4199(foye,Isw 17/29,Plan,
+1972,,Iswid,US 16323_F4199(foye,Isw 17/29,Plan,
+1973,,Iswid,US 6712,Isw 2013/13,Plan,
+1974,,Iswid,US 6712,Isw 2013/13,Plan,
+1975,,Iswid,US 6773,Isw 2013/7,Plan,
+1976,,Iswid,US 6773,Isw 2013/7,Plan,
+1977,,Iswid,US 6803,Isw 2013/10,Plan,
+1978,,Iswid,US 6810,Isw 2013/5,Plan,
+1979,,Iswid,US 6827,Isw 2013/2,Plan,
+1980,,Iswid,US 6854,Isw 2013/4,Plan,
+1981,,Iswid,US 6863,Isw 2013/12,Plan,
+1982,,Iswid,US 6863,Isw 2013/12,Plan,
+1983,,Iswid,US 6875,Isw 2013/14,Plan,
+1984,,Iswid,US 6875,Isw 2013/14,Plan,
+1985,,Iswid,US 6875,Isw 2013/14,Plan,
+1986,,Iswid,US 9036,Isw 2013/3,Plan,
+1987,,Iswid,US 9036,Isw 2013/3,Plan,
+1988,,Iswid,US 9200,Isw 2013/1,Plan,
+1989,,Iswid,US 9200,Isw 2013/1,Plan,
+1990,,Iswid,US 9200,Isw 2013/1,Plan,
+1991,,Iswid,US 9200,Isw 2013/1,Plan,
+1992,,Iswid,US 9321,Isw 2013/6,Plan,
+1993,,Iswid,US 9321,Isw 2013/6,Plan,
+1994,,Iswid,US 9404_foyer 2093,Isw 2013/17,Plan,
+1995,,Iswid,US 9519,Isw 2013/11,Plan,
+1996,,Iswid,US 9519,Isw 2013/11,Plan,
+1997,,Iswid,US 9859/9860,Isw 2013/16,Plan,
+1998,,Iswid,US 9859/9860,Isw 2013/16,Plan,
+1999,,Iswid,US 9859/9860,Isw 2013/16,Plan,
+2000,,Iswid,US 9870_foyer2163,1,Plan,
+2001,,Iswid,US 9870_foyer2163,1,Plan,
+2002,,Iswid,US 9880_foyer 2166,Isw 2013/19,Plan,
+2003,,18_0025,P16,18_0025_0003,Prob_üNN,0.0
+2004,,18_0025,P18,18_0025_0004,Prob_üNN,0.0
+2005,,18_0025,P20,18_0025_0005,Prob_üNN,0.0
+2006,,18_0025,P5,18_0025_0001,Prob_üNN,0.0
+2007,,18_0025,P5,18_0025_0001,Prob_üNN,0.0
+2008,,18_0025,P6,18_0025_0002,Prob_üNN,0.0
+2009,,19_0013,A11148,19_0013_0013,Prob_üNN,0.0
+2010,,19_0013,A11148,19_0013_0014,Prob_üNN,0.0
+2011,,19_0013,A11148,19_0013_0015,Prob_üNN,0.0
+2012,,19_0013,A11148,19_0013_0020,Prob_üNN,0.0
+2013,,19_0013,A479,19_0013_0010,Prob_üNN,0.0
+2014,,19_0013,A479,19_0013_0011,Prob_üNN,0.0
+2015,,19_0013,A479,19_0013_0012,Prob_üNN,0.0
+2016,,19_0013,A479,19_0013_0019,Prob_üNN,0.0
+2017,,19_0013,A6214,19_0013_0007,Prob_üNN,0.0
+2018,,19_0013,A6214,19_0013_0008,Prob_üNN,0.0
+2019,,19_0013,A6214,19_0013_0009,Prob_üNN,0.0
+2020,,19_0013,A6214,19_0013_0018,Prob_üNN,0.0
+2021,,19_0013,A8090,19_0013_0004,Prob_üNN,0.0
+2022,,19_0013,A8090,19_0013_0005,Prob_üNN,0.0
+2023,,19_0013,A8090,19_0013_0006,Prob_üNN,0.0
+2024,,19_0013,A8090,19_0013_0017,Prob_üNN,0.0
+2025,,19_0013,A9063,19_0013_0001,Prob_üNN,0.0
+2026,,19_0013,A9063,19_0013_0002,Prob_üNN,0.0
+2027,,19_0013,A9063,19_0013_0003,Prob_üNN,0.0
+2028,,19_0013,A9063,19_0013_0016,Prob_üNN,0.0
+2029,,19_0013,A9063,19_0013_0016,Prob_üNN,0.0
+2030,,19_0014,A10143,19_0014_0040,Prob_üNN,0.0
+2031,,19_0014,A10153,19_0014_0037,Prob_üNN,0.0
+2032,,19_0014,A10189,19_0014_0042,Prob_üNN,0.0
+2033,,19_0014,A10229,19_0014_0039,Prob_üNN,0.0
+2034,,19_0014,A10697,19_0014_0067,Prob_üNN,0.0
+2035,,19_0014,A10990,19_0014_0055,Prob_üNN,0.0
+2036,,19_0014,A11339,19_0014_0068,Prob_üNN,0.0
+2037,,19_0014,A1196,19_0014_0044,Prob_üNN,0.0
+2038,,19_0014,A12024,19_0014_0056,Prob_üNN,0.0
+2039,,19_0014,A12024,19_0014_0057,Prob_üNN,0.0
+2040,,19_0014,A12034,19_0014_0058,Prob_üNN,0.0
+2041,,19_0014,A12435,19_0014_0069,Prob_üNN,0.0
+2042,,19_0014,A13064,19_0014_0071,Prob_üNN,0.0
+2043,,19_0014,A13200,19_0014_0041,Prob_üNN,0.0
+2044,,19_0014,A13299,19_0014_0072,Prob_üNN,0.0
+2045,,19_0014,A13837,19_0014_0060,Prob_üNN,0.0
+2046,,19_0014,A15333,19_0014_0061,Prob_üNN,0.0
+2047,,19_0014,A15344,19_0014_0074,Prob_üNN,0.0
+2048,,19_0014,A15554,19_0014_0075,Prob_üNN,0.0
+2049,,19_0014,A15736,19_0014_0059,Prob_üNN,0.0
+2050,,19_0014,A16771,19_0014_0008,Prob_üNN,0.0
+2051,,19_0014,A16783,19_0014_0005,Prob_üNN,0.0
+2052,,19_0014,A17294,19_0014_0016,Prob_üNN,0.0
+2053,,19_0014,A1875,19_0014_0046,Prob_üNN,0.0
+2054,,19_0014,A1931,19_0014_0047,Prob_üNN,0.0
+2055,,19_0014,A1998,19_0014_0048,Prob_üNN,0.0
+2056,,19_0014,A2019,19_0014_0049,Prob_üNN,0.0
+2057,,19_0014,A2029,19_0014_0050,Prob_üNN,0.0
+2058,,19_0014,A2114,19_0014_0051,Prob_üNN,0.0
+2059,,19_0014,A3019,19_0014_0052,Prob_üNN,0.0
+2060,,19_0014,A3170,19_0014_0066,Prob_üNN,0.0
+2061,,19_0014,A3650,19_0014_0053,Prob_üNN,0.0
+2062,,19_0014,A4115,19_0014_0023,Prob_üNN,0.0
+2063,,19_0014,A4365,19_0014_0054,Prob_üNN,0.0
+2064,,19_0014,A5192,19_0014_0020,Prob_üNN,0.0
+2065,,19_0014,A5213,19_0014_0019,Prob_üNN,0.0
+2066,,19_0014,A5223,19_0014_0018,Prob_üNN,0.0
+2067,,19_0014,A5254,19_0014_0029,Prob_üNN,0.0
+2068,,19_0014,A5282,19_0014_0021,Prob_üNN,0.0
+2069,,19_0014,A5294,19_0014_0022,Prob_üNN,0.0
+2070,,19_0014,A5307,19_0014_0024,Prob_üNN,0.0
+2071,,19_0014,A5334,19_0014_0063,Prob_üNN,0.0
+2072,,19_0014,A6041,19_0014_0034,Prob_üNN,0.0
+2073,,19_0014,A6135,19_0014_0015,Prob_üNN,0.0
+2074,,19_0014,A6146,19_0014_0033,Prob_üNN,0.0
+2075,,19_0014,A6157,19_0014_0035,Prob_üNN,0.0
+2076,,19_0014,A6178,19_0014_0017,Prob_üNN,0.0
+2077,,19_0014,A6194,19_0014_0025,Prob_üNN,0.0
+2078,,19_0014,A7199,19_0014_0032,Prob_üNN,0.0
+2079,,19_0014,A7253,19_0014_0014,Prob_üNN,0.0
+2080,,19_0014,A7263,19_0014_0030,Prob_üNN,0.0
+2081,,19_0014,A7294,19_0014_0013,Prob_üNN,0.0
+2082,,19_0014,A7306,19_0014_0036,Prob_üNN,0.0
+2083,,19_0014,A785,19_0014_0043,Prob_üNN,0.0
+2084,,19_0014,A8079,19_0014_0007,Prob_üNN,0.0
+2085,,19_0014,A8103,19_0014_0009,Prob_üNN,0.0
+2086,,19_0014,A8114,19_0014_0011,Prob_üNN,0.0
+2087,,19_0014,A8142,19_0014_0026,Prob_üNN,0.0
+2088,,19_0014,A8178,19_0014_0031,Prob_üNN,0.0
+2089,,19_0014,A8189,19_0014_0012,Prob_üNN,0.0
+2090,,19_0014,A8234,19_0014_0010,Prob_üNN,0.0
+2091,,19_0014,A9000,19_0014_0027,Prob_üNN,0.0
+2092,,19_0014,A9052,19_0014_0028,Prob_üNN,0.0
+2093,,19_0014,A9075,19_0014_0003,Prob_üNN,0.0
+2094,,19_0014,A9111,19_0014_0001,Prob_üNN,0.0
+2095,,19_0014,A9126,19_0014_0004,Prob_üNN,0.0
+2096,,19_0014,A9199,19_0014_0006,Prob_üNN,0.0
+2097,,19_0014,A957,19_0014_0064,Prob_üNN,0.0
+2098,,19_0014,A973,19_0014_0065,Prob_üNN,0.0
+2099,,19_0014,A9847,19_0014_0002,Prob_üNN,0.0
+2100,,22_0005,11200,22_0005_0001,Prob_üNN,0.0
+2101,,22_0005,11201,22_0005_0002,Prob_üNN,0.0
+2102,,22_0005,11221,22_0005_0003,Prob_üNN,0.0
+2103,,22_0005,12026,22_0005_0004,Prob_üNN,0.0
+2104,,22_0005,200125,22_0005_0012,Prob_üNN,0.0
+2105,,22_0005,200149,22_0005_0013,Prob_üNN,0.0
+2106,,22_0005,200177,22_0005_0009,Prob_üNN,0.0
+2107,,22_0005,200473,22_0005_0005,Prob_üNN,0.0
+2108,,22_0005,200475,22_0005_0006,Prob_üNN,0.0
+2109,,22_0005,23362,22_0005_0010,Prob_üNN,0.0
+2110,,22_0005,23434,22_0005_0007,Prob_üNN,0.0
+2111,,22_0005,23491,22_0005_0008,Prob_üNN,0.0
+2112,,22_0005,23988,22_0005_0011,Prob_üNN,0.0
+2113,,22_0015,A2076,22_0015_0017,Prob_üNN,
+2114,,22_0015,A2154,22_0015_0020,Prob_üNN,
+2115,,22_0015,A2874 G2976,22_0015_0014,Prob_üNN,
+2116,,22_0015,A4796,22_0015_0013,Prob_üNN,
+2117,,22_0015,M153 St 1,22_0015_0006,Prob_üNN,
+2118,,22_0015,M153 St 2,22_0015_0007,Prob_üNN,
+2119,,22_0015,M160 St 1,22_0015_0001,Prob_üNN,
+2120,,22_0015,M160 St 1,22_0015_0001,Prob_üNN,
+2121,,22_0015,M160 St 1,22_0015_0001,Prob_üNN,
+2122,,22_0015,M167 St 1,22_0015_0002,Prob_üNN,
+2123,,22_0015,M167 St 2,22_0015_0003,Prob_üNN,
+2124,,22_0015,M167 St 2,22_0015_0003,Prob_üNN,
+2125,,22_0015,M167 St 3,22_0015_0004,Prob_üNN,
+2126,,22_0015,M167 St 4,22_0015_0005,Prob_üNN,
+2127,,22_0015,M32 Undre del,2022_0015_0009,Prob_üNN,
+2128,,22_0015,M32 Övre del,2022_0015_0008,Prob_üNN,
+2129,,22_0015,M99 A5085,2022_0015_0010,Prob_üNN,
+2130,,22_0015,M99 A5085,2022_0015_0012,Prob_üNN,
+2131,,DanaBunar2,31,17 depth 0.10-0.20,Prob_üNN,0.0
+2132,,DanaBunar2,31,17a depth 0.00-0.20,Prob_üNN,0.0
+2133,,DanaBunar2,32,51 depth 0.00-0.10,Prob_üNN,0.0
+2134,,DanaBunar2,32,52 depth 0.10-0.20,Prob_üNN,0.0
+2135,,DanaBunar2,32,53 depth 0.00-0.10,Prob_üNN,0.0
+2136,,DanaBunar2,33,18 depth 0.20-0.30,Prob_üNN,0.0
+2137,,DanaBunar2,33,19 depth 0.00-0.10,Prob_üNN,0.0
+2138,,DanaBunar2,33,20 depth 0.10-0.30,Prob_üNN,0.0
+2139,,DanaBunar2,33,21 depth 0.30-0.40,Prob_üNN,0.0
+2140,,DanaBunar2,33,22 depth 0.20-0.30,Prob_üNN,0.0
+2141,,DanaBunar2,37,39 depth 0.10-0.20,Prob_üNN,0.0
+2142,,DanaBunar2,37,40 depth 0.20-0.30,Prob_üNN,0.0
+2143,,DanaBunar2,37,41 depth 0.00-0.10,Prob_üNN,0.0
+2144,,DanaBunar2,37,42 depth 0.00-0.10,Prob_üNN,0.0
+2145,,DanaBunar2,38,1 depth 0.48-0.58,Prob_üNN,0.0
+2146,,DanaBunar2,38,2 depth 0.35-0.45,Prob_üNN,0.0
+2147,,DanaBunar2,38,3 depth 0.35-0.45,Prob_üNN,0.0
+2148,,DanaBunar2,38,4 depth 0.00-0.10,Prob_üNN,0.0
+2149,,DanaBunar2,38,5 depth 0.30-0.50,Prob_üNN,0.0
+2150,,DanaBunar2,39,47 depth 0.00-0.10,Prob_üNN,0.0
+2151,,DanaBunar2,39,48 depth 0.10-0.20,Prob_üNN,0.0
+2152,,DanaBunar2,41,44 depth 0.00-0.10,Prob_üNN,0.0
+2153,,DanaBunar2,41,46 depth 0.30-0.40,Prob_üNN,0.0
+2154,,DanaBunar2,42,10 depth 0.10-0.20,Prob_üNN,0.0
+2155,,DanaBunar2,42,6 depth 0.00-0.10,Prob_üNN,0.0
+2156,,DanaBunar2,42,7 depth 0.00-0.10,Prob_üNN,0.0
+2157,,DanaBunar2,42,8 depth 0.10-0.20,Prob_üNN,0.0
+2158,,DanaBunar2,42,9 depth 0.10-0.20,Prob_üNN,0.0
+2159,,DanaBunar2,44,87 depth 0.06-0.16,Prob_üNN,0.0
+2160,,DanaBunar2,44,88 depth 0.20-0.30,Prob_üNN,0.0
+2161,,DanaBunar2,44,89 depth 0.30-0.40,Prob_üNN,0.0
+2162,,DanaBunar2,44,90 depth 0.16-0.26,Prob_üNN,0.0
+2163,,DanaBunar2,44,91 depth 0.10-0.20,Prob_üNN,0.0
+2164,,DanaBunar2,44,92 depth 0.00-0.10,Prob_üNN,0.0
+2165,,DanaBunar2,44,93 depth 0.30-0.40,Prob_üNN,0.0
+2166,,DanaBunar2,46,30 depth 0.60-0.70,Prob_üNN,0.0
+2167,,DanaBunar2,46,31 depth 0.50-0.60,Prob_üNN,0.0
+2168,,DanaBunar2,46,32 depth 0.60-0.70,Prob_üNN,0.0
+2169,,DanaBunar2,46,33 depth 0.30-0.40,Prob_üNN,0.0
+2170,,DanaBunar2,46,34 depth 0.40-0.50,Prob_üNN,0.0
+2171,,DanaBunar2,46,35 depth 0.30-0.40,Prob_üNN,0.0
+2172,,DanaBunar2,47,49 depth 0.10-0.20,Prob_üNN,0.0
+2173,,DanaBunar2,47,50 depth 0.10-0.20,Prob_üNN,0.0
+2174,,DanaBunar2,55,54 depth 1.00-1.10,Prob_üNN,0.0
+2175,,DanaBunar2,55,55 depth 1.00-1.10,Prob_üNN,0.0
+2176,,DanaBunar2,58,23 depth 0.10-0.20,Prob_üNN,0.0
+2177,,DanaBunar2,58,24 depth 0.30-0.40,Prob_üNN,0.0
+2178,,DanaBunar2,58,25 depth 0.00-0.10,Prob_üNN,0.0
+2179,,DanaBunar2,58,26 depth 0.10-0.20,Prob_üNN,0.0
+2180,,DanaBunar2,58,27 depth 0.30-0.40,Prob_üNN,0.0
+2181,,DanaBunar2,58,28 depth 0.20-0.30,Prob_üNN,0.0
+2182,,DanaBunar2,64,11 depth 0.10-0.20,Prob_üNN,0.0
+2183,,DanaBunar2,64,12 depth 0.36-0.46,Prob_üNN,0.0
+2184,,DanaBunar2,64,13 depth 0.26-0.36,Prob_üNN,0.0
+2185,,DanaBunar2,64,16 depth 0.48-0.58,Prob_üNN,0.0
+2186,,Iswid,2709_fond,Isw 2013/32,Prob_üNN,
+2187,,Iswid,2905 fond,Isw 2013/26,Prob_üNN,
+2188,,Iswid,2913 fond,Isw 2013/33,Prob_üNN,
+2189,,Iswid,foyer 2174,Isw 2013/15,Prob_üNN,
+2190,,Iswid,foyer 2174,Isw 2013/15,Prob_üNN,
+2191,,Iswid,US 10503,Isw 2013/8,Prob_üNN,
+2192,,Iswid,US 10503,Isw 2013/8,Prob_üNN,
+2193,,Iswid,US 10503,Isw 2013/8,Prob_üNN,
+2194,,Iswid,US 10521,Isw 2013/20,Prob_üNN,
+2195,,Iswid,US 10521,Isw 2013/20,Prob_üNN,
+2196,,Iswid,US 10521,Isw 2013/20,Prob_üNN,
+2197,,Iswid,US 10534,Isw 2013/21,Prob_üNN,
+2198,,Iswid,US 10534,Isw 2013/21,Prob_üNN,
+2199,,Iswid,US 10610,Isw 2013/25,Prob_üNN,
+2200,,Iswid,US 10610,Isw 2013/25,Prob_üNN,
+2201,,Iswid,US 11004,Isw 2013/22,Prob_üNN,
+2202,,Iswid,US 11004,Isw 2013/22,Prob_üNN,
+2203,,Iswid,US 11012,Isw 2013/27,Prob_üNN,
+2204,,Iswid,US 11067,Isw 2013/28,Prob_üNN,
+2205,,Iswid,US 12025,Isw 2013/25,Prob_üNN,
+2206,,Iswid,US 12025,Isw 2013/25,Prob_üNN,
+2207,,Iswid,US 12040,Isw 2013/29,Prob_üNN,
+2208,,Iswid,US 12047,Isw 2013/30,Prob_üNN,
+2209,,Iswid,US 12047,Isw 2013/30,Prob_üNN,
+2210,,Iswid,US 12504,Isw 2013/31,Prob_üNN,
+2211,,Iswid,US 13017,Isw 2015/18,Prob_üNN,
+2212,,Iswid,US 13017,Isw 2016/41,Prob_üNN,
+2213,,Iswid,US 13065,Isw 2015/25,Prob_üNN,
+2214,,Iswid,US 13065,Isw 2015/25,Prob_üNN,
+2215,,Iswid,US 13066,Isw 2015/4,Prob_üNN,
+2216,,Iswid,US 13066,Isw 2015/4,Prob_üNN,
+2217,,Iswid,US 13083,Isw 2015/22,Prob_üNN,
+2218,,Iswid,US 13099,Isw 2015/9,Prob_üNN,
+2219,,Iswid,US 13145,Isw 2015/21,Prob_üNN,
+2220,,Iswid,US 13145,Isw 2015/21,Prob_üNN,
+2221,,Iswid,US 13516,Isw 2015/8,Prob_üNN,
+2222,,Iswid,US 13516,Isw 2015/8,Prob_üNN,
+2223,,Iswid,US 13526,Isw 2015/2,Prob_üNN,
+2224,,Iswid,US 13572,Isw 2015/12,Prob_üNN,
+2225,,Iswid,US 13610,Isw 2015/11,Prob_üNN,
+2226,,Iswid,US 13632,Isw 2016/15,Prob_üNN,
+2227,,Iswid,US 13632,Isw 2016/15,Prob_üNN,
+2228,,Iswid,US 13639,Isw2015/26,Prob_üNN,
+2229,,Iswid,US 13657,Isw 2015/17,Prob_üNN,
+2230,,Iswid,US 13705,Isw 2015/10,Prob_üNN,
+2231,,Iswid,US 13791,Isw 2015/5,Prob_üNN,
+2232,,Iswid,US 13791 (3),Isw 2015/7,Prob_üNN,
+2233,,Iswid,US 13802,Isw 2015/20,Prob_üNN,
+2234,,Iswid,US 13971,Isw 2015/7,Prob_üNN,
+2235,,Iswid,US 14021,Isw 2015/1,Prob_üNN,
+2236,,Iswid,US 14021,Isw 2015/1,Prob_üNN,
+2237,,Iswid,US 14038,Isw 2015/3,Prob_üNN,
+2238,,Iswid,US 14050,Isw 2015/24,Prob_üNN,
+2239,,Iswid,US 14050,Isw 2015/24,Prob_üNN,
+2240,,Iswid,US 14050,Isw 2015/24,Prob_üNN,
+2241,,Iswid,US 14078,Isw 2916/23,Prob_üNN,
+2242,,Iswid,US 14131,Isw 2015/13,Prob_üNN,
+2243,,Iswid,US 14131,Isw 2016/12,Prob_üNN,
+2244,,Iswid,US 14158,Isw 2015/14,Prob_üNN,
+2245,,Iswid,US 14418,Isw 2016/34,Prob_üNN,
+2246,,Iswid,US 14495,Isw 16/37,Prob_üNN,
+2247,,Iswid,US 14509,16-Jan,Prob_üNN,
+2248,,Iswid,US 14636,Isw 16/35,Prob_üNN,
+2249,,Iswid,US 14636,Isw 16/35,Prob_üNN,
+2250,,Iswid,US 15067,Isw 2017/7,Prob_üNN,
+2251,,Iswid,US 15071,Isw 17/4,Prob_üNN,
+2252,,Iswid,US 15108,Isw 17/1,Prob_üNN,
+2253,,Iswid,US 15140,Isw17/26,Prob_üNN,
+2254,,Iswid,US 16183,Isw 2017/8,Prob_üNN,
+2255,,Iswid,US 16183,Isw 2017/8,Prob_üNN,
+2256,,Iswid,US 16287_F4185 (TR.),Isw 17/23,Prob_üNN,
+2257,,Iswid,US 16323_F4199(foye,Isw 17/29,Prob_üNN,
+2258,,Iswid,US 16323_F4199(foye,Isw 17/29,Prob_üNN,
+2259,,Iswid,US 6712,Isw 2013/13,Prob_üNN,
+2260,,Iswid,US 6712,Isw 2013/13,Prob_üNN,
+2261,,Iswid,US 6773,Isw 2013/7,Prob_üNN,
+2262,,Iswid,US 6773,Isw 2013/7,Prob_üNN,
+2263,,Iswid,US 6803,Isw 2013/10,Prob_üNN,
+2264,,Iswid,US 6810,Isw 2013/5,Prob_üNN,
+2265,,Iswid,US 6827,Isw 2013/2,Prob_üNN,
+2266,,Iswid,US 6854,Isw 2013/4,Prob_üNN,
+2267,,Iswid,US 6863,Isw 2013/12,Prob_üNN,
+2268,,Iswid,US 6863,Isw 2013/12,Prob_üNN,
+2269,,Iswid,US 6875,Isw 2013/14,Prob_üNN,
+2270,,Iswid,US 6875,Isw 2013/14,Prob_üNN,
+2271,,Iswid,US 6875,Isw 2013/14,Prob_üNN,
+2272,,Iswid,US 9036,Isw 2013/3,Prob_üNN,
+2273,,Iswid,US 9036,Isw 2013/3,Prob_üNN,
+2274,,Iswid,US 9200,Isw 2013/1,Prob_üNN,
+2275,,Iswid,US 9200,Isw 2013/1,Prob_üNN,
+2276,,Iswid,US 9200,Isw 2013/1,Prob_üNN,
+2277,,Iswid,US 9200,Isw 2013/1,Prob_üNN,
+2278,,Iswid,US 9321,Isw 2013/6,Prob_üNN,
+2279,,Iswid,US 9321,Isw 2013/6,Prob_üNN,
+2280,,Iswid,US 9404_foyer 2093,Isw 2013/17,Prob_üNN,
+2281,,Iswid,US 9519,Isw 2013/11,Prob_üNN,
+2282,,Iswid,US 9519,Isw 2013/11,Prob_üNN,
+2283,,Iswid,US 9859/9860,Isw 2013/16,Prob_üNN,
+2284,,Iswid,US 9859/9860,Isw 2013/16,Prob_üNN,
+2285,,Iswid,US 9859/9860,Isw 2013/16,Prob_üNN,
+2286,,Iswid,US 9870_foyer2163,1,Prob_üNN,
+2287,,Iswid,US 9870_foyer2163,1,Prob_üNN,
+2288,,Iswid,US 9880_foyer 2166,Isw 2013/19,Prob_üNN,
+2289,,18_0025,P16,18_0025_0003,TK,
+2290,,18_0025,P18,18_0025_0004,TK,
+2291,,18_0025,P20,18_0025_0005,TK,
+2292,,18_0025,P5,18_0025_0001,TK,
+2293,,18_0025,P5,18_0025_0001,TK,
+2294,,18_0025,P6,18_0025_0002,TK,
+2295,,19_0013,A11148,19_0013_0013,TK,
+2296,,19_0013,A11148,19_0013_0014,TK,
+2297,,19_0013,A11148,19_0013_0015,TK,
+2298,,19_0013,A11148,19_0013_0020,TK,
+2299,,19_0013,A479,19_0013_0010,TK,
+2300,,19_0013,A479,19_0013_0011,TK,
+2301,,19_0013,A479,19_0013_0012,TK,
+2302,,19_0013,A479,19_0013_0019,TK,
+2303,,19_0013,A6214,19_0013_0007,TK,
+2304,,19_0013,A6214,19_0013_0008,TK,
+2305,,19_0013,A6214,19_0013_0009,TK,
+2306,,19_0013,A6214,19_0013_0018,TK,
+2307,,19_0013,A8090,19_0013_0004,TK,
+2308,,19_0013,A8090,19_0013_0005,TK,
+2309,,19_0013,A8090,19_0013_0006,TK,
+2310,,19_0013,A8090,19_0013_0017,TK,
+2311,,19_0013,A9063,19_0013_0001,TK,
+2312,,19_0013,A9063,19_0013_0002,TK,
+2313,,19_0013,A9063,19_0013_0003,TK,
+2314,,19_0013,A9063,19_0013_0016,TK,
+2315,,19_0013,A9063,19_0013_0016,TK,
+2316,,19_0014,A10143,19_0014_0040,TK,
+2317,,19_0014,A10153,19_0014_0037,TK,
+2318,,19_0014,A10189,19_0014_0042,TK,
+2319,,19_0014,A10229,19_0014_0039,TK,
+2320,,19_0014,A10697,19_0014_0067,TK,
+2321,,19_0014,A10990,19_0014_0055,TK,
+2322,,19_0014,A11339,19_0014_0068,TK,
+2323,,19_0014,A1196,19_0014_0044,TK,
+2324,,19_0014,A12024,19_0014_0056,TK,
+2325,,19_0014,A12024,19_0014_0057,TK,
+2326,,19_0014,A12034,19_0014_0058,TK,
+2327,,19_0014,A12435,19_0014_0069,TK,
+2328,,19_0014,A13064,19_0014_0071,TK,
+2329,,19_0014,A13200,19_0014_0041,TK,
+2330,,19_0014,A13299,19_0014_0072,TK,
+2331,,19_0014,A13837,19_0014_0060,TK,
+2332,,19_0014,A15333,19_0014_0061,TK,
+2333,,19_0014,A15344,19_0014_0074,TK,
+2334,,19_0014,A15554,19_0014_0075,TK,
+2335,,19_0014,A15736,19_0014_0059,TK,
+2336,,19_0014,A16771,19_0014_0008,TK,
+2337,,19_0014,A16783,19_0014_0005,TK,
+2338,,19_0014,A17294,19_0014_0016,TK,
+2339,,19_0014,A1875,19_0014_0046,TK,
+2340,,19_0014,A1931,19_0014_0047,TK,
+2341,,19_0014,A1998,19_0014_0048,TK,
+2342,,19_0014,A2019,19_0014_0049,TK,
+2343,,19_0014,A2029,19_0014_0050,TK,
+2344,,19_0014,A2114,19_0014_0051,TK,
+2345,,19_0014,A3019,19_0014_0052,TK,
+2346,,19_0014,A3170,19_0014_0066,TK,
+2347,,19_0014,A3650,19_0014_0053,TK,
+2348,,19_0014,A4115,19_0014_0023,TK,
+2349,,19_0014,A4365,19_0014_0054,TK,
+2350,,19_0014,A5192,19_0014_0020,TK,
+2351,,19_0014,A5213,19_0014_0019,TK,
+2352,,19_0014,A5223,19_0014_0018,TK,
+2353,,19_0014,A5254,19_0014_0029,TK,
+2354,,19_0014,A5282,19_0014_0021,TK,
+2355,,19_0014,A5294,19_0014_0022,TK,
+2356,,19_0014,A5307,19_0014_0024,TK,
+2357,,19_0014,A5334,19_0014_0063,TK,
+2358,,19_0014,A6041,19_0014_0034,TK,
+2359,,19_0014,A6135,19_0014_0015,TK,
+2360,,19_0014,A6146,19_0014_0033,TK,
+2361,,19_0014,A6157,19_0014_0035,TK,
+2362,,19_0014,A6178,19_0014_0017,TK,
+2363,,19_0014,A6194,19_0014_0025,TK,
+2364,,19_0014,A7199,19_0014_0032,TK,
+2365,,19_0014,A7253,19_0014_0014,TK,
+2366,,19_0014,A7263,19_0014_0030,TK,
+2367,,19_0014,A7294,19_0014_0013,TK,
+2368,,19_0014,A7306,19_0014_0036,TK,
+2369,,19_0014,A785,19_0014_0043,TK,
+2370,,19_0014,A8079,19_0014_0007,TK,
+2371,,19_0014,A8103,19_0014_0009,TK,
+2372,,19_0014,A8114,19_0014_0011,TK,
+2373,,19_0014,A8142,19_0014_0026,TK,
+2374,,19_0014,A8178,19_0014_0031,TK,
+2375,,19_0014,A8189,19_0014_0012,TK,
+2376,,19_0014,A8234,19_0014_0010,TK,
+2377,,19_0014,A9000,19_0014_0027,TK,
+2378,,19_0014,A9052,19_0014_0028,TK,
+2379,,19_0014,A9075,19_0014_0003,TK,
+2380,,19_0014,A9111,19_0014_0001,TK,
+2381,,19_0014,A9126,19_0014_0004,TK,
+2382,,19_0014,A9199,19_0014_0006,TK,
+2383,,19_0014,A957,19_0014_0064,TK,
+2384,,19_0014,A973,19_0014_0065,TK,
+2385,,19_0014,A9847,19_0014_0002,TK,
+2386,,22_0005,11200,22_0005_0001,TK,
+2387,,22_0005,11201,22_0005_0002,TK,
+2388,,22_0005,11221,22_0005_0003,TK,
+2389,,22_0005,12026,22_0005_0004,TK,
+2390,,22_0005,200125,22_0005_0012,TK,
+2391,,22_0005,200149,22_0005_0013,TK,
+2392,,22_0005,200177,22_0005_0009,TK,
+2393,,22_0005,200473,22_0005_0005,TK,
+2394,,22_0005,200475,22_0005_0006,TK,
+2395,,22_0005,23362,22_0005_0010,TK,
+2396,,22_0005,23434,22_0005_0007,TK,
+2397,,22_0005,23491,22_0005_0008,TK,
+2398,,22_0005,23988,22_0005_0011,TK,
+2399,,22_0015,A2076,22_0015_0017,TK,
+2400,,22_0015,A2154,22_0015_0020,TK,
+2401,,22_0015,A2874 G2976,22_0015_0014,TK,
+2402,,22_0015,A4796,22_0015_0013,TK,
+2403,,22_0015,M153 St 1,22_0015_0006,TK,
+2404,,22_0015,M153 St 2,22_0015_0007,TK,
+2405,,22_0015,M160 St 1,22_0015_0001,TK,
+2406,,22_0015,M160 St 1,22_0015_0001,TK,
+2407,,22_0015,M160 St 1,22_0015_0001,TK,
+2408,,22_0015,M167 St 1,22_0015_0002,TK,
+2409,,22_0015,M167 St 2,22_0015_0003,TK,
+2410,,22_0015,M167 St 2,22_0015_0003,TK,
+2411,,22_0015,M167 St 3,22_0015_0004,TK,
+2412,,22_0015,M167 St 4,22_0015_0005,TK,
+2413,,22_0015,M32 Undre del,2022_0015_0009,TK,
+2414,,22_0015,M32 Övre del,2022_0015_0008,TK,
+2415,,22_0015,M99 A5085,2022_0015_0010,TK,
+2416,,22_0015,M99 A5085,2022_0015_0012,TK,
+2417,,DanaBunar2,31,17 depth 0.10-0.20,TK,
+2418,,DanaBunar2,31,17a depth 0.00-0.20,TK,
+2419,,DanaBunar2,32,51 depth 0.00-0.10,TK,
+2420,,DanaBunar2,32,52 depth 0.10-0.20,TK,
+2421,,DanaBunar2,32,53 depth 0.00-0.10,TK,
+2422,,DanaBunar2,33,18 depth 0.20-0.30,TK,
+2423,,DanaBunar2,33,19 depth 0.00-0.10,TK,
+2424,,DanaBunar2,33,20 depth 0.10-0.30,TK,
+2425,,DanaBunar2,33,21 depth 0.30-0.40,TK,
+2426,,DanaBunar2,33,22 depth 0.20-0.30,TK,
+2427,,DanaBunar2,37,39 depth 0.10-0.20,TK,
+2428,,DanaBunar2,37,40 depth 0.20-0.30,TK,
+2429,,DanaBunar2,37,41 depth 0.00-0.10,TK,
+2430,,DanaBunar2,37,42 depth 0.00-0.10,TK,
+2431,,DanaBunar2,38,1 depth 0.48-0.58,TK,
+2432,,DanaBunar2,38,2 depth 0.35-0.45,TK,
+2433,,DanaBunar2,38,3 depth 0.35-0.45,TK,
+2434,,DanaBunar2,38,4 depth 0.00-0.10,TK,
+2435,,DanaBunar2,38,5 depth 0.30-0.50,TK,
+2436,,DanaBunar2,39,47 depth 0.00-0.10,TK,
+2437,,DanaBunar2,39,48 depth 0.10-0.20,TK,
+2438,,DanaBunar2,41,44 depth 0.00-0.10,TK,
+2439,,DanaBunar2,41,46 depth 0.30-0.40,TK,
+2440,,DanaBunar2,42,10 depth 0.10-0.20,TK,
+2441,,DanaBunar2,42,6 depth 0.00-0.10,TK,
+2442,,DanaBunar2,42,7 depth 0.00-0.10,TK,
+2443,,DanaBunar2,42,8 depth 0.10-0.20,TK,
+2444,,DanaBunar2,42,9 depth 0.10-0.20,TK,
+2445,,DanaBunar2,44,87 depth 0.06-0.16,TK,
+2446,,DanaBunar2,44,88 depth 0.20-0.30,TK,
+2447,,DanaBunar2,44,89 depth 0.30-0.40,TK,
+2448,,DanaBunar2,44,90 depth 0.16-0.26,TK,
+2449,,DanaBunar2,44,91 depth 0.10-0.20,TK,
+2450,,DanaBunar2,44,92 depth 0.00-0.10,TK,
+2451,,DanaBunar2,44,93 depth 0.30-0.40,TK,
+2452,,DanaBunar2,46,30 depth 0.60-0.70,TK,
+2453,,DanaBunar2,46,31 depth 0.50-0.60,TK,
+2454,,DanaBunar2,46,32 depth 0.60-0.70,TK,
+2455,,DanaBunar2,46,33 depth 0.30-0.40,TK,
+2456,,DanaBunar2,46,34 depth 0.40-0.50,TK,
+2457,,DanaBunar2,46,35 depth 0.30-0.40,TK,
+2458,,DanaBunar2,47,49 depth 0.10-0.20,TK,
+2459,,DanaBunar2,47,50 depth 0.10-0.20,TK,
+2460,,DanaBunar2,55,54 depth 1.00-1.10,TK,
+2461,,DanaBunar2,55,55 depth 1.00-1.10,TK,
+2462,,DanaBunar2,58,23 depth 0.10-0.20,TK,
+2463,,DanaBunar2,58,24 depth 0.30-0.40,TK,
+2464,,DanaBunar2,58,25 depth 0.00-0.10,TK,
+2465,,DanaBunar2,58,26 depth 0.10-0.20,TK,
+2466,,DanaBunar2,58,27 depth 0.30-0.40,TK,
+2467,,DanaBunar2,58,28 depth 0.20-0.30,TK,
+2468,,DanaBunar2,64,11 depth 0.10-0.20,TK,
+2469,,DanaBunar2,64,12 depth 0.36-0.46,TK,
+2470,,DanaBunar2,64,13 depth 0.26-0.36,TK,
+2471,,DanaBunar2,64,16 depth 0.48-0.58,TK,
+2472,,Iswid,2709_fond,Isw 2013/32,TK,
+2473,,Iswid,2905 fond,Isw 2013/26,TK,
+2474,,Iswid,2913 fond,Isw 2013/33,TK,
+2475,,Iswid,foyer 2174,Isw 2013/15,TK,
+2476,,Iswid,foyer 2174,Isw 2013/15,TK,
+2477,,Iswid,US 10503,Isw 2013/8,TK,
+2478,,Iswid,US 10503,Isw 2013/8,TK,
+2479,,Iswid,US 10503,Isw 2013/8,TK,
+2480,,Iswid,US 10521,Isw 2013/20,TK,
+2481,,Iswid,US 10521,Isw 2013/20,TK,
+2482,,Iswid,US 10521,Isw 2013/20,TK,
+2483,,Iswid,US 10534,Isw 2013/21,TK,
+2484,,Iswid,US 10534,Isw 2013/21,TK,
+2485,,Iswid,US 10610,Isw 2013/25,TK,
+2486,,Iswid,US 10610,Isw 2013/25,TK,
+2487,,Iswid,US 11004,Isw 2013/22,TK,
+2488,,Iswid,US 11004,Isw 2013/22,TK,
+2489,,Iswid,US 11012,Isw 2013/27,TK,
+2490,,Iswid,US 11067,Isw 2013/28,TK,
+2491,,Iswid,US 12025,Isw 2013/25,TK,
+2492,,Iswid,US 12025,Isw 2013/25,TK,
+2493,,Iswid,US 12040,Isw 2013/29,TK,
+2494,,Iswid,US 12047,Isw 2013/30,TK,
+2495,,Iswid,US 12047,Isw 2013/30,TK,
+2496,,Iswid,US 12504,Isw 2013/31,TK,
+2497,,Iswid,US 13017,Isw 2015/18,TK,
+2498,,Iswid,US 13017,Isw 2016/41,TK,
+2499,,Iswid,US 13065,Isw 2015/25,TK,
+2500,,Iswid,US 13065,Isw 2015/25,TK,
+2501,,Iswid,US 13066,Isw 2015/4,TK,
+2502,,Iswid,US 13066,Isw 2015/4,TK,
+2503,,Iswid,US 13083,Isw 2015/22,TK,
+2504,,Iswid,US 13099,Isw 2015/9,TK,
+2505,,Iswid,US 13145,Isw 2015/21,TK,
+2506,,Iswid,US 13145,Isw 2015/21,TK,
+2507,,Iswid,US 13516,Isw 2015/8,TK,
+2508,,Iswid,US 13516,Isw 2015/8,TK,
+2509,,Iswid,US 13526,Isw 2015/2,TK,
+2510,,Iswid,US 13572,Isw 2015/12,TK,
+2511,,Iswid,US 13610,Isw 2015/11,TK,
+2512,,Iswid,US 13632,Isw 2016/15,TK,
+2513,,Iswid,US 13632,Isw 2016/15,TK,
+2514,,Iswid,US 13639,Isw2015/26,TK,
+2515,,Iswid,US 13657,Isw 2015/17,TK,
+2516,,Iswid,US 13705,Isw 2015/10,TK,
+2517,,Iswid,US 13791,Isw 2015/5,TK,
+2518,,Iswid,US 13791 (3),Isw 2015/7,TK,
+2519,,Iswid,US 13802,Isw 2015/20,TK,
+2520,,Iswid,US 13971,Isw 2015/7,TK,
+2521,,Iswid,US 14021,Isw 2015/1,TK,
+2522,,Iswid,US 14021,Isw 2015/1,TK,
+2523,,Iswid,US 14038,Isw 2015/3,TK,
+2524,,Iswid,US 14050,Isw 2015/24,TK,
+2525,,Iswid,US 14050,Isw 2015/24,TK,
+2526,,Iswid,US 14050,Isw 2015/24,TK,
+2527,,Iswid,US 14078,Isw 2916/23,TK,
+2528,,Iswid,US 14131,Isw 2015/13,TK,
+2529,,Iswid,US 14131,Isw 2016/12,TK,
+2530,,Iswid,US 14158,Isw 2015/14,TK,
+2531,,Iswid,US 14418,Isw 2016/34,TK,
+2532,,Iswid,US 14495,Isw 16/37,TK,
+2533,,Iswid,US 14509,16-Jan,TK,
+2534,,Iswid,US 14636,Isw 16/35,TK,
+2535,,Iswid,US 14636,Isw 16/35,TK,
+2536,,Iswid,US 15067,Isw 2017/7,TK,
+2537,,Iswid,US 15071,Isw 17/4,TK,
+2538,,Iswid,US 15108,Isw 17/1,TK,
+2539,,Iswid,US 15140,Isw17/26,TK,
+2540,,Iswid,US 16183,Isw 2017/8,TK,
+2541,,Iswid,US 16183,Isw 2017/8,TK,
+2542,,Iswid,US 16287_F4185 (TR.),Isw 17/23,TK,
+2543,,Iswid,US 16323_F4199(foye,Isw 17/29,TK,
+2544,,Iswid,US 16323_F4199(foye,Isw 17/29,TK,
+2545,,Iswid,US 6712,Isw 2013/13,TK,
+2546,,Iswid,US 6712,Isw 2013/13,TK,
+2547,,Iswid,US 6773,Isw 2013/7,TK,
+2548,,Iswid,US 6773,Isw 2013/7,TK,
+2549,,Iswid,US 6803,Isw 2013/10,TK,
+2550,,Iswid,US 6810,Isw 2013/5,TK,
+2551,,Iswid,US 6827,Isw 2013/2,TK,
+2552,,Iswid,US 6854,Isw 2013/4,TK,
+2553,,Iswid,US 6863,Isw 2013/12,TK,
+2554,,Iswid,US 6863,Isw 2013/12,TK,
+2555,,Iswid,US 6875,Isw 2013/14,TK,
+2556,,Iswid,US 6875,Isw 2013/14,TK,
+2557,,Iswid,US 6875,Isw 2013/14,TK,
+2558,,Iswid,US 9036,Isw 2013/3,TK,
+2559,,Iswid,US 9036,Isw 2013/3,TK,
+2560,,Iswid,US 9200,Isw 2013/1,TK,
+2561,,Iswid,US 9200,Isw 2013/1,TK,
+2562,,Iswid,US 9200,Isw 2013/1,TK,
+2563,,Iswid,US 9200,Isw 2013/1,TK,
+2564,,Iswid,US 9321,Isw 2013/6,TK,
+2565,,Iswid,US 9321,Isw 2013/6,TK,
+2566,,Iswid,US 9404_foyer 2093,Isw 2013/17,TK,
+2567,,Iswid,US 9519,Isw 2013/11,TK,
+2568,,Iswid,US 9519,Isw 2013/11,TK,
+2569,,Iswid,US 9859/9860,Isw 2013/16,TK,
+2570,,Iswid,US 9859/9860,Isw 2013/16,TK,
+2571,,Iswid,US 9859/9860,Isw 2013/16,TK,
+2572,,Iswid,US 9870_foyer2163,1,TK,
+2573,,Iswid,US 9870_foyer2163,1,TK,
+2574,,Iswid,US 9880_foyer 2166,Isw 2013/19,TK,
+2575,,18_0025,P16,18_0025_0003,SedProb,
+2576,,18_0025,P18,18_0025_0004,SedProb,
+2577,,18_0025,P20,18_0025_0005,SedProb,
+2578,,18_0025,P5,18_0025_0001,SedProb,
+2579,,18_0025,P5,18_0025_0001,SedProb,
+2580,,18_0025,P6,18_0025_0002,SedProb,
+2581,,19_0013,A11148,19_0013_0013,SedProb,
+2582,,19_0013,A11148,19_0013_0014,SedProb,
+2583,,19_0013,A11148,19_0013_0015,SedProb,
+2584,,19_0013,A11148,19_0013_0020,SedProb,
+2585,,19_0013,A479,19_0013_0010,SedProb,
+2586,,19_0013,A479,19_0013_0011,SedProb,
+2587,,19_0013,A479,19_0013_0012,SedProb,
+2588,,19_0013,A479,19_0013_0019,SedProb,
+2589,,19_0013,A6214,19_0013_0007,SedProb,
+2590,,19_0013,A6214,19_0013_0008,SedProb,
+2591,,19_0013,A6214,19_0013_0009,SedProb,
+2592,,19_0013,A6214,19_0013_0018,SedProb,
+2593,,19_0013,A8090,19_0013_0004,SedProb,
+2594,,19_0013,A8090,19_0013_0005,SedProb,
+2595,,19_0013,A8090,19_0013_0006,SedProb,
+2596,,19_0013,A8090,19_0013_0017,SedProb,
+2597,,19_0013,A9063,19_0013_0001,SedProb,
+2598,,19_0013,A9063,19_0013_0002,SedProb,
+2599,,19_0013,A9063,19_0013_0003,SedProb,
+2600,,19_0013,A9063,19_0013_0016,SedProb,
+2601,,19_0013,A9063,19_0013_0016,SedProb,
+2602,,19_0014,A10143,19_0014_0040,SedProb,
+2603,,19_0014,A10153,19_0014_0037,SedProb,
+2604,,19_0014,A10189,19_0014_0042,SedProb,
+2605,,19_0014,A10229,19_0014_0039,SedProb,
+2606,,19_0014,A10697,19_0014_0067,SedProb,
+2607,,19_0014,A10990,19_0014_0055,SedProb,
+2608,,19_0014,A11339,19_0014_0068,SedProb,
+2609,,19_0014,A1196,19_0014_0044,SedProb,
+2610,,19_0014,A12024,19_0014_0056,SedProb,
+2611,,19_0014,A12024,19_0014_0057,SedProb,
+2612,,19_0014,A12034,19_0014_0058,SedProb,
+2613,,19_0014,A12435,19_0014_0069,SedProb,
+2614,,19_0014,A13064,19_0014_0071,SedProb,
+2615,,19_0014,A13200,19_0014_0041,SedProb,
+2616,,19_0014,A13299,19_0014_0072,SedProb,
+2617,,19_0014,A13837,19_0014_0060,SedProb,
+2618,,19_0014,A15333,19_0014_0061,SedProb,
+2619,,19_0014,A15344,19_0014_0074,SedProb,
+2620,,19_0014,A15554,19_0014_0075,SedProb,
+2621,,19_0014,A15736,19_0014_0059,SedProb,
+2622,,19_0014,A16771,19_0014_0008,SedProb,
+2623,,19_0014,A16783,19_0014_0005,SedProb,
+2624,,19_0014,A17294,19_0014_0016,SedProb,
+2625,,19_0014,A1875,19_0014_0046,SedProb,
+2626,,19_0014,A1931,19_0014_0047,SedProb,
+2627,,19_0014,A1998,19_0014_0048,SedProb,
+2628,,19_0014,A2019,19_0014_0049,SedProb,
+2629,,19_0014,A2029,19_0014_0050,SedProb,
+2630,,19_0014,A2114,19_0014_0051,SedProb,
+2631,,19_0014,A3019,19_0014_0052,SedProb,
+2632,,19_0014,A3170,19_0014_0066,SedProb,
+2633,,19_0014,A3650,19_0014_0053,SedProb,
+2634,,19_0014,A4115,19_0014_0023,SedProb,
+2635,,19_0014,A4365,19_0014_0054,SedProb,
+2636,,19_0014,A5192,19_0014_0020,SedProb,
+2637,,19_0014,A5213,19_0014_0019,SedProb,
+2638,,19_0014,A5223,19_0014_0018,SedProb,
+2639,,19_0014,A5254,19_0014_0029,SedProb,
+2640,,19_0014,A5282,19_0014_0021,SedProb,
+2641,,19_0014,A5294,19_0014_0022,SedProb,
+2642,,19_0014,A5307,19_0014_0024,SedProb,
+2643,,19_0014,A5334,19_0014_0063,SedProb,
+2644,,19_0014,A6041,19_0014_0034,SedProb,
+2645,,19_0014,A6135,19_0014_0015,SedProb,
+2646,,19_0014,A6146,19_0014_0033,SedProb,
+2647,,19_0014,A6157,19_0014_0035,SedProb,
+2648,,19_0014,A6178,19_0014_0017,SedProb,
+2649,,19_0014,A6194,19_0014_0025,SedProb,
+2650,,19_0014,A7199,19_0014_0032,SedProb,
+2651,,19_0014,A7253,19_0014_0014,SedProb,
+2652,,19_0014,A7263,19_0014_0030,SedProb,
+2653,,19_0014,A7294,19_0014_0013,SedProb,
+2654,,19_0014,A7306,19_0014_0036,SedProb,
+2655,,19_0014,A785,19_0014_0043,SedProb,
+2656,,19_0014,A8079,19_0014_0007,SedProb,
+2657,,19_0014,A8103,19_0014_0009,SedProb,
+2658,,19_0014,A8114,19_0014_0011,SedProb,
+2659,,19_0014,A8142,19_0014_0026,SedProb,
+2660,,19_0014,A8178,19_0014_0031,SedProb,
+2661,,19_0014,A8189,19_0014_0012,SedProb,
+2662,,19_0014,A8234,19_0014_0010,SedProb,
+2663,,19_0014,A9000,19_0014_0027,SedProb,
+2664,,19_0014,A9052,19_0014_0028,SedProb,
+2665,,19_0014,A9075,19_0014_0003,SedProb,
+2666,,19_0014,A9111,19_0014_0001,SedProb,
+2667,,19_0014,A9126,19_0014_0004,SedProb,
+2668,,19_0014,A9199,19_0014_0006,SedProb,
+2669,,19_0014,A957,19_0014_0064,SedProb,
+2670,,19_0014,A973,19_0014_0065,SedProb,
+2671,,19_0014,A9847,19_0014_0002,SedProb,
+2672,,22_0005,11200,22_0005_0001,SedProb,
+2673,,22_0005,11201,22_0005_0002,SedProb,
+2674,,22_0005,11221,22_0005_0003,SedProb,
+2675,,22_0005,12026,22_0005_0004,SedProb,
+2676,,22_0005,200125,22_0005_0012,SedProb,
+2677,,22_0005,200149,22_0005_0013,SedProb,
+2678,,22_0005,200177,22_0005_0009,SedProb,
+2679,,22_0005,200473,22_0005_0005,SedProb,
+2680,,22_0005,200475,22_0005_0006,SedProb,
+2681,,22_0005,23362,22_0005_0010,SedProb,
+2682,,22_0005,23434,22_0005_0007,SedProb,
+2683,,22_0005,23491,22_0005_0008,SedProb,
+2684,,22_0005,23988,22_0005_0011,SedProb,
+2685,,22_0015,A2076,22_0015_0017,SedProb,
+2686,,22_0015,A2154,22_0015_0020,SedProb,
+2687,,22_0015,A2874 G2976,22_0015_0014,SedProb,
+2688,,22_0015,A4796,22_0015_0013,SedProb,
+2689,,22_0015,M153 St 1,22_0015_0006,SedProb,
+2690,,22_0015,M153 St 2,22_0015_0007,SedProb,
+2691,,22_0015,M160 St 1,22_0015_0001,SedProb,
+2692,,22_0015,M160 St 1,22_0015_0001,SedProb,
+2693,,22_0015,M160 St 1,22_0015_0001,SedProb,
+2694,,22_0015,M167 St 1,22_0015_0002,SedProb,
+2695,,22_0015,M167 St 2,22_0015_0003,SedProb,
+2696,,22_0015,M167 St 2,22_0015_0003,SedProb,
+2697,,22_0015,M167 St 3,22_0015_0004,SedProb,
+2698,,22_0015,M167 St 4,22_0015_0005,SedProb,
+2699,,22_0015,M32 Undre del,2022_0015_0009,SedProb,
+2700,,22_0015,M32 Övre del,2022_0015_0008,SedProb,
+2701,,22_0015,M99 A5085,2022_0015_0010,SedProb,
+2702,,22_0015,M99 A5085,2022_0015_0012,SedProb,
+2703,,DanaBunar2,31,17 depth 0.10-0.20,SedProb,
+2704,,DanaBunar2,31,17a depth 0.00-0.20,SedProb,
+2705,,DanaBunar2,32,51 depth 0.00-0.10,SedProb,
+2706,,DanaBunar2,32,52 depth 0.10-0.20,SedProb,
+2707,,DanaBunar2,32,53 depth 0.00-0.10,SedProb,
+2708,,DanaBunar2,33,18 depth 0.20-0.30,SedProb,
+2709,,DanaBunar2,33,19 depth 0.00-0.10,SedProb,
+2710,,DanaBunar2,33,20 depth 0.10-0.30,SedProb,
+2711,,DanaBunar2,33,21 depth 0.30-0.40,SedProb,
+2712,,DanaBunar2,33,22 depth 0.20-0.30,SedProb,
+2713,,DanaBunar2,37,39 depth 0.10-0.20,SedProb,
+2714,,DanaBunar2,37,40 depth 0.20-0.30,SedProb,
+2715,,DanaBunar2,37,41 depth 0.00-0.10,SedProb,
+2716,,DanaBunar2,37,42 depth 0.00-0.10,SedProb,
+2717,,DanaBunar2,38,1 depth 0.48-0.58,SedProb,
+2718,,DanaBunar2,38,2 depth 0.35-0.45,SedProb,
+2719,,DanaBunar2,38,3 depth 0.35-0.45,SedProb,
+2720,,DanaBunar2,38,4 depth 0.00-0.10,SedProb,
+2721,,DanaBunar2,38,5 depth 0.30-0.50,SedProb,
+2722,,DanaBunar2,39,47 depth 0.00-0.10,SedProb,
+2723,,DanaBunar2,39,48 depth 0.10-0.20,SedProb,
+2724,,DanaBunar2,41,44 depth 0.00-0.10,SedProb,
+2725,,DanaBunar2,41,46 depth 0.30-0.40,SedProb,
+2726,,DanaBunar2,42,10 depth 0.10-0.20,SedProb,
+2727,,DanaBunar2,42,6 depth 0.00-0.10,SedProb,
+2728,,DanaBunar2,42,7 depth 0.00-0.10,SedProb,
+2729,,DanaBunar2,42,8 depth 0.10-0.20,SedProb,
+2730,,DanaBunar2,42,9 depth 0.10-0.20,SedProb,
+2731,,DanaBunar2,44,87 depth 0.06-0.16,SedProb,
+2732,,DanaBunar2,44,88 depth 0.20-0.30,SedProb,
+2733,,DanaBunar2,44,89 depth 0.30-0.40,SedProb,
+2734,,DanaBunar2,44,90 depth 0.16-0.26,SedProb,
+2735,,DanaBunar2,44,91 depth 0.10-0.20,SedProb,
+2736,,DanaBunar2,44,92 depth 0.00-0.10,SedProb,
+2737,,DanaBunar2,44,93 depth 0.30-0.40,SedProb,
+2738,,DanaBunar2,46,30 depth 0.60-0.70,SedProb,
+2739,,DanaBunar2,46,31 depth 0.50-0.60,SedProb,
+2740,,DanaBunar2,46,32 depth 0.60-0.70,SedProb,
+2741,,DanaBunar2,46,33 depth 0.30-0.40,SedProb,
+2742,,DanaBunar2,46,34 depth 0.40-0.50,SedProb,
+2743,,DanaBunar2,46,35 depth 0.30-0.40,SedProb,
+2744,,DanaBunar2,47,49 depth 0.10-0.20,SedProb,
+2745,,DanaBunar2,47,50 depth 0.10-0.20,SedProb,
+2746,,DanaBunar2,55,54 depth 1.00-1.10,SedProb,
+2747,,DanaBunar2,55,55 depth 1.00-1.10,SedProb,
+2748,,DanaBunar2,58,23 depth 0.10-0.20,SedProb,
+2749,,DanaBunar2,58,24 depth 0.30-0.40,SedProb,
+2750,,DanaBunar2,58,25 depth 0.00-0.10,SedProb,
+2751,,DanaBunar2,58,26 depth 0.10-0.20,SedProb,
+2752,,DanaBunar2,58,27 depth 0.30-0.40,SedProb,
+2753,,DanaBunar2,58,28 depth 0.20-0.30,SedProb,
+2754,,DanaBunar2,64,11 depth 0.10-0.20,SedProb,
+2755,,DanaBunar2,64,12 depth 0.36-0.46,SedProb,
+2756,,DanaBunar2,64,13 depth 0.26-0.36,SedProb,
+2757,,DanaBunar2,64,16 depth 0.48-0.58,SedProb,
+2758,,Iswid,2709_fond,Isw 2013/32,SedProb,
+2759,,Iswid,2905 fond,Isw 2013/26,SedProb,
+2760,,Iswid,2913 fond,Isw 2013/33,SedProb,
+2761,,Iswid,foyer 2174,Isw 2013/15,SedProb,
+2762,,Iswid,foyer 2174,Isw 2013/15,SedProb,
+2763,,Iswid,US 10503,Isw 2013/8,SedProb,
+2764,,Iswid,US 10503,Isw 2013/8,SedProb,
+2765,,Iswid,US 10503,Isw 2013/8,SedProb,
+2766,,Iswid,US 10521,Isw 2013/20,SedProb,
+2767,,Iswid,US 10521,Isw 2013/20,SedProb,
+2768,,Iswid,US 10521,Isw 2013/20,SedProb,
+2769,,Iswid,US 10534,Isw 2013/21,SedProb,
+2770,,Iswid,US 10534,Isw 2013/21,SedProb,
+2771,,Iswid,US 10610,Isw 2013/25,SedProb,
+2772,,Iswid,US 10610,Isw 2013/25,SedProb,
+2773,,Iswid,US 11004,Isw 2013/22,SedProb,
+2774,,Iswid,US 11004,Isw 2013/22,SedProb,
+2775,,Iswid,US 11012,Isw 2013/27,SedProb,
+2776,,Iswid,US 11067,Isw 2013/28,SedProb,
+2777,,Iswid,US 12025,Isw 2013/25,SedProb,
+2778,,Iswid,US 12025,Isw 2013/25,SedProb,
+2779,,Iswid,US 12040,Isw 2013/29,SedProb,
+2780,,Iswid,US 12047,Isw 2013/30,SedProb,
+2781,,Iswid,US 12047,Isw 2013/30,SedProb,
+2782,,Iswid,US 12504,Isw 2013/31,SedProb,
+2783,,Iswid,US 13017,Isw 2015/18,SedProb,
+2784,,Iswid,US 13017,Isw 2016/41,SedProb,
+2785,,Iswid,US 13065,Isw 2015/25,SedProb,
+2786,,Iswid,US 13065,Isw 2015/25,SedProb,
+2787,,Iswid,US 13066,Isw 2015/4,SedProb,
+2788,,Iswid,US 13066,Isw 2015/4,SedProb,
+2789,,Iswid,US 13083,Isw 2015/22,SedProb,
+2790,,Iswid,US 13099,Isw 2015/9,SedProb,
+2791,,Iswid,US 13145,Isw 2015/21,SedProb,
+2792,,Iswid,US 13145,Isw 2015/21,SedProb,
+2793,,Iswid,US 13516,Isw 2015/8,SedProb,
+2794,,Iswid,US 13516,Isw 2015/8,SedProb,
+2795,,Iswid,US 13526,Isw 2015/2,SedProb,
+2796,,Iswid,US 13572,Isw 2015/12,SedProb,
+2797,,Iswid,US 13610,Isw 2015/11,SedProb,
+2798,,Iswid,US 13632,Isw 2016/15,SedProb,
+2799,,Iswid,US 13632,Isw 2016/15,SedProb,
+2800,,Iswid,US 13639,Isw2015/26,SedProb,
+2801,,Iswid,US 13657,Isw 2015/17,SedProb,
+2802,,Iswid,US 13705,Isw 2015/10,SedProb,
+2803,,Iswid,US 13791,Isw 2015/5,SedProb,
+2804,,Iswid,US 13791 (3),Isw 2015/7,SedProb,
+2805,,Iswid,US 13802,Isw 2015/20,SedProb,
+2806,,Iswid,US 13971,Isw 2015/7,SedProb,
+2807,,Iswid,US 14021,Isw 2015/1,SedProb,
+2808,,Iswid,US 14021,Isw 2015/1,SedProb,
+2809,,Iswid,US 14038,Isw 2015/3,SedProb,
+2810,,Iswid,US 14050,Isw 2015/24,SedProb,
+2811,,Iswid,US 14050,Isw 2015/24,SedProb,
+2812,,Iswid,US 14050,Isw 2015/24,SedProb,
+2813,,Iswid,US 14078,Isw 2916/23,SedProb,
+2814,,Iswid,US 14131,Isw 2015/13,SedProb,
+2815,,Iswid,US 14131,Isw 2016/12,SedProb,
+2816,,Iswid,US 14158,Isw 2015/14,SedProb,
+2817,,Iswid,US 14418,Isw 2016/34,SedProb,
+2818,,Iswid,US 14495,Isw 16/37,SedProb,
+2819,,Iswid,US 14509,16-Jan,SedProb,
+2820,,Iswid,US 14636,Isw 16/35,SedProb,
+2821,,Iswid,US 14636,Isw 16/35,SedProb,
+2822,,Iswid,US 15067,Isw 2017/7,SedProb,
+2823,,Iswid,US 15071,Isw 17/4,SedProb,
+2824,,Iswid,US 15108,Isw 17/1,SedProb,
+2825,,Iswid,US 15140,Isw17/26,SedProb,
+2826,,Iswid,US 16183,Isw 2017/8,SedProb,
+2827,,Iswid,US 16183,Isw 2017/8,SedProb,
+2828,,Iswid,US 16287_F4185 (TR.),Isw 17/23,SedProb,
+2829,,Iswid,US 16323_F4199(foye,Isw 17/29,SedProb,
+2830,,Iswid,US 16323_F4199(foye,Isw 17/29,SedProb,
+2831,,Iswid,US 6712,Isw 2013/13,SedProb,
+2832,,Iswid,US 6712,Isw 2013/13,SedProb,
+2833,,Iswid,US 6773,Isw 2013/7,SedProb,
+2834,,Iswid,US 6773,Isw 2013/7,SedProb,
+2835,,Iswid,US 6803,Isw 2013/10,SedProb,
+2836,,Iswid,US 6810,Isw 2013/5,SedProb,
+2837,,Iswid,US 6827,Isw 2013/2,SedProb,
+2838,,Iswid,US 6854,Isw 2013/4,SedProb,
+2839,,Iswid,US 6863,Isw 2013/12,SedProb,
+2840,,Iswid,US 6863,Isw 2013/12,SedProb,
+2841,,Iswid,US 6875,Isw 2013/14,SedProb,
+2842,,Iswid,US 6875,Isw 2013/14,SedProb,
+2843,,Iswid,US 6875,Isw 2013/14,SedProb,
+2844,,Iswid,US 9036,Isw 2013/3,SedProb,
+2845,,Iswid,US 9036,Isw 2013/3,SedProb,
+2846,,Iswid,US 9200,Isw 2013/1,SedProb,
+2847,,Iswid,US 9200,Isw 2013/1,SedProb,
+2848,,Iswid,US 9200,Isw 2013/1,SedProb,
+2849,,Iswid,US 9200,Isw 2013/1,SedProb,
+2850,,Iswid,US 9321,Isw 2013/6,SedProb,
+2851,,Iswid,US 9321,Isw 2013/6,SedProb,
+2852,,Iswid,US 9404_foyer 2093,Isw 2013/17,SedProb,
+2853,,Iswid,US 9519,Isw 2013/11,SedProb,
+2854,,Iswid,US 9519,Isw 2013/11,SedProb,
+2855,,Iswid,US 9859/9860,Isw 2013/16,SedProb,
+2856,,Iswid,US 9859/9860,Isw 2013/16,SedProb,
+2857,,Iswid,US 9859/9860,Isw 2013/16,SedProb,
+2858,,Iswid,US 9870_foyer2163,1,SedProb,
+2859,,Iswid,US 9870_foyer2163,1,SedProb,
+2860,,Iswid,US 9880_foyer 2166,Isw 2013/19,SedProb,
+2861,,18_0025,P16,18_0025_0003,KultGr,nicht gewählt
+2862,,18_0025,P18,18_0025_0004,KultGr,nicht gewählt
+2863,,18_0025,P20,18_0025_0005,KultGr,nicht gewählt
+2864,,18_0025,P5,18_0025_0001,KultGr,nicht gewählt
+2865,,18_0025,P5,18_0025_0001,KultGr,nicht gewählt
+2866,,18_0025,P6,18_0025_0002,KultGr,nicht gewählt
+2867,,19_0013,A11148,19_0013_0013,KultGr,nicht gewählt
+2868,,19_0013,A11148,19_0013_0014,KultGr,nicht gewählt
+2869,,19_0013,A11148,19_0013_0015,KultGr,nicht gewählt
+2870,,19_0013,A11148,19_0013_0020,KultGr,nicht gewählt
+2871,,19_0013,A479,19_0013_0010,KultGr,nicht gewählt
+2872,,19_0013,A479,19_0013_0011,KultGr,nicht gewählt
+2873,,19_0013,A479,19_0013_0012,KultGr,nicht gewählt
+2874,,19_0013,A479,19_0013_0019,KultGr,nicht gewählt
+2875,,19_0013,A6214,19_0013_0007,KultGr,nicht gewählt
+2876,,19_0013,A6214,19_0013_0008,KultGr,nicht gewählt
+2877,,19_0013,A6214,19_0013_0009,KultGr,nicht gewählt
+2878,,19_0013,A6214,19_0013_0018,KultGr,nicht gewählt
+2879,,19_0013,A8090,19_0013_0004,KultGr,nicht gewählt
+2880,,19_0013,A8090,19_0013_0005,KultGr,nicht gewählt
+2881,,19_0013,A8090,19_0013_0006,KultGr,nicht gewählt
+2882,,19_0013,A8090,19_0013_0017,KultGr,nicht gewählt
+2883,,19_0013,A9063,19_0013_0001,KultGr,nicht gewählt
+2884,,19_0013,A9063,19_0013_0002,KultGr,nicht gewählt
+2885,,19_0013,A9063,19_0013_0003,KultGr,nicht gewählt
+2886,,19_0013,A9063,19_0013_0016,KultGr,nicht gewählt
+2887,,19_0013,A9063,19_0013_0016,KultGr,nicht gewählt
+2888,,19_0014,A10143,19_0014_0040,KultGr,nicht gewählt
+2889,,19_0014,A10153,19_0014_0037,KultGr,nicht gewählt
+2890,,19_0014,A10189,19_0014_0042,KultGr,nicht gewählt
+2891,,19_0014,A10229,19_0014_0039,KultGr,nicht gewählt
+2892,,19_0014,A10697,19_0014_0067,KultGr,nicht gewählt
+2893,,19_0014,A10990,19_0014_0055,KultGr,nicht gewählt
+2894,,19_0014,A11339,19_0014_0068,KultGr,nicht gewählt
+2895,,19_0014,A1196,19_0014_0044,KultGr,nicht gewählt
+2896,,19_0014,A12024,19_0014_0056,KultGr,nicht gewählt
+2897,,19_0014,A12024,19_0014_0057,KultGr,nicht gewählt
+2898,,19_0014,A12034,19_0014_0058,KultGr,nicht gewählt
+2899,,19_0014,A12435,19_0014_0069,KultGr,nicht gewählt
+2900,,19_0014,A13064,19_0014_0071,KultGr,nicht gewählt
+2901,,19_0014,A13200,19_0014_0041,KultGr,nicht gewählt
+2902,,19_0014,A13299,19_0014_0072,KultGr,nicht gewählt
+2903,,19_0014,A13837,19_0014_0060,KultGr,nicht gewählt
+2904,,19_0014,A15333,19_0014_0061,KultGr,nicht gewählt
+2905,,19_0014,A15344,19_0014_0074,KultGr,nicht gewählt
+2906,,19_0014,A15554,19_0014_0075,KultGr,nicht gewählt
+2907,,19_0014,A15736,19_0014_0059,KultGr,nicht gewählt
+2908,,19_0014,A16771,19_0014_0008,KultGr,nicht gewählt
+2909,,19_0014,A16783,19_0014_0005,KultGr,nicht gewählt
+2910,,19_0014,A17294,19_0014_0016,KultGr,nicht gewählt
+2911,,19_0014,A1875,19_0014_0046,KultGr,nicht gewählt
+2912,,19_0014,A1931,19_0014_0047,KultGr,nicht gewählt
+2913,,19_0014,A1998,19_0014_0048,KultGr,nicht gewählt
+2914,,19_0014,A2019,19_0014_0049,KultGr,nicht gewählt
+2915,,19_0014,A2029,19_0014_0050,KultGr,nicht gewählt
+2916,,19_0014,A2114,19_0014_0051,KultGr,nicht gewählt
+2917,,19_0014,A3019,19_0014_0052,KultGr,nicht gewählt
+2918,,19_0014,A3170,19_0014_0066,KultGr,nicht gewählt
+2919,,19_0014,A3650,19_0014_0053,KultGr,nicht gewählt
+2920,,19_0014,A4115,19_0014_0023,KultGr,nicht gewählt
+2921,,19_0014,A4365,19_0014_0054,KultGr,nicht gewählt
+2922,,19_0014,A5192,19_0014_0020,KultGr,nicht gewählt
+2923,,19_0014,A5213,19_0014_0019,KultGr,nicht gewählt
+2924,,19_0014,A5223,19_0014_0018,KultGr,nicht gewählt
+2925,,19_0014,A5254,19_0014_0029,KultGr,nicht gewählt
+2926,,19_0014,A5282,19_0014_0021,KultGr,nicht gewählt
+2927,,19_0014,A5294,19_0014_0022,KultGr,nicht gewählt
+2928,,19_0014,A5307,19_0014_0024,KultGr,nicht gewählt
+2929,,19_0014,A5334,19_0014_0063,KultGr,nicht gewählt
+2930,,19_0014,A6041,19_0014_0034,KultGr,nicht gewählt
+2931,,19_0014,A6135,19_0014_0015,KultGr,nicht gewählt
+2932,,19_0014,A6146,19_0014_0033,KultGr,nicht gewählt
+2933,,19_0014,A6157,19_0014_0035,KultGr,nicht gewählt
+2934,,19_0014,A6178,19_0014_0017,KultGr,nicht gewählt
+2935,,19_0014,A6194,19_0014_0025,KultGr,nicht gewählt
+2936,,19_0014,A7199,19_0014_0032,KultGr,nicht gewählt
+2937,,19_0014,A7253,19_0014_0014,KultGr,nicht gewählt
+2938,,19_0014,A7263,19_0014_0030,KultGr,nicht gewählt
+2939,,19_0014,A7294,19_0014_0013,KultGr,nicht gewählt
+2940,,19_0014,A7306,19_0014_0036,KultGr,nicht gewählt
+2941,,19_0014,A785,19_0014_0043,KultGr,nicht gewählt
+2942,,19_0014,A8079,19_0014_0007,KultGr,nicht gewählt
+2943,,19_0014,A8103,19_0014_0009,KultGr,nicht gewählt
+2944,,19_0014,A8114,19_0014_0011,KultGr,nicht gewählt
+2945,,19_0014,A8142,19_0014_0026,KultGr,nicht gewählt
+2946,,19_0014,A8178,19_0014_0031,KultGr,nicht gewählt
+2947,,19_0014,A8189,19_0014_0012,KultGr,nicht gewählt
+2948,,19_0014,A8234,19_0014_0010,KultGr,nicht gewählt
+2949,,19_0014,A9000,19_0014_0027,KultGr,nicht gewählt
+2950,,19_0014,A9052,19_0014_0028,KultGr,nicht gewählt
+2951,,19_0014,A9075,19_0014_0003,KultGr,nicht gewählt
+2952,,19_0014,A9111,19_0014_0001,KultGr,nicht gewählt
+2953,,19_0014,A9126,19_0014_0004,KultGr,nicht gewählt
+2954,,19_0014,A9199,19_0014_0006,KultGr,nicht gewählt
+2955,,19_0014,A957,19_0014_0064,KultGr,nicht gewählt
+2956,,19_0014,A973,19_0014_0065,KultGr,nicht gewählt
+2957,,19_0014,A9847,19_0014_0002,KultGr,nicht gewählt
+2958,,22_0005,11200,22_0005_0001,KultGr,nicht gewählt
+2959,,22_0005,11201,22_0005_0002,KultGr,nicht gewählt
+2960,,22_0005,11221,22_0005_0003,KultGr,nicht gewählt
+2961,,22_0005,12026,22_0005_0004,KultGr,nicht gewählt
+2962,,22_0005,200125,22_0005_0012,KultGr,nicht gewählt
+2963,,22_0005,200149,22_0005_0013,KultGr,nicht gewählt
+2964,,22_0005,200177,22_0005_0009,KultGr,nicht gewählt
+2965,,22_0005,200473,22_0005_0005,KultGr,nicht gewählt
+2966,,22_0005,200475,22_0005_0006,KultGr,nicht gewählt
+2967,,22_0005,23362,22_0005_0010,KultGr,nicht gewählt
+2968,,22_0005,23434,22_0005_0007,KultGr,nicht gewählt
+2969,,22_0005,23491,22_0005_0008,KultGr,nicht gewählt
+2970,,22_0005,23988,22_0005_0011,KultGr,nicht gewählt
+2971,,22_0015,A2076,22_0015_0017,KultGr,
+2972,,22_0015,A2154,22_0015_0020,KultGr,
+2973,,22_0015,A2874 G2976,22_0015_0014,KultGr,
+2974,,22_0015,A4796,22_0015_0013,KultGr,
+2975,,22_0015,M153 St 1,22_0015_0006,KultGr,
+2976,,22_0015,M153 St 2,22_0015_0007,KultGr,
+2977,,22_0015,M160 St 1,22_0015_0001,KultGr,
+2978,,22_0015,M160 St 1,22_0015_0001,KultGr,
+2979,,22_0015,M160 St 1,22_0015_0001,KultGr,
+2980,,22_0015,M167 St 1,22_0015_0002,KultGr,
+2981,,22_0015,M167 St 2,22_0015_0003,KultGr,
+2982,,22_0015,M167 St 2,22_0015_0003,KultGr,
+2983,,22_0015,M167 St 3,22_0015_0004,KultGr,
+2984,,22_0015,M167 St 4,22_0015_0005,KultGr,
+2985,,22_0015,M32 Undre del,2022_0015_0009,KultGr,
+2986,,22_0015,M32 Övre del,2022_0015_0008,KultGr,
+2987,,22_0015,M99 A5085,2022_0015_0010,KultGr,
+2988,,22_0015,M99 A5085,2022_0015_0012,KultGr,
+2989,,DanaBunar2,31,17 depth 0.10-0.20,KultGr,nicht gewählt
+2990,,DanaBunar2,31,17a depth 0.00-0.20,KultGr,nicht gewählt
+2991,,DanaBunar2,32,51 depth 0.00-0.10,KultGr,nicht gewählt
+2992,,DanaBunar2,32,52 depth 0.10-0.20,KultGr,nicht gewählt
+2993,,DanaBunar2,32,53 depth 0.00-0.10,KultGr,nicht gewählt
+2994,,DanaBunar2,33,18 depth 0.20-0.30,KultGr,nicht gewählt
+2995,,DanaBunar2,33,19 depth 0.00-0.10,KultGr,nicht gewählt
+2996,,DanaBunar2,33,20 depth 0.10-0.30,KultGr,nicht gewählt
+2997,,DanaBunar2,33,21 depth 0.30-0.40,KultGr,nicht gewählt
+2998,,DanaBunar2,33,22 depth 0.20-0.30,KultGr,nicht gewählt
+2999,,DanaBunar2,37,39 depth 0.10-0.20,KultGr,nicht gewählt
+3000,,DanaBunar2,37,40 depth 0.20-0.30,KultGr,nicht gewählt
+3001,,DanaBunar2,37,41 depth 0.00-0.10,KultGr,nicht gewählt
+3002,,DanaBunar2,37,42 depth 0.00-0.10,KultGr,nicht gewählt
+3003,,DanaBunar2,38,1 depth 0.48-0.58,KultGr,nicht gewählt
+3004,,DanaBunar2,38,2 depth 0.35-0.45,KultGr,nicht gewählt
+3005,,DanaBunar2,38,3 depth 0.35-0.45,KultGr,nicht gewählt
+3006,,DanaBunar2,38,4 depth 0.00-0.10,KultGr,nicht gewählt
+3007,,DanaBunar2,38,5 depth 0.30-0.50,KultGr,nicht gewählt
+3008,,DanaBunar2,39,47 depth 0.00-0.10,KultGr,nicht gewählt
+3009,,DanaBunar2,39,48 depth 0.10-0.20,KultGr,nicht gewählt
+3010,,DanaBunar2,41,44 depth 0.00-0.10,KultGr,nicht gewählt
+3011,,DanaBunar2,41,46 depth 0.30-0.40,KultGr,nicht gewählt
+3012,,DanaBunar2,42,10 depth 0.10-0.20,KultGr,nicht gewählt
+3013,,DanaBunar2,42,6 depth 0.00-0.10,KultGr,nicht gewählt
+3014,,DanaBunar2,42,7 depth 0.00-0.10,KultGr,nicht gewählt
+3015,,DanaBunar2,42,8 depth 0.10-0.20,KultGr,nicht gewählt
+3016,,DanaBunar2,42,9 depth 0.10-0.20,KultGr,nicht gewählt
+3017,,DanaBunar2,44,87 depth 0.06-0.16,KultGr,nicht gewählt
+3018,,DanaBunar2,44,88 depth 0.20-0.30,KultGr,nicht gewählt
+3019,,DanaBunar2,44,89 depth 0.30-0.40,KultGr,nicht gewählt
+3020,,DanaBunar2,44,90 depth 0.16-0.26,KultGr,nicht gewählt
+3021,,DanaBunar2,44,91 depth 0.10-0.20,KultGr,nicht gewählt
+3022,,DanaBunar2,44,92 depth 0.00-0.10,KultGr,nicht gewählt
+3023,,DanaBunar2,44,93 depth 0.30-0.40,KultGr,nicht gewählt
+3024,,DanaBunar2,46,30 depth 0.60-0.70,KultGr,nicht gewählt
+3025,,DanaBunar2,46,31 depth 0.50-0.60,KultGr,nicht gewählt
+3026,,DanaBunar2,46,32 depth 0.60-0.70,KultGr,nicht gewählt
+3027,,DanaBunar2,46,33 depth 0.30-0.40,KultGr,nicht gewählt
+3028,,DanaBunar2,46,34 depth 0.40-0.50,KultGr,nicht gewählt
+3029,,DanaBunar2,46,35 depth 0.30-0.40,KultGr,nicht gewählt
+3030,,DanaBunar2,47,49 depth 0.10-0.20,KultGr,nicht gewählt
+3031,,DanaBunar2,47,50 depth 0.10-0.20,KultGr,nicht gewählt
+3032,,DanaBunar2,55,54 depth 1.00-1.10,KultGr,nicht gewählt
+3033,,DanaBunar2,55,55 depth 1.00-1.10,KultGr,nicht gewählt
+3034,,DanaBunar2,58,23 depth 0.10-0.20,KultGr,nicht gewählt
+3035,,DanaBunar2,58,24 depth 0.30-0.40,KultGr,nicht gewählt
+3036,,DanaBunar2,58,25 depth 0.00-0.10,KultGr,nicht gewählt
+3037,,DanaBunar2,58,26 depth 0.10-0.20,KultGr,nicht gewählt
+3038,,DanaBunar2,58,27 depth 0.30-0.40,KultGr,nicht gewählt
+3039,,DanaBunar2,58,28 depth 0.20-0.30,KultGr,nicht gewählt
+3040,,DanaBunar2,64,11 depth 0.10-0.20,KultGr,nicht gewählt
+3041,,DanaBunar2,64,12 depth 0.36-0.46,KultGr,nicht gewählt
+3042,,DanaBunar2,64,13 depth 0.26-0.36,KultGr,nicht gewählt
+3043,,DanaBunar2,64,16 depth 0.48-0.58,KultGr,nicht gewählt
+3044,,Iswid,2709_fond,Isw 2013/32,KultGr,
+3045,,Iswid,2905 fond,Isw 2013/26,KultGr,
+3046,,Iswid,2913 fond,Isw 2013/33,KultGr,
+3047,,Iswid,foyer 2174,Isw 2013/15,KultGr,
+3048,,Iswid,foyer 2174,Isw 2013/15,KultGr,
+3049,,Iswid,US 10503,Isw 2013/8,KultGr,
+3050,,Iswid,US 10503,Isw 2013/8,KultGr,
+3051,,Iswid,US 10503,Isw 2013/8,KultGr,
+3052,,Iswid,US 10521,Isw 2013/20,KultGr,
+3053,,Iswid,US 10521,Isw 2013/20,KultGr,
+3054,,Iswid,US 10521,Isw 2013/20,KultGr,
+3055,,Iswid,US 10534,Isw 2013/21,KultGr,
+3056,,Iswid,US 10534,Isw 2013/21,KultGr,
+3057,,Iswid,US 10610,Isw 2013/25,KultGr,
+3058,,Iswid,US 10610,Isw 2013/25,KultGr,
+3059,,Iswid,US 11004,Isw 2013/22,KultGr,
+3060,,Iswid,US 11004,Isw 2013/22,KultGr,
+3061,,Iswid,US 11012,Isw 2013/27,KultGr,
+3062,,Iswid,US 11067,Isw 2013/28,KultGr,
+3063,,Iswid,US 12025,Isw 2013/25,KultGr,
+3064,,Iswid,US 12025,Isw 2013/25,KultGr,
+3065,,Iswid,US 12040,Isw 2013/29,KultGr,
+3066,,Iswid,US 12047,Isw 2013/30,KultGr,
+3067,,Iswid,US 12047,Isw 2013/30,KultGr,
+3068,,Iswid,US 12504,Isw 2013/31,KultGr,
+3069,,Iswid,US 13017,Isw 2015/18,KultGr,
+3070,,Iswid,US 13017,Isw 2016/41,KultGr,
+3071,,Iswid,US 13065,Isw 2015/25,KultGr,
+3072,,Iswid,US 13065,Isw 2015/25,KultGr,
+3073,,Iswid,US 13066,Isw 2015/4,KultGr,
+3074,,Iswid,US 13066,Isw 2015/4,KultGr,
+3075,,Iswid,US 13083,Isw 2015/22,KultGr,
+3076,,Iswid,US 13099,Isw 2015/9,KultGr,
+3077,,Iswid,US 13145,Isw 2015/21,KultGr,
+3078,,Iswid,US 13145,Isw 2015/21,KultGr,
+3079,,Iswid,US 13516,Isw 2015/8,KultGr,
+3080,,Iswid,US 13516,Isw 2015/8,KultGr,
+3081,,Iswid,US 13526,Isw 2015/2,KultGr,
+3082,,Iswid,US 13572,Isw 2015/12,KultGr,
+3083,,Iswid,US 13610,Isw 2015/11,KultGr,
+3084,,Iswid,US 13632,Isw 2016/15,KultGr,
+3085,,Iswid,US 13632,Isw 2016/15,KultGr,
+3086,,Iswid,US 13639,Isw2015/26,KultGr,
+3087,,Iswid,US 13657,Isw 2015/17,KultGr,
+3088,,Iswid,US 13705,Isw 2015/10,KultGr,
+3089,,Iswid,US 13791,Isw 2015/5,KultGr,
+3090,,Iswid,US 13791 (3),Isw 2015/7,KultGr,
+3091,,Iswid,US 13802,Isw 2015/20,KultGr,
+3092,,Iswid,US 13971,Isw 2015/7,KultGr,
+3093,,Iswid,US 14021,Isw 2015/1,KultGr,
+3094,,Iswid,US 14021,Isw 2015/1,KultGr,
+3095,,Iswid,US 14038,Isw 2015/3,KultGr,
+3096,,Iswid,US 14050,Isw 2015/24,KultGr,
+3097,,Iswid,US 14050,Isw 2015/24,KultGr,
+3098,,Iswid,US 14050,Isw 2015/24,KultGr,
+3099,,Iswid,US 14078,Isw 2916/23,KultGr,
+3100,,Iswid,US 14131,Isw 2015/13,KultGr,
+3101,,Iswid,US 14131,Isw 2016/12,KultGr,
+3102,,Iswid,US 14158,Isw 2015/14,KultGr,
+3103,,Iswid,US 14418,Isw 2016/34,KultGr,
+3104,,Iswid,US 14495,Isw 16/37,KultGr,
+3105,,Iswid,US 14509,16-Jan,KultGr,
+3106,,Iswid,US 14636,Isw 16/35,KultGr,
+3107,,Iswid,US 14636,Isw 16/35,KultGr,
+3108,,Iswid,US 15067,Isw 2017/7,KultGr,
+3109,,Iswid,US 15071,Isw 17/4,KultGr,
+3110,,Iswid,US 15108,Isw 17/1,KultGr,
+3111,,Iswid,US 15140,Isw17/26,KultGr,
+3112,,Iswid,US 16183,Isw 2017/8,KultGr,
+3113,,Iswid,US 16183,Isw 2017/8,KultGr,
+3114,,Iswid,US 16287_F4185 (TR.),Isw 17/23,KultGr,
+3115,,Iswid,US 16323_F4199(foye,Isw 17/29,KultGr,
+3116,,Iswid,US 16323_F4199(foye,Isw 17/29,KultGr,
+3117,,Iswid,US 6712,Isw 2013/13,KultGr,
+3118,,Iswid,US 6712,Isw 2013/13,KultGr,
+3119,,Iswid,US 6773,Isw 2013/7,KultGr,
+3120,,Iswid,US 6773,Isw 2013/7,KultGr,
+3121,,Iswid,US 6803,Isw 2013/10,KultGr,
+3122,,Iswid,US 6810,Isw 2013/5,KultGr,
+3123,,Iswid,US 6827,Isw 2013/2,KultGr,
+3124,,Iswid,US 6854,Isw 2013/4,KultGr,
+3125,,Iswid,US 6863,Isw 2013/12,KultGr,
+3126,,Iswid,US 6863,Isw 2013/12,KultGr,
+3127,,Iswid,US 6875,Isw 2013/14,KultGr,
+3128,,Iswid,US 6875,Isw 2013/14,KultGr,
+3129,,Iswid,US 6875,Isw 2013/14,KultGr,
+3130,,Iswid,US 9036,Isw 2013/3,KultGr,
+3131,,Iswid,US 9036,Isw 2013/3,KultGr,
+3132,,Iswid,US 9200,Isw 2013/1,KultGr,
+3133,,Iswid,US 9200,Isw 2013/1,KultGr,
+3134,,Iswid,US 9200,Isw 2013/1,KultGr,
+3135,,Iswid,US 9200,Isw 2013/1,KultGr,
+3136,,Iswid,US 9321,Isw 2013/6,KultGr,
+3137,,Iswid,US 9321,Isw 2013/6,KultGr,
+3138,,Iswid,US 9404_foyer 2093,Isw 2013/17,KultGr,
+3139,,Iswid,US 9519,Isw 2013/11,KultGr,
+3140,,Iswid,US 9519,Isw 2013/11,KultGr,
+3141,,Iswid,US 9859/9860,Isw 2013/16,KultGr,
+3142,,Iswid,US 9859/9860,Isw 2013/16,KultGr,
+3143,,Iswid,US 9859/9860,Isw 2013/16,KultGr,
+3144,,Iswid,US 9870_foyer2163,1,KultGr,
+3145,,Iswid,US 9870_foyer2163,1,KultGr,
+3146,,Iswid,US 9880_foyer 2166,Isw 2013/19,KultGr,

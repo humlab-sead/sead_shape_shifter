@@ -1,0 +1,8 @@
+system_id,site_id,site_name,national_site_identifier,EVNr,Fustel,ProjektNr,NaturE,NaturrEinh,coordinate_system,easting,northing,elevation,_merge_indicator_site_coordinate
+1,,Kville 1502,,,Kville 1502,18_0025,,,,,,,both
+2,,Blaker kirkegård,224073,224073,Blaker kirkegård,19_0013,,,,,,143.0,both
+3,,Blaker kirkegård,224073,224073,Blaker kirkegård,19_0014,,,,,,143.0,both
+4,,Göteborg 342,L1960:2928,L1960:2928,Göteborg 342,22_0005,,,,,,,both
+5,,Sandarna Gbg 15:1,L1969:1130,L1969:1130,Sandarna Gbg 15:1,22_0015,,,,,,,both
+6,,,,,,DanaBunar2,,,,,,,both
+7,,ISW,,,ISW,Iswid,,,Geografische Länge/Breite (dezimal),31.823021,30.786045,7.0,both
