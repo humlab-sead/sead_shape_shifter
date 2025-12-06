@@ -34,7 +34,7 @@ from loguru import logger
 
 from src.arbodat.config_model import DataSourceConfig, TableConfig, TablesConfig
 from src.arbodat.dispatch import Dispatcher, Dispatchers
-from src.arbodat.extract import get_subset, translate
+from src.arbodat.extract import SubsetService, add_surrogate_id, add_surrogate_id, translate
 from src.arbodat.link import link_entity
 from src.arbodat.loaders.database_loaders import SqlLoader, SqlLoaderFactory
 from src.arbodat.loaders.fixed_loader import FixedLoader
@@ -129,6 +129,8 @@ class ArbodatSurveyNormalizer:
 
     async def normalize(self) -> None:
         """Extract all configured entities and store them."""
+        subsetService: SubsetService = SubsetService()
+
         while len(self.state.unprocessed) > 0:
 
             entity: str | None = self.state.get_next_entity_to_process()
@@ -146,7 +148,7 @@ class ArbodatSurveyNormalizer:
             if not isinstance(table_cfg.columns, list) or not all(isinstance(c, str) for c in table_cfg.columns):
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': {table_cfg.columns}")
 
-            data: pd.DataFrame = get_subset(
+            data: pd.DataFrame = subsetService.get_subset(
                 source=source,
                 columns=table_cfg.usage_columns,
                 entity_name=entity,
