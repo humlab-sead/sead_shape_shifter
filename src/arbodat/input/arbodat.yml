@@ -28,7 +28,7 @@ entities:
     keys: []
     columns: "@value: entities.contact_type.contact_types"
     unnest:
-      id_vars: [ entities.contact.surrogate_id ]
+      id_vars: [ "@value: entities.contact.surrogate_id" ]
       value_vars: "@value: entities.contact_type.contact_types"
       var_name: contact_type
       value_name: contact_name
@@ -519,6 +519,7 @@ entities:
         local_keys: "@value: entities.sample.keys"
         remote_keys: "@value: entities.sample.keys"
     drop_duplicates: true
+    drop_empty_rows: ["coordinate_value"]
     depends_on: ["sample", "coordinate_method_dimension"]
 
   sample_cultural_group:
