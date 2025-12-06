@@ -361,8 +361,9 @@ class ForeignKeyConstraintValidator:
                     f"{self.fk.local_entity}[linking]: join resulted in change in row count for '{self.fk.remote_entity}': before={self.size_before_merge[0]}, after={self.size_after_merge[0]}"
                 )
 
-        if self.size_after_merge[1] != self.size_before_merge[1] + len(self.fk.remote_extra_columns):
+        added_column_count: int = 1 + len(self.fk.get_valid_remote_columns(remote_df))
+        if self.size_after_merge[1] != self.size_before_merge[1] + added_column_count:
             logger.warning(
-                f"{self.entity_name}[linking]: join resulted in unexpected number of columns for '{self.fk.remote_entity}': before={self.size_before_merge[1]}, after={self.size_after_merge[1]}, expected increase={len(self.fk.remote_extra_columns)}"
+                f"{self.entity_name}[linking]: join resulted in unexpected number of columns for '{self.fk.remote_entity}': before={self.size_before_merge[1]}, after={self.size_after_merge[1]}, expected increase={added_column_count}"
             )
         return self
