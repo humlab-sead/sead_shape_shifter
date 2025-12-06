@@ -691,10 +691,11 @@ entities:
         local_keys: ["location_type", "location_name"]
         remote_keys: ["location_type", "location_name"]
     unnest:
-      value_vars: "@value: entities.site.keys + @value: entities.location_type.values"
+      id_vars: "@value: entities.site.keys"
+      value_vars: "@value: entities.location_type.values"
       var_name: location_type
       value_name: location_name
-    drop_duplicates: "@value: entities.site_location.keys"
+    drop_duplicates: "@value: entities.site_location.columns"
     depends_on: ["site", "location"]
 
   site_natural_region:
