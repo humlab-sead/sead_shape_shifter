@@ -232,7 +232,7 @@ entities:
       - entity: location_type
         local_keys: ["location_type"]
         remote_keys: ["location_type"]
-    drop_duplicates: "@value: entities.location.keys"
+    drop_duplicates: ["location_type", "location_name"]
     depends_on: ["location_type"]
 
   location_type:
