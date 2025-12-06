@@ -54,12 +54,12 @@ def _resolve_link_opts(fk: ForeignKeyConfig, validator: ForeignKeyConstraintVali
     return opts
 
 
-def link_entity(entity_name: str, config: TablesConfig, data: dict[str, pd.DataFrame]) -> bool:
+def link_entity(entity_name: str, config: TablesConfig, table_store: dict[str, pd.DataFrame]) -> bool:
     """Link foreign keys for the specified entity in the data store."""
     table_cfg: TableConfig = config.get_table(entity_name=entity_name)
     foreign_keys: list[ForeignKeyConfig] = table_cfg.foreign_keys or []
     deferred: bool = False
-    local_df: pd.DataFrame = data[entity_name]
+    local_df: pd.DataFrame = table_store[entity_name]
 
     for fk in foreign_keys:
 
@@ -71,13 +71,13 @@ def link_entity(entity_name: str, config: TablesConfig, data: dict[str, pd.DataF
 
         remote_cfg: TableConfig = config.get_table(fk.remote_entity)
         remote_id: str | None = remote_cfg.surrogate_id or f"{fk.remote_entity}_id"
-        remote_df: pd.DataFrame = data[fk.remote_entity]
+        remote_df: pd.DataFrame = table_store[fk.remote_entity]
 
         if remote_id in local_df.columns or all(col in local_df.columns for col in fk.remote_extra_columns.values()):
             logger.debug(f"{entity_name}[linking]: skipped since FK '{remote_id}' and/or extra columns already exist.")
             continue
 
-        specification: ForeignKeyDataSpecification = ForeignKeyDataSpecification(cfg=config, table_store=data)
+        specification: ForeignKeyDataSpecification = ForeignKeyDataSpecification(cfg=config, table_store=table_store)
 
         satisfied: bool | None = specification.is_satisfied_by(fk_cfg=fk)
         if satisfied is False:
@@ -93,6 +93,6 @@ def link_entity(entity_name: str, config: TablesConfig, data: dict[str, pd.DataF
         local_df = linked_df
         logger.debug(f"{entity_name}[linking]: added link to '{fk.remote_entity}' via {fk.local_keys} -> {fk.remote_keys}")
 
-    data[entity_name] = local_df
+    table_store[entity_name] = local_df
 
     return deferred

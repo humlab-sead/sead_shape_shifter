@@ -161,11 +161,11 @@ class ArbodatSurveyNormalizer:
 
             self.register(entity, data)
 
-            link_entity(entity_name=entity, config=self.config, data=self.table_store)
+            link_entity(entity_name=entity, config=self.config, table_store=self.table_store)
 
             if table_cfg.unnest:
                 self.unnest_entity(entity=entity)
-                link_entity(entity_name=entity, config=self.config, data=self.table_store)
+                link_entity(entity_name=entity, config=self.config, table_store=self.table_store)
 
             if table_cfg.drop_empty_rows:
                 self.table_store[entity] = drop_empty_rows(
@@ -179,7 +179,7 @@ class ArbodatSurveyNormalizer:
     def link(self):
         """Link entities based on foreign key configuration."""
         for entity_name in self.state.processed_entities:
-            link_entity(entity_name=entity_name, config=self.config, data=self.table_store)
+            link_entity(entity_name=entity_name, config=self.config, table_store=self.table_store)
 
     def store(self, target: str, mode: Literal["xlsx", "csv", "db"]) -> None:
         """Write to specified target based on the specified mode."""
