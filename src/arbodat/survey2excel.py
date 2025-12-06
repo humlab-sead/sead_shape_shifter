@@ -9,6 +9,7 @@ Usage:
 """
 
 import asyncio
+import json
 import os
 from pathlib import Path
 from typing import Any, Literal
@@ -61,7 +62,6 @@ async def workflow(
         click.echo("\nTable Summary:")
         for name, table in normalizer.data.items():
             click.echo(f"  - {name}: {len(table)} rows")
-
 
 @click.command()
 @click.argument("input_csv")
@@ -132,7 +132,6 @@ def main(
     )
 
     click.secho(f"✓ Successfully written normalized workbook to {target}", fg="green")
-
 
 if __name__ == "__main__":
     main()
