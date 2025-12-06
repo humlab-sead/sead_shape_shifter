@@ -97,7 +97,6 @@ class SubsetService:
         drop_duplicates: bool | list[str] = False,
         fd_check: bool = False,
         raise_if_missing: bool = True,
-        surrogate_id: str | None = None,
         drop_empty: bool | list[str] = False,
     ) -> pd.DataFrame:
         """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
@@ -114,7 +113,6 @@ class SubsetService:
                 - If False: keep all rows
             fd_check (bool): Whether to check functional dependency when dropping duplicates.
             raise_if_missing (bool): Whether to raise an error if requested columns are missing.
-            surrogate_id (str | None): Name of surrogate ID column to add if not already present.
             drop_empty_rows (bool): Whether to drop rows that are completely empty after subsetting.
 
         Returns:
@@ -130,7 +128,7 @@ class SubsetService:
         if source is None:
             raise ValueError("Source DataFrame must be provided")
 
-        entity_name = entity_name or (surrogate_id.rstrip("_id") if surrogate_id else "unspecified")
+        entity_name = entity_name or "unspecified"
         columns = unique(columns)
         extra_columns = extra_columns or {}
 
@@ -161,13 +159,7 @@ class SubsetService:
 
         # Drop rows that are completely empty after subsetting
         if drop_empty:
-            result = drop_empty_rows(
-                data=result, entity_name=entity_name, subset=None if drop_empty is True else drop_empty
-            )
-
-        # Add surrogate ID if requested and not present
-        if surrogate_id and surrogate_id not in result.columns:
-            result = add_surrogate_id(result, surrogate_id)
+            result = drop_empty_rows(data=result, entity_name=entity_name, subset=None if drop_empty is True else drop_empty)
 
         return result
 

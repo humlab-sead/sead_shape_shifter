@@ -34,7 +34,7 @@ from loguru import logger
 
 from src.arbodat.config_model import DataSourceConfig, TableConfig, TablesConfig
 from src.arbodat.dispatch import Dispatcher, Dispatchers
-from src.arbodat.extract import SubsetService, add_surrogate_id, add_surrogate_id, drop_empty_rows, translate
+from src.arbodat.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
 from src.arbodat.link import link_entity
 from src.arbodat.loaders.database_loaders import SqlLoader, SqlLoaderFactory
 from src.arbodat.loaders.fixed_loader import FixedLoader
@@ -154,7 +154,6 @@ class ArbodatSurveyNormalizer:
                 entity_name=entity,
                 extra_columns=table_cfg.extra_columns,
                 drop_duplicates=table_cfg.drop_duplicates,
-                surrogate_id=table_cfg.surrogate_id,
                 raise_if_missing=False,
                 drop_empty=False,
             )
@@ -171,6 +170,10 @@ class ArbodatSurveyNormalizer:
                 self.table_store[entity] = drop_empty_rows(
                     data=self.table_store[entity], entity_name=entity, subset=table_cfg.drop_empty_rows
                 )
+
+            # Add surrogate ID if requested and not present
+            if table_cfg.surrogate_id and table_cfg.surrogate_id not in self.table_store[entity].columns:
+                self.table_store[entity] = add_surrogate_id(self.table_store[entity], table_cfg.surrogate_id)
 
             self.link()  # Try to resolve any pending deferred links after each entity is processed
 
@@ -199,12 +202,7 @@ class ArbodatSurveyNormalizer:
         try:
             table_cfg: TableConfig = self.config.get_table(entity)
             if table_cfg.unnest:
-                data: pd.DataFrame = self.table_store[entity]
-                data = unnest(entity=entity, table=data, table_cfg=table_cfg)
-                if table_cfg.surrogate_id:
-                    """Update surrogate ID after unnesting to get unique IDs."""
-                    data = add_surrogate_id(target=data, id_name=table_cfg.surrogate_id)
-                self.table_store[entity] = data
+                self.table_store[entity] = unnest(entity=entity, table=self.table_store[entity], table_cfg=table_cfg)
         except Exception as e:
             logger.error(f"Error unnesting entity {entity}: {e}")
         finally:
