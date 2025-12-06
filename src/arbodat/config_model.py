@@ -178,6 +178,14 @@ class ForeignKeyConfig:
             columns = [col for col in columns if col in df.columns]
         return columns
 
+    def has_foreign_key_link(self, remote_id: str, table: pd.DataFrame) -> bool:
+        """Check if the foreign key linking has already been added to the table."""
+        if remote_id in table.columns:
+            return True
+        # FIXME: This smells like a fix for a bug elsewhere, why should we check extra columns here?
+        if self.remote_extra_columns and all(col in table.columns for col in self.remote_extra_columns.values()):
+            return True
+        return False
 
 class TableConfig:
     """Configuration for a database table."""
