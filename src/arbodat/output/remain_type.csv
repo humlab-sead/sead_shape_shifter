@@ -1,31 +1,31 @@
-system_id,remain_type_id,RTypGrup,RTyp
-1,,Samen/Früchte usw.,Sa/Fr
-2,,Holz,Ho
-3,,veget. Pflanzenteile,Zwi
-4,,Samen/Früchte usw.,Sti
-5,,Holz,Zwei
-6,,Samen/Früchte usw.,Spi
-7,,veget. Pflanzenteile,Bl
-8,,veget. Pflanzenteile,Veget
-9,,sonstiges,sonst
-10,,Samen/Früchte usw.,Za
-11,,Samen/Früchte usw.,HSB
-12,,veget. Pflanzenteile,Knos
-13,,Samen/Früchte usw.,Gr
-14,,sonstiges,Kopr
-15,,veget. Pflanzenteile,Rhi
-16,,sonstiges,Knoz
-17,,unbekannt,unbek.
-18,,Samen/Früchte usw.,BGF
-19,,Samen/Früchte usw.,Hano
-20,,veget. Pflanzenteile,boPf
-21,,veget. Pflanzenteile,Hal
-22,,Samen/Früchte usw.,Frfl
-23,,Holz,A/Z
-24,,sonstiges,Fisch
-25,,Samen/Früchte usw.,S
-26,,Samen/Früchte usw.,Blü
-27,,Holz,Sho
-28,,Samen/Früchte usw.,Frust
-29,,Samen/Früchte usw.,Rac
-30,,sonstiges,Moll
+system_id,remain_type_id,remain_type_group_id,RTypGrup,RTyp
+1,,1,Samen/Früchte usw.,Sa/Fr
+2,,2,Holz,Ho
+3,,3,veget. Pflanzenteile,Zwi
+4,,1,Samen/Früchte usw.,Sti
+5,,2,Holz,Zwei
+6,,1,Samen/Früchte usw.,Spi
+7,,3,veget. Pflanzenteile,Bl
+8,,3,veget. Pflanzenteile,Veget
+9,,4,sonstiges,sonst
+10,,1,Samen/Früchte usw.,Za
+11,,1,Samen/Früchte usw.,HSB
+12,,3,veget. Pflanzenteile,Knos
+13,,1,Samen/Früchte usw.,Gr
+14,,4,sonstiges,Kopr
+15,,3,veget. Pflanzenteile,Rhi
+16,,4,sonstiges,Knoz
+17,,5,unbekannt,unbek.
+18,,1,Samen/Früchte usw.,BGF
+19,,1,Samen/Früchte usw.,Hano
+20,,3,veget. Pflanzenteile,boPf
+21,,3,veget. Pflanzenteile,Hal
+22,,1,Samen/Früchte usw.,Frfl
+23,,2,Holz,A/Z
+24,,4,sonstiges,Fisch
+25,,1,Samen/Früchte usw.,S
+26,,1,Samen/Früchte usw.,Blü
+27,,2,Holz,Sho
+28,,1,Samen/Früchte usw.,Frust
+29,,1,Samen/Früchte usw.,Rac
+30,,4,sonstiges,Moll

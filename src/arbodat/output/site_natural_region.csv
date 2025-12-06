@@ -1,8 +1,8 @@
-system_id,site_natural_region_id,NaturE,EVNr,Fustel,ProjektNr
-1,,,,Kville 1502,18_0025
-2,,,224073,Blaker kirkegård,19_0013
-3,,,224073,Blaker kirkegård,19_0014
-4,,,L1960:2928,Göteborg 342,22_0005
-5,,,L1969:1130,Sandarna Gbg 15:1,22_0015
-6,,,,,DanaBunar2
-7,,,,ISW,Iswid
+system_id,site_natural_region_id,natural_region_id,site_id,NaturE,ProjektNr,Fustel,EVNr
+1,,1,1,,18_0025,Kville 1502,
+2,,1,2,,19_0013,Blaker kirkegård,224073
+3,,1,3,,19_0014,Blaker kirkegård,224073
+4,,1,4,,22_0005,Göteborg 342,L1960:2928
+5,,1,5,,22_0015,Sandarna Gbg 15:1,L1969:1130
+6,,1,6,,DanaBunar2,,
+7,,1,7,,Iswid,ISW,

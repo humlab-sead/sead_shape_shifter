@@ -1,2 +1,2 @@
-system_id,natural_region_id,NaturE,NaturrEinh
-1,,,
+system_id,natural_region_id,natural_region_group_id,NaturE,NaturrEinh
+1,,1,,
