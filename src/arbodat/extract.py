@@ -50,15 +50,17 @@ def drop_duplicate_rows(
 ) -> pd.DataFrame:
     if not isinstance(columns, list):
         return data.drop_duplicates().reset_index(drop=True)
-    if set(columns).difference(data.columns):
-        missing_rquested_columns = set(columns).difference(data.columns)
-        logger.warning(
-            f"{entity_name}[subsetting]: Some columns specified for drop_duplicates are missing from DataFrame and will be ignored: {missing_rquested_columns}"
+    if any(c not in data.columns for c in columns):
+        missing_requested_columns = set(columns).difference(data.columns)
+        logger.info(
+            f"{entity_name}[drop_duplicate_rows]: Unable to drop_duplicates because some columns are missing from DataFrame: {missing_requested_columns}"
         )
+        return data
+
     columns = [c for c in columns if c in data.columns]
     if not columns:
         logger.warning(
-            f"{entity_name}[subsetting]: No valid columns specified for drop_duplicates after filtering missing columns. No duplicates will be dropped."
+            f"{entity_name}[drop_duplicate_rows]: No valid columns specified for drop_duplicates after filtering missing columns. No duplicates will be dropped."
         )
         return data
     if fd_check:

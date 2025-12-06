@@ -148,12 +148,14 @@ class ArbodatSurveyNormalizer:
             if not isinstance(table_cfg.columns, list) or not all(isinstance(c, str) for c in table_cfg.columns):
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': {table_cfg.columns}")
 
+            delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
+            
             data: pd.DataFrame = subsetService.get_subset(
                 source=source,
                 columns=table_cfg.usage_columns,
                 entity_name=entity,
                 extra_columns=table_cfg.extra_columns,
-                drop_duplicates=table_cfg.drop_duplicates,
+                drop_duplicates=table_cfg.drop_duplicates if not delay_drop_duplicates else False,
                 raise_if_missing=False,
                 drop_empty=False,
             )
@@ -165,6 +167,11 @@ class ArbodatSurveyNormalizer:
             if table_cfg.unnest:
                 self.unnest_entity(entity=entity)
                 link_entity(entity_name=entity, config=self.config, table_store=self.table_store)
+
+            if delay_drop_duplicates and table_cfg.drop_duplicates:
+                self.table_store[entity] = drop_duplicate_rows(
+                    data=self.table_store[entity], fd_check=True, columns=table_cfg.drop_duplicates, entity_name=entity
+                )
 
             if table_cfg.drop_empty_rows:
                 self.table_store[entity] = drop_empty_rows(
