@@ -244,11 +244,6 @@ class TableConfig:
         return list(self.keys) + [col for col in self.columns if col not in self.keys]
 
     @property
-    def data_columns(self) -> list[str]:
-        """Get data columns excluding keys, foreign keys, and extra columns."""
-        return [col for col in self.columns if col not in self.keys and col not in self.fk_column_set and not col in self.extra_columns]
-
-    @property
     def unnest_columns(self) -> set[str]:
         """Get set of columns that are pending (e.g., from unnesting)."""
         if self.unnest:
