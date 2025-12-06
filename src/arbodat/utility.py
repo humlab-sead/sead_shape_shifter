@@ -56,3 +56,9 @@ def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
 
     if verbose:
         logger.debug("Verbose logging enabled")
+
+
+def load_shape_file(filename: str) -> dict[str, tuple[int, int]]:
+    df: pd.DataFrame = pd.read_csv(filename, sep="\t")
+    truth_shapes: dict[str, tuple[int, int]] = {x["entity"]: (x["num_rows"], x["num_columns"]) for x in df.to_dict(orient="records")}
+    return truth_shapes
