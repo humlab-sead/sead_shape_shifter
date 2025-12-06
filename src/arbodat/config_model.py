@@ -185,24 +185,14 @@ class TableConfig:
     def __init__(self, *, cfg: dict[str, dict[str, Any]], entity_name: str) -> None:
         self.config: dict[str, dict[str, Any]] = cfg
         self.entity_name: str = entity_name
-        self.data: dict[str, Any] = cfg[entity_name]
-        assert self.data, f"No configuration found for entity '{entity_name}'"
+        self._data: dict[str, Any] = cfg[entity_name]
+        assert self._data, f"No configuration found for entity '{entity_name}'"
 
-    @property
-    def source(self) -> str | None:
-        return self.data.get("source", None)
+        self.source: str | None = self._data.get("source", None)
+        self.values: str | None = self._data.get("values", None)
+        self.surrogate_id: str = self._data.get("surrogate_id", "")
+        self.surrogate_name: str = self._data.get("surrogate_name", "")
 
-    @property
-    def surrogate_id(self) -> str:
-        return self.data.get("surrogate_id", "")
-
-    @property
-    def surrogate_name(self) -> str:
-        """Specifies name field for surrogate id, if any. Ony used for fixed data tables."""
-        return self.data.get("surrogate_name", "")
-
-    @property
-    def is_fixed_data(self) -> bool:
         """Checks if the table is of fixed data type.
         The fixed data type is specified by setting 'type' to 'fixed' in the table configuration.
         This data type indicates that the table contains fixed values rather than dynamic data fetched from source.
@@ -210,11 +200,27 @@ class TableConfig:
         The columns of the table are defined in the 'columns' field.
         The surrogate_id field specifies the primary key for the table.
         """
-        return self.data.get("type", "data") == "fixed"
+        self.is_fixed_data = self._data.get("type", "data") == "fixed"
+        self.is_sql_data = self._data.get("type", "data") == "sql"
 
-    @property
-    def is_sql_data(self) -> bool:
-        return self.data.get("type", "data") == "sql"
+        """Get the data source name for SQL data tables."""
+        self.data_source: str | None = self._data.get("data_source", None)
+        self.foreign_keys: list["ForeignKeyConfig"] = [
+            ForeignKeyConfig(cfg=self.config, local_entity=self.entity_name, data=fk_data)
+            for fk_data in self._data.get("foreign_keys", []) or []
+        ]
+        self.keys: set[str] = set(self._data.get("keys", []) or [])
+        self.columns: list[str] = unique(self._data.get("columns"))
+        self.extra_columns: dict[str, Any] = self._data.get("extra_columns", {}) or {}
+        self.extra_column_names: list[str] = list(self.extra_columns.keys())
+        self.drop_duplicates: bool | list[str] = self._data.get("drop_duplicates") or False
+        self.drop_empty_rows: bool = self._data.get("drop_empty_rows", False)
+        self.unnest: UnnestConfig | None = UnnestConfig(cfg=self.config, data=self._data)  if self._data.get("unnest") else None
+        self.depends_on: set[str] = (
+            set(self._data.get("depends_on", []) or [])
+            | ({self.source} if self.source else set())
+            | {fk.remote_entity for fk in self.foreign_keys}
+        )
 
     @property
     def fixed_sql(self) -> None | str:
@@ -224,44 +230,6 @@ class TableConfig:
             return self.values.lstrip("sql:").strip()
         return None
 
-    @property
-    def data_source(self) -> str | None:
-        """Get the data source name for SQL data tables."""
-        return self.data.get("data_source", None)
-
-    @property
-    def values(self) -> str | None:
-        """The fixed values for the table, if it is of fixed data type.
-        These values are specified in the 'values' field of the configuration.
-        The values will be used to populate the table (pd.DataFrame).
-        """
-        return self.data.get("values", None)
-
-    @cached_property
-    def foreign_keys(self) -> list["ForeignKeyConfig"]:
-        return [
-            ForeignKeyConfig(cfg=self.config, local_entity=self.entity_name, data=fk_data)
-            for fk_data in self.data.get("foreign_keys", []) or []
-        ]
-
-    # def get_foreign_key_names(self) -> set[str]:
-    #     return {self.config[fk.remote_entity].get("surrogate_id", "") for fk in self.foreign_keys}
-
-    @property
-    def keys(self) -> set[str]:
-        return set(self.data.get("keys", []) or [])
-
-    @property
-    def columns(self) -> list[str]:
-        return unique(self.data.get("columns"))
-
-    @property
-    def extra_columns(self) -> dict[str, Any]:
-        return self.data.get("extra_columns", {}) or {}
-
-    @property
-    def extra_column_names(self) -> list[str]:
-        return list(self.extra_columns.keys())
 
     @property
     def columns2(self) -> list[str]:
@@ -272,22 +240,6 @@ class TableConfig:
     def data_columns(self) -> list[str]:
         """Get data columns excluding keys, foreign keys, and extra columns."""
         return [col for col in self.columns if col not in self.keys and col not in self.fk_column_set and not col in self.extra_columns]
-
-    @property
-    def drop_duplicates(self) -> bool | list[str]:
-        value = self.data.get("drop_duplicates", False)
-        return value if value else False
-
-    @property
-    def drop_empty_rows(self) -> bool:
-        return self.data.get("drop_empty_rows", False)
-
-    @property
-    def unnest(self) -> UnnestConfig | None:
-        """Get unnest configuration if it exists."""
-        if "unnest" in self.data:
-            return UnnestConfig(cfg=self.config, data=self.data)
-        return None
 
     @property
     def unnest_columns(self) -> set[str]:
@@ -301,15 +253,6 @@ class TableConfig:
         if not self.unnest:
             return False
         return all(col in table.columns for col in [self.unnest.var_name, self.unnest.value_name])
-
-    @property
-    def depends_on(self) -> set[str]:
-        dependees: set[str] = (
-            set(self.data.get("depends_on", []) or [])
-            | ({self.source} if self.source else set())
-            | {fk.remote_entity for fk in self.foreign_keys}
-        )
-        return dependees
 
     @property
     def fk_column_set(self) -> set[str]:
