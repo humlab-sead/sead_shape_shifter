@@ -60,7 +60,7 @@ async def workflow(
 
     if verbose:
         click.echo("\nTable Summary:")
-        for name, table in normalizer.data.items():
+        for name, table in normalizer.table_store.items():
             click.echo(f"  - {name}: {len(table)} rows")
 
 @click.command()
