@@ -198,33 +198,6 @@ class SubsetService:
         return data[columns_in_result]
 
 
-
-def get_subset(
-    source: pd.DataFrame,
-    columns: list[str],
-    *,
-    entity_name: str | None = None,
-    extra_columns: None | dict[str, Any] = None,
-    drop_duplicates: bool | list[str] = False,
-    fd_check: bool = False,
-    raise_if_missing: bool = True,
-    surrogate_id: str | None = None,
-    drop_empty_rows: bool | list[str] = False,
-) -> pd.DataFrame:
-    """Backward-compatible convenience function to get subset using SubsetService."""
-    return SubsetService().get_subset(
-        source=source,
-        columns=columns,
-        entity_name=entity_name,
-        extra_columns=extra_columns,
-        drop_duplicates=drop_duplicates,
-        fd_check=fd_check,
-        raise_if_missing=raise_if_missing,
-        surrogate_id=surrogate_id,
-        drop_empty=drop_empty_rows,
-    )
-
-
 def _rename_last_occurence(data: pd.DataFrame, rename_map: dict[str, str]) -> list[str]:
     """Rename the last occurrence of each source column in rename_map to the new name."""
     target_columns: list[str] = data.columns.tolist()
