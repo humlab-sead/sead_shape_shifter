@@ -55,6 +55,7 @@ async def workflow(
     normalizer.map_to_remote(link_cfgs)
 
     normalizer.store(target=target, mode=mode)
+    normalizer.log_shapes(target=target)
 
     if verbose:
         click.echo("\nTable Summary:")

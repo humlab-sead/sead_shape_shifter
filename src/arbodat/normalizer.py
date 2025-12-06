@@ -233,3 +233,16 @@ class ArbodatSurveyNormalizer:
             if entity_name not in link_cfgs:
                 continue
             self.data[entity_name] = service.link_to_remote(entity_name, self.data[entity_name])
+
+    def log_shapes(self, target: str) -> None:
+        """Log the shape of each table as a TSV in same folder as target."""
+        try:
+            folder: str = target if Path(target).is_dir() else str(Path(target).parent)
+            tsv_filename: Path = Path(folder) / "table_shapes.tsv"
+            with open(tsv_filename, "w", encoding="utf-8") as f:
+                f.write("entity\tnum_rows\tnum_columns\n")
+                for name, table in self.data.items():
+                    f.write(f"{name}\t{table.shape[0]}\t{table.shape[1]}\n")
+            logger.info(f"Table shapes written to {tsv_filename}")
+        except Exception as e:  # type: ignore ; pylint: disable=broad-except
+            logger.error(f"Failed to write table shapes to TSV: {e}")
