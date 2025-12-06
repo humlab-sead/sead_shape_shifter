@@ -9,7 +9,6 @@ Usage:
 """
 
 import asyncio
-import json
 import os
 from pathlib import Path
 from typing import Any, Literal
@@ -21,6 +20,7 @@ from src.arbodat.normalizer import ArbodatSurveyNormalizer
 from src.arbodat.utility import setup_logging
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
+from src.arbodat.utility import load_shape_file
 
 
 async def workflow(
@@ -58,10 +58,10 @@ async def workflow(
     normalizer.store(target=target, mode=mode)
     normalizer.log_shapes(target=target)
 
-    if verbose:
-        click.echo("\nTable Summary:")
-        for name, table in normalizer.table_store.items():
-            click.echo(f"  - {name}: {len(table)} rows")
+    # if verbose:
+    #     click.echo("\nTable Summary:")
+    #     for name, table in normalizer.table_store.items():
+    #         click.echo(f"  - {name}: {len(table)} rows")
 
 @click.command()
 @click.argument("input_csv")
@@ -74,6 +74,7 @@ async def workflow(
 @click.option("--mode", "-m", type=click.Choice(["xlsx", "csv", "db"]), default="xlsx", show_default=True, help="Output file format.")
 @click.option("--drop-foreign-keys", "-d", is_flag=True, help="Drop foreign key columns after linking.", default=False)
 @click.option("--log-file", "-l", type=click.Path(), help="Path to log file (optional).")
+@click.option("--regression-file", "-r", type=click.Path(), help="Path to regression file (optional).")
 def main(
     input_csv: str,
     target: str,
@@ -85,6 +86,7 @@ def main(
     mode: Literal["xlsx", "csv", "db"],
     drop_foreign_keys: bool,
     log_file: str | None,
+    regression_file: str | None,
 ) -> None:
     """
     Normalize an Arbodat "Data Survey" CSV export into several tables.
@@ -132,6 +134,25 @@ def main(
     )
 
     click.secho(f"✓ Successfully written normalized workbook to {target}", fg="green")
+
+    validate_entity_shapes(target, mode, regression_file)
+
+def validate_entity_shapes(target: str, mode: str, regression_file: str | None):
+    if mode != "csv" or not regression_file:
+        return
+    
+    truth_shapes: dict[str, tuple[int, int]] = load_shape_file(filename=regression_file)
+    new_shapes: dict[str, tuple[int, int]] = load_shape_file(filename=os.path.join(target, "table_shapes.tsv"))
+
+    entities_with_different_shapes = [
+        (entity, truth_shapes.get(entity), new_shapes.get(entity))
+        for entity in set(truth_shapes.keys()).union(set(new_shapes.keys()))
+        if truth_shapes.get(entity) != new_shapes.get(entity)
+    ]
+    if len(entities_with_different_shapes) > 0:
+        click.secho("✗ Regression check failed: Entities with different shapes:", fg="red")
+
+        print("\n".join(f" {z[0]:>30}: expected {str(z[1]):<15} found {str(z[2]):<20}" for z in entities_with_different_shapes))
 
 if __name__ == "__main__":
     main()
