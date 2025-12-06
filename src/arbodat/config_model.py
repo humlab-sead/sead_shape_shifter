@@ -276,7 +276,21 @@ class TableConfig:
         return keys_and_data_columns + unique(
             list(x for x in self.fk_column_set if x not in keys_and_data_columns and x not in self.unnest_columns)
         )
-
+    
+    def get_columns(self, include_keys: bool = True, include_fks: bool = True, include_extra: bool = True, include_unnest: bool = True) -> list[str]:
+        """Get list of columns based on inclusion criteria."""
+        cols: list[str] = []
+        if include_keys:
+            cols.extend(list(self.keys))
+        cols.extend(self.columns)
+        if include_fks:
+            cols.extend(list(self.fk_columns))
+        if include_extra:
+            cols.extend(list(self.extra_columns.keys()))
+        if include_unnest and self.unnest:
+            cols.extend([self.unnest.var_name, self.unnest.value_name])
+        return unique(cols)
+    
     def drop_fk_columns(self, table: pd.DataFrame) -> pd.DataFrame:
         """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
         columns: list[str] = self.columns or []
