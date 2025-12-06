@@ -368,12 +368,12 @@ class TablesConfig:
         cols_to_move: list[str] = (
             (["system_id"] if "system_id" in table.columns else [])
             + [table_cfg.surrogate_id]
-            + [self.get_table(fk.remote_entity).surrogate_id for fk in table_cfg.foreign_keys]
-            + table_cfg.extra_column_names
+            + sorted([self.get_table(fk.remote_entity).surrogate_id for fk in table_cfg.foreign_keys])
+            + sorted(table_cfg.extra_column_names)
         )
         existing_cols_to_move: list[str] = [col for col in cols_to_move if col in table.columns]
         other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
-        new_column_order: list[str] = existing_cols_to_move + other_cols
+        new_column_order: list[str] = existing_cols_to_move + sorted(other_cols)
         table = table[new_column_order]
         return table
 
