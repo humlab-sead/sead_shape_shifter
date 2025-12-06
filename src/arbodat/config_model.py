@@ -254,10 +254,10 @@ class TableConfig:
         """Check if the table has been unnested based on the presence of unnest columns."""
         if not self.unnest:
             return False
-        return all(col in table.columns for col in [self.unnest.var_name, self.unnest.value_name])
+        return all(col in table.columns for col in self.unnest_columns)
 
     @property
-    def fk_column_set(self) -> set[str]:
+    def fk_columns(self) -> set[str]:
         """Get set of all foreign key columns."""
         return {col for fk in self.foreign_keys or [] for col in fk.local_keys}
 
@@ -267,14 +267,14 @@ class TableConfig:
         extra_columns: set[str] = set()
         for fk in self.foreign_keys:
             extra_columns = extra_columns.union(set(fk.local_keys))
-        return self.fk_column_set - (set(self.keys_and_columns))
+        return self.fk_columns - (set(self.keys_and_columns))
 
     @property
-    def usage_columns(self) -> list[str]:
+    def keys_columns_and_fks(self) -> list[str]:
         """Get set of all columns used in keys, columns, and foreign keys, pending unnesting columns excluded)."""
         keys_and_data_columns: list[str] = self.keys_and_columns
         return keys_and_data_columns + unique(
-            list(x for x in self.fk_column_set if x not in keys_and_data_columns and x not in self.unnest_columns)
+            list(x for x in self.fk_columns if x not in keys_and_data_columns and x not in self.unnest_columns)
         )
     
     def get_columns(self, include_keys: bool = True, include_fks: bool = True, include_extra: bool = True, include_unnest: bool = True) -> list[str]:

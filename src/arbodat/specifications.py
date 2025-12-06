@@ -45,7 +45,7 @@ class ForeignKeyConfigSpecification:
 
         missing_fields = self.get_missing_fields(
             required_fields=set(fk_cfg.local_keys),
-            available_fields=set(cfg_local_table.usage_columns) | set(cfg_local_table.unnest_columns),
+            available_fields=set(cfg_local_table.keys_columns_and_fks) | set(cfg_local_table.unnest_columns),
         )
 
         if missing_fields:
@@ -53,7 +53,7 @@ class ForeignKeyConfigSpecification:
             return False
 
         missing_fields: set[str] = self.get_missing_fields(
-            required_fields=set(fk_cfg.remote_keys), available_fields=set(cfg_remote_table.usage_columns)
+            required_fields=set(fk_cfg.remote_keys), available_fields=set(cfg_remote_table.keys_columns_and_fks)
         )
 
         if missing_fields:

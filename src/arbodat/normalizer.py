@@ -152,7 +152,7 @@ class ArbodatSurveyNormalizer:
             
             data: pd.DataFrame = subsetService.get_subset(
                 source=source,
-                columns=table_cfg.usage_columns,
+                columns=table_cfg.keys_columns_and_fks,
                 entity_name=entity,
                 extra_columns=table_cfg.extra_columns,
                 drop_duplicates=table_cfg.drop_duplicates if not delay_drop_duplicates else False,
