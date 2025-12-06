@@ -45,6 +45,45 @@ def check_functional_dependency(df: pd.DataFrame, determinant_columns: list[str]
     return len(bad_keys) == 0
 
 
+def drop_duplicate_rows(
+    data: pd.DataFrame, columns: bool | list[str] = False, fd_check: bool = False, entity_name: str | None = None
+) -> pd.DataFrame:
+    if not isinstance(columns, list):
+        return data.drop_duplicates().reset_index(drop=True)
+    if set(columns).difference(data.columns):
+        missing_rquested_columns = set(columns).difference(data.columns)
+        logger.warning(
+            f"{entity_name}[subsetting]: Some columns specified for drop_duplicates are missing from DataFrame and will be ignored: {missing_rquested_columns}"
+        )
+    columns = [c for c in columns if c in data.columns]
+    if not columns:
+        logger.warning(
+            f"{entity_name}[subsetting]: No valid columns specified for drop_duplicates after filtering missing columns. No duplicates will be dropped."
+        )
+        return data
+    if fd_check:
+        check_functional_dependency(data, determinant_columns=columns, raise_error=True)
+    data = data.drop_duplicates(subset=columns).reset_index(drop=True)
+    return data
+
+
+def drop_empty_rows(*, data: pd.DataFrame, entity_name: str, subset: bool | list[str] | None = None) -> pd.DataFrame:
+    """Drop rows that are completely empty in the DataFrame or in the specified subset of columns."""
+
+    if subset is False:
+        return data
+
+    if isinstance(subset, list):
+        missing_requested_columns: list[str] = [c for c in subset if c not in data.columns]
+        if missing_requested_columns:
+            logger.warning(f"{entity_name}[subsetting]: Columns missing for drop_empty_rows: {missing_requested_columns}")
+            return data
+        
+        return data.dropna(subset=subset, how="all")
+    
+    return data.dropna(how="all")
+
+
 class SubsetService:
     """Class for extracting subsets from DataFrames with various options."""
 
@@ -59,7 +98,7 @@ class SubsetService:
         fd_check: bool = False,
         raise_if_missing: bool = True,
         surrogate_id: str | None = None,
-        drop_empty_rows: bool | list[str] = False,
+        drop_empty: bool | list[str] = False,
     ) -> pd.DataFrame:
         """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
         Args:
@@ -116,14 +155,14 @@ class SubsetService:
 
         # Handle duplicate removal
         if drop_duplicates:
-            result = self._drop_duplicates(result, columns=drop_duplicates, fd_check=fd_check, entity_name=entity_name)
+            result = drop_duplicate_rows(result, columns=drop_duplicates, fd_check=fd_check, entity_name=entity_name)
 
         result = self._restore_columns_order(result, columns)
 
         # Drop rows that are completely empty after subsetting
-        if drop_empty_rows:
-            result = self._drop_empty_rows(
-                data=result, entity_name=entity_name, subset=None if drop_empty_rows is True else drop_empty_rows
+        if drop_empty:
+            result = drop_empty_rows(
+                data=result, entity_name=entity_name, subset=None if drop_empty is True else drop_empty
             )
 
         # Add surrogate ID if requested and not present
@@ -158,36 +197,6 @@ class SubsetService:
         columns_in_result: list[str] = [c for c in columns if c in data.columns] + [c for c in data.columns if c not in columns]
         return data[columns_in_result]
 
-    def _drop_empty_rows(self, *, data: pd.DataFrame, entity_name: str, subset: list[str] | None = None) -> pd.DataFrame:
-        """Drop rows that are completely empty in the DataFrame or in the specified subset of columns."""
-        if isinstance(subset, list):
-            missing_requested_columns: list[str] = [c for c in subset if c not in data.columns]
-            if missing_requested_columns:
-                logger.warning(f"{entity_name}[subsetting]: Columns missing for drop_empty_rows: {missing_requested_columns}")
-                return data
-            return data.dropna(subset=subset, how="all")
-        return data.dropna(how="all")
-
-    def _drop_duplicates(
-        self, data: pd.DataFrame, columns: bool | list[str] = False, fd_check: bool = False, entity_name: str | None = None
-    ) -> pd.DataFrame:
-        if not isinstance(columns, list):
-            return data.drop_duplicates().reset_index(drop=True)
-        if set(columns).difference(data.columns):
-            missing_rquested_columns = set(columns).difference(data.columns)
-            logger.warning(
-                f"{entity_name}[subsetting]: Some columns specified for drop_duplicates are missing from DataFrame and will be ignored: {missing_rquested_columns}"
-            )
-        columns = [c for c in columns if c in data.columns]
-        if not columns:
-            logger.warning(
-                f"{entity_name}[subsetting]: No valid columns specified for drop_duplicates after filtering missing columns. No duplicates will be dropped."
-            )
-            return data
-        if fd_check:
-            check_functional_dependency(data, determinant_columns=columns, raise_error=True)
-        data = data.drop_duplicates(subset=columns).reset_index(drop=True)
-        return data
 
 
 def get_subset(
@@ -212,7 +221,7 @@ def get_subset(
         fd_check=fd_check,
         raise_if_missing=raise_if_missing,
         surrogate_id=surrogate_id,
-        drop_empty_rows=drop_empty_rows,
+        drop_empty=drop_empty_rows,
     )
 
 
