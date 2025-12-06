@@ -34,7 +34,7 @@ from loguru import logger
 
 from src.arbodat.config_model import DataSourceConfig, TableConfig, TablesConfig
 from src.arbodat.dispatch import Dispatcher, Dispatchers
-from src.arbodat.extract import SubsetService, add_surrogate_id, add_surrogate_id, translate
+from src.arbodat.extract import SubsetService, add_surrogate_id, add_surrogate_id, drop_empty_rows, translate
 from src.arbodat.link import link_entity
 from src.arbodat.loaders.database_loaders import SqlLoader, SqlLoaderFactory
 from src.arbodat.loaders.fixed_loader import FixedLoader
@@ -156,7 +156,7 @@ class ArbodatSurveyNormalizer:
                 drop_duplicates=table_cfg.drop_duplicates,
                 surrogate_id=table_cfg.surrogate_id,
                 raise_if_missing=False,
-                drop_empty_rows=table_cfg.drop_empty_rows,
+                drop_empty=False,
             )
 
             self.register(entity, data)
@@ -166,6 +166,11 @@ class ArbodatSurveyNormalizer:
             if table_cfg.unnest:
                 self.unnest_entity(entity=entity)
                 link_entity(entity_name=entity, config=self.config, data=self.table_store)
+
+            if table_cfg.drop_empty_rows:
+                self.table_store[entity] = drop_empty_rows(
+                    data=self.table_store[entity], entity_name=entity, subset=table_cfg.drop_empty_rows
+                )
 
             self.link()  # Try to resolve any pending deferred links after each entity is processed
 
