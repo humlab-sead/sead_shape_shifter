@@ -78,9 +78,9 @@ def drop_empty_rows(*, data: pd.DataFrame, entity_name: str, subset: bool | list
         if missing_requested_columns:
             logger.warning(f"{entity_name}[subsetting]: Columns missing for drop_empty_rows: {missing_requested_columns}")
             return data
-        
+
         return data.dropna(subset=subset, how="all")
-    
+
     return data.dropna(how="all")
 
 
