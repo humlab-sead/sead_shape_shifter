@@ -28,7 +28,7 @@ entities:
     keys: []
     columns: "@value: entities.contact_type.contact_types"
     unnest:
-      id_vars: [ ]
+      id_vars: [ entities.contact.surrogate_id ]
       value_vars: "@value: entities.contact_type.contact_types"
       var_name: contact_type
       value_name: contact_name
