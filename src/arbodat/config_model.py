@@ -215,7 +215,7 @@ class TableConfig:
         self.extra_column_names: list[str] = list(self.extra_columns.keys())
         self.drop_duplicates: bool | list[str] = self._data.get("drop_duplicates") or False
         self.drop_empty_rows: bool = self._data.get("drop_empty_rows", False)
-        self.unnest: UnnestConfig | None = UnnestConfig(cfg=self.config, data=self._data)  if self._data.get("unnest") else None
+        self.unnest: UnnestConfig | None = UnnestConfig(cfg=self.config, data=self._data) if self._data.get("unnest") else None
         self.depends_on: set[str] = (
             set(self._data.get("depends_on", []) or [])
             | ({self.source} if self.source else set())
@@ -229,7 +229,6 @@ class TableConfig:
             assert isinstance(self.values, str)
             return self.values.lstrip("sql:").strip()
         return None
-
 
     @property
     def columns2(self) -> list[str]:
