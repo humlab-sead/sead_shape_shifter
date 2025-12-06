@@ -295,6 +295,14 @@ class TableConfig:
             table[surrogate_id] = None
         return table
 
+    def is_drop_duplicate_dependent_on_unnesting(self) -> bool:
+        """Check if drop_duplicates is dependent on columns created during unnesting."""
+        if not self.drop_duplicates or not self.unnest:
+            return False
+        if isinstance(self.drop_duplicates, list):
+            return any(col in self.unnest_columns for col in self.drop_duplicates)
+        return False
+
 
 class TablesConfig:
     """Configuration for database tables."""
