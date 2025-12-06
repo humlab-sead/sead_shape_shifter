@@ -53,7 +53,7 @@ class ForeignKeyConfigSpecification:
             return False
 
         missing_fields: set[str] = self.get_missing_fields(
-            required_fields=set(fk_cfg.remote_keys), available_fields=set(cfg_remote_table.keys_columns_and_fks)
+            required_fields=set(fk_cfg.remote_keys), available_fields=set(cfg_remote_table.get_columns())
         )
 
         if missing_fields:
