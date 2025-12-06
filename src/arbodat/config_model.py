@@ -239,7 +239,7 @@ class TableConfig:
         return None
 
     @property
-    def columns2(self) -> list[str]:
+    def keys_and_columns(self) -> list[str]:
         """Get columns with keys first, followed by other columns."""
         return list(self.keys) + [col for col in self.columns if col not in self.keys]
 
@@ -272,12 +272,12 @@ class TableConfig:
         extra_columns: set[str] = set()
         for fk in self.foreign_keys:
             extra_columns = extra_columns.union(set(fk.local_keys))
-        return self.fk_column_set - (set(self.columns2))
+        return self.fk_column_set - (set(self.keys_and_columns))
 
     @property
     def usage_columns(self) -> list[str]:
         """Get set of all columns used in keys, columns, and foreign keys, pending unnesting columns excluded)."""
-        keys_and_data_columns: list[str] = self.columns2
+        keys_and_data_columns: list[str] = self.keys_and_columns
         return keys_and_data_columns + unique(
             list(x for x in self.fk_column_set if x not in keys_and_data_columns and x not in self.unnest_columns)
         )
