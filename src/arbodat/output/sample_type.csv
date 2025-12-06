@@ -1,2 +1,2 @@
-system_id,sample_type_id,sample_type_name,sample_type_description,ProbTyp,ProbTyp Beschreibung
-1,,Eim,bucket/bag,Eim,bucket/bag
+system_id,sample_type_id,sample_type_description,sample_type_name,ProbTyp,ProbTyp Beschreibung
+1,,bucket/bag,Eim,Eim,bucket/bag

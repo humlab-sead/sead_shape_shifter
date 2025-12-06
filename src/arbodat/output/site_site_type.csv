@@ -1,9 +1,9 @@
-system_id,site_site_type_id,site_type_id,site_id,ProjektNr,FustelTyp,EVNr,Fustel,OFustelTyp
-1,,1,1,18_0025,Rin,,Kville 1502,See
-2,,2,2,19_0013,Siedl,224073,Blaker kirkegård,Siedl
-3,,2,3,19_0014,Siedl,224073,Blaker kirkegård,Siedl
-4,,3,4,22_0005,Stadt,L1960:2928,Göteborg 342,Siedl
-5,,4,5,22_0015,unbek,L1969:1130,Sandarna Gbg 15:1,unbek
-6,,5,5,22_0015,FustelSo,L1969:1130,Sandarna Gbg 15:1,FuTySo
-7,,5,6,DanaBunar2,FustelSo,,,FuTySo
-8,,6,7,Iswid,Tell,,ISW,Siedl
+system_id,site_site_type_id,site_id,site_type_id,EVNr,Fustel,FustelTyp,OFustelTyp,ProjektNr
+1,,1,1,,Kville 1502,Rin,See,18_0025
+2,,2,2,224073,Blaker kirkegård,Siedl,Siedl,19_0013
+3,,3,2,224073,Blaker kirkegård,Siedl,Siedl,19_0014
+4,,4,3,L1960:2928,Göteborg 342,Stadt,Siedl,22_0005
+5,,5,4,L1969:1130,Sandarna Gbg 15:1,unbek,unbek,22_0015
+6,,5,5,L1969:1130,Sandarna Gbg 15:1,FustelSo,FuTySo,22_0015
+7,,6,5,,,FustelSo,FuTySo,DanaBunar2
+8,,7,6,,ISW,Tell,Siedl,Iswid

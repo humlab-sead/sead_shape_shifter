@@ -1,33 +1,33 @@
-system_id,site_property_id,site_id,site_property_type_id,ProjektNr,Fustel,EVNr,site_property_type,site_property_value
-1,,1,1,18_0025,Kville 1502,,Limes,
-2,,2,1,19_0013,Blaker kirkegård,224073,Limes,
-3,,3,1,19_0014,Blaker kirkegård,224073,Limes,
-4,,4,1,22_0005,Göteborg 342,L1960:2928,Limes,
-5,,5,1,22_0015,Sandarna Gbg 15:1,L1969:1130,Limes,
-6,,5,1,22_0015,Sandarna Gbg 15:1,L1969:1130,Limes,
-7,,6,1,DanaBunar2,,,Limes,
-8,,7,1,Iswid,ISW,,Limes,
-9,,1,2,18_0025,Kville 1502,,FustelTyp?,
-10,,2,2,19_0013,Blaker kirkegård,224073,FustelTyp?,
-11,,3,2,19_0014,Blaker kirkegård,224073,FustelTyp?,
-12,,4,2,22_0005,Göteborg 342,L1960:2928,FustelTyp?,
-13,,5,2,22_0015,Sandarna Gbg 15:1,L1969:1130,FustelTyp?,
-14,,5,2,22_0015,Sandarna Gbg 15:1,L1969:1130,FustelTyp?,X
-15,,6,2,DanaBunar2,,,FustelTyp?,
-16,,7,2,Iswid,ISW,,FustelTyp?,
-17,,1,3,18_0025,Kville 1502,,okFustel,X
-18,,2,3,19_0013,Blaker kirkegård,224073,okFustel,X
-19,,3,3,19_0014,Blaker kirkegård,224073,okFustel,X
-20,,4,3,22_0005,Göteborg 342,L1960:2928,okFustel,X
-21,,5,3,22_0015,Sandarna Gbg 15:1,L1969:1130,okFustel,
-22,,5,3,22_0015,Sandarna Gbg 15:1,L1969:1130,okFustel,
-23,,6,3,DanaBunar2,,,okFustel,X
-24,,7,3,Iswid,ISW,,okFustel,X
-25,,1,4,18_0025,Kville 1502,,TK,
-26,,2,4,19_0013,Blaker kirkegård,224073,TK,
-27,,3,4,19_0014,Blaker kirkegård,224073,TK,
-28,,4,4,22_0005,Göteborg 342,L1960:2928,TK,
-29,,5,4,22_0015,Sandarna Gbg 15:1,L1969:1130,TK,
-30,,5,4,22_0015,Sandarna Gbg 15:1,L1969:1130,TK,
-31,,6,4,DanaBunar2,,,TK,
-32,,7,4,Iswid,ISW,,TK,
+system_id,site_property_id,site_id,site_property_type_id,EVNr,Fustel,ProjektNr,site_property_type,site_property_value
+1,,1,1,,Kville 1502,18_0025,Limes,
+2,,2,1,224073,Blaker kirkegård,19_0013,Limes,
+3,,3,1,224073,Blaker kirkegård,19_0014,Limes,
+4,,4,1,L1960:2928,Göteborg 342,22_0005,Limes,
+5,,5,1,L1969:1130,Sandarna Gbg 15:1,22_0015,Limes,
+6,,5,1,L1969:1130,Sandarna Gbg 15:1,22_0015,Limes,
+7,,6,1,,,DanaBunar2,Limes,
+8,,7,1,,ISW,Iswid,Limes,
+9,,1,2,,Kville 1502,18_0025,FustelTyp?,
+10,,2,2,224073,Blaker kirkegård,19_0013,FustelTyp?,
+11,,3,2,224073,Blaker kirkegård,19_0014,FustelTyp?,
+12,,4,2,L1960:2928,Göteborg 342,22_0005,FustelTyp?,
+13,,5,2,L1969:1130,Sandarna Gbg 15:1,22_0015,FustelTyp?,
+14,,5,2,L1969:1130,Sandarna Gbg 15:1,22_0015,FustelTyp?,X
+15,,6,2,,,DanaBunar2,FustelTyp?,
+16,,7,2,,ISW,Iswid,FustelTyp?,
+17,,1,3,,Kville 1502,18_0025,okFustel,X
+18,,2,3,224073,Blaker kirkegård,19_0013,okFustel,X
+19,,3,3,224073,Blaker kirkegård,19_0014,okFustel,X
+20,,4,3,L1960:2928,Göteborg 342,22_0005,okFustel,X
+21,,5,3,L1969:1130,Sandarna Gbg 15:1,22_0015,okFustel,
+22,,5,3,L1969:1130,Sandarna Gbg 15:1,22_0015,okFustel,
+23,,6,3,,,DanaBunar2,okFustel,X
+24,,7,3,,ISW,Iswid,okFustel,X
+25,,1,4,,Kville 1502,18_0025,TK,
+26,,2,4,224073,Blaker kirkegård,19_0013,TK,
+27,,3,4,224073,Blaker kirkegård,19_0014,TK,
+28,,4,4,L1960:2928,Göteborg 342,22_0005,TK,
+29,,5,4,L1969:1130,Sandarna Gbg 15:1,22_0015,TK,
+30,,5,4,L1969:1130,Sandarna Gbg 15:1,22_0015,TK,
+31,,6,4,,,DanaBunar2,TK,
+32,,7,4,,ISW,Iswid,TK,

@@ -1,187 +1,187 @@
-system_id,feature_type_id,site_id,feature_type_name,feature_type_description,ProjektNr,Befu,BefuTyp,Fustel,EVNr
-1,5,1,Schi,,18_0025,P16,Schi,Kville 1502,
-2,5,1,Schi,,18_0025,P18,Schi,Kville 1502,
-3,5,1,Schi,,18_0025,P20,Schi,Kville 1502,
-4,5,1,Schi,,18_0025,P5,Schi,Kville 1502,
-5,5,1,Schi,,18_0025,P6,Schi,Kville 1502,
-6,7,2,Gr,,19_0013,A11148,Gr,Blaker kirkegård,224073
-7,7,2,Gr,,19_0013,A479,Gr,Blaker kirkegård,224073
-8,26,2,Pfo,,19_0013,A6214,Pfo,Blaker kirkegård,224073
-9,26,2,Pfo,,19_0013,A8090,Pfo,Blaker kirkegård,224073
-10,26,2,Pfo,,19_0013,A9063,Pfo,Blaker kirkegård,224073
-11,26,3,Pfo,,19_0014,A10143,Pfo,Blaker kirkegård,224073
-12,26,3,Pfo,,19_0014,A10153,Pfo,Blaker kirkegård,224073
-13,26,3,Pfo,,19_0014,A10189,Pfo,Blaker kirkegård,224073
-14,26,3,Pfo,,19_0014,A10229,Pfo,Blaker kirkegård,224073
-15,7,3,Gr,,19_0014,A10697,Gr,Blaker kirkegård,224073
-16,26,3,Pfo,,19_0014,A10990,Pfo,Blaker kirkegård,224073
-17,7,3,Gr,,19_0014,A11339,Gr,Blaker kirkegård,224073
-18,26,3,Pfo,,19_0014,A1196,Pfo,Blaker kirkegård,224073
-19,6,3,BrGrab,,19_0014,A12024,BrGrab,Blaker kirkegård,224073
-20,6,3,BrGrab,,19_0014,A12034,BrGrab,Blaker kirkegård,224073
-21,7,3,Gr,,19_0014,A12435,Gr,Blaker kirkegård,224073
-22,7,3,Gr,,19_0014,A13064,Gr,Blaker kirkegård,224073
-23,26,3,Pfo,,19_0014,A13200,Pfo,Blaker kirkegård,224073
-24,7,3,Gr,,19_0014,A13299,Gr,Blaker kirkegård,224073
-25,7,3,Gr,,19_0014,A13837,Gr,Blaker kirkegård,224073
-26,40,3,Kult,,19_0014,A15333,Kult,Blaker kirkegård,224073
-27,7,3,Gr,,19_0014,A15344,Gr,Blaker kirkegård,224073
-28,7,3,Gr,,19_0014,A15554,Gr,Blaker kirkegård,224073
-29,6,3,BrGrab,,19_0014,A15736,BrGrab,Blaker kirkegård,224073
-30,26,3,Pfo,,19_0014,A16771,Pfo,Blaker kirkegård,224073
-31,26,3,Pfo,,19_0014,A16783,Pfo,Blaker kirkegård,224073
-32,26,3,Pfo,,19_0014,A17294,Pfo,Blaker kirkegård,224073
-33,26,3,Pfo,,19_0014,A1875,Pfo,Blaker kirkegård,224073
-34,26,3,Pfo,,19_0014,A1931,Pfo,Blaker kirkegård,224073
-35,26,3,Pfo,,19_0014,A1998,Pfo,Blaker kirkegård,224073
-36,26,3,Pfo,,19_0014,A2019,Pfo,Blaker kirkegård,224073
-37,26,3,Pfo,,19_0014,A2029,Pfo,Blaker kirkegård,224073
-38,26,3,Pfo,,19_0014,A2114,Pfo,Blaker kirkegård,224073
-39,26,3,Pfo,,19_0014,A3019,Pfo,Blaker kirkegård,224073
-40,7,3,Gr,,19_0014,A3170,Gr,Blaker kirkegård,224073
-41,26,3,Pfo,,19_0014,A3650,Pfo,Blaker kirkegård,224073
-42,26,3,Pfo,,19_0014,A4115,Pfo,Blaker kirkegård,224073
-43,26,3,Pfo,,19_0014,A4365,Pfo,Blaker kirkegård,224073
-44,26,3,Pfo,,19_0014,A5192,Pfo,Blaker kirkegård,224073
-45,26,3,Pfo,,19_0014,A5213,Pfo,Blaker kirkegård,224073
-46,26,3,Pfo,,19_0014,A5223,Pfo,Blaker kirkegård,224073
-47,19,3,Her,,19_0014,A5254,Her,Blaker kirkegård,224073
-48,26,3,Pfo,,19_0014,A5282,Pfo,Blaker kirkegård,224073
-49,26,3,Pfo,,19_0014,A5294,Pfo,Blaker kirkegård,224073
-50,26,3,Pfo,,19_0014,A5307,Pfo,Blaker kirkegård,224073
-51,7,3,Gr,,19_0014,A5334,Gr,Blaker kirkegård,224073
-52,26,3,Pfo,,19_0014,A6041,Pfo,Blaker kirkegård,224073
-53,26,3,Pfo,,19_0014,A6135,Pfo,Blaker kirkegård,224073
-54,26,3,Pfo,,19_0014,A6146,Pfo,Blaker kirkegård,224073
-55,26,3,Pfo,,19_0014,A6157,Pfo,Blaker kirkegård,224073
-56,26,3,Pfo,,19_0014,A6178,Pfo,Blaker kirkegård,224073
-57,26,3,Pfo,,19_0014,A6194,Pfo,Blaker kirkegård,224073
-58,26,3,Pfo,,19_0014,A7199,Pfo,Blaker kirkegård,224073
-59,26,3,Pfo,,19_0014,A7253,Pfo,Blaker kirkegård,224073
-60,26,3,Pfo,,19_0014,A7263,Pfo,Blaker kirkegård,224073
-61,26,3,Pfo,,19_0014,A7294,Pfo,Blaker kirkegård,224073
-62,26,3,Pfo,,19_0014,A7306,Pfo,Blaker kirkegård,224073
-63,26,3,Pfo,,19_0014,A785,Pfo,Blaker kirkegård,224073
-64,26,3,Pfo,,19_0014,A8079,Pfo,Blaker kirkegård,224073
-65,26,3,Pfo,,19_0014,A8103,Pfo,Blaker kirkegård,224073
-66,26,3,Pfo,,19_0014,A8114,Pfo,Blaker kirkegård,224073
-67,26,3,Pfo,,19_0014,A8142,Pfo,Blaker kirkegård,224073
-68,26,3,Pfo,,19_0014,A8178,Pfo,Blaker kirkegård,224073
-69,26,3,Pfo,,19_0014,A8189,Pfo,Blaker kirkegård,224073
-70,26,3,Pfo,,19_0014,A8234,Pfo,Blaker kirkegård,224073
-71,26,3,Pfo,,19_0014,A9000,Pfo,Blaker kirkegård,224073
-72,26,3,Pfo,,19_0014,A9052,Pfo,Blaker kirkegård,224073
-73,26,3,Pfo,,19_0014,A9075,Pfo,Blaker kirkegård,224073
-74,26,3,Pfo,,19_0014,A9111,Pfo,Blaker kirkegård,224073
-75,26,3,Pfo,,19_0014,A9126,Pfo,Blaker kirkegård,224073
-76,26,3,Pfo,,19_0014,A9199,Pfo,Blaker kirkegård,224073
-77,7,3,Gr,,19_0014,A957,Gr,Blaker kirkegård,224073
-78,7,3,Gr,,19_0014,A973,Gr,Blaker kirkegård,224073
-79,26,3,Pfo,,19_0014,A9847,Pfo,Blaker kirkegård,224073
-80,40,4,Kult,,22_0005,11200,Kult,Göteborg 342,L1960:2928
-81,40,4,Kult,,22_0005,11201,Kult,Göteborg 342,L1960:2928
-82,40,4,Kult,,22_0005,11221,Kult,Göteborg 342,L1960:2928
-83,40,4,Kult,,22_0005,12026,Kult,Göteborg 342,L1960:2928
-84,40,4,Kult,,22_0005,200125,Kult,Göteborg 342,L1960:2928
-85,40,4,Kult,,22_0005,200149,Kult,Göteborg 342,L1960:2928
-86,40,4,Kult,,22_0005,200177,Kult,Göteborg 342,L1960:2928
-87,40,4,Kult,,22_0005,200473,Kult,Göteborg 342,L1960:2928
-88,40,4,Kult,,22_0005,200475,Kult,Göteborg 342,L1960:2928
-89,40,4,Kult,,22_0005,23362,Kult,Göteborg 342,L1960:2928
-90,580,4,Bod,,22_0005,23434,Bod,Göteborg 342,L1960:2928
-91,580,4,Bod,,22_0005,23491,Bod,Göteborg 342,L1960:2928
-92,9,4,Bru,,22_0005,23988,Bru,Göteborg 342,L1960:2928
-93,19,5,Her,,22_0015,A2076,Her,Sandarna Gbg 15:1,L1969:1130
-94,36,5,Grm,,22_0015,A2154,Grm,Sandarna Gbg 15:1,L1969:1130
-95,19,5,Her,,22_0015,A2874 G2976,Her,Sandarna Gbg 15:1,L1969:1130
-96,19,5,Her,,22_0015,A4796,Her,Sandarna Gbg 15:1,L1969:1130
-97,40,5,Kult,,22_0015,M153 St 1,Kult,Sandarna Gbg 15:1,L1969:1130
-98,40,5,Kult,,22_0015,M153 St 2,Kult,Sandarna Gbg 15:1,L1969:1130
-99,40,5,Kult,,22_0015,M160 St 1,Kult,Sandarna Gbg 15:1,L1969:1130
-100,40,5,Kult,,22_0015,M167 St 1,Kult,Sandarna Gbg 15:1,L1969:1130
-101,40,5,Kult,,22_0015,M167 St 2,Kult,Sandarna Gbg 15:1,L1969:1130
-102,40,5,Kult,,22_0015,M167 St 3,Kult,Sandarna Gbg 15:1,L1969:1130
-103,40,5,Kult,,22_0015,M167 St 4,Kult,Sandarna Gbg 15:1,L1969:1130
-104,40,5,Kult,,22_0015,M32 Undre del,Kult,Sandarna Gbg 15:1,L1969:1130
-105,40,5,Kult,,22_0015,M32 Övre del,Kult,Sandarna Gbg 15:1,L1969:1130
-106,19,5,Her,,22_0015,M99 A5085,Her,Sandarna Gbg 15:1,L1969:1130
-107,7,6,Gr,,DanaBunar2,31,Gr,,
-108,7,6,Gr,,DanaBunar2,32,Gr,,
-109,7,6,Gr,,DanaBunar2,33,Gr,,
-110,7,6,Gr,,DanaBunar2,37,Gr,,
-111,7,6,Gr,,DanaBunar2,38,Gr,,
-112,7,6,Gr,,DanaBunar2,39,Gr,,
-113,7,6,Gr,,DanaBunar2,41,Gr,,
-114,7,6,Gr,,DanaBunar2,42,Gr,,
-115,7,6,Gr,,DanaBunar2,44,Gr,,
-116,7,6,Gr,,DanaBunar2,46,Gr,,
-117,7,6,Gr,,DanaBunar2,47,Gr,,
-118,7,6,Gr,,DanaBunar2,55,Gr,,
-119,7,6,Gr,,DanaBunar2,58,Gr,,
-120,7,6,Gr,,DanaBunar2,64,Gr,,
-121,14,7,KultLauf,,Iswid,2709_fond,KultLauf,ISW,
-122,14,7,KultLauf,,Iswid,2905 fond,KultLauf,ISW,
-123,26,7,Pfo,,Iswid,2913 fond,Pfo,ISW,
-124,14,7,KultLauf,,Iswid,foyer 2174,KultLauf,ISW,
-125,37,7,Of,,Iswid,US 10503,Of,ISW,
-126,14,7,KultLauf,,Iswid,US 10521,KultLauf,ISW,
-127,14,7,KultLauf,,Iswid,US 10534,KultLauf,ISW,
-128,14,7,KultLauf,,Iswid,US 10610,KultLauf,ISW,
-129,14,7,KultLauf,,Iswid,US 11004,KultLauf,ISW,
-130,14,7,KultLauf,,Iswid,US 11012,KultLauf,ISW,
-131,14,7,KultLauf,,Iswid,US 11067,KultLauf,ISW,
-132,14,7,KultLauf,,Iswid,US 12025,KultLauf,ISW,
-133,14,7,KultLauf,,Iswid,US 12040,KultLauf,ISW,
-134,14,7,KultLauf,,Iswid,US 12047,KultLauf,ISW,
-135,14,7,KultLauf,,Iswid,US 12504,KultLauf,ISW,
-136,37,7,Of,,Iswid,US 13017,Of,ISW,
-137,27,7,,,Iswid,US 13065,,ISW,
-138,37,7,Of,,Iswid,US 13066,Of,ISW,
-139,27,7,,,Iswid,US 13083,,ISW,
-140,27,7,BefuTyp?,,Iswid,US 13099,BefuTyp?,ISW,
-141,37,7,Of,,Iswid,US 13145,Of,ISW,
-142,27,7,,,Iswid,US 13516,,ISW,
-143,27,7,,,Iswid,US 13526,,ISW,
-144,27,7,,,Iswid,US 13572,,ISW,
-145,27,7,,,Iswid,US 13610,,ISW,
-146,27,7,,,Iswid,US 13632,,ISW,
-147,27,7,,,Iswid,US 13639,,ISW,
-148,27,7,,,Iswid,US 13657,,ISW,
-149,27,7,,,Iswid,US 13705,,ISW,
-150,27,7,,,Iswid,US 13791,,ISW,
-151,27,7,,,Iswid,US 13791 (3),,ISW,
-152,27,7,,,Iswid,US 13802,,ISW,
-153,27,7,,,Iswid,US 13971,,ISW,
-154,14,7,KultLauf,,Iswid,US 14021,KultLauf,ISW,
-155,27,7,BefuTyp?,,Iswid,US 14038,BefuTyp?,ISW,
-156,7,7,Gr,,Iswid,US 14050,Gr,ISW,
-157,37,7,Of,,Iswid,US 14078,Of,ISW,
-158,27,7,BefuTyp?,,Iswid,US 14131,BefuTyp?,ISW,
-159,27,7,,,Iswid,US 14158,,ISW,
-160,27,7,BefuTyp?,,Iswid,US 14418,BefuTyp?,ISW,
-161,14,7,KultLauf,,Iswid,US 14495,KultLauf,ISW,
-162,40,7,Kult,,Iswid,US 14509,Kult,ISW,
-163,26,7,Pfo,,Iswid,US 14636,Pfo,ISW,
-164,27,7,BefuTyp?,,Iswid,US 15067,BefuTyp?,ISW,
-165,27,7,BefuTyp?,,Iswid,US 15071,BefuTyp?,ISW,
-166,27,7,BefuTyp?,,Iswid,US 15108,BefuTyp?,ISW,
-167,27,7,BefuTyp?,,Iswid,US 15140,BefuTyp?,ISW,
-168,27,7,BefuTyp?,,Iswid,US 16183,BefuTyp?,ISW,
-169,27,7,BefuTyp?,,Iswid,US 16287_F4185 (TR.),BefuTyp?,ISW,
-170,27,7,BefuTyp?,,Iswid,US 16323_F4199(foye,BefuTyp?,ISW,
-171,14,7,KultLauf,,Iswid,US 6712,KultLauf,ISW,
-172,14,7,KultLauf,,Iswid,US 6773,KultLauf,ISW,
-173,14,7,KultLauf,,Iswid,US 6803,KultLauf,ISW,
-174,40,7,Kult,,Iswid,US 6810,Kult,ISW,
-175,14,7,KultLauf,,Iswid,US 6827,KultLauf,ISW,
-176,14,7,KultLauf,,Iswid,US 6854,KultLauf,ISW,
-177,14,7,KultLauf,,Iswid,US 6863,KultLauf,ISW,
-178,14,7,KultLauf,,Iswid,US 6875,KultLauf,ISW,
-179,37,7,Of,,Iswid,US 9036,Of,ISW,
-180,14,7,KultLauf,,Iswid,US 9200,KultLauf,ISW,
-181,14,7,KultLauf,,Iswid,US 9321,KultLauf,ISW,
-182,14,7,KultLauf,,Iswid,US 9404_foyer 2093,KultLauf,ISW,
-183,14,7,KultLauf,,Iswid,US 9519,KultLauf,ISW,
-184,14,7,KultLauf,,Iswid,US 9859/9860,KultLauf,ISW,
-185,14,7,KultLauf,,Iswid,US 9870_foyer2163,KultLauf,ISW,
-186,14,7,KultLauf,,Iswid,US 9880_foyer 2166,KultLauf,ISW,
+system_id,feature_type_id,site_id,feature_type_description,feature_type_name,Befu,BefuTyp,EVNr,Fustel,ProjektNr
+1,5,1,,Schi,P16,Schi,,Kville 1502,18_0025
+2,5,1,,Schi,P18,Schi,,Kville 1502,18_0025
+3,5,1,,Schi,P20,Schi,,Kville 1502,18_0025
+4,5,1,,Schi,P5,Schi,,Kville 1502,18_0025
+5,5,1,,Schi,P6,Schi,,Kville 1502,18_0025
+6,7,2,,Gr,A11148,Gr,224073,Blaker kirkegård,19_0013
+7,7,2,,Gr,A479,Gr,224073,Blaker kirkegård,19_0013
+8,26,2,,Pfo,A6214,Pfo,224073,Blaker kirkegård,19_0013
+9,26,2,,Pfo,A8090,Pfo,224073,Blaker kirkegård,19_0013
+10,26,2,,Pfo,A9063,Pfo,224073,Blaker kirkegård,19_0013
+11,26,3,,Pfo,A10143,Pfo,224073,Blaker kirkegård,19_0014
+12,26,3,,Pfo,A10153,Pfo,224073,Blaker kirkegård,19_0014
+13,26,3,,Pfo,A10189,Pfo,224073,Blaker kirkegård,19_0014
+14,26,3,,Pfo,A10229,Pfo,224073,Blaker kirkegård,19_0014
+15,7,3,,Gr,A10697,Gr,224073,Blaker kirkegård,19_0014
+16,26,3,,Pfo,A10990,Pfo,224073,Blaker kirkegård,19_0014
+17,7,3,,Gr,A11339,Gr,224073,Blaker kirkegård,19_0014
+18,26,3,,Pfo,A1196,Pfo,224073,Blaker kirkegård,19_0014
+19,6,3,,BrGrab,A12024,BrGrab,224073,Blaker kirkegård,19_0014
+20,6,3,,BrGrab,A12034,BrGrab,224073,Blaker kirkegård,19_0014
+21,7,3,,Gr,A12435,Gr,224073,Blaker kirkegård,19_0014
+22,7,3,,Gr,A13064,Gr,224073,Blaker kirkegård,19_0014
+23,26,3,,Pfo,A13200,Pfo,224073,Blaker kirkegård,19_0014
+24,7,3,,Gr,A13299,Gr,224073,Blaker kirkegård,19_0014
+25,7,3,,Gr,A13837,Gr,224073,Blaker kirkegård,19_0014
+26,40,3,,Kult,A15333,Kult,224073,Blaker kirkegård,19_0014
+27,7,3,,Gr,A15344,Gr,224073,Blaker kirkegård,19_0014
+28,7,3,,Gr,A15554,Gr,224073,Blaker kirkegård,19_0014
+29,6,3,,BrGrab,A15736,BrGrab,224073,Blaker kirkegård,19_0014
+30,26,3,,Pfo,A16771,Pfo,224073,Blaker kirkegård,19_0014
+31,26,3,,Pfo,A16783,Pfo,224073,Blaker kirkegård,19_0014
+32,26,3,,Pfo,A17294,Pfo,224073,Blaker kirkegård,19_0014
+33,26,3,,Pfo,A1875,Pfo,224073,Blaker kirkegård,19_0014
+34,26,3,,Pfo,A1931,Pfo,224073,Blaker kirkegård,19_0014
+35,26,3,,Pfo,A1998,Pfo,224073,Blaker kirkegård,19_0014
+36,26,3,,Pfo,A2019,Pfo,224073,Blaker kirkegård,19_0014
+37,26,3,,Pfo,A2029,Pfo,224073,Blaker kirkegård,19_0014
+38,26,3,,Pfo,A2114,Pfo,224073,Blaker kirkegård,19_0014
+39,26,3,,Pfo,A3019,Pfo,224073,Blaker kirkegård,19_0014
+40,7,3,,Gr,A3170,Gr,224073,Blaker kirkegård,19_0014
+41,26,3,,Pfo,A3650,Pfo,224073,Blaker kirkegård,19_0014
+42,26,3,,Pfo,A4115,Pfo,224073,Blaker kirkegård,19_0014
+43,26,3,,Pfo,A4365,Pfo,224073,Blaker kirkegård,19_0014
+44,26,3,,Pfo,A5192,Pfo,224073,Blaker kirkegård,19_0014
+45,26,3,,Pfo,A5213,Pfo,224073,Blaker kirkegård,19_0014
+46,26,3,,Pfo,A5223,Pfo,224073,Blaker kirkegård,19_0014
+47,19,3,,Her,A5254,Her,224073,Blaker kirkegård,19_0014
+48,26,3,,Pfo,A5282,Pfo,224073,Blaker kirkegård,19_0014
+49,26,3,,Pfo,A5294,Pfo,224073,Blaker kirkegård,19_0014
+50,26,3,,Pfo,A5307,Pfo,224073,Blaker kirkegård,19_0014
+51,7,3,,Gr,A5334,Gr,224073,Blaker kirkegård,19_0014
+52,26,3,,Pfo,A6041,Pfo,224073,Blaker kirkegård,19_0014
+53,26,3,,Pfo,A6135,Pfo,224073,Blaker kirkegård,19_0014
+54,26,3,,Pfo,A6146,Pfo,224073,Blaker kirkegård,19_0014
+55,26,3,,Pfo,A6157,Pfo,224073,Blaker kirkegård,19_0014
+56,26,3,,Pfo,A6178,Pfo,224073,Blaker kirkegård,19_0014
+57,26,3,,Pfo,A6194,Pfo,224073,Blaker kirkegård,19_0014
+58,26,3,,Pfo,A7199,Pfo,224073,Blaker kirkegård,19_0014
+59,26,3,,Pfo,A7253,Pfo,224073,Blaker kirkegård,19_0014
+60,26,3,,Pfo,A7263,Pfo,224073,Blaker kirkegård,19_0014
+61,26,3,,Pfo,A7294,Pfo,224073,Blaker kirkegård,19_0014
+62,26,3,,Pfo,A7306,Pfo,224073,Blaker kirkegård,19_0014
+63,26,3,,Pfo,A785,Pfo,224073,Blaker kirkegård,19_0014
+64,26,3,,Pfo,A8079,Pfo,224073,Blaker kirkegård,19_0014
+65,26,3,,Pfo,A8103,Pfo,224073,Blaker kirkegård,19_0014
+66,26,3,,Pfo,A8114,Pfo,224073,Blaker kirkegård,19_0014
+67,26,3,,Pfo,A8142,Pfo,224073,Blaker kirkegård,19_0014
+68,26,3,,Pfo,A8178,Pfo,224073,Blaker kirkegård,19_0014
+69,26,3,,Pfo,A8189,Pfo,224073,Blaker kirkegård,19_0014
+70,26,3,,Pfo,A8234,Pfo,224073,Blaker kirkegård,19_0014
+71,26,3,,Pfo,A9000,Pfo,224073,Blaker kirkegård,19_0014
+72,26,3,,Pfo,A9052,Pfo,224073,Blaker kirkegård,19_0014
+73,26,3,,Pfo,A9075,Pfo,224073,Blaker kirkegård,19_0014
+74,26,3,,Pfo,A9111,Pfo,224073,Blaker kirkegård,19_0014
+75,26,3,,Pfo,A9126,Pfo,224073,Blaker kirkegård,19_0014
+76,26,3,,Pfo,A9199,Pfo,224073,Blaker kirkegård,19_0014
+77,7,3,,Gr,A957,Gr,224073,Blaker kirkegård,19_0014
+78,7,3,,Gr,A973,Gr,224073,Blaker kirkegård,19_0014
+79,26,3,,Pfo,A9847,Pfo,224073,Blaker kirkegård,19_0014
+80,40,4,,Kult,11200,Kult,L1960:2928,Göteborg 342,22_0005
+81,40,4,,Kult,11201,Kult,L1960:2928,Göteborg 342,22_0005
+82,40,4,,Kult,11221,Kult,L1960:2928,Göteborg 342,22_0005
+83,40,4,,Kult,12026,Kult,L1960:2928,Göteborg 342,22_0005
+84,40,4,,Kult,200125,Kult,L1960:2928,Göteborg 342,22_0005
+85,40,4,,Kult,200149,Kult,L1960:2928,Göteborg 342,22_0005
+86,40,4,,Kult,200177,Kult,L1960:2928,Göteborg 342,22_0005
+87,40,4,,Kult,200473,Kult,L1960:2928,Göteborg 342,22_0005
+88,40,4,,Kult,200475,Kult,L1960:2928,Göteborg 342,22_0005
+89,40,4,,Kult,23362,Kult,L1960:2928,Göteborg 342,22_0005
+90,580,4,,Bod,23434,Bod,L1960:2928,Göteborg 342,22_0005
+91,580,4,,Bod,23491,Bod,L1960:2928,Göteborg 342,22_0005
+92,9,4,,Bru,23988,Bru,L1960:2928,Göteborg 342,22_0005
+93,19,5,,Her,A2076,Her,L1969:1130,Sandarna Gbg 15:1,22_0015
+94,36,5,,Grm,A2154,Grm,L1969:1130,Sandarna Gbg 15:1,22_0015
+95,19,5,,Her,A2874 G2976,Her,L1969:1130,Sandarna Gbg 15:1,22_0015
+96,19,5,,Her,A4796,Her,L1969:1130,Sandarna Gbg 15:1,22_0015
+97,40,5,,Kult,M153 St 1,Kult,L1969:1130,Sandarna Gbg 15:1,22_0015
+98,40,5,,Kult,M153 St 2,Kult,L1969:1130,Sandarna Gbg 15:1,22_0015
+99,40,5,,Kult,M160 St 1,Kult,L1969:1130,Sandarna Gbg 15:1,22_0015
+100,40,5,,Kult,M167 St 1,Kult,L1969:1130,Sandarna Gbg 15:1,22_0015
+101,40,5,,Kult,M167 St 2,Kult,L1969:1130,Sandarna Gbg 15:1,22_0015
+102,40,5,,Kult,M167 St 3,Kult,L1969:1130,Sandarna Gbg 15:1,22_0015
+103,40,5,,Kult,M167 St 4,Kult,L1969:1130,Sandarna Gbg 15:1,22_0015
+104,40,5,,Kult,M32 Undre del,Kult,L1969:1130,Sandarna Gbg 15:1,22_0015
+105,40,5,,Kult,M32 Övre del,Kult,L1969:1130,Sandarna Gbg 15:1,22_0015
+106,19,5,,Her,M99 A5085,Her,L1969:1130,Sandarna Gbg 15:1,22_0015
+107,7,6,,Gr,31,Gr,,,DanaBunar2
+108,7,6,,Gr,32,Gr,,,DanaBunar2
+109,7,6,,Gr,33,Gr,,,DanaBunar2
+110,7,6,,Gr,37,Gr,,,DanaBunar2
+111,7,6,,Gr,38,Gr,,,DanaBunar2
+112,7,6,,Gr,39,Gr,,,DanaBunar2
+113,7,6,,Gr,41,Gr,,,DanaBunar2
+114,7,6,,Gr,42,Gr,,,DanaBunar2
+115,7,6,,Gr,44,Gr,,,DanaBunar2
+116,7,6,,Gr,46,Gr,,,DanaBunar2
+117,7,6,,Gr,47,Gr,,,DanaBunar2
+118,7,6,,Gr,55,Gr,,,DanaBunar2
+119,7,6,,Gr,58,Gr,,,DanaBunar2
+120,7,6,,Gr,64,Gr,,,DanaBunar2
+121,14,7,,KultLauf,2709_fond,KultLauf,,ISW,Iswid
+122,14,7,,KultLauf,2905 fond,KultLauf,,ISW,Iswid
+123,26,7,,Pfo,2913 fond,Pfo,,ISW,Iswid
+124,14,7,,KultLauf,foyer 2174,KultLauf,,ISW,Iswid
+125,37,7,,Of,US 10503,Of,,ISW,Iswid
+126,14,7,,KultLauf,US 10521,KultLauf,,ISW,Iswid
+127,14,7,,KultLauf,US 10534,KultLauf,,ISW,Iswid
+128,14,7,,KultLauf,US 10610,KultLauf,,ISW,Iswid
+129,14,7,,KultLauf,US 11004,KultLauf,,ISW,Iswid
+130,14,7,,KultLauf,US 11012,KultLauf,,ISW,Iswid
+131,14,7,,KultLauf,US 11067,KultLauf,,ISW,Iswid
+132,14,7,,KultLauf,US 12025,KultLauf,,ISW,Iswid
+133,14,7,,KultLauf,US 12040,KultLauf,,ISW,Iswid
+134,14,7,,KultLauf,US 12047,KultLauf,,ISW,Iswid
+135,14,7,,KultLauf,US 12504,KultLauf,,ISW,Iswid
+136,37,7,,Of,US 13017,Of,,ISW,Iswid
+137,27,7,,,US 13065,,,ISW,Iswid
+138,37,7,,Of,US 13066,Of,,ISW,Iswid
+139,27,7,,,US 13083,,,ISW,Iswid
+140,27,7,,BefuTyp?,US 13099,BefuTyp?,,ISW,Iswid
+141,37,7,,Of,US 13145,Of,,ISW,Iswid
+142,27,7,,,US 13516,,,ISW,Iswid
+143,27,7,,,US 13526,,,ISW,Iswid
+144,27,7,,,US 13572,,,ISW,Iswid
+145,27,7,,,US 13610,,,ISW,Iswid
+146,27,7,,,US 13632,,,ISW,Iswid
+147,27,7,,,US 13639,,,ISW,Iswid
+148,27,7,,,US 13657,,,ISW,Iswid
+149,27,7,,,US 13705,,,ISW,Iswid
+150,27,7,,,US 13791,,,ISW,Iswid
+151,27,7,,,US 13791 (3),,,ISW,Iswid
+152,27,7,,,US 13802,,,ISW,Iswid
+153,27,7,,,US 13971,,,ISW,Iswid
+154,14,7,,KultLauf,US 14021,KultLauf,,ISW,Iswid
+155,27,7,,BefuTyp?,US 14038,BefuTyp?,,ISW,Iswid
+156,7,7,,Gr,US 14050,Gr,,ISW,Iswid
+157,37,7,,Of,US 14078,Of,,ISW,Iswid
+158,27,7,,BefuTyp?,US 14131,BefuTyp?,,ISW,Iswid
+159,27,7,,,US 14158,,,ISW,Iswid
+160,27,7,,BefuTyp?,US 14418,BefuTyp?,,ISW,Iswid
+161,14,7,,KultLauf,US 14495,KultLauf,,ISW,Iswid
+162,40,7,,Kult,US 14509,Kult,,ISW,Iswid
+163,26,7,,Pfo,US 14636,Pfo,,ISW,Iswid
+164,27,7,,BefuTyp?,US 15067,BefuTyp?,,ISW,Iswid
+165,27,7,,BefuTyp?,US 15071,BefuTyp?,,ISW,Iswid
+166,27,7,,BefuTyp?,US 15108,BefuTyp?,,ISW,Iswid
+167,27,7,,BefuTyp?,US 15140,BefuTyp?,,ISW,Iswid
+168,27,7,,BefuTyp?,US 16183,BefuTyp?,,ISW,Iswid
+169,27,7,,BefuTyp?,US 16287_F4185 (TR.),BefuTyp?,,ISW,Iswid
+170,27,7,,BefuTyp?,US 16323_F4199(foye,BefuTyp?,,ISW,Iswid
+171,14,7,,KultLauf,US 6712,KultLauf,,ISW,Iswid
+172,14,7,,KultLauf,US 6773,KultLauf,,ISW,Iswid
+173,14,7,,KultLauf,US 6803,KultLauf,,ISW,Iswid
+174,40,7,,Kult,US 6810,Kult,,ISW,Iswid
+175,14,7,,KultLauf,US 6827,KultLauf,,ISW,Iswid
+176,14,7,,KultLauf,US 6854,KultLauf,,ISW,Iswid
+177,14,7,,KultLauf,US 6863,KultLauf,,ISW,Iswid
+178,14,7,,KultLauf,US 6875,KultLauf,,ISW,Iswid
+179,37,7,,Of,US 9036,Of,,ISW,Iswid
+180,14,7,,KultLauf,US 9200,KultLauf,,ISW,Iswid
+181,14,7,,KultLauf,US 9321,KultLauf,,ISW,Iswid
+182,14,7,,KultLauf,US 9404_foyer 2093,KultLauf,,ISW,Iswid
+183,14,7,,KultLauf,US 9519,KultLauf,,ISW,Iswid
+184,14,7,,KultLauf,US 9859/9860,KultLauf,,ISW,Iswid
+185,14,7,,KultLauf,US 9870_foyer2163,KultLauf,,ISW,Iswid
+186,14,7,,KultLauf,US 9880_foyer 2166,KultLauf,,ISW,Iswid

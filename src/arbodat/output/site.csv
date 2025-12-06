@@ -1,8 +1,8 @@
-system_id,site_id,natural_region_id,site_name,national_site_identifier,ProjektNr,Fustel,EVNr,NaturE,NaturrEinh,coordinate_system,easting,northing,elevation,_merge_indicator_site_coordinate
-1,,1,Kville 1502,,18_0025,Kville 1502,,,,,,,,both
-2,,1,Blaker kirkegård,224073,19_0013,Blaker kirkegård,224073,,,,,,143.0,both
-3,,1,Blaker kirkegård,224073,19_0014,Blaker kirkegård,224073,,,,,,143.0,both
-4,,1,Göteborg 342,L1960:2928,22_0005,Göteborg 342,L1960:2928,,,,,,,both
-5,,1,Sandarna Gbg 15:1,L1969:1130,22_0015,Sandarna Gbg 15:1,L1969:1130,,,,,,,both
-6,,1,,,DanaBunar2,,,,,,,,,both
-7,,1,ISW,,Iswid,ISW,,,,Geografische Länge/Breite (dezimal),31.823021,30.786045,7.0,both
+system_id,site_id,natural_region_id,national_site_identifier,site_name,EVNr,Fustel,NaturE,NaturrEinh,ProjektNr,_merge_indicator_site_coordinate,coordinate_system,easting,elevation,northing
+1,,1,,Kville 1502,,Kville 1502,,,18_0025,both,,,,
+2,,1,224073,Blaker kirkegård,224073,Blaker kirkegård,,,19_0013,both,,,143.0,
+3,,1,224073,Blaker kirkegård,224073,Blaker kirkegård,,,19_0014,both,,,143.0,
+4,,1,L1960:2928,Göteborg 342,L1960:2928,Göteborg 342,,,22_0005,both,,,,
+5,,1,L1969:1130,Sandarna Gbg 15:1,L1969:1130,Sandarna Gbg 15:1,,,22_0015,both,,,,
+6,,1,,,,,,,DanaBunar2,both,,,,
+7,,1,,ISW,,ISW,,,Iswid,both,Geografische Länge/Breite (dezimal),31.823021,7.0,30.786045

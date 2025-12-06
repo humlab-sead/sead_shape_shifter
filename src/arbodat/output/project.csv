@@ -1,8 +1,8 @@
-system_id,project_id,site_id,project_name,project_type_id,project_stage_id,project_abbrev_name,description,ProjektNr
-1,,1,18_0025,0,0,,,18_0025
-2,,2,19_0013,0,0,,,19_0013
-3,,3,19_0014,0,0,,,19_0014
-4,,4,22_0005,0,0,,,22_0005
-5,,5,22_0015,0,0,,,22_0015
-6,,6,DanaBunar2,0,0,,,DanaBunar2
-7,,7,Iswid,0,0,,,Iswid
+system_id,project_id,site_id,description,project_abbrev_name,project_name,project_stage_id,project_type_id,ProjektNr
+1,,1,,,18_0025,0,0,18_0025
+2,,2,,,19_0013,0,0,19_0013
+3,,3,,,19_0014,0,0,19_0014
+4,,4,,,22_0005,0,0,22_0005
+5,,5,,,22_0015,0,0,22_0015
+6,,6,,,DanaBunar2,0,0,DanaBunar2
+7,,7,,,Iswid,0,0,Iswid

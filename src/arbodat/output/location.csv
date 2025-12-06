@@ -1,25 +1,25 @@
-system_id,location_id,location_type_id,location_type,location_name
-1,,1,Ort,Kville
-2,,1,Ort,Foss Nordre 121/5
-3,,1,Ort,Foss nordre 121/5
-4,5548.0,1,Ort,Göteborgs stad
-5,,1,Ort,Göteborg
-6,,1,Ort,
-7,,2,Kreis,Tanum
-8,,2,Kreis,Sørum
-9,,2,Kreis,Göteborg
-10,,2,Kreis,
-11,,2,Kreis,Sharqiyah
-12,910.0,3,Land,Bohuslän
-13,,3,Land,Akershus
-14,4586.0,3,Land,Västra Götaland
-15,1651.0,3,Land,Hessen
-16,,3,Land,
-17,205.0,4,Staat,Sweden
-18,162.0,4,Staat,Norway
-19,,4,Staat,Sverige
-20,,4,Staat,
-21,64.0,4,Staat,Egypt
-22,,5,FlurStr,Hjälpesten
-23,,5,FlurStr,2017/9030
-24,,5,FlurStr,
+system_id,location_id,location_type_id,location_name,location_type
+1,,1,Kville,Ort
+2,,1,Foss Nordre 121/5,Ort
+3,,1,Foss nordre 121/5,Ort
+4,5548.0,1,Göteborgs stad,Ort
+5,,1,Göteborg,Ort
+6,,1,,Ort
+7,,2,Tanum,Kreis
+8,,2,Sørum,Kreis
+9,,2,Göteborg,Kreis
+10,,2,,Kreis
+11,,2,Sharqiyah,Kreis
+12,910.0,3,Bohuslän,Land
+13,,3,Akershus,Land
+14,4586.0,3,Västra Götaland,Land
+15,1651.0,3,Hessen,Land
+16,,3,,Land
+17,205.0,4,Sweden,Staat
+18,162.0,4,Norway,Staat
+19,,4,Sverige,Staat
+20,,4,,Staat
+21,64.0,4,Egypt,Staat
+22,,5,Hjälpesten,FlurStr
+23,,5,2017/9030,FlurStr
+24,,5,,FlurStr
