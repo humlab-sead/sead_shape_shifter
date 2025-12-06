@@ -1,10 +1,6 @@
 entities:
-  # Pandas drop_duplicates with a list of column names as arguments will:
-  #   Look only at the values in col1 and col2 to determine if two rows are duplicates.
-  #   Keep the first occurrence of each unique combination by default.
-  #   Drop all other rows that have the same values in the specified subset of columns.
-  #   Return the full rows — not just the subset — but duplicates are identified only from the subset.
-
+# TIPS #1: Use "@value: entities.entity_name.keys" to refer to the keys of another entity.
+# TIPS #2: Use Ctrl-Alt-2 to fold/unfold all entities (create a shortcut)
   cultural_group:
     surrogate_id: cultural_group_id
     keys: ["KultGr"]
@@ -142,6 +138,8 @@ entities:
       - entity: site_coordinate
         local_keys: "@value: entities.site.keys"
         remote_keys: "@value: entities.site.keys"
+        constraints:
+          cardinality: one-to-one
         extra_columns:
           coordinate_system: "Koordinatensystem"
           easting: "Easting"
@@ -662,6 +660,9 @@ entities:
       - entity: site
         local_keys: "@value: entities.site.keys"
         remote_keys: "@value: entities.site.keys"
+      - entity: feature_type
+        local_keys: "@value: entities.feature_type.keys"
+        remote_keys: "@value: entities.feature_type.keys"
     depends_on: ["site", "feature_type"]
 
   feature_property:
@@ -956,7 +957,7 @@ entities:
 
   result:
     surrogate_id: result_id
-    analysis_keys: ["Fraction", "cf", "RTyp", "Zustand"]
+    analysis_keys: ["Fraktion", "cf", "RTyp", "Zustand"]
     value_columns:
       ["SumFAnzahl", "SumFFrag", "SumFGewicht", "SumPflR", "Zust", "geschätzt"]
     keys: "@value: entities.sample.keys + ['PCODE'] + @value: entities.result.analysis_keys"
@@ -981,19 +982,19 @@ entities:
     depends_on:
       ["taxa", "sample", "modification_type", "remain_type", "dataset"]
 
-  dataset_contact:
-    surrogate_id: dataset_contact_id
-    keys: []
-    columns: []
-    foreign_keys:
-      - entity: dataset
-        local_keys: "@value: entities.dataset.keys"
-        remote_keys: "@value: entities.dataset.keys"
-      - entity: contact
-        local_keys: "@value: entities.contact.keys"
-        remote_keys: "@value: entities.contact.keys"
-    drop_duplicates: true
-    depends_on: ["dataset", "contact"]
+  # dataset_contact:
+  #   surrogate_id: dataset_contact_id
+  #   keys: []
+  #   columns: []
+  #   foreign_keys:
+  #     - entity: dataset
+  #       local_keys: "@value: entities.dataset.keys"
+  #       remote_keys: "@value: entities.dataset.keys"
+  #     - entity: contact
+  #       local_keys: "@value: entities.contact.keys"
+  #       remote_keys: "@value: entities.contact.keys"
+  #   drop_duplicates: true
+  #   depends_on: ["dataset", "contact"]
 
 # tbl_dataset_contacts
 # tbl_dataset_masters
