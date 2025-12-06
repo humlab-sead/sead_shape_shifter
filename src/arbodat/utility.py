@@ -2,6 +2,7 @@ import sys
 from typing import Any, Callable
 
 from loguru import logger
+import pandas as pd
 
 
 def unique(seq: list[Any] | None) -> list[Any]:
