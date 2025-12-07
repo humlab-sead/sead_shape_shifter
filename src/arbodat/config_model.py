@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import Any, Literal
+from typing import Any, Generator, Literal, Self
 
 import pandas as pd
 from loguru import logger
@@ -337,37 +337,30 @@ class TableConfig:
         return False
     
     def create_append_config(self, append_data: dict[str, Any]) -> dict[str, Any]:
-        """Create a merged configuration for an append item, inheriting parent properties.
-        
-        Args:
-            append_data: Append item configuration from YAML
-            
-        Returns:
-            Merged configuration dictionary with inherited properties
-        """
-        # Start with inherited properties that cannot be overridden
-        merged = {
-            "keys": list(self.keys),
-            "surrogate_id": self.surrogate_id,
-            "surrogate_name": self.surrogate_name,
+        """Create a merged configuration for an append item, inheriting parent properties."""
+        merged: dict[str, Any] = {}
+        ignore_keys: tuple[str, ...] = ("foreign_keys", "unnest", "append", "append_mode", "depends_on")
+        all_keys: set[str] = set(self._data.keys()) | set(append_data.keys())
+        special_conversions = {
+            "keys": lambda v: list(v) if isinstance(v, set) else v,
         }
         
-        # Add inheritable properties with defaults from parent
-        merged["source"] = append_data.get("source", self.source)
-        merged["type"] = append_data.get("type", self._data.get("type", "data"))
-        merged["data_source"] = append_data.get("data_source", self.data_source)
-        merged["columns"] = append_data.get("columns", self.columns)
-        merged["extra_columns"] = append_data.get("extra_columns", {})
-        merged["drop_duplicates"] = append_data.get("drop_duplicates", False)
-        merged["drop_empty_rows"] = append_data.get("drop_empty_rows", False)
+        for key in all_keys:
+    
+            if key in ignore_keys:
+                continue
+            
+            value = append_data[key] if key in append_data else self._data[key]
         
-        # Copy append-specific properties
-        if "values" in append_data:
-            merged["values"] = append_data["values"]
+            # Apply special conversion if needed
+            if key in special_conversions and value:
+                value = special_conversions[key](value)
+            
+            merged[key] = value
         
         return merged
     
-    def get_configured_tables(self):
+    def get_configured_tables(self) -> Generator[Self | "TableConfig", Any, None]:
         """Yield a sequence of TableConfig objects for processing.
         
         Yields self first (the base configuration), then creates and yields
