@@ -985,26 +985,6 @@ entities:
     drop_empty_rows: true
     depends_on: ["taxa"]
 
-
-  # dataset_contact:
-  #   surrogate_id: dataset_contact_id
-  #   keys: []
-  #   columns: []
-  #   foreign_keys:
-  #     - entity: dataset
-  #       local_keys: "@value: entities.dataset.keys"
-  #       remote_keys: "@value: entities.dataset.keys"
-  #     - entity: contact
-  #       local_keys: "@value: entities.contact.keys"
-  #       remote_keys: "@value: entities.contact.keys"
-  #   drop_duplicates: true
-  #   depends_on: ["dataset", "contact"]
-
-# tbl_dataset_contacts
-# tbl_dataset_masters
-# tbl_dataset_submissions
-# tbl_dating_labs
-
 translation: "@load: options.translations"
 
 options:
