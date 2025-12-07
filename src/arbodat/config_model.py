@@ -224,10 +224,22 @@ class TableConfig:
         self.drop_duplicates: bool | list[str] = self._data.get("drop_duplicates") or False
         self.drop_empty_rows: bool = self._data.get("drop_empty_rows", False)
         self.unnest: UnnestConfig | None = UnnestConfig(cfg=self.config, data=self._data) if self._data.get("unnest") else None
+        
+        # Parse append configuration for union operations
+        self.append_configs: list[dict[str, Any]] = self._data.get("append", []) or []
+        self.append_mode: str = self._data.get("append_mode", "all")  # "all" or "distinct"
+        
+        # Extract append source dependencies
+        append_sources: set[str] = set()
+        for append_cfg in self.append_configs:
+            if isinstance(append_cfg.get("source"), str):
+                append_sources.add(append_cfg["source"])
+        
         self.depends_on: set[str] = (
             set(self._data.get("depends_on", []) or [])
             | ({self.source} if self.source else set())
             | {fk.remote_entity for fk in self.foreign_keys}
+            | append_sources
         )
 
     @property
@@ -238,6 +250,11 @@ class TableConfig:
             return self.values.lstrip("sql:").strip()
         return None
 
+    @property
+    def has_append(self) -> bool:
+        """Check if entity has append configurations."""
+        return bool(self.append_configs)
+    
     @property
     def keys_and_columns(self) -> list[str]:
         """Get columns with keys first, followed by other columns."""
@@ -318,6 +335,67 @@ class TableConfig:
         if isinstance(self.drop_duplicates, list):
             return any(col in self.unnest_columns for col in self.drop_duplicates)
         return False
+    
+    def create_append_config(self, append_data: dict[str, Any]) -> dict[str, Any]:
+        """Create a merged configuration for an append item, inheriting parent properties.
+        
+        Args:
+            append_data: Append item configuration from YAML
+            
+        Returns:
+            Merged configuration dictionary with inherited properties
+        """
+        # Start with inherited properties that cannot be overridden
+        merged = {
+            "keys": list(self.keys),
+            "surrogate_id": self.surrogate_id,
+            "surrogate_name": self.surrogate_name,
+        }
+        
+        # Add inheritable properties with defaults from parent
+        merged["source"] = append_data.get("source", self.source)
+        merged["type"] = append_data.get("type", self._data.get("type", "data"))
+        merged["data_source"] = append_data.get("data_source", self.data_source)
+        merged["columns"] = append_data.get("columns", self.columns)
+        merged["extra_columns"] = append_data.get("extra_columns", {})
+        merged["drop_duplicates"] = append_data.get("drop_duplicates", False)
+        merged["drop_empty_rows"] = append_data.get("drop_empty_rows", False)
+        
+        # Copy append-specific properties
+        if "values" in append_data:
+            merged["values"] = append_data["values"]
+        
+        return merged
+    
+    def get_configured_tables(self):
+        """Yield a sequence of TableConfig objects for processing.
+        
+        Yields self first (the base configuration), then creates and yields
+        a TableConfig for each append item with inherited properties.
+        
+        This allows the normalizer to treat the base table and append items
+        uniformly through the same processing pipeline.
+        
+        Yields:
+            TableConfig: Base config first, then one per append item
+        """
+        # First yield self (the base configuration)
+        yield self
+        
+        # Then yield a TableConfig for each append item
+        for idx, append_data in enumerate(self.append_configs):
+            # Create merged configuration with inherited properties
+            merged_cfg_data = self.create_append_config(append_data)
+            
+            # Create a synthetic entity name for this append item
+            append_entity_name = f"{self.entity_name}__append_{idx}"
+            
+            # Create a temporary config dict for this append item
+            temp_cfg = self.config.copy()
+            temp_cfg[append_entity_name] = merged_cfg_data
+            
+            # Create and yield a TableConfig for this append item
+            yield TableConfig(cfg=temp_cfg, entity_name=append_entity_name)
 
 
 class TablesConfig:
