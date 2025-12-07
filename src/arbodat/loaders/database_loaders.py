@@ -60,7 +60,7 @@ class PostgresSqlLoader(SqlLoader):
 
 
 class UCanAccessSqlLoader(SqlLoader):
-    """Loader for fixed data entities."""
+    """Loader for fixed data entities. https://ucanaccess.sourceforge.net/site.html"""
 
     driver: str = "ucanaccess"
 
@@ -68,13 +68,13 @@ class UCanAccessSqlLoader(SqlLoader):
         self.db_opts: dict[str, Any] = db_opts or {}
         self.filename: str = self.db_opts.get("filename", "")
         self.ucanaccess_dir: str = self.db_opts.get("ucanaccess_dir", "")
-        self.jars: list[str] = [
-            jj(self.ucanaccess_dir, f)
-            for f in os.listdir(self.ucanaccess_dir)
-            if os.path.isfile(jj(self.ucanaccess_dir, f)) and f.lower().endswith(".jar")
-        ]
+        self.jars: list[str] = self._find_jar_files(self.ucanaccess_dir)
 
     async def read_sql(self, sql: str) -> pd.DataFrame:
+        with self.access_connection() as conn:
+            return pd.read_sql(sql, conn)  # type: ignore[arg-type]
+
+    def read_sql_sync(self, sql: str) -> pd.DataFrame:
         with self.access_connection() as conn:
             return pd.read_sql(sql, conn)  # type: ignore[arg-type]
 
@@ -88,6 +88,41 @@ class UCanAccessSqlLoader(SqlLoader):
         finally:
             conn.close()
 
+    def _find_jar_files(self, folder: str) -> list[str]:
+        """Recursively find all .jar files in the ucanaccess_dir."""
+        jar_files: list[str] = []
+        for root, _, files in os.walk(folder):
+            for file in files:
+                if file.lower().endswith(".jar"):
+                    jar_files.append(os.path.join(root, file))
+        return jar_files
+
+    def _ensure_jvm(self) -> None:
+        """Start the JVM once with the correct classpath, if not already started."""
+        if jpype.isJVMStarted():
+            return
+
+        classpath: str = os.pathsep.join(self.jars)
+
+        jpype.startJVM(jpype.getDefaultJVMPath(), "-ea", f"-Djava.class.path={classpath}")
+
+    def get_queries(self) -> dict[str, str]:
+        """Return saved queries from the Access database as {name: sql}."""
+        self._ensure_jvm()
+
+        # Use Java's DriverManager directly
+        DriverManager = jpype.JClass("java.sql.DriverManager")
+        conn = DriverManager.getConnection(f"jdbc:ucanaccess:///{self.filename}")
+
+        try:
+            dbio = conn.getDbIO()
+            queries = dbio.getQueries()
+            result: dict[str, str] = {q.getName(): q.toSQLString() for q in queries}
+        finally:
+            conn.close()
+
+        return result
+
 
 class SqlLoaderFactory:
     """Factory for creating SQL data loaders."""
@@ -95,7 +130,7 @@ class SqlLoaderFactory:
     def create_loader(self, driver: str = "postgres", db_opts: dict[str, Any] | None = None) -> SqlLoader:
         if driver in ("postgresql", "postgres"):
             return PostgresSqlLoader(db_opts=db_opts)
-        if driver == "ucanaccess":
+        if driver in ("ucanaccess", "access", "mdb"):
             return UCanAccessSqlLoader(db_opts=db_opts)
 
         raise ValueError(f"Unsupported SQL driver: {driver}")
