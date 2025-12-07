@@ -994,6 +994,7 @@ options:
 
   data_sources:
     sead: "@include: sead-options.yml"
-    arbodat: "@include: arbodat-options.yml"
+    arbodat_data: "@include: arbodat-data-options.yml"
+    arbodat_lookup: "@include: arbodat-lookup-options.yml"
 
 mappings: "@include: mappings.yml"
