@@ -1,12 +1,16 @@
 system_id,cultural_group_id,Cult_EN,KultGr
-1,,-99,-99
-2,,Karolinger,Carolingians
-3,,Kelten,Celts
-4,,Franken,Franks (salian)
-5,,Germanen,Germans
-6,,Merowinger,Merovingians
-7,,sonstige,others
-8,,Römer,Romans
-9,,Slawen,Slavs
-10,,Wikinger,Vikings
-11,,Westgoten,Visigoths
+1,,,nicht gewählt
+2,,,
+3,,-99,-99
+4,,Karolinger,Carolingians
+5,,Kelten,Celts
+6,,Franken,Franks (salian)
+7,,Germanen,Germans
+8,,Merowinger,Merovingians
+9,,sonstige,others
+10,,Römer,Romans
+11,,Slawen,Slavs
+12,,Wikinger,Vikings
+13,,Westgoten,Visigoths
+14,,unknown,unbekannt
+15,,various,diverse
