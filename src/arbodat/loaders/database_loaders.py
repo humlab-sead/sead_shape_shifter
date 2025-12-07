@@ -4,6 +4,7 @@ from os.path import join as jj
 from typing import Any, Generator
 
 import jaydebeapi
+import jpype
 import pandas as pd
 from sqlalchemy import create_engine
 
