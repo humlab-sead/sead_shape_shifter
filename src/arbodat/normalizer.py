@@ -150,15 +150,34 @@ class ArbodatSurveyNormalizer:
 
             delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
             
-            data: pd.DataFrame = subsetService.get_subset(
-                source=source,
-                columns=table_cfg.keys_columns_and_fks,
-                entity_name=entity,
-                extra_columns=table_cfg.extra_columns,
-                drop_duplicates=table_cfg.drop_duplicates if not delay_drop_duplicates else False,
-                raise_if_missing=False,
-                drop_empty=False,
-            )
+            # Process all configured tables (base + append items)
+            dfs: list[pd.DataFrame] = []
+
+            for sub_table_cfg in table_cfg.get_configured_tables():
+                logger.debug(f"{entity}[normalizing]: Processing sub-table '{sub_table_cfg.entity_name}'...")
+                sub_source: pd.DataFrame = await self.resolve_source(table_cfg=sub_table_cfg)
+                sub_data: pd.DataFrame = subsetService.get_subset(
+                    source=sub_source,
+                    columns=sub_table_cfg.keys_columns_and_fks,
+                    entity_name=sub_table_cfg.entity_name,
+                    extra_columns=sub_table_cfg.extra_columns,
+                    drop_duplicates=sub_table_cfg.drop_duplicates if not delay_drop_duplicates else False,
+                    raise_if_missing=False,
+                    drop_empty=False,
+                )
+                dfs.append(sub_data)
+
+            # Concatenate all dataframes
+            data: pd.DataFrame = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+            
+            # Apply post-concatenation deduplication if append_mode is "distinct"
+            if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
+                data = drop_duplicate_rows(
+                    data=data, 
+                    columns=table_cfg.drop_duplicates if table_cfg.drop_duplicates else True,
+                    entity_name=entity
+                )
+                logger.debug(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
 
             self.register(entity, data)
 
