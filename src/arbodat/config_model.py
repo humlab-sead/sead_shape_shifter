@@ -379,24 +379,13 @@ class TableConfig:
         Yields:
             TableConfig: Base config first, then one per append item
         """
-        # First yield self (the base configuration)
         yield self
         
-        # Then yield a TableConfig for each append item
         for idx, append_data in enumerate(self.append_configs):
-            # Create merged configuration with inherited properties
-            merged_cfg_data = self.create_append_config(append_data)
-            
-            # Create a synthetic entity name for this append item
-            append_entity_name = f"{self.entity_name}__append_{idx}"
-            
-            # Create a temporary config dict for this append item
-            temp_cfg = self.config.copy()
-            temp_cfg[append_entity_name] = merged_cfg_data
-            
-            # Create and yield a TableConfig for this append item
-            yield TableConfig(cfg=temp_cfg, entity_name=append_entity_name)
-
+            append_entity_name: str = f"{self.entity_name}__append_{idx}"
+            self.config[append_entity_name] = self.create_append_config(append_data)
+            yield TableConfig(cfg=self.config, entity_name=append_entity_name)
+            del self.config[append_entity_name]
 
 class TablesConfig:
     """Configuration for database tables."""
