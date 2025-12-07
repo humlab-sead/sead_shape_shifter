@@ -353,25 +353,6 @@ entities:
       from public.tbl_method_groups
     depends_on: []
 
-  sample_method:
-    surrogate_id: sample_method_id
-    keys: []
-    columns: "@value: entities.sample.keys + @value: entities.method.arbodat_codes"
-    foreign_keys:
-      - entity: sample
-        local_keys: "@value: entities.sample.keys"
-        remote_keys: "@value: entities.sample.keys"
-      - entity: method
-        local_keys: ["method_name"]
-        remote_keys: ["arbodat_code"]
-    unnest:
-      id_vars: "@value: entities.sample.keys"
-      value_vars: "@value: entities.method.arbodat_codes"
-      var_name: method_type
-      value_name: method_name
-    drop_duplicates: true
-    depends_on: ["sample", "method"]
-
   modification_type:
     surrogate_id: modification_type_id
     keys: ["Zust"]
@@ -605,6 +586,25 @@ entities:
         local_keys: "@value: entities.site.keys"
         remote_keys: "@value: entities.site.keys"
     depends_on: ["site"]
+
+  sample_method:
+    surrogate_id: sample_method_id
+    keys: []
+    columns: "@value: entities.sample.keys + @value: entities.method.arbodat_codes"
+    foreign_keys:
+      - entity: sample
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
+      - entity: method
+        local_keys: ["method_name"]
+        remote_keys: ["arbodat_code"]
+    unnest:
+      id_vars: "@value: entities.sample.keys"
+      value_vars: "@value: entities.method.arbodat_codes"
+      var_name: method_type
+      value_name: method_name
+    drop_duplicates: true
+    depends_on: ["sample", "method"]
 
   sample_sample_type:
     surrogate_id: sample_sample_type_id
