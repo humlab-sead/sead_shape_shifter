@@ -74,16 +74,24 @@ class UCanAccessSqlLoader(SqlLoader):
         return self.read_sql_sync(sql)
 
     def read_sql_sync(self, sql: str) -> pd.DataFrame:
-        with self.access_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(sql)
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
-            rows = cursor.fetchall()
-            cursor.close()
-            return pd.DataFrame(rows, columns=columns)
+        with self.connection() as conn:
+            with self._cursor(conn) as cursor:
+                cursor.execute(sql)
+                columns = [desc[0] for desc in cursor.description] if cursor.description else []
+                rows = cursor.fetchall()
+                return pd.DataFrame(rows, columns=columns)
 
     @contextmanager
-    def access_connection(self) -> Generator[jaydebeapi.Connection, Any, None]:
+    def _cursor(self, conn: jaydebeapi.Connection) -> Generator[Any, Any, None]:
+        """Context manager for database cursor."""
+        cursor = conn.cursor()
+        try:
+            yield cursor
+        finally:
+            cursor.close()
+
+    @contextmanager
+    def connection(self) -> Generator[jaydebeapi.Connection, Any, None]:
         driver_class = "net.ucanaccess.jdbc.UcanaccessDriver"
         url: str = f"jdbc:ucanaccess://{self.filename}"
         conn: jaydebeapi.Connection = jaydebeapi.connect(driver_class, url, [], self.jars)
