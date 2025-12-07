@@ -119,7 +119,6 @@ entities:
     surrogate_id: "dimension_id"
     type: sql
     columns: ["dimension_id", "dimension_name"]
-    drop_duplicates: true
     depends_on: []
     values: |
       sql: 
