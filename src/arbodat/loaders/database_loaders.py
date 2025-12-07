@@ -71,12 +71,16 @@ class UCanAccessSqlLoader(SqlLoader):
         self.jars: list[str] = self._find_jar_files(self.ucanaccess_dir)
 
     async def read_sql(self, sql: str) -> pd.DataFrame:
-        with self.access_connection() as conn:
-            return pd.read_sql(sql, conn)  # type: ignore[arg-type]
+        return self.read_sql_sync(sql)
 
     def read_sql_sync(self, sql: str) -> pd.DataFrame:
         with self.access_connection() as conn:
-            return pd.read_sql(sql, conn)  # type: ignore[arg-type]
+            cursor = conn.cursor()
+            cursor.execute(sql)
+            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            rows = cursor.fetchall()
+            cursor.close()
+            return pd.DataFrame(rows, columns=columns)
 
     @contextmanager
     def access_connection(self) -> Generator[jaydebeapi.Connection, Any, None]:
