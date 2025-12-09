@@ -4,10 +4,11 @@ from typing import Any, Generator, Literal, Self
 import pandas as pd
 from loguru import logger
 
-from src.utility import unique
 from src.configuration.resolve import ConfigValue
+from src.utility import unique
 
 
+# pylint: disable=line-too-long
 class UnnestConfig:
     """Configuration for unnesting a column."""
 
@@ -83,7 +84,7 @@ class ForeignKeyConstraints:
     @property
     def is_empty(self) -> bool:
         """Check if no constraints are set."""
-        return bool(self.data) == False
+        return bool(self.data) is False
 
     @property
     def has_constraints(self) -> bool:
@@ -187,6 +188,7 @@ class ForeignKeyConfig:
             return True
         return False
 
+
 class TableConfig:
     """Configuration for a database table."""
 
@@ -225,27 +227,27 @@ class TableConfig:
         self.drop_duplicates: bool | list[str] = self._data.get("drop_duplicates") or False
         self.drop_empty_rows: bool = self._data.get("drop_empty_rows", False)
         self.unnest: UnnestConfig | None = UnnestConfig(cfg=self.config, data=self._data) if self._data.get("unnest") else None
-        
+
         # Parse append configuration for union operations
         self.append_configs: list[dict[str, Any]] = self._data.get("append", []) or []
         if self.append_configs and isinstance(self.append_configs, dict):
             self.append_configs = [self.append_configs]
 
         self.append_mode: str = self._data.get("append_mode", "all")  # "all" or "distinct"
-        
+
         # Extract append source dependencies
         append_sources: set[str] = set()
         for append_cfg in self.append_configs:
             if isinstance(append_cfg.get("source"), str):
                 append_sources.add(append_cfg["source"])
-        
+
         self.depends_on: set[str] = (
             set(self._data.get("depends_on", []) or [])
             | ({self.source} if self.source else set())
             | {fk.remote_entity for fk in self.foreign_keys}
             | append_sources
         )
-        
+
         self.filters: list[dict[str, Any]] = self._data.get("filters", []) or []
 
     @property
@@ -260,7 +262,7 @@ class TableConfig:
     def has_append(self) -> bool:
         """Check if entity has append configurations."""
         return bool(self.append_configs)
-    
+
     @property
     def keys_and_columns(self) -> list[str]:
         """Get columns with keys first, followed by other columns."""
@@ -299,8 +301,10 @@ class TableConfig:
         return keys_and_data_columns + unique(
             list(x for x in self.fk_columns if x not in keys_and_data_columns and x not in self.unnest_columns)
         )
-    
-    def get_columns(self, include_keys: bool = True, include_fks: bool = True, include_extra: bool = True, include_unnest: bool = True) -> list[str]:
+
+    def get_columns(
+        self, include_keys: bool = True, include_fks: bool = True, include_extra: bool = True, include_unnest: bool = True
+    ) -> list[str]:
         """Get list of columns based on inclusion criteria."""
         cols: list[str] = []
         if include_keys:
@@ -313,7 +317,7 @@ class TableConfig:
         if include_unnest and self.unnest:
             cols.extend([self.unnest.var_name, self.unnest.value_name])
         return unique(cols)
-    
+
     def drop_fk_columns(self, table: pd.DataFrame) -> pd.DataFrame:
         """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
         columns: list[str] = self.columns or []
@@ -341,7 +345,7 @@ class TableConfig:
         if isinstance(self.drop_duplicates, list):
             return any(col in self.unnest_columns for col in self.drop_duplicates)
         return False
-    
+
     def create_append_config(self, append_data: dict[str, Any]) -> dict[str, Any]:
         """Create a merged configuration for an append item, inheriting parent properties."""
         merged: dict[str, Any] = {}
@@ -350,41 +354,42 @@ class TableConfig:
         special_conversions = {
             "keys": lambda v: list(v) if isinstance(v, set) else v,
         }
-        
+
         for key in all_keys:
-    
+
             if key in ignore_keys:
                 continue
-            
+
             value = append_data[key] if key in append_data else self._data[key]
-        
+
             # Apply special conversion if needed
             if key in special_conversions and value:
                 value = special_conversions[key](value)
-            
+
             merged[key] = value
-        
+
         return merged
-    
+
     def get_configured_tables(self) -> Generator[Self | "TableConfig", Any, None]:
         """Yield a sequence of TableConfig objects for processing.
-        
+
         Yields self first (the base configuration), then creates and yields
         a TableConfig for each append item with inherited properties.
-        
+
         This allows the normalizer to treat the base table and append items
         uniformly through the same processing pipeline.
-        
+
         Yields:
             TableConfig: Base config first, then one per append item
         """
         yield self
-        
+
         for idx, append_data in enumerate(self.append_configs):
             append_entity_name: str = f"{self.entity_name}__append_{idx}"
             self.config[append_entity_name] = self.create_append_config(append_data)
             yield TableConfig(cfg=self.config, entity_name=append_entity_name)
             del self.config[append_entity_name]
+
 
 class TablesConfig:
     """Configuration for database tables."""

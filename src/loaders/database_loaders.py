@@ -1,6 +1,5 @@
 import os
 from contextlib import contextmanager
-from os.path import join as jj
 from typing import Any, Generator
 
 import jaydebeapi
@@ -132,8 +131,8 @@ class UCanAccessSqlLoader(SqlLoader):
         self._ensure_jvm()
 
         # Use Java's DriverManager directly
-        DriverManager = jpype.JClass("java.sql.DriverManager")
-        conn = DriverManager.getConnection(f"jdbc:ucanaccess:///{self.filename}")
+        driver_manager = jpype.JClass("java.sql.DriverManager")
+        conn = driver_manager.getConnection(f"jdbc:ucanaccess:///{self.filename}")
 
         try:
             dbio = conn.getDbIO()

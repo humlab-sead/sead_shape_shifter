@@ -1,4 +1,5 @@
 from typing import Any
+
 import pandas as pd
 
 from src.config_model import TableConfig
@@ -60,7 +61,7 @@ class FixedLoader2(DataLoader):
         if table_cfg.values and isinstance(table_cfg.values, dict):
             return list(table_cfg.values.keys())
         raise ValueError("Cannot resolve column names from fixed table configuration")
-    
+
     def _resolve_values_dict(self, columns: list[str], values: Any) -> dict[str, list[Any]]:
         """Convert the values into a dictionary mapping column names to lists of values."""
         if isinstance(values, dict):
@@ -69,13 +70,12 @@ class FixedLoader2(DataLoader):
                 if col not in values:
                     raise ValueError(f"Fixed data entity is missing values for column '{col}'")
             return values
-        elif isinstance(values, list):
+        if isinstance(values, list):
             if len(columns) == 1:
                 return {columns[0]: values}
-            else:
-                raise ValueError("For multiple columns, values must be provided as a dict mapping column names to lists")
+            raise ValueError("For multiple columns, values must be provided as a dict mapping column names to lists")
         raise ValueError("Values must be either a dict or a list")
-        
+
     async def load(self, entity_name: str, table_cfg: TableConfig) -> pd.DataFrame:
         """Create a fixed data entity based on configuration."""
 
@@ -94,7 +94,7 @@ class FixedLoader2(DataLoader):
 
         columns: list[str] = self._resolve_column_names(table_cfg)
 
-        values = self._resolve_values_dict(columns, table_cfg.values)
+        _ = self._resolve_values_dict(columns, table_cfg.values)  # UNUSED cannot be right!!!
 
         if len(table_cfg.columns or []) <= 1:
             surrogate_name: str = table_cfg.surrogate_name

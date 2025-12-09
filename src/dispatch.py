@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 import pandas as pd
+from sqlalchemy import create_engine
 
 from src.configuration.resolve import ConfigValue
 from src.utility import Registry, create_db_uri
@@ -13,7 +14,7 @@ class DispatchRegistry(Registry):
     items: dict = {}
 
 
-Dispatchers: DispatchRegistry = DispatchRegistry()
+Dispatchers: DispatchRegistry = DispatchRegistry()  # pylint: disable=invalid-name
 
 # Crate a protocol for dispatchers
 
@@ -51,7 +52,6 @@ class DatabaseDispatcher(Dispatcher):
         db_opts: dict[str, Any] = ConfigValue[dict[str, Any]]("options.database").resolve() or {}
         db_url: str = create_db_uri(**db_opts)
         # use pandas to_sql to write dataframes to the database
-        from sqlalchemy import create_engine
 
         engine = create_engine(url=db_url)
         with engine.begin() as connection:

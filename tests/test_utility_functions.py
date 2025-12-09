@@ -1,6 +1,7 @@
 """Unit tests for arbodat utility functions."""
 
 from typing import Any
+
 import pandas as pd
 import pytest
 
@@ -36,6 +37,7 @@ def get_subset(
         raise_if_missing=raise_if_missing,
         drop_empty=drop_empty_rows,
     )
+
 
 class TestAddSurrogateId:
     """Tests for add_surrogate_id function."""

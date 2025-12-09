@@ -15,12 +15,13 @@ from typing import Any, Literal
 
 import click
 
-from src.extract import extract_translation_map
-from src.normalizer import ArbodatSurveyNormalizer
-from src.utility import setup_logging
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
-from src.utility import load_shape_file
+from src.extract import extract_translation_map
+from src.normalizer import ArbodatSurveyNormalizer
+from src.utility import load_shape_file, setup_logging
+
+# pylint: disable=no-value-for-parameter
 
 
 async def workflow(
@@ -62,6 +63,7 @@ async def workflow(
     #     click.echo("\nTable Summary:")
     #     for name, table in normalizer.table_store.items():
     #         click.echo(f"  - {name}: {len(table)} rows")
+
 
 @click.command()
 @click.argument("input_csv")
@@ -137,10 +139,11 @@ def main(
 
     validate_entity_shapes(target, mode, regression_file)
 
+
 def validate_entity_shapes(target: str, mode: str, regression_file: str | None):
     if mode != "csv" or not regression_file:
         return
-    
+
     truth_shapes: dict[str, tuple[int, int]] = load_shape_file(filename=regression_file)
     new_shapes: dict[str, tuple[int, int]] = load_shape_file(filename=os.path.join(target, "table_shapes.tsv"))
 
@@ -154,10 +157,12 @@ def validate_entity_shapes(target: str, mode: str, regression_file: str | None):
 
         print("\n".join(f" {z[0]:>30}: expected {str(z[1]):<15} found {str(z[2]):<20}" for z in entities_with_different_shapes))
 
+
 if __name__ == "__main__":
     main()
 
-    # PYTHONPATH=. python src/arbodat/survey2excel.py  --sep ";" --translate --config-file src/arbodat/config.yml src/arbodat/arbodat_mal_elena_input.csv output.xlsx
+    # PYTHONPATH=. python src/arbodat/survey2excel.py  --sep ";" --translate --config-file
+    # src/arbodat/config.yml src/arbodat/arbodat_mal_elena_input.csv output.xlsx
 
     # from click.testing import CliRunner
 

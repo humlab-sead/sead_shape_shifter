@@ -3,8 +3,10 @@
 import pandas as pd
 import pytest
 
-from src.normalizer import ArbodatSurveyNormalizer
 from src.config_model import TablesConfig
+from src.normalizer import ArbodatSurveyNormalizer, ProcessState
+
+# pylint: disable=no-member, redefined-outer-name
 
 
 class TestAppendIntegration:
@@ -14,12 +16,14 @@ class TestAppendIntegration:
     async def test_append_fixed_data(self):
         """Test appending fixed data to entity."""
         # Create a simple survey dataframe
-        survey_df = pd.DataFrame({
-            "id": ["1", "2"],
-            "name": ["Alice", "Bob"],
-            "value": ["100", "200"],
-        })
-        
+        survey_df = pd.DataFrame(
+            {
+                "id": ["1", "2"],
+                "name": ["Alice", "Bob"],
+                "value": ["100", "200"],
+            }
+        )
+
         # Create configuration with append
         entities_cfg = {
             "test_entity": {
@@ -36,20 +40,20 @@ class TestAppendIntegration:
                 ],
             }
         }
-        
+
         # Initialize normalizer directly without ConfigStore
-        from src.normalizer import ProcessState
+
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
         normalizer.state = ProcessState(config=normalizer.config)
-        
+
         # Run normalization
         await normalizer.normalize()
-        
+
         # Verify results
         result = normalizer.table_store["test_entity"]
-        
+
         # Should have 4 rows: 2 from survey + 2 from fixed append
         assert len(result) == 4
         assert "test_id" in result.columns
@@ -59,12 +63,14 @@ class TestAppendIntegration:
     async def test_append_from_entity_source(self):
         """Test appending data from another entity."""
         # Create survey dataframe
-        survey_df = pd.DataFrame({
-            "id": ["1", "2"],
-            "name": ["Alice", "Bob"],
-            "category": ["A", "B"],
-        })
-        
+        survey_df = pd.DataFrame(
+            {
+                "id": ["1", "2"],
+                "name": ["Alice", "Bob"],
+                "category": ["A", "B"],
+            }
+        )
+
         # Create configuration
         entities_cfg = {
             "source_entity": {
@@ -83,22 +89,22 @@ class TestAppendIntegration:
                         "columns": ["id", "category"],
                     }
                 ],
-            }
+            },
         }
-        
+
         # Initialize normalizer directly without ConfigStore
-        from src.normalizer import ProcessState
+
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
         normalizer.state = ProcessState(config=normalizer.config)
-        
+
         # Run normalization
         await normalizer.normalize()
-        
+
         # Verify results
         result = normalizer.table_store["target_entity"]
-        
+
         # Should have 4 rows: 2 from base (id, name) + 2 from append (id, category)
         assert len(result) == 4
         assert "target_id" in result.columns
@@ -107,11 +113,13 @@ class TestAppendIntegration:
     async def test_append_with_distinct_mode(self):
         """Test append with distinct mode removes duplicates."""
         # Create survey with duplicates
-        survey_df = pd.DataFrame({
-            "id": ["1", "2", "1"],  # Duplicate id=1
-            "name": ["Alice", "Bob", "Alice"],
-        })
-        
+        survey_df = pd.DataFrame(
+            {
+                "id": ["1", "2", "1"],  # Duplicate id=1
+                "name": ["Alice", "Bob", "Alice"],
+            }
+        )
+
         # Create configuration with append and distinct mode
         entities_cfg = {
             "test_entity": {
@@ -129,20 +137,20 @@ class TestAppendIntegration:
                 "append_mode": "distinct",
             }
         }
-        
+
         # Initialize normalizer directly without ConfigStore
-        from src.normalizer import ProcessState
+
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
         normalizer.state = ProcessState(config=normalizer.config)
-        
+
         # Run normalization
         await normalizer.normalize()
-        
+
         # Verify results
         result = normalizer.table_store["test_entity"]
-        
+
         # Should have only 2 unique rows after deduplication
         assert len(result) == 2
         assert set(result["id"].values) == {"1", "2"}
@@ -151,11 +159,13 @@ class TestAppendIntegration:
     async def test_append_with_all_mode(self):
         """Test append with all mode keeps duplicates."""
         # Create survey with duplicates
-        survey_df = pd.DataFrame({
-            "id": ["1", "2"],
-            "name": ["Alice", "Bob"],
-        })
-        
+        survey_df = pd.DataFrame(
+            {
+                "id": ["1", "2"],
+                "name": ["Alice", "Bob"],
+            }
+        )
+
         # Create configuration with append and all mode (default)
         entities_cfg = {
             "test_entity": {
@@ -172,20 +182,20 @@ class TestAppendIntegration:
                 "append_mode": "all",
             }
         }
-        
+
         # Initialize normalizer directly without ConfigStore
-        from src.normalizer import ProcessState
+
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
         normalizer.state = ProcessState(config=normalizer.config)
-        
+
         # Run normalization
         await normalizer.normalize()
-        
+
         # Verify results
         result = normalizer.table_store["test_entity"]
-        
+
         # Should have 3 rows: 2 from survey + 1 from append (duplicate allowed)
         assert len(result) == 3
 
@@ -193,11 +203,13 @@ class TestAppendIntegration:
     async def test_append_multiple_sources(self):
         """Test appending from multiple sources."""
         # Create survey dataframe
-        survey_df = pd.DataFrame({
-            "id": ["1"],
-            "name": ["Alice"],
-        })
-        
+        survey_df = pd.DataFrame(
+            {
+                "id": ["1"],
+                "name": ["Alice"],
+            }
+        )
+
         # Create configuration with multiple append sources
         entities_cfg = {
             "test_entity": {
@@ -223,20 +235,20 @@ class TestAppendIntegration:
                 ],
             }
         }
-        
+
         # Initialize normalizer directly without ConfigStore
-        from src.normalizer import ProcessState
+
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
         normalizer.state = ProcessState(config=normalizer.config)
-        
+
         # Run normalization
         await normalizer.normalize()
-        
+
         # Verify results
         result = normalizer.table_store["test_entity"]
-        
+
         # Should have 4 rows: 1 from survey + 3 from append sources
         assert len(result) == 4
         assert set(result["id"].values) == {"1", "2", "3", "4"}

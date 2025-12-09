@@ -8,19 +8,19 @@ import pandas as pd
 import pytest
 
 from src.config_model import TablesConfig
-from src.normalizer import ArbodatSurveyNormalizer, ProcessState
 from src.configuration.setup import setup_config_store
+from src.normalizer import ArbodatSurveyNormalizer, ProcessState
 
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_config():
     """Initialize the config store before running tests."""
-    config_file = "src/arbodat/input/arbodat.yml"
+    config_file = "./input/arbodat.yml"
     asyncio.run(
         setup_config_store(
             config_file,
             env_prefix="SEAD_NORMALIZER",
-            env_filename="src/arbodat/input/.env",
+            env_filename="./input/.env",
             db_opts_path=None,
         )
     )

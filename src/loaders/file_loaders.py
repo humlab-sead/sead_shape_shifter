@@ -44,7 +44,7 @@ class CsvLoader(FileLoader):
     """Loader for CSV/TSV files."""
 
     def __init__(self, sep: str = ",") -> None:
-        self.sep: str = sep
+        super().__init__(sep=sep)
 
     async def load_file(self, filepath: str, opts: dict[str, str]) -> pd.DataFrame:  # type: ignore[unused-argument]
         """Load data from a CSV file into a DataFrame."""

@@ -4,8 +4,8 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 from src.config_model import TableConfig
-from src.extract import add_surrogate_id
 from src.configuration.resolve import ConfigValue
+from src.extract import add_surrogate_id
 from src.utility import create_db_uri
 
 from .interface import DataLoader

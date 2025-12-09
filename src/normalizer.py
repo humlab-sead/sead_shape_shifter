@@ -130,7 +130,7 @@ class ArbodatSurveyNormalizer:
 
     async def normalize(self) -> None:
         """Extract all configured entities and store them."""
-        subsetService: SubsetService = SubsetService()
+        subset_service: SubsetService = SubsetService()
 
         while len(self.state.unprocessed) > 0:
 
@@ -144,7 +144,7 @@ class ArbodatSurveyNormalizer:
 
             logger.debug(f"{entity}[normalizing]: Normalizing entity...")
 
-            source: pd.DataFrame = await self.resolve_source(table_cfg=table_cfg)
+            # source: pd.DataFrame = await self.resolve_source(table_cfg=table_cfg)
 
             if not isinstance(table_cfg.columns, list) or not all(isinstance(c, str) for c in table_cfg.columns):
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': {table_cfg.columns}")
@@ -157,7 +157,7 @@ class ArbodatSurveyNormalizer:
             for sub_table_cfg in table_cfg.get_configured_tables():
                 logger.debug(f"{entity}[normalizing]: Processing sub-table '{sub_table_cfg.entity_name}'...")
                 sub_source: pd.DataFrame = await self.resolve_source(table_cfg=sub_table_cfg)
-                sub_data: pd.DataFrame = subsetService.get_subset(
+                sub_data: pd.DataFrame = subset_service.get_subset(
                     source=sub_source,
                     columns=sub_table_cfg.keys_columns_and_fks,
                     entity_name=sub_table_cfg.entity_name,
@@ -231,10 +231,9 @@ class ArbodatSurveyNormalizer:
             table_cfg: TableConfig = self.config.get_table(entity)
             if table_cfg.unnest:
                 self.table_store[entity] = unnest(entity=entity, table=self.table_store[entity], table_cfg=table_cfg)
-        except Exception as e:
+        except Exception as e:  # ldtype: ignore ; pylint: disable=broad-except
             logger.error(f"Error unnesting entity {entity}: {e}")
-        finally:
-            return self.table_store[entity]
+        return self.table_store[entity]
 
     def translate(self, translations_map: dict[str, str]) -> None:
         """Translate column names using translation from config."""

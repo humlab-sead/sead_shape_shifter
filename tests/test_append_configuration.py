@@ -1,6 +1,5 @@
 """Tests for append configuration parsing and validation."""
 
-import pytest
 from src.config_model import TableConfig
 
 
@@ -17,9 +16,9 @@ class TestAppendConfigurationParsing:
                 "depends_on": [],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         assert table_cfg.has_append is False
         assert table_cfg.append_configs == []
         assert table_cfg.append_mode == "all"
@@ -40,9 +39,9 @@ class TestAppendConfigurationParsing:
                 ],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         assert table_cfg.has_append is True
         assert len(table_cfg.append_configs) == 1
         assert table_cfg.append_configs[0]["type"] == "fixed"
@@ -62,9 +61,9 @@ class TestAppendConfigurationParsing:
                 ],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         assert table_cfg.has_append is True
         assert len(table_cfg.append_configs) == 3
 
@@ -78,7 +77,7 @@ class TestAppendConfigurationParsing:
                 "append": [{"type": "fixed", "values": []}],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
         assert table_cfg.append_mode == "all"
 
@@ -93,7 +92,7 @@ class TestAppendConfigurationParsing:
                 "append_mode": "distinct",
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
         assert table_cfg.append_mode == "distinct"
 
@@ -118,9 +117,9 @@ class TestAppendDependencyResolution:
                 "depends_on": [],
             },
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         assert "source_entity" in table_cfg.depends_on
 
     def test_append_multiple_sources_in_dependencies(self):
@@ -138,9 +137,9 @@ class TestAppendDependencyResolution:
             "source1": {"columns": [], "depends_on": []},
             "source2": {"columns": [], "depends_on": []},
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         assert "source1" in table_cfg.depends_on
         assert "source2" in table_cfg.depends_on
         assert "manual_dep" in table_cfg.depends_on
@@ -157,9 +156,9 @@ class TestAppendDependencyResolution:
                 ],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         # Should only have explicit dependencies, no append-related ones
         assert len(table_cfg.depends_on) == 0
 
@@ -177,12 +176,12 @@ class TestAppendPropertyInheritance:
                 "depends_on": [],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
         append_data = {"type": "fixed", "values": []}
-        
+
         merged = table_cfg.create_append_config(append_data)
-        
+
         # Keys come from a set, so order may vary
         assert set(merged["keys"]) == {"key1", "key2"}
 
@@ -196,12 +195,12 @@ class TestAppendPropertyInheritance:
                 "depends_on": [],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
         append_data = {"type": "fixed", "values": []}
-        
+
         merged = table_cfg.create_append_config(append_data)
-        
+
         assert merged["surrogate_id"] == "test_id"
 
     def test_create_append_config_can_override_source(self):
@@ -216,12 +215,12 @@ class TestAppendPropertyInheritance:
             "parent_source": {"columns": [], "depends_on": []},
             "append_source": {"columns": [], "depends_on": []},
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
         append_data = {"source": "append_source"}
-        
+
         merged = table_cfg.create_append_config(append_data)
-        
+
         assert merged["source"] == "append_source"
 
     def test_create_append_config_inherits_columns(self):
@@ -233,12 +232,12 @@ class TestAppendPropertyInheritance:
                 "depends_on": [],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
         append_data = {"type": "fixed"}
-        
+
         merged = table_cfg.create_append_config(append_data)
-        
+
         assert merged["columns"] == ["col1", "col2"]
 
     def test_create_append_config_can_override_columns(self):
@@ -250,12 +249,12 @@ class TestAppendPropertyInheritance:
                 "depends_on": [],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
         append_data = {"columns": ["col3", "col4"]}
-        
+
         merged = table_cfg.create_append_config(append_data)
-        
+
         assert merged["columns"] == ["col3", "col4"]
 
     def test_create_append_config_with_values(self):
@@ -267,13 +266,13 @@ class TestAppendPropertyInheritance:
                 "depends_on": [],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
         values_data = [["val1"], ["val2"]]
         append_data = {"type": "fixed", "values": values_data}
-        
+
         merged = table_cfg.create_append_config(append_data)
-        
+
         assert merged["values"] == values_data
 
     def test_create_append_config_inherits_type(self):
@@ -286,12 +285,12 @@ class TestAppendPropertyInheritance:
                 "depends_on": [],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
         append_data = {}
-        
+
         merged = table_cfg.create_append_config(append_data)
-        
+
         assert merged["type"] == "data"
 
     def test_create_append_config_can_override_type(self):
@@ -304,12 +303,12 @@ class TestAppendPropertyInheritance:
                 "depends_on": [],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
         append_data = {"type": "fixed"}
-        
+
         merged = table_cfg.create_append_config(append_data)
-        
+
         assert merged["type"] == "fixed"
 
 
@@ -326,9 +325,9 @@ class TestAppendEdgeCases:
                 "append": [],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         assert table_cfg.has_append is False
         assert table_cfg.append_configs == []
 
@@ -342,9 +341,9 @@ class TestAppendEdgeCases:
                 "append": None,
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         assert table_cfg.has_append is False
         assert table_cfg.append_configs == []
 
@@ -361,9 +360,9 @@ class TestGetConfiguredTables:
                 "depends_on": [],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         tables = list(table_cfg.get_configured_tables())
         assert len(tables) == 1
         assert tables[0].entity_name == "test_entity"
@@ -376,14 +375,12 @@ class TestGetConfiguredTables:
                 "surrogate_id": "test_id",
                 "columns": ["id", "name"],
                 "depends_on": [],
-                "append": [
-                    {"type": "fixed", "values": ["A", "B", "C"]}
-                ],
+                "append": [{"type": "fixed", "values": ["A", "B", "C"]}],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         tables = list(table_cfg.get_configured_tables())
         assert len(tables) == 2
         assert tables[0].entity_name == "test_entity"
@@ -408,9 +405,9 @@ class TestGetConfiguredTables:
                 ],
             },
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         tables = list(table_cfg.get_configured_tables())
         assert len(tables) == 4
         assert tables[0].entity_name == "test_entity"
@@ -426,17 +423,15 @@ class TestGetConfiguredTables:
                 "surrogate_id": "test_id",
                 "columns": ["col1", "col2"],
                 "depends_on": [],
-                "append": [
-                    {"type": "fixed", "values": ["A"]}
-                ],
+                "append": [{"type": "fixed", "values": ["A"]}],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         tables = list(table_cfg.get_configured_tables())
         append_cfg = tables[1]
-        
+
         assert set(append_cfg.keys) == {"parent_key1", "parent_key2"}
 
     def test_append_config_inherits_surrogate_id(self):
@@ -446,17 +441,15 @@ class TestGetConfiguredTables:
                 "surrogate_id": "parent_surrogate",
                 "columns": ["id", "name"],
                 "depends_on": [],
-                "append": [
-                    {"type": "fixed", "values": ["A"]}
-                ],
+                "append": [{"type": "fixed", "values": ["A"]}],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         tables = list(table_cfg.get_configured_tables())
         append_cfg = tables[1]
-        
+
         assert append_cfg.surrogate_id == "parent_surrogate"
 
     def test_append_config_can_override_columns(self):
@@ -466,17 +459,15 @@ class TestGetConfiguredTables:
                 "surrogate_id": "test_id",
                 "columns": ["id", "name", "value"],
                 "depends_on": [],
-                "append": [
-                    {"type": "fixed", "values": ["A"], "columns": ["id", "custom_col"]}
-                ],
+                "append": [{"type": "fixed", "values": ["A"], "columns": ["id", "custom_col"]}],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         tables = list(table_cfg.get_configured_tables())
         append_cfg = tables[1]
-        
+
         assert append_cfg.columns == ["id", "custom_col"]
 
     def test_append_config_type_inheritance(self):
@@ -493,11 +484,11 @@ class TestGetConfiguredTables:
                 ],
             }
         }
-        
+
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
-        
+
         tables = list(table_cfg.get_configured_tables())
-        
+
         assert tables[0].is_fixed_data is False
         assert tables[1].is_fixed_data is False  # Inherits "data" from parent
         assert tables[2].is_fixed_data is True  # Explicit "fixed"

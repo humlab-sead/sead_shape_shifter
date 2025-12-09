@@ -8,6 +8,8 @@ from loguru import logger
 from src.config_model import ForeignKeyConfig, ForeignKeyConstraints
 from src.utility import Registry
 
+# pylint: disable=line-too-long, unnecessary-pass
+
 
 class ForeignKeyConstraintViolation(Exception):
     """Raised when a foreign key constraint is violated."""
@@ -40,12 +42,10 @@ class ConstraintValidator(ABC):
     @abstractmethod
     def is_applicable(self) -> bool:
         """Return True if this validator should be applied."""
-        pass
 
     @abstractmethod
     def validate(self, context: ValidationContext) -> None:
         """Execute the validation logic."""
-        pass
 
 
 class ValidatorRegistry(Registry):
@@ -67,7 +67,7 @@ class ValidatorRegistry(Registry):
         return [v for v in self.items.values() if getattr(v, "stage", None) == stage]
 
 
-Validators: ValidatorRegistry = ValidatorRegistry()
+Validators: ValidatorRegistry = ValidatorRegistry()  # pylint: disable=invalid-name
 
 # Pre-merge validators
 

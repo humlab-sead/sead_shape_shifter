@@ -1,5 +1,6 @@
 from typing import Any
 from venv import logger
+
 import pandas as pd
 
 from src.config_model import TableConfig
@@ -11,7 +12,7 @@ class FilterRegistry(Registry):
     items: dict[str, Any] = {}
 
 
-Filters = FilterRegistry()
+Filters = FilterRegistry()  # pylint: disable=invalid-name
 
 
 def apply_filters(
@@ -44,7 +45,7 @@ class ExistsInFilter:
     def apply(self, df: pd.DataFrame, filter_cfg: dict[str, Any], data_store: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
         if any(k not in filter_cfg for k in ("column", "other_entity")):
-            raise ValueError(f"Filter 'exists_in' requires 'column' and 'other_entity' parameters")
+            raise ValueError("Filter 'exists_in' requires 'column' and 'other_entity' parameters")
 
         column: str = filter_cfg["column"]
         other_entity: str = filter_cfg["other_entity"]

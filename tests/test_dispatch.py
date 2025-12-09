@@ -6,8 +6,8 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from src.dispatch import CSVDispatcher, DatabaseDispatcher, Dispatcher, Dispatchers, DispatchRegistry, ExcelDispatcher
 from src.configuration import MockConfigProvider
+from src.dispatch import CSVDispatcher, DatabaseDispatcher, Dispatcher, Dispatchers, DispatchRegistry, ExcelDispatcher
 from src.utility import Registry
 from tests.decorators import with_test_config
 
@@ -289,19 +289,19 @@ class TestDatabaseDispatcher:
         assert dispatcher is not None
 
     @with_test_config
+    @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    @patch("sqlalchemy.create_engine")
-    def test_database_dispatcher_gets_config(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
+    def test_database_dispatcher_gets_config(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher calls create_db_uri."""
         dispatcher = DatabaseDispatcher()
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         # Setup mocks
-        mock_create_uri.return_value = "postgresql://user@localhost:5432/db"
+        mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
         mock_engine = Mock()
         mock_connection = Mock()
         mock_engine.begin.return_value.__enter__ = Mock(return_value=mock_connection)
-        mock_engine.begin.return_value.__exit__ = Mock()
+        mock_engine.begin.return_value.__exit__ = Mock(return_value=(None, None, None))
         mock_create_engine.return_value = mock_engine
 
         with patch.object(pd.DataFrame, "to_sql"):
@@ -311,18 +311,18 @@ class TestDatabaseDispatcher:
         mock_create_uri.assert_called_once()
 
     @with_test_config
+    @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    @patch("sqlalchemy.create_engine")
-    def test_database_dispatcher_creates_db_uri(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
+    def test_database_dispatcher_creates_db_uri(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher creates database URI."""
         dispatcher = DatabaseDispatcher()
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
-        mock_create_uri.return_value = "postgresql://testuser@localhost:5432/testdb"
+        mock_create_uri.return_value = "postgresql+psycopg://testuser@localhost:5432/testdb"
         mock_engine = Mock()
         mock_connection = Mock()
         mock_engine.begin.return_value.__enter__ = Mock(return_value=mock_connection)
-        mock_engine.begin.return_value.__exit__ = Mock()
+        mock_engine.begin.return_value.__exit__ = Mock(return_value=(None, None, None))
         mock_create_engine.return_value = mock_engine
 
         with patch.object(pd.DataFrame, "to_sql"):
@@ -332,19 +332,19 @@ class TestDatabaseDispatcher:
         mock_create_uri.assert_called_once()
 
     @with_test_config
+    @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    @patch("sqlalchemy.create_engine")
-    def test_database_dispatcher_creates_engine(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
+    def test_database_dispatcher_creates_engine(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher creates SQLAlchemy engine."""
         dispatcher = DatabaseDispatcher()
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
-        db_url = "postgresql://user@localhost:5432/db"
+        db_url = "postgresql+psycopg://user@localhost:5432/db"
         mock_create_uri.return_value = db_url
         mock_engine = Mock()
         mock_connection = Mock()
         mock_engine.begin.return_value.__enter__ = Mock(return_value=mock_connection)
-        mock_engine.begin.return_value.__exit__ = Mock()
+        mock_engine.begin.return_value.__exit__ = Mock(return_value=(None, None, None))
         mock_create_engine.return_value = mock_engine
 
         with patch.object(pd.DataFrame, "to_sql"):
@@ -353,20 +353,20 @@ class TestDatabaseDispatcher:
         mock_create_engine.assert_called_once_with(url=db_url)
 
     @with_test_config
+    @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    @patch("sqlalchemy.create_engine")
-    def test_database_dispatcher_writes_tables(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
+    def test_database_dispatcher_writes_tables(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher writes all tables to database."""
         dispatcher = DatabaseDispatcher()
         df1 = pd.DataFrame({"col1": [1, 2]})
         df2 = pd.DataFrame({"col2": [3, 4]})
         data = {"table1": df1, "table2": df2}
 
-        mock_create_uri.return_value = "postgresql://user@localhost:5432/db"
+        mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
         mock_engine = Mock()
         mock_connection = Mock()
         mock_engine.begin.return_value.__enter__ = Mock(return_value=mock_connection)
-        mock_engine.begin.return_value.__exit__ = Mock()
+        mock_engine.begin.return_value.__exit__ = Mock(return_value=(None, None, None))
         mock_create_engine.return_value = mock_engine
 
         with patch.object(pd.DataFrame, "to_sql") as mock_to_sql:
@@ -375,18 +375,18 @@ class TestDatabaseDispatcher:
             assert mock_to_sql.call_count == 2
 
     @with_test_config
+    @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    @patch("sqlalchemy.create_engine")
-    def test_database_dispatcher_replaces_existing_tables(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
+    def test_database_dispatcher_replaces_existing_tables(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher replaces existing tables."""
         dispatcher = DatabaseDispatcher()
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
-        mock_create_uri.return_value = "postgresql://user@localhost:5432/db"
+        mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
         mock_engine = Mock()
         mock_connection = Mock()
         mock_engine.begin.return_value.__enter__ = Mock(return_value=mock_connection)
-        mock_engine.begin.return_value.__exit__ = Mock()
+        mock_engine.begin.return_value.__exit__ = Mock(return_value=(None, None, None))
         mock_create_engine.return_value = mock_engine
 
         with patch.object(pd.DataFrame, "to_sql") as mock_to_sql:
@@ -397,18 +397,18 @@ class TestDatabaseDispatcher:
             assert call_kwargs["if_exists"] == "replace"
 
     @with_test_config
+    @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    @patch("sqlalchemy.create_engine")
-    def test_database_dispatcher_no_index_in_output(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
+    def test_database_dispatcher_no_index_in_output(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher writes tables without index."""
         dispatcher = DatabaseDispatcher()
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
-        mock_create_uri.return_value = "postgresql://user@localhost:5432/db"
+        mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
         mock_engine = Mock()
         mock_connection = Mock()
         mock_engine.begin.return_value.__enter__ = Mock(return_value=mock_connection)
-        mock_engine.begin.return_value.__exit__ = Mock()
+        mock_engine.begin.return_value.__exit__ = Mock(return_value=(None, None, None))
         mock_create_engine.return_value = mock_engine
 
         with patch.object(pd.DataFrame, "to_sql") as mock_to_sql:
@@ -419,18 +419,18 @@ class TestDatabaseDispatcher:
             assert call_kwargs["index"] is False
 
     @with_test_config
+    @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    @patch("sqlalchemy.create_engine")
-    def test_database_dispatcher_uses_transaction(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
+    def test_database_dispatcher_uses_transaction(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher uses transaction context."""
         dispatcher = DatabaseDispatcher()
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
-        mock_create_uri.return_value = "postgresql://user@localhost:5432/db"
+        mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
         mock_engine = Mock()
         mock_connection = Mock()
         mock_engine.begin.return_value.__enter__ = Mock(return_value=mock_connection)
-        mock_engine.begin.return_value.__exit__ = Mock()
+        mock_engine.begin.return_value.__exit__ = Mock(return_value=(None, None, None))
         mock_create_engine.return_value = mock_engine
 
         with patch.object(pd.DataFrame, "to_sql"):
@@ -440,18 +440,18 @@ class TestDatabaseDispatcher:
             mock_engine.begin.assert_called_once()
 
     @with_test_config
+    @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    @patch("sqlalchemy.create_engine")
-    def test_database_dispatcher_uses_create_db_uri(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
+    def test_database_dispatcher_uses_create_db_uri(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher calls create_db_uri to build connection string."""
         dispatcher = DatabaseDispatcher()
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
-        mock_create_uri.return_value = "postgresql://user@localhost:5432/db"
+        mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
         mock_engine = Mock()
         mock_connection = Mock()
         mock_engine.begin.return_value.__enter__ = Mock(return_value=mock_connection)
-        mock_engine.begin.return_value.__exit__ = Mock()
+        mock_engine.begin.return_value.__exit__ = Mock(return_value=(None, None, None))
         mock_create_engine.return_value = mock_engine
 
         with patch.object(pd.DataFrame, "to_sql"):

@@ -5,6 +5,8 @@ from loguru import logger
 
 from src.utility import unique
 
+# pylint: disable=line-too-long
+
 
 def add_surrogate_id(target: pd.DataFrame, id_name: str) -> pd.DataFrame:
     """Add an integer surrogate ID starting at 1."""
@@ -39,8 +41,7 @@ def check_functional_dependency(df: pd.DataFrame, determinant_columns: list[str]
         msg: str = f"inconsistent non-subset values for keys: {bad_keys}"
         if raise_error:
             raise ValueError(f"[fd_check]: {msg}")
-        else:
-            logger.warning(f"[fd_check]: {msg}")
+        logger.warning(f"[fd_check]: {msg}")
 
     return len(bad_keys) == 0
 
@@ -69,7 +70,9 @@ def drop_duplicate_rows(
     return data
 
 
-def drop_empty_rows(*, data: pd.DataFrame, entity_name: str, subset: bool | list[str] | None = None, treat_empty_strings_as_na: bool = True) -> pd.DataFrame:
+def drop_empty_rows(
+    *, data: pd.DataFrame, entity_name: str, subset: bool | list[str] | None = None, treat_empty_strings_as_na: bool = True
+) -> pd.DataFrame:
     """Drop rows that are completely empty (NaN, None, or empty strings) in the DataFrame or in the specified subset of columns."""
 
     if subset is False:
@@ -188,10 +191,7 @@ class SubsetService:
         if missing_requested_columns:
             if raise_if_missing:
                 raise ValueError(f"{entity_name}[subsetting]: Columns not found in DataFrame: {missing_requested_columns}")
-            else:
-                logger.warning(
-                    f"{entity_name}[subsetting]: Columns not found in DataFrame and will be skipped: {missing_requested_columns}"
-                )
+            logger.warning(f"{entity_name}[subsetting]: Columns not found in DataFrame and will be skipped: {missing_requested_columns}")
 
     def _restore_columns_order(self, data: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
         """Reorder columns in DataFrame to match specified order."""

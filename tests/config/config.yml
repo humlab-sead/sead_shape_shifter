@@ -1,0 +1,341 @@
+options:
+  id_base: "https://w3id.org/sead/id/"
+  auto_accept_threshold: 0.90
+  default_query_limit: 10
+  database:
+    host: humle.dumle.japp.ouch
+    dbname: smurfs
+    user: holamundo
+    port: 9999
+policy:
+  site:
+    proximity_boost:
+      very_near_distance_km: 0.2
+      to_far_distance_km: 10.0
+    place_name_similarity_boost:
+      similarity_threshold: 0.3
+      max_boost: 0.1
+  modification_type:
+    lookup_format: "json"
+    lookup_fields_map:
+      id: "modification_type_id"
+      label: "modification_type_name"
+      description: "modification_type_description"
+    entity_type_description: "modification type"
+    roles: 
+      - role: system
+        content: You are archaeological specialist with expertise in identifying and classifying archaeological samples based on their features and characteristics.
+    context: |
+      You are provided with known modification types, each with an id, a label and a description.
+    output:
+      format: json
+  geonames:
+    options:
+      username: "${GEONAMES_USERNAME}"
+      lang: "en"
+      country_bias: "en"
+      fuzzy: 0.8
+      feature_classes: ["P", "A"]  # Populated places and Administrative divisions
+      orderby: "relevance"
+      style: "FULL"
+
+features:
+  use_mcp_server: false  # Start disabled, flip to true when ready
+
+mcp:
+  version: "0.1.0"
+  retrieval:
+    k_fuzzy: 30        # Top-K from trigram search
+    k_sem: 30          # Top-K from semantic search (Phase 3)
+    k_final: 20        # Final candidate count
+    min_score_threshold: 0.6  # Minimum score to return
+  enable_caching: true
+  cache_ttl_seconds: 86400
+  embedding:
+    model: "sentence-transformers/all-mpnet-base-v2"
+    dimensions: 768
+
+table_specs:
+  data_type:
+    table_name: "tbl_data_types"
+    id_column: "data_type_id"
+    label_column: "data_type_name"
+    description_column: "definition"
+    alternate_identity_column: null
+    type_or_grouping:
+      foreign_table: "data_type_group"
+      foreign_key_column: "data_type_group_id"
+  data_type_group:
+    table_name: "tbl_data_type_groups"
+    id_column: "data_type_group_id"
+    label_column: "data_type_group_name"
+    description_column: "description"
+    alternate_identity_column: null
+  dating_uncertainty:
+    table_name: "tbl_dating_uncertainty"
+    id_column: "dating_uncertainty_id"
+    label_column: "uncertainty"
+    description_column: "description"
+    alternate_identity_column: null
+  feature_type:
+    table_name: "tbl_feature_types"
+    id_column: "feature_type_id"
+    label_column: "feature_type_name"
+    description_column: "feature_type_description"
+    alternate_identity_column: null
+  feature:
+    table_name: "tbl_features"
+    id_column: "feature_id"
+    label_column: "feature_name"
+    description_column: "feature_description"
+    alternate_identity_column: null
+    type_or_grouping:
+      foreign_table: "feature_type"
+      foreign_key_column: "feature_type_id"
+  location_type:
+    table_name: "tbl_location_types"
+    id_column: "location_type_id"
+    label_column: "location_type"
+    description_column: "description"
+    alternate_identity_column: null
+  location:
+    table_name: "tbl_locations"
+    id_column: "location_id"
+    label_column: "location_name"
+    description_column: null
+    alternate_identity_column: null
+    type_or_grouping:
+      foreign_table: "location_type"
+      foreign_key_column: "location_type_id"  
+  method_group:
+    table_name: "tbl_method_groups"
+    id_column: "method_group_id"
+    label_column: "group_name"
+    description_column: "description"
+    alternate_identity_column: null
+  method:
+    table_name: "tbl_methods"
+    id_column: "method_id"
+    label_column: "method_name"
+    description_column: "description"
+    alternate_identity_column: "method_abbrev_or_alt_name"
+    type_or_grouping:
+      foreign_table: "tbl_method_groups"
+      foreign_key_column: "method_group_id"
+  modification_type:
+    table_name: "tbl_modification_types"
+    id_column: "modification_type_id"
+    label_column: "modification_type_name"
+    description_column: "modification_type_description"
+    alternate_identity_column: null
+  record_type:
+    table_name: "tbl_record_types"
+    id_column: "record_type_id"
+    label_column: "record_type_name"
+    description_column: "record_type_description"
+    alternate_identity_column: null
+  relative_age_type:
+    table_name: "tbl_relative_age_types"
+    id_column: "relative_age_type_id"
+    label_column: "age_type"
+    description_column: "description"
+    alternate_identity_column: null
+  relative_age:
+    table_name: "tbl_relative_ages"
+    id_column: "relative_age_id"
+    label_column: "relative_age"
+    description_column: "description"
+    alternate_identity_column: null
+    type_or_grouping:
+      foreign_table: "relative_age_type"
+      foreign_key_column: "relative_age_type_id"
+  site:
+    table_name: "tbl_sites"
+    id_column: "site_id"
+    label_column: "site_name"
+    description_column: "site_description"
+    alternate_identity_column: "national_site_identifier"
+  sampling_context:
+    table_name: "tbl_sample_group_sampling_contexts"
+    id_column: "sampling_context_id"
+    label_column: "sampling_context"
+    description_column: "description"
+    alternate_identity_column: null
+  sample_group_description_type:
+    table_name: "tbl_sample_group_description_types"
+    id_column: "sample_group_description_type_id"
+    label_column: "type_name"
+    description_column: "type_description"
+    alternate_identity_column: null
+  sample_description_type:
+    table_name: "tbl_sample_description_types"
+    id_column: "sample_description_type_id"
+    label_column: "type_name"
+    description_column: "type_description"
+    alternate_identity_column: null
+  sample_location_type:
+    table_name: "tbl_sample_location_types"
+    id_column: "sample_location_type_id"
+    label_column: "location_type"
+    description_column: "location_type_description"
+    alternate_identity_column: null
+  sample_type:
+    table_name: "tbl_sample_types"
+    id_column: "sample_type_id"
+    label_column: "type_name"
+    description_column: "description"
+    alternate_identity_column: null
+
+llm:
+  provider: "openai"  # "openai" or "anthropic", "ollama"
+  options:
+    max_tokens: 10000
+    temperature: 0.1
+  enable_translation: true
+  enable_semantic_matching: true
+  translation_target_lang: "en"
+  semantic_batch_size: 50
+  openai:
+    model: "gpt-4o-mini"  # "gpt-4o-mini"
+    provider_id: "openapi"
+    api_key: "${OPENAI_API_KEY}"
+    options:
+      temperature: 0.1
+      max_tokens: 4096
+      stream: false
+      # messages: Iterable[ChatCompletionMessageParam],
+      # max_completion_tokens: Optional[int] | Omit = omit,
+      # max_tokens: Optional[int] | Omit = omit,
+      # metadata: Optional[Metadata] | Omit = omit,
+      # modalities: Optional[List[Literal["text", "audio"]]] | Omit = omit,
+      # n: Optional[int] | Omit = omit,
+      # prediction: Optional[ChatCompletionPredictionContentParam] | Omit = omit,
+      # response_format: completion_create_params.ResponseFormat | Omit = omit,
+      # seed: Optional[int] | Omit = omit,
+      # stream: Optional[Literal[False]] | Omit = omit,
+      # stream_options: Optional[ChatCompletionStreamOptionsParam] | Omit = omit,
+      # temperature: Optional[float] | Omit = omit,
+      # top_p: Optional[float] | Omit = omit,
+      # user: str | Omit = omit,
+      # verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
+      # web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+  ollama:
+    provider_id: "ollama"
+    model: "gpt-oss:20b"
+    host: "${OLLAMA_BASE_URL}"
+    timeout: 30
+    options:
+      temperature: 0.1
+      # max_tokens: 9999
+      num_predict: 4096
+      #num_ctx
+  anthropic:
+    provider_id: "anthropic"
+    model: "claude-2"  
+    api_key: "${ANTHROPIC_API_KEY}"
+    options:
+      temperature: 0.1
+      max_tokens: 1000
+  prompts:
+    language_detection: |
+      Detect the language of the following text. Respond with the ISO 639-1 language code (e.g., "en" for English, "fr" for French, "de" for German, "sv" for Swedish).
+
+      Text:
+      "{text}"
+
+    translation: |
+      Translate the following text line by line from {source_lang} to {target_lang}.
+
+      Context:
+      {context}
+
+      Guidelines:
+      - Keep the translation natural and fluent.
+      - Preserve proper nouns, names, and technical terms when appropriate.
+      - Use the most common or widely recognized form in the target language if one exists.
+      - Maintain the same number of lines as the input.
+
+      Text to translate:
+      {text}
+
+    abbreviation: |
+      Expand the following abbreviations line by line.
+
+      Each line in the input follows the format:
+      "id, abbreviation"
+
+      The text may include multiple languages.
+      
+      {context}
+
+      Your task:
+      - Expand each abbreviation into its full form based on the given context.
+      - Preserve proper nouns, names, and original capitalization when appropriate.
+      - Output one line per input line, using the format:
+        "id, expanded-abbreviation"
+
+      Input abbreviations:
+      {data}
+
+    reconciliation: |
+      You are reconciling input values against a controlled list of {{ entity_type }}.
+      Return ONLY strict JSON. No prose.
+
+      Context:
+      {{ context }}
+
+      Lookup data ({{ lookup_format }} objects with fields: id, label, description):
+      {{ lookup_data | safe }}
+
+      Input values ({{ lookup_format }}, preserve order):
+      {{ data | safe }}
+
+      Task:
+      For each input, return up to 5 candidate matches from the lookup, ordered best→worst.
+
+      Output JSON must be an array where each element is:
+      {
+        "input_id": "<string>",
+        "input_value": "<string>",
+        "candidates": [
+          { "id": "<lookup id as string>", "value": "<lookup label verbatim>", "score": 0.00, "reasons": ["...","..."] }
+        ]
+      }
+
+      {{ examples | safe }}
+
+      Rules:
+      - Use ONLY ids/labels from the lookup (do not invent).
+      - Copy the lookup's **label** into the candidate **value** verbatim.
+      - If no reasonable match, return "candidates": [].
+      - Scores are in [0,1], **rounded to two decimals**.
+      - Provide **2–4 short** reason bullets per candidate.
+      - Treat text comparison as **case- and diacritic-insensitive**.
+      - Return **ONLY** valid JSON (no comments, no trailing commas, no extra text).
+
+      Scoring considerations:
+      - String similarity (normalization, diacritics, casing)
+      - Abbreviation/alias/lemmatization expansion
+      - Domain/context alignment (terminology fit)
+      - Language variants and most common target-language form
+      - Penalize partial/ambiguous overlaps and mismatched domain terms
+
+geonames:
+  options:
+    username: "${GEONAMES_USERNAME}"
+    lang: "en"
+    country_bias: "en"
+    fuzzy: 0.8
+    feature_classes: ["P", "A"]  # Populated places and Administrative divisions
+    orderby: "relevance"
+    style: "FULL"
+
+logging:
+  folder: ./logs
+  handlers:
+    - sink: "import_excel.log"
+      level: "DEBUG"
+      format: "{time} - {level} - {message}"
+    - sink: "sys.stdout"
+      level: "DEBUG"
+      format: "{time} - {level} - {message}"

@@ -5,6 +5,8 @@ import pandas as pd
 
 from src.config_model import ForeignKeyConfig, TableConfig, TablesConfig
 
+# pylint: disable=line-too-long
+
 
 class ForeignKeyConfigSpecification:
     """Specification that tests if a foreign key relationship is resolveble.
@@ -150,7 +152,6 @@ class ConfigSpecification(ABC):
         Returns:
             True if valid, False otherwise.
         """
-        pass
 
     def add_error(self, error: str) -> None:
         """Add an error message."""
@@ -261,7 +262,7 @@ class CircularDependencySpecification(ConfigSpecification):
             return False
 
         valid = True
-        for entity in dependencies.keys():
+        for entity in dependencies:
             if entity not in visited:
                 if has_cycle(entity):
                     valid = False
@@ -527,9 +528,7 @@ class AppendConfigurationSpecification(ConfigSpecification):
             # Validate append_mode if present
             if append_configs:
                 if append_mode not in ["all", "distinct"]:
-                    self.add_error(
-                        f"Entity '{entity_name}': invalid append_mode '{append_mode}'. Must be 'all' or 'distinct'"
-                    )
+                    self.add_error(f"Entity '{entity_name}': invalid append_mode '{append_mode}'. Must be 'all' or 'distinct'")
                     valid = False
 
             # Validate each append configuration
@@ -584,9 +583,7 @@ class AppendConfigurationSpecification(ConfigSpecification):
 
                     # Source-based append should have columns mapping
                     if not append_cfg.get("columns"):
-                        self.add_warning(
-                            f"{append_id}: source-based append should specify 'columns' mapping for clarity"
-                        )
+                        self.add_warning(f"{append_id}: source-based append should specify 'columns' mapping for clarity")
 
         return valid
 

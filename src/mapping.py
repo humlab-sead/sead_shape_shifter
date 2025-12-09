@@ -7,7 +7,7 @@ from loguru import logger
 class LinkToRemoteService:
     """Service to link local Arbodat PK values to remote SEAD identities based on provided mapping configuration."""
 
-    # TODO: Enable mapping from compound local keys.
+    # TODO: Enable mapping from compound local keys.  # pylint: disable=fixme
 
     def __init__(self, remote_link_cfgs: dict[str, dict[str, Any]]):
         self.remote_link_cfgs: dict[str, dict[str, Any]] = remote_link_cfgs
