@@ -1,0 +1,221 @@
+system_id,taxon_id,author_id,genus_id,species,system_id,Achtung,BNam,Familie,Name D,Name_E,Name_F,Name_I,PCODE,S_Od,TaxAut
+1,,0,0,Bnam,1,,Aethusa cynapium,Apiaceae,Hundspetersilie,Fool's Parsley,Petite ciguë,Cicuta aglina,AECYN,715,L.
+2,,0,0,Bnam,2,#,Alnus spec.,Betulaceae,Erle,Silver-Birch,Aulne,Ontano,ALNU,314,Gaertn.
+3,,0,0,Bnam,3,,Apiaceae,Apiaceae,Doldengewächse,Umbelliferous Plants,Ombellifères,Ombrellifera,APIAC,693,
+4,,0,0,Bnam,4,#,Atriplex spec.,Chenopodiaceae,Melde,Orache,Arroche,,ATRI,348,L.
+5,,0,0,Bnam,5,,Cerastium spec.,Caryophyllaceae,Hornkraut,Mouse-ear,Céraiste,Peverina,CERA,374,L.
+6,,0,0,Bnam,6,,Chenopodium album,Chenopodiaceae,Weißer Gänsefuß,Fat-Hen,Chénopode blanc,Farinello comune,CHALB,345,L.
+7,,0,0,Bnam,7,cf,Fragaria vesca,Rosaceae,Wald-Erdbeere,Wild Strawberry,Fraisier sauvage,,FRVES,543,L.
+8,,0,0,Bnam,8,,Galeopsis spec.,Lamiaceae,Hohlzahn,Nettle,Galéopsis,,GAIS,800,L.
+9,,0,0,Bnam,9,,Glechoma hederacea,Lamiaceae,,Ground-ivy,Lierre terrestre commun,Edera terrestre comune,GLHEH,,L.
+10,,0,0,Bnam,10,,Eleocharis,,,,,,HELE,,
+11,,0,0,Bnam,11,,Plantago major s.l.,Plantaginaceae,Großer Wegerich,Broadleaf Plantain,Plantain à larges feuilles,Piantaggine maggiore,PLMAJ,872,L.
+12,,0,0,Bnam,12,,Polygonum aviculare agg.,Polygonaceae,Vogel-Knöterich,Knotgrass,Renouée des oiseaux,Poligono centinodia,POAVI,334,
+13,,0,0,Bnam,13,,Polygonum convolvulus,Polygonaceae,Winden-Knöterich,Black Bindweed,Vrillée liseron,Poligono convolvolo,POLCO,338,(L.) A. Löve
+14,,0,0,Bnam,14,,Polygonum lapathifolium/persicaria,Polygonaceae,Ampfer-/Pfirsichblättriger Knöterich,Pale Persicaria/Red Shank,Renouée à feuilles/persicaire,,POLPE,336/337,L./L.
+15,,0,0,Bnam,15,,Prunus padus,Rosaceae,Traubenkirsche,Bird Cherry,Cerisier à grappes,Pado,PRPAD,573,L.
+16,,0,0,Bnam,16,#,Ranunculus spec.,Ranunculaceae,Hahnenfuß,Crowfoot,Renoncule,Ranunculo,RANU,405,L.
+17,,0,0,Bnam,17,,Rubus idaeus,Rosaceae,Himbeere,Raspberry,Framboisier commun,Lampone,RUIDA,511,L.
+18,,0,0,Bnam,18,,Silene spec.,Caryophyllaceae,Leimkraut,Catchfly,Silène,,SILE,360,L.
+19,,0,0,Bnam,19,,Solanum spec.,Solanaceae,Nachtschatten,Nightshade,Morelle,,SOLA,821,L.
+20,,0,0,Bnam,20,,Spergula arvensis,Caryophyllaceae,Acker-Spörgel,Corn Spurrey,Spargoute des champs,Renaiola comune,SPARV,387,L.
+21,,0,0,Bnam,21,,Stellaria graminea,Caryophyllaceae,Gras-Sternmiere,Lesser Stitchwort,Stellaire graminée,Centocchio gramignola,STGRA,374,L.
+22,,0,0,Bnam,22,#,Stellaria media,,,Common Chickweed,Mouron des oiseaux,Centocchio comune,STMES,,
+23,,0,0,Bnam,23,,Torilis japonica,Apiaceae,Gewöhnlicher Klettenkerbel,Upright Hedge-Parsley,Torilis anthrisque,Lappolina petrosello,TOJAP,703,(Houtt.) DC.
+24,,0,0,Bnam,24,,Urtica dioica,Urticaceae,Große Brennessel,Common Nettle,Ortie dioïque,Ortica comune,URDIO,321,L.
+25,,0,0,Bnam,25,#,Alnus glutinosa/incana,,,,,,ALGLI,,
+26,,0,0,Bnam,26,,Bidens tripartita,Asteraceae,,Trifid Bur-marigold,Bident triparti,Forbicina comune,BITRI,,L.
+27,,0,0,Bnam,27,,Corylus avellana,Corylaceae,Hasel,Hazel,Noisetier,Nocciolo comune,COAVE,312,L.
+28,,0,0,Bnam,28,,Filipendula ulmaria,Rosaceae,Mädesüß,Meadowsweet,Reine-des-prés,Olmaria comune,FIULM,562,(L.) Maxim.
+29,,0,0,Bnam,29,,Humulus lupulus,Cannabaceae,Hopfen,Hop,Houblon,Luppolo comune,HULUP,320,L.
+30,,0,0,Bnam,30,,Ranunculus ficaria,Ranunculaceae,,Lesser Celandine,Ficaire,Ranuncolo favagello,RAFIC,,L.
+31,,0,0,Bnam,31,,Scirpus sylvaticus,Juncaceae,Wald-Simse,Wood Club-Rush,Scirpe des bois,Lisca dei prati,SCSIL,162,L.
+32,,0,0,Bnam,32,,Silene dioica,Caryophyllaceae,Tag-Lichtnelke,Red Campion,Compagnon rouge,Silene dioica,SIDIO,,(L.) Clairv.
+33,,0,0,Bnam,33,,Stachys spec.,Lamiaceae,Ziest,Woundwort,Épiaire,,STAC,805,L.
+34,,0,0,Bnam,34,,Stellaria spec.,Caryophyllaceae,Sternmiere,Stitchwort,Stellaire,,STEL,372,L.
+35,,0,0,Bnam,35,,Carex spec.,Cyperaceae,Segge,Sedge,Laîche,Carice,CARE,167,
+36,,0,0,Bnam,36,,Indeterminata,,unbestimmte Reste,undetermined remains,restes non déterminés,,INDET,0,
+37,,0,0,Bnam,37,,Sparganium,,,,,,SPAR,,
+38,,0,0,Bnam,38,#,Betula,,,,,,BETU,,
+39,,0,0,Bnam,39,,Fraxinus spec.,Oleaceae,,,,,FRAX,,
+40,,0,0,Bnam,40,,Pinus spec.,Pinaceae,Kiefer,Pines,Pin,,PINU,93,L.
+41,,0,0,Bnam,41,!,Prunus spec.,Rosaceae,Steinobst,Stone Fruit,Fruits à noyau,,PRUN,571,L.
+42,,0,0,Bnam,42,#,Rumex crispus,Polygonaceae,Krauser Ampfer,Curled Dock,Patience crépue,Romice crespo,RUCRI,330,L.
+43,,0,0,Bnam,43,,Avena sativa,Poaceae,Saat-Hafer,Oat,Avoine cultivée,Avena comune,AVSAT,247,L.
+44,,0,0,Bnam,44,,Cerealia indet.,Poaceae,Getreide,Cereal,Céréale,Cereale,CEREA,,
+45,,0,0,Bnam,45,,Galium spurium,Rubiaceae,Saat-Labkraut,False Cleavers,Gaillet bâtard,Caglio campestre,GASPU,770,L.
+46,,0,0,Bnam,46,,Hordeum distichon/vulgare,Poaceae,Kulturgerste undiff.,Barley,Orge d´été/carrée,,HODIV,236/237,L./L.
+47,,0,0,Bnam,47,,Hordeum distichon/vulgare Nacktgerste,Poaceae,Nacktgerste undiff.,Naked Barley,Orge nue,,HODVN,236,
+48,,0,0,Bnam,48,,Hordeum distichon/vulgare Spelzgerste,Poaceae,Spelzgerste undiff.,Hulled Barley,Orge vêtue,,HODVS,236,
+49,,0,0,Bnam,49,,Lamium spec.,Lamiaceae,Taubnessel,Deadnettle,Lamier,,LAMI,802,L.
+50,,0,0,Bnam,50,,Polygonum lapathifolium agg.,Polygonaceae,Ampfer-Knöterich,Pale Persicaria,Renouée à feuilles,,POLAP,336,L.
+51,,0,0,Bnam,51,,Carex spec. tricarpellat,Cyperaceae,Segge tricarpellat,Sedge Tricarpellat,Laîche tricarpellat,,CATRI,167,
+52,,0,0,Bnam,52,,Poaceae,Poaceae,Süßgräser,Grasses,Graminées,,POACE,194,
+53,,0,0,Bnam,53,,Rumex acetosella agg.,Polygonaceae,Gewöhnlicher Kleiner Sauerampfer,Sheep's Sorrel Group,Petit oseille,,RUMAC,330,
+54,,0,0,Bnam,54,,Thlaspi arvense,Brassicaceae,Acker-Hellerkraut,Field Penny-cress,Tabouret des champs,Erba storna comune,THARV,448,L.
+55,,0,0,Bnam,55,,Galium spec.,Rubiaceae,Labkraut,Bedstraw,Gaillet,,GALI,762,L.
+56,,0,0,Bnam,56,,Rumex spec.,Polygonaceae,Ampfer,Dock,Oseille,,RUME,326,L.
+57,,0,0,Bnam,57,,Solanum nigrum,Solanaceae,Schwarzer Nachtschatten,Black Nightshade,Morelle noire,Morella comune,SONIG,821,L.
+58,,0,0,Bnam,58,,Brassica spec.,Brassicaceae,Kohl,Cabbage,Chou,,BRAS,436,L.
+59,,0,0,Bnam,59,,Triticum aestivum s.l./durum/turgidum,Poaceae,Nacktweizen,Naked Wheat,Blé nu,,TRAED,235/234,L./L.
+60,,0,0,Bnam,60,,Linum usitatissimum,Linaceae,"Gebauter Lein, Flachs",Flax,Lin cultivé,Lino coltivato,LIUSI,632,L.
+61,,0,0,Bnam,61,,Medicago/Melilotus,,,,,,MEDME,,
+62,,0,0,Bnam,62,,Triticum spec.,Poaceae,Weizen undifferenziert,Wheat,Blé,,TRIT,234,L.
+63,,0,0,Bnam,63,cf,Prunella vulgaris,Lamiaceae,Kleine Brunelle,Common Self-Heal,Brunelle commune,Prunella commune,PRVUL,799,L.
+64,,0,0,Bnam,64,,Melilotus spec.,Fabaceae,Steinklee,Medick,Mélilot,,MELI,586,Mill.
+65,,0,0,Bnam,65,,Viola spec.,Violaceae,Veilchen,Violet,Violette,Viola,VIOL,670,L.
+66,,0,0,Bnam,66,#,Fumaria officinalis,Papaveraceae,Gebräuchlicher Erdrauch,Common Fumitory,Fumeterre officinale,Fumaria comune,FUOFF,429,L.
+67,,0,0,Bnam,67,,Picea abies,Pinaceae,Fichte,Norway Spruce,Épicéa,Abete rosso,PIEXC,92,(L.) H. Karst.
+68,,0,0,Bnam,68,,Centaurea spec.,Asteraceae,Flockenblume, Knapweed,Centaurée,Fiordaliso,CENT,968,L.
+69,,0,0,Bnam,69,,Euphorbia helioscopia,Euphorbiaceae,Sonnenwend-Wolfsmilch,Sun Spurge,Euphorbe réveil-matin,Euforbia calenzuola,EUHEL,638,L.
+70,,0,0,Bnam,70,,Fabaceae,Fabaceae,Hülsenfrüchte,Legumes,Papilionacées,,FABAC,575,
+71,,0,0,Bnam,71,,Juniperus communis,Cupressaceae,Gewöhnlicher Wacholder,Juniper,Genévrier commun,Ginepro comune,JUCOC,96,L.
+72,,0,0,Bnam,72,#,Phleum,,Lieschgras,Cat's-tail,,,PHLE,,
+73,,0,0,Bnam,73,,Polygonum persicaria,Polygonaceae,Pfirsichblättriger Knöterich,Red Shank,Renouée persicaire,Poligono persicaria,POPER,337,L.
+74,,0,0,Bnam,74,,Potentilla spec.,Rosaceae,Fingerkraut,Cinquefoil,Potentille,Cinquefoglia,POTE,534,L.
+75,,0,0,Bnam,75,,Trifolium spec.,Fabaceae,Klee,Clover,Trèfle,,TRIF,589,L.
+76,,0,0,Bnam,76,,Phalaris arundinacea,Poaceae,,Reed Canary-grass,Alpiste roseau,Scagliola palustre,TYARU,,L.
+77,,0,0,Bnam,77,,Triticum dicoccum/spelta,Poaceae,Emmer/Dinkel,Emmer/Spelt,Amidonnier/Épeautre,,TRDSP,234/235,Schrank/L.
+78,,0,0,Bnam,78,#,Alchemilla spec.,Rosaceae,,,,,ALCH,548,L. (bearb. v. Lippert)
+79,,0,0,Bnam,79,,Galium aparine/spurium,Rubiaceae,Kletten-/Saat-Labkraut,Goosegrass/False Cleavers,Gaillet gratteron/bâtard,,GALAS,770/770,L./L.
+80,,0,0,Bnam,80,cf,Galium aparine,Rubiaceae,Kletten-Labkraut,Goosegrass,Gaillet gratteron,,GAAPA,770,L.
+81,,0,0,Bnam,81,#,Lathyrus/Pisum/Vicia,Fabaceae,Platterbse/Erbse/Wicke,Vetchling/Black Pea/##,Gesse/Pois/Vesce,,LAPIV,614/620/607,L./L./L.
+82,,0,0,Bnam,82,,Camelina sativa,Brassicaceae,Saat-Leindotter,Gold-of-Pleasure,Caméline cultivée,Dorella coltivata,CAMSA,477,(L.) Crantz
+83,,0,0,Bnam,83,,Bromus spec.,Poaceae,Trespe,Brome,Brome,Forasacco,BROM,202,L.
+84,,0,0,Bnam,84,,Chenopodium spec.,Chenopodiaceae,Gänsefuß,Goosefoot,Chénopode,Farinello,CHEN,341,L.
+85,,0,0,Bnam,85,,Carex spec. bicarpellat,Cyperaceae,Segge bicarpellat,Sedge Bicarpellat,Laîche bicarpellat,,CABIC,167,
+86,,0,0,Bnam,86,cf,Alnus glutinosa,Betulaceae,Schwarz-Erle,Alder,Aulne noir,Ontano comune,ALGLU,315,(L.) Gaertn.
+87,,0,0,Bnam,87,,Arctium minus s.l.,Asteraceae,Kleine Klette,Lesser Burdock,Petite bardane,,ARCMI,960,(Hill) Bernh.
+88,,0,0,Bnam,88,,Asteraceae,Asteraceae,Korbblütler,Daisy Family,Composées,,ASTER,899,
+89,,0,0,Bnam,89,cf,Bromus secalinus,Poaceae,Roggen-Trespe,Chess grass,Brome seigle,Forasacco delle messi,BRSEC,203,L.
+90,,0,0,Bnam,90,,Centaurea cyanus,Asteraceae,Kornblume,Cornflower,Centaurée bleuet,Fiordaliso vero,CECYA,972,L.
+91,,0,0,Bnam,91,,Comarum,,,,,,COMA,,
+92,,0,0,Bnam,92,,Eleocharis palustris agg.,Cyperaceae,Gewöhnliche Sumpfbinse,Common Spike-rush,Scirpe des marais groupe,,HEPAL,164,(L.)R. et Sch.
+93,,0,0,Bnam,93,,Oxalis acetosella,Oxalidaceae,,Wood-sorrel,Oxalis petite oseille,Acetosella dei boschi,OXACE,,L.
+94,,0,0,Bnam,94,,Potentilla erecta,Rosaceae,Blutwurz,Tormentil,Tormentille,Cinquefoglia tormentilla,POERE,542,(L.) Raeusch.
+95,,0,0,Bnam,95,,Ranunculus acris/repens,Ranunculaceae,Scharfer -/Kriechender Hahnenfuß,Meadow/Creeping Buttercup,Renoncule âcre/rampante,,RAARE,411/410,L./L.
+96,,0,0,Bnam,96,,Ranunculus sceleratus,Ranunculaceae,Gift-Hahnenfuß,Celery-leaved Buttercup,Renoncule scélérate,Ranuncolo tossico,RASCE,409,L.
+97,,0,0,Bnam,97,,Rubus fruticosus agg.,Rosaceae,Echte Brombeeren,Blackberry,Mûre,,RUFRU,513,
+98,,0,0,Bnam,98,,Schoenoplectus tabernaemontani,Cyperaceae,Graue Seebinse,Bulrush,Scirpe glauque,Lisca del Tabernemontano,SCTAB,161,(C. C. Gmel.) Palla
+99,,0,0,Bnam,99,,Silaum silaus,Apiaceae,,Pepper-saxifrage,Fenouil des chevaux,Silao,SISEL,,(L.) Schinz & Thell.
+100,,0,0,Bnam,100,,Urtica urens,Urticaceae,Kleine Brennessel,Small Nettle,Ortie brûlante,Ortica minore,URURE,321,L.
+101,,0,0,Bnam,101,,Euphorbia peplus,Euphorbiaceae,,Petty Spurge,Euphorbe péplus,Euforbia minore,EUPEP,,L.
+102,,0,0,Bnam,102,,Ficus carica,Moraceae,Feigenbaum,Fig,Figuier comestible,Fico,FICAR,320,L.
+103,,0,0,Bnam,103,,Luzula multiflora,Juncaceae,Vielblütige Hainsimse,Heath Wood-rush,Luzule multiflore,Erba lucciola multiflora,LUMUL,154,(Retz.) Lej.
+104,,0,0,Bnam,104,,Papaver spec.,Papaveraceae,Mohn,Poppy,Pavot,,PAPA,425,L.
+105,,0,0,Bnam,105,,Sambucus nigra,Caprifoliaceae,Schwarzer Holunder,Elder,Sureau noir,Sambuco comune,SANIG,875,L.
+106,,0,0,Bnam,106,,Secale cereale,Poaceae,Roggen,Rye,Seigle,Segale comune,SECER,233,L.
+107,,0,0,Bnam,107,,Solanum dulcamara,Solanaceae,Bittersüßer Nachtschatten,Bittersweet,Morelle douce-amère,Morella rampicante,SODUL,821,L.
+108,,0,0,Bnam,108,,Stellaria palustris,Caryophyllaceae,Sumpf-Sternmiere,Marsh Stitchwort,Stellaire glauque,Centocchio delle paludi,STPAL,374,Retz.
+109,,0,0,Bnam,109,,Taraxacum spec.,Asteraceae,Löwenzahn,Dandelion,Pissenlit,,TARA,984,Zinn
+110,,0,0,Bnam,110,,Hyoscyamus niger,Solanaceae,Schwarzes Bilsenkraut,Henbane,Jusquiame noire,Giusquiamo nero,HYNIG,820,L.
+111,,0,0,Bnam,111,,Sagittaria sagittifolia,Alismataceae,,Arrowhead,Sagittaire à feuilles en flèche,Sagittaria comune,SASAG,,L.
+112,,0,0,Bnam,112,,Potamogeton spec.,Potamogetonaceae,Laichkraut,Pond Weed,Potamot,,POTA,100,L.
+113,,0,0,Bnam,113,,Rumex acetosa,Polygonaceae,Wiesen-Sauer-Ampfer,Common Sorrel,Oseille sauvage,Romice acetosa,RUACE,331,L.
+114,,0,0,Bnam,114,,Geum,,,,,,GEUM,,
+115,,0,0,Bnam,115,,Leontodon spec.,Asteraceae,,,,,LEON,,L.
+116,,0,0,Bnam,116,,Menyanthes trifoliata,Menyanthaceae,,Bogbean,Trèfle d'eau,Trifoglio fibrino,METRI,,L.
+117,,0,0,Bnam,117,,Ruppia maritima,Ruppiaceae,,Beaked Tasselweed,,,RUMMA,,L.
+118,,0,0,Bnam,118,,Thalictrum flavum,Ranunculaceae,Gelbe Wiesenraute,Common Meadow Rue,Pigamon jaune,Pigamo giallo,THFLA,420,L.
+119,,0,0,Bnam,119,,Trientalis europaea,Primulaceae,,Chickweed-wintergreen,Trientalis d'Europe,Trientalis,TRIEU,,L.
+120,,0,0,Bnam,120,,Cirsium spec.,Asteraceae,Kratzdistel,Thistle,Cirse,,CIRS,964,Mill.
+121,,0,0,Bnam,121,,Alopecurus,,,,,,ALOP,,
+122,,0,0,Bnam,122,,Chaerophyllum,,,,,,CHAE,,
+123,,0,0,Bnam,123,cf,Sorbus spec.,Rosaceae,"Eberesche, Speierling, Mehlbeere",Mountain-Ash,Sorbier,,SORB,503,L.
+124,,0,0,Bnam,124,,Prunus cerasus s.l.,Rosaceae,Weichselkirsche,Dwarf Cherry,Griottier,Marena,PRCER,573,L.
+125,,0,0,Bnam,125,,Betula pubescens,Betulaceae,Moor-Birke,Downy-Birch,Bouleau pubescent,Betulla pubescente,BEPUB,313,Ehrh.
+126,,0,0,Bnam,126,,Clinopodium,,,,,,CLIN,,
+127,,0,0,Bnam,127,,Pedicularis palustris,Scrophulariaceae,,Marsh Lousewort,Pédiculaire des marais,Pedicolare palustre,PEDPA,,L.
+128,,0,0,Bnam,128,,Vicia spec.,Fabaceae,Wicke,Tare,Vesce,,VICI,607.0,L.
+129,,0,0,Bnam,129,,Festuca altissima,Poaceae,,Wood Fescue,Grande fétuque,Festuca dei boschi,FEALT,,All.
+130,,0,0,Bnam,130,,Arctostaphylos uva-ursi,Ericaceae,,Bearberry,Raisin d'ours commun,Uva ursina,ARUVA,,(L.) Spreng.
+131,,0,0,Bnam,131,,Triticum monococcum/dicoccum,Poaceae,Einkorn/Emmer,Einkorn/Emmer,,,TRMOD,234/234,L./Schrank
+132,,0,0,Bnam,132,!,Vitis vinifera,Vitaceae,Wein-Rebe,Grape-vine,Vigne,Vite comune,VIVIN,653,L.
+133,,0,0,Bnam,133,,Euphorbia,Euphorbiaceae,,,,,EUPH,,L.
+134,,0,0,Bnam,134,,Portulaca oleracea s.l.,Portulacaceae,Portulak s.l.,,,,POOLE,356,L.
+135,,0,0,Bnam,135,,Triticum dicoccum,Poaceae,Emmer,Emmer,,,TRDIC,234,(Schrank) Schübl.
+136,,0,0,Bnam,136,,Setaria verticillata/viridis,Poaceae,Quirlige/Grüne Borstenhirse,,,,SEVEV,266/266,(L.) P. Beauv./(L.) P. Beauv.
+137,,0,0,Bnam,137,,Sambucus spec.,Caprifoliaceae,Holunder,,,,SAMB,875,L.
+138,,0,0,Bnam,138,,Triticum monococcum,Poaceae,Einkorn,Einkorn,Petit épeautre,Farro,TRMOC,234,L.
+139,,0,0,Bnam,139,,Lens culinaris,Fabaceae,Linse,Lentil,Lentille comestible,Lenticchia comune,LECUL,607,Medik.
+140,,0,0,Bnam,140,,Panicum miliaceum,Poaceae,Echte Hirse,Common Millet,Millet cultivé,Panico coltivato,PAMIL,264,L.
+141,,0,0,Bnam,141,,Phleum pratense s.str.,Poaceae,,,,,PHPRP,,L.
+142,,0,0,Bnam,142,,Pisum sativum,Fabaceae,Erbse,Garden Pea,Pois cultivé,Pisello,PISAT,620,L.
+143,,0,0,Bnam,143,,Scleranthus annuus s.str.,Caryophyllaceae,Einjähriges Knäuelkraut,,,,SCANA,386,L.
+144,,0,0,Bnam,144,,Chenopodium rubrum,Chenopodiaceae,Roter Gänsefuß,Red Goosefoot,Chénopode rouge,Farinello rosso,CHRUB,346,L.
+145,,0,0,Bnam,145,,Echinochloa crus-galli,Poaceae,Hühnerhirse,Cockspur,Echinochloa pied de coq,Giavone comune,ECCRU,265,(L.) P. Beauv.
+146,,0,0,Bnam,146,,Buglossoides arvensis,Boraginaceae,Acker-Steinsame,,Grémil des champs,Erba-perla minore,LITAR,779,(L.) I. M. Johnst.
+147,,0,0,Bnam,147,,Malva spec.,Malvaceae,Malve,,,,MALV,658,L.
+148,,0,0,Bnam,148,,Vicia ervilia,Fabaceae,Linsen-Wicke,Ervil,Vesce ervilia,Veccia capogirlo,VIERV,609,(L.) Willd.
+149,,0,0,Bnam,149,,Cucumis melo/sativus,Cucurbitaceae,,,,,CUMSA,679,L./L.
+150,,0,0,Bnam,150,,Lathyrus cicera/sativus,Fabaceae,Kicher-/Saat-Platterbse,,,,LACIS,619/620,L./L.
+151,,0,0,Bnam,151,,Lamiaceae,Lamiaceae,Lippenblütler,,,,LABIA,791,
+152,,0,0,Bnam,152,,Setaria italica,Poaceae,Kolbenhirse,Foxtail Bristle-grass,Sétaire d'Italie,Pabbio coltivato,SEITA,267,(L.) P. Beauv.
+153,,0,0,Bnam,153,,Medicago,,,,,,MEDI,,
+154,,0,0,Bnam,154,,Lallemantia iberica,,,,,,Laleib,,
+155,,0,0,Bnam,155,,Salvia spec.,Labiatae,Salbei,,,,SALV,808,L.
+156,,0,0,Bnam,156,,Schoenoplectus spec.,Cyperaceae,Teichbinse,,,,SCHO,160,(Rchb.) Palla
+157,,0,0,Bnam,157,,Setaria pumila,Poaceae,Rote Borstenhirse,Yellow Bristle-grass,Sétaire glauque,Pabbio rossastro,SEGLA,266,(Poir.) Roem. & Schult.
+158,,0,0,Bnam,158,,Setaria spec.,Poaceae,Borstenhirse,,,,SETA,266,P.B.
+159,,0,0,Bnam,159,,Hordeum vulgare undiff.,Poaceae,"Kulturgerste, mehrzeilig",,,,HOVUL,237,L.
+160,,0,0,Bnam,160,,Lolium temulentum,Poaceae,Taumel-Lolch,Darnel,Ivraie enivrante,Loglio ubriacante,LOTEM,230,L.
+161,,0,0,Bnam,161,,Phalaris minor,,,,,,Phami,,
+162,,0,0,Bnam,162,,Lolium spec.,Poaceae,Lolch,,,,LOLI,230,
+163,,0,0,Bnam,163,,Phalaris,,,,,,PHAL,,
+164,,0,0,Bnam,164,,Polypogon,,,,,,Polypo,,
+165,,0,0,Bnam,165,,Acacia sp.,,,,,,ACAC,,
+166,,0,0,Bnam,166,,Angiospermae Monocotyledonae,,,,,,ANGMO,,
+167,,0,0,Bnam,167,,Cyperus,,,,,,CYPE,,
+168,,0,0,Bnam,168,,Cyperaceae,Cyperaceae,Sauergräser,,,,CYPER,155,
+169,,0,0,Bnam,169,,Phragmites,,,,,,PHRA,,
+170,,0,0,Bnam,170,,Rumex crispus/dentatus,,,,,,Rucrden,,
+171,,0,0,Bnam,171,,Solanaceae,Nachtschattengewächse,Nachtschattengewächse,,,,SOLAN,818,
+172,,0,0,Bnam,172,,Tamarix,Tamaricaceae,,,,,TAMA,,
+173,,0,0,Bnam,173,cf,Cucumis melo,Cucurbitaceae,Zucker-Melone,,,,CUMEL,679,L.
+174,,0,0,Bnam,174,,Hordeum vulgare Spelzgerste,Poaceae,"Spelzgerste, mehrzeilig",,,,HOVUS,236,
+175,,0,0,Bnam,175,#,Vicia klein-früchtig,,,,,,VICKF,,
+176,,0,0,Bnam,176,,Fabaceae (kult.),Fabaceae,Hülsenfrüchte,,,,FABAK,576,
+177,,0,0,Bnam,177,,Lathyrus hirsutus/Vicia (klien),,,,,,LahVi,,
+178,,0,0,Bnam,178,,Cyperus rotundus,,,Purple Nutsedge,Souchet rond,Zigolo infestante,CYROT,,L.
+179,,0,0,Bnam,179,,Hordeum vulgare 4-zeilig,Poaceae,"Gerste, 4-zeilig",,,,HORD4,237,
+180,,0,0,Bnam,180,,Polygonum spec.,Polygonaceae,Knöterich,Knotweed,Renouée,Poligono,POGO,332,L.
+181,,0,0,Bnam,181,,Vicia hirsuta/tetrasperma,Fabaceae,Rauhhaarige/Viersamige Wicke,,,,VIHIT,610/610,(L.)S.F.Gray/(L.)Schreb
+182,,0,0,Bnam,182,,Isolepis,,,,,,ISOL,,
+183,,0,0,Bnam,183,,Bolboschoenus,Cyperaceae,,,,,BOLB,,
+184,,0,0,Bnam,184,,Lathyrus hirsutus,Fabaceae,,Hairy Vetchling,Gesse hérissée,Cicerchia pelosa,LAHIR,,L.
+185,,0,0,Bnam,185,,Ficus sycomorus,,,,,,Fisyc,,
+186,,0,0,Bnam,186,,Anthemis pseudocotula,Asteraceae,,,,,Anpse,,Boiss.
+187,,0,0,Bnam,187,#,Coronupus niloticus,,,,,,Cornilot,,
+188,,0,0,Bnam,188,,Glinus lotoides,,,,,,Glilot,,
+189,,0,0,Bnam,189,,Hordeum spec.,Poaceae,Gerste undiff.,,,,HORD,235,
+190,,0,0,Bnam,190,,Lithospermum/Buglossoides spec.,Boraginaceae,Steinsame,,,,LITH,779,L.
+191,,0,0,Bnam,191,,Aeluropus lithoralis,,,,,,Aelur,,
+192,,0,0,Bnam,192,,Anethum graveolens,Apiaceae,Dill,Dill,Aneth odorant,Aneto puzzolente,ANGRA,716,L.
+193,,0,0,Bnam,193,,Ficus sp.,,,,,,Ficus,,
+194,,0,0,Bnam,194,,Fimbristylis,,,,,,FIMB,,
+195,,0,0,Bnam,195,,Oryzopsis milliaceum,,,,,,Oryzm,,
+196,,0,0,Bnam,196,,Persicaria lanigera/lapatifolia,,,,,,Pelaplan,,
+197,,0,0,Bnam,197,,Scorpiurus sp.,,,,,,SCORP,,
+198,,0,0,Bnam,198,,Brassicaceae,Brassicaceae,Kreuzblütler,,,,BRASS,431,
+199,,0,0,Bnam,199,,Origanum,,,,,,ORIG,,
+200,,0,0,Bnam,200,,Ornithogalum,,,,,,ORNI,,
+201,,0,0,Bnam,201,,Hippuris vulgaris,Hippuridaceae,,Mare's-tail,Pesse vulgaire,Coda di cavallo,HIVUL,,L.
+202,,0,0,Bnam,202,,Ziziphus jujuba,,,,,,ZIJUJ,,Mill.
+203,,0,0,Bnam,203,,Digitaria spec.,Poaceae,Fingergras,,,,DIGI,265,Haller
+204,,0,0,Bnam,204,,Echinochloa/Setaria,Poaceae,Hühnerhirse/Borstenhirse,,,,ECHSE,265/266,P. B./P. B.
+205,,0,0,Bnam,205,,Medicago/Trifolium,Fabaceae,Hopfenklee/Klee,,,,MEDTR,588/589,L./L.
+206,,0,0,Bnam,206,,Vicia tetrasperma,Fabaceae,Viersamige Wicke,Smooth Tare,Vesce à quatre graines,Veccia a quattro semi,VITET,610,(L.) Schreb.
+207,,0,0,Bnam,207,,Pulicaria,,,,,,PULI,,
+208,,0,0,Bnam,208,,Arnebia,Boraginaceae,,,,,ARNE,,
+209,,0,0,Bnam,209,,Chenopodiaceae,Chenopodiaceae,Gänsefußgewächse,,,,CHENO,339,
+210,,0,0,Bnam,210,,Sherardia,,,,,,SHER,,
+211,,0,0,Bnam,211,,Panicoideae,Poaceae,Hirseartige,,,,PANIC,264/265,R. Br.
+212,,0,0,Bnam,212,,Linum spec.,Linaceae,Lein,,,,LINU,630,L.
+213,,0,0,Bnam,213,,Juncus spec.,Juncaceae,Binse,Rush,Scirpe,Biodo,JUNC,144,L.
+214,,0,0,Bnam,214,,Portulaca,,,,,,PORT,,
+215,,0,0,Bnam,215,,Anthemis cotula,Asteraceae,Stinkende Hundskamille,Stinking Chamomile,Anthémis fétide,Camomilla fetida,ANCOT,932,L.
+216,,0,0,Bnam,216,,Ammi visnaga,Apiaceae,,Toothpick-plant,,,AMVIS,,Lam.
+217,,0,0,Bnam,217,,Berula erecta,Apiaceae,,Lesser Water-parsnip,Berle dressée,Sedanina d'acqua,BEERE,,(Huds.) Coville
+218,,0,0,Bnam,218,,Capparis,,,,,,CAPP,,
+219,,0,0,Bnam,219,,Gymnospermae,,,,,,GYMNO,,
+220,,0,0,Bnam,220,#,Vitis spec.,Vitaceae,Rebe,,,,VITI,653,L.

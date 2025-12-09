@@ -1,0 +1,9 @@
+system_id,method_id,arbodat_code,biblio_id,description,method_abbrev_or_alt_name,method_group_id,method_name
+1,87.0,"ORG2,0",,Organic remains >2.0 mm,"ORG2,0",,"ORG2,0"
+2,,"ORG1,0",,Organic remains 1.0-2.0 mm,"ORG1,0",,"ORG1,0"
+3,86.0,"ORG0,5",,Organic remains 0.5-1.0 mm,"ORG0,5",,"ORG0,5"
+4,85.0,"ORG0,25",,Organic remains 0.25-0.5 mm,"ORG0,25",,"ORG0,25"
+5,,"MIN2,0",,Mineral remains >2.0 mm,"MIN2,0",,"MIN2,0"
+6,,"MIN1,0",,Mineral remains 1.0-2.0 mm,"MIN1,0",,"MIN1,0"
+7,,"MIN0,5",,Mineral remains 0.5-1.0 mm,"MIN0,5",,"MIN0,5"
+8,,"MIN0,25",,Mineral remains 0.25-0.5 mm,"MIN0,25",,"MIN0,25"

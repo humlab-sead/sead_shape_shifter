@@ -10,18 +10,17 @@ Usage:
 
 import asyncio
 import os
-import sys
 from pathlib import Path
-from time import time
-from typing import Literal
+from typing import Any, Literal
 
 import click
-from loguru import logger
 
+from src.arbodat.extract import extract_translation_map
 from src.arbodat.normalizer import ArbodatSurveyNormalizer
-from src.arbodat.utility import extract_translation_map
+from src.arbodat.utility import setup_logging
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
+from src.arbodat.utility import load_shape_file
 
 
 async def workflow(
@@ -52,84 +51,21 @@ async def workflow(
 
     normalizer.add_system_id_columns()
     normalizer.move_keys_to_front()
+
+    link_cfgs: dict[str, dict[str, Any]] = ConfigValue[dict[str, dict[str, dict[str, int]]]]("mappings").resolve() or {}
+    normalizer.map_to_remote(link_cfgs)
+
     normalizer.store(target=target, mode=mode)
+    normalizer.log_shapes(target=target)
 
-    if verbose:
-        click.echo("\nTable Summary:")
-        for name, table in normalizer.data.items():
-            click.echo(f"  - {name}: {len(table)} rows")
-
-
-# Global dictionary to track duplicate log messages
-_last_seen_messages: dict[str, float] = {}
-
-
-def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
-    """Configure loguru logging with appropriate handlers and filters.
-
-    Args:
-        verbose: If True, set log level to DEBUG and show all messages.
-                If False, set to INFO and filter duplicate messages.
-        log_file: Optional path to log file. If provided, logs are written to file.
-    """
-    global _last_seen_messages
-
-    level = "DEBUG" if verbose else "INFO"
-
-    logger.remove()
-
-    # Define filter for duplicate messages (only in non-verbose mode)
-    def filter_once_per_message(record) -> bool:
-        """Filter to show each unique message only once per second."""
-        if verbose:
-            return True
-
-        msg = record["message"]
-        now = time()
-        if msg not in _last_seen_messages or now - _last_seen_messages[msg] > 1.0:
-            _last_seen_messages[msg] = now
-            return True
-        return False
-
-    # Format string for logs
-    log_format = (
-        (
-            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-            "<level>{level: <8}</level> | "
-            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-            "<level>{message}</level>"
-        )
-        if verbose
-        else "<level>{message}</level>"
-    )
-
-    # Add console handler
-    logger.add(
-        sys.stderr,
-        level=level,
-        format=log_format,
-        filter=filter_once_per_message,
-        colorize=True,
-    )
-
-    # Add file handler if specified
-    if log_file:
-        logger.add(
-            log_file,
-            level="DEBUG",
-            format=log_format,
-            rotation="10 MB",
-            retention="7 days",
-            compression="zip",
-        )
-
-    if verbose:
-        logger.debug("Verbose logging enabled")
-
+    # if verbose:
+    #     click.echo("\nTable Summary:")
+    #     for name, table in normalizer.table_store.items():
+    #         click.echo(f"  - {name}: {len(table)} rows")
 
 @click.command()
-@click.argument("input_csv")  # type=click.Path(exists=True, dir_okay=False, readable=True))
-@click.argument("target")  # type=click.Path(dir_okay=False, writable=True))
+@click.argument("input_csv")
+@click.argument("target")
 @click.option("--sep", "-s", show_default=True, help='Field separator character. Use "," for comma-separated files.', default=";")
 @click.option("--config-file", "-c", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to configuration file.")
 @click.option("--env-file", "-e", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to environment variables file.")
@@ -138,7 +74,8 @@ def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
 @click.option("--mode", "-m", type=click.Choice(["xlsx", "csv", "db"]), default="xlsx", show_default=True, help="Output file format.")
 @click.option("--drop-foreign-keys", "-d", is_flag=True, help="Drop foreign key columns after linking.", default=False)
 @click.option("--log-file", "-l", type=click.Path(), help="Path to log file (optional).")
-async def main(
+@click.option("--regression-file", "-r", type=click.Path(), help="Path to regression file (optional).")
+def main(
     input_csv: str,
     target: str,
     sep: str,
@@ -149,6 +86,7 @@ async def main(
     mode: Literal["xlsx", "csv", "db"],
     drop_foreign_keys: bool,
     log_file: str | None,
+    regression_file: str | None,
 ) -> None:
     """
     Normalize an Arbodat "Data Survey" CSV export into several tables.
@@ -158,14 +96,12 @@ async def main(
     The input CSV should contain one row per Sample × Taxon combination, with
     columns identifying projects, sites, features, samples, and taxa.
     """
-    setup_logging(verbose=verbose, log_file=log_file)
-
     if verbose:
-        logger.info(f"Reading Arbodat CSV from: {input_csv}")
-        logger.info(f"Using separator: {repr(sep)}")
+        click.echo(f"Reading Arbodat CSV from: {input_csv}")
+        click.echo(f"Using separator: {repr(sep)}")
 
     if config_file:
-        logger.info(f"Using configuration file: {config_file}")
+        click.echo(f"Using configuration file: {config_file}")
 
     if not config_file:
         config_file = os.path.join(os.path.dirname(__file__), "config.yml")
@@ -173,25 +109,50 @@ async def main(
     if not config_file or not Path(config_file).exists():
         raise FileNotFoundError(f"Configuration file not found: {config_file or 'undefined'}")
 
-    asyncio.run(setup_config_store(
-        config_file,
-        env_prefix="SEAD_NORMALIZER",
-        env_filename=env_file or os.path.join(os.path.dirname(__file__), "input", ".env"),
-        db_opts_path="",
-    ))
+    asyncio.run(
+        setup_config_store(
+            config_file,
+            env_prefix="SEAD_NORMALIZER",
+            env_filename=env_file or os.path.join(os.path.dirname(__file__), "input", ".env"),
+            db_opts_path="",
+        )
+    )
 
-    await workflow(
-        input_csv=input_csv,
-        target=target,
-        sep=sep,
-        verbose=verbose,
-        translate=translate,
-        mode=mode,
-        drop_foreign_keys=drop_foreign_keys,
+    # Configure logging AFTER setup_config_store to override its logging configuration
+    setup_logging(verbose=verbose, log_file=log_file)
+
+    asyncio.run(
+        workflow(
+            input_csv=input_csv,
+            target=target,
+            sep=sep,
+            verbose=verbose,
+            translate=translate,
+            mode=mode,
+            drop_foreign_keys=drop_foreign_keys,
+        )
     )
 
     click.secho(f"✓ Successfully written normalized workbook to {target}", fg="green")
 
+    validate_entity_shapes(target, mode, regression_file)
+
+def validate_entity_shapes(target: str, mode: str, regression_file: str | None):
+    if mode != "csv" or not regression_file:
+        return
+    
+    truth_shapes: dict[str, tuple[int, int]] = load_shape_file(filename=regression_file)
+    new_shapes: dict[str, tuple[int, int]] = load_shape_file(filename=os.path.join(target, "table_shapes.tsv"))
+
+    entities_with_different_shapes = [
+        (entity, truth_shapes.get(entity), new_shapes.get(entity))
+        for entity in set(truth_shapes.keys()).union(set(new_shapes.keys()))
+        if truth_shapes.get(entity) != new_shapes.get(entity)
+    ]
+    if len(entities_with_different_shapes) > 0:
+        click.secho("✗ Regression check failed: Entities with different shapes:", fg="red")
+
+        print("\n".join(f" {z[0]:>30}: expected {str(z[1]):<15} found {str(z[2]):<20}" for z in entities_with_different_shapes))
 
 if __name__ == "__main__":
     main()

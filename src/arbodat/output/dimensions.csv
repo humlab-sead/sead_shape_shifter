@@ -1,0 +1,44 @@
+system_id,dimension_id,dimension_name
+1,,Volume
+2,,Core diameter
+3,,Height
+4,,Weight
+5,,Positive boundary depth from surface upper
+6,,X/North
+7,,X/North
+8,,X/East
+9,,X/East
+10,,Y/North
+11,,Lower boundary depth (positive) from reference
+12,,Lower boundary depth (negative) from reference
+13,,Upper boundary depth from unknown reference
+14,,Lower boundary depth from unknown reference
+15,,Sample/core width
+16,,Upper boundary depth (negative) from surface
+17,,Lower boundary depth (positive) from surface
+18,,Lower boundary depth (negative) from surface
+19,,Upper boundary depth (positive) from reference
+20,,Upper boundary depth (negative) from reference
+21,,Vessel height
+22,,Firing temperature (min)
+23,,Base diameter
+24,,Rim diameter
+25,,Melting point
+26,,Melting point higher than
+27,,X/East
+28,,Y/North
+29,,Y/North
+30,,Z/Altitude
+31,,Y/East
+32,,Y/East
+33,,Sherd thickness (mm)
+34,,Base diameter (cm) minimum
+35,,Base diameter (cm) maximum
+36,,Rim diameter (cm) minimum
+37,,Rim diameter (cm) maximum
+38,,Sherd thickness (mm) minimum
+39,,Sherd thickness (mm) maximum
+40,,Vessel height (cm) minimum
+41,,Vessel height (cm) maximum
+42,,Sampling height in centimetres
+43,,Tree diameter in metres

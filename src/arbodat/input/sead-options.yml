@@ -2,5 +2,5 @@ driver: postgres
 options:
   host: ${SEAD_HOST}
   port: ${SEAD_PORT}
-  database: ${SEAD_DBNAME}
+  dbname: ${SEAD_DBNAME}
   username: ${SEAD_USER}

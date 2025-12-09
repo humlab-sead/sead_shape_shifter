@@ -23,49 +23,48 @@ class ForeignKeyConfigSpecification:
 
     def is_satisfied_by(self, *, fk_cfg: ForeignKeyConfig) -> bool | None:
         self.clear()
-        missing_keys: set[str]
+        missing_fields: set[str]
         cfg_local_table: TableConfig = self.cfg.get_table(fk_cfg.local_entity)
         cfg_remote_table: TableConfig = self.cfg.get_table(fk_cfg.remote_entity)
 
         if fk_cfg.how == "cross":
             if fk_cfg.local_keys or fk_cfg.remote_keys:
-                self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: 'cross' join should not specify local_keys or remote_keys"
+                self.error = (
+                    f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: 'cross' join should not specify local_keys or remote_keys"
+                )
                 return False
             return True
 
         if len(fk_cfg.local_keys) == 0 or len(fk_cfg.remote_keys) == 0:
-            self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: local_keys and remote_keys must be specified for non-cross joins"
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local_keys and remote_keys must be specified for non-cross joins"
             return False
 
         if len(fk_cfg.local_keys) != len(fk_cfg.remote_keys):
-            self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: number of local_keys ({len(fk_cfg.local_keys)}) does not match number of remote_keys ({len(fk_cfg.remote_keys)})"
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: number of local_keys ({len(fk_cfg.local_keys)}) does not match number of remote_keys ({len(fk_cfg.remote_keys)})"
             return False
 
-        missing_keys = self.get_missing_keys(
-            required_keys=set(fk_cfg.local_keys), columns=set(cfg_local_table.usage_columns) | set(cfg_local_table.pending_columns), pending_columns=set()
+        missing_fields = self.get_missing_fields(
+            required_fields=set(fk_cfg.local_keys),
+            available_fields=set(cfg_local_table.keys_columns_and_fks) | set(cfg_local_table.unnest_columns),
         )
 
-        if missing_keys:
-            self.error = f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: local keys {missing_keys} not found in local entity '{fk_cfg.local_entity}'"
+        if missing_fields:
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local keys {missing_fields} not found in local entity '{fk_cfg.local_entity}'"
             return False
 
-        missing_keys: set[str] = self.get_missing_keys(
-            required_keys=set(fk_cfg.remote_keys), columns=set(cfg_remote_table.usage_columns), pending_columns=set()
+        missing_fields: set[str] = self.get_missing_fields(
+            required_fields=set(fk_cfg.remote_keys), available_fields=set(cfg_remote_table.get_columns())
         )
 
-        if missing_keys:
-            self.error = (
-                f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: remote keys {missing_keys} not found in remote entity '{fk_cfg.remote_entity}'"
-            )
+        if missing_fields:
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: remote keys {missing_fields} not found in remote entity '{fk_cfg.remote_entity}'"
             return False
 
         return True
 
-    def get_missing_keys(self, *, required_keys: set[str], columns: set[str], pending_columns) -> set[str]:
-
-        missing_keys: set[str] = {key for key in required_keys if key not in columns.union(pending_columns)}
-
-        return missing_keys
+    def get_missing_fields(self, *, required_fields: set[str], available_fields: set[str]) -> set[str]:
+        """Return the set of required keys that are missing from found keys."""
+        return {key for key in required_fields if key not in available_fields}
 
 
 class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
@@ -76,7 +75,7 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
         self.table_store: dict[str, pd.DataFrame] = table_store
 
     def is_satisfied_by(self, *, fk_cfg: ForeignKeyConfig) -> bool:
-        missing_keys: set[str]
+        missing_fields: set[str]
 
         assert fk_cfg.local_entity in self.table_store, f"Local DataFrame for entity '{fk_cfg.local_entity}' not found"
         assert fk_cfg.remote_entity in self.table_store, f"Remote DataFrame for entity '{fk_cfg.remote_entity}' not found"
@@ -85,42 +84,43 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
         if is_config_ok is not True:
             return False
 
-        table: pd.DataFrame = self.table_store[fk_cfg.local_entity]
-
-        missing_keys = self.get_missing_keys(
-            required_keys=set(fk_cfg.local_keys),
-            columns=set(table.columns),
-            pending_columns=set(self.cfg.get_table(fk_cfg.local_entity).pending_columns),
-        )
-        if missing_keys:
-            if missing_keys == self.cfg.get_table(fk_cfg.local_entity).pending_columns:
+        if missing_fields := self.get_missing_local_fields(fk_cfg=fk_cfg):
+            if missing_fields == self.cfg.get_table(fk_cfg.local_entity).unnest_columns:
                 self.deferred = True
             else:
-                self.error = (
-                    f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: local keys {missing_keys} not found in local entity data '{fk_cfg.local_entity}'"
-                )
+                self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local keys {missing_fields} not found in local entity data '{fk_cfg.local_entity}'"
                 return False
 
-        missing_pending_keys: set[str] = self.get_missing_keys(
-            required_keys=self.cfg.get_table(fk_cfg.local_entity).pending_columns,
-            columns=set(table.columns),
-            pending_columns=set(),
-        )
-
-        if missing_pending_keys:
+        if self.get_missing_pending_fields(fk_cfg=fk_cfg):
             self.deferred = True
             return True
 
-        missing_keys = self.get_missing_keys(
-            required_keys=set(fk_cfg.remote_keys), columns=set(self.table_store[fk_cfg.remote_entity].columns), pending_columns=set()
-        )
-        if missing_keys:
-            self.error = (
-                f"Linking {fk_cfg.local_entity} -> {fk_cfg.remote_entity}: remote keys {missing_keys} not found in remote entity data '{fk_cfg.remote_entity}'"
-            )
+        if missing_fields := self.get_missing_remote_fields(fk_cfg=fk_cfg):
+            self.error = f"{fk_cfg.local_entity}[linking]: -> {fk_cfg.remote_entity}: remote keys {missing_fields} not found in remote entity data '{fk_cfg.remote_entity}'"
             return False
 
         return True
+
+    def get_missing_local_fields(self, *, fk_cfg: ForeignKeyConfig) -> set[str]:
+        """Check for missing local keys in the local entity data."""
+        table: pd.DataFrame = self.table_store[fk_cfg.local_entity]
+        return self.get_missing_fields(
+            required_fields=set(fk_cfg.local_keys),
+            available_fields=set(table.columns).union(self.cfg.get_table(fk_cfg.local_entity).unnest_columns),
+        )
+
+    def get_missing_pending_fields(self, *, fk_cfg: ForeignKeyConfig) -> set[str]:
+        """Check for missing pending keys in the local entity data."""
+        return self.get_missing_fields(
+            required_fields=set(self.cfg.get_table(fk_cfg.local_entity).unnest_columns),
+            available_fields=set(self.table_store[fk_cfg.local_entity].columns),
+        )
+
+    def get_missing_remote_fields(self, *, fk_cfg: ForeignKeyConfig) -> set[str]:
+        """Check for missing remote keys in the remote entity data."""
+        return self.get_missing_fields(
+            required_fields=set(fk_cfg.remote_keys), available_fields=set(self.table_store[fk_cfg.remote_entity].columns)
+        )
 
 
 # ============================================================================
@@ -343,7 +343,9 @@ class ForeignKeySpecification(ConfigSpecification):
                 remote_keys = fk.get("remote_keys", []) or []
 
                 if len(local_keys) != len(remote_keys):
-                    self.add_error(f"{fk_id}: 'local_keys' length ({len(local_keys)}) does not match 'remote_keys' length ({len(remote_keys)})")
+                    self.add_error(
+                        f"{fk_id}: 'local_keys' length ({len(local_keys)}) does not match 'remote_keys' length ({len(remote_keys)})"
+                    )
                     valid = False
 
                 # Validate extra_columns format
@@ -436,7 +438,9 @@ class SurrogateIdSpecification(ConfigSpecification):
             if surrogate_id:
                 # Check naming convention (should end with _id)
                 if not surrogate_id.endswith("_id"):
-                    self.add_warning(f"Entity '{entity_name}': surrogate_id '{surrogate_id}' does not follow convention (should end with '_id')")
+                    self.add_warning(
+                        f"Entity '{entity_name}': surrogate_id '{surrogate_id}' does not follow convention (should end with '_id')"
+                    )
 
                 # Track for uniqueness check
                 if surrogate_id not in surrogate_ids:
@@ -492,12 +496,97 @@ class FixedDataSpecification(ConfigSpecification):
                     for idx, value_row in enumerate(values):
                         if isinstance(value_row, list):
                             if len(value_row) != len(columns):
-                                self.add_error(f"Entity '{entity_name}': value row {idx + 1} has {len(value_row)} items but {len(columns)} columns defined")
+                                self.add_error(
+                                    f"Entity '{entity_name}': value row {idx + 1} has {len(value_row)} items but {len(columns)} columns defined"
+                                )
                                 valid = False
 
                 # Warn if source is not None (shouldn't be used for fixed data)
                 if entity_data.get("source") is not None:
                     self.add_warning(f"Entity '{entity_name}': fixed data table has 'source' field (should be null)")
+
+        return valid
+
+
+class AppendConfigurationSpecification(ConfigSpecification):
+    """Validates append configuration settings."""
+
+    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+        """Check that append configurations are valid."""
+        self.clear()
+        valid = True
+
+        entities_config = config.get("entities", {})
+        if not entities_config:
+            return True
+
+        for entity_name, entity_data in entities_config.items():
+            append_configs = entity_data.get("append", []) or []
+            append_mode = entity_data.get("append_mode", "all")
+
+            # Validate append_mode if present
+            if append_configs:
+                if append_mode not in ["all", "distinct"]:
+                    self.add_error(
+                        f"Entity '{entity_name}': invalid append_mode '{append_mode}'. Must be 'all' or 'distinct'"
+                    )
+                    valid = False
+
+            # Validate each append configuration
+            for idx, append_cfg in enumerate(append_configs):
+                append_id = f"Entity '{entity_name}', append item #{idx + 1}"
+
+                append_type = append_cfg.get("type")
+                append_source = append_cfg.get("source")
+
+                # Must have either type or source, but not both
+                if not append_type and not append_source:
+                    self.add_error(f"{append_id}: must specify either 'type' or 'source'")
+                    valid = False
+                    continue
+
+                if append_type and append_source:
+                    self.add_error(f"{append_id}: cannot specify both 'type' and 'source'")
+                    valid = False
+                    continue
+
+                # Validate type-based append
+                if append_type:
+                    if append_type not in ["fixed", "sql"]:
+                        self.add_error(f"{append_id}: invalid type '{append_type}'. Must be 'fixed' or 'sql'")
+                        valid = False
+
+                    if append_type == "fixed":
+                        # Fixed type requires values
+                        if not append_cfg.get("values"):
+                            self.add_error(f"{append_id}: type 'fixed' requires 'values' field")
+                            valid = False
+                        else:
+                            values = append_cfg.get("values", [])
+                            if not isinstance(values, list):
+                                self.add_error(f"{append_id}: 'values' must be a list")
+                                valid = False
+                            elif len(values) == 0:
+                                self.add_warning(f"{append_id}: 'values' is empty")
+
+                    elif append_type == "sql":
+                        # SQL type requires query
+                        if not append_cfg.get("query"):
+                            self.add_error(f"{append_id}: type 'sql' requires 'query' field")
+                            valid = False
+
+                # Validate source-based append
+                if append_source:
+                    # Check if source entity exists
+                    if append_source not in entities_config:
+                        self.add_error(f"{append_id}: source entity '{append_source}' does not exist")
+                        valid = False
+
+                    # Source-based append should have columns mapping
+                    if not append_cfg.get("columns"):
+                        self.add_warning(
+                            f"{append_id}: source-based append should specify 'columns' mapping for clarity"
+                        )
 
         return valid
 
@@ -516,6 +605,7 @@ class CompositeConfigSpecification(ConfigSpecification):
             DropDuplicatesSpecification(),
             SurrogateIdSpecification(),
             FixedDataSpecification(),
+            AppendConfigurationSpecification(),
         ]
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
