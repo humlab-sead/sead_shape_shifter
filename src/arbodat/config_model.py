@@ -227,6 +227,9 @@ class TableConfig:
         
         # Parse append configuration for union operations
         self.append_configs: list[dict[str, Any]] = self._data.get("append", []) or []
+        if self.append_configs and isinstance(self.append_configs, dict):
+            self.append_configs = [self.append_configs]
+
         self.append_mode: str = self._data.get("append_mode", "all")  # "all" or "distinct"
         
         # Extract append source dependencies
