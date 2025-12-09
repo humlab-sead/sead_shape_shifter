@@ -250,7 +250,7 @@ class TableConfig:
     def fixed_sql(self) -> None | str:
         """Get the SQL query string for fixed data, if applicable."""
         if self.is_sql_data:
-            assert isinstance(self.values, str)
+            assert isinstance(self.values, str), "SQL query missing in 'values' field."
             return self.values.lstrip("sql:").strip()
         return None
 
