@@ -16,7 +16,7 @@ python validate_config.py <config_file.yml>
 
 Example:
 ```bash
-python validate_config.py src/arbodat/input/arbodat.yml
+python validate_config.py ./input/arbodat.yml
 ```
 
 ### Programmatic Validation
