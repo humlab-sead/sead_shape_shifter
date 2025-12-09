@@ -208,8 +208,9 @@ class TableConfig:
         The columns of the table are defined in the 'columns' field.
         The surrogate_id field specifies the primary key for the table.
         """
-        self.is_fixed_data = self._data.get("type", "data") == "fixed"
-        self.is_sql_data = self._data.get("type", "data") == "sql"
+        self.is_fixed_data: bool = self._data.get("type", "data") == "fixed"
+        self.is_sql_data: bool = self._data.get("type", "data") == "sql"
+        self.check_column_names: bool = self._data.get("check_column_names", True)
 
         """Get the data source name for SQL data tables."""
         self.data_source: str | None = self._data.get("data_source", None)

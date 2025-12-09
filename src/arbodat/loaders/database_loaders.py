@@ -28,8 +28,16 @@ class SqlLoader(DataLoader):
 
         data: pd.DataFrame = await self.read_sql(sql=table_cfg.fixed_sql)  # type: ignore[arg-type]
         # for now, columns must match those in the SQL result
-        if list(data.columns) != (table_cfg.columns or []):
-            raise ValueError(f"Fixed data entity '{entity_name}' has mismatched columns between configuration and SQL result")
+
+        if len(set(data.columns)) != len(set(table_cfg.keys_and_columns)):
+            raise ValueError(f"Fixed data entity '{entity_name}' has different number of columns in configuration")
+
+        if table_cfg.check_column_names:
+            if set(data.columns) != set(table_cfg.keys_and_columns):
+                raise ValueError(f"Fixed data entity '{entity_name}' has mismatched columns between configuration and SQL result")
+        else:
+            data.columns = table_cfg.keys_and_columns
+
         if table_cfg.surrogate_id:
             data = add_surrogate_id(data, table_cfg.surrogate_id)
 
