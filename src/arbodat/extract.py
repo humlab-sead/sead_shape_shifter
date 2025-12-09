@@ -69,8 +69,8 @@ def drop_duplicate_rows(
     return data
 
 
-def drop_empty_rows(*, data: pd.DataFrame, entity_name: str, subset: bool | list[str] | None = None) -> pd.DataFrame:
-    """Drop rows that are completely empty in the DataFrame or in the specified subset of columns."""
+def drop_empty_rows(*, data: pd.DataFrame, entity_name: str, subset: bool | list[str] | None = None, treat_empty_strings_as_na: bool = True) -> pd.DataFrame:
+    """Drop rows that are completely empty (NaN, None, or empty strings) in the DataFrame or in the specified subset of columns."""
 
     if subset is False:
         return data
@@ -81,8 +81,15 @@ def drop_empty_rows(*, data: pd.DataFrame, entity_name: str, subset: bool | list
             logger.warning(f"{entity_name}[subsetting]: Columns missing for drop_empty_rows: {missing_requested_columns}")
             return data
 
+        # Replace empty strings with NaN only in the subset columns
+        data = data.copy()
+        if treat_empty_strings_as_na:
+            data[subset] = data[subset].replace("", pd.NA)
         return data.dropna(subset=subset, how="all")
 
+    # Replace empty strings with NaN in all columns
+    if treat_empty_strings_as_na:
+        data = data.replace("", pd.NA)
     return data.dropna(how="all")
 
 
