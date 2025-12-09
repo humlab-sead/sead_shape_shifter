@@ -63,6 +63,10 @@ entities:
     # Data Quality
     drop_duplicates: bool | [string, ...] # Duplicate handling
     drop_empty_rows: bool | [string, ...]  # Empty row handling
+    check_column_names: bool              # Validate column names match (SQL sources)
+    
+    # Filtering
+    filters: [...]                        # Post-load data filters
     
     # Relationships
     foreign_keys: [...]               # Foreign key definitions
@@ -244,18 +248,52 @@ entities:
 #### `drop_empty_rows`
 - **Type**: `bool | list[string]`
 - **Required**: No (defaults to `false`)
-- **Description**: Controls empty row removal:
+- **Description**: Controls empty row removal. Empty values include `NaN`, `None`, and empty strings (`""`):
   - `true`: Drop rows where all columns are empty
   - `false`: Keep all rows
   - `list[string]`: Drop rows where all specified columns are empty
+- **Note**: Empty strings are automatically treated as `pd.NA` before checking for empty rows
 - **Example**:
   ```yaml
-  # Drop completely empty rows
+  # Drop completely empty rows (including rows with only empty strings)
   drop_empty_rows: true
   
-  # Drop rows where specific columns are all empty
+  # Drop rows where specific columns are all empty or empty strings
   drop_empty_rows: ["name", "description"]
   ```
+
+#### `check_column_names`
+- **Type**: `bool`
+- **Required**: No (defaults to `true`)
+- **Description**: For SQL data sources, controls whether to validate column names match the configuration:
+  - `true`: Validates that SQL result columns exactly match the configured `keys` and `columns`. Raises error on mismatch.
+  - `false`: Only validates that the number of columns matches. Automatically renames SQL columns to match configuration.
+- **Use Case**: Set to `false` when SQL column names don't match target schema but have the same structure (e.g., in `append` configurations)
+- **Example**:
+  ```yaml
+  contact:
+    type: sql
+    columns: ["contact_name", "contact_type"]
+    check_column_names: false  # SQL returns different column names
+    values: |\n      sql: \n      select [BotBest], \"BotBest\" from [Befunde]
+  ```
+
+#### `filters`
+- **Type**: `list[dict]`
+- **Required**: No
+- **Description**: List of post-load filters to apply after data extraction. Filters run sequentially and can reference other entities in the data store.
+- **Available Filters**:
+  - `exists_in`: Keep only rows where a column value exists in another entity's column
+- **Example**:
+  ```yaml
+  filters:
+    - type: exists_in
+      column: "PCODE"              # Local column to filter
+      other_entity: "_pcodes"      # Entity to check against
+      other_column: "PCODE"        # Column in other entity (optional, defaults to same name)
+      drop_duplicates: ["PCODE"]  # Optional: drop duplicates after filtering
+  ```
+- **See**: Filters section below for detailed filter documentation
 
 ---
 
@@ -950,6 +988,90 @@ See `docs/config_validation.md` for detailed validation documentation.
 
 ---
 
+## Data Filters
+
+Filters provide post-load data filtering capabilities. They are applied after data extraction but before foreign key linking and other transformations.
+
+### Filter Configuration
+
+Filters are configured in the `filters` property of an entity as a list of filter definitions:
+
+```yaml
+entity_name:
+  filters:
+    - type: filter_type
+      # filter-specific parameters
+```
+
+### Available Filter Types
+
+#### `exists_in` Filter
+
+Keeps only rows where a column's value exists in another entity's column. This is useful for filtering data based on values in a reference table.
+
+**Parameters**:
+- `type`: `"exists_in"` (required)
+- `column`: Local column name to filter (required)
+- `other_entity`: Name of entity to check values against (required)
+- `other_column`: Column name in other entity (optional, defaults to same as `column`)
+- `drop_duplicates`: Optional list of columns to drop duplicates after filtering
+
+**Example 1: Basic filtering**
+```yaml
+taxa:
+  columns: ["PCODE", "BNam", "Name_E"]
+  filters:
+    - type: exists_in
+      column: "PCODE"
+      other_entity: "_pcodes"  # Reference entity with valid codes
+      other_column: "PCODE"
+```
+
+**Example 2: With deduplication**
+```yaml
+taxa:
+  columns: ["PCODE", "BNam", "Name_E"]
+  filters:
+    - type: exists_in
+      column: "PCODE"
+      other_entity: "abundance"
+      drop_duplicates: ["PCODE"]  # Drop duplicate taxa after filtering
+```
+
+**Use Cases**:
+- Filter lookup tables to only include values actually used in the data
+- Remove orphaned records before establishing foreign keys
+- Reduce data size by filtering based on dependent entities
+
+**Execution Order**:
+1. Filter is applied after data extraction
+2. Filter can reference entities that appear earlier in dependency order
+3. Filter is applied before foreign key linking for the entity
+
+**Error Handling**:
+- Raises error if `other_entity` does not exist in data store
+- Raises error if `column` or `other_column` is missing
+- Logs warning if no rows match filter criteria
+
+### Custom Filter Development
+
+To add new filter types:
+
+1. Create a filter class in `src/arbodat/filter.py`
+2. Register with `@Filters.register(key="filter_type")`
+3. Implement `apply(df, filter_cfg, data_store)` method
+
+Example:
+```python
+@Filters.register(key="my_filter")
+class MyFilter:
+    def apply(self, df: pd.DataFrame, filter_cfg: dict, data_store: dict) -> pd.DataFrame:
+        # Filter logic here
+        return filtered_df
+```
+
+---
+
 ## Troubleshooting
 
 ### Common Issues
@@ -1023,6 +1145,10 @@ EntityConfig:
   # Quality
   drop_duplicates?: bool | list[string] | string
   drop_empty_rows?: bool | list[string]
+  check_column_names?: bool
+  
+  # Filtering
+  filters?: list[FilterConfig]
   
   # Relationships
   depends_on: list[string]
@@ -1030,6 +1156,11 @@ EntityConfig:
   
   # Transformations
   unnest?: UnnestConfig
+
+# FilterConfig
+FilterConfig:
+  type: string
+  # ... filter-specific parameters
 
 # ForeignKeyConfig
 ForeignKeyConfig:

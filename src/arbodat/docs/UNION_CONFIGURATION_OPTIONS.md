@@ -70,6 +70,7 @@ entity_name:
       values: string | [...]     # For fixed/SQL sources
       extra_columns: {...}       # Optional additional columns
       drop_duplicates: bool | [string, ...]
+      check_column_names: bool   # For SQL: validate column names match (default true)
       # Note: inherits keys, surrogate_id, depends_on from parent
       
     - # Sub-config 2
@@ -85,6 +86,7 @@ entity_name:
 - **Inheritance**: Sub-configs inherit `keys`, `surrogate_id`, and `depends_on` from parent unless overridden
 - **Flexible sources**: Each sub-config can specify its own source, type, and data_source
 - **Column alignment**: System validates that all sub-dataframes have compatible columns
+- **Column name validation**: For SQL sources, use `check_column_names: false` to skip name validation and auto-rename
 - **Concatenation order**: Base dataframe first, then append items in order
 
 ### Example 1: Union of Multiple Fixed Tables
@@ -167,6 +169,46 @@ sample:
   
   depends_on: ["historical_samples", "partner_samples"]
 ```
+
+### Example 4: SQL Append with Column Name Mismatch
+
+When SQL sources have different column names than the target schema, use `check_column_names: false` to skip validation and auto-rename:
+
+```yaml
+contact:
+  source: _project_contact
+  surrogate_id: contact_id
+  keys: []
+  columns: ["contact_name", "contact_type"]
+  
+  append:
+    # Add BotBest contacts from another table with different column names
+    - source: null
+      data_source: arbodat_data
+      check_column_names: false  # SQL columns don't match target names
+      type: sql
+      values: |
+        sql: 
+        select [BotBest], "BotBest" from [Befunde] where [BotBest] is not null ;
+  
+  foreign_keys:
+    - entity: contact_type
+      local_keys: ["contact_type"]
+      remote_keys: ["arbodat_code"]
+  
+  drop_duplicates: true
+  depends_on: ["contact_type", "_project_contact"]
+```
+
+**How it works**:
+- SQL returns 2 columns: `BotBest`, `BotBest`
+- Configuration expects 2 columns: `contact_name`, `contact_type`
+- With `check_column_names: false`, system only validates count matches (2 = 2)
+- SQL columns are automatically renamed to match configuration
+
+**Without `check_column_names: false`**:
+- Would raise error: "Mismatched columns between configuration and SQL result"
+- Column names would need to match exactly
 
 ### Implementation Notes
 
@@ -550,6 +592,7 @@ entity_name:
       extra_columns?: {...}
       drop_duplicates?: bool | [string, ...]
       drop_empty_rows?: bool | [string, ...]
+      check_column_names?: bool   # For SQL: validate column names (default true)
       # Cannot override: keys, surrogate_id, depends_on
   
   # Concatenation control (optional)
