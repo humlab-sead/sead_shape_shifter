@@ -508,6 +508,89 @@ class FixedDataSpecification(ConfigSpecification):
         return valid
 
 
+class AppendConfigurationSpecification(ConfigSpecification):
+    """Validates append configuration settings."""
+
+    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+        """Check that append configurations are valid."""
+        self.clear()
+        valid = True
+
+        entities_config = config.get("entities", {})
+        if not entities_config:
+            return True
+
+        for entity_name, entity_data in entities_config.items():
+            append_configs = entity_data.get("append", []) or []
+            append_mode = entity_data.get("append_mode", "all")
+
+            # Validate append_mode if present
+            if append_configs:
+                if append_mode not in ["all", "distinct"]:
+                    self.add_error(
+                        f"Entity '{entity_name}': invalid append_mode '{append_mode}'. Must be 'all' or 'distinct'"
+                    )
+                    valid = False
+
+            # Validate each append configuration
+            for idx, append_cfg in enumerate(append_configs):
+                append_id = f"Entity '{entity_name}', append item #{idx + 1}"
+
+                append_type = append_cfg.get("type")
+                append_source = append_cfg.get("source")
+
+                # Must have either type or source, but not both
+                if not append_type and not append_source:
+                    self.add_error(f"{append_id}: must specify either 'type' or 'source'")
+                    valid = False
+                    continue
+
+                if append_type and append_source:
+                    self.add_error(f"{append_id}: cannot specify both 'type' and 'source'")
+                    valid = False
+                    continue
+
+                # Validate type-based append
+                if append_type:
+                    if append_type not in ["fixed", "sql"]:
+                        self.add_error(f"{append_id}: invalid type '{append_type}'. Must be 'fixed' or 'sql'")
+                        valid = False
+
+                    if append_type == "fixed":
+                        # Fixed type requires values
+                        if not append_cfg.get("values"):
+                            self.add_error(f"{append_id}: type 'fixed' requires 'values' field")
+                            valid = False
+                        else:
+                            values = append_cfg.get("values", [])
+                            if not isinstance(values, list):
+                                self.add_error(f"{append_id}: 'values' must be a list")
+                                valid = False
+                            elif len(values) == 0:
+                                self.add_warning(f"{append_id}: 'values' is empty")
+
+                    elif append_type == "sql":
+                        # SQL type requires query
+                        if not append_cfg.get("query"):
+                            self.add_error(f"{append_id}: type 'sql' requires 'query' field")
+                            valid = False
+
+                # Validate source-based append
+                if append_source:
+                    # Check if source entity exists
+                    if append_source not in entities_config:
+                        self.add_error(f"{append_id}: source entity '{append_source}' does not exist")
+                        valid = False
+
+                    # Source-based append should have columns mapping
+                    if not append_cfg.get("columns"):
+                        self.add_warning(
+                            f"{append_id}: source-based append should specify 'columns' mapping for clarity"
+                        )
+
+        return valid
+
+
 class CompositeConfigSpecification(ConfigSpecification):
     """Composite specification that runs multiple validation specifications."""
 
@@ -522,6 +605,7 @@ class CompositeConfigSpecification(ConfigSpecification):
             DropDuplicatesSpecification(),
             SurrogateIdSpecification(),
             FixedDataSpecification(),
+            AppendConfigurationSpecification(),
         ]
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
