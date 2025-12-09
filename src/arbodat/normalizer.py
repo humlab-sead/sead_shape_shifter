@@ -149,7 +149,7 @@ class ArbodatSurveyNormalizer:
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': {table_cfg.columns}")
 
             delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
-            
+
             # Process all configured tables (base + append items)
             dfs: list[pd.DataFrame] = []
 
@@ -173,9 +173,7 @@ class ArbodatSurveyNormalizer:
             # Apply post-concatenation deduplication if append_mode is "distinct"
             if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
                 data = drop_duplicate_rows(
-                    data=data, 
-                    columns=table_cfg.drop_duplicates if table_cfg.drop_duplicates else True,
-                    entity_name=entity
+                    data=data, columns=table_cfg.drop_duplicates if table_cfg.drop_duplicates else True, entity_name=entity
                 )
                 logger.debug(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
 
@@ -233,7 +231,7 @@ class ArbodatSurveyNormalizer:
             logger.error(f"Error unnesting entity {entity}: {e}")
         finally:
             return self.table_store[entity]
-        
+
     def translate(self, translations_map: dict[str, str]) -> None:
         """Translate column names using translation from config."""
         self.table_store = translate(self.table_store, translations_map=translations_map)
