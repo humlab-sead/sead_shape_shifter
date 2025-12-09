@@ -35,6 +35,7 @@ from loguru import logger
 from src.arbodat.config_model import DataSourceConfig, TableConfig, TablesConfig
 from src.arbodat.dispatch import Dispatcher, Dispatchers
 from src.arbodat.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
+from src.arbodat.filter import apply_filters
 from src.arbodat.link import link_entity
 from src.arbodat.loaders.database_loaders import SqlLoader, SqlLoaderFactory
 from src.arbodat.loaders.fixed_loader import FixedLoader
@@ -169,7 +170,10 @@ class ArbodatSurveyNormalizer:
 
             # Concatenate all dataframes
             data: pd.DataFrame = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
-            
+
+            if table_cfg.filters:
+                data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store)
+
             # Apply post-concatenation deduplication if append_mode is "distinct"
             if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
                 data = drop_duplicate_rows(

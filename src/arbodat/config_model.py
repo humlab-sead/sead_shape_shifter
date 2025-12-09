@@ -245,6 +245,8 @@ class TableConfig:
             | {fk.remote_entity for fk in self.foreign_keys}
             | append_sources
         )
+        
+        self.filters: list[dict[str, Any]] = self._data.get("filters", []) or []
 
     @property
     def fixed_sql(self) -> None | str:
