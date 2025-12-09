@@ -5,7 +5,7 @@ taxa:
     xyz: taxon_id12345
 
 feature_type:
-  local_key: "BefuTyp"
+  local_key: "Befundtyp"
   remote_key: "feature_type_id"
   mapping:
     "BefuTyp?": 27
