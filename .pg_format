@@ -1,0 +1,113 @@
+# pgFormatter configuration file (.pg_format or pg_format.conf)
+# Lines starting with ‘#’ are comments.
+
+# Obscure all literals in queries (useful to hide confidential data before formatting).
+anonymize = 0
+
+# In a parameters list, end or start with the comma. Values: “start” or “end”. Default: end
+comma = end
+
+# In INSERT statements, add a newline after each comma. 0 = no, 1 = yes
+comma-break = 0
+
+# Output format: text or html.
+format = text
+
+# Add a newline between statements in transaction grouping. 0 = group them, 1 = don’t.
+nogrouping = 0
+
+# Change case of reserved keywords.
+# Values: 0 = unchanged, 1 = lowercase, 2 = uppercase, 3 = capitalize
+keyword-case = 1
+
+# Change case of data type names.
+# Values: 0 = unchanged, 1 = lowercase, 2 = uppercase, 3 = capitalize
+type-case = 1
+
+# Change case of PostgreSQL functions.
+# Values: 0 = unchanged, 1 = lowercase, 2 = uppercase, 3 = capitalize
+function-case = 0
+
+# Do not add an extra empty line at end of output. 0 = extra blank line allowed, 1 = suppress.
+no-extra-line = 1
+
+# Maximum length of a query, it will be truncated above this size. 0 = no truncation.
+maxlength = 0
+
+# Remove any comment from SQL code. 0 = keep comments, 1 = drop comments.
+nocomment = 0
+
+# Statement numbering as a comment before each query. 0 = no numbering, 1 = number each statement.
+numbering = 0
+
+# Define the filename for the output. Default: stdout (blank).
+output =
+
+# Set regex to find code that must *not* be changed. Default: blank.
+placeholder =
+
+# Use multi-line search for placeholder regex. 0 = single line only, 1 = multi-line.
+multiline = 0
+
+# Add RedShift keywords to the list of SQL keywords. (obsolete: use extra-keyword)
+redshift = 0
+
+# Dynamic code separator, default to single quote.
+separator =
+
+# Number of spaces for indentation (when using spaces). Default: 4
+spaces = 4
+
+# Use tabs instead of spaces: 0 = use spaces, 1 = use tabs (spaces value then ignored)
+tabs = 0
+
+# Wrap queries at a certain length (column count). 0 = no wrap
+wrap-limit = 0
+
+# After how many columns lists (e.g., SELECT list / FROM list) must be wrapped. 0 = disable
+wrap-after = 0
+
+# With wrap-limit, apply re-formatting to comments. 0 = no, 1 = yes
+wrap-comment = 0
+
+# Add list of functions to treat as “internal” functions (one function name per line in file) 
+# (optional – uncomment & point to file path)
+# extra-function = /path/to/functions.lst
+
+# Add list of keywords to treat as internal keywords (one keyword per line in file) 
+# (optional – uncomment & point to file path)
+# extra-keyword = /path/to/keywords.lst
+
+# Remove the space between a function name and the open parenthesis that follows.
+# 0 = keep space, 1 = remove space
+no-space-function = 1
+
+# Try another formatting type for some statements (procedure/function parameter lists, PUBLICATION, POLICY DDL).
+# 0 = default format, 1 = alternate format
+format-type = 0
+
+# Keep existing empty lines
+keep-newline = 1
+
+# End of config
+
+# PostgreSQL-official style (i.e., keywords uppercase, aligned clauses, moderate indentation) you might set:
+# keyword-case = 2
+# type-case = 2
+# function-case = 0 (or maybe 2 if you want functions uppercase)
+# spaces = 2 or 4 depending on your preference.
+# tabs = 0 (i.e., use spaces).
+# wrap-limit = 80 (to keep line width moderate).
+# wrap-after = 4 or so (to break long lists).
+# no-extra-line = 1 if you prefer less blank lines between statements.
+#
+# Compact developer-friendly variant (less vertical whitespace, smaller indentation, minimal breaks):
+# spaces = 2
+# tabs = 0
+# wrap-limit = 120 or even 0 (disable wrapping)
+# comma-break = 0
+# no-extra-line = 1
+# 
+# Possibly function-case = 1 (lowercase) and keyword-case = 1 (lowercase) if you like that style.
+# Because you’re working on system documentation for the SEAD infrastructure, you may want to define a team-wide standard config file (e.g., .pg_format) and commit it in your GitHub repository. That way, folks formatting SQL scripts (imports, API queries, change‐scripts) all use the same conventions, and your documentation (e.g., “SQL style guide” section) can reference “use this .pg_format config”.
+# You can include the above config file in your infrastructure docs (in the “Code Style / Formatting” section) so that new team members know the standard immediately.

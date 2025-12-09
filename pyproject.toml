@@ -1,0 +1,144 @@
+[project]
+name = "authority-service"
+version = "1.2.0"
+description = "This is a reconciliation service for SEAD."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "click>=8.3.0",
+    "dotenv>=0.9.9",
+    "fastapi>=0.117.1",
+    "jaydebeapi>=1.2.3",
+    "jinja2>=3.1.6",
+    "jpype1>=1.6.0",
+    "loguru>=0.7.3",
+    "ollama>=0.6.0",
+    "openai>=2.3.0",
+    "openpyxl>=3.1.5",
+    "pandas>=2.3.3",
+    "psycopg>=3.2.13",
+    "pyaml>=25.7.0",
+    "python-multipart>=0.0.20",
+    "sqlalchemy>=2.0.44",
+    "uvicorn>=0.37.0",
+]
+[dependency-groups]
+dev = [
+    "pylint>=3.3.8",
+    "ruff>=0.13.2",
+    "black>=25.9.0",
+    "pytest >=8.1.1,<9",
+    "pytest-asyncio >=0.22.0,<1",
+    "httpx >=0.24.1,<1",
+    "vulture>=2.14",
+]
+
+[tool.ruff]
+# Ruff = linter + (optional) formatter
+target-version = "py313"
+line-length = 140
+
+# Import checking rules
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # Pyflakes
+    "I",  # isort
+    "TID", # flake8-tidy-imports
+]
+
+[tool.ruff.flake8-tidy-imports]
+# Prevent relative imports beyond current package
+ban-relative-imports = "parents"
+
+[tool.ruff.format]
+# Use Ruff's formatter (Black-compatible). Set to false if you prefer Black.
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "R0904",
+    "R0903",
+    "R0801",
+    "too-many-return-statements",
+    "too-many-branches",
+    "too-many-statements",
+    "too-many-lines",
+]
+
+[tool.black]
+line-length = 140
+# target-version = ['py313']
+
+
+[tool.pylint]
+max-line-length = 140
+max-args = 10
+
+# Import sorting (handled by Ruff)
+[tool.isort]
+line_length = 142
+# multi_line_output = 3
+profile = "black"
+
+# Naming tweaks (optional)
+[tool.ruff.pep8-naming]
+classmethod-decorators = ["classmethod"]
+
+# --------------------
+# mypy (type checking)
+# --------------------
+[tool.mypy]
+python_version = "3.13"
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+no_implicit_optional = true
+strict_equality = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+show_error_codes = true
+pretty = true
+
+# Loosen types in tests
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+warn_return_any = false
+
+# --------------------
+# pytest
+# --------------------
+[tool.pytest.ini_options]
+addopts = "-q -ra --strict-markers"
+testpaths = ["tests"]
+python_classes = "Test*"
+python_functions = "test_*"
+asyncio_mode = "auto"
+markers = [
+  "integration: marks tests that hit external services (e.g., Ollama, DB)",
+  "debug: marks tests for debugging purposes (typically run manually)",
+  "manual: marks tests requiring manual setup (e.g., real database)",
+]
+# python_files = "test_*.py" "*_test.py"
+# Uncomment to see logs during test runs:
+# log_cli = true
+# log_cli_level = "DEBUG"
+
+# --------------------
+# coverage.py
+# --------------------
+[tool.coverage.run]
+branch = true
+source = ["src", "app.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 85
