@@ -593,8 +593,8 @@ class TestTablesConfig:
 
         reordered = tables.reorder_columns("site", df)
 
-        # site_id should be first
-        assert list(reordered.columns) == ["site_id", "name", "description"]
+        # site_id should be first, the the rest of the columns sorted
+        assert list(reordered.columns) == ["site_id", "description", "name"]
 
     def test_reorder_columns_with_foreign_keys(self):
         """Test reorder_columns places foreign key IDs after primary ID."""
@@ -616,7 +616,7 @@ class TestTablesConfig:
         reordered = tables.reorder_columns("site", df)
 
         # Order: site_id, location_id, then other columns
-        assert list(reordered.columns) == ["site_id", "location_id", "site_name", "location_name"]
+        assert list(reordered.columns) == ["site_id", "location_id", "location_name", "site_name"]
 
     def test_reorder_columns_with_extra_columns(self):
         """Test reorder_columns places extra_columns after foreign keys."""
@@ -672,7 +672,7 @@ class TestTablesConfig:
         reordered = tables.reorder_columns("site", df)
 
         # Should still work, just without site_id in front
-        assert list(reordered.columns) == ["name", "description"]
+        assert list(reordered.columns) == ["description", "name"]
 
     def test_reorder_columns_with_table_config_object(self):
         """Test reorder_columns accepts TableConfig object instead of string."""

@@ -31,8 +31,11 @@ def test_can_load_ucanaccess_queries() -> None:
     classpath = ":".join(jar_files)
     filename: str = ARBODAT_LOOKUP_MDB
 
-    jpype.startJVM(jpype.getDefaultJVMPath(), "-ea", f"-Djava.class.path={classpath}")
-
+    try:
+        jpype.startJVM(jpype.getDefaultJVMPath(), "-ea", f"-Djava.class.path={classpath}")
+    except OSError:
+        pass
+    
     conn = jpype.java.sql.DriverManager.getConnection(f"jdbc:ucanaccess:///{filename}")
 
     for query in conn.getDbIO().getQueries():
