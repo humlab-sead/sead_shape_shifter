@@ -1,4 +1,4 @@
 driver: ucanaccess
 options:
-  filename: src/arbodat/input/ArchBotStrukDat.mdb
-  ucanaccess_dir: src/arbodat/lib/ucanaccess
+  filename: ./input/ArchBotStrukDat.mdb
+  ucanaccess_dir: lib/ucanaccess
