@@ -1,26 +1,22 @@
 [project]
-name = "authority-service"
+name = "shape-shifter"
 version = "1.2.0"
-description = "This is a reconciliation service for SEAD."
+description = "This is an import service for that harmonize data to SEAD schema."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "click>=8.3.0",
     "dotenv>=0.9.9",
-    "fastapi>=0.117.1",
     "jaydebeapi>=1.2.3",
     "jinja2>=3.1.6",
     "jpype1>=1.6.0",
     "loguru>=0.7.3",
-    "ollama>=0.6.0",
-    "openai>=2.3.0",
     "openpyxl>=3.1.5",
     "pandas>=2.3.3",
     "psycopg>=3.2.13",
     "pyaml>=25.7.0",
     "python-multipart>=0.0.20",
     "sqlalchemy>=2.0.44",
-    "uvicorn>=0.37.0",
 ]
 [dependency-groups]
 dev = [
@@ -69,6 +65,15 @@ disable = [
     "too-many-branches",
     "too-many-statements",
     "too-many-lines",
+    "too-many-arguments",
+    "too-few-public-methods",
+    "too-many-nested-blocks",
+    "too-many-instance-attributes",
+    "too-many-positional-arguments",
+    "global-variable-not-assigned",
+    "logging-fstring-interpolation",
+    "too-many-function-args",
+    "too-many-locals"
 ]
 
 [tool.black]
@@ -136,7 +141,7 @@ markers = [
 # --------------------
 [tool.coverage.run]
 branch = true
-source = ["src", "app.py"]
+source = ["src"]
 
 [tool.coverage.report]
 show_missing = true
