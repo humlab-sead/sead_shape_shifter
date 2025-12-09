@@ -4,10 +4,10 @@ import shutil
 
 import pandas as pd
 
-from src.arbodat.survey2excel import validate_entity_shapes, workflow
+from src.survey2excel import validate_entity_shapes, workflow
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
-from src.arbodat.utility import load_shape_file
+from src.utility import load_shape_file
 
 # def test_workflow():
 

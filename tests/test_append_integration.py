@@ -3,8 +3,8 @@
 import pandas as pd
 import pytest
 
-from src.arbodat.normalizer import ArbodatSurveyNormalizer
-from src.arbodat.config_model import TablesConfig
+from src.normalizer import ArbodatSurveyNormalizer
+from src.config_model import TablesConfig
 
 
 class TestAppendIntegration:
@@ -38,7 +38,7 @@ class TestAppendIntegration:
         }
         
         # Initialize normalizer directly without ConfigStore
-        from src.arbodat.normalizer import ProcessState
+        from src.normalizer import ProcessState
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
@@ -87,7 +87,7 @@ class TestAppendIntegration:
         }
         
         # Initialize normalizer directly without ConfigStore
-        from src.arbodat.normalizer import ProcessState
+        from src.normalizer import ProcessState
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
@@ -131,7 +131,7 @@ class TestAppendIntegration:
         }
         
         # Initialize normalizer directly without ConfigStore
-        from src.arbodat.normalizer import ProcessState
+        from src.normalizer import ProcessState
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
@@ -174,7 +174,7 @@ class TestAppendIntegration:
         }
         
         # Initialize normalizer directly without ConfigStore
-        from src.arbodat.normalizer import ProcessState
+        from src.normalizer import ProcessState
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
@@ -225,7 +225,7 @@ class TestAppendIntegration:
         }
         
         # Initialize normalizer directly without ConfigStore
-        from src.arbodat.normalizer import ProcessState
+        from src.normalizer import ProcessState
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})

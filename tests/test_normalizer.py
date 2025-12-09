@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
-from src.arbodat.config_model import TablesConfig
-from src.arbodat.normalizer import ArbodatSurveyNormalizer, ProcessState
+from src.config_model import TablesConfig
+from src.normalizer import ArbodatSurveyNormalizer, ProcessState
 from src.configuration.setup import setup_config_store
 
 
@@ -261,7 +261,7 @@ class TestArbodatSurveyNormalizer:
 
         fixed_df = pd.DataFrame({"fixed": [1, 2, 3]})
 
-        with patch("src.arbodat.normalizer.FixedLoader") as mock_loader_class:
+        with patch("src.normalizer.FixedLoader") as mock_loader_class:
             mock_loader = Mock()
             mock_loader.load = AsyncMock(return_value=fixed_df)
             mock_loader_class.return_value = mock_loader
@@ -290,7 +290,7 @@ class TestArbodatSurveyNormalizer:
 
         sql_df = pd.DataFrame({"sql_col": ["a", "b", "c"]})
 
-        with patch("src.arbodat.loaders.database_loaders.PostgresSqlLoader") as mock_loader_class:
+        with patch("src.loaders.database_loaders.PostgresSqlLoader") as mock_loader_class:
             mock_loader = Mock()
             mock_loader.load = AsyncMock(return_value=sql_df)
             mock_loader_class.return_value = mock_loader
@@ -343,7 +343,7 @@ class TestArbodatSurveyNormalizer:
 
         translations_map = {"Ort": "location", "Datum": "date"}
 
-        with patch("src.arbodat.normalizer.translate") as mock_translate:
+        with patch("src.normalizer.translate") as mock_translate:
             mock_translate.return_value = {
                 "survey": pd.DataFrame({"location": ["Berlin"], "date": ["2020-01-01"]}),
                 "site": pd.DataFrame({"location": ["Munich"]}),
@@ -431,7 +431,7 @@ class TestArbodatSurveyNormalizer:
         unnested_df = pd.DataFrame({"site_id": [1, 1], "location_type": ["Ort", "Kreis"], "location_name": ["Berlin", "Mitte"]})
 
         with patch.object(normalizer.config, "get_table", return_value=mock_table_cfg):
-            with patch("src.arbodat.normalizer.unnest", return_value=unnested_df):
+            with patch("src.normalizer.unnest", return_value=unnested_df):
                 result = normalizer.unnest_entity(entity="site")
 
                 pd.testing.assert_frame_equal(result, unnested_df)
@@ -462,7 +462,7 @@ class TestArbodatSurveyNormalizer:
         mock_dispatcher = Mock()
         mock_dispatcher.dispatch = Mock()
 
-        with patch("src.arbodat.normalizer.Dispatchers.get", return_value=lambda: mock_dispatcher):
+        with patch("src.normalizer.Dispatchers.get", return_value=lambda: mock_dispatcher):
             normalizer.store(target="output.xlsx", mode="xlsx")
 
             mock_dispatcher.dispatch.assert_called_once_with(target="output.xlsx", data=normalizer.table_store)
@@ -475,7 +475,7 @@ class TestArbodatSurveyNormalizer:
         mock_dispatcher = Mock()
         mock_dispatcher.dispatch = Mock()
 
-        with patch("src.arbodat.normalizer.Dispatchers.get", return_value=lambda: mock_dispatcher):
+        with patch("src.normalizer.Dispatchers.get", return_value=lambda: mock_dispatcher):
             normalizer.store(target="output_dir", mode="csv")
 
             mock_dispatcher.dispatch.assert_called_once_with(target="output_dir", data=normalizer.table_store)
@@ -485,7 +485,7 @@ class TestArbodatSurveyNormalizer:
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ArbodatSurveyNormalizer(df)
 
-        with patch("src.arbodat.normalizer.Dispatchers.get", return_value=None):
+        with patch("src.normalizer.Dispatchers.get", return_value=None):
             with pytest.raises(ValueError, match="Unsupported dispatch mode: invalid"):
                 normalizer.store(target="output", mode="invalid")  # type: ignore
 
@@ -500,7 +500,7 @@ class TestArbodatSurveyNormalizer:
         normalizer.state.config.table_names = ["site", "sample"]
         normalizer.state.unprocessed = set()  # Everything processed
 
-        with patch("src.arbodat.normalizer.link_entity") as mock_link:
+        with patch("src.normalizer.link_entity") as mock_link:
             normalizer.link()
 
             # Should be called for each processed entity

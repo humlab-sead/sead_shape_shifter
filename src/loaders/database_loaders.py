@@ -8,8 +8,8 @@ import jpype
 import pandas as pd
 from sqlalchemy import create_engine
 
-from src.arbodat.config_model import TableConfig
-from src.arbodat.extract import add_surrogate_id
+from src.config_model import TableConfig
+from src.extract import add_surrogate_id
 from src.utility import create_db_uri, dotget
 
 from .interface import DataLoader

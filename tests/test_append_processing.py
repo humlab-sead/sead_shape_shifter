@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
-from src.arbodat.config_model import TableConfig, TablesConfig
-from src.arbodat.normalizer import ArbodatSurveyNormalizer
+from src.config_model import TableConfig, TablesConfig
+from src.normalizer import ArbodatSurveyNormalizer
 
 
 @pytest.fixture

@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from src.arbodat.dispatch import CSVDispatcher, DatabaseDispatcher, Dispatcher, Dispatchers, DispatchRegistry, ExcelDispatcher
+from src.dispatch import CSVDispatcher, DatabaseDispatcher, Dispatcher, Dispatchers, DispatchRegistry, ExcelDispatcher
 from src.configuration import MockConfigProvider
 from src.utility import Registry
 from tests.decorators import with_test_config
@@ -289,7 +289,7 @@ class TestDatabaseDispatcher:
         assert dispatcher is not None
 
     @with_test_config
-    @patch("src.arbodat.dispatch.create_db_uri")
+    @patch("src.dispatch.create_db_uri")
     @patch("sqlalchemy.create_engine")
     def test_database_dispatcher_gets_config(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher calls create_db_uri."""
@@ -311,7 +311,7 @@ class TestDatabaseDispatcher:
         mock_create_uri.assert_called_once()
 
     @with_test_config
-    @patch("src.arbodat.dispatch.create_db_uri")
+    @patch("src.dispatch.create_db_uri")
     @patch("sqlalchemy.create_engine")
     def test_database_dispatcher_creates_db_uri(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher creates database URI."""
@@ -332,7 +332,7 @@ class TestDatabaseDispatcher:
         mock_create_uri.assert_called_once()
 
     @with_test_config
-    @patch("src.arbodat.dispatch.create_db_uri")
+    @patch("src.dispatch.create_db_uri")
     @patch("sqlalchemy.create_engine")
     def test_database_dispatcher_creates_engine(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher creates SQLAlchemy engine."""
@@ -353,7 +353,7 @@ class TestDatabaseDispatcher:
         mock_create_engine.assert_called_once_with(url=db_url)
 
     @with_test_config
-    @patch("src.arbodat.dispatch.create_db_uri")
+    @patch("src.dispatch.create_db_uri")
     @patch("sqlalchemy.create_engine")
     def test_database_dispatcher_writes_tables(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher writes all tables to database."""
@@ -375,7 +375,7 @@ class TestDatabaseDispatcher:
             assert mock_to_sql.call_count == 2
 
     @with_test_config
-    @patch("src.arbodat.dispatch.create_db_uri")
+    @patch("src.dispatch.create_db_uri")
     @patch("sqlalchemy.create_engine")
     def test_database_dispatcher_replaces_existing_tables(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher replaces existing tables."""
@@ -397,7 +397,7 @@ class TestDatabaseDispatcher:
             assert call_kwargs["if_exists"] == "replace"
 
     @with_test_config
-    @patch("src.arbodat.dispatch.create_db_uri")
+    @patch("src.dispatch.create_db_uri")
     @patch("sqlalchemy.create_engine")
     def test_database_dispatcher_no_index_in_output(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher writes tables without index."""
@@ -419,7 +419,7 @@ class TestDatabaseDispatcher:
             assert call_kwargs["index"] is False
 
     @with_test_config
-    @patch("src.arbodat.dispatch.create_db_uri")
+    @patch("src.dispatch.create_db_uri")
     @patch("sqlalchemy.create_engine")
     def test_database_dispatcher_uses_transaction(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher uses transaction context."""
@@ -440,7 +440,7 @@ class TestDatabaseDispatcher:
             mock_engine.begin.assert_called_once()
 
     @with_test_config
-    @patch("src.arbodat.dispatch.create_db_uri")
+    @patch("src.dispatch.create_db_uri")
     @patch("sqlalchemy.create_engine")
     def test_database_dispatcher_uses_create_db_uri(self, mock_create_engine, mock_create_uri, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher calls create_db_uri to build connection string."""

@@ -22,7 +22,7 @@ python validate_config.py src/arbodat/input/arbodat.yml
 ### Programmatic Validation
 
 ```python
-from src.arbodat.specifications import CompositeConfigSpecification
+from src.specifications import CompositeConfigSpecification
 import yaml
 
 # Load configuration
@@ -176,7 +176,7 @@ This is the main specification to use for complete validation. It runs all indiv
 You can create custom specifications by extending `ConfigSpecification`:
 
 ```python
-from src.arbodat.specifications import ConfigSpecification
+from src.specifications import ConfigSpecification
 from typing import Any
 
 class MyCustomSpecification(ConfigSpecification):
@@ -212,8 +212,8 @@ spec = CompositeConfigSpecification(specifications=[
 You can integrate validation into the normalization workflow:
 
 ```python
-from src.arbodat.normalizer import ArbodatSurveyNormalizer
-from src.arbodat.specifications import CompositeConfigSpecification
+from src.normalizer import ArbodatSurveyNormalizer
+from src.specifications import CompositeConfigSpecification
 from src.configuration.resolve import ConfigValue
 
 # Load and validate config

@@ -3,8 +3,8 @@
 import pandas as pd
 import pytest
 
-from src.arbodat.config_model import TableConfig
-from src.arbodat.unnest import unnest
+from src.config_model import TableConfig
+from src.unnest import unnest
 
 
 class TestUnnest:

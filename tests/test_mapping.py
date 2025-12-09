@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from src.arbodat.mapping import LinkToRemoteService
+from src.mapping import LinkToRemoteService
 
 
 class TestRemoteLinker:

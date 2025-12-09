@@ -1,7 +1,7 @@
 from typing import Any
 import os
 import pandas as pd
-from src.arbodat.loaders.database_loaders import UCanAccessSqlLoader
+from src.loaders.database_loaders import UCanAccessSqlLoader
 import jpype
 
 UCANACCESS_HOME = os.path.abspath("src/arbodat/lib/ucanaccess")

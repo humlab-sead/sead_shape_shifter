@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from src.arbodat.config_model import ForeignKeyConfig, TableConfig, TablesConfig, UnnestConfig
+from src.config_model import ForeignKeyConfig, TableConfig, TablesConfig, UnnestConfig
 
 
 class TestUnnestConfig:

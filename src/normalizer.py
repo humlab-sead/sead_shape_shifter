@@ -32,15 +32,15 @@ from typing import Any, Literal
 import pandas as pd
 from loguru import logger
 
-from src.arbodat.config_model import DataSourceConfig, TableConfig, TablesConfig
-from src.arbodat.dispatch import Dispatcher, Dispatchers
-from src.arbodat.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
-from src.arbodat.filter import apply_filters
-from src.arbodat.link import link_entity
-from src.arbodat.loaders.database_loaders import SqlLoader, SqlLoaderFactory
-from src.arbodat.loaders.fixed_loader import FixedLoader
-from src.arbodat.mapping import LinkToRemoteService
-from src.arbodat.unnest import unnest
+from src.config_model import DataSourceConfig, TableConfig, TablesConfig
+from src.dispatch import Dispatcher, Dispatchers
+from src.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
+from src.filter import apply_filters
+from src.link import link_entity
+from src.loaders.database_loaders import SqlLoader, SqlLoaderFactory
+from src.loaders.fixed_loader import FixedLoader
+from src.mapping import LinkToRemoteService
+from src.unnest import unnest
 
 
 class ProcessState:

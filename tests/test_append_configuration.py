@@ -1,7 +1,7 @@
 """Tests for append configuration parsing and validation."""
 
 import pytest
-from src.arbodat.config_model import TableConfig
+from src.config_model import TableConfig
 
 
 class TestAppendConfigurationParsing:

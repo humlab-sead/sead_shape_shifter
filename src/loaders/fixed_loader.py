@@ -1,8 +1,8 @@
 from typing import Any
 import pandas as pd
 
-from src.arbodat.config_model import TableConfig
-from src.arbodat.extract import add_surrogate_id
+from src.config_model import TableConfig
+from src.extract import add_surrogate_id
 
 from .interface import DataLoader
 

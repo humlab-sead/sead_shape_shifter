@@ -3,7 +3,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.arbodat.utility import unique
+from src.utility import unique
 
 
 def add_surrogate_id(target: pd.DataFrame, id_name: str) -> pd.DataFrame:

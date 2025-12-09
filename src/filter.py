@@ -2,7 +2,7 @@ from typing import Any
 from venv import logger
 import pandas as pd
 
-from src.arbodat.config_model import TableConfig
+from src.config_model import TableConfig
 from src.utility import Registry
 
 

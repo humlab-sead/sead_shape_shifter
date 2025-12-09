@@ -3,8 +3,8 @@ from typing import Any
 import pandas as pd
 from sqlalchemy import create_engine
 
-from src.arbodat.config_model import TableConfig
-from src.arbodat.extract import add_surrogate_id
+from src.config_model import TableConfig
+from src.extract import add_surrogate_id
 from src.configuration.resolve import ConfigValue
 from src.utility import create_db_uri
 

@@ -5,7 +5,7 @@ from typing import Any, Literal, Self
 import pandas as pd
 from loguru import logger
 
-from src.arbodat.config_model import ForeignKeyConfig, ForeignKeyConstraints
+from src.config_model import ForeignKeyConfig, ForeignKeyConstraints
 from src.utility import Registry
 
 

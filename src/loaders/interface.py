@@ -2,7 +2,7 @@ import abc
 
 import pandas as pd
 
-from src.arbodat.config_model import TableConfig
+from src.config_model import TableConfig
 
 
 class DataLoader(abc.ABC):

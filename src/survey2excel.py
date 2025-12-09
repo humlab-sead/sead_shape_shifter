@@ -15,12 +15,12 @@ from typing import Any, Literal
 
 import click
 
-from src.arbodat.extract import extract_translation_map
-from src.arbodat.normalizer import ArbodatSurveyNormalizer
-from src.arbodat.utility import setup_logging
+from src.extract import extract_translation_map
+from src.normalizer import ArbodatSurveyNormalizer
+from src.utility import setup_logging
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
-from src.arbodat.utility import load_shape_file
+from src.utility import load_shape_file
 
 
 async def workflow(

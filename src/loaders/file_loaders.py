@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.arbodat.config_model import TableConfig
-from src.arbodat.loaders.interface import DataLoader
+from src.config_model import TableConfig
+from src.loaders.interface import DataLoader
 from src.utility import dotget
 
 

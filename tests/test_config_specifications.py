@@ -1,6 +1,6 @@
 """Unit tests for configuration validation specifications."""
 
-from src.arbodat.specifications import (
+from src.specifications import (
     CircularDependencySpecification,
     CompositeConfigSpecification,
     EntityExistsSpecification,

@@ -3,7 +3,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.arbodat.config_model import ForeignKeyConfig, TableConfig, TablesConfig
+from src.config_model import ForeignKeyConfig, TableConfig, TablesConfig
 
 
 class ForeignKeyConfigSpecification:

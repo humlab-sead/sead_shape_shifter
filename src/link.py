@@ -3,9 +3,9 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.arbodat.config_model import ForeignKeyConfig, TableConfig, TablesConfig
-from src.arbodat.link_validator import ForeignKeyConstraintValidator
-from src.arbodat.specifications import ForeignKeyDataSpecification
+from src.config_model import ForeignKeyConfig, TableConfig, TablesConfig
+from src.link_validator import ForeignKeyConstraintValidator
+from src.specifications import ForeignKeyDataSpecification
 
 
 def link_foreign_key(
