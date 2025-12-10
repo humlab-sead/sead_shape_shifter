@@ -247,7 +247,7 @@ class TableConfig:
             | {fk.remote_entity for fk in self.foreign_keys}
             | append_sources
         )
-
+        self.replacements: dict[str, dict[Any, Any]] = self._data.get("replacements", {}) or {}
         self.filters: list[dict[str, Any]] = self._data.get("filters", []) or []
 
     @property

@@ -141,6 +141,7 @@ class ArbodatSurveyNormalizer:
                     entity_name=sub_table_cfg.entity_name,
                     extra_columns=sub_table_cfg.extra_columns,
                     drop_duplicates=sub_table_cfg.drop_duplicates if not delay_drop_duplicates else False,
+                    replacements=sub_table_cfg.replacements if sub_table_cfg.replacements else None,
                     raise_if_missing=False,
                     drop_empty=False,
                 )

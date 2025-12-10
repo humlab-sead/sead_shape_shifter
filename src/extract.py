@@ -124,8 +124,9 @@ class SubsetService:
         extra_columns: None | dict[str, Any] = None,
         drop_duplicates: bool | list[str] = False,
         fd_check: bool = False,
+        replacements: dict[str, Any] | None = None,
         raise_if_missing: bool = True,
-        drop_empty: bool | list[str] = False,
+        drop_empty: bool | list[str] | dict[str, Any] = False,
     ) -> pd.DataFrame:
         """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
         Args:
@@ -140,6 +141,10 @@ class SubsetService:
                 - If list: drop duplicates based on those columns
                 - If False: keep all rows
             fd_check (bool): Whether to check functional dependency when dropping duplicates.
+            replacements (dict[str, Any] | None): Column-specific value replacement mappings.
+                Dictionary where keys are column names and values are dicts mapping old values to new values.
+                Replacements are applied after column extraction. Useful for normalizing values,
+                converting codes to standard formats, or correcting inconsistent data.
             raise_if_missing (bool): Whether to raise an error if requested columns are missing.
             drop_empty (bool | list[str] | dict[str, Any]): Controls empty row removal.
                 - If True: drop rows where all columns are empty
@@ -157,6 +162,11 @@ class SubsetService:
             >>> get_subset(df, ['A', 'B'], extra_columns={'D': 'C'})
             >>> # Extract A and B, add constant column D
             >>> get_subset(df, ['A', 'B'], extra_columns={'D': 'constant_value'})
+            >>> # Replace values in column A
+            >>> get_subset(df, ['A', 'B'], replacements={'A': {1: 10, 2: 20}})
+            >>> # Replace coordinate system codes
+            >>> get_subset(df, ['site', 'coord_sys'], 
+            ...            replacements={'coord_sys': {'DHDN Zone 3': 'EPSG:31467'}})
         """
         if source is None:
             raise ValueError("Source DataFrame must be provided")
@@ -193,6 +203,11 @@ class SubsetService:
         # Drop rows that are completely empty after subsetting
         if drop_empty:
             result = drop_empty_rows(data=result, entity_name=entity_name, subset=None if drop_empty is True else drop_empty)
+
+        if replacements:
+            for col, replacement_map in replacements.items():
+                if col in result.columns:
+                    result[col] = result[col].replace(replacement_map)
 
         return result
 
