@@ -4,6 +4,13 @@ taxa:
   mapping:
     xyz: taxon_id12345
 
+abundance_element:
+  local_key: "RTyp"
+  remote_key: "abundance_element_id"
+  mapping: {}
+
+
+
 feature_type:
   local_key: "Befundtyp"
   remote_key: "feature_type_id"

@@ -83,11 +83,6 @@ entities:
     drop_empty_rows: ["ChronoDat", "ArchDat"]
     depends_on: ["sample"]
 
-  # These two tables are skipped since not needed, they exist in sample entity
-  # and are not dependent on taxa
-  # sample_archaeological_period:
-  # sample_chronological_period:
-
   dimensions:
     data_source: sead
     surrogate_id: "dimension_id"
@@ -247,9 +242,12 @@ entities:
       altitude: "üNN"
     values: |
       sql: 
-      select distinct [Projekte].[Fustel], [Befunde].[FustelTyp], [Projekte].[EVNr], [Projekte].[KoordSys], [Projekte].[rWert], [Projekte].[hWert], [Projekte].[üNN]
-      from [Projekte], [Befunde]
-      where [Projekte].[Projekt] = [Befunde].[Projekt] ;
+        select distinct p.Fustel, b.FustelTyp, p.EVNr, p.KoordSys, p.rWert, p.hWert, p.[üNN]
+        from Projekte as p
+        inner join (
+            select distinct Projekt, FustelTyp
+            from Befunde
+        ) as b on p.Projekt = b.Projekt;
     foreign_keys:
       - entity: site_type
         local_keys: ["FustelTyp"]
@@ -1119,3 +1117,18 @@ options:
     arbodat_lookup: "@include: arbodat-lookup-options.yml"
 
 mappings: "@include: mappings.yml"
+
+finally:
+  drop:
+    tables:
+      - _pcodes
+      - _project_contact
+    columns:
+      - site.surrogate_id
+      - project.surrogate_id
+      - feature.surrogate_id
+      - sample.surrogate_id
+      - analysis_entity.surrogate_id
+      - abundance.surrogate_id
+      - location.surrogate_id
+      
