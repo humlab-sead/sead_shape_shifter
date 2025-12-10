@@ -4,7 +4,7 @@ import pkgutil
 import sys
 import unicodedata
 from datetime import datetime
-from typing import Any, Callable, Generic, Literal, TypeVar
+from typing import Any, Callable, Generic, Literal, Self, TypeVar
 
 import pandas as pd
 import yaml
@@ -319,6 +319,10 @@ class Registry(Generic[T]):
     @classmethod
     def registered_class_hook(cls, fn_or_class: Any, **args) -> Any:  # pylint: disable=unused-argument
         return fn_or_class
+
+    def scan(self, package_name: str) -> Self:
+        import_sub_modules(package_name)
+        return self
 
 
 def create_db_uri(*, host: str, port: int | str, user: str, dbname: str, driver: str = "postgresql+psycopg") -> str:
