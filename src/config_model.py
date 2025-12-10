@@ -225,7 +225,7 @@ class TableConfig:
         self.extra_columns: dict[str, Any] = self._data.get("extra_columns", {}) or {}
         self.extra_column_names: list[str] = list(self.extra_columns.keys())
         self.drop_duplicates: bool | list[str] = self._data.get("drop_duplicates") or False
-        self.drop_empty_rows: bool = self._data.get("drop_empty_rows", False)
+        self.drop_empty_rows: bool | list[str] | dict[str, Any] = self._data.get("drop_empty_rows", False)
         self.unnest: UnnestConfig | None = UnnestConfig(cfg=self.config, data=self._data) if self._data.get("unnest") else None
 
         # Parse append configuration for union operations

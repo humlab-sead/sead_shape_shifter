@@ -92,14 +92,19 @@ def drop_empty_rows(
 
         # Replace empty strings with NaN only in the subset columns
         data = data.copy()
-        if treat_empty_strings_as_na:
-            data[subset] = data[subset].replace("", pd.NA)
-
+        
         if isinstance(subset, dict):
+            # Handle dict case: replace specified values with NaN for each column
             for col, empty_values in subset.items():
                 data.loc[data[col].isin(empty_values), col] = pd.NA
-                
-        return data.dropna(subset=subset, how="all")
+            subset_columns: list[str] = list(subset.keys())  # type: ignore[assignment]
+        else:
+            # Handle list case: replace empty strings with NaN in subset columns
+            if treat_empty_strings_as_na:
+                data[subset] = data[subset].replace("", pd.NA)
+            subset_columns = subset
+
+        return data.dropna(subset=subset_columns, how="all")
 
     # Replace empty strings with NaN in all columns
     if treat_empty_strings_as_na:
@@ -136,7 +141,12 @@ class SubsetService:
                 - If False: keep all rows
             fd_check (bool): Whether to check functional dependency when dropping duplicates.
             raise_if_missing (bool): Whether to raise an error if requested columns are missing.
-            drop_empty_rows (bool): Whether to drop rows that are completely empty after subsetting.
+            drop_empty (bool | list[str] | dict[str, Any]): Controls empty row removal.
+                - If True: drop rows where all columns are empty
+                - If False: keep all rows
+                - If list[str]: drop rows where all specified columns are empty
+                - If dict[str, Any]: drop rows where specified columns contain the given values
+                  (keys are column names, values are lists of values to treat as empty)
 
         Returns:
             pd.DataFrame: Resulting DataFrame with requested columns and modifications.
