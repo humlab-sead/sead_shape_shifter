@@ -334,8 +334,10 @@ class TableConfig:
         """Add a 'system_id' column with the same values as the surrogate_id column, then set surrogate_id to None."""
         surrogate_id: str = self.surrogate_id
         if surrogate_id and surrogate_id in table.columns:
-            table["system_id"] = table[surrogate_id]
-            table[surrogate_id] = None
+            # If system_id already exists, do not overwrite, it is assumed to be set correctly
+            if "system_id" not in table.columns:
+                table["system_id"] = table[surrogate_id]
+                table[surrogate_id] = None
         return table
 
     def is_drop_duplicate_dependent_on_unnesting(self) -> bool:
