@@ -62,11 +62,14 @@ entities:
     
     # Data Quality
     drop_duplicates: bool | [string, ...] # Duplicate handling
-    drop_empty_rows: bool | [string, ...]  # Empty row handling
+    drop_empty_rows: bool | [string, ...] | {string: [any, ...]}  # Empty row handling
     check_column_names: bool              # Validate column names match (SQL sources)
     
     # Filtering
     filters: [...]                        # Post-load data filters
+    
+    # Value Transformations
+    replacements: {string: {any: any}}    # Value replacement mappings
     
     # Relationships
     foreign_keys: [...]               # Foreign key definitions
@@ -246,13 +249,14 @@ entities:
   ```
 
 #### `drop_empty_rows`
-- **Type**: `bool | list[string]`
+- **Type**: `bool | list[string] | dict[string, list[any]]`
 - **Required**: No (defaults to `false`)
 - **Description**: Controls empty row removal. Empty values include `NaN`, `None`, and empty strings (`""`):
   - `true`: Drop rows where all columns are empty
   - `false`: Keep all rows
   - `list[string]`: Drop rows where all specified columns are empty
-- **Note**: Empty strings are automatically treated as `pd.NA` before checking for empty rows
+  - `dict[string, list[any]]`: Drop rows where specified columns contain the given values. Keys are column names, values are lists of values to treat as empty for that column (e.g., `[null, ""]`)
+- **Note**: Empty strings are automatically treated as `pd.NA` before checking for empty rows (unless using dict format with custom empty values)
 - **Example**:
   ```yaml
   # Drop completely empty rows (including rows with only empty strings)
@@ -260,6 +264,11 @@ entities:
   
   # Drop rows where specific columns are all empty or empty strings
   drop_empty_rows: ["name", "description"]
+  
+  # Drop rows where specific columns contain custom "empty" values
+  drop_empty_rows:
+    abundance_property_value: [null, ""]
+    status: [null, "", "unknown", "N/A"]
   ```
 
 #### `check_column_names`
@@ -292,6 +301,43 @@ entities:
       other_entity: "_pcodes"      # Entity to check against
       other_column: "PCODE"        # Column in other entity (optional, defaults to same name)
       drop_duplicates: ["PCODE"]  # Optional: drop duplicates after filtering
+  ```
+
+#### `replacements`
+- **Type**: `dict[string, dict[any, any]]`
+- **Required**: No
+- **Description**: Defines value replacement mappings for specified columns. Each key is a column name, and each value is a dictionary mapping old values to new values. This is useful for normalizing data values, converting codes to standardized formats, or correcting inconsistent data.
+- **Use Cases**:
+  - Converting coordinate system names to EPSG codes
+  - Standardizing status codes or category names
+  - Mapping legacy identifiers to new ones
+  - Correcting typos or inconsistent values in source data
+- **Note**: Replacements are applied after column extraction but before other operations. Values not in the mapping remain unchanged.
+- **Example**:
+  ```yaml
+  site:
+    columns: ["site_name", "coordinate_system"]
+    replacements:
+      coordinate_system:
+        "DHDN Gauss-Krüger Zone 3": "EPSG:31467"
+        "RGF93 Lambert 93": "EPSG:2154"
+        "CH1903/Swiss grid": "EPSG:21781"
+  
+  # Multiple columns can be replaced
+  sample:
+    columns: ["status", "type"]
+    replacements:
+      status:
+        "old": "legacy"
+        "new": "current"
+      type:
+        "A": "Type_A"
+        "B": "Type_B"
+  
+  # Replacements can reference external configuration files
+  site:
+    replacements:
+      coordinate_system: "@value: replacements.site.KoordSys"
   ```
 - **See**: Filters section below for detailed filter documentation
 
@@ -1144,11 +1190,14 @@ EntityConfig:
   
   # Quality
   drop_duplicates?: bool | list[string] | string
-  drop_empty_rows?: bool | list[string]
+  drop_empty_rows?: bool | list[string] | dict[string, list[any]]
   check_column_names?: bool
   
   # Filtering
   filters?: list[FilterConfig]
+  
+  # Value Transformations
+  replacements?: dict[string, dict[any, any]]
   
   # Relationships
   depends_on: list[string]
