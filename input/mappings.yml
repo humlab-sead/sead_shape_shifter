@@ -1,3 +1,8 @@
+# Mappings from local values to SEAD public IDs
+# The "remote_key" cen be an alternative key to map to, e.g., name instead of ID, but MUST be unique.
+# Only local ID (key) to remote ID mappings are supported.
+# The "remote_key" should always be the same as configured "surrogate_id" for each table.
+
 taxa:
   local_key: "PCODE"
   remote_key: "taxon_id"
@@ -8,8 +13,6 @@ abundance_element:
   local_key: "RTyp"
   remote_key: "abundance_element_id"
   mapping: {}
-
-
 
 feature_type:
   local_key: "Befundtyp"
