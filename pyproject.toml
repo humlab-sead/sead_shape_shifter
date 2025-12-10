@@ -15,6 +15,7 @@ dependencies = [
     "pandas>=2.3.3",
     "psycopg>=3.2.13",
     "pyaml>=25.7.0",
+    "pyproj>=3.7.2",
     "python-multipart>=0.0.20",
     "sqlalchemy>=2.0.44",
 ]
