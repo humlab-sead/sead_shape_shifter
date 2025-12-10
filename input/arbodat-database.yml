@@ -240,6 +240,8 @@ entities:
       latitude_dd: "rWert"
       longitude_dd: "hWert"
       altitude: "üNN"
+    replacements:
+      coordinate_system: "@value: replacements.site.KoordSys"
     values: |
       sql: 
         select distinct p.Fustel, b.FustelTyp, p.EVNr, p.KoordSys, p.rWert, p.hWert, p.[üNN]
@@ -616,7 +618,8 @@ entities:
         remote_keys: ["arbodat_code"]
       # - entity: analysis_entity      #   local_keys: ["arbodat_analysis_entity_id"]
       #   remote_keys: ["arbodat_analysis_entity_id"]
-    drop_empty_rows: ["abundance_property_value"]
+    drop_empty_rows: 
+      abundance_property_value: [null, ""]
     drop_duplicates: true
     depends_on: ["abundance", "abundance_property_type"]
 
@@ -820,7 +823,7 @@ entities:
     source: null
     data_source: arbodat_data
     type: sql
-    surrogate_id: sample_id
+    surrogate_id: physical_sample_id
     keys: ["Projekt", "Befu", "ProbNr"]
     columns: ["Projekt", "Befu", "ProbNr", "ProbTyp", "ArchDat", "ChronoDat"]
     values: "sql: select [Projekt], [Befu], [ProbNr], [ProbTyp], [ArchDat], [ChronoDat] from [Proben] ;"
@@ -831,13 +834,13 @@ entities:
       - entity: feature
         local_keys: ["Projekt", "Befu"]
         remote_keys: ["Projekt", "Befu"]
-      # - entity: sample_group
-      #   local_keys: ["Projekt", "Befu"]
-      #   remote_keys: ["Projekt", "Befu"]
+      - entity: sample_group
+        local_keys: ["Projekt", "Befu"]
+        remote_keys: ["Projekt", "Befu"]
       - entity: sample_type
         local_keys: ["ProbTyp"]
         remote_keys: ["ProbTyp"]
-    depends_on: ["feature", "sample_type"] #, "sample_group", "sample_type"]
+    depends_on: ["feature", "sample_type", "sample_group"]
 
   # coordinate_method_dimension:
   #   data_source: sead
@@ -1132,3 +1135,4 @@ finally:
       - abundance.surrogate_id
       - location.surrogate_id
       
+replacements: "@include: replacements.yml"
