@@ -71,14 +71,20 @@ def drop_duplicate_rows(
 
 
 def drop_empty_rows(
-    *, data: pd.DataFrame, entity_name: str, subset: bool | list[str] | None = None, treat_empty_strings_as_na: bool = True
+    *, data: pd.DataFrame, entity_name: str, subset: bool | list[str] | dict[str, Any]| None = None, treat_empty_strings_as_na: bool = True
 ) -> pd.DataFrame:
-    """Drop rows that are completely empty (NaN, None, or empty strings) in the DataFrame or in the specified subset of columns."""
+    """Drop rows that are completely empty (NaN, None, or empty strings) in the DataFrame or in the specified subset of columns.
+       Case if subset is...
+            - False         : no rows are dropped.
+            - True or None  : all columns are considered for checking emptiness.
+            - list of str   : only those columns are considered for checking emptiness.
+            - dict          : keys are column names and values are lists of values to consider as empty for that column.
+    """
 
     if subset is False:
         return data
 
-    if isinstance(subset, list):
+    if isinstance(subset, (list, dict)):
         missing_requested_columns: list[str] = [c for c in subset if c not in data.columns]
         if missing_requested_columns:
             logger.warning(f"{entity_name}[subsetting]: Columns missing for drop_empty_rows: {missing_requested_columns}")
@@ -88,6 +94,11 @@ def drop_empty_rows(
         data = data.copy()
         if treat_empty_strings_as_na:
             data[subset] = data[subset].replace("", pd.NA)
+
+        if isinstance(subset, dict):
+            for col, empty_values in subset.items():
+                data.loc[data[col].isin(empty_values), col] = pd.NA
+                
         return data.dropna(subset=subset, how="all")
 
     # Replace empty strings with NaN in all columns
