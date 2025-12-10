@@ -1,5 +1,6 @@
 import importlib
 import os
+import pkgutil
 import sys
 import unicodedata
 from datetime import datetime
@@ -362,3 +363,21 @@ def resolve_specification(specification: dict[str, Any] | str | None) -> dict[st
         "property_settings": {},
         "sql_queries": {},
     }
+
+
+def import_submodules(package_name: str):
+    """
+    Recursively import all submodules of the given package.
+
+    Example:
+        # Inside mypackage/__init__.py
+        import_submodules(__name__)
+    """
+    package = importlib.import_module(package_name)
+    package_path = package.__path__  # Namespace packages supported
+
+    for module_info in pkgutil.walk_packages(package_path, prefix=package_name + "."):
+        module_name = module_info.name
+
+        if module_name not in globals():
+            importlib.import_module(module_name)
