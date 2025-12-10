@@ -2,28 +2,6 @@
 Normalize an Arbodat "Data Survey" CSV export into several tables
 and write them as sheets in a single Excel file.
 
-Usage:
-    python arbodat_normalize_to_excel.py input.csv output.xlsx
-Strengths
-Clear Separation of Concerns
-
-ProcessState handles dependency resolution
-ArbodatSurveyNormalizer orchestrates the normalization pipeline
-Configuration-driven approach makes it adaptable
-Dependency Management
-
-Topological sorting via get_next_entity_to_process() ensures correct processing order
-Error reporting for circular/unmet dependencies
-Flexible Data Sources
-
-Supports extraction from source spreadsheet
-Fixed/hardcoded tables
-SQL database (via config)
-Previously extracted tables (via resolve_source())
-Comprehensive Transformation Pipeline
-
-Extract → Link → Unnest → Translate → Store
-Each phase is well-defined
 """
 
 from pathlib import Path
@@ -284,3 +262,10 @@ class ArbodatSurveyNormalizer:
             logger.info(f"Table shapes written to {tsv_filename}")
         except Exception as e:  # type: ignore ; pylint: disable=broad-except
             logger.error(f"Failed to write table shapes to TSV: {e}")
+
+    def finalize(self) -> None:
+        """Finalize processing by performing final transformations."""
+        self.drop_foreign_key_columns()
+        self.add_system_id_columns()
+        self.move_keys_to_front()
+        drops = self.config.options.get("")
