@@ -2,6 +2,17 @@ entities:
   # TIPS #1: Use "@value: entities.entity_name.keys" to refer to the keys of another entity.
   # TIPS #2: Use Ctrl-Alt-2 to fold/unfold all entities (create a shortcut)
 
+  survey:
+    source: null
+    type: csv
+    options:
+      # Use ONLY options valid for pandas.read_csv!
+      path: "input/arbodat_mal_elena_input.csv"
+      sep: ";"
+      encoding: "utf-8"
+      quotechar: '"'
+      keep_default_na: false
+
   dating:
     source: null
     data_source: arbodat_data
