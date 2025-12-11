@@ -19,6 +19,7 @@ from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
 from src.extract import extract_translation_map
 from src.normalizer import ArbodatSurveyNormalizer
+from src.specifications import CompositeConfigSpecification
 from src.utility import load_shape_file, setup_logging
 
 # pylint: disable=no-value-for-parameter
@@ -34,11 +35,10 @@ async def workflow(
     drop_foreign_keys: bool,
 ) -> None:
 
-    normalizer: ArbodatSurveyNormalizer = ArbodatSurveyNormalizer.load(path=input_csv, sep=sep)
+    normalizer: ArbodatSurveyNormalizer = ArbodatSurveyNormalizer(default_entity=default_entity)
 
-    if verbose:
-        click.echo(f"Loaded {len(normalizer.survey)} rows with {len(normalizer.survey.columns)} columns")
-        click.echo("Building normalized tables...")
+    if validate_configuration() and validate_then_exit:
+        return
 
     await normalizer.normalize()
 
@@ -65,6 +65,18 @@ async def workflow(
     #         click.echo(f"  - {name}: {len(table)} rows")
 
 
+def validate_configuration() -> bool:
+    specification = CompositeConfigSpecification()
+    errors = specification.is_satisfied_by(get_config_provider().get_config().data)
+    if errors:
+        for error in specification.errors:
+            logger.error(f"Configuration error: {error}")
+        click.echo("Configuration validation failed with errors.", err=True)
+        sys.exit(1)
+    logger.info("Configuration validation passed successfully.")
+    return True
+
+
 @click.command()
 @click.argument("input_csv")
 @click.argument("target")
@@ -77,6 +89,7 @@ async def workflow(
 @click.option("--drop-foreign-keys", "-d", is_flag=True, help="Drop foreign key columns after linking.", default=False)
 @click.option("--log-file", "-l", type=click.Path(), help="Path to log file (optional).")
 @click.option("--regression-file", "-r", type=click.Path(), help="Path to regression file (optional).")
+@click.option("--validate-then-exit", is_flag=True, help="Validate configuration and exit if invalid.", default=False)
 def main(
     input_csv: str,
     target: str,
@@ -89,6 +102,7 @@ def main(
     drop_foreign_keys: bool,
     log_file: str | None,
     regression_file: str | None,
+    validate_then_exit: bool = False,
 ) -> None:
     """
     Normalize an Arbodat "Data Survey" CSV export into several tables.
@@ -132,6 +146,7 @@ def main(
             translate=translate,
             mode=mode,
             drop_foreign_keys=drop_foreign_keys,
+            validate_then_exit=validate_then_exit,
         )
     )
 
