@@ -1,10 +1,11 @@
-from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from src.config_model import TableConfig
-from src.loaders.interface import DataLoader
-from src.utility import dotget
+from .base_loader import DataLoader, DataLoaders
+
+if TYPE_CHECKING:
+    from src.config_model import DataSourceConfig, TableConfig
 
 
 class FileLoader(DataLoader):
@@ -36,6 +37,7 @@ class FileLoader(DataLoader):
         return {}
 
 
+@DataLoaders.register(key="csv")
 class CsvLoader(FileLoader):
     """Loader for CSV/TSV files."""
 

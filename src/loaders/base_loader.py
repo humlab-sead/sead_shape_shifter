@@ -25,3 +25,6 @@ class DataLoader(abc.ABC):
 class DataLoaderRegistry(Registry):
 
     items: dict[str, type[DataLoader]] = {}
+
+
+DataLoaders: DataLoaderRegistry = DataLoaderRegistry()  # pylint: disable=invalid-name

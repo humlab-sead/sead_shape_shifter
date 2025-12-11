@@ -7,6 +7,8 @@ from loguru import logger
 from src.configuration.resolve import ConfigValue
 from src.utility import unique
 
+from .loaders import DataLoader, DataLoaders
+
 
 # pylint: disable=line-too-long
 class UnnestConfig:
@@ -420,6 +422,18 @@ class TablesConfig:
         if name not in self.data_sources:
             raise ValueError(f"Data source 'options.data_sources.{name}' not found in configuration")
         return DataSourceConfig(cfg=self.data_sources[name], name=name)
+
+    def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
+        """Resolve the DataLoader, if any, for the given TableConfig."""
+        if table_cfg.data_source:
+            data_source: DataSourceConfig = self.get_data_source(table_cfg.data_source)
+            return DataLoaders.get(key=data_source.driver)(data_source=data_source)
+
+        if table_cfg.type and table_cfg.type in DataLoaders.items:
+            return DataLoaders.get(key=table_cfg.type)(data_source=None)
+
+        logger.warning(f"No data loader found for table '{table_cfg.entity_name}' with type '{table_cfg.type}'")
+        return None
 
     @cached_property
     def table_names(self) -> list[str]:

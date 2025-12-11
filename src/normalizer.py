@@ -76,25 +76,22 @@ class ArbodatSurveyNormalizer:
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
 
-        if table_cfg.is_fixed_data:
-            return await FixedLoader().load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
+        loader: DataLoader | None = self.config.resolve_loader(table_cfg=table_cfg)
 
-        if table_cfg.is_sql_data:
-
-            if not table_cfg.data_source:
-                raise ValueError(f"Entity source must be set to a valid data source for entity '{table_cfg.entity_name}'")
-
-            data_source_cfg: DataSourceConfig = self.config.get_data_source(table_cfg.data_source)
-            loader: SqlLoader = SqlLoaderFactory().create_loader(driver=data_source_cfg.driver, db_opts=data_source_cfg.options)
-
+        if loader:
+            logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
 
         if isinstance(table_cfg.source, str):
+
             if not table_cfg.source in self.table_store:
                 raise ValueError(f"Source table '{table_cfg.source}' not found in stored data")
             return self.table_store[table_cfg.source]
 
-        return self.survey
+        if self.default_entity and self.default_entity in self.table_store:
+            return self.table_store[self.default_entity]
+
+        raise ValueError(f"Unable to resolve source for entity '{table_cfg.entity_name}'")
 
     def register(self, name: str, df: pd.DataFrame) -> pd.DataFrame:
         self.table_store[name] = df

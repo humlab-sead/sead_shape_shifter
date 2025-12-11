@@ -1,17 +1,19 @@
 import os
 from contextlib import contextmanager
-from typing import Any, Generator
+from typing import TYPE_CHECKING, Any, Generator
 
 import jaydebeapi
 import jpype
 import pandas as pd
 from sqlalchemy import create_engine
 
-from src.config_model import TableConfig
 from src.extract import add_surrogate_id
 from src.utility import create_db_uri, dotget
 
-from .interface import DataLoader
+from .base_loader import DataLoader, DataLoaders
+
+if TYPE_CHECKING:
+    from src.config_model import DataSourceConfig, TableConfig
 
 
 class SqlLoader(DataLoader):
@@ -20,7 +22,7 @@ class SqlLoader(DataLoader):
     async def read_sql(self, sql: str) -> pd.DataFrame:
         raise NotImplementedError("Subclasses must implement read_sql method")
 
-    async def load(self, entity_name: str, table_cfg: TableConfig) -> pd.DataFrame:
+    async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
 
         if not table_cfg.is_sql_data:
             raise ValueError(f"Entity '{entity_name}' is not configured as fixed SQL data")
@@ -43,6 +45,7 @@ class SqlLoader(DataLoader):
         return data
 
 
+@DataLoaders.register(key="postgres")
 class PostgresSqlLoader(SqlLoader):
     """Loader for fixed data entities."""
 
@@ -57,16 +60,17 @@ class PostgresSqlLoader(SqlLoader):
             "user": dotget(db_opts, "user,username,dbuser", "postgres"),
             "dbname": dotget(db_opts, "dbname,database", "postgres"),
         }
-        self.db_opts: dict[str, Any] = clean_opts
-        self.db_url: str = create_db_uri(**clean_opts, driver="postgresql+psycopg")
+        self.db_opts = clean_opts
+        self.db_uri: str = create_db_uri(**clean_opts, driver="postgresql+psycopg")
 
     async def read_sql(self, sql: str) -> pd.DataFrame:
         """Read SQL query into a DataFrame using the provided connection."""
-        with create_engine(url=self.db_url).begin() as connection:
+        with create_engine(url=self.db_uri).begin() as connection:
             data: pd.DataFrame = pd.read_sql_query(sql=sql, con=connection)  # type: ignore[arg-type]
         return data
 
 
+@DataLoaders.register(key="ucanaccess")
 class UCanAccessSqlLoader(SqlLoader):
     """Loader for fixed data entities. https://ucanaccess.sourceforge.net/site.html"""
 
@@ -143,15 +147,3 @@ class UCanAccessSqlLoader(SqlLoader):
             conn.close()
 
         return result
-
-
-class SqlLoaderFactory:
-    """Factory for creating SQL data loaders."""
-
-    def create_loader(self, driver: str = "postgres", db_opts: dict[str, Any] | None = None) -> SqlLoader:
-        if driver in ("postgresql", "postgres"):
-            return PostgresSqlLoader(db_opts=db_opts)
-        if driver in ("ucanaccess", "access", "mdb"):
-            return UCanAccessSqlLoader(db_opts=db_opts)
-
-        raise ValueError(f"Unsupported SQL driver: {driver}")
