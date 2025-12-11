@@ -644,23 +644,23 @@ class TestTableConfig:
         assert "location_id" in usage_cols
         assert len(usage_cols) == 3
 
-    def test_fixed_sql_property(self):
-        """Test fixed_sql property returns SQL query for sql type."""
+    def test_query_property(self):
+        """Test query property returns SQL query for sql type."""
         config: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "type": "sql", "values": "sql: SELECT * FROM sites"}}
 
         table = TableConfig(cfg=config, entity_name="site")
 
-        assert table.is_sql_data is True
-        assert table.fixed_sql == "SELECT * FROM sites"
+        assert table.type == "sql"
+        assert table.query == "SELECT * FROM sites"
 
-    def test_fixed_sql_property_non_sql(self):
-        """Test fixed_sql property returns None for non-sql type."""
+    def test_query_property_non_sql(self):
+        """Test query property returns None for non-sql type."""
         config: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
 
         table = TableConfig(cfg=config, entity_name="site")
 
-        assert table.is_sql_data is False
-        assert table.fixed_sql is None
+        assert table.type != "sql"
+        assert table.query is None
 
     def test_has_append_true(self):
         """Test has_append returns True when append configs exist."""
@@ -1021,14 +1021,10 @@ class TestTableConfig:
         config_fixed: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "type": "fixed"}}
         table_fixed = TableConfig(cfg=config_fixed, entity_name="site")
         assert table_fixed.type == "fixed"
-        assert table_fixed.is_fixed_data is True
-        assert table_fixed.is_sql_data is False
 
         config_sql: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "type": "sql"}}
         table_sql = TableConfig(cfg=config_sql, entity_name="site")
         assert table_sql.type == "sql"
-        assert table_sql.is_sql_data is True
-        assert table_sql.is_fixed_data is False
 
     def test_data_source_property(self):
         """Test data_source property."""

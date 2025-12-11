@@ -497,6 +497,6 @@ class TestGetSubTablesConfigs:
 
         tables = list(table_cfg.get_sub_table_configs())
 
-        assert tables[0].is_fixed_data is False
-        assert tables[1].is_fixed_data is False  # Inherits "data" from parent
-        assert tables[2].is_fixed_data is True  # Explicit "fixed"
+        assert tables[0].type != "fixed"  # Parent
+        assert tables[1].type != "fixed"  # Inherits "data" from parent
+        assert tables[2].type == "fixed"  # Explicit "fixed"

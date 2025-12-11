@@ -200,21 +200,12 @@ class TableConfig:
         self._data: dict[str, Any] = cfg[entity_name]
         assert self._data, f"No configuration found for entity '{entity_name}'"
 
+        self.type: Literal["fixed", "sql", "table"] | None = self._data.get("type", None)
+        self.surrogate_name: str = self._data.get("surrogate_name", "")
         self.source: str | None = self._data.get("source", None)
         self.values: str | None = self._data.get("values", None)
+        # self.query: str | None = self._data.get("query", None)
         self.surrogate_id: str = self._data.get("surrogate_id", "")
-        self.surrogate_name: str = self._data.get("surrogate_name", "")
-
-        """Checks if the table is of fixed data type.
-        The fixed data type is specified by setting 'type' to 'fixed' in the table configuration.
-        This data type indicates that the table contains fixed values rather than dynamic data fetched from source.
-        The values are specified in the 'source' field of the configuration.
-        The columns of the table are defined in the 'columns' field.
-        The surrogate_id field specifies the primary key for the table.
-        """
-        self.type: str | None = self._data.get("type", None)
-        self.is_fixed_data: bool = self.type == "fixed"
-        self.is_sql_data: bool = self.type == "sql"
         self.check_column_names: bool = self._data.get("check_column_names", True)
 
         """Get the data source name for SQL data tables."""
@@ -255,9 +246,9 @@ class TableConfig:
         self.options: dict[str, Any] = self._data.get("options", {}) or {}
 
     @property
-    def fixed_sql(self) -> None | str:
+    def query(self) -> None | str:
         """Get the SQL query string for fixed data, if applicable."""
-        if self.is_sql_data:
+        if self.type == "sql":
             assert isinstance(self.values, str), "SQL query missing in 'values' field."
             return self.values.lstrip("sql:").strip()
         return None

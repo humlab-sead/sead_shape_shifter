@@ -24,10 +24,10 @@ class SqlLoader(DataLoader):
 
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
 
-        if not table_cfg.is_sql_data:
+        if table_cfg.type != "sql":
             raise ValueError(f"Entity '{entity_name}' is not configured as fixed SQL data")
 
-        data: pd.DataFrame = await self.read_sql(sql=table_cfg.fixed_sql)  # type: ignore[arg-type]
+        data: pd.DataFrame = await self.read_sql(sql=table_cfg.query)  # type: ignore[arg-type]
         # for now, columns must match those in the SQL result
 
         if len(set(data.columns)) != len(set(table_cfg.keys_and_columns)):

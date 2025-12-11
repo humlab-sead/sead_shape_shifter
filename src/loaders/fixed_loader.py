@@ -18,7 +18,7 @@ class FixedLoader(DataLoader):
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         """Create a fixed data entity based on configuration."""
 
-        if not table_cfg.is_fixed_data:
+        if not table_cfg.type == "fixed":
             raise ValueError(f"Entity '{entity_name}' is not configured as fixed data")
 
         if table_cfg.values is None:
@@ -84,7 +84,7 @@ class FixedLoader2(DataLoader):
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         """Create a fixed data entity based on configuration."""
 
-        if not table_cfg.is_fixed_data:
+        if not table_cfg.type == "fixed":
             raise ValueError(f"Entity '{entity_name}' is not configured as fixed data")
 
         if not table_cfg.values:
