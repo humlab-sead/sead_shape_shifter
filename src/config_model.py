@@ -252,6 +252,7 @@ class TableConfig:
         )
         self.replacements: dict[str, dict[Any, Any]] = self._data.get("replacements", {}) or {}
         self.filters: list[dict[str, Any]] = self._data.get("filters", []) or []
+        self.options: dict[str, Any] = self._data.get("options", {}) or {}
 
     @property
     def fixed_sql(self) -> None | str:
