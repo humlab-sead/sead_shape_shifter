@@ -363,7 +363,7 @@ class TestGetConfiguredTables:
 
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
 
-        tables = list(table_cfg.get_configured_tables())
+        tables = list(table_cfg.get_sub_table_configs())
         assert len(tables) == 1
         assert tables[0].entity_name == "test_entity"
         assert tables[0] is table_cfg
@@ -381,7 +381,7 @@ class TestGetConfiguredTables:
 
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
 
-        tables = list(table_cfg.get_configured_tables())
+        tables = list(table_cfg.get_sub_table_configs())
         assert len(tables) == 2
         assert tables[0].entity_name == "test_entity"
         assert tables[1].entity_name == "test_entity__append_0"
@@ -408,7 +408,7 @@ class TestGetConfiguredTables:
 
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
 
-        tables = list(table_cfg.get_configured_tables())
+        tables = list(table_cfg.get_sub_table_configs())
         assert len(tables) == 4
         assert tables[0].entity_name == "test_entity"
         assert tables[1].entity_name == "test_entity__append_0"
@@ -429,7 +429,7 @@ class TestGetConfiguredTables:
 
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
 
-        tables = list(table_cfg.get_configured_tables())
+        tables = list(table_cfg.get_sub_table_configs())
         append_cfg = tables[1]
 
         assert set(append_cfg.keys) == {"parent_key1", "parent_key2"}
@@ -447,7 +447,7 @@ class TestGetConfiguredTables:
 
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
 
-        tables = list(table_cfg.get_configured_tables())
+        tables = list(table_cfg.get_sub_table_configs())
         append_cfg = tables[1]
 
         assert append_cfg.surrogate_id == "parent_surrogate"
@@ -465,7 +465,7 @@ class TestGetConfiguredTables:
 
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
 
-        tables = list(table_cfg.get_configured_tables())
+        tables = list(table_cfg.get_sub_table_configs())
         append_cfg = tables[1]
 
         assert append_cfg.columns == ["id", "custom_col"]
@@ -487,7 +487,7 @@ class TestGetConfiguredTables:
 
         table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
 
-        tables = list(table_cfg.get_configured_tables())
+        tables = list(table_cfg.get_sub_table_configs())
 
         assert tables[0].is_fixed_data is False
         assert tables[1].is_fixed_data is False  # Inherits "data" from parent
