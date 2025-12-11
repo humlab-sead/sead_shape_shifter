@@ -7,7 +7,7 @@ entities:
     type: csv
     options:
       # Use ONLY options valid for pandas.read_csv!
-      path: "input/arbodat_mal_elena_input.csv"
+      filename: "input/arbodat_mal_elena_input.csv"
       sep: ";"
       encoding: "utf-8"
       quotechar: '"'
@@ -91,7 +91,6 @@ entities:
     drop_empty_rows: ["ChronoDat", "ArchDat"]
     depends_on: ["sample"]
 
-  
   cultural_group:
     source: null
     data_source: arbodat_lookup
@@ -256,9 +255,15 @@ entities:
     depends_on: []
 
   site_natural_region:
+    source: null
     surrogate_id: site_natural_region_id
     keys: []
-    columns: ["NaturE"]
+    columns: ["Projekt", "Fustel", "EVNr", "NaturE"]
+    type: sql
+    data_source: arbodat_data
+    query: |
+      select distinct Projekt, Fustel, EVNr, NaturE
+      from Projekte ;
     foreign_keys:
       - entity: natural_region
         local_keys: "@value: entities.natural_region.keys"
@@ -880,7 +885,6 @@ entities:
       - ["Z/Altitude", "Z/Alt", "Z coordinate or Altitude in intrinsic units.", 17, 5, "KoordZ"]
       - ["Sampling height above sea level", "Sampling ASL", "Sampling height above sea level.", 17, 1, "Prob_üNN"]
     depends_on: []
-
 
   taxa_use_categories:
     source: null
