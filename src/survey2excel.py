@@ -10,11 +10,14 @@ Usage:
 
 import asyncio
 import os
+import sys
 from pathlib import Path
 from typing import Any, Literal
 
 import click
+from loguru import logger
 
+from src.configuration.provider import get_config_provider
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
 from src.extract import extract_translation_map
@@ -26,13 +29,12 @@ from src.utility import load_shape_file, setup_logging
 
 
 async def workflow(
-    input_csv: str,
     target: str,
-    sep: str,
-    verbose: bool,
     translate: bool,
     mode: Literal["xlsx", "csv", "db"],
     drop_foreign_keys: bool,
+    validate_then_exit: bool = False,
+    default_entity: str | None = None,
 ) -> None:
 
     normalizer: ArbodatSurveyNormalizer = ArbodatSurveyNormalizer(default_entity=default_entity)
@@ -78,9 +80,8 @@ def validate_configuration() -> bool:
 
 
 @click.command()
-@click.argument("input_csv")
 @click.argument("target")
-@click.option("--sep", "-s", show_default=True, help='Field separator character. Use "," for comma-separated files.', default=";")
+@click.option("--default-entity", "-de", type=str, help="Default entity name to use as source when none is specified.", default=None)
 @click.option("--config-file", "-c", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to configuration file.")
 @click.option("--env-file", "-e", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to environment variables file.")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output.", default=False)
@@ -91,9 +92,8 @@ def validate_configuration() -> bool:
 @click.option("--regression-file", "-r", type=click.Path(), help="Path to regression file (optional).")
 @click.option("--validate-then-exit", is_flag=True, help="Validate configuration and exit if invalid.", default=False)
 def main(
-    input_csv: str,
     target: str,
-    sep: str,
+    default_entity: str,
     config_file: str,
     env_file: str,
     verbose: bool,
@@ -112,10 +112,6 @@ def main(
     The input CSV should contain one row per Sample × Taxon combination, with
     columns identifying projects, sites, features, samples, and taxa.
     """
-    if verbose:
-        click.echo(f"Reading Arbodat CSV from: {input_csv}")
-        click.echo(f"Using separator: {repr(sep)}")
-
     if config_file:
         click.echo(f"Using configuration file: {config_file}")
 
@@ -139,10 +135,8 @@ def main(
 
     asyncio.run(
         workflow(
-            input_csv=input_csv,
+            default_entity=default_entity,
             target=target,
-            sep=sep,
-            verbose=verbose,
             translate=translate,
             mode=mode,
             drop_foreign_keys=drop_foreign_keys,
