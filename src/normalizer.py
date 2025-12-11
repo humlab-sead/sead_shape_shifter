@@ -256,4 +256,4 @@ class ArbodatSurveyNormalizer:
         # self.drop_foreign_key_columns()
         # self.add_system_id_columns()
         # self.move_keys_to_front()
-        # drops = self.config.options.get("")
+        # drops = self.config.options.get("finally.drops")
