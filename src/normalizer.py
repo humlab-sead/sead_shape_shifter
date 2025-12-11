@@ -81,19 +81,13 @@ class ArbodatSurveyNormalizer:
         """Resolve the source DataFrame for the given entity based on its configuration."""
 
         loader: DataLoader | None = self.config.resolve_loader(table_cfg=table_cfg)
-
         if loader:
             logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
 
-        if isinstance(table_cfg.source, str):
-
-            if not table_cfg.source in self.table_store:
-                raise ValueError(f"Source table '{table_cfg.source}' not found in stored data")
-            return self.table_store[table_cfg.source]
-
-        if self.default_entity and self.default_entity in self.table_store:
-            return self.table_store[self.default_entity]
+        source_table: str | None = table_cfg.source or self.default_entity
+        if source_table and source_table in self.table_store:
+            return self.table_store[source_table]
 
         raise ValueError(f"Unable to resolve source for entity '{table_cfg.entity_name}'")
 
@@ -112,7 +106,7 @@ class ArbodatSurveyNormalizer:
             if entity is None:
                 self.state.log_unmet_dependencies()
                 raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
-
+            
             table_cfg: TableConfig = self.config.get_table(entity)
 
             logger.debug(f"{entity}[normalizing]: Normalizing entity...")
