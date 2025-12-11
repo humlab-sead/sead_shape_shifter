@@ -348,7 +348,7 @@ class TestAppendEdgeCases:
         assert table_cfg.append_configs == []
 
 
-class TestGetConfiguredTables:
+class TestGetSubTablesConfigs:
     """Test get_configured_tables() method."""
 
     def test_base_only_no_append(self):
@@ -365,7 +365,7 @@ class TestGetConfiguredTables:
 
         tables = list(table_cfg.get_sub_table_configs())
         assert len(tables) == 1
-        assert tables[0].entity_name == "test_entity"
+        assert tables[0]._data == table_cfg._data
         assert tables[0] is table_cfg
 
     def test_base_plus_one_append(self):
@@ -375,7 +375,7 @@ class TestGetConfiguredTables:
                 "surrogate_id": "test_id",
                 "columns": ["id", "name"],
                 "depends_on": [],
-                "append": [{"type": "fixed", "values": ["A", "B", "C"]}],
+                "append": [{"type": "fixed", "values": ["A", "B"]}],
             }
         }
 
@@ -384,7 +384,15 @@ class TestGetConfiguredTables:
         tables = list(table_cfg.get_sub_table_configs())
         assert len(tables) == 2
         assert tables[0].entity_name == "test_entity"
+        assert tables[0]._data == table_cfg._data
+
         assert tables[1].entity_name == "test_entity__append_0"
+        assert tables[1]._data == {
+            "surrogate_id": "test_id",
+            "values": ["A", "B"],
+            "type": "fixed",
+            "columns": ["id", "name"],
+        }
 
     def test_base_plus_multiple_append(self):
         """Test entity with multiple append items."""
@@ -457,9 +465,9 @@ class TestGetConfiguredTables:
         cfg = {
             "test_entity": {
                 "surrogate_id": "test_id",
-                "columns": ["id", "name", "value"],
+                "columns": ["a", "b", "c"],
                 "depends_on": [],
-                "append": [{"type": "fixed", "values": ["A"], "columns": ["id", "custom_col"]}],
+                "append": [{"type": "fixed", "values": [1,2,3], "columns": ["a", "x", "y"]}],
             }
         }
 
@@ -468,7 +476,7 @@ class TestGetConfiguredTables:
         tables = list(table_cfg.get_sub_table_configs())
         append_cfg = tables[1]
 
-        assert append_cfg.columns == ["id", "custom_col"]
+        assert append_cfg.columns == ["a", "x", "y"]
 
     def test_append_config_type_inheritance(self):
         """Test that append configs inherit type correctly."""
@@ -479,8 +487,8 @@ class TestGetConfiguredTables:
                 "type": "data",  # Parent type
                 "depends_on": [],
                 "append": [
-                    {"values": ["A"]},  # Should default to parent type
-                    {"type": "fixed", "values": ["B"]},  # Should use explicit type
+                    {"values": [1, 2]},  # Should default to parent type
+                    {"type": "fixed", "values": [3, 5]},  # Should use explicit type
                 ],
             }
         }
