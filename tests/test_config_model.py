@@ -805,7 +805,9 @@ class TestTableConfig:
 
     def test_get_columns_exclude_extra(self):
         """Test get_columns excluding extra columns."""
-        config: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "columns": ["name"], "extra_columns": {"created_at": None}}}
+        config: dict[str, dict[str, Any]] = {
+            "site": {"surrogate_id": "site_id", "columns": ["name"], "extra_columns": {"created_at": None}}
+        }
 
         table = TableConfig(cfg=config, entity_name="site")
         cols = table.get_columns(include_extra=False)
@@ -1090,6 +1092,54 @@ class TestTableConfig:
         assert "valid_source" in table.depends_on
         # Non-string sources should not be in depends_on (depends_on only has string values)
         assert len([dep for dep in table.depends_on if dep == "valid_source"]) == 1
+
+    def test_append_configs_with_several_appends(self):
+        """Test append config with non-string source doesn't add to depends_on."""
+        entities_cfg = {
+            "site": {
+                "surrogate_id": "site_id",
+                "keys": ["site_name"],
+                "columns": ["site_name", "latitude", "longitude"],
+                "depends_on": [],
+                "append": [
+                    {
+                        "data_source": "test_sql_source",
+                        "type": "sql",
+                        "values": "sql: SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude",
+                    }
+                ],
+                "append_mode": "all",
+            },
+        }
+        config_with_sql_append = TablesConfig(
+            entities_cfg=entities_cfg,
+            options={"data_sources": {"test_sql_source": {}}},
+        )
+
+        sub_configs = list(config_with_sql_append.get_table("site").get_sub_table_configs())
+
+        assert len(sub_configs) == 2
+
+        base_config = sub_configs[0]
+
+        # This does a deep comparison of the base config to the original entities_cfg
+        assert base_config.config == entities_cfg
+
+        expected_append_config = {
+            "site": {
+                "surrogate_id": "site_id",
+                "keys": ["site_name"],
+                "columns": ["site_name", "latitude", "longitude"],
+                "depends_on": [],
+                "data_source": "test_sql_source",
+                "type": "sql",
+                "values": "sql: SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude",
+                "append_mode": "all",
+            }
+        }
+
+        sql_append_config = sub_configs[1]
+        assert sql_append_config.config == expected_append_config
 
 
 class TestTablesConfig:
