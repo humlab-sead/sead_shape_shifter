@@ -372,7 +372,7 @@ class TableConfig:
 
         return merged
 
-    def get_configured_tables(self) -> Generator[Self | "TableConfig", Any, None]:
+    def get_sub_table_configs(self) -> Generator[Self | "TableConfig", Any, None]:
         """Yield a sequence of TableConfig objects for processing.
 
         Yields self first (the base configuration), then creates and yields

@@ -132,7 +132,7 @@ class ArbodatSurveyNormalizer:
             # Process all configured tables (base + append items)
             dfs: list[pd.DataFrame] = []
 
-            for sub_table_cfg in table_cfg.get_configured_tables():
+            for sub_table_cfg in table_cfg.get_sub_table_configs():
                 logger.debug(f"{entity}[normalizing]: Processing sub-table '{sub_table_cfg.entity_name}'...")
                 sub_source: pd.DataFrame = await self.resolve_source(table_cfg=sub_table_cfg)
                 sub_data: pd.DataFrame = subset_service.get_subset(
