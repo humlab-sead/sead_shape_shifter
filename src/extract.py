@@ -71,7 +71,7 @@ def drop_duplicate_rows(
 
 
 def drop_empty_rows(
-    *, data: pd.DataFrame, entity_name: str, subset: bool | list[str] | dict[str, Any]| None = None, treat_empty_strings_as_na: bool = True
+    *, data: pd.DataFrame, entity_name: str, subset: bool | list[str] | dict[str, Any] | None = None, treat_empty_strings_as_na: bool = True
 ) -> pd.DataFrame:
     """Drop rows that are completely empty (NaN, None, or empty strings) in the DataFrame or in the specified subset of columns.
     Case if subset is...
