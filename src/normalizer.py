@@ -266,7 +266,7 @@ class ArbodatSurveyNormalizer:
 
     def finalize(self) -> None:
         """Finalize processing by performing final transformations."""
-        self.drop_foreign_key_columns()
-        self.add_system_id_columns()
-        self.move_keys_to_front()
-        drops = self.config.options.get("")
+        # self.drop_foreign_key_columns()
+        # self.add_system_id_columns()
+        # self.move_keys_to_front()
+        # drops = self.config.options.get("")
