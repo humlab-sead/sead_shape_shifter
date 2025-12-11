@@ -74,11 +74,11 @@ def drop_empty_rows(
     *, data: pd.DataFrame, entity_name: str, subset: bool | list[str] | dict[str, Any]| None = None, treat_empty_strings_as_na: bool = True
 ) -> pd.DataFrame:
     """Drop rows that are completely empty (NaN, None, or empty strings) in the DataFrame or in the specified subset of columns.
-       Case if subset is...
-            - False         : no rows are dropped.
-            - True or None  : all columns are considered for checking emptiness.
-            - list of str   : only those columns are considered for checking emptiness.
-            - dict          : keys are column names and values are lists of values to consider as empty for that column.
+    Case if subset is...
+         - False         : no rows are dropped.
+         - True or None  : all columns are considered for checking emptiness.
+         - list of str   : only those columns are considered for checking emptiness.
+         - dict          : keys are column names and values are lists of values to consider as empty for that column.
     """
 
     if subset is False:
@@ -92,7 +92,7 @@ def drop_empty_rows(
 
         # Replace empty strings with NaN only in the subset columns
         data = data.copy()
-        
+
         if isinstance(subset, dict):
             # Handle dict case: replace specified values with NaN for each column
             for col, empty_values in subset.items():
@@ -165,7 +165,7 @@ class SubsetService:
             >>> # Replace values in column A
             >>> get_subset(df, ['A', 'B'], replacements={'A': {1: 10, 2: 20}})
             >>> # Replace coordinate system codes
-            >>> get_subset(df, ['site', 'coord_sys'], 
+            >>> get_subset(df, ['site', 'coord_sys'],
             ...            replacements={'coord_sys': {'DHDN Zone 3': 'EPSG:31467'}})
         """
         if source is None:
