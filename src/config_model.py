@@ -113,9 +113,9 @@ class ForeignKeyConfig:
             data (dict): Foreign key configuration data.
         Raises:
             ValueError: If required fields are missing or invalid."""
-        self.config: dict[str, dict[str, Any]] = cfg  # full config
-        self.local_entity: str = local_entity
-        self.local_keys: list[str] = unique(data.get("local_keys"))
+        self.config: dict[str, dict[str, Any]] = cfg  # config for all tables
+        self.local_entity: str = local_entity # name of the local entity/table
+        self.local_keys: list[str] = unique(data.get("local_keys")) 
         self.remote_extra_columns: dict[str, str] = self.resolve_extra_columns(data) or {}
         self.drop_remote_id: bool = data.get("drop_remote_id", False)
         self.remote_entity: str = data.get("entity", "")
@@ -204,7 +204,7 @@ class TableConfig:
         self.surrogate_name: str = self._data.get("surrogate_name", "")
         self.source: str | None = self._data.get("source", None)
         self.values: str | None = self._data.get("values", None)
-        # self.query: str | None = self._data.get("query", None)
+        self.sql_query: str | None = self._data.get("query", None)
         self.surrogate_id: str = self._data.get("surrogate_id", "")
         self.check_column_names: bool = self._data.get("check_column_names", True)
 
@@ -249,8 +249,11 @@ class TableConfig:
     def query(self) -> None | str:
         """Get the SQL query string for fixed data, if applicable."""
         if self.type == "sql":
-            assert isinstance(self.values, str), "SQL query missing in 'values' field."
-            return self.values.lstrip("sql:").strip()
+            if self.sql_query:
+                return self.sql_query
+            if self.values:
+                """This will be deprecated, prefer 'query' over 'values' for SQL data."""
+                return self.values.lstrip("sql:").strip()
         return None
 
     @property
