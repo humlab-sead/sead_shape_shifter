@@ -10,13 +10,12 @@ from typing import Any, Literal
 import pandas as pd
 from loguru import logger
 
-from src.config_model import DataSourceConfig, TableConfig, TablesConfig
+from src.config_model import TableConfig, TablesConfig
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
 from src.filter import apply_filters
 from src.link import link_entity
-from src.loaders.database_loaders import SqlLoader, SqlLoaderFactory
-from src.loaders.fixed_loader import FixedLoader
+from src.loaders import DataLoader
 from src.mapping import LinkToRemoteService
 from src.unnest import unnest
 
@@ -66,14 +65,17 @@ class ProcessState:
 
 class ArbodatSurveyNormalizer:
 
-    def __init__(self, df: pd.DataFrame) -> None:
-        self.table_store: dict[str, pd.DataFrame] = {"survey": df}
-        self.config: TablesConfig = TablesConfig()
-        self.state: ProcessState = ProcessState(config=self.config)
+    def __init__(
+        self,
+        default_entity: str | None = None,
+        table_store: dict[str, pd.DataFrame] | None = None,
+        config: TablesConfig | None = None,
+    ) -> None:
 
-    @property
-    def survey(self) -> pd.DataFrame:
-        return self.table_store["survey"]
+        self.default_entity: str | None = default_entity
+        self.table_store: dict[str, pd.DataFrame] = table_store or {}
+        self.config: TablesConfig = config or TablesConfig()
+        self.state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, default_entity=default_entity)
 
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
@@ -98,12 +100,6 @@ class ArbodatSurveyNormalizer:
     def register(self, name: str, df: pd.DataFrame) -> pd.DataFrame:
         self.table_store[name] = df
         return df
-
-    @staticmethod
-    def load(path: str | Path, sep: str = "\t") -> "ArbodatSurveyNormalizer":
-        """Read Arbodat CSV (usually tab-separated)."""
-        df: pd.DataFrame = pd.read_csv(path, sep=sep, dtype=str, keep_default_na=False)
-        return ArbodatSurveyNormalizer(df)
 
     async def normalize(self) -> None:
         """Extract all configured entities and store them."""
