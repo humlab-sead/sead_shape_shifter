@@ -355,7 +355,7 @@ class TableConfig:
     def create_append_config(self, append_data: dict[str, Any]) -> dict[str, Any]:
         """Create a merged configuration for an append item, inheriting parent properties."""
         merged: dict[str, Any] = {}
-        ignore_keys: tuple[str, ...] = ("foreign_keys", "unnest", "append", "append_mode", "depends_on")
+        non_inheritable_keys: set[str] = {"foreign_keys", "unnest", "append", "append_mode", "depends_on"}
         all_keys: set[str] = set(self._data.keys()) | set(append_data.keys())
         special_conversions = {
             "keys": lambda v: list(v) if isinstance(v, set) else v,
@@ -363,12 +363,11 @@ class TableConfig:
 
         for key in all_keys:
 
-            if key in ignore_keys:
+            if key in non_inheritable_keys:
                 continue
 
             value = append_data[key] if key in append_data else self._data[key]
 
-            # Apply special conversion if needed
             if key in special_conversions and value:
                 value = special_conversions[key](value)
 
