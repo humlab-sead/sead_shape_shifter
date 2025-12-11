@@ -24,11 +24,20 @@ class TestCreateFixedTable:
     async def test_raises_when_no_values(self):
         """Test that await FixedLoader(data_source=None).load raises ValueError when no values defined."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "columns": ["col1"], "values": []}}
+        config = {"test_entity": {"type": "fixed", "columns": ["col1"], "values": None}}
         table_cfg = TableConfig(cfg=config, entity_name=entity)
 
         with pytest.raises(ValueError, match="has no values defined"):
             await FixedLoader(data_source=None).load(entity, table_cfg)
+
+    @pytest.mark.asyncio
+    async def test_raises_when_zero_values(self):
+        """Test that await FixedLoader(data_source=None).load raises ValueError when no values defined."""
+        entity = "test_entity"
+        config = {"test_entity": {"type": "fixed", "columns": ["col1"], "values": []}}
+        table_cfg = TableConfig(cfg=config, entity_name=entity)
+
+        assert await FixedLoader(data_source=None).load(entity, table_cfg) is not None
 
     @pytest.mark.asyncio
     async def test_raises_when_no_surrogate_name_and_no_columns(self):
