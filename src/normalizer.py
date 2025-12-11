@@ -24,16 +24,18 @@ from src.unnest import unnest
 class ProcessState:
     """Helper class to track processing state of entities during normalization."""
 
-    def __init__(self, config: TablesConfig) -> None:
+    def __init__(self, config: TablesConfig, table_store: dict[str, pd.DataFrame], default_entity: str | None = None) -> None:
         self.config: TablesConfig = config
-        self.unprocessed: set[str] = set(self.config.table_names)
+        self.table_store: dict[str, pd.DataFrame] = table_store
+        self.global_dependencies: set[str] = {default_entity} if default_entity else set()
 
     def get_next_entity_to_process(self) -> str | None:
         """Get the next entity that can be processed based on dependencies."""
         logger.debug(f"Processed entities so far: {self.processed_entities}")
-        for entity_name in set(self.config.table_names) - self.processed_entities:
+
+        for entity_name in self.unprocessed_entities:
             logger.debug(f"{entity_name}[check]: Checking if entity '{entity_name}' can be processed...")
-            unmet_dependencies = self.get_unmet_dependencies(entity=entity_name)
+            unmet_dependencies: set[str] = self.get_unmet_dependencies(entity=entity_name)
             if unmet_dependencies:
                 logger.debug(f"{entity_name}[check]: Entity has unmet dependencies: {unmet_dependencies}")
                 continue
@@ -42,14 +44,10 @@ class ProcessState:
         return None
 
     def get_unmet_dependencies(self, entity: str) -> set[str]:
-        return self.config.get_table(entity_name=entity).depends_on - self.processed_entities
-
-    def discard(self, entity: str) -> None:
-        """Mark an entity as processed and remove it from the unprocessed set."""
-        self.unprocessed.discard(entity)
+        return (self.config.get_table(entity_name=entity).depends_on | self.global_dependencies) - self.processed_entities
 
     def get_all_unmet_dependencies(self) -> dict[str, set[str]]:
-        unmet_dependencies: dict[str, set[str]] = {entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed}
+        unmet_dependencies: dict[str, set[str]] = {entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed_entities}
         return {k: v for k, v in unmet_dependencies.items() if v}
 
     def log_unmet_dependencies(self) -> None:
@@ -59,8 +57,12 @@ class ProcessState:
     @property
     def processed_entities(self) -> set[str]:
         """Return the set of processed entities."""
-        return set(self.config.table_names) - self.unprocessed
+        return set(self.table_store.keys()) 
 
+    @property
+    def unprocessed_entities(self) -> set[str]:
+        """Return the set of processed entities."""
+        return set(self.config.tables.keys()) - self.processed_entities
 
 class ArbodatSurveyNormalizer:
 
@@ -107,13 +109,13 @@ class ArbodatSurveyNormalizer:
         """Extract all configured entities and store them."""
         subset_service: SubsetService = SubsetService()
 
-        while len(self.state.unprocessed) > 0:
+        while len(self.state.unprocessed_entities) > 0:
 
             entity: str | None = self.state.get_next_entity_to_process()
 
             if entity is None:
                 self.state.log_unmet_dependencies()
-                raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed}")
+                raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
 
             table_cfg: TableConfig = self.config.get_table(entity)
 
@@ -180,8 +182,6 @@ class ArbodatSurveyNormalizer:
                 self.table_store[entity] = add_surrogate_id(self.table_store[entity], table_cfg.surrogate_id)
 
             self.link()  # Try to resolve any pending deferred links after each entity is processed
-
-            self.state.discard(entity=entity)
 
     def link(self):
         """Link entities based on foreign key configuration."""
