@@ -433,7 +433,6 @@ class TablesConfig:
         if table_cfg.type and table_cfg.type in DataLoaders.items:
             return DataLoaders.get(key=table_cfg.type)(data_source=None)
 
-        logger.warning(f"No data loader found for table '{table_cfg.entity_name}' with type '{table_cfg.type}'")
         return None
 
     @cached_property
