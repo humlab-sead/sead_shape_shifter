@@ -262,7 +262,7 @@ class TestArbodatSurveyNormalizer:
         table_cfg.data_source = None
         table_cfg.source = "nonexistent"
 
-        with pytest.raises(ValueError, match="Source table 'nonexistent' not found"):
+        with pytest.raises(ValueError, match="Unable to resolve source for entity"):
             await normalizer.resolve_source(table_cfg)
 
     @pytest.mark.asyncio

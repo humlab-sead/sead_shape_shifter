@@ -30,10 +30,7 @@ def sample_survey_data():
 def config_with_append():
     """Create a configuration with append settings."""
     config_dict = {
-        "survey": {
-            "source": None,
-            "depends_on": [],
-        },
+        "survey": {"source": None, "depends_on": []},
         "site": {
             "surrogate_id": "site_id",
             "keys": ["site_name"],
@@ -43,9 +40,7 @@ def config_with_append():
                 {
                     "source": None,
                     "type": "fixed",
-                    "values": [
-                        ["Default Site", 0.0, 0.0],
-                    ],
+                    "values": [["Default Site", 0.0, 0.0]],
                 }
             ],
             "append_mode": "all",
@@ -69,11 +64,7 @@ def config_with_source_append():
             "keys": ["site_name"],
             "columns": ["site_name", "country"],
             "depends_on": ["survey"],
-            "append": [
-                {
-                    "source": "survey",
-                }
-            ],
+            "append": [{"source": "survey"}],
             "append_mode": "all",
         },
     }
@@ -84,10 +75,7 @@ def config_with_source_append():
 def config_with_distinct_mode():
     """Create a configuration with distinct append mode."""
     config_dict = {
-        "survey": {
-            "source": None,
-            "depends_on": [],
-        },
+        "survey": {"source": None, "depends_on": []},
         "site": {
             "surrogate_id": "site_id",
             "keys": ["site_name"],
@@ -118,10 +106,8 @@ class TestAppendProcessingBasic:
         table_store = {"survey": sample_survey_data.copy()}
         normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config_with_append, table_store=table_store)
 
-        # Process all entities
         await normalizer.normalize()
 
-        # Get the result from the table store
         result = normalizer.table_store["site"]
 
         # Should have original 3 rows + 1 appended row
@@ -136,13 +122,10 @@ class TestAppendProcessingBasic:
         table_store = {"survey": sample_survey_data.copy()}
         normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config_with_append, table_store=table_store)
 
-        # Process all entities
         await normalizer.normalize()
 
-        # Get the result from the table store
         result = normalizer.table_store["site"]
 
-        # With append_mode='all', all rows are kept
         assert len(result) == 4
 
     @pytest.mark.asyncio
@@ -154,10 +137,8 @@ class TestAppendProcessingBasic:
         table_store = {"survey": sample_survey_data.copy()}
         normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config_with_distinct_mode, table_store=table_store)
 
-        # Process all entities
         await normalizer.normalize()
 
-        # Get the result from the table store
         result = normalizer.table_store["site"]
 
         # Should deduplicate: 3 original + 1 new (duplicate removed)
@@ -189,7 +170,7 @@ class TestAppendProcessingSQL:
                         {
                             "data_source": "test_sql_source",
                             "type": "sql",
-                            "query": "SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude",
+                            "values": "sql: SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude",
                         }
                     ],
                     "append_mode": "all",
@@ -197,31 +178,22 @@ class TestAppendProcessingSQL:
             },
             options={"data_sources": {"test_sql_source": {}}},
         )
+        sub_configs = list(config_with_sql_append.get_table("site").get_sub_table_configs())
+        assert len(sub_configs) == 2  # Base + SQL append
 
         table_store = {"survey": sample_survey_data.copy()}
         normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config_with_sql_append, table_store=table_store)
 
-        sql_result = pd.DataFrame(
-            {
-                "site_name": ["SQL Site"],
-                "latitude": [50.0],
-                "longitude": [15.0],
-                "country": ["Sweden"],
-            }
-        )
+        sql_result = pd.DataFrame({"site_name": ["SQL Site"], "latitude": [50.0], "longitude": [15.0], "country": ["Sweden"]})
 
         # Mock resolve_loader to return a mock SQL loader
         mock_loader = AsyncMock()
         mock_loader.load = AsyncMock(return_value=sql_result)
 
-        with patch.object(normalizer.config, "resolve_loader", return_value=mock_loader):
-            # Process all entities
+        with patch.object(normalizer.config, "resolve_loader", side_effect=[None, mock_loader]):
+            """First config has no loader, second uses mock_loader."""
             await normalizer.normalize()
-
-            # Get the result from the table store
             result: pd.DataFrame = normalizer.table_store["site"]
-
-            # Should have original 3 rows + 1 SQL row
             assert len(result) == 4
             assert "SQL Site" in result["site_name"].values
 
@@ -245,18 +217,8 @@ class TestAppendProcessingMultiple:
                 "columns": ["site_name", "latitude", "longitude"],
                 "depends_on": [],
                 "append": [
-                    {
-                        "type": "fixed",
-                        "values": [
-                            ["Fixed 1", 10.0, 20.0],
-                        ],
-                    },
-                    {
-                        "type": "fixed",
-                        "values": [
-                            ["Fixed 2", 30.0, 40.0],
-                        ],
-                    },
+                    {"type": "fixed", "values": [["Fixed 1", 10.0, 20.0]]},
+                    {"type": "fixed", "values": [["Fixed 2", 30.0, 40.0]]},
                 ],
                 "append_mode": "all",
             },
@@ -292,14 +254,7 @@ class TestAppendProcessingEdgeCases:
                 "columns": ["site_name", "latitude"],
                 "values": [],
                 "depends_on": [],
-                "append": [
-                    {
-                        "type": "fixed",
-                        "values": [
-                            ["Only Site", 50.0],
-                        ],
-                    }
-                ],
+                "append": [{"type": "fixed", "values": [["Only Site", 50.0]]}],
                 "append_mode": "all",
             }
         }
@@ -309,10 +264,8 @@ class TestAppendProcessingEdgeCases:
         table_store = {}
         normalizer = ArbodatSurveyNormalizer(config=config, table_store=table_store)
 
-        # Process all entities
         await normalizer.normalize()
 
-        # Get the result from the table store
         result = normalizer.table_store["site"]
 
         # Should only have the appended row
@@ -349,10 +302,8 @@ class TestAppendProcessingEdgeCases:
         table_store = {"survey": sample_survey_data}
         normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config, table_store=table_store)
 
-        # Process all entities
         await normalizer.normalize()
 
-        # Get the result from the table store
         result = normalizer.table_store["site"]
 
         # Check all columns are present

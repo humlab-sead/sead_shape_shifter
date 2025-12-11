@@ -1111,35 +1111,31 @@ class TestTableConfig:
                 "append_mode": "all",
             },
         }
-        config_with_sql_append = TablesConfig(
+        table_store: TablesConfig = TablesConfig(
             entities_cfg=entities_cfg,
             options={"data_sources": {"test_sql_source": {}}},
         )
 
-        sub_configs = list(config_with_sql_append.get_table("site").get_sub_table_configs())
+        sub_configs = list(table_store.get_table("site").get_sub_table_configs())
 
         assert len(sub_configs) == 2
 
         base_config = sub_configs[0]
 
         # This does a deep comparison of the base config to the original entities_cfg
-        assert base_config.config == entities_cfg
+        assert base_config._data == entities_cfg["site"]
 
         expected_append_config = {
-            "site": {
-                "surrogate_id": "site_id",
-                "keys": ["site_name"],
-                "columns": ["site_name", "latitude", "longitude"],
-                "depends_on": [],
-                "data_source": "test_sql_source",
-                "type": "sql",
-                "values": "sql: SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude",
-                "append_mode": "all",
-            }
+            "surrogate_id": "site_id",
+            "keys": ["site_name"],
+            "columns": ["site_name", "latitude", "longitude"],
+            "data_source": "test_sql_source",
+            "type": "sql",
+            "values": "sql: SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude",
         }
 
         sql_append_config = sub_configs[1]
-        assert sql_append_config.config == expected_append_config
+        assert sql_append_config._data == expected_append_config
 
 
 class TestTablesConfig:
