@@ -48,9 +48,9 @@ class PostgresSqlLoader(SqlLoader):
 
     driver: str = "postgres"
 
-    def __init__(self, db_opts: dict[str, Any] | None = None) -> None:
-        if db_opts is None:
-            db_opts = {}
+    def __init__(self, data_source: "DataSourceConfig | None" = None) -> None:
+        super().__init__(data_source=data_source)
+        db_opts: dict[str, Any] = data_source.options if data_source else {}
         clean_opts: dict[str, Any] = {
             "host": dotget(db_opts, "host,hostname,dbhost", "localhost"),
             "port": dotget(db_opts, "port", 5432),
@@ -72,8 +72,9 @@ class UCanAccessSqlLoader(SqlLoader):
 
     driver: str = "ucanaccess"
 
-    def __init__(self, db_opts: dict[str, Any] | None = None) -> None:
-        self.db_opts: dict[str, Any] = db_opts or {}
+    def __init__(self, data_source: "DataSourceConfig | None" = None) -> None:
+        super().__init__(data_source=data_source)
+        self.db_opts: dict[str, Any] = data_source.options if data_source else {}
         self.filename: str = self.db_opts.get("filename", "")
         self.ucanaccess_dir: str = self.db_opts.get("ucanaccess_dir", "")
         self.jars: list[str] = self._find_jar_files(self.ucanaccess_dir)
