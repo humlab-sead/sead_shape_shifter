@@ -2,6 +2,8 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from src.utility import dotget
+
 from .base_loader import DataLoader, DataLoaders
 
 if TYPE_CHECKING:
