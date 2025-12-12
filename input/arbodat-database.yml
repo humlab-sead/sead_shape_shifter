@@ -335,10 +335,10 @@ entities:
       submission_type_id: 1
       notes: null
       # FIXME: contact_id: null
-    depends_on: ["dataset", "dataset_submission_type"]
+    depends_on: ["dataset"]
 
   dataset_submission_type:
-    source: None
+    source: null
     type: fixed
     columns: ["system_id", "dataset_submission_type_id"]
     values:
