@@ -1,17 +1,12 @@
 <template>
-  <v-container>
+  <v-container fluid class="pa-6">
     <v-row>
       <v-col cols="12">
-        <v-card>
-          <v-card-title class="text-h4 mb-4">
-            <v-icon icon="mdi-shape" size="large" class="mr-2" />
-            Shape Shifter Configuration Editor
-          </v-card-title>
-          <v-card-text>
-            <p class="text-h6 mb-4">Welcome to the Configuration Editor</p>
-            <v-alert type="info" variant="tonal" class="mb-4">
-              This is a visual editor for Shape Shifter YAML configuration files.
-            </v-alert>
+        <div class="text-center mb-8">
+          <v-icon icon="mdi-shape" size="80" color="primary" class="mb-4" />
+          <h1 class="text-h3 mb-2">Shape Shifter</h1>
+          <p class="text-h6 text-grey">Configuration Editor</p>
+        </div>
             
             <v-list>
               <v-list-item
