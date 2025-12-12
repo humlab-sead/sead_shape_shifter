@@ -9,6 +9,10 @@ export interface GraphNode {
   status?: 'valid' | 'warning' | 'error'
   topological_order?: number
   data?: any
+  x?: number
+  y?: number
+  fx?: number | null
+  fy?: number | null
 }
 
 export interface GraphEdge {
