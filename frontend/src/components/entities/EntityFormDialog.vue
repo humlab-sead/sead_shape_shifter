@@ -1,13 +1,21 @@
 <template>
-  <v-dialog v-model="dialogModel" max-width="800" persistent scrollable>
+  <v-dialog v-model="dialogModel" max-width="900" persistent scrollable>
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon :icon="mode === 'create' ? 'mdi-plus-circle' : 'mdi-pencil'" class="mr-2" />
         <span>{{ mode === 'create' ? 'Create Entity' : `Edit ${entity?.name}` }}</span>
       </v-card-title>
 
+      <v-tabs v-model="activeTab" bg-color="primary">
+        <v-tab value="basic">Basic</v-tab>
+        <v-tab value="relationships" :disabled="mode === 'create'">Foreign Keys</v-tab>
+        <v-tab value="advanced" :disabled="mode === 'create'">Advanced</v-tab>
+      </v-tabs>
+
       <v-card-text class="pt-4">
-        <v-form ref="formRef" v-model="formValid">
+        <v-window v-model="activeTab">
+          <v-window-item value="basic">
+            <v-form ref="formRef" v-model="formValid">
           <!-- Entity Name -->
           <v-text-field
             v-model="formData.name"
@@ -118,10 +126,26 @@
             class="mb-4"
           />
 
-          <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
-            {{ error }}
-          </v-alert>
-        </v-form>
+              <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
+                {{ error }}
+              </v-alert>
+            </v-form>
+          </v-window-item>
+
+          <v-window-item value="relationships">
+            <foreign-key-editor
+              v-model="formData.foreign_keys"
+              :available-entities="availableSourceEntities"
+            />
+          </v-window-item>
+
+          <v-window-item value="advanced">
+            <advanced-entity-config
+              v-model="formData.advanced"
+              :available-entities="availableSourceEntities"
+            />
+          </v-window-item>
+        </v-window>
       </v-card-text>
 
       <v-card-actions>
@@ -147,6 +171,8 @@
 import { ref, computed, watch } from 'vue'
 import { useEntities } from '@/composables'
 import type { EntityResponse } from '@/api/entities'
+import ForeignKeyEditor from './ForeignKeyEditor.vue'
+import AdvancedEntityConfig from './AdvancedEntityConfig.vue'
 
 interface Props {
   modelValue: boolean
@@ -183,6 +209,8 @@ interface FormData {
   source: string | null
   data_source: string
   query: string
+  foreign_keys: any[]
+  advanced: any
 }
 
 const formData = ref<FormData>({
@@ -194,7 +222,15 @@ const formData = ref<FormData>({
   source: null,
   data_source: '',
   query: '',
+  foreign_keys: [],
+  advanced: {
+    filters: [],
+    unnest: null,
+    append: [],
+  },
 })
+
+const activeTab = ref('basic')
 
 // Computed
 const dialogModel = computed({
@@ -263,6 +299,22 @@ async function handleSubmit() {
       entityData.query = formData.value.query
     }
 
+    // Include foreign keys if any
+    if (formData.value.foreign_keys.length > 0) {
+      entityData.foreign_keys = formData.value.foreign_keys
+    }
+
+    // Include advanced configuration
+    if (formData.value.advanced.filters?.length > 0) {
+      entityData.filters = formData.value.advanced.filters
+    }
+    if (formData.value.advanced.unnest) {
+      entityData.unnest = formData.value.advanced.unnest
+    }
+    if (formData.value.advanced.append?.length > 0) {
+      entityData.append = formData.value.advanced.append
+    }
+
     if (props.mode === 'create') {
       await create({
         name: formData.value.name,
@@ -307,6 +359,12 @@ watch(
         source: (newEntity.entity_data.source as string) || null,
         data_source: (newEntity.entity_data.data_source as string) || '',
         query: (newEntity.entity_data.query as string) || '',
+        foreign_keys: (newEntity.entity_data.foreign_keys as any[]) || [],
+        advanced: {
+          filters: (newEntity.entity_data.filters as any[]) || [],
+          unnest: newEntity.entity_data.unnest || null,
+          append: (newEntity.entity_data.append as any[]) || [],
+        },
       }
     } else if (props.mode === 'create') {
       formData.value = {
@@ -318,6 +376,12 @@ watch(
         source: null,
         data_source: '',
         query: '',
+        foreign_keys: [],
+        advanced: {
+          filters: [],
+          unnest: null,
+          append: [],
+        },
       }
     }
   },
