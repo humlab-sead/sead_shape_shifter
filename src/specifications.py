@@ -457,6 +457,42 @@ class SurrogateIdSpecification(ConfigSpecification):
         return valid
 
 
+class SqlDataSpecification(ConfigSpecification):
+    """Validates SQL-type entity configurations."""
+
+    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+        """Check that SQL data configurations are valid."""
+        self.clear()
+        valid = True
+
+        entities_config = config.get("entities", {})
+        if not entities_config:
+            return True
+
+        for entity_name, entity_data in entities_config.items():
+            is_sql = entity_data.get("type") == "sql"
+
+            if is_sql:
+                # Check required fields for SQL type
+                if not entity_data.get("data_source"):
+                    self.add_error(f"Entity '{entity_name}': type 'sql' requires 'data_source' field")
+                    valid = False
+
+                query = entity_data.get("query")
+                if not query:
+                    self.add_error(f"Entity '{entity_name}': type 'sql' requires 'query' field")
+                    valid = False
+                elif isinstance(query, str) and not query.strip():
+                    self.add_error(f"Entity '{entity_name}': 'query' field is empty")
+                    valid = False
+
+                # Warn if source is not None (SQL entities should load directly from database)
+                if entity_data.get("source") is not None:
+                    self.add_warning(f"Entity '{entity_name}': SQL entity has 'source' field (should be null for direct SQL queries)")
+
+        return valid
+
+
 class FixedDataSpecification(ConfigSpecification):
     """Validates fixed data table configurations."""
 
@@ -476,14 +512,8 @@ class FixedDataSpecification(ConfigSpecification):
                 values = entity_data.get("values")
 
                 if not values:
-                    continue  # RequiredFieldsSpecification will catch this
-
-                # Check if it's SQL
-                if isinstance(values, str) and values.strip().startswith("sql:"):
-                    sql = values.strip()[4:].strip()
-                    if not sql:
-                        self.add_error(f"Entity '{entity_name}': empty SQL query in 'values'")
-                        valid = False
+                    self.add_error(f"Entity '{entity_name}': type 'fixed' requires 'values' field")
+                    valid = False
                     continue
 
                 # Check if it's a list of values
@@ -491,7 +521,9 @@ class FixedDataSpecification(ConfigSpecification):
                     columns = entity_data.get("columns", [])
 
                     if not columns:
-                        continue  # RequiredFieldsSpecification will catch this
+                        self.add_error(f"Entity '{entity_name}': type 'fixed' requires 'columns' field")
+                        valid = False
+                        continue
 
                     # Each value should be a list matching columns length
                     for idx, value_row in enumerate(values):
@@ -501,10 +533,52 @@ class FixedDataSpecification(ConfigSpecification):
                                     f"Entity '{entity_name}': value row {idx + 1} has {len(value_row)} items but {len(columns)} columns defined"
                                 )
                                 valid = False
+                        else:
+                            self.add_warning(f"Entity '{entity_name}': value row {idx + 1} is not a list")
 
                 # Warn if source is not None (shouldn't be used for fixed data)
                 if entity_data.get("source") is not None:
                     self.add_warning(f"Entity '{entity_name}': fixed data table has 'source' field (should be null)")
+
+        return valid
+
+
+class DataSourceExistsSpecification(ConfigSpecification):
+    """Validates that all referenced data sources exist in options.data_sources."""
+
+    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+        """Check if all referenced data sources exist."""
+        self.clear()
+        valid = True
+
+        entities_config = config.get("entities", {})
+        options = config.get("options", {})
+        data_sources = options.get("data_sources", {})
+
+        if not entities_config:
+            return True
+
+        for entity_name, entity_data in entities_config.items():
+            # Check entity data_source
+            data_source = entity_data.get("data_source")
+            if data_source and isinstance(data_source, str):
+                if data_source not in data_sources:
+                    self.add_error(f"Entity '{entity_name}': references non-existent data source '{data_source}'")
+                    valid = False
+
+            # Check append configurations
+            append_configs = entity_data.get("append", []) or []
+            if append_configs and not isinstance(append_configs, list):
+                append_configs = [append_configs]
+
+            for idx, append_cfg in enumerate(append_configs):
+                append_data_source = append_cfg.get("data_source")
+                if append_data_source and isinstance(append_data_source, str):
+                    if append_data_source not in data_sources:
+                        self.add_error(
+                            f"Entity '{entity_name}', append item #{idx + 1}: references non-existent data source '{append_data_source}'"
+                        )
+                        valid = False
 
         return valid
 
@@ -523,6 +597,9 @@ class AppendConfigurationSpecification(ConfigSpecification):
 
         for entity_name, entity_data in entities_config.items():
             append_configs = entity_data.get("append", []) or []
+            if append_configs and not isinstance(append_configs, list):
+                append_configs = [append_configs]
+                
             append_mode = entity_data.get("append_mode", "all")
 
             # Validate append_mode if present
@@ -597,11 +674,13 @@ class CompositeConfigSpecification(ConfigSpecification):
             RequiredFieldsSpecification(),
             EntityExistsSpecification(),
             CircularDependencySpecification(),
+            DataSourceExistsSpecification(),
+            SqlDataSpecification(),
+            FixedDataSpecification(),
             ForeignKeySpecification(),
             UnnestSpecification(),
             DropDuplicatesSpecification(),
             SurrogateIdSpecification(),
-            FixedDataSpecification(),
             AppendConfigurationSpecification(),
         ]
 

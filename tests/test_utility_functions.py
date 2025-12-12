@@ -23,8 +23,9 @@ def get_subset(
     extra_columns: None | dict[str, Any] = None,
     drop_duplicates: bool | list[str] = False,
     fd_check: bool = False,
+    replacements: dict[str, Any] | None = None,
     raise_if_missing: bool = True,
-    drop_empty_rows: bool | list[str] = False,
+    drop_empty_rows: bool | list[str] | dict[str, Any] = False,
 ) -> pd.DataFrame:
     """Backward-compatible convenience function to get subset using SubsetService."""
     return SubsetService().get_subset(
@@ -34,6 +35,7 @@ def get_subset(
         extra_columns=extra_columns,
         drop_duplicates=drop_duplicates,
         fd_check=fd_check,
+        replacements=replacements,
         raise_if_missing=raise_if_missing,
         drop_empty=drop_empty_rows,
     )
@@ -326,6 +328,161 @@ class TestGetSubset:
 
         assert pd.isna(result.iloc[1]["A"])
         assert pd.isna(result.iloc[2]["B"])
+
+
+class TestDropEmptyRows:
+    """Test suite for drop_empty_rows functionality via get_subset."""
+
+    def test_drop_empty_rows_false_keeps_all_rows(self):
+        """Test that drop_empty_rows=False keeps all rows including empty ones."""
+        df = pd.DataFrame({"A": [1, None, 3], "B": [None, None, 6]})
+        result = get_subset(df, ["A", "B"], drop_empty_rows=False)
+        assert len(result) == 3
+
+    def test_drop_empty_rows_true_removes_all_empty(self):
+        """Test that drop_empty_rows=True removes completely empty rows."""
+        df = pd.DataFrame({"A": [1, None, 3, None], "B": [4, None, 6, ""]})
+        result = get_subset(df, ["A", "B"], drop_empty_rows=True)
+        assert len(result) == 2  # Only rows with at least one non-empty value
+
+    def test_drop_empty_rows_with_list_checks_subset(self):
+        """Test that drop_empty_rows with list only checks specified columns."""
+        df = pd.DataFrame({"A": [1, 2, 3], "B": [None, None, 6], "C": [7, 8, 9]})
+        result = get_subset(df, ["A", "B", "C"], drop_empty_rows=["B"])
+        assert len(result) == 1  # Only row 3 has non-empty B
+
+    def test_drop_empty_rows_dict_with_null_and_empty_string(self):
+        """Test drop_empty_rows with dict specifying null and empty string as empty."""
+        df = pd.DataFrame({"value": [10, None, 20, 30, 40], "status": ["active", "", "pending", None, "done"]})
+        result = get_subset(df, ["value", "status"], drop_empty_rows={"status": [None, ""]})
+        # Should drop rows where status is None or ""
+        assert len(result) == 3
+        assert result["status"].tolist() == ["active", "pending", "done"]
+
+    def test_drop_empty_rows_dict_with_custom_empty_values(self):
+        """Test drop_empty_rows with dict specifying custom empty values."""
+        df = pd.DataFrame({"amount": [100, 0, 200, -1, 300], "code": ["A", "B", "C", "D", "E"]})
+        result = get_subset(df, ["amount", "code"], drop_empty_rows={"amount": [None, "", 0, -1]})
+        # Should drop rows where amount is None, "", 0, or -1
+        assert len(result) == 3
+        assert result["amount"].tolist() == [100, 200, 300]
+
+    def test_drop_empty_rows_dict_multiple_columns(self):
+        """Test drop_empty_rows with dict for multiple columns."""
+        df = pd.DataFrame({"col1": ["x", None, "z", "", "w"], "col2": [1, 2, None, 4, 0], "col3": ["a", "b", "c", "d", "e"]})
+        result = get_subset(df, ["col1", "col2", "col3"], drop_empty_rows={"col1": [None, ""], "col2": [None, 0]})
+        # Drops rows where ALL specified columns have their empty values
+        # Row 0: col1="x" (not empty), col2=1 (not empty) -> keep
+        # Row 1: col1=None (empty), col2=2 (not empty) -> keep
+        # Row 2: col1="z" (not empty), col2=None (empty) -> keep
+        # Row 3: col1="" (empty), col2=4 (not empty) -> keep
+        # Row 4: col1="w" (not empty), col2=0 (empty) -> keep
+        # All rows have at least one non-empty column in the dict
+        assert len(result) == 5
+
+    def test_drop_empty_rows_dict_drops_when_all_empty(self):
+        """Test drop_empty_rows dict drops row only when all specified columns are empty."""
+        df = pd.DataFrame({"value1": [None, 100, None, 200], "value2": ["", 300, "", 400]})
+        result = get_subset(df, ["value1", "value2"], drop_empty_rows={"value1": [None], "value2": [""]})
+        # Row 0: value1=None (empty), value2="" (empty) -> drop
+        # Row 1: value1=100 (not empty), value2=300 (not empty) -> keep
+        # Row 2: value1=None (empty), value2="" (empty) -> drop
+        # Row 3: value1=200 (not empty), value2=400 (not empty) -> keep
+        assert len(result) == 2
+        assert result["value1"].tolist() == [100, 200]
+
+    def test_drop_empty_rows_dict_treats_values_as_na(self):
+        """Test that dict values are treated as NA for dropna operation."""
+        df = pd.DataFrame({"category": ["cat1", "unknown", "cat2", "N/A", "cat3"], "amount": [100, 200, 300, 400, 500]})
+        result = get_subset(df, ["category", "amount"], drop_empty_rows={"category": [None, "", "unknown", "N/A"]})
+        # Should treat "unknown" and "N/A" as empty
+        assert len(result) == 3
+        assert "unknown" not in result["category"].values
+        assert "N/A" not in result["category"].values
+
+
+class TestReplacements:
+    """Test suite for replacements functionality via get_subset."""
+
+    def test_replacements_simple_value_mapping(self):
+        """Test simple value replacement in a single column."""
+        df = pd.DataFrame({"code": ["A", "B", "C", "D"], "value": [1, 2, 3, 4]})
+        result = get_subset(df, ["code", "value"], replacements={"code": {"A": "Alpha", "B": "Beta"}})
+        assert result["code"].tolist() == ["Alpha", "Beta", "C", "D"]
+        assert result["value"].tolist() == [1, 2, 3, 4]
+
+    def test_replacements_multiple_columns(self):
+        """Test replacements in multiple columns."""
+        df = pd.DataFrame({"col1": ["x", "y", "z"], "col2": [1, 2, 3], "col3": ["a", "b", "c"]})
+        result = get_subset(df, ["col1", "col2", "col3"], replacements={"col1": {"x": "X", "y": "Y"}, "col3": {"a": "A", "c": "C"}})
+        assert result["col1"].tolist() == ["X", "Y", "z"]
+        assert result["col2"].tolist() == [1, 2, 3]
+        assert result["col3"].tolist() == ["A", "b", "C"]
+
+    def test_replacements_coordinate_system_example(self):
+        """Test realistic coordinate system replacement example."""
+        df = pd.DataFrame(
+            {"site_name": ["Site1", "Site2", "Site3"], "coordinate_system": ["DHDN Gauss-Krüger Zone 3", "RGF93 Lambert 93", "Unknown"]}
+        )
+        result = get_subset(
+            df,
+            ["site_name", "coordinate_system"],
+            replacements={"coordinate_system": {"DHDN Gauss-Krüger Zone 3": "EPSG:31467", "RGF93 Lambert 93": "EPSG:2154"}},
+        )
+        assert result["coordinate_system"].tolist() == ["EPSG:31467", "EPSG:2154", "Unknown"]
+
+    def test_replacements_none_values(self):
+        """Test that replacements work with None/NaN values."""
+        df = pd.DataFrame({"status": ["active", None, "inactive", "pending"], "code": [1, 2, 3, 4]})
+        result = get_subset(df, ["status", "code"], replacements={"status": {"active": "ACTIVE", "inactive": "INACTIVE"}})
+        assert result["status"].tolist()[0] == "ACTIVE"
+        assert pd.isna(result["status"].tolist()[1])
+        assert result["status"].tolist()[2] == "INACTIVE"
+        assert result["status"].tolist()[3] == "pending"
+
+    def test_replacements_numeric_values(self):
+        """Test replacements with numeric values."""
+        df = pd.DataFrame({"category": [1, 2, 3, 4, 5], "name": ["A", "B", "C", "D", "E"]})
+        result = get_subset(df, ["category", "name"], replacements={"category": {1: 10, 2: 20, 3: 30}})
+        assert result["category"].tolist() == [10, 20, 30, 4, 5]
+
+    def test_replacements_empty_dict(self):
+        """Test that empty replacements dict doesn't change data."""
+        df = pd.DataFrame({"col1": ["a", "b", "c"], "col2": [1, 2, 3]})
+        result = get_subset(df, ["col1", "col2"], replacements={})
+        assert result["col1"].tolist() == ["a", "b", "c"]
+        assert result["col2"].tolist() == [1, 2, 3]
+
+    def test_replacements_none_parameter(self):
+        """Test that None replacements parameter doesn't change data."""
+        df = pd.DataFrame({"col1": ["a", "b", "c"], "col2": [1, 2, 3]})
+        result = get_subset(df, ["col1", "col2"], replacements=None)
+        assert result["col1"].tolist() == ["a", "b", "c"]
+        assert result["col2"].tolist() == [1, 2, 3]
+
+    def test_replacements_column_not_in_result(self):
+        """Test that replacements for non-existent columns are safely ignored."""
+        df = pd.DataFrame({"col1": ["a", "b", "c"], "col2": [1, 2, 3]})
+        result = get_subset(df, ["col1"], replacements={"col2": {1: 10}})  # Only extract col1  # Try to replace col2 (not in result)
+        assert "col2" not in result.columns
+        assert result["col1"].tolist() == ["a", "b", "c"]
+
+    def test_replacements_with_extra_columns(self):
+        """Test replacements work together with extra_columns."""
+        df = pd.DataFrame({"code": ["A", "B", "C"], "value": [1, 2, 3]})
+        result = get_subset(df, ["code"], extra_columns={"renamed_value": "value"}, replacements={"code": {"A": "Alpha", "B": "Beta"}})
+        assert result["code"].tolist() == ["Alpha", "Beta", "C"]
+        assert result["renamed_value"].tolist() == [1, 2, 3]
+
+    def test_replacements_preserves_data_types(self):
+        """Test that replacements preserve data types appropriately."""
+        df = pd.DataFrame({"str_col": ["a", "b", "c"], "int_col": [1, 2, 3], "float_col": [1.1, 2.2, 3.3]})
+        result = get_subset(
+            df, ["str_col", "int_col", "float_col"], replacements={"str_col": {"a": "A"}, "int_col": {1: 10}, "float_col": {1.1: 11.1}}
+        )
+        assert result["str_col"].tolist() == ["A", "b", "c"]
+        assert result["int_col"].tolist() == [10, 2, 3]
+        assert result["float_col"].tolist() == [11.1, 2.2, 3.3]
 
 
 class TestRenameLastOccurrence:

@@ -380,14 +380,6 @@ class TestFixedDataSpecification:
         assert spec.is_satisfied_by(config) is True
         assert not spec.has_errors()
 
-    def test_fixed_data_with_empty_sql(self):
-        """Test that fixed data with empty SQL is caught."""
-        config = {"entities": {"table": {"type": "fixed", "surrogate_id": "id", "columns": ["name"], "values": "sql:   "}}}
-        spec = FixedDataSpecification()
-        assert spec.is_satisfied_by(config) is False
-        assert spec.has_errors()
-        assert "empty SQL query" in spec.errors[0]
-
     def test_fixed_data_value_row_mismatch(self):
         """Test that fixed data with mismatched row length is caught."""
         config = {

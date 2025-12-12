@@ -591,7 +591,7 @@ entity_name:
       columns?: [string, ...]     # Must be compatible with parent
       extra_columns?: {...}
       drop_duplicates?: bool | [string, ...]
-      drop_empty_rows?: bool | [string, ...]
+      drop_empty_rows?: bool | [string, ...] | {string: [any, ...]}
       check_column_names?: bool   # For SQL: validate column names (default true)
       # Cannot override: keys, surrogate_id, depends_on
   
@@ -602,7 +602,7 @@ entity_name:
   
   # Standard post-processing (applied after concatenation)
   drop_duplicates: bool | [string, ...]
-  drop_empty_rows: bool | [string, ...]
+  drop_empty_rows: bool | [string, ...] | {string: [any, ...]} | {string: [any, ...]}
 ```
 
 ### Property Inheritance Rules

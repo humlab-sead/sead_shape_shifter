@@ -16,16 +16,13 @@ class DispatchRegistry(Registry):
 
 Dispatchers: DispatchRegistry = DispatchRegistry()  # pylint: disable=invalid-name
 
-# Crate a protocol for dispatchers
-
-
 class Dispatcher(Protocol):
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None: ...
 
 
 @Dispatchers.register(key="csv")
 class CSVDispatcher(Dispatcher):
-    """Dispatcher for CSV data stores."""
+    """Dispatcher for CSV data."""
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
         output_dir = Path(target)
@@ -36,8 +33,9 @@ class CSVDispatcher(Dispatcher):
 
 @Dispatchers.register(key="xlsx")
 class ExcelDispatcher(Dispatcher):
-    """Dispatcher for Excel data stores."""
+    """Dispatcher for Excel data."""
 
+    # FIXME: Add support for colors, formats, etc. using openpyxl
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
         with pd.ExcelWriter(target, engine="openpyxl") as writer:
             for entity_name, table in data.items():
@@ -46,7 +44,7 @@ class ExcelDispatcher(Dispatcher):
 
 @Dispatchers.register(key="db")
 class DatabaseDispatcher(Dispatcher):
-    """Dispatcher for Database data stores."""
+    """Dispatcher for Database data."""
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
         db_opts: dict[str, Any] = ConfigValue[dict[str, Any]]("options.database").resolve() or {}

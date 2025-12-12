@@ -1,9 +1,10 @@
 import importlib
 import os
+import pkgutil
 import sys
 import unicodedata
 from datetime import datetime
-from typing import Any, Callable, Generic, Literal, TypeVar
+from typing import Any, Callable, Generic, Literal, Self, TypeVar
 
 import pandas as pd
 import yaml
@@ -304,6 +305,10 @@ class Registry(Generic[T]):
                 setattr(fn_or_class, "_registry_key", key)
                 fn_or_class = _ensure_key_property(fn_or_class)
 
+            # FIXME: #6 Validators are rgistered using the same key!
+            if key in cls.items:
+                raise KeyError(f"Registry: Overriding existing registration for key '{key}'")
+
             cls.items[key] = fn_or_class
 
             fn_or_class = cls.registered_class_hook(fn_or_class, **args)
@@ -318,6 +323,10 @@ class Registry(Generic[T]):
     @classmethod
     def registered_class_hook(cls, fn_or_class: Any, **args) -> Any:  # pylint: disable=unused-argument
         return fn_or_class
+
+    def scan(self, package_name: str) -> Self:
+        import_sub_modules(package_name)
+        return self
 
 
 def create_db_uri(*, host: str, port: int | str, user: str, dbname: str, driver: str = "postgresql+psycopg") -> str:
@@ -362,3 +371,21 @@ def resolve_specification(specification: dict[str, Any] | str | None) -> dict[st
         "property_settings": {},
         "sql_queries": {},
     }
+
+
+def import_submodules(package_name: str):
+    """
+    Recursively import all submodules of the given package.
+
+    Example:
+        # Inside mypackage/__init__.py
+        import_submodules(__name__)
+    """
+    package = importlib.import_module(package_name)
+    package_path = package.__path__  # Namespace packages supported
+
+    for module_info in pkgutil.walk_packages(package_path, prefix=package_name + "."):
+        module_name = module_info.name
+
+        if module_name not in globals():
+            importlib.import_module(module_name)
