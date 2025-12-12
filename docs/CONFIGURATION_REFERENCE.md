@@ -62,11 +62,14 @@ entities:
     
     # Data Quality
     drop_duplicates: bool | [string, ...] # Duplicate handling
-    drop_empty_rows: bool | [string, ...]  # Empty row handling
+    drop_empty_rows: bool | [string, ...] | {string: [any, ...]}  # Empty row handling
     check_column_names: bool              # Validate column names match (SQL sources)
     
     # Filtering
     filters: [...]                        # Post-load data filters
+    
+    # Value Transformations
+    replacements: {string: {any: any}}    # Value replacement mappings
     
     # Relationships
     foreign_keys: [...]               # Foreign key definitions
@@ -137,7 +140,11 @@ entities:
 - **Description**: 
   - `"data"`: Extract from source data (spreadsheet or another entity)
   - `"fixed"`: Use fixed/hardcoded values defined in `values`
-  - `"sql"`: Execute SQL query against a database
+  - `"sql"`: Execute SQL query against a database (requires `data_source` and `query`)
+- **Requirements by Type**:
+  - `type: fixed` → requires `values` (list of lists)
+  - `type: sql` → requires `data_source` and `query`
+  - `type: data` → uses `source` (defaults to root data if omitted)
 - **Example**:
   ```yaml
   # Fixed lookup table
@@ -149,42 +156,51 @@ entities:
   # SQL query
   type: sql
   data_source: sead
-  values: |
-    sql:
+  query: |
     select id, name
     from tbl_dimensions
   ```
 
 #### `data_source`
 - **Type**: `string`
-- **Required**: Only for `type: sql`
-- **Description**: Name of the data source connection defined in `options.data_sources`. The data source specifies database connection parameters.
+- **Required**: Yes when `type: sql`
+- **Description**: Name of the data source connection defined in `options.data_sources`. The data source specifies database connection parameters (host, database, credentials, driver, etc.).
+- **Validation**: The referenced data source must exist in `options.data_sources`
 - **Example**:
   ```yaml
-  data_source: sead
+  data_source: sead  # Must be defined in options.data_sources
   ```
 
-#### `values`
-- **Type**: `string | list[list]`
-- **Required**: Only for `type: fixed` or `type: sql`
-- **Description**: 
-  - For `type: fixed`: 2D array of values
-  - For `type: sql`: SQL query string (typically multi-line with `|`)
+#### `query`
+- **Type**: `string`
+- **Required**: Yes when `type: sql`
+- **Description**: SQL query string to execute against the data source. Typically uses multi-line format with `|` or `>` for readability.
+- **Validation**: Must be non-empty when `type: sql`
 - **Example**:
   ```yaml
-  # Fixed values
-  type: fixed
-  values:
-    - ["Type A", "Description A"]
-    - ["Type B", "Description B"]
-  
-  # SQL query
   type: sql
-  values: |
-    sql:
+  data_source: arbodat_data
+  query: |
     select column1, column2
     from table_name
     where condition = true
+  ```
+
+#### `values`
+- **Type**: `list[list[any]]`
+- **Required**: Yes when `type: fixed`
+- **Description**: 2D array of fixed values for lookup tables. Each inner list represents a row of data.
+- **Validation**: 
+  - Required when `type: fixed`
+  - Each row must have the same number of columns as defined in `columns`
+  - Number of values per row should match the number of columns
+- **Example**:
+  ```yaml
+  type: fixed
+  columns: ["code", "description"]
+  values:
+    - ["Type A", "Description A"]
+    - ["Type B", "Description B"]
   ```
 
 ---
@@ -246,13 +262,14 @@ entities:
   ```
 
 #### `drop_empty_rows`
-- **Type**: `bool | list[string]`
+- **Type**: `bool | list[string] | dict[string, list[any]]`
 - **Required**: No (defaults to `false`)
 - **Description**: Controls empty row removal. Empty values include `NaN`, `None`, and empty strings (`""`):
   - `true`: Drop rows where all columns are empty
   - `false`: Keep all rows
   - `list[string]`: Drop rows where all specified columns are empty
-- **Note**: Empty strings are automatically treated as `pd.NA` before checking for empty rows
+  - `dict[string, list[any]]`: Drop rows where specified columns contain the given values. Keys are column names, values are lists of values to treat as empty for that column (e.g., `[null, ""]`)
+- **Note**: Empty strings are automatically treated as `pd.NA` before checking for empty rows (unless using dict format with custom empty values)
 - **Example**:
   ```yaml
   # Drop completely empty rows (including rows with only empty strings)
@@ -260,6 +277,11 @@ entities:
   
   # Drop rows where specific columns are all empty or empty strings
   drop_empty_rows: ["name", "description"]
+  
+  # Drop rows where specific columns contain custom "empty" values
+  drop_empty_rows:
+    abundance_property_value: [null, ""]
+    status: [null, "", "unknown", "N/A"]
   ```
 
 #### `check_column_names`
@@ -292,6 +314,43 @@ entities:
       other_entity: "_pcodes"      # Entity to check against
       other_column: "PCODE"        # Column in other entity (optional, defaults to same name)
       drop_duplicates: ["PCODE"]  # Optional: drop duplicates after filtering
+  ```
+
+#### `replacements`
+- **Type**: `dict[string, dict[any, any]]`
+- **Required**: No
+- **Description**: Defines value replacement mappings for specified columns. Each key is a column name, and each value is a dictionary mapping old values to new values. This is useful for normalizing data values, converting codes to standardized formats, or correcting inconsistent data.
+- **Use Cases**:
+  - Converting coordinate system names to EPSG codes
+  - Standardizing status codes or category names
+  - Mapping legacy identifiers to new ones
+  - Correcting typos or inconsistent values in source data
+- **Note**: Replacements are applied after column extraction but before other operations. Values not in the mapping remain unchanged.
+- **Example**:
+  ```yaml
+  site:
+    columns: ["site_name", "coordinate_system"]
+    replacements:
+      coordinate_system:
+        "DHDN Gauss-Krüger Zone 3": "EPSG:31467"
+        "RGF93 Lambert 93": "EPSG:2154"
+        "CH1903/Swiss grid": "EPSG:21781"
+  
+  # Multiple columns can be replaced
+  sample:
+    columns: ["status", "type"]
+    replacements:
+      status:
+        "old": "legacy"
+        "new": "current"
+      type:
+        "A": "Type_A"
+        "B": "Type_B"
+  
+  # Replacements can reference external configuration files
+  site:
+    replacements:
+      coordinate_system: "@value: replacements.site.KoordSys"
   ```
 - **See**: Filters section below for detailed filter documentation
 
@@ -426,9 +485,6 @@ foreign_keys:
       # Match Requirements
       allow_unmatched_left: bool
       allow_unmatched_right: bool
-      require_all_left_matched: bool
-      require_all_right_matched: bool
-      min_match_rate: float
       
       # Key Uniqueness
       require_unique_left: bool
@@ -436,8 +492,6 @@ foreign_keys:
       allow_null_keys: bool
       
       # Row Count
-      max_row_increase_pct: float
-      max_row_increase_abs: int
       allow_row_decrease: bool
 ```
 
@@ -477,33 +531,6 @@ foreign_keys:
     allow_unmatched_right: false
   ```
 
-##### `require_all_left_matched`
-- **Type**: `bool`
-- **Description**: If `true`, all left rows must find a match in the right table
-- **Example**:
-  ```yaml
-  constraints:
-    require_all_left_matched: true
-  ```
-
-##### `require_all_right_matched`
-- **Type**: `bool`
-- **Description**: If `true`, all right rows must find a match in the left table
-- **Example**:
-  ```yaml
-  constraints:
-    require_all_right_matched: true
-  ```
-
-##### `min_match_rate`
-- **Type**: `float` (0.0 to 1.0)
-- **Description**: Minimum fraction of left rows that must match (e.g., 0.95 = 95% match rate)
-- **Example**:
-  ```yaml
-  constraints:
-    min_match_rate: 0.95
-  ```
-
 #### Uniqueness Constraints
 
 ##### `require_unique_left`
@@ -535,24 +562,6 @@ foreign_keys:
   ```
 
 #### Row Count Constraints
-
-##### `max_row_increase_pct`
-- **Type**: `float`
-- **Description**: Maximum allowed percentage increase in row count after merge (e.g., 0.05 = 5% increase)
-- **Example**:
-  ```yaml
-  constraints:
-    max_row_increase_pct: 0.05
-  ```
-
-##### `max_row_increase_abs`
-- **Type**: `int`
-- **Description**: Maximum allowed absolute increase in row count after merge
-- **Example**:
-  ```yaml
-  constraints:
-    max_row_increase_abs: 10
-  ```
 
 ##### `allow_row_decrease`
 - **Type**: `bool`
@@ -844,7 +853,7 @@ feature:
       how: inner
       constraints:
         cardinality: many_to_one
-        require_all_left_matched: true
+        allow_unmatched_left: false
     - entity: feature_type
       local_keys: "@value: entities.feature_type.keys"
       remote_keys: "@value: entities.feature_type.keys"
@@ -891,7 +900,7 @@ sample:
       how: inner
       constraints:
         cardinality: many_to_one
-        require_all_left_matched: true
+        allow_unmatched_left: false
         allow_null_keys: false
     - entity: sample_group
       local_keys: ["ProjektNr", "Befu"]
@@ -930,12 +939,17 @@ The system processes entities in dependency order using topological sorting:
 
 The configuration system includes comprehensive validation through specifications:
 
-- **EntityExistsSpecification**: Ensures all referenced entities exist
-- **CircularDependencySpecification**: Detects circular dependencies
-- **ForeignKeySpecification**: Validates foreign key configurations
-- **ColumnExistsSpecification**: Checks that referenced columns exist
-- **UnnestSpecification**: Validates unnest configurations
-- **DataSourceSpecification**: Validates data source configurations
+- **RequiredFieldsSpecification**: Validates that required fields are present for each entity type
+- **EntityExistsSpecification**: Ensures all referenced entities exist (in foreign keys, dependencies, source references)
+- **CircularDependencySpecification**: Detects circular dependencies in the entity dependency graph
+- **DataSourceExistsSpecification**: Validates that all referenced data sources exist in `options.data_sources`
+- **SqlDataSpecification**: Validates SQL-type entities have required `data_source` and `query` fields
+- **FixedDataSpecification**: Validates fixed-type entities have required `values` field with proper structure
+- **ForeignKeySpecification**: Validates foreign key configurations (required fields, key length matching, etc.)
+- **UnnestSpecification**: Validates unnest configurations have required fields
+- **DropDuplicatesSpecification**: Validates drop_duplicates configurations
+- **SurrogateIdSpecification**: Validates surrogate ID naming conventions and uniqueness
+- **AppendConfigurationSpecification**: Validates append configurations (mode, type-specific requirements, source references)
 
 See `docs/config_validation.md` for detailed validation documentation.
 
@@ -1144,11 +1158,14 @@ EntityConfig:
   
   # Quality
   drop_duplicates?: bool | list[string] | string
-  drop_empty_rows?: bool | list[string]
+  drop_empty_rows?: bool | list[string] | dict[string, list[any]]
   check_column_names?: bool
   
   # Filtering
   filters?: list[FilterConfig]
+  
+  # Value Transformations
+  replacements?: dict[string, dict[any, any]]
   
   # Relationships
   depends_on: list[string]
@@ -1177,14 +1194,9 @@ ForeignKeyConstraints:
   cardinality?: "one_to_one" | "many_to_one" | "one_to_many" | "many_to_many"
   allow_unmatched_left?: bool
   allow_unmatched_right?: bool
-  require_all_left_matched?: bool
-  require_all_right_matched?: bool
-  min_match_rate?: float
   require_unique_left?: bool
   require_unique_right?: bool
   allow_null_keys?: bool
-  max_row_increase_pct?: float
-  max_row_increase_abs?: int
   allow_row_decrease?: bool
 
 # UnnestConfig

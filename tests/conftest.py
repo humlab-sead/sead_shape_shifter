@@ -18,8 +18,6 @@ def setup_test_logging():
     logger.add(sys.stderr, level="DEBUG", format="{time} | {level} | {name}:{function}:{line} - {message}")
 
 
-
-
 class MockRow:
     """Mock psycopg.Row that can be converted to dict"""
 

@@ -36,6 +36,7 @@ async def setup_config_store(
 
     cfg.update({"runtime:config_file": config_file, "runtime:env_file": env_filename})
 
+    # FIXME: This should be done elsewhere  #  pylint: disable=fixme
     configure_logging(cfg.get("logging") or {})
 
     if db_opts_path:

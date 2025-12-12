@@ -10,16 +10,15 @@ from src.utility import Registry
 
 # pylint: disable=line-too-long, unnecessary-pass
 
+# FIXME: #5 Improve constraints checking
 
 class ForeignKeyConstraintViolation(Exception):
     """Raised when a foreign key constraint is violated."""
 
-    pass
-
 
 @dataclass
 class ValidationContext:
-    """Encapsulates all data needed for constraint validation."""
+    """Contains data needed for constraint checks."""
 
     local_df: pd.DataFrame
     remote_df: pd.DataFrame | None = None
@@ -51,6 +50,8 @@ class ConstraintValidator(ABC):
 class ValidatorRegistry(Registry):
 
     items: dict[str, type[ConstraintValidator]] = {}
+    # Secondary index: key -> sub_key -> validator class
+    _sub_key_index: dict[str, dict[str, type[ConstraintValidator]]] = {}
 
     @classmethod
     def registered_class_hook(cls, fn_or_class: Any, **args) -> Any:
@@ -60,16 +61,48 @@ class ValidatorRegistry(Registry):
                     setattr(fn_or_class, "stage", args["stage"])
             if not hasattr(fn_or_class, "is_match_validator"):
                 setattr(fn_or_class, "is_match_validator", args.get("is_match_validator", False))
+            # Store the constraint_key and sub_key for reference
+            if args.get("key"):
+                if not hasattr(fn_or_class, "constraint_key"):
+                    setattr(fn_or_class, "constraint_key", args["key"])
+            if args.get("sub_key"):
+                if not hasattr(fn_or_class, "sub_key"):
+                    setattr(fn_or_class, "sub_key", args["sub_key"])
         return fn_or_class
+
+    @classmethod
+    def register(cls, **kwargs) -> Any:
+        """Register a validator with optional sub_key for constraint value mapping."""
+        def decorator(fn_or_class: Any) -> Any:
+            # Use class name as the unique registry key
+            registry_key = fn_or_class.__name__ if hasattr(fn_or_class, "__name__") else kwargs.get("key", "unknown")
+            cls.items[registry_key] = fn_or_class
+            
+            # Build sub_key index for efficient lookup
+            constraint_key = kwargs.get("key")
+            sub_key = kwargs.get("sub_key")
+            if constraint_key and sub_key:
+                if constraint_key not in cls._sub_key_index:
+                    cls._sub_key_index[constraint_key] = {}
+                cls._sub_key_index[constraint_key][sub_key] = fn_or_class
+            
+            return cls.registered_class_hook(fn_or_class, **kwargs)
+        return decorator
 
     def get_validators_for_stage(self, stage: str) -> list[type[ConstraintValidator]]:
         """Retrieve all registered validators for a given stage."""
         return [v for v in self.items.values() if getattr(v, "stage", None) == stage]
+    
+    def get_validator_by_constraint(self, key: str, value: Any) -> type[ConstraintValidator] | None:
+        """Get a specific validator by constraint key and value (sub_key lookup)."""
+        if key in self._sub_key_index and value in self._sub_key_index[key]:
+            return self._sub_key_index[key][value]
+        return None
 
 
 Validators: ValidatorRegistry = ValidatorRegistry()  # pylint: disable=invalid-name
 
-# Pre-merge validators
+# Validators to be used BEFORE merging/linking (stage = "pre-merge")
 
 
 @Validators.register(key="allow_null_keys", stage="pre-merge")
@@ -116,10 +149,10 @@ class UniqueRightKeyValidator(ConstraintValidator):
             self.raise_if_violated(f"{duplicates} duplicate right key(s) found (require_unique_right=True)")
 
 
-# Post-merge validators
+# Validators to be used AFTER merging/linking (stage = "post-merge")
 
 
-@Validators.register(key="cardinality", stage="post-merge")
+@Validators.register(key="cardinality", sub_key="one_to_one", stage="post-merge")
 class OneToOneCardinalityValidator(ConstraintValidator):
     """Validates one-to-one cardinality (row count stays the same)."""
 
@@ -134,7 +167,7 @@ class OneToOneCardinalityValidator(ConstraintValidator):
             self.raise_if_violated(f"one_to_one cardinality violated (rows: {rows_before} -> {rows_after})")
 
 
-@Validators.register(key="cardinality", stage="post-merge")
+@Validators.register(key="cardinality", sub_key="many_to_one", stage="post-merge")
 class ManyToOneCardinalityValidator(ConstraintValidator):
     """Validates many-to-one cardinality (row count cannot increase)."""
 
@@ -149,7 +182,7 @@ class ManyToOneCardinalityValidator(ConstraintValidator):
             self.raise_if_violated(f"many_to_one cardinality violated (rows increased: {rows_before} -> {rows_after})")
 
 
-@Validators.register(key="cardinality", stage="post-merge")
+@Validators.register(key="cardinality", sub_key="one_to_many", stage="post-merge")
 class OneToManyCardinalityValidator(ConstraintValidator):
     """Validates one-to-many cardinality (row count cannot decrease)."""
 
@@ -164,44 +197,8 @@ class OneToManyCardinalityValidator(ConstraintValidator):
             self.raise_if_violated(f"one_to_many cardinality violated (rows decreased: {rows_before} -> {rows_after})")
 
 
-@Validators.register(key="max_row_increase_abs", stage="post-merge")
-class MaxRowIncreaseAbsoluteValidator(ConstraintValidator):
-    """Validates maximum absolute row increase."""
-
-    def is_applicable(self) -> bool:
-        return self.constraints.max_row_increase_abs is not None
-
-    def validate(self, context: ValidationContext) -> None:
-        assert context.linked_df is not None
-        rows_before: int = len(context.local_df)
-        rows_after: int = len(context.linked_df)
-        rows_change: int = rows_after - rows_before
-        max_increase: int | None = self.constraints.max_row_increase_abs
-        assert max_increase is not None  # Guaranteed by is_applicable
-        if rows_change > max_increase:
-            self.raise_if_violated(f"Row increase {rows_change} exceeds max_row_increase_abs={max_increase}")
-
-
-@Validators.register(key="max_row_increase_pct", stage="post-merge")
-class MaxRowIncreasePercentValidator(ConstraintValidator):
-    """Validates maximum percentage row increase."""
-
-    def is_applicable(self) -> bool:
-        return self.constraints.max_row_increase_pct is not None
-
-    def validate(self, context: ValidationContext) -> None:
-        assert context.linked_df is not None
-        rows_before: int = len(context.local_df)
-        rows_after: int = len(context.linked_df)
-        rows_change: int = rows_after - rows_before
-        pct_increase: float | Literal[0] = (rows_change / rows_before * 100) if rows_before > 0 else 0
-        max_pct: float | None = self.constraints.max_row_increase_pct
-        assert max_pct is not None  # Guaranteed by is_applicable
-        if pct_increase > max_pct:
-            self.raise_if_violated(f"Row increase {pct_increase:.1f}% exceeds max_row_increase_pct={max_pct}%")
-
-
 @Validators.register(key="allow_row_decrease", stage="post-merge")
+
 class AllowRowDecreaseValidator(ConstraintValidator):
     """Validates that row decrease is allowed if it occurs."""
 
@@ -230,22 +227,6 @@ class UnmatchedLeftValidator(ConstraintValidator):
             self.raise_if_violated(f"{left_only} unmatched left rows (allow_unmatched_left=False)")
 
 
-@Validators.register(key="require_all_left_matched", stage="post-merge-match", is_match_validator=True)
-class RequireAllLeftMatchedValidator(
-    ConstraintValidator,
-):
-    """Validates that all left rows are matched."""
-
-    def is_applicable(self) -> bool:
-        return self.constraints.require_all_left_matched
-
-    def validate(self, context: ValidationContext) -> None:
-        assert context.linked_df is not None and context.merge_indicator_col is not None
-        left_only: int = (context.linked_df[context.merge_indicator_col] == "left_only").sum()
-        if left_only > 0:
-            self.raise_if_violated(f"{left_only} unmatched left rows (require_all_left_matched=True)")
-
-
 @Validators.register(key="allow_unmatched_right", stage="post-merge-match", is_match_validator=True)
 class UnmatchedRightValidator(ConstraintValidator):
     """Validates that unmatched right rows are allowed."""
@@ -258,38 +239,6 @@ class UnmatchedRightValidator(ConstraintValidator):
         right_only: int = (context.linked_df[context.merge_indicator_col] == "right_only").sum()
         if right_only > 0:
             self.raise_if_violated(f"{right_only} unmatched right rows (allow_unmatched_right=False)")
-
-
-@Validators.register(key="require_all_right_matched", stage="post-merge-match", is_match_validator=True)
-class RequireAllRightMatchedValidator(ConstraintValidator):
-    """Validates that all right rows are matched."""
-
-    def is_applicable(self) -> bool:
-        return self.constraints.require_all_right_matched
-
-    def validate(self, context: ValidationContext) -> None:
-        assert context.linked_df is not None and context.merge_indicator_col is not None
-        right_only: int = (context.linked_df[context.merge_indicator_col] == "right_only").sum()
-        if right_only > 0:
-            self.raise_if_violated(f"{right_only} unmatched right rows (require_all_right_matched=True)")
-
-
-@Validators.register(key="min_match_rate", stage="post-merge-match", is_match_validator=True)
-class MinMatchRateValidator(ConstraintValidator):
-    """Validates minimum match rate."""
-
-    def is_applicable(self) -> bool:
-        return self.constraints.min_match_rate is not None
-
-    def validate(self, context: ValidationContext) -> None:
-        assert context.linked_df is not None and context.merge_indicator_col is not None
-        rows_before: int = len(context.local_df)
-        both: int = (context.linked_df[context.merge_indicator_col] == "both").sum()
-        match_rate: float | Literal[0] = both / rows_before if rows_before > 0 else 0
-        min_rate: float | None = self.constraints.min_match_rate
-        assert min_rate is not None  # Guaranteed by is_applicable
-        if match_rate < min_rate:
-            self.raise_if_violated(f"Match rate {match_rate:.2%} below minimum {min_rate:.2%}")
 
 
 class ForeignKeyConstraintValidator:

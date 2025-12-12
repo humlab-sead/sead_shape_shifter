@@ -1,6 +1,7 @@
 """Integration tests for append processing in the normalization pipeline."""
 
-from unittest.mock import patch
+from email.policy import default
+from unittest.mock import AsyncMock, patch
 
 import pandas as pd
 import pytest
@@ -29,6 +30,7 @@ def sample_survey_data():
 def config_with_append():
     """Create a configuration with append settings."""
     config_dict = {
+        "survey": {"source": None, "depends_on": []},
         "site": {
             "surrogate_id": "site_id",
             "keys": ["site_name"],
@@ -38,40 +40,13 @@ def config_with_append():
                 {
                     "source": None,
                     "type": "fixed",
-                    "values": [
-                        ["Default Site", 0.0, 0.0],
-                    ],
+                    "values": [["Default Site", 0.0, 0.0]],
                 }
             ],
             "append_mode": "all",
-        }
+        },
     }
     return TablesConfig(entities_cfg=config_dict, options={})
-
-
-@pytest.fixture
-def config_with_sql_append():
-    """Create a configuration with SQL append."""
-    config_dict = {
-        "site": {
-            "data_source": "test_sql_source",
-            "surrogate_id": "site_id",
-            "keys": ["site_name"],
-            "columns": ["site_name", "latitude", "longitude"],
-            "depends_on": [],
-            "append": [
-                {
-                    "data_source": "test_sql_source",
-                    "type": "sql",
-                    "query": "SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude",
-                }
-            ],
-            "append_mode": "all",
-        }
-    }
-    return TablesConfig(entities_cfg=config_dict, options={
-        'data_sources': {'test_sql_source': {}}
-    })
 
 
 @pytest.fixture
@@ -89,11 +64,7 @@ def config_with_source_append():
             "keys": ["site_name"],
             "columns": ["site_name", "country"],
             "depends_on": ["survey"],
-            "append": [
-                {
-                    "source": "survey",
-                }
-            ],
+            "append": [{"source": "survey"}],
             "append_mode": "all",
         },
     }
@@ -104,6 +75,7 @@ def config_with_source_append():
 def config_with_distinct_mode():
     """Create a configuration with distinct append mode."""
     config_dict = {
+        "survey": {"source": None, "depends_on": []},
         "site": {
             "surrogate_id": "site_id",
             "keys": ["site_name"],
@@ -119,7 +91,7 @@ def config_with_distinct_mode():
                 }
             ],
             "append_mode": "distinct",
-        }
+        },
     }
     return TablesConfig(entities_cfg=config_dict, options={})
 
@@ -129,16 +101,13 @@ class TestAppendProcessingBasic:
 
     @pytest.mark.asyncio
     @with_test_config
-    async def test_append_fixed_data(self, sample_survey_data, config_with_append, test_provider):
+    async def test_append_fixed_data(self, sample_survey_data, config_with_append, test_provider):  # pylint: disable=unused-argument
         """Test appending fixed data to an entity."""
-        normalizer = ArbodatSurveyNormalizer(sample_survey_data)
-        normalizer.config = config_with_append
-        normalizer.state = ProcessState(config=normalizer.config)
+        table_store = {"survey": sample_survey_data.copy()}
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config_with_append, table_store=table_store)
 
-        # Process all entities
         await normalizer.normalize()
 
-        # Get the result from the table store
         result = normalizer.table_store["site"]
 
         # Should have original 3 rows + 1 appended row
@@ -148,33 +117,28 @@ class TestAppendProcessingBasic:
 
     @pytest.mark.asyncio
     @with_test_config
-    async def test_append_mode_all(self, sample_survey_data, config_with_append, test_provider):
+    async def test_append_mode_all(self, sample_survey_data, config_with_append, test_provider):  # pylint: disable=unused-argument
         """Test append mode 'all' keeps duplicates."""
-        normalizer = ArbodatSurveyNormalizer(sample_survey_data)
-        normalizer.config = config_with_append
-        normalizer.state = ProcessState(config=normalizer.config)
+        table_store = {"survey": sample_survey_data.copy()}
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config_with_append, table_store=table_store)
 
-        # Process all entities
         await normalizer.normalize()
 
-        # Get the result from the table store
         result = normalizer.table_store["site"]
 
-        # With append_mode='all', all rows are kept
         assert len(result) == 4
 
     @pytest.mark.asyncio
     @with_test_config
-    async def test_append_mode_distinct(self, sample_survey_data, config_with_distinct_mode, test_provider):
+    async def test_append_mode_distinct(
+        self, sample_survey_data, config_with_distinct_mode, test_provider
+    ):  # pylint: disable=unused-argument
         """Test append mode 'distinct' removes duplicates."""
-        normalizer = ArbodatSurveyNormalizer(sample_survey_data)
-        normalizer.config = config_with_distinct_mode
-        normalizer.state = ProcessState(config=normalizer.config)
+        table_store = {"survey": sample_survey_data.copy()}
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config_with_distinct_mode, table_store=table_store)
 
-        # Process all entities
         await normalizer.normalize()
 
-        # Get the result from the table store
         result = normalizer.table_store["site"]
 
         # Should deduplicate: 3 original + 1 new (duplicate removed)
@@ -187,37 +151,49 @@ class TestAppendProcessingSQL:
 
     @pytest.mark.asyncio
     @with_test_config
-    async def test_append_sql_query(self, sample_survey_data, config_with_sql_append, test_provider):
+    async def test_append_sql_query(self, sample_survey_data, test_provider):  # pylint: disable=unused-argument
         """Test appending data from SQL query."""
-        normalizer = ArbodatSurveyNormalizer(sample_survey_data)
-        normalizer.config = config_with_sql_append
-        normalizer.state = ProcessState(config=normalizer.config)
 
-        sql_result = pd.DataFrame(
-            {
-                "site_name": ["SQL Site"],
-                "latitude": [50.0],
-                "longitude": [15.0],
-            }
+        config_with_sql_append = TablesConfig(
+            entities_cfg={
+                "survey": {
+                    "source": None,
+                    "columns": ["site_name", "latitude", "longitude", "country"],
+                    "depends_on": [],
+                },
+                "site": {
+                    "surrogate_id": "site_id",
+                    "keys": ["site_name"],
+                    "columns": ["site_name", "latitude", "longitude"],
+                    "depends_on": [],
+                    "append": [
+                        {
+                            "data_source": "test_sql_source",
+                            "type": "sql",
+                            "values": "sql: SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude",
+                        }
+                    ],
+                    "append_mode": "all",
+                },
+            },
+            options={"data_sources": {"test_sql_source": {}}},
         )
+        sub_configs = list(config_with_sql_append.get_table("site").get_sub_table_configs())
+        assert len(sub_configs) == 2  # Base + SQL append
 
-        # Mock SqlLoader to return the SQL result
-        with patch("src.normalizer.SqlLoaderFactory") as mock_factory:
-            mock_loader = mock_factory.return_value.create_loader.return_value
+        table_store = {"survey": sample_survey_data.copy()}
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config_with_sql_append, table_store=table_store)
 
-            # Make load return a coroutine so it can be awaited
-            async def async_load(*args, **kwargs):
-                return sql_result
-            
-            mock_loader.load = async_load
+        sql_result = pd.DataFrame({"site_name": ["SQL Site"], "latitude": [50.0], "longitude": [15.0], "country": ["Sweden"]})
 
-            # Process all entities
+        # Mock resolve_loader to return a mock SQL loader
+        mock_loader = AsyncMock()
+        mock_loader.load = AsyncMock(return_value=sql_result)
+
+        with patch.object(normalizer.config, "resolve_loader", side_effect=[None, mock_loader]):
+            """First config has no loader, second uses mock_loader."""
             await normalizer.normalize()
-
-            # Get the result from the table store
-            result = normalizer.table_store["site"]
-
-            # Should have original 3 rows + 1 SQL row
+            result: pd.DataFrame = normalizer.table_store["site"]
             assert len(result) == 4
             assert "SQL Site" in result["site_name"].values
 
@@ -227,42 +203,34 @@ class TestAppendProcessingMultiple:
 
     @pytest.mark.asyncio
     @with_test_config
-    async def test_multiple_append_items(self, sample_survey_data, test_provider):
+    async def test_multiple_append_items(self, sample_survey_data, test_provider):  # pylint: disable=unused-argument
         """Test appending from multiple sources."""
         config_dict = {
+            "survey": {
+                "source": None,
+                "columns": ["site_name", "latitude", "longitude", "country"],
+                "depends_on": [],
+            },
             "site": {
                 "surrogate_id": "site_id",
                 "keys": ["site_name"],
                 "columns": ["site_name", "latitude", "longitude"],
                 "depends_on": [],
                 "append": [
-                    {
-                        "type": "fixed",
-                        "values": [
-                            ["Fixed 1", 10.0, 20.0],
-                        ],
-                    },
-                    {
-                        "type": "fixed",
-                        "values": [
-                            ["Fixed 2", 30.0, 40.0],
-                        ],
-                    },
+                    {"type": "fixed", "values": [["Fixed 1", 10.0, 20.0]]},
+                    {"type": "fixed", "values": [["Fixed 2", 30.0, 40.0]]},
                 ],
                 "append_mode": "all",
-            }
+            },
         }
 
         config = TablesConfig(entities_cfg=config_dict, options={})
-        normalizer = ArbodatSurveyNormalizer(sample_survey_data)
-        normalizer.config = config
-        normalizer.state = ProcessState(config=normalizer.config)
+        table_store: dict[str, pd.DataFrame] = {"survey": sample_survey_data}
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config, table_store=table_store)
 
-        # Process all entities
         await normalizer.normalize()
 
-        # Get the result from the table store
-        result = normalizer.table_store["site"]
+        result: pd.DataFrame = normalizer.table_store["site"]
 
         # Should have original 3 rows + 2 appended rows
         assert len(result) == 5
@@ -279,33 +247,25 @@ class TestAppendProcessingEdgeCases:
         """Test append when main entity returns no data."""
         config_dict = {
             "site": {
+                "source": None,
+                "type": "fixed",
                 "surrogate_id": "site_id",
                 "keys": ["site_name"],
                 "columns": ["site_name", "latitude"],
+                "values": [],
                 "depends_on": [],
-                "append": [
-                    {
-                        "type": "fixed",
-                        "values": [
-                            ["Only Site", 50.0],
-                        ],
-                    }
-                ],
+                "append": [{"type": "fixed", "values": [["Only Site", 50.0]]}],
                 "append_mode": "all",
             }
         }
 
         config = TablesConfig(entities_cfg=config_dict, options={})
         empty_data = pd.DataFrame(columns=["site_name", "latitude"])
-        normalizer = ArbodatSurveyNormalizer(empty_data)
-        normalizer.config = config
-        normalizer.state = ProcessState(config=normalizer.config)
-        normalizer.state = ProcessState(config=normalizer.config)
+        table_store = {}
+        normalizer = ArbodatSurveyNormalizer(config=config, table_store=table_store)
 
-        # Process all entities
         await normalizer.normalize()
 
-        # Get the result from the table store
         result = normalizer.table_store["site"]
 
         # Should only have the appended row
@@ -314,9 +274,13 @@ class TestAppendProcessingEdgeCases:
 
     @pytest.mark.asyncio
     @with_test_config
-    async def test_append_preserves_columns(self, sample_survey_data, test_provider):
+    async def test_append_preserves_columns(self, sample_survey_data, test_provider):  # pylint: disable=unused-argument
         """Test that append preserves all configured columns."""
         config_dict = {
+            "survey": {
+                "source": None,
+                "depends_on": [],
+            },
             "site": {
                 "surrogate_id": "site_id",
                 "keys": ["site_name"],
@@ -331,18 +295,15 @@ class TestAppendProcessingEdgeCases:
                     }
                 ],
                 "append_mode": "all",
-            }
+            },
         }
 
         config = TablesConfig(entities_cfg=config_dict, options={})
-        normalizer = ArbodatSurveyNormalizer(sample_survey_data)
-        normalizer.config = config
-        normalizer.state = ProcessState(config=normalizer.config)
+        table_store = {"survey": sample_survey_data}
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config, table_store=table_store)
 
-        # Process all entities
         await normalizer.normalize()
 
-        # Get the result from the table store
         result = normalizer.table_store["site"]
 
         # Check all columns are present

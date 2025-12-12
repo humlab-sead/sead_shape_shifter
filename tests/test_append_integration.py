@@ -26,6 +26,10 @@ class TestAppendIntegration:
 
         # Create configuration with append
         entities_cfg = {
+            "survey": {
+                "keys": ["id"],
+                "columns": ["id", "name", "value"],
+            },
             "test_entity": {
                 "keys": ["id"],
                 "surrogate_id": "test_id",
@@ -43,11 +47,11 @@ class TestAppendIntegration:
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
-        normalizer.table_store = {"survey": survey_df}
-        normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
-        normalizer.state = ProcessState(config=normalizer.config)
-
+        normalizer: ArbodatSurveyNormalizer = ArbodatSurveyNormalizer(
+            table_store={"survey": survey_df},
+            config=TablesConfig(entities_cfg=entities_cfg, options={}),
+            default_entity="survey",
+        )
         # Run normalization
         await normalizer.normalize()
 
@@ -73,6 +77,10 @@ class TestAppendIntegration:
 
         # Create configuration
         entities_cfg = {
+            "survey": {
+                "keys": ["id"],
+                "columns": ["id", "name", "category"],
+            },
             "source_entity": {
                 "keys": ["id"],
                 "surrogate_id": "source_id",
@@ -95,9 +103,10 @@ class TestAppendIntegration:
         # Initialize normalizer directly without ConfigStore
 
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
+        normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
-        normalizer.state = ProcessState(config=normalizer.config)
+        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, default_entity="survey")
 
         # Run normalization
         await normalizer.normalize()
@@ -122,6 +131,10 @@ class TestAppendIntegration:
 
         # Create configuration with append and distinct mode
         entities_cfg = {
+            "survey": {
+                "keys": ["id"],
+                "columns": ["id", "name"],
+            },
             "test_entity": {
                 "keys": ["id"],
                 "surrogate_id": "test_id",
@@ -141,9 +154,10 @@ class TestAppendIntegration:
         # Initialize normalizer directly without ConfigStore
 
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
+        normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
-        normalizer.state = ProcessState(config=normalizer.config)
+        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, default_entity="survey")
 
         # Run normalization
         await normalizer.normalize()
@@ -168,6 +182,10 @@ class TestAppendIntegration:
 
         # Create configuration with append and all mode (default)
         entities_cfg = {
+            "survey": {
+                "keys": ["id"],
+                "columns": ["id", "name"],
+            },
             "test_entity": {
                 "keys": ["id"],
                 "surrogate_id": "test_id",
@@ -186,9 +204,10 @@ class TestAppendIntegration:
         # Initialize normalizer directly without ConfigStore
 
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
+        normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
-        normalizer.state = ProcessState(config=normalizer.config)
+        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, default_entity="survey")
 
         # Run normalization
         await normalizer.normalize()
@@ -212,6 +231,10 @@ class TestAppendIntegration:
 
         # Create configuration with multiple append sources
         entities_cfg = {
+            "survey": {
+                "keys": ["id"],
+                "columns": ["id", "name"],
+            },
             "test_entity": {
                 "keys": ["id"],
                 "surrogate_id": "test_id",
@@ -239,9 +262,10 @@ class TestAppendIntegration:
         # Initialize normalizer directly without ConfigStore
 
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
+        normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
-        normalizer.state = ProcessState(config=normalizer.config)
+        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, default_entity="survey")
 
         # Run normalization
         await normalizer.normalize()

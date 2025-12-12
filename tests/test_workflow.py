@@ -66,10 +66,7 @@ def test_workflow_using_survey_report_to_csv():
 
     _ = asyncio.run(
         workflow(
-            input_csv="./input/arbodat_mal_elena_input.csv",
             target=output_path,
-            sep=";",
-            verbose=True,
             translate=translate,
             mode="csv",
             drop_foreign_keys=False,
@@ -121,10 +118,7 @@ def test_access_database_csv_workflow():
 
     _ = asyncio.run(
         workflow(
-            input_csv="./input/arbodat_mal_elena_input.csv",
             target=output_path,
-            sep=";",
-            verbose=True,
             translate=translate,
             mode="csv",
             drop_foreign_keys=False,
@@ -143,7 +137,7 @@ def test_access_database_csv_workflow():
     truth_shapes: dict[str, tuple[int, int]] = load_shape_file(filename="./input/table_shapes.tsv")
     new_shapes: dict[str, tuple[int, int]] = load_shape_file(filename=os.path.join(output_path, "table_shapes.tsv"))
 
-    entities_with_different_shapes = [
+    entities_with_different_shapes = [  # pylint: disable=unused-variable
         (entity, truth_shapes.get(entity), new_shapes.get(entity))
         for entity in set(truth_shapes.keys()).union(set(new_shapes.keys()))
         if truth_shapes.get(entity) != new_shapes.get(entity)
