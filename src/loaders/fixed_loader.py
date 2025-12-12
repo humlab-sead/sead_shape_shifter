@@ -1,23 +1,27 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from src.config_model import TableConfig
 from src.extract import add_surrogate_id
 
-from .interface import DataLoader
+from .base_loader import DataLoader, DataLoaders
+
+if TYPE_CHECKING:
+    from src.config_model import TableConfig
+    from .base_loader import DataLoaderRegistry
 
 
+@DataLoaders.register(key="fixed")
 class FixedLoader(DataLoader):
     """Loader for fixed data entities."""
 
-    async def load(self, entity_name: str, table_cfg: TableConfig) -> pd.DataFrame:
+    async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         """Create a fixed data entity based on configuration."""
 
-        if not table_cfg.is_fixed_data:
+        if not table_cfg.type == "fixed":
             raise ValueError(f"Entity '{entity_name}' is not configured as fixed data")
 
-        if not table_cfg.values:
+        if table_cfg.values is None:
             raise ValueError(f"Fixed data entity '{entity_name}' has no values defined")
 
         data: pd.DataFrame
@@ -47,10 +51,11 @@ class FixedLoader(DataLoader):
         return data
 
 
+@DataLoaders.register(key="fixed2")
 class FixedLoader2(DataLoader):
     """Loader for fixed data entities."""
 
-    def _resolve_column_names(self, table_cfg: TableConfig) -> list[str]:
+    def _resolve_column_names(self, table_cfg: "TableConfig") -> list[str]:
         """Determine the column names for the fixed data entity."""
         if isinstance(table_cfg.columns, list):
             return table_cfg.columns
@@ -76,10 +81,10 @@ class FixedLoader2(DataLoader):
             raise ValueError("For multiple columns, values must be provided as a dict mapping column names to lists")
         raise ValueError("Values must be either a dict or a list")
 
-    async def load(self, entity_name: str, table_cfg: TableConfig) -> pd.DataFrame:
+    async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         """Create a fixed data entity based on configuration."""
 
-        if not table_cfg.is_fixed_data:
+        if not table_cfg.type == "fixed":
             raise ValueError(f"Entity '{entity_name}' is not configured as fixed data")
 
         if not table_cfg.values:

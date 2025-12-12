@@ -1,70 +1,22 @@
-from cProfile import label
 from collections.abc import Sequence
 from typing import Any
+
 import pandas as pd
 import pyproj
 
 from . import Transformer, Transformers
 
-ETRS89_UTM_BY_ZONE: dict[int, str] = {
-    29: "EPSG:25829",
-    30: "EPSG:25830",
-    31: "EPSG:25831",
-    32: "EPSG:25832",
-    33: "EPSG:25833",
-    34: "EPSG:25834",
-}
 
-CRS_BY_NAME: dict[str, str] = {
-    # DHDN Gauß-Krüger
-    "DHDN Gauss-Krüger Zone 2": "EPSG:31466",
-    "DHDN Gauss-Krüger Zone 3": "EPSG:31467",
-    "DHDN Gauss-Krüger Zone 4": "EPSG:31468",
-    "DHDN Gauss-Krüger Zone 5": "EPSG:31469",
-    # NTF / Lambert
-    "NTF/Lambert I": "EPSG:27571",
-    "NTF/Lambert II": "EPSG:27572",
-    "NTF/Lambert II étendu": "EPSG:27572",  # adjust if you know a more specific code
-    "NTF/Lambert III": "EPSG:27573",
-    "NTF/Lambert IV": "EPSG:27574",
-    # France – RGF93
-    "RGF93 Lambert 93": "EPSG:2154",
-    # Swiss
-    "CH1903/Swiss grid": "EPSG:21781",
-    # Austria – MGI
-    "MGI/Austria Gauss-Krüger West": "EPSG:31254",
-    "MGI/Austria Gauss-Krüger Central": "EPSG:31255",
-    "MGI/Austria Gauss-Krüger East": "EPSG:31256",
-    # Already WGS84 geographic
-    "Geografische Länge/Breite (dezimal)": "EPSG:4326",
-}
-
-
-def get_crs_from_label(label: str) -> str:
-    label = label.strip()
-
-    # ETRS89 / UTM (various bands)
-    if label.startswith("ETRS 89 / UTM"):
-        # e.g. "ETRS 89 / UTM 30U" -> 30
-        part = label.split()[-1]  # "30U"
-        zone = int(part[:-1])  # strip latitude band letter
-        return ETRS89_UTM_BY_ZONE[zone]
-
-    # direct lookup
-    if label in CRS_BY_NAME:
-        return CRS_BY_NAME[label]
-
-    raise ValueError(f"Unknown / unmapped CRS label: {label!r}")
-
-
-def to_wgs84(src_crs: str| pd.Series, x: float| pd.Series, y: float| pd.Series) -> tuple[float| pd.Series, float| pd.Series]:
+def to_wgs84(src_crs: str | pd.Series, x: float | pd.Series, y: float | pd.Series) -> tuple[float | pd.Series, float | pd.Series]:
     """
     Transform a single (x, y) from the given coordinate system to WGS84 lon/lat.
     """
     return to_crs(src_crs, "EPSG:4326", x, y)
 
 
-def to_crs(src_crs: str| pd.Series, dst_crs: str, x: float | pd.Series, y: float | pd.Series) -> tuple[float | pd.Series, float | pd.Series]:
+def to_crs(
+    src_crs: str | pd.Series, dst_crs: str, x: float | pd.Series, y: float | pd.Series
+) -> tuple[float | pd.Series, float | pd.Series]:
     """
     Transform a single (x, y) from the given src system to the given dst system.
     """
@@ -160,7 +112,6 @@ class TransformSplitLatLong(Transformer):
         return df
 
 
-
 @Transformers.register(key="geo_convert_crs")
 class ConvertCRS(Transformer):
     """
@@ -204,10 +155,12 @@ class ConvertCRS(Transformer):
 
         if not isinstance(columns, (list, tuple)) or len(columns) != 2:
             raise ValueError("Transform 'geo_convert_crs' requires exactly two column names: x and y")
-        
+
         df: pd.DataFrame = data.copy()
         lon_source_column, lat_source_column = columns
-        resolved_src_crs: pd.Series[str]| str = df[src_crs_label_column] if src_crs_label_column and src_crs_label_column in df.columns else src_crs
+        resolved_src_crs: pd.Series[str] | str = (
+            df[src_crs_label_column] if src_crs_label_column and src_crs_label_column in df.columns else src_crs
+        )
 
         lon_new, lat_new = to_crs(resolved_src_crs, dst_crs, df[lon_source_column], df[lat_source_column])
 

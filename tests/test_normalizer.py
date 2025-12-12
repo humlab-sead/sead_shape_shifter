@@ -1,7 +1,7 @@
 """Unit tests for arbodat normalizer classes."""
 
 import asyncio
-from pathlib import Path
+from unittest import mock
 from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
@@ -26,25 +26,42 @@ def setup_config():
     )
 
 
+def mock_table_config(depends_on: set[str] | None = None) -> Mock:
+    """Helper to create a mock TableConfig with specified dependencies."""
+    mock_table = Mock()
+    mock_table.depends_on = depends_on if depends_on is not None else set()
+    mock_table.foreign_keys = set()
+    mock_table._data = {}
+    return mock_table
+
+
 class TestProcessState:
     """Tests for ProcessState class."""
 
     def test_initialization(self):
         """Test ProcessState initialization."""
-        config = TablesConfig()
-        # Mock the config to have some table names
-        config.table_names = ["site", "sample", "taxa"]
+        config = TablesConfig(
+            entities_cfg={
+                "site": {'depends_on': []},
+                "sample": {'depends_on': []},
+                "taxa": {'depends_on': []},
+            },
+        )
 
-        state = ProcessState(config=config)
+        state = ProcessState(config=config, table_store={})
 
         assert state.config == config
-        assert state.unprocessed == {"site", "sample", "taxa"}
+        assert state.unprocessed_entities == {"site", "sample", "taxa"}
         assert state.processed_entities == set()
 
     def test_get_next_entity_no_dependencies(self):
         """Test getting next entity when no dependencies exist."""
-        config = TablesConfig()
-        config.table_names = ["site", "sample"]
+        config = TablesConfig(
+            entities_cfg={
+                "site": {'depends_on': []},
+                "sample": {'depends_on': []},
+            },
+        )
 
         # Mock table configs with no dependencies
         with patch.object(config, "get_table") as mock_get_table:
@@ -52,131 +69,121 @@ class TestProcessState:
             mock_table.depends_on = set()
             mock_get_table.return_value = mock_table
 
-            state = ProcessState(config=config)
+            state = ProcessState(config=config, table_store={})
             next_entity = state.get_next_entity_to_process()
 
             assert next_entity in ["site", "sample"]
 
     def test_get_next_entity_with_dependencies(self):
         """Test getting next entity respecting dependencies."""
-        config = TablesConfig()
-        config.table_names = ["site", "sample"]
+        config = TablesConfig(
+            entities_cfg={
+                "site": {'depends_on': []},
+                "sample": {'depends_on': ["site"]},
+            },
+        )
 
-        def mock_get_table(entity_name):
-            mock_table = Mock()
-            if entity_name == "sample":
-                mock_table.depends_on = {"site"}
-            else:
-                mock_table.depends_on = set()
-            return mock_table
+        state = ProcessState(config=config, table_store={})
 
-        with patch.object(config, "get_table", side_effect=mock_get_table):
-            state = ProcessState(config=config)
+        # First entity should be 'site' since 'sample' depends on it
+        next_entity = state.get_next_entity_to_process()
+        assert next_entity == "site"
 
-            # First entity should be 'site' since 'sample' depends on it
-            next_entity = state.get_next_entity_to_process()
-            assert next_entity == "site"
+        # Mark site as processed
+        state.table_store["site"] = Mock()
 
-            # Mark site as processed
-            state.discard("site")
-
-            # Now 'sample' should be available
-            next_entity = state.get_next_entity_to_process()
-            assert next_entity == "sample"
+        # Now 'sample' should be available
+        next_entity = state.get_next_entity_to_process()
+        assert next_entity == "sample"
 
     def test_get_next_entity_all_processed(self):
         """Test getting next entity when all are processed."""
-        config = TablesConfig()
-        config.table_names = ["site"]
+        config = TablesConfig(
+            entities_cfg={
+                "site": {'depends_on': []},
+            },
+        )
 
-        with patch.object(config, "get_table") as mock_get_table:
-            mock_table = Mock()
-            mock_table.depends_on = set()
-            mock_get_table.return_value = mock_table
+        state = ProcessState(config=config, table_store={})
+        state.table_store["site"] = Mock()
 
-            state = ProcessState(config=config)
-            state.discard("site")
-
-            next_entity = state.get_next_entity_to_process()
-            assert next_entity is None
+        next_entity: str | None = state.get_next_entity_to_process()
+        assert next_entity is None
 
     def test_get_unmet_dependencies(self):
         """Test getting unmet dependencies for an entity."""
-        config = TablesConfig()
-        config.table_names = ["site", "sample", "taxa"]
+        config = TablesConfig(
+            entities_cfg={
+                "site": {'depends_on': []},
+                "sample": {'depends_on': ["site", "taxa"]},
+                "taxa": {'depends_on': []}
+            },
+        )
 
-        def mock_get_table(entity_name):
-            mock_table = Mock()
-            if entity_name == "sample":
-                mock_table.depends_on = {"site", "taxa"}
-            else:
-                mock_table.depends_on = set()
-            return mock_table
+        state = ProcessState(config=config, table_store={})
 
-        with patch.object(config, "get_table", side_effect=mock_get_table):
-            state = ProcessState(config=config)
+        unmet = state.get_unmet_dependencies("sample")
+        assert unmet == {"site", "taxa"}
 
-            unmet = state.get_unmet_dependencies("sample")
-            assert unmet == {"site", "taxa"}
+        state.table_store["site"] = Mock()
 
-            # Mark site as processed
-            state.discard("site")
-
-            unmet = state.get_unmet_dependencies("sample")
-            assert unmet == {"taxa"}
+        unmet = state.get_unmet_dependencies("sample")
+        assert unmet == {"taxa"}
 
     def test_discard(self):
         """Test discarding (marking as processed) an entity."""
-        config = TablesConfig()
-        config.table_names = ["site", "sample"]
-
-        state = ProcessState(config=config)
-        assert "site" in state.unprocessed
+        config = TablesConfig(
+            entities_cfg={
+                "site": {'depends_on': []},
+                "sample": {'depends_on': ["site", "taxa"]},
+            },
+        )
+        state = ProcessState(config=config, table_store={})
+        assert "site" in state.unprocessed_entities
         assert "site" not in state.processed_entities
 
-        state.discard("site")
+        state.table_store["site"] = Mock()
 
-        assert "site" not in state.unprocessed
+        assert "site" not in state.unprocessed_entities
         assert "site" in state.processed_entities
 
     def test_get_all_unmet_dependencies(self):
         """Test getting all unmet dependencies."""
-        config = TablesConfig()
-        config.table_names = ["site", "sample", "feature"]
+        config = TablesConfig(
+            entities_cfg={
+                "site": {'depends_on': []},
+                "sample": {'depends_on': ["site"]},
+                "feature": {'depends_on': ["site", "sample"]},
+            },
+        )
 
-        def mock_get_table(entity_name):
-            mock_table = Mock()
-            if entity_name == "sample":
-                mock_table.depends_on = {"site"}
-            elif entity_name == "feature":
-                mock_table.depends_on = {"site", "sample"}
-            else:
-                mock_table.depends_on = set()
-            return mock_table
+        state = ProcessState(config=config, table_store={})
 
-        with patch.object(config, "get_table", side_effect=mock_get_table):
-            state = ProcessState(config=config)
+        all_unmet = state.get_all_unmet_dependencies()
 
-            all_unmet = state.get_all_unmet_dependencies()
-
-            assert "sample" in all_unmet
-            assert all_unmet["sample"] == {"site"}
-            assert "feature" in all_unmet
-            assert all_unmet["feature"] == {"site", "sample"}
-            assert "site" not in all_unmet  # Has no dependencies
+        assert "sample" in all_unmet
+        assert all_unmet["sample"] == {"site"}
+        assert "feature" in all_unmet
+        assert all_unmet["feature"] == {"site", "sample"}
+        assert "site" not in all_unmet  # Has no dependencies
 
     def test_processed_entities_property(self):
         """Test the processed_entities property."""
-        config = TablesConfig()
-        config.table_names = ["site", "sample", "taxa"]
+        config = TablesConfig(
+            entities_cfg={
+                "site": {'depends_on': []},
+                "sample": {'depends_on': []},
+                "taxa": {'depends_on': []},
+            },
+        )
 
-        state = ProcessState(config=config)
+        state = ProcessState(config=config, table_store={})
         assert state.processed_entities == set()
 
-        state.discard("site")
+        state.table_store["site"] = Mock()
         assert state.processed_entities == {"site"}
 
-        state.discard("sample")
+        state.table_store["sample"] = Mock()
         assert state.processed_entities == {"site", "sample"}
 
 
@@ -187,7 +194,8 @@ class TestArbodatSurveyNormalizer:
         """Test ArbodatSurveyNormalizer initialization."""
         df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer.table_store = {"survey": df}
 
         assert "survey" in normalizer.table_store
         pd.testing.assert_frame_equal(normalizer.table_store["survey"], df)
@@ -197,24 +205,34 @@ class TestArbodatSurveyNormalizer:
     def test_survey_property(self):
         """Test the survey property."""
         df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer.table_store = {"survey": df}
 
-        pd.testing.assert_frame_equal(normalizer.survey, df)
+        pd.testing.assert_frame_equal(normalizer.table_store["survey"], df)
 
     @pytest.mark.asyncio
     async def test_resolve_source_from_survey(self):
         """Test resolving source from survey DataFrame."""
-        df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        survey_df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
+
+        config = TablesConfig(
+            entities_cfg={
+                "site": {'depends_on': []},
+                "sample": {'depends_on': []},
+                "taxa": {'depends_on': []},
+            },
+        )
+
+        normalizer = ArbodatSurveyNormalizer(config=config, table_store={"survey": survey_df}, default_entity="survey")
 
         table_cfg = Mock()
-        table_cfg.is_fixed_data = False
-        table_cfg.is_sql_data = False
+        table_cfg.type = None
         table_cfg.source = None
+        table_cfg.data_source = None
 
-        result = await normalizer.resolve_source(table_cfg)
+        result: pd.DataFrame = await normalizer.resolve_source(table_cfg)
 
-        pd.testing.assert_frame_equal(result, df)
+        pd.testing.assert_frame_equal(result, survey_df)
 
     @pytest.mark.asyncio
     async def test_resolve_source_from_stored_data(self):
@@ -222,15 +240,14 @@ class TestArbodatSurveyNormalizer:
         df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_name": ["A", "B"]})
 
-        normalizer = ArbodatSurveyNormalizer(df)
-        normalizer.table_store["site"] = site_df
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store = {"survey": df, "site": site_df})
 
         table_cfg = Mock()
-        table_cfg.is_fixed_data = False
-        table_cfg.is_sql_data = False
+        table_cfg.type = None
+        table_cfg.data_source = None
         table_cfg.source = "site"
 
-        result = await normalizer.resolve_source(table_cfg)
+        result: pd.DataFrame = await normalizer.resolve_source(table_cfg)
 
         pd.testing.assert_frame_equal(result, site_df)
 
@@ -238,34 +255,34 @@ class TestArbodatSurveyNormalizer:
     async def test_resolve_source_not_found(self):
         """Test resolving source that doesn't exist."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store={"survey": df})
 
         table_cfg = Mock()
-        table_cfg.is_fixed_data = False
-        table_cfg.is_sql_data = False
+        table_cfg.type = None
+        table_cfg.data_source = None
         table_cfg.source = "nonexistent"
 
-        with pytest.raises(ValueError, match="Source table 'nonexistent' not found"):
+        with pytest.raises(ValueError, match="Unable to resolve source for entity"):
             await normalizer.resolve_source(table_cfg)
 
     @pytest.mark.asyncio
     async def test_resolve_source_fixed_data(self):
         """Test resolving fixed data source."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store={"survey": df})
 
         table_cfg = Mock()
-        table_cfg.is_fixed_data = True
-        table_cfg.is_sql_data = False
+        table_cfg.type = "fixed"
+        table_cfg.data_source = None
+        table_cfg.source = None
         table_cfg.entity_name = "test_entity"
 
         fixed_df = pd.DataFrame({"fixed": [1, 2, 3]})
 
-        with patch("src.normalizer.FixedLoader") as mock_loader_class:
-            mock_loader = Mock()
-            mock_loader.load = AsyncMock(return_value=fixed_df)
-            mock_loader_class.return_value = mock_loader
+        mock_loader = Mock()
+        mock_loader.load = AsyncMock(return_value=fixed_df)
 
+        with patch.object(normalizer.config, "resolve_loader", return_value=mock_loader):
             result = await normalizer.resolve_source(table_cfg)
 
             pd.testing.assert_frame_equal(result, fixed_df)
@@ -275,26 +292,19 @@ class TestArbodatSurveyNormalizer:
     async def test_resolve_source_sql_data(self):
         """Test resolving SQL data source."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
-        normalizer.config.data_sources = {
-            "test_data_source": {
-                "driver": "postgres",
-                "options": {"host": "localhost", "port": 5432, "user": "test_user", "dbname": "test_db"},
-            }
-        }
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store = {"survey": df})
+
         table_cfg = Mock()
-        table_cfg.is_fixed_data = False
-        table_cfg.is_sql_data = True
+        table_cfg.type = "sql"
         table_cfg.data_source = "test_data_source"
         table_cfg.entity_name = "test_sql_entity"
 
         sql_df = pd.DataFrame({"sql_col": ["a", "b", "c"]})
 
-        with patch("src.loaders.database_loaders.PostgresSqlLoader") as mock_loader_class:
-            mock_loader = Mock()
-            mock_loader.load = AsyncMock(return_value=sql_df)
-            mock_loader_class.return_value = mock_loader
+        mock_loader = Mock()
+        mock_loader.load = AsyncMock(return_value=sql_df)
 
+        with patch.object(normalizer.config, "resolve_loader", return_value=mock_loader):
             result: pd.DataFrame = await normalizer.resolve_source(table_cfg=table_cfg)
 
             pd.testing.assert_frame_equal(result, sql_df)
@@ -303,7 +313,8 @@ class TestArbodatSurveyNormalizer:
     def test_register(self):
         """Test registering a DataFrame."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer.table_store = {"survey": df}
 
         new_df = pd.DataFrame({"site_name": ["A", "B"]})
         result = normalizer.register("site", new_df)
@@ -312,33 +323,11 @@ class TestArbodatSurveyNormalizer:
         pd.testing.assert_frame_equal(normalizer.table_store["site"], new_df)
         pd.testing.assert_frame_equal(result, new_df)
 
-    def test_load_from_file(self, tmp_path):
-        """Test loading from CSV file."""
-        # Create a test CSV file
-        csv_file = tmp_path / "test.csv"
-        df = pd.DataFrame({"col1": ["a", "b"], "col2": ["c", "d"]})
-        df.to_csv(csv_file, sep="\t", index=False)
-
-        normalizer = ArbodatSurveyNormalizer.load(csv_file, sep="\t")
-
-        assert "survey" in normalizer.table_store
-        assert list(normalizer.survey.columns) == ["col1", "col2"]
-        assert len(normalizer.survey) == 2
-
-    def test_load_from_path_object(self, tmp_path):
-        """Test loading from Path object."""
-        csv_file = tmp_path / "test.csv"
-        df = pd.DataFrame({"col1": ["a", "b"], "col2": ["c", "d"]})
-        df.to_csv(csv_file, sep=";", index=False)
-
-        normalizer = ArbodatSurveyNormalizer.load(Path(csv_file), sep=";")
-
-        assert len(normalizer.survey) == 2
-
     def test_translate(self):
         """Test translating column names."""
         df = pd.DataFrame({"Ort": ["Berlin"], "Datum": ["2020-01-01"]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer.table_store = {"survey": df}
         normalizer.table_store["site"] = pd.DataFrame({"Ort": ["Munich"]})
 
         translations_map = {"Ort": "location", "Datum": "date"}
@@ -361,7 +350,8 @@ class TestArbodatSurveyNormalizer:
     def test_drop_foreign_key_columns(self):
         """Test dropping foreign key columns."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer.table_store = {"survey": df}
 
         # Add a table with FK columns
         site_df = pd.DataFrame({"site_id": [1, 2], "location_id": [10, 20], "name": ["A", "B"]})
@@ -381,10 +371,9 @@ class TestArbodatSurveyNormalizer:
     def test_add_system_id_columns(self):
         """Test adding system_id columns."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
-
         site_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
-        normalizer.table_store["site"] = site_df
+        table_store: dict[str, pd.DataFrame] = {"survey": df, "site": site_df}
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store=table_store)
 
         # Mock config
         mock_table_cfg = Mock()
@@ -400,11 +389,11 @@ class TestArbodatSurveyNormalizer:
 
     def test_move_keys_to_front(self):
         """Test moving key columns to front."""
-        df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
-
+        survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"name": ["A", "B"], "site_id": [1, 2], "location": ["X", "Y"]})
-        normalizer.table_store["site"] = site_df
+
+        table_store: dict[str, pd.DataFrame] = {"survey": survey_df, "site": site_df}
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store=table_store)
 
         # Mock config to reorder columns
         reordered_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"], "location": ["X", "Y"]})
@@ -418,11 +407,10 @@ class TestArbodatSurveyNormalizer:
 
     def test_unnest_entity(self):
         """Test unnesting a single entity."""
-        survey = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(survey)
-
+        survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_id": [1], "Ort": ["Berlin"], "Kreis": ["Mitte"]})
-        normalizer.table_store["site"] = site_df
+        table_store: dict[str, pd.DataFrame] = {"survey": survey_df, "site": site_df}
+        normalizer = ArbodatSurveyNormalizer(table_store=table_store, default_entity="survey")
 
         mock_table_cfg = Mock()
         mock_table_cfg.unnest = True
@@ -440,7 +428,8 @@ class TestArbodatSurveyNormalizer:
     def test_unnest_entity_no_unnest_config(self):
         """Test unnesting when no unnest configuration exists."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer.table_store = {"survey": df}
 
         site_df = pd.DataFrame({"site_id": [1], "name": ["A"]})
         normalizer.table_store["site"] = site_df
@@ -457,7 +446,8 @@ class TestArbodatSurveyNormalizer:
     def test_store_xlsx(self):
         """Test storing data as XLSX."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer.table_store = {"survey": df}
 
         mock_dispatcher = Mock()
         mock_dispatcher.dispatch = Mock()
@@ -470,7 +460,8 @@ class TestArbodatSurveyNormalizer:
     def test_store_csv(self):
         """Test storing data as CSV."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer.table_store = {"survey": df}
 
         mock_dispatcher = Mock()
         mock_dispatcher.dispatch = Mock()
@@ -483,7 +474,8 @@ class TestArbodatSurveyNormalizer:
     def test_store_unsupported_mode(self):
         """Test storing with unsupported mode."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer.table_store = {"survey": df}
 
         with patch("src.normalizer.Dispatchers.get", return_value=None):
             with pytest.raises(ValueError, match="Unsupported dispatch mode: invalid"):
@@ -491,29 +483,34 @@ class TestArbodatSurveyNormalizer:
 
     def test_link_calls_link_entity(self):
         """Test that link() calls link_entity for all processed entities."""
-        df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
-
-        # Modify the state to simulate processed entities
-        # processed_entities is computed as (table_names - unprocessed)
-        # So we need to clear unprocessed and set table_names
-        normalizer.state.config.table_names = ["site", "sample"]
-        normalizer.state.unprocessed = set()  # Everything processed
+        survey_df = pd.DataFrame({"col1": [1, 2]})
+        site_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
+        sample_df = pd.DataFrame({"sample_id": [1, 2], "type": ["X", "Y"]})
+        table_store: dict[str, pd.DataFrame] = {"survey": survey_df, "site": site_df, "sample": sample_df}
+        config = TablesConfig(
+            entities_cfg={
+                "survey": {'depends_on': []},
+                "site": {'depends_on': []},
+                "sample": {'depends_on': []},
+            },
+        )
+        normalizer = ArbodatSurveyNormalizer(config=config, table_store=table_store, default_entity="survey")
 
         with patch("src.normalizer.link_entity") as mock_link:
             normalizer.link()
 
-            # Should be called for each processed entity
-            assert mock_link.call_count == 2
+            # Should be called for each processed entity (survey, site, and sample)
+            assert mock_link.call_count == 3
             call_args_list = [call[1] for call in mock_link.call_args_list]
             entity_names = [args["entity_name"] for args in call_args_list]
-            assert set(entity_names) == {"site", "sample"}
+            assert set(entity_names) == {"survey", "site", "sample"}
 
     @pytest.mark.asyncio
     async def test_normalize_with_circular_dependency(self):
         """Test that normalize raises error for circular dependencies."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer.table_store = {"survey": df}
 
         normalizer.config.table_names = ["site", "sample"]
 
@@ -533,7 +530,8 @@ class TestArbodatSurveyNormalizer:
     def test_unnest_all(self):
         """Test unnesting all entities."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(df)
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer.table_store = {"survey": df}
 
         site_df = pd.DataFrame({"site_id": [1], "Ort": ["Berlin"]})
         sample_df = pd.DataFrame({"sample_id": [1], "Type": ["Soil"]})

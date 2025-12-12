@@ -10,13 +10,12 @@ from typing import Any, Literal
 import pandas as pd
 from loguru import logger
 
-from src.config_model import DataSourceConfig, TableConfig, TablesConfig
+from src.config_model import TableConfig, TablesConfig
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
 from src.filter import apply_filters
 from src.link import link_entity
-from src.loaders.database_loaders import SqlLoader, SqlLoaderFactory
-from src.loaders.fixed_loader import FixedLoader
+from src.loaders import DataLoader
 from src.mapping import LinkToRemoteService
 from src.unnest import unnest
 
@@ -24,16 +23,18 @@ from src.unnest import unnest
 class ProcessState:
     """Helper class to track processing state of entities during normalization."""
 
-    def __init__(self, config: TablesConfig) -> None:
+    def __init__(self, config: TablesConfig, table_store: dict[str, pd.DataFrame], default_entity: str | None = None) -> None:
         self.config: TablesConfig = config
-        self.unprocessed: set[str] = set(self.config.table_names)
+        self.table_store: dict[str, pd.DataFrame] = table_store
+        self.global_dependencies: set[str] = {default_entity} if default_entity else set()
 
     def get_next_entity_to_process(self) -> str | None:
         """Get the next entity that can be processed based on dependencies."""
         logger.debug(f"Processed entities so far: {self.processed_entities}")
-        for entity_name in set(self.config.table_names) - self.processed_entities:
+
+        for entity_name in self.unprocessed_entities:
             logger.debug(f"{entity_name}[check]: Checking if entity '{entity_name}' can be processed...")
-            unmet_dependencies = self.get_unmet_dependencies(entity=entity_name)
+            unmet_dependencies: set[str] = self.get_unmet_dependencies(entity=entity_name)
             if unmet_dependencies:
                 logger.debug(f"{entity_name}[check]: Entity has unmet dependencies: {unmet_dependencies}")
                 continue
@@ -42,14 +43,10 @@ class ProcessState:
         return None
 
     def get_unmet_dependencies(self, entity: str) -> set[str]:
-        return self.config.get_table(entity_name=entity).depends_on - self.processed_entities
-
-    def discard(self, entity: str) -> None:
-        """Mark an entity as processed and remove it from the unprocessed set."""
-        self.unprocessed.discard(entity)
+        return (self.config.get_table(entity_name=entity).depends_on | self.global_dependencies) - self.processed_entities
 
     def get_all_unmet_dependencies(self) -> dict[str, set[str]]:
-        unmet_dependencies: dict[str, set[str]] = {entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed}
+        unmet_dependencies: dict[str, set[str]] = {entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed_entities}
         return {k: v for k, v in unmet_dependencies.items() if v}
 
     def log_unmet_dependencies(self) -> None:
@@ -59,65 +56,57 @@ class ProcessState:
     @property
     def processed_entities(self) -> set[str]:
         """Return the set of processed entities."""
-        return set(self.config.table_names) - self.unprocessed
+        return set(self.table_store.keys()) 
 
+    @property
+    def unprocessed_entities(self) -> set[str]:
+        """Return the set of processed entities."""
+        return set(self.config.tables.keys()) - self.processed_entities
 
 class ArbodatSurveyNormalizer:
 
-    def __init__(self, df: pd.DataFrame) -> None:
-        self.table_store: dict[str, pd.DataFrame] = {"survey": df}
-        self.config: TablesConfig = TablesConfig()
-        self.state: ProcessState = ProcessState(config=self.config)
+    def __init__(
+        self,
+        default_entity: str | None = None,
+        table_store: dict[str, pd.DataFrame] | None = None,
+        config: TablesConfig | None = None,
+    ) -> None:
 
-    @property
-    def survey(self) -> pd.DataFrame:
-        return self.table_store["survey"]
+        self.default_entity: str | None = default_entity
+        self.table_store: dict[str, pd.DataFrame] = table_store or {}
+        self.config: TablesConfig = config or TablesConfig()
+        self.state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, default_entity=default_entity)
 
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
 
-        if table_cfg.is_fixed_data:
-            return await FixedLoader().load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
-
-        if table_cfg.is_sql_data:
-
-            if not table_cfg.data_source:
-                raise ValueError(f"Entity source must be set to a valid data source for entity '{table_cfg.entity_name}'")
-
-            data_source_cfg: DataSourceConfig = self.config.get_data_source(table_cfg.data_source)
-            loader: SqlLoader = SqlLoaderFactory().create_loader(driver=data_source_cfg.driver, db_opts=data_source_cfg.options)
-
+        loader: DataLoader | None = self.config.resolve_loader(table_cfg=table_cfg)
+        if loader:
+            logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
 
-        if isinstance(table_cfg.source, str):
-            if not table_cfg.source in self.table_store:
-                raise ValueError(f"Source table '{table_cfg.source}' not found in stored data")
-            return self.table_store[table_cfg.source]
+        source_table: str | None = table_cfg.source or self.default_entity
+        if source_table and source_table in self.table_store:
+            return self.table_store[source_table]
 
-        return self.survey
+        raise ValueError(f"Unable to resolve source for entity '{table_cfg.entity_name}'")
 
     def register(self, name: str, df: pd.DataFrame) -> pd.DataFrame:
         self.table_store[name] = df
         return df
 
-    @staticmethod
-    def load(path: str | Path, sep: str = "\t") -> "ArbodatSurveyNormalizer":
-        """Read Arbodat CSV (usually tab-separated)."""
-        df: pd.DataFrame = pd.read_csv(path, sep=sep, dtype=str, keep_default_na=False)
-        return ArbodatSurveyNormalizer(df)
-
     async def normalize(self) -> None:
         """Extract all configured entities and store them."""
         subset_service: SubsetService = SubsetService()
 
-        while len(self.state.unprocessed) > 0:
+        while len(self.state.unprocessed_entities) > 0:
 
             entity: str | None = self.state.get_next_entity_to_process()
 
             if entity is None:
                 self.state.log_unmet_dependencies()
-                raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed}")
-
+                raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
+            
             table_cfg: TableConfig = self.config.get_table(entity)
 
             logger.debug(f"{entity}[normalizing]: Normalizing entity...")
@@ -132,7 +121,7 @@ class ArbodatSurveyNormalizer:
             # Process all configured tables (base + append items)
             dfs: list[pd.DataFrame] = []
 
-            for sub_table_cfg in table_cfg.get_configured_tables():
+            for sub_table_cfg in table_cfg.get_sub_table_configs():
                 logger.debug(f"{entity}[normalizing]: Processing sub-table '{sub_table_cfg.entity_name}'...")
                 sub_source: pd.DataFrame = await self.resolve_source(table_cfg=sub_table_cfg)
                 sub_data: pd.DataFrame = subset_service.get_subset(
@@ -183,8 +172,6 @@ class ArbodatSurveyNormalizer:
                 self.table_store[entity] = add_surrogate_id(self.table_store[entity], table_cfg.surrogate_id)
 
             self.link()  # Try to resolve any pending deferred links after each entity is processed
-
-            self.state.discard(entity=entity)
 
     def link(self):
         """Link entities based on foreign key configuration."""
@@ -266,7 +253,7 @@ class ArbodatSurveyNormalizer:
 
     def finalize(self) -> None:
         """Finalize processing by performing final transformations."""
-        self.drop_foreign_key_columns()
-        self.add_system_id_columns()
-        self.move_keys_to_front()
-        drops = self.config.options.get("")
+        # self.drop_foreign_key_columns()
+        # self.add_system_id_columns()
+        # self.move_keys_to_front()
+        # drops = self.config.options.get("finally.drops")

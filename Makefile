@@ -53,7 +53,7 @@ fix-imports:
 	@python scripts/fix_imports.py
 
 isort:
-	@uv run isort src tests main.py
+	@uv run isort src tests
 
 .PHONY: tidy
 tidy: black isort
