@@ -14,12 +14,10 @@ from src.utility import Registry
 class ForeignKeyConstraintViolation(Exception):
     """Raised when a foreign key constraint is violated."""
 
-    pass
-
 
 @dataclass
 class ValidationContext:
-    """Encapsulates all data needed for constraint validation."""
+    """Contains data needed for constraint checks."""
 
     local_df: pd.DataFrame
     remote_df: pd.DataFrame | None = None
@@ -69,7 +67,7 @@ class ValidatorRegistry(Registry):
 
 Validators: ValidatorRegistry = ValidatorRegistry()  # pylint: disable=invalid-name
 
-# Pre-merge validators
+# Validators to be used BEFORE merging/linking (stage = "pre-merge")
 
 
 @Validators.register(key="allow_null_keys", stage="pre-merge")
@@ -116,7 +114,7 @@ class UniqueRightKeyValidator(ConstraintValidator):
             self.raise_if_violated(f"{duplicates} duplicate right key(s) found (require_unique_right=True)")
 
 
-# Post-merge validators
+# Validators to be used AFTER merging/linking (stage = "post-merge")
 
 
 @Validators.register(key="cardinality", stage="post-merge")
