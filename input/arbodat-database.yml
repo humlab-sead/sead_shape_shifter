@@ -693,7 +693,6 @@ entities:
     depends_on: []
 
   taxa:
-    # FIXME: drop PCODE not in "abundance/Details"
     source: null
     data_source: arbodat_lookup
     type: sql
