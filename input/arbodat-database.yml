@@ -942,7 +942,6 @@ entities:
       - entity: method
         local_keys: ["method_name"]
         remote_keys: ["method_name"]
-        # TODO: #4 We need a cardinality check that fails when remote key is missing
         constraints:
           allow_unmatched_left: false
           allow_null_keys: false
