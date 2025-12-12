@@ -2,12 +2,22 @@
 
 A general-purpose data transformation and normalization framework for harmonizing diverse data sources into a target schema. While initially developed for Arbodat archaeological data integration with the SEAD (Strategic Environmental Archaeology Database) system, the framework is designed to be adaptable to any domain requiring complex data transformations.
 
+## Recent Updates
+
+**v0.2.0 - December 2025**
+- ✨ **Enhanced Foreign Key Constraints**: Comprehensive validation system with cardinality, uniqueness, and match requirements
+- 🚀 **Improved Validator Registry**: Efficient O(1) lookup for constraint validators using sub-key indexing
+- 🧹 **Streamlined API**: Removed redundant validators for cleaner, more maintainable codebase
+- 📝 **Better Documentation**: Updated configuration reference and constraint examples
+- 🔧 **Bug Fixes**: Fixed validator registration conflicts and improved error messages
+
 ## Overview
 
 Shape Shifter provides a declarative YAML-based configuration system for defining complex data transformation pipelines. The system supports:
 
 - **Multiple Data Sources**: CSV files, Excel spreadsheets, SQL databases (PostgreSQL, MS Access via UCanAccess)
 - **Entity Relationships**: Define foreign key relationships and dependencies between entities
+- **Foreign Key Constraints**: Enforce data integrity with cardinality, uniqueness, and match requirements
 - **Data Transformations**: Column mapping, value translation, data type conversions
 - **Flexible Processing**: Extract, filter, link, unnest, and normalize data through a multi-phase pipeline
 - **Append Operations**: Augment extracted data with fixed values, SQL queries, or data from other entities
@@ -17,6 +27,11 @@ Shape Shifter provides a declarative YAML-based configuration system for definin
 - **Declarative Configuration**: Define entire data transformation pipelines in YAML
 - **Dependency Management**: Automatic topological sorting ensures entities are processed in the correct order
 - **Foreign Key Resolution**: Establish relationships between entities with surrogate key generation
+- **Comprehensive Constraint System**: Validate foreign key relationships with:
+  - Cardinality constraints (one-to-one, many-to-one, one-to-many)
+  - Match requirements (enforce all rows match)
+  - Uniqueness constraints (ensure key uniqueness)
+  - Null value handling
 - **Data Validation**: Built-in validation for configuration files and data integrity
 - **Multiple Output Formats**: Export to CSV, Excel, or directly to databases
 - **Extensible Architecture**: Plugin-style loaders for different data sources
@@ -151,7 +166,11 @@ entities:
     depends_on: [site]
     foreign_keys:
       - entity: site
-        keys: [site_name]
+        local_keys: [site_name]
+        remote_keys: [site_name]
+        constraints:
+          cardinality: many_to_one
+          allow_unmatched_left: false
 
 options:
   data_sources: {}
@@ -185,6 +204,39 @@ options:
       path: ./data/my_database.mdb
 ```
 
+## Foreign Key Constraints
+
+Shape Shifter includes a robust constraint validation system for foreign key relationships. Constraints ensure data integrity during the linking process:
+
+```yaml
+foreign_keys:
+  - entity: reference_table
+    local_keys: [key_column]
+    remote_keys: [key_column]
+    constraints:
+      # Enforce relationship type
+      cardinality: many_to_one
+      
+      # Ensure all rows match
+      allow_unmatched_left: false
+      
+      # Require unique keys
+      require_unique_right: true
+      
+      # Prevent null values
+      allow_null_keys: false
+```
+
+**Constraint Types:**
+
+- **Cardinality**: `one_to_one`, `many_to_one`, `one_to_many`, `many_to_many`
+- **Match Requirements**: `allow_unmatched_left`, `allow_unmatched_right`
+- **Uniqueness**: `require_unique_left`, `require_unique_right`
+- **Null Handling**: `allow_null_keys`
+- **Row Count**: `allow_row_decrease`
+
+Violations raise descriptive errors with context about which entity and constraint failed.
+
 ## Configuration
 
 Configuration files use YAML format with three main sections:
@@ -205,6 +257,7 @@ For detailed configuration documentation, see:
 sead_shape_shifter/
 ├── src/
 │   ├── config_model.py       # Configuration data models
+│   ├── constraints.py         # Foreign key constraint validators
 │   ├── normalizer.py          # Main normalization pipeline
 │   ├── extract.py             # Data extraction logic
 │   ├── link.py                # Foreign key resolution
