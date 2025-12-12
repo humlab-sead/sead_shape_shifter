@@ -48,6 +48,38 @@ lint: tidy pylint check-imports
 check-imports:
 	@python scripts/check_imports.py
 
+# ============================================================================
+# Configuration Editor UI
+# ============================================================================
+
+.PHONY: ui-install
+ui-install: backend-install frontend-install
+
+.PHONY: backend-install
+backend-install:
+	@echo "Installing backend dependencies..."
+	@cd backend && uv pip install -e ".[dev]"
+
+.PHONY: backend-run
+backend-run:
+	@echo "Starting backend server on http://localhost:8000"
+	@cd backend && uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+
+.PHONY: backend-test
+backend-test:
+	@echo "Running backend tests..."
+	@cd backend && uv run python -m pytest -v
+
+.PHONY: frontend-install
+frontend-install:
+	@echo "Installing frontend dependencies..."
+	@cd frontend && pnpm install
+
+.PHONY: frontend-run
+frontend-run:
+	@echo "Starting frontend dev server on http://localhost:5173"
+	@cd frontend && pnpm dev
+
 .PHONY: fix-imports
 fix-imports:
 	@python scripts/fix_imports.py

@@ -1,0 +1,58 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
+
+const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    name: 'home',
+    component: () => import('@/views/HomeView.vue'),
+    meta: {
+      title: 'Home',
+    },
+  },
+  {
+    path: '/entities',
+    name: 'entities',
+    component: () => import('@/views/EntitiesView.vue'),
+    meta: {
+      title: 'Entities',
+    },
+  },
+  {
+    path: '/graph',
+    name: 'graph',
+    component: () => import('@/views/GraphView.vue'),
+    meta: {
+      title: 'Dependency Graph',
+    },
+  },
+  {
+    path: '/validation',
+    name: 'validation',
+    component: () => import('@/views/ValidationView.vue'),
+    meta: {
+      title: 'Validation',
+    },
+  },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: () => import('@/views/SettingsView.vue'),
+    meta: {
+      title: 'Settings',
+    },
+  },
+]
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes,
+})
+
+// Update document title on route change
+router.afterEach((to) => {
+  const title = to.meta.title as string | undefined
+  document.title = title ? `${title} - Shape Shifter` : 'Shape Shifter Configuration Editor'
+})
+
+export default router

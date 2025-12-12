@@ -1,0 +1,273 @@
+"""Tests for validation service."""
+
+import pytest
+
+from app.services.validation_service import ValidationService
+
+
+@pytest.fixture
+def validation_service():
+    """Create ValidationService instance."""
+    return ValidationService()
+
+
+class TestValidationServiceBasic:
+    """Tests for basic validation functionality."""
+
+    def test_validate_empty_configuration(self, validation_service):
+        """Test validating empty configuration."""
+        config = {}
+        result = validation_service.validate_configuration(config)
+
+        assert result.is_valid is False
+        assert result.error_count > 0
+        assert any("entities" in e.message.lower() for e in result.errors)
+
+    def test_validate_valid_configuration(self, validation_service):
+        """Test validating valid configuration."""
+        config = {
+            "entities": {
+                "sample": {"type": "data", "keys": ["sample_id"], "columns": ["name", "value"]}
+            }
+        }
+        result = validation_service.validate_configuration(config)
+
+        assert result.is_valid is True
+        assert result.error_count == 0
+
+    def test_validate_configuration_with_foreign_key(self, validation_service):
+        """Test validating configuration with foreign keys."""
+        config = {
+            "entities": {
+                "site": {"type": "data", "keys": ["site_id"], "columns": ["name"]},
+                "sample": {
+                    "type": "data",
+                    "keys": ["sample_id"],
+                    "columns": ["name", "site_id"],
+                    "foreign_keys": [
+                        {
+                            "entity": "site",
+                            "local_keys": ["site_id"],
+                            "remote_keys": ["site_id"],
+                            "how": "left",
+                        }
+                    ],
+                },
+            }
+        }
+        result = validation_service.validate_configuration(config)
+
+        assert result.is_valid is True
+        assert result.error_count == 0
+
+
+class TestValidationServiceErrors:
+    """Tests for error detection."""
+
+    def test_missing_entity_reference(self, validation_service):
+        """Test detecting missing entity reference in foreign key."""
+        config = {
+            "entities": {
+                "sample": {
+                    "type": "data",
+                    "keys": ["sample_id"],
+                    "foreign_keys": [
+                        {
+                            "entity": "nonexistent",
+                            "local_keys": ["site_id"],
+                            "remote_keys": ["site_id"],
+                            "how": "left",
+                        }
+                    ],
+                }
+            }
+        }
+        result = validation_service.validate_configuration(config)
+
+        assert result.is_valid is False
+        assert result.error_count > 0
+        # Check that error was parsed correctly
+        errors_for_sample = result.get_errors_for_entity("sample")
+        assert len(errors_for_sample) > 0
+        assert any("nonexistent" in e.message for e in errors_for_sample)
+
+    def test_circular_dependency(self, validation_service):
+        """Test detecting circular dependencies."""
+        config = {
+            "entities": {
+                "entity_a": {"type": "data", "keys": ["id"], "depends_on": ["entity_b"]},
+                "entity_b": {"type": "data", "keys": ["id"], "depends_on": ["entity_a"]},
+            }
+        }
+        result = validation_service.validate_configuration(config)
+
+        assert result.is_valid is False
+        assert result.error_count > 0
+        assert any("circular" in e.message.lower() for e in result.errors)
+
+    def test_missing_required_fields(self, validation_service):
+        """Test detecting missing required fields."""
+        config = {
+            "entities": {
+                "sample": {
+                    "type": "data"
+                    # Missing 'keys' field
+                }
+            }
+        }
+        result = validation_service.validate_configuration(config)
+
+        assert result.is_valid is False
+        assert result.error_count > 0
+
+    def test_invalid_foreign_key_mismatched_keys(self, validation_service):
+        """Test detecting foreign key with mismatched number of keys."""
+        config = {
+            "entities": {
+                "site": {"type": "data", "keys": ["site_id"], "columns": ["name"]},
+                "sample": {
+                    "type": "data",
+                    "keys": ["sample_id"],
+                    "columns": ["name", "site_id"],
+                    "foreign_keys": [
+                        {
+                            "entity": "site",
+                            "local_keys": ["site_id", "extra_key"],  # Mismatched count
+                            "remote_keys": ["site_id"],
+                            "how": "left",
+                        }
+                    ],
+                },
+            }
+        }
+        result = validation_service.validate_configuration(config)
+
+        assert result.is_valid is False
+        assert result.error_count > 0
+        assert any("does not match" in e.message.lower() for e in result.errors)
+
+
+class TestValidationServiceEntity:
+    """Tests for entity-specific validation."""
+
+    def test_validate_single_entity(self, validation_service):
+        """Test validating single entity."""
+        entity_data = {"type": "data", "keys": ["sample_id"], "columns": ["name", "value"]}
+        config = {"entities": {"sample": entity_data}, "options": {}}
+
+        result = validation_service.validate_entity(config, "sample")
+
+        assert result.is_valid is True
+        assert result.error_count == 0
+
+    def test_validate_entity_with_errors(self, validation_service):
+        """Test validating entity with errors."""
+        entity_data = {
+            "type": "data"
+            # Missing required 'keys' field
+        }
+        config = {"entities": {"sample": entity_data}, "options": {}}
+
+        result = validation_service.validate_entity(config, "sample")
+
+        assert result.is_valid is False
+        assert result.error_count > 0
+
+    def test_validate_entity_filters_errors(self, validation_service):
+        """Test that entity validation only returns errors for that entity."""
+        entity_data = {
+            "type": "data",
+            "keys": ["sample_id"],
+            "foreign_keys": [
+                {
+                    "entity": "nonexistent",
+                    "local_keys": ["site_id"],
+                    "remote_keys": ["site_id"],
+                    "how": "left",
+                }
+            ],
+        }
+        config = {"entities": {"sample": entity_data}, "options": {}}
+
+        result = validation_service.validate_entity(config, "sample")
+
+        # Should only contain errors related to 'sample' entity
+        assert result.is_valid is False
+        for error in result.errors:
+            assert error.entity is None or error.entity == "sample"
+
+
+class TestValidationServiceErrorParsing:
+    """Tests for error message parsing."""
+
+    def test_parse_entity_from_error(self, validation_service):
+        """Test parsing entity name from error message."""
+        config = {
+            "entities": {
+                "sample": {
+                    "type": "data",
+                    "keys": ["sample_id"],
+                    "foreign_keys": [{"entity": "missing", "local_keys": ["x"], "remote_keys": ["y"]}],
+                }
+            }
+        }
+
+        result = validation_service.validate_configuration(config)
+
+        # Check that entity was extracted correctly
+        assert any(e.entity == "sample" for e in result.errors)
+
+    def test_error_codes_assigned(self, validation_service):
+        """Test that error codes are assigned."""
+        config = {
+            "entities": {
+                "sample": {
+                    "type": "data",
+                    "keys": ["sample_id"],
+                    "foreign_keys": [{"entity": "missing", "local_keys": ["x"], "remote_keys": ["y"]}],
+                }
+            }
+        }
+
+        result = validation_service.validate_configuration(config)
+
+        # All errors should have codes
+        assert all(e.code is not None for e in result.errors)
+        # Should have a missing_reference code
+        assert any(e.code == "missing_reference" for e in result.errors)
+
+
+class TestValidationServiceIntegration:
+    """Integration tests with complex configurations."""
+
+    def test_complex_valid_configuration(self, validation_service):
+        """Test complex but valid configuration."""
+        config = {
+            "entities": {
+                "natural_region": {"type": "data", "keys": ["region_id"], "columns": ["name"]},
+                "site": {
+                    "type": "data",
+                    "keys": ["site_id"],
+                    "columns": ["name", "location"],
+                },
+                "sample": {
+                    "type": "data",
+                    "keys": ["sample_id"],
+                    "columns": ["name", "site_id"],
+                    "foreign_keys": [
+                        {
+                            "entity": "site",
+                            "local_keys": ["site_id"],
+                            "remote_keys": ["site_id"],
+                            "how": "left",
+                        }
+                    ],
+                },
+            },
+            "options": {"verbose": True},
+        }
+
+        result = validation_service.validate_configuration(config)
+
+        assert result.is_valid is True
+        assert result.error_count == 0
