@@ -4,7 +4,7 @@ import pandas as pd
 from loguru import logger
 
 from src.config_model import ForeignKeyConfig, TableConfig, TablesConfig
-from src.link_validator import ForeignKeyConstraintValidator
+from constraints import ForeignKeyConstraintValidator
 from src.specifications import ForeignKeyDataSpecification
 
 
