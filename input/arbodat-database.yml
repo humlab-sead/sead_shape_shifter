@@ -781,6 +781,7 @@ entities:
       from public.tbl_method_groups
     depends_on: []
 
+# FIXME: #3 Public ID is missing in generated data if explicit system_id   
   method:
     type: fixed
     arbodat_codes: ["ORG2,0", "ORG1,0", "ORG0,5", "ORG0,25", "MIN2,0", "MIN1,0", "MIN0,5", "MIN0,25"]
@@ -795,8 +796,8 @@ entities:
         [6, null, null, "Mineral remains 1.0-2.0 mm", "MIN 1,0", "MIN 1,0", null, "MIN 1,0"],
         [7, null, null, "Mineral remains 0.5-1.0 mm", "MIN 0,5", "MIN 0,5", null, "MIN 0,5"],
         [8, null, null, "Mineral remains 0.25-0.5 mm", "MIN 0,25", "MIN 0,25", null, "MIN 0,25"],
-        [9, 105, null, "Local or unknown grid", null, null, null, null],
-        [10, 76, null, "Altitude above sea level", null, null, null, null],
+        [9, 105, null, null, "Local or unknown grid", null, null, null],
+        [10, 76, null, null, "Altitude above sea level", null, null, null],
       ]
     depends_on: []
 
@@ -847,16 +848,21 @@ entities:
       - entity: sample
         local_keys: "@value: entities.sample.keys"
         remote_keys: "@value: entities.sample.keys"
+        how: "left"
+      - entity: coordinate_method_dimension
+        local_keys: ["coordinate_type"]
+        remote_keys: ["arbodat_dimension_code"]
+        how: "left"
     drop_duplicates: true
     drop_empty_rows: ["coordinate_value"]
     depends_on: ["sample", "dimension", "coordinate_method_dimension"]
 
   coordinate_method_dimension:
     source: null
-    type: fixed
     keys: []
     surrogate_id: coordinate_method_dimension_id
     columns: ["method_name", "limit_upper", "limit_lower", "arbodat_dimension_code"]
+    type: fixed
     values:
       - ["Local or unknown grid", null, null, "KoordX"]
       - ["Local or unknown grid", null, null, "KoordY"]
@@ -866,9 +872,14 @@ entities:
       - entity: dimension
         local_keys: ["arbodat_dimension_code"]
         remote_keys: ["arbodat_code"]
+        how: "left"
       - entity: method
         local_keys: ["method_name"]
         remote_keys: ["method_name"]
+        # TODO: #4 We need a cardinality check that fails when remote key is missing
+        cardinality:
+          allow_unmatched_right: false
+        how: "left"
     depends_on: ["dimension", "method"]
 
   dimension:
