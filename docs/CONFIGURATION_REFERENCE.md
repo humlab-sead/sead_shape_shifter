@@ -140,7 +140,11 @@ entities:
 - **Description**: 
   - `"data"`: Extract from source data (spreadsheet or another entity)
   - `"fixed"`: Use fixed/hardcoded values defined in `values`
-  - `"sql"`: Execute SQL query against a database
+  - `"sql"`: Execute SQL query against a database (requires `data_source` and `query`)
+- **Requirements by Type**:
+  - `type: fixed` → requires `values` (list of lists)
+  - `type: sql` → requires `data_source` and `query`
+  - `type: data` → uses `source` (defaults to root data if omitted)
 - **Example**:
   ```yaml
   # Fixed lookup table
@@ -152,42 +156,51 @@ entities:
   # SQL query
   type: sql
   data_source: sead
-  values: |
-    sql:
+  query: |
     select id, name
     from tbl_dimensions
   ```
 
 #### `data_source`
 - **Type**: `string`
-- **Required**: Only for `type: sql`
-- **Description**: Name of the data source connection defined in `options.data_sources`. The data source specifies database connection parameters.
+- **Required**: Yes when `type: sql`
+- **Description**: Name of the data source connection defined in `options.data_sources`. The data source specifies database connection parameters (host, database, credentials, driver, etc.).
+- **Validation**: The referenced data source must exist in `options.data_sources`
 - **Example**:
   ```yaml
-  data_source: sead
+  data_source: sead  # Must be defined in options.data_sources
   ```
 
-#### `values`
-- **Type**: `string | list[list]`
-- **Required**: Only for `type: fixed` or `type: sql`
-- **Description**: 
-  - For `type: fixed`: 2D array of values
-  - For `type: sql`: SQL query string (typically multi-line with `|`)
+#### `query`
+- **Type**: `string`
+- **Required**: Yes when `type: sql`
+- **Description**: SQL query string to execute against the data source. Typically uses multi-line format with `|` or `>` for readability.
+- **Validation**: Must be non-empty when `type: sql`
 - **Example**:
   ```yaml
-  # Fixed values
-  type: fixed
-  values:
-    - ["Type A", "Description A"]
-    - ["Type B", "Description B"]
-  
-  # SQL query
   type: sql
-  values: |
-    sql:
+  data_source: arbodat_data
+  query: |
     select column1, column2
     from table_name
     where condition = true
+  ```
+
+#### `values`
+- **Type**: `list[list[any]]`
+- **Required**: Yes when `type: fixed`
+- **Description**: 2D array of fixed values for lookup tables. Each inner list represents a row of data.
+- **Validation**: 
+  - Required when `type: fixed`
+  - Each row must have the same number of columns as defined in `columns`
+  - Number of values per row should match the number of columns
+- **Example**:
+  ```yaml
+  type: fixed
+  columns: ["code", "description"]
+  values:
+    - ["Type A", "Description A"]
+    - ["Type B", "Description B"]
   ```
 
 ---
@@ -976,12 +989,17 @@ The system processes entities in dependency order using topological sorting:
 
 The configuration system includes comprehensive validation through specifications:
 
-- **EntityExistsSpecification**: Ensures all referenced entities exist
-- **CircularDependencySpecification**: Detects circular dependencies
-- **ForeignKeySpecification**: Validates foreign key configurations
-- **ColumnExistsSpecification**: Checks that referenced columns exist
-- **UnnestSpecification**: Validates unnest configurations
-- **DataSourceSpecification**: Validates data source configurations
+- **RequiredFieldsSpecification**: Validates that required fields are present for each entity type
+- **EntityExistsSpecification**: Ensures all referenced entities exist (in foreign keys, dependencies, source references)
+- **CircularDependencySpecification**: Detects circular dependencies in the entity dependency graph
+- **DataSourceExistsSpecification**: Validates that all referenced data sources exist in `options.data_sources`
+- **SqlDataSpecification**: Validates SQL-type entities have required `data_source` and `query` fields
+- **FixedDataSpecification**: Validates fixed-type entities have required `values` field with proper structure
+- **ForeignKeySpecification**: Validates foreign key configurations (required fields, key length matching, etc.)
+- **UnnestSpecification**: Validates unnest configurations have required fields
+- **DropDuplicatesSpecification**: Validates drop_duplicates configurations
+- **SurrogateIdSpecification**: Validates surrogate ID naming conventions and uniqueness
+- **AppendConfigurationSpecification**: Validates append configurations (mode, type-specific requirements, source references)
 
 See `docs/config_validation.md` for detailed validation documentation.
 

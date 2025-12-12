@@ -17,7 +17,7 @@
     full_name: ["first_name", " ", "last_name"]
   ```
 
-# FIXED Improved deletion of empty row data
+# **FIXED** Improved deletion of empty row data
 
 - Add support for specifying which values except np.na that should be considered as empty for row deletion.
 
@@ -66,3 +66,18 @@
           - sample: [temp_column3]
   """
 
+# **FIXED** Use "query" prefix for SQL data source values instead of "values: sql: ..."
+- Standardize SQL data source queries by using a "query" prefix instead of embedding SQL directly in "values".
+  This improves clarity and consistency in configuration files.
+
+  Example:
+  ```yaml
+  append:
+    - type: sql
+      data_source: test_sql_source
+      query: SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude
+  ```
+
+# **FIXED** Validation Improvements
+
+Improve validations for configuration files to catch the most common errors and give better feedback. Add an option to run validations without executing the full normalization workflow. 

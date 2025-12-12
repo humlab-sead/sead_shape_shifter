@@ -7,6 +7,8 @@ from loguru import logger
 from src.configuration.resolve import ConfigValue
 from src.utility import unique
 
+from .loaders import DataLoader, DataLoaders
+
 
 # pylint: disable=line-too-long
 class UnnestConfig:
@@ -111,9 +113,9 @@ class ForeignKeyConfig:
             data (dict): Foreign key configuration data.
         Raises:
             ValueError: If required fields are missing or invalid."""
-        self.config: dict[str, dict[str, Any]] = cfg  # full config
-        self.local_entity: str = local_entity
-        self.local_keys: list[str] = unique(data.get("local_keys"))
+        self.config: dict[str, dict[str, Any]] = cfg  # config for all tables
+        self.local_entity: str = local_entity # name of the local entity/table
+        self.local_keys: list[str] = unique(data.get("local_keys")) 
         self.remote_extra_columns: dict[str, str] = self.resolve_extra_columns(data) or {}
         self.drop_remote_id: bool = data.get("drop_remote_id", False)
         self.remote_entity: str = data.get("entity", "")
@@ -198,20 +200,12 @@ class TableConfig:
         self._data: dict[str, Any] = cfg[entity_name]
         assert self._data, f"No configuration found for entity '{entity_name}'"
 
+        self.type: Literal["fixed", "sql", "table"] | None = self._data.get("type", None)
+        self.surrogate_name: str = self._data.get("surrogate_name", "")
         self.source: str | None = self._data.get("source", None)
         self.values: str | None = self._data.get("values", None)
+        self.sql_query: str | None = self._data.get("query", None)
         self.surrogate_id: str = self._data.get("surrogate_id", "")
-        self.surrogate_name: str = self._data.get("surrogate_name", "")
-
-        """Checks if the table is of fixed data type.
-        The fixed data type is specified by setting 'type' to 'fixed' in the table configuration.
-        This data type indicates that the table contains fixed values rather than dynamic data fetched from source.
-        The values are specified in the 'source' field of the configuration.
-        The columns of the table are defined in the 'columns' field.
-        The surrogate_id field specifies the primary key for the table.
-        """
-        self.is_fixed_data: bool = self._data.get("type", "data") == "fixed"
-        self.is_sql_data: bool = self._data.get("type", "data") == "sql"
         self.check_column_names: bool = self._data.get("check_column_names", True)
 
         """Get the data source name for SQL data tables."""
@@ -249,13 +243,17 @@ class TableConfig:
         )
         self.replacements: dict[str, dict[Any, Any]] = self._data.get("replacements", {}) or {}
         self.filters: list[dict[str, Any]] = self._data.get("filters", []) or []
+        self.options: dict[str, Any] = self._data.get("options", {}) or {}
 
     @property
-    def fixed_sql(self) -> None | str:
+    def query(self) -> None | str:
         """Get the SQL query string for fixed data, if applicable."""
-        if self.is_sql_data:
-            assert isinstance(self.values, str), "SQL query missing in 'values' field."
-            return self.values.lstrip("sql:").strip()
+        if self.type == "sql":
+            if self.sql_query:
+                return self.sql_query
+            if self.values:
+                """This will be deprecated, prefer 'query' over 'values' for SQL data."""
+                return self.values.lstrip("sql:").strip()
         return None
 
     @property
@@ -351,7 +349,7 @@ class TableConfig:
     def create_append_config(self, append_data: dict[str, Any]) -> dict[str, Any]:
         """Create a merged configuration for an append item, inheriting parent properties."""
         merged: dict[str, Any] = {}
-        ignore_keys: tuple[str, ...] = ("foreign_keys", "unnest", "append", "append_mode", "depends_on")
+        non_inheritable_keys: set[str] = {"foreign_keys", "unnest", "append", "append_mode", "depends_on"}
         all_keys: set[str] = set(self._data.keys()) | set(append_data.keys())
         special_conversions = {
             "keys": lambda v: list(v) if isinstance(v, set) else v,
@@ -359,12 +357,11 @@ class TableConfig:
 
         for key in all_keys:
 
-            if key in ignore_keys:
+            if key in non_inheritable_keys:
                 continue
 
             value = append_data[key] if key in append_data else self._data[key]
 
-            # Apply special conversion if needed
             if key in special_conversions and value:
                 value = special_conversions[key](value)
 
@@ -372,7 +369,7 @@ class TableConfig:
 
         return merged
 
-    def get_configured_tables(self) -> Generator[Self | "TableConfig", Any, None]:
+    def get_sub_table_configs(self) -> Generator[Self | "TableConfig", Any, None]:
         """Yield a sequence of TableConfig objects for processing.
 
         Yields self first (the base configuration), then creates and yields
@@ -420,6 +417,17 @@ class TablesConfig:
         if name not in self.data_sources:
             raise ValueError(f"Data source 'options.data_sources.{name}' not found in configuration")
         return DataSourceConfig(cfg=self.data_sources[name], name=name)
+
+    def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
+        """Resolve the DataLoader, if any, for the given TableConfig."""
+        if table_cfg.data_source:
+            data_source: DataSourceConfig = self.get_data_source(table_cfg.data_source)
+            return DataLoaders.get(key=data_source.driver)(data_source=data_source)
+
+        if table_cfg.type and table_cfg.type in DataLoaders.items:
+            return DataLoaders.get(key=table_cfg.type)(data_source=None)
+
+        return None
 
     @cached_property
     def table_names(self) -> list[str]:
