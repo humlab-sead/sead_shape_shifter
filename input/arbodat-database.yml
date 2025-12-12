@@ -93,7 +93,7 @@ entities:
         remote_keys: ["Zust"]
     depends_on: ["abundance"]
 
-  abundance_property:
+  abundance_property: # missing in SEAD
     source: abundance
     surrogate_id: abundance_property_id
     keys: []
@@ -114,7 +114,7 @@ entities:
     drop_duplicates: true
     depends_on: ["abundance", "abundance_property_type"]
 
-  abundance_property_type:
+  abundance_property_type: # missing in SEAD
     source: null
     type: fixed
     surrogate_id: abundance_property_type_id
