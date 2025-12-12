@@ -19,7 +19,7 @@ sample:
         # Each sample belongs to exactly one dataset
         cardinality: many_to_one
         # All samples must have a valid dataset
-        require_all_left_matched: true
+        allow_unmatched_left: false
         # No null dataset names allowed
         allow_null_keys: false
 """
@@ -37,10 +37,6 @@ site:
       how: left  # Optional reference
       constraints:
         cardinality: many_to_one
-        # At least 90% of sites should have a location
-        min_match_rate: 0.90
-        # Never multiply rows
-        max_row_increase_pct: 0
         # Location can be null
         allow_null_keys: true
 """
@@ -59,9 +55,9 @@ employee:
         # Exactly one detail record per employee
         cardinality: one_to_one
         # Every employee must have details
-        require_all_left_matched: true
+        allow_unmatched_left: false
         # Every detail record must be used
-        require_all_right_matched: true
+        allow_unmatched_right: false
         # Both sides must be unique
         require_unique_left: true
         require_unique_right: true
@@ -81,12 +77,8 @@ order:
       remote_keys: ["order_number"]
       constraints:
         cardinality: one_to_many
-        # Limit expansion (assume max 20 items per order on average)
-        max_row_increase_pct: 2000  # 20x expansion
         # All orders must have at least one item
-        require_all_left_matched: true
-        # Alert if row increase is suspiciously high
-        max_row_increase_abs: 50000
+        allow_unmatched_left: false
 """
 
 # Example 5: Multiple constraints for robust validation
@@ -102,7 +94,7 @@ feature:
       remote_keys: ["site_name"]
       constraints:
         cardinality: many_to_one
-        require_all_left_matched: true
+        allow_unmatched_left: false
         require_unique_right: true
         allow_null_keys: false
         allow_row_decrease: false
@@ -114,8 +106,6 @@ feature:
       how: left
       constraints:
         cardinality: many_to_one
-        min_match_rate: 0.95  # 95% should have a type
-        max_row_increase_pct: 0
         require_unique_right: true
 """
 
@@ -138,7 +128,6 @@ sample:
       remote_keys: ["dataset_name"]
       constraints:
         cardinality: many_to_one
-        min_match_rate: 0.99  # Monitor match rate
 
 # Finally add strict constraints once data is clean
 sample:
@@ -148,6 +137,6 @@ sample:
       remote_keys: ["dataset_name"]
       constraints:
         cardinality: many_to_one
-        require_all_left_matched: true
+        allow_unmatched_left: false
         allow_null_keys: false
 """

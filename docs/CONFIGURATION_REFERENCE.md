@@ -485,9 +485,6 @@ foreign_keys:
       # Match Requirements
       allow_unmatched_left: bool
       allow_unmatched_right: bool
-      require_all_left_matched: bool
-      require_all_right_matched: bool
-      min_match_rate: float
       
       # Key Uniqueness
       require_unique_left: bool
@@ -495,8 +492,6 @@ foreign_keys:
       allow_null_keys: bool
       
       # Row Count
-      max_row_increase_pct: float
-      max_row_increase_abs: int
       allow_row_decrease: bool
 ```
 
@@ -536,33 +531,6 @@ foreign_keys:
     allow_unmatched_right: false
   ```
 
-##### `require_all_left_matched`
-- **Type**: `bool`
-- **Description**: If `true`, all left rows must find a match in the right table
-- **Example**:
-  ```yaml
-  constraints:
-    require_all_left_matched: true
-  ```
-
-##### `require_all_right_matched`
-- **Type**: `bool`
-- **Description**: If `true`, all right rows must find a match in the left table
-- **Example**:
-  ```yaml
-  constraints:
-    require_all_right_matched: true
-  ```
-
-##### `min_match_rate`
-- **Type**: `float` (0.0 to 1.0)
-- **Description**: Minimum fraction of left rows that must match (e.g., 0.95 = 95% match rate)
-- **Example**:
-  ```yaml
-  constraints:
-    min_match_rate: 0.95
-  ```
-
 #### Uniqueness Constraints
 
 ##### `require_unique_left`
@@ -594,24 +562,6 @@ foreign_keys:
   ```
 
 #### Row Count Constraints
-
-##### `max_row_increase_pct`
-- **Type**: `float`
-- **Description**: Maximum allowed percentage increase in row count after merge (e.g., 0.05 = 5% increase)
-- **Example**:
-  ```yaml
-  constraints:
-    max_row_increase_pct: 0.05
-  ```
-
-##### `max_row_increase_abs`
-- **Type**: `int`
-- **Description**: Maximum allowed absolute increase in row count after merge
-- **Example**:
-  ```yaml
-  constraints:
-    max_row_increase_abs: 10
-  ```
 
 ##### `allow_row_decrease`
 - **Type**: `bool`
@@ -903,7 +853,7 @@ feature:
       how: inner
       constraints:
         cardinality: many_to_one
-        require_all_left_matched: true
+        allow_unmatched_left: false
     - entity: feature_type
       local_keys: "@value: entities.feature_type.keys"
       remote_keys: "@value: entities.feature_type.keys"
@@ -950,7 +900,7 @@ sample:
       how: inner
       constraints:
         cardinality: many_to_one
-        require_all_left_matched: true
+        allow_unmatched_left: false
         allow_null_keys: false
     - entity: sample_group
       local_keys: ["ProjektNr", "Befu"]
@@ -1244,14 +1194,9 @@ ForeignKeyConstraints:
   cardinality?: "one_to_one" | "many_to_one" | "one_to_many" | "many_to_many"
   allow_unmatched_left?: bool
   allow_unmatched_right?: bool
-  require_all_left_matched?: bool
-  require_all_right_matched?: bool
-  min_match_rate?: float
   require_unique_left?: bool
   require_unique_right?: bool
   allow_null_keys?: bool
-  max_row_increase_pct?: float
-  max_row_increase_abs?: int
   allow_row_decrease?: bool
 
 # UnnestConfig
