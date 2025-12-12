@@ -48,28 +48,8 @@ class ForeignKeyConstraints:
         return self.data.get("allow_unmatched_right")
 
     @property
-    def require_all_left_matched(self) -> bool:
-        return self.data.get("require_all_left_matched", False)
-
-    @property
-    def require_all_right_matched(self) -> bool:
-        return self.data.get("require_all_right_matched", False)
-
-    @property
-    def max_row_increase_pct(self) -> float | None:
-        return self.data.get("max_row_increase_pct")
-
-    @property
-    def max_row_increase_abs(self) -> int | None:
-        return self.data.get("max_row_increase_abs")
-
-    @property
     def allow_row_decrease(self) -> bool | None:
         return self.data.get("allow_row_decrease")
-
-    @property
-    def min_match_rate(self) -> float | None:
-        return self.data.get("min_match_rate")
 
     @property
     def require_unique_left(self) -> bool:
@@ -96,9 +76,6 @@ class ForeignKeyConstraints:
         return (
             self.allow_unmatched_left is not None
             or self.allow_unmatched_right is not None
-            or self.require_all_left_matched
-            or self.require_all_right_matched
-            or self.min_match_rate is not None
         )
 
 

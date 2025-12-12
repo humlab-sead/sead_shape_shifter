@@ -64,54 +64,9 @@ constraints:
 
 Determines whether right rows without matches are kept. Usually `false` since foreign keys reference existing data.
 
-**`require_all_left_matched`**: `bool` (default: false)
-
-```yaml
-constraints:
-  require_all_left_matched: true  # Strict validation
-```
-
-Stricter than `allow_unmatched_left: false`. Raises an error if ANY left rows don't match, regardless of join type.
-
-**`require_all_right_matched`**: `bool` (default: false)
-
-```yaml
-constraints:
-  require_all_right_matched: true  # All reference data must be used
-```
-
-Ensures all right rows are matched. Useful for validating that reference tables are complete.
-
-**`min_match_rate`**: `float` (0.0 to 1.0)
-
-```yaml
-constraints:
-  min_match_rate: 0.95  # At least 95% of left rows must match
-```
-
-Specifies minimum percentage of left rows that must find a match. Useful for data quality checks.
-
 ### 3. Validation Constraints
 
 Control row count changes during merge.
-
-**`max_row_increase_pct`**: `float` (percentage)
-
-```yaml
-constraints:
-  max_row_increase_pct: 10  # Allow up to 10% row increase
-```
-
-Maximum allowed percentage increase in row count. Useful for detecting unexpected one-to-many relationships.
-
-**`max_row_increase_abs`**: `int` (absolute count)
-
-```yaml
-constraints:
-  max_row_increase_abs: 100  # Allow up to 100 additional rows
-```
-
-Maximum allowed absolute increase in row count.
 
 **`allow_row_decrease`**: `bool` (default: depends on join type)
 
@@ -167,7 +122,7 @@ sample:
       remote_keys: ["dataset_name"]
       constraints:
         cardinality: many_to_one
-        require_all_left_matched: true
+        allow_unmatched_left: false
         require_unique_right: true
         allow_null_keys: false
 ```
@@ -185,8 +140,6 @@ site:
       how: left
       constraints:
         cardinality: many_to_one
-        min_match_rate: 0.8  # At least 80% should match
-        max_row_increase_pct: 0  # Never multiply rows
         allow_null_keys: true  # Location can be null
 ```
 
@@ -202,8 +155,8 @@ employee:
       remote_keys: ["employee_id"]
       constraints:
         cardinality: one_to_one
-        require_all_left_matched: true
-        require_all_right_matched: true
+        allow_unmatched_left: false
+        allow_unmatched_right: false
         require_unique_left: true
         require_unique_right: true
         allow_null_keys: false
@@ -221,8 +174,7 @@ order:
       remote_keys: ["order_id"]
       constraints:
         cardinality: one_to_many
-        max_row_increase_pct: 500  # Up to 5x expansion (avg 5 items per order)
-        require_all_left_matched: true  # All orders must have items
+        allow_unmatched_left: false  # All orders must have items
 ```
 
 ## Error Messages
@@ -236,21 +188,14 @@ ForeignKeyConstraintViolation: sample -> dataset: many_to_one cardinality violat
 
 ```
 ForeignKeyConstraintViolation: site -> location: 250 unmatched left rows 
-(require_all_left_matched=True)
-```
-
-```
-ForeignKeyConstraintViolation: employee -> employee_details: Match rate 87.50% below 
-minimum 95.00%
+(allow_unmatched_left=False)
 ```
 
 ## Best Practices
 
-1. **Start with basic constraints**: Begin with `cardinality` and `require_all_left_matched`
-2. **Use match rates for monitoring**: Set `min_match_rate` to detect data quality issues early
-3. **Protect against unexpected expansion**: Use `max_row_increase_pct` to catch one-to-many issues
-4. **Document your assumptions**: Use constraints to make data relationships explicit
-5. **Test with real data**: Run with constraints to discover hidden data issues
+1. **Start with basic constraints**: Begin with `cardinality` and `allow_unmatched_left`
+2. **Document your assumptions**: Use constraints to make data relationships explicit
+3. **Test with real data**: Run with constraints to discover hidden data issues
 
 ## Performance Considerations
 
@@ -282,5 +227,5 @@ foreign_keys:
     remote_keys: ["site_name"]
     constraints:
       cardinality: many_to_one
-      require_all_left_matched: true
+      allow_unmatched_left: false
 ```
