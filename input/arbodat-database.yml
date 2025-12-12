@@ -42,15 +42,24 @@ entities:
       - entity: analysis_entity
         local_keys: "@value: entities.analysis_entity.keys"
         remote_keys: "@value: entities.analysis_entity.keys"
-        cardinality: "many-to-one"
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
       - entity: taxa
         local_keys: ["PCODE"]
         remote_keys: ["PCODE"]
-        cardinality: "many-to-one"
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
       - entity: abundance_element
         local_keys: ["RTyp"]
         remote_keys: ["RTyp"]
-        cardinality: "many-to-one"
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
     depends_on: ["analysis_entity"]
 
   abundance_element:
@@ -160,17 +169,25 @@ entities:
       - entity: sample
         local_keys: ["Projekt", "Befu", "ProbNr"]
         remote_keys: ["Projekt", "Befu", "ProbNr"]
-        cardinality: "many-to-one"
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
       - entity: taxa
         local_keys: ["PCODE"]
         remote_keys: ["PCODE"]
         how: "left"
-        cardinality: "many-to-one"
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
       - entity: method
         local_keys: ["Fraktion"]
         remote_keys: ["arbodat_code"]
         how: "left"
-        cardinality: "many-to-one"
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
     depends_on: ["method", "taxa", "sample"] #, "modification_type", "remain_type"]
 
   archaeological_period:
@@ -302,12 +319,18 @@ entities:
         local_keys: ["Projekt"]
         remote_keys: ["Projekt"]
         how: "left"
-        cardinality: "many-to-one"
+        contraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
       - entity: method
         local_keys: ["Fraktion"]
         remote_keys: ["arbodat_code"]
         how: "left"
-        cardinality: "many-to-one"
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
     drop_duplicates: true
     depends_on: ["method", "project"]
 
@@ -678,6 +701,18 @@ entities:
         remote_keys: ["Fustel"]
     depends_on: []
 
+  relative_dating:
+    source: sample
+    surrogate_id: relative_age_id
+    keys: []
+    columns: ["Projekt", "Befu", "ProbNr", "ArchDat"]
+    extra_columns:
+      relative_age_id: null
+      method_id: null
+      notes: null
+      dating_uncertainty_id: null
+    depends_on: ["sample"]
+  
   sample:
     source: null
     data_source: arbodat_data
@@ -693,9 +728,17 @@ entities:
       - entity: feature
         local_keys: ["Projekt", "Befu"]
         remote_keys: ["Projekt", "Befu"]
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
       - entity: sample_group
         local_keys: ["Projekt", "Befu"]
         remote_keys: ["Projekt", "Befu"]
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
       - entity: sample_type
         local_keys: ["ProbTyp"]
         remote_keys: ["ProbTyp"]
@@ -828,7 +871,10 @@ entities:
       - entity: site_type
         local_keys: ["FustelTyp"]
         remote_keys: ["FustelTyp"]
-        cardinality: "many-to-one"
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
         how: "left"
     drop_duplicates: ["Fustel", "FustelTyp"]
     check_functional_dependency: true
@@ -947,7 +993,10 @@ entities:
       - entity: site_type_group
         local_keys: ["FuTypGrup"]
         remote_keys: ["FuTypGrup"]
-        cardinality: "many-to-one"
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
     depends_on: ["site_type_group"]
 
   _pcodes:
