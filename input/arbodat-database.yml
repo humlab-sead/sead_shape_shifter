@@ -325,6 +325,26 @@ entities:
     drop_duplicates: true
     depends_on: ["_project_contact", "dataset", "project"]
 
+  dataset_submission:
+    source: dataset
+    surrogate_id: dataset_submission_id
+    keys: []
+    columns: ["dataset_id"]
+    extra_columns:
+      date_submitted: null
+      submission_type_id: 1
+      notes: null
+      # FIXME: contact_id: null
+    depends_on: ["dataset", "dataset_submission_type"]
+
+  dataset_submission_type:
+    source: None
+    type: fixed
+    columns: ["system_id", "dataset_submission_type_id"]
+    values:
+      - [1, 4] 
+    depends_on: [ ]
+  
   dating:
     source: null
     data_source: arbodat_data
@@ -403,16 +423,6 @@ entities:
     drop_empty_rows: ["ChronoDat", "ArchDat"]
     depends_on: ["sample"]
 
-  epoch:
-    source: null
-    data_source: arbodat_lookup
-    type: sql
-    surrogate_id: epoch_id
-    keys: ["Epoche"]
-    columns: ["Epoche", "Beschreibung", "Epoch_EN", "Nummer"]
-    query: "select [Epoche], [Beschreibung], [Epoch_EN], [Nummer] from [Epochen] ;"
-    depends_on: []
-
   dimension:
     # NOTE: These are new dimensions added to SEAD for sample coordinates found in Arbodt
     # The meaning of "KoordX", "KoordY", "KoordZ", and "Prob_üNN" *may* vary between projects in Arbodat.
@@ -426,6 +436,16 @@ entities:
       - ["X/East", "X/E",  "X coordinate or Easting in intrinsic units.", 17, 5, "KoordY"]
       - ["Z/Altitude", "Z/Alt", "Z coordinate or Altitude in intrinsic units.", 17, 5, "KoordZ"]
       - ["Sampling height above sea level", "Sampling ASL", "Sampling height above sea level.", 17, 1, "Prob_üNN"]
+    depends_on: []
+
+  epoch:
+    source: null
+    data_source: arbodat_lookup
+    type: sql
+    surrogate_id: epoch_id
+    keys: ["Epoche"]
+    columns: ["Epoche", "Beschreibung", "Epoch_EN", "Nummer"]
+    query: "select [Epoche], [Beschreibung], [Epoch_EN], [Nummer] from [Epochen] ;"
     depends_on: []
 
   feature:
@@ -569,16 +589,6 @@ entities:
     values: [[1, null, null, "ArboDat Pilot", null, null]]
     depends_on: []
 
-  method_group:
-    data_source: sead
-    type: sql
-    surrogate_id: method_group_id
-    columns: ["method_group_id", "group_name", "description"]
-    query:
-      select "method_group_id", "group_name", "description"
-      from public.tbl_method_groups
-    depends_on: []
-
   method:
     # FIXME: #3 Public ID is missing in generated data if explicit system_id   
     type: fixed
@@ -599,6 +609,16 @@ entities:
       ]
     depends_on: []
 
+  method_group:
+    data_source: sead
+    type: sql
+    surrogate_id: method_group_id
+    columns: ["method_group_id", "group_name", "description"]
+    query:
+      select "method_group_id", "group_name", "description"
+      from public.tbl_method_groups
+    depends_on: []
+
   modification_type:
     source: null
     data_source: arbodat_lookup
@@ -610,16 +630,6 @@ entities:
       modification_type_name: "Zust"
       modification_type_description: "Zustand"
     query: "select [Zust], [Zustand], [Nummer] from [Zustand];"
-    depends_on: []
-
-  natural_region_group:
-    source: null
-    data_source: arbodat_lookup
-    type: sql
-    surrogate_id: natural_region_group_id
-    keys: ["NatHauptNr"]
-    columns: ["NaturHaupteinheit"]
-    query: "select [NatHauptNr], [NaturHaupteinheit] from [NaturHaupt];"
     depends_on: []
 
   natural_region:
@@ -635,6 +645,16 @@ entities:
         local_keys: ["NatHauptNr"]
         remote_keys: ["NatHauptNr"]
     depends_on: ["natural_region_group"]
+
+  natural_region_group:
+    source: null
+    data_source: arbodat_lookup
+    type: sql
+    surrogate_id: natural_region_group_id
+    keys: ["NatHauptNr"]
+    columns: ["NaturHaupteinheit"]
+    query: "select [NatHauptNr], [NaturHaupteinheit] from [NaturHaupt];"
+    depends_on: []
 
   project:
     source: null
