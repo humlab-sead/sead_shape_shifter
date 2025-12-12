@@ -13,6 +13,293 @@ entities:
       quotechar: '"'
       keep_default_na: false
 
+  abundance:
+    source: null
+    data_source: arbodat_data
+    type: sql
+    surrogate_id: abundance_id
+    keys: "@value: entities.analysis_entity.keys"
+    columns:
+      [
+        "rAnzahl",
+        "rGewicht",
+        "geschätzt",
+        "rFrag",
+        "Multiplikator",
+        "FAnzahl",
+        "FFragmente",
+        "FGewicht",
+        "EDatProb",
+        "AnmFrakt",
+      ]
+    query:
+      select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],
+             [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl], [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]
+      from [Details];
+    extra_columns:
+      abundance: "FAnzahl"
+    foreign_keys:
+      - entity: analysis_entity
+        local_keys: "@value: entities.analysis_entity.keys"
+        remote_keys: "@value: entities.analysis_entity.keys"
+        cardinality: "many-to-one"
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
+        cardinality: "many-to-one"
+      - entity: abundance_element
+        local_keys: ["RTyp"]
+        remote_keys: ["RTyp"]
+        cardinality: "many-to-one"
+    depends_on: ["analysis_entity"]
+
+  abundance_element:
+    source: null
+    data_source: arbodat_lookup
+    type: sql
+    surrogate_id: abundance_element_id
+    keys: ["RTyp"]
+    columns: ["Resttyp", "RTypGrup", "RTypNr"]
+    extra_columns:
+      element_name: "RTyp"
+      element_description: "Resttyp"
+    query: "select [RTyp], [Resttyp], [RTypGrup], [RTypNr] from [RTyp];"
+    foreign_keys:
+      - entity: abundance_element_group
+        local_keys: ["RTypGrup"]
+        remote_keys: ["RTypGrup"]
+    depends_on: ["abundance_element_group"]
+
+  abundance_element_group: # missing in SEAD
+    source: null
+    data_source: arbodat_lookup
+    type: sql
+    surrogate_id: abundance_element_group_id
+    keys: ["RTypGrup"]
+    columns: ["RTypGrup_EN", "Nummer"]
+    query: |
+      select [RTypGrup], [RTypGrup_EN], [Nummer]
+      from [RtypGruppen];
+    depends_on: []
+
+  abundance_modification: # NOTE! Thist only works if one-to-one relationship between analysis_entity and abundance
+    source: abundance
+    surrogate_id: abundance_modification_id
+    keys: ["abundance_id"]
+    columns: ["Zust"]
+    foreign_keys:
+      - entity: modification_type
+        local_keys: ["Zust"]
+        remote_keys: ["Zust"]
+    depends_on: ["abundance"]
+
+  abundance_property:
+    source: abundance
+    surrogate_id: abundance_property_id
+    keys: []
+    columns: "@value: entities.abundance_property_type.arbodat_codes + ['abundance_id']"
+    unnest:
+      id_vars: ["abundance_id"]
+      value_vars: "@value: entities.abundance_property_type.arbodat_codes"
+      var_name: abundance_property_type
+      value_name: abundance_property_value
+    foreign_keys:
+      - entity: abundance_property_type
+        local_keys: ["abundance_property_type"]
+        remote_keys: ["arbodat_code"]
+      # - entity: analysis_entity      #   local_keys: ["arbodat_analysis_entity_id"]
+      #   remote_keys: ["arbodat_analysis_entity_id"]
+    drop_empty_rows: 
+      abundance_property_value: [null, ""]
+    drop_duplicates: true
+    depends_on: ["abundance", "abundance_property_type"]
+
+  abundance_property_type:
+    source: null
+    type: fixed
+    surrogate_id: abundance_property_type_id
+    surrogate_name: abundance_property_type
+    columns: ["abundance_property_type", "description", "arbodat_code"]
+    values:
+      - ["raw_count", "Number of plant remains of the corresponding taxon", "rAnzahl"]
+      - ["raw_weight", "Weight of plant remains of the corresponding taxon (mainly charcoal)", "rGewicht"]
+      - ["estimated_amount", "Semi-quantitatively estimated plant remains of the corresponding taxon", "geschätzt"]
+      - ["raw_fragments", "Fragments (if present)", "rFrag"]
+      - ["multiplier", "Total weight / evaluated weight", "Multiplikator"]
+      - ["extrapolated_count", "Extrapolated count", "FAnzahl"]
+      - ["extrapolated_fragments", "Extrapolated fragments", "FFragmente"]
+      - ["extrapolated_weight", "Extrapolated weight", "FGewicht"]
+      - ["entry_date", "Entry date", "EDatProb"]
+      - ["note", "Note", "AnmFrakt"]
+    arbodat_codes:
+      [
+        "rAnzahl",
+        "rGewicht",
+        "geschätzt",
+        "rFrag",
+        "Multiplikator",
+        "FAnzahl",
+        "FFragmente",
+        "FGewicht",
+        "EDatProb",
+        "AnmFrakt",
+      ]
+    depends_on: []
+
+  analysis_entity:
+    source: null
+    data_source: arbodat_data
+    type: sql
+    surrogate_id: analysis_entity_id
+    keys: ["Projekt", "Befu", "ProbNr", "PCODE", "Fraktion", "cf", "RTyp", "Zust"]
+    columns: []
+    query:
+      select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust]
+      from [Details];
+    foreign_keys:
+      - entity: sample
+        local_keys: ["Projekt", "Befu", "ProbNr"]
+        remote_keys: ["Projekt", "Befu", "ProbNr"]
+        cardinality: "many-to-one"
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
+        how: "left"
+        cardinality: "many-to-one"
+      - entity: method
+        local_keys: ["Fraktion"]
+        remote_keys: ["arbodat_code"]
+        how: "left"
+        cardinality: "many-to-one"
+    depends_on: ["method", "taxa", "sample"] #, "modification_type", "remain_type"]
+
+  archaeological_period:
+    source: null
+    data_source: arbodat_lookup
+    type: sql
+    surrogate_id: archaeological_period_id
+    keys: ["ArchDat"]
+    columns: ["ArchDat", "Beschreibung", "Epoche", "Nummer"]
+    query: "select [ArchDat], [Beschreibung], [Epoche], [Nummer] from [ArchDat] ;"
+    foreign_keys:
+      - entity: epoch
+        local_keys: ["Epoche"]
+        remote_keys: ["Epoche"]
+    depends_on: ["epoch"]
+
+  chronological_period:
+    source: null
+    data_source: arbodat_lookup
+    type: sql
+    surrogate_id: chronological_period_id
+    keys: ["ChronoDat"]
+    columns: ["ChronoDat", "Beschreibung", "Nummer", "von", "bis"]
+    query: "select [ChronoDat], [Beschreibung], [Nummer], [von], [bis] from [ChronoDat] ;"
+    depends_on: []
+
+  contact:
+    source: _project_contact
+    surrogate_id: contact_id
+    keys: []
+    columns: ["contact_name", "contact_type"]
+    append:
+      source: null
+      data_source: arbodat_data
+      check_column_names: false
+      type: sql
+      query: |
+        select [BotBest], "BotBest" from [Befunde] where [BotBest] is not null ;
+    foreign_keys:
+      - entity: contact_type
+        local_keys: ["contact_type"]
+        remote_keys: ["arbodat_code"]
+    drop_duplicates: true
+    depends_on: ["contact_type", "_project_contact"]
+
+  contact_type:
+    # FIXME: Aut, PublJath should be moved to Citations
+    source: null
+    surrogate_id: contact_type_id
+    surrogate_name: contact_type
+    columns: ["contact_type_name", "description", "arbodat_code"]
+    type: fixed
+    values:
+      - ["Archaeologist", "Name of scientist responsible for processing the archaeological material", "ArchBear"]
+      - [
+          "Botanist",
+          "Name of scientist responsible for the botanical determination (possibly several persons)",
+          "BotBear",
+        ]
+      - ["Author(s) ", "Publication/manuscript/short report", "Aut"]
+      - [
+          "Bot. Determination",
+          "Name(s) of person(s) responsible for charcoal or seed/fruit determination, etc",
+          "BotBest",
+        ]
+      - ["Site Director/Institution", "Name of site director and/or institution", "ArchAusg"]
+    contact_types: ["ArchAusg", "ArchBear", "BotBear", "Aut", "BotBest"]
+
+  coordinate_system:
+    source: null
+    data_source: arbodat_lookup
+    type: sql
+    surrogate_id: coordinate_system_id
+    keys: ["Koordsys"]
+    columns: ["Index", "Koordsys", "Bemerkung"]
+    query: "select [Index], [Koordsys], [Bemerkung] from [KoordSys] ;"
+    depends_on: []
+
+  cultural_group:
+    source: null
+    data_source: arbodat_lookup
+    surrogate_id: cultural_group_id
+    keys: ["KultGr"]
+    columns: ["KultGr", "Cult_EN"]
+    type: sql
+    query:
+      select KultGr, Cult_EN
+      from Kulturgruppen;
+    depends_on: []
+
+  dataset:
+    source: analysis_entity
+    surrogate_id: dataset_id
+    keys: ["Projekt", "Fraktion"]
+    columns: []
+    extra_columns:
+      dataset_type_id: null
+      dataset_name: "method_name"
+      master_set_id: 1
+      data_type_id: null
+      biblio_id: null
+    foreign_keys:
+      - entity: project
+        local_keys: ["Projekt"]
+        remote_keys: ["Projekt"]
+        how: "left"
+        cardinality: "many-to-one"
+      - entity: method
+        local_keys: ["Fraktion"]
+        remote_keys: ["arbodat_code"]
+        how: "left"
+        cardinality: "many-to-one"
+    drop_duplicates: true
+    depends_on: ["method", "project"]
+
+  dataset_contacts:
+    source: dataset
+    surrogate_id: dataset_contact_id
+    keys: ["dataset_id", "Projekt"]
+    columns: []
+    foreign_keys:
+      - entity: _project_contact
+        local_keys: ["Projekt"]
+        remote_keys: ["Projekt"]
+        extra_columns:
+          contact_name: "contact_id"
+    drop_duplicates: true
+    depends_on: ["_project_contact", "dataset", "project"]
+
   dating:
     source: null
     data_source: arbodat_data
@@ -91,16 +378,113 @@ entities:
     drop_empty_rows: ["ChronoDat", "ArchDat"]
     depends_on: ["sample"]
 
-  cultural_group:
+  feature:
+    source: null
+    data_source: arbodat_data
+    type: sql
+    surrogate_id: feature_id
+    keys: ["Projekt", "Befu"]
+    columns:
+      ["FlSchn", "BefuTyp", "FustelTyp", "FuTypVermut", "gebäud", "okBefu", "okErh", "BotBest", "BestJa", "Anmerkung"]
+    query:
+      select [Projekt],
+             [Befu],
+             [FlSchn],
+             [BefuTyp],
+             [FustelTyp],
+             [FuTypVermut],
+             [gebäud],
+             [okBefu],
+             [okErh],
+             [BotBest],
+             [BestJa],
+             [Anmerkung]
+      from [Befunde]
+    foreign_keys:
+      - entity: project
+        local_keys: ["Projekt"]
+        remote_keys: ["Projekt"]
+        extra_columns:
+          site_id: "site_id"
+      - entity: feature_type
+        local_keys: ["BefuTyp"]
+        remote_keys: ["Befundtyp"]
+        how: "left"
+    depends_on: ["project"]
+
+  feature_property:
+    source: null
+    data_source: arbodat_data
+    type: sql
+    surrogate_id: feature_property_id
+    keys: ["Projekt", "Befu"]
+    columns: "@value: entities.feature_property_type.values"
+    query:
+      select [Projekt], [Befu], [FlSchn], [gebäud], [okBefu], [okErh], [BestJa], [Anmerkung] from [Befunde] ;
+    foreign_keys:
+      - entity: feature
+        local_keys: "@value: entities.feature.keys"
+        remote_keys: "@value: entities.feature.keys"
+      - entity: feature_property_type
+        local_keys: ["feature_property_type"]
+        remote_keys: ["arbodat_code"]
+        how: "left"
+    unnest:
+      id_vars: "@value: entities.feature.keys"
+      value_vars: "@value: entities.feature_property_type.values"
+      var_name: feature_property_type
+      value_name: feature_property_value
+    drop_duplicates: true
+    depends_on: ["feature", "feature_property_type"]
+
+  feature_property_type:
+    surrogate_id: feature_property_type_id
+    surrogate_name: "arbodat_code"
+    type: fixed
+    columns: ["arbodat_code"]
+    extra_columns:
+      feature_property_type: 1
+      feature_property_name: 1
+      feature_property_description: 1
+    # TODO: update values names to Arbodat DB column names (not survey names)
+    values: ["gebäud", "okBefu", "okErh", "BestJa", "FlSchn", "Anmerkung"]
+    # "GrJahrBefu",
+
+  feature_type:
     source: null
     data_source: arbodat_lookup
-    surrogate_id: cultural_group_id
-    keys: ["KultGr"]
-    columns: ["KultGr", "Cult_EN"]
     type: sql
+    surrogate_id: feature_type_id
+    keys: []
+    columns: ["Befundtyp", "Beschreibung"]
+    extra_columns:
+      feature_type_name: "Befundtyp"
+      description: "Beschreibung"
+    query: "select [Befundtyp], [Beschreibung] from [Befundtypen];"
+    depends_on: []
+
+  identification_level:
+    data_source: sead
+    surrogate_id: identification_level_id
+    type: sql
+    columns: ["identification_level_id", "identification_level_abbrev", "identification_level_name", "notes"]
+    drop_duplicates: false
     query:
-      select KultGr, Cult_EN
-      from Kulturgruppen;
+      select identification_level_id, identification_level_abbrev, identification_level_name, notes
+      from public.tbl_identification_levels
+    depends_on: []
+
+  modification_type:
+    source: null
+    data_source: arbodat_lookup
+    type: sql
+    surrogate_id: modification_type_id
+    keys: ["Zust"]
+    columns: ["Zust", "Zustand", "Nummer"]
+    extra_columns:
+      modification_type_name: "Zust"
+      modification_type_description: "Zustand"
+    query: "select [Zust], [Zustand], [Nummer] from [Zustand];"
     depends_on: []
 
   natural_region_group:
@@ -127,19 +511,27 @@ entities:
         remote_keys: ["NatHauptNr"]
     depends_on: ["natural_region_group"]
 
-  # natural_sub_region:
-  #   source: null
-  #   data_source: arbodat_lookup
-  #   type: sql
-  #   surrogate_id: natural_sub_region_id
-  #   keys: ["xxx"]
-  #   columns: ["xxx", "xxx"]
-  #   query: "select [xxx], [xxx] from [xxx];"
-  #   foreign_keys:
-  #     - entity: natural_region
-  #       local_keys: ["NaturE"]
-  #       remote_keys: ["NaturE"]
-  #   depends_on: ["natural_region"]
+  project:
+    source: null
+    data_source: arbodat_data
+    type: sql
+    surrogate_id: project_id
+    keys: ["Projekt", "Fustel"]
+    columns: []
+    extra_columns:
+      project_name: "Projekt"
+      project_type_id: 0
+      project_stage_id: 0
+      project_abbrev_name: null
+      description: null
+    query:
+      select [Projekt], [Fustel]
+      from [Projekte];
+    foreign_keys:
+      - entity: site
+        local_keys: ["Fustel"]
+        remote_keys: ["Fustel"]
+    depends_on: []
 
   sample_description_type:
     source: null
@@ -275,208 +667,6 @@ entities:
     check_functional_dependency: true
     depends_on: ["site", "natural_region"]
 
-  project:
-    source: null
-    data_source: arbodat_data
-    type: sql
-    surrogate_id: project_id
-    keys: ["Projekt", "Fustel"]
-    columns: []
-    extra_columns:
-      project_name: "Projekt"
-      project_type_id: 0
-      project_stage_id: 0
-      project_abbrev_name: null
-      description: null
-    query:
-      select [Projekt], [Fustel]
-      from [Projekte];
-    foreign_keys:
-      - entity: site
-        local_keys: ["Fustel"]
-        remote_keys: ["Fustel"]
-    depends_on: []
-
-  modification_type:
-    source: null
-    data_source: arbodat_lookup
-    type: sql
-    surrogate_id: modification_type_id
-    keys: ["Zust"]
-    columns: ["Zust", "Zustand", "Nummer"]
-    extra_columns:
-      modification_type_name: "Zust"
-      modification_type_description: "Zustand"
-    query: "select [Zust], [Zustand], [Nummer] from [Zustand];"
-    depends_on: []
-
-  abundance_modification: # NOTE! Thist only works if one-to-one relationship between analysis_entity and abundance
-    source: abundance
-    surrogate_id: abundance_modification_id
-    keys: ["abundance_id"]
-    columns: ["Zust"]
-    foreign_keys:
-      - entity: modification_type
-        local_keys: ["Zust"]
-        remote_keys: ["Zust"]
-    depends_on: ["abundance"]
-
-  abundance_element_group: # missing in SEAD
-    source: null
-    data_source: arbodat_lookup
-    type: sql
-    surrogate_id: abundance_element_group_id
-    keys: ["RTypGrup"]
-    columns: ["RTypGrup_EN", "Nummer"]
-    query: |
-      select [RTypGrup], [RTypGrup_EN], [Nummer]
-      from [RtypGruppen];
-    depends_on: []
-
-  abundance_element:
-    source: null
-    data_source: arbodat_lookup
-    type: sql
-    surrogate_id: abundance_element_id
-    keys: ["RTyp"]
-    columns: ["Resttyp", "RTypGrup", "RTypNr"]
-    extra_columns:
-      element_name: "RTyp"
-      element_description: "Resttyp"
-    query: "select [RTyp], [Resttyp], [RTypGrup], [RTypNr] from [RTyp];"
-    foreign_keys:
-      - entity: abundance_element_group
-        local_keys: ["RTypGrup"]
-        remote_keys: ["RTypGrup"]
-    depends_on: ["abundance_element_group"]
-
-  analysis_entity:
-    source: null
-    data_source: arbodat_data
-    type: sql
-    surrogate_id: analysis_entity_id
-    keys: ["Projekt", "Befu", "ProbNr", "PCODE", "Fraktion", "cf", "RTyp", "Zust"]
-    columns: []
-    query:
-      select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust]
-      from [Details];
-    foreign_keys:
-      - entity: sample
-        local_keys: ["Projekt", "Befu", "ProbNr"]
-        remote_keys: ["Projekt", "Befu", "ProbNr"]
-        cardinality: "many-to-one"
-      - entity: taxa
-        local_keys: ["PCODE"]
-        remote_keys: ["PCODE"]
-        how: "left"
-        cardinality: "many-to-one"
-      - entity: method
-        local_keys: ["Fraktion"]
-        remote_keys: ["arbodat_code"]
-        how: "left"
-        cardinality: "many-to-one"
-    depends_on: ["method", "taxa", "sample"] #, "modification_type", "remain_type"]
-
-  feature_type:
-    source: null
-    data_source: arbodat_lookup
-    type: sql
-    surrogate_id: feature_type_id
-    keys: []
-    columns: ["Befundtyp", "Beschreibung"]
-    extra_columns:
-      feature_type_name: "Befundtyp"
-      description: "Beschreibung"
-    query: "select [Befundtyp], [Beschreibung] from [Befundtypen];"
-    depends_on: []
-
-  abundance:
-    source: null
-    data_source: arbodat_data
-    type: sql
-    surrogate_id: abundance_id
-    keys: "@value: entities.analysis_entity.keys"
-    columns:
-      [
-        "rAnzahl",
-        "rGewicht",
-        "geschätzt",
-        "rFrag",
-        "Multiplikator",
-        "FAnzahl",
-        "FFragmente",
-        "FGewicht",
-        "EDatProb",
-        "AnmFrakt",
-      ]
-    query:
-      select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust],
-             [rAnzahl], [rGewicht], [geschätzt], [rFrag], [Multiplikator], [FAnzahl], [FFragmente], [FGewicht], [EDatProb], [AnmFrakt]
-      from [Details];
-    extra_columns:
-      abundance: "FAnzahl"
-    foreign_keys:
-      - entity: analysis_entity
-        local_keys: "@value: entities.analysis_entity.keys"
-        remote_keys: "@value: entities.analysis_entity.keys"
-        cardinality: "many-to-one"
-      - entity: taxa
-        local_keys: ["PCODE"]
-        remote_keys: ["PCODE"]
-        cardinality: "many-to-one"
-      - entity: abundance_element
-        local_keys: ["RTyp"]
-        remote_keys: ["RTyp"]
-        cardinality: "many-to-one"
-    depends_on: ["analysis_entity"]
-
-  feature_property_type:
-    surrogate_id: feature_property_type_id
-    surrogate_name: "arbodat_code"
-    type: fixed
-    columns: ["arbodat_code"]
-    extra_columns:
-      feature_property_type: 1
-      feature_property_name: 1
-      feature_property_description: 1
-    # TODO: update values names to Arbodat DB column names (not survey names)
-    values: ["gebäud", "okBefu", "okErh", "BestJa", "FlSchn", "Anmerkung"]
-    # "GrJahrBefu",
-
-  feature:
-    source: null
-    data_source: arbodat_data
-    type: sql
-    surrogate_id: feature_id
-    keys: ["Projekt", "Befu"]
-    columns:
-      ["FlSchn", "BefuTyp", "FustelTyp", "FuTypVermut", "gebäud", "okBefu", "okErh", "BotBest", "BestJa", "Anmerkung"]
-    query:
-      select [Projekt],
-             [Befu],
-             [FlSchn],
-             [BefuTyp],
-             [FustelTyp],
-             [FuTypVermut],
-             [gebäud],
-             [okBefu],
-             [okErh],
-             [BotBest],
-             [BestJa],
-             [Anmerkung]
-      from [Befunde]
-    foreign_keys:
-      - entity: project
-        local_keys: ["Projekt"]
-        remote_keys: ["Projekt"]
-        extra_columns:
-          site_id: "site_id"
-      - entity: feature_type
-        local_keys: ["BefuTyp"]
-        remote_keys: ["Befundtyp"]
-        how: "left"
-    depends_on: ["project"]
-
   sample_group:
     # rule: one-to-one relationship with feature
     source: feature
@@ -490,42 +680,6 @@ entities:
       method_id: null
     drop_duplicates: true
     depends_on: ["feature"]
-
-  feature_property:
-    source: null
-    data_source: arbodat_data
-    type: sql
-    surrogate_id: feature_property_id
-    keys: ["Projekt", "Befu"]
-    columns: "@value: entities.feature_property_type.values"
-    query:
-      select [Projekt], [Befu], [FlSchn], [gebäud], [okBefu], [okErh], [BestJa], [Anmerkung] from [Befunde] ;
-    foreign_keys:
-      - entity: feature
-        local_keys: "@value: entities.feature.keys"
-        remote_keys: "@value: entities.feature.keys"
-      - entity: feature_property_type
-        local_keys: ["feature_property_type"]
-        remote_keys: ["arbodat_code"]
-        how: "left"
-    unnest:
-      id_vars: "@value: entities.feature.keys"
-      value_vars: "@value: entities.feature_property_type.values"
-      var_name: feature_property_type
-      value_name: feature_property_value
-    drop_duplicates: true
-    depends_on: ["feature", "feature_property_type"]
-
-  identification_level:
-    data_source: sead
-    surrogate_id: identification_level_id
-    type: sql
-    columns: ["identification_level_id", "identification_level_abbrev", "identification_level_name", "notes"]
-    drop_duplicates: false
-    query:
-      select identification_level_id, identification_level_abbrev, identification_level_name, notes
-      from public.tbl_identification_levels
-    depends_on: []
 
   _pcodes:
     source: null
@@ -561,59 +715,6 @@ entities:
         other_column: "PCODE"
     depends_on: ["_pcodes"]
 
-  abundance_property_type:
-    source: null
-    type: fixed
-    surrogate_id: abundance_property_type_id
-    surrogate_name: abundance_property_type
-    columns: ["abundance_property_type", "description", "arbodat_code"]
-    values:
-      - ["raw_count", "Number of plant remains of the corresponding taxon", "rAnzahl"]
-      - ["raw_weight", "Weight of plant remains of the corresponding taxon (mainly charcoal)", "rGewicht"]
-      - ["estimated_amount", "Semi-quantitatively estimated plant remains of the corresponding taxon", "geschätzt"]
-      - ["raw_fragments", "Fragments (if present)", "rFrag"]
-      - ["multiplier", "Total weight / evaluated weight", "Multiplikator"]
-      - ["extrapolated_count", "Extrapolated count", "FAnzahl"]
-      - ["extrapolated_fragments", "Extrapolated fragments", "FFragmente"]
-      - ["extrapolated_weight", "Extrapolated weight", "FGewicht"]
-      - ["entry_date", "Entry date", "EDatProb"]
-      - ["note", "Note", "AnmFrakt"]
-    arbodat_codes:
-      [
-        "rAnzahl",
-        "rGewicht",
-        "geschätzt",
-        "rFrag",
-        "Multiplikator",
-        "FAnzahl",
-        "FFragmente",
-        "FGewicht",
-        "EDatProb",
-        "AnmFrakt",
-      ]
-    depends_on: []
-
-  abundance_property:
-    source: abundance
-    surrogate_id: abundance_property_id
-    keys: []
-    columns: "@value: entities.abundance_property_type.arbodat_codes + ['abundance_id']"
-    unnest:
-      id_vars: ["abundance_id"]
-      value_vars: "@value: entities.abundance_property_type.arbodat_codes"
-      var_name: abundance_property_type
-      value_name: abundance_property_value
-    foreign_keys:
-      - entity: abundance_property_type
-        local_keys: ["abundance_property_type"]
-        remote_keys: ["arbodat_code"]
-      # - entity: analysis_entity      #   local_keys: ["arbodat_analysis_entity_id"]
-      #   remote_keys: ["arbodat_analysis_entity_id"]
-    drop_empty_rows: 
-      abundance_property_value: [null, ""]
-    drop_duplicates: true
-    depends_on: ["abundance", "abundance_property_type"]
-
   epoch:
     source: null
     data_source: arbodat_lookup
@@ -622,40 +723,6 @@ entities:
     keys: ["Epoche"]
     columns: ["Epoche", "Beschreibung", "Epoch_EN", "Nummer"]
     query: "select [Epoche], [Beschreibung], [Epoch_EN], [Nummer] from [Epochen] ;"
-    depends_on: []
-
-  archaeological_period:
-    source: null
-    data_source: arbodat_lookup
-    type: sql
-    surrogate_id: archaeological_period_id
-    keys: ["ArchDat"]
-    columns: ["ArchDat", "Beschreibung", "Epoche", "Nummer"]
-    query: "select [ArchDat], [Beschreibung], [Epoche], [Nummer] from [ArchDat] ;"
-    foreign_keys:
-      - entity: epoch
-        local_keys: ["Epoche"]
-        remote_keys: ["Epoche"]
-    depends_on: ["epoch"]
-
-  chronological_period:
-    source: null
-    data_source: arbodat_lookup
-    type: sql
-    surrogate_id: chronological_period_id
-    keys: ["ChronoDat"]
-    columns: ["ChronoDat", "Beschreibung", "Nummer", "von", "bis"]
-    query: "select [ChronoDat], [Beschreibung], [Nummer], [von], [bis] from [ChronoDat] ;"
-    depends_on: []
-
-  coordinate_system:
-    source: null
-    data_source: arbodat_lookup
-    type: sql
-    surrogate_id: coordinate_system_id
-    keys: ["Koordsys"]
-    columns: ["Index", "Koordsys", "Bemerkung"]
-    query: "select [Index], [Koordsys], [Bemerkung] from [KoordSys] ;"
     depends_on: []
 
   sample_type:
@@ -780,7 +847,7 @@ entities:
       select "method_group_id", "group_name", "description"
       from public.tbl_method_groups
     depends_on: []
-
+<
 # FIXME: #3 Public ID is missing in generated data if explicit system_id   
   method:
     type: fixed
@@ -1028,29 +1095,6 @@ entities:
         remote_keys: ["PCODE"]
     depends_on: ["taxa"]
 
-  contact_type:
-    # FIXME: Aut, PublJath should be moved to Citations
-    source: null
-    surrogate_id: contact_type_id
-    surrogate_name: contact_type
-    columns: ["contact_type_name", "description", "arbodat_code"]
-    type: fixed
-    values:
-      - ["Archaeologist", "Name of scientist responsible for processing the archaeological material", "ArchBear"]
-      - [
-          "Botanist",
-          "Name of scientist responsible for the botanical determination (possibly several persons)",
-          "BotBear",
-        ]
-      - ["Author(s) ", "Publication/manuscript/short report", "Aut"]
-      - [
-          "Bot. Determination",
-          "Name(s) of person(s) responsible for charcoal or seed/fruit determination, etc",
-          "BotBest",
-        ]
-      - ["Site Director/Institution", "Name of site director and/or institution", "ArchAusg"]
-    contact_types: ["ArchAusg", "ArchBear", "BotBear", "Aut", "BotBest"]
-
   _project_contact:
     source: null
     data_source: arbodat_data
@@ -1066,64 +1110,6 @@ entities:
       var_name: contact_type
       value_name: contact_name
     drop_duplicates: True
-
-  contact:
-    source: _project_contact
-    surrogate_id: contact_id
-    keys: []
-    columns: ["contact_name", "contact_type"]
-    append:
-      source: null
-      data_source: arbodat_data
-      check_column_names: false
-      type: sql
-      query: |
-        select [BotBest], "BotBest" from [Befunde] where [BotBest] is not null ;
-    foreign_keys:
-      - entity: contact_type
-        local_keys: ["contact_type"]
-        remote_keys: ["arbodat_code"]
-    drop_duplicates: true
-    depends_on: ["contact_type", "_project_contact"]
-
-  dataset:
-    source: analysis_entity
-    surrogate_id: dataset_id
-    keys: ["Projekt", "Fraktion"]
-    columns: []
-    extra_columns:
-      dataset_type_id: null
-      dataset_name: "method_name"
-      master_set_id: 1
-      data_type_id: null
-      biblio_id: null
-    foreign_keys:
-      - entity: project
-        local_keys: ["Projekt"]
-        remote_keys: ["Projekt"]
-        how: "left"
-        cardinality: "many-to-one"
-      - entity: method
-        local_keys: ["Fraktion"]
-        remote_keys: ["arbodat_code"]
-        how: "left"
-        cardinality: "many-to-one"
-    drop_duplicates: true
-    depends_on: ["method", "project"]
-
-  dataset_contacts:
-    source: dataset
-    surrogate_id: dataset_contact_id
-    keys: ["dataset_id", "Projekt"]
-    columns: []
-    foreign_keys:
-      - entity: _project_contact
-        local_keys: ["Projekt"]
-        remote_keys: ["Projekt"]
-        extra_columns:
-          contact_name: "contact_id"
-    drop_duplicates: true
-    depends_on: ["_project_contact", "dataset", "project"]
 
 # TODO: add BotBest contact connection to what??
 # TODO: Add dataset_submission
@@ -1157,3 +1143,18 @@ finally:
       - location.surrogate_id
       
 replacements: "@include: replacements.yml"
+
+
+  # natural_sub_region:
+  #   source: null
+  #   data_source: arbodat_lookup
+  #   type: sql
+  #   surrogate_id: natural_sub_region_id
+  #   keys: ["xxx"]
+  #   columns: ["xxx", "xxx"]
+  #   query: "select [xxx], [xxx] from [xxx];"
+  #   foreign_keys:
+  #     - entity: natural_region
+  #       local_keys: ["NaturE"]
+  #       remote_keys: ["NaturE"]
+  #   depends_on: ["natural_region"]
