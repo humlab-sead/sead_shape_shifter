@@ -50,6 +50,8 @@ class ConstraintValidator(ABC):
 class ValidatorRegistry(Registry):
 
     items: dict[str, type[ConstraintValidator]] = {}
+    # Secondary index: key -> sub_key -> validator class
+    _sub_key_index: dict[str, dict[str, type[ConstraintValidator]]] = {}
 
     @classmethod
     def registered_class_hook(cls, fn_or_class: Any, **args) -> Any:
@@ -59,11 +61,43 @@ class ValidatorRegistry(Registry):
                     setattr(fn_or_class, "stage", args["stage"])
             if not hasattr(fn_or_class, "is_match_validator"):
                 setattr(fn_or_class, "is_match_validator", args.get("is_match_validator", False))
+            # Store the constraint_key and sub_key for reference
+            if args.get("key"):
+                if not hasattr(fn_or_class, "constraint_key"):
+                    setattr(fn_or_class, "constraint_key", args["key"])
+            if args.get("sub_key"):
+                if not hasattr(fn_or_class, "sub_key"):
+                    setattr(fn_or_class, "sub_key", args["sub_key"])
         return fn_or_class
+
+    @classmethod
+    def register(cls, **kwargs) -> Any:
+        """Register a validator with optional sub_key for constraint value mapping."""
+        def decorator(fn_or_class: Any) -> Any:
+            # Use class name as the unique registry key
+            registry_key = fn_or_class.__name__ if hasattr(fn_or_class, "__name__") else kwargs.get("key", "unknown")
+            cls.items[registry_key] = fn_or_class
+            
+            # Build sub_key index for efficient lookup
+            constraint_key = kwargs.get("key")
+            sub_key = kwargs.get("sub_key")
+            if constraint_key and sub_key:
+                if constraint_key not in cls._sub_key_index:
+                    cls._sub_key_index[constraint_key] = {}
+                cls._sub_key_index[constraint_key][sub_key] = fn_or_class
+            
+            return cls.registered_class_hook(fn_or_class, **kwargs)
+        return decorator
 
     def get_validators_for_stage(self, stage: str) -> list[type[ConstraintValidator]]:
         """Retrieve all registered validators for a given stage."""
         return [v for v in self.items.values() if getattr(v, "stage", None) == stage]
+    
+    def get_validator_by_constraint(self, key: str, value: Any) -> type[ConstraintValidator] | None:
+        """Get a specific validator by constraint key and value (sub_key lookup)."""
+        if key in self._sub_key_index and value in self._sub_key_index[key]:
+            return self._sub_key_index[key][value]
+        return None
 
 
 Validators: ValidatorRegistry = ValidatorRegistry()  # pylint: disable=invalid-name
@@ -118,7 +152,7 @@ class UniqueRightKeyValidator(ConstraintValidator):
 # Validators to be used AFTER merging/linking (stage = "post-merge")
 
 
-@Validators.register(key="cardinality", stage="post-merge")
+@Validators.register(key="cardinality", sub_key="one_to_one", stage="post-merge")
 class OneToOneCardinalityValidator(ConstraintValidator):
     """Validates one-to-one cardinality (row count stays the same)."""
 
@@ -133,7 +167,7 @@ class OneToOneCardinalityValidator(ConstraintValidator):
             self.raise_if_violated(f"one_to_one cardinality violated (rows: {rows_before} -> {rows_after})")
 
 
-@Validators.register(key="cardinality", stage="post-merge")
+@Validators.register(key="cardinality", sub_key="many_to_one", stage="post-merge")
 class ManyToOneCardinalityValidator(ConstraintValidator):
     """Validates many-to-one cardinality (row count cannot increase)."""
 
@@ -148,7 +182,7 @@ class ManyToOneCardinalityValidator(ConstraintValidator):
             self.raise_if_violated(f"many_to_one cardinality violated (rows increased: {rows_before} -> {rows_after})")
 
 
-@Validators.register(key="cardinality", stage="post-merge")
+@Validators.register(key="cardinality", sub_key="one_to_many", stage="post-merge")
 class OneToManyCardinalityValidator(ConstraintValidator):
     """Validates one-to-many cardinality (row count cannot decrease)."""
 
