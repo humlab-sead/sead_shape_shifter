@@ -46,7 +46,8 @@ class FixedLoader(DataLoader):
             data = pd.DataFrame(table_cfg.values, columns=table_cfg.columns)
 
         if table_cfg.surrogate_id:
-            data = add_surrogate_id(data, table_cfg.surrogate_id)
+            if table_cfg.surrogate_id not in data.columns:
+                data = add_surrogate_id(data, table_cfg.surrogate_id)
 
         return data
 
