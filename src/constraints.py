@@ -163,44 +163,8 @@ class OneToManyCardinalityValidator(ConstraintValidator):
             self.raise_if_violated(f"one_to_many cardinality violated (rows decreased: {rows_before} -> {rows_after})")
 
 
-@Validators.register(key="max_row_increase_abs", stage="post-merge")
-class MaxRowIncreaseAbsoluteValidator(ConstraintValidator):
-    """Validates maximum absolute row increase."""
-
-    def is_applicable(self) -> bool:
-        return self.constraints.max_row_increase_abs is not None
-
-    def validate(self, context: ValidationContext) -> None:
-        assert context.linked_df is not None
-        rows_before: int = len(context.local_df)
-        rows_after: int = len(context.linked_df)
-        rows_change: int = rows_after - rows_before
-        max_increase: int | None = self.constraints.max_row_increase_abs
-        assert max_increase is not None  # Guaranteed by is_applicable
-        if rows_change > max_increase:
-            self.raise_if_violated(f"Row increase {rows_change} exceeds max_row_increase_abs={max_increase}")
-
-
-@Validators.register(key="max_row_increase_pct", stage="post-merge")
-class MaxRowIncreasePercentValidator(ConstraintValidator):
-    """Validates maximum percentage row increase."""
-
-    def is_applicable(self) -> bool:
-        return self.constraints.max_row_increase_pct is not None
-
-    def validate(self, context: ValidationContext) -> None:
-        assert context.linked_df is not None
-        rows_before: int = len(context.local_df)
-        rows_after: int = len(context.linked_df)
-        rows_change: int = rows_after - rows_before
-        pct_increase: float | Literal[0] = (rows_change / rows_before * 100) if rows_before > 0 else 0
-        max_pct: float | None = self.constraints.max_row_increase_pct
-        assert max_pct is not None  # Guaranteed by is_applicable
-        if pct_increase > max_pct:
-            self.raise_if_violated(f"Row increase {pct_increase:.1f}% exceeds max_row_increase_pct={max_pct}%")
-
-
 @Validators.register(key="allow_row_decrease", stage="post-merge")
+
 class AllowRowDecreaseValidator(ConstraintValidator):
     """Validates that row decrease is allowed if it occurs."""
 
@@ -229,22 +193,6 @@ class UnmatchedLeftValidator(ConstraintValidator):
             self.raise_if_violated(f"{left_only} unmatched left rows (allow_unmatched_left=False)")
 
 
-@Validators.register(key="require_all_left_matched", stage="post-merge-match", is_match_validator=True)
-class RequireAllLeftMatchedValidator(
-    ConstraintValidator,
-):
-    """Validates that all left rows are matched."""
-
-    def is_applicable(self) -> bool:
-        return self.constraints.require_all_left_matched
-
-    def validate(self, context: ValidationContext) -> None:
-        assert context.linked_df is not None and context.merge_indicator_col is not None
-        left_only: int = (context.linked_df[context.merge_indicator_col] == "left_only").sum()
-        if left_only > 0:
-            self.raise_if_violated(f"{left_only} unmatched left rows (require_all_left_matched=True)")
-
-
 @Validators.register(key="allow_unmatched_right", stage="post-merge-match", is_match_validator=True)
 class UnmatchedRightValidator(ConstraintValidator):
     """Validates that unmatched right rows are allowed."""
@@ -257,38 +205,6 @@ class UnmatchedRightValidator(ConstraintValidator):
         right_only: int = (context.linked_df[context.merge_indicator_col] == "right_only").sum()
         if right_only > 0:
             self.raise_if_violated(f"{right_only} unmatched right rows (allow_unmatched_right=False)")
-
-
-@Validators.register(key="require_all_right_matched", stage="post-merge-match", is_match_validator=True)
-class RequireAllRightMatchedValidator(ConstraintValidator):
-    """Validates that all right rows are matched."""
-
-    def is_applicable(self) -> bool:
-        return self.constraints.require_all_right_matched
-
-    def validate(self, context: ValidationContext) -> None:
-        assert context.linked_df is not None and context.merge_indicator_col is not None
-        right_only: int = (context.linked_df[context.merge_indicator_col] == "right_only").sum()
-        if right_only > 0:
-            self.raise_if_violated(f"{right_only} unmatched right rows (require_all_right_matched=True)")
-
-
-@Validators.register(key="min_match_rate", stage="post-merge-match", is_match_validator=True)
-class MinMatchRateValidator(ConstraintValidator):
-    """Validates minimum match rate."""
-
-    def is_applicable(self) -> bool:
-        return self.constraints.min_match_rate is not None
-
-    def validate(self, context: ValidationContext) -> None:
-        assert context.linked_df is not None and context.merge_indicator_col is not None
-        rows_before: int = len(context.local_df)
-        both: int = (context.linked_df[context.merge_indicator_col] == "both").sum()
-        match_rate: float | Literal[0] = both / rows_before if rows_before > 0 else 0
-        min_rate: float | None = self.constraints.min_match_rate
-        assert min_rate is not None  # Guaranteed by is_applicable
-        if match_rate < min_rate:
-            self.raise_if_violated(f"Match rate {match_rate:.2%} below minimum {min_rate:.2%}")
 
 
 class ForeignKeyConstraintValidator:
