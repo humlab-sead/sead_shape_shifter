@@ -11,6 +11,22 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/configurations',
+    name: 'configurations',
+    component: () => import('@/views/ConfigurationsView.vue'),
+    meta: {
+      title: 'Configurations',
+    },
+  },
+  {
+    path: '/configurations/:name',
+    name: 'config-detail',
+    component: () => import('@/views/ConfigurationDetailView.vue'),
+    meta: {
+      title: 'Configuration Details',
+    },
+  },
+  {
     path: '/entities',
     name: 'entities',
     component: () => import('@/views/EntitiesView.vue'),
