@@ -42,38 +42,10 @@ class TestForeignKeyConstraints:
         assert constraints.allow_unmatched_right is False
         assert constraints.has_match_constraints()
 
-    def test_require_all_left_matched(self):
-        """Test require_all_left_matched property."""
-        constraints = ForeignKeyConstraints(data={"require_all_left_matched": True})
-        assert constraints.require_all_left_matched is True
-        assert constraints.has_match_constraints()
-
-    def test_require_all_right_matched(self):
-        """Test require_all_right_matched property."""
-        constraints = ForeignKeyConstraints(data={"require_all_right_matched": True})
-        assert constraints.require_all_right_matched is True
-        assert constraints.has_match_constraints()
-
-    def test_max_row_increase_pct(self):
-        """Test max_row_increase_pct property."""
-        constraints = ForeignKeyConstraints(data={"max_row_increase_pct": 10.5})
-        assert constraints.max_row_increase_pct == 10.5
-
-    def test_max_row_increase_abs(self):
-        """Test max_row_increase_abs property."""
-        constraints = ForeignKeyConstraints(data={"max_row_increase_abs": 100})
-        assert constraints.max_row_increase_abs == 100
-
     def test_allow_row_decrease(self):
         """Test allow_row_decrease property."""
         constraints = ForeignKeyConstraints(data={"allow_row_decrease": True})
         assert constraints.allow_row_decrease is True
-
-    def test_min_match_rate(self):
-        """Test min_match_rate property."""
-        constraints = ForeignKeyConstraints(data={"min_match_rate": 0.95})
-        assert constraints.min_match_rate == 0.95
-        assert constraints.has_match_constraints()
 
     def test_require_unique_left(self):
         """Test require_unique_left property."""
@@ -100,17 +72,13 @@ class TestForeignKeyConstraints:
         constraints = ForeignKeyConstraints(
             data={
                 "cardinality": "many_to_one",
-                "require_all_left_matched": True,
-                "max_row_increase_pct": 5.0,
-                "min_match_rate": 0.99,
                 "allow_null_keys": False,
+                "allow_unmatched_left": False,
             }
         )
         assert constraints.cardinality == "many_to_one"
-        assert constraints.require_all_left_matched is True
-        assert constraints.max_row_increase_pct == 5.0
-        assert constraints.min_match_rate == 0.99
         assert constraints.allow_null_keys is False
+        assert constraints.allow_unmatched_left is False
         assert constraints.has_constraints
         assert constraints.has_match_constraints()
 
