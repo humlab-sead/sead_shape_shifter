@@ -10,6 +10,7 @@ from src.utility import Registry
 
 # pylint: disable=line-too-long, unnecessary-pass
 
+# FIXME: #5 Improve constraints checking
 
 class ForeignKeyConstraintViolation(Exception):
     """Raised when a foreign key constraint is violated."""
