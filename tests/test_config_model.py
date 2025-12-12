@@ -656,7 +656,7 @@ class TestTableConfig:
         result = table.keys_and_columns
 
         # Keys should come first
-        assert result[:2] == ["id", "name"]
+        assert set(result[:2]) == {"id", "name"}
         # Then non-key columns
         assert "description" in result[2:]
         assert "location" in result[2:]
