@@ -19,6 +19,8 @@ declare module 'vue' {
     ErrorAlert: typeof import('./components/common/ErrorAlert.vue')['default']
     ForeignKeyEditor: typeof import('./components/entities/ForeignKeyEditor.vue')['default']
     LoadingSkeleton: typeof import('./components/common/LoadingSkeleton.vue')['default']
+    QueryBuilder: typeof import('./components/query/QueryBuilder.vue')['default']
+    QueryCondition: typeof import('./components/query/QueryCondition.vue')['default']
     QueryEditor: typeof import('./components/query/QueryEditor.vue')['default']
     QueryResults: typeof import('./components/query/QueryResults.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

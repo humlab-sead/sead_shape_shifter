@@ -14,18 +14,48 @@
       </v-col>
     </v-row>
 
+    <!-- Query Input Tabs -->
     <v-row>
-      <!-- Query Editor -->
       <v-col cols="12">
-        <QueryEditor
-          :initial-query="initialQuery"
-          :initial-data-source="initialDataSource"
-          @result="handleQueryResult"
-          @error="handleQueryError"
-        />
-      </v-col>
+        <v-card>
+          <v-tabs v-model="activeTab" bg-color="primary">
+            <v-tab value="editor">
+              <v-icon class="mr-2">mdi-code-tags</v-icon>
+              SQL Editor
+            </v-tab>
+            <v-tab value="builder">
+              <v-icon class="mr-2">mdi-database-cog</v-icon>
+              Visual Builder
+            </v-tab>
+          </v-tabs>
 
-      <!-- Query Results -->
+          <v-window v-model="activeTab">
+            <!-- SQL Editor Tab -->
+            <v-window-item value="editor">
+              <div class="pa-4">
+                <QueryEditor
+                  :key="editorKey"
+                  :initial-query="initialQuery"
+                  :initial-data-source="initialDataSource"
+                  @result="handleQueryResult"
+                  @error="handleQueryError"
+                />
+              </div>
+            </v-window-item>
+
+            <!-- Visual Builder Tab -->
+            <v-window-item value="builder">
+              <div class="pa-4">
+                <QueryBuilder @use-query="handleUseQuery" />
+              </div>
+            </v-window-item>
+          </v-window>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Query Results -->
+    <v-row>
       <v-col v-if="queryResult || showResults" cols="12">
         <QueryResults :result="queryResult" />
       </v-col>
@@ -125,14 +155,17 @@
 import { ref } from 'vue';
 import { useRoute } from 'vue-router';
 import QueryEditor from '@/components/query/QueryEditor.vue';
+import QueryBuilder from '@/components/query/QueryBuilder.vue';
 import QueryResults from '@/components/query/QueryResults.vue';
 import type { QueryResult } from '@/types/query';
 
 const route = useRoute();
 
 // State
+const activeTab = ref<'editor' | 'builder'>('editor');
 const queryResult = ref<QueryResult | null>(null);
 const showResults = ref(false);
+const editorKey = ref(0); // For forcing re-render
 const snackbar = ref({
   show: false,
   message: '',
@@ -199,9 +232,27 @@ function handleQueryError(error: string) {
   };
 }
 
+function handleUseQuery(sql: string, dataSource: string) {
+  // Switch to editor tab and populate with generated SQL
+  activeTab.value = 'editor';
+  initialQuery.value = sql;
+  initialDataSource.value = dataSource;
+  editorKey.value++; // Force re-render
+  
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  
+  // Show success message
+  snackbar.value = {
+    show: true,
+    message: 'SQL query loaded into editor. Click "Execute Query" to run it.',
+    color: 'success'
+  };
+}
+
 function loadExample(query: string) {
   initialQuery.value = query;
-  // Force component re-render by updating key or use a different approach
+  editorKey.value++; // Force re-render
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
