@@ -221,6 +221,100 @@ async def preview_table_data(
         )
 
 
+@router.get("/{name}/tables/{table_name}/type-mappings", response_model=Dict[str, Dict[str, any]], summary="Get type mapping suggestions")
+async def get_type_mappings(
+    name: str,
+    table_name: str,
+    schema: Optional[str] = None,
+    service: SchemaIntrospectionService = Depends(get_schema_service),
+):
+    """
+    Get Shape Shifter type suggestions for all columns in a table.
+
+    **Path Parameters**:
+    - `name`: Data source identifier
+    - `table_name`: Table name
+
+    **Query Parameters**:
+    - `schema`: PostgreSQL schema name (defaults to 'public')
+
+    **Returns**: Dictionary mapping column names to type suggestions with:
+    - `suggested_type`: Recommended Shape Shifter type
+    - `confidence`: Confidence score (0.0-1.0)
+    - `reason`: Explanation for suggestion
+    - `alternatives`: Alternative type options
+
+    **Example Response**:
+    ```json
+    {
+      "user_id": {
+        "sql_type": "integer",
+        "suggested_type": "integer",
+        "confidence": 1.0,
+        "reason": "Standard integer type",
+        "alternatives": ["string", "float"]
+      },
+      "email": {
+        "sql_type": "character varying",
+        "suggested_type": "string",
+        "confidence": 1.0,
+        "reason": "Variable length string",
+        "alternatives": ["text"]
+      }
+    }
+    ```
+    """
+    try:
+        from app.services.type_mapping_service import TypeMappingService
+        
+        logger.info(f"Getting type mappings for {table_name} in {name}")
+        
+        # Get table schema
+        table_schema = await service.get_table_schema(name, table_name, schema)
+        
+        # Convert columns to dict format
+        columns = [
+            {
+                "name": col.name,
+                "data_type": col.data_type,
+                "is_primary_key": col.is_primary_key,
+                "max_length": col.max_length,
+            }
+            for col in table_schema.columns
+        ]
+        
+        # Get type mappings
+        type_service = TypeMappingService()
+        mappings = type_service.get_mappings_for_table(columns)
+        
+        # Convert to dict for JSON response
+        result = {
+            col_name: mapping.model_dump()
+            for col_name, mapping in mappings.items()
+        }
+        
+        logger.info(f"Generated {len(result)} type mappings for {table_name}")
+        return result
+        
+    except SchemaServiceError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(e),
+            )
+    except Exception as e:
+        logger.error(f"Error getting type mappings for {table_name}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get type mappings: {str(e)}",
+        )
+
+
 @router.post("/{name}/cache/invalidate", status_code=status.HTTP_204_NO_CONTENT, summary="Invalidate schema cache")
 async def invalidate_cache(
     name: str,

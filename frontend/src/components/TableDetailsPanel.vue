@@ -101,10 +101,32 @@
 
         <!-- Columns -->
         <v-card variant="outlined">
-          <v-card-title class="text-subtitle-1 d-flex align-center">
+          <v-card-title class="text-subtitle-1 d-flex align-center flex-wrap">
             <v-icon icon="mdi-table-column" size="small" class="mr-2" />
             Columns ({{ tableSchema.columns.length }})
             <v-spacer />
+            <v-btn
+              v-if="!showTypeMappings"
+              prepend-icon="mdi-account-convert"
+              size="small"
+              variant="outlined"
+              color="primary"
+              :loading="loadingTypeMappings"
+              @click="loadTypeMappings"
+              class="mr-2"
+            >
+              Show Type Suggestions
+            </v-btn>
+            <v-btn
+              v-else
+              prepend-icon="mdi-close"
+              size="small"
+              variant="text"
+              @click="showTypeMappings = false"
+              class="mr-2"
+            >
+              Hide Suggestions
+            </v-btn>
             <v-text-field
               v-model="columnSearchQuery"
               label="Search columns"
@@ -166,6 +188,25 @@
                   >
                     {{ column.comment }}
                   </v-chip>
+                </div>
+                <!-- Type Mapping Suggestion -->
+                <div v-if="showTypeMappings && typeMappings[column.name]" class="mt-2">
+                  <v-chip
+                    size="small"
+                    :color="getConfidenceColor(typeMappings[column.name]?.confidence ?? 0)"
+                    variant="flat"
+                    class="mr-1"
+                  >
+                    <v-icon icon="mdi-arrow-right-thin" size="small" class="mr-1" />
+                    {{ typeMappings[column.name]?.suggested_type }}
+                    <v-tooltip activator="parent" location="bottom">
+                      {{ typeMappings[column.name]?.reason }}
+                      <br>Confidence: {{ ((typeMappings[column.name]?.confidence ?? 0) * 100).toFixed(0) }}%
+                    </v-tooltip>
+                  </v-chip>
+                  <span v-if="(typeMappings[column.name]?.alternatives?.length ?? 0) > 0" class="text-caption text-grey">
+                    or {{ typeMappings[column.name]?.alternatives?.join(', ') }}
+                  </span>
                 </div>
               </v-list-item-subtitle>
             </v-list-item>
@@ -254,7 +295,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
-import type { TableSchema } from '@/types/schema'
+import schemaApi from '@/api/schema'
+import type { TableSchema, TypeMapping } from '@/types/schema'
 import {
   formatDataType,
   getColumnIcon,
@@ -281,6 +323,11 @@ const tableSchema = ref<TableSchema | null>(null)
 const columnSearchQuery = ref('')
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// Type mappings state
+const typeMappings = ref<Record<string, TypeMapping>>({})
+const showTypeMappings = ref(false)
+const loadingTypeMappings = ref(false)
 
 // Computed
 const filteredColumns = computed(() => {
@@ -329,6 +376,32 @@ function refreshSchema() {
 
 function clearError() {
   error.value = null
+}
+
+async function loadTypeMappings() {
+  if (!props.dataSource || !props.tableName) return
+
+  loadingTypeMappings.value = true
+
+  try {
+    typeMappings.value = await schemaApi.getTypeMappings(
+      props.dataSource,
+      props.tableName,
+      { schema: props.schema }
+    )
+    showTypeMappings.value = true
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to load type mappings'
+  } finally {
+    loadingTypeMappings.value = false
+  }
+}
+
+function getConfidenceColor(confidence: number): string {
+  if (confidence >= 0.9) return 'green'
+  if (confidence >= 0.7) return 'blue'
+  if (confidence >= 0.5) return 'orange'
+  return 'grey'
 }
 
 // Watchers

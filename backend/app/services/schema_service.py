@@ -323,6 +323,42 @@ class SchemaIntrospectionService:
                 )
             )
 
+        # Get foreign keys
+        fk_query = f"""
+            SELECT
+                kcu.column_name,
+                ccu.table_name AS referenced_table,
+                ccu.column_name AS referenced_column,
+                ccu.table_schema AS referenced_schema,
+                rc.constraint_name AS name
+            FROM information_schema.table_constraints AS tc
+            JOIN information_schema.key_column_usage AS kcu
+                ON tc.constraint_name = kcu.constraint_name
+                AND tc.table_schema = kcu.table_schema
+            JOIN information_schema.constraint_column_usage AS ccu
+                ON ccu.constraint_name = tc.constraint_name
+                AND ccu.table_schema = tc.table_schema
+            JOIN information_schema.referential_constraints AS rc
+                ON rc.constraint_name = tc.constraint_name
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+                AND tc.table_schema = '{schema_filter}'
+                AND tc.table_name = '{table_name}'
+        """
+
+        fk_data = await self._execute_query(ds_config, fk_query)
+        foreign_keys = []
+        if not fk_data.empty:
+            for _, row in fk_data.iterrows():
+                foreign_keys.append(
+                    ForeignKeyMetadata(
+                        name=row.get('name'),
+                        column=row['column_name'],
+                        referenced_table=row['referenced_table'],
+                        referenced_column=row['referenced_column'],
+                        referenced_schema=row.get('referenced_schema'),
+                    )
+                )
+
         # Get row count
         row_count = await self._get_table_row_count(ds_config, table_name, schema)
 
@@ -330,6 +366,7 @@ class SchemaIntrospectionService:
             table_name=table_name,
             columns=columns,
             primary_keys=primary_keys,
+            foreign_keys=foreign_keys,
             row_count=row_count,
         )
 
