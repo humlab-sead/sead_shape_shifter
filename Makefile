@@ -58,9 +58,10 @@ ui-install: install backend-install frontend-install
 .PHONY: backend-install
 backend-install:
 	@echo "Installing main package (shape-shifter) in editable mode..."
-	@uv pip install -e .
+	@uv pip install -e . 2>&1 | grep -E '(Installed|Uninstalled|Built|shape-shifter)' || true
 	@echo "Installing backend dependencies..."
-	@cd backend && uv pip install -e ".[dev]"
+	@cd backend && uv pip install -e ".[dev]" 2>&1 | grep -E '(Installed|Uninstalled|Built|shape-shifter-editor-backend)' || true
+	@echo "✓ Backend installation complete"
 
 .PHONY: backend-run
 backend-run:

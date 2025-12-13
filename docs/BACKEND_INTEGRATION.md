@@ -7,21 +7,23 @@ This project consists of two Python packages:
 1. **shape-shifter** (root): Core data transformation framework
    - Location: `./src/`
    - Package: `src.*` modules (configuration, normalizer, etc.)
+   - Configuration: Uses `TablesConfig` as the main container
    
 2. **shape-shifter-editor-backend** (backend): REST API for configuration editing
    - Location: `./backend/`
    - Depends on: Main shape-shifter package
    - Imports: `src.configuration.provider`, `src.config_model`, etc.
+   - Models: Backend Pydantic models adapt core configuration for REST API
 
-## Solution: Package Dependency
+## Solution: Package Dependency with Model Adapters
 
-The backend is configured to depend on the main `shape-shifter` package. This approach:
+The backend uses the main `shape-shifter` package for configuration but defines its own Pydantic models for REST API validation. This approach:
 
 ✅ Maintains clean separation between core and API  
 ✅ Follows standard Python packaging practices  
 ✅ Works for both development and production  
-✅ Eliminates PYTHONPATH hacks  
-✅ Allows independent deployment if needed  
+✅ Allows API-specific validation and documentation  
+✅ Adapts core config models to REST-friendly formats  
 
 ## Installation
 
