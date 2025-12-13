@@ -109,6 +109,19 @@
                   </v-expansion-panels>
                 </v-col>
               </v-row>
+
+              <!-- Test Join Button -->
+              <v-row dense class="mt-2">
+                <v-col cols="12">
+                  <ForeignKeyTester
+                    :config-name="configName"
+                    :entity-name="entityName"
+                    :foreign-key="fk"
+                    :foreign-key-index="index"
+                    :disabled="!isEntitySaved"
+                  />
+                </v-col>
+              </v-row>
             </v-card-text>
           </v-card>
         </v-list-item>
@@ -122,16 +135,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import type { ForeignKeyConfig } from '@/types'
+import ForeignKeyTester from './ForeignKeyTester.vue'
 
 interface Props {
   modelValue: ForeignKeyConfig[]
   availableEntities?: string[]
+  configName: string
+  entityName: string
+  isEntitySaved?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   availableEntities: () => [],
+  isEntitySaved: false,
 })
 
 const emit = defineEmits<{
