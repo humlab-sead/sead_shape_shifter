@@ -68,7 +68,7 @@ backend-run:
 	@echo "Starting backend server on http://localhost:8000"
 	@if [ -z "$$CONFIG_FILE" ]; then \
 		echo "Using default config: input/query_tester_config.yml"; \
-		export CONFIG_FILE=input/query_tester_config.yml; \
+		export CONFIG_FILE=$$(pwd)/input/query_tester_config.yml; \
 	fi && \
 	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
