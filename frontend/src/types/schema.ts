@@ -73,7 +73,16 @@ export interface PreviewData {
   limit: number;
   offset: number;
 }
-
+/**
+ * Type mapping suggestion for a column
+ */
+export interface TypeMapping {
+  sql_type: string;
+  suggested_type: string;
+  confidence: number;  // 0.0 to 1.0
+  reason: string;
+  alternatives: string[];
+}
 /**
  * Query parameters for listing tables
  */

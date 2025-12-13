@@ -10,6 +10,7 @@ import type {
   TableMetadata,
   TableSchema,
   PreviewData,
+  TypeMapping,
   ListTablesParams,
   GetTableSchemaParams,
   PreviewTableDataParams,
@@ -87,6 +88,26 @@ export const schemaApi = {
     await apiClient.post(
       `/data-sources/${encodeURIComponent(dataSourceName)}/cache/invalidate`
     );
+  },
+
+  /**
+   * Get type mapping suggestions for all columns in a table
+   * 
+   * @param dataSourceName - Name of the data source
+   * @param tableName - Name of the table
+   * @param params - Optional query parameters (schema filter for PostgreSQL)
+   * @returns Promise with dictionary of column name -> type mapping
+   */
+  async getTypeMappings(
+    dataSourceName: string,
+    tableName: string,
+    params?: GetTableSchemaParams
+  ): Promise<Record<string, TypeMapping>> {
+    const response = await apiClient.get<Record<string, TypeMapping>>(
+      `/data-sources/${encodeURIComponent(dataSourceName)}/tables/${encodeURIComponent(tableName)}/type-mappings`,
+      { params }
+    );
+    return response.data;
   },
 };
 
