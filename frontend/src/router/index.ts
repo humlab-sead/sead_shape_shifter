@@ -43,6 +43,14 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/query-tester',
+    name: 'query-tester',
+    component: () => import('@/views/QueryTesterView.vue'),
+    meta: {
+      title: 'Query Tester',
+    },
+  },
+  {
     path: '/entities',
     name: 'entities',
     component: () => import('@/views/EntitiesView.vue'),
