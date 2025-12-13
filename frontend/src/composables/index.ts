@@ -21,3 +21,6 @@ export type {
   EntitySuggestions,
   AnalyzeSuggestionsRequest,
 } from './useSuggestions'
+
+export { useEntityPreview } from './useEntityPreview'
+export type { PreviewResult, ColumnInfo } from './useEntityPreview'

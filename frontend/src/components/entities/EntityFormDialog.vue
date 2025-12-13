@@ -10,6 +10,7 @@
         <v-tab value="basic">Basic</v-tab>
         <v-tab value="relationships" :disabled="mode === 'create'">Foreign Keys</v-tab>
         <v-tab value="advanced" :disabled="mode === 'create'">Advanced</v-tab>
+        <v-tab value="preview" :disabled="mode === 'create' || !formData.name">Preview</v-tab>
       </v-tabs>
 
       <v-card-text class="pt-4">
@@ -156,6 +157,16 @@
               :available-entities="availableSourceEntities"
             />
           </v-window-item>
+
+          <v-window-item value="preview">
+            <entity-preview-panel
+              :config-name="configName"
+              :entity-name="formData.name"
+              :auto-load="false"
+              @loaded="handlePreviewLoaded"
+              @error="handlePreviewError"
+            />
+          </v-window-item>
         </v-window>
       </v-card-text>
 
@@ -186,6 +197,7 @@ import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
 import ForeignKeyEditor from './ForeignKeyEditor.vue'
 import AdvancedEntityConfig from './AdvancedEntityConfig.vue'
 import SuggestionsPanel from './SuggestionsPanel.vue'
+import EntityPreviewPanel from './EntityPreviewPanel.vue'
 
 interface Props {
   modelValue: boolean
@@ -248,6 +260,15 @@ const formData = ref<FormData>({
 })
 
 const activeTab = ref('basic')
+
+// Preview handlers
+function handlePreviewLoaded(rows: number) {
+  console.log(`Preview loaded: ${rows} rows`)
+}
+
+function handlePreviewError(error: string) {
+  console.error('Preview error:', error)
+}
 
 // Computed
 const dialogModel = computed({
