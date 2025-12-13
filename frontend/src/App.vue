@@ -48,6 +48,13 @@
         />
 
         <v-list-item
+          prepend-icon="mdi-database-search"
+          title="Schema Explorer"
+          value="schema-explorer"
+          :to="{ name: 'schema-explorer' }"
+        />
+
+        <v-list-item
           prepend-icon="mdi-graph-outline"
           title="Dependency Graph"
           value="graph"

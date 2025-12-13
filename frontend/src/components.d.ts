@@ -10,6 +10,7 @@ declare module 'vue' {
     AdvancedEntityConfig: typeof import('./components/entities/AdvancedEntityConfig.vue')['default']
     CircularDependencyAlert: typeof import('./components/dependencies/CircularDependencyAlert.vue')['default']
     CreateConfigurationDialog: typeof import('./components/configurations/CreateConfigurationDialog.vue')['default']
+    DataPreviewTable: typeof import('./components/DataPreviewTable.vue')['default']
     DataSourceFormDialog: typeof import('./components/DataSourceFormDialog.vue')['default']
     DeleteConfirmationDialog: typeof import('./components/common/DeleteConfirmationDialog.vue')['default']
     EmptyState: typeof import('./components/common/EmptyState.vue')['default']
@@ -20,6 +21,8 @@ declare module 'vue' {
     LoadingSkeleton: typeof import('./components/common/LoadingSkeleton.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SchemaTreeView: typeof import('./components/SchemaTreeView.vue')['default']
+    TableDetailsPanel: typeof import('./components/TableDetailsPanel.vue')['default']
     ValidationMessageList: typeof import('./components/validation/ValidationMessageList.vue')['default']
     ValidationPanel: typeof import('./components/validation/ValidationPanel.vue')['default']
   }
