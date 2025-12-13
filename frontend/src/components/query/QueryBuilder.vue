@@ -266,9 +266,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useDataSourceStore } from '@/stores/data-source';
-import { schemaApi } from '@/api/schema';
+import schemaApi from '@/api/schema';
 import type { TableMetadata } from '@/types/schema';
 import QueryCondition, { type QueryConditionData } from './QueryCondition.vue';
 
@@ -282,6 +282,13 @@ const dataSourceStore = useDataSourceStore();
 const dataSourceNames = computed(() => 
   dataSourceStore.dataSources.map((ds: any) => ds.name)
 );
+
+// Load data sources on mount
+onMounted(async () => {
+  if (dataSourceStore.dataSources.length === 0) {
+    await dataSourceStore.fetchDataSources();
+  }
+});
 
 // State
 const selectedDataSource = ref<string>('');
@@ -339,7 +346,8 @@ const onTableChange = async () => {
       selectedDataSource.value,
       selectedTable.value
     );
-    availableColumns.value = schema.columns.map((col: any) => col.column_name);
+    // Backend returns 'name' field, not 'column_name'
+    availableColumns.value = schema.columns.map((col: any) => col.name);
   } catch (error) {
     console.error('Failed to load table schema:', error);
   } finally {
