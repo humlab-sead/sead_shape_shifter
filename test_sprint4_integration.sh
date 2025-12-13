@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 # Check backend
 echo "1. Backend Health Check"
 echo "─────────────────────────────────────────────"
-if curl -s http://localhost:8000/api/v1/health | grep -q "ok"; then
+if curl -s http://localhost:8000/api/v1/health | grep -q "healthy"; then
     echo -e "${GREEN}✓${NC} Backend is running"
 else
     echo -e "${RED}✗${NC} Backend is not responding"
