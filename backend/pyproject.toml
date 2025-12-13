@@ -17,6 +17,7 @@ dependencies = [
     "jaydebeapi>=1.2.3",
     "jpype1>=1.6.0",
     "sqlalchemy>=2.0.44",
+    "sqlparse>=0.5.4",
 ]
 
 [project.optional-dependencies]
