@@ -1,0 +1,253 @@
+"""
+Schema Introspection API Endpoints
+
+Provides REST API for database schema inspection, table browsing, and data preview.
+"""
+
+from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from loguru import logger
+
+from app.models.data_source import TableMetadata, TableSchema
+from app.services.schema_service import SchemaIntrospectionService, SchemaServiceError
+from app.api.dependencies import get_schema_service
+
+
+router = APIRouter(prefix="/data-sources", tags=["schema"])
+
+
+@router.get("/{name}/tables", response_model=List[TableMetadata], summary="List tables in data source")
+async def list_tables(
+    name: str,
+    schema: Optional[str] = Query(None, description="Schema name (PostgreSQL only)"),
+    service: SchemaIntrospectionService = Depends(get_schema_service),
+) -> List[TableMetadata]:
+    """
+    List all tables in a data source.
+
+    **Path Parameters**:
+    - `name`: Data source identifier
+
+    **Query Parameters**:
+    - `schema`: Optional schema name (PostgreSQL only, defaults to 'public')
+
+    **Supported Drivers**:
+    - PostgreSQL: Queries information_schema.tables
+    - MS Access: Queries INFORMATION_SCHEMA or MSysObjects
+    - SQLite: Queries sqlite_master
+
+    **Returns**: List of table metadata with name, schema (if applicable), and comment
+
+    **Caching**: Results cached for 5 minutes
+
+    **Errors**:
+    - 404: Data source not found
+    - 400: Schema introspection not supported for this driver
+    - 500: Database query failed
+    """
+    try:
+        logger.info(f"Listing tables for data source: {name} (schema: {schema or 'default'})")
+        tables = await service.get_tables(name, schema)
+        logger.info(f"Found {len(tables)} tables in {name}")
+        return tables
+    except SchemaServiceError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+        elif "not supported" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(e),
+            )
+    except Exception as e:
+        logger.error(f"Unexpected error listing tables for {name}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list tables: {str(e)}",
+        )
+
+
+@router.get("/{name}/tables/{table_name}/schema", response_model=TableSchema, summary="Get table schema")
+async def get_table_schema(
+    name: str,
+    table_name: str,
+    schema: Optional[str] = Query(None, description="Schema name (PostgreSQL only)"),
+    service: SchemaIntrospectionService = Depends(get_schema_service),
+) -> TableSchema:
+    """
+    Get detailed schema information for a specific table.
+
+    **Path Parameters**:
+    - `name`: Data source identifier
+    - `table_name`: Name of the table
+
+    **Query Parameters**:
+    - `schema`: Optional schema name (PostgreSQL only, defaults to 'public')
+
+    **Returns**:
+    - `table_name`: Table name
+    - `columns`: List of column metadata (name, type, nullable, default, is_primary_key)
+    - `primary_keys`: List of primary key column names
+    - `indexes`: List of index names (if available)
+    - `row_count`: Approximate number of rows
+
+    **Column Information**:
+    - `name`: Column name
+    - `data_type`: SQL data type
+    - `nullable`: Whether column accepts NULL values
+    - `default`: Default value expression
+    - `is_primary_key`: Whether column is part of primary key
+    - `max_length`: Maximum character length (for string types)
+
+    **Caching**: Results cached for 5 minutes
+
+    **Errors**:
+    - 404: Data source or table not found
+    - 400: Schema introspection not supported
+    - 500: Database query failed
+    """
+    try:
+        logger.info(f"Getting schema for table {table_name} in {name}")
+        table_schema = await service.get_table_schema(name, table_name, schema)
+        logger.info(f"Retrieved schema for {table_name} with {len(table_schema.columns)} columns")
+        return table_schema
+    except SchemaServiceError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+        elif "not supported" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(e),
+            )
+    except Exception as e:
+        logger.error(f"Unexpected error getting schema for {table_name}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get table schema: {str(e)}",
+        )
+
+
+@router.get("/{name}/tables/{table_name}/preview", summary="Preview table data")
+async def preview_table_data(
+    name: str,
+    table_name: str,
+    schema: Optional[str] = Query(None, description="Schema name (PostgreSQL only)"),
+    limit: int = Query(50, ge=1, le=100, description="Maximum rows to return (1-100)"),
+    offset: int = Query(0, ge=0, description="Number of rows to skip"),
+    service: SchemaIntrospectionService = Depends(get_schema_service),
+) -> Dict[str, Any]:
+    """
+    Get a preview of table data.
+
+    **Path Parameters**:
+    - `name`: Data source identifier
+    - `table_name`: Name of the table
+
+    **Query Parameters**:
+    - `schema`: Optional schema name (PostgreSQL only)
+    - `limit`: Maximum rows to return (1-100, default 50)
+    - `offset`: Number of rows to skip (default 0)
+
+    **Returns**:
+    ```json
+    {
+      "columns": ["col1", "col2", "col3"],
+      "rows": [
+        {"col1": "value1", "col2": 123, "col3": true},
+        {"col1": "value2", "col2": 456, "col3": false}
+      ],
+      "total_rows": 1000,
+      "limit": 50,
+      "offset": 0
+    }
+    ```
+
+    **Query Execution**:
+    - Uses `SELECT * FROM table LIMIT x OFFSET y`
+    - 30-second timeout protection
+    - Results not cached (live data)
+
+    **Pagination**:
+    - Use `offset` to skip rows
+    - Use `limit` to control page size
+    - `total_rows` shows approximate total count
+
+    **Errors**:
+    - 404: Data source or table not found
+    - 400: Invalid parameters or unsupported driver
+    - 500: Query execution failed or timeout
+    """
+    try:
+        logger.info(f"Previewing table {table_name} in {name} (limit={limit}, offset={offset})")
+        preview = await service.preview_table_data(name, table_name, schema, limit, offset)
+        logger.info(f"Retrieved {len(preview['rows'])} rows from {table_name}")
+        return preview
+    except SchemaServiceError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+        elif "not supported" in str(e).lower() or "timed out" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(e),
+            )
+    except Exception as e:
+        logger.error(f"Unexpected error previewing {table_name}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to preview table data: {str(e)}",
+        )
+
+
+@router.post("/{name}/cache/invalidate", status_code=status.HTTP_204_NO_CONTENT, summary="Invalidate schema cache")
+async def invalidate_cache(
+    name: str,
+    service: SchemaIntrospectionService = Depends(get_schema_service),
+):
+    """
+    Invalidate cached schema data for a data source.
+
+    **Path Parameters**:
+    - `name`: Data source identifier
+
+    **Use Cases**:
+    - After database schema changes
+    - After table modifications
+    - When cached data is stale
+
+    **Returns**: 204 No Content
+
+    **Note**: Cache automatically expires after 5 minutes
+    """
+    try:
+        logger.info(f"Invalidating schema cache for {name}")
+        service.invalidate_cache(name)
+        logger.info(f"Cache invalidated for {name}")
+    except Exception as e:
+        logger.error(f"Error invalidating cache for {name}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to invalidate cache: {str(e)}",
+        )

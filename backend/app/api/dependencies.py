@@ -17,6 +17,7 @@ if str(src_path) not in sys.path:
 from src.configuration.provider import ConfigProvider, get_config_provider
 from src.configuration.interface import ConfigLike
 from app.services.data_source_service import DataSourceService
+from app.services.schema_service import SchemaIntrospectionService
 
 
 def get_config(
@@ -44,4 +45,21 @@ def get_data_source_service(
         yield service
     finally:
         # Cleanup if needed (connection pool cleanup in future)
+        pass
+
+
+def get_schema_service(
+    config: ConfigLike = Depends(get_config),
+) -> Generator[SchemaIntrospectionService, None, None]:
+    """
+    Get SchemaIntrospectionService instance.
+    
+    Creates service with current configuration.
+    Used as FastAPI dependency for schema introspection endpoints.
+    """
+    service = SchemaIntrospectionService(config)
+    try:
+        yield service
+    finally:
+        # Cleanup if needed (cache cleanup in future)
         pass
