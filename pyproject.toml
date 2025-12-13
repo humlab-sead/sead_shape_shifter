@@ -19,6 +19,10 @@ dependencies = [
     "python-multipart>=0.0.20",
     "sqlalchemy>=2.0.44",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
 [dependency-groups]
 dev = [
     "pylint>=3.3.8",
