@@ -540,26 +540,29 @@ class SchemaIntrospectionService:
     async def _execute_query(self, ds_config: DataSourceConfig, query: str):
         """Execute a query using the appropriate data loader."""
         # Import here to avoid circular dependency
-        from src.config_model import DataSourceConfig as LegacyDataSourceConfig
+        from src.config_model import DataSourceConfig as CoreDataSourceConfig
 
-        # Convert to legacy config
-        legacy_config = LegacyDataSourceConfig(
-            driver=ds_config.get_loader_driver(),
-            host=ds_config.host,
-            port=ds_config.port,
-            database=ds_config.effective_database,
-            username=ds_config.username,
-            password=ds_config.password.get_secret_value() if ds_config.password else None,
-            filename=ds_config.effective_file_path,
-            options=ds_config.options,
-        )
+        # Build config dict for core system
+        config_dict = {
+            "driver": ds_config.get_loader_driver(),
+            "host": ds_config.host,
+            "port": ds_config.port,
+            "database": ds_config.effective_database,
+            "username": ds_config.username,
+            "password": ds_config.password.get_secret_value() if ds_config.password else None,
+            "filename": ds_config.effective_file_path,
+            "options": ds_config.options or {},
+        }
+        
+        # Create core config instance
+        core_config = CoreDataSourceConfig(cfg=config_dict, name=ds_config.name)
 
         # Get appropriate loader
-        loader = DataLoaders.get(legacy_config.driver, legacy_config)
+        loader = DataLoaders.get(core_config.driver)(data_source=core_config)
 
         # Execute query with timeout
         try:
-            data = await asyncio.wait_for(loader.load(query=query), timeout=30.0)
+            data = await asyncio.wait_for(loader.read_sql(query), timeout=30.0)
             return data
         except asyncio.TimeoutError:
             raise SchemaServiceError("Query execution timed out after 30 seconds")
