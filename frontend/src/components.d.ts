@@ -10,6 +10,7 @@ declare module 'vue' {
     AdvancedEntityConfig: typeof import('./components/entities/AdvancedEntityConfig.vue')['default']
     CircularDependencyAlert: typeof import('./components/dependencies/CircularDependencyAlert.vue')['default']
     CreateConfigurationDialog: typeof import('./components/configurations/CreateConfigurationDialog.vue')['default']
+    DataSourceFormDialog: typeof import('./components/DataSourceFormDialog.vue')['default']
     DeleteConfirmationDialog: typeof import('./components/common/DeleteConfirmationDialog.vue')['default']
     EmptyState: typeof import('./components/common/EmptyState.vue')['default']
     EntityFormDialog: typeof import('./components/entities/EntityFormDialog.vue')['default']

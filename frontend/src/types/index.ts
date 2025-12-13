@@ -7,6 +7,7 @@ export * from './entity'
 export * from './config'
 export * from './validation'
 export * from './graph'
+export * from './data-source'
 
 // Common utility types
 export interface ApiResponse<T = any> {
