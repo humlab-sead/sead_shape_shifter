@@ -35,6 +35,14 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/schema-explorer',
+    name: 'schema-explorer',
+    component: () => import('@/views/SchemaExplorerView.vue'),
+    meta: {
+      title: 'Schema Explorer',
+    },
+  },
+  {
     path: '/entities',
     name: 'entities',
     component: () => import('@/views/EntitiesView.vue'),
