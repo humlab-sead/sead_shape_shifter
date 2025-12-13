@@ -163,6 +163,7 @@
               :config-name="configName"
               :entity-name="formData.name"
               :auto-load="false"
+              :auto-refresh="mode === 'edit'"
               @loaded="handlePreviewLoaded"
               @error="handlePreviewError"
             />
