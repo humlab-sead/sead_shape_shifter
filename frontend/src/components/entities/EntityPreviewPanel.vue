@@ -128,10 +128,12 @@ interface Props {
   configName: string
   entityName: string
   autoLoad?: boolean
+  autoRefresh?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   autoLoad: false,
+  autoRefresh: false,
 })
 
 const emit = defineEmits<{
@@ -156,12 +158,34 @@ const panel = ref<string | undefined>(props.autoLoad ? 'preview' : undefined)
 const localLimit = ref(50)
 const limitOptions = [10, 25, 50, 100, 200, 500]
 
-// Watch for entity changes
+// Debounced auto-refresh
+let refreshTimeout: ReturnType<typeof setTimeout> | null = null
+
+// Watch for entity changes with debouncing
 watch(
-  () => props.entityName,
-  (newName) => {
-    if (newName && props.autoLoad) {
+  () => ({ name: props.entityName, config: props.configName }),
+  (newVal, oldVal) => {
+    // Clear existing timeout
+    if (refreshTimeout) {
+      clearTimeout(refreshTimeout)
+      refreshTimeout = null
+    }
+
+    // Initial load or auto-load
+    if (newVal.name && props.autoLoad && !oldVal) {
       loadPreview()
+      return
+    }
+
+    // Auto-refresh on entity name change (after initial load)
+    if (props.autoRefresh && newVal.name && oldVal && 
+        (newVal.name !== oldVal.name || newVal.config !== oldVal.config)) {
+      // Debounce preview refresh by 1 second
+      refreshTimeout = setTimeout(() => {
+        if (hasData.value) {
+          loadPreview()
+        }
+      }, 1000)
     }
   },
   { immediate: true }

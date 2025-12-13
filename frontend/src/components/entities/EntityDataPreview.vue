@@ -75,8 +75,8 @@
 
       <!-- Data Table -->
       <div v-else>
-        <!-- Metadata chips -->
-        <div class="d-flex flex-wrap gap-2 pa-3 bg-grey-lighten-5">
+        <!-- Metadata chips and controls -->
+        <div class="d-flex flex-wrap gap-2 pa-3 bg-grey-lighten-5 align-center">
           <v-chip
             v-if="previewData.has_dependencies"
             size="small"
@@ -106,6 +106,29 @@
             <v-icon icon="mdi-clock-outline" start size="small" />
             {{ previewData.execution_time_ms }}ms
           </v-chip>
+
+          <v-spacer />
+
+          <!-- Filter indicator and clear button -->
+          <v-chip
+            v-if="Object.keys(columnFilters).length > 0"
+            size="small"
+            variant="flat"
+            color="info"
+            closable
+            @click:close="clearFilters"
+          >
+            <v-icon icon="mdi-filter" start size="small" />
+            {{ Object.keys(columnFilters).length }} filters
+          </v-chip>
+
+          <v-chip
+            v-if="filteredRows.length !== previewData.rows.length"
+            size="small"
+            variant="text"
+          >
+            Showing {{ filteredRows.length }} / {{ previewData.rows.length }} rows
+          </v-chip>
         </div>
 
         <v-divider />
@@ -114,11 +137,13 @@
         <div class="preview-table-container">
           <v-table density="compact" fixed-header height="400px">
             <thead>
+              <!-- Column headers with sort -->
               <tr>
                 <th
                   v-for="column in previewData.columns"
                   :key="column.name"
-                  class="text-left"
+                  class="text-left column-header"
+                  @click="toggleSort(column.name)"
                 >
                   <div class="d-flex align-center gap-1">
                     <v-icon
@@ -143,13 +168,41 @@
                       size="x-small"
                       color="grey"
                     />
+                    <v-spacer />
+                    <v-icon
+                      :icon="getSortIcon(column.name)"
+                      size="small"
+                      :color="sortColumn === column.name ? 'primary' : 'grey'"
+                    />
                   </div>
+                </th>
+              </tr>
+              <!-- Column filters -->
+              <tr class="filter-row">
+                <th
+                  v-for="column in previewData.columns"
+                  :key="`filter-${column.name}`"
+                  class="pa-1"
+                >
+                  <v-text-field
+                    v-model="columnFilters[column.name]"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    clearable
+                    placeholder="Filter..."
+                    @click.stop
+                  >
+                    <template #prepend-inner>
+                      <v-icon icon="mdi-filter-outline" size="x-small" />
+                    </template>
+                  </v-text-field>
                 </th>
               </tr>
             </thead>
             <tbody>
               <tr
-                v-for="(row, idx) in previewData.rows"
+                v-for="(row, idx) in filteredRows"
                 :key="idx"
                 :class="{ 'bg-grey-lighten-4': idx % 2 === 0 }"
               >
@@ -176,6 +229,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue'
 import type { PreviewResult } from '@/composables/useEntityPreview'
 
 interface Props {
@@ -184,7 +238,7 @@ interface Props {
   error?: string | null
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   loading: false,
   error: null,
 })
@@ -192,6 +246,73 @@ withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   refresh: []
 }>()
+
+// Sorting state
+const sortColumn = ref<string | null>(null)
+const sortDirection = ref<'asc' | 'desc'>('asc')
+
+// Filtering state
+const columnFilters = ref<Record<string, string>>({})
+
+// Computed filtered and sorted rows
+const filteredRows = computed(() => {
+  if (!props.previewData) return []
+  
+  let rows = [...props.previewData.rows]
+  
+  // Apply column filters
+  Object.entries(columnFilters.value).forEach(([column, filterText]) => {
+    if (filterText.trim()) {
+      rows = rows.filter(row => {
+        const value = row[column]
+        if (value === null || value === undefined) return false
+        return String(value).toLowerCase().includes(filterText.toLowerCase())
+      })
+    }
+  })
+  
+  // Apply sorting
+  if (sortColumn.value) {
+    rows.sort((a, b) => {
+      const aVal = a[sortColumn.value!]
+      const bVal = b[sortColumn.value!]
+      
+      // Handle nulls
+      if (aVal === null || aVal === undefined) return 1
+      if (bVal === null || bVal === undefined) return -1
+      
+      // Compare values
+      let comparison = 0
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        comparison = aVal - bVal
+      } else {
+        comparison = String(aVal).localeCompare(String(bVal))
+      }
+      
+      return sortDirection.value === 'asc' ? comparison : -comparison
+    })
+  }
+  
+  return rows
+})
+
+function toggleSort(columnName: string) {
+  if (sortColumn.value === columnName) {
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortColumn.value = columnName
+    sortDirection.value = 'asc'
+  }
+}
+
+function getSortIcon(columnName: string): string {
+  if (sortColumn.value !== columnName) return 'mdi-sort'
+  return sortDirection.value === 'asc' ? 'mdi-sort-ascending' : 'mdi-sort-descending'
+}
+
+function clearFilters() {
+  columnFilters.value = {}
+}
 
 function getTypeColor(dataType: string): string {
   const typeMap: Record<string, string> = {
@@ -233,7 +354,24 @@ function formatValue(value: any): string {
   white-space: nowrap;
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
+}
+
+:deep(.v-table th.column-header) {
+  cursor: pointer;
+  user-select: none;
+}
+
+:deep(.v-table th.column-header:hover) {
+  background: #e8e8e8;
+}
+
+:deep(.v-table tr.filter-row th) {
+  position: sticky;
+  top: 48px;
+  z-index: 2;
+  background: #ffffff;
+  border-bottom: 2px solid #e0e0e0;
 }
 
 :deep(.v-table td) {
@@ -241,5 +379,13 @@ function formatValue(value: any): string {
   max-width: 300px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Resizable columns */
+:deep(.v-table th) {
+  position: relative;
+  min-width: 100px;
+  resize: horizontal;
+  overflow: auto;
 }
 </style>
