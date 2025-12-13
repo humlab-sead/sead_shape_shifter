@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import configurations, data_sources, entities, health, validation
+from app.api.v1.endpoints import configurations, data_sources, entities, health, schema, validation
 
 api_router = APIRouter()
 
@@ -12,3 +12,4 @@ api_router.include_router(configurations.router, tags=["configurations"])
 api_router.include_router(entities.router, tags=["entities"])
 api_router.include_router(validation.router, tags=["validation"])
 api_router.include_router(data_sources.router, tags=["data-sources"])
+api_router.include_router(schema.router, tags=["schema"])
