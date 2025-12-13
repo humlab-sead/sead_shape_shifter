@@ -27,6 +27,14 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/data-sources',
+    name: 'data-sources',
+    component: () => import('@/views/DataSourcesView.vue'),
+    meta: {
+      title: 'Data Sources',
+    },
+  },
+  {
     path: '/entities',
     name: 'entities',
     component: () => import('@/views/EntitiesView.vue'),

@@ -41,6 +41,13 @@
         />
 
         <v-list-item
+          prepend-icon="mdi-database"
+          title="Data Sources"
+          value="data-sources"
+          :to="{ name: 'data-sources' }"
+        />
+
+        <v-list-item
           prepend-icon="mdi-graph-outline"
           title="Dependency Graph"
           value="graph"
