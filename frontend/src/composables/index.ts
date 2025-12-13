@@ -13,3 +13,11 @@ export type { UseValidationOptions } from './useValidation'
 
 export { useDependencies } from './useDependencies'
 export type { UseDependenciesOptions } from './useDependencies'
+
+export { useSuggestions } from './useSuggestions'
+export type {
+  ForeignKeySuggestion,
+  DependencySuggestion,
+  EntitySuggestions,
+  AnalyzeSuggestionsRequest,
+} from './useSuggestions'

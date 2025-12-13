@@ -26,6 +26,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SchemaTreeView: typeof import('./components/SchemaTreeView.vue')['default']
+    SuggestionsPanel: typeof import('./components/entities/SuggestionsPanel.vue')['default']
     TableDetailsPanel: typeof import('./components/TableDetailsPanel.vue')['default']
     ValidationMessageList: typeof import('./components/validation/ValidationMessageList.vue')['default']
     ValidationPanel: typeof import('./components/validation/ValidationPanel.vue')['default']
