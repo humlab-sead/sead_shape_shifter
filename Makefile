@@ -63,7 +63,7 @@ backend-install:
 .PHONY: backend-run
 backend-run:
 	@echo "Starting backend server on http://localhost:8000"
-	@cd backend && uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+	@cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 .PHONY: backend-test
 backend-test:
