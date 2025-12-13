@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from loguru import logger
 
 from app.models.preview import EntityPreviewError, PreviewRequest, PreviewResult
+from app.models.join_test import JoinTestRequest, JoinTestResult
 from app.services.config_service import ConfigurationService
 from app.services.preview_service import PreviewService
 
@@ -127,3 +128,53 @@ async def invalidate_preview_cache(
     except Exception as e:
         logger.error(f"Cache invalidation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Cache invalidation failed: {str(e)}")
+
+
+@router.post(
+    "/configurations/{config_name}/entities/{entity_name}/foreign-keys/{fk_index}/test",
+    response_model=JoinTestResult,
+    summary="Test foreign key join",
+    description="Test a foreign key relationship to validate the join",
+    responses={
+        200: {"description": "Join test completed successfully"},
+        404: {"description": "Configuration, entity, or foreign key not found"},
+        400: {"description": "Invalid request parameters"},
+    },
+)
+async def test_foreign_key_join(
+    config_name: str = Path(..., description="Name of the configuration"),
+    entity_name: str = Path(..., description="Name of the entity with the foreign key"),
+    fk_index: int = Path(..., description="Index of the foreign key to test", ge=0),
+    sample_size: int = Query(100, description="Number of rows to test", ge=10, le=1000),
+    preview_service: PreviewService = Depends(get_preview_service),
+) -> JoinTestResult:
+    """
+    Test a foreign key join relationship.
+
+    Returns statistics about:
+    - Match percentage
+    - Unmatched rows
+    - Cardinality validation
+    - Null key counts
+    - Duplicate matches
+
+    Use this to:
+    - Validate foreign key configurations
+    - Identify data quality issues
+    - Verify cardinality constraints
+    - Preview join behavior
+    """
+    try:
+        result = await preview_service.test_foreign_key(
+            config_name=config_name,
+            entity_name=entity_name,
+            foreign_key_index=fk_index,
+            sample_size=sample_size
+        )
+        return result
+    except ValueError as e:
+        logger.error(f"Join test validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Join test failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Join test failed: {str(e)}")

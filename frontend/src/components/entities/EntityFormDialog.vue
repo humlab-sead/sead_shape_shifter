@@ -148,6 +148,9 @@
             <foreign-key-editor
               v-model="formData.foreign_keys"
               :available-entities="availableSourceEntities"
+              :config-name="configName"
+              :entity-name="entityName"
+              :is-entity-saved="mode === 'edit'"
             />
           </v-window-item>
 
