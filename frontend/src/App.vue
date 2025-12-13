@@ -55,6 +55,13 @@
         />
 
         <v-list-item
+          prepend-icon="mdi-code-braces"
+          title="Query Tester"
+          value="query-tester"
+          :to="{ name: 'query-tester' }"
+        />
+
+        <v-list-item
           prepend-icon="mdi-graph-outline"
           title="Dependency Graph"
           value="graph"
