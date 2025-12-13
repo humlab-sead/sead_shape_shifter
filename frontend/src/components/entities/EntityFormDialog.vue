@@ -86,6 +86,17 @@
             class="mb-4"
           />
 
+          <!-- Smart Suggestions Panel -->
+          <SuggestionsPanel
+            v-if="showSuggestions && suggestions"
+            :suggestions="suggestions"
+            @accept-foreign-key="handleAcceptForeignKey"
+            @reject-foreign-key="handleRejectForeignKey"
+            @accept-dependency="handleAcceptDependency"
+            @reject-dependency="handleRejectDependency"
+            class="mb-4"
+          />
+
           <!-- Source Entity -->
           <v-autocomplete
             v-model="formData.source"
@@ -168,11 +179,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useEntities } from '@/composables'
+import { ref, computed, watch, watchEffect } from 'vue'
+import { useEntities, useSuggestions } from '@/composables'
 import type { EntityResponse } from '@/api/entities'
+import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
 import ForeignKeyEditor from './ForeignKeyEditor.vue'
 import AdvancedEntityConfig from './AdvancedEntityConfig.vue'
+import SuggestionsPanel from './SuggestionsPanel.vue'
 
 interface Props {
   modelValue: boolean
@@ -194,11 +207,15 @@ const { entities, create, update } = useEntities({
   autoFetch: false,
 })
 
+const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions()
+
 // Form state
 const formRef = ref()
 const formValid = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const suggestions = ref<any>(null)
+const showSuggestions = ref(false)
 
 interface FormData {
   name: string
@@ -395,7 +412,85 @@ watch(
     if (newValue) {
       error.value = null
       formRef.value?.resetValidation()
+      suggestions.value = null
+      showSuggestions.value = false
     }
   }
 )
+
+// Fetch suggestions when columns change (debounced)
+let suggestionTimeout: NodeJS.Timeout | null = null
+watchEffect(() => {
+  if (props.mode === 'create' && formData.value.name && formData.value.columns.length > 0) {
+    // Clear existing timeout
+    if (suggestionTimeout) {
+      clearTimeout(suggestionTimeout)
+    }
+    
+    // Debounce suggestions fetch
+    suggestionTimeout = setTimeout(async () => {
+      try {
+        const allEntities = entities.value.map(e => ({
+          name: e.name,
+          columns: e.entity_data.columns as string[] || []
+        }))
+        
+        // Add current entity being created
+        allEntities.push({
+          name: formData.value.name,
+          columns: formData.value.columns
+        })
+        
+        const result = await getSuggestionsForEntity(
+          {
+            name: formData.value.name,
+            columns: formData.value.columns
+          },
+          allEntities
+        )
+        
+        suggestions.value = result
+        showSuggestions.value = true
+      } catch (err) {
+        console.error('Failed to fetch suggestions:', err)
+      }
+    }, 1000) // 1 second debounce
+  }
+})
+
+// Handle suggestion acceptance
+function handleAcceptForeignKey(fk: ForeignKeySuggestion) {
+  // Add foreign key to form data
+  const newFk = {
+    entity: fk.remote_entity,
+    local_keys: fk.local_keys,
+    remote_keys: fk.remote_keys,
+    how: 'left' // Default join type
+  }
+  
+  // Check if FK already exists
+  const exists = formData.value.foreign_keys.some(
+    existing => existing.entity === newFk.entity && 
+                JSON.stringify(existing.local_keys) === JSON.stringify(newFk.local_keys)
+  )
+  
+  if (!exists) {
+    formData.value.foreign_keys.push(newFk)
+  }
+}
+
+function handleRejectForeignKey(fk: ForeignKeySuggestion) {
+  // Just log for now - user rejected this suggestion
+  console.log('Rejected FK suggestion:', fk)
+}
+
+function handleAcceptDependency(dep: DependencySuggestion) {
+  // Dependencies would be handled by the backend during processing
+  // For now, just log
+  console.log('Accepted dependency suggestion:', dep)
+}
+
+function handleRejectDependency(dep: DependencySuggestion) {
+  console.log('Rejected dependency suggestion:', dep)
+}
 </script>
