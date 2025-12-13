@@ -576,3 +576,94 @@ class SchemaIntrospectionService:
         for key in keys_to_remove:
             self.cache.invalidate(key)
         logger.info(f"Invalidated {len(keys_to_remove)} cache entries for {data_source_name}")
+
+    async def import_entity_from_table(
+        self,
+        data_source_name: str,
+        table_name: str,
+        entity_name: Optional[str] = None,
+        selected_columns: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate entity configuration from a database table.
+        
+        Args:
+            data_source_name: Name of the data source
+            table_name: Name of the table to import
+            entity_name: Optional custom entity name (defaults to table_name)
+            selected_columns: Optional list of columns to include (defaults to all)
+            
+        Returns:
+            Dictionary with entity configuration
+        """
+        from app.models.entity_import import KeySuggestion
+        
+        # Get table schema
+        schema = await self.get_table_schema(data_source_name, table_name)
+        
+        # Generate entity name (convert to snake_case if not provided)
+        if not entity_name:
+            entity_name = table_name.lower().replace(' ', '_').replace('-', '_')
+        
+        # Determine columns to include
+        if selected_columns:
+            columns = [col.name for col in schema.columns if col.name in selected_columns]
+        else:
+            columns = [col.name for col in schema.columns]
+        
+        # Generate SQL query
+        column_list = ', '.join(f'"{col}"' for col in columns)
+        query = f'SELECT {column_list} FROM "{table_name}"'
+        
+        # Suggest surrogate ID
+        surrogate_id_suggestion = None
+        for col in schema.columns:
+            if col.is_primary_key:
+                # Use primary key as surrogate if it's an integer
+                if 'int' in col.data_type.lower():
+                    surrogate_id_suggestion = KeySuggestion(
+                        columns=[col.name],
+                        reason=f"Primary key column with integer type ({col.data_type})",
+                        confidence=0.95
+                    )
+                    break
+        
+        if not surrogate_id_suggestion:
+            # Look for columns ending with _id
+            for col in schema.columns:
+                if col.name.lower().endswith('_id') and 'int' in col.data_type.lower():
+                    surrogate_id_suggestion = KeySuggestion(
+                        columns=[col.name],
+                        reason=f"Column name ends with '_id' and has integer type ({col.data_type})",
+                        confidence=0.7
+                    )
+                    break
+        
+        # Suggest natural keys
+        natural_key_suggestions = []
+        
+        # Look for columns with "code", "name", "number" in the name
+        for col in schema.columns:
+            col_lower = col.name.lower()
+            if any(keyword in col_lower for keyword in ['code', 'name', 'number', 'key']):
+                if not col.nullable or col.is_primary_key:
+                    confidence = 0.8 if col.is_primary_key else 0.6
+                    natural_key_suggestions.append(KeySuggestion(
+                        columns=[col.name],
+                        reason=f"Column name suggests identifier ('{col.name}')",
+                        confidence=confidence
+                    ))
+        
+        # Build column types dictionary
+        column_types = {col.name: col.data_type for col in schema.columns if col.name in columns}
+        
+        return {
+            "entity_name": entity_name,
+            "type": "sql",
+            "data_source": data_source_name,
+            "query": query,
+            "columns": columns,
+            "surrogate_id_suggestion": surrogate_id_suggestion,
+            "natural_key_suggestions": natural_key_suggestions[:3],  # Limit to top 3
+            "column_types": column_types,
+        }

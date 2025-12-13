@@ -78,7 +78,7 @@ async def execute_query(
         HTTPException: If query is invalid or execution fails
     """
     try:
-        result = query_service.execute_query(
+        result = await query_service.execute_query(
             data_source_name=data_source_name,
             query=execution.query,
             limit=execution.limit,
@@ -195,7 +195,7 @@ async def explain_query(
         HTTPException: If plan retrieval fails
     """
     try:
-        return query_service.explain_query(data_source_name, execution.query)
+        return await query_service.explain_query(data_source_name, execution.query)
     except QueryExecutionError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:

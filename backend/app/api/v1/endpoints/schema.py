@@ -315,6 +315,69 @@ async def get_type_mappings(
         )
 
 
+@router.post("/{name}/tables/{table_name}/import", summary="Import entity from table")
+async def import_entity_from_table(
+    name: str,
+    table_name: str,
+    request: "EntityImportRequest" = None,
+    service: SchemaIntrospectionService = Depends(get_schema_service),
+):
+    """
+    Generate entity configuration from a database table.
+    
+    **Path Parameters**:
+    - `name`: Data source identifier
+    - `table_name`: Table name to import
+    
+    **Request Body** (optional):
+    - `entity_name`: Custom entity name (defaults to table name)
+    - `selected_columns`: Specific columns to include (defaults to all)
+    
+    **Returns**: Entity configuration with suggestions
+    
+    **Features**:
+    - Auto-generates SQL query
+    - Suggests surrogate_id from primary keys
+    - Suggests natural keys from column names
+    - Provides column type information
+    """
+    from app.models.entity_import import EntityImportRequest, EntityImportResult
+    
+    if request is None:
+        request = EntityImportRequest()
+    
+    try:
+        logger.info(f"Importing entity from table {table_name} in {name}")
+        
+        result = await service.import_entity_from_table(
+            data_source_name=name,
+            table_name=table_name,
+            entity_name=request.entity_name,
+            selected_columns=request.selected_columns
+        )
+        
+        return EntityImportResult(**result)
+        
+    except SchemaServiceError as e:
+        logger.error(f"Error importing entity from {table_name}: {e}")
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(e),
+            )
+    except Exception as e:
+        logger.error(f"Error importing entity from {table_name}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to import entity: {str(e)}",
+        )
+
+
 @router.post("/{name}/cache/invalidate", status_code=status.HTTP_204_NO_CONTENT, summary="Invalidate schema cache")
 async def invalidate_cache(
     name: str,

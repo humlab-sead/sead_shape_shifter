@@ -5,6 +5,7 @@ Provides secure SQL query execution with validation, timeout protection,
 and result size limiting.
 """
 
+import asyncio
 import time
 from typing import List, Optional
 import sqlparse
@@ -14,6 +15,8 @@ import pandas as pd
 
 from app.models.query import QueryResult, QueryValidation, QueryPlan
 from app.services.data_source_service import DataSourceService
+from src.loaders.base_loader import DataLoaders
+from src.config_model import DataSourceConfig as CoreDataSourceConfig
 
 
 class QueryExecutionError(Exception):
@@ -120,7 +123,7 @@ class QueryService:
             tables=tables
         )
     
-    def execute_query(
+    async def execute_query(
         self,
         data_source_name: str,
         query: str,
@@ -154,11 +157,32 @@ class QueryService:
         limit = min(limit, self.MAX_ROWS)
         timeout = min(timeout, 300)  # Max 5 minutes
         
-        # Get connection
+        # Get data source config
         try:
-            connection = self.data_source_service.get_connection(data_source_name)
+            ds_config = self.data_source_service.get_data_source(data_source_name)
         except Exception as e:
-            raise QueryExecutionError(f"Failed to connect to data source: {str(e)}")
+            raise QueryExecutionError(f"Data source not found: {str(e)}")
+        
+        # Build config dict for core system
+        config_dict = {
+            "driver": ds_config.get_loader_driver(),
+            "host": ds_config.host,
+            "port": ds_config.port,
+            "database": ds_config.effective_database,
+            "username": ds_config.username,
+            "password": ds_config.password.get_secret_value() if ds_config.password else None,
+            "filename": ds_config.effective_file_path,
+            "options": ds_config.options or {},
+        }
+        
+        # Create core config instance
+        core_config = CoreDataSourceConfig(cfg=config_dict, name=data_source_name)
+        
+        # Get appropriate loader
+        try:
+            loader = DataLoaders.get(core_config.driver)(data_source=core_config)
+        except Exception as e:
+            raise QueryExecutionError(f"Failed to get data loader: {str(e)}")
         
         # Execute query with timeout
         start_time = time.time()
@@ -167,12 +191,8 @@ class QueryService:
             # Add LIMIT clause if not present (for SELECT queries)
             modified_query = self._add_limit_clause(query, limit)
             
-            # Execute query using pandas for consistent DataFrame handling
-            df = pd.read_sql_query(
-                modified_query,
-                connection,
-                # Note: pandas doesn't support timeout directly, would need thread-based solution
-            )
+            # Execute query using loader
+            df = await asyncio.wait_for(loader.read_sql(modified_query), timeout=timeout)
             
             execution_time_ms = max(1, int((time.time() - start_time) * 1000))
             
@@ -200,17 +220,12 @@ class QueryService:
                 total_rows=len(rows) if not is_truncated else None
             )
             
+        except asyncio.TimeoutError:
+            raise QueryExecutionError(f"Query execution timed out after {timeout} seconds")
         except Exception as e:
             raise QueryExecutionError(f"Query execution failed: {str(e)}")
-        finally:
-            # Close connection if it's a new connection (not from pool)
-            if hasattr(connection, 'close'):
-                try:
-                    connection.close()
-                except:
-                    pass
     
-    def explain_query(self, data_source_name: str, query: str) -> QueryPlan:
+    async def explain_query(self, data_source_name: str, query: str) -> QueryPlan:
         """
         Get the execution plan for a query.
         
@@ -224,18 +239,38 @@ class QueryService:
         Raises:
             QueryExecutionError: If explain fails
         """
-        # Get connection
+        # Get data source config
         try:
-            connection = self.data_source_service.get_connection(data_source_name)
+            ds_config = self.data_source_service.get_data_source(data_source_name)
         except Exception as e:
-            raise QueryExecutionError(f"Failed to connect to data source: {str(e)}")
+            raise QueryExecutionError(f"Data source not found: {str(e)}")
+        
+        # Build config dict for core system
+        config_dict = {
+            "driver": ds_config.get_loader_driver(),
+            "host": ds_config.host,
+            "port": ds_config.port,
+            "database": ds_config.effective_database,
+            "username": ds_config.username,
+            "password": ds_config.password.get_secret_value() if ds_config.password else None,
+            "filename": ds_config.effective_file_path,
+            "options": ds_config.options or {},
+        }
+        
+        # Create core config instance
+        core_config = CoreDataSourceConfig(cfg=config_dict, name=data_source_name)
+        
+        # Get appropriate loader
+        try:
+            loader = DataLoaders.get(core_config.driver)(data_source=core_config)
+        except Exception as e:
+            raise QueryExecutionError(f"Failed to get data loader: {str(e)}")
         
         try:
             # Different databases have different EXPLAIN syntax
-            # For PostgreSQL, use EXPLAIN (FORMAT TEXT)
             explain_query = f"EXPLAIN {query}"
             
-            df = pd.read_sql_query(explain_query, connection)
+            df = await loader.read_sql(explain_query)
             
             # Format the plan
             plan_text = "\n".join(df.iloc[:, 0].astype(str).tolist())

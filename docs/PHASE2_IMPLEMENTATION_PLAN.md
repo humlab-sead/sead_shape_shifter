@@ -306,77 +306,77 @@ Week 7-8: Smart Suggestions & Enhanced Validation
 
 ### **Week 3: SQL Query Testing & Builder**
 
-#### **Sprint 3.1: Query Execution Backend (2 days)**
+#### **Sprint 3.1: Query Execution Backend (2 days)** ✅
 
 **Backend Service**
-- [ ] Create `app/services/query_service.py`:
+- [x] Create `app/services/query_service.py`:
   - `execute_query(data_source_name, query, limit=100)` → QueryResult
   - `validate_query(data_source_name, query)` → ValidationResult
   - `explain_query(data_source_name, query)` → QueryPlan
   - `get_query_metadata(data_source_name, query)` → ColumnMetadata[]
 
 **Models**
-- [ ] Create `app/models/query.py`:
+- [x] Create `app/models/query.py`:
   - `QueryResult` (rows, columns, execution_time_ms, row_count)
   - `QueryValidation` (is_valid, errors, warnings)
   - `QueryPlan` (plan_text, estimated_cost)
 
 **Security & Safety**
-- [ ] Block destructive SQL (INSERT, UPDATE, DELETE, DROP, ALTER)
-- [ ] Use read-only connections where possible
-- [ ] Timeout protection (max 30 seconds)
-- [ ] Result size limit (max 100MB)
-- [ ] Query complexity analysis (prevent cartesian products)
+- [x] Block destructive SQL (INSERT, UPDATE, DELETE, DROP, ALTER)
+- [x] Use read-only connections where possible (via loader pattern)
+- [x] Timeout protection (max 30 seconds)
+- [x] Result size limit (max 100MB via row limit)
+- [x] Query complexity analysis (prevent cartesian products)
 
 **SQL Parsing**
-- [ ] Install `sqlparse` library
-- [ ] Detect statement type (SELECT, INSERT, etc.)
-- [ ] Extract table names from query
-- [ ] Basic syntax validation
+- [x] Install `sqlparse` library
+- [x] Detect statement type (SELECT, INSERT, etc.)
+- [x] Extract table names from query
+- [x] Basic syntax validation
 
 **Tests**
-- [ ] Test query execution
-- [ ] Test destructive SQL blocking
-- [ ] Test timeout handling
-- [ ] Test result size limiting
-- [ ] Test with various SQL dialects
+- [x] Test query execution
+- [x] Test destructive SQL blocking
+- [x] Test timeout handling
+- [x] Test result size limiting
+- [x] Test with various SQL dialects
 
-**Deliverable**: Query execution service
+**Deliverable**: Query execution service ✅
 
-**Acceptance Criteria**:
-- Can execute SELECT queries
-- Blocks destructive operations
-- Returns results in < 30 seconds or times out
-- Clear error messages for syntax errors
+**Acceptance Criteria**: ✅
+- ✅ Can execute SELECT queries
+- ✅ Blocks destructive operations
+- ✅ Returns results in < 30 seconds or times out
+- ✅ Clear error messages for syntax errors
 
-**Time Estimate**: 2 days
+**Time Estimate**: 2 days (Completed Dec 13, 2025)
 
 ---
 
-#### **Sprint 3.2: Query Testing API & UI (2 days)**
+#### **Sprint 3.2: Query Testing API & UI (2 days)** ✅
 
 **API Endpoints**
-- [ ] `POST /api/v1/data-sources/{name}/query/execute` - Execute query
-- [ ] `POST /api/v1/data-sources/{name}/query/validate` - Validate query
-- [ ] `POST /api/v1/data-sources/{name}/query/explain` - Get query plan
+- [x] `POST /api/v1/data-sources/{name}/query/execute` - Execute query
+- [x] `POST /api/v1/data-sources/{name}/query/validate` - Validate query
+- [x] `POST /api/v1/data-sources/{name}/query/explain` - Get query plan
 
 **Frontend Components**
-- [ ] Create `src/components/query/QueryEditor.vue`:
+- [x] Create `src/components/query/QueryEditor.vue`:
   - Monaco editor with SQL syntax highlighting
   - "Run Query" button with loading state
   - Query execution stats (time, row count)
   - Error display panel
-- [ ] Create `src/components/query/QueryResults.vue`:
+- [x] Create `src/components/query/QueryResults.vue`:
   - Data table with pagination
   - Column headers with types
   - Export to CSV button
   - "Use this query" button (populate entity form)
 
 **Editor Features**
-- [ ] SQL syntax highlighting
-- [ ] Line numbers
-- [ ] Keyboard shortcuts (Ctrl+Enter to run)
-- [ ] Error line highlighting
+- [x] SQL syntax highlighting
+- [x] Line numbers
+- [x] Keyboard shortcuts (Ctrl+Enter to run)
+- [x] Error line highlighting
 
 **Deliverable**: Query testing UI
 
@@ -390,10 +390,10 @@ Week 7-8: Smart Suggestions & Enhanced Validation
 
 ---
 
-#### **Sprint 3.3: Visual Query Builder (1 day)**
+#### **Sprint 3.3: Visual Query Builder (1 day)** ✅
 
 **Frontend Component**
-- [ ] Create `src/components/query/QueryBuilder.vue`:
+- [x] Create `src/components/query/QueryBuilder.vue`:
   - Table selector dropdown
   - Column multi-select with search
   - WHERE clause builder (add condition)
@@ -406,20 +406,20 @@ Week 7-8: Smart Suggestions & Enhanced Validation
   - Delete button
 
 **Query Generation**
-- [ ] Generate valid SQL from visual components
-- [ ] Support multiple WHERE conditions (AND/OR)
-- [ ] Support ORDER BY multiple columns
-- [ ] Escape identifiers properly
+- [x] Generate valid SQL from visual components
+- [x] Support multiple WHERE conditions (AND/OR)
+- [x] Support ORDER BY multiple columns
+- [x] Escape identifiers properly
 
-**Deliverable**: Visual query builder
+**Deliverable**: Visual query builder ✅
 
-**Acceptance Criteria**:
-- Can build queries visually
-- Generated SQL is valid
-- Can switch between visual and SQL views
-- Changes sync between views
+**Acceptance Criteria**: ✅
+- ✅ Can build queries visually
+- ✅ Generated SQL is valid
+- ✅ Can switch between visual and SQL views
+- ✅ Changes sync between views
 
-**Time Estimate**: 1 day
+**Time Estimate**: 1 day (Completed Dec 13, 2025)
 
 ---
 
