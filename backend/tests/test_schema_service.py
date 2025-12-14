@@ -263,8 +263,7 @@ class TestSchemaIntrospectionService:
         async def mock_execute(config, query):
             if "COUNT(*)" in query:
                 return count_data
-            else:
-                return preview_data
+            return preview_data
 
         service._execute_query = mock_execute
 

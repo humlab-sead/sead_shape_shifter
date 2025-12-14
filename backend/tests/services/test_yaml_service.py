@@ -1,5 +1,7 @@
 """Tests for YAML service."""
 
+import time
+
 import pytest
 
 from backend.app.services.yaml_service import (
@@ -106,7 +108,7 @@ class TestYamlServiceSave:
 
     def test_save_with_backup(self, yaml_service, temp_yaml_file):
         """Test saving creates backup of existing file."""
-        original_content = temp_yaml_file.read_text()
+        _ = temp_yaml_file.read_text()
         new_data = {"modified": True}
 
         yaml_service.save(new_data, temp_yaml_file, create_backup=True)
@@ -157,7 +159,6 @@ class TestYamlServiceBackup:
 
     def test_list_backups(self, yaml_service, temp_yaml_file):
         """Test listing backups."""
-        import time
 
         # Create multiple backups with time separation to avoid same timestamp
         yaml_service.create_backup(temp_yaml_file)

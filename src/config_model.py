@@ -226,7 +226,7 @@ class TableConfig:
             if self.sql_query:
                 return self.sql_query
             if self.values:
-                """This will be deprecated, prefer 'query' over 'values' for SQL data."""
+                # This will be deprecated, prefer 'query' over 'values' for SQL data.
                 return self.values.lstrip("sql:").strip()
         return None
 

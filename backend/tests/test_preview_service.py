@@ -1,5 +1,6 @@
 """Tests for entity preview service."""
 
+import time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -114,8 +115,6 @@ class TestPreviewCache:
             execution_time_ms=100,
         )
         cache.set("config1", "entity1", 50, preview_result)
-
-        import time
 
         time.sleep(0.1)  # Wait for expiry
 

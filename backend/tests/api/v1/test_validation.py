@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.core.config import settings
 from backend.app.main import app
+from backend.app.services import config_service, dependency_service, validation_service, yaml_service
 
 client = TestClient(app)
 
@@ -14,7 +15,6 @@ client = TestClient(app)
 @pytest.fixture
 def reset_services():
     """Reset service singletons between tests."""
-    from app.services import config_service, dependency_service, validation_service, yaml_service
 
     config_service._config_service = None
     dependency_service._dependency_service = None

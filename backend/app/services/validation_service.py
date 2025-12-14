@@ -10,6 +10,7 @@ from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.config_service import get_config_service
 from backend.app.services.preview_service import PreviewService
 from backend.app.validators.data_validators import DataValidationService
+from src.specifications import CompositeConfigSpecification
 
 
 class ValidationService:
@@ -32,7 +33,6 @@ class ValidationService:
             sys.path.insert(0, src_path)
 
         # Import after path is set
-        from specifications import CompositeConfigSpecification
 
         self.validator = CompositeConfigSpecification()
 

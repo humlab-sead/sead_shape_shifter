@@ -4,9 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from backend.app.models.entity import (
-    AppendConfig,
     Entity,
-    FilterConfig,
     ForeignKeyConfig,
     ForeignKeyConstraints,
     UnnestConfig,

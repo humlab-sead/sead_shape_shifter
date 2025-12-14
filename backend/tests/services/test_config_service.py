@@ -2,6 +2,8 @@
 
 import pytest
 
+from backend.app.core.config import settings
+from backend.app.models.config import Configuration
 from backend.app.models.entity import Entity
 from backend.app.services.config_service import (
     ConfigurationNotFoundError,
@@ -18,7 +20,6 @@ from backend.app.services.config_service import (
 @pytest.fixture
 def config_service(tmp_path, monkeypatch):
     """Create ConfigurationService with temporary directory."""
-    from app.core.config import settings
 
     # Override settings to use temp directory
     monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
@@ -121,7 +122,6 @@ class TestConfigurationServiceSave:
 
     def test_save_without_metadata_raises_error(self, config_service):
         """Test saving configuration without metadata raises error."""
-        from app.models.config import Configuration
 
         config = Configuration(entities={}, options={})
 

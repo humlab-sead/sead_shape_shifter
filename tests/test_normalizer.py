@@ -1,7 +1,6 @@
 """Unit tests for arbodat normalizer classes."""
 
 import asyncio
-from unittest import mock
 from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
