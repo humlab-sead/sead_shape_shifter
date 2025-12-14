@@ -14,9 +14,7 @@ router = APIRouter()
 
 
 @router.post("/configurations/{name}/validate/data", response_model=ValidationResult)
-async def validate_configuration_data(
-    name: str, entity_names: list[str] | None = None
-) -> ValidationResult:
+async def validate_configuration_data(name: str, entity_names: list[str] | None = None) -> ValidationResult:
     """
     Run data-aware validation on configuration.
 
@@ -77,10 +75,7 @@ async def validate_entity(name: str, entity_name: str) -> ValidationResult:
         # Validate specific entity
         result = validation_service.validate_entity(config, entity_name)
 
-        logger.info(
-            f"Validated entity '{entity_name}' in configuration '{name}': "
-            f"valid={result.is_valid}, errors={result.error_count}"
-        )
+        logger.info(f"Validated entity '{entity_name}' in configuration '{name}': " f"valid={result.is_valid}, errors={result.error_count}")
         return result
 
     except ConfigurationNotFoundError as e:
@@ -119,10 +114,7 @@ async def get_dependencies(name: str) -> dict[str, Any]:
         # Analyze dependencies
         graph = dependency_service.analyze_dependencies(config)
 
-        logger.debug(
-            f"Retrieved dependency graph for '{name}': "
-            f"{len(graph['nodes'])} nodes, {len(graph['edges'])} edges"
-        )
+        logger.debug(f"Retrieved dependency graph for '{name}': " f"{len(graph['nodes'])} nodes, {len(graph['edges'])} edges")
         return dict(graph)
 
     except ConfigurationNotFoundError as e:
@@ -156,10 +148,7 @@ async def check_dependencies(name: str) -> dict[str, Any]:
         # Check for circular dependencies
         result = dependency_service.check_circular_dependencies(config)
 
-        logger.info(
-            f"Checked circular dependencies for '{name}': "
-            f"has_cycles={result['has_cycles']}, cycles={result['cycle_count']}"
-        )
+        logger.info(f"Checked circular dependencies for '{name}': " f"has_cycles={result['has_cycles']}, cycles={result['cycle_count']}")
         return result
 
     except ConfigurationNotFoundError as e:
@@ -249,9 +238,7 @@ async def apply_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]
         result = await auto_fix_service.apply_fixes(name, suggestions)
 
         if result.success:
-            logger.info(
-                f"Applied {result.fixes_applied} fixes to '{name}', backup at {result.backup_path}"
-            )
+            logger.info(f"Applied {result.fixes_applied} fixes to '{name}', backup at {result.backup_path}")
         else:
             logger.warning(f"Failed to apply fixes to '{name}': {result.errors}")
 

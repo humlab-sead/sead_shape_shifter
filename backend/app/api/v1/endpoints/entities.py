@@ -53,9 +53,7 @@ async def list_entities(config_name: str) -> list[EntityResponse]:
     config_service = get_config_service()
     try:
         config = config_service.load_configuration(config_name)
-        entities = [
-            EntityResponse(name=name, entity_data=data) for name, data in config.entities.items()
-        ]
+        entities = [EntityResponse(name=name, entity_data=data) for name, data in config.entities.items()]
         logger.debug(f"Listed {len(entities)} entities in '{config_name}'")
         return entities
     except ConfigurationNotFoundError as e:
@@ -68,9 +66,7 @@ async def list_entities(config_name: str) -> list[EntityResponse]:
         ) from e
 
 
-@router.get(
-    "/configurations/{config_name}/entities/{entity_name}", response_model=EntityResponse
-)
+@router.get("/configurations/{config_name}/entities/{entity_name}", response_model=EntityResponse)
 async def get_entity(config_name: str, entity_name: str) -> EntityResponse:
     """
     Get specific entity from configuration.
@@ -131,9 +127,7 @@ async def create_entity(config_name: str, request: EntityCreateRequest) -> Entit
 
 
 @router.put("/configurations/{config_name}/entities/{entity_name}", response_model=EntityResponse)
-async def update_entity(
-    config_name: str, entity_name: str, request: EntityUpdateRequest
-) -> EntityResponse:
+async def update_entity(config_name: str, entity_name: str, request: EntityUpdateRequest) -> EntityResponse:
     """
     Update existing entity in configuration.
 

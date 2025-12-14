@@ -32,12 +32,8 @@ class ValidationError(BaseModel):
     message: str = Field(..., description="Error message")
     code: str | None = Field(default=None, description="Error code for programmatic handling")
     suggestion: str | None = Field(default=None, description="Suggested fix")
-    category: ValidationCategory = Field(
-        default=ValidationCategory.STRUCTURAL, description="Validation category"
-    )
-    priority: ValidationPriority = Field(
-        default=ValidationPriority.MEDIUM, description="Validation priority"
-    )
+    category: ValidationCategory = Field(default=ValidationCategory.STRUCTURAL, description="Validation category")
+    priority: ValidationPriority = Field(default=ValidationPriority.MEDIUM, description="Validation priority")
     auto_fixable: bool = Field(default=False, description="Whether this issue can be auto-fixed")
 
 

@@ -64,16 +64,11 @@ async def start_test_run(
     """
     try:
         # Initialize test run and return immediately
-        result = test_run_service.init_test_run(
-            config_name=request.config_name, options=request.options
-        )
-        
+        result = test_run_service.init_test_run(config_name=request.config_name, options=request.options)
+
         # Schedule actual execution in background
-        background_tasks.add_task(
-            test_run_service.execute_test_run,
-            result.run_id
-        )
-        
+        background_tasks.add_task(test_run_service.execute_test_run, result.run_id)
+
         return result
 
     except ValueError as e:

@@ -27,10 +27,10 @@ async def list_data_sources(
 ) -> List[DataSourceConfig]:
     """
     Retrieve all configured data sources.
-    
+
     Returns data sources from the configuration, with environment variables resolved.
     Passwords are excluded from the response.
-    
+
     **Response Fields**:
     - `name`: Unique identifier for the data source
     - `driver`: Database/file driver type (postgresql, access, sqlite, csv)
@@ -58,25 +58,25 @@ async def get_data_source(
 ) -> DataSourceConfig:
     """
     Retrieve a specific data source by name.
-    
+
     **Path Parameters**:
     - `name`: Data source identifier (e.g., "sead", "arbodat_data")
-    
+
     **Returns**: Complete data source configuration
-    
+
     **Errors**:
     - 404: Data source not found
     """
     try:
         logger.info(f"Getting data source: {name}")
         data_source = service.get_data_source(name)
-        
+
         if data_source is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Data source '{name}' not found",
             )
-        
+
         return data_source
     except HTTPException:
         raise
@@ -95,20 +95,20 @@ async def create_data_source(
 ) -> DataSourceConfig:
     """
     Create a new data source.
-    
+
     **Request Body**: DataSourceConfig with all required fields
     - Database sources require: `driver`, `host`, `port`, `database`, `username`
     - File sources require: `driver`, `filename`
-    
+
     **Returns**: Created data source configuration
-    
+
     **Errors**:
     - 400: Invalid configuration or data source already exists
     - 422: Validation error (invalid port, missing required fields, etc.)
     """
     try:
         logger.info(f"Creating data source: {config.name}")
-        
+
         # Check if already exists
         existing = service.get_data_source(config.name)
         if existing is not None:
@@ -116,7 +116,7 @@ async def create_data_source(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Data source '{config.name}' already exists",
             )
-        
+
         service.create_data_source(config)
         logger.info(f"Created data source: {config.name}")
         return config
@@ -138,21 +138,21 @@ async def update_data_source(
 ) -> DataSourceConfig:
     """
     Update an existing data source.
-    
+
     **Path Parameters**:
     - `name`: Current data source name
-    
+
     **Request Body**: Complete DataSourceConfig (can include new name for renaming)
-    
+
     **Returns**: Updated data source configuration
-    
+
     **Errors**:
     - 404: Data source not found
     - 400: Invalid configuration or new name conflicts with existing data source
     """
     try:
         logger.info(f"Updating data source: {name}")
-        
+
         # Check if exists
         existing = service.get_data_source(name)
         if existing is None:
@@ -160,7 +160,7 @@ async def update_data_source(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Data source '{name}' not found",
             )
-        
+
         # If renaming, check new name doesn't exist
         if config.name != name:
             existing_new = service.get_data_source(config.name)
@@ -169,7 +169,7 @@ async def update_data_source(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Data source '{config.name}' already exists",
                 )
-        
+
         service.update_data_source(name, config)
         logger.info(f"Updated data source: {name}")
         return config
@@ -190,21 +190,21 @@ async def delete_data_source(
 ):
     """
     Delete a data source.
-    
+
     **Path Parameters**:
     - `name`: Data source identifier
-    
+
     **Safety Check**: Prevents deletion if any entities reference this data source
-    
+
     **Returns**: 204 No Content on success
-    
+
     **Errors**:
     - 404: Data source not found
     - 400: Data source is in use by entities (cannot be deleted)
     """
     try:
         logger.info(f"Deleting data source: {name}")
-        
+
         # Check if exists
         existing = service.get_data_source(name)
         if existing is None:
@@ -212,7 +212,7 @@ async def delete_data_source(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Data source '{name}' not found",
             )
-        
+
         # Check if in use
         status_info = service.get_status(name)
         if status_info.in_use_by_entities:
@@ -220,7 +220,7 @@ async def delete_data_source(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot delete data source '{name}': in use by entities {status_info.in_use_by_entities}",
             )
-        
+
         service.delete_data_source(name)
         logger.info(f"Deleted data source: {name}")
     except HTTPException:
@@ -240,29 +240,29 @@ async def test_data_source_connection(
 ) -> DataSourceTestResult:
     """
     Test connection to a data source.
-    
+
     **Path Parameters**:
     - `name`: Data source identifier
-    
+
     **Connection Tests**:
     - **Database**: Executes `SELECT 1 as test` to verify connectivity
     - **CSV File**: Checks file exists and reads first 5 rows
-    
+
     **Timeout**: 10 seconds maximum
-    
-    **Returns**: 
+
+    **Returns**:
     - `success`: Connection successful
     - `message`: Result description or error message
     - `connection_time_ms`: Time taken for connection test (milliseconds)
     - `metadata`: Additional info (table count, file size, etc.)
-    
+
     **Errors**:
     - 404: Data source not found
     - 400: Connection test failed (invalid credentials, host unreachable, etc.)
     """
     try:
         logger.info(f"Testing connection to data source: {name}")
-        
+
         # Get data source config
         config = service.get_data_source(name)
         if config is None:
@@ -270,15 +270,15 @@ async def test_data_source_connection(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Data source '{name}' not found",
             )
-        
+
         # Test connection
         result = await service.test_connection(config)
-        
+
         if result.success:
             logger.info(f"Connection test successful for '{name}' in {result.connection_time_ms}ms")
         else:
             logger.warning(f"Connection test failed for '{name}': {result.message}")
-        
+
         return result
     except HTTPException:
         raise
@@ -297,22 +297,22 @@ async def get_data_source_status(
 ) -> DataSourceStatus:
     """
     Get current status of a data source.
-    
+
     **Path Parameters**:
     - `name`: Data source identifier
-    
+
     **Returns**:
     - `name`: Data source name
     - `is_connected`: Whether last connection test succeeded
     - `last_test_result`: Most recent connection test result
     - `in_use_by_entities`: List of entity names using this data source
-    
+
     **Errors**:
     - 404: Data source not found
     """
     try:
         logger.info(f"Getting status for data source: {name}")
-        
+
         # Check if exists
         config = service.get_data_source(name)
         if config is None:
@@ -320,7 +320,7 @@ async def get_data_source_status(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Data source '{name}' not found",
             )
-        
+
         status_info = service.get_status(name)
         return status_info
     except HTTPException:

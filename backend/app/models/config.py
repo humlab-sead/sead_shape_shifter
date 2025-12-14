@@ -22,9 +22,7 @@ class ConfigMetadata(BaseModel):
 class Configuration(BaseModel):
     """Complete configuration containing all entities."""
 
-    entities: dict[str, dict[str, Any]] = Field(
-        default_factory=dict, description="Map of entity name to entity config (raw dicts)"
-    )
+    entities: dict[str, dict[str, Any]] = Field(default_factory=dict, description="Map of entity name to entity config (raw dicts)")
     options: dict[str, Any] = Field(default_factory=dict, description="Global options")
     metadata: ConfigMetadata | None = Field(default=None, description="Configuration metadata")
 

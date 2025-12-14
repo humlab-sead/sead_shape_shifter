@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     logger.info("Starting Shape Shifter Configuration Editor API")
     logger.info(f"Version: {settings.VERSION}")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
-    
+
     # Initialize configuration context
     config_file = os.getenv("CONFIG_FILE", "input/query_tester_config.yml")
     logger.info(f"Loading configuration from: {config_file}")
@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     except Exception as e:
         logger.error(f"Failed to load configuration: {e}")
         raise
-    
+
     yield
     logger.info("Shutting down Shape Shifter Configuration Editor API")
 

@@ -15,9 +15,7 @@ from app.api.dependencies import get_data_source_service
 router = APIRouter()
 
 
-def get_query_service(
-    data_source_service: DataSourceService = Depends(get_data_source_service)
-) -> QueryService:
+def get_query_service(data_source_service: DataSourceService = Depends(get_data_source_service)) -> QueryService:
     """Dependency to get query service instance."""
     return QueryService(data_source_service)
 
@@ -40,49 +38,41 @@ def get_query_service(
             "content": {
                 "application/json": {
                     "example": {
-                        "rows": [
-                            {"id": 1, "name": "Alice"},
-                            {"id": 2, "name": "Bob"}
-                        ],
+                        "rows": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}],
                         "columns": ["id", "name"],
                         "row_count": 2,
                         "execution_time_ms": 45,
                         "is_truncated": False,
-                        "total_rows": 2
+                        "total_rows": 2,
                     }
                 }
-            }
+            },
         },
         400: {"description": "Invalid query (syntax error or security violation)"},
         404: {"description": "Data source not found"},
-        500: {"description": "Query execution failed"}
-    }
+        500: {"description": "Query execution failed"},
+    },
 )
 async def execute_query(
-    data_source_name: str,
-    execution: QueryExecution,
-    query_service: QueryService = Depends(get_query_service)
+    data_source_name: str, execution: QueryExecution, query_service: QueryService = Depends(get_query_service)
 ) -> QueryResult:
     """
     Execute a SQL query against a data source.
-    
+
     Args:
         data_source_name: Name of the data source to query
         execution: Query execution parameters
         query_service: Query service instance
-        
+
     Returns:
         QueryResult with query results and metadata
-        
+
     Raises:
         HTTPException: If query is invalid or execution fails
     """
     try:
         result = await query_service.execute_query(
-            data_source_name=data_source_name,
-            query=execution.query,
-            limit=execution.limit,
-            timeout=execution.timeout
+            data_source_name=data_source_name, query=execution.query, limit=execution.limit, timeout=execution.timeout
         )
         return result
     except QuerySecurityError as e:
@@ -117,26 +107,24 @@ async def execute_query(
                         "errors": [],
                         "warnings": ["Query has no WHERE clause. This may return a large result set."],
                         "statement_type": "SELECT",
-                        "tables": ["users"]
+                        "tables": ["users"],
                     }
                 }
-            }
+            },
         }
-    }
+    },
 )
 async def validate_query(
-    data_source_name: str,
-    execution: QueryExecution,
-    query_service: QueryService = Depends(get_query_service)
+    data_source_name: str, execution: QueryExecution, query_service: QueryService = Depends(get_query_service)
 ) -> QueryValidation:
     """
     Validate a SQL query without executing it.
-    
+
     Args:
         data_source_name: Name of the data source (used for dialect-specific validation)
         execution: Query to validate
         query_service: Query service instance
-        
+
     Returns:
         QueryValidation with validation results
     """
@@ -166,31 +154,29 @@ async def validate_query(
                     "example": {
                         "plan_text": "Seq Scan on users  (cost=0.00..10.00 rows=100 width=32)\n  Filter: (id = 1)",
                         "estimated_cost": 10.0,
-                        "estimated_rows": 100
+                        "estimated_rows": 100,
                     }
                 }
-            }
+            },
         },
         404: {"description": "Data source not found"},
-        500: {"description": "Failed to get query plan"}
-    }
+        500: {"description": "Failed to get query plan"},
+    },
 )
 async def explain_query(
-    data_source_name: str,
-    execution: QueryExecution,
-    query_service: QueryService = Depends(get_query_service)
+    data_source_name: str, execution: QueryExecution, query_service: QueryService = Depends(get_query_service)
 ) -> QueryPlan:
     """
     Get the execution plan for a SQL query.
-    
+
     Args:
         data_source_name: Name of the data source
         execution: Query to explain
         query_service: Query service instance
-        
+
     Returns:
         QueryPlan with execution plan details
-        
+
     Raises:
         HTTPException: If plan retrieval fails
     """

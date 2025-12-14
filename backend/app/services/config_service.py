@@ -120,9 +120,7 @@ class ConfigurationService:
             )
 
             # Build configuration
-            config = Configuration(
-                entities=entities_data, options=options_data, metadata=metadata
-            )
+            config = Configuration(entities=entities_data, options=options_data, metadata=metadata)
 
             logger.info(f"Loaded configuration '{name}' with {len(entities_data)} entities")
             return config
@@ -329,9 +327,7 @@ class ConfigurationService:
 
     # Convenience wrapper methods for entity operations by config name
 
-    def add_entity_by_name(
-        self, config_name: str, entity_name: str, entity_data: dict[str, Any]
-    ) -> None:
+    def add_entity_by_name(self, config_name: str, entity_name: str, entity_data: dict[str, Any]) -> None:
         """
         Add entity to configuration by config name.
 
@@ -353,9 +349,7 @@ class ConfigurationService:
         self.save_configuration(config)
         logger.info(f"Added entity '{entity_name}' to configuration '{config_name}'")
 
-    def update_entity_by_name(
-        self, config_name: str, entity_name: str, entity_data: dict[str, Any]
-    ) -> None:
+    def update_entity_by_name(self, config_name: str, entity_name: str, entity_data: dict[str, Any]) -> None:
         """
         Update entity in configuration by config name.
 

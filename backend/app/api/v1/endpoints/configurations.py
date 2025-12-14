@@ -24,9 +24,7 @@ class ConfigurationCreateRequest(BaseModel):
     """Request to create new configuration."""
 
     name: str = Field(..., description="Configuration name")
-    entities: dict[str, dict[str, Any]] = Field(
-        default_factory=dict, description="Initial entities"
-    )
+    entities: dict[str, dict[str, Any]] = Field(default_factory=dict, description="Initial entities")
 
 
 class ConfigurationUpdateRequest(BaseModel):
@@ -101,9 +99,7 @@ async def get_configuration(name: str) -> Configuration:
         ) from e
 
 
-@router.post(
-    "/configurations", response_model=Configuration, status_code=status.HTTP_201_CREATED
-)
+@router.post("/configurations", response_model=Configuration, status_code=status.HTTP_201_CREATED)
 async def create_configuration(request: ConfigurationCreateRequest) -> Configuration:
     """
     Create new configuration.

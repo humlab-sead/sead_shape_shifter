@@ -18,11 +18,11 @@ class ValidationService:
 
         # Get the project root (backend parent is project root)
         project_root = Path(__file__).parent.parent.parent.parent
-        
+
         # Add both project root and src to path (for src.* imports within specifications.py)
         project_root_str = str(project_root)
         src_path = str(project_root / "src")
-        
+
         if project_root_str not in sys.path:
             sys.path.insert(0, project_root_str)
         if src_path not in sys.path:
@@ -33,9 +33,7 @@ class ValidationService:
 
         self.validator = CompositeConfigSpecification()
 
-    async def validate_configuration_data(
-        self, config_name: str, entity_names: list[str] | None = None
-    ) -> ValidationResult:
+    async def validate_configuration_data(self, config_name: str, entity_names: list[str] | None = None) -> ValidationResult:
         """
         Run data-aware validation on configuration.
 
@@ -73,10 +71,7 @@ class ValidationService:
             warning_count=len(warnings),
         )
 
-        logger.info(
-            f"Data validation completed: {result.error_count} errors, "
-            f"{result.warning_count} warnings"
-        )
+        logger.info(f"Data validation completed: {result.error_count} errors, " f"{result.warning_count} warnings")
 
         return result
 
@@ -124,9 +119,7 @@ class ValidationService:
 
         return result
 
-    def _parse_error_message(
-        self, message: str, severity: str = "error"
-    ) -> ValidationError:
+    def _parse_error_message(self, message: str, severity: str = "error") -> ValidationError:
         """
         Parse error message to extract entity and field information.
 
@@ -176,13 +169,9 @@ class ValidationService:
         else:
             code = "validation_error"
 
-        return ValidationError(
-            severity=severity, entity=entity, field=field, message=message, code=code
-        )
+        return ValidationError(severity=severity, entity=entity, field=field, message=message, code=code)
 
-    def validate_entity(
-        self, config: Any, entity_name: str
-    ) -> ValidationResult:
+    def validate_entity(self, config: Any, entity_name: str) -> ValidationResult:
         """
         Validate a single entity within a configuration.
 
@@ -208,9 +197,7 @@ class ValidationService:
         entity_errors = [e for e in result.errors if e.entity == entity_name or e.entity is None]
         entity_warnings = [w for w in result.warnings if w.entity == entity_name or w.entity is None]
 
-        return ValidationResult(
-            is_valid=len(entity_errors) == 0, errors=entity_errors, warnings=entity_warnings
-        )
+        return ValidationResult(is_valid=len(entity_errors) == 0, errors=entity_errors, warnings=entity_warnings)
 
 
 # Singleton instance

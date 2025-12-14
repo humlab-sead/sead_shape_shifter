@@ -49,15 +49,12 @@ class JoinTestResult(BaseModel):
     local_keys: List[str] = Field(..., description="Local join key columns")
     remote_keys: List[str] = Field(..., description="Remote join key columns")
     join_type: str = Field(..., description="Type of join (inner, left, etc.)")
-    
+
     statistics: JoinStatistics = Field(..., description="Join statistics")
     cardinality: CardinalityInfo = Field(..., description="Cardinality information")
-    
-    unmatched_sample: List[UnmatchedRow] = Field(
-        default_factory=list,
-        description="Sample of unmatched rows (max 10)"
-    )
-    
+
+    unmatched_sample: List[UnmatchedRow] = Field(default_factory=list, description="Sample of unmatched rows (max 10)")
+
     execution_time_ms: int = Field(..., description="Time taken to perform the test")
     success: bool = Field(..., description="Whether the join test passed validation")
     warnings: List[str] = Field(default_factory=list, description="Warning messages")

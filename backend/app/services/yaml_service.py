@@ -208,9 +208,7 @@ class YamlService:
         logger.debug(f"Found {len(backups)} backup(s) for pattern '{pattern}'")
         return list(backups)
 
-    def restore_backup(
-        self, backup_path: str | Path, target_path: str | Path, create_backup: bool = True
-    ) -> Path:
+    def restore_backup(self, backup_path: str | Path, target_path: str | Path, create_backup: bool = True) -> Path:
         """
         Restore a backup file to target location.
 

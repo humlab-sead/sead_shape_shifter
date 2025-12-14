@@ -130,9 +130,7 @@ class AutoFixService:
             warnings=["This requires reviewing your data or changing the natural key definition"],
         )
 
-    async def preview_fixes(
-        self, config_name: str, suggestions: list[FixSuggestion]
-    ) -> dict[str, Any]:
+    async def preview_fixes(self, config_name: str, suggestions: list[FixSuggestion]) -> dict[str, Any]:
         """
         Preview what fixes would be applied without actually applying them.
 
@@ -171,9 +169,7 @@ class AutoFixService:
             "changes": changes,
         }
 
-    async def apply_fixes(
-        self, config_name: str, suggestions: list[FixSuggestion]
-    ) -> FixResult:
+    async def apply_fixes(self, config_name: str, suggestions: list[FixSuggestion]) -> FixResult:
         """
         Apply fixes to configuration.
 
@@ -187,9 +183,7 @@ class AutoFixService:
         try:
             config = self.config_service.load_configuration(config_name)
             if not config:
-                return FixResult(
-                    success=False, fixes_applied=0, errors=[f"Configuration '{config_name}' not found"]
-                )
+                return FixResult(success=False, fixes_applied=0, errors=[f"Configuration '{config_name}' not found"])
 
             # Create backup before applying fixes
             backup_path = self._create_backup(config_name)
@@ -202,9 +196,7 @@ class AutoFixService:
             # Apply each fix
             for suggestion in suggestions:
                 if not suggestion.auto_fixable:
-                    warnings.append(
-                        f"Skipping non-auto-fixable issue in entity '{suggestion.entity}'"
-                    )
+                    warnings.append(f"Skipping non-auto-fixable issue in entity '{suggestion.entity}'")
                     continue
 
                 try:
@@ -231,9 +223,7 @@ class AutoFixService:
             else:
                 # Rollback on error
                 self._rollback(config_name, backup_path)
-                return FixResult(
-                    success=False, fixes_applied=0, errors=errors, warnings=warnings
-                )
+                return FixResult(success=False, fixes_applied=0, errors=errors, warnings=warnings)
 
         except Exception as e:
             logger.error(f"Auto-fix failed: {e}")
@@ -242,6 +232,7 @@ class AutoFixService:
     def _create_backup(self, config_name: str) -> Path:
         """Create backup of configuration before applying fixes."""
         from app.core.config import settings
+
         config_dir = settings.CONFIGURATIONS_DIR
         config_path = config_dir / f"{config_name}.yml"
 
@@ -258,6 +249,7 @@ class AutoFixService:
     def _rollback(self, config_name: str, backup_path: Path):
         """Rollback configuration to backup."""
         from app.core.config import settings
+
         config_dir = settings.CONFIGURATIONS_DIR
         config_path = config_dir / f"{config_name}.yml"
 
@@ -281,16 +273,16 @@ class AutoFixService:
         entities = config.get("entities") if isinstance(config, dict) else config.entities
         if not entities:
             return
-        
+
         entity = entities.get(action.entity)
         if not entity:
             return
-        
+
         # Handle both dict and object entity
         columns = entity.get("columns") if isinstance(entity, dict) else getattr(entity, "columns", None)
         if not columns or action.old_value not in columns:
             return
-        
+
         columns.remove(action.old_value)
         logger.info(f"Removed column '{action.old_value}' from entity '{action.entity}'")
 
@@ -300,11 +292,11 @@ class AutoFixService:
         entities = config.get("entities") if isinstance(config, dict) else config.entities
         if not entities:
             return
-        
+
         entity = entities.get(action.entity)
         if not entity:
             return
-        
+
         # Handle both dict and object entity
         if isinstance(entity, dict):
             if "columns" not in entity:
@@ -314,7 +306,7 @@ class AutoFixService:
             if not hasattr(entity, "columns") or entity.columns is None:
                 entity.columns = []
             columns = entity.columns
-        
+
         if action.new_value and action.new_value not in columns:
             columns.append(action.new_value)
             logger.info(f"Added column '{action.new_value}' to entity '{action.entity}'")
@@ -325,7 +317,7 @@ class AutoFixService:
         entities = config.get("entities") if isinstance(config, dict) else config.entities
         if not entities:
             return
-        
+
         entity = entities.get(action.entity)
         if not entity:
             return

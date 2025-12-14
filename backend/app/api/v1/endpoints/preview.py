@@ -166,10 +166,7 @@ async def test_foreign_key_join(
     """
     try:
         result = await preview_service.test_foreign_key(
-            config_name=config_name,
-            entity_name=entity_name,
-            foreign_key_index=fk_index,
-            sample_size=sample_size
+            config_name=config_name, entity_name=entity_name, foreign_key_index=fk_index, sample_size=sample_size
         )
         return result
     except ValueError as e:

@@ -25,7 +25,7 @@ class HealthResponse(BaseModel):
 async def health_check() -> HealthResponse:
     """
     Health check endpoint.
-    
+
     Returns application status and configuration information.
     """
     return HealthResponse(
