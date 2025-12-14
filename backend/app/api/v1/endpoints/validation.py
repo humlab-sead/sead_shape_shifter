@@ -170,3 +170,98 @@ async def check_dependencies(name: str) -> dict[str, Any]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to check dependencies: {str(e)}",
         ) from e
+
+
+@router.post("/configurations/{name}/fixes/preview")
+async def preview_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]:
+    """
+    Preview automatic fixes for validation errors.
+
+    Args:
+        name: Configuration name
+        errors: List of validation errors to generate fixes for
+
+    Returns:
+        Preview of fixes that would be applied
+    """
+    from app.models.fix import FixSuggestion
+    from app.models.validation import ValidationError
+    from app.services.auto_fix_service import AutoFixService
+
+    config_service = get_config_service()
+    auto_fix_service = AutoFixService(config_service)
+
+    try:
+        # Convert dicts to ValidationError objects
+        validation_errors = [ValidationError(**error) for error in errors]
+
+        # Generate fix suggestions
+        suggestions = auto_fix_service.generate_fix_suggestions(validation_errors)
+
+        # Preview fixes
+        preview = await auto_fix_service.preview_fixes(name, suggestions)
+
+        return preview
+
+    except ConfigurationNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except Exception as e:
+        logger.error(f"Failed to preview fixes for '{name}': {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to preview fixes: {str(e)}",
+        ) from e
+
+
+@router.post("/configurations/{name}/fixes/apply")
+async def apply_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]:
+    """
+    Apply automatic fixes to configuration.
+
+    This will:
+    1. Create a backup of the configuration
+    2. Apply suggested fixes
+    3. Save the updated configuration
+    4. Return the result
+
+    Args:
+        name: Configuration name
+        errors: List of validation errors to fix
+
+    Returns:
+        Result of applying fixes including backup path
+    """
+    from app.models.fix import FixResult
+    from app.models.validation import ValidationError
+    from app.services.auto_fix_service import AutoFixService
+
+    config_service = get_config_service()
+    auto_fix_service = AutoFixService(config_service)
+
+    try:
+        # Convert dicts to ValidationError objects
+        validation_errors = [ValidationError(**error) for error in errors]
+
+        # Generate fix suggestions
+        suggestions = auto_fix_service.generate_fix_suggestions(validation_errors)
+
+        # Apply fixes
+        result = await auto_fix_service.apply_fixes(name, suggestions)
+
+        if result.success:
+            logger.info(
+                f"Applied {result.fixes_applied} fixes to '{name}', backup at {result.backup_path}"
+            )
+        else:
+            logger.warning(f"Failed to apply fixes to '{name}': {result.errors}")
+
+        return result.model_dump()
+
+    except ConfigurationNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except Exception as e:
+        logger.error(f"Failed to apply fixes for '{name}': {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to apply fixes: {str(e)}",
+        ) from e
