@@ -118,3 +118,4 @@ deprecated
 output*.xlsx
 **/*.mdb
 backups
+.vite
