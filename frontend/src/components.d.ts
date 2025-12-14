@@ -24,6 +24,7 @@ declare module 'vue' {
     ForeignKeyEditor: typeof import('./components/entities/ForeignKeyEditor.vue')['default']
     ForeignKeyTester: typeof import('./components/entities/ForeignKeyTester.vue')['default']
     LoadingSkeleton: typeof import('./components/common/LoadingSkeleton.vue')['default']
+    PreviewFixesModal: typeof import('./components/validation/PreviewFixesModal.vue')['default']
     QueryBuilder: typeof import('./components/query/QueryBuilder.vue')['default']
     QueryCondition: typeof import('./components/query/QueryCondition.vue')['default']
     QueryEditor: typeof import('./components/query/QueryEditor.vue')['default']
