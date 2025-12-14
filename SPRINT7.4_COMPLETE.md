@@ -324,17 +324,32 @@ ValidationError[]
 }
 ```
 
+## Integration Testing Notes
+
+**Server Status:**
+- ✅ Backend running on `http://localhost:8000` (API responding)
+- ✅ Frontend running on `http://localhost:5175` (Vite dev server started)
+
+**Testing Readiness:**
+Both servers are operational. Manual integration testing should proceed with:
+1. Navigate to `http://localhost:5175` in browser
+2. Load a configuration (e.g., arbodat.yml)
+3. Run validation to see issues
+4. Test "Apply Fix" → Preview → Confirm → Apply workflow
+5. Verify backup creation and config reload
+
+**Note:** Automated E2E testing requires proper configuration setup and browser automation (Playwright/Cypress). Manual testing recommended for initial validation.
+
 ## Next Steps (Sprint 7.5+)
 
-1. **End-to-End Integration Testing** (HIGH PRIORITY)
-   - Start backend server: `cd backend && uv run uvicorn app.main:app`
-   - Start frontend dev server: `cd frontend && npm run dev`
-   - Test complete workflow with arbodat configuration:
-     1. Run validation
-     2. Click "Apply Fix" on auto-fixable issues
-     3. Verify preview modal shows correct changes
-     4. Apply fixes and verify backup created
-     5. Verify config reloads and re-validation occurs
+1. **Manual Integration Testing** (HIGH PRIORITY)
+   - Test complete workflow in browser:
+     1. Load configuration
+     2. Run validation
+     3. Click "Apply Fix" on auto-fixable issues
+     4. Verify preview modal shows correct changes
+     5. Apply fixes and verify backup created
+     6. Verify config reloads and re-validation occurs
    - Document any UX issues or improvements needed
 
 2. **Update Auto-Fix Service Tests** (MEDIUM PRIORITY)
