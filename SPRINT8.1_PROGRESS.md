@@ -226,8 +226,9 @@ docker-compose logs -f backend
 - [x] No breaking errors introduced
 - [x] Validation scripts passing
 - [x] Servers running and accessible
+- [x] API integration tests passing (10/10)
 - [ ] Manual Quick Wins testing complete (next)
-- [ ] Integration test checklist started (next)
+- [ ] Full integration test checklist (next)
 
 ---
 
