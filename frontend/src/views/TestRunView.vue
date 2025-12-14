@@ -29,11 +29,30 @@
         </v-col>
       </v-row>
 
-      <!-- Config Info -->
+      <!-- Config Info and Status -->
       <v-row v-if="configName" class="mb-4">
         <v-col>
           <v-alert type="info" variant="tonal">
-            <strong>Configuration:</strong> {{ configName }}
+            <div class="d-flex justify-space-between align-center">
+              <div>
+                <strong>Configuration:</strong> {{ configName }}
+              </div>
+              <v-chip
+                v-if="testResult"
+                :color="getStatusColor(testResult.status)"
+                :prepend-icon="getStatusIcon(testResult.status)"
+                variant="flat"
+              >
+                {{ testResult.status.toUpperCase() }}
+                <v-progress-circular
+                  v-if="isPolling"
+                  indeterminate
+                  size="16"
+                  width="2"
+                  class="ml-2"
+                />
+              </v-chip>
+            </div>
           </v-alert>
         </v-col>
       </v-row>
@@ -106,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import TestRunConfig from '@/components/TestRun/TestRunConfig.vue'
 import TestRunProgress from '@/components/TestRun/TestRunProgress.vue'
@@ -126,6 +145,8 @@ const testResult = ref<TestRunResult | null>(null)
 const isRunning = ref(false)
 const isLoadingConfig = ref(true)
 const error = ref<string | null>(null)
+const pollInterval = ref<number | null>(null)
+const currentRunId = ref<string | null>(null)
 
 // Load configuration and available entities
 onMounted(async () => {
@@ -147,6 +168,83 @@ onMounted(async () => {
     isLoadingConfig.value = false
   }
 })
+
+const isPolling = computed(() => {
+  const status = testResult.value?.status
+  return status === 'pending' || status === 'running'
+})
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return 'blue'
+    case 'running':
+      return 'orange'
+    case 'completed':
+      return 'success'
+    case 'failed':
+      return 'error'
+    case 'cancelled':
+      return 'grey'
+    default:
+      return 'default'
+  }
+}
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return 'mdi-clock-outline'
+    case 'running':
+      return 'mdi-play-circle'
+    case 'completed':
+      return 'mdi-check-circle'
+    case 'failed':
+      return 'mdi-alert-circle'
+    case 'cancelled':
+      return 'mdi-close-circle'
+    default:
+      return 'mdi-help-circle'
+  }
+}
+
+const stopPolling = () => {
+  if (pollInterval.value !== null) {
+    clearInterval(pollInterval.value)
+    pollInterval.value = null
+  }
+}
+
+const pollTestResult = async () => {
+  if (!currentRunId.value) return
+
+  try {
+    const result = await testRunApi.getTestRun(currentRunId.value)
+    testResult.value = result
+
+    // Stop polling if completed, failed, or cancelled
+    if (result.status === 'completed' || result.status === 'failed' || result.status === 'cancelled') {
+      stopPolling()
+      isRunning.value = false
+
+      if (result.status === 'failed') {
+        error.value = result.error_message || 'Test run failed'
+      }
+    }
+  } catch (err) {
+    console.error('Failed to poll test result:', err)
+    stopPolling()
+    isRunning.value = false
+    error.value = err instanceof Error ? err.message : String(err)
+  }
+}
+
+const startPolling = () => {
+  stopPolling() // Clear any existing interval
+  pollInterval.value = window.setInterval(() => {
+    pollTestResult()
+  }, 2000) // Poll every 2 seconds
+}
 
 const handleStartTest = async () => {
   if (!configName.value) {
@@ -173,26 +271,40 @@ const handleStartTest = async () => {
     })
 
     testResult.value = result
+    currentRunId.value = result.run_id
 
-    // Check for errors
-    if (result.status === 'failed') {
-      error.value = result.error_message || 'Test run failed'
+    // Start polling if status is pending or running
+    if (result.status === 'pending' || result.status === 'running') {
+      startPolling()
+    } else {
+      // Completed immediately
+      isRunning.value = false
+      if (result.status === 'failed') {
+        error.value = result.error_message || 'Test run failed'
+      }
     }
   } catch (err) {
     console.error('Test run failed:', err)
     const errorMessage = err instanceof Error ? err.message : String(err)
     error.value = errorMessage
-  } finally {
     isRunning.value = false
   }
 }
 
 const handleReset = () => {
+  stopPolling()
   testResult.value = null
+  currentRunId.value = null
   error.value = null
   options.value = { ...DEFAULT_TEST_RUN_OPTIONS }
   selectedEntities.value = []
+  isRunning.value = false
 }
+
+// Cleanup polling on unmount
+onBeforeUnmount(() => {
+  stopPolling()
+})
 </script>
 
 <style scoped>
