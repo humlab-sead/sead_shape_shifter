@@ -5,6 +5,9 @@ from typing import Any
 from loguru import logger
 
 from app.models.validation import ValidationError, ValidationResult
+from app.services.config_service import get_config_service
+from app.services.preview_service import PreviewService
+from app.validators.data_validators import DataValidationService
 
 
 class ValidationService:
@@ -44,9 +47,6 @@ class ValidationService:
         Returns:
             ValidationResult with data validation errors and warnings
         """
-        from app.services.config_service import get_config_service
-        from app.services.preview_service import PreviewService
-        from app.validators.data_validators import DataValidationService
 
         logger.debug(f"Running data validation for configuration: {config_name}")
 
