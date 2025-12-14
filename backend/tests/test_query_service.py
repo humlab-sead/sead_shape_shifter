@@ -255,42 +255,6 @@ class TestQueryExecution:
             assert result.row_count <= QueryService.MAX_ROWS
 
 
-class TestQueryPlan:
-    """Test query explain functionality."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.mock_ds_service = Mock()
-        self.service = QueryService(self.mock_ds_service)
-
-    def test_explain_query(self):
-        """Should get query execution plan."""
-        mock_conn = Mock()
-        self.mock_ds_service.get_connection.return_value = mock_conn
-
-        # Mock EXPLAIN output
-        explain_df = pd.DataFrame({"QUERY PLAN": ["Seq Scan on users  (cost=0.00..10.00 rows=100 width=32)", "  Filter: (id = 1)"]})
-
-        with patch("pandas.read_sql_query", return_value=explain_df):
-            query = "SELECT * FROM users WHERE id = 1"
-            result = self.service.explain_query("test_db", query)
-
-            assert isinstance(result, QueryPlan)
-            assert "Seq Scan" in result.plan_text
-            assert "users" in result.plan_text
-
-    def test_explain_connection_error(self):
-        """Should handle connection errors for explain."""
-        self.mock_ds_service.get_connection.side_effect = Exception("Connection failed")
-
-        query = "SELECT * FROM users"
-
-        with pytest.raises(QueryExecutionError) as exc_info:
-            self.service.explain_query("test_db", query)
-
-        assert "failed to connect" in str(exc_info.value).lower()
-
-
 class TestSQLParsing:
     """Test SQL parsing utilities."""
 

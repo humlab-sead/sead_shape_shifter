@@ -313,7 +313,6 @@ Week 8: Polish, Integration & Documentation (Sprints 8.x) ⏳
 - [x] Create `app/services/query_service.py`:
   - `execute_query(data_source_name, query, limit=100)` → QueryResult
   - `validate_query(data_source_name, query)` → ValidationResult
-  - `explain_query(data_source_name, query)` → QueryPlan
   - `get_query_metadata(data_source_name, query)` → ColumnMetadata[]
 
 **Models**
