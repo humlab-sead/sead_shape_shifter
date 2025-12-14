@@ -1,6 +1,6 @@
 """Service for generating entity relationship suggestions."""
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Optional
 
 from loguru import logger
 
@@ -21,14 +21,14 @@ class SuggestionService:
         self.schema_service = schema_service
 
     async def suggest_for_entity(
-        self, entity: Dict[str, Any], all_entities: List[Dict[str, Any]], data_source_name: Optional[str] = None
+        self, entity: dict[str, Any], all_entities: list[dict[str, Any]], data_source_name: Optional[str] = None
     ) -> EntitySuggestions:
         """
         Generate complete suggestions for an entity.
 
         Args:
             entity: Entity configuration dict with 'name' and 'columns'
-            all_entities: List of all entity configurations
+            all_entities: list of all entity configurations
             data_source_name: Optional data source for type checking
 
         Returns:
@@ -38,7 +38,7 @@ class SuggestionService:
         logger.info(f"Generating suggestions for entity: {entity_name}")
 
         # Get table schemas if data source provided
-        schemas: Dict[str, TableSchema] = {}
+        schemas: dict[str, TableSchema] = {}
         if data_source_name:
             try:
                 schemas = await self._get_table_schemas(data_source_name, all_entities)
@@ -54,8 +54,8 @@ class SuggestionService:
         return EntitySuggestions(entity_name=entity_name, foreign_key_suggestions=fk_suggestions, dependency_suggestions=dep_suggestions)
 
     async def suggest_foreign_keys(
-        self, entity: Dict[str, Any], all_entities: List[Dict[str, Any]], schemas: Dict[str, TableSchema] = None
-    ) -> List[ForeignKeySuggestion]:
+        self, entity: dict[str, Any], all_entities: list[dict[str, Any]], schemas: dict[str, TableSchema] = None
+    ) -> list[ForeignKeySuggestion]:
         """
         Suggest foreign key relationships for an entity.
 
@@ -73,7 +73,7 @@ class SuggestionService:
             schemas: Optional table schemas for type checking
 
         Returns:
-            List of foreign key suggestions sorted by confidence
+            list of foreign key suggestions sorted by confidence
         """
         entity_name = entity.get("name", "")
         entity_columns = set(entity.get("columns", []))
@@ -117,12 +117,12 @@ class SuggestionService:
 
     def _find_column_matches(
         self,
-        local_columns: Set[str],
-        remote_columns: Set[str],
+        local_columns: set[str],
+        remote_columns: set[str],
         local_entity: str,  # pylint: disable=unused-argument
         remote_entity: str,
-        schemas: Dict[str, TableSchema],  # pylint: disable=unused-argument
-    ) -> List[Dict[str, Any]]:
+        schemas: dict[str, TableSchema],  # pylint: disable=unused-argument
+    ) -> list[dict[str, Any]]:
         """
         Find matching columns between two entities.
 
@@ -186,7 +186,7 @@ class SuggestionService:
         return matches
 
     def _calculate_fk_confidence(
-        self, match: Dict[str, Any], local_entity: str, remote_entity: str, schemas: Dict[str, TableSchema]
+        self, match: dict[str, Any], local_entity: str, remote_entity: str, schemas: dict[str, TableSchema]
     ) -> float:
         """
         Calculate confidence score for a foreign key suggestion.
@@ -275,7 +275,7 @@ class SuggestionService:
 
         return False
 
-    def _infer_dependencies_from_foreign_keys(self, fk_suggestions: List[ForeignKeySuggestion]) -> List[DependencySuggestion]:
+    def _infer_dependencies_from_foreign_keys(self, fk_suggestions: list[ForeignKeySuggestion]) -> list[DependencySuggestion]:
         """
         Infer processing dependencies from foreign key suggestions.
 
@@ -298,7 +298,7 @@ class SuggestionService:
 
         return dependencies
 
-    async def _get_table_schemas(self, data_source_name: str, entities: List[Dict[str, Any]]) -> Dict[str, TableSchema]:
+    async def _get_table_schemas(self, data_source_name: str, entities: list[dict[str, Any]]) -> dict[str, TableSchema]:
         """Get table schemas for all entities from data source."""
         schemas = {}
 

@@ -21,27 +21,17 @@ class AutoFixService:
     """Service to apply automatic fixes to configurations."""
 
     def __init__(self, config_service: ConfigurationService):
-        """Initialize auto-fix service."""
         self.config_service = config_service
         self.yaml_service = YamlService()
 
     def generate_fix_suggestions(self, errors: list[ValidationError]) -> list[FixSuggestion]:
-        """
-        Generate fix suggestions from validation errors.
-
-        Args:
-            errors: List of validation errors
-
-        Returns:
-            List of fix suggestions for auto-fixable errors
-        """
+        """ Generate fix suggestions from validation errors. """
         suggestions = []
 
         for error in errors:
             if not error.entity:
                 continue
 
-            # Generate fixes based on error code
             if error.code == "COLUMN_NOT_FOUND":
                 suggestion = self._fix_missing_column(error)
                 if suggestion:
@@ -63,9 +53,6 @@ class AutoFixService:
         """Generate fix for missing column error."""
         if not error.field or not error.entity:
             return None
-
-        # Extract column name from error message
-        # Typically: "Column 'column_name' not found in data"
 
         match = re.search(r"Column '([^']+)' not found", error.message)
         if not match:

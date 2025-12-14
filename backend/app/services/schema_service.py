@@ -7,7 +7,7 @@ Discovers tables, columns, data types, and relationships.
 
 import asyncio
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import pandas as pd
 from loguru import logger
@@ -34,7 +34,7 @@ class SchemaCache:
     """Simple in-memory cache for schema data."""
 
     def __init__(self, ttl_seconds: int = 300):
-        self._cache: Dict[str, tuple[Any, datetime]] = {}
+        self._cache: dict[str, tuple[Any, datetime]] = {}
         self._ttl = timedelta(seconds=ttl_seconds)
 
     def get(self, key: str) -> Optional[Any]:
@@ -69,7 +69,7 @@ class SchemaIntrospectionService:
         self.data_source_service = DataSourceService(config)
         self.cache = SchemaCache(ttl_seconds=300)  # 5 minute cache
 
-    async def get_tables(self, data_source_name: str, schema: Optional[str] = None) -> List[TableMetadata]:
+    async def get_tables(self, data_source_name: str, schema: Optional[str] = None) -> list[TableMetadata]:
         """
         Get list of tables in a data source.
 
@@ -167,7 +167,7 @@ class SchemaIntrospectionService:
         schema: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get preview of table data.
 
@@ -179,7 +179,7 @@ class SchemaIntrospectionService:
             offset: Number of rows to skip (default 0)
 
         Returns:
-            Dict with 'columns' (list of column names) and 'rows' (list of row dicts)
+            dict with 'columns' (list of column names) and 'rows' (list of row dicts)
 
         Raises:
             SchemaServiceError: If preview fails
@@ -234,7 +234,7 @@ class SchemaIntrospectionService:
             logger.error(f"Error previewing table {table_name}: {e}")
             raise SchemaServiceError(f"Failed to preview table data: {str(e)}") from e
 
-    async def _get_postgresql_tables(self, ds_config: DataSourceConfig, schema: Optional[str] = None) -> List[TableMetadata]:
+    async def _get_postgresql_tables(self, ds_config: DataSourceConfig, schema: Optional[str] = None) -> list[TableMetadata]:
         """Get tables from PostgreSQL database."""
         schema_filter = schema or "public"
 
@@ -360,7 +360,7 @@ class SchemaIntrospectionService:
             row_count=row_count,
         )
 
-    async def _get_access_tables(self, ds_config: DataSourceConfig) -> List[TableMetadata]:
+    async def _get_access_tables(self, ds_config: DataSourceConfig) -> list[TableMetadata]:
         """Get tables from MS Access database."""
         # UCanAccess doesn't provide standard information_schema
         # Use JDBC metadata instead
@@ -442,7 +442,7 @@ class SchemaIntrospectionService:
             row_count=row_count,
         )
 
-    async def _get_sqlite_tables(self, ds_config: DataSourceConfig) -> List[TableMetadata]:
+    async def _get_sqlite_tables(self, ds_config: DataSourceConfig) -> list[TableMetadata]:
         """Get tables from SQLite database."""
         query = """
             SELECT name as table_name
@@ -562,8 +562,8 @@ class SchemaIntrospectionService:
         logger.info(f"Invalidated {len(keys_to_remove)} cache entries for {data_source_name}")
 
     async def import_entity_from_table(
-        self, data_source_name: str, table_name: str, entity_name: Optional[str] = None, selected_columns: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        self, data_source_name: str, table_name: str, entity_name: Optional[str] = None, selected_columns: Optional[list[str]] = None
+    ) -> dict[str, Any]:
         """
         Generate entity configuration from a database table.
 

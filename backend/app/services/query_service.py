@@ -65,8 +65,8 @@ class QueryService:
         Returns:
             QueryValidation with validation results
         """
-        errors = []
-        warnings = []
+        errors: list[str] = []
+        warnings: list[str] = []
 
         # Parse query
         try:

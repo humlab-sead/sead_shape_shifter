@@ -2,7 +2,7 @@
 
 import hashlib
 import time
-from typing import Dict, List, Optional
+from typing import Optional
 
 import pandas as pd
 from loguru import logger
@@ -20,7 +20,7 @@ class PreviewCache:
     def __init__(self, ttl_seconds: int = 300):
         """Initialize cache with TTL in seconds (default 5 minutes)."""
         # Cache maps key -> (result, timestamp, config_name, entity_name, limit)
-        self._cache: Dict[str, tuple[PreviewResult, float, str, str, int]] = {}
+        self._cache: dict[str, tuple[PreviewResult, float, str, str, int]] = {}
         self._ttl = ttl_seconds
 
     def _generate_key(self, config_name: str, entity_name: str, limit: int) -> str:
@@ -186,7 +186,7 @@ class PreviewService:
             logger.error(f"Preview failed for {entity_name}: {e}", exc_info=True)
             raise
 
-    def _build_column_info(self, df: pd.DataFrame, entity_config: TableConfig) -> List[ColumnInfo]:
+    def _build_column_info(self, df: pd.DataFrame, entity_config: TableConfig) -> list[ColumnInfo]:
         """Build column information from DataFrame and entity config."""
         columns = []
         key_columns = set(entity_config.keys or [])
