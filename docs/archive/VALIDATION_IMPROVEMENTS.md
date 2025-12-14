@@ -238,4 +238,4 @@ uv run pytest tests/test_specifications.py::TestSqlDataSpecification -v
 
 ## Configuration Reference
 
-See [CONFIGURATION_REFERENCE.md](CONFIGURATION_REFERENCE.md) for complete configuration documentation with validation requirements.
+See [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) for complete configuration documentation with validation requirements.
