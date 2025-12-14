@@ -160,26 +160,3 @@ async def validate_query(
         500: {"description": "Failed to get query plan"},
     },
 )
-async def explain_query(
-    data_source_name: str, execution: QueryExecution, query_service: QueryService = Depends(get_query_service)
-) -> QueryPlan:
-    """
-    Get the execution plan for a SQL query.
-
-    Args:
-        data_source_name: Name of the data source
-        execution: Query to explain
-        query_service: Query service instance
-
-    Returns:
-        QueryPlan with execution plan details
-
-    Raises:
-        HTTPException: If plan retrieval fails
-    """
-    try:
-        return await query_service.explain_query(data_source_name, execution.query)
-    except QueryExecutionError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e

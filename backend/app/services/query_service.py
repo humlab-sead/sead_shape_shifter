@@ -195,67 +195,6 @@ class QueryService:
         except Exception as e:
             raise QueryExecutionError(f"Query execution failed: {str(e)}") from e
 
-    async def explain_query(self, data_source_name: str, query: str) -> QueryPlan:
-        """
-        Get the execution plan for a query.
-
-        Args:
-            data_source_name: Name of the data source
-            query: SQL query to explain
-
-        Returns:
-            QueryPlan with execution plan
-
-        Raises:
-            QueryExecutionError: If explain fails
-        """
-        # Get data source config
-        try:
-            ds_config = self.data_source_service.get_data_source(data_source_name)
-        except Exception as e:
-            raise QueryExecutionError(f"Data source not found: {str(e)}") from e
-
-        # Build config dict for core system
-        config_dict = {
-            "driver": ds_config.get_loader_driver(),
-            "host": ds_config.host,
-            "port": ds_config.port,
-            "database": ds_config.effective_database,
-            "username": ds_config.username,
-            "password": ds_config.password.get_secret_value() if ds_config.password else None,
-            "filename": ds_config.effective_file_path,
-            "options": ds_config.options or {},
-        }
-
-        # Create core config instance
-        core_config = CoreDataSourceConfig(cfg=config_dict, name=data_source_name)
-
-        # Get appropriate loader
-        try:
-            loader = DataLoaders.get(core_config.driver)(data_source=core_config)
-        except Exception as e:
-            raise QueryExecutionError(f"Failed to get data loader: {str(e)}") from e
-
-        try:
-            # Different databases have different EXPLAIN syntax
-            explain_query = f"EXPLAIN {query}"
-
-            df = await loader.read_sql(explain_query)
-
-            # Format the plan
-            plan_text = "\n".join(df.iloc[:, 0].astype(str).tolist())
-
-            return QueryPlan(plan_text=plan_text, estimated_cost=None, estimated_rows=None)  # Would need to parse EXPLAIN output
-
-        except Exception as e:
-            raise QueryExecutionError(f"Failed to get query plan: {str(e)}") from e
-        finally:
-            if hasattr(connection, "close"):
-                try:
-                    connection.close()
-                except:  # pylint: disable=bare-except
-                    pass
-
     def _get_statement_type(self, statement: Statement) -> Optional[str]:
         """Extract the statement type (SELECT, INSERT, etc.) from parsed SQL."""
         for token in statement.tokens:
