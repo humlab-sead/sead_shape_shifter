@@ -21,6 +21,7 @@ from app.models.data_source import (
     TableMetadata,
     TableSchema,
 )
+from app.models.entity_import import KeySuggestion
 from app.services.data_source_service import DataSourceService
 
 
@@ -376,7 +377,7 @@ class SchemaIntrospectionService:
 
         try:
             data = await self._execute_query(ds_config, query)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             # Fallback: try to get from system tables
             logger.warning("Standard query failed, using fallback method for Access")
             query = "SELECT Name as TABLE_NAME FROM MSysObjects WHERE Type = 1 AND Flags = 0 ORDER BY Name"
@@ -417,7 +418,7 @@ class SchemaIntrospectionService:
             pk_query = f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_NAME = '{table_name}'"
             pk_data = await self._execute_query(ds_config, pk_query)
             primary_keys = pk_data["COLUMN_NAME"].tolist() if not pk_data.empty else []
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             logger.warning(f"Could not determine primary keys for {table_name}")
             primary_keys = []
 
@@ -519,7 +520,7 @@ class SchemaIntrospectionService:
 
             if not data.empty:
                 return int(data.iloc[0]["count"])
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.warning(f"Could not get row count for {table_name}: {e}")
 
         return None
@@ -560,9 +561,7 @@ class SchemaIntrospectionService:
         """Invalidate all cached data for a data source."""
         # Remove all cache entries starting with data_source_name
         keys_to_remove = [
-            key
-            for key in self.cache._cache.keys()
-            if key.startswith(f"tables:{data_source_name}") or key.startswith(f"schema:{data_source_name}")
+            key for key in self.cache._cache if key.startswith(f"tables:{data_source_name}") or key.startswith(f"schema:{data_source_name}")
         ]
         for key in keys_to_remove:
             self.cache.invalidate(key)
@@ -583,7 +582,6 @@ class SchemaIntrospectionService:
         Returns:
             Dictionary with entity configuration
         """
-        from app.models.entity_import import KeySuggestion
 
         # Get table schema
         schema = await self.get_table_schema(data_source_name, table_name)

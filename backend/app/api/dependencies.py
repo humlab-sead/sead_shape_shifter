@@ -9,17 +9,16 @@ from pathlib import Path
 from typing import Generator
 
 from fastapi import Depends
-
-# Add src directory to path for accessing data loaders and config system
-src_path = Path(__file__).resolve().parent.parent.parent.parent / "src"
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
-
 from src.configuration.interface import ConfigLike
 from src.configuration.provider import ConfigProvider, get_config_provider
 
 from app.services.data_source_service import DataSourceService
 from app.services.schema_service import SchemaIntrospectionService
+
+# Add src directory to path for accessing data loaders and config system
+src_path = Path(__file__).resolve().parent.parent.parent.parent / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
 
 def get_config(

@@ -2,6 +2,7 @@
 
 import shutil
 from datetime import datetime
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
@@ -176,7 +177,6 @@ class YamlService:
             Tuple of (is_valid, error_message)
         """
         try:
-            from io import StringIO
 
             self.yaml.load(StringIO(content))
             return True, None

@@ -7,6 +7,7 @@ and result size limiting.
 
 import asyncio
 import time
+from multiprocessing.dummy import connection
 from typing import List, Optional
 
 import pandas as pd
@@ -23,13 +24,9 @@ from app.services.data_source_service import DataSourceService
 class QueryExecutionError(Exception):
     """Raised when query execution fails."""
 
-    pass
-
 
 class QuerySecurityError(Exception):
     """Raised when query contains destructive operations."""
-
-    pass
 
 
 class QueryService:
@@ -130,7 +127,7 @@ class QueryService:
         try:
             ds_config = self.data_source_service.get_data_source(data_source_name)
         except Exception as e:
-            raise QueryExecutionError(f"Data source not found: {str(e)}")
+            raise QueryExecutionError(f"Data source not found: {str(e)}") from e
 
         # Build config dict for core system
         config_dict = {
@@ -151,7 +148,7 @@ class QueryService:
         try:
             loader = DataLoaders.get(core_config.driver)(data_source=core_config)
         except Exception as e:
-            raise QueryExecutionError(f"Failed to get data loader: {str(e)}")
+            raise QueryExecutionError(f"Failed to get data loader: {str(e)}") from e
 
         # Execute query with timeout
         start_time = time.time()
@@ -190,9 +187,9 @@ class QueryService:
             )
 
         except asyncio.TimeoutError:
-            raise QueryExecutionError(f"Query execution timed out after {timeout} seconds")
+            raise QueryExecutionError(f"Query execution timed out after {timeout} seconds") from e
         except Exception as e:
-            raise QueryExecutionError(f"Query execution failed: {str(e)}")
+            raise QueryExecutionError(f"Query execution failed: {str(e)}") from e
 
     async def explain_query(self, data_source_name: str, query: str) -> QueryPlan:
         """
@@ -212,7 +209,7 @@ class QueryService:
         try:
             ds_config = self.data_source_service.get_data_source(data_source_name)
         except Exception as e:
-            raise QueryExecutionError(f"Data source not found: {str(e)}")
+            raise QueryExecutionError(f"Data source not found: {str(e)}") from e
 
         # Build config dict for core system
         config_dict = {
@@ -233,7 +230,7 @@ class QueryService:
         try:
             loader = DataLoaders.get(core_config.driver)(data_source=core_config)
         except Exception as e:
-            raise QueryExecutionError(f"Failed to get data loader: {str(e)}")
+            raise QueryExecutionError(f"Failed to get data loader: {str(e)}") from e
 
         try:
             # Different databases have different EXPLAIN syntax
@@ -247,7 +244,7 @@ class QueryService:
             return QueryPlan(plan_text=plan_text, estimated_cost=None, estimated_rows=None)  # Would need to parse EXPLAIN output
 
         except Exception as e:
-            raise QueryExecutionError(f"Failed to get query plan: {str(e)}")
+            raise QueryExecutionError(f"Failed to get query plan: {str(e)}") from e
         finally:
             if hasattr(connection, "close"):
                 try:

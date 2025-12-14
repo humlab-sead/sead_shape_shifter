@@ -1,16 +1,15 @@
 """Service for previewing entity data with transformations."""
 
-import asyncio
 import hashlib
 import time
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
 from loguru import logger
 from src.config_model import TableConfig, TablesConfig
 from src.configuration.provider import ConfigStore
-from src.normalizer import ArbodatSurveyNormalizer
 
+from app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from app.models.preview import ColumnInfo, PreviewResult
 from app.services.config_service import ConfigurationService
 
@@ -129,8 +128,8 @@ class PreviewService:
 
     async def _preview_with_normalizer(
         self,
-        config: TablesConfig,
-        config_name: str,
+        config: TablesConfig,  # pylint: disable=unused-argument
+        config_name: str,  # pylint: disable=unused-argument
         entity_name: str,
         entity_config: TableConfig,
         limit: int,
@@ -276,7 +275,6 @@ class PreviewService:
         Returns:
             JoinTestResult with statistics and unmatched rows
         """
-        from app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 
         start_time = time.time()
 

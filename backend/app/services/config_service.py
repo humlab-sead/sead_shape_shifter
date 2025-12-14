@@ -1,6 +1,5 @@
 """Configuration service for managing entity configurations."""
 
-from pathlib import Path
 from typing import Any
 
 from loguru import logger
@@ -416,7 +415,7 @@ class ConfigurationService:
 
 
 # Singleton instance
-_config_service: ConfigurationService | None = None
+_config_service: ConfigurationService | None = None  # pylint: disable=invalid-name
 
 
 def get_config_service() -> ConfigurationService:

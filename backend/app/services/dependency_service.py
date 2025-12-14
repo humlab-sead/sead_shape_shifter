@@ -231,7 +231,7 @@ class DependencyService:
 
 
 # Singleton instance
-_dependency_service: DependencyService | None = None
+_dependency_service: DependencyService | None = None  # pylint: disable=invalid-name
 
 
 def get_dependency_service() -> DependencyService:

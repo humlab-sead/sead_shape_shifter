@@ -139,7 +139,7 @@ class TestRunService:
             if result.status == TestRunStatus.RUNNING:
                 result.status = TestRunStatus.COMPLETED
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.error(f"Test run failed: {e}", exc_info=True)
             result.status = TestRunStatus.FAILED
             result.error_message = str(e)

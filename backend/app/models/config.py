@@ -1,11 +1,8 @@
 """Pydantic models for configuration."""
 
-from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
-
-from app.models.entity import Entity
 
 
 class ConfigMetadata(BaseModel):
