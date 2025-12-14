@@ -97,7 +97,8 @@ disable = [
     "global-variable-not-assigned",
     "logging-fstring-interpolation",
     "too-many-function-args",
-    "too-many-locals"
+    "too-many-locals",
+    "protected-access",
 ]
 
 [tool.black]
