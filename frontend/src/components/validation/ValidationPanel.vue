@@ -3,23 +3,33 @@
     <v-card-title class="d-flex align-center justify-space-between">
       <span>Validation Results</span>
       <div class="d-flex gap-2">
-        <v-btn
-          size="small"
-          prepend-icon="mdi-check-circle-outline"
-          :loading="loading"
-          @click="emit('validate')"
-        >
-          Structural
-        </v-btn>
-        <v-btn
-          size="small"
-          prepend-icon="mdi-database-check"
-          color="info"
-          :loading="dataValidationLoading"
-          @click="emit('validate-data')"
-        >
-          Data
-        </v-btn>
+        <v-tooltip text="Check configuration structure and references" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              size="small"
+              prepend-icon="mdi-check-circle-outline"
+              :loading="loading"
+              @click="emit('validate')"
+            >
+              Structural
+            </v-btn>
+          </template>
+        </v-tooltip>
+        <v-tooltip text="Validate data against schema with sampling" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              size="small"
+              prepend-icon="mdi-database-check"
+              color="info"
+              :loading="dataValidationLoading"
+              @click="emit('validate-data')"
+            >
+              Data
+            </v-btn>
+          </template>
+        </v-tooltip>
       </div>
     </v-card-title>
 
