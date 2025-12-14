@@ -22,11 +22,24 @@ csv:
 .PHONY: install
 install:
 	@uv venv
+	@uv pip install -e ".[all]"
+	@echo "✓ Installed shape-shifter with all dependencies (core + api + dev)"
+
+.PHONY: install-core
+install-core:
+	@uv venv
 	@uv pip install -e .
+	@echo "✓ Installed shape-shifter core only"
+
+.PHONY: install-api
+install-api:
+	@uv venv
+	@uv pip install -e ".[api]"
+	@echo "✓ Installed shape-shifter with API dependencies"
 
 .PHONY: test
 test:
-	@uv run pytest tests -v
+	@uv run pytest tests backend/tests -v
 
 .PHONY: publish
 publish:
@@ -35,11 +48,16 @@ publish:
 
 .PHONY: black
 black:
-	@uv run black src tests
+	@uv run black src tests backend/app backend/tests
 
 .PHONY: pylint
 pylint:
-	@uv run pylint src tests
+	@uv run pylint src tests backend/app backend/tests
+
+.PHONY: tidy
+tidy:
+	@uv run isort src tests backend/app backend/tests
+	@uv run black src tests backend/app backend/tests
 
 .PHONY: lint
 lint: tidy pylint check-imports
@@ -48,22 +66,56 @@ lint: tidy pylint check-imports
 check-imports:
 	@python scripts/check_imports.py
 
+
+# ============================================================================
+# Backend recipes (now use unified environment)
+# ============================================================================
+
+.PHONY: backend-run
+backend-run:
+	@echo "Starting backend server on http://localhost:8000"
+	@if [ -z "$$CONFIG_FILE" ]; then \
+		echo "Using default config: input/arbodat-database.yml"; \
+		export CONFIG_FILE=$$(pwd)/input/arbodat-database.yml; \
+	fi && \
+	PYTHONPATH=.:backend uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+.PHONY: backend-test
+backend-test:
+	@echo "Running backend tests..."
+	@uv run pytest backend/tests -v
+
+# ============================================================================
+# Configuration Editor UI
+# ============================================================================
+
+.PHONY: ui-install
+ui-install: install frontend-install
+	@echo "✓ Full UI stack installed (core + api + frontend)"
+
+.PHONY: frontend-install
+frontend-install:
+	@echo "Installing frontend dependencies..."
+	@cd frontend && pnpm install
+
+.PHONY: frontend-run
+frontend-run:
+	@echo "Starting frontend dev server on http://localhost:5173"
+	@cd frontend && pnpm dev
+
 .PHONY: fix-imports
 fix-imports:
 	@python scripts/fix_imports.py
 
 isort:
-	@uv run isort src tests
-
-.PHONY: tidy
-tidy: black isort
+	@uv run isort src tests backend/app backend/tests
 
 requirements.txt: pyproject.toml
 	@uv export -o requirements.txt
 
 .PHONY: test-coverage
 test-coverage:
-	@uv run pytest test_main.py --cov=main --cov-report=html --cov-report=term
+	@uv run pytest tests backend/tests --cov=src --cov=backend/app --cov-report=html --cov-report=term
 
 .PHONY: dead-code
 dead-code:

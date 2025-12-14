@@ -1,11 +1,10 @@
 import os
-from typing import Any
 
 import jpype
 import pandas as pd
 
+from src.config_model import DataSourceConfig
 from src.loaders.database_loaders import UCanAccessSqlLoader
-from src.config_model import DataSourceConfig, TableConfig
 
 UCANACCESS_HOME = os.path.abspath("lib/ucanaccess")
 ARBODAT_DATA_MDB = os.path.abspath("./input/ArchBotDaten.mdb")
