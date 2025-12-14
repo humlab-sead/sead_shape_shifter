@@ -13,10 +13,52 @@ from app.services.validation_service import get_validation_service
 router = APIRouter()
 
 
+@router.post("/configurations/{name}/validate/data", response_model=ValidationResult)
+async def validate_configuration_data(
+    name: str, entity_names: list[str] | None = None
+) -> ValidationResult:
+    """
+    Run data-aware validation on configuration.
+
+    This validates actual data (not just configuration structure):
+    - Checks configured columns exist in data
+    - Verifies natural keys are unique
+    - Confirms entities return data
+    - Validates foreign key data integrity
+
+    Args:
+        name: Configuration name
+        entity_names: Optional list of entity names to validate (None = all entities)
+
+    Returns:
+        Validation result with data-specific errors and warnings
+    """
+    validation_service = get_validation_service()
+
+    try:
+        # Run data validation
+        result = await validation_service.validate_configuration_data(name, entity_names)
+
+        logger.info(
+            f"Data validation for '{name}' completed: "
+            f"valid={result.is_valid}, errors={result.error_count}, warnings={result.warning_count}"
+        )
+        return result
+
+    except ConfigurationNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except Exception as e:
+        logger.error(f"Failed to validate data for '{name}': {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to validate data: {str(e)}",
+        ) from e
+
+
 @router.post("/configurations/{name}/entities/{entity_name}/validate", response_model=ValidationResult)
 async def validate_entity(name: str, entity_name: str) -> ValidationResult:
     """
-    Validate specific entity within a configuration.
+    Validate specific entity within a configuration (structural validation only).
 
     Args:
         name: Configuration name

@@ -1,8 +1,26 @@
 """Pydantic models for validation results."""
 
+from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
+
+
+class ValidationCategory(str, Enum):
+    """Category of validation check."""
+
+    STRUCTURAL = "structural"  # Configuration structure issues
+    DATA = "data"  # Issues found in actual data
+    PERFORMANCE = "performance"  # Performance-related warnings
+
+
+class ValidationPriority(str, Enum):
+    """Priority level for validation checks."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 
 class ValidationError(BaseModel):
@@ -14,6 +32,13 @@ class ValidationError(BaseModel):
     message: str = Field(..., description="Error message")
     code: str | None = Field(default=None, description="Error code for programmatic handling")
     suggestion: str | None = Field(default=None, description="Suggested fix")
+    category: ValidationCategory = Field(
+        default=ValidationCategory.STRUCTURAL, description="Validation category"
+    )
+    priority: ValidationPriority = Field(
+        default=ValidationPriority.MEDIUM, description="Validation priority"
+    )
+    auto_fixable: bool = Field(default=False, description="Whether this issue can be auto-fixed")
 
 
 class ValidationResult(BaseModel):

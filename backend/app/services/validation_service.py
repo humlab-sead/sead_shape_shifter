@@ -33,6 +33,53 @@ class ValidationService:
 
         self.validator = CompositeConfigSpecification()
 
+    async def validate_configuration_data(
+        self, config_name: str, entity_names: list[str] | None = None
+    ) -> ValidationResult:
+        """
+        Run data-aware validation on configuration.
+
+        Args:
+            config_name: Configuration name
+            entity_names: Optional list of entity names to validate (None = all)
+
+        Returns:
+            ValidationResult with data validation errors and warnings
+        """
+        from app.services.config_service import get_config_service
+        from app.services.preview_service import PreviewService
+        from app.validators.data_validators import DataValidationService
+
+        logger.debug(f"Running data validation for configuration: {config_name}")
+
+        config_service = get_config_service()
+        preview_service = PreviewService(config_service)
+        data_validator = DataValidationService(preview_service)
+
+        # Run data validators
+        errors_list = await data_validator.validate_configuration(config_name, entity_names)
+
+        # Separate by severity
+        errors = [e for e in errors_list if e.severity == "error"]
+        warnings = [e for e in errors_list if e.severity == "warning"]
+        info = [e for e in errors_list if e.severity == "info"]
+
+        result = ValidationResult(
+            is_valid=len(errors) == 0,
+            errors=errors,
+            warnings=warnings,
+            info=info,
+            error_count=len(errors),
+            warning_count=len(warnings),
+        )
+
+        logger.info(
+            f"Data validation completed: {result.error_count} errors, "
+            f"{result.warning_count} warnings"
+        )
+
+        return result
+
     def validate_configuration(self, config_data: dict[str, Any]) -> ValidationResult:
         """
         Validate configuration using CompositeConfigSpecification.
