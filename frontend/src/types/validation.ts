@@ -3,6 +3,8 @@
  */
 
 export type ValidationSeverity = 'error' | 'warning' | 'info'
+export type ValidationCategory = 'structural' | 'data' | 'performance'
+export type ValidationPriority = 'low' | 'medium' | 'high' | 'critical'
 
 export interface ValidationError {
   severity: ValidationSeverity
@@ -11,6 +13,9 @@ export interface ValidationError {
   message: string
   code?: string | null
   suggestion?: string | null
+  category?: ValidationCategory
+  priority?: ValidationPriority
+  auto_fixable?: boolean
 }
 
 export interface ValidationResult {

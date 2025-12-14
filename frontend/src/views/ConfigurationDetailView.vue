@@ -127,9 +127,14 @@
           <v-window-item value="validation">
             <validation-panel
               :config-name="configName"
-              :validation-result="validationResult"
+              :validation-result="mergedValidationResult"
               :loading="validationLoading"
+              :data-validation-loading="dataValidationLoading"
+              :available-entities="entityNames"
               @validate="handleValidate"
+              @validate-data="handleDataValidate"
+              @apply-fix="handleApplyFix"
+              @apply-all-fixes="handleApplyAllFixes"
             />
           </v-window-item>
 
@@ -208,6 +213,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useConfigurations, useEntities, useValidation } from '@/composables'
+import { useDataValidation } from '@/composables/useDataValidation'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
 
@@ -229,9 +235,13 @@ const {
   markAsChanged,
 } = useConfigurations({ autoFetch: false })
 
-const { entityCount } = useEntities({
+const { entityCount, entities } = useEntities({
   configName: configName.value,
   autoFetch: true,
+})
+
+const entityNames = computed(() => {
+  return entities.value?.map(e => e.name) ?? []
 })
 
 const {
@@ -247,6 +257,12 @@ const {
   autoValidate: false,
 })
 
+const {
+  loading: dataValidationLoading,
+  result: dataValidationResult,
+  validateData,
+} = useDataValidation()
+
 // Local state
 const activeTab = ref('entities')
 const showBackupsDialog = ref(false)
@@ -254,8 +270,29 @@ const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
 
 // Computed
+const mergedValidationResult = computed(() => {
+  if (!validationResult.value && !dataValidationResult.value) return null
+  
+  const structural = validationResult.value
+  const data = dataValidationResult.value
+  
+  if (!structural && data) return data
+  if (structural && !data) return structural
+  if (!structural || !data) return null
+  
+  // Merge both results
+  return {
+    is_valid: structural.is_valid && data.is_valid,
+    errors: [...structural.errors, ...data.errors],
+    warnings: [...structural.warnings, ...data.warnings],
+    info: [...(structural.info || []), ...(data.info || [])],
+    error_count: structural.error_count + data.error_count,
+    warning_count: structural.warning_count + data.warning_count,
+  }
+})
+
 const validationChipColor = computed(() => {
-  if (!validationResult.value) return 'default'
+  if (!mergedValidationResult.value) return 'default'
   if (hasErrors.value) return 'error'
   if (hasWarnings.value) return 'warning'
   return 'success'
@@ -288,6 +325,31 @@ async function handleValidate() {
   } catch (err) {
     console.error('Validation failed:', err)
   }
+}
+
+async function handleDataValidate(config?: any) {
+  try {
+    const entityNames = config?.entities
+    await validateData(configName.value, entityNames)
+    successMessage.value = 'Data validation completed'
+    showSuccessSnackbar.value = true
+  } catch (err) {
+    console.error('Data validation failed:', err)
+  }
+}
+
+function handleApplyFix(issue: any) {
+  console.log('Apply fix for issue:', issue)
+  // TODO: Implement fix application
+  successMessage.value = 'Auto-fix not yet implemented'
+  showSuccessSnackbar.value = true
+}
+
+function handleApplyAllFixes() {
+  console.log('Apply all fixes')
+  // TODO: Implement bulk fix application
+  successMessage.value = 'Bulk auto-fix not yet implemented'
+  showSuccessSnackbar.value = true
 }
 
 async function handleSave() {

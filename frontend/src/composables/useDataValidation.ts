@@ -1,0 +1,137 @@
+/**
+ * Composable for data validation operations
+ */
+import { ref, computed } from 'vue'
+import axios from 'axios'
+import type { ValidationResult, ValidationError } from '@/types/validation'
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+
+export function useDataValidation() {
+  const loading = ref(false)
+  const error = ref<string | null>(null)
+  const result = ref<ValidationResult | null>(null)
+
+  const hasErrors = computed(() => result.value?.error_count ?? 0 > 0)
+  const hasWarnings = computed(() => result.value?.warning_count ?? 0 > 0)
+  const isValid = computed(() => result.value?.is_valid ?? true)
+
+  // Group issues by category
+  const issuesByCategory = computed(() => {
+    if (!result.value) return {}
+
+    const allIssues = [
+      ...(result.value.errors || []),
+      ...(result.value.warnings || []),
+      ...(result.value.info || [])
+    ]
+
+    const grouped: Record<string, ValidationError[]> = {}
+    
+    allIssues.forEach(issue => {
+      const category = issue.category || 'structural'
+      if (!grouped[category]) {
+        grouped[category] = []
+      }
+      grouped[category].push(issue)
+    })
+
+    return grouped
+  })
+
+  // Group issues by priority
+  const issuesByPriority = computed(() => {
+    if (!result.value) return {}
+
+    const allIssues = [
+      ...(result.value.errors || []),
+      ...(result.value.warnings || []),
+      ...(result.value.info || [])
+    ]
+
+    const grouped: Record<string, ValidationError[]> = {}
+    
+    allIssues.forEach(issue => {
+      const priority = issue.priority || 'medium'
+      if (!grouped[priority]) {
+        grouped[priority] = []
+      }
+      grouped[priority].push(issue)
+    })
+
+    return grouped
+  })
+
+  // Get auto-fixable issues
+  const autoFixableIssues = computed(() => {
+    if (!result.value) return []
+
+    const allIssues = [
+      ...(result.value.errors || []),
+      ...(result.value.warnings || [])
+    ]
+
+    return allIssues.filter(issue => issue.auto_fixable)
+  })
+
+  /**
+   * Run data validation on configuration
+   */
+  async function validateData(
+    configName: string,
+    entityNames?: string[]
+  ): Promise<ValidationResult | null> {
+    loading.value = true
+    error.value = null
+    result.value = null
+
+    try {
+      const params = entityNames && entityNames.length > 0
+        ? { entity_names: entityNames.join(',') }
+        : {}
+
+      const response = await axios.post<ValidationResult>(
+        `${API_BASE}/configurations/${configName}/validate/data`,
+        null,
+        { params }
+      )
+
+      result.value = response.data
+      return response.data
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Data validation failed'
+      error.value = message
+      console.error('Data validation error:', err)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Clear validation results
+   */
+  function clearResults() {
+    result.value = null
+    error.value = null
+  }
+
+  return {
+    // State
+    loading,
+    error,
+    result,
+
+    // Computed
+    hasErrors,
+    hasWarnings,
+    isValid,
+    issuesByCategory,
+    issuesByPriority,
+    autoFixableIssues,
+
+    // Methods
+    validateData,
+    clearResults
+  }
+}

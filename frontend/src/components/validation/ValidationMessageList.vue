@@ -21,6 +21,23 @@
 
       <v-list-item-subtitle class="mt-1">
         <v-chip
+          v-if="message.priority"
+          size="x-small"
+          :color="getPriorityColor(message.priority)"
+          class="mr-1"
+        >
+          {{ message.priority.toUpperCase() }}
+        </v-chip>
+        <v-chip
+          v-if="message.category"
+          size="x-small"
+          variant="outlined"
+          prepend-icon="mdi-tag"
+          class="mr-1"
+        >
+          {{ message.category }}
+        </v-chip>
+        <v-chip
           v-if="message.entity"
           size="x-small"
           variant="outlined"
@@ -46,6 +63,16 @@
         >
           {{ message.code }}
         </v-chip>
+        <v-chip
+          v-if="message.auto_fixable"
+          size="x-small"
+          color="success"
+          variant="outlined"
+          prepend-icon="mdi-wrench"
+          class="mr-1"
+        >
+          Auto-fixable
+        </v-chip>
       </v-list-item-subtitle>
 
       <template v-if="message.suggestion" #append>
@@ -66,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ValidationError } from '@/types'
+import type { ValidationError, ValidationPriority } from '@/types'
 
 interface Props {
   messages: ValidationError[]
@@ -76,4 +103,14 @@ interface Props {
 withDefaults(defineProps<Props>(), {
   emptyMessage: 'No messages',
 })
+
+function getPriorityColor(priority: ValidationPriority): string {
+  const colors: Record<ValidationPriority, string> = {
+    critical: 'error',
+    high: 'orange-darken-2',
+    medium: 'warning',
+    low: 'grey',
+  }
+  return colors[priority] || 'grey'
+}
 </script>
