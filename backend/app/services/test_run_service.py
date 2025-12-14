@@ -3,7 +3,7 @@
 import time
 import uuid
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Optional
 
 from loguru import logger
 
@@ -24,8 +24,8 @@ class TestRunService:
 
     def __init__(self, config_service: ConfigurationService):
         self.config_service = config_service
-        self._active_runs: Dict[str, TestRunResult] = {}
-        self._cancel_flags: Dict[str, bool] = {}
+        self._active_runs: dict[str, TestRunResult] = {}
+        self._cancel_flags: dict[str, bool] = {}
 
     def init_test_run(self, config_name: str, options: TestRunOptions) -> TestRunResult:
         """
