@@ -10,7 +10,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 
-from app.api.dependencies import get_config, get_data_source_service
+from app.api.dependencies import get_data_source_service
 from app.models.data_source import (
     DataSourceConfig,
     DataSourceStatus,
@@ -48,7 +48,7 @@ async def list_data_sources(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to list data sources: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/{name}", response_model=DataSourceConfig, summary="Get data source by name")
@@ -85,7 +85,7 @@ async def get_data_source(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get data source: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("", response_model=DataSourceConfig, status_code=status.HTTP_201_CREATED, summary="Create data source")
@@ -127,7 +127,7 @@ async def create_data_source(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to create data source: {str(e)}",
-        )
+        ) from e
 
 
 @router.put("/{name}", response_model=DataSourceConfig, summary="Update data source")
@@ -180,7 +180,7 @@ async def update_data_source(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to update data source: {str(e)}",
-        )
+        ) from e
 
 
 @router.delete("/{name}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete data source")
@@ -230,7 +230,7 @@ async def delete_data_source(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete data source: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/{name}/test", response_model=DataSourceTestResult, summary="Test data source connection")
@@ -287,7 +287,7 @@ async def test_data_source_connection(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to test connection: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/{name}/status", response_model=DataSourceStatus, summary="Get data source status")
@@ -330,4 +330,4 @@ async def get_data_source_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get data source status: {str(e)}",
-        )
+        ) from e

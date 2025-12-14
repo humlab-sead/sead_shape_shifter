@@ -5,8 +5,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from loguru import logger
 
-from app.models.join_test import JoinTestRequest, JoinTestResult
-from app.models.preview import EntityPreviewError, PreviewRequest, PreviewResult
+from app.models.join_test import JoinTestResult
+from app.models.preview import PreviewResult
 from app.services.config_service import ConfigurationService
 from app.services.preview_service import PreviewService
 
@@ -56,10 +56,10 @@ async def preview_entity(
         return result
     except ValueError as e:
         logger.warning(f"Preview request failed: {e}")
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Preview generation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Preview generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Preview generation failed: {str(e)}") from e
 
 
 @router.post(
@@ -92,10 +92,10 @@ async def get_entity_sample(
         return result
     except ValueError as e:
         logger.warning(f"Sample request failed: {e}")
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Sample generation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Sample generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Sample generation failed: {str(e)}") from e
 
 
 @router.delete(
@@ -127,7 +127,7 @@ async def invalidate_preview_cache(
         return {"message": message, "config_name": config_name, "entity_name": entity_name}
     except Exception as e:
         logger.error(f"Cache invalidation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Cache invalidation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Cache invalidation failed: {str(e)}") from e
 
 
 @router.post(
@@ -171,7 +171,7 @@ async def test_foreign_key_join(
         return result
     except ValueError as e:
         logger.error(f"Join test validation error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Join test failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Join test failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Join test failed: {str(e)}") from e

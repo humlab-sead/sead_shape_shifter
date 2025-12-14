@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from app.core.config import settings
 from app.models.config import ConfigMetadata, Configuration
 from app.models.validation import ValidationResult
 from app.services.config_service import (
@@ -278,9 +279,6 @@ async def restore_backup(name: str, request: RestoreBackupRequest) -> Configurat
     yaml_service = get_yaml_service()
 
     try:
-        from pathlib import Path
-
-        from app.core.config import settings
 
         # Build target path in CONFIGURATIONS_DIR
         target_path = settings.CONFIGURATIONS_DIR / f"{name}.yml"
