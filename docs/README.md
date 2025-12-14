@@ -38,14 +38,17 @@ These are the primary system documentation files:
 
 ### Configuration
 
-- **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** (1,200+ lines)
+- **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** (2,500+ lines) **★ COMPREHENSIVE CONSOLIDATED GUIDE**
   - Complete YAML configuration reference
-  - Entity definitions and properties
-  - Foreign key relationships
+  - Entity definitions and all properties
+  - **Foreign Key Constraints** - Complete validation system with cardinality, match requirements, data quality constraints
+  - **Append Configuration** - Union/concatenation of multiple data sources (SQL, fixed, data)
+  - **Configuration Validation** - 9 validation specifications with detailed error reporting
   - Data sources and transformations
-  - Validation rules
-  - Advanced features
-  - Examples and best practices
+  - Unnest operations (wide to long format)
+  - Special syntax (@value, @include, @load)
+  - Complete examples and best practices
+  - Troubleshooting guide
 
 ### Development
 
@@ -79,34 +82,15 @@ These are the primary system documentation files:
 
 ### Core Framework Features
 
-- **[FOREIGN_KEY_CONSTRAINTS.md](FOREIGN_KEY_CONSTRAINTS.md)** (232 lines)
-  - Foreign key constraint system
-  - Cardinality constraints (one-to-one, many-to-one, etc.)
-  - Uniqueness and null handling
-  - Match requirements
-  - Validation procedures
-
 - **[VALIDATION_IMPROVEMENTS.md](VALIDATION_IMPROVEMENTS.md)** (242 lines)
-  - Configuration validation specifications
+  - Configuration validation specifications  
   - SQL data validation
   - Entity existence checks
   - Circular dependency detection
   - Validation error reporting
-
-- **[config_validation.md](config_validation.md)** (250 lines)
-  - Specification pattern implementation
-  - Command-line validation tools
-  - Programmatic validation API
-  - Available specifications
-  - Error and warning reporting
+  - **Note**: See [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) for comprehensive constraint and validation documentation
 
 ### Advanced Features
-
-- **[UNION_CONFIGURATION_OPTIONS.md](UNION_CONFIGURATION_OPTIONS.md)** (759 lines)
-  - Union/concatenation configuration
-  - Append feature documentation
-  - Multiple data source concatenation
-  - Design options and trade-offs
 
 - **[BACKEND_INTEGRATION.md](BACKEND_INTEGRATION.md)** (321 lines)
   - Backend architecture overview
@@ -146,18 +130,18 @@ Previously consolidated source documents are available in the [archive/](archive
 
 **Test Shape Shifter:**
 - Testing procedures: [TESTING_GUIDE.md](TESTING_GUIDE.md)
-- Configuration validation: [config_validation.md](config_validation.md)
+- Configuration validation: [CONFIGURATION_GUIDE.md - Configuration Validation section](CONFIGURATION_GUIDE.md#configuration-validation)
 
 **Understand Requirements:**
 - Feature requirements: [UI_REQUIREMENTS.md](UI_REQUIREMENTS.md)
 - System architecture: [UI_ARCHITECTURE.md](UI_ARCHITECTURE.md)
 
 **Configure Relationships:**
-- Foreign keys: [FOREIGN_KEY_CONSTRAINTS.md](FOREIGN_KEY_CONSTRAINTS.md)
-- Advanced unions: [UNION_CONFIGURATION_OPTIONS.md](UNION_CONFIGURATION_OPTIONS.md)
+- Foreign keys & constraints: [CONFIGURATION_GUIDE.md - Foreign Key Constraints section](CONFIGURATION_GUIDE.md#foreign-key-constraints)
+- Union/concatenation: [CONFIGURATION_GUIDE.md - Append Configuration section](CONFIGURATION_GUIDE.md#append-configuration-unionconcatenation)
 
 **Validate Configurations:**
-- Validation guide: [config_validation.md](config_validation.md)
+- Comprehensive validation guide: [CONFIGURATION_GUIDE.md - Configuration Validation section](CONFIGURATION_GUIDE.md#configuration-validation)
 - Validation improvements: [VALIDATION_IMPROVEMENTS.md](VALIDATION_IMPROVEMENTS.md)
 
 ## Documentation Standards

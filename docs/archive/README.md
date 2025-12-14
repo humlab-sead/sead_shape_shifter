@@ -24,6 +24,12 @@ These files are preserved for historical reference but are superseded by the con
 - **QUERY_BUILDER_TEST_CHECKLIST.md** - Query builder test checklist
 - **INTEGRATION_TEST_RESULTS.md** - Test results documentation
 
+### Consolidated into CONFIGURATION_GUIDE.md (December 14, 2025)
+- **constraint_examples.py** - Python code examples of foreign key constraints (6 examples)
+- **FOREIGN_KEY_CONSTRAINTS.md** - Foreign key constraint system documentation (232 lines)
+- **UNION_CONFIGURATION_OPTIONS.md** - Append/union configuration documentation (759 lines)
+- **config_validation.md** - Configuration validation specifications (250 lines)
+
 ## Usage
 
 These files are kept for:
