@@ -49,6 +49,7 @@ class ValidationIssue(BaseModel):
 class EntityTestResult(BaseModel):
     """Test result for a single entity."""
 
+    # See https://github.com/pylint-dev/pylint/issues/10087 for why pylint reports no-member for container fields
     entity_name: str = Field(..., description="Entity name")
     status: str = Field(..., description="Processing status: success, failed, skipped")
     rows_in: int = Field(..., description="Number of input rows")

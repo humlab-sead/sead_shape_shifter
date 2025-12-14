@@ -138,7 +138,7 @@ class TestEntity:
 
     def test_with_unnest(self):
         """Test entity with unnest configuration."""
-        entity = Entity(
+        entity: Entity = Entity(
             name="sample",
             unnest=UnnestConfig(
                 id_vars=["id"],
@@ -148,4 +148,4 @@ class TestEntity:
             ),
         )
         assert entity.unnest is not None
-        assert entity.unnest.var_name == "variable"
+        assert entity.unnest.var_name == "variable"  # pylint: disable=no-member
