@@ -7,12 +7,12 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from loguru import logger
-
-from app.models.preview import ColumnInfo, PreviewResult
-from app.services.config_service import ConfigurationService
 from src.config_model import TableConfig, TablesConfig
 from src.configuration.provider import ConfigStore
 from src.normalizer import ArbodatSurveyNormalizer
+
+from app.models.preview import ColumnInfo, PreviewResult
+from app.services.config_service import ConfigurationService
 
 
 class PreviewCache:
@@ -276,7 +276,7 @@ class PreviewService:
         Returns:
             JoinTestResult with statistics and unmatched rows
         """
-        from app.models.join_test import JoinTestResult, JoinStatistics, CardinalityInfo, UnmatchedRow
+        from app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 
         start_time = time.time()
 

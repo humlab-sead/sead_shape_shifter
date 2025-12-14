@@ -7,6 +7,9 @@ from typing import Any, Optional
 
 import pandas as pd
 from loguru import logger
+from src.configuration.interface import ConfigLike
+from src.loaders.base_loader import DataLoader, DataLoaders
+from src.utility import replace_env_vars
 
 from app.models.data_source import (
     ColumnMetadata,
@@ -18,9 +21,6 @@ from app.models.data_source import (
     TableMetadata,
     TableSchema,
 )
-from src.configuration.interface import ConfigLike
-from src.loaders.base_loader import DataLoader, DataLoaders
-from src.utility import replace_env_vars
 
 
 class DataSourceService:
@@ -223,7 +223,8 @@ class DataSourceService:
 
         try:
             # Create a mock TableConfig for testing
-            from src.config_model import DataSourceConfig as LegacyDataSourceConfig, TableConfig
+            from src.config_model import DataSourceConfig as LegacyDataSourceConfig
+            from src.config_model import TableConfig
 
             # Create legacy data source config for loader
             legacy_opts = {

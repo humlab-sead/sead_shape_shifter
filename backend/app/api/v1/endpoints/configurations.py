@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from app.models.config import Configuration, ConfigMetadata
+from app.models.config import ConfigMetadata, Configuration
 from app.models.validation import ValidationResult
 from app.services.config_service import (
     ConfigurationNotFoundError,

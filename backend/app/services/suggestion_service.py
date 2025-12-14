@@ -1,16 +1,17 @@
 """Service for generating entity relationship suggestions."""
 
 import asyncio
-from typing import List, Dict, Any, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
+
 from loguru import logger
 
+from app.models.data_source import TableSchema
 from app.models.suggestion import (
-    ForeignKeySuggestion,
     DependencySuggestion,
     EntitySuggestions,
+    ForeignKeySuggestion,
 )
 from app.services.schema_service import SchemaIntrospectionService
-from app.models.data_source import TableSchema
 
 
 class SuggestionService:

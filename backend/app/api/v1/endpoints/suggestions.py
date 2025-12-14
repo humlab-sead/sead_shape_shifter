@@ -1,13 +1,14 @@
 """API endpoints for entity relationship suggestions."""
 
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 
-from app.models.suggestion import EntitySuggestions, SuggestionsRequest
-from app.services.suggestion_service import SuggestionService, get_suggestion_service
-from app.services.schema_service import SchemaIntrospectionService
 from app.api.dependencies import get_schema_service
+from app.models.suggestion import EntitySuggestions, SuggestionsRequest
+from app.services.schema_service import SchemaIntrospectionService
+from app.services.suggestion_service import SuggestionService, get_suggestion_service
 
 router = APIRouter(prefix="/suggestions", tags=["suggestions"])
 
