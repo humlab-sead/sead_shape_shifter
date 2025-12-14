@@ -126,37 +126,3 @@ async def validate_query(
         QueryValidation with validation results
     """
     return query_service.validate_query(execution.query, data_source_name)
-
-
-@router.post(
-    "/data-sources/{data_source_name}/query/explain",
-    response_model=QueryPlan,
-    summary="Get query execution plan",
-    description="""
-    Get the execution plan for a SQL query without executing it.
-    
-    This uses the database's EXPLAIN functionality to show how the query
-    would be executed, including:
-    - Table scans vs index usage
-    - Join methods
-    - Estimated cost and row counts
-    
-    Useful for optimizing slow queries.
-    """,
-    responses={
-        200: {
-            "description": "Query plan retrieved successfully",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "plan_text": "Seq Scan on users  (cost=0.00..10.00 rows=100 width=32)\n  Filter: (id = 1)",
-                        "estimated_cost": 10.0,
-                        "estimated_rows": 100,
-                    }
-                }
-            },
-        },
-        404: {"description": "Data source not found"},
-        500: {"description": "Failed to get query plan"},
-    },
-)
