@@ -4,6 +4,7 @@ Models for auto-fix functionality.
 
 from enum import Enum
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 

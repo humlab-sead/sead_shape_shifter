@@ -4,14 +4,14 @@ Schema Introspection API Endpoints
 Provides REST API for database schema inspection, table browsing, and data preview.
 """
 
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
 
+from app.api.dependencies import get_schema_service
 from app.models.data_source import TableMetadata, TableSchema
 from app.services.schema_service import SchemaIntrospectionService, SchemaServiceError
-from app.api.dependencies import get_schema_service
-
 
 router = APIRouter(prefix="/data-sources", tags=["schema"])
 

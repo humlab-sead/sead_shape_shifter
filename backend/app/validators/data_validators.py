@@ -260,8 +260,8 @@ class ForeignKeyDataValidator:
 
     async def validate(self, config_name: str, entity_name: str, entity_config: Any) -> list[ValidationError]:
         """Validate foreign key data integrity."""
-        from app.services.preview_service import PreviewService
         from app.services.config_service import ConfigurationService
+        from app.services.preview_service import PreviewService
 
         errors = []
 
@@ -399,8 +399,8 @@ class DataTypeCompatibilityValidator:
 
     async def validate(self, config_name: str, entity_name: str, entity_config: Any) -> list[ValidationError]:
         """Validate foreign key column type compatibility."""
-        from app.services.preview_service import PreviewService
         from app.services.config_service import ConfigurationService
+        from app.services.preview_service import PreviewService
 
         errors = []
 

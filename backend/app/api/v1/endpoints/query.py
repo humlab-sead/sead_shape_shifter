@@ -3,14 +3,15 @@ Query execution API endpoints.
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query as QueryParam
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi import Query as QueryParam
 from pydantic import BaseModel
 
-from app.models.query import QueryResult, QueryValidation, QueryPlan, QueryExecution
-from app.services.query_service import QueryService, QuerySecurityError, QueryExecutionError
-from app.services.data_source_service import DataSourceService
 from app.api.dependencies import get_data_source_service
-
+from app.models.query import QueryExecution, QueryPlan, QueryResult, QueryValidation
+from app.services.data_source_service import DataSourceService
+from app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
 
 router = APIRouter()
 

@@ -3,6 +3,7 @@ Models for entity import from database tables.
 """
 
 from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 

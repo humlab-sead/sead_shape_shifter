@@ -6,7 +6,7 @@ from typing import Any
 from loguru import logger
 
 from app.core.config import settings
-from app.models.config import Configuration, ConfigMetadata
+from app.models.config import ConfigMetadata, Configuration
 from app.models.entity import Entity
 from app.services.yaml_service import YamlLoadError, YamlSaveError, get_yaml_service
 

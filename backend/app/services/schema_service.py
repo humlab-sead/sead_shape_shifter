@@ -6,19 +6,20 @@ Discovers tables, columns, data types, and relationships.
 """
 
 import asyncio
-from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
-from loguru import logger
-import pandas as pd
+from typing import Any, Dict, List, Optional
 
+import pandas as pd
+from loguru import logger
 from src.configuration.interface import ConfigLike
 from src.loaders.base_loader import DataLoaders
+
 from app.models.data_source import (
-    TableMetadata,
     ColumnMetadata,
-    TableSchema,
-    ForeignKeyMetadata,
     DataSourceConfig,
+    ForeignKeyMetadata,
+    TableMetadata,
+    TableSchema,
 )
 from app.services.data_source_service import DataSourceService
 
