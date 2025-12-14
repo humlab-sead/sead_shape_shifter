@@ -207,21 +207,24 @@
       @cancel="handleCancelPreview"
     />
 
-    <!-- Success Snackbar -->
-    <v-snackbar v-model="showSuccessSnackbar" color="success" timeout="3000">
-      {{ successMessage }}
-      <template #actions>
-        <v-btn variant="text" @click="showSuccessSnackbar = false">
-          Close
-        </v-btn>
-      </template>
-    </v-snackbar>
+    <!-- Success Snackbar with Animation -->
+    <v-scale-transition>
+      <v-snackbar v-if="showSuccessSnackbar" v-model="showSuccessSnackbar" color="success" timeout="3000">
+        {{ successMessage }}
+        <template #actions>
+          <v-btn variant="text" @click="showSuccessSnackbar = false">
+            Close
+          </v-btn>
+        </template>
+      </v-snackbar>
+    </v-scale-transition>
   </v-container>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useDebounceFn } from '@vueuse/core'
 import { useConfigurations, useEntities, useValidation } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
@@ -344,6 +347,12 @@ async function handleValidate() {
     console.error('Validation failed:', err)
   }
 }
+
+// Debounced validation to prevent excessive API calls (500ms delay)
+// Usage: Replace direct handleValidate() calls with debouncedValidate() 
+// in scenarios with rapid changes (e.g., auto-save, real-time editing)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const debouncedValidate = useDebounceFn(handleValidate, 500)
 
 async function handleDataValidate(config?: any) {
   try {
