@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import configurations, data_sources, entities, health, preview, query, schema, suggestions, validation
+from app.api.v1.endpoints import configurations, data_sources, entities, health, preview, query, schema, suggestions, test_run, validation
 
 api_router = APIRouter()
 
@@ -16,3 +16,4 @@ api_router.include_router(schema.router, tags=["schema"])
 api_router.include_router(query.router, tags=["query"])
 api_router.include_router(suggestions.router, tags=["suggestions"])
 api_router.include_router(preview.router, tags=["preview"])
+api_router.include_router(test_run.router, tags=["test-run"])

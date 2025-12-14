@@ -38,6 +38,14 @@
           <div class="d-flex gap-2">
             <v-btn
               variant="outlined"
+              prepend-icon="mdi-play-circle-outline"
+              color="success"
+              @click="handleTestRun"
+            >
+              Test Run
+            </v-btn>
+            <v-btn
+              variant="outlined"
               prepend-icon="mdi-check-circle-outline"
               :loading="validationLoading"
               @click="handleValidate"
@@ -268,6 +276,10 @@ const validationChipText = computed(() => {
 })
 
 // Methods
+function handleTestRun() {
+  window.location.href = `/test-run/${configName.value}`
+}
+
 async function handleValidate() {
   try {
     await validate(configName.value)

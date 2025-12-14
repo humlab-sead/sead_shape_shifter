@@ -75,6 +75,14 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/test-run/:name',
+    name: 'test-run',
+    component: () => import('@/views/TestRunView.vue'),
+    meta: {
+      title: 'Test Run',
+    },
+  },
+  {
     path: '/settings',
     name: 'settings',
     component: () => import('@/views/SettingsView.vue'),
