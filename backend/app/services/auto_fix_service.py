@@ -8,12 +8,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from app.core.config import settings
-from app.models.fix import FixAction, FixActionType, FixResult, FixSuggestion
-from app.models.validation import ValidationError
-from app.services.config_service import ConfigurationService
-from app.services.yaml_service import YamlService
 from loguru import logger
+
+from backend.app.core.config import settings
+from backend.app.models.fix import FixAction, FixActionType, FixResult, FixSuggestion
+from backend.app.models.validation import ValidationError
+from backend.app.services.config_service import ConfigurationService
+from backend.app.services.yaml_service import YamlService
 
 
 class AutoFixService:

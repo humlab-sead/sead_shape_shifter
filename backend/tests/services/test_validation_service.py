@@ -1,7 +1,10 @@
 """Tests for validation service."""
 
 import pytest
-from app.services.validation_service import ValidationService
+
+from backend.app.services.validation_service import ValidationService
+
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture

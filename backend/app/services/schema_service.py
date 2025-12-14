@@ -10,17 +10,17 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
-from app.models.data_source import (
+from loguru import logger
+
+from backend.app.models.data_source import (
     ColumnMetadata,
     DataSourceConfig,
     ForeignKeyMetadata,
     TableMetadata,
     TableSchema,
 )
-from app.models.entity_import import KeySuggestion
-from app.services.data_source_service import DataSourceService
-from loguru import logger
-
+from backend.app.models.entity_import import KeySuggestion
+from backend.app.services.data_source_service import DataSourceService
 from src.configuration.interface import ConfigLike
 from src.loaders.base_loader import DataLoaders
 

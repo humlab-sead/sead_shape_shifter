@@ -2,12 +2,15 @@
 Tests for Query Service
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
-from app.models.query import QueryPlan, QueryResult, QueryValidation
-from app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
+
+from backend.app.models.query import QueryPlan, QueryResult, QueryValidation
+from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
+
+# pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
 
 
 class TestQueryValidation:

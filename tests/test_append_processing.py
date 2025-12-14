@@ -1,16 +1,15 @@
 """Integration tests for append processing in the normalization pipeline."""
 
-from email.policy import default
 from unittest.mock import AsyncMock, patch
 
 import pandas as pd
 import pytest
 
 from src.config_model import TablesConfig
-from src.normalizer import ArbodatSurveyNormalizer, ProcessState
+from src.normalizer import ArbodatSurveyNormalizer
 from tests.decorators import with_test_config
 
-# pylint: disable=no-member, redefined-outer-name
+# pylint: disable=no-member, redefined-outer-name, unused-argument
 
 
 @pytest.fixture
@@ -261,8 +260,8 @@ class TestAppendProcessingEdgeCases:
 
         config = TablesConfig(entities_cfg=config_dict, options={})
         empty_data = pd.DataFrame(columns=["site_name", "latitude"])
-        table_store = {}
-        normalizer = ArbodatSurveyNormalizer(config=config, table_store=table_store)
+        table_store = {"default": empty_data}
+        normalizer = ArbodatSurveyNormalizer(config=config, table_store=table_store, default_entity="default")
 
         await normalizer.normalize()
 

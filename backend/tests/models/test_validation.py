@@ -1,6 +1,6 @@
 """Tests for validation models."""
 
-from app.models.validation import ValidationError, ValidationResult
+from backend.app.models.validation import ValidationError, ValidationResult
 
 
 class TestValidationError:

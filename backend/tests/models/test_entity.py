@@ -1,7 +1,9 @@
 """Tests for entity models."""
 
 import pytest
-from app.models.entity import (
+from pydantic import ValidationError
+
+from backend.app.models.entity import (
     AppendConfig,
     Entity,
     FilterConfig,
@@ -9,7 +11,6 @@ from app.models.entity import (
     ForeignKeyConstraints,
     UnnestConfig,
 )
-from pydantic import ValidationError
 
 
 class TestForeignKeyConstraints:

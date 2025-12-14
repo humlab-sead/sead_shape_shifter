@@ -2,13 +2,14 @@
 
 from typing import Any
 
-from app.models.validation import ValidationError, ValidationResult
-from app.services.auto_fix_service import AutoFixService
-from app.services.config_service import ConfigurationNotFoundError, get_config_service
-from app.services.dependency_service import get_dependency_service
-from app.services.validation_service import get_validation_service
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
+
+from backend.app.models.validation import ValidationError, ValidationResult
+from backend.app.services.auto_fix_service import AutoFixService
+from backend.app.services.config_service import ConfigurationNotFoundError, get_config_service
+from backend.app.services.dependency_service import get_dependency_service
+from backend.app.services.validation_service import get_validation_service
 
 router = APIRouter()
 

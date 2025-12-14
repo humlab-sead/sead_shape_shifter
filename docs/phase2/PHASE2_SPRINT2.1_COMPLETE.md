@@ -144,7 +144,7 @@ def get_schema_service(
 
 Added schema router to API:
 ```python
-from app.api.v1.endpoints import schema
+from backend.app.api.v1.endpoints import schema
 api_router.include_router(schema.router, tags=["schema"])
 ```
 

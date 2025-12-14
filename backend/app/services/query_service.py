@@ -12,11 +12,11 @@ from typing import List, Optional
 
 import pandas as pd
 import sqlparse
-from app.models.query import QueryPlan, QueryResult, QueryValidation
-from app.services.data_source_service import DataSourceService
 from sqlparse.sql import Identifier, Statement
 from sqlparse.tokens import DDL, DML, Keyword
 
+from backend.app.models.query import QueryPlan, QueryResult, QueryValidation
+from backend.app.services.data_source_service import DataSourceService
 from src.config_model import DataSourceConfig as CoreDataSourceConfig
 from src.loaders.base_loader import DataLoaders
 

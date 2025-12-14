@@ -7,16 +7,19 @@ Tests the complete REST API including request/response handling, validation, and
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from app.main import app
-from app.models.data_source import (
+from fastapi.testclient import TestClient
+
+from backend.app.main import app
+from backend.app.models.data_source import (
     DataSourceConfig,
     DataSourceStatus,
     DataSourceTestResult,
     DataSourceType,
 )
-from fastapi.testclient import TestClient
 
 client = TestClient(app)
+
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 @pytest.fixture

@@ -5,14 +5,14 @@ from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
-from app.models.data_source import (
+from loguru import logger
+
+from backend.app.models.data_source import (
     DataSourceConfig,
     DataSourceStatus,
     DataSourceTestResult,
     DataSourceType,
 )
-from loguru import logger
-
 from src.config_model import DataSourceConfig as LegacyDataSourceConfig
 from src.config_model import TableConfig
 from src.configuration.interface import ConfigLike

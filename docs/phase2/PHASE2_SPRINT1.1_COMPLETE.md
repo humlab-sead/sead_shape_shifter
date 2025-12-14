@@ -160,8 +160,8 @@ test_data_source.py::TestDataSourceConfig::test_csv_config PASSED
 ## Usage Example
 
 ```python
-from app.services.data_source_service import DataSourceService
-from app.models.data_source import DataSourceConfig, DataSourceType
+from backend.app.services.data_source_service import DataSourceService
+from backend.app.models.data_source import DataSourceConfig, DataSourceType
 from src.configuration.provider import get_config_provider
 
 # Initialize service

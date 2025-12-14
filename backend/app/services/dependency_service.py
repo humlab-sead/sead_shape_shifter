@@ -2,8 +2,9 @@
 
 from typing import Any
 
-from app.models.config import Configuration
 from loguru import logger
+
+from backend.app.models.config import Configuration
 
 
 class DependencyServiceError(Exception):

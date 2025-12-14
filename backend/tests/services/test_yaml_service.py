@@ -1,15 +1,14 @@
 """Tests for YAML service."""
 
-import tempfile
-from pathlib import Path
-
 import pytest
-from app.services.yaml_service import (
+
+from backend.app.services.yaml_service import (
     YamlLoadError,
-    YamlSaveError,
     YamlService,
     YamlServiceError,
 )
+
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 @pytest.fixture

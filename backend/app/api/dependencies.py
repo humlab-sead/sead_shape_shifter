@@ -8,10 +8,10 @@ import sys
 from pathlib import Path
 from typing import Generator
 
-from app.services.data_source_service import DataSourceService
-from app.services.schema_service import SchemaIntrospectionService
 from fastapi import Depends
 
+from backend.app.services.data_source_service import DataSourceService
+from backend.app.services.schema_service import SchemaIntrospectionService
 from src.configuration.interface import ConfigLike
 from src.configuration.provider import ConfigProvider, get_config_provider
 

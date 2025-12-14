@@ -4,13 +4,14 @@ import asyncio
 from typing import Any
 
 import pandas as pd
-from app.models.validation import (
+from loguru import logger
+
+from backend.app.models.validation import (
     ValidationCategory,
     ValidationError,
     ValidationPriority,
 )
-from app.services.preview_service import PreviewService
-from loguru import logger
+from backend.app.services.preview_service import PreviewService
 
 
 class ColumnExistsValidator:

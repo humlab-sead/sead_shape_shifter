@@ -1,10 +1,14 @@
 """Tests for validation and dependency API endpoints."""
 
 import pytest
-from app.main import app
 from fastapi.testclient import TestClient
 
+from backend.app.core.config import settings
+from backend.app.main import app
+
 client = TestClient(app)
+
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 @pytest.fixture
@@ -36,7 +40,6 @@ class TestEntityValidation:
 
     def test_validate_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test validating specific entity."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -56,7 +59,6 @@ class TestEntityValidation:
 
     def test_validate_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test validating non-existent entity."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -76,7 +78,6 @@ class TestEntityValidation:
 
     def test_validate_entity_nonexistent_config(self, tmp_path, monkeypatch, reset_services):
         """Test validating entity in non-existent configuration."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -90,7 +91,6 @@ class TestDependencies:
 
     def test_get_dependencies_simple(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test getting dependency graph with simple dependencies."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -114,7 +114,6 @@ class TestDependencies:
 
     def test_get_dependencies_no_deps(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test getting dependency graph with no dependencies."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -132,7 +131,6 @@ class TestDependencies:
 
     def test_get_dependencies_with_cycles(self, tmp_path, monkeypatch, reset_services):
         """Test getting dependency graph with circular dependencies."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -152,7 +150,6 @@ class TestDependencies:
 
     def test_get_dependencies_nonexistent_config(self, tmp_path, monkeypatch, reset_services):
         """Test getting dependencies for non-existent configuration."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -166,7 +163,6 @@ class TestCircularDependencyCheck:
 
     def test_check_no_cycles(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test checking for circular dependencies when none exist."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -187,7 +183,6 @@ class TestCircularDependencyCheck:
 
     def test_check_with_cycles(self, tmp_path, monkeypatch, reset_services):
         """Test checking for circular dependencies when they exist."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -208,7 +203,6 @@ class TestCircularDependencyCheck:
 
     def test_check_dependencies_nonexistent_config(self, tmp_path, monkeypatch, reset_services):
         """Test checking dependencies for non-existent configuration."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
