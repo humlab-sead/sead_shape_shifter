@@ -162,7 +162,7 @@ class QueryService:
             modified_query = self._add_limit_clause(query, limit)
 
             # Execute query using loader
-            df = await asyncio.wait_for(loader.read_sql(modified_query), timeout=timeout)
+            df: pd.DataFrame = await asyncio.wait_for(loader.read_sql(modified_query), timeout=timeout)
 
             execution_time_ms = max(1, int((time.time() - start_time) * 1000))
 
@@ -170,8 +170,8 @@ class QueryService:
             is_truncated = len(df) >= limit
 
             # Convert to list of dicts
-            rows = df.to_dict("records")
-            columns = df.columns.tolist()
+            rows: list[dict] = df.to_dict("records")
+            columns: list[str] = df.columns.tolist()
 
             # Handle datetime serialization
             for row in rows:
@@ -267,9 +267,8 @@ class QueryService:
         Returns:
             Modified query with LIMIT clause
         """
-        query_upper = query.upper().strip()
+        query_upper: str = query.upper().strip()
 
-        # Check if LIMIT already exists
         if "LIMIT" in query_upper:
             return query
 
@@ -278,8 +277,7 @@ class QueryService:
         if not parsed:
             return query
 
-        statement = parsed[0]
-        statement_type = self._get_statement_type(statement)
+        statement_type = self._get_statement_type(statement=parsed[0])
 
         if statement_type != "SELECT":
             return query
