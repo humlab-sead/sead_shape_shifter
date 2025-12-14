@@ -48,6 +48,26 @@ lint: tidy pylint check-imports
 check-imports:
 	@python scripts/check_imports.py
 
+
+# ============================================================================
+# Backend recipes
+# ============================================================================
+
+backend-pylint:
+	@pushd backend && (uv run pylint app tests || true) && popd
+
+backend-black:
+	@pushd backend && uv run black app tests && popd
+
+backend-tidy: backend-black
+	@pushd backend && uv run isort app tests && popd
+
+backend-lint: backend-tidy backend-pylint
+	@echo "✓ Backend linting complete"
+
+# backend-test:
+# 	@pushd backend && uv run pytest tests -v && popd	
+
 # ============================================================================
 # Configuration Editor UI
 # ============================================================================
