@@ -2,8 +2,6 @@
 Tests for Type Mapping Service
 """
 
-import pytest
-
 from backend.app.services.type_mapping_service import TypeMappingService
 
 
@@ -12,7 +10,7 @@ class TestTypeMappingService:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.service = TypeMappingService()
+        self.service = TypeMappingService()  # pylint: disable=attribute-defined-outside-init
 
     def test_integer_type_mapping(self):
         """Should map integer types correctly."""

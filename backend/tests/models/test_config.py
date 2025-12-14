@@ -1,7 +1,6 @@
 """Tests for configuration models."""
 
 from backend.app.models.config import ConfigMetadata, Configuration
-from backend.app.models.entity import Entity
 
 
 class TestConfiguration:
@@ -11,7 +10,7 @@ class TestConfiguration:
         """Test creating empty configuration."""
         config = Configuration()
         assert config.entities == {}
-        assert config.entity_names == []
+        assert not config.entity_names
 
     def test_add_entity(self):
         """Test adding entity to configuration."""

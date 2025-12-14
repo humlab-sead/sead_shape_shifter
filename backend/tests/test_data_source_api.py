@@ -4,7 +4,7 @@ Integration tests for Data Source API endpoints
 Tests the complete REST API including request/response handling, validation, and error cases.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient

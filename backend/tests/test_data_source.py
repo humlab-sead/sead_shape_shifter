@@ -1,7 +1,7 @@
 """Tests for data source models and service."""
 
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from backend.app.models.data_source import (
     ColumnMetadata,
@@ -134,7 +134,6 @@ class TestDataSourceConfig:
 
     def test_password_is_secret(self):
         """Test that password is stored as SecretStr."""
-        from pydantic import SecretStr
 
         config = DataSourceConfig(
             name="test_db",

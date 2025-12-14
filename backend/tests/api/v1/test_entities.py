@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.core.config import settings
 from backend.app.main import app
+from backend.app.services import config_service, validation_service, yaml_service
 
 client = TestClient(app)
 
@@ -21,7 +22,6 @@ def sample_entity_data():
 def reset_services():
     """Reset service singletons between tests."""
     # Clear service instances BEFORE each test
-    from app.services import config_service, validation_service, yaml_service
 
     config_service._config_service = None
     validation_service._validation_service = None

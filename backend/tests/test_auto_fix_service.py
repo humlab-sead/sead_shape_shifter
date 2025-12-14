@@ -1,6 +1,7 @@
 """
 Unit tests for auto-fix service.
 """
+import asyncio
 
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -241,7 +242,7 @@ class TestAutoFixService:
         # Mock backup and make save fail to trigger rollback
         with (
             patch.object(service, "_create_backup") as mock_backup,
-            patch.object(service, "_rollback") as mock_rollback,
+            patch.object(service, "_rollback") as _,
             patch.object(service.config_service, "save_configuration") as mock_save,
         ):
 
@@ -265,7 +266,7 @@ class TestAutoFixService:
         service = AutoFixService(mock_config_service)
 
         # Mock file operations
-        with patch("pathlib.Path.mkdir") as mock_mkdir, patch("pathlib.Path.exists") as mock_exists, patch("shutil.copy2") as mock_copy:
+        with patch("pathlib.Path.mkdir") as _, patch("pathlib.Path.exists") as mock_exists, patch("shutil.copy2") as mock_copy:
 
             mock_exists.return_value = True
 
@@ -355,9 +356,6 @@ class TestAutoFixService:
         # Mock backup
         with patch.object(service, "_create_backup") as mock_backup:
             mock_backup.return_value = Path("/tmp/backup.yml")
-
-            # Execute
-            import asyncio
 
             result = asyncio.run(service.apply_fixes("test_config", suggestions))
 

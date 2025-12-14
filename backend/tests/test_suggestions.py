@@ -5,6 +5,8 @@ import asyncio
 
 from backend.app.services.suggestion_service import SuggestionService
 
+# pylint: disable=unused-argument
+
 
 # Mock schema service for testing
 class MockSchemaService:
@@ -12,7 +14,7 @@ class MockSchemaService:
         return []
 
     async def get_table_schema(self, data_source_name, table_name):
-        raise Exception("Not implemented")
+        raise Exception("Not implemented")  # pylint: disable=broad-exception-raised
 
 
 async def test_suggestions():

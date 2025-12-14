@@ -21,6 +21,7 @@ from backend.app.models.data_source import (
 )
 from backend.app.models.entity_import import KeySuggestion
 from backend.app.services.data_source_service import DataSourceService
+from src.config_model import DataSourceConfig as CoreDataSourceConfig
 from src.configuration.interface import ConfigLike
 from src.loaders.base_loader import DataLoaders
 
@@ -522,8 +523,6 @@ class SchemaIntrospectionService:
 
     async def _execute_query(self, ds_config: DataSourceConfig, query: str):
         """Execute a query using the appropriate data loader."""
-        # Import here to avoid circular dependency
-        from src.config_model import DataSourceConfig as CoreDataSourceConfig
 
         # Build config dict for core system
         config_dict = {
@@ -548,7 +547,7 @@ class SchemaIntrospectionService:
             data = await asyncio.wait_for(loader.read_sql(query), timeout=30.0)
             return data
         except asyncio.TimeoutError:
-            raise SchemaServiceError("Query execution timed out after 30 seconds") from e
+            raise SchemaServiceError("Query execution timed out after 30 seconds")
         except Exception as e:  # pylint: disable=broad-except
             raise SchemaServiceError(f"Query execution failed: {str(e)}") from e
 

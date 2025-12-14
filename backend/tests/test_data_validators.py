@@ -4,7 +4,6 @@ Unit tests for data validators.
 
 from unittest.mock import AsyncMock, Mock, patch
 
-import pandas as pd
 import pytest
 
 from backend.app.models.preview import ColumnInfo, PreviewResult
@@ -379,8 +378,7 @@ class TestDataValidationService:
             }
             mock_config_svc.return_value.load_configuration.return_value = mock_config
 
-            # Execute
-            errors = await service.validate_configuration("test_config")
+            _ = await service.validate_configuration("test_config")
 
             # Assert - called validator for each entity
             assert mock_preview_service.preview_entity.call_count >= 2
@@ -402,7 +400,7 @@ class TestDataValidationService:
             mock_config_svc.return_value.load_configuration.return_value = mock_config
 
             # Execute - only validate entity1
-            errors = await service.validate_configuration("test_config", ["entity1"])
+            _ = await service.validate_configuration("test_config", ["entity1"])
 
             # Assert - only called once for entity1
             assert mock_preview_service.preview_entity.call_count >= 1
