@@ -66,7 +66,7 @@ class ConfigurationService:
                 )
                 configs.append(metadata)
 
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 logger.warning(f"Failed to load configuration {yaml_file}: {e}")
                 # Include invalid configs with is_valid=False
                 metadata = ConfigMetadata(

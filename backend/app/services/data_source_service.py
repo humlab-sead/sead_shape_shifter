@@ -255,8 +255,7 @@ class DataSourceService:
                 legacy_opts.update(config.options)
 
             legacy_data_source = LegacyDataSourceConfig(
-                driver=legacy_opts.pop("driver"),
-                options=legacy_opts,
+                config={"driver": legacy_opts.pop("driver"), "options": legacy_opts},
             )
 
             # Get loader and test with simple query

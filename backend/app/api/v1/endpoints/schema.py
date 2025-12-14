@@ -11,7 +11,9 @@ from loguru import logger
 
 from app.api.dependencies import get_schema_service
 from app.models.data_source import TableMetadata, TableSchema
+from app.models.entity_import import EntityImportRequest, EntityImportResult
 from app.services.schema_service import SchemaIntrospectionService, SchemaServiceError
+from app.services.type_mapping_service import TypeMappingService
 
 router = APIRouter(prefix="/data-sources", tags=["schema"])
 
@@ -262,7 +264,6 @@ async def get_type_mappings(
     ```
     """
     try:
-        from app.services.type_mapping_service import TypeMappingService
 
         logger.info(f"Getting type mappings for {table_name} in {name}")
 
@@ -334,7 +335,6 @@ async def import_entity_from_table(
     - Suggests natural keys from column names
     - Provides column type information
     """
-    from app.models.entity_import import EntityImportRequest, EntityImportResult
 
     if request is None:
         request = EntityImportRequest()

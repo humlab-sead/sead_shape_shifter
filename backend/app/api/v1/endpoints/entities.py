@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field
 
 from app.services.config_service import (
     ConfigurationNotFoundError,
-    ConfigurationServiceError,
     EntityAlreadyExistsError,
     EntityNotFoundError,
     get_config_service,

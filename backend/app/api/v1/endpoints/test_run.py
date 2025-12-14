@@ -16,7 +16,7 @@ from app.services.test_run_service import TestRunService
 router = APIRouter()
 
 # Singleton instance to persist test runs across requests
-_test_run_service_instance: Optional[TestRunService] = None
+_test_run_service_instance: Optional[TestRunService] = None  # pylint: disable=invalid-name
 
 
 def get_config_service() -> ConfigurationService:
@@ -28,7 +28,7 @@ def get_test_run_service(
     config_service: ConfigurationService = Depends(get_config_service),
 ) -> TestRunService:
     """Dependency to get test run service instance (singleton)."""
-    global _test_run_service_instance
+    global _test_run_service_instance  # pylint: disable=global-statement
     if _test_run_service_instance is None:
         _test_run_service_instance = TestRunService(config_service)
     return _test_run_service_instance
@@ -73,10 +73,10 @@ async def start_test_run(
 
     except ValueError as e:
         logger.error(f"Test run validation error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Test run failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Test run failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Test run failed: {str(e)}") from e
 
 
 @router.get(
