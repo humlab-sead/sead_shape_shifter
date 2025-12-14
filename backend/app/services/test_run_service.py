@@ -5,8 +5,6 @@ import uuid
 from datetime import datetime
 from typing import Dict, Optional
 
-from loguru import logger
-
 from app.models.test_run import (
     EntityTestResult,
     OutputFormat,
@@ -17,6 +15,7 @@ from app.models.test_run import (
     ValidationIssue,
 )
 from app.services.config_service import ConfigurationService
+from loguru import logger
 
 
 class TestRunService:

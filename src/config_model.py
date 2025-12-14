@@ -73,10 +73,7 @@ class ForeignKeyConstraints:
         return not self.is_empty
 
     def has_match_constraints(self) -> bool:
-        return (
-            self.allow_unmatched_left is not None
-            or self.allow_unmatched_right is not None
-        )
+        return self.allow_unmatched_left is not None or self.allow_unmatched_right is not None
 
 
 class ForeignKeyConfig:
@@ -91,8 +88,8 @@ class ForeignKeyConfig:
         Raises:
             ValueError: If required fields are missing or invalid."""
         self.config: dict[str, dict[str, Any]] = cfg  # config for all tables
-        self.local_entity: str = local_entity # name of the local entity/table
-        self.local_keys: list[str] = unique(data.get("local_keys")) 
+        self.local_entity: str = local_entity  # name of the local entity/table
+        self.local_keys: list[str] = unique(data.get("local_keys"))
         self.remote_extra_columns: dict[str, str] = self.resolve_extra_columns(data) or {}
         self.drop_remote_id: bool = data.get("drop_remote_id", False)
         self.remote_entity: str = data.get("entity", "")

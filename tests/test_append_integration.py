@@ -42,7 +42,7 @@ class TestAppendIntegration:
                         "columns": ["id"],
                     }
                 ],
-            }
+            },
         }
 
         # Initialize normalizer directly without ConfigStore
@@ -148,7 +148,7 @@ class TestAppendIntegration:
                     }
                 ],
                 "append_mode": "distinct",
-            }
+            },
         }
 
         # Initialize normalizer directly without ConfigStore
@@ -198,7 +198,7 @@ class TestAppendIntegration:
                     }
                 ],
                 "append_mode": "all",
-            }
+            },
         }
 
         # Initialize normalizer directly without ConfigStore
@@ -256,7 +256,7 @@ class TestAppendIntegration:
                         "columns": ["id"],
                     },
                 ],
-            }
+            },
         }
 
         # Initialize normalizer directly without ConfigStore

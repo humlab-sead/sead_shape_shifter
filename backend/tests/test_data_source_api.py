@@ -4,18 +4,17 @@ Integration tests for Data Source API endpoints
 Tests the complete REST API including request/response handling, validation, and error cases.
 """
 
-import pytest
-from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
 from app.main import app
 from app.models.data_source import (
     DataSourceConfig,
-    DataSourceType,
-    DataSourceTestResult,
     DataSourceStatus,
+    DataSourceTestResult,
+    DataSourceType,
 )
-
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
@@ -325,6 +324,7 @@ class TestTestConnection:
             database="sead",
             username="user",
         )
+
         # Mock async method
         async def mock_test():
             return DataSourceTestResult(
@@ -333,6 +333,7 @@ class TestTestConnection:
                 connection_time_ms=45,
                 metadata={"tables": 50},
             )
+
         mock_service.test_connection = mock_test
 
         response = client.post("/api/v1/data-sources/sead/test")
@@ -352,6 +353,7 @@ class TestTestConnection:
             database="db",
             username="user",
         )
+
         # Mock async method
         async def mock_test():
             return DataSourceTestResult(
@@ -359,6 +361,7 @@ class TestTestConnection:
                 message="Connection refused",
                 connection_time_ms=0,
             )
+
         mock_service.test_connection = mock_test
 
         response = client.post("/api/v1/data-sources/bad_db/test")

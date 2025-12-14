@@ -2,14 +2,14 @@
 Unit tests for auto-fix service.
 """
 
-import pytest
-from unittest.mock import AsyncMock, Mock, patch, mock_open
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from unittest.mock import AsyncMock, Mock, mock_open, patch
 
+import pytest
+from app.models.fix import FixAction, FixActionType, FixResult, FixSuggestion
+from app.models.validation import ValidationCategory, ValidationError, ValidationPriority
 from app.services.auto_fix_service import AutoFixService
-from app.models.validation import ValidationError, ValidationCategory, ValidationPriority
-from app.models.fix import FixActionType, FixAction, FixSuggestion, FixResult
 
 
 @pytest.fixture
@@ -70,7 +70,7 @@ class TestAutoFixService:
         assert suggestion.entity == "test_entity"
         assert suggestion.auto_fixable is True
         assert len(suggestion.actions) == 1
-        
+
         action = suggestion.actions[0]
         assert action.type == FixActionType.REMOVE_COLUMN
         assert action.entity == "test_entity"
@@ -162,7 +162,7 @@ class TestAutoFixService:
         assert preview["fixable_count"] == 1
         assert preview["total_suggestions"] == 1
         assert len(preview["changes"]) == 1
-        
+
         change = preview["changes"][0]
         assert change["entity"] == "test_entity"
         assert change["action_type"] == FixActionType.REMOVE_COLUMN
@@ -237,10 +237,12 @@ class TestAutoFixService:
         ]
 
         # Mock backup and make save fail to trigger rollback
-        with patch.object(service, "_create_backup") as mock_backup, \
-             patch.object(service, "_rollback") as mock_rollback, \
-             patch.object(service.config_service, "save_configuration") as mock_save:
-            
+        with (
+            patch.object(service, "_create_backup") as mock_backup,
+            patch.object(service, "_rollback") as mock_rollback,
+            patch.object(service.config_service, "save_configuration") as mock_save,
+        ):
+
             mock_backup.return_value = Path("/tmp/backup.yml")
             mock_save.side_effect = Exception("Save failed")
 
@@ -261,9 +263,7 @@ class TestAutoFixService:
         service = AutoFixService(mock_config_service)
 
         # Mock file operations
-        with patch("pathlib.Path.mkdir") as mock_mkdir, \
-             patch("pathlib.Path.exists") as mock_exists, \
-             patch("shutil.copy2") as mock_copy:
+        with patch("pathlib.Path.mkdir") as mock_mkdir, patch("pathlib.Path.exists") as mock_exists, patch("shutil.copy2") as mock_copy:
 
             mock_exists.return_value = True
 
@@ -356,6 +356,7 @@ class TestAutoFixService:
 
             # Execute
             import asyncio
+
             result = asyncio.run(service.apply_fixes("test_config", suggestions))
 
             # Assert
@@ -367,7 +368,7 @@ class TestAutoFixService:
         """Test suggestion with multiple actions."""
         # Setup
         service = AutoFixService(mock_config_service)
-        # Test with two separate errors - current implementation requires 
+        # Test with two separate errors - current implementation requires
         # "Column 'name' not found" format (singular), not "Columns ... not found"
         errors = [
             ValidationError(
@@ -387,7 +388,7 @@ class TestAutoFixService:
                 field="col2",
                 category=ValidationCategory.DATA,
                 priority=ValidationPriority.HIGH,
-            )
+            ),
         ]
 
         # Execute

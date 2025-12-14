@@ -1,8 +1,7 @@
 """API v1 router configuration."""
 
-from fastapi import APIRouter
-
 from app.api.v1.endpoints import configurations, data_sources, entities, health, preview, query, schema, suggestions, test_run, validation
+from fastapi import APIRouter
 
 api_router = APIRouter()
 

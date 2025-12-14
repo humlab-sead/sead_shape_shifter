@@ -4,14 +4,13 @@ import asyncio
 from typing import Any
 
 import pandas as pd
-from loguru import logger
-
 from app.models.validation import (
     ValidationCategory,
     ValidationError,
     ValidationPriority,
 )
 from app.services.preview_service import PreviewService
+from loguru import logger
 
 
 class ColumnExistsValidator:

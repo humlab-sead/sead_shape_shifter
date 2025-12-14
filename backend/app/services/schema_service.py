@@ -10,10 +10,6 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
-from loguru import logger
-from src.configuration.interface import ConfigLike
-from src.loaders.base_loader import DataLoaders
-
 from app.models.data_source import (
     ColumnMetadata,
     DataSourceConfig,
@@ -23,6 +19,10 @@ from app.models.data_source import (
 )
 from app.models.entity_import import KeySuggestion
 from app.services.data_source_service import DataSourceService
+from loguru import logger
+
+from src.configuration.interface import ConfigLike
+from src.loaders.base_loader import DataLoaders
 
 
 class SchemaServiceError(Exception):

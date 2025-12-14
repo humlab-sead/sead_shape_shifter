@@ -4,7 +4,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from app.services.yaml_service import (
     YamlLoadError,
     YamlSaveError,
@@ -179,7 +178,7 @@ class TestYamlServiceBackup:
         # Load and create backup
         original_content = yaml_service.load(temp_yaml_file)
         backup_path = yaml_service.create_backup(temp_yaml_file)
-        
+
         # Verify backup contains original content
         backup_content = yaml_service.load(backup_path)
         assert backup_content == original_content
@@ -187,7 +186,7 @@ class TestYamlServiceBackup:
         # Modify file
         modified_data = {"modified": True}
         yaml_service.save(modified_data, temp_yaml_file, create_backup=False)
-        
+
         # Verify modification worked
         modified_content = yaml_service.load(temp_yaml_file)
         assert modified_content == modified_data

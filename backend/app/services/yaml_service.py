@@ -6,10 +6,9 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
+from app.core.config import settings
 from loguru import logger
 from ruamel.yaml import YAML
-
-from app.core.config import settings
 
 
 class YamlServiceError(Exception):

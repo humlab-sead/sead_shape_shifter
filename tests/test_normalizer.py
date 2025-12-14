@@ -42,9 +42,9 @@ class TestProcessState:
         """Test ProcessState initialization."""
         config = TablesConfig(
             entities_cfg={
-                "site": {'depends_on': []},
-                "sample": {'depends_on': []},
-                "taxa": {'depends_on': []},
+                "site": {"depends_on": []},
+                "sample": {"depends_on": []},
+                "taxa": {"depends_on": []},
             },
         )
 
@@ -58,8 +58,8 @@ class TestProcessState:
         """Test getting next entity when no dependencies exist."""
         config = TablesConfig(
             entities_cfg={
-                "site": {'depends_on': []},
-                "sample": {'depends_on': []},
+                "site": {"depends_on": []},
+                "sample": {"depends_on": []},
             },
         )
 
@@ -78,8 +78,8 @@ class TestProcessState:
         """Test getting next entity respecting dependencies."""
         config = TablesConfig(
             entities_cfg={
-                "site": {'depends_on': []},
-                "sample": {'depends_on': ["site"]},
+                "site": {"depends_on": []},
+                "sample": {"depends_on": ["site"]},
             },
         )
 
@@ -100,7 +100,7 @@ class TestProcessState:
         """Test getting next entity when all are processed."""
         config = TablesConfig(
             entities_cfg={
-                "site": {'depends_on': []},
+                "site": {"depends_on": []},
             },
         )
 
@@ -113,11 +113,7 @@ class TestProcessState:
     def test_get_unmet_dependencies(self):
         """Test getting unmet dependencies for an entity."""
         config = TablesConfig(
-            entities_cfg={
-                "site": {'depends_on': []},
-                "sample": {'depends_on': ["site", "taxa"]},
-                "taxa": {'depends_on': []}
-            },
+            entities_cfg={"site": {"depends_on": []}, "sample": {"depends_on": ["site", "taxa"]}, "taxa": {"depends_on": []}},
         )
 
         state = ProcessState(config=config, table_store={})
@@ -134,8 +130,8 @@ class TestProcessState:
         """Test discarding (marking as processed) an entity."""
         config = TablesConfig(
             entities_cfg={
-                "site": {'depends_on': []},
-                "sample": {'depends_on': ["site", "taxa"]},
+                "site": {"depends_on": []},
+                "sample": {"depends_on": ["site", "taxa"]},
             },
         )
         state = ProcessState(config=config, table_store={})
@@ -151,9 +147,9 @@ class TestProcessState:
         """Test getting all unmet dependencies."""
         config = TablesConfig(
             entities_cfg={
-                "site": {'depends_on': []},
-                "sample": {'depends_on': ["site"]},
-                "feature": {'depends_on': ["site", "sample"]},
+                "site": {"depends_on": []},
+                "sample": {"depends_on": ["site"]},
+                "feature": {"depends_on": ["site", "sample"]},
             },
         )
 
@@ -171,9 +167,9 @@ class TestProcessState:
         """Test the processed_entities property."""
         config = TablesConfig(
             entities_cfg={
-                "site": {'depends_on': []},
-                "sample": {'depends_on': []},
-                "taxa": {'depends_on': []},
+                "site": {"depends_on": []},
+                "sample": {"depends_on": []},
+                "taxa": {"depends_on": []},
             },
         )
 
@@ -217,9 +213,9 @@ class TestArbodatSurveyNormalizer:
 
         config = TablesConfig(
             entities_cfg={
-                "site": {'depends_on': []},
-                "sample": {'depends_on': []},
-                "taxa": {'depends_on': []},
+                "site": {"depends_on": []},
+                "sample": {"depends_on": []},
+                "taxa": {"depends_on": []},
             },
         )
 
@@ -240,7 +236,7 @@ class TestArbodatSurveyNormalizer:
         df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_name": ["A", "B"]})
 
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store = {"survey": df, "site": site_df})
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store={"survey": df, "site": site_df})
 
         table_cfg = Mock()
         table_cfg.type = None
@@ -292,7 +288,7 @@ class TestArbodatSurveyNormalizer:
     async def test_resolve_source_sql_data(self):
         """Test resolving SQL data source."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store = {"survey": df})
+        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store={"survey": df})
 
         table_cfg = Mock()
         table_cfg.type = "sql"
@@ -489,9 +485,9 @@ class TestArbodatSurveyNormalizer:
         table_store: dict[str, pd.DataFrame] = {"survey": survey_df, "site": site_df, "sample": sample_df}
         config = TablesConfig(
             entities_cfg={
-                "survey": {'depends_on': []},
-                "site": {'depends_on': []},
-                "sample": {'depends_on': []},
+                "survey": {"depends_on": []},
+                "site": {"depends_on": []},
+                "sample": {"depends_on": []},
             },
         )
         normalizer = ArbodatSurveyNormalizer(config=config, table_store=table_store, default_entity="survey")

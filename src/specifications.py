@@ -599,7 +599,7 @@ class AppendConfigurationSpecification(ConfigSpecification):
             append_configs = entity_data.get("append", []) or []
             if append_configs and not isinstance(append_configs, list):
                 append_configs = [append_configs]
-                
+
             append_mode = entity_data.get("append_mode", "all")
 
             # Validate append_mode if present

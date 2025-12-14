@@ -66,7 +66,7 @@ class TestValidationResult:
             ValidationError(severity="error", entity="sample", message="Error 3"),
         ]
         result = ValidationResult(is_valid=False, errors=errors)
-        
+
         sample_errors = result.get_errors_for_entity("sample")
         assert len(sample_errors) == 2
         assert all(e.entity == "sample" for e in sample_errors)

@@ -1,6 +1,6 @@
 """Tests for configuration models."""
 
-from app.models.config import Configuration, ConfigMetadata
+from app.models.config import ConfigMetadata, Configuration
 from app.models.entity import Entity
 
 
@@ -26,11 +26,11 @@ class TestConfiguration:
         config = Configuration()
         entity_data = {"type": "data", "keys": ["id"]}
         config.add_entity("sample", entity_data)
-        
+
         retrieved = config.get_entity("sample")
         assert retrieved is not None
         assert retrieved["type"] == "data"
-        
+
         missing = config.get_entity("nonexistent")
         assert missing is None
 
@@ -39,11 +39,11 @@ class TestConfiguration:
         config = Configuration()
         entity_data = {"type": "data", "keys": ["id"]}
         config.add_entity("sample", entity_data)
-        
+
         result = config.remove_entity("sample")
         assert result is True
         assert "sample" not in config.entities
-        
+
         # Try removing again
         result = config.remove_entity("sample")
         assert result is False

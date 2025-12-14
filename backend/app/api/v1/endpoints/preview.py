@@ -2,13 +2,12 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from loguru import logger
-
 from app.models.join_test import JoinTestResult
 from app.models.preview import PreviewResult
 from app.services.config_service import ConfigurationService
 from app.services.preview_service import PreviewService
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from loguru import logger
 
 router = APIRouter()
 
