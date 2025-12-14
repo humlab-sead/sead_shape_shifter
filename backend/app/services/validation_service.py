@@ -1,8 +1,8 @@
 """Validation service for configuration validation."""
 
-from typing import Any
 import sys
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -201,12 +201,12 @@ class ValidationService:
 
 
 # Singleton instance
-_validation_service: ValidationService | None = None
+_validation_service: ValidationService | None = None  # pylint: disable=invalid-name
 
 
 def get_validation_service() -> ValidationService:
     """Get singleton ValidationService instance."""
-    global _validation_service
+    global _validation_service  # pylint: disable=global-statement
     if _validation_service is None:
         _validation_service = ValidationService()
     return _validation_service

@@ -1,7 +1,6 @@
 """Service for generating entity relationship suggestions."""
 
-import asyncio
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 from loguru import logger
 
@@ -43,7 +42,7 @@ class SuggestionService:
         if data_source_name:
             try:
                 schemas = await self._get_table_schemas(data_source_name, all_entities)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 logger.warning(f"Could not load schemas from {data_source_name}: {e}")
 
         # Generate foreign key suggestions
@@ -117,7 +116,12 @@ class SuggestionService:
         return suggestions
 
     def _find_column_matches(
-        self, local_columns: Set[str], remote_columns: Set[str], local_entity: str, remote_entity: str, schemas: Dict[str, TableSchema]
+        self,
+        local_columns: Set[str],
+        remote_columns: Set[str],
+        local_entity: str,  # pylint: disable=unused-argument
+        remote_entity: str,
+        schemas: Dict[str, TableSchema],  # pylint: disable=unused-argument
     ) -> List[Dict[str, Any]]:
         """
         Find matching columns between two entities.
@@ -149,7 +153,7 @@ class SuggestionService:
                     # Look for id or entity_id in remote
                     for remote_col in remote_columns:
                         remote_lower = remote_col.lower()
-                        if remote_lower == "id" or remote_lower == local_lower:
+                        if remote_lower in ["id", local_lower]:
                             matches.append(
                                 {
                                     "local": local_col,
@@ -168,7 +172,7 @@ class SuggestionService:
                     # Look for matching column in remote
                     for remote_col in remote_columns:
                         remote_lower = remote_col.lower()
-                        if remote_lower == local_lower or remote_lower == f"{remote_entity.lower()}_id" or remote_lower == "id":
+                        if remote_lower in [local_lower, f"{remote_entity.lower()}_id", "id"]:
                             matches.append(
                                 {
                                     "local": local_col,
@@ -302,7 +306,7 @@ class SuggestionService:
         try:
             tables = await self.schema_service.list_tables(data_source_name)
             table_names = {t.name for t in tables}
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.warning(f"Could not list tables: {e}")
             return schemas
 
@@ -322,7 +326,7 @@ class SuggestionService:
                 try:
                     schema = await self.schema_service.get_table_schema(data_source_name, table_name)
                     schemas[entity_name] = schema
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-except
                     logger.warning(f"Could not load schema for {table_name}: {e}")
 
         return schemas

@@ -37,10 +37,9 @@ class PreviewCache:
                 logger.debug(f"Cache hit for {entity_name}")
                 result.cache_hit = True
                 return result
-            else:
-                # Remove expired entry
-                del self._cache[key]
-                logger.debug(f"Cache expired for {entity_name}")
+            # Remove expired entry
+            del self._cache[key]
+            logger.debug(f"Cache expired for {entity_name}")
         return None
 
     def set(self, config_name: str, entity_name: str, limit: int, result: PreviewResult) -> None:
@@ -386,7 +385,7 @@ class PreviewService:
         if duplicate_matches > 0:
             warnings.append(f"Join created {duplicate_matches} duplicate rows (one-to-many relationship)")
             if expected_cardinality != "one_to_many":
-                recommendations.append(f"Update cardinality constraint to 'one_to_many' or fix data")
+                recommendations.append("Update cardinality constraint to 'one_to_many' or fix data")
 
         if not cardinality_matches:
             recommendations.append(f"Update cardinality from '{expected_cardinality}' to '{actual_cardinality}'")
