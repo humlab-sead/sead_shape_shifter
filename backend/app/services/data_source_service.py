@@ -271,7 +271,7 @@ class DataSourceService:
                 cfg={
                     config.name: {"surrogate_id": "test_id", "keys": [], "columns": [], "source": None, "query": "SELECT 1 as test"}
                 },  # Simple test query
-                name=config.name,
+                entity_name=config.name,
             )
 
             # Try to load (this will test the connection)
