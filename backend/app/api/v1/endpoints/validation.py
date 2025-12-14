@@ -5,7 +5,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
-from app.models.validation import ValidationResult
+from app.models.validation import ValidationError, ValidationResult
+from app.services.auto_fix_service import AutoFixService
 from app.services.config_service import ConfigurationNotFoundError, get_config_service
 from app.services.dependency_service import get_dependency_service
 from app.services.validation_service import get_validation_service
@@ -173,9 +174,6 @@ async def preview_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, An
     Returns:
         Preview of fixes that would be applied
     """
-    from app.models.fix import FixSuggestion
-    from app.models.validation import ValidationError
-    from app.services.auto_fix_service import AutoFixService
 
     config_service = get_config_service()
     auto_fix_service = AutoFixService(config_service)
@@ -220,9 +218,6 @@ async def apply_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]
     Returns:
         Result of applying fixes including backup path
     """
-    from app.models.fix import FixResult
-    from app.models.validation import ValidationError
-    from app.services.auto_fix_service import AutoFixService
 
     config_service = get_config_service()
     auto_fix_service = AutoFixService(config_service)

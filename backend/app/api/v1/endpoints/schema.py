@@ -55,23 +55,22 @@ async def list_tables(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=str(e),
-            )
-        elif "not supported" in str(e).lower():
+            ) from e
+        if "not supported" in str(e).lower():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e),
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(e),
-            )
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Unexpected error listing tables for {name}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to list tables: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/{name}/tables/{table_name}/schema", response_model=TableSchema, summary="Get table schema")
@@ -123,23 +122,22 @@ async def get_table_schema(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=str(e),
-            )
-        elif "not supported" in str(e).lower():
+            ) from e
+        if "not supported" in str(e).lower():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e),
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(e),
-            )
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Unexpected error getting schema for {table_name}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get table schema: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/{name}/tables/{table_name}/preview", summary="Preview table data")
@@ -202,23 +200,22 @@ async def preview_table_data(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=str(e),
-            )
-        elif "not supported" in str(e).lower() or "timed out" in str(e).lower():
+            ) from e
+        if "not supported" in str(e).lower() or "timed out" in str(e).lower():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e),
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(e),
-            )
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Unexpected error previewing {table_name}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to preview table data: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/{name}/tables/{table_name}/type-mappings", response_model=Dict[str, Dict[str, any]], summary="Get type mapping suggestions")
@@ -298,18 +295,17 @@ async def get_type_mappings(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=str(e),
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(e),
-            )
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Error getting type mappings for {table_name}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get type mappings: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/{name}/tables/{table_name}/import", summary="Import entity from table")
@@ -358,18 +354,17 @@ async def import_entity_from_table(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=str(e),
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(e),
-            )
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Error importing entity from {table_name}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to import entity: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/{name}/cache/invalidate", status_code=status.HTTP_204_NO_CONTENT, summary="Invalidate schema cache")
@@ -401,4 +396,4 @@ async def invalidate_cache(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to invalidate cache: {str(e)}",
-        )
+        ) from e

@@ -2,11 +2,7 @@
 Query execution API endpoints.
 """
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi import Query as QueryParam
-from pydantic import BaseModel
 
 from app.api.dependencies import get_data_source_service
 from app.models.query import QueryExecution, QueryPlan, QueryResult, QueryValidation
@@ -77,11 +73,11 @@ async def execute_query(
         )
         return result
     except QuerySecurityError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except QueryExecutionError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e
 
 
 @router.post(
@@ -184,6 +180,6 @@ async def explain_query(
     try:
         return await query_service.explain_query(data_source_name, execution.query)
     except QueryExecutionError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e

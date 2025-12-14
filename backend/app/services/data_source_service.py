@@ -1,25 +1,22 @@
 """Data source service for managing database connections and file sources."""
 
-import asyncio
 import time
 from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
 from loguru import logger
+from src.config_model import DataSourceConfig as LegacyDataSourceConfig
+from src.config_model import TableConfig
 from src.configuration.interface import ConfigLike
 from src.loaders.base_loader import DataLoader, DataLoaders
 from src.utility import replace_env_vars
 
 from app.models.data_source import (
-    ColumnMetadata,
     DataSourceConfig,
     DataSourceStatus,
     DataSourceTestResult,
     DataSourceType,
-    ForeignKeyMetadata,
-    TableMetadata,
-    TableSchema,
 )
 
 
@@ -66,7 +63,7 @@ class DataSourceService:
 
                 ds_config = DataSourceConfig(**resolved_config)
                 result.append(ds_config)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 logger.warning(f"Failed to parse data source '{name}': {e}")
                 continue
 
@@ -199,7 +196,7 @@ class DataSourceService:
                     message=f"Unsupported data source type: {config.driver}",
                     connection_time_ms=0,
                 )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
             logger.error(f"Connection test failed for '{config.name}': {e}")
             result = DataSourceTestResult(
@@ -223,8 +220,6 @@ class DataSourceService:
 
         try:
             # Create a mock TableConfig for testing
-            from src.config_model import DataSourceConfig as LegacyDataSourceConfig
-            from src.config_model import TableConfig
 
             # Create legacy data source config for loader
             legacy_opts = {
@@ -301,7 +296,7 @@ class DataSourceService:
                 metadata=metadata if metadata else None,
             )
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
             # Sanitize error message (don't expose passwords, etc.)
             error_msg = str(e)
