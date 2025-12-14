@@ -1,10 +1,11 @@
 [project]
 name = "shape-shifter"
 version = "1.2.0"
-description = "This is an import service for that harmonize data to SEAD schema."
+description = "Declarative data transformation framework with optional web editor API"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    # Core dependencies
     "click>=8.3.0",
     "dotenv>=0.9.9",
     "jaydebeapi>=1.2.3",
@@ -18,22 +19,39 @@ dependencies = [
     "pyproj>=3.7.2",
     "python-multipart>=0.0.20",
     "sqlalchemy>=2.0.44",
+    # Shared dependencies (used by both core and backend)
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "networkx>=3.0",
+    "ruamel.yaml>=0.18.0",
+]
+
+[project.optional-dependencies]
+# Backend API dependencies (FastAPI + related)
+api = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "sqlparse>=0.5.0",
+]
+# Development dependencies
+dev = [
+    "pylint>=3.3.8",
+    "ruff>=0.13.2",
+    "black>=25.9.0",
+    "pytest>=8.1.1,<9",
+    "pytest-asyncio>=0.22.0,<1",
+    "pytest-cov>=4.1.0,<5",
+    "httpx>=0.24.1,<1",
+    "vulture>=2.14",
+]
+# All dependencies (for full development setup)
+all = [
+    "shape-shifter[api,dev]",
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]
-[dependency-groups]
-dev = [
-    "pylint>=3.3.8",
-    "ruff>=0.13.2",
-    "black>=25.9.0",
-    "pytest >=8.1.1,<9",
-    "pytest-asyncio >=0.22.0,<1",
-    "pytest-cov >=4.1.0,<5",
-    "httpx >=0.24.1,<1",
-    "vulture>=2.14",
-]
 
 [tool.ruff]
 # Ruff = linter + (optional) formatter
@@ -128,7 +146,7 @@ warn_return_any = false
 # --------------------
 [tool.pytest.ini_options]
 addopts = "-q -ra --strict-markers"
-testpaths = ["tests"]
+testpaths = ["tests", "backend/tests"]
 python_classes = "Test*"
 python_functions = "test_*"
 asyncio_mode = "auto"

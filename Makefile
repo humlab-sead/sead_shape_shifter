@@ -22,11 +22,24 @@ csv:
 .PHONY: install
 install:
 	@uv venv
+	@uv pip install -e ".[all]"
+	@echo "✓ Installed shape-shifter with all dependencies (core + api + dev)"
+
+.PHONY: install-core
+install-core:
+	@uv venv
 	@uv pip install -e .
+	@echo "✓ Installed shape-shifter core only"
+
+.PHONY: install-api
+install-api:
+	@uv venv
+	@uv pip install -e ".[api]"
+	@echo "✓ Installed shape-shifter with API dependencies"
 
 .PHONY: test
 test:
-	@uv run pytest tests -v
+	@uv run pytest tests backend/tests -v
 
 .PHONY: publish
 publish:
@@ -35,11 +48,16 @@ publish:
 
 .PHONY: black
 black:
-	@uv run black src tests
+	@uv run black src tests backend/app backend/tests
 
 .PHONY: pylint
 pylint:
-	@uv run pylint src tests
+	@uv run pylint src tests backend/app backend/tests
+
+.PHONY: tidy
+tidy:
+	@uv run isort src tests backend/app backend/tests
+	@uv run black src tests backend/app backend/tests
 
 .PHONY: lint
 lint: tidy pylint check-imports
@@ -50,38 +68,8 @@ check-imports:
 
 
 # ============================================================================
-# Backend recipes
+# Backend recipes (now use unified environment)
 # ============================================================================
-
-backend-pylint:
-	@pushd backend && (uv run pylint app tests || true) && popd
-
-backend-black:
-	@pushd backend && uv run black app tests && popd
-
-backend-tidy: backend-black
-	@pushd backend && uv run isort app tests && popd
-
-backend-lint: backend-tidy backend-pylint
-	@echo "✓ Backend linting complete"
-
-# backend-test:
-# 	@pushd backend && uv run pytest tests -v && popd	
-
-# ============================================================================
-# Configuration Editor UI
-# ============================================================================
-
-.PHONY: ui-install
-ui-install: install backend-install frontend-install
-
-.PHONY: backend-install
-backend-install:
-	@echo "Installing main package (shape-shifter) in editable mode..."
-	@uv pip install -e . 2>&1 | grep -E '(Installed|Uninstalled|Built|shape-shifter)' || true
-	@echo "Installing backend dependencies..."
-	@cd backend && uv pip install -e ".[dev]" 2>&1 | grep -E '(Installed|Uninstalled|Built|shape-shifter-editor-backend)' || true
-	@echo "✓ Backend installation complete"
 
 .PHONY: backend-run
 backend-run:
@@ -90,12 +78,20 @@ backend-run:
 		echo "Using default config: input/arbodat-database.yml"; \
 		export CONFIG_FILE=$$(pwd)/input/arbodat-database.yml; \
 	fi && \
-	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	PYTHONPATH=.:backend uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 .PHONY: backend-test
 backend-test:
 	@echo "Running backend tests..."
-	@cd backend && uv run python -m pytest -v
+	@uv run pytest backend/tests -v
+
+# ============================================================================
+# Configuration Editor UI
+# ============================================================================
+
+.PHONY: ui-install
+ui-install: install frontend-install
+	@echo "✓ Full UI stack installed (core + api + frontend)"
 
 .PHONY: frontend-install
 frontend-install:
@@ -112,17 +108,14 @@ fix-imports:
 	@python scripts/fix_imports.py
 
 isort:
-	@uv run isort src tests
-
-.PHONY: tidy
-tidy: black isort
+	@uv run isort src tests backend/app backend/tests
 
 requirements.txt: pyproject.toml
 	@uv export -o requirements.txt
 
 .PHONY: test-coverage
 test-coverage:
-	@uv run pytest test_main.py --cov=main --cov-report=html --cov-report=term
+	@uv run pytest tests backend/tests --cov=src --cov=backend/app --cov-report=html --cov-report=term
 
 .PHONY: dead-code
 dead-code:

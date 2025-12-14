@@ -1,36 +1,33 @@
+# =============================================================================
+# DEPRECATED - Use root pyproject.toml instead
+# =============================================================================
+# This file is kept for reference but the backend dependencies are now managed
+# in the root pyproject.toml using optional extras.
+#
+# To install:
+#   uv pip install -e ".[all]"     # Full development setup
+#   uv pip install -e ".[api]"     # Core + API only
+#   uv pip install -e ".[dev]"     # Core + dev tools
+#
+# To run backend:
+#   make backend-run
+#
+# See: /pyproject.toml for the unified dependency management.
+# =============================================================================
+
 [project]
 name = "shape-shifter-editor-backend"
 version = "0.1.0"
-description = "REST API for editing Shape Shifter YAML configurations"
+description = "REST API for editing Shape Shifter YAML configurations (DEPRECATED: use root pyproject.toml)"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi",
-    "uvicorn[standard]",
-    "pydantic",
-    "pydantic-settings",
-    "ruamel.yaml",
-    "networkx",
-    "pandas",
-    "loguru",
-    "psycopg[binary]",
-    "jaydebeapi",
-    "jpype1",
-    "sqlalchemy",
-    "sqlparse",
+    # Dependencies now managed in root pyproject.toml
+    # This file is kept for backwards compatibility only
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pylint>=3.3.8",
-    "ruff>=0.13.2",
-    "black>=25.9.0",
-    "pytest >=8.1.1,<9",
-    "pytest-asyncio >=0.22.0,<1",
-    "pytest-cov >=4.1.0,<5",
-    "httpx >=0.24.1,<1",
-    "vulture>=2.14",
-]
+dev = []
 
 [build-system]
 requires = ["hatchling"]
