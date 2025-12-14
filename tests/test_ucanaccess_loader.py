@@ -1,10 +1,9 @@
 import os
-from typing import Any
 
 import jpype
 import pandas as pd
 
-from src.config_model import DataSourceConfig, TableConfig
+from src.config_model import DataSourceConfig
 from src.loaders.database_loaders import UCanAccessSqlLoader
 
 UCANACCESS_HOME = os.path.abspath("lib/ucanaccess")
