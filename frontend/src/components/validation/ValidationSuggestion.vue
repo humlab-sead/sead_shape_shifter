@@ -60,16 +60,21 @@
               <div class="text-body-2">
                 <strong>Suggestion:</strong> {{ issue.suggestion }}
               </div>
-              <v-btn
-                size="small"
-                variant="flat"
-                color="info"
-                prepend-icon="mdi-wrench"
-                :disabled="applyingFixes"
-                @click="handleApplySingle(issue, index)"
-              >
-                Apply Fix
-              </v-btn>
+              <v-tooltip text="Preview and apply automated fix with backup" location="bottom">
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    size="small"
+                    variant="flat"
+                    color="info"
+                    prepend-icon="mdi-wrench"
+                    :disabled="applyingFixes"
+                    @click="handleApplySingle(issue, index)"
+                  >
+                    Apply Fix
+                  </v-btn>
+                </template>
+              </v-tooltip>
             </div>
           </v-alert>
         </v-list-item>
