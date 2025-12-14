@@ -117,3 +117,9 @@ bin
 deprecated
 output*.xlsx
 **/*.mdb
+
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+backups
+frontend
