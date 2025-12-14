@@ -50,7 +50,11 @@ class QueryService:
         """
         self.data_source_service = data_source_service
 
-    def validate_query(self, query: str, data_source_name: Optional[str] = None) -> QueryValidation:
+    def validate_query(
+        self,
+        query: str,
+        data_source_name: Optional[str] = None,  #  pylint: disable=unused-argument
+    ) -> QueryValidation:
         """
         Validate a SQL query for safety and syntax.
 
@@ -69,7 +73,7 @@ class QueryService:
             parsed = sqlparse.parse(query)
             if not parsed:
                 return QueryValidation(is_valid=False, errors=["Empty or invalid SQL query"], warnings=[], statement_type=None, tables=[])
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             return QueryValidation(is_valid=False, errors=[f"SQL syntax error: {str(e)}"], warnings=[], statement_type=None, tables=[])
 
         # Get first statement
@@ -249,7 +253,7 @@ class QueryService:
             if hasattr(connection, "close"):
                 try:
                     connection.close()
-                except:
+                except:  # pylint: disable=bare-except
                     pass
 
     def _get_statement_type(self, statement: Statement) -> Optional[str]:
@@ -257,9 +261,9 @@ class QueryService:
         for token in statement.tokens:
             if token.ttype is DML:
                 return token.value.upper()
-            elif token.ttype is DDL:
+            if token.ttype is DDL:
                 return token.value.upper()
-            elif token.ttype is Keyword and token.value.upper() in self.DESTRUCTIVE_KEYWORDS:
+            if token.ttype is Keyword and token.value.upper() in self.DESTRUCTIVE_KEYWORDS:
                 return token.value.upper()
         return None
 

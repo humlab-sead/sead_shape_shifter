@@ -1,6 +1,5 @@
 """Service for running configuration tests with sample data."""
 
-import asyncio
 import time
 import uuid
 from datetime import datetime
@@ -235,7 +234,7 @@ class TestRunService:
                         )
                         result.validation_issues.append(issue)
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.error(f"Error processing entity {entity_name}: {e}", exc_info=True)
             result.status = "failed"
             result.error_message = str(e)

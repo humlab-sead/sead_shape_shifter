@@ -255,7 +255,8 @@ class DataSourceService:
                 legacy_opts.update(config.options)
 
             legacy_data_source = LegacyDataSourceConfig(
-                config={"driver": legacy_opts.pop("driver"), "options": legacy_opts},
+                cfg={"driver": legacy_opts.pop("driver"), "options": legacy_opts},
+                name=config.name,
             )
 
             # Get loader and test with simple query
@@ -267,11 +268,10 @@ class DataSourceService:
 
             # Create mock table config with simple test query
             test_table_cfg = TableConfig(
-                surrogate_id="test_id",
-                keys=[],
-                columns=[],
-                source=None,
-                query="SELECT 1 as test",  # Simple test query
+                cfg={
+                    config.name: {"surrogate_id": "test_id", "keys": [], "columns": [], "source": None, "query": "SELECT 1 as test"}
+                },  # Simple test query
+                name=config.name,
             )
 
             # Try to load (this will test the connection)
@@ -285,7 +285,7 @@ class DataSourceService:
                 if hasattr(loader, "get_tables"):
                     tables = await loader.get_tables()
                     metadata["table_count"] = len(tables)
-            except:
+            except:  # pylint: disable=bare-except
                 pass
 
             return DataSourceTestResult(
@@ -348,7 +348,7 @@ class DataSourceService:
                 metadata=metadata,
             )
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
             return DataSourceTestResult(
                 success=False,

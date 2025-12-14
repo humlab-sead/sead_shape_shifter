@@ -111,7 +111,7 @@ class SchemaIntrospectionService:
 
         except Exception as e:
             logger.error(f"Error getting tables for {data_source_name}: {e}")
-            raise SchemaServiceError(f"Failed to get tables: {str(e)}")
+            raise SchemaServiceError(f"Failed to get tables: {str(e)}") from e
 
     async def get_table_schema(self, data_source_name: str, table_name: str, schema: Optional[str] = None) -> TableSchema:
         """
@@ -157,7 +157,7 @@ class SchemaIntrospectionService:
 
         except Exception as e:
             logger.error(f"Error getting schema for {table_name}: {e}")
-            raise SchemaServiceError(f"Failed to get table schema: {str(e)}")
+            raise SchemaServiceError(f"Failed to get table schema: {str(e)}") from e
 
     async def preview_table_data(
         self,
@@ -231,7 +231,7 @@ class SchemaIntrospectionService:
 
         except Exception as e:
             logger.error(f"Error previewing table {table_name}: {e}")
-            raise SchemaServiceError(f"Failed to preview table data: {str(e)}")
+            raise SchemaServiceError(f"Failed to preview table data: {str(e)}") from e
 
     async def _get_postgresql_tables(self, ds_config: DataSourceConfig, schema: Optional[str] = None) -> List[TableMetadata]:
         """Get tables from PostgreSQL database."""
@@ -268,15 +268,10 @@ class SchemaIntrospectionService:
 
         # Get columns
         columns_query = f"""
-            SELECT 
-                column_name,
-                data_type,
-                is_nullable,
-                column_default,
-                character_maximum_length
+            SELECT column_name, data_type, is_nullable, column_default, character_maximum_length
             FROM information_schema.columns
             WHERE table_schema = '{schema_filter}'
-                AND table_name = '{table_name}'
+              AND table_name = '{table_name}'
             ORDER BY ordinal_position
         """
 
@@ -288,8 +283,8 @@ class SchemaIntrospectionService:
             FROM pg_index i
             JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
             WHERE i.indrelid = (
-                SELECT oid FROM pg_class 
-                WHERE relname = '{table_name}' 
+                SELECT oid FROM pg_class
+                WHERE relname = '{table_name}'
                 AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = '{schema_filter}')
             )
             AND i.indisprimary
@@ -555,7 +550,7 @@ class SchemaIntrospectionService:
         except asyncio.TimeoutError:
             raise SchemaServiceError("Query execution timed out after 30 seconds")
         except Exception as e:
-            raise SchemaServiceError(f"Query execution failed: {str(e)}")
+            raise SchemaServiceError(f"Query execution failed: {str(e)}") from e
 
     def invalidate_cache(self, data_source_name: str) -> None:
         """Invalidate all cached data for a data source."""

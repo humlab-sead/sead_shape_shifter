@@ -420,7 +420,7 @@ _config_service: ConfigurationService | None = None  # pylint: disable=invalid-n
 
 def get_config_service() -> ConfigurationService:
     """Get singleton ConfigurationService instance."""
-    global _config_service
+    global _config_service  # pylint: disable=global-statement
     if _config_service is None:
         _config_service = ConfigurationService()
     return _config_service

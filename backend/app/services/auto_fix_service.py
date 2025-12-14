@@ -2,6 +2,7 @@
 Service for applying automatic fixes to configurations.
 """
 
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -9,6 +10,7 @@ from typing import Any
 
 from loguru import logger
 
+from app.core.config import settings
 from app.models.fix import FixAction, FixActionType, FixResult, FixSuggestion
 from app.models.validation import ValidationError
 from app.services.config_service import ConfigurationService
@@ -64,7 +66,6 @@ class AutoFixService:
 
         # Extract column name from error message
         # Typically: "Column 'column_name' not found in data"
-        import re
 
         match = re.search(r"Column '([^']+)' not found", error.message)
         if not match:
@@ -106,7 +107,7 @@ class AutoFixService:
             issue_code=error.code or "UNRESOLVED_REFERENCE",
             entity=error.entity,
             field=error.field,
-            suggestion="Unresolved references require manual intervention - check if the referenced entity exists and has the correct field",
+            suggestion="Unresolved references require manual intervention - verify referenced entity name and fields",
             actions=[],
             auto_fixable=False,
             requires_confirmation=False,
@@ -203,7 +204,7 @@ class AutoFixService:
                     for action in suggestion.actions:
                         self._apply_action(config, action)
                         fixes_applied += 1
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-except
                     logger.error(f"Failed to apply fix: {e}")
                     errors.append(f"Failed to apply fix for {action.entity}: {str(e)}")
 
@@ -220,18 +221,16 @@ class AutoFixService:
                     backup_path=str(backup_path),
                     updated_config=config_dict,
                 )
-            else:
-                # Rollback on error
-                self._rollback(config_name, backup_path)
-                return FixResult(success=False, fixes_applied=0, errors=errors, warnings=warnings)
+            # Rollback on error
+            self._rollback(config_name, backup_path)
+            return FixResult(success=False, fixes_applied=0, errors=errors, warnings=warnings)
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.error(f"Auto-fix failed: {e}")
             return FixResult(success=False, fixes_applied=0, errors=[str(e)])
 
     def _create_backup(self, config_name: str) -> Path:
         """Create backup of configuration before applying fixes."""
-        from app.core.config import settings
 
         config_dir = settings.CONFIGURATIONS_DIR
         config_path = config_dir / f"{config_name}.yml"
