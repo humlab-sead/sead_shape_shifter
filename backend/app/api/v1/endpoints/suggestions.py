@@ -68,7 +68,7 @@ async def analyze_entities(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to analyze entities: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/entity", summary="Get suggestions for a single entity")
@@ -108,4 +108,4 @@ async def suggest_for_entity(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get suggestions: {str(e)}",
-        )
+        ) from e

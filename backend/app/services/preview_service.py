@@ -303,7 +303,7 @@ class PreviewService:
         if remote_entity_name not in config.tables:
             raise ValueError(f"Remote entity '{remote_entity_name}' not found")
 
-        remote_entity_config = config.tables[remote_entity_name]
+        # remote_entity_config = config.tables[remote_entity_name]
 
         # Load sample data for both entities
         local_preview = await self.preview_entity(config_name, entity_name, limit=sample_size)

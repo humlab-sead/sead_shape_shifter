@@ -78,7 +78,7 @@ class TestRunService:
             # Update status to running
             result.status = TestRunStatus.RUNNING
             self._active_runs[run_id] = result
-            logger.info(f"[BACKGROUND] Status updated, stored back to active_runs")
+            logger.info("[BACKGROUND] Status updated, stored back to active_runs")
 
             # Load configuration
             config = self.config_service.load_configuration(result.config_name)

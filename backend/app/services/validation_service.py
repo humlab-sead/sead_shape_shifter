@@ -1,6 +1,8 @@
 """Validation service for configuration validation."""
 
 from typing import Any
+import sys
+from pathlib import Path
 
 from loguru import logger
 
@@ -16,8 +18,6 @@ class ValidationService:
     def __init__(self) -> None:
         """Initialize validation service."""
         # Import here to avoid circular dependencies and ensure src is in path
-        import sys
-        from pathlib import Path
 
         # Get the project root (backend parent is project root)
         project_root = Path(__file__).parent.parent.parent.parent

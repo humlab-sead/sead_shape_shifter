@@ -86,7 +86,11 @@ class TypeMappingService:
     }
 
     def get_type_mapping(
-        self, sql_type: str, column_name: Optional[str] = None, is_primary_key: bool = False, max_length: Optional[int] = None
+        self,
+        sql_type: str,
+        column_name: Optional[str] = None,
+        is_primary_key: bool = False,  # pylint: disable=unused-argument
+        max_length: Optional[int] = None,  # pylint: disable=unused-argument
     ) -> TypeMapping:
         """
         Get suggested type mapping for a SQL column.

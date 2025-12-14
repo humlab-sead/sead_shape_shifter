@@ -236,7 +236,7 @@ _dependency_service: DependencyService | None = None  # pylint: disable=invalid-
 
 def get_dependency_service() -> DependencyService:
     """Get singleton DependencyService instance."""
-    global _dependency_service
+    global _dependency_service  # pylint: disable=global-statement
     if _dependency_service is None:
         _dependency_service = DependencyService()
     return _dependency_service

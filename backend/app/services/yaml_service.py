@@ -180,7 +180,7 @@ class YamlService:
 
             self.yaml.load(StringIO(content))
             return True, None
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             return False, str(e)
 
     def list_backups(self, original_name: str | None = None) -> list[Path]:
@@ -245,12 +245,12 @@ class YamlService:
 
 
 # Singleton instance
-_yaml_service: YamlService | None = None
+_yaml_service: YamlService | None = None  # pylint: disable=invalid-name
 
 
 def get_yaml_service() -> YamlService:
     """Get singleton YamlService instance."""
-    global _yaml_service
+    global _yaml_service  # pylint: disable=global-statement
     if _yaml_service is None:
         _yaml_service = YamlService()
     return _yaml_service

@@ -275,7 +275,7 @@ async def restore_backup(name: str, request: RestoreBackupRequest) -> Configurat
     Returns:
         Restored configuration
     """
-    config_service = get_config_service()
+    # config_service = get_config_service()
     yaml_service = get_yaml_service()
 
     try:
