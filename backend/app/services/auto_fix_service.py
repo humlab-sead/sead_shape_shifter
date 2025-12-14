@@ -247,7 +247,6 @@ class AutoFixService:
 
     def _rollback(self, config_name: str, backup_path: Path):
         """Rollback configuration to backup."""
-        from app.core.config import settings
 
         config_dir = settings.CONFIGURATIONS_DIR
         config_path = config_dir / f"{config_name}.yml"
