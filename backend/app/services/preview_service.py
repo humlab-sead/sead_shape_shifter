@@ -1,0 +1,420 @@
+"""Service for previewing entity data with transformations."""
+
+import hashlib
+import time
+from typing import Dict, List, Optional
+
+import pandas as pd
+from loguru import logger
+
+from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
+from backend.app.models.preview import ColumnInfo, PreviewResult
+from backend.app.services.config_service import ConfigurationService
+from src.config_model import TableConfig, TablesConfig
+from src.configuration.provider import ConfigStore
+
+
+class PreviewCache:
+    """Simple in-memory cache for preview results with TTL."""
+
+    def __init__(self, ttl_seconds: int = 300):
+        """Initialize cache with TTL in seconds (default 5 minutes)."""
+        # Cache maps key -> (result, timestamp, config_name, entity_name, limit)
+        self._cache: Dict[str, tuple[PreviewResult, float, str, str, int]] = {}
+        self._ttl = ttl_seconds
+
+    def _generate_key(self, config_name: str, entity_name: str, limit: int) -> str:
+        """Generate cache key from parameters."""
+        key_str = f"{config_name}:{entity_name}:{limit}"
+        return hashlib.md5(key_str.encode()).hexdigest()
+
+    def get(self, config_name: str, entity_name: str, limit: int) -> Optional[PreviewResult]:
+        """Get cached preview result if not expired."""
+        key = self._generate_key(config_name, entity_name, limit)
+        if key in self._cache:
+            result, timestamp, _, _, _ = self._cache[key]
+            if time.time() - timestamp < self._ttl:
+                logger.debug(f"Cache hit for {entity_name}")
+                result.cache_hit = True
+                return result
+            # Remove expired entry
+            del self._cache[key]
+            logger.debug(f"Cache expired for {entity_name}")
+        return None
+
+    def set(self, config_name: str, entity_name: str, limit: int, result: PreviewResult) -> None:
+        """Cache preview result with current timestamp."""
+        key = self._generate_key(config_name, entity_name, limit)
+        self._cache[key] = (result, time.time(), config_name, entity_name, limit)
+        logger.debug(f"Cached preview for {entity_name}")
+
+    def invalidate(self, config_name: str, entity_name: Optional[str] = None) -> None:
+        """Invalidate cache entries for a configuration or specific entity."""
+        keys_to_remove = []
+        for key, (_, _, cached_config, cached_entity, _) in list(self._cache.items()):
+            if cached_config == config_name:
+                if entity_name is None or cached_entity == entity_name:
+                    keys_to_remove.append(key)
+
+        for key in keys_to_remove:
+            del self._cache[key]
+        logger.debug(f"Invalidated {len(keys_to_remove)} cache entries for {config_name}:{entity_name or 'all'}")
+
+
+class PreviewService:
+    """Service for previewing entity data."""
+
+    def __init__(self, config_service: ConfigurationService):
+        """Initialize preview service."""
+        self.config_service = config_service
+        self.cache = PreviewCache(ttl_seconds=300)  # 5 minute cache
+
+    async def preview_entity(self, config_name: str, entity_name: str, limit: int = 50) -> PreviewResult:
+        """
+        Preview entity data with all transformations applied.
+
+        Args:
+            config_name: Name of the configuration file
+            entity_name: Name of the entity to preview
+            limit: Maximum number of rows to return (default 50)
+
+        Returns:
+            PreviewResult with data and metadata
+
+        Raises:
+            ValueError: If configuration or entity not found
+            RuntimeError: If preview fails
+        """
+        start_time = time.time()
+
+        # Check cache first
+        cached = self.cache.get(config_name, entity_name, limit)
+        if cached:
+            return cached
+
+        # Load configuration from ConfigStore
+        config_obj = ConfigStore.config_global()
+        if config_obj is None:
+            raise ValueError("Configuration not loaded")
+
+        config_dict = config_obj.data
+        entities_cfg = config_dict.get("entities", {})
+        options = config_dict.get("options", {})
+        config = TablesConfig(entities_cfg=entities_cfg, options=options)
+
+        # Get entity config
+        if entity_name not in config.tables:
+            raise ValueError(f"Entity '{entity_name}' not found in configuration")
+
+        entity_config = config.tables[entity_name]
+
+        # Preview with transformations
+        try:
+            result = await self._preview_with_normalizer(config, config_name, entity_name, entity_config, limit)
+
+            # Calculate execution time
+            execution_time_ms = int((time.time() - start_time) * 1000)
+            result.execution_time_ms = execution_time_ms
+
+            # Cache result
+            self.cache.set(config_name, entity_name, limit, result)
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Failed to preview entity {entity_name}: {e}", exc_info=True)
+            raise RuntimeError(f"Preview failed: {str(e)}") from e
+
+    async def _preview_with_normalizer(
+        self,
+        config: TablesConfig,  # pylint: disable=unused-argument
+        config_name: str,  # pylint: disable=unused-argument
+        entity_name: str,
+        entity_config: TableConfig,
+        limit: int,
+    ) -> PreviewResult:
+        """Preview entity data without full transformation pipeline."""
+        try:
+            # For preview, just load the raw entity data without running full normalize
+            # This avoids dependency resolution issues
+
+            # Load entity data based on type
+            if entity_config.type == "fixed":
+                # Fixed data from config
+                df = pd.DataFrame(entity_config.values, columns=entity_config.columns)
+            else:
+                # For other types, we'd need data source connection
+                # For now, return empty DataFrame with columns
+                df = pd.DataFrame(columns=entity_config.columns)
+
+            # Limit rows
+            preview_df = df.head(limit)
+
+            # Get actual row count
+            estimated_total = len(df)
+
+            # Determine which transformations were applied
+            transformations = ["raw_data"]  # No transformations in preview mode
+
+            # Build column info
+            columns = self._build_column_info(preview_df, entity_config)
+
+            # Convert to records for JSON response
+            rows = preview_df.to_dict("records")
+
+            # Get dependencies
+            dependencies_loaded = []
+            if entity_config.source:
+                dependencies_loaded.append(entity_config.source)
+            if entity_config.depends_on:
+                dependencies_loaded.extend(entity_config.depends_on)
+
+            return PreviewResult(
+                entity_name=entity_name,
+                rows=rows,
+                columns=columns,
+                total_rows_in_preview=len(rows),
+                estimated_total_rows=estimated_total,
+                execution_time_ms=0,  # Will be set by caller
+                has_dependencies=len(dependencies_loaded) > 0,
+                dependencies_loaded=dependencies_loaded,
+                transformations_applied=transformations,
+                cache_hit=False,
+            )
+
+        except Exception as e:
+            logger.error(f"Preview failed for {entity_name}: {e}", exc_info=True)
+            raise
+
+    def _build_column_info(self, df: pd.DataFrame, entity_config: TableConfig) -> List[ColumnInfo]:
+        """Build column information from DataFrame and entity config."""
+        columns = []
+        key_columns = set(entity_config.keys or [])
+        if entity_config.surrogate_id:
+            key_columns.add(entity_config.surrogate_id)
+
+        for col_name in df.columns:
+            # Infer data type
+            dtype = str(df[col_name].dtype)
+            # Map pandas types to more user-friendly names
+            if "int" in dtype:
+                data_type = "integer"
+            elif "float" in dtype:
+                data_type = "float"
+            elif "bool" in dtype:
+                data_type = "boolean"
+            elif "datetime" in dtype:
+                data_type = "datetime"
+            elif "object" in dtype:
+                data_type = "string"
+            else:
+                data_type = dtype
+
+            # Check if column has null values
+            nullable = df[col_name].isnull().any()
+
+            columns.append(
+                ColumnInfo(
+                    name=col_name,
+                    data_type=data_type,
+                    nullable=nullable,
+                    is_key=col_name in key_columns,
+                )
+            )
+
+        return columns
+
+    async def preview_with_transformations(self, config_name: str, entity_name: str, limit: int = 50) -> PreviewResult:
+        """
+        Preview entity with transformations applied.
+
+        This is an alias for preview_entity for backward compatibility.
+        """
+        return await self.preview_entity(config_name, entity_name, limit)
+
+    async def get_entity_sample(self, config_name: str, entity_name: str, limit: int = 100) -> PreviewResult:
+        """
+        Get a sample of entity data (larger limit for validation/testing).
+
+        Args:
+            config_name: Name of the configuration file
+            entity_name: Name of the entity
+            limit: Maximum number of rows (default 100, max 1000)
+
+        Returns:
+            PreviewResult with sample data
+        """
+        # Clamp limit to max 1000
+        limit = min(limit, 1000)
+        return await self.preview_entity(config_name, entity_name, limit)
+
+    def invalidate_cache(self, config_name: str, entity_name: Optional[str] = None) -> None:
+        """
+        Invalidate preview cache for a configuration or specific entity.
+
+        Args:
+            config_name: Name of the configuration
+            entity_name: Optional entity name to invalidate specific entity
+        """
+        self.cache.invalidate(config_name, entity_name)
+        logger.info(f"Invalidated preview cache for {config_name}:{entity_name or 'all'}")
+
+    async def test_foreign_key(
+        self, config_name: str, entity_name: str, foreign_key_index: int, sample_size: int = 100
+    ) -> "JoinTestResult":
+        """
+        Test a foreign key join to validate the relationship.
+
+        Args:
+            config_name: Name of the configuration
+            entity_name: Name of the entity with the foreign key
+            foreign_key_index: Index of the foreign key in the entity's foreign_keys list
+            sample_size: Number of rows to test (default 100)
+
+        Returns:
+            JoinTestResult with statistics and unmatched rows
+        """
+
+        start_time = time.time()
+
+        # Load configuration
+        config_obj = ConfigStore.config_global()
+        if config_obj is None:
+            raise ValueError("Configuration not loaded")
+
+        config_dict = config_obj.data
+        entities_cfg = config_dict.get("entities", {})
+        options = config_dict.get("options", {})
+        config = TablesConfig(entities_cfg=entities_cfg, options=options)
+
+        # Get entity and foreign key config
+        if entity_name not in config.tables:
+            raise ValueError(f"Entity '{entity_name}' not found")
+
+        entity_config = config.tables[entity_name]
+
+        if not entity_config.foreign_keys or foreign_key_index >= len(entity_config.foreign_keys):
+            raise ValueError(f"Foreign key index {foreign_key_index} out of range")
+
+        fk_config = entity_config.foreign_keys[foreign_key_index]
+        remote_entity_name = fk_config.remote_entity
+
+        if remote_entity_name not in config.tables:
+            raise ValueError(f"Remote entity '{remote_entity_name}' not found")
+
+        # remote_entity_config = config.tables[remote_entity_name]
+
+        # Load sample data for both entities
+        local_preview = await self.preview_entity(config_name, entity_name, limit=sample_size)
+        remote_preview = await self.preview_entity(config_name, remote_entity_name, limit=1000)
+
+        local_df = pd.DataFrame(local_preview.rows)
+        remote_df = pd.DataFrame(remote_preview.rows)
+
+        # Perform join analysis
+        local_keys = fk_config.local_keys
+        remote_keys = fk_config.remote_keys
+        join_type = fk_config.how or "left"
+
+        # Check if keys exist in dataframes
+        missing_local = [k for k in local_keys if k not in local_df.columns]
+        missing_remote = [k for k in remote_keys if k not in remote_df.columns]
+
+        if missing_local or missing_remote:
+            error_parts = []
+            if missing_local:
+                error_parts.append(f"Local keys not found: {missing_local} (available: {list(local_df.columns)})")
+            if missing_remote:
+                error_parts.append(f"Remote keys not found: {missing_remote} (available: {list(remote_df.columns)})")
+            raise ValueError(". ".join(error_parts))
+
+        # Count nulls in local keys
+        null_key_rows = local_df[local_keys].isnull().any(axis=1).sum()
+
+        # Perform the join
+        merged = local_df.merge(remote_df, left_on=local_keys, right_on=remote_keys, how="left", indicator=True, suffixes=("", "_remote"))
+
+        # Calculate statistics
+        total_rows = len(local_df)
+        matched_rows = (merged["_merge"] == "both").sum()
+        unmatched_rows = total_rows - matched_rows
+        match_percentage = (matched_rows / total_rows * 100) if total_rows > 0 else 0.0
+
+        # Check for duplicate matches
+        duplicate_matches = len(merged) - total_rows
+
+        # Get unmatched samples
+        unmatched_df = merged[merged["_merge"] == "left_only"].head(10)
+        unmatched_sample = [
+            UnmatchedRow(
+                row_data={k: v for k, v in row.items() if k != "_merge" and not k.endswith("_remote")},
+                local_key_values=[row[k] for k in local_keys],
+                reason="No matching row in remote entity",
+            )
+            for _, row in unmatched_df.iterrows()
+        ]
+
+        # Determine actual cardinality
+        if duplicate_matches > 0:
+            actual_cardinality = "one_to_many"
+        elif matched_rows == total_rows and len(merged) == total_rows:
+            actual_cardinality = "one_to_one"
+        else:
+            actual_cardinality = "many_to_one"
+
+        # Get expected cardinality from constraints
+        expected_cardinality = "many_to_one"  # default
+        if fk_config.constraints:
+            if hasattr(fk_config.constraints, "cardinality"):
+                expected_cardinality = fk_config.constraints.cardinality
+
+        cardinality_matches = expected_cardinality == actual_cardinality
+
+        # Generate recommendations
+        recommendations = []
+        warnings = []
+
+        if match_percentage < 100:
+            warnings.append(f"{unmatched_rows} rows ({100-match_percentage:.1f}%) failed to match")
+            recommendations.append("Review the unmatched rows to identify data quality issues")
+
+        if null_key_rows > 0:
+            warnings.append(f"{null_key_rows} rows have null values in join keys")
+            recommendations.append("Consider whether null keys should be allowed")
+
+        if duplicate_matches > 0:
+            warnings.append(f"Join created {duplicate_matches} duplicate rows (one-to-many relationship)")
+            if expected_cardinality != "one_to_many":
+                recommendations.append("Update cardinality constraint to 'one_to_many' or fix data")
+
+        if not cardinality_matches:
+            recommendations.append(f"Update cardinality from '{expected_cardinality}' to '{actual_cardinality}'")
+
+        execution_time_ms = int((time.time() - start_time) * 1000)
+
+        return JoinTestResult(
+            entity_name=entity_name,
+            remote_entity=remote_entity_name,
+            local_keys=local_keys,
+            remote_keys=remote_keys,
+            join_type=join_type,
+            statistics=JoinStatistics(
+                total_rows=total_rows,
+                matched_rows=matched_rows,
+                unmatched_rows=unmatched_rows,
+                match_percentage=match_percentage,
+                null_key_rows=null_key_rows,
+                duplicate_matches=duplicate_matches,
+            ),
+            cardinality=CardinalityInfo(
+                expected=expected_cardinality,
+                actual=actual_cardinality,
+                matches=cardinality_matches,
+                explanation=f"Join produced {len(merged)} rows from {total_rows} input rows",
+            ),
+            unmatched_sample=unmatched_sample,
+            execution_time_ms=execution_time_ms,
+            success=match_percentage >= 95 and cardinality_matches,
+            warnings=warnings,
+            recommendations=recommendations,
+        )

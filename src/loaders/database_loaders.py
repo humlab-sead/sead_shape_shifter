@@ -45,6 +45,32 @@ class SqlLoader(DataLoader):
         return data
 
 
+@DataLoaders.register(key="sqlite")
+class SqliteLoader(SqlLoader):
+    """Loader for SQLite database queries."""
+
+    driver: str = "sqlite"
+
+    def __init__(self, data_source: "DataSourceConfig | None" = None) -> None:
+        super().__init__(data_source=data_source)
+        # Try to get database path from multiple places for flexibility
+        if data_source:
+            # First try the config dict directly
+            database_path = dotget(data_source.data_source_cfg, "database,filename,dbname", None)
+            # Fall back to options if not found
+            if not database_path:
+                database_path = dotget(data_source.options, "database,filename,dbname", ":memory:")
+        else:
+            database_path = ":memory:"
+        self.db_uri: str = f"sqlite:///{database_path}"
+
+    async def read_sql(self, sql: str) -> pd.DataFrame:
+        """Read SQL query into a DataFrame using the provided connection."""
+        with create_engine(url=self.db_uri).begin() as connection:
+            data: pd.DataFrame = pd.read_sql_query(sql=sql, con=connection)  # type: ignore[arg-type]
+        return data
+
+
 @DataLoaders.register(key="postgres")
 class PostgresSqlLoader(SqlLoader):
     """Loader for fixed data entities."""

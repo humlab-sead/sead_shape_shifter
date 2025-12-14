@@ -467,7 +467,7 @@ class TestGetSubTablesConfigs:
                 "surrogate_id": "test_id",
                 "columns": ["a", "b", "c"],
                 "depends_on": [],
-                "append": [{"type": "fixed", "values": [1,2,3], "columns": ["a", "x", "y"]}],
+                "append": [{"type": "fixed", "values": [1, 2, 3], "columns": ["a", "x", "y"]}],
             }
         }
 
