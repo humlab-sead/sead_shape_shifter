@@ -2,8 +2,6 @@
 
 from typing import Any, Dict, List, Optional, Set
 
-from loguru import logger
-
 from app.models.data_source import TableSchema
 from app.models.suggestion import (
     DependencySuggestion,
@@ -11,6 +9,7 @@ from app.models.suggestion import (
     ForeignKeySuggestion,
 )
 from app.services.schema_service import SchemaIntrospectionService
+from loguru import logger
 
 
 class SuggestionService:

@@ -4,21 +4,21 @@ Tests for Schema Introspection Service
 Tests schema discovery for PostgreSQL, MS Access, and SQLite databases.
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
-import pandas as pd
+from unittest.mock import AsyncMock, Mock, patch
 
-from app.services.schema_service import (
-    SchemaIntrospectionService,
-    SchemaServiceError,
-    SchemaCache,
-)
+import pandas as pd
+import pytest
 from app.models.data_source import (
+    ColumnMetadata,
     DataSourceConfig,
     DataSourceType,
     TableMetadata,
-    ColumnMetadata,
     TableSchema,
+)
+from app.services.schema_service import (
+    SchemaCache,
+    SchemaIntrospectionService,
+    SchemaServiceError,
 )
 
 
@@ -29,13 +29,13 @@ class TestSchemaCache:
         """Should store and retrieve values."""
         cache = SchemaCache(ttl_seconds=60)
         cache.set("key1", "value1")
-        
+
         assert cache.get("key1") == "value1"
 
     def test_cache_get_nonexistent(self):
         """Should return None for nonexistent keys."""
         cache = SchemaCache(ttl_seconds=60)
-        
+
         assert cache.get("nonexistent") is None
 
     def test_cache_invalidate(self):
@@ -43,7 +43,7 @@ class TestSchemaCache:
         cache = SchemaCache(ttl_seconds=60)
         cache.set("key1", "value1")
         cache.invalidate("key1")
-        
+
         assert cache.get("key1") is None
 
     def test_cache_clear(self):
@@ -52,7 +52,7 @@ class TestSchemaCache:
         cache.set("key1", "value1")
         cache.set("key2", "value2")
         cache.clear()
-        
+
         assert cache.get("key1") is None
         assert cache.get("key2") is None
 
@@ -129,12 +129,14 @@ class TestSchemaIntrospectionService:
         service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
         # Mock query result
-        tables_data = pd.DataFrame({
-            'table_name': ['users', 'orders'],
-            'schema': ['public', 'public'],
-            'comment': [None, 'Order records'],
-        })
-        
+        tables_data = pd.DataFrame(
+            {
+                "table_name": ["users", "orders"],
+                "schema": ["public", "public"],
+                "comment": [None, "Order records"],
+            }
+        )
+
         service._execute_query = AsyncMock(return_value=tables_data)
 
         tables = await service.get_tables("test_postgres")
@@ -151,30 +153,36 @@ class TestSchemaIntrospectionService:
         service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
         # Mock columns query
-        columns_data = pd.DataFrame({
-            'column_name': ['id', 'name', 'email'],
-            'data_type': ['integer', 'character varying', 'character varying'],
-            'is_nullable': ['NO', 'NO', 'YES'],
-            'column_default': ['nextval(...)', None, None],
-            'character_maximum_length': [None, 100, 255],
-        })
+        columns_data = pd.DataFrame(
+            {
+                "column_name": ["id", "name", "email"],
+                "data_type": ["integer", "character varying", "character varying"],
+                "is_nullable": ["NO", "NO", "YES"],
+                "column_default": ["nextval(...)", None, None],
+                "character_maximum_length": [None, 100, 255],
+            }
+        )
 
         # Mock primary keys query
-        pk_data = pd.DataFrame({
-            'column_name': ['id'],
-        })
+        pk_data = pd.DataFrame(
+            {
+                "column_name": ["id"],
+            }
+        )
 
         # Mock row count query
-        count_data = pd.DataFrame({
-            'count': [42],
-        })
+        count_data = pd.DataFrame(
+            {
+                "count": [42],
+            }
+        )
 
         async def mock_execute(config, query):
-            if 'information_schema.columns' in query:
+            if "information_schema.columns" in query:
                 return columns_data
-            elif 'pg_index' in query:
+            elif "pg_index" in query:
                 return pk_data
-            elif 'COUNT(*)' in query:
+            elif "COUNT(*)" in query:
                 return count_data
             return pd.DataFrame()
 
@@ -198,9 +206,11 @@ class TestSchemaIntrospectionService:
         service.data_source_service.get_data_source = Mock(return_value=access_config)
 
         # Mock query result
-        tables_data = pd.DataFrame({
-            'TABLE_NAME': ['Customers', 'Products'],
-        })
+        tables_data = pd.DataFrame(
+            {
+                "TABLE_NAME": ["Customers", "Products"],
+            }
+        )
 
         service._execute_query = AsyncMock(return_value=tables_data)
 
@@ -216,9 +226,11 @@ class TestSchemaIntrospectionService:
         service.data_source_service.get_data_source = Mock(return_value=sqlite_config)
 
         # Mock query result
-        tables_data = pd.DataFrame({
-            'table_name': ['users', 'posts'],
-        })
+        tables_data = pd.DataFrame(
+            {
+                "table_name": ["users", "posts"],
+            }
+        )
 
         service._execute_query = AsyncMock(return_value=tables_data)
 
@@ -234,17 +246,19 @@ class TestSchemaIntrospectionService:
         service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
         # Mock preview data
-        preview_data = pd.DataFrame({
-            'id': [1, 2, 3],
-            'name': ['Alice', 'Bob', 'Charlie'],
-            'active': [True, True, False],
-        })
+        preview_data = pd.DataFrame(
+            {
+                "id": [1, 2, 3],
+                "name": ["Alice", "Bob", "Charlie"],
+                "active": [True, True, False],
+            }
+        )
 
         # Mock count data
-        count_data = pd.DataFrame({'count': [100]})
+        count_data = pd.DataFrame({"count": [100]})
 
         async def mock_execute(config, query):
-            if 'COUNT(*)' in query:
+            if "COUNT(*)" in query:
                 return count_data
             else:
                 return preview_data
@@ -253,12 +267,12 @@ class TestSchemaIntrospectionService:
 
         result = await service.preview_table_data("test_postgres", "users", limit=50, offset=0)
 
-        assert result['columns'] == ['id', 'name', 'active']
-        assert len(result['rows']) == 3
-        assert result['rows'][0]['name'] == 'Alice'
-        assert result['total_rows'] == 100
-        assert result['limit'] == 50
-        assert result['offset'] == 0
+        assert result["columns"] == ["id", "name", "active"]
+        assert len(result["rows"]) == 3
+        assert result["rows"][0]["name"] == "Alice"
+        assert result["total_rows"] == 100
+        assert result["limit"] == 50
+        assert result["offset"] == 0
 
     @pytest.mark.asyncio
     async def test_preview_table_data_limit_constraint(self, service, postgres_config):
@@ -269,24 +283,26 @@ class TestSchemaIntrospectionService:
         # Request 150 rows, should be capped at 100
         result = await service.preview_table_data("test_postgres", "users", limit=150)
 
-        assert result['limit'] == 100
+        assert result["limit"] == 100
 
     @pytest.mark.asyncio
     async def test_cache_hit(self, service, postgres_config):
         """Should return cached results on subsequent calls."""
         service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
-        tables_data = pd.DataFrame({
-            'table_name': ['users'],
-            'schema': ['public'],
-            'comment': [None],
-        })
+        tables_data = pd.DataFrame(
+            {
+                "table_name": ["users"],
+                "schema": ["public"],
+                "comment": [None],
+            }
+        )
 
         service._execute_query = AsyncMock(return_value=tables_data)
 
         # First call
         tables1 = await service.get_tables("test_postgres")
-        
+
         # Second call (should hit cache)
         tables2 = await service.get_tables("test_postgres")
 
@@ -308,7 +324,7 @@ class TestSchemaIntrospectionService:
         # ds1 entries should be gone
         assert service.cache.get("tables:ds1:default") is None
         assert service.cache.get("schema:ds1:default:table1") is None
-        
+
         # ds2 entries should remain
         assert service.cache.get("tables:ds2:default") == ["table2"]
 

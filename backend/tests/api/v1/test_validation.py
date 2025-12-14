@@ -1,9 +1,8 @@
 """Tests for validation and dependency API endpoints."""
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
@@ -55,9 +54,7 @@ class TestEntityValidation:
         assert "errors" in data
         assert "warnings" in data
 
-    def test_validate_nonexistent_entity(
-        self, tmp_path, monkeypatch, reset_services, sample_entity_data
-    ):
+    def test_validate_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test validating non-existent entity."""
         from app.core.config import settings
 
@@ -70,9 +67,7 @@ class TestEntityValidation:
         )
 
         # Validate non-existent entity - returns validation result with no entity-specific errors
-        response = client.post(
-            "/api/v1/configurations/test_config/entities/nonexistent/validate"
-        )
+        response = client.post("/api/v1/configurations/test_config/entities/nonexistent/validate")
         assert response.status_code == 200
         data = response.json()
         # Since the entity doesn't exist, there are no errors specific to it
@@ -93,9 +88,7 @@ class TestEntityValidation:
 class TestDependencies:
     """Tests for dependency analysis endpoints."""
 
-    def test_get_dependencies_simple(
-        self, tmp_path, monkeypatch, reset_services, sample_entity_data
-    ):
+    def test_get_dependencies_simple(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test getting dependency graph with simple dependencies."""
         from app.core.config import settings
 
@@ -119,9 +112,7 @@ class TestDependencies:
         assert len(data["nodes"]) == 2
         assert len(data["edges"]) == 1
 
-    def test_get_dependencies_no_deps(
-        self, tmp_path, monkeypatch, reset_services, sample_entity_data
-    ):
+    def test_get_dependencies_no_deps(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test getting dependency graph with no dependencies."""
         from app.core.config import settings
 

@@ -114,6 +114,7 @@ class TestPreviewCache:
         cache.set("config1", "entity1", 50, preview_result)
 
         import time
+
         time.sleep(0.1)  # Wait for expiry
 
         result = cache.get("config1", "entity1", 50)
@@ -122,12 +123,8 @@ class TestPreviewCache:
     def test_cache_invalidate_specific(self):
         """Test invalidating specific entity cache."""
         cache = PreviewCache(ttl_seconds=60)
-        preview1 = PreviewResult(
-            entity_name="entity1", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100
-        )
-        preview2 = PreviewResult(
-            entity_name="entity2", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100
-        )
+        preview1 = PreviewResult(entity_name="entity1", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100)
+        preview2 = PreviewResult(entity_name="entity2", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100)
 
         cache.set("config1", "entity1", 50, preview1)
         cache.set("config1", "entity2", 50, preview2)
@@ -140,12 +137,8 @@ class TestPreviewCache:
     def test_cache_invalidate_all(self):
         """Test invalidating all cache entries for a config."""
         cache = PreviewCache(ttl_seconds=60)
-        preview1 = PreviewResult(
-            entity_name="entity1", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100
-        )
-        preview2 = PreviewResult(
-            entity_name="entity2", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100
-        )
+        preview1 = PreviewResult(entity_name="entity1", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100)
+        preview2 = PreviewResult(entity_name="entity2", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100)
 
         cache.set("config1", "entity1", 50, preview1)
         cache.set("config1", "entity2", 50, preview2)
@@ -222,9 +215,7 @@ class TestPreviewService:
             "value_vars": ["col1", "col2"],
         }
 
-        with patch(
-            "backend.app.services.preview_service.TablesConfig.from_yaml", return_value=config_with_transforms
-        ):
+        with patch("backend.app.services.preview_service.TablesConfig.from_yaml", return_value=config_with_transforms):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
@@ -291,9 +282,7 @@ class TestPreviewService:
     def test_invalidate_cache(self, preview_service):
         """Test cache invalidation."""
         # Add something to cache
-        preview_result = PreviewResult(
-            entity_name="entity1", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100
-        )
+        preview_result = PreviewResult(entity_name="entity1", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100)
         preview_service.cache.set("config1", "entity1", 50, preview_result)
 
         # Verify it's cached

@@ -2,16 +2,15 @@
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
-from loguru import logger
-from pydantic import BaseModel, Field
-
 from app.services.config_service import (
     ConfigurationNotFoundError,
     EntityAlreadyExistsError,
     EntityNotFoundError,
     get_config_service,
 )
+from fastapi import APIRouter, HTTPException, status
+from loguru import logger
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 

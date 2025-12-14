@@ -16,6 +16,7 @@ class DispatchRegistry(Registry):
 
 Dispatchers: DispatchRegistry = DispatchRegistry()  # pylint: disable=invalid-name
 
+
 class Dispatcher(Protocol):
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None: ...
 

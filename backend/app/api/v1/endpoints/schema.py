@@ -6,14 +6,13 @@ Provides REST API for database schema inspection, table browsing, and data previ
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from loguru import logger
-
 from app.api.dependencies import get_schema_service
 from app.models.data_source import TableMetadata, TableSchema
 from app.models.entity_import import EntityImportRequest, EntityImportResult
 from app.services.schema_service import SchemaIntrospectionService, SchemaServiceError
 from app.services.type_mapping_service import TypeMappingService
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from loguru import logger
 
 router = APIRouter(prefix="/data-sources", tags=["schema"])
 

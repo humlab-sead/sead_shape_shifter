@@ -1,7 +1,6 @@
 """Tests for validation service."""
 
 import pytest
-
 from app.services.validation_service import ValidationService
 
 
@@ -25,11 +24,7 @@ class TestValidationServiceBasic:
 
     def test_validate_valid_configuration(self, validation_service):
         """Test validating valid configuration."""
-        config = {
-            "entities": {
-                "sample": {"type": "data", "keys": ["sample_id"], "columns": ["name", "value"]}
-            }
-        }
+        config = {"entities": {"sample": {"type": "data", "keys": ["sample_id"], "columns": ["name", "value"]}}}
         result = validation_service.validate_configuration(config)
 
         assert result.is_valid is True

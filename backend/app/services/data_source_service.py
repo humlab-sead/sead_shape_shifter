@@ -5,19 +5,19 @@ from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
-from loguru import logger
-from src.config_model import DataSourceConfig as LegacyDataSourceConfig
-from src.config_model import TableConfig
-from src.configuration.interface import ConfigLike
-from src.loaders.base_loader import DataLoader, DataLoaders
-from src.utility import replace_env_vars
-
 from app.models.data_source import (
     DataSourceConfig,
     DataSourceStatus,
     DataSourceTestResult,
     DataSourceType,
 )
+from loguru import logger
+
+from src.config_model import DataSourceConfig as LegacyDataSourceConfig
+from src.config_model import TableConfig
+from src.configuration.interface import ConfigLike
+from src.loaders.base_loader import DataLoader, DataLoaders
+from src.utility import replace_env_vars
 
 
 class DataSourceService:

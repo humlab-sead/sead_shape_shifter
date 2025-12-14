@@ -47,8 +47,8 @@ class CsvLoader(FileLoader):
         """Load data from a delimited text file into a DataFrame."""
         clean_opts: dict[str, Any] = dict(opts)
         try:
-            filename: str = clean_opts.pop('filename')
+            filename: str = clean_opts.pop("filename")
         except KeyError:
-            raise ValueError(f"Missing 'filename' in options for CSV loader")    
+            raise ValueError(f"Missing 'filename' in options for CSV loader")
         df: pd.DataFrame = pd.read_csv(filename, **clean_opts)
         return df

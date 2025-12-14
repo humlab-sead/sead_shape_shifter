@@ -1,9 +1,8 @@
 """Tests for configuration API endpoints."""
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
@@ -27,13 +26,13 @@ def reset_services():
     """Reset service singletons between tests."""
     # Clear service instances BEFORE each test
     from app.services import config_service, validation_service, yaml_service
-    
+
     config_service._config_service = None
     validation_service._validation_service = None
     yaml_service._yaml_service = None
-    
+
     yield
-    
+
     # Clear again after test
     config_service._config_service = None
     validation_service._validation_service = None
@@ -60,9 +59,7 @@ class TestConfigurationsList:
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
         # Create test config via API
-        create_response = client.post(
-            "/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]}
-        )
+        create_response = client.post("/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]})
         assert create_response.status_code == 201
 
         # List configs
@@ -84,9 +81,7 @@ class TestConfigurationsGet:
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
         # Create config
-        client.post(
-            "/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]}
-        )
+        client.post("/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]})
 
         # Get config
         response = client.get("/api/v1/configurations/test_config")
@@ -114,9 +109,7 @@ class TestConfigurationsCreate:
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
-        response = client.post(
-            "/api/v1/configurations", json={"name": "new_config", "entities": sample_config_data["entities"]}
-        )
+        response = client.post("/api/v1/configurations", json={"name": "new_config", "entities": sample_config_data["entities"]})
 
         assert response.status_code == 201
         data = response.json()
@@ -130,14 +123,10 @@ class TestConfigurationsCreate:
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
         # Create first config
-        client.post(
-            "/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]}
-        )
+        client.post("/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]})
 
         # Try to create duplicate
-        response = client.post(
-            "/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]}
-        )
+        response = client.post("/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]})
         assert response.status_code == 400
 
 
@@ -151,17 +140,11 @@ class TestConfigurationsUpdate:
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
         # Create config
-        client.post(
-            "/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]}
-        )
+        client.post("/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]})
 
         # Update config
-        updated_entities = {
-            "sample": {"type": "data", "keys": ["sample_id"], "columns": ["name", "value", "new_col"]}
-        }
-        response = client.put(
-            "/api/v1/configurations/test_config", json={"entities": updated_entities, "options": {}}
-        )
+        updated_entities = {"sample": {"type": "data", "keys": ["sample_id"], "columns": ["name", "value", "new_col"]}}
+        response = client.put("/api/v1/configurations/test_config", json={"entities": updated_entities, "options": {}})
 
         assert response.status_code == 200
         data = response.json()
@@ -190,9 +173,7 @@ class TestConfigurationsDelete:
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
         # Create config
-        client.post(
-            "/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]}
-        )
+        client.post("/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]})
 
         # Delete config
         response = client.delete("/api/v1/configurations/test_config")
@@ -222,9 +203,7 @@ class TestConfigurationsValidate:
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
         # Create config
-        client.post(
-            "/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]}
-        )
+        client.post("/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]})
 
         # Validate
         response = client.post("/api/v1/configurations/test_config/validate")
@@ -264,9 +243,7 @@ class TestConfigurationsBackups:
         monkeypatch.setattr(settings, "BACKUPS_DIR", tmp_path / "backups")
 
         # Create config
-        client.post(
-            "/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]}
-        )
+        client.post("/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]})
 
         # Update to create backup
         updated_entities = {"sample": {"type": "data", "keys": ["id"], "columns": ["name"]}}
@@ -287,9 +264,7 @@ class TestConfigurationsBackups:
         monkeypatch.setattr(settings, "BACKUPS_DIR", tmp_path / "backups")
 
         # Create config
-        create_response = client.post(
-            "/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]}
-        )
+        create_response = client.post("/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]})
         assert create_response.status_code == 201, f"Failed to create config: {create_response.json()}"
         original_data = create_response.json()
 
@@ -303,9 +278,7 @@ class TestConfigurationsBackups:
         backup_path = backups[0]["file_path"]
 
         # Restore
-        response = client.post(
-            "/api/v1/configurations/test_config/restore", json={"backup_path": backup_path}
-        )
+        response = client.post("/api/v1/configurations/test_config/restore", json={"backup_path": backup_path})
         assert response.status_code == 200
         restored_data = response.json()
 

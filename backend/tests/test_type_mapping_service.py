@@ -3,7 +3,7 @@ Tests for Type Mapping Service
 """
 
 import pytest
-from app.services.type_mapping_service import TypeMappingService, TypeMapping
+from app.services.type_mapping_service import TypeMapping, TypeMappingService
 
 
 class TestTypeMappingService:
@@ -132,15 +132,15 @@ class TestTypeMappingService:
             {"name": "created_at", "data_type": "timestamp", "is_primary_key": False, "max_length": None},
             {"name": "is_active", "data_type": "boolean", "is_primary_key": False, "max_length": None},
         ]
-        
+
         mappings = self.service.get_mappings_for_table(columns)
-        
+
         assert len(mappings) == 4
         assert "id" in mappings
         assert "name" in mappings
         assert "created_at" in mappings
         assert "is_active" in mappings
-        
+
         assert mappings["id"].suggested_type == "integer"
         assert mappings["name"].suggested_type == "string"
         assert mappings["created_at"].suggested_type == "datetime"
@@ -151,15 +151,15 @@ class TestTypeMappingService:
         # High confidence - exact match
         high = self.service.get_type_mapping("integer")
         assert high.confidence == 1.0
-        
+
         # Medium-high confidence - heuristic
         medium_high = self.service.get_type_mapping("character varying", column_name="user_id")
         assert 0.85 <= medium_high.confidence < 1.0
-        
+
         # Medium confidence - fuzzy match
         medium = self.service.get_type_mapping("numeric")
         assert 0.7 <= medium.confidence < 1.0
-        
+
         # Low confidence - unknown
         low = self.service.get_type_mapping("unknown_type")
         assert low.confidence <= 0.5

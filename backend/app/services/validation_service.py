@@ -4,12 +4,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from loguru import logger
-
 from app.models.validation import ValidationError, ValidationResult
 from app.services.config_service import get_config_service
 from app.services.preview_service import PreviewService
 from app.validators.data_validators import DataValidationService
+from loguru import logger
 
 
 class ValidationService:

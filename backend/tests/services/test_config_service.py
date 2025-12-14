@@ -1,7 +1,6 @@
 """Tests for configuration service."""
 
 import pytest
-
 from app.models.entity import Entity
 from app.services.config_service import (
     ConfigurationNotFoundError,
@@ -191,9 +190,7 @@ class TestConfigurationServiceEntity:
         """Test updating entity."""
         config = config_service.load_configuration("test_config")
 
-        entity = Entity(
-            name="sample", surrogate_id="sample_id", keys=["id"], columns=["new_column"]
-        )
+        entity = Entity(name="sample", surrogate_id="sample_id", keys=["id"], columns=["new_column"])
         updated = config_service.update_entity(config, "sample", entity)
 
         assert updated.entities["sample"]["columns"] == ["new_column"]

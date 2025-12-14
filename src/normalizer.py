@@ -46,7 +46,9 @@ class ProcessState:
         return (self.config.get_table(entity_name=entity).depends_on | self.global_dependencies) - self.processed_entities
 
     def get_all_unmet_dependencies(self) -> dict[str, set[str]]:
-        unmet_dependencies: dict[str, set[str]] = {entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed_entities}
+        unmet_dependencies: dict[str, set[str]] = {
+            entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed_entities
+        }
         return {k: v for k, v in unmet_dependencies.items() if v}
 
     def log_unmet_dependencies(self) -> None:
@@ -56,12 +58,13 @@ class ProcessState:
     @property
     def processed_entities(self) -> set[str]:
         """Return the set of processed entities."""
-        return set(self.table_store.keys()) 
+        return set(self.table_store.keys())
 
     @property
     def unprocessed_entities(self) -> set[str]:
         """Return the set of processed entities."""
         return set(self.config.tables.keys()) - self.processed_entities
+
 
 class ArbodatSurveyNormalizer:
 
@@ -106,7 +109,7 @@ class ArbodatSurveyNormalizer:
             if entity is None:
                 self.state.log_unmet_dependencies()
                 raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
-            
+
             table_cfg: TableConfig = self.config.get_table(entity)
 
             logger.debug(f"{entity}[normalizing]: Normalizing entity...")

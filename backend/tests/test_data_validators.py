@@ -2,19 +2,19 @@
 Unit tests for data validators.
 """
 
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
-import pandas as pd
 
-from app.models.preview import PreviewResult, ColumnInfo
+import pandas as pd
+import pytest
+from app.models.preview import ColumnInfo, PreviewResult
 from app.models.validation import ValidationCategory, ValidationPriority
 from app.validators.data_validators import (
     ColumnExistsValidator,
-    NaturalKeyUniquenessValidator,
-    NonEmptyResultValidator,
-    ForeignKeyDataValidator,
     DataTypeCompatibilityValidator,
     DataValidationService,
+    ForeignKeyDataValidator,
+    NaturalKeyUniquenessValidator,
+    NonEmptyResultValidator,
 )
 
 
@@ -24,7 +24,7 @@ def create_preview_result(rows, entity_name="test_entity"):
         columns = [ColumnInfo(name=key, data_type="object") for key in rows[0].keys()]
     else:
         columns = []
-    
+
     return PreviewResult(
         entity_name=entity_name,
         rows=rows,
@@ -60,10 +60,12 @@ class TestColumnExistsValidator:
     async def test_all_columns_exist(self, mock_preview_service):
         """Test when all configured columns exist in data."""
         # Setup
-        mock_preview_service.preview_entity.return_value = create_preview_result([
-            {"id": 1, "name": "test", "value": 100},
-            {"id": 2, "name": "test2", "value": 200},
-        ])
+        mock_preview_service.preview_entity.return_value = create_preview_result(
+            [
+                {"id": 1, "name": "test", "value": 100},
+                {"id": 2, "name": "test2", "value": 200},
+            ]
+        )
 
         config = {"columns": ["id", "name", "value"]}
         validator = ColumnExistsValidator(mock_preview_service)
@@ -78,9 +80,7 @@ class TestColumnExistsValidator:
     async def test_missing_columns(self, mock_preview_service):
         """Test when configured columns don't exist in data."""
         # Setup
-        mock_preview_service.preview_entity.return_value = create_preview_result(
-            [{"id": 1, "name": "test"}]
-        )
+        mock_preview_service.preview_entity.return_value = create_preview_result([{"id": 1, "name": "test"}])
 
         config = {"columns": ["id", "name", "missing_column", "another_missing"]}
         validator = ColumnExistsValidator(mock_preview_service)
@@ -121,11 +121,13 @@ class TestNaturalKeyUniquenessValidator:
     async def test_unique_keys(self, mock_preview_service):
         """Test when all natural keys are unique."""
         # Setup
-        mock_preview_service.preview_entity.return_value = create_preview_result([
-            {"id": 1, "name": "test1"},
-            {"id": 2, "name": "test2"},
-            {"id": 3, "name": "test3"},
-        ])
+        mock_preview_service.preview_entity.return_value = create_preview_result(
+            [
+                {"id": 1, "name": "test1"},
+                {"id": 2, "name": "test2"},
+                {"id": 3, "name": "test3"},
+            ]
+        )
 
         config = {"keys": ["name"]}
         validator = NaturalKeyUniquenessValidator(mock_preview_service)
@@ -140,11 +142,13 @@ class TestNaturalKeyUniquenessValidator:
     async def test_duplicate_keys(self, mock_preview_service):
         """Test when natural keys have duplicates."""
         # Setup
-        mock_preview_service.preview_entity.return_value = create_preview_result([
-            {"id": 1, "name": "duplicate"},
-            {"id": 2, "name": "duplicate"},
-            {"id": 3, "name": "unique"},
-        ])
+        mock_preview_service.preview_entity.return_value = create_preview_result(
+            [
+                {"id": 1, "name": "duplicate"},
+                {"id": 2, "name": "duplicate"},
+                {"id": 3, "name": "unique"},
+            ]
+        )
 
         config = {"keys": ["name"]}
         validator = NaturalKeyUniquenessValidator(mock_preview_service)
@@ -165,11 +169,13 @@ class TestNaturalKeyUniquenessValidator:
     async def test_composite_keys(self, mock_preview_service):
         """Test uniqueness with composite natural keys."""
         # Setup
-        mock_preview_service.preview_entity.return_value = create_preview_result([
-            {"region": "US", "code": "001", "name": "Test1"},
-            {"region": "US", "code": "002", "name": "Test2"},
-            {"region": "EU", "code": "001", "name": "Test3"},  # Same code, different region
-        ])
+        mock_preview_service.preview_entity.return_value = create_preview_result(
+            [
+                {"region": "US", "code": "001", "name": "Test1"},
+                {"region": "US", "code": "002", "name": "Test2"},
+                {"region": "EU", "code": "001", "name": "Test3"},  # Same code, different region
+            ]
+        )
 
         config = {"keys": ["region", "code"]}
         validator = NaturalKeyUniquenessValidator(mock_preview_service)
@@ -188,9 +194,7 @@ class TestNonEmptyResultValidator:
     async def test_has_data(self, mock_preview_service):
         """Test when entity returns data."""
         # Setup
-        mock_preview_service.preview_entity.return_value = create_preview_result(
-            [{"id": 1, "name": "test"}]
-        )
+        mock_preview_service.preview_entity.return_value = create_preview_result([{"id": 1, "name": "test"}])
 
         config = {}
         validator = NonEmptyResultValidator(mock_preview_service)
@@ -232,30 +236,22 @@ class TestForeignKeyDataValidator:
         # Setup
         validator = ForeignKeyDataValidator()
 
-        config = Mock(
-            foreign_keys=[
-                Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])
-            ]
-        )
+        config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
 
         # Mock preview service and config service
-        with patch("app.validators.data_validators.PreviewService") as mock_preview_class, \
-             patch("app.services.config_service.ConfigurationService"), \
-             patch("src.configuration.provider.ConfigStore.config_global"):
+        with (
+            patch("app.validators.data_validators.PreviewService") as mock_preview_class,
+            patch("app.services.config_service.ConfigurationService"),
+            patch("src.configuration.provider.ConfigStore.config_global"),
+        ):
             mock_service = Mock()
             mock_preview_class.return_value = mock_service
 
             # Local entity has remote_id values: 1, 2, 3
             mock_service.preview_entity = AsyncMock(
                 side_effect=[
-                    create_preview_result(
-                        [{"remote_id": 1}, {"remote_id": 2}, {"remote_id": 3}],
-                        "test_entity"
-                    ),
-                    create_preview_result(
-                        [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}],
-                        "remote_entity"
-                    ),
+                    create_preview_result([{"remote_id": 1}, {"remote_id": 2}, {"remote_id": 3}], "test_entity"),
+                    create_preview_result([{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}], "remote_entity"),
                 ]
             )
 
@@ -272,15 +268,13 @@ class TestForeignKeyDataValidator:
         # Setup
         validator = ForeignKeyDataValidator()
 
-        config = Mock(
-            foreign_keys=[
-                Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])
-            ]
-        )
+        config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
 
-        with patch("app.validators.data_validators.PreviewService") as mock_preview_class, \
-             patch("app.services.config_service.ConfigurationService"), \
-             patch("src.configuration.provider.ConfigStore.config_global"):
+        with (
+            patch("app.validators.data_validators.PreviewService") as mock_preview_class,
+            patch("app.services.config_service.ConfigurationService"),
+            patch("src.configuration.provider.ConfigStore.config_global"),
+        ):
             # Mock preview service
             mock_service = Mock()
             mock_preview_class.return_value = mock_service
@@ -288,14 +282,8 @@ class TestForeignKeyDataValidator:
             # Local entity has remote_id values: 1, 2, 99 (99 doesn't exist in remote)
             mock_service.preview_entity = AsyncMock(
                 side_effect=[
-                    create_preview_result(
-                        [{"remote_id": 1}, {"remote_id": 2}, {"remote_id": 99}],
-                        "test_entity"
-                    ),
-                    create_preview_result(
-                        [{"id": 1}, {"id": 2}],
-                        "remote_entity"
-                    ),
+                    create_preview_result([{"remote_id": 1}, {"remote_id": 2}, {"remote_id": 99}], "test_entity"),
+                    create_preview_result([{"id": 1}, {"id": 2}], "remote_entity"),
                 ]
             )
 
@@ -320,11 +308,7 @@ class TestDataTypeCompatibilityValidator:
         # Setup
         validator = DataTypeCompatibilityValidator()
 
-        config = Mock(
-            foreign_keys=[
-                Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])
-            ]
-        )
+        config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
 
         with patch("app.validators.data_validators.PreviewService") as mock_preview_class:
             mock_service = Mock()
@@ -333,14 +317,8 @@ class TestDataTypeCompatibilityValidator:
             # Both have integer types
             mock_service.preview_entity = AsyncMock(
                 side_effect=[
-                    create_preview_result(
-                        [{"remote_id": 1}, {"remote_id": 2}],
-                        "test_entity"
-                    ),
-                    create_preview_result(
-                        [{"id": 1}, {"id": 2}],
-                        "remote_entity"
-                    ),
+                    create_preview_result([{"remote_id": 1}, {"remote_id": 2}], "test_entity"),
+                    create_preview_result([{"id": 1}, {"id": 2}], "remote_entity"),
                 ]
             )
 
@@ -356,11 +334,7 @@ class TestDataTypeCompatibilityValidator:
         # Setup
         validator = DataTypeCompatibilityValidator()
 
-        config = Mock(
-            foreign_keys=[
-                Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])
-            ]
-        )
+        config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
 
         with patch("app.validators.data_validators.PreviewService") as mock_preview_class:
             mock_service = Mock()
@@ -369,14 +343,8 @@ class TestDataTypeCompatibilityValidator:
             # Local has string, remote has integer
             mock_service.preview_entity = AsyncMock(
                 side_effect=[
-                    create_preview_result(
-                        [{"remote_id": "1"}, {"remote_id": "2"}],
-                        "test_entity"
-                    ),
-                    create_preview_result(
-                        [{"id": 1}, {"id": 2}],
-                        "remote_entity"
-                    ),
+                    create_preview_result([{"remote_id": "1"}, {"remote_id": "2"}], "test_entity"),
+                    create_preview_result([{"id": 1}, {"id": 2}], "remote_entity"),
                 ]
             )
 
@@ -396,9 +364,7 @@ class TestDataValidationService:
     async def test_validates_all_entities(self, mock_preview_service):
         """Test that service validates all configured entities."""
         # Setup
-        mock_preview_service.preview_entity.return_value = create_preview_result(
-            [{"id": 1, "name": "test"}]
-        )
+        mock_preview_service.preview_entity.return_value = create_preview_result([{"id": 1, "name": "test"}])
 
         service = DataValidationService(mock_preview_service)
 
@@ -420,9 +386,7 @@ class TestDataValidationService:
     async def test_filters_by_entity_names(self, mock_preview_service):
         """Test that service can validate specific entities."""
         # Setup
-        mock_preview_service.preview_entity.return_value = create_preview_result(
-            [{"id": 1}]
-        )
+        mock_preview_service.preview_entity.return_value = create_preview_result([{"id": 1}])
 
         service = DataValidationService(mock_preview_service)
 

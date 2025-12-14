@@ -13,6 +13,7 @@ from src.utility import Registry
 
 # FIXME: #5 Improve constraints checking
 
+
 class ForeignKeyConstraintViolation(Exception):
     """Raised when a foreign key constraint is violated."""
 
@@ -78,11 +79,12 @@ class ValidatorRegistry(Registry):
     @classmethod
     def register(cls, **kwargs) -> Any:
         """Register a validator with optional sub_key for constraint value mapping."""
+
         def decorator(fn_or_class: Any) -> Any:
             # Use class name as the unique registry key
             registry_key = fn_or_class.__name__ if hasattr(fn_or_class, "__name__") else kwargs.get("key", "unknown")
             cls.items[registry_key] = fn_or_class
-            
+
             # Build sub_key index for efficient lookup
             constraint_key = kwargs.get("key")
             sub_key = kwargs.get("sub_key")
@@ -90,14 +92,15 @@ class ValidatorRegistry(Registry):
                 if constraint_key not in cls._sub_key_index:
                     cls._sub_key_index[constraint_key] = {}
                 cls._sub_key_index[constraint_key][sub_key] = fn_or_class
-            
+
             return cls.registered_class_hook(fn_or_class, **kwargs)
+
         return decorator
 
     def get_validators_for_stage(self, stage: str) -> list[type[ConstraintValidator]]:
         """Retrieve all registered validators for a given stage."""
         return [v for v in self.items.values() if getattr(v, "stage", None) == stage]
-    
+
     def get_validator_by_constraint(self, key: str, value: Any) -> type[ConstraintValidator] | None:
         """Get a specific validator by constraint key and value (sub_key lookup)."""
         if key in self._sub_key_index and value in self._sub_key_index[key]:
@@ -203,7 +206,6 @@ class OneToManyCardinalityValidator(ConstraintValidator):
 
 
 @Validators.register(key="allow_row_decrease", stage="post-merge")
-
 class AllowRowDecreaseValidator(ConstraintValidator):
     """Validates that row decrease is allowed if it occurs."""
 

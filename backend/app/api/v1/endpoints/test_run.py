@@ -2,9 +2,6 @@
 
 from typing import List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path
-from loguru import logger
-
 from app.models.test_run import (
     TestProgress,
     TestRunRequest,
@@ -12,6 +9,8 @@ from app.models.test_run import (
 )
 from app.services.config_service import ConfigurationService
 from app.services.test_run_service import TestRunService
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path
+from loguru import logger
 
 router = APIRouter()
 
