@@ -2,8 +2,6 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from src.utility import dotget
-
 from .base_loader import DataLoader, DataLoaders
 
 if TYPE_CHECKING:
@@ -47,8 +45,8 @@ class CsvLoader(FileLoader):
         """Load data from a delimited text file into a DataFrame."""
         clean_opts: dict[str, Any] = dict(opts)
         try:
-            filename: str = clean_opts.pop('filename')
-        except KeyError:
-            raise ValueError(f"Missing 'filename' in options for CSV loader")    
+            filename: str = clean_opts.pop("filename")
+        except KeyError as exc:
+            raise ValueError("Missing 'filename' in options for CSV loader") from exc
         df: pd.DataFrame = pd.read_csv(filename, **clean_opts)
         return df

@@ -8,6 +8,7 @@ from .base_loader import DataLoader, DataLoaders
 
 if TYPE_CHECKING:
     from src.config_model import TableConfig
+
     from .base_loader import DataLoaderRegistry
 
 

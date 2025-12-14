@@ -1,0 +1,252 @@
+<template>
+  <v-container fluid class="pa-4">
+    <div class="d-flex align-center mb-4">
+      <v-icon icon="mdi-database-search" size="large" class="mr-3" />
+      <h1 class="text-h4">Schema Explorer</h1>
+      <v-spacer />
+      <v-btn
+        prepend-icon="mdi-refresh"
+        variant="outlined"
+        :loading="refreshing"
+        @click="refreshAll"
+      >
+        Refresh All
+      </v-btn>
+    </div>
+
+    <v-row>
+      <!-- Left Panel: Table Tree -->
+      <v-col cols="12" md="3">
+        <SchemaTreeView
+          :auto-load="true"
+          @table-selected="onTableSelected"
+        />
+      </v-col>
+
+      <!-- Middle Panel: Table Details -->
+      <v-col cols="12" md="4">
+        <TableDetailsPanel
+          ref="detailsPanel"
+          :data-source="selectedDataSource ?? undefined"
+          :table-name="selectedTable ?? undefined"
+          :schema="selectedSchema"
+          :auto-load="false"
+        />
+      </v-col>
+
+      <!-- Right Panel: Data Preview -->
+      <v-col cols="12" md="5">
+        <DataPreviewTable
+          ref="previewTable"
+          :data-source="selectedDataSource ?? undefined"
+          :table-name="selectedTable ?? undefined"
+          :schema="selectedSchema"
+          :auto-load="false"
+          :default-limit="50"
+        />
+      </v-col>
+    </v-row>
+
+    <!-- Info Bar -->
+    <v-row v-if="selectedTable">
+      <v-col>
+        <v-card variant="outlined">
+          <v-card-text class="d-flex align-center">
+            <v-icon icon="mdi-information-outline" class="mr-2" />
+            <span class="text-body-2">
+              Selected: 
+              <strong>{{ selectedDataSource }}</strong>
+              <span v-if="selectedSchema && selectedSchema !== 'public'">
+                / {{ selectedSchema }}
+              </span>
+              / {{ selectedTable }}
+            </span>
+            <v-spacer />
+            <v-btn
+              size="small"
+              variant="text"
+              @click="clearSelection"
+            >
+              Clear Selection
+            </v-btn>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Help Dialog -->
+    <v-dialog v-model="showHelp" max-width="600">
+      <template #activator="{ props: activatorProps }">
+        <v-btn
+          icon="mdi-help-circle"
+          size="small"
+          variant="text"
+          v-bind="activatorProps"
+          style="position: fixed; bottom: 20px; right: 20px"
+        />
+      </template>
+
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon icon="mdi-help-circle" class="mr-2" />
+          Schema Explorer Help
+        </v-card-title>
+
+        <v-card-text>
+          <h3 class="text-h6 mb-2">How to Use</h3>
+          
+          <div class="mb-4">
+            <p class="font-weight-medium mb-1">1. Select a Data Source</p>
+            <p class="text-body-2 text-grey-darken-1">
+              Choose a database data source from the dropdown in the left panel.
+              Only database sources (PostgreSQL, MS Access, SQLite) are available.
+            </p>
+          </div>
+
+          <div class="mb-4">
+            <p class="font-weight-medium mb-1">2. Browse Tables</p>
+            <p class="text-body-2 text-grey-darken-1">
+              Tables will load automatically. Use the search box to filter tables by name.
+              For PostgreSQL, you can specify a schema (defaults to 'public').
+            </p>
+          </div>
+
+          <div class="mb-4">
+            <p class="font-weight-medium mb-1">3. View Table Details</p>
+            <p class="text-body-2 text-grey-darken-1">
+              Click a table to view its schema in the middle panel. You'll see:
+            </p>
+            <ul class="text-body-2 text-grey-darken-1 ml-4">
+              <li>Column names and data types</li>
+              <li>Primary keys (marked with PK)</li>
+              <li>Nullable columns</li>
+              <li>Default values</li>
+              <li>Foreign keys (if available)</li>
+              <li>Indexes (if available)</li>
+            </ul>
+          </div>
+
+          <div class="mb-4">
+            <p class="font-weight-medium mb-1">4. Preview Data</p>
+            <p class="text-body-2 text-grey-darken-1">
+              The right panel shows sample rows from the selected table.
+              Use pagination controls to navigate through the data.
+              You can adjust rows per page (10, 25, 50, or 100).
+            </p>
+          </div>
+
+          <div class="mb-4">
+            <p class="font-weight-medium mb-1">5. Refresh Data</p>
+            <p class="text-body-2 text-grey-darken-1">
+              Use the refresh button in each panel to reload data.
+              "Refresh All" button clears cache and reloads everything.
+            </p>
+          </div>
+
+          <h3 class="text-h6 mb-2 mt-4">Icon Legend</h3>
+          
+          <div class="d-flex align-center mb-2">
+            <v-icon icon="mdi-key" color="amber" size="small" class="mr-2" />
+            <span class="text-body-2">Primary Key</span>
+          </div>
+          
+          <div class="d-flex align-center mb-2">
+            <v-icon icon="mdi-numeric" color="blue" size="small" class="mr-2" />
+            <span class="text-body-2">Numeric Type</span>
+          </div>
+          
+          <div class="d-flex align-center mb-2">
+            <v-icon icon="mdi-format-text" size="small" class="mr-2" />
+            <span class="text-body-2">Text Type</span>
+          </div>
+          
+          <div class="d-flex align-center mb-2">
+            <v-icon icon="mdi-calendar-clock" size="small" class="mr-2" />
+            <span class="text-body-2">Date/Time Type</span>
+          </div>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showHelp = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-container>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useDataSourceStore } from '@/stores/data-source'
+import SchemaTreeView from '@/components/SchemaTreeView.vue'
+import TableDetailsPanel from '@/components/TableDetailsPanel.vue'
+import DataPreviewTable from '@/components/DataPreviewTable.vue'
+import type { TableMetadata } from '@/types/schema'
+
+// Store
+const dataSourceStore = useDataSourceStore()
+
+// State
+const selectedDataSource = ref<string | null>(null)
+const selectedTable = ref<string | null>(null)
+const selectedSchema = ref<string | undefined>(undefined)
+const refreshing = ref(false)
+const showHelp = ref(false)
+
+// Refs to child components
+const detailsPanel = ref<InstanceType<typeof TableDetailsPanel> | null>(null)
+const previewTable = ref<InstanceType<typeof DataPreviewTable> | null>(null)
+
+// Methods
+function onTableSelected(
+  table: TableMetadata,
+  dataSource: string,
+  schema?: string
+) {
+  selectedDataSource.value = dataSource
+  selectedTable.value = table.name
+  selectedSchema.value = schema
+
+  // Load details and preview
+  detailsPanel.value?.loadSchema()
+  previewTable.value?.loadPreview()
+}
+
+async function refreshAll() {
+  if (!selectedDataSource.value) return
+
+  refreshing.value = true
+  try {
+    // Invalidate cache
+    await dataSourceStore.invalidateSchemaCache(selectedDataSource.value)
+    
+    // Reload everything
+    if (selectedTable.value) {
+      await Promise.all([
+        detailsPanel.value?.refreshSchema(),
+        previewTable.value?.refreshData(),
+      ])
+    }
+  } catch (error) {
+    console.error('Failed to refresh:', error)
+  } finally {
+    refreshing.value = false
+  }
+}
+
+function clearSelection() {
+  selectedDataSource.value = null
+  selectedTable.value = null
+  selectedSchema.value = undefined
+}
+</script>
+
+<style scoped>
+.v-container {
+  max-width: 100%;
+}
+
+.v-row {
+  min-height: 500px;
+}
+</style>

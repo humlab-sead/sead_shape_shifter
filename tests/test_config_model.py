@@ -1477,7 +1477,7 @@ class TestTablesConfig:
         # This will fail if the loader type isn't registered, but we're testing the logic
         # In real code, the DataLoaders would be registered
         try:
-            loader = tables.resolve_loader(table_cfg)
+            _ = tables.resolve_loader(table_cfg)
             # If it succeeds, check it's not None (depends on DataLoaders being registered)
             # For now, we just test that it doesn't crash
         except KeyError:
@@ -1494,7 +1494,7 @@ class TestTablesConfig:
 
         # This will fail if the loader type isn't registered
         try:
-            loader = tables.resolve_loader(table_cfg)
+            _ = tables.resolve_loader(table_cfg)
             # Test passes if no exception
         except KeyError:
             # Expected if the loader type isn't registered
@@ -1571,7 +1571,7 @@ class TestDataSourceConfig:
             tables = TablesConfig(entities_cfg=config, options=None)
             # If it succeeds, options should be a dict
             assert isinstance(tables.options, dict)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             # May fail if ConfigValue can't resolve, but that's OK for this test
             pass
 

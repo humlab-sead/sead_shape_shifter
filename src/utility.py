@@ -305,7 +305,6 @@ class Registry(Generic[T]):
                 setattr(fn_or_class, "_registry_key", key)
                 fn_or_class = _ensure_key_property(fn_or_class)
 
-            # FIXME: #6 Validators are rgistered using the same key!
             if key in cls.items:
                 raise KeyError(f"Registry: Overriding existing registration for key '{key}'")
 
