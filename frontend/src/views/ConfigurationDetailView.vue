@@ -197,6 +197,16 @@
       </v-card>
     </v-dialog>
 
+    <!-- Preview Fixes Modal -->
+    <preview-fixes-modal
+      v-model:show="showPreviewModal"
+      :preview="fixPreview"
+      :loading="fixPreviewLoading"
+      :error="fixPreviewError"
+      @apply="handleApplyFixesConfirmed"
+      @cancel="handleCancelPreview"
+    />
+
     <!-- Success Snackbar -->
     <v-snackbar v-model="showSuccessSnackbar" color="success" timeout="3000">
       {{ successMessage }}
@@ -216,6 +226,7 @@ import { useConfigurations, useEntities, useValidation } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
+import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 
 const route = useRoute()
 const configName = computed(() => route.params.name as string)
@@ -261,6 +272,9 @@ const {
   loading: dataValidationLoading,
   result: dataValidationResult,
   validateData,
+  previewFixes,
+  applyFixes,
+  autoFixableIssues,
 } = useDataValidation()
 
 // Local state
@@ -268,6 +282,10 @@ const activeTab = ref('entities')
 const showBackupsDialog = ref(false)
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
+const showPreviewModal = ref(false)
+const fixPreview = ref<any>(null)
+const fixPreviewLoading = ref(false)
+const fixPreviewError = ref<string | null>(null)
 
 // Computed
 const mergedValidationResult = computed(() => {
@@ -338,18 +356,60 @@ async function handleDataValidate(config?: any) {
   }
 }
 
-function handleApplyFix(issue: any) {
-  console.log('Apply fix for issue:', issue)
-  // TODO: Implement fix application
-  successMessage.value = 'Auto-fix not yet implemented'
-  showSuccessSnackbar.value = true
+async function handleApplyFix(issue: any) {
+  // Single fix - show preview modal
+  await handlePreviewFixes([issue])
 }
 
-function handleApplyAllFixes() {
-  console.log('Apply all fixes')
-  // TODO: Implement bulk fix application
-  successMessage.value = 'Bulk auto-fix not yet implemented'
-  showSuccessSnackbar.value = true
+async function handleApplyAllFixes() {
+  // All auto-fixable issues - show preview modal
+  const issues = autoFixableIssues.value
+  if (issues.length === 0) {
+    successMessage.value = 'No auto-fixable issues found'
+    showSuccessSnackbar.value = true
+    return
+  }
+  await handlePreviewFixes(issues)
+}
+
+async function handlePreviewFixes(issues: any[]) {
+  try {
+    fixPreviewLoading.value = true
+    fixPreviewError.value = null
+    showPreviewModal.value = true
+    
+    const preview = await previewFixes(configName.value, issues)
+    fixPreview.value = preview
+  } catch (err) {
+    fixPreviewError.value = err instanceof Error ? err.message : 'Failed to preview fixes'
+    console.error('Preview fixes error:', err)
+  } finally {
+    fixPreviewLoading.value = false
+  }
+}
+
+async function handleApplyFixesConfirmed() {
+  try {
+    const issues = autoFixableIssues.value
+    const result = await applyFixes(configName.value, issues)
+    
+    showPreviewModal.value = false
+    successMessage.value = `Successfully applied ${result.fixes_applied} fixes. Backup: ${result.backup_path}`
+    showSuccessSnackbar.value = true
+    
+    // Reload configuration and re-validate
+    await handleRefresh()
+    await handleValidate()
+  } catch (err) {
+    fixPreviewError.value = err instanceof Error ? err.message : 'Failed to apply fixes'
+    console.error('Apply fixes error:', err)
+  }
+}
+
+function handleCancelPreview() {
+  showPreviewModal.value = false
+  fixPreview.value = null
+  fixPreviewError.value = null
 }
 
 async function handleSave() {

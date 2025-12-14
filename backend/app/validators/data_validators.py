@@ -259,6 +259,262 @@ class NonEmptyResultValidator:
 
         return errors
 
+class ForeignKeyDataValidator:
+    """
+    Validates that foreign key relationships exist in actual data.
+    
+    Checks:
+    - Foreign key columns exist in both entities
+    - Referenced values exist in the remote entity
+    - Match percentage meets threshold
+    """
+
+    async def validate(
+        self, config_name: str, entity_name: str, entity_config: Any
+    ) -> list[ValidationError]:
+        """Validate foreign key data integrity."""
+        from app.services.preview_service import PreviewService
+        from app.services.config_service import ConfigurationService
+
+        errors = []
+
+        if not entity_config.foreign_keys:
+            return errors
+
+        config_service = ConfigurationService()
+        preview_service = PreviewService(config_service)
+
+        try:
+            # Load sample data for this entity
+            local_result = await preview_service.preview_entity(config_name, entity_name, limit=1000)
+            if not local_result.rows:
+                # Empty result, NonEmptyResultValidator will handle this
+                return errors
+
+            local_df = pd.DataFrame(local_result.rows)
+
+            # Validate each foreign key
+            for fk_index, fk in enumerate(entity_config.foreign_keys):
+                remote_entity = fk.entity
+
+                # Check if local keys exist
+                missing_local = [key for key in fk.local_keys if key not in local_df.columns]
+                if missing_local:
+                    errors.append(
+                        ValidationError(
+                            severity="error",
+                            entity=entity_name,
+                            field=f"foreign_keys[{fk_index}].local_keys",
+                            message=f"Local foreign key columns not found in data: {', '.join(missing_local)}",
+                            code="FK_LOCAL_COLUMN_MISSING",
+                            category=ValidationCategory.DATA,
+                            priority=ValidationPriority.HIGH,
+                            suggestion=f"Ensure columns {', '.join(missing_local)} are included in the entity's columns list",
+                        )
+                    )
+                    continue
+
+                # Load remote entity data
+                try:
+                    remote_result = await preview_service.preview_entity(
+                        config_name, remote_entity, limit=1000
+                    )
+                    if not remote_result.rows:
+                        errors.append(
+                            ValidationError(
+                                severity="warning",
+                                entity=entity_name,
+                                field=f"foreign_keys[{fk_index}]",
+                                message=f"Remote entity '{remote_entity}' returns no data - cannot validate foreign key",
+                                code="FK_REMOTE_EMPTY",
+                                category=ValidationCategory.DATA,
+                                priority=ValidationPriority.MEDIUM,
+                            )
+                        )
+                        continue
+
+                    remote_df = pd.DataFrame(remote_result.rows)
+
+                    # Check if remote keys exist
+                    missing_remote = [key for key in fk.remote_keys if key not in remote_df.columns]
+                    if missing_remote:
+                        errors.append(
+                            ValidationError(
+                                severity="error",
+                                entity=entity_name,
+                                field=f"foreign_keys[{fk_index}].remote_keys",
+                                message=f"Remote foreign key columns not found in '{remote_entity}': {', '.join(missing_remote)}",
+                                code="FK_REMOTE_COLUMN_MISSING",
+                                category=ValidationCategory.DATA,
+                                priority=ValidationPriority.HIGH,
+                            )
+                        )
+                        continue
+
+                    # Check data integrity - do foreign key values exist?
+                    local_values = local_df[fk.local_keys].drop_duplicates().dropna()
+                    remote_values = remote_df[fk.remote_keys].drop_duplicates()
+
+                    if len(local_values) > 0:
+                        # Create composite keys for comparison
+                        local_keys = [tuple(row) for row in local_values.values]
+                        remote_keys = [tuple(row) for row in remote_values.values]
+                        remote_keys_set = set(remote_keys)
+
+                        unmatched = [key for key in local_keys if key not in remote_keys_set]
+                        match_percentage = (
+                            (len(local_keys) - len(unmatched)) / len(local_keys) * 100
+                            if len(local_keys) > 0
+                            else 100
+                        )
+
+                        if match_percentage < 100:
+                            severity = "error" if match_percentage < 90 else "warning"
+                            priority = ValidationPriority.HIGH if match_percentage < 90 else ValidationPriority.MEDIUM
+
+                            sample_unmatched = unmatched[:3]
+                            errors.append(
+                                ValidationError(
+                                    severity=severity,  # type: ignore
+                                    entity=entity_name,
+                                    field=f"foreign_keys[{fk_index}]",
+                                    message=f"Foreign key to '{remote_entity}': {len(unmatched)} values ({100 - match_percentage:.1f}%) not found in remote entity. Sample: {sample_unmatched}",
+                                    code="FK_DATA_INTEGRITY",
+                                    category=ValidationCategory.DATA,
+                                    priority=priority,
+                                    suggestion="Check if remote entity data is loaded correctly, or adjust foreign key configuration",
+                                )
+                            )
+
+                except Exception as e:
+                    logger.error(f"Failed to validate foreign key to '{remote_entity}': {e}")
+                    errors.append(
+                        ValidationError(
+                            severity="warning",
+                            entity=entity_name,
+                            field=f"foreign_keys[{fk_index}]",
+                            message=f"Could not validate foreign key to '{remote_entity}': {str(e)}",
+                            code="FK_VALIDATION_ERROR",
+                            category=ValidationCategory.DATA,
+                            priority=ValidationPriority.LOW,
+                        )
+                    )
+
+        except Exception as e:
+            logger.error(f"Foreign key validation failed for {entity_name}: {e}")
+
+        return errors
+
+
+class DataTypeCompatibilityValidator:
+    """
+    Validates that foreign key columns have compatible data types.
+    
+    Checks:
+    - Local and remote columns exist
+    - Data types are compatible for joins
+    - Warns about type mismatches that may cause issues
+    """
+
+    async def validate(
+        self, config_name: str, entity_name: str, entity_config: Any
+    ) -> list[ValidationError]:
+        """Validate foreign key column type compatibility."""
+        from app.services.preview_service import PreviewService
+        from app.services.config_service import ConfigurationService
+
+        errors = []
+
+        if not entity_config.foreign_keys:
+            return errors
+
+        config_service = ConfigurationService()
+        preview_service = PreviewService(config_service)
+
+        try:
+            # Load sample data for this entity
+            local_result = await preview_service.preview_entity(config_name, entity_name, limit=100)
+            if not local_result.rows:
+                return errors
+
+            local_df = pd.DataFrame(local_result.rows)
+
+            # Check each foreign key
+            for fk_index, fk in enumerate(entity_config.foreign_keys):
+                remote_entity = fk.entity
+
+                # Check if local keys exist
+                missing_local = [key for key in fk.local_keys if key not in local_df.columns]
+                if missing_local:
+                    continue  # ColumnExistsValidator will catch this
+
+                # Load remote entity data
+                try:
+                    remote_result = await preview_service.preview_entity(
+                        config_name, remote_entity, limit=100
+                    )
+                    if not remote_result.rows:
+                        continue  # ForeignKeyDataValidator will catch this
+
+                    remote_df = pd.DataFrame(remote_result.rows)
+
+                    # Check if remote keys exist
+                    missing_remote = [key for key in fk.remote_keys if key not in remote_df.columns]
+                    if missing_remote:
+                        continue  # ForeignKeyDataValidator will catch this
+
+                    # Compare data types
+                    for local_key, remote_key in zip(fk.local_keys, fk.remote_keys):
+                        local_dtype = local_df[local_key].dtype
+                        remote_dtype = remote_df[remote_key].dtype
+
+                        # Check for type compatibility
+                        if not self._types_compatible(local_dtype, remote_dtype):
+                            errors.append(
+                                ValidationError(
+                                    severity="warning",
+                                    entity=entity_name,
+                                    field=f"foreign_keys[{fk_index}]",
+                                    message=f"Type mismatch: local column '{local_key}' ({local_dtype}) may not be compatible with remote column '{remote_key}' ({remote_dtype}) in '{remote_entity}'",
+                                    code="FK_TYPE_MISMATCH",
+                                    category=ValidationCategory.DATA,
+                                    priority=ValidationPriority.MEDIUM,
+                                    suggestion="Consider converting column types or checking data extraction queries",
+                                )
+                            )
+
+                except Exception as e:
+                    logger.debug(f"Could not check types for foreign key to '{remote_entity}': {e}")
+
+        except Exception as e:
+            logger.error(f"Type compatibility validation failed for {entity_name}: {e}")
+
+        return errors
+
+    def _types_compatible(self, dtype1, dtype2) -> bool:
+        """Check if two pandas dtypes are compatible for joins."""
+        # Convert to string for comparison
+        type1 = str(dtype1)
+        type2 = str(dtype2)
+
+        # Numeric types are generally compatible with each other
+        numeric_types = ["int", "float", "uint"]
+        if any(t in type1 for t in numeric_types) and any(t in type2 for t in numeric_types):
+            return True
+
+        # String/object types are compatible
+        if ("object" in type1 or "string" in type1) and ("object" in type2 or "string" in type2):
+            return True
+
+        # Datetime types are compatible
+        if "datetime" in type1 and "datetime" in type2:
+            return True
+
+        # Same types are compatible
+        if type1 == type2:
+            return True
+
+        return False
 
 class DataValidationService:
     """Service to run all data validators."""
@@ -270,6 +526,8 @@ class DataValidationService:
             ColumnExistsValidator(preview_service),
             NaturalKeyUniquenessValidator(preview_service),
             NonEmptyResultValidator(preview_service),
+            ForeignKeyDataValidator(),
+            DataTypeCompatibilityValidator(),
         ]
 
     async def validate_entity(

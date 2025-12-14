@@ -116,6 +116,60 @@ export function useDataValidation() {
     error.value = null
   }
 
+  /**
+   * Preview fixes for validation errors
+   */
+  async function previewFixes(
+    configName: string,
+    errors: ValidationError[]
+  ): Promise<any> {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await axios.post(
+        `${API_BASE}/configurations/${configName}/fixes/preview`,
+        errors
+      )
+
+      return response.data
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to preview fixes'
+      error.value = message
+      console.error('Preview fixes error:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Apply fixes for validation errors
+   */
+  async function applyFixes(
+    configName: string,
+    errors: ValidationError[]
+  ): Promise<any> {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await axios.post(
+        `${API_BASE}/configurations/${configName}/fixes/apply`,
+        errors
+      )
+
+      return response.data
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to apply fixes'
+      error.value = message
+      console.error('Apply fixes error:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // State
     loading,
@@ -132,6 +186,8 @@ export function useDataValidation() {
 
     // Methods
     validateData,
-    clearResults
+    clearResults,
+    previewFixes,
+    applyFixes
   }
 }
