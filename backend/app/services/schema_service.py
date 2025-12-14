@@ -66,9 +66,7 @@ class SchemaIntrospectionService:
         self.data_source_service = DataSourceService(config)
         self.cache = SchemaCache(ttl_seconds=300)  # 5 minute cache
 
-    async def get_tables(
-        self, data_source_name: str, schema: Optional[str] = None
-    ) -> List[TableMetadata]:
+    async def get_tables(self, data_source_name: str, schema: Optional[str] = None) -> List[TableMetadata]:
         """
         Get list of tables in a data source.
 
@@ -96,11 +94,11 @@ class SchemaIntrospectionService:
 
             # Route to appropriate introspection method
             driver = ds_config.driver.lower()
-            if driver in ('postgresql', 'postgres'):
+            if driver in ("postgresql", "postgres"):
                 tables = await self._get_postgresql_tables(ds_config, schema)
-            elif driver in ('access', 'ucanaccess'):
+            elif driver in ("access", "ucanaccess"):
                 tables = await self._get_access_tables(ds_config)
-            elif driver == 'sqlite':
+            elif driver == "sqlite":
                 tables = await self._get_sqlite_tables(ds_config)
             else:
                 raise SchemaServiceError(f"Schema introspection not supported for driver: {driver}")
@@ -113,9 +111,7 @@ class SchemaIntrospectionService:
             logger.error(f"Error getting tables for {data_source_name}: {e}")
             raise SchemaServiceError(f"Failed to get tables: {str(e)}")
 
-    async def get_table_schema(
-        self, data_source_name: str, table_name: str, schema: Optional[str] = None
-    ) -> TableSchema:
+    async def get_table_schema(self, data_source_name: str, table_name: str, schema: Optional[str] = None) -> TableSchema:
         """
         Get detailed schema for a specific table.
 
@@ -144,11 +140,11 @@ class SchemaIntrospectionService:
 
             # Route to appropriate introspection method
             driver = ds_config.driver.lower()
-            if driver in ('postgresql', 'postgres'):
+            if driver in ("postgresql", "postgres"):
                 table_schema = await self._get_postgresql_table_schema(ds_config, table_name, schema)
-            elif driver in ('access', 'ucanaccess'):
+            elif driver in ("access", "ucanaccess"):
                 table_schema = await self._get_access_table_schema(ds_config, table_name)
-            elif driver == 'sqlite':
+            elif driver == "sqlite":
                 table_schema = await self._get_sqlite_table_schema(ds_config, table_name)
             else:
                 raise SchemaServiceError(f"Schema introspection not supported for driver: {driver}")
@@ -196,7 +192,7 @@ class SchemaIntrospectionService:
                 raise SchemaServiceError(f"Data source '{data_source_name}' not found")
 
             # Build qualified table name
-            if schema and ds_config.driver.lower() in ('postgresql', 'postgres'):
+            if schema and ds_config.driver.lower() in ("postgresql", "postgres"):
                 qualified_table = f'"{schema}"."{table_name}"'
             else:
                 qualified_table = f'"{table_name}"'
@@ -218,7 +214,7 @@ class SchemaIntrospectionService:
 
             # Convert to response format
             columns = data.columns.tolist()
-            rows = data.to_dict(orient='records')
+            rows = data.to_dict(orient="records")
 
             # Get approximate row count (cached if possible)
             row_count = await self._get_table_row_count(ds_config, table_name, schema)
@@ -235,11 +231,9 @@ class SchemaIntrospectionService:
             logger.error(f"Error previewing table {table_name}: {e}")
             raise SchemaServiceError(f"Failed to preview table data: {str(e)}")
 
-    async def _get_postgresql_tables(
-        self, ds_config: DataSourceConfig, schema: Optional[str] = None
-    ) -> List[TableMetadata]:
+    async def _get_postgresql_tables(self, ds_config: DataSourceConfig, schema: Optional[str] = None) -> List[TableMetadata]:
         """Get tables from PostgreSQL database."""
-        schema_filter = schema or 'public'
+        schema_filter = schema or "public"
 
         query = f"""
             SELECT 
@@ -258,19 +252,17 @@ class SchemaIntrospectionService:
         for _, row in data.iterrows():
             tables.append(
                 TableMetadata(
-                    name=row['table_name'],
-                    schema=row['schema'],
-                    comment=row.get('comment'),
+                    name=row["table_name"],
+                    schema=row["schema"],
+                    comment=row.get("comment"),
                 )
             )
 
         return tables
 
-    async def _get_postgresql_table_schema(
-        self, ds_config: DataSourceConfig, table_name: str, schema: Optional[str] = None
-    ) -> TableSchema:
+    async def _get_postgresql_table_schema(self, ds_config: DataSourceConfig, table_name: str, schema: Optional[str] = None) -> TableSchema:
         """Get detailed schema for PostgreSQL table."""
-        schema_filter = schema or 'public'
+        schema_filter = schema or "public"
 
         # Get columns
         columns_query = f"""
@@ -302,23 +294,23 @@ class SchemaIntrospectionService:
         """
 
         pk_data = await self._execute_query(ds_config, pk_query)
-        primary_keys = pk_data['column_name'].tolist() if not pk_data.empty else []
+        primary_keys = pk_data["column_name"].tolist() if not pk_data.empty else []
 
         # Build columns list
         columns = []
         for _, row in columns_data.iterrows():
-            max_length = row.get('character_maximum_length')
+            max_length = row.get("character_maximum_length")
             # Convert pandas NaN to None for Pydantic
             if pd.isna(max_length):
                 max_length = None
-            
+
             columns.append(
                 ColumnMetadata(
-                    name=row['column_name'],
-                    data_type=row['data_type'],
-                    nullable=row['is_nullable'] == 'YES',
-                    default=row.get('column_default'),
-                    is_primary_key=row['column_name'] in primary_keys,
+                    name=row["column_name"],
+                    data_type=row["data_type"],
+                    nullable=row["is_nullable"] == "YES",
+                    default=row.get("column_default"),
+                    is_primary_key=row["column_name"] in primary_keys,
                     max_length=max_length,
                 )
             )
@@ -351,11 +343,11 @@ class SchemaIntrospectionService:
             for _, row in fk_data.iterrows():
                 foreign_keys.append(
                     ForeignKeyMetadata(
-                        name=row.get('name'),
-                        column=row['column_name'],
-                        referenced_table=row['referenced_table'],
-                        referenced_column=row['referenced_column'],
-                        referenced_schema=row.get('referenced_schema'),
+                        name=row.get("name"),
+                        column=row["column_name"],
+                        referenced_table=row["referenced_table"],
+                        referenced_column=row["referenced_column"],
+                        referenced_schema=row.get("referenced_schema"),
                     )
                 )
 
@@ -393,7 +385,7 @@ class SchemaIntrospectionService:
         for _, row in data.iterrows():
             tables.append(
                 TableMetadata(
-                    name=row['TABLE_NAME'],
+                    name=row["TABLE_NAME"],
                     schema=None,
                     comment=None,
                 )
@@ -401,9 +393,7 @@ class SchemaIntrospectionService:
 
         return tables
 
-    async def _get_access_table_schema(
-        self, ds_config: DataSourceConfig, table_name: str
-    ) -> TableSchema:
+    async def _get_access_table_schema(self, ds_config: DataSourceConfig, table_name: str) -> TableSchema:
         """Get detailed schema for MS Access table."""
         # Get columns using information schema
         columns_query = f"""
@@ -425,7 +415,7 @@ class SchemaIntrospectionService:
         try:
             pk_query = f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_NAME = '{table_name}'"
             pk_data = await self._execute_query(ds_config, pk_query)
-            primary_keys = pk_data['COLUMN_NAME'].tolist() if not pk_data.empty else []
+            primary_keys = pk_data["COLUMN_NAME"].tolist() if not pk_data.empty else []
         except Exception:
             logger.warning(f"Could not determine primary keys for {table_name}")
             primary_keys = []
@@ -435,12 +425,12 @@ class SchemaIntrospectionService:
         for _, row in columns_data.iterrows():
             columns.append(
                 ColumnMetadata(
-                    name=row['COLUMN_NAME'],
-                    data_type=row['DATA_TYPE'],
-                    nullable=row['IS_NULLABLE'] == 'YES',
-                    default=row.get('COLUMN_DEFAULT'),
-                    is_primary_key=row['COLUMN_NAME'] in primary_keys,
-                    max_length=row.get('CHARACTER_MAXIMUM_LENGTH'),
+                    name=row["COLUMN_NAME"],
+                    data_type=row["DATA_TYPE"],
+                    nullable=row["IS_NULLABLE"] == "YES",
+                    default=row.get("COLUMN_DEFAULT"),
+                    is_primary_key=row["COLUMN_NAME"] in primary_keys,
+                    max_length=row.get("CHARACTER_MAXIMUM_LENGTH"),
                 )
             )
 
@@ -469,7 +459,7 @@ class SchemaIntrospectionService:
         for _, row in data.iterrows():
             tables.append(
                 TableMetadata(
-                    name=row['table_name'],
+                    name=row["table_name"],
                     schema=None,
                     comment=None,
                 )
@@ -477,9 +467,7 @@ class SchemaIntrospectionService:
 
         return tables
 
-    async def _get_sqlite_table_schema(
-        self, ds_config: DataSourceConfig, table_name: str
-    ) -> TableSchema:
+    async def _get_sqlite_table_schema(self, ds_config: DataSourceConfig, table_name: str) -> TableSchema:
         """Get detailed schema for SQLite table."""
         # Get columns using PRAGMA
         columns_query = f"PRAGMA table_info({table_name})"
@@ -491,16 +479,16 @@ class SchemaIntrospectionService:
         primary_keys = []
 
         for _, row in columns_data.iterrows():
-            is_pk = row['pk'] > 0
+            is_pk = row["pk"] > 0
             if is_pk:
-                primary_keys.append(row['name'])
+                primary_keys.append(row["name"])
 
             columns.append(
                 ColumnMetadata(
-                    name=row['name'],
-                    data_type=row['type'],
-                    nullable=row['notnull'] == 0,
-                    default=row.get('dflt_value'),
+                    name=row["name"],
+                    data_type=row["type"],
+                    nullable=row["notnull"] == 0,
+                    default=row.get("dflt_value"),
                     is_primary_key=is_pk,
                     max_length=None,
                 )
@@ -516,13 +504,11 @@ class SchemaIntrospectionService:
             row_count=row_count,
         )
 
-    async def _get_table_row_count(
-        self, ds_config: DataSourceConfig, table_name: str, schema: Optional[str] = None
-    ) -> Optional[int]:
+    async def _get_table_row_count(self, ds_config: DataSourceConfig, table_name: str, schema: Optional[str] = None) -> Optional[int]:
         """Get approximate row count for a table."""
         try:
             # Build qualified table name
-            if schema and ds_config.driver.lower() in ('postgresql', 'postgres'):
+            if schema and ds_config.driver.lower() in ("postgresql", "postgres"):
                 qualified_table = f'"{schema}"."{table_name}"'
             else:
                 qualified_table = f'"{table_name}"'
@@ -531,7 +517,7 @@ class SchemaIntrospectionService:
             data = await self._execute_query(ds_config, query)
 
             if not data.empty:
-                return int(data.iloc[0]['count'])
+                return int(data.iloc[0]["count"])
         except Exception as e:
             logger.warning(f"Could not get row count for {table_name}: {e}")
 
@@ -553,7 +539,7 @@ class SchemaIntrospectionService:
             "filename": ds_config.effective_file_path,
             "options": ds_config.options or {},
         }
-        
+
         # Create core config instance
         core_config = CoreDataSourceConfig(cfg=config_dict, name=ds_config.name)
 
@@ -572,91 +558,85 @@ class SchemaIntrospectionService:
     def invalidate_cache(self, data_source_name: str) -> None:
         """Invalidate all cached data for a data source."""
         # Remove all cache entries starting with data_source_name
-        keys_to_remove = [key for key in self.cache._cache.keys() if key.startswith(f"tables:{data_source_name}") or key.startswith(f"schema:{data_source_name}")]
+        keys_to_remove = [
+            key
+            for key in self.cache._cache.keys()
+            if key.startswith(f"tables:{data_source_name}") or key.startswith(f"schema:{data_source_name}")
+        ]
         for key in keys_to_remove:
             self.cache.invalidate(key)
         logger.info(f"Invalidated {len(keys_to_remove)} cache entries for {data_source_name}")
 
     async def import_entity_from_table(
-        self,
-        data_source_name: str,
-        table_name: str,
-        entity_name: Optional[str] = None,
-        selected_columns: Optional[List[str]] = None
+        self, data_source_name: str, table_name: str, entity_name: Optional[str] = None, selected_columns: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         Generate entity configuration from a database table.
-        
+
         Args:
             data_source_name: Name of the data source
             table_name: Name of the table to import
             entity_name: Optional custom entity name (defaults to table_name)
             selected_columns: Optional list of columns to include (defaults to all)
-            
+
         Returns:
             Dictionary with entity configuration
         """
         from app.models.entity_import import KeySuggestion
-        
+
         # Get table schema
         schema = await self.get_table_schema(data_source_name, table_name)
-        
+
         # Generate entity name (convert to snake_case if not provided)
         if not entity_name:
-            entity_name = table_name.lower().replace(' ', '_').replace('-', '_')
-        
+            entity_name = table_name.lower().replace(" ", "_").replace("-", "_")
+
         # Determine columns to include
         if selected_columns:
             columns = [col.name for col in schema.columns if col.name in selected_columns]
         else:
             columns = [col.name for col in schema.columns]
-        
+
         # Generate SQL query
-        column_list = ', '.join(f'"{col}"' for col in columns)
+        column_list = ", ".join(f'"{col}"' for col in columns)
         query = f'SELECT {column_list} FROM "{table_name}"'
-        
+
         # Suggest surrogate ID
         surrogate_id_suggestion = None
         for col in schema.columns:
             if col.is_primary_key:
                 # Use primary key as surrogate if it's an integer
-                if 'int' in col.data_type.lower():
+                if "int" in col.data_type.lower():
                     surrogate_id_suggestion = KeySuggestion(
-                        columns=[col.name],
-                        reason=f"Primary key column with integer type ({col.data_type})",
-                        confidence=0.95
+                        columns=[col.name], reason=f"Primary key column with integer type ({col.data_type})", confidence=0.95
                     )
                     break
-        
+
         if not surrogate_id_suggestion:
             # Look for columns ending with _id
             for col in schema.columns:
-                if col.name.lower().endswith('_id') and 'int' in col.data_type.lower():
+                if col.name.lower().endswith("_id") and "int" in col.data_type.lower():
                     surrogate_id_suggestion = KeySuggestion(
-                        columns=[col.name],
-                        reason=f"Column name ends with '_id' and has integer type ({col.data_type})",
-                        confidence=0.7
+                        columns=[col.name], reason=f"Column name ends with '_id' and has integer type ({col.data_type})", confidence=0.7
                     )
                     break
-        
+
         # Suggest natural keys
         natural_key_suggestions = []
-        
+
         # Look for columns with "code", "name", "number" in the name
         for col in schema.columns:
             col_lower = col.name.lower()
-            if any(keyword in col_lower for keyword in ['code', 'name', 'number', 'key']):
+            if any(keyword in col_lower for keyword in ["code", "name", "number", "key"]):
                 if not col.nullable or col.is_primary_key:
                     confidence = 0.8 if col.is_primary_key else 0.6
-                    natural_key_suggestions.append(KeySuggestion(
-                        columns=[col.name],
-                        reason=f"Column name suggests identifier ('{col.name}')",
-                        confidence=confidence
-                    ))
-        
+                    natural_key_suggestions.append(
+                        KeySuggestion(columns=[col.name], reason=f"Column name suggests identifier ('{col.name}')", confidence=confidence)
+                    )
+
         # Build column types dictionary
         column_types = {col.name: col.data_type for col in schema.columns if col.name in columns}
-        
+
         return {
             "entity_name": entity_name,
             "type": "sql",

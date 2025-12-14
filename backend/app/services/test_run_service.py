@@ -28,9 +28,7 @@ class TestRunService:
         self._active_runs: Dict[str, TestRunResult] = {}
         self._cancel_flags: Dict[str, bool] = {}
 
-    def init_test_run(
-        self, config_name: str, options: TestRunOptions
-    ) -> TestRunResult:
+    def init_test_run(self, config_name: str, options: TestRunOptions) -> TestRunResult:
         """
         Initialize a test run (returns immediately with PENDING status).
 
@@ -57,7 +55,7 @@ class TestRunService:
         # Store active run
         self._active_runs[run_id] = result
         self._cancel_flags[run_id] = False
-        
+
         return result
 
     async def execute_test_run(self, run_id: str) -> None:
@@ -103,7 +101,7 @@ class TestRunService:
 
             # Process entities
             result.entities_total = len(entity_names)
-            
+
             for idx, entity_name in enumerate(entity_names):
                 # Check for cancellation
                 if self._cancel_flags.get(run_id, False):
@@ -115,14 +113,10 @@ class TestRunService:
                 result.current_entity = entity_name
                 result.entities_completed = idx
 
-                logger.info(
-                    f"Processing entity {idx + 1}/{len(entity_names)}: {entity_name}"
-                )
+                logger.info(f"Processing entity {idx + 1}/{len(entity_names)}: {entity_name}")
 
                 entity_start = time.time()
-                entity_result = await self._process_entity(
-                    entity_name, entities_data[entity_name], result.options
-                )
+                entity_result = await self._process_entity(entity_name, entities_data[entity_name], result.options)
                 entity_result.execution_time_ms = int((time.time() - entity_start) * 1000)
 
                 result.entities_processed.append(entity_result)
@@ -154,10 +148,8 @@ class TestRunService:
             # Calculate total time
             completed_at = datetime.utcnow()
             result.completed_at = completed_at
-            result.total_time_ms = int(
-                (completed_at - started_at).total_seconds() * 1000
-            )
-            
+            result.total_time_ms = int((completed_at - started_at).total_seconds() * 1000)
+
             # Store final result
             self._active_runs[run_id] = result
             logger.info(
@@ -170,7 +162,7 @@ class TestRunService:
 
             # Clean up cancel flag
             self._cancel_flags.pop(run_id, None)
-        
+
         logger.info(f"Test run {run_id} completed with status: {result.status}")
 
     async def _process_entity(
@@ -201,17 +193,17 @@ class TestRunService:
         try:
             # Get entity type
             entity_type = entity_config.get("type", "data")
-            
+
             # For now, just analyze configuration
             # Full implementation would actually run the transformation pipeline
-            
+
             if entity_type == "fixed":
                 # Fixed entity - use fixed values
                 values = entity_config.get("values", [])
                 if values:
                     result.rows_in = len(values)
                     result.rows_out = len(values)
-                    
+
                     if options.output_format == OutputFormat.PREVIEW:
                         # Convert values to dict format
                         columns = entity_config.get("columns", [])
@@ -219,10 +211,7 @@ class TestRunService:
                             preview = []
                             for row_vals in values[:10]:
                                 if isinstance(row_vals, list):
-                                    row_dict = {
-                                        col: val
-                                        for col, val in zip(columns, row_vals)
-                                    }
+                                    row_dict = {col: val for col, val in zip(columns, row_vals)}
                                     preview.append(row_dict)
                             result.preview_rows = preview
                 else:
@@ -230,9 +219,7 @@ class TestRunService:
             else:
                 # Data or SQL entity - would need actual data source
                 result.status = "skipped"
-                result.warnings.append(
-                    "Entity skipped - full processing pipeline not yet implemented in test run"
-                )
+                result.warnings.append("Entity skipped - full processing pipeline not yet implemented in test run")
 
             # Basic validation
             if options.validate_foreign_keys:
@@ -271,14 +258,10 @@ class TestRunService:
 
         entities_completed = len(result.entities_processed)
         entities_total = len(result.entities_processed) + (
-            len(result.options.entities or []) - entities_completed
-            if result.options.entities
-            else 0
+            len(result.options.entities or []) - entities_completed if result.options.entities else 0
         )
 
-        progress_percentage = (
-            (entities_completed / entities_total * 100) if entities_total > 0 else 0
-        )
+        progress_percentage = (entities_completed / entities_total * 100) if entities_total > 0 else 0
 
         elapsed_time_ms = (
             int((datetime.utcnow() - result.started_at).total_seconds() * 1000)
@@ -288,11 +271,7 @@ class TestRunService:
 
         # Estimate remaining time
         estimated_time_remaining_ms = None
-        if (
-            result.status == TestRunStatus.RUNNING
-            and entities_completed > 0
-            and progress_percentage > 0
-        ):
+        if result.status == TestRunStatus.RUNNING and entities_completed > 0 and progress_percentage > 0:
             avg_time_per_entity = elapsed_time_ms / entities_completed
             remaining_entities = entities_total - entities_completed
             estimated_time_remaining_ms = int(avg_time_per_entity * remaining_entities)

@@ -25,7 +25,7 @@ def get_config(
 ) -> ConfigLike:
     """
     Get configuration from provider.
-    
+
     Used as FastAPI dependency for endpoints needing config access.
     """
     return provider.get_config()
@@ -36,7 +36,7 @@ def get_data_source_service(
 ) -> Generator[DataSourceService, None, None]:
     """
     Get DataSourceService instance.
-    
+
     Creates service with current configuration.
     Used as FastAPI dependency for data source endpoints.
     """
@@ -53,7 +53,7 @@ def get_schema_service(
 ) -> Generator[SchemaIntrospectionService, None, None]:
     """
     Get SchemaIntrospectionService instance.
-    
+
     Creates service with current configuration.
     Used as FastAPI dependency for schema introspection endpoints.
     """

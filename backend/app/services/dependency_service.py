@@ -97,19 +97,11 @@ class DependencyService:
         depths = self._calculate_depths(dependency_map, topological_order)
 
         # Build nodes and edges
-        nodes = [
-            DependencyNode(name=name, depends_on=deps, depth=depths.get(name, 0))
-            for name, deps in dependency_map.items()
-        ]
+        nodes = [DependencyNode(name=name, depends_on=deps, depth=depths.get(name, 0)) for name, deps in dependency_map.items()]
 
-        edges = [
-            (entity, dep) for entity, deps in dependency_map.items() for dep in deps
-        ]
+        edges = [(entity, dep) for entity, deps in dependency_map.items() for dep in deps]
 
-        logger.debug(
-            f"Analyzed dependencies: {len(nodes)} nodes, {len(edges)} edges, "
-            f"cycles: {has_cycles}"
-        )
+        logger.debug(f"Analyzed dependencies: {len(nodes)} nodes, {len(edges)} edges, " f"cycles: {has_cycles}")
 
         return DependencyGraph(
             nodes=nodes,
@@ -210,9 +202,7 @@ class DependencyService:
 
         return result
 
-    def _calculate_depths(
-        self, dependency_map: dict[str, list[str]], topological_order: list[str] | None
-    ) -> dict[str, int]:
+    def _calculate_depths(self, dependency_map: dict[str, list[str]], topological_order: list[str] | None) -> dict[str, int]:
         """
         Calculate depth of each node in dependency graph.
 

@@ -266,12 +266,12 @@ async def get_type_mappings(
     """
     try:
         from app.services.type_mapping_service import TypeMappingService
-        
+
         logger.info(f"Getting type mappings for {table_name} in {name}")
-        
+
         # Get table schema
         table_schema = await service.get_table_schema(name, table_name, schema)
-        
+
         # Convert columns to dict format
         columns = [
             {
@@ -282,20 +282,17 @@ async def get_type_mappings(
             }
             for col in table_schema.columns
         ]
-        
+
         # Get type mappings
         type_service = TypeMappingService()
         mappings = type_service.get_mappings_for_table(columns)
-        
+
         # Convert to dict for JSON response
-        result = {
-            col_name: mapping.model_dump()
-            for col_name, mapping in mappings.items()
-        }
-        
+        result = {col_name: mapping.model_dump() for col_name, mapping in mappings.items()}
+
         logger.info(f"Generated {len(result)} type mappings for {table_name}")
         return result
-        
+
     except SchemaServiceError as e:
         if "not found" in str(e).lower():
             raise HTTPException(
@@ -324,17 +321,17 @@ async def import_entity_from_table(
 ):
     """
     Generate entity configuration from a database table.
-    
+
     **Path Parameters**:
     - `name`: Data source identifier
     - `table_name`: Table name to import
-    
+
     **Request Body** (optional):
     - `entity_name`: Custom entity name (defaults to table name)
     - `selected_columns`: Specific columns to include (defaults to all)
-    
+
     **Returns**: Entity configuration with suggestions
-    
+
     **Features**:
     - Auto-generates SQL query
     - Suggests surrogate_id from primary keys
@@ -342,22 +339,19 @@ async def import_entity_from_table(
     - Provides column type information
     """
     from app.models.entity_import import EntityImportRequest, EntityImportResult
-    
+
     if request is None:
         request = EntityImportRequest()
-    
+
     try:
         logger.info(f"Importing entity from table {table_name} in {name}")
-        
+
         result = await service.import_entity_from_table(
-            data_source_name=name,
-            table_name=table_name,
-            entity_name=request.entity_name,
-            selected_columns=request.selected_columns
+            data_source_name=name, table_name=table_name, entity_name=request.entity_name, selected_columns=request.selected_columns
         )
-        
+
         return EntityImportResult(**result)
-        
+
     except SchemaServiceError as e:
         logger.error(f"Error importing entity from {table_name}: {e}")
         if "not found" in str(e).lower():
