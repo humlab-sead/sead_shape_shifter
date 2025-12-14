@@ -546,8 +546,8 @@ class SchemaIntrospectionService:
         try:
             data = await asyncio.wait_for(loader.read_sql(query), timeout=30.0)
             return data
-        except asyncio.TimeoutError:
-            raise SchemaServiceError("Query execution timed out after 30 seconds")
+        except asyncio.TimeoutError as e:
+            raise SchemaServiceError("Query execution timed out after 30 seconds") from e
         except Exception as e:  # pylint: disable=broad-except
             raise SchemaServiceError(f"Query execution failed: {str(e)}") from e
 

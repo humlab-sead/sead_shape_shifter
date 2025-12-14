@@ -61,7 +61,7 @@ def sample_config():
     }
 
     return TablesConfig(
-        entities=entities_cfg,
+        entities_cfg=entities_cfg,
         options={},
     )
 

@@ -143,7 +143,7 @@ class TestDataSourceConfig:
         )
 
         assert isinstance(config.password, SecretStr)
-        assert config.password.get_secret_value() == "secret123"
+        assert config.password.get_secret_value() == "secret123"  # pylint: disable=no-member
 
         # Password should not appear in string representation
         config_str = str(config)
@@ -176,7 +176,7 @@ class TestDataSourceTestResult:
         )
 
         assert not result.success
-        assert "timeout" in result.message.lower()
+        assert "timeout" in result.message.lower()  # pylint: disable=no-member
         assert result.connection_time_seconds == 30.0
 
 

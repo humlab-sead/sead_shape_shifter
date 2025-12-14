@@ -181,7 +181,7 @@ class TestRunService:
         Returns:
             EntityTestResult with processing details
         """
-        result = EntityTestResult(
+        result: EntityTestResult = EntityTestResult(
             entity_name=entity_name,
             status="success",
             rows_in=0,
@@ -214,12 +214,13 @@ class TestRunService:
                                     preview.append(row_dict)
                             result.preview_rows = preview
                 else:
-                    result.warnings.append("Fixed entity has no values defined")
+                    result.warnings.append("Fixed entity has no values defined")  # pylint: disable=no-member
             else:
                 # Data or SQL entity - would need actual data source
                 result.status = "skipped"
-                result.warnings.append("Entity skipped - full processing pipeline not yet implemented in test run")
-
+                result.warnings.append(  # pylint: disable=no-member
+                    "Entity skipped - full processing pipeline not yet implemented in test run"
+                )
             # Basic validation
             if options.validate_foreign_keys:
                 foreign_keys = entity_config.get("foreign_keys", [])
@@ -232,7 +233,7 @@ class TestRunService:
                             message="Foreign key missing remote entity name",
                             suggestion="Add 'entity' field to foreign key configuration",
                         )
-                        result.validation_issues.append(issue)
+                        result.validation_issues.append(issue)  # pylint: disable=no-member
 
         except Exception as e:  # pylint: disable=broad-except
             logger.error(f"Error processing entity {entity_name}: {e}", exc_info=True)

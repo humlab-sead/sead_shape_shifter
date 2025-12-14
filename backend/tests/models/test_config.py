@@ -56,7 +56,7 @@ class TestConfiguration:
         )
         config = Configuration(metadata=metadata)
         assert config.metadata is not None
-        assert config.metadata.name == "test_config"
+        assert config.metadata.name == "test_config"  # pylint: disable=no-member
 
 
 class TestConfigMetadata:
