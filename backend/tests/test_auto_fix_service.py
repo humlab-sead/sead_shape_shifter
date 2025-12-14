@@ -1,8 +1,8 @@
 """
 Unit tests for auto-fix service.
 """
-import asyncio
 
+import asyncio
 from pathlib import Path
 from unittest.mock import Mock, patch
 
