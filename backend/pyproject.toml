@@ -22,11 +22,14 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "pytest-asyncio",
-    "pytest-cov",
-    "httpx",
-    "ruff",
+    "pylint>=3.3.8",
+    "ruff>=0.13.2",
+    "black>=25.9.0",
+    "pytest >=8.1.1,<9",
+    "pytest-asyncio >=0.22.0,<1",
+    "pytest-cov >=4.1.0,<5",
+    "httpx >=0.24.1,<1",
+    "vulture>=2.14",
 ]
 
 [build-system]
@@ -37,13 +40,96 @@ build-backend = "hatchling.build"
 packages = ["app"]
 
 [tool.ruff]
+# Ruff = linter + (optional) formatter
+target-version = "py313"
 line-length = 140
-target-version = "py311"
 
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP"]
-ignore = ["E501"]  # Line too long (handled by formatter)
+# Import checking rules
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # Pyflakes
+    "I",  # isort
+    "TID", # flake8-tidy-imports
+]
 
+[tool.ruff.flake8-tidy-imports]
+# Prevent relative imports beyond current package
+ban-relative-imports = "parents"
+
+[tool.ruff.format]
+# Use Ruff's formatter (Black-compatible). Set to false if you prefer Black.
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "R0904",
+    "R0903",
+    "R0801",
+    "too-many-return-statements",
+    "too-many-branches",
+    "too-many-statements",
+    "too-many-lines",
+    "too-many-arguments",
+    "too-few-public-methods",
+    "too-many-nested-blocks",
+    "too-many-instance-attributes",
+    "too-many-positional-arguments",
+    "global-variable-not-assigned",
+    "logging-fstring-interpolation",
+    "too-many-function-args",
+    "too-many-locals"
+]
+
+[tool.black]
+line-length = 140
+# target-version = ['py313']
+
+
+[tool.pylint]
+max-line-length = 140
+max-args = 10
+
+# Import sorting (handled by Ruff)
+[tool.isort]
+line_length = 142
+# multi_line_output = 3
+profile = "black"
+
+# Naming tweaks (optional)
+[tool.ruff.pep8-naming]
+classmethod-decorators = ["classmethod"]
+
+# --------------------
+# mypy (type checking)
+# --------------------
+[tool.mypy]
+python_version = "3.13"
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+no_implicit_optional = true
+strict_equality = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+show_error_codes = true
+pretty = true
+
+# Loosen types in tests
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+warn_return_any = false
+
+# --------------------
+# pytest
+# --------------------
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
@@ -51,3 +137,4 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --strict-markers"
 asyncio_mode = "auto"
+
