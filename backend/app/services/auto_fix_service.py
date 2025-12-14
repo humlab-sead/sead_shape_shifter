@@ -217,7 +217,8 @@ class AutoFixService:
 
             if not errors:
                 # Save updated configuration
-                config_dict = config.model_dump(exclude_none=True, by_alias=True)
+                # Config is already a dict, no need to call model_dump
+                config_dict = config if isinstance(config, dict) else config.model_dump(exclude_none=True, by_alias=True)
                 self.config_service.save_configuration(config_name, config_dict)
 
                 return FixResult(
@@ -240,7 +241,8 @@ class AutoFixService:
 
     def _create_backup(self, config_name: str) -> Path:
         """Create backup of configuration before applying fixes."""
-        config_dir = self.yaml_service.config_dir
+        from app.core.config import settings
+        config_dir = settings.CONFIGURATIONS_DIR
         config_path = config_dir / f"{config_name}.yml"
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -255,7 +257,8 @@ class AutoFixService:
 
     def _rollback(self, config_name: str, backup_path: Path):
         """Rollback configuration to backup."""
-        config_dir = self.yaml_service.config_dir
+        from app.core.config import settings
+        config_dir = settings.CONFIGURATIONS_DIR
         config_path = config_dir / f"{config_name}.yml"
 
         shutil.copy2(backup_path, config_path)
@@ -274,30 +277,56 @@ class AutoFixService:
 
     def _remove_column(self, config: Any, action: FixAction):
         """Remove a column from entity configuration."""
-        entity = config.entities.get(action.entity)
-        if not entity or not entity.columns:
+        # Handle both dict and object config
+        entities = config.get("entities") if isinstance(config, dict) else config.entities
+        if not entities:
             return
-
-        if action.old_value in entity.columns:
-            entity.columns.remove(action.old_value)
-            logger.info(f"Removed column '{action.old_value}' from entity '{action.entity}'")
+        
+        entity = entities.get(action.entity)
+        if not entity:
+            return
+        
+        # Handle both dict and object entity
+        columns = entity.get("columns") if isinstance(entity, dict) else getattr(entity, "columns", None)
+        if not columns or action.old_value not in columns:
+            return
+        
+        columns.remove(action.old_value)
+        logger.info(f"Removed column '{action.old_value}' from entity '{action.entity}'")
 
     def _add_column(self, config: Any, action: FixAction):
         """Add a column to entity configuration."""
-        entity = config.entities.get(action.entity)
+        # Handle both dict and object config
+        entities = config.get("entities") if isinstance(config, dict) else config.entities
+        if not entities:
+            return
+        
+        entity = entities.get(action.entity)
         if not entity:
             return
-
-        if not entity.columns:
-            entity.columns = []
-
-        if action.new_value and action.new_value not in entity.columns:
-            entity.columns.append(action.new_value)
+        
+        # Handle both dict and object entity
+        if isinstance(entity, dict):
+            if "columns" not in entity:
+                entity["columns"] = []
+            columns = entity["columns"]
+        else:
+            if not hasattr(entity, "columns") or entity.columns is None:
+                entity.columns = []
+            columns = entity.columns
+        
+        if action.new_value and action.new_value not in columns:
+            columns.append(action.new_value)
             logger.info(f"Added column '{action.new_value}' to entity '{action.entity}'")
 
     def _update_reference(self, config: Any, action: FixAction):
         """Update a @value reference in entity configuration."""
-        entity = config.entities.get(action.entity)
+        # Handle both dict and object config
+        entities = config.get("entities") if isinstance(config, dict) else config.entities
+        if not entities:
+            return
+        
+        entity = entities.get(action.entity)
         if not entity:
             return
 
