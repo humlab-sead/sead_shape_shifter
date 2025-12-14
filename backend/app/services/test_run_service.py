@@ -210,7 +210,10 @@ class TestRunService:
                             preview = []
                             for row_vals in values[:10]:
                                 if isinstance(row_vals, list):
-                                    row_dict = {col: val for col, val in zip(columns, row_vals)}
+                                    row_dict = dict(zip(columns, row_vals))
+                                    # {  # pylint: disable=unnecessary-comprehension
+                                    #     col: val for col, val in zip(columns, row_vals)
+                                    # }
                                     preview.append(row_dict)
                             result.preview_rows = preview
                 else:
