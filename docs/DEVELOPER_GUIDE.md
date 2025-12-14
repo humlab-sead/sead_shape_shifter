@@ -38,7 +38,7 @@ This guide is for developers who are:
 
 - [UI Architecture](UI_ARCHITECTURE.md) - Detailed architecture
 - [User Guide](USER_GUIDE.md) - End-user documentation
-- [Configuration Reference](CONFIGURATION_REFERENCE.md) - YAML syntax
+- [Configuration Guide](CONFIGURATION_GUIDE.md) - YAML syntax
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures
 
 ---
@@ -1727,7 +1727,7 @@ chore: update dependencies
 - [UI Architecture](UI_ARCHITECTURE.md) - Detailed architecture
 - [User Guide](USER_GUIDE.md) - End-user documentation
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures
-- [Configuration Reference](CONFIGURATION_REFERENCE.md) - YAML syntax
+- [Configuration Guide](CONFIGURATION_GUIDE.md) - YAML syntax
 - [API Reference](API_REFERENCE.md) - API documentation
 
 ---
