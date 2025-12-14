@@ -759,7 +759,7 @@ docker-compose up -d
 - [User Guide](USER_GUIDE.md) - User documentation
 - [Developer Guide](DEVELOPER_GUIDE.md) - Development guide
 - [Testing Guide](TESTING_GUIDE.md) - Testing documentation
-- [Configuration Reference](CONFIGURATION_REFERENCE.md) - Config syntax
+- [Configuration Guide](CONFIGURATION_GUIDE.md) - Config syntax
 
 ---
 
