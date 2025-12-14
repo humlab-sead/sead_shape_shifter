@@ -2,14 +2,16 @@
 Unit tests for auto-fix service.
 """
 
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, mock_open, patch
+from unittest.mock import Mock, patch
 
 import pytest
-from app.models.fix import FixAction, FixActionType, FixResult, FixSuggestion
-from app.models.validation import ValidationCategory, ValidationError, ValidationPriority
-from app.services.auto_fix_service import AutoFixService
+
+from backend.app.models.fix import FixAction, FixActionType, FixSuggestion
+from backend.app.models.validation import ValidationCategory, ValidationError, ValidationPriority
+from backend.app.services.auto_fix_service import AutoFixService
+
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 @pytest.fixture

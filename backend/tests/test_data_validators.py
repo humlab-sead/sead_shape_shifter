@@ -6,9 +6,10 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
 import pytest
-from app.models.preview import ColumnInfo, PreviewResult
-from app.models.validation import ValidationCategory, ValidationPriority
-from app.validators.data_validators import (
+
+from backend.app.models.preview import ColumnInfo, PreviewResult
+from backend.app.models.validation import ValidationCategory, ValidationPriority
+from backend.app.validators.data_validators import (
     ColumnExistsValidator,
     DataTypeCompatibilityValidator,
     DataValidationService,
@@ -16,6 +17,8 @@ from app.validators.data_validators import (
     NaturalKeyUniquenessValidator,
     NonEmptyResultValidator,
 )
+
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 def create_preview_result(rows, entity_name="test_entity"):

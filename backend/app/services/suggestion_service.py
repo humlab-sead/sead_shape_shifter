@@ -2,14 +2,15 @@
 
 from typing import Any, Dict, List, Optional, Set
 
-from app.models.data_source import TableSchema
-from app.models.suggestion import (
+from loguru import logger
+
+from backend.app.models.data_source import TableSchema
+from backend.app.models.suggestion import (
     DependencySuggestion,
     EntitySuggestions,
     ForeignKeySuggestion,
 )
-from app.services.schema_service import SchemaIntrospectionService
-from loguru import logger
+from backend.app.services.schema_service import SchemaIntrospectionService
 
 
 class SuggestionService:

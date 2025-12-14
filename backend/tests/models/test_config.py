@@ -1,7 +1,7 @@
 """Tests for configuration models."""
 
-from app.models.config import ConfigMetadata, Configuration
-from app.models.entity import Entity
+from backend.app.models.config import ConfigMetadata, Configuration
+from backend.app.models.entity import Entity
 
 
 class TestConfiguration:

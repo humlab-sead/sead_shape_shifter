@@ -3,7 +3,8 @@ Tests for Type Mapping Service
 """
 
 import pytest
-from app.services.type_mapping_service import TypeMapping, TypeMappingService
+
+from backend.app.services.type_mapping_service import TypeMappingService
 
 
 class TestTypeMappingService:

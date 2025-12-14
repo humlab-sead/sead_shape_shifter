@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from math import e
-from typing import Any, Literal, Self
+from typing import Any, Self
 
 import pandas as pd
 from loguru import logger
@@ -41,8 +40,7 @@ class ConstraintValidator(ABC):
         """Raise a constraint violation exception with context."""
         if self.raise_on_violation:
             raise ForeignKeyConstraintViolation(f"{self.entity_name} -> {self.fk.remote_entity}: {message}")
-        else:
-            logger.error(f"{self.entity_name} -> {self.fk.remote_entity}: {message}")
+        logger.error(f"{self.entity_name} -> {self.fk.remote_entity}: {message}")
 
     @abstractmethod
     def is_applicable(self) -> bool:

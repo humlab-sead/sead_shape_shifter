@@ -4,12 +4,12 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from app.api.v1.api import api_router
-from app.core.config import settings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
+from backend.app.api.v1.api import api_router
+from backend.app.core.config import settings
 from src.configuration.provider import ConfigStore
 
 

@@ -1,10 +1,14 @@
 """Tests for entity API endpoints."""
 
 import pytest
-from app.main import app
 from fastapi.testclient import TestClient
 
+from backend.app.core.config import settings
+from backend.app.main import app
+
 client = TestClient(app)
+
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 @pytest.fixture
@@ -36,7 +40,6 @@ class TestEntitiesList:
 
     def test_list_entities(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test listing entities in configuration."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -59,7 +62,6 @@ class TestEntitiesList:
 
     def test_list_entities_empty(self, tmp_path, monkeypatch, reset_services):
         """Test listing entities in empty configuration."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -74,7 +76,6 @@ class TestEntitiesList:
 
     def test_list_entities_nonexistent_config(self, tmp_path, monkeypatch, reset_services):
         """Test listing entities in non-existent configuration."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -87,7 +88,6 @@ class TestEntitiesGet:
 
     def test_get_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test getting specific entity."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -107,7 +107,6 @@ class TestEntitiesGet:
 
     def test_get_nonexistent_entity(self, tmp_path, monkeypatch, reset_services):
         """Test getting non-existent entity."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -124,7 +123,6 @@ class TestEntitiesCreate:
 
     def test_create_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test creating new entity."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -147,7 +145,6 @@ class TestEntitiesCreate:
 
     def test_create_duplicate_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test creating duplicate entity fails."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -166,7 +163,6 @@ class TestEntitiesCreate:
 
     def test_create_entity_nonexistent_config(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test creating entity in non-existent configuration fails."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -182,7 +178,6 @@ class TestEntitiesUpdate:
 
     def test_update_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test updating existing entity."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -208,7 +203,6 @@ class TestEntitiesUpdate:
 
     def test_update_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test updating non-existent entity fails."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -228,7 +222,6 @@ class TestEntitiesDelete:
 
     def test_delete_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test deleting entity."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -248,7 +241,6 @@ class TestEntitiesDelete:
 
     def test_delete_nonexistent_entity(self, tmp_path, monkeypatch, reset_services):
         """Test deleting non-existent entity fails."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 

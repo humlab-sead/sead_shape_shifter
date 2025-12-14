@@ -2,12 +2,13 @@
 
 from typing import Optional
 
-from app.models.join_test import JoinTestResult
-from app.models.preview import PreviewResult
-from app.services.config_service import ConfigurationService
-from app.services.preview_service import PreviewService
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from loguru import logger
+
+from backend.app.models.join_test import JoinTestResult
+from backend.app.models.preview import PreviewResult
+from backend.app.services.config_service import ConfigurationService
+from backend.app.services.preview_service import PreviewService
 
 router = APIRouter()
 

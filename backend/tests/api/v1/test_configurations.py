@@ -1,8 +1,12 @@
 """Tests for configuration API endpoints."""
 
 import pytest
-from app.main import app
 from fastapi.testclient import TestClient
+
+from backend.app.core.config import settings
+from backend.app.main import app
+
+# pylint: disable=redefined-outer-name, unused-argument
 
 client = TestClient(app)
 
@@ -44,7 +48,6 @@ class TestConfigurationsList:
 
     def test_list_configurations_empty(self, tmp_path, monkeypatch, reset_services):
         """Test listing when no configurations exist."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -54,7 +57,6 @@ class TestConfigurationsList:
 
     def test_list_configurations(self, tmp_path, monkeypatch, reset_services, sample_config_data):
         """Test listing configurations."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -76,7 +78,6 @@ class TestConfigurationsGet:
 
     def test_get_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
         """Test getting existing configuration."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -92,7 +93,6 @@ class TestConfigurationsGet:
 
     def test_get_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services):
         """Test getting non-existent configuration returns 404."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -105,7 +105,6 @@ class TestConfigurationsCreate:
 
     def test_create_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
         """Test creating new configuration."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -118,7 +117,6 @@ class TestConfigurationsCreate:
 
     def test_create_duplicate_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
         """Test creating duplicate configuration returns 400."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -135,7 +133,6 @@ class TestConfigurationsUpdate:
 
     def test_update_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
         """Test updating existing configuration."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -152,7 +149,6 @@ class TestConfigurationsUpdate:
 
     def test_update_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services):
         """Test updating non-existent configuration returns 404."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -168,7 +164,6 @@ class TestConfigurationsDelete:
 
     def test_delete_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
         """Test deleting configuration."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -185,7 +180,6 @@ class TestConfigurationsDelete:
 
     def test_delete_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services):
         """Test deleting non-existent configuration returns 404."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -198,7 +192,6 @@ class TestConfigurationsValidate:
 
     def test_validate_valid_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
         """Test validating valid configuration."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -214,7 +207,6 @@ class TestConfigurationsValidate:
 
     def test_validate_invalid_configuration(self, tmp_path, monkeypatch, reset_services):
         """Test validating invalid configuration."""
-        from app.core.config import settings
 
         # Use unique name to avoid collision with valid test
         config_name = "invalid_test_config"
@@ -237,7 +229,6 @@ class TestConfigurationsBackups:
 
     def test_list_backups(self, tmp_path, monkeypatch, reset_services, sample_config_data):
         """Test listing backups."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
         monkeypatch.setattr(settings, "BACKUPS_DIR", tmp_path / "backups")
@@ -258,7 +249,6 @@ class TestConfigurationsBackups:
 
     def test_restore_backup(self, reset_services, tmp_path, monkeypatch, sample_config_data):
         """Test restoring from backup."""
-        from app.core.config import settings
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
         monkeypatch.setattr(settings, "BACKUPS_DIR", tmp_path / "backups")

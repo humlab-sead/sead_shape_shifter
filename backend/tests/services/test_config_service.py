@@ -1,8 +1,9 @@
 """Tests for configuration service."""
 
 import pytest
-from app.models.entity import Entity
-from app.services.config_service import (
+
+from backend.app.models.entity import Entity
+from backend.app.services.config_service import (
     ConfigurationNotFoundError,
     ConfigurationService,
     ConfigurationServiceError,
@@ -10,6 +11,8 @@ from app.services.config_service import (
     EntityNotFoundError,
     InvalidConfigurationError,
 )
+
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 @pytest.fixture

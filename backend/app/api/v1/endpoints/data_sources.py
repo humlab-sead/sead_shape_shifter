@@ -7,15 +7,16 @@ Supports CRUD operations, connection testing, and status checking.
 
 from typing import List
 
-from app.api.dependencies import get_data_source_service
-from app.models.data_source import (
+from fastapi import APIRouter, Depends, HTTPException, status
+from loguru import logger
+
+from backend.app.api.dependencies import get_data_source_service
+from backend.app.models.data_source import (
     DataSourceConfig,
     DataSourceStatus,
     DataSourceTestResult,
 )
-from app.services.data_source_service import DataSourceService
-from fastapi import APIRouter, Depends, HTTPException, status
-from loguru import logger
+from backend.app.services.data_source_service import DataSourceService
 
 router = APIRouter(prefix="/data-sources", tags=["data-sources"])
 

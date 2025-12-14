@@ -168,7 +168,7 @@ make frontend-run
 
 ### Backend (Python/Pydantic):
 ```python
-from app.models.entity import Entity, ForeignKeyConfig
+from backend.app.models.entity import Entity, ForeignKeyConfig
 
 entity = Entity(
     name="sample",

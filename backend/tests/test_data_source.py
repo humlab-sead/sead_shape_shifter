@@ -1,14 +1,15 @@
 """Tests for data source models and service."""
 
 import pytest
-from app.models.data_source import (
+from pydantic import ValidationError
+
+from backend.app.models.data_source import (
     ColumnMetadata,
     DataSourceConfig,
     DataSourceTestResult,
     DataSourceType,
     TableMetadata,
 )
-from pydantic import ValidationError
 
 
 class TestDataSourceType:

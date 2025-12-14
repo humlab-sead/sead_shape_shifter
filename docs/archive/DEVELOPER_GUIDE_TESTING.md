@@ -171,7 +171,7 @@ async def test_apply_fix_actions(
 ```python
 # tests/unit/test_yaml_service.py
 import pytest
-from app.core.errors import ConfigurationNotFoundError
+from backend.app.core.errors import ConfigurationNotFoundError
 
 def test_load_nonexistent_config_raises_error(yaml_service):
     """Test that loading non-existent config raises error."""
@@ -215,7 +215,7 @@ def test_create_backup_uses_correct_path(auto_fix_service):
 # tests/integration/test_api_validation.py
 import pytest
 from httpx import AsyncClient
-from app.main import app
+from backend.app.main import app
 
 @pytest.mark.asyncio
 async def test_validate_configuration_endpoint():
@@ -258,9 +258,9 @@ async def test_validate_nonexistent_config_returns_404():
 ```python
 # tests/integration/test_validation_cache_integration.py
 import pytest
-from app.services.validation_service import ValidationService
-from app.services.yaml_service import YAMLService
-from app.core.cache import CacheService
+from backend.app.services.validation_service import ValidationService
+from backend.app.services.yaml_service import YAMLService
+from backend.app.core.cache import CacheService
 
 @pytest.mark.asyncio
 async def test_validation_caching_integration():

@@ -4,22 +4,25 @@ Tests for Schema Introspection Service
 Tests schema discovery for PostgreSQL, MS Access, and SQLite databases.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pandas as pd
 import pytest
-from app.models.data_source import (
+
+from backend.app.models.data_source import (
     ColumnMetadata,
     DataSourceConfig,
     DataSourceType,
     TableMetadata,
     TableSchema,
 )
-from app.services.schema_service import (
+from backend.app.services.schema_service import (
     SchemaCache,
     SchemaIntrospectionService,
     SchemaServiceError,
 )
+
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 class TestSchemaCache:
@@ -180,9 +183,9 @@ class TestSchemaIntrospectionService:
         async def mock_execute(config, query):
             if "information_schema.columns" in query:
                 return columns_data
-            elif "pg_index" in query:
+            if "pg_index" in query:
                 return pk_data
-            elif "COUNT(*)" in query:
+            if "COUNT(*)" in query:
                 return count_data
             return pd.DataFrame()
 

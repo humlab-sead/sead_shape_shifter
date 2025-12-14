@@ -1,16 +1,16 @@
 """Tests for entity preview service."""
 
-import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
 
-from backend.app.models.preview import ColumnInfo, PreviewResult
-from backend.app.services.config_service import ConfigurationService
+from backend.app.models.preview import PreviewResult
 from backend.app.services.preview_service import PreviewCache, PreviewService
-from src.config_model import TableConfig, TablesConfig
+from src.config_model import TablesConfig
+
+# pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
 
 
 @pytest.fixture
@@ -30,35 +30,37 @@ def preview_service(config_service):
 @pytest.fixture
 def sample_config():
     """Create a sample configuration."""
-    return TablesConfig(
-        entities={
-            "users": TableConfig(
-                name="users",
-                type="sql",
-                data_source="test_db",
-                query="SELECT * FROM users",
-                surrogate_id="user_id",
-                keys=["username"],
-                columns=["user_id", "username", "email"],
-            ),
-            "orders": TableConfig(
-                name="orders",
-                type="sql",
-                data_source="test_db",
-                query="SELECT * FROM orders",
-                source="users",
-                surrogate_id="order_id",
-                columns=["order_id", "user_id", "total"],
-                foreign_keys=[
-                    {
-                        "entity": "users",
-                        "local_keys": ["user_id"],
-                        "remote_keys": ["user_id"],
-                        "how": "left",
-                    }
-                ],
-            ),
+    entities_cfg = {
+        "users": {
+            "name": "users",
+            "type": "sql",
+            "data_source": "test_db",
+            "query": "SELECT * FROM users",
+            "surrogate_id": "user_id",
+            "keys": ["username"],
+            "columns": ["user_id", "username", "email"],
         },
+        "orders": {
+            "name": "orders",
+            "type": "sql",
+            "data_source": "test_db",
+            "query": "SELECT * FROM orders",
+            "source": "users",
+            "surrogate_id": "order_id",
+            "columns": ["order_id", "user_id", "total"],
+            "foreign_keys": [
+                {
+                    "entity": "users",
+                    "local_keys": ["user_id"],
+                    "remote_keys": ["user_id"],
+                    "how": "left",
+                }
+            ],
+        },
+    }
+
+    return TablesConfig(
+        entities=entities_cfg,
         options={},
     )
 

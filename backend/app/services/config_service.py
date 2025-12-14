@@ -2,11 +2,12 @@
 
 from typing import Any
 
-from app.core.config import settings
-from app.models.config import ConfigMetadata, Configuration
-from app.models.entity import Entity
-from app.services.yaml_service import YamlLoadError, YamlSaveError, get_yaml_service
 from loguru import logger
+
+from backend.app.core.config import settings
+from backend.app.models.config import ConfigMetadata, Configuration
+from backend.app.models.entity import Entity
+from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, get_yaml_service
 
 
 class ConfigurationServiceError(Exception):

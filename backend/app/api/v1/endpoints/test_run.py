@@ -2,15 +2,16 @@
 
 from typing import List, Optional
 
-from app.models.test_run import (
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path
+from loguru import logger
+
+from backend.app.models.test_run import (
     TestProgress,
     TestRunRequest,
     TestRunResult,
 )
-from app.services.config_service import ConfigurationService
-from app.services.test_run_service import TestRunService
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path
-from loguru import logger
+from backend.app.services.config_service import ConfigurationService
+from backend.app.services.test_run_service import TestRunService
 
 router = APIRouter()
 

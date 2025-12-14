@@ -2,19 +2,20 @@
 
 from typing import Any
 
-from app.core.config import settings
-from app.models.config import ConfigMetadata, Configuration
-from app.models.validation import ValidationResult
-from app.services.config_service import (
+from fastapi import APIRouter, HTTPException, status
+from loguru import logger
+from pydantic import BaseModel, Field
+
+from backend.app.core.config import settings
+from backend.app.models.config import ConfigMetadata, Configuration
+from backend.app.models.validation import ValidationResult
+from backend.app.services.config_service import (
     ConfigurationNotFoundError,
     ConfigurationServiceError,
     get_config_service,
 )
-from app.services.validation_service import get_validation_service
-from app.services.yaml_service import YamlServiceError, get_yaml_service
-from fastapi import APIRouter, HTTPException, status
-from loguru import logger
-from pydantic import BaseModel, Field
+from backend.app.services.validation_service import get_validation_service
+from backend.app.services.yaml_service import YamlServiceError, get_yaml_service
 
 router = APIRouter()
 

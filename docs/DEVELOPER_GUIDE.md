@@ -1028,7 +1028,7 @@ export default App;
 # backend/tests/unit/test_validation_service.py
 import pytest
 from unittest.mock import AsyncMock, Mock
-from app.services.validation_service import ValidationService
+from backend.app.services.validation_service import ValidationService
 
 @pytest.fixture
 def mock_yaml_service():
@@ -1102,7 +1102,7 @@ async def test_validate_uses_cache(validation_service, mock_cache_service):
 # backend/tests/integration/test_api_validation.py
 import pytest
 from httpx import AsyncClient
-from app.main import app
+from backend.app.main import app
 
 @pytest.mark.asyncio
 async def test_validate_endpoint():
@@ -1343,8 +1343,8 @@ class MyFeatureService:
 ```python
 # app/api/v1/endpoints/my_feature.py
 from fastapi import APIRouter, Depends
-from app.models.my_feature import MyFeatureRequest, MyFeatureResponse
-from app.services.my_feature_service import MyFeatureService
+from backend.app.models.my_feature import MyFeatureRequest, MyFeatureResponse
+from backend.app.services.my_feature_service import MyFeatureService
 
 router = APIRouter()
 
@@ -1367,7 +1367,7 @@ async def my_feature_endpoint(
 ```python
 # app/api/v1/router.py
 from fastapi import APIRouter
-from app.api.v1.endpoints import my_feature
+from backend.app.api.v1.endpoints import my_feature
 
 api_router = APIRouter()
 api_router.include_router(my_feature.router, tags=["my-feature"])
@@ -1378,7 +1378,7 @@ api_router.include_router(my_feature.router, tags=["my-feature"])
 ```python
 # tests/unit/test_my_feature_service.py
 import pytest
-from app.services.my_feature_service import MyFeatureService
+from backend.app.services.my_feature_service import MyFeatureService
 
 @pytest.mark.asyncio
 async def test_my_feature_process():
