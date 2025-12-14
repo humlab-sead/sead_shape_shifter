@@ -158,15 +158,17 @@
       @confirm="handleDeleteConfirm"
     />
 
-    <!-- Success Snackbar -->
-    <v-snackbar v-model="showSuccessSnackbar" color="success" timeout="3000">
-      {{ successMessage }}
-      <template #actions>
-        <v-btn variant="text" @click="showSuccessSnackbar = false">
-          Close
-        </v-btn>
-      </template>
-    </v-snackbar>
+    <!-- Success Snackbar with Animation -->
+    <v-scale-transition>
+      <v-snackbar v-if="showSuccessSnackbar" v-model="showSuccessSnackbar" color="success" timeout="3000">
+        {{ successMessage }}
+        <template #actions>
+          <v-btn variant="text" @click="showSuccessSnackbar = false">
+            Close
+          </v-btn>
+        </template>
+      </v-snackbar>
+    </v-scale-transition>
   </v-container>
 </template>
 

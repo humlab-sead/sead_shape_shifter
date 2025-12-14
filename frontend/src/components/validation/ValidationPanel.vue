@@ -71,9 +71,15 @@
       </div>
 
       <!-- Loading State -->
-      <div v-else-if="loading" class="text-center py-8">
-        <v-progress-circular indeterminate color="primary" />
-        <p class="mt-2 text-grey">Validating configuration...</p>
+      <div v-else-if="loading" class="py-4">
+        <v-skeleton-loader
+          type="article, list-item-three-line, list-item-three-line, list-item-three-line"
+          class="mb-4"
+        />
+        <div class="text-center">
+          <v-progress-circular indeterminate color="primary" size="32" />
+          <p class="mt-2 text-grey">Validating configuration...</p>
+        </div>
       </div>
 
       <!-- Validation Results -->
@@ -352,6 +358,7 @@ const performanceErrors = computed(() => {
   return performanceIssues.value.filter(msg => msg.severity === 'error')
 })
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const totalIssues = computed(() => {
   return errorCount.value + warningCount.value
 })

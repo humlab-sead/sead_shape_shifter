@@ -7,6 +7,14 @@ import type { ValidationResult, ValidationError } from '@/types/validation'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
+// Cache for validation results with 5-minute TTL
+interface CacheEntry {
+  result: ValidationResult
+  timestamp: number
+}
+const validationCache = new Map<string, CacheEntry>()
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
 export function useDataValidation() {
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -81,6 +89,15 @@ export function useDataValidation() {
     configName: string,
     entityNames?: string[]
   ): Promise<ValidationResult | null> {
+    // Check cache first
+    const cacheKey = `${configName}:${entityNames?.join(',') || 'all'}`
+    const cached = validationCache.get(cacheKey)
+    
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      result.value = cached.result
+      return cached.result
+    }
+
     loading.value = true
     error.value = null
     result.value = null
@@ -97,6 +114,13 @@ export function useDataValidation() {
       )
 
       result.value = response.data
+      
+      // Update cache
+      validationCache.set(cacheKey, {
+        result: response.data,
+        timestamp: Date.now()
+      })
+      
       return response.data
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Data validation failed'
@@ -170,6 +194,13 @@ export function useDataValidation() {
     }
   }
 
+  /**
+   * Clear validation cache (useful for testing and forcing refresh)
+   */
+  function clearCache() {
+    validationCache.clear()
+  }
+
   return {
     // State
     loading,
@@ -188,6 +219,7 @@ export function useDataValidation() {
     validateData,
     clearResults,
     previewFixes,
-    applyFixes
+    applyFixes,
+    clearCache
   }
 }
