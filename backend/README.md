@@ -2,6 +2,32 @@
 
 REST API for editing Shape Shifter YAML configuration files.
 
+## Unified Installation (Recommended)
+
+The backend is now part of the unified Shape Shifter package. Install from the project root:
+
+```bash
+# From project root (recommended)
+cd /path/to/sead_shape_shifter
+
+# Install with all dependencies (core + API + dev tools)
+uv venv
+uv pip install -e ".[all]"
+
+# Run the backend
+make backend-run
+```
+
+### Alternative Installation Options
+
+```bash
+# Install core + API only (no dev tools)
+uv pip install -e ".[api]"
+
+# Install core only (no backend dependencies)
+uv pip install -e .
+```
+
 ## Technology Stack
 
 - **FastAPI**: Modern async Python web framework
@@ -12,30 +38,14 @@ REST API for editing Shape Shifter YAML configuration files.
 
 ## Quick Start
 
-### Installation
-
-```bash
-# From project root
-cd backend
-
-# Install dependencies with uv (recommended)
-uv pip install -e ".[dev]"
-
-# Or create virtual environment first
-uv venv
-source .venv/bin/activate  # Linux/Mac
-# or: .venv\Scripts\activate  # Windows
-uv pip install -e ".[dev]"
-```
-
 ### Running the Server
 
 ```bash
-# Development mode with auto-reload
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Or from project root with make
+# From project root with make (recommended)
 make backend-run
+
+# Or manually with PYTHONPATH
+PYTHONPATH=.:backend uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Access API Documentation

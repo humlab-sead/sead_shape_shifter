@@ -139,14 +139,27 @@ cd sead_shape_shifter
 
 #### 3. Install Python Dependencies
 
+Shape Shifter uses a **unified Python environment** for both the core library and backend API.
+
 ```bash
-# Create virtual environment and install dependencies
+# Full installation (core + API + dev tools) - RECOMMENDED
+make install
+# Or manually:
 uv venv
+uv pip install -e ".[all]"
+
+# Alternative: Core library only (no API dependencies)
 uv pip install -e .
 
-# Install development dependencies
-uv pip install -e ".[dev]"
+# Alternative: Core + API only (no dev tools)
+uv pip install -e ".[api]"
 ```
+
+This unified setup means:
+- ✅ Single virtual environment for everything
+- ✅ No separate backend installation needed
+- ✅ Consistent dependency versions across core and API
+- ✅ Simpler development workflow
 
 #### 4. Install UCanAccess (For MS Access Database Support)
 

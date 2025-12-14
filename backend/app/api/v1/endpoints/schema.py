@@ -220,7 +220,7 @@ async def preview_table_data(
         ) from e
 
 
-@router.get("/{name}/tables/{table_name}/type-mappings", response_model=Dict[str, Dict[str, any]], summary="Get type mapping suggestions")
+@router.get("/{name}/tables/{table_name}/type-mappings", response_model=Dict[str, Dict[str, Any]], summary="Get type mapping suggestions")
 async def get_type_mappings(
     name: str,
     table_name: str,
