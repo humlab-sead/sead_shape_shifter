@@ -69,7 +69,18 @@ class SchemaIntrospectionService:
         self.data_source_service = DataSourceService(config)
         self.cache = SchemaCache(ttl_seconds=300)  # 5 minute cache
 
-    async def get_tables(self, data_source_name: str, schema: Optional[str] = None) -> list[TableMetadata]:
+    def create_loader_for_data_source(self, ds_config: api.DataSourceConfig) -> SqlLoader:
+        core_config: CoreDataSourceConfig = DataSourceMapper.to_core_config(ds_config)
+        loader_cls: type[SqlLoader] | None = DataLoaders.get(core_config.driver)
+        if not loader_cls:
+            raise SchemaServiceError(f"Schema introspection not supported for driver: {core_config.driver}")
+        loader: SqlLoader = loader_cls(data_source=core_config)
+        if not isinstance(loader, SqlLoader):
+            raise SchemaServiceError(f"Schema introspection not supported for driver: {core_config.driver}")
+
+        return loader
+    
+    async def get_tables(self, data_source_name: str, schema: Optional[str] = None) -> list[api.TableMetadata]:
         """
         Get list of tables in a data source.
 
@@ -536,15 +547,13 @@ class SchemaIntrospectionService:
             "options": ds_config.options or {},
         }
 
-        # Create core config instance
-        core_config = CoreDataSourceConfig(cfg=config_dict, name=ds_config.name)
+        core_config: CoreDataSourceConfig = CoreDataSourceConfig(cfg=config_dict, name=ds_config.name)
 
-        # Get appropriate loader
-        loader = DataLoaders.get(core_config.driver)(data_source=core_config)
+        loader: SqlLoader = DataLoaders.get(core_config.driver)(data_source=core_config)
 
         # Execute query with timeout
         try:
-            data = await asyncio.wait_for(loader.read_sql(query), timeout=30.0)
+            data: pd.DataFrame = await asyncio.wait_for(loader.read_sql(query), timeout=30.0)
             return data
         except asyncio.TimeoutError as e:
             raise SchemaServiceError("Query execution timed out after 30 seconds") from e
