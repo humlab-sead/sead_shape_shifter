@@ -170,16 +170,18 @@ class PreviewService:
                 dependencies_loaded.extend(entity_config.depends_on)
 
             return PreviewResult(
-                entity_name=entity_name,
-                rows=rows,
-                columns=columns,
-                total_rows_in_preview=len(rows),
-                estimated_total_rows=estimated_total,
-                execution_time_ms=0,  # Will be set by caller
-                has_dependencies=len(dependencies_loaded) > 0,
-                dependencies_loaded=dependencies_loaded,
-                transformations_applied=transformations,
-                cache_hit=False,
+                **{
+                    "entity_name": entity_name,
+                    "rows": rows,
+                    "columns": columns,
+                    "total_rows_in_preview": len(rows),
+                    "estimated_total_rows": estimated_total,
+                    "execution_time_ms": 0,  # Will be set by caller
+                    "has_dependencies": len(dependencies_loaded) > 0,
+                    "dependencies_loaded": dependencies_loaded,
+                    "transformations_applied": transformations,
+                    "cache_hit": False,
+                }
             )
 
         except Exception as e:
@@ -215,10 +217,12 @@ class PreviewService:
 
             columns.append(
                 ColumnInfo(
-                    name=col_name,
-                    data_type=data_type,
-                    nullable=nullable,
-                    is_key=col_name in key_columns,
+                    **{
+                        "name": col_name,
+                        "data_type": data_type,
+                        "nullable": nullable,
+                        "is_key": col_name in key_columns,
+                    }
                 )
             )
 
@@ -291,7 +295,7 @@ class PreviewService:
         if entity_name not in config.tables:
             raise ValueError(f"Entity '{entity_name}' not found")
 
-        entity_config = config.tables[entity_name]
+        entity_config: TableConfig = config.tables[entity_name]
 
         if not entity_config.foreign_keys or foreign_key_index >= len(entity_config.foreign_keys):
             raise ValueError(f"Foreign key index {foreign_key_index} out of range")
@@ -329,23 +333,23 @@ class PreviewService:
             raise ValueError(". ".join(error_parts))
 
         # Count nulls in local keys
-        null_key_rows = local_df[local_keys].isnull().any(axis=1).sum()
+        null_key_rows: int = local_df[local_keys].isnull().any(axis=1).sum()
 
         # Perform the join
-        merged = local_df.merge(remote_df, left_on=local_keys, right_on=remote_keys, how="left", indicator=True, suffixes=("", "_remote"))
+        merged: pd.DataFrame = local_df.merge(remote_df, left_on=local_keys, right_on=remote_keys, how="left", indicator=True, suffixes=("", "_remote"))
 
         # Calculate statistics
-        total_rows = len(local_df)
-        matched_rows = (merged["_merge"] == "both").sum()
-        unmatched_rows = total_rows - matched_rows
-        match_percentage = (matched_rows / total_rows * 100) if total_rows > 0 else 0.0
+        total_rows: int = len(local_df)
+        matched_rows: int = (merged["_merge"] == "both").sum()
+        unmatched_rows: int = total_rows - matched_rows
+        match_percentage: float = (matched_rows / total_rows * 100) if total_rows > 0 else 0.0
 
         # Check for duplicate matches
         duplicate_matches = len(merged) - total_rows
 
         # Get unmatched samples
-        unmatched_df = merged[merged["_merge"] == "left_only"].head(10)
-        unmatched_sample = [
+        unmatched_df: pd.DataFrame = merged[merged["_merge"] == "left_only"].head(10)
+        unmatched_sample: list[UnmatchedRow] = [
             UnmatchedRow(
                 row_data={k: v for k, v in row.items() if k != "_merge" and not k.endswith("_remote")},
                 local_key_values=[row[k] for k in local_keys],
@@ -363,10 +367,10 @@ class PreviewService:
             actual_cardinality = "many_to_one"
 
         # Get expected cardinality from constraints
-        expected_cardinality = "many_to_one"  # default
+        expected_cardinality: str = "many_to_one"  # default
         if fk_config.constraints:
             if hasattr(fk_config.constraints, "cardinality"):
-                expected_cardinality = fk_config.constraints.cardinality
+                expected_cardinality = fk_config.constraints.cardinality or "many_to_one"
 
         cardinality_matches = expected_cardinality == actual_cardinality
 
