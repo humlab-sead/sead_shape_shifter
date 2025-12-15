@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from loguru import logger
 
-from backend.app.models.data_source import TableSchema
+from backend.app.models.data_source import TableMetadata, TableSchema
 from backend.app.models.suggestion import (
     DependencySuggestion,
     EntitySuggestions,
@@ -54,7 +54,7 @@ class SuggestionService:
         return EntitySuggestions(entity_name=entity_name, foreign_key_suggestions=fk_suggestions, dependency_suggestions=dep_suggestions)
 
     async def suggest_foreign_keys(
-        self, entity: dict[str, Any], all_entities: list[dict[str, Any]], schemas: dict[str, TableSchema] = None
+        self, entity: dict[str, Any], all_entities: list[dict[str, Any]], schemas: dict[str, TableSchema] | None= None
     ) -> list[ForeignKeySuggestion]:
         """
         Suggest foreign key relationships for an entity.
@@ -304,8 +304,8 @@ class SuggestionService:
 
         # Get table list
         try:
-            tables = await self.schema_service.list_tables(data_source_name)
-            table_names = {t.name for t in tables}
+            tables: list[TableMetadata] = await self.schema_service.get_tables(data_source_name)
+            table_names: set[str] = {t.name for t in tables}
         except Exception as e:  # pylint: disable=broad-except
             logger.warning(f"Could not list tables: {e}")
             return schemas
