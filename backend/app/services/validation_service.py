@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from loguru import logger
 
@@ -119,7 +119,7 @@ class ValidationService:
 
         return result
 
-    def _parse_error_message(self, message: str, severity: str = "error") -> ValidationError:
+    def _parse_error_message(self, message: str, severity: Literal["error", "warning", "info"] = "error") -> ValidationError:
         """
         Parse error message to extract entity and field information.
 
