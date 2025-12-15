@@ -234,7 +234,7 @@ class SqliteLoader(SqlLoader):
         return scalar_value
 
 
-@DataLoaders.register(key="postgres")
+@DataLoaders.register(key=["postgres", "postgresql"])
 class PostgresSqlLoader(SqlLoader):
     """Loader for fixed data entities."""
 
@@ -390,7 +390,7 @@ class PostgresSqlLoader(SqlLoader):
         )
 
 
-@DataLoaders.register(key="ucanaccess")
+@DataLoaders.register(key=["ucanaccess", "access"])
 class UCanAccessSqlLoader(SqlLoader):
     """Loader for fixed data entities. https://ucanaccess.sourceforge.net/site.html"""
 
