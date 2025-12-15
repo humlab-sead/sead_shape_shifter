@@ -79,30 +79,36 @@ class TestSchemaIntrospectionService:
     def postgres_config(self):
         """PostgreSQL data source config."""
         return DataSourceConfig(
-            name="test_postgres",
-            driver=DataSourceType.POSTGRESQL,
-            host="localhost",
-            port=5432,
-            database="testdb",
-            username="testuser",
+            **{
+                "name": "test_postgres",
+                "driver": DataSourceType.POSTGRESQL,
+                "host": "localhost",
+                "port": 5432,
+                "database": "testdb",
+                "username": "testuser",
+            }
         )
 
     @pytest.fixture
     def access_config(self):
         """MS Access data source config."""
         return DataSourceConfig(
-            name="test_access",
-            driver=DataSourceType.ACCESS,
-            filename="test.mdb",
+            **{
+                "name": "test_access",
+                "driver": DataSourceType.ACCESS,
+                "filename": "test.mdb",
+            }
         )
 
     @pytest.fixture
     def sqlite_config(self):
         """SQLite data source config."""
         return DataSourceConfig(
-            name="test_sqlite",
-            driver=DataSourceType.SQLITE,
-            filename="test.db",
+            **{
+                "name": "test_sqlite",
+                "driver": DataSourceType.SQLITE,
+                "filename": "test.db",
+            }
         )
 
     @pytest.mark.asyncio
@@ -117,9 +123,11 @@ class TestSchemaIntrospectionService:
     async def test_get_tables_unsupported_driver(self, service):
         """Should raise error for unsupported driver."""
         csv_config = DataSourceConfig(
-            name="test_csv",
-            driver=DataSourceType.CSV,
-            filename="test.csv",
+            **{
+                "name": "test_csv",
+                "driver": DataSourceType.CSV,
+                "filename": "test.csv",
+            }
         )
         service.data_source_service.get_data_source = Mock(return_value=csv_config)
 
@@ -367,18 +375,8 @@ class TestSchemaEndpoints:
     def test_table_schema_model(self):
         """Should create TableSchema model."""
         columns = [
-            ColumnMetadata(
-                name="id",
-                data_type="integer",
-                nullable=False,
-                is_primary_key=True,
-            ),
-            ColumnMetadata(
-                name="name",
-                data_type="varchar",
-                nullable=False,
-                is_primary_key=False,
-            ),
+            ColumnMetadata(**{"name": "id", "data_type": "integer", "nullable": False, "is_primary_key": True}),
+            ColumnMetadata(**{"name": "name", "data_type": "varchar", "nullable": False, "is_primary_key": False}),
         ]
 
         schema = TableSchema(

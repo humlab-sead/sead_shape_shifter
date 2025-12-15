@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class DataLoader(abc.ABC):
 
     def __init__(self, data_source: "DataSourceConfig | None" = None) -> None:
-        self.data_source = data_source
+        self.data_source: "DataSourceConfig | None" = data_source
 
     @abc.abstractmethod
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:

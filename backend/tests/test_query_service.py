@@ -123,18 +123,22 @@ class TestQueryExecution:
         self.mock_ds_service = Mock()
         self.service = QueryService(self.mock_ds_service)
 
-    def test_execute_simple_query(self):
+    @pytest.mark.asyncio
+    async def test_execute_simple_query(self):
         """Should execute SELECT query and return results."""
         # Mock connection
         mock_conn = Mock()
-        self.mock_ds_service.get_connection.return_value = mock_conn
-
-        # Mock DataFrame result
-        test_df = pd.DataFrame({"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"]})
+        mock_ds_service = Mock(
+            get_connection=Mock(return_value=mock_conn),
+            get_data_source=Mock(return_value=Mock(name="test_db", driver="postgres"))
+        )
+        service = QueryService(mock_ds_service)
+                
+        test_df = pd.DataFrame({"id": [1, 2, 3], "name": ["Kalle", "Kula", "Kurt"]})
 
         with patch("pandas.read_sql_query", return_value=test_df):
-            query = "SELECT * FROM users"
-            result = self.service.execute_query("test_db", query, limit=100)
+            query = "select * from users"
+            result = await service.execute_query(data_source_name="test_db", query=query, limit=100)
 
             assert isinstance(result, QueryResult)
             assert result.row_count == 3
@@ -144,7 +148,8 @@ class TestQueryExecution:
             assert len(result.rows) == 3
             assert result.execution_time_ms > 0
 
-    def test_execute_with_limit(self):
+    @pytest.mark.asyncio
+    async def test_execute_with_limit(self):
         """Should apply LIMIT clause to query."""
         mock_conn = Mock()
         self.mock_ds_service.get_connection.return_value = mock_conn
@@ -153,14 +158,15 @@ class TestQueryExecution:
 
         with patch("pandas.read_sql_query", return_value=test_df) as mock_sql:
             query = "SELECT * FROM users"
-            result = self.service.execute_query("test_db", query, limit=50)
+            result = await self.service.execute_query("test_db", query, limit=50)
 
             # Check that LIMIT was added to query
             called_query = mock_sql.call_args[0][0]
             assert "LIMIT" in called_query.upper()
             assert result.row_count == 50
 
-    def test_execute_truncated_result(self):
+    @pytest.mark.asyncio
+    async def test_execute_truncated_result(self):
         """Should detect truncated results."""
         mock_conn = Mock()
         self.mock_ds_service.get_connection.return_value = mock_conn
@@ -170,11 +176,12 @@ class TestQueryExecution:
 
         with patch("pandas.read_sql_query", return_value=test_df):
             query = "SELECT * FROM users"
-            result = self.service.execute_query("test_db", query, limit=100)
+            result = await self.service.execute_query("test_db", query, limit=100)
 
             assert result.is_truncated is True
 
-    def test_execute_destructive_query(self):
+    @pytest.mark.asyncio
+    async def test_execute_destructive_query(self):
         """Should reject destructive queries."""
         mock_conn = Mock()
         self.mock_ds_service.get_connection.return_value = mock_conn
@@ -182,22 +189,24 @@ class TestQueryExecution:
         query = "DELETE FROM users"
 
         with pytest.raises(QuerySecurityError) as exc_info:
-            self.service.execute_query("test_db", query)
+            await self.service.execute_query("test_db", query)
 
         assert "validation failed" in str(exc_info.value).lower()
 
-    def test_execute_connection_error(self):
+    @pytest.mark.asyncio
+    async def test_execute_connection_error(self):
         """Should handle connection errors."""
         self.mock_ds_service.get_connection.side_effect = Exception("Connection failed")
 
         query = "SELECT * FROM users"
 
         with pytest.raises(QueryExecutionError) as exc_info:
-            self.service.execute_query("test_db", query)
+            await self.service.execute_query("test_db", query)
 
         assert "failed to connect" in str(exc_info.value).lower()
 
-    def test_execute_query_error(self):
+    @pytest.mark.asyncio
+    async def test_execute_query_error(self):
         """Should handle query execution errors."""
         mock_conn = Mock()
         self.mock_ds_service.get_connection.return_value = mock_conn
@@ -206,11 +215,12 @@ class TestQueryExecution:
             query = "SELECT * FROM nonexistent"
 
             with pytest.raises(QueryExecutionError) as exc_info:
-                self.service.execute_query("test_db", query)
+                await self.service.execute_query("test_db", query)
 
             assert "query execution failed" in str(exc_info.value).lower()
 
-    def test_execute_with_null_values(self):
+    @pytest.mark.asyncio
+    async def test_execute_with_null_values(self):
         """Should handle NULL values correctly."""
         mock_conn = Mock()
         self.mock_ds_service.get_connection.return_value = mock_conn
@@ -219,12 +229,13 @@ class TestQueryExecution:
 
         with patch("pandas.read_sql_query", return_value=test_df):
             query = "SELECT * FROM users"
-            result = self.service.execute_query("test_db", query)
+            result = await self.service.execute_query("test_db", query)
 
             # NULL should be converted to None
             assert result.rows[1]["name"] is None
 
-    def test_execute_with_datetime(self):
+    @pytest.mark.asyncio
+    async def test_execute_with_datetime(self):
         """Should serialize datetime values correctly."""
         mock_conn = Mock()
         self.mock_ds_service.get_connection.return_value = mock_conn
@@ -233,13 +244,14 @@ class TestQueryExecution:
 
         with patch("pandas.read_sql_query", return_value=test_df):
             query = "SELECT * FROM users"
-            result = self.service.execute_query("test_db", query)
+            result = await self.service.execute_query("test_db", query)
 
             # Timestamp should be serialized as ISO string
             assert isinstance(result.rows[0]["created_at"], str)
             assert "2024-01-01" in result.rows[0]["created_at"]
 
-    def test_execute_respects_max_limit(self):
+    @pytest.mark.asyncio
+    async def test_execute_respects_max_limit(self):
         """Should enforce maximum row limit."""
         mock_conn = Mock()
         self.mock_ds_service.get_connection.return_value = mock_conn
@@ -249,7 +261,7 @@ class TestQueryExecution:
         with patch("pandas.read_sql_query", return_value=test_df):
             # Try to request more than MAX_ROWS
             query = "SELECT * FROM users"
-            result = self.service.execute_query("test_db", query, limit=20000)
+            result = await self.service.execute_query("test_db", query, limit=20000)
 
             # Should be capped at MAX_ROWS (10000)
             assert result.row_count <= QueryService.MAX_ROWS

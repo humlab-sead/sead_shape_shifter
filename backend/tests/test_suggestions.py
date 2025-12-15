@@ -19,7 +19,7 @@ class MockSchemaService:
 
 async def test_suggestions():
     """Test suggestion logic without database."""
-    service = SuggestionService(MockSchemaService())
+    service = SuggestionService(MockSchemaService())  # type: ignore
 
     entities = [
         {"name": "users", "columns": ["user_id", "username", "email"]},
