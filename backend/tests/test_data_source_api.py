@@ -37,19 +37,23 @@ class TestListDataSources:
     def test_list_data_sources_success(self, mock_service):
         """Should return list of data sources."""
         mock_service.list_data_sources.return_value = [
-            DataSourceConfig(**{
-                "name":"sead",
-                "driver":DataSourceType.POSTGRESQL,
-                "host":"localhost",
-                "port":5432,
-                "database":"sead",
-                "username":"user",
-            }),
-            DataSourceConfig(**{
-                "name":"arbodat",
-                "driver":DataSourceType.ACCESS,
-                "filename":"arbodat.mdb",
-            }),
+            DataSourceConfig(
+                **{
+                    "name": "sead",
+                    "driver": DataSourceType.POSTGRESQL,
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "sead",
+                    "username": "user",
+                }
+            ),
+            DataSourceConfig(
+                **{
+                    "name": "arbodat",
+                    "driver": DataSourceType.ACCESS,
+                    "filename": "arbodat.mdb",
+                }
+            ),
         ]
 
         response = client.get("/api/v1/data-sources")
@@ -86,14 +90,16 @@ class TestGetDataSource:
 
     def test_get_data_source_success(self, mock_service):
         """Should return specific data source."""
-        mock_service.get_data_source.return_value = DataSourceConfig(**{
-            "name":"sead",
-            "driver":DataSourceType.POSTGRESQL,
-            "host":"localhost",
-            "port":5432,
-            "database":"sead",
-            "username":"user",
-        })
+        mock_service.get_data_source.return_value = DataSourceConfig(
+            **{
+                "name": "sead",
+                "driver": DataSourceType.POSTGRESQL,
+                "host": "localhost",
+                "port": 5432,
+                "database": "sead",
+                "username": "user",
+            }
+        )
 
         response = client.get("/api/v1/data-sources/sead")
 
@@ -138,14 +144,16 @@ class TestCreateDataSource:
 
     def test_create_data_source_already_exists(self, mock_service):
         """Should return 400 when data source already exists."""
-        mock_service.get_data_source.return_value = DataSourceConfig(**{
-            "name":"existing",
-            "driver":DataSourceType.POSTGRESQL,
-            "host":"localhost",
-            "port":5432,
-            "database":"db",
-            "username":"user",
-        })
+        mock_service.get_data_source.return_value = DataSourceConfig(
+            **{
+                "name": "existing",
+                "driver": DataSourceType.POSTGRESQL,
+                "host": "localhost",
+                "port": 5432,
+                "database": "db",
+                "username": "user",
+            }
+        )
 
         payload = {
             "name": "existing",
@@ -183,14 +191,16 @@ class TestUpdateDataSource:
     def test_update_data_source_success(self, mock_service):
         """Should update existing data source."""
         mock_service.get_data_source.side_effect = [
-            DataSourceConfig(**{
-                "name":"sead",
-                "driver":DataSourceType.POSTGRESQL,
-                "host":"localhost",
-                "port":5432,
-                "database":"sead",
-                "username":"user",
-            }),
+            DataSourceConfig(
+                **{
+                    "name": "sead",
+                    "driver": DataSourceType.POSTGRESQL,
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "sead",
+                    "username": "user",
+                }
+            ),
             None,  # New name doesn't exist
         ]
         mock_service.update_data_source.return_value = None
@@ -230,14 +240,16 @@ class TestUpdateDataSource:
     def test_update_data_source_rename_conflict(self, mock_service):
         """Should return 400 when renaming to existing name."""
         mock_service.get_data_source.side_effect = [
-            DataSourceConfig(**{
-                "name":"sead",
-                "driver":DataSourceType.POSTGRESQL,
-                "host":"localhost",
-                "port":5432,
-                "database":"sead",
-                "username":"user",
-            }),
+            DataSourceConfig(
+                **{
+                    "name": "sead",
+                    "driver": DataSourceType.POSTGRESQL,
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "sead",
+                    "username": "user",
+                }
+            ),
             DataSourceConfig(  # New name already exists
                 **{
                     "name": "arbodat",
@@ -267,11 +279,13 @@ class TestDeleteDataSource:
 
     def test_delete_data_source_success(self, mock_service):
         """Should delete data source."""
-        mock_service.get_data_source.return_value = DataSourceConfig(**{
-            "name":"unused",
-            "driver":DataSourceType.CSV,
-            "filename":"test.csv",
-        })
+        mock_service.get_data_source.return_value = DataSourceConfig(
+            **{
+                "name": "unused",
+                "driver": DataSourceType.CSV,
+                "filename": "test.csv",
+            }
+        )
         mock_service.get_status.return_value = DataSourceStatus(
             name="unused",
             is_connected=True,
@@ -295,14 +309,16 @@ class TestDeleteDataSource:
 
     def test_delete_data_source_in_use(self, mock_service):
         """Should return 400 when data source is in use."""
-        mock_service.get_data_source.return_value = DataSourceConfig(**{
-            "name":"in_use",
-            "driver":DataSourceType.POSTGRESQL,
-            "host":"localhost",
-            "port":5432,
-            "database":"db",
-            "username":"user",
-        })
+        mock_service.get_data_source.return_value = DataSourceConfig(
+            **{
+                "name": "in_use",
+                "driver": DataSourceType.POSTGRESQL,
+                "host": "localhost",
+                "port": 5432,
+                "database": "db",
+                "username": "user",
+            }
+        )
         mock_service.get_status.return_value = DataSourceStatus(
             name="in_use",
             is_connected=True,
@@ -321,14 +337,16 @@ class TestTestConnection:
 
     def test_test_connection_success(self, mock_service):
         """Should test connection successfully."""
-        mock_service.get_data_source.return_value = DataSourceConfig(**{
-            "name":"sead",
-            "driver":DataSourceType.POSTGRESQL,
-            "host":"localhost",
-            "port":5432,
-            "database":"sead",
-            "username":"user",
-        })
+        mock_service.get_data_source.return_value = DataSourceConfig(
+            **{
+                "name": "sead",
+                "driver": DataSourceType.POSTGRESQL,
+                "host": "localhost",
+                "port": 5432,
+                "database": "sead",
+                "username": "user",
+            }
+        )
 
         # Mock async method
         async def mock_test():
@@ -350,22 +368,26 @@ class TestTestConnection:
 
     def test_test_connection_failure(self, mock_service):
         """Should return connection test failure."""
-        mock_service.get_data_source.return_value = DataSourceConfig(**{
-            "name":"bad_db",
-            "driver":DataSourceType.POSTGRESQL,
-            "host":"invalid-host",
-            "port":5432,
-            "database":"db",
-            "username":"user",
-        })
+        mock_service.get_data_source.return_value = DataSourceConfig(
+            **{
+                "name": "bad_db",
+                "driver": DataSourceType.POSTGRESQL,
+                "host": "invalid-host",
+                "port": 5432,
+                "database": "db",
+                "username": "user",
+            }
+        )
 
         # Mock async method
         async def mock_test():
-            return DataSourceTestResult(**{
-                "success": False,
-                "message": "Connection refused",
-                "connection_time_ms": 0,
-            })
+            return DataSourceTestResult(
+                **{
+                    "success": False,
+                    "message": "Connection refused",
+                    "connection_time_ms": 0,
+                }
+            )
 
         mock_service.test_connection = mock_test
 
@@ -390,22 +412,26 @@ class TestGetStatus:
 
     def test_get_status_success(self, mock_service):
         """Should return data source status."""
-        mock_service.get_data_source.return_value = DataSourceConfig(**{
-            "name":"sead",
-            "driver":DataSourceType.POSTGRESQL,
-            "host":"localhost",
-            "port":5432,
-            "database":"sead",
-            "username":"user",
-        })
+        mock_service.get_data_source.return_value = DataSourceConfig(
+            **{
+                "name": "sead",
+                "driver": DataSourceType.POSTGRESQL,
+                "host": "localhost",
+                "port": 5432,
+                "database": "sead",
+                "username": "user",
+            }
+        )
         mock_service.get_status.return_value = DataSourceStatus(
             name="sead",
             is_connected=True,
-            last_test_result=DataSourceTestResult(**{
-                "success": True,
-                "message": "OK",
-                "connection_time_ms": 30,
-            }),
+            last_test_result=DataSourceTestResult(
+                **{
+                    "success": True,
+                    "message": "OK",
+                    "connection_time_ms": 30,
+                }
+            ),
             in_use_by_entities=["entity1", "entity2"],
         )
 

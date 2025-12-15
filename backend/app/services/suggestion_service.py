@@ -54,7 +54,7 @@ class SuggestionService:
         return EntitySuggestions(entity_name=entity_name, foreign_key_suggestions=fk_suggestions, dependency_suggestions=dep_suggestions)
 
     async def suggest_foreign_keys(
-        self, entity: dict[str, Any], all_entities: list[dict[str, Any]], schemas: dict[str, TableSchema] | None= None
+        self, entity: dict[str, Any], all_entities: list[dict[str, Any]], schemas: dict[str, TableSchema] | None = None
     ) -> list[ForeignKeySuggestion]:
         """
         Suggest foreign key relationships for an entity.

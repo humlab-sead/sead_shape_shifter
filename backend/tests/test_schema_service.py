@@ -186,6 +186,7 @@ class TestSchemaIntrospectionService:
     async def test_cache_hit(self, service, postgres_config):
         """Should return cached results on subsequent calls."""
         from unittest.mock import patch
+
         from src.loaders.database_loaders import CoreSchema
 
         service.data_source_service.get_data_source = Mock(return_value=postgres_config)

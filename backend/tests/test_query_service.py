@@ -129,11 +129,10 @@ class TestQueryExecution:
         # Mock connection
         mock_conn = Mock()
         mock_ds_service = Mock(
-            get_connection=Mock(return_value=mock_conn),
-            get_data_source=Mock(return_value=Mock(name="test_db", driver="postgres"))
+            get_connection=Mock(return_value=mock_conn), get_data_source=Mock(return_value=Mock(name="test_db", driver="postgres"))
         )
         service = QueryService(mock_ds_service)
-                
+
         test_df = pd.DataFrame({"id": [1, 2, 3], "name": ["Kalle", "Kula", "Kurt"]})
 
         with patch("pandas.read_sql_query", return_value=test_df):

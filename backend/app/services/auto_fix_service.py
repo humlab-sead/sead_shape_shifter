@@ -26,7 +26,7 @@ class AutoFixService:
         self.yaml_service = YamlService()
 
     def generate_fix_suggestions(self, errors: list[ValidationError]) -> list[FixSuggestion]:
-        """ Generate fix suggestions from validation errors. """
+        """Generate fix suggestions from validation errors."""
         suggestions = []
 
         for error in errors:

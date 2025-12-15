@@ -11,7 +11,6 @@ from backend.app.models.validation import (
     ValidationError,
     ValidationPriority,
 )
-from backend.app.services.preview_service import PreviewService
 from backend.app.services.config_service import ConfigurationService
 from backend.app.services.preview_service import PreviewService
 
@@ -590,6 +589,6 @@ class DataValidationService:
             if isinstance(result, Exception):
                 logger.error(f"Entity validation failed: {result}")
             else:
-                all_errors.extend(result) # type: ignore
+                all_errors.extend(result)  # type: ignore
 
         return all_errors

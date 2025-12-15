@@ -336,7 +336,9 @@ class PreviewService:
         null_key_rows: int = local_df[local_keys].isnull().any(axis=1).sum()
 
         # Perform the join
-        merged: pd.DataFrame = local_df.merge(remote_df, left_on=local_keys, right_on=remote_keys, how="left", indicator=True, suffixes=("", "_remote"))
+        merged: pd.DataFrame = local_df.merge(
+            remote_df, left_on=local_keys, right_on=remote_keys, how="left", indicator=True, suffixes=("", "_remote")
+        )
 
         # Calculate statistics
         total_rows: int = len(local_df)

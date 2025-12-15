@@ -37,6 +37,7 @@ class PreviewResult(BaseModel):
     cache_hit: bool = False
     row_count: int = 0
 
+
 class EntityPreviewError(BaseModel):
     """Error information for preview failures."""
 

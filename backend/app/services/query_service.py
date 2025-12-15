@@ -136,7 +136,7 @@ class QueryService:
 
         if ds_config is None:
             raise QueryExecutionError(f"Data source '{data_source_name}' does not exist")
-        
+
         # Build config dict for core system
         config_dict = {
             "driver": ds_config.get_loader_driver(),

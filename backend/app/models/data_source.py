@@ -175,6 +175,7 @@ class TableSchema(BaseModel):
     row_count: Optional[int] = Field(None, description="Approximate row count")
     foreign_keys: list["ForeignKeyMetadata"] = Field(default_factory=list, description="Foreign key relationships")
 
+
 class ForeignKeyMetadata(BaseModel):
     """Metadata about a foreign key relationship."""
 

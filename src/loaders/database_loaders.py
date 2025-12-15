@@ -1,18 +1,19 @@
 import abc
-from dataclasses import dataclass
 import os
 from contextlib import contextmanager
+from dataclasses import dataclass
 from tkinter import NO
 from typing import TYPE_CHECKING, Any, Generator, Optional
 
 import jaydebeapi
 import jpype
-from loguru import logger
 import pandas as pd
+from loguru import logger
 from sqlalchemy import create_engine
 
 from src.extract import add_surrogate_id
-from src.utility import create_db_uri as create_pg_uri, dotget
+from src.utility import create_db_uri as create_pg_uri
+from src.utility import dotget
 
 from .base_loader import DataLoader, DataLoaders
 
