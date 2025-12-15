@@ -2,6 +2,7 @@
 Tests for schema introspection API endpoints.
 """
 
+import pdb
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -10,6 +11,8 @@ from fastapi.testclient import TestClient
 from backend.app.main import app
 from backend.app.models.data_source import ColumnMetadata, TableMetadata, TableSchema
 from backend.app.services.schema_service import SchemaIntrospectionService, SchemaServiceError
+
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
@@ -203,7 +206,8 @@ class TestDebugSeadTables:
         1. Set breakpoint in this test
         2. Set breakpoint in backend/app/api/v1/endpoints/schema.py:list_tables
         3. Set breakpoint in backend/app/services/schema_service.py:get_tables
-        4. Run: PYTHONPATH=.:backend uv run pytest backend/tests/test_schema_endpoints.py::TestDebugSeadTables::test_sead_tables_real_service -v -s
+        4. Run: PYTHONPATH=.:backend uv run pytest \
+            backend/tests/test_schema_endpoints.py::TestDebugSeadTables::test_sead_tables_real_service -v -s
         """
         # This will use the real dependency injection
         response = client.get("/api/v1/data-sources/sead/tables")
@@ -225,7 +229,8 @@ class TestDebugSeadTables:
     async def test_sead_tables_step_by_step(self, client):
         """Step-by-step debugging test.
 
-        Run with: PYTHONPATH=.:backend uv run pytest backend/tests/test_schema_endpoints.py::TestDebugSeadTables::test_sead_tables_step_by_step -v -s --pdb
+        Run with: PYTHONPATH=.:backend uv run pytest \
+            backend/tests/test_schema_endpoints.py::TestDebugSeadTables::test_sead_tables_step_by_step -v -s --pdb
         """
         # Step 1: Check health endpoint
         health_response = client.get("/api/v1/health")
@@ -248,19 +253,18 @@ class TestDebugSeadTables:
         print(f"   Body: {tables_response.text[:500]}")  # First 500 chars
 
         # Add breakpoint here for debugging
-        import pdb
 
-        pdb.set_trace()
+        pdb.set_trace()  # pylint: disable=forgotten-debug-statement
 
         # Analyze the response
         if tables_response.status_code == 200:
             tables = tables_response.json()
             print(f"   Success! Found {len(tables)} tables")
         elif tables_response.status_code == 404:
-            print(f"   Error 404: Data source not found")
+            print("   Error 404: Data source not found")
             print(f"   Detail: {tables_response.json()}")
         elif tables_response.status_code == 400:
-            print(f"   Error 400: Bad request or not supported")
+            print("   Error 400: Bad request or not supported")
             print(f"   Detail: {tables_response.json()}")
         else:
             print(f"   Error {tables_response.status_code}")

@@ -5,7 +5,7 @@ Query execution API endpoints.
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.api.dependencies import get_data_source_service
-from backend.app.models.query import QueryExecution, QueryPlan, QueryResult, QueryValidation
+from backend.app.models.query import QueryExecution, QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
 

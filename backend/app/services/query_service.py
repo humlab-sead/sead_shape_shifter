@@ -7,7 +7,6 @@ and result size limiting.
 
 import asyncio
 import time
-from multiprocessing.dummy import connection
 from typing import List, Optional
 
 import pandas as pd
@@ -16,7 +15,7 @@ from sqlparse.sql import Identifier, Statement
 from sqlparse.tokens import DDL, DML, Keyword
 
 from backend.app.models.data_source import DataSourceConfig
-from backend.app.models.query import QueryPlan, QueryResult, QueryValidation
+from backend.app.models.query import QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
 from src.config_model import DataSourceConfig as CoreDataSourceConfig
 from src.loaders.base_loader import DataLoaders
@@ -194,8 +193,8 @@ class QueryService:
                 total_rows=len(rows) if not is_truncated else None,
             )
 
-        except asyncio.TimeoutError:
-            raise QueryExecutionError(f"Query execution timed out after {timeout} seconds")
+        except asyncio.TimeoutError as e:
+            raise QueryExecutionError(f"Query execution timed out after {timeout} seconds") from e
         except Exception as e:
             raise QueryExecutionError(f"Query execution failed: {str(e)}") from e
 
