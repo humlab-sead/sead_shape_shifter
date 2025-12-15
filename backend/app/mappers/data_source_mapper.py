@@ -1,13 +1,13 @@
-from backend.app.models.data_source import DataSourceConfig as ApiDataSourceConfig
-from src.config_model import DataSourceConfig as CoreDataSourceConfig
+import backend.app.models.data_source as api
+import src.config_model as core
 
 
 class DataSourceMapper:
 
     @staticmethod
-    def to_core_config(ds_config: ApiDataSourceConfig) -> CoreDataSourceConfig:
+    def to_core_config(ds_config: api.DataSourceConfig) -> core.DataSourceConfig:
         """Map DataSourceConfig to CoreDataSourceConfig."""
-        core_config: CoreDataSourceConfig = CoreDataSourceConfig(
+        core_config: core.DataSourceConfig = core.DataSourceConfig(
             name=ds_config.name,
             cfg={
                 "driver": ds_config.driver,
