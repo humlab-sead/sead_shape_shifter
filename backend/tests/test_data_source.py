@@ -1,7 +1,7 @@
 """Tests for data source models and service."""
 
-import pytest
 from pydantic import SecretStr, ValidationError
+import pytest
 
 from backend.app.models.data_source import (
     ColumnMetadata,
@@ -150,26 +150,24 @@ class TestDataSourceTestResult:
 
     def test_successful_connection(self):
         """Test successful connection result."""
-        result = DataSourceTestResult(
-            success=True,
-            message="Connected successfully",
-            connection_time_ms=150,
-            metadata={"table_count": 42},
-        )
-
+        result = DataSourceTestResult(**{
+            "success": True,
+            "message": "Connected successfully",
+            "connection_time_ms": 150,
+            "metadata": {"table_count": 42},
+        })
         assert result.success
         assert result.connection_time_ms == 150
         assert result.connection_time_seconds == 0.15
-        assert result.metadata["table_count"] == 42
+        assert (result.metadata or {})["table_count"] == 42
 
     def test_failed_connection(self):
         """Test failed connection result."""
-        result = DataSourceTestResult(
-            success=False,
-            message="Connection timeout",
-            connection_time_ms=30000,
-        )
-
+        result = DataSourceTestResult(**{
+            "success": False,
+            "message": "Connection timeout",
+            "connection_time_ms": 30000,
+        })
         assert not result.success
         assert "timeout" in result.message.lower()  # pylint: disable=no-member
         assert result.connection_time_seconds == 30.0
@@ -198,13 +196,12 @@ class TestColumnMetadata:
 
     def test_column_metadata(self):
         """Test column metadata."""
-        column = ColumnMetadata(
-            name="user_id",
-            data_type="integer",
-            nullable=False,
-            is_primary_key=True,
-        )
-
+        column = ColumnMetadata(**{
+            "name": "user_id",
+            "data_type": "integer",
+            "nullable": False,
+            "is_primary_key": True,
+        })
         assert column.name == "user_id"
         assert column.data_type == "integer"
         assert not column.nullable
@@ -212,13 +209,12 @@ class TestColumnMetadata:
 
     def test_column_with_defaults(self):
         """Test column metadata with default values."""
-        column = ColumnMetadata(
-            name="created_at",
-            data_type="timestamp",
-            nullable=True,
-            default="CURRENT_TIMESTAMP",
-        )
-
+        column = ColumnMetadata(**{
+            "name": "created_at",
+            "data_type": "timestamp",
+            "nullable": True,
+            "default": "CURRENT_TIMESTAMP",
+        })
         assert column.name == "created_at"
         assert column.default == "CURRENT_TIMESTAMP"
         assert not column.is_primary_key  # Default value
