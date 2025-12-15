@@ -14,12 +14,12 @@ import sqlparse
 from sqlparse.sql import Identifier, Statement
 from sqlparse.tokens import DDL, DML, Keyword
 
-from backend.app.models.data_source import DataSourceConfig
+import backend.app.models.data_source as api
+import src.config_model as core
 from backend.app.models.query import QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
-from src.config_model import DataSourceConfig as CoreDataSourceConfig
 from src.loaders.base_loader import DataLoaders
-
+from backend.app.mappers.data_source_mapper import DataSourceMapper
 
 class QueryExecutionError(Exception):
     """Raised when query execution fails."""
@@ -129,7 +129,7 @@ class QueryService:
 
         # Get data source config
         try:
-            ds_config: DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
+            ds_config: api.DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
         except Exception as e:
             raise QueryExecutionError(f"Data source not found: {str(e)}") from e
 
@@ -149,7 +149,7 @@ class QueryService:
         }
 
         # Create core config instance
-        core_config = CoreDataSourceConfig(cfg=config_dict, name=data_source_name)
+        core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(cfg=config_dict, name=data_source_name)
 
         # Get appropriate loader
         try:
