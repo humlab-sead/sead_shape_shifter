@@ -7,16 +7,13 @@ from typing import Any, Optional
 import pandas as pd
 from loguru import logger
 
-from backend.app.models.data_source import (
-    DataSourceConfig,
-    DataSourceStatus,
-    DataSourceTestResult,
-    DataSourceType,
-)
-from src.config_model import DataSourceConfig as LegacyDataSourceConfig
+from backend.app.mappers.data_source_mapper import DataSourceMapper
+from backend.app.models.data_source import DataSourceConfig, DataSourceStatus, DataSourceTestResult
+from src.config_model import DataSourceConfig as CoreDataSourceConfig
 from src.config_model import TableConfig
 from src.configuration.interface import ConfigLike
 from src.loaders.base_loader import DataLoader, DataLoaders
+from src.loaders.database_loaders import CoreSchema, SqlLoader
 from src.utility import replace_env_vars
 
 
@@ -224,22 +221,22 @@ class DataSourceService:
 
         try:
             # Create a mock TableConfig for testing
-
+            core_ds_cfg: CoreDataSourceConfig = DataSourceMapper().to_core_config(config)
             # Create legacy data source config for loader
 
             # Get loader and test with simple query
-            loader_class = DataLoaders.items.get(legacy_data_source.driver)
+            loader_class: type[DataLoader] | None = DataLoaders.items.get(core_ds_cfg.driver)
             if not loader_class:
-                raise ValueError(f"No loader found for driver: {legacy_data_source.driver}")
+                raise ValueError(f"No loader found for driver: {core_ds_cfg.driver}")
 
-            loader: DataLoader = loader_class(data_source=legacy_data_source)
+            loader: DataLoader = loader_class(data_source=core_ds_cfg)
 
             # Create mock table config with simple test query
             test_table_cfg = TableConfig(
                 cfg={
-                    config.name: {"surrogate_id": "test_id", "keys": [], "columns": [], "source": None, "query": "SELECT 1 as test"}
+                    core_ds_cfg.name: {"surrogate_id": "test_id", "keys": [], "columns": [], "source": None, "query": "SELECT 1 as test"}
                 },  # Simple test query
-                entity_name=config.name,
+                entity_name=core_ds_cfg.name,
             )
 
             # Try to load (this will test the connection)
@@ -251,7 +248,8 @@ class DataSourceService:
             metadata = {}
             try:
                 if hasattr(loader, "get_tables"):
-                    tables = await loader.get_tables()
+                    assert isinstance(loader, SqlLoader)
+                    tables: dict[str, CoreSchema.TableMetadata] = await loader.get_tables()
                     metadata["table_count"] = len(tables)
             except:  # pylint: disable=bare-except
                 pass
