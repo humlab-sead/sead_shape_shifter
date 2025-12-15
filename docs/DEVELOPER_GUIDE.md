@@ -48,7 +48,7 @@ This guide is for developers who are:
 ### Prerequisites
 
 **Required:**
-- Python 3.11 or higher
+- Python 3.13 or higher
 - Node.js 18 or higher
 - Git
 - uv (Python package manager)
