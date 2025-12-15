@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ForeignKeySuggestion(BaseModel):
@@ -15,8 +15,8 @@ class ForeignKeySuggestion(BaseModel):
     reason: str = Field(..., description="Explanation for the suggestion")
     cardinality: Optional[str] = Field(None, description="Suggested cardinality (many_to_one, one_to_one, etc.)")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "remote_entity": "users",
                 "local_keys": ["user_id"],
@@ -26,6 +26,7 @@ class ForeignKeySuggestion(BaseModel):
                 "cardinality": "many_to_one",
             }
         }
+    )
 
 
 class DependencySuggestion(BaseModel):
@@ -35,8 +36,9 @@ class DependencySuggestion(BaseModel):
     reason: str = Field(..., description="Explanation for the dependency")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score (0.0-1.0)")
 
-    class Config:
-        json_schema_extra = {"example": {"entity": "users", "reason": "Entity has foreign key to users table", "confidence": 0.95}}
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"entity": "users", "reason": "Entity has foreign key to users table", "confidence": 0.95}}
+    )
 
 
 class EntitySuggestions(BaseModel):
@@ -46,8 +48,8 @@ class EntitySuggestions(BaseModel):
     foreign_key_suggestions: List[ForeignKeySuggestion] = Field(default_factory=list, description="Suggested foreign key relationships")
     dependency_suggestions: List[DependencySuggestion] = Field(default_factory=list, description="Suggested processing dependencies")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "entity_name": "orders",
                 "foreign_key_suggestions": [
@@ -63,6 +65,7 @@ class EntitySuggestions(BaseModel):
                 "dependency_suggestions": [{"entity": "users", "reason": "Foreign key relationship", "confidence": 0.95}],
             }
         }
+    )
 
 
 class SuggestionsRequest(BaseModel):
@@ -71,8 +74,8 @@ class SuggestionsRequest(BaseModel):
     entities: List[dict] = Field(..., description="List of entity configurations to analyze")
     data_source_name: Optional[str] = Field(None, description="Data source for database introspection")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "entities": [
                     {"name": "users", "columns": ["user_id", "username", "email"]},
@@ -81,3 +84,4 @@ class SuggestionsRequest(BaseModel):
                 "data_source_name": "test_sqlite",
             }
         }
+    )
