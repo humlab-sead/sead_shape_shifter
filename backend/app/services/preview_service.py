@@ -353,7 +353,7 @@ class PreviewService:
         unmatched_df: pd.DataFrame = merged[merged["_merge"] == "left_only"].head(10)
         unmatched_sample: list[UnmatchedRow] = [
             UnmatchedRow(
-                row_data={k: v for k, v in row.items() if k != "_merge" and not k.endswith("_remote")},
+                row_data={str(k): v for k, v in row.items() if k != "_merge" and not str(k).endswith("_remote")},
                 local_key_values=[row[k] for k in local_keys],
                 reason="No matching row in remote entity",
             )
