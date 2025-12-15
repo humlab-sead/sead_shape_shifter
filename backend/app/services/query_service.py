@@ -15,6 +15,7 @@ import sqlparse
 from sqlparse.sql import Identifier, Statement
 from sqlparse.tokens import DDL, DML, Keyword
 
+from backend.app.models.data_source import DataSourceConfig
 from backend.app.models.query import QueryPlan, QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
 from src.config_model import DataSourceConfig as CoreDataSourceConfig
@@ -129,10 +130,13 @@ class QueryService:
 
         # Get data source config
         try:
-            ds_config = self.data_source_service.get_data_source(data_source_name)
+            ds_config: DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
         except Exception as e:
             raise QueryExecutionError(f"Data source not found: {str(e)}") from e
 
+        if ds_config is None:
+            raise QueryExecutionError(f"Data source '{data_source_name}' does not exist")
+        
         # Build config dict for core system
         config_dict = {
             "driver": ds_config.get_loader_driver(),
@@ -191,7 +195,7 @@ class QueryService:
             )
 
         except asyncio.TimeoutError:
-            raise QueryExecutionError(f"Query execution timed out after {timeout} seconds") from e
+            raise QueryExecutionError(f"Query execution timed out after {timeout} seconds")
         except Exception as e:
             raise QueryExecutionError(f"Query execution failed: {str(e)}") from e
 
