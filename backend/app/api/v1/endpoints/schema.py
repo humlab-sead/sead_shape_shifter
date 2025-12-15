@@ -54,19 +54,10 @@ async def list_tables(
         return tables
     except SchemaServiceError as e:
         if "not found" in str(e).lower():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            ) from e
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
         if "not supported" in str(e).lower():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e),
-            ) from e
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        ) from e
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Unexpected error listing tables for {name}: {e}")
         raise HTTPException(
@@ -190,19 +181,10 @@ async def preview_table_data(
         return preview
     except SchemaServiceError as e:
         if "not found" in str(e).lower():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            ) from e
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
         if "not supported" in str(e).lower() or "timed out" in str(e).lower():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e),
-            ) from e
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        ) from e
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Unexpected error previewing {table_name}: {e}")
         raise HTTPException(
@@ -284,14 +266,8 @@ async def get_type_mappings(
 
     except SchemaServiceError as e:
         if "not found" in str(e).lower():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            ) from e
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        ) from e
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Error getting type mappings for {table_name}: {e}")
         raise HTTPException(
