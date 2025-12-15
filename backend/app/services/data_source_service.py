@@ -13,7 +13,7 @@ from src.config_model import DataSourceConfig as CoreDataSourceConfig
 from src.config_model import TableConfig
 from src.configuration.interface import ConfigLike
 from src.loaders.base_loader import DataLoader, DataLoaders
-from src.loaders.database_loaders import CoreSchema, SqlLoader
+from loaders.sql_loaders import CoreSchema, SqlLoader
 from src.utility import replace_env_vars
 
 
