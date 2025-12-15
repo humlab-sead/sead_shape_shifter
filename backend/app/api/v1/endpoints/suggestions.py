@@ -75,7 +75,7 @@ async def analyze_entities(
 async def suggest_for_entity(
     entity: dict,
     all_entities: List[dict],
-    data_source_name: str = None,
+    data_source_name: str | None = None,
     schema_service: SchemaIntrospectionService = Depends(get_schema_service),
 ) -> EntitySuggestions:
     """
