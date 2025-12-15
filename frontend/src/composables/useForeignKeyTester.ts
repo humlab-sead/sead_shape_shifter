@@ -1,9 +1,8 @@
 /**
  * Composable for testing foreign key joins
  */
-
 import { ref, computed } from 'vue'
-import api from '@/api/client'
+import { apiClient } from '@/api/client'
 
 export interface JoinStatistics {
   total_rows: number
@@ -61,7 +60,7 @@ export function useForeignKeyTester() {
     testResult.value = null
 
     try {
-      const response = await api.post<JoinTestResult>(
+      const response = await apiClient.post<JoinTestResult>(
         `/configurations/${encodeURIComponent(configName)}/entities/${encodeURIComponent(entityName)}/foreign-keys/${fkIndex}/test`,
         null,
         {
