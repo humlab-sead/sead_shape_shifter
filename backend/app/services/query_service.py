@@ -22,6 +22,7 @@ from backend.app.services.data_source_service import DataSourceService
 from src.loaders.base_loader import DataLoaders
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 
+
 class QueryExecutionError(Exception):
     """Raised when query execution fails."""
 
@@ -189,55 +190,50 @@ class QueryService:
                 return token.value.upper()
         return None
 
-    def _extract_table_names(self, statement: Statement) -> List[str]:
+    def _extract_table_names(self, statement: Statement) -> list[str]:
         """Extract table names from a SQL statement."""
-        tables = []
+        tables: list[str] = []
         from_seen = False
 
-        def extract_name(identifier):
+        def extract_name(identifier: Identifier | str) -> str:
             """Extract table name from identifier, handling schema.table format."""
-            if isinstance(identifier, Identifier):
-                name = identifier.get_real_name()
-            else:
-                name = str(identifier).strip()
-
-            # Remove quotes and brackets
+            name: str = identifier.get_real_name() if isinstance(identifier, Identifier) else str(identifier).strip()
             name = name.strip('`"[]')
-
-            # Handle schema.table format
             if "." in name:
                 name = name.split(".")[-1]
-
             return name
 
         for token in statement.tokens:
-            if token.ttype is Keyword:
-                keyword = token.value.upper()
-                if keyword in ("FROM", "JOIN"):
-                    from_seen = True
-            elif from_seen and not token.is_whitespace:
-                if isinstance(token, Identifier):
-                    table_name = extract_name(token)
-                    if table_name and table_name.upper() not in ("SELECT", "WHERE", "ON"):
-                        tables.append(table_name)
-                        from_seen = False
-                elif token.ttype is None:
-                    # Simple name
-                    table_name = token.value.strip('`"[]')
-                    if "." in table_name:
-                        table_name = table_name.split(".")[-1]
-                    if table_name and not any(c in table_name for c in "(),"):
-                        tables.append(table_name)
-                        from_seen = False
+
+            if token.is_whitespace:
+                continue
+
+            if token.ttype is Keyword and token.value.upper() in ("FROM", "JOIN"):
+                from_seen = True
+                continue
+
+            if not from_seen:
+                continue
+
+            if isinstance(token, Identifier):
+                table_name = extract_name(token)
+                if table_name and table_name.upper() not in ("SELECT", "WHERE", "ON"):
+                    tables.append(table_name)
+                    from_seen = False
+            elif token.ttype is None:
+                # Simple name
+                table_name = token.value.strip('`"[]')
+                if "." in table_name:
+                    table_name = table_name.split(".")[-1]
+                if table_name and not any(c in table_name for c in "(),"):
+                    tables.append(table_name)
+                    from_seen = False
 
         return tables
 
     def _has_where_clause(self, statement: Statement) -> bool:
         """Check if statement contains a WHERE clause."""
-        for token in statement.tokens:
-            if token.ttype is Keyword and token.value.upper() == "WHERE":
-                return True
-        return False
+        return any(t.ttype is Keyword and t.value.upper() == "WHERE" for t in statement.tokens)
 
     def _add_limit_clause(self, query: str, limit: int) -> str:
         """
@@ -260,11 +256,10 @@ class QueryService:
         if not parsed:
             return query
 
-        statement_type = self._get_statement_type(statement=parsed[0])
+        statement_type: str | None = self._get_statement_type(statement=parsed[0])
 
         if statement_type != "SELECT":
             return query
 
-        # Add LIMIT clause
         query = query.rstrip(";").strip()
         return f"{query} LIMIT {limit}"
