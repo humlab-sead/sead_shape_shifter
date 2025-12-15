@@ -226,42 +226,6 @@ class DataSourceService:
             # Create a mock TableConfig for testing
 
             # Create legacy data source config for loader
-            legacy_opts = {
-                "driver": config.get_loader_driver(),
-            }
-
-            if config.driver in (DataSourceType.POSTGRESQL, DataSourceType.POSTGRES):
-                legacy_opts.update(
-                    {
-                        "host": config.host or "localhost",
-                        "port": config.port or 5432,
-                        "dbname": config.effective_database,
-                        "username": config.username,
-                    }
-                )
-                if config.password:
-                    legacy_opts["password"] = config.password.get_secret_value()
-
-            elif config.driver in (DataSourceType.ACCESS, DataSourceType.UCANACCESS):
-                if not config.effective_file_path:
-                    raise ValueError("Access database requires 'filename' or 'file_path'")
-                legacy_opts["filename"] = config.effective_file_path
-                if config.options and "ucanaccess_dir" in config.options:
-                    legacy_opts["ucanaccess_dir"] = config.options["ucanaccess_dir"]
-
-            elif config.driver == DataSourceType.SQLITE:
-                if not config.effective_file_path:
-                    raise ValueError("SQLite database requires 'filename' or 'file_path'")
-                legacy_opts["filename"] = config.effective_file_path
-
-            # Merge with additional options
-            if config.options:
-                legacy_opts.update(config.options)
-
-            legacy_data_source = LegacyDataSourceConfig(
-                cfg={"driver": legacy_opts.pop("driver"), "options": legacy_opts},
-                name=config.name,
-            )
 
             # Get loader and test with simple query
             loader_class = DataLoaders.items.get(legacy_data_source.driver)
