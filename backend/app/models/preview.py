@@ -35,7 +35,7 @@ class PreviewResult(BaseModel):
     dependencies_loaded: List[str] = []
     transformations_applied: List[str] = []  # e.g., ["filter", "unnest"]
     cache_hit: bool = False
-
+    row_count: int = 0
 
 class EntityPreviewError(BaseModel):
     """Error information for preview failures."""
