@@ -4,7 +4,8 @@ from src.config_model import DataSourceConfig as CoreDataSourceConfig
 
 class DataSourceMapper:
     
-    def to_core_config(self, ds_config: ApiDataSourceConfig) -> CoreDataSourceConfig:
+    @staticmethod
+    def to_core_config(ds_config: ApiDataSourceConfig) -> CoreDataSourceConfig:
         """Map DataSourceConfig to CoreDataSourceConfig."""
         core_config: CoreDataSourceConfig = CoreDataSourceConfig(
             name=ds_config.name,
