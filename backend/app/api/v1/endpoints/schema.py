@@ -280,7 +280,7 @@ async def get_type_mappings(
 async def import_entity_from_table(
     name: str,
     table_name: str,
-    request: "EntityImportRequest" = None,
+    request: "EntityImportRequest | None" = None,
     service: SchemaIntrospectionService = Depends(get_schema_service),
 ):
     """
@@ -304,7 +304,7 @@ async def import_entity_from_table(
     """
 
     if request is None:
-        request = EntityImportRequest()
+        request = EntityImportRequest(**{})
 
     try:
         logger.info(f"Importing entity from table {table_name} in {name}")
