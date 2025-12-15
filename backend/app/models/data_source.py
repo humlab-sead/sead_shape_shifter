@@ -56,7 +56,7 @@ class DataSourceConfig(BaseModel):
     name: str = Field(..., description="Unique identifier for this data source")
     driver: DataSourceType = Field(..., description="Data source driver type")
 
-    # Database connection fields (optional, used for PostgreSQL, Access, SQLite)
+    # Database connection fields (optional, used for PostgreSQL, SQLite)
     host: Optional[str] = Field(None, description="Database host")
     port: Optional[int] = Field(None, description="Database port", ge=1, le=65535)
     database: Optional[str] = Field(None, description="Database name")
@@ -173,7 +173,7 @@ class TableSchema(BaseModel):
     primary_keys: list[str] = Field(default_factory=list, description="Primary key column names")
     indexes: list[str] = Field(default_factory=list, description="Index names")
     row_count: Optional[int] = Field(None, description="Approximate row count")
-
+    foreign_keys: list["ForeignKeyMetadata"] = Field(default_factory=list, description="Foreign key relationships")
 
 class ForeignKeyMetadata(BaseModel):
     """Metadata about a foreign key relationship."""
