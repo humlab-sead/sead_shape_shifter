@@ -15,6 +15,7 @@ from sqlparse.sql import Identifier, Statement
 from sqlparse.tokens import DDL, DML, Keyword
 
 import backend.app.models.data_source as api
+from loaders.database_loaders import SqlLoader
 import src.config_model as core
 from backend.app.models.query import QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
@@ -118,59 +119,37 @@ class QueryService:
             QuerySecurityError: If query contains destructive operations
             QueryExecutionError: If query execution fails
         """
-        # Validate query
-        validation = self.validate_query(query, data_source_name)
+
+        validation: QueryValidation = self.validate_query(query, data_source_name)
         if not validation.is_valid:
             raise QuerySecurityError(f"Query validation failed: {', '.join(validation.errors)}")
 
-        # Enforce limits
         limit = min(limit, self.MAX_ROWS)
         timeout = min(timeout, 300)  # Max 5 minutes
 
-        # Get data source config
-        try:
-            ds_config: api.DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
-        except Exception as e:
-            raise QueryExecutionError(f"Data source not found: {str(e)}") from e
+        ds_cfg: api.DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
 
-        if ds_config is None:
+        if ds_cfg is None:
             raise QueryExecutionError(f"Data source '{data_source_name}' does not exist")
 
-        # Build config dict for core system
-        config_dict = {
-            "driver": ds_config.get_loader_driver(),
-            "host": ds_config.host,
-            "port": ds_config.port,
-            "database": ds_config.effective_database,
-            "username": ds_config.username,
-            "password": ds_config.password.get_secret_value() if ds_config.password else None,
-            "filename": ds_config.effective_file_path,
-            "options": ds_config.options or {},
-        }
+        core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_cfg)
 
-        # Create core config instance
-        core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(cfg=config_dict, name=data_source_name)
-
-        # Get appropriate loader
-        try:
-            loader = DataLoaders.get(core_config.driver)(data_source=core_config)
-        except Exception as e:
-            raise QueryExecutionError(f"Failed to get data loader: {str(e)}") from e
+        loader: SqlLoader = DataLoaders.get(core_config.driver)(data_source=core_config)
 
         # Execute query with timeout
-        start_time = time.time()
+        start_time: float = time.time()
 
         try:
             # Add LIMIT clause if not present (for SELECT queries)
-            modified_query = self._add_limit_clause(query, limit)
+            modified_query: str = self._add_limit_clause(query, limit)
 
             # Execute query using loader
             df: pd.DataFrame = await asyncio.wait_for(loader.read_sql(modified_query), timeout=timeout)
 
-            execution_time_ms = max(1, int((time.time() - start_time) * 1000))
+            execution_time_ms: int = max(1, int((time.time() - start_time) * 1000))
 
             # Check result size
-            is_truncated = len(df) >= limit
+            is_truncated: bool = len(df) >= limit
 
             # Convert to list of dicts
             rows: list[dict] = df.to_dict("records")
@@ -192,7 +171,8 @@ class QueryService:
                 is_truncated=is_truncated,
                 total_rows=len(rows) if not is_truncated else None,
             )
-
+        except KeyError as e:
+            raise QueryExecutionError(f"Query execution failed due to missing: {str(e)}") from e
         except asyncio.TimeoutError as e:
             raise QueryExecutionError(f"Query execution timed out after {timeout} seconds") from e
         except Exception as e:
