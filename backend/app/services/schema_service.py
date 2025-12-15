@@ -12,15 +12,12 @@ from typing import Any, Optional
 import pandas as pd
 from loguru import logger
 
-from backend.app.models.data_source import (
-    ColumnMetadata,
-    DataSourceConfig,
-    ForeignKeyMetadata,
-    TableMetadata,
-    TableSchema,
-)
+from backend.app.mappers.data_source_mapper import DataSourceMapper
+from backend.app.mappers.table_schema_mapper import TableSchemaMapper
+import backend.app.models.data_source  as api
 from backend.app.models.entity_import import KeySuggestion
 from backend.app.services.data_source_service import DataSourceService
+from src.loaders.database_loaders import CoreSchema, SqlLoader
 from src.config_model import DataSourceConfig as CoreDataSourceConfig
 from src.configuration.interface import ConfigLike
 from src.loaders.base_loader import DataLoaders
@@ -106,16 +103,14 @@ class SchemaIntrospectionService:
             if ds_config is None:
                 raise SchemaServiceError(f"Data source '{data_source_name}' not found")
 
-            # Route to appropriate introspection method
-            driver = ds_config.driver.lower()
-            if driver in ("postgresql", "postgres"):
-                tables = await self._get_postgresql_tables(ds_config, schema)
-            elif driver in ("access", "ucanaccess"):
-                tables = await self._get_access_tables(ds_config)
-            elif driver == "sqlite":
-                tables = await self._get_sqlite_tables(ds_config)
-            else:
-                raise SchemaServiceError(f"Schema introspection not supported for driver: {driver}")
+            loader: SqlLoader = self.create_loader_for_data_source(ds_config)
+
+            core_tables: dict[str, CoreSchema.TableMetadata] = await loader.get_tables(schema=schema)
+
+            # Convert CoreSchema.TableMetadata to API TableMetadata
+            tables: list[api.TableMetadata] = [
+                api.TableMetadata(**{"name": table.name, "schema": table.schema, "comment": table.comment}) for table in core_tables.values()
+            ]
 
             # Cache and return
             self.cache.set(cache_key, tables)
@@ -125,7 +120,7 @@ class SchemaIntrospectionService:
             logger.error(f"Error getting tables for {data_source_name}: {e}")
             raise SchemaServiceError(f"Failed to get tables: {str(e)}") from e
 
-    async def get_table_schema(self, data_source_name: str, table_name: str, schema: Optional[str] = None) -> TableSchema:
+    async def get_table_schema(self, data_source_name: str, table_name: str, schema: Optional[str] = None) -> api.TableSchema:
         """
         Get detailed schema for a specific table.
 
@@ -148,24 +143,17 @@ class SchemaIntrospectionService:
 
         try:
             # Get data source config
-            ds_config = self.data_source_service.get_data_source(data_source_name)
+            ds_config: api.DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
             if ds_config is None:
                 raise SchemaServiceError(f"Data source '{data_source_name}' not found")
 
-            # Route to appropriate introspection method
-            driver = ds_config.driver.lower()
-            if driver in ("postgresql", "postgres"):
-                table_schema = await self._get_postgresql_table_schema(ds_config, table_name, schema)
-            elif driver in ("access", "ucanaccess"):
-                table_schema = await self._get_access_table_schema(ds_config, table_name)
-            elif driver == "sqlite":
-                table_schema = await self._get_sqlite_table_schema(ds_config, table_name)
-            else:
-                raise SchemaServiceError(f"Schema introspection not supported for driver: {driver}")
+            loader: SqlLoader = self.create_loader_for_data_source(ds_config)
+            core_schema: CoreSchema.TableSchema = await loader.get_table_schema(table_name, schema=schema)
+            api_schema: api.TableSchema = TableSchemaMapper.to_api_schema(core_schema)
 
             # Cache and return
-            self.cache.set(cache_key, table_schema)
-            return table_schema
+            self.cache.set(cache_key, api_schema)
+            return api_schema
 
         except Exception as e:
             logger.error(f"Error getting schema for {table_name}: {e}")
@@ -195,370 +183,40 @@ class SchemaIntrospectionService:
         Raises:
             SchemaServiceError: If preview fails
         """
-        # Limit constraints
+
         limit = min(limit, 100)
         offset = max(offset, 0)
 
         try:
-            # Get data source config
-            ds_config = self.data_source_service.get_data_source(data_source_name)
+            ds_config: api.DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
             if ds_config is None:
                 raise SchemaServiceError(f"Data source '{data_source_name}' not found")
 
-            # Build qualified table name
-            if schema and ds_config.driver.lower() in ("postgresql", "postgres"):
-                qualified_table = f'"{schema}"."{table_name}"'
-            else:
-                qualified_table = f'"{table_name}"'
+            data_source: CoreDataSourceConfig = DataSourceMapper.to_core_config(ds_config)
+            qualified_table: str = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
+            query: str = f"SELECT * FROM {qualified_table} LIMIT {limit} OFFSET {offset}"
+            loader: SqlLoader = DataLoaders.get(data_source.driver)(data_source=data_source)
 
-            # Build query
-            query = f"SELECT * FROM {qualified_table} LIMIT {limit} OFFSET {offset}"
-
-            # Execute query using loader
-            data = await self._execute_query(ds_config, query)
+            data: pd.DataFrame = await asyncio.wait_for(loader.read_sql(query), timeout=30.0)
 
             if data.empty:
-                return {
-                    "columns": [],
-                    "rows": [],
-                    "total_rows": 0,
-                    "limit": limit,
-                    "offset": offset,
-                }
-
-            # Convert to response format
-            columns = data.columns.tolist()
-            rows = data.to_dict(orient="records")
-
-            # Get approximate row count (cached if possible)
-            row_count = await self._get_table_row_count(ds_config, table_name, schema)
+                return {"columns": [], "rows": [], "total_rows": 0, "limit": limit, "offset": offset}
+            
+            row_count: int | None = await loader.get_table_row_count(table_name, schema)
 
             return {
-                "columns": columns,
-                "rows": rows,
+                "columns": data.columns.tolist(),
+                "rows": data.to_dict(orient="records"),  # type: ignore
                 "total_rows": row_count,
                 "limit": limit,
                 "offset": offset,
             }
 
+        except asyncio.TimeoutError as e:
+            raise SchemaServiceError("Query execution timed out after 30 seconds") from e
         except Exception as e:
             logger.error(f"Error previewing table {table_name}: {e}")
             raise SchemaServiceError(f"Failed to preview table data: {str(e)}") from e
-
-    async def _get_postgresql_tables(self, ds_config: DataSourceConfig, schema: Optional[str] = None) -> list[TableMetadata]:
-        """Get tables from PostgreSQL database."""
-        schema_filter = schema or "public"
-
-        query = f"""
-            SELECT 
-                table_name,
-                table_schema as schema,
-                obj_description((quote_ident(table_schema) || '.' || quote_ident(table_name))::regclass) as comment
-            FROM information_schema.tables
-            WHERE table_schema = '{schema_filter}'
-                AND table_type = 'BASE TABLE'
-            ORDER BY table_name
-        """
-
-        data = await self._execute_query(ds_config, query)
-
-        tables = []
-        for _, row in data.iterrows():
-            tables.append(
-                TableMetadata(
-                    name=row["table_name"],
-                    schema=row["schema"],
-                    comment=row.get("comment"),
-                )
-            )
-
-        return tables
-
-    async def _get_postgresql_table_schema(self, ds_config: DataSourceConfig, table_name: str, schema: Optional[str] = None) -> TableSchema:
-        """Get detailed schema for PostgreSQL table."""
-        schema_filter = schema or "public"
-
-        # Get columns
-        columns_query = f"""
-            SELECT column_name, data_type, is_nullable, column_default, character_maximum_length
-            FROM information_schema.columns
-            WHERE table_schema = '{schema_filter}'
-              AND table_name = '{table_name}'
-            ORDER BY ordinal_position
-        """
-
-        columns_data = await self._execute_query(ds_config, columns_query)
-
-        # Get primary keys
-        pk_query = f"""
-            SELECT a.attname as column_name
-            FROM pg_index i
-            JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-            WHERE i.indrelid = (
-                SELECT oid FROM pg_class
-                WHERE relname = '{table_name}'
-                AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = '{schema_filter}')
-            )
-            AND i.indisprimary
-        """
-
-        pk_data = await self._execute_query(ds_config, pk_query)
-        primary_keys = pk_data["column_name"].tolist() if not pk_data.empty else []
-
-        # Build columns list
-        columns = []
-        for _, row in columns_data.iterrows():
-            max_length = row.get("character_maximum_length")
-            # Convert pandas NaN to None for Pydantic
-            if pd.isna(max_length):
-                max_length = None
-
-            columns.append(
-                ColumnMetadata(
-                    name=row["column_name"],
-                    data_type=row["data_type"],
-                    nullable=row["is_nullable"] == "YES",
-                    default=row.get("column_default"),
-                    is_primary_key=row["column_name"] in primary_keys,
-                    max_length=max_length,
-                )
-            )
-
-        # Get foreign keys
-        fk_query = f"""
-            SELECT
-                kcu.column_name,
-                ccu.table_name AS referenced_table,
-                ccu.column_name AS referenced_column,
-                ccu.table_schema AS referenced_schema,
-                rc.constraint_name AS name
-            FROM information_schema.table_constraints AS tc
-            JOIN information_schema.key_column_usage AS kcu
-                ON tc.constraint_name = kcu.constraint_name
-                AND tc.table_schema = kcu.table_schema
-            JOIN information_schema.constraint_column_usage AS ccu
-                ON ccu.constraint_name = tc.constraint_name
-                AND ccu.table_schema = tc.table_schema
-            JOIN information_schema.referential_constraints AS rc
-                ON rc.constraint_name = tc.constraint_name
-            WHERE tc.constraint_type = 'FOREIGN KEY'
-                AND tc.table_schema = '{schema_filter}'
-                AND tc.table_name = '{table_name}'
-        """
-
-        fk_data = await self._execute_query(ds_config, fk_query)
-        foreign_keys = []
-        if not fk_data.empty:
-            for _, row in fk_data.iterrows():
-                foreign_keys.append(
-                    ForeignKeyMetadata(
-                        name=row.get("name"),
-                        column=row["column_name"],
-                        referenced_table=row["referenced_table"],
-                        referenced_column=row["referenced_column"],
-                        referenced_schema=row.get("referenced_schema"),
-                    )
-                )
-
-        # Get row count
-        row_count = await self._get_table_row_count(ds_config, table_name, schema)
-
-        return TableSchema(
-            table_name=table_name,
-            columns=columns,
-            primary_keys=primary_keys,
-            foreign_keys=foreign_keys,
-            row_count=row_count,
-        )
-
-    async def _get_access_tables(self, ds_config: DataSourceConfig) -> list[TableMetadata]:
-        """Get tables from MS Access database."""
-        # UCanAccess doesn't provide standard information_schema
-        # Use JDBC metadata instead
-        query = """
-            SELECT TABLE_NAME 
-            FROM INFORMATION_SCHEMA.TABLES 
-            WHERE TABLE_TYPE = 'TABLE'
-            ORDER BY TABLE_NAME
-        """
-
-        try:
-            data = await self._execute_query(ds_config, query)
-        except Exception:  # pylint: disable=broad-except
-            # Fallback: try to get from system tables
-            logger.warning("Standard query failed, using fallback method for Access")
-            query = "SELECT Name as TABLE_NAME FROM MSysObjects WHERE Type = 1 AND Flags = 0 ORDER BY Name"
-            data = await self._execute_query(ds_config, query)
-
-        tables = []
-        for _, row in data.iterrows():
-            tables.append(
-                TableMetadata(
-                    name=row["TABLE_NAME"],
-                    schema=None,
-                    comment=None,
-                )
-            )
-
-        return tables
-
-    async def _get_access_table_schema(self, ds_config: DataSourceConfig, table_name: str) -> TableSchema:
-        """Get detailed schema for MS Access table."""
-        # Get columns using information schema
-        columns_query = f"""
-            SELECT 
-                COLUMN_NAME,
-                DATA_TYPE,
-                IS_NULLABLE,
-                COLUMN_DEFAULT,
-                CHARACTER_MAXIMUM_LENGTH
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = '{table_name}'
-            ORDER BY ORDINAL_POSITION
-        """
-
-        columns_data = await self._execute_query(ds_config, columns_query)
-
-        # Get primary keys
-        # UCanAccess may not support this reliably, so we try
-        try:
-            pk_query = f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_NAME = '{table_name}'"
-            pk_data = await self._execute_query(ds_config, pk_query)
-            primary_keys = pk_data["COLUMN_NAME"].tolist() if not pk_data.empty else []
-        except Exception:  # pylint: disable=broad-except
-            logger.warning(f"Could not determine primary keys for {table_name}")
-            primary_keys = []
-
-        # Build columns list
-        columns = []
-        for _, row in columns_data.iterrows():
-            columns.append(
-                ColumnMetadata(
-                    name=row["COLUMN_NAME"],
-                    data_type=row["DATA_TYPE"],
-                    nullable=row["IS_NULLABLE"] == "YES",
-                    default=row.get("COLUMN_DEFAULT"),
-                    is_primary_key=row["COLUMN_NAME"] in primary_keys,
-                    max_length=row.get("CHARACTER_MAXIMUM_LENGTH"),
-                )
-            )
-
-        # Get row count
-        row_count = await self._get_table_row_count(ds_config, table_name, None)
-
-        return TableSchema(
-            table_name=table_name,
-            columns=columns,
-            primary_keys=primary_keys,
-            row_count=row_count,
-        )
-
-    async def _get_sqlite_tables(self, ds_config: DataSourceConfig) -> list[TableMetadata]:
-        """Get tables from SQLite database."""
-        query = """
-            SELECT name as table_name
-            FROM sqlite_master
-            WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
-            ORDER BY name
-        """
-
-        data = await self._execute_query(ds_config, query)
-
-        tables = []
-        for _, row in data.iterrows():
-            tables.append(
-                TableMetadata(
-                    name=row["table_name"],
-                    schema=None,
-                    comment=None,
-                )
-            )
-
-        return tables
-
-    async def _get_sqlite_table_schema(self, ds_config: DataSourceConfig, table_name: str) -> TableSchema:
-        """Get detailed schema for SQLite table."""
-        # Get columns using PRAGMA
-        columns_query = f"PRAGMA table_info({table_name})"
-
-        columns_data = await self._execute_query(ds_config, columns_query)
-
-        # Build columns and primary keys
-        columns = []
-        primary_keys = []
-
-        for _, row in columns_data.iterrows():
-            is_pk = row["pk"] > 0
-            if is_pk:
-                primary_keys.append(row["name"])
-
-            columns.append(
-                ColumnMetadata(
-                    name=row["name"],
-                    data_type=row["type"],
-                    nullable=row["notnull"] == 0,
-                    default=row.get("dflt_value"),
-                    is_primary_key=is_pk,
-                    max_length=None,
-                )
-            )
-
-        # Get row count
-        row_count = await self._get_table_row_count(ds_config, table_name, None)
-
-        return TableSchema(
-            table_name=table_name,
-            columns=columns,
-            primary_keys=primary_keys,
-            row_count=row_count,
-        )
-
-    async def _get_table_row_count(self, ds_config: DataSourceConfig, table_name: str, schema: Optional[str] = None) -> Optional[int]:
-        """Get approximate row count for a table."""
-        try:
-            # Build qualified table name
-            if schema and ds_config.driver.lower() in ("postgresql", "postgres"):
-                qualified_table = f'"{schema}"."{table_name}"'
-            else:
-                qualified_table = f'"{table_name}"'
-
-            query = f"SELECT COUNT(*) as count FROM {qualified_table}"
-            data = await self._execute_query(ds_config, query)
-
-            if not data.empty:
-                return int(data.iloc[0]["count"])
-        except Exception as e:  # pylint: disable=broad-except
-            logger.warning(f"Could not get row count for {table_name}: {e}")
-
-        return None
-
-    async def _execute_query(self, ds_config: DataSourceConfig, query: str):
-        """Execute a query using the appropriate data loader."""
-
-        # Build config dict for core system
-        config_dict = {
-            "driver": ds_config.get_loader_driver(),
-            "host": ds_config.host,
-            "port": ds_config.port,
-            "database": ds_config.effective_database,
-            "username": ds_config.username,
-            "password": ds_config.password.get_secret_value() if ds_config.password else None,
-            "filename": ds_config.effective_file_path,
-            "options": ds_config.options or {},
-        }
-
-        core_config: CoreDataSourceConfig = CoreDataSourceConfig(cfg=config_dict, name=ds_config.name)
-
-        loader: SqlLoader = DataLoaders.get(core_config.driver)(data_source=core_config)
-
-        # Execute query with timeout
-        try:
-            data: pd.DataFrame = await asyncio.wait_for(loader.read_sql(query), timeout=30.0)
-            return data
-        except asyncio.TimeoutError as e:
-            raise SchemaServiceError("Query execution timed out after 30 seconds") from e
-        except Exception as e:  # pylint: disable=broad-except
-            raise SchemaServiceError(f"Query execution failed: {str(e)}") from e
 
     def invalidate_cache(self, data_source_name: str) -> None:
         """Invalidate all cached data for a data source."""
