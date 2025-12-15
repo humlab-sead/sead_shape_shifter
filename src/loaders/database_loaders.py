@@ -16,6 +16,51 @@ if TYPE_CHECKING:
     from src.config_model import DataSourceConfig, TableConfig
 
 
+class CoreSchema:
+    @dataclass
+    class TableMetadata:
+        name: str
+        schema: Optional[str]
+        row_count: Optional[int]
+        comment: Optional[str]
+
+        @staticmethod
+        def from_dataframe(df: pd.DataFrame) -> dict[str, "CoreSchema.TableMetadata"]:
+            """Convert TableMetadata to DataFrame row."""
+            return {
+                row["table_name"]: CoreSchema.TableMetadata(
+                    name=row["table_name"], schema=row.get("schema"), row_count=None, comment=row.get("comment")
+                )
+                for _, row in df.iterrows()
+            }
+
+    @dataclass
+    class ColumnMetadata:
+        name: str
+        data_type: str
+        nullable: bool
+        default: Optional[str]
+        is_primary_key: bool
+        max_length: Optional[int]
+
+    @dataclass
+    class ForeignKeyMetadata:
+        column: str
+        referenced_schema: Optional[str]
+        referenced_table: str
+        referenced_column: str
+        constraint_name: Optional[str]
+
+    @dataclass
+    class TableSchema:
+        table_name: str
+        columns: list["CoreSchema.ColumnMetadata"]
+        primary_keys: list[str]
+        indexes: list[str]
+        row_count: Optional[int]
+        foreign_keys: list["CoreSchema.ForeignKeyMetadata"]
+
+
 class SqlLoader(DataLoader):
     """Loader for fixed data entities."""
 
