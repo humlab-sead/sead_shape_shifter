@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from backend.app.models.query import QueryPlan, QueryResult
+from backend.app.models.query import QueryResult
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
 
 # pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init

@@ -4,7 +4,7 @@ Tests for Database Loaders
 Tests the vendor-specific database introspection methods in database loaders.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pandas as pd
 import pytest
@@ -152,6 +152,7 @@ class TestPostgresSqlLoader:
             # Should default to 'public' schema
             call_args = mock_read_sql.call_args[0][0]
             assert "public" in call_args
+            assert tables is not None
 
 
 class TestSqliteLoader:
@@ -301,7 +302,7 @@ class TestUCanAccessLoader:
             call_count += 1
             if call_count == 1:
                 # First query fails
-                raise Exception("Query failed")
+                raise Exception("Query failed")  # pylint: disable=broad-exception-raised
             # Second query succeeds
             return tables_data
 
@@ -384,7 +385,7 @@ class TestUCanAccessLoader:
                 return columns_data
             if "KEY_COLUMN_USAGE" in query:
                 # Primary key query fails
-                raise Exception("No primary key info")
+                raise Exception("No primary key info")  # pylint: disable=broad-exception-raised
             return pd.DataFrame()
 
         with patch.object(loader, "read_sql", side_effect=mock_read_sql):

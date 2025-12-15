@@ -2,7 +2,6 @@ import abc
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass
-from tkinter import NO
 from typing import TYPE_CHECKING, Any, Generator, Optional
 
 import jaydebeapi
@@ -401,8 +400,8 @@ class UCanAccessSqlLoader(SqlLoader):
         super().__init__(data_source=data_source)
         opts: dict[str, Any] = data_source.options if data_source else {}
         self.filename: str = opts.get("filename", "")
-        self.jars: list[str] = self._find_jar_files(self.ucanaccess_dir)
         self.ucanaccess_dir: str = opts.get("ucanaccess_dir", "")
+        self.jars: list[str] = self._find_jar_files(self.ucanaccess_dir)
 
     def create_db_uri(self) -> str:
         if not self.data_source:

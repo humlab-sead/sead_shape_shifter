@@ -4,7 +4,7 @@ Tests for Schema Introspection Service
 Tests schema discovery for PostgreSQL, MS Access, and SQLite databases.
 """
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
 import pytest
@@ -21,6 +21,7 @@ from backend.app.services.schema_service import (
     SchemaIntrospectionService,
     SchemaServiceError,
 )
+from src.loaders.database_loaders import CoreSchema
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -185,9 +186,6 @@ class TestSchemaIntrospectionService:
     @pytest.mark.asyncio
     async def test_cache_hit(self, service, postgres_config):
         """Should return cached results on subsequent calls."""
-        from unittest.mock import patch
-
-        from src.loaders.database_loaders import CoreSchema
 
         service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
