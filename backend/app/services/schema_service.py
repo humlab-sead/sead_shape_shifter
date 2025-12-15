@@ -12,15 +12,15 @@ from typing import Any, Optional
 import pandas as pd
 from loguru import logger
 
+import backend.app.models.data_source as api
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.mappers.table_schema_mapper import TableSchemaMapper
-import backend.app.models.data_source  as api
 from backend.app.models.entity_import import KeySuggestion
 from backend.app.services.data_source_service import DataSourceService
-from src.loaders.database_loaders import CoreSchema, SqlLoader
 from src.config_model import DataSourceConfig as CoreDataSourceConfig
 from src.configuration.interface import ConfigLike
 from src.loaders.base_loader import DataLoaders
+from src.loaders.database_loaders import CoreSchema, SqlLoader
 
 
 class SchemaServiceError(Exception):
@@ -76,7 +76,7 @@ class SchemaIntrospectionService:
             raise SchemaServiceError(f"Schema introspection not supported for driver: {core_config.driver}")
 
         return loader
-    
+
     async def get_tables(self, data_source_name: str, schema: Optional[str] = None) -> list[api.TableMetadata]:
         """
         Get list of tables in a data source.
@@ -109,7 +109,8 @@ class SchemaIntrospectionService:
 
             # Convert CoreSchema.TableMetadata to API TableMetadata
             tables: list[api.TableMetadata] = [
-                api.TableMetadata(**{"name": table.name, "schema": table.schema, "comment": table.comment}) for table in core_tables.values()
+                api.TableMetadata(**{"name": table.name, "schema": table.schema, "comment": table.comment})
+                for table in core_tables.values()
             ]
 
             # Cache and return
@@ -201,7 +202,7 @@ class SchemaIntrospectionService:
 
             if data.empty:
                 return {"columns": [], "rows": [], "total_rows": 0, "limit": limit, "offset": offset}
-            
+
             row_count: int | None = await loader.get_table_row_count(table_name, schema)
 
             return {

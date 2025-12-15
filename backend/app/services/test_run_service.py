@@ -43,14 +43,16 @@ class TestRunService:
         started_at = datetime.utcnow()
 
         # Initialize result with PENDING status
-        result = TestRunResult(**{
-            "run_id": run_id,
-            "config_name": config_name,
-            "status": TestRunStatus.PENDING,
-            "started_at": started_at,
-            "total_time_ms": 0,
-            "options": options,
-        })
+        result = TestRunResult(
+            **{
+                "run_id": run_id,
+                "config_name": config_name,
+                "status": TestRunStatus.PENDING,
+                "started_at": started_at,
+                "total_time_ms": 0,
+                "options": options,
+            }
+        )
 
         # Store active run
         self._active_runs[run_id] = result
@@ -182,13 +184,15 @@ class TestRunService:
         Returns:
             EntityTestResult with processing details
         """
-        result: EntityTestResult = EntityTestResult(**{
-            "entity_name": entity_name,
-            "status": "success",
-            "rows_in": 0,
-            "rows_out": 0,
-            "execution_time_ms": 0,
-        })
+        result: EntityTestResult = EntityTestResult(
+            **{
+                "entity_name": entity_name,
+                "status": "success",
+                "rows_in": 0,
+                "rows_out": 0,
+                "execution_time_ms": 0,
+            }
+        )
 
         try:
             # Get entity type
@@ -231,12 +235,14 @@ class TestRunService:
                 for fk in foreign_keys:
                     # Just check that FK is properly configured
                     if not fk.get("entity"):
-                        issue = ValidationIssue(**{
-                            "entity_name": entity_name,
-                            "severity": "error",
-                            "message": "Foreign key missing remote entity name",
-                            "suggestion": "Add 'entity' field to foreign key configuration",
-                        })
+                        issue = ValidationIssue(
+                            **{
+                                "entity_name": entity_name,
+                                "severity": "error",
+                                "message": "Foreign key missing remote entity name",
+                                "suggestion": "Add 'entity' field to foreign key configuration",
+                            }
+                        )
                         result.validation_issues.append(issue)  # pylint: disable=no-member
 
         except Exception as e:  # pylint: disable=broad-except

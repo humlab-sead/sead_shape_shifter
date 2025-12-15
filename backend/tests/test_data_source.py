@@ -1,7 +1,7 @@
 """Tests for data source models and service."""
 
-from pydantic import SecretStr, ValidationError
 import pytest
+from pydantic import SecretStr, ValidationError
 
 from backend.app.models.data_source import (
     ColumnMetadata,
@@ -38,14 +38,16 @@ class TestDataSourceConfig:
 
     def test_postgresql_config(self):
         """Test PostgreSQL data source configuration."""
-        config = DataSourceConfig(**{
-            "name": "test_db",
-            "driver": "postgresql",
-            "host": "localhost",
-            "port": 5432,
-            "database": "testdb",
-            "username": "user",
-        })
+        config = DataSourceConfig(
+            **{
+                "name": "test_db",
+                "driver": "postgresql",
+                "host": "localhost",
+                "port": 5432,
+                "database": "testdb",
+                "username": "user",
+            }
+        )
 
         assert config.name == "test_db"
         assert config.driver == DataSourceType.POSTGRESQL
@@ -57,23 +59,27 @@ class TestDataSourceConfig:
 
     def test_postgres_alias(self):
         """Test postgres alias normalization."""
-        config = DataSourceConfig(**{
-            "name": "test_db",
-            "driver": DataSourceType.normalize("postgres"),
-            "host": "localhost",
-            "database": "testdb",
-        })
+        config = DataSourceConfig(
+            **{
+                "name": "test_db",
+                "driver": DataSourceType.normalize("postgres"),
+                "host": "localhost",
+                "database": "testdb",
+            }
+        )
         assert config.driver == DataSourceType.POSTGRESQL
         assert config.get_loader_driver() == "postgres"
 
     def test_access_config(self):
         """Test Access database configuration."""
-        config = DataSourceConfig(**{
-            "name": "access_db",
-            "driver": "ucanaccess",
-            "filename": "./data/test.mdb",
-            "options": {"ucanaccess_dir": "lib/ucanaccess"},
-        })
+        config = DataSourceConfig(
+            **{
+                "name": "access_db",
+                "driver": "ucanaccess",
+                "filename": "./data/test.mdb",
+                "options": {"ucanaccess_dir": "lib/ucanaccess"},
+            }
+        )
         assert config.name == "access_db"
         assert config.driver == DataSourceType.ACCESS
         assert config.effective_file_path == "./data/test.mdb"
@@ -83,15 +89,17 @@ class TestDataSourceConfig:
 
     def test_csv_config(self):
         """Test CSV file configuration."""
-        config = DataSourceConfig(**{
-            "name": "csv_data",
-            "driver": "csv",
-            "filename": "./data/test.csv",
-            "options": {
-                "sep": ";",
-                "encoding": "utf-8",
-            },
-        })
+        config = DataSourceConfig(
+            **{
+                "name": "csv_data",
+                "driver": "csv",
+                "filename": "./data/test.csv",
+                "options": {
+                    "sep": ";",
+                    "encoding": "utf-8",
+                },
+            }
+        )
 
         assert config.name == "csv_data"
         assert config.driver == DataSourceType.CSV
@@ -101,42 +109,51 @@ class TestDataSourceConfig:
 
     def test_dbname_alias(self):
         """Test dbname as alias for database."""
-        config = DataSourceConfig(**{
-            "name": "test_db",
-            "driver": DataSourceType.normalize("postgresql"),
-            "host": "localhost",
-            "dbname": "testdb",
-        })
+        config = DataSourceConfig(
+            **{
+                "name": "test_db",
+                "driver": DataSourceType.normalize("postgresql"),
+                "host": "localhost",
+                "dbname": "testdb",
+            }
+        )
         assert config.effective_database == "testdb"
 
     def test_file_path_alias(self):
         """Test file_path as alias for filename."""
-        config = DataSourceConfig(**{
-            "name": "csv_data",
-            "driver": DataSourceType.normalize("csv"),
-            "file_path": "./data/test.csv",
-        })
+        config = DataSourceConfig(
+            **{
+                "name": "csv_data",
+                "driver": DataSourceType.normalize("csv"),
+                "file_path": "./data/test.csv",
+            }
+        )
 
         assert config.effective_file_path == "./data/test.csv"
 
     def test_invalid_port(self):
         """Test validation of port number."""
         with pytest.raises(ValidationError):
-            DataSourceConfig(**{
-                "name": "test_db",
-                "driver": DataSourceType.normalize("postgresql"),
-                "host": "localhost",
-                "port": 99999,  # Invalid port
-            })
+            DataSourceConfig(
+                **{
+                    "name": "test_db",
+                    "driver": DataSourceType.normalize("postgresql"),
+                    "host": "localhost",
+                    "port": 99999,  # Invalid port
+                }
+            )
+
     def test_password_is_secret(self):
         """Test that password is stored as SecretStr."""
 
-        config = DataSourceConfig(**{
-            "name": "test_db",
-            "driver": DataSourceType.normalize("postgresql"),
-            "host": "localhost",
-            "password": SecretStr("secret123"),
-        })
+        config = DataSourceConfig(
+            **{
+                "name": "test_db",
+                "driver": DataSourceType.normalize("postgresql"),
+                "host": "localhost",
+                "password": SecretStr("secret123"),
+            }
+        )
         assert isinstance(config.password, SecretStr)
         assert config.password.get_secret_value() == "secret123"  # pylint: disable=no-member
 
@@ -150,12 +167,14 @@ class TestDataSourceTestResult:
 
     def test_successful_connection(self):
         """Test successful connection result."""
-        result = DataSourceTestResult(**{
-            "success": True,
-            "message": "Connected successfully",
-            "connection_time_ms": 150,
-            "metadata": {"table_count": 42},
-        })
+        result = DataSourceTestResult(
+            **{
+                "success": True,
+                "message": "Connected successfully",
+                "connection_time_ms": 150,
+                "metadata": {"table_count": 42},
+            }
+        )
         assert result.success
         assert result.connection_time_ms == 150
         assert result.connection_time_seconds == 0.15
@@ -163,11 +182,13 @@ class TestDataSourceTestResult:
 
     def test_failed_connection(self):
         """Test failed connection result."""
-        result = DataSourceTestResult(**{
-            "success": False,
-            "message": "Connection timeout",
-            "connection_time_ms": 30000,
-        })
+        result = DataSourceTestResult(
+            **{
+                "success": False,
+                "message": "Connection timeout",
+                "connection_time_ms": 30000,
+            }
+        )
         assert not result.success
         assert "timeout" in result.message.lower()  # pylint: disable=no-member
         assert result.connection_time_seconds == 30.0
@@ -196,12 +217,14 @@ class TestColumnMetadata:
 
     def test_column_metadata(self):
         """Test column metadata."""
-        column = ColumnMetadata(**{
-            "name": "user_id",
-            "data_type": "integer",
-            "nullable": False,
-            "is_primary_key": True,
-        })
+        column = ColumnMetadata(
+            **{
+                "name": "user_id",
+                "data_type": "integer",
+                "nullable": False,
+                "is_primary_key": True,
+            }
+        )
         assert column.name == "user_id"
         assert column.data_type == "integer"
         assert not column.nullable
@@ -209,12 +232,14 @@ class TestColumnMetadata:
 
     def test_column_with_defaults(self):
         """Test column metadata with default values."""
-        column = ColumnMetadata(**{
-            "name": "created_at",
-            "data_type": "timestamp",
-            "nullable": True,
-            "default": "CURRENT_TIMESTAMP",
-        })
+        column = ColumnMetadata(
+            **{
+                "name": "created_at",
+                "data_type": "timestamp",
+                "nullable": True,
+                "default": "CURRENT_TIMESTAMP",
+            }
+        )
         assert column.name == "created_at"
         assert column.default == "CURRENT_TIMESTAMP"
         assert not column.is_primary_key  # Default value
