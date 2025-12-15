@@ -55,7 +55,7 @@ class TestForeignKeyConfig:
 
     def test_keys_as_string(self):
         """Test that string keys are converted to lists."""
-        fk = ForeignKeyConfig(entity="remote", local_keys="id", remote_keys="remote_id")
+        fk = ForeignKeyConfig(entity="remote", local_keys="id", remote_keys="remote_id")  # type: ignore
         assert fk.local_keys == ["id"]
         assert fk.remote_keys == ["remote_id"]
 

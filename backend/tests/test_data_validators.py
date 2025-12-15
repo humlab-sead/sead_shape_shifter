@@ -33,7 +33,7 @@ def create_preview_result(rows, entity_name="test_entity"):
         columns=columns,
         total_rows_in_preview=len(rows),
         row_count=len(rows),
-        execution_time_ms=10.0,
+        execution_time_ms=10,
     )
 
 
