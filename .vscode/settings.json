@@ -25,5 +25,11 @@
         "titleBar.inactiveForeground": "#15202b99"
     },
     "peacock.remoteColor": "#85dbce",
-    "yaml.keyOrdering": false
+    "yaml.keyOrdering": false,
+    "python.analysis.exclude": [
+        "frontend"
+    ],
+    "python.analysis.diagnosticMode": "workspace",
+    "python.languageServer": "Pylance",
+    "python.analysis.typeEvaluation.deprecateTypingAliases": true
 }
