@@ -272,7 +272,7 @@ async def test_data_source_connection(
             )
 
         # Test connection
-        result = await service.test_connection(config)
+        result = await service.test_connection(config=config)
 
         if result.success:
             logger.info(f"Connection test successful for '{name}' in {result.connection_time_ms}ms")
