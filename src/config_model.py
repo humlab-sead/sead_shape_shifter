@@ -382,6 +382,8 @@ class TablesConfig:
         self.data_sources: dict[str, Any] = self.options.get("data_sources", {})
 
     def get_table(self, entity_name: str) -> "TableConfig":
+        if entity_name not in self.tables:
+            raise KeyError(f"Table 'entities.{entity_name}' not found in configuration")
         return self.tables[entity_name]
 
     def has_table(self, entity_name: str) -> bool:
