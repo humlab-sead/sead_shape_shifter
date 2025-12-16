@@ -1,6 +1,6 @@
 """Models for entity data preview functionality."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -26,14 +26,14 @@ class PreviewResult(BaseModel):
     """Result of an entity preview operation."""
 
     entity_name: str
-    rows: List[Dict[str, Any]]
-    columns: List[ColumnInfo]
+    rows: list[dict[str, Any]]
+    columns: list[ColumnInfo]
     total_rows_in_preview: int
     estimated_total_rows: Optional[int] = None  # Actual row count if available
     execution_time_ms: int
     has_dependencies: bool = False
-    dependencies_loaded: List[str] = []
-    transformations_applied: List[str] = []  # e.g., ["filter", "unnest"]
+    dependencies_loaded: list[str] = []
+    transformations_applied: list[str] = []  # e.g., ["filter", "unnest"]
     cache_hit: bool = False
     row_count: int = 0
 
@@ -44,4 +44,4 @@ class EntityPreviewError(BaseModel):
     entity_name: str
     error_type: str
     message: str
-    details: Optional[Dict[str, Any]] = None
+    details: Optional[dict[str, Any]] = None

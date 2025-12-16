@@ -1,6 +1,6 @@
 """API endpoints for configuration test runs."""
 
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path
 from loguru import logger
@@ -168,7 +168,7 @@ async def delete_test_run(
 
 @router.get(
     "/test-runs",
-    response_model=List[TestRunResult],
+    response_model=list[TestRunResult],
     summary="List all test runs",
     description="Get a list of all test runs (active and completed)",
     responses={
@@ -177,7 +177,7 @@ async def delete_test_run(
 )
 async def list_test_runs(
     test_run_service: TestRunService = Depends(get_test_run_service),
-) -> List[TestRunResult]:
+) -> list[TestRunResult]:
     """
     List all test runs.
 

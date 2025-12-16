@@ -1,7 +1,5 @@
 """API endpoints for entity relationship suggestions."""
 
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 
@@ -22,7 +20,7 @@ def get_suggestion_service_dep(schema_service: SchemaIntrospectionService = Depe
 async def analyze_entities(
     request: SuggestionsRequest,
     schema_service: SchemaIntrospectionService = Depends(get_schema_service),
-) -> List[EntitySuggestions]:
+) -> list[EntitySuggestions]:
     """
     Analyze a set of entities and generate relationship suggestions.
 
@@ -74,7 +72,7 @@ async def analyze_entities(
 @router.post("/entity", summary="Get suggestions for a single entity")
 async def suggest_for_entity(
     entity: dict,
-    all_entities: List[dict],
+    all_entities: list[dict],
     data_source_name: str | None = None,
     schema_service: SchemaIntrospectionService = Depends(get_schema_service),
 ) -> EntitySuggestions:

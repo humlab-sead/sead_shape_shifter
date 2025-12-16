@@ -7,7 +7,7 @@ and result size limiting.
 
 import asyncio
 import time
-from typing import List, Optional
+from typing import Optional
 
 import pandas as pd
 import sqlparse
