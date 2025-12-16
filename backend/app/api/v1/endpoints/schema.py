@@ -4,7 +4,7 @@ Schema Introspection API Endpoints
 Provides REST API for database schema inspection, table browsing, and data preview.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
@@ -18,12 +18,12 @@ from backend.app.services.type_mapping_service import TypeMappingService
 router = APIRouter(prefix="/data-sources", tags=["schema"])
 
 
-@router.get("/{name}/tables", response_model=List[TableMetadata], summary="List tables in data source")
+@router.get("/{name}/tables", response_model=list[TableMetadata], summary="List tables in data source")
 async def list_tables(
     name: str,
     schema: Optional[str] = Query(None, description="Schema name (PostgreSQL only)"),
     service: SchemaIntrospectionService = Depends(get_schema_service),
-) -> List[TableMetadata]:
+) -> list[TableMetadata]:
     """
     List all tables in a data source.
 
@@ -132,7 +132,7 @@ async def preview_table_data(
     limit: int = Query(50, ge=1, le=100, description="Maximum rows to return (1-100)"),
     offset: int = Query(0, ge=0, description="Number of rows to skip"),
     service: SchemaIntrospectionService = Depends(get_schema_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get a preview of table data.
 
@@ -193,7 +193,7 @@ async def preview_table_data(
         ) from e
 
 
-@router.get("/{name}/tables/{table_name}/type-mappings", response_model=Dict[str, Dict[str, Any]], summary="Get type mapping suggestions")
+@router.get("/{name}/tables/{table_name}/type-mappings", response_model=dict[str, dict[str, Any]], summary="Get type mapping suggestions")
 async def get_type_mappings(
     name: str,
     table_name: str,
