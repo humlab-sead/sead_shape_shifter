@@ -263,7 +263,6 @@ class TestForeignKeyDataValidator:
             # Assert
             assert len(errors) == 0
 
-    @pytest.mark.skip(reason="Complex mocking scenario - validator creates services internally. Test via integration tests instead.")
     @pytest.mark.asyncio
     async def test_missing_foreign_key_values(self):
         """Test when some foreign key values don't exist in remote entity."""

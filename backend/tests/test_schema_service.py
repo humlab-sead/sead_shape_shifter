@@ -110,12 +110,7 @@ class TestSchemaIntrospectionService:
     @pytest.mark.asyncio
     async def test_get_tables_unsupported_driver(self, service):
         """Should raise error for unsupported driver."""
-        csv_config = DataSourceConfig(
-            name="test_csv",
-            driver=DataSourceType.CSV,
-            filename="test.csv",
-            **{}
-        )
+        csv_config = DataSourceConfig(name="test_csv", driver=DataSourceType.CSV, filename="test.csv", **{})
         service.data_source_service.get_data_source = Mock(return_value=csv_config)
 
         with pytest.raises(SchemaServiceError, match="not supported"):
@@ -270,8 +265,8 @@ class TestSchemaEndpoints:
     def test_table_schema_model(self):
         """Should create TableSchema model."""
         columns: list[ColumnMetadata] = [
-            ColumnMetadata(name="id", data_type="integer", nullable=False, is_primary_key=True, **{}),
-            ColumnMetadata(name="name", data_type="varchar", nullable=False, is_primary_key=False, **{}),
+            ColumnMetadata(name="id", data_type="integer", nullable=False, is_primary_key=True, default=None, max_length=None),
+            ColumnMetadata(name="name", data_type="varchar", nullable=False, is_primary_key=False, default=None, max_length=None),
         ]
 
         schema = TableSchema(

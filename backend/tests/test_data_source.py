@@ -39,7 +39,13 @@ class TestDataSourceConfig:
     def test_postgresql_config(self):
         """Test PostgreSQL data source configuration."""
         config = DataSourceConfig(
-            name="test_db", driver="postgresql", host="localhost", port=5432, database="testdb", username="user", **{}
+            name="test_db",
+            driver=DataSourceType.normalize("postgresql"),
+            host="localhost",
+            port=5432,
+            database="testdb",
+            username="user",
+            **{},
         )
 
         assert config.name == "test_db"
@@ -59,7 +65,11 @@ class TestDataSourceConfig:
     def test_access_config(self):
         """Test Access database configuration."""
         config = DataSourceConfig(
-            name="access_db", driver="ucanaccess", filename="./data/test.mdb", options={"ucanaccess_dir": "lib/ucanaccess"}, **{}
+            name="access_db",
+            driver=DataSourceType.normalize("ucanaccess"),
+            filename="./data/test.mdb",
+            options={"ucanaccess_dir": "lib/ucanaccess"},
+            **{},
         )
         assert config.name == "access_db"
         assert config.driver == DataSourceType.ACCESS
@@ -72,7 +82,7 @@ class TestDataSourceConfig:
         """Test CSV file configuration."""
         config = DataSourceConfig(
             name="csv_data",
-            driver="csv",
+            driver=DataSourceType.normalize("csv"),
             filename="./data/test.csv",
             options={
                 "sep": ";",
