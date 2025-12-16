@@ -2,7 +2,7 @@
 
 import hashlib
 import time
-from typing import Optional
+from typing import Any, Optional
 
 import pandas as pd
 from loguru import logger
@@ -10,6 +10,7 @@ from loguru import logger
 from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
+from src.configuration.interface import ConfigLike
 from src.config_model import TableConfig, TablesConfig
 from src.configuration.provider import ConfigStore
 from src.normalizer import ArbodatSurveyNormalizer
@@ -94,31 +95,27 @@ class PreviewService:
             return cached
 
         # Load configuration from ConfigStore
-        config_obj = ConfigStore.config_global()
+        config_obj: ConfigLike = ConfigStore.config_global()
         if config_obj is None:
             raise ValueError("Configuration not loaded")
 
-        config_dict = config_obj.data
-        entities_cfg = config_dict.get("entities", {})
-        options = config_dict.get("options", {})
+        config_dict: dict[str, Any] = config_obj.data
+        entities_cfg: dict[str, Any] = config_dict.get("entities", {})
+        options: dict[str, Any] = config_dict.get("options", {})
         config = TablesConfig(entities_cfg=entities_cfg, options=options)
 
-        # Get entity config
         if entity_name not in config.tables:
             raise ValueError(f"Entity '{entity_name}' not found in configuration")
 
-        entity_config = config.tables[entity_name]
+        entity_config: TableConfig = config.tables[entity_name]
 
-        # Preview with transformations
         try:
-            result = await self._preview_with_normalizer(config, config_name, entity_name, entity_config, limit)
+            result: PreviewResult = await self._preview_with_normalizer(config=config, entity_name=entity_name, entity_config=entity_config, limit=limit)
 
-            # Calculate execution time
-            execution_time_ms = int((time.time() - start_time) * 1000)
+            execution_time_ms: int = int((time.time() - start_time) * 1000)
             result.execution_time_ms = execution_time_ms
 
-            # Cache result
-            self.cache.set(config_name, entity_name, limit, result)
+            self.cache.set(config_name=config_name, entity_name=entity_name, limit=limit, result=result)
 
             return result
 
