@@ -217,13 +217,7 @@ class SqliteLoader(SqlLoader):
         data: pd.DataFrame = await self.read_sql(query)
 
         tables: dict[str, CoreSchema.TableMetadata] = {
-            row["table_name"]: CoreSchema.TableMetadata(
-                **{
-                    "name": row["table_name"],
-                    "schema": None,
-                    "comment": None,
-                }
-            )
+            row["table_name"]: CoreSchema.TableMetadata(name=row["table_name"], schema=None, comment=None, row_count=0)
             for _, row in data.iterrows()
         }
 
@@ -383,13 +377,12 @@ class PostgresSqlLoader(SqlLoader):
         row_count = await self.get_table_row_count(table_name, schema)
 
         return CoreSchema.TableSchema(
-            **{
-                "table_name": table_name,
-                "columns": columns,
-                "primary_keys": primary_keys,
-                "foreign_keys": foreign_keys,
-                "row_count": row_count,
-            }
+            table_name=table_name,
+            columns=columns,
+            primary_keys=primary_keys,
+            foreign_keys=foreign_keys,
+            row_count=row_count,
+            indexes=[],
         )
 
 
@@ -504,13 +497,7 @@ class UCanAccessSqlLoader(SqlLoader):
             return {}
 
         tables: dict[str, CoreSchema.TableMetadata] = {
-            row["TABLE_NAME"]: CoreSchema.TableMetadata(
-                **{
-                    "name": row["TABLE_NAME"],
-                    "schema": None,
-                    "comment": None,
-                }
-            )
+            row["TABLE_NAME"]: CoreSchema.TableMetadata(name=row["TABLE_NAME"], schema=None, comment=None, row_count=0)
             for _, row in data.iterrows()
         }
 
