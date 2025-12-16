@@ -5,7 +5,7 @@ Suggests Shape Shifter entity field types from SQL data types.
 Provides confidence scores and handles common type mappings.
 """
 
-from typing import Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -17,7 +17,7 @@ class TypeMapping(BaseModel):
     suggested_type: str
     confidence: float  # 0.0 to 1.0
     reason: str
-    alternatives: List[str] = []
+    alternatives: list[str] = []
 
 
 class TypeMappingService:
@@ -220,7 +220,7 @@ class TypeMappingService:
 
         return None
 
-    def _get_alternatives(self, suggested_type: str) -> List[str]:
+    def _get_alternatives(self, suggested_type: str) -> list[str]:
         """Get alternative type suggestions."""
         alternatives_map = {
             "integer": ["string", "float"],
@@ -235,7 +235,7 @@ class TypeMappingService:
         }
         return alternatives_map.get(suggested_type, ["string"])
 
-    def get_mappings_for_table(self, columns: List[Dict[str, any]]) -> Dict[str, TypeMapping]:
+    def get_mappings_for_table(self, columns: list[dict[str, Any]]) -> dict[str, TypeMapping]:
         """
         Get type mappings for all columns in a table.
 
@@ -248,7 +248,7 @@ class TypeMappingService:
         mappings = {}
         for column in columns:
             column_name = column.get("name")
-            sql_type = column.get("data_type")
+            sql_type = column.get("data_type", "unknown")
             is_pk = column.get("is_primary_key", False)
             max_length = column.get("max_length")
 

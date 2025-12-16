@@ -5,8 +5,6 @@ Provides REST API for managing data sources (PostgreSQL, Access, SQLite, CSV).
 Supports CRUD operations, connection testing, and status checking.
 """
 
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 
@@ -21,10 +19,10 @@ from backend.app.services.data_source_service import DataSourceService
 router = APIRouter(prefix="/data-sources", tags=["data-sources"])
 
 
-@router.get("", response_model=List[DataSourceConfig], summary="List all data sources")
+@router.get("", response_model=list[DataSourceConfig], summary="List all data sources")
 async def list_data_sources(
     service: DataSourceService = Depends(get_data_source_service),
-) -> List[DataSourceConfig]:
+) -> list[DataSourceConfig]:
     """
     Retrieve all configured data sources.
 
@@ -272,7 +270,7 @@ async def test_data_source_connection(
             )
 
         # Test connection
-        result = await service.test_connection(config)
+        result = await service.test_connection(config=config)
 
         if result.success:
             logger.info(f"Connection test successful for '{name}' in {result.connection_time_ms}ms")

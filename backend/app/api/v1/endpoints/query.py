@@ -5,7 +5,7 @@ Query execution API endpoints.
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.api.dependencies import get_data_source_service
-from backend.app.models.query import QueryExecution, QueryPlan, QueryResult, QueryValidation
+from backend.app.models.query import QueryExecution, QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
 
@@ -126,60 +126,3 @@ async def validate_query(
         QueryValidation with validation results
     """
     return query_service.validate_query(execution.query, data_source_name)
-
-
-@router.post(
-    "/data-sources/{data_source_name}/query/explain",
-    response_model=QueryPlan,
-    summary="Get query execution plan",
-    description="""
-    Get the execution plan for a SQL query without executing it.
-    
-    This uses the database's EXPLAIN functionality to show how the query
-    would be executed, including:
-    - Table scans vs index usage
-    - Join methods
-    - Estimated cost and row counts
-    
-    Useful for optimizing slow queries.
-    """,
-    responses={
-        200: {
-            "description": "Query plan retrieved successfully",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "plan_text": "Seq Scan on users  (cost=0.00..10.00 rows=100 width=32)\n  Filter: (id = 1)",
-                        "estimated_cost": 10.0,
-                        "estimated_rows": 100,
-                    }
-                }
-            },
-        },
-        404: {"description": "Data source not found"},
-        500: {"description": "Failed to get query plan"},
-    },
-)
-async def explain_query(
-    data_source_name: str, execution: QueryExecution, query_service: QueryService = Depends(get_query_service)
-) -> QueryPlan:
-    """
-    Get the execution plan for a SQL query.
-
-    Args:
-        data_source_name: Name of the data source
-        execution: Query to explain
-        query_service: Query service instance
-
-    Returns:
-        QueryPlan with execution plan details
-
-    Raises:
-        HTTPException: If plan retrieval fails
-    """
-    try:
-        return await query_service.explain_query(data_source_name, execution.query)
-    except QueryExecutionError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e

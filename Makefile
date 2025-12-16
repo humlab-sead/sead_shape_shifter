@@ -78,7 +78,9 @@ backend-run:
 		echo "Using default config: input/arbodat-database.yml"; \
 		export CONFIG_FILE=$$(pwd)/input/arbodat-database.yml; \
 	fi && \
-	PYTHONPATH=.:backend uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	PYTHONPATH=. uv run uvicorn backend.app.main:app \
+		--reload --reload-dir "backend" --reload-exclude ".venv/*" --reload-exclude "frontend/*" \
+		--host 0.0.0.0 --port 8000
 
 .PHONY: backend-test
 backend-test:

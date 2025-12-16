@@ -37,7 +37,7 @@ class FileLoader(DataLoader):
         return {}
 
 
-@DataLoaders.register(key="csv")
+@DataLoaders.register(key=["csv", "tsv"])
 class CsvLoader(FileLoader):
     """Loader for CSV/TSV files."""
 

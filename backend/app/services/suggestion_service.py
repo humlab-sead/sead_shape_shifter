@@ -1,16 +1,23 @@
 """Service for generating entity relationship suggestions."""
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Optional
 
 from loguru import logger
 
-from backend.app.models.data_source import TableSchema
+from backend.app.models.data_source import TableMetadata, TableSchema
 from backend.app.models.suggestion import (
     DependencySuggestion,
     EntitySuggestions,
     ForeignKeySuggestion,
 )
 from backend.app.services.schema_service import SchemaIntrospectionService
+
+CONFIDENCE_MAP: dict[str, float] = {
+    "exact": 0.5,
+    "fk_pattern": 0.4,
+    "entity_pattern": 0.3,
+    "other": 0.2,
+}
 
 
 class SuggestionService:
@@ -21,24 +28,24 @@ class SuggestionService:
         self.schema_service = schema_service
 
     async def suggest_for_entity(
-        self, entity: Dict[str, Any], all_entities: List[Dict[str, Any]], data_source_name: Optional[str] = None
+        self, entity: dict[str, Any], all_entities: list[dict[str, Any]], data_source_name: Optional[str] = None
     ) -> EntitySuggestions:
         """
         Generate complete suggestions for an entity.
 
         Args:
             entity: Entity configuration dict with 'name' and 'columns'
-            all_entities: List of all entity configurations
+            all_entities: list of all entity configurations
             data_source_name: Optional data source for type checking
 
         Returns:
             EntitySuggestions with foreign key and dependency suggestions
         """
-        entity_name = entity.get("name", "")
+        entity_name: str = entity.get("name", "")
         logger.info(f"Generating suggestions for entity: {entity_name}")
 
         # Get table schemas if data source provided
-        schemas: Dict[str, TableSchema] = {}
+        schemas: dict[str, TableSchema] = {}
         if data_source_name:
             try:
                 schemas = await self._get_table_schemas(data_source_name, all_entities)
@@ -46,16 +53,16 @@ class SuggestionService:
                 logger.warning(f"Could not load schemas from {data_source_name}: {e}")
 
         # Generate foreign key suggestions
-        fk_suggestions = await self.suggest_foreign_keys(entity, all_entities, schemas)
+        fk_suggestions: list[ForeignKeySuggestion] = await self.suggest_foreign_keys(entity, all_entities, schemas)
 
         # Generate dependency suggestions from foreign keys
-        dep_suggestions = self._infer_dependencies_from_foreign_keys(fk_suggestions)
+        dep_suggestions: list[DependencySuggestion] = self._infer_dependencies_from_foreign_keys(fk_suggestions)
 
         return EntitySuggestions(entity_name=entity_name, foreign_key_suggestions=fk_suggestions, dependency_suggestions=dep_suggestions)
 
     async def suggest_foreign_keys(
-        self, entity: Dict[str, Any], all_entities: List[Dict[str, Any]], schemas: Dict[str, TableSchema] = None
-    ) -> List[ForeignKeySuggestion]:
+        self, entity: dict[str, Any], all_entities: list[dict[str, Any]], schemas: dict[str, TableSchema] | None = None
+    ) -> list[ForeignKeySuggestion]:
         """
         Suggest foreign key relationships for an entity.
 
@@ -73,30 +80,30 @@ class SuggestionService:
             schemas: Optional table schemas for type checking
 
         Returns:
-            List of foreign key suggestions sorted by confidence
+            list of foreign key suggestions sorted by confidence
         """
-        entity_name = entity.get("name", "")
-        entity_columns = set(entity.get("columns", []))
-        suggestions = []
+        entity_name: str = entity.get("name", "")
+        entity_columns: set[str] = set(entity.get("columns", []))
+        suggestions: list[ForeignKeySuggestion] = []
 
         if schemas is None:
             schemas = {}
 
         # Check against each other entity
         for other_entity in all_entities:
-            other_name = other_entity.get("name", "")
+            other_name: str = other_entity.get("name", "")
 
             # Skip self
             if other_name == entity_name:
                 continue
 
-            other_columns = set(other_entity.get("columns", []))
+            other_columns: set[str] = set(other_entity.get("columns", []))
 
             # Find matching columns
-            matches = self._find_column_matches(entity_columns, other_columns, entity_name, other_name, schemas)
+            matches: list[dict[str, Any]] = self._find_column_matches(entity_columns, other_columns, entity_name, other_name, schemas)
 
             for match in matches:
-                confidence = self._calculate_fk_confidence(match, entity_name, other_name, schemas)
+                confidence: float = self._calculate_fk_confidence(match, entity_name, other_name, schemas)
 
                 if confidence >= 0.5:  # Threshold for suggestions
                     suggestion = ForeignKeySuggestion(
@@ -117,12 +124,12 @@ class SuggestionService:
 
     def _find_column_matches(
         self,
-        local_columns: Set[str],
-        remote_columns: Set[str],
+        local_columns: set[str],
+        remote_columns: set[str],
         local_entity: str,  # pylint: disable=unused-argument
         remote_entity: str,
-        schemas: Dict[str, TableSchema],  # pylint: disable=unused-argument
-    ) -> List[Dict[str, Any]]:
+        schemas: dict[str, TableSchema],  # pylint: disable=unused-argument
+    ) -> list[dict[str, Any]]:
         """
         Find matching columns between two entities.
 
@@ -186,7 +193,7 @@ class SuggestionService:
         return matches
 
     def _calculate_fk_confidence(
-        self, match: Dict[str, Any], local_entity: str, remote_entity: str, schemas: Dict[str, TableSchema]
+        self, match: dict[str, Any], local_entity: str, remote_entity: str, schemas: dict[str, TableSchema]
     ) -> float:
         """
         Calculate confidence score for a foreign key suggestion.
@@ -200,19 +207,11 @@ class SuggestionService:
         """
         match_type = match.get("match_type", "")
 
-        # Base score based on match type
-        if match_type == "exact":
-            confidence = 0.5
-        elif match_type == "fk_pattern":
-            confidence = 0.4
-        elif match_type == "entity_pattern":
-            confidence = 0.3
-        else:
-            confidence = 0.2
+        confidence: float = CONFIDENCE_MAP.get(match_type) or CONFIDENCE_MAP.get("other") or 0.2
 
         # Check type compatibility if schemas available
-        local_schema = schemas.get(local_entity)
-        remote_schema = schemas.get(remote_entity)
+        local_schema: TableSchema | None = schemas.get(local_entity)
+        remote_schema: TableSchema | None = schemas.get(remote_entity)
 
         if local_schema and remote_schema:
             local_col = match["local"]
@@ -275,7 +274,7 @@ class SuggestionService:
 
         return False
 
-    def _infer_dependencies_from_foreign_keys(self, fk_suggestions: List[ForeignKeySuggestion]) -> List[DependencySuggestion]:
+    def _infer_dependencies_from_foreign_keys(self, fk_suggestions: list[ForeignKeySuggestion]) -> list[DependencySuggestion]:
         """
         Infer processing dependencies from foreign key suggestions.
 
@@ -298,14 +297,14 @@ class SuggestionService:
 
         return dependencies
 
-    async def _get_table_schemas(self, data_source_name: str, entities: List[Dict[str, Any]]) -> Dict[str, TableSchema]:
+    async def _get_table_schemas(self, data_source_name: str, entities: list[dict[str, Any]]) -> dict[str, TableSchema]:
         """Get table schemas for all entities from data source."""
         schemas = {}
 
         # Get table list
         try:
-            tables = await self.schema_service.list_tables(data_source_name)
-            table_names = {t.name for t in tables}
+            tables: list[TableMetadata] = await self.schema_service.get_tables(data_source_name)
+            table_names: set[str] = {t.name for t in tables}
         except Exception as e:  # pylint: disable=broad-except
             logger.warning(f"Could not list tables: {e}")
             return schemas

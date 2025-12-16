@@ -3,10 +3,11 @@
 import time
 import uuid
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Optional
 
 from loguru import logger
 
+from backend.app.models.config import Configuration
 from backend.app.models.test_run import (
     EntityTestResult,
     OutputFormat,
@@ -24,8 +25,8 @@ class TestRunService:
 
     def __init__(self, config_service: ConfigurationService):
         self.config_service = config_service
-        self._active_runs: Dict[str, TestRunResult] = {}
-        self._cancel_flags: Dict[str, bool] = {}
+        self._active_runs: dict[str, TestRunResult] = {}
+        self._cancel_flags: dict[str, bool] = {}
 
     def init_test_run(self, config_name: str, options: TestRunOptions) -> TestRunResult:
         """
@@ -49,6 +50,7 @@ class TestRunService:
             started_at=started_at,
             total_time_ms=0,
             options=options,
+            **{},
         )
 
         # Store active run
@@ -65,7 +67,7 @@ class TestRunService:
             run_id: ID of the test run to execute
         """
         logger.info(f"[BACKGROUND] Starting execution for test run {run_id}")
-        result = self._active_runs.get(run_id)
+        result: TestRunResult | None = self._active_runs.get(run_id)
         if not result:
             logger.error(f"[BACKGROUND] Test run {run_id} not found in active runs")
             return
@@ -80,7 +82,7 @@ class TestRunService:
             logger.info("[BACKGROUND] Status updated, stored back to active_runs")
 
             # Load configuration
-            config = self.config_service.load_configuration(result.config_name)
+            config: Configuration = self.config_service.load_configuration(result.config_name)
             if not config:
                 raise ValueError(f"Configuration '{result.config_name}' not found")
 
@@ -187,6 +189,10 @@ class TestRunService:
             rows_in=0,
             rows_out=0,
             execution_time_ms=0,
+            validation_issues=[],
+            warnings=[],
+            preview_rows=[],
+            error_message=None,
         )
 
         try:
@@ -205,15 +211,12 @@ class TestRunService:
 
                     if options.output_format == OutputFormat.PREVIEW:
                         # Convert values to dict format
-                        columns = entity_config.get("columns", [])
+                        columns: list[str] = entity_config.get("columns", [])
                         if columns:
                             preview = []
                             for row_vals in values[:10]:
                                 if isinstance(row_vals, list):
                                     row_dict = dict(zip(columns, row_vals))
-                                    # {  # pylint: disable=unnecessary-comprehension
-                                    #     col: val for col, val in zip(columns, row_vals)
-                                    # }
                                     preview.append(row_dict)
                             result.preview_rows = preview
                 else:
@@ -229,14 +232,16 @@ class TestRunService:
                 foreign_keys = entity_config.get("foreign_keys", [])
                 for fk in foreign_keys:
                     # Just check that FK is properly configured
-                    if not fk.get("entity"):
-                        issue = ValidationIssue(
-                            entity_name=entity_name,
-                            severity="error",
-                            message="Foreign key missing remote entity name",
-                            suggestion="Add 'entity' field to foreign key configuration",
-                        )
-                        result.validation_issues.append(issue)  # pylint: disable=no-member
+                    if fk.get("entity"):
+                        continue
+                    issue = ValidationIssue(
+                        entity_name=entity_name,
+                        severity="error",
+                        message="Foreign key missing remote entity name",
+                        suggestion="Add 'entity' field to foreign key configuration",
+                        location=None,
+                    )
+                    result.validation_issues.append(issue)  # pylint: disable=no-member
 
         except Exception as e:  # pylint: disable=broad-except
             logger.error(f"Error processing entity {entity_name}: {e}", exc_info=True)
@@ -255,18 +260,18 @@ class TestRunService:
         Returns:
             TestProgress with current status, or None if not found
         """
-        result = self._active_runs.get(run_id)
+        result: TestRunResult | None = self._active_runs.get(run_id)
         if not result:
             return None
 
-        entities_completed = len(result.entities_processed)
-        entities_total = len(result.entities_processed) + (
+        entities_completed: int = len(result.entities_processed)
+        entities_total: int = len(result.entities_processed) + (
             len(result.options.entities or []) - entities_completed if result.options.entities else 0
         )
 
-        progress_percentage = (entities_completed / entities_total * 100) if entities_total > 0 else 0
+        progress_percentage: float = (entities_completed / entities_total * 100) if entities_total > 0 else 0
 
-        elapsed_time_ms = (
+        elapsed_time_ms: int = (
             int((datetime.utcnow() - result.started_at).total_seconds() * 1000)
             if result.status == TestRunStatus.RUNNING
             else result.total_time_ms
@@ -300,7 +305,7 @@ class TestRunService:
         Returns:
             True if test was cancelled, False if not found or already completed
         """
-        result = self._active_runs.get(run_id)
+        result: TestRunResult | None = self._active_runs.get(run_id)
         if not result:
             return False
 
@@ -325,7 +330,7 @@ class TestRunService:
             f"[RETRIEVE] Getting test run {run_id}, "
             f"active_runs contains {len(self._active_runs)} runs: {list(self._active_runs.keys())}"
         )
-        result = self._active_runs.get(run_id)
+        result: TestRunResult | None = self._active_runs.get(run_id)
         if result:
             logger.info(f"[RETRIEVE] Found run {run_id}, status: {result.status}")
         else:

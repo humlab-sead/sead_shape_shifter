@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { api } from '../api/client'
+import { apiClient } from '../api/client'
 
 export interface ForeignKeySuggestion {
   remote_entity: string
@@ -41,7 +41,7 @@ export function useSuggestions() {
     error.value = null
 
     try {
-      const response = await api.post<EntitySuggestions[]>(
+      const response = await apiClient.post<EntitySuggestions[]>(
         '/suggestions/analyze',
         request
       )
@@ -63,7 +63,7 @@ export function useSuggestions() {
     error.value = null
 
     try {
-      const response = await api.post<EntitySuggestions>('/suggestions/entity', {
+      const response = await apiClient.post<EntitySuggestions>('/suggestions/entity', {
         entity,
         all_entities: allEntities,
         data_source_name: dataSourceName,

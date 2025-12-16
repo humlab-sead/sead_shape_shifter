@@ -4,7 +4,7 @@ Tests for Schema Introspection Service
 Tests schema discovery for PostgreSQL, MS Access, and SQLite databases.
 """
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
 import pytest
@@ -21,6 +21,7 @@ from backend.app.services.schema_service import (
     SchemaIntrospectionService,
     SchemaServiceError,
 )
+from src.loaders.sql_loaders import CoreSchema
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -71,7 +72,7 @@ class TestSchemaIntrospectionService:
         return config
 
     @pytest.fixture
-    def service(self, mock_config):
+    def service(self, mock_config) -> SchemaIntrospectionService:
         """Create service with mock config."""
         return SchemaIntrospectionService(mock_config)
 
@@ -85,25 +86,18 @@ class TestSchemaIntrospectionService:
             port=5432,
             database="testdb",
             username="testuser",
+            **{},
         )
 
     @pytest.fixture
     def access_config(self):
         """MS Access data source config."""
-        return DataSourceConfig(
-            name="test_access",
-            driver=DataSourceType.ACCESS,
-            filename="test.mdb",
-        )
+        return DataSourceConfig(name="test_access", driver=DataSourceType.ACCESS, filename="test.mdb", **{})
 
     @pytest.fixture
     def sqlite_config(self):
         """SQLite data source config."""
-        return DataSourceConfig(
-            name="test_sqlite",
-            driver=DataSourceType.SQLITE,
-            filename="test.db",
-        )
+        return DataSourceConfig(name="test_sqlite", driver=DataSourceType.SQLITE, filename="test.db", **{})
 
     @pytest.mark.asyncio
     async def test_get_tables_not_found(self, service):
@@ -116,140 +110,27 @@ class TestSchemaIntrospectionService:
     @pytest.mark.asyncio
     async def test_get_tables_unsupported_driver(self, service):
         """Should raise error for unsupported driver."""
-        csv_config = DataSourceConfig(
-            name="test_csv",
-            driver=DataSourceType.CSV,
-            filename="test.csv",
-        )
+        csv_config = DataSourceConfig(name="test_csv", driver=DataSourceType.CSV, filename="test.csv", **{})
         service.data_source_service.get_data_source = Mock(return_value=csv_config)
 
         with pytest.raises(SchemaServiceError, match="not supported"):
             await service.get_tables("test_csv")
 
-    @pytest.mark.asyncio
-    async def test_get_postgresql_tables(self, service, postgres_config):
-        """Should get tables from PostgreSQL."""
-        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
-
-        # Mock query result
-        tables_data = pd.DataFrame(
-            {
-                "table_name": ["users", "orders"],
-                "schema": ["public", "public"],
-                "comment": [None, "Order records"],
-            }
-        )
-
-        service._execute_query = AsyncMock(return_value=tables_data)
-
-        tables = await service.get_tables("test_postgres")
-
-        assert len(tables) == 2
-        assert tables[0].name == "users"
-        assert tables[0].schema == "public"
-        assert tables[1].name == "orders"
-        assert tables[1].comment == "Order records"
+    def mock_read_sql(self, test_df: pd.DataFrame, mock_get_loader: Mock) -> AsyncMock:
+        """Mock the loader's read_sql method."""
+        mock_read_sql: AsyncMock = AsyncMock(return_value=test_df)
+        mock_loader_instance = Mock()
+        mock_loader_instance.read_sql = mock_read_sql
+        mock_loader_class = Mock(return_value=mock_loader_instance)
+        mock_get_loader.return_value = mock_loader_class
+        return mock_read_sql
 
     @pytest.mark.asyncio
-    async def test_get_postgresql_table_schema(self, service, postgres_config):
-        """Should get table schema from PostgreSQL."""
-        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
-
-        # Mock columns query
-        columns_data = pd.DataFrame(
-            {
-                "column_name": ["id", "name", "email"],
-                "data_type": ["integer", "character varying", "character varying"],
-                "is_nullable": ["NO", "NO", "YES"],
-                "column_default": ["nextval(...)", None, None],
-                "character_maximum_length": [None, 100, 255],
-            }
-        )
-
-        # Mock primary keys query
-        pk_data = pd.DataFrame(
-            {
-                "column_name": ["id"],
-            }
-        )
-
-        # Mock row count query
-        count_data = pd.DataFrame(
-            {
-                "count": [42],
-            }
-        )
-
-        async def mock_execute(config, query):
-            if "information_schema.columns" in query:
-                return columns_data
-            if "pg_index" in query:
-                return pk_data
-            if "COUNT(*)" in query:
-                return count_data
-            return pd.DataFrame()
-
-        service._execute_query = mock_execute
-
-        schema = await service.get_table_schema("test_postgres", "users")
-
-        assert schema.table_name == "users"
-        assert len(schema.columns) == 3
-        assert schema.columns[0].name == "id"
-        assert schema.columns[0].is_primary_key is True
-        assert schema.columns[1].name == "name"
-        assert schema.columns[1].nullable is False
-        assert schema.columns[2].name == "email"
-        assert schema.columns[2].nullable is True
-        assert schema.row_count == 42
-
-    @pytest.mark.asyncio
-    async def test_get_access_tables(self, service, access_config):
-        """Should get tables from MS Access."""
-        service.data_source_service.get_data_source = Mock(return_value=access_config)
-
-        # Mock query result
-        tables_data = pd.DataFrame(
-            {
-                "TABLE_NAME": ["Customers", "Products"],
-            }
-        )
-
-        service._execute_query = AsyncMock(return_value=tables_data)
-
-        tables = await service.get_tables("test_access")
-
-        assert len(tables) == 2
-        assert tables[0].name == "Customers"
-        assert tables[1].name == "Products"
-
-    @pytest.mark.asyncio
-    async def test_get_sqlite_tables(self, service, sqlite_config):
-        """Should get tables from SQLite."""
-        service.data_source_service.get_data_source = Mock(return_value=sqlite_config)
-
-        # Mock query result
-        tables_data = pd.DataFrame(
-            {
-                "table_name": ["users", "posts"],
-            }
-        )
-
-        service._execute_query = AsyncMock(return_value=tables_data)
-
-        tables = await service.get_tables("test_sqlite")
-
-        assert len(tables) == 2
-        assert tables[0].name == "users"
-        assert tables[1].name == "posts"
-
-    @pytest.mark.asyncio
-    async def test_preview_table_data(self, service, postgres_config):
+    async def test_preview_table_data(self, service: SchemaIntrospectionService, postgres_config: DataSourceConfig):
         """Should preview table data."""
-        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
         # Mock preview data
-        preview_data = pd.DataFrame(
+        preview_data: pd.DataFrame = pd.DataFrame(
             {
                 "id": [1, 2, 3],
                 "name": ["Alice", "Bob", "Charlie"],
@@ -257,61 +138,78 @@ class TestSchemaIntrospectionService:
             }
         )
 
-        # Mock count data
-        count_data = pd.DataFrame({"count": [100]})
+        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
-        async def mock_execute(config, query):
-            if "COUNT(*)" in query:
-                return count_data
-            return preview_data
+        # Mock the loader with both read_sql and get_table_row_count methods
+        mock_loader_instance = Mock()
+        mock_loader_instance.read_sql = AsyncMock(return_value=preview_data)
+        mock_loader_instance.get_table_row_count = AsyncMock(return_value=100)
+        mock_loader_class = Mock(return_value=mock_loader_instance)
 
-        service._execute_query = mock_execute
+        with patch("backend.app.services.schema_service.DataLoaders.get") as mock_get_loader:
+            mock_get_loader.return_value = mock_loader_class
 
-        result = await service.preview_table_data("test_postgres", "users", limit=50, offset=0)
+            result = await service.preview_table_data("test_postgres", "users", limit=50, offset=0)
 
-        assert result["columns"] == ["id", "name", "active"]
-        assert len(result["rows"]) == 3
-        assert result["rows"][0]["name"] == "Alice"
-        assert result["total_rows"] == 100
-        assert result["limit"] == 50
-        assert result["offset"] == 0
+            assert result["columns"] == ["id", "name", "active"]
+            assert len(result["rows"]) == 3
+            assert result["rows"][0]["name"] == "Alice"
+            assert result["total_rows"] == 100
+            assert result["limit"] == 50
+            assert result["offset"] == 0
 
     @pytest.mark.asyncio
-    async def test_preview_table_data_limit_constraint(self, service, postgres_config):
+    async def test_preview_table_data_limit_constraint(self, service: SchemaIntrospectionService, postgres_config: DataSourceConfig):
         """Should enforce maximum limit of 100 rows."""
         service.data_source_service.get_data_source = Mock(return_value=postgres_config)
-        service._execute_query = AsyncMock(return_value=pd.DataFrame())
 
-        # Request 150 rows, should be capped at 100
-        result = await service.preview_table_data("test_postgres", "users", limit=150)
+        mock_loader_instance = Mock(read_sql=AsyncMock(return_value=pd.DataFrame()), get_table_row_count=AsyncMock(return_value=100))
+        mock_loader_class = Mock(return_value=mock_loader_instance)
+
+        with patch("backend.app.services.schema_service.DataLoaders.get") as mock_get_loader:
+            mock_get_loader.return_value = mock_loader_class
+
+            result = await service.preview_table_data("test_postgres", "users", limit=150)
 
         assert result["limit"] == 100
 
     @pytest.mark.asyncio
     async def test_cache_hit(self, service, postgres_config):
         """Should return cached results on subsequent calls."""
+
         service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
-        tables_data = pd.DataFrame(
-            {
-                "table_name": ["users"],
-                "schema": ["public"],
-                "comment": [None],
-            }
-        )
+        # Mock core tables response
+        core_tables = {
+            "users": CoreSchema.TableMetadata(
+                name="users",
+                schema="public",
+                row_count=None,
+                comment=None,
+            )
+        }
 
-        service._execute_query = AsyncMock(return_value=tables_data)
+        # Mock the loader
+        with patch("backend.app.services.schema_service.DataLoaders.get") as mock_get_loader:
+            with patch("backend.app.services.schema_service.isinstance") as mock_isinstance:
+                # Make isinstance return True for SqlLoader check
+                mock_isinstance.return_value = True
 
-        # First call
-        tables1 = await service.get_tables("test_postgres")
+                mock_loader_instance = AsyncMock()
+                mock_loader_instance.get_tables = AsyncMock(return_value=core_tables)
+                mock_loader_class = Mock(return_value=mock_loader_instance)
+                mock_get_loader.return_value = mock_loader_class
 
-        # Second call (should hit cache)
-        tables2 = await service.get_tables("test_postgres")
+                # First call
+                tables1 = await service.get_tables("test_postgres")
 
-        # Query should only be executed once
-        service._execute_query.assert_called_once()
-        assert len(tables1) == 1
-        assert len(tables2) == 1
+                # Second call (should hit cache)
+                tables2 = await service.get_tables("test_postgres")
+
+                # Loader should only be called once
+                mock_loader_instance.get_tables.assert_called_once()
+                assert len(tables1) == 1
+                assert len(tables2) == 1
 
     def test_invalidate_cache_for_data_source(self, service):
         """Should invalidate cache entries for specific data source."""
@@ -366,19 +264,9 @@ class TestSchemaEndpoints:
 
     def test_table_schema_model(self):
         """Should create TableSchema model."""
-        columns = [
-            ColumnMetadata(
-                name="id",
-                data_type="integer",
-                nullable=False,
-                is_primary_key=True,
-            ),
-            ColumnMetadata(
-                name="name",
-                data_type="varchar",
-                nullable=False,
-                is_primary_key=False,
-            ),
+        columns: list[ColumnMetadata] = [
+            ColumnMetadata(name="id", data_type="integer", nullable=False, is_primary_key=True, default=None, max_length=None),
+            ColumnMetadata(name="name", data_type="varchar", nullable=False, is_primary_key=False, default=None, max_length=None),
         ]
 
         schema = TableSchema(

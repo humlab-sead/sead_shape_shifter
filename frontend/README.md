@@ -1,4 +1,4 @@
-# Shape Shifter Configuration Editor - Frontend
+# SEAD Shape Shifter Configuration Editor - Frontend
 
 Vue 3 + TypeScript + Vuetify frontend for editing Shape Shifter YAML configurations.
 
