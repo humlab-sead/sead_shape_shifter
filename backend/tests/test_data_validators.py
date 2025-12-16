@@ -370,7 +370,7 @@ class TestDataValidationService:
 
         service = DataValidationService(mock_preview_service)
 
-        with patch("backend.app.services.config_service.ConfigurationService") as mock_config_svc:
+        with patch("backend.app.validators.data_validators.ConfigurationService") as mock_config_svc:
             mock_config = Mock()
             mock_config.entities = {
                 "entity1": Mock(columns=["id"], keys=["id"], foreign_keys=[]),
@@ -391,7 +391,7 @@ class TestDataValidationService:
 
         service = DataValidationService(mock_preview_service)
 
-        with patch("backend.app.services.config_service.ConfigurationService") as mock_config_svc:
+        with patch("backend.app.validators.data_validators.ConfigurationService") as mock_config_svc:
             mock_config = Mock()
             mock_config.entities = {
                 "entity1": Mock(columns=["id"], keys=["id"], foreign_keys=[]),
