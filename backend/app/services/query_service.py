@@ -15,12 +15,12 @@ from sqlparse.sql import Identifier, Statement
 from sqlparse.tokens import DDL, DML, Keyword
 
 import backend.app.models.data_source as api
-from src.loaders.sql_loaders import SqlLoader
 import src.config_model as core
+from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.query import QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
 from src.loaders.base_loader import DataLoaders
-from backend.app.mappers.data_source_mapper import DataSourceMapper
+from src.loaders.sql_loaders import SqlLoader
 
 
 class QueryExecutionError(Exception):

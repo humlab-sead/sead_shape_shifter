@@ -156,7 +156,7 @@ class TestSchemaIntrospectionService:
                 "active": [True, True, False],
             }
         )
-        
+
         service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
         # Mock the loader with both read_sql and get_table_row_count methods
@@ -182,10 +182,7 @@ class TestSchemaIntrospectionService:
         """Should enforce maximum limit of 100 rows."""
         service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
-        mock_loader_instance = Mock(
-            read_sql=AsyncMock(return_value=pd.DataFrame()),
-            get_table_row_count=AsyncMock(return_value=100)
-        )
+        mock_loader_instance = Mock(read_sql=AsyncMock(return_value=pd.DataFrame()), get_table_row_count=AsyncMock(return_value=100))
         mock_loader_class = Mock(return_value=mock_loader_instance)
 
         with patch("backend.app.services.schema_service.DataLoaders.get") as mock_get_loader:

@@ -8,9 +8,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
-from backend.app.models.query import QueryValidation
 from backend.app.models.data_source import DataSourceConfig, DataSourceType
-from backend.app.models.query import QueryResult
+from backend.app.models.query import QueryResult, QueryValidation
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
 
 # pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
@@ -70,7 +69,7 @@ class TestQueryValidation:
 
     def test_validate_empty_query(self):
         """Should reject empty queries."""
-        query: Literal[''] = ""
+        query: Literal[""] = ""
         result: QueryValidation = self.service.validate_query(query)
 
         assert result.is_valid is False
@@ -152,13 +151,13 @@ class TestQueryExecution:
 
         # Mock the loader's read_sql method
         with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
-            
+
             _: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
             query: str = "select * from users"
 
             service: QueryService = QueryService(data_source_service=mock_ds_service)
             result: QueryResult = await service.execute_query(data_source_name="test_db", query=query, limit=100)
-            
+
             assert isinstance(result, QueryResult)
             assert result.row_count == 3
             assert len(result.columns) == 2
@@ -173,14 +172,14 @@ class TestQueryExecution:
         test_df = pd.DataFrame({"id": range(50)})
 
         with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
-            
+
             mock_read_sql: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
-            
+
             query: str = "SELECT * FROM users"
             service: QueryService = QueryService(data_source_service=mock_ds_service)
 
             result: QueryResult = await service.execute_query("test_db", query, limit=50)
-            
+
             called_query: str = mock_read_sql.call_args[0][0]
             assert "LIMIT" in called_query.upper()
             assert result.row_count == 50
@@ -191,15 +190,15 @@ class TestQueryExecution:
 
         mock_conn = Mock()
         mock_ds_service.get_connection.return_value = mock_conn
-        
+
         test_df = pd.DataFrame({"id": range(100)})  # Return exactly the limit
 
         with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
 
             _: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
-            
+
             service: QueryService = QueryService(data_source_service=mock_ds_service)
-            
+
             query: str = "SELECT * FROM users"
             result: QueryResult = await service.execute_query("test_db", query, limit=100)
 
