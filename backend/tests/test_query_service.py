@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
-from app.models.query import QueryValidation
+from backend.app.models.query import QueryValidation
 from backend.app.models.data_source import DataSourceConfig, DataSourceType
 from backend.app.models.query import QueryResult
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
