@@ -23,7 +23,7 @@ class UnnestConfig:
         self.value_name: str = unnest_data.get("value_name", "") or ""
 
         if not self.var_name or not self.value_name:
-            raise ValueError(f"Invalid unnest configuration: {data}")
+            raise ValueError(f"Invalid unnest configuration (missing var_name or value_name): {data}")
 
 
 class ForeignKeyConstraints:
@@ -404,6 +404,10 @@ class TablesConfig:
             return DataLoaders.get(key=table_cfg.type)(data_source=None)
 
         return None
+
+    def clone(self) -> "TablesConfig":
+        """Create a deep copy of the TablesConfig."""
+        return TablesConfig(entities_cfg={k: v._data.copy() for k, v in self.tables.items()}, options=self.options.copy())
 
     @cached_property
     def table_names(self) -> list[str]:
