@@ -118,8 +118,8 @@ class TestAppendProcessingBasic:
     @with_test_config
     async def test_append_mode_all(self, sample_survey_data, config_with_append, test_provider):  # pylint: disable=unused-argument
         """Test append mode 'all' keeps duplicates."""
-        table_store = {"survey": sample_survey_data.copy()}
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config_with_append, table_store=table_store)
+        table_store = {"default": sample_survey_data.copy()}
+        normalizer = ArbodatSurveyNormalizer(default_entity="default", config=config_with_append, table_store=table_store)
 
         await normalizer.normalize()
 
@@ -133,8 +133,8 @@ class TestAppendProcessingBasic:
         self, sample_survey_data, config_with_distinct_mode, test_provider
     ):  # pylint: disable=unused-argument
         """Test append mode 'distinct' removes duplicates."""
-        table_store = {"survey": sample_survey_data.copy()}
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config_with_distinct_mode, table_store=table_store)
+        table_store = {"default": sample_survey_data.copy()}
+        normalizer = ArbodatSurveyNormalizer(default_entity="default", config=config_with_distinct_mode, table_store=table_store)
 
         await normalizer.normalize()
 
@@ -245,8 +245,15 @@ class TestAppendProcessingEdgeCases:
     async def test_append_with_empty_main_data(self, test_provider):
         """Test append when main entity returns no data."""
         config_dict = {
-            "site": {
+            "default": {
                 "source": None,
+                "type": "fixed",
+                "columns": ["site_name", "latitude"],
+                "values": [],
+                "depends_on": [],
+            },
+            "site": {
+                "source": "default",
                 "type": "fixed",
                 "surrogate_id": "site_id",
                 "keys": ["site_name"],
