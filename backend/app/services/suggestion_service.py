@@ -13,6 +13,13 @@ from backend.app.models.suggestion import (
 from backend.app.services.schema_service import SchemaIntrospectionService
 
 
+CONFIDENCE_MAP: dict[str, float] ={
+    "exact": 0.5,
+    "fk_pattern": 0.4,
+    "entity_pattern": 0.3,
+    "other": 0.2,
+}
+
 class SuggestionService:
     """Service for suggesting foreign keys and dependencies between entities."""
 
@@ -34,7 +41,7 @@ class SuggestionService:
         Returns:
             EntitySuggestions with foreign key and dependency suggestions
         """
-        entity_name = entity.get("name", "")
+        entity_name: str = entity.get("name", "")
         logger.info(f"Generating suggestions for entity: {entity_name}")
 
         # Get table schemas if data source provided
@@ -46,10 +53,10 @@ class SuggestionService:
                 logger.warning(f"Could not load schemas from {data_source_name}: {e}")
 
         # Generate foreign key suggestions
-        fk_suggestions = await self.suggest_foreign_keys(entity, all_entities, schemas)
+        fk_suggestions: list[ForeignKeySuggestion] = await self.suggest_foreign_keys(entity, all_entities, schemas)
 
         # Generate dependency suggestions from foreign keys
-        dep_suggestions = self._infer_dependencies_from_foreign_keys(fk_suggestions)
+        dep_suggestions: list[DependencySuggestion] = self._infer_dependencies_from_foreign_keys(fk_suggestions)
 
         return EntitySuggestions(entity_name=entity_name, foreign_key_suggestions=fk_suggestions, dependency_suggestions=dep_suggestions)
 
@@ -75,28 +82,28 @@ class SuggestionService:
         Returns:
             list of foreign key suggestions sorted by confidence
         """
-        entity_name = entity.get("name", "")
-        entity_columns = set(entity.get("columns", []))
-        suggestions = []
+        entity_name: str = entity.get("name", "")
+        entity_columns: set[str] = set(entity.get("columns", []))
+        suggestions: list[ForeignKeySuggestion] = []
 
         if schemas is None:
             schemas = {}
 
         # Check against each other entity
         for other_entity in all_entities:
-            other_name = other_entity.get("name", "")
+            other_name: str = other_entity.get("name", "")
 
             # Skip self
             if other_name == entity_name:
                 continue
 
-            other_columns = set(other_entity.get("columns", []))
+            other_columns: set[str] = set(other_entity.get("columns", []))
 
             # Find matching columns
-            matches = self._find_column_matches(entity_columns, other_columns, entity_name, other_name, schemas)
+            matches: list[dict[str, Any]] = self._find_column_matches(entity_columns, other_columns, entity_name, other_name, schemas)
 
             for match in matches:
-                confidence = self._calculate_fk_confidence(match, entity_name, other_name, schemas)
+                confidence: float = self._calculate_fk_confidence(match, entity_name, other_name, schemas)
 
                 if confidence >= 0.5:  # Threshold for suggestions
                     suggestion = ForeignKeySuggestion(
@@ -200,19 +207,11 @@ class SuggestionService:
         """
         match_type = match.get("match_type", "")
 
-        # Base score based on match type
-        if match_type == "exact":
-            confidence = 0.5
-        elif match_type == "fk_pattern":
-            confidence = 0.4
-        elif match_type == "entity_pattern":
-            confidence = 0.3
-        else:
-            confidence = 0.2
-
+        confidence: float = CONFIDENCE_MAP.get(match_type) or CONFIDENCE_MAP.get("other") or 0.2
+        
         # Check type compatibility if schemas available
-        local_schema = schemas.get(local_entity)
-        remote_schema = schemas.get(remote_entity)
+        local_schema: TableSchema | None = schemas.get(local_entity)
+        remote_schema: TableSchema | None = schemas.get(remote_entity)
 
         if local_schema and remote_schema:
             local_col = match["local"]
