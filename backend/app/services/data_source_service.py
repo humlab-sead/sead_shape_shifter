@@ -205,9 +205,17 @@ class DataSourceService:
             # Create mock table config with simple test query
             test_table_cfg = TableConfig(
                 cfg={
-                    core_ds_cfg.name: {"surrogate_id": "test_id", "keys": [], "columns": [], "source": None, "query": "SELECT 1 as test"}
+                    "test": {
+                        "surrogate_id": "test_id",
+                        "type": "sql",
+                        "keys": [],
+                        "columns": [],
+                        "source": None,
+                        "query": "SELECT 1 as test",
+                        "data_source": core_ds_cfg.name,
+                    }
                 },  # Simple test query
-                entity_name=core_ds_cfg.name,
+                entity_name="test",
             )
 
             # Try to load (this will test the connection)

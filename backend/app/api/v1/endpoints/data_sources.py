@@ -14,9 +14,87 @@ from backend.app.models.data_source import (
     DataSourceStatus,
     DataSourceTestResult,
 )
+from backend.app.models.driver_schema import DriverSchemaResponse, FieldMetadataResponse
 from backend.app.services.data_source_service import DataSourceService
 
 router = APIRouter(prefix="/data-sources", tags=["data-sources"])
+
+
+@router.get("/drivers", response_model=dict[str, DriverSchemaResponse], summary="Get available data source drivers")
+async def list_drivers() -> dict[str, DriverSchemaResponse]:
+    """
+    Get metadata for all available data source drivers.
+
+    Returns schema information for each driver including:
+    - Required and optional fields
+    - Field types, defaults, and validation rules
+    - Display names and descriptions
+
+    **Use this endpoint to dynamically build driver-specific configuration forms.**
+
+    **Supported Drivers**:
+    - `postgresql`: PostgreSQL database
+    - `ucanaccess`: Microsoft Access database
+    - `sqlite`: SQLite database file
+    - `csv`: CSV file
+
+    **Response Structure**:
+    ```json
+    {
+      "postgresql": {
+        "driver": "postgresql",
+        "display_name": "PostgreSQL",
+        "description": "PostgreSQL database connection",
+        "category": "database",
+        "fields": [
+          {
+            "name": "host",
+            "type": "string",
+            "required": true,
+            "default": "localhost",
+            "description": "Database server hostname",
+            "placeholder": "localhost"
+          },
+          ...
+        ]
+      }
+    }
+    ```
+    """
+    try:
+        from src.loaders.driver_metadata import DriverSchemaRegistry
+
+        logger.debug("Fetching driver schemas")
+        schemas = DriverSchemaRegistry.all()
+
+        return {
+            driver: DriverSchemaResponse(
+                driver=schema.driver,
+                display_name=schema.display_name,
+                description=schema.description,
+                category=schema.category,
+                fields=[
+                    FieldMetadataResponse(
+                        name=f.name,
+                        type=f.type,
+                        required=f.required,
+                        default=f.default,
+                        description=f.description,
+                        min_value=f.min_value,
+                        max_value=f.max_value,
+                        placeholder=f.placeholder,
+                    )
+                    for f in schema.fields
+                ],
+            )
+            for driver, schema in schemas.items()
+        }
+    except Exception as e:
+        logger.error(f"Error fetching driver schemas: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch driver schemas: {str(e)}",
+        ) from e
 
 
 @router.get("", response_model=list[DataSourceConfig], summary="List all data sources")
