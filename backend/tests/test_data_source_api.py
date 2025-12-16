@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app.services.data_source_service import DataSourceService
+from backend.app.api.dependencies import get_data_source_service
 from backend.app.main import app
 from backend.app.models.data_source import (
     DataSourceConfig,
@@ -17,8 +17,7 @@ from backend.app.models.data_source import (
     DataSourceTestResult,
     DataSourceType,
 )
-
-from backend.app.api.dependencies import get_data_source_service
+from backend.app.services.data_source_service import DataSourceService
 
 
 @pytest.fixture

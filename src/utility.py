@@ -312,7 +312,7 @@ class Registry(Generic[T]):
             else:
                 setattr(fn_or_class, "_registry_key", keys[0])
                 fn_or_class = _ensure_key_property(fn_or_class)
-            
+
             for k in keys:
                 cls.items[k] = fn_or_class
 

@@ -7,11 +7,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 import pytest
 
-from backend.app.models.preview import ColumnInfo
-from backend.app.models.preview import PreviewResult
+from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.preview_service import PreviewCache, PreviewService
-from src.config_model import TableConfig
-from src.config_model import TablesConfig
+from src.config_model import TableConfig, TablesConfig
 
 # pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
 
@@ -163,7 +161,7 @@ class TestPreviewService:
             "entities": sample_config.entities_cfg,
             "options": sample_config.options,
         }
-        
+
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with pytest.raises(ValueError, match="Entity 'nonexistent' not found"):
                 await preview_service.preview_entity("test_config", "nonexistent", 50)
@@ -176,7 +174,7 @@ class TestPreviewService:
             "entities": sample_config.entities_cfg,
             "options": sample_config.options,
         }
-        
+
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
                 # Setup mock normalizer
@@ -206,7 +204,7 @@ class TestPreviewService:
     async def test_preview_with_limit(self, preview_service, sample_config):
         """Test preview respects limit parameter."""
         large_df = pd.DataFrame({"col1": range(100), "col2": range(100, 200)})
-        
+
         mock_config_obj = MagicMock()
         mock_config_obj.data = {
             "entities": sample_config.entities_cfg,
@@ -237,7 +235,7 @@ class TestPreviewService:
             "var_name": "variable",
             "value_name": "value",
         }
-        
+
         mock_config_obj = MagicMock()
         mock_config_obj.data = {
             "entities": config_with_transforms.entities_cfg,
@@ -257,14 +255,16 @@ class TestPreviewService:
                 assert "unnest" in result.transformations_applied
 
     @pytest.mark.asyncio
-    async def test_preview_with_dependencies(self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame):
+    async def test_preview_with_dependencies(
+        self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame
+    ):
         """Test preview loads dependencies correctly."""
         mock_config_obj = MagicMock()
         mock_config_obj.data = {
             "entities": sample_config.entities_cfg,
             "options": sample_config.options,
         }
-        
+
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
@@ -286,7 +286,7 @@ class TestPreviewService:
             "entities": sample_config.entities_cfg,
             "options": sample_config.options,
         }
-        
+
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
@@ -313,7 +313,7 @@ class TestPreviewService:
             "entities": sample_config.entities_cfg,
             "options": sample_config.options,
         }
-        
+
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
                 mock_normalizer = MagicMock()

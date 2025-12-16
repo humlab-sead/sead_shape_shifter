@@ -10,8 +10,8 @@ from loguru import logger
 from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
-from src.configuration.interface import ConfigLike
 from src.config_model import TableConfig, TablesConfig
+from src.configuration.interface import ConfigLike
 from src.configuration.provider import ConfigStore
 from src.normalizer import ArbodatSurveyNormalizer
 
@@ -110,7 +110,9 @@ class PreviewService:
         entity_config: TableConfig = config.tables[entity_name]
 
         try:
-            result: PreviewResult = await self._preview_with_normalizer(config=config, entity_name=entity_name, entity_config=entity_config, limit=limit)
+            result: PreviewResult = await self._preview_with_normalizer(
+                config=config, entity_name=entity_name, entity_config=entity_config, limit=limit
+            )
 
             execution_time_ms: int = int((time.time() - start_time) * 1000)
             result.execution_time_ms = execution_time_ms
@@ -137,7 +139,7 @@ class PreviewService:
             if isinstance(config, str):
                 # TODO: Load config by name
                 raise ValueError("Config must be TablesConfig instance, not str")
-            
+
             normalizer = ArbodatSurveyNormalizer(
                 default_entity=entity_name,
                 config=config,

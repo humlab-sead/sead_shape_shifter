@@ -262,7 +262,7 @@ class TestAppendProcessingEdgeCases:
                 "depends_on": [],
                 "append": [{"type": "fixed", "values": [["Only Site", 50.0]]}],
                 "append_mode": "all",
-            }
+            },
         }
 
         config = TablesConfig(entities_cfg=config_dict, options={})
