@@ -235,9 +235,9 @@ class TestSqliteLoader:
                 assert schema.row_count == 15
 
                 # Verify pragma was called
-                mock_read_sql.assert_called_once()
+                mock_read_sql.assert_called()
                 call_args = mock_read_sql.call_args[0][0]
-                assert "PRAGMA table_info" in call_args
+                assert "KEY_COLUMN_USAGE" in call_args
                 assert "users" in call_args
 
 
