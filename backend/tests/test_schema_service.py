@@ -72,7 +72,7 @@ class TestSchemaIntrospectionService:
         return config
 
     @pytest.fixture
-    def service(self, mock_config):
+    def service(self, mock_config) -> SchemaIntrospectionService:
         """Create service with mock config."""
         return SchemaIntrospectionService(mock_config)
 
@@ -135,51 +135,63 @@ class TestSchemaIntrospectionService:
         with pytest.raises(SchemaServiceError, match="not supported"):
             await service.get_tables("test_csv")
 
+    def mock_read_sql(self, test_df: pd.DataFrame, mock_get_loader: Mock) -> AsyncMock:
+        """Mock the loader's read_sql method."""
+        mock_read_sql: AsyncMock = AsyncMock(return_value=test_df)
+        mock_loader_instance = Mock()
+        mock_loader_instance.read_sql = mock_read_sql
+        mock_loader_class = Mock(return_value=mock_loader_instance)
+        mock_get_loader.return_value = mock_loader_class
+        return mock_read_sql
+
     @pytest.mark.asyncio
-    async def test_preview_table_data(self, service, postgres_config):
+    async def test_preview_table_data(self, service: SchemaIntrospectionService, postgres_config: DataSourceConfig):
         """Should preview table data."""
-        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
         # Mock preview data
-        preview_data = pd.DataFrame(
+        preview_data: pd.DataFrame = pd.DataFrame(
             {
                 "id": [1, 2, 3],
                 "name": ["Alice", "Bob", "Charlie"],
                 "active": [True, True, False],
             }
         )
+        
+        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
-        # Mock count data
-        count_data = pd.DataFrame({"count": [100]})
+        # Mock the loader with both read_sql and get_table_row_count methods
+        mock_loader_instance = Mock()
+        mock_loader_instance.read_sql = AsyncMock(return_value=preview_data)
+        mock_loader_instance.get_table_row_count = AsyncMock(return_value=100)
+        mock_loader_class = Mock(return_value=mock_loader_instance)
 
-        async def mock_execute(config, query):
-            if "COUNT(*)" in query:
-                return count_data
-            return preview_data
+        with patch("backend.app.services.schema_service.DataLoaders.get") as mock_get_loader:
+            mock_get_loader.return_value = mock_loader_class
 
-        async def mock_get_row_count(ds_config, table_name, schema):
-            return 100
+            result = await service.preview_table_data("test_postgres", "users", limit=50, offset=0)
 
-        service._execute_query = mock_execute
-        service._get_table_row_count = mock_get_row_count
-
-        result = await service.preview_table_data("test_postgres", "users", limit=50, offset=0)
-
-        assert result["columns"] == ["id", "name", "active"]
-        assert len(result["rows"]) == 3
-        assert result["rows"][0]["name"] == "Alice"
-        assert result["total_rows"] == 100
-        assert result["limit"] == 50
-        assert result["offset"] == 0
+            assert result["columns"] == ["id", "name", "active"]
+            assert len(result["rows"]) == 3
+            assert result["rows"][0]["name"] == "Alice"
+            assert result["total_rows"] == 100
+            assert result["limit"] == 50
+            assert result["offset"] == 0
 
     @pytest.mark.asyncio
-    async def test_preview_table_data_limit_constraint(self, service, postgres_config):
+    async def test_preview_table_data_limit_constraint(self, service: SchemaIntrospectionService, postgres_config: DataSourceConfig):
         """Should enforce maximum limit of 100 rows."""
         service.data_source_service.get_data_source = Mock(return_value=postgres_config)
-        service._execute_query = AsyncMock(return_value=pd.DataFrame())
 
-        # Request 150 rows, should be capped at 100
-        result = await service.preview_table_data("test_postgres", "users", limit=150)
+        mock_loader_instance = Mock(
+            read_sql=AsyncMock(return_value=pd.DataFrame()),
+            get_table_row_count=AsyncMock(return_value=100)
+        )
+        mock_loader_class = Mock(return_value=mock_loader_instance)
+
+        with patch("backend.app.services.schema_service.DataLoaders.get") as mock_get_loader:
+            mock_get_loader.return_value = mock_loader_class
+
+            result = await service.preview_table_data("test_postgres", "users", limit=150)
 
         assert result["limit"] == 100
 
