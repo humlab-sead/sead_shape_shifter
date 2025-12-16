@@ -241,7 +241,7 @@ class TestRunService:
                             severity="error",
                             message="Foreign key missing remote entity name",
                             suggestion="Add 'entity' field to foreign key configuration",
-                            location=None
+                            location=None,
                         )
                         result.validation_issues.append(issue)  # pylint: disable=no-member
 
