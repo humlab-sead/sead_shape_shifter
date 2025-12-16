@@ -43,21 +43,15 @@ class DataSourceService:
             List of data source configurations
         """
         data_sources_dict: dict[str, Any] = self.config.get("options:data_sources") or {}
-
         result: list[DataSourceConfig] = []
         for name, config_dict in data_sources_dict.items():
             if not isinstance(config_dict, dict):
                 logger.warning(f"Data source '{name}' config is not a dict, skipping")
                 continue
-
             try:
-                # Add name to config if not present
                 if "name" not in config_dict:
                     config_dict["name"] = name
-
-                # Resolve environment variables
                 resolved_config = self._resolve_env_vars(config_dict)
-
                 ds_config = DataSourceConfig(**resolved_config)
                 result.append(ds_config)
             except Exception as e:  # pylint: disable=broad-except
@@ -71,15 +65,8 @@ class DataSourceService:
 
         Args:
             name: Data source name
-
-        Returns:
-            Data source configuration or None if not found
         """
-        data_sources = self.list_data_sources()
-        for ds in data_sources:
-            if ds.name == name:
-                return ds
-        return None
+        return next((ds for ds in self.list_data_sources() if ds.name == name), None)
 
     def create_data_source(self, config: DataSourceConfig) -> DataSourceConfig:
         """Create a new data source.
@@ -93,7 +80,7 @@ class DataSourceService:
         Raises:
             ValueError: If data source with same name already exists
         """
-        existing = self.get_data_source(config.name)
+        existing: DataSourceConfig | None = self.get_data_source(config.name)
         if existing:
             raise ValueError(f"Data source '{config.name}' already exists")
 
@@ -124,19 +111,16 @@ class DataSourceService:
         Raises:
             ValueError: If data source doesn't exist
         """
-        existing = self.get_data_source(name)
+        existing: DataSourceConfig | None = self.get_data_source(name)
         if not existing:
             raise ValueError(f"Data source '{name}' not found")
 
-        # Remove old config if name changed
         data_sources_dict: dict[str, Any] = self.config.get("options:data_sources") or {}
         if name != config.name:
             del data_sources_dict[name]
 
-        # Add updated config
-        config_dict = config.model_dump(exclude_none=True, exclude={"name"})
+        config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name"})
 
-        # Handle SecretStr password
         if config.password:
             config_dict["password"] = config.password.get_secret_value()
 
@@ -155,12 +139,12 @@ class DataSourceService:
         Raises:
             ValueError: If data source doesn't exist or is in use
         """
-        existing = self.get_data_source(name)
+        existing: DataSourceConfig | None = self.get_data_source(name)
         if not existing:
             raise ValueError(f"Data source '{name}' not found")
 
         # Check if in use by entities
-        entities_using = self._get_entities_using_data_source(name)
+        entities_using: list[str] = self._get_entities_using_data_source(name)
         if entities_using:
             raise ValueError(f"Cannot delete data source '{name}': in use by entities: {', '.join(entities_using)}")
 
@@ -180,23 +164,20 @@ class DataSourceService:
         Returns:
             Test result with success/failure and timing
         """
-        start_time = time.time()
+        start_time: float = time.time()
 
         try:
             if config.is_database_source():
-                result = await self._test_database_connection(config)
-            elif config.is_file_source():
-                result = await self._test_file_connection(config)
-            else:
-                result = DataSourceTestResult(
-                    success=False, message=f"Unsupported data source type: {config.driver}", connection_time_ms=0, metadata={}
-                )
+                return await self._test_database_connection(config)
+            if config.is_file_source():
+                return await self._test_file_connection(config)
+            return DataSourceTestResult(
+                success=False, message=f"Unsupported data source type: {config.driver}", connection_time_ms=0, metadata={}
+            )
         except Exception as e:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
             logger.error(f"Connection test failed for '{config.name}': {e}")
-            result = DataSourceTestResult(success=False, message=f"Connection failed: {str(e)}", connection_time_ms=elapsed_ms, metadata={})
-
-        return result
+            return DataSourceTestResult(success=False, message=f"Connection failed: {str(e)}", connection_time_ms=elapsed_ms, metadata={})
 
     async def _test_database_connection(self, config: DataSourceConfig) -> DataSourceTestResult:
         """Test database connection by attempting to load a simple query.
@@ -258,7 +239,9 @@ class DataSourceService:
             if config.password:
                 error_msg = error_msg.replace(config.password.get_secret_value(), "***")
 
-            return DataSourceTestResult(success=False, message=f"Connection failed: {error_msg}", connection_time_ms=elapsed_ms, metadata={})
+            return DataSourceTestResult(
+                success=False, message=f"Connection failed: {error_msg}", connection_time_ms=elapsed_ms, metadata={}
+            )
 
     async def _test_file_connection(self, config: DataSourceConfig) -> DataSourceTestResult:
         """Test file-based connection (CSV).
@@ -272,22 +255,22 @@ class DataSourceService:
         start_time: float = time.time()
 
         try:
-            file_path = config.effective_file_path
+            file_path: str | None = config.effective_file_path
             if not file_path:
                 raise ValueError("CSV source requires 'filename' or 'file_path'")
 
             # Check if file exists
-            path = Path(file_path)
+            path: Path = Path(file_path)
             if not path.exists():
                 raise FileNotFoundError(f"File not found: {file_path}")
 
             # Try to read first few rows
-            read_opts = config.options or {}
-            df = pd.read_csv(file_path, nrows=5, **read_opts)
+            read_opts: dict[str, Any] = config.options or {}
+            df: pd.DataFrame = pd.read_csv(file_path, nrows=5, **read_opts)
 
-            elapsed_ms = int((time.time() - start_time) * 1000)
+            elapsed_ms: int = int((time.time() - start_time) * 1000)
 
-            metadata = {
+            metadata: dict[str, Any] = {
                 "file_size_bytes": path.stat().st_size,
                 "columns": list(df.columns),
                 "column_count": len(df.columns),
@@ -313,13 +296,13 @@ class DataSourceService:
         Returns:
             Current status including entities using it
         """
-        config = self.get_data_source(name)
+        config: DataSourceConfig | None = self.get_data_source(name)
         if not config:
             raise ValueError(f"Data source '{name}' not found")
 
-        entities_using = self._get_entities_using_data_source(name)
+        entities_using: list[str] = self._get_entities_using_data_source(name)
 
-        return DataSourceStatus(name=name, is_connected=name in self._connections, in_use_by_entities=entities_using, metadata={})
+        return DataSourceStatus(name=name, is_connected=name in self._connections, in_use_by_entities=entities_using, last_test_result=None)
 
     def _get_entities_using_data_source(self, data_source_name: str) -> list[str]:
         """Find all entities using a specific data source.
@@ -330,19 +313,12 @@ class DataSourceService:
         Returns:
             List of entity names
         """
-        entities_dict: dict[str, Any] = self.config.get("entities") or {}
-        using_entities: list[str] = []
 
-        for entity_name, entity_config in entities_dict.items():
-            if not isinstance(entity_config, dict):
-                continue
-
-            # Check if entity uses this data source
-            entity_data_source = entity_config.get("data_source")
-            if entity_data_source == data_source_name:
-                using_entities.append(entity_name)
-
-        return using_entities
+        return [
+            entity_name
+            for entity_name, entity_config in (self.config.get("entities") or {}).items()
+            if isinstance(entity_config, dict) and entity_config.get("data_source") == data_source_name
+        ]
 
     def _resolve_env_vars(self, config_dict: dict[str, Any]) -> dict[str, Any]:
         """Resolve environment variables in configuration.
