@@ -1,5 +1,5 @@
 import backend.app.models.data_source as api
-from loaders.sql_loaders import CoreSchema
+from src.loaders.sql_loaders import CoreSchema
 
 
 class TableSchemaMapper:

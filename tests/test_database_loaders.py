@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 
 from src.config_model import DataSourceConfig
-from loaders.sql_loaders import (
+from src.loaders.sql_loaders import (
     CoreSchema,
     PostgresSqlLoader,
     SqliteLoader,
