@@ -4,7 +4,7 @@ Integration tests for Data Source API endpoints
 Tests the complete REST API including request/response handling, validation, and error cases.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,6 +18,8 @@ from backend.app.models.data_source import (
     DataSourceType,
 )
 from backend.app.services.data_source_service import DataSourceService
+
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 @pytest.fixture
@@ -37,9 +39,6 @@ def client(mock_service):
     app.dependency_overrides[get_data_source_service] = override_get_data_source_service
     yield TestClient(app)
     app.dependency_overrides.clear()
-
-
-# pylint: disable=redefined-outer-name, unused-argument
 
 
 class TestListDataSources:
