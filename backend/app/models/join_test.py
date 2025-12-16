@@ -1,6 +1,6 @@
 """Models for foreign key join testing."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -16,8 +16,8 @@ class JoinTestRequest(BaseModel):
 class UnmatchedRow(BaseModel):
     """A row that failed to match during the join."""
 
-    row_data: Dict[str, Any] = Field(..., description="The actual row data")
-    local_key_values: List[Any] = Field(..., description="Values of the local join keys")
+    row_data: dict[str, Any] = Field(..., description="The actual row data")
+    local_key_values: list[Any] = Field(..., description="Values of the local join keys")
     reason: str = Field(..., description="Reason for the mismatch")
 
 
@@ -46,19 +46,19 @@ class JoinTestResult(BaseModel):
 
     entity_name: str = Field(..., description="Name of the entity tested")
     remote_entity: str = Field(..., description="Name of the remote entity")
-    local_keys: List[str] = Field(..., description="Local join key columns")
-    remote_keys: List[str] = Field(..., description="Remote join key columns")
+    local_keys: list[str] = Field(..., description="Local join key columns")
+    remote_keys: list[str] = Field(..., description="Remote join key columns")
     join_type: str = Field(..., description="Type of join (inner, left, etc.)")
 
     statistics: JoinStatistics = Field(..., description="Join statistics")
     cardinality: CardinalityInfo = Field(..., description="Cardinality information")
 
-    unmatched_sample: List[UnmatchedRow] = Field(default_factory=list, description="Sample of unmatched rows (max 10)")
+    unmatched_sample: list[UnmatchedRow] = Field(default_factory=list, description="Sample of unmatched rows (max 10)")
 
     execution_time_ms: int = Field(..., description="Time taken to perform the test")
     success: bool = Field(..., description="Whether the join test passed validation")
-    warnings: List[str] = Field(default_factory=list, description="Warning messages")
-    recommendations: List[str] = Field(default_factory=list, description="Recommendations for improvement")
+    warnings: list[str] = Field(default_factory=list, description="Warning messages")
+    recommendations: list[str] = Field(default_factory=list, description="Recommendations for improvement")
 
 
 class JoinTestError(BaseModel):
@@ -68,4 +68,4 @@ class JoinTestError(BaseModel):
     remote_entity: str
     error_type: str
     message: str
-    details: Optional[Dict[str, Any]] = None
+    details: Optional[dict[str, Any]] = None

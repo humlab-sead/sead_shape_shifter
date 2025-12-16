@@ -56,7 +56,7 @@ class DataSourceConfig(BaseModel):
     name: str = Field(..., description="Unique identifier for this data source")
     driver: DataSourceType = Field(..., description="Data source driver type")
 
-    # Database connection fields (optional, used for PostgreSQL, Access, SQLite)
+    # Database connection fields (optional, used for PostgreSQL, SQLite)
     host: Optional[str] = Field(None, description="Database host")
     port: Optional[int] = Field(None, description="Database port", ge=1, le=65535)
     database: Optional[str] = Field(None, description="Database name")
@@ -149,7 +149,7 @@ class TableMetadata(BaseModel):
     """Metadata about a database table."""
 
     name: str = Field(..., description="Table name")
-    schema: Optional[str] = Field(None, description="Schema name (for databases that support schemas)")
+    schema: Optional[str] = Field(None, description="Schema name (for databases that support schemas)")  # type: ignore
     row_count: Optional[int] = Field(None, description="Approximate row count", ge=0)
     comment: Optional[str] = Field(None, description="Table comment/description")
 
@@ -173,6 +173,7 @@ class TableSchema(BaseModel):
     primary_keys: list[str] = Field(default_factory=list, description="Primary key column names")
     indexes: list[str] = Field(default_factory=list, description="Index names")
     row_count: Optional[int] = Field(None, description="Approximate row count")
+    foreign_keys: list["ForeignKeyMetadata"] = Field(default_factory=list, description="Foreign key relationships")
 
 
 class ForeignKeyMetadata(BaseModel):

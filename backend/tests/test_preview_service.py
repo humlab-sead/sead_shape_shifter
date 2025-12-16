@@ -7,15 +7,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 import pytest
 
-from backend.app.models.preview import PreviewResult
+from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.preview_service import PreviewCache, PreviewService
-from src.config_model import TablesConfig
+from src.config_model import TableConfig, TablesConfig
 
 # pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
 
 
 @pytest.fixture
-def config_service():
+def config_service() -> MagicMock:
     """Mock config service."""
     service = MagicMock()
     service.get_config_path.return_value = Path("test_config.yml")
@@ -23,13 +23,13 @@ def config_service():
 
 
 @pytest.fixture
-def preview_service(config_service):
+def preview_service(config_service: MagicMock) -> PreviewService:
     """Create preview service instance."""
     return PreviewService(config_service)
 
 
 @pytest.fixture
-def sample_config():
+def sample_config() -> TablesConfig:
     """Create a sample configuration."""
     entities_cfg = {
         "users": {
@@ -67,7 +67,7 @@ def sample_config():
 
 
 @pytest.fixture
-def sample_dataframe():
+def sample_dataframe() -> pd.DataFrame:
     """Create a sample DataFrame."""
     return pd.DataFrame(
         {
@@ -84,7 +84,7 @@ class TestPreviewCache:
     def test_cache_miss(self):
         """Test cache miss returns None."""
         cache = PreviewCache(ttl_seconds=60)
-        result = cache.get("config1", "entity1", 50)
+        result: PreviewResult | None = cache.get("config1", "entity1", 50)
         assert result is None
 
     def test_cache_hit(self):
@@ -97,9 +97,9 @@ class TestPreviewCache:
             total_rows_in_preview=0,
             execution_time_ms=100,
         )
-        cache.set("config1", "entity1", 50, preview_result)
+        cache.set(config_name="config1", entity_name="entity1", limit=50, result=preview_result)
 
-        result = cache.get("config1", "entity1", 50)
+        result: PreviewResult | None = cache.get("config1", "entity1", 50)
         assert result is not None
         assert result.entity_name == "entity1"
         assert result.cache_hit is True
@@ -118,7 +118,7 @@ class TestPreviewCache:
 
         time.sleep(0.1)  # Wait for expiry
 
-        result = cache.get("config1", "entity1", 50)
+        result: PreviewResult | None = cache.get("config1", "entity1", 50)
         assert result is None
 
     def test_cache_invalidate_specific(self):
@@ -156,14 +156,26 @@ class TestPreviewService:
     @pytest.mark.asyncio
     async def test_preview_entity_not_found(self, preview_service, sample_config):
         """Test preview with non-existent entity."""
-        with patch("backend.app.services.preview_service.TablesConfig.from_yaml", return_value=sample_config):
+        mock_config_obj = MagicMock()
+        mock_config_obj.data = {
+            "entities": sample_config.entities_cfg,
+            "options": sample_config.options,
+        }
+
+        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with pytest.raises(ValueError, match="Entity 'nonexistent' not found"):
                 await preview_service.preview_entity("test_config", "nonexistent", 50)
 
     @pytest.mark.asyncio
     async def test_preview_entity_success(self, preview_service, sample_config, sample_dataframe):
         """Test successful entity preview."""
-        with patch("backend.app.services.preview_service.TablesConfig.from_yaml", return_value=sample_config):
+        mock_config_obj = MagicMock()
+        mock_config_obj.data = {
+            "entities": sample_config.entities_cfg,
+            "options": sample_config.options,
+        }
+
+        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
                 # Setup mock normalizer
                 mock_normalizer = MagicMock()
@@ -193,7 +205,13 @@ class TestPreviewService:
         """Test preview respects limit parameter."""
         large_df = pd.DataFrame({"col1": range(100), "col2": range(100, 200)})
 
-        with patch("backend.app.services.preview_service.TablesConfig.from_yaml", return_value=sample_config):
+        mock_config_obj = MagicMock()
+        mock_config_obj.data = {
+            "entities": sample_config.entities_cfg,
+            "options": sample_config.options,
+        }
+
+        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
@@ -206,32 +224,48 @@ class TestPreviewService:
                 assert result.estimated_total_rows == 100
 
     @pytest.mark.asyncio
-    async def test_preview_with_transformations(self, preview_service, sample_config):
+    async def test_preview_with_transformations(self, preview_service: PreviewService, sample_config: TablesConfig):
         """Test preview detects applied transformations."""
         # Modify config to have filters and unnest
-        config_with_transforms = sample_config.model_copy(deep=True)
-        config_with_transforms.entities["users"].filters = [{"type": "exists_in", "entity": "orders"}]
-        config_with_transforms.entities["users"].unnest = {
+        config_with_transforms: TablesConfig = sample_config.clone()
+        config_with_transforms.entities_cfg["users"]["filters"] = [{"type": "exists_in", "entity": "orders"}]
+        config_with_transforms.entities_cfg["users"]["unnest"] = {
             "id_vars": ["user_id"],
             "value_vars": ["col1", "col2"],
+            "var_name": "variable",
+            "value_name": "value",
         }
 
-        with patch("backend.app.services.preview_service.TablesConfig.from_yaml", return_value=config_with_transforms):
+        mock_config_obj = MagicMock()
+        mock_config_obj.data = {
+            "entities": config_with_transforms.entities_cfg,
+            "options": config_with_transforms.options,
+        }
+
+        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
                 mock_normalizer.table_store = {"users": pd.DataFrame({"user_id": [1]})}
                 mock_normalizer_class.return_value = mock_normalizer
 
-                result = await preview_service.preview_entity("test_config", "users", 50)
+                result: PreviewResult = await preview_service.preview_entity("test_config", "users", 50)
 
                 assert "filter" in result.transformations_applied
                 assert "unnest" in result.transformations_applied
 
     @pytest.mark.asyncio
-    async def test_preview_with_dependencies(self, preview_service, sample_config, sample_dataframe):
+    async def test_preview_with_dependencies(
+        self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame
+    ):
         """Test preview loads dependencies correctly."""
-        with patch("backend.app.services.preview_service.TablesConfig.from_yaml", return_value=sample_config):
+        mock_config_obj = MagicMock()
+        mock_config_obj.data = {
+            "entities": sample_config.entities_cfg,
+            "options": sample_config.options,
+        }
+
+        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
@@ -245,9 +279,15 @@ class TestPreviewService:
                 assert "foreign_key_joins" in result.transformations_applied
 
     @pytest.mark.asyncio
-    async def test_preview_caching(self, preview_service, sample_config, sample_dataframe):
+    async def test_preview_caching(self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame):
         """Test preview results are cached."""
-        with patch("backend.app.services.preview_service.TablesConfig.from_yaml", return_value=sample_config):
+        mock_config_obj = MagicMock()
+        mock_config_obj.data = {
+            "entities": sample_config.entities_cfg,
+            "options": sample_config.options,
+        }
+
+        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
@@ -266,9 +306,15 @@ class TestPreviewService:
                 assert mock_normalizer.normalize.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_get_entity_sample(self, preview_service, sample_config, sample_dataframe):
+    async def test_get_entity_sample(self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame):
         """Test get_entity_sample with higher limit."""
-        with patch("backend.app.services.preview_service.TablesConfig.from_yaml", return_value=sample_config):
+        mock_config_obj = MagicMock()
+        mock_config_obj.data = {
+            "entities": sample_config.entities_cfg,
+            "options": sample_config.options,
+        }
+
+        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
@@ -280,7 +326,7 @@ class TestPreviewService:
                 assert result.entity_name == "users"
                 assert result.total_rows_in_preview == 5  # Sample df only has 5 rows
 
-    def test_invalidate_cache(self, preview_service):
+    def test_invalidate_cache(self, preview_service: PreviewService):
         """Test cache invalidation."""
         # Add something to cache
         preview_result = PreviewResult(entity_name="entity1", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100)
@@ -295,24 +341,24 @@ class TestPreviewService:
         # Verify it's gone
         assert preview_service.cache.get("config1", "entity1", 50) is None
 
-    def test_build_column_info(self, preview_service, sample_dataframe, sample_config):
+    def test_build_column_info(self, preview_service: PreviewService, sample_dataframe: pd.DataFrame, sample_config: TablesConfig):
         """Test _build_column_info correctly identifies column types."""
-        entity_config = sample_config.entities["users"]
-        columns = preview_service._build_column_info(sample_dataframe, entity_config)
+        entity_config: TableConfig = sample_config.get_table("users")
+        columns: list[ColumnInfo] = preview_service._build_column_info(sample_dataframe, entity_config)
 
         assert len(columns) == 3
 
         # Check user_id (key column)
-        user_id_col = next(c for c in columns if c.name == "user_id")
+        user_id_col: ColumnInfo = next(c for c in columns if c.name == "user_id")
         assert user_id_col.is_key is True
         assert user_id_col.data_type == "integer"
 
         # Check username (natural key)
-        username_col = next(c for c in columns if c.name == "username")
+        username_col: ColumnInfo = next(c for c in columns if c.name == "username")
         assert username_col.is_key is True
         assert username_col.nullable is False
 
         # Check email (nullable)
-        email_col = next(c for c in columns if c.name == "email")
+        email_col: ColumnInfo = next(c for c in columns if c.name == "email")
         assert email_col.is_key is False
         assert email_col.nullable is True

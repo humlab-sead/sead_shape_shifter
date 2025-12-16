@@ -1,6 +1,7 @@
 {
     "python.testing.pytestArgs": [
-        "tests"
+        "tests",
+        "backend/tests"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
@@ -24,5 +25,35 @@
         "titleBar.inactiveForeground": "#15202b99"
     },
     "peacock.remoteColor": "#85dbce",
-    "yaml.keyOrdering": false
+    "yaml.keyOrdering": false,
+    "python.analysis.exclude": [
+        "frontend"
+    ],
+    "python.analysis.aiHoverSummaries": true,
+    "python.analysis.autoFormatStrings": true,
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.disableTaggedHints": true,
+    "python.analysis.extraPaths": [
+        "backend",
+        "src",
+        "tests"
+    ],
+    "python.analysis.generateWithTypeAnnotation": true,
+    "python.analysis.ignore": [
+        "frontend",
+        ".venv"
+    ],
+    "python.analysis.include": [
+        "src",
+        "backend",
+        "tests"
+    ],
+    "python.analysis.inlayHints.callArgumentNames": "all",
+    "python.analysis.inlayHints.functionReturnTypes": true,
+    "python.analysis.inlayHints.pytestParameters": true,
+    "python.analysis.inlayHints.variableTypes": true,
+    "python.analysis.typeCheckingMode": "standard",
+    "python.analysis.typeEvaluation.deprecateTypingAliases": true,
+    "python.analysis.typeEvaluation.disableBytesTypePromotions": false
 }

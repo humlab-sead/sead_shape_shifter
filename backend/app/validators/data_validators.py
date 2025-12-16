@@ -11,6 +11,7 @@ from backend.app.models.validation import (
     ValidationError,
     ValidationPriority,
 )
+from backend.app.services.config_service import ConfigurationService
 from backend.app.services.preview_service import PreviewService
 
 
@@ -260,8 +261,6 @@ class ForeignKeyDataValidator:
 
     async def validate(self, config_name: str, entity_name: str, entity_config: Any) -> list[ValidationError]:
         """Validate foreign key data integrity."""
-        from app.services.config_service import ConfigurationService
-        from app.services.preview_service import PreviewService
 
         errors = []
 
@@ -399,8 +398,6 @@ class DataTypeCompatibilityValidator:
 
     async def validate(self, config_name: str, entity_name: str, entity_config: Any) -> list[ValidationError]:
         """Validate foreign key column type compatibility."""
-        from app.services.config_service import ConfigurationService
-        from app.services.preview_service import PreviewService
 
         errors = []
 
@@ -520,7 +517,7 @@ class DataValidationService:
         Returns:
             List of all validation errors found
         """
-        all_errors = []
+        all_errors: list[ValidationError] = []
 
         # Run all validators concurrently
         results = await asyncio.gather(
@@ -543,7 +540,7 @@ class DataValidationService:
                     )
                 )
             else:
-                all_errors.extend(result)
+                all_errors.extend(result)  # type: ignore
 
         return all_errors
 
@@ -558,7 +555,6 @@ class DataValidationService:
         Returns:
             List of all validation errors found
         """
-        from app.services.config_service import ConfigurationService
 
         config_service = ConfigurationService()
         config = config_service.load_configuration(config_name)
@@ -593,6 +589,6 @@ class DataValidationService:
             if isinstance(result, Exception):
                 logger.error(f"Entity validation failed: {result}")
             else:
-                all_errors.extend(result)
+                all_errors.extend(result)  # type: ignore
 
         return all_errors

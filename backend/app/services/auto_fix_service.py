@@ -11,6 +11,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.core.config import settings
+from backend.app.models.config import Configuration
 from backend.app.models.fix import FixAction, FixActionType, FixResult, FixSuggestion
 from backend.app.models.validation import ValidationError
 from backend.app.services.config_service import ConfigurationService
@@ -21,27 +22,17 @@ class AutoFixService:
     """Service to apply automatic fixes to configurations."""
 
     def __init__(self, config_service: ConfigurationService):
-        """Initialize auto-fix service."""
         self.config_service = config_service
         self.yaml_service = YamlService()
 
     def generate_fix_suggestions(self, errors: list[ValidationError]) -> list[FixSuggestion]:
-        """
-        Generate fix suggestions from validation errors.
-
-        Args:
-            errors: List of validation errors
-
-        Returns:
-            List of fix suggestions for auto-fixable errors
-        """
+        """Generate fix suggestions from validation errors."""
         suggestions = []
 
         for error in errors:
             if not error.entity:
                 continue
 
-            # Generate fixes based on error code
             if error.code == "COLUMN_NOT_FOUND":
                 suggestion = self._fix_missing_column(error)
                 if suggestion:
@@ -64,9 +55,6 @@ class AutoFixService:
         if not error.field or not error.entity:
             return None
 
-        # Extract column name from error message
-        # Typically: "Column 'column_name' not found in data"
-
         match = re.search(r"Column '([^']+)' not found", error.message)
         if not match:
             return None
@@ -78,7 +66,7 @@ class AutoFixService:
             return None  # Handle separately as unresolved reference
 
         return FixSuggestion(
-            issue_code=error.code,
+            issue_code=error.code or "",
             entity=error.entity,
             field=error.field,
             suggestion=f"Remove column '{column_name}' from configuration as it doesn't exist in the data",
@@ -182,15 +170,15 @@ class AutoFixService:
             Result of applying fixes
         """
         try:
-            config = self.config_service.load_configuration(config_name)
+            config: Configuration = self.config_service.load_configuration(config_name)
             if not config:
                 return FixResult(success=False, fixes_applied=0, errors=[f"Configuration '{config_name}' not found"])
 
             # Create backup before applying fixes
-            backup_path = self._create_backup(config_name)
+            backup_path: Path = self._create_backup(config_name)
 
             # Track applied fixes
-            fixes_applied = 0
+            fixes_applied: int = 0
             errors = []
             warnings = []
 
@@ -199,20 +187,20 @@ class AutoFixService:
                 if not suggestion.auto_fixable:
                     warnings.append(f"Skipping non-auto-fixable issue in entity '{suggestion.entity}'")
                     continue
-
-                try:
-                    for action in suggestion.actions:
+                for action in suggestion.actions:
+                    try:
                         self._apply_action(config, action)
                         fixes_applied += 1
-                except Exception as e:  # pylint: disable=broad-except
-                    logger.error(f"Failed to apply fix: {e}")
-                    errors.append(f"Failed to apply fix for {action.entity}: {str(e)}")
+                    except Exception as e:  # pylint: disable=broad-except
+                        logger.error(f"Failed to apply fix: {e}")
+                        errors.append(f"Failed to apply fix for {action.entity}: {str(e)}")
 
             if not errors:
                 # Save updated configuration
                 # Config is already a dict, no need to call model_dump
                 config_dict = config if isinstance(config, dict) else config.model_dump(exclude_none=True, by_alias=True)
-                self.config_service.save_configuration(config_name, config_dict)
+
+                self.config_service.save_configuration(config, create_backup=True)
 
                 return FixResult(
                     success=True,

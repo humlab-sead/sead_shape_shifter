@@ -5,9 +5,8 @@ import pandas as pd
 from loguru import logger
 
 from src.configuration.resolve import ConfigValue
+from src.loaders import DataLoader, DataLoaders
 from src.utility import unique
-
-from .loaders import DataLoader, DataLoaders
 
 
 # pylint: disable=line-too-long
@@ -23,7 +22,7 @@ class UnnestConfig:
         self.value_name: str = unnest_data.get("value_name", "") or ""
 
         if not self.var_name or not self.value_name:
-            raise ValueError(f"Invalid unnest configuration: {data}")
+            raise ValueError(f"Invalid unnest configuration (missing var_name or value_name): {data}")
 
 
 class ForeignKeyConstraints:
@@ -382,6 +381,8 @@ class TablesConfig:
         self.data_sources: dict[str, Any] = self.options.get("data_sources", {})
 
     def get_table(self, entity_name: str) -> "TableConfig":
+        if entity_name not in self.tables:
+            raise KeyError(f"Table 'entities.{entity_name}' not found in configuration")
         return self.tables[entity_name]
 
     def has_table(self, entity_name: str) -> bool:
@@ -402,6 +403,10 @@ class TablesConfig:
             return DataLoaders.get(key=table_cfg.type)(data_source=None)
 
         return None
+
+    def clone(self) -> "TablesConfig":
+        """Create a deep copy of the TablesConfig."""
+        return TablesConfig(entities_cfg={k: v._data.copy() for k, v in self.tables.items()}, options=self.options.copy())
 
     @cached_property
     def table_names(self) -> list[str]:

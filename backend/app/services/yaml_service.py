@@ -99,24 +99,20 @@ class YamlService:
             YamlSaveError: If file cannot be saved
         """
         path = Path(file_path)
+        temp_path: Path = path.with_suffix(path.suffix + ".tmp")
 
         try:
-            # Create backup if requested and file exists
             if create_backup and path.exists():
                 backup_path = self.create_backup(path)
                 logger.info(f"Created backup: {backup_path}")
 
-            # Ensure parent directory exists
             path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Write to temporary file first (atomic write)
-            temp_path = path.with_suffix(path.suffix + ".tmp")
             logger.debug(f"Writing to temporary file: {temp_path}")
 
             with temp_path.open("w", encoding="utf-8") as f:
                 self.yaml.dump(data, f)
 
-            # Atomic rename
             temp_path.replace(path)
             logger.info(f"Successfully saved YAML file: {path}")
 
@@ -124,7 +120,6 @@ class YamlService:
 
         except Exception as e:
             logger.error(f"Failed to save YAML file {path}: {e}")
-            # Clean up temp file if it exists
             if temp_path.exists():
                 temp_path.unlink()
             raise YamlSaveError(f"Failed to save YAML file {path}: {e}") from e
@@ -152,9 +147,9 @@ class YamlService:
         backup_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate timestamp with microseconds to avoid collisions
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        backup_name = f"{path.stem}.backup.{timestamp}{path.suffix}"
-        backup_path = backup_dir / backup_name
+        timestamp: str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        backup_name: str = f"{path.stem}.backup.{timestamp}{path.suffix}"
+        backup_path: Path = backup_dir / backup_name
 
         try:
             logger.debug(f"Creating backup: {path} -> {backup_path}")

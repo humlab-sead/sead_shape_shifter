@@ -2,7 +2,7 @@
 
 import hashlib
 import time
-from typing import Dict, List, Optional
+from typing import Any, Optional
 
 import pandas as pd
 from loguru import logger
@@ -10,8 +10,10 @@ from loguru import logger
 from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
-from src.config_model import TableConfig, TablesConfig
+from src.config_model import ForeignKeyConfig, TableConfig, TablesConfig
+from src.configuration.interface import ConfigLike
 from src.configuration.provider import ConfigStore
+from src.normalizer import ArbodatSurveyNormalizer
 
 
 class PreviewCache:
@@ -20,7 +22,7 @@ class PreviewCache:
     def __init__(self, ttl_seconds: int = 300):
         """Initialize cache with TTL in seconds (default 5 minutes)."""
         # Cache maps key -> (result, timestamp, config_name, entity_name, limit)
-        self._cache: Dict[str, tuple[PreviewResult, float, str, str, int]] = {}
+        self._cache: dict[str, tuple[PreviewResult, float, str, str, int]] = {}
         self._ttl = ttl_seconds
 
     def _generate_key(self, config_name: str, entity_name: str, limit: int) -> str:
@@ -92,32 +94,29 @@ class PreviewService:
         if cached:
             return cached
 
-        # Load configuration from ConfigStore
-        config_obj = ConfigStore.config_global()
+        config_obj: ConfigLike = ConfigStore.config_global()
         if config_obj is None:
             raise ValueError("Configuration not loaded")
 
-        config_dict = config_obj.data
-        entities_cfg = config_dict.get("entities", {})
-        options = config_dict.get("options", {})
+        config_dict: dict[str, Any] = config_obj.data
+        entities_cfg: dict[str, Any] = config_dict.get("entities", {})
+        options: dict[str, Any] = config_dict.get("options", {})
         config = TablesConfig(entities_cfg=entities_cfg, options=options)
 
-        # Get entity config
         if entity_name not in config.tables:
             raise ValueError(f"Entity '{entity_name}' not found in configuration")
 
-        entity_config = config.tables[entity_name]
+        entity_config: TableConfig = config.tables[entity_name]
 
-        # Preview with transformations
         try:
-            result = await self._preview_with_normalizer(config, config_name, entity_name, entity_config, limit)
+            result: PreviewResult = await self._preview_with_normalizer(
+                config=config, entity_name=entity_name, entity_config=entity_config, limit=limit
+            )
 
-            # Calculate execution time
-            execution_time_ms = int((time.time() - start_time) * 1000)
+            execution_time_ms: int = int((time.time() - start_time) * 1000)
             result.execution_time_ms = execution_time_ms
 
-            # Cache result
-            self.cache.set(config_name, entity_name, limit, result)
+            self.cache.set(config_name=config_name, entity_name=entity_name, limit=limit, result=result)
 
             return result
 
@@ -127,40 +126,55 @@ class PreviewService:
 
     async def _preview_with_normalizer(
         self,
-        config: TablesConfig,  # pylint: disable=unused-argument
-        config_name: str,  # pylint: disable=unused-argument
+        config: TablesConfig | str,
         entity_name: str,
         entity_config: TableConfig,
         limit: int,
     ) -> PreviewResult:
-        """Preview entity data without full transformation pipeline."""
+        """Preview entity data using the normalizer to apply all transformations."""
         try:
-            # For preview, just load the raw entity data without running full normalize
-            # This avoids dependency resolution issues
+            # Create normalizer with the entity as default to process
 
-            # Load entity data based on type
-            if entity_config.type == "fixed":
-                # Fixed data from config
-                df = pd.DataFrame(entity_config.values, columns=entity_config.columns)
-            else:
-                # For other types, we'd need data source connection
-                # For now, return empty DataFrame with columns
-                df = pd.DataFrame(columns=entity_config.columns)
+            if isinstance(config, str):
+                # TODO: Load config by name
+                raise ValueError("Config must be TablesConfig instance, not str")
 
-            # Limit rows
-            preview_df = df.head(limit)
+            normalizer = ArbodatSurveyNormalizer(
+                default_entity=entity_name,
+                config=config,
+                table_store={},
+            )
 
-            # Get actual row count
-            estimated_total = len(df)
+            # Run normalization process
+            await normalizer.normalize()
+
+            if entity_name not in normalizer.table_store:
+                raise RuntimeError(f"Entity {entity_name} was not produced by normalizer")
+
+            df: pd.DataFrame = normalizer.table_store[entity_name]
+
+            estimated_total: int = len(df)
+
+            preview_df: pd.DataFrame = df.head(limit)
 
             # Determine which transformations were applied
-            transformations = ["raw_data"]  # No transformations in preview mode
+            transformations = []
+            if entity_config.filters:
+                transformations.append("filter")
+            if entity_config.unnest:
+                transformations.append("unnest")
+            if entity_config.foreign_keys:
+                transformations.append("foreign_key_joins")
+            # if entity_config.translate:
+            #     transformations.append("column_mapping")
+            if not transformations:
+                transformations = ["raw_data"]
 
             # Build column info
-            columns = self._build_column_info(preview_df, entity_config)
+            columns: list[ColumnInfo] = self._build_column_info(preview_df, entity_config)
 
             # Convert to records for JSON response
-            rows = preview_df.to_dict("records")
+            rows: list[dict] = preview_df.to_dict("records")
 
             # Get dependencies
             dependencies_loaded = []
@@ -168,6 +182,11 @@ class PreviewService:
                 dependencies_loaded.append(entity_config.source)
             if entity_config.depends_on:
                 dependencies_loaded.extend(entity_config.depends_on)
+
+            # Add foreign key dependencies
+            for fk in entity_config.foreign_keys:
+                if fk.remote_entity not in dependencies_loaded:
+                    dependencies_loaded.append(fk.remote_entity)
 
             return PreviewResult(
                 entity_name=entity_name,
@@ -186,7 +205,7 @@ class PreviewService:
             logger.error(f"Preview failed for {entity_name}: {e}", exc_info=True)
             raise
 
-    def _build_column_info(self, df: pd.DataFrame, entity_config: TableConfig) -> List[ColumnInfo]:
+    def _build_column_info(self, df: pd.DataFrame, entity_config: TableConfig) -> list[ColumnInfo]:
         """Build column information from DataFrame and entity config."""
         columns = []
         key_columns = set(entity_config.keys or [])
@@ -211,7 +230,7 @@ class PreviewService:
                 data_type = dtype
 
             # Check if column has null values
-            nullable = df[col_name].isnull().any()
+            nullable = bool(df[col_name].isnull().any())
 
             columns.append(
                 ColumnInfo(
@@ -275,29 +294,29 @@ class PreviewService:
             JoinTestResult with statistics and unmatched rows
         """
 
-        start_time = time.time()
+        start_time: float = time.time()
 
         # Load configuration
-        config_obj = ConfigStore.config_global()
+        config_obj: ConfigLike = ConfigStore.config_global()
         if config_obj is None:
             raise ValueError("Configuration not loaded")
 
         config_dict = config_obj.data
-        entities_cfg = config_dict.get("entities", {})
-        options = config_dict.get("options", {})
-        config = TablesConfig(entities_cfg=entities_cfg, options=options)
+        entities_cfg: dict[str, Any] = config_dict.get("entities", {})
+        options: dict[str, Any] = config_dict.get("options", {})
+        config: TablesConfig = TablesConfig(entities_cfg=entities_cfg, options=options)
 
         # Get entity and foreign key config
         if entity_name not in config.tables:
             raise ValueError(f"Entity '{entity_name}' not found")
 
-        entity_config = config.tables[entity_name]
+        entity_config: TableConfig = config.tables[entity_name]
 
         if not entity_config.foreign_keys or foreign_key_index >= len(entity_config.foreign_keys):
             raise ValueError(f"Foreign key index {foreign_key_index} out of range")
 
-        fk_config = entity_config.foreign_keys[foreign_key_index]
-        remote_entity_name = fk_config.remote_entity
+        fk_config: ForeignKeyConfig = entity_config.foreign_keys[foreign_key_index]
+        remote_entity_name: str = fk_config.remote_entity
 
         if remote_entity_name not in config.tables:
             raise ValueError(f"Remote entity '{remote_entity_name}' not found")
@@ -305,20 +324,20 @@ class PreviewService:
         # remote_entity_config = config.tables[remote_entity_name]
 
         # Load sample data for both entities
-        local_preview = await self.preview_entity(config_name, entity_name, limit=sample_size)
-        remote_preview = await self.preview_entity(config_name, remote_entity_name, limit=1000)
+        local_preview: PreviewResult = await self.preview_entity(config_name, entity_name, limit=sample_size)
+        remote_preview: PreviewResult = await self.preview_entity(config_name, remote_entity_name, limit=1000)
 
         local_df = pd.DataFrame(local_preview.rows)
         remote_df = pd.DataFrame(remote_preview.rows)
 
         # Perform join analysis
-        local_keys = fk_config.local_keys
-        remote_keys = fk_config.remote_keys
+        local_keys: list[str] = fk_config.local_keys
+        remote_keys: list[str] = fk_config.remote_keys
         join_type = fk_config.how or "left"
 
         # Check if keys exist in dataframes
-        missing_local = [k for k in local_keys if k not in local_df.columns]
-        missing_remote = [k for k in remote_keys if k not in remote_df.columns]
+        missing_local: list[str] = [k for k in local_keys if k not in local_df.columns]
+        missing_remote: list[str] = [k for k in remote_keys if k not in remote_df.columns]
 
         if missing_local or missing_remote:
             error_parts = []
@@ -329,25 +348,27 @@ class PreviewService:
             raise ValueError(". ".join(error_parts))
 
         # Count nulls in local keys
-        null_key_rows = local_df[local_keys].isnull().any(axis=1).sum()
+        null_key_rows: int = local_df[local_keys].isnull().any(axis=1).sum()
 
         # Perform the join
-        merged = local_df.merge(remote_df, left_on=local_keys, right_on=remote_keys, how="left", indicator=True, suffixes=("", "_remote"))
+        merged: pd.DataFrame = local_df.merge(
+            remote_df, left_on=local_keys, right_on=remote_keys, how="left", indicator=True, suffixes=("", "_remote")
+        )
 
         # Calculate statistics
-        total_rows = len(local_df)
-        matched_rows = (merged["_merge"] == "both").sum()
-        unmatched_rows = total_rows - matched_rows
-        match_percentage = (matched_rows / total_rows * 100) if total_rows > 0 else 0.0
+        total_rows: int = len(local_df)
+        matched_rows: int = (merged["_merge"] == "both").sum()
+        unmatched_rows: int = total_rows - matched_rows
+        match_percentage: float = (matched_rows / total_rows * 100) if total_rows > 0 else 0.0
 
         # Check for duplicate matches
-        duplicate_matches = len(merged) - total_rows
+        duplicate_matches: int = len(merged) - total_rows
 
         # Get unmatched samples
-        unmatched_df = merged[merged["_merge"] == "left_only"].head(10)
-        unmatched_sample = [
+        unmatched_df: pd.DataFrame = merged[merged["_merge"] == "left_only"].head(10)
+        unmatched_sample: list[UnmatchedRow] = [
             UnmatchedRow(
-                row_data={k: v for k, v in row.items() if k != "_merge" and not k.endswith("_remote")},
+                row_data={str(k): v for k, v in row.items() if k != "_merge" and not str(k).endswith("_remote")},
                 local_key_values=[row[k] for k in local_keys],
                 reason="No matching row in remote entity",
             )
@@ -363,10 +384,10 @@ class PreviewService:
             actual_cardinality = "many_to_one"
 
         # Get expected cardinality from constraints
-        expected_cardinality = "many_to_one"  # default
+        expected_cardinality: str = "many_to_one"  # default
         if fk_config.constraints:
             if hasattr(fk_config.constraints, "cardinality"):
-                expected_cardinality = fk_config.constraints.cardinality
+                expected_cardinality = fk_config.constraints.cardinality or "many_to_one"
 
         cardinality_matches = expected_cardinality == actual_cardinality
 

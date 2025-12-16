@@ -298,17 +298,23 @@ class Registry(Generic[T]):
     @classmethod
     def register(cls, **args) -> Callable[..., Any]:
         def decorator(fn_or_class):
-            key: str = args.get("key") or fn_or_class.__name__
+            key_or_keys: str | list[str] = args.get("key") or fn_or_class.__name__
+            keys: list[str] = [key_or_keys] if isinstance(key_or_keys, str) else key_or_keys
+
+            if len(keys) == 0:
+                raise ValueError("Registry: key(s) cannot be empty")
+
+            if keys[0] in cls.items:
+                raise KeyError(f"Registry: Overriding existing registration for key '{keys[0]}'")
+
             if args.get("type") == "function":
                 fn_or_class = fn_or_class()
             else:
-                setattr(fn_or_class, "_registry_key", key)
+                setattr(fn_or_class, "_registry_key", keys[0])
                 fn_or_class = _ensure_key_property(fn_or_class)
 
-            if key in cls.items:
-                raise KeyError(f"Registry: Overriding existing registration for key '{key}'")
-
-            cls.items[key] = fn_or_class
+            for k in keys:
+                cls.items[k] = fn_or_class
 
             fn_or_class = cls.registered_class_hook(fn_or_class, **args)
             return fn_or_class

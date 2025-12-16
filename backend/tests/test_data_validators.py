@@ -33,7 +33,7 @@ def create_preview_result(rows, entity_name="test_entity"):
         columns=columns,
         total_rows_in_preview=len(rows),
         row_count=len(rows),
-        execution_time_ms=10.0,
+        execution_time_ms=10,
     )
 
 
@@ -242,8 +242,8 @@ class TestForeignKeyDataValidator:
 
         # Mock preview service and config service
         with (
-            patch("app.validators.data_validators.PreviewService") as mock_preview_class,
-            patch("app.services.config_service.ConfigurationService"),
+            patch("backend.app.validators.data_validators.PreviewService") as mock_preview_class,
+            patch("backend.app.services.config_service.ConfigurationService"),
             patch("src.configuration.provider.ConfigStore.config_global"),
         ):
             mock_service = Mock()
@@ -263,7 +263,6 @@ class TestForeignKeyDataValidator:
             # Assert
             assert len(errors) == 0
 
-    @pytest.mark.skip(reason="Complex mocking scenario - validator creates services internally. Test via integration tests instead.")
     @pytest.mark.asyncio
     async def test_missing_foreign_key_values(self):
         """Test when some foreign key values don't exist in remote entity."""
@@ -273,8 +272,8 @@ class TestForeignKeyDataValidator:
         config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
 
         with (
-            patch("app.validators.data_validators.PreviewService") as mock_preview_class,
-            patch("app.services.config_service.ConfigurationService"),
+            patch("backend.app.validators.data_validators.PreviewService") as mock_preview_class,
+            patch("backend.app.services.config_service.ConfigurationService"),
             patch("src.configuration.provider.ConfigStore.config_global"),
         ):
             # Mock preview service
@@ -312,7 +311,7 @@ class TestDataTypeCompatibilityValidator:
 
         config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
 
-        with patch("app.validators.data_validators.PreviewService") as mock_preview_class:
+        with patch("backend.app.validators.data_validators.PreviewService") as mock_preview_class:
             mock_service = Mock()
             mock_preview_class.return_value = mock_service
 
@@ -338,7 +337,7 @@ class TestDataTypeCompatibilityValidator:
 
         config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
 
-        with patch("app.validators.data_validators.PreviewService") as mock_preview_class:
+        with patch("backend.app.validators.data_validators.PreviewService") as mock_preview_class:
             mock_service = Mock()
             mock_preview_class.return_value = mock_service
 
@@ -370,7 +369,7 @@ class TestDataValidationService:
 
         service = DataValidationService(mock_preview_service)
 
-        with patch("app.services.config_service.ConfigurationService") as mock_config_svc:
+        with patch("backend.app.validators.data_validators.ConfigurationService") as mock_config_svc:
             mock_config = Mock()
             mock_config.entities = {
                 "entity1": Mock(columns=["id"], keys=["id"], foreign_keys=[]),
@@ -391,7 +390,7 @@ class TestDataValidationService:
 
         service = DataValidationService(mock_preview_service)
 
-        with patch("app.services.config_service.ConfigurationService") as mock_config_svc:
+        with patch("backend.app.validators.data_validators.ConfigurationService") as mock_config_svc:
             mock_config = Mock()
             mock_config.entities = {
                 "entity1": Mock(columns=["id"], keys=["id"], foreign_keys=[]),

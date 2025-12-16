@@ -30,8 +30,8 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
         "https://*.preview.app.github.dev",  # GitHub remote tunnels
-        "https://*.ngrok.io",  # ngrok tunnels
-        "https://*.ngrok-free.app",  # ngrok free tier
+        # "https://*.ngrok.io",  # ngrok tunnels
+        # "https://*.ngrok-free.app",  # ngrok free tier
     ]
 
     # File paths
