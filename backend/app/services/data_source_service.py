@@ -189,22 +189,12 @@ class DataSourceService:
                 result = await self._test_file_connection(config)
             else:
                 result = DataSourceTestResult(
-                    **{
-                        "success": False,
-                        "message": f"Unsupported data source type: {config.driver}",
-                        "connection_time_ms": 0,
-                    }
+                    success=False, message=f"Unsupported data source type: {config.driver}", connection_time_ms=0, **{}
                 )
         except Exception as e:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
             logger.error(f"Connection test failed for '{config.name}': {e}")
-            result = DataSourceTestResult(
-                **{
-                    "success": False,
-                    "message": f"Connection failed: {str(e)}",
-                    "connection_time_ms": elapsed_ms,
-                }
-            )
+            result = DataSourceTestResult(success=False, message=f"Connection failed: {str(e)}", connection_time_ms=elapsed_ms, **{})
 
         return result
 
@@ -268,13 +258,7 @@ class DataSourceService:
             if config.password:
                 error_msg = error_msg.replace(config.password.get_secret_value(), "***")
 
-            return DataSourceTestResult(
-                **{
-                    "success": False,
-                    "message": f"Connection failed: {error_msg}",
-                    "connection_time_ms": elapsed_ms,
-                }
-            )
+            return DataSourceTestResult(success=False, message=f"Connection failed: {error_msg}", connection_time_ms=elapsed_ms, **{})
 
     async def _test_file_connection(self, config: DataSourceConfig) -> DataSourceTestResult:
         """Test file-based connection (CSV).
@@ -318,13 +302,7 @@ class DataSourceService:
 
         except Exception as e:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
-            return DataSourceTestResult(
-                **{
-                    "success": False,
-                    "message": f"File access failed: {str(e)}",
-                    "connection_time_ms": elapsed_ms,
-                }
-            )
+            return DataSourceTestResult(success=False, message=f"File access failed: {str(e)}", connection_time_ms=elapsed_ms, **{})
 
     def get_status(self, name: str) -> DataSourceStatus:
         """Get current status of a data source.
@@ -341,13 +319,7 @@ class DataSourceService:
 
         entities_using = self._get_entities_using_data_source(name)
 
-        return DataSourceStatus(
-            **{
-                "name": name,
-                "is_connected": name in self._connections,
-                "in_use_by_entities": entities_using,
-            }
-        )
+        return DataSourceStatus(name=name, is_connected=name in self._connections, in_use_by_entities=entities_using, **{})
 
     def _get_entities_using_data_source(self, data_source_name: str) -> list[str]:
         """Find all entities using a specific data source.

@@ -109,7 +109,7 @@ class SchemaIntrospectionService:
 
             # Convert CoreSchema.TableMetadata to API TableMetadata
             tables: list[api.TableMetadata] = [
-                api.TableMetadata(**{"name": table.name, "schema": table.schema, "comment": table.comment})
+                api.TableMetadata(name=table.name, schema=table.schema, comment=table.comment, **{})
                 for table in core_tables.values()
             ]
 
