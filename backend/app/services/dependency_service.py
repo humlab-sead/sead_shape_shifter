@@ -5,7 +5,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.models.config import Configuration
-from config_model import TablesConfig
+from config_model import TableConfig, TablesConfig
 
 
 class DependencyServiceError(Exception):
@@ -58,51 +58,27 @@ class DependencyService:
         Returns:
             Dependency graph with nodes, edges, and cycle information
         """
-        entities: dict[str, dict[str, Any]] = config.entities
 
-        # tables_cfg = TablesConfig(entities_cfg=entities, options=config.options)
+        tables_cfg = TablesConfig(entities_cfg=config.entities, options=config.options)
 
-        # Build dependency map
-        dependency_map: dict[str, list[str]] = {}
-        for entity_name, entity_data in entities.items():
-            depends_on: list[str] = []
-
-            # Check source field
-            if isinstance(entity_data, dict):
-                source: str | None = entity_data.get("source")
-                if source and source in entities:
-                    depends_on.append(source)
-
-                # Check depends_on field
-                explicit_deps: list[str] = entity_data.get("depends_on", [])
-                if isinstance(explicit_deps, list):
-                    depends_on.extend([dep for dep in explicit_deps if dep in entities])
-
-                # Check foreign_keys
-                foreign_keys: list[dict[str, Any]] = entity_data.get("foreign_keys", [])
-                if isinstance(foreign_keys, list):
-                    for fk in foreign_keys:
-                        if isinstance(fk, dict):
-                            remote_entity: str | None = fk.get("entity")
-                            if remote_entity and remote_entity in entities:
-                                depends_on.append(remote_entity)
-
-            dependency_map[entity_name] = list(set(depends_on))  # Remove duplicates
+        dependency_map: dict[str, list[str]] = {
+            entity_name: list(tables_cfg.get_table(entity_name).depends_on or []) for entity_name in config.entities
+        }
 
         # Detect cycles
-        cycles = self._find_cycles(dependency_map)
-        has_cycles = len(cycles) > 0
+        cycles: list[list[str]] = self._find_cycles(dependency_map)
+        has_cycles: bool = len(cycles) > 0
 
         # Calculate topological order if no cycles
-        topological_order = None if has_cycles else self._topological_sort(dependency_map)
+        topological_order: None | list[str] = None if has_cycles else self._topological_sort(dependency_map)
 
         # Calculate depths for visualization
-        depths = self._calculate_depths(dependency_map, topological_order)
+        depths: dict[str, int] = self._calculate_depths(dependency_map, topological_order)
 
-        # Build nodes and edges
-        nodes = [DependencyNode(name=name, depends_on=deps, depth=depths.get(name, 0)) for name, deps in dependency_map.items()]
-
-        edges = [(entity, dep) for entity, deps in dependency_map.items() for dep in deps]
+        nodes: list[DependencyNode] = [
+            DependencyNode(name=name, depends_on=deps, depth=depths.get(name, 0)) for name, deps in dependency_map.items()
+        ]
+        edges: list[tuple[str, str]] = [(entity, dep) for entity, deps in dependency_map.items() for dep in deps]
 
         logger.debug(f"Analyzed dependencies: {len(nodes)} nodes, {len(edges)} edges, " f"cycles: {has_cycles}")
 
@@ -142,12 +118,13 @@ class DependencyService:
         Returns:
             List of cycles, where each cycle is a list of entity names
         """
-        cycles = []
-        visited = set()
-        rec_stack = set()
-        path = []
+        cycles: list[list[str]] = []
+        visited: set[str] = set()
+        rec_stack: set[str] = set()
+        path: list[str] = []
 
         def dfs(node: str) -> None:
+            """Depth-first search to find cycles."""
             visited.add(node)
             rec_stack.add(node)
             path.append(node)
@@ -157,8 +134,8 @@ class DependencyService:
                     dfs(neighbor)
                 elif neighbor in rec_stack:
                     # Found a cycle
-                    cycle_start = path.index(neighbor)
-                    cycle = path[cycle_start:] + [neighbor]
+                    cycle_start: int = path.index(neighbor)
+                    cycle: list[str] = path[cycle_start:] + [neighbor]
                     cycles.append(cycle)
 
             path.pop()
@@ -180,7 +157,7 @@ class DependencyService:
         Returns:
             Topologically sorted list of entity names
         """
-        in_degree = {node: 0 for node in dependency_map}
+        in_degree: dict[str, int] = {node: 0 for node in dependency_map}
 
         # Calculate in-degrees
         for deps in dependency_map.values():
@@ -189,11 +166,11 @@ class DependencyService:
                     in_degree[dep] += 1
 
         # Start with nodes that have no dependencies
-        queue = [node for node, degree in in_degree.items() if degree == 0]
+        queue: list[str] = [node for node, degree in in_degree.items() if degree == 0]
         result = []
 
         while queue:
-            node = queue.pop(0)
+            node: str = queue.pop(0)
             result.append(node)
 
             # Reduce in-degree for neighbors
