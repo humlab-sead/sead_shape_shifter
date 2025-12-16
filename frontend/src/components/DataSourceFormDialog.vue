@@ -22,72 +22,80 @@
           <!-- Driver Type -->
           <v-select
             v-model="form.driver"
-            :items="driverOptions"
+            :items="availableDrivers"
             label="Type *"
             :rules="[rules.required]"
             variant="outlined"
             class="mb-2"
+            :loading="schemaLoading"
             @update:model-value="handleDriverChange"
-          />
+          >
+            <template #item="{ item, props: itemProps }">
+              <v-list-item v-bind="itemProps">
+                <v-list-item-title>{{ item.title }}</v-list-item-title>
+                <v-list-item-subtitle class="text-caption">
+                  {{ item.raw.description }}
+                </v-list-item-subtitle>
+              </v-list-item>
+            </template>
+          </v-select>
 
-          <!-- Database Connection Fields -->
-          <div v-if="isDatabaseDriver">
-            <v-text-field
-              v-model="form.host"
-              label="Host *"
-              :rules="[rules.required]"
-              variant="outlined"
-              class="mb-2"
-            />
+          <!-- Dynamic Fields based on Driver Schema -->
+          <template v-if="currentSchema">
+            <template v-for="field in currentSchema.fields" :key="field.name">
+              <!-- String/File Path Field -->
+              <v-text-field
+                v-if="field.type === 'string' || field.type === 'file_path'"
+                v-model="form.options[field.name]"
+                :label="formatFieldLabel(field)"
+                :hint="field.description"
+                :placeholder="field.placeholder"
+                :rules="field.required ? [rules.required] : []"
+                persistent-hint
+                variant="outlined"
+                class="mb-2"
+              />
 
-            <v-text-field
-              v-model.number="form.port"
-              label="Port *"
-              type="number"
-              :rules="[rules.required, rules.port]"
-              variant="outlined"
-              class="mb-2"
-            />
+              <!-- Integer Field -->
+              <v-text-field
+                v-else-if="field.type === 'integer'"
+                v-model.number="form.options[field.name]"
+                :label="formatFieldLabel(field)"
+                :hint="field.description"
+                :placeholder="field.placeholder"
+                :rules="field.required ? [rules.required, rules.integer] : [rules.integer]"
+                type="number"
+                :min="field.min_value"
+                :max="field.max_value"
+                persistent-hint
+                variant="outlined"
+                class="mb-2"
+              />
 
-            <v-text-field
-              v-model="form.database"
-              label="Database *"
-              :rules="[rules.required]"
-              variant="outlined"
-              class="mb-2"
-            />
+              <!-- Password Field -->
+              <v-text-field
+                v-else-if="field.type === 'password'"
+                v-model="form.options[field.name]"
+                :label="formatFieldLabel(field)"
+                :hint="isEditing ? 'Leave empty to keep existing password' : field.description"
+                :placeholder="field.placeholder"
+                type="password"
+                persistent-hint
+                variant="outlined"
+                class="mb-2"
+              />
 
-            <v-text-field
-              v-model="form.username"
-              label="Username *"
-              :rules="[rules.required]"
-              variant="outlined"
-              class="mb-2"
-            />
-
-            <v-text-field
-              v-model="form.password"
-              label="Password"
-              type="password"
-              hint="Leave empty to keep existing password when editing"
-              persistent-hint
-              variant="outlined"
-              class="mb-2"
-            />
-          </div>
-
-          <!-- File Connection Fields -->
-          <div v-else>
-            <v-text-field
-              v-model="form.filename"
-              label="File Path *"
-              hint="Path to the CSV file"
-              persistent-hint
-              :rules="[rules.required]"
-              variant="outlined"
-              class="mb-2"
-            />
-          </div>
+              <!-- Boolean Field -->
+              <v-checkbox
+                v-else-if="field.type === 'boolean'"
+                v-model="form.options[field.name]"
+                :label="formatFieldLabel(field)"
+                :hint="field.description"
+                persistent-hint
+                class="mb-2"
+              />
+            </template>
+          </template>
 
           <!-- Description -->
           <v-textarea
@@ -99,25 +107,6 @@
             variant="outlined"
             class="mb-2"
           />
-
-          <!-- Advanced Options (MS Access) -->
-          <v-expansion-panels v-if="form.driver === 'access' || form.driver === 'ucanaccess'" variant="accordion" class="mb-4">
-            <v-expansion-panel>
-              <v-expansion-panel-title>
-                <v-icon icon="mdi-cog" class="mr-2" />
-                Advanced Options
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <v-text-field
-                  v-model="ucanAccessDir"
-                  label="UCanAccess Directory"
-                  hint="Path to UCanAccess installation"
-                  persistent-hint
-                  variant="outlined"
-                />
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-          </v-expansion-panels>
         </v-form>
 
         <!-- Error Message -->
@@ -144,14 +133,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
-import {
-  getDefaultDataSourceForm,
-  isDatabaseSource,
-  type DataSourceConfig,
-  type DataSourceFormData,
-} from '@/types/data-source'
+import { useDriverSchema } from '@/composables/useDriverSchema'
+import type { DataSourceConfig } from '@/types/data-source'
+import type { FieldMetadata } from '@/types/driver-schema'
 
 const props = defineProps<{
   modelValue: boolean
@@ -164,30 +150,45 @@ const emit = defineEmits<{
 }>()
 
 const dataSourceStore = useDataSourceStore()
+const {
+  availableDrivers,
+  getSchema,
+  getDefaultFormValues,
+  loading: schemaLoading,
+  loadSchemas,
+} = useDriverSchema()
 
 // State
 const formRef = ref()
 const formValid = ref(false)
-const form = ref<DataSourceFormData>(getDefaultDataSourceForm())
-const ucanAccessDir = ref('')
+const form = ref<{
+  name: string
+  driver: string
+  description: string
+  options: Record<string, any>
+}>({
+  name: '',
+  driver: '',
+  description: '',
+  options: {},
+})
 const saving = ref(false)
 const errorMessage = ref<string | null>(null)
 
 // Computed
 const isEditing = computed(() => !!props.dataSource)
-const isDatabaseDriver = computed(() => isDatabaseSource(form.value.driver))
-
-const driverOptions = [
-  { title: 'PostgreSQL', value: 'postgresql' },
-  { title: 'MS Access', value: 'access' },
-  { title: 'SQLite', value: 'sqlite' },
-  { title: 'CSV File', value: 'csv' },
-]
+const currentSchema = computed(() => form.value.driver ? getSchema(form.value.driver) : null)
 
 // Validation rules
 const rules = {
-  required: (v: string | number) => !!v || 'Required',
-  port: (v: number) => (v >= 1 && v <= 65535) || 'Port must be between 1 and 65535',
+  required: (v: string | number) => {
+    if (v === null || v === undefined || v === '') return 'Required'
+    return true
+  },
+  integer: (v: any) => {
+    if (v === null || v === undefined || v === '') return true
+    return Number.isInteger(Number(v)) || 'Must be an integer'
+  },
   unique: (v: string) => {
     if (isEditing.value && v === props.dataSource?.name) return true
     const existing = dataSourceStore.dataSourceByName(v)
@@ -196,13 +197,15 @@ const rules = {
 }
 
 // Methods
+function formatFieldLabel(field: FieldMetadata): string {
+  const label = field.description || field.name
+  return field.required ? `${label} *` : label
+}
+
 function handleDriverChange(newDriver: string) {
-  // Set default port for database drivers
-  if (newDriver === 'postgresql' || newDriver === 'postgres') {
-    form.value.port = 5432
-  } else if (newDriver === 'sqlite') {
-    form.value.port = 0
-  }
+  // Reset options and apply defaults for new driver
+  const defaults = getDefaultFormValues(newDriver)
+  form.value.options = { ...defaults }
 }
 
 async function handleSave() {
@@ -215,31 +218,46 @@ async function handleSave() {
   errorMessage.value = null
 
   try {
+    const schema = currentSchema.value
+    if (!schema) {
+      throw new Error('No schema found for selected driver')
+    }
+
+    // Build config from form
     const config: DataSourceConfig = {
       name: form.value.name,
       driver: form.value.driver,
-      description: form.value.description || null,
+      description: form.value.description || undefined,
     }
 
-    if (isDatabaseDriver.value) {
-      config.host = form.value.host
-      config.port = form.value.port
-      config.database = form.value.database
-      config.username = form.value.username
+    // Map options to top-level fields and options object
+    const topLevelFields = ['host', 'port', 'database', 'username', 'password', 'filename']
+    const options: Record<string, any> = {}
+
+    for (const field of schema.fields) {
+      const value = form.value.options[field.name]
       
-      // Only include password if provided
-      if (form.value.password) {
-        config.password = form.value.password
+      // Skip empty passwords when editing (keep existing)
+      if (field.type === 'password' && isEditing.value && !value) {
+        continue
       }
 
-      // Add MS Access specific options
-      if ((form.value.driver === 'access' || form.value.driver === 'ucanaccess') && ucanAccessDir.value) {
-        config.options = {
-          ucanaccess_dir: ucanAccessDir.value,
-        }
+      // Skip null/undefined values
+      if (value === null || value === undefined || value === '') {
+        continue
       }
-    } else {
-      config.filename = form.value.filename
+
+      // Assign to top-level or options
+      if (topLevelFields.includes(field.name)) {
+        (config as any)[field.name] = value
+      } else {
+        options[field.name] = value
+      }
+    }
+
+    // Add options if not empty
+    if (Object.keys(options).length > 0) {
+      config.options = options
     }
 
     if (isEditing.value && props.dataSource) {
@@ -263,31 +281,45 @@ function handleCancel() {
 }
 
 function resetForm() {
-  form.value = getDefaultDataSourceForm()
-  ucanAccessDir.value = ''
+  form.value = {
+    name: '',
+    driver: '',
+    description: '',
+    options: {},
+  }
   errorMessage.value = null
   formRef.value?.resetValidation()
 }
 
 function loadDataSource(dataSource: DataSourceConfig) {
-  form.value = {
-    name: dataSource.name,
-    driver: dataSource.driver,
-    host: dataSource.host || '',
-    port: dataSource.port || 5432,
-    database: dataSource.database || dataSource.dbname || '',
-    username: dataSource.username || '',
-    password: '', // Don't load existing password
-    filename: dataSource.filename || dataSource.file_path || '',
-    description: dataSource.description || '',
-    options: dataSource.options || {},
+  form.value.name = dataSource.name
+  form.value.driver = dataSource.driver
+  form.value.description = dataSource.description || ''
+  
+  // Load all fields into options
+  const options: Record<string, any> = {}
+  
+  // Load top-level fields
+  if (dataSource.host) options.host = dataSource.host
+  if (dataSource.port) options.port = dataSource.port
+  if (dataSource.database) options.database = dataSource.database
+  if (dataSource.dbname) options.database = dataSource.dbname // Handle alias
+  if (dataSource.username) options.username = dataSource.username
+  if (dataSource.filename) options.filename = dataSource.filename
+  if (dataSource.file_path) options.filename = dataSource.file_path // Handle alias
+  
+  // Load options object
+  if (dataSource.options) {
+    Object.assign(options, dataSource.options)
   }
-
-  // Load MS Access options
-  if (dataSource.options?.ucanaccess_dir) {
-    ucanAccessDir.value = dataSource.options.ucanaccess_dir as string
-  }
+  
+  form.value.options = options
 }
+
+// Lifecycle
+onMounted(async () => {
+  await loadSchemas()
+})
 
 // Watch for dialog open/close
 watch(
