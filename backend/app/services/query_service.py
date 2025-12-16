@@ -79,17 +79,17 @@ class QueryService:
             return QueryValidation(is_valid=False, errors=[f"SQL syntax error: {str(e)}"], warnings=[], statement_type=None, tables=[])
 
         # Get first statement
-        statement = parsed[0]
+        statement: Statement = parsed[0]
 
         # Detect statement type
-        statement_type = self._get_statement_type(statement)
+        statement_type: str | None = self._get_statement_type(statement)
 
         # Check for destructive operations
         if statement_type and statement_type.upper() in self.DESTRUCTIVE_KEYWORDS:
             errors.append(f"Destructive SQL operation '{statement_type}' is not allowed. " f"Only SELECT queries are permitted.")
 
         # Extract table names
-        tables = self._extract_table_names(statement)
+        tables: list[str] = self._extract_table_names(statement)
 
         # Check for multiple statements
         if len(parsed) > 1:
@@ -99,7 +99,7 @@ class QueryService:
         if statement_type == "SELECT" and not self._has_where_clause(statement):
             warnings.append("Query has no WHERE clause. This may return a large result set.")
 
-        is_valid = len(errors) == 0
+        is_valid: bool = len(errors) == 0
 
         return QueryValidation(is_valid=is_valid, errors=errors, warnings=warnings, statement_type=statement_type, tables=tables)
 
