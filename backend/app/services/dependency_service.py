@@ -5,6 +5,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.models.config import Configuration
+from config_model import TablesConfig
 
 
 class DependencyServiceError(Exception):
@@ -57,30 +58,32 @@ class DependencyService:
         Returns:
             Dependency graph with nodes, edges, and cycle information
         """
-        entities = config.entities
+        entities: dict[str, dict[str, Any]] = config.entities
+
+        # tables_cfg = TablesConfig(entities_cfg=entities, options=config.options)
 
         # Build dependency map
         dependency_map: dict[str, list[str]] = {}
         for entity_name, entity_data in entities.items():
-            depends_on = []
+            depends_on: list[str] = []
 
             # Check source field
             if isinstance(entity_data, dict):
-                source = entity_data.get("source")
+                source: str | None = entity_data.get("source")
                 if source and source in entities:
                     depends_on.append(source)
 
                 # Check depends_on field
-                explicit_deps = entity_data.get("depends_on", [])
+                explicit_deps: list[str] = entity_data.get("depends_on", [])
                 if isinstance(explicit_deps, list):
                     depends_on.extend([dep for dep in explicit_deps if dep in entities])
 
                 # Check foreign_keys
-                foreign_keys = entity_data.get("foreign_keys", [])
+                foreign_keys: list[dict[str, Any]] = entity_data.get("foreign_keys", [])
                 if isinstance(foreign_keys, list):
                     for fk in foreign_keys:
                         if isinstance(fk, dict):
-                            remote_entity = fk.get("entity")
+                            remote_entity: str | None = fk.get("entity")
                             if remote_entity and remote_entity in entities:
                                 depends_on.append(remote_entity)
 
