@@ -8,7 +8,7 @@
     >
       <v-list-item
         prepend-icon="mdi-shape"
-        :title="rail ? '' : 'Shape Shifter'"
+        :title="rail ? '' : 'SEAD Shape Shifter'"
         :subtitle="rail ? '' : 'Configuration Editor'"
         nav
       >
