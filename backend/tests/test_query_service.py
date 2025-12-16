@@ -2,11 +2,13 @@
 Tests for Query Service
 """
 
+from typing import Literal
 from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
 import pytest
 
+from app.models.query import QueryValidation
 from backend.app.models.data_source import DataSourceConfig, DataSourceType
 from backend.app.models.query import QueryResult
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
@@ -24,8 +26,8 @@ class TestQueryValidation:
 
     def test_validate_select_query(self):
         """Should validate SELECT queries as valid."""
-        query = "SELECT * FROM users WHERE id = 1"
-        result = self.service.validate_query(query)
+        query: str = "SELECT * FROM users WHERE id = 1"
+        result: QueryValidation = self.service.validate_query(query)
 
         assert result.is_valid is True
         assert len(result.errors) == 0
@@ -34,8 +36,8 @@ class TestQueryValidation:
 
     def test_validate_insert_query(self):
         """Should reject INSERT queries as destructive."""
-        query = "INSERT INTO users (name) VALUES ('test')"
-        result = self.service.validate_query(query)
+        query: str = "INSERT INTO users (name) VALUES ('test')"
+        result: QueryValidation = self.service.validate_query(query)
 
         assert result.is_valid is False
         assert len(result.errors) > 0
@@ -44,74 +46,74 @@ class TestQueryValidation:
 
     def test_validate_update_query(self):
         """Should reject UPDATE queries as destructive."""
-        query = "UPDATE users SET name = 'test' WHERE id = 1"
-        result = self.service.validate_query(query)
+        query: str = "UPDATE users SET name = 'test' WHERE id = 1"
+        result: QueryValidation = self.service.validate_query(query)
 
         assert result.is_valid is False
         assert "UPDATE" in result.errors[0]
 
     def test_validate_delete_query(self):
         """Should reject DELETE queries as destructive."""
-        query = "DELETE FROM users WHERE id = 1"
-        result = self.service.validate_query(query)
+        query: str = "DELETE FROM users WHERE id = 1"
+        result: QueryValidation = self.service.validate_query(query)
 
         assert result.is_valid is False
         assert "DELETE" in result.errors[0]
 
     def test_validate_drop_query(self):
         """Should reject DROP queries as destructive."""
-        query = "DROP TABLE users"
-        result = self.service.validate_query(query)
+        query: str = "DROP TABLE users"
+        result: QueryValidation = self.service.validate_query(query)
 
         assert result.is_valid is False
         assert "DROP" in result.errors[0]
 
     def test_validate_empty_query(self):
         """Should reject empty queries."""
-        query = ""
-        result = self.service.validate_query(query)
+        query: Literal[''] = ""
+        result: QueryValidation = self.service.validate_query(query)
 
         assert result.is_valid is False
         assert len(result.errors) > 0
 
     def test_validate_syntax_error(self):
         """Should detect syntax errors."""
-        query = "SELECT * FROM"  # Incomplete query
-        result = self.service.validate_query(query)
+        query: str = "SELECT * FROM"  # Incomplete query
+        result: QueryValidation = self.service.validate_query(query)
 
         # Query might still parse but be invalid
         assert result.is_valid is True or len(result.errors) > 0
 
     def test_validate_multiple_statements(self):
         """Should warn about multiple statements."""
-        query = "SELECT * FROM users; SELECT * FROM orders;"
-        result = self.service.validate_query(query)
+        query: str = "SELECT * FROM users; SELECT * FROM orders;"
+        result: QueryValidation = self.service.validate_query(query)
 
         assert len(result.warnings) > 0
         assert "multiple statements" in result.warnings[0].lower()
 
     def test_validate_no_where_clause(self):
         """Should warn about queries without WHERE clause."""
-        query = "SELECT * FROM users"
-        result = self.service.validate_query(query)
+        query: str = "SELECT * FROM users"
+        result: QueryValidation = self.service.validate_query(query)
 
         assert result.is_valid is True
         # Should have warning about missing WHERE clause
-        warning_found = any("where" in w.lower() for w in result.warnings)
+        warning_found: bool = any("where" in w.lower() for w in result.warnings)
         assert warning_found
 
-    def test_extract_table_names(self):
+    def test_extract_table_names(self) -> None:
         """Should extract table names from query."""
-        query = "SELECT u.*, o.* FROM users u JOIN orders o ON u.id = o.user_id"
-        result = self.service.validate_query(query)
+        query: str = "SELECT u.*, o.* FROM users u JOIN orders o ON u.id = o.user_id"
+        result: QueryValidation = self.service.validate_query(query)
 
         assert "users" in result.tables
         assert "orders" in result.tables
 
-    def test_extract_schema_qualified_table(self):
+    def test_extract_schema_qualified_table(self) -> None:
         """Should extract table names with schema prefix."""
-        query = "SELECT * FROM public.users"
-        result = self.service.validate_query(query)
+        query: str = "SELECT * FROM public.users"
+        result: QueryValidation = self.service.validate_query(query)
 
         assert "users" in result.tables
 
@@ -125,7 +127,7 @@ class TestQueryExecution:
         self.service = QueryService(self.mock_ds_service)
 
     @pytest.fixture
-    def mock_ds_service(self):
+    def mock_ds_service(self) -> Mock:
         """Mock pandas read_sql_query."""
         mock_ds_config = DataSourceConfig(
             name="test_db", driver=DataSourceType.POSTGRESQL, host="localhost", port=5432, database="testdb", username="testuser", **{}
@@ -133,7 +135,7 @@ class TestQueryExecution:
         mock_ds_service = Mock(get_data_source=Mock(return_value=mock_ds_config))
         return mock_ds_service
 
-    def mock_read_sql(self, test_df, mock_get_loader):
+    def mock_read_sql(self, test_df: pd.DataFrame, mock_get_loader: Mock) -> AsyncMock:
         """Mock the loader's read_sql method."""
         mock_read_sql: AsyncMock = AsyncMock(return_value=test_df)
         mock_loader_instance = Mock()
@@ -152,9 +154,9 @@ class TestQueryExecution:
         with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
             
             _: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
-            query = "select * from users"
+            query: str = "select * from users"
 
-            service = QueryService(data_source_service=mock_ds_service)
+            service: QueryService = QueryService(data_source_service=mock_ds_service)
             result: QueryResult = await service.execute_query(data_source_name="test_db", query=query, limit=100)
             
             assert isinstance(result, QueryResult)
@@ -174,12 +176,12 @@ class TestQueryExecution:
             
             mock_read_sql: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
             
-            query = "SELECT * FROM users"
-            service = QueryService(data_source_service=mock_ds_service)
+            query: str = "SELECT * FROM users"
+            service: QueryService = QueryService(data_source_service=mock_ds_service)
 
             result: QueryResult = await service.execute_query("test_db", query, limit=50)
             
-            called_query = mock_read_sql.call_args[0][0]
+            called_query: str = mock_read_sql.call_args[0][0]
             assert "LIMIT" in called_query.upper()
             assert result.row_count == 50
 
@@ -196,9 +198,9 @@ class TestQueryExecution:
 
             _: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
             
-            service = QueryService(data_source_service=mock_ds_service)
+            service: QueryService = QueryService(data_source_service=mock_ds_service)
             
-            query = "SELECT * FROM users"
+            query: str = "SELECT * FROM users"
             result: QueryResult = await service.execute_query("test_db", query, limit=100)
 
             assert result.is_truncated is True
@@ -212,8 +214,8 @@ class TestQueryExecution:
 
         with pytest.raises(QuerySecurityError) as exc_info:
 
-            service = QueryService(data_source_service=mock_ds_service)
-            query = "DELETE FROM users"
+            service: QueryService = QueryService(data_source_service=mock_ds_service)
+            query: str = "DELETE FROM users"
 
             await service.execute_query("test_db", query)
 
@@ -227,8 +229,8 @@ class TestQueryExecution:
 
         with pytest.raises(QueryExecutionError) as exc_info:
 
-            query = "SELECT * FROM users"
-            service = QueryService(data_source_service=mock_ds_service)
+            query: str = "SELECT * FROM users"
+            service: QueryService = QueryService(data_source_service=mock_ds_service)
 
             await service.execute_query("test_db", query)
 
@@ -243,8 +245,8 @@ class TestQueryExecution:
 
         with patch("pandas.read_sql_query", side_effect=Exception("Table not found")):
 
-            query = "SELECT * FROM nonexistent"
-            service = QueryService(data_source_service=mock_ds_service)
+            query: str = "SELECT * FROM nonexistent"
+            service: QueryService = QueryService(data_source_service=mock_ds_service)
 
             with pytest.raises(QueryExecutionError) as exc_info:
                 await service.execute_query("test_db", query)
@@ -256,12 +258,12 @@ class TestQueryExecution:
 
         mock_conn = Mock()
         mock_ds_service.get_connection.return_value = mock_conn
-        test_df = pd.DataFrame({"id": [1, 2, 3], "name": ["Alice", None, "Charlie"]})
+        test_df: pd.DataFrame = pd.DataFrame({"id": [1, 2, 3], "name": ["Alice", None, "Charlie"]})
 
         with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
             _: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
 
-            query = "SELECT * FROM users"
+            query: str = "SELECT * FROM users"
             service = QueryService(data_source_service=mock_ds_service)
             result: QueryResult = await service.execute_query("test_db", query)
 
@@ -280,7 +282,7 @@ class TestQueryExecution:
         with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
             _: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
 
-            query = "SELECT * FROM users"
+            query: str = "SELECT * FROM users"
             service = QueryService(data_source_service=mock_ds_service)
             result: QueryResult = await service.execute_query("test_db", query)
 
@@ -298,7 +300,7 @@ class TestQueryExecution:
         with patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader:
             _: Mock = self.mock_read_sql(test_df, mock_get_loader=mock_get_loader)
 
-            query = "SELECT * FROM users"
+            query: str = "SELECT * FROM users"
             service = QueryService(data_source_service=mock_ds_service)
             result: QueryResult = await service.execute_query("test_db", query, limit=20000)
 
@@ -315,21 +317,21 @@ class TestSQLParsing:
 
     def test_add_limit_to_select(self):
         """Should add LIMIT clause to SELECT query."""
-        query = "SELECT * FROM users"
+        query: str = "SELECT * FROM users"
         modified = self.service._add_limit_clause(query, 100)
 
         assert "LIMIT 100" in modified
 
     def test_preserve_existing_limit(self):
         """Should not modify query with existing LIMIT."""
-        query = "SELECT * FROM users LIMIT 50"
+        query: str = "SELECT * FROM users LIMIT 50"
         modified = self.service._add_limit_clause(query, 100)
 
         assert modified == query
 
     def test_dont_add_limit_to_non_select(self):
         """Should not add LIMIT to non-SELECT queries."""
-        query = "INSERT INTO users (name) VALUES ('test')"
+        query: str = "INSERT INTO users (name) VALUES ('test')"
         modified = self.service._add_limit_clause(query, 100)
 
         assert "LIMIT" not in modified
