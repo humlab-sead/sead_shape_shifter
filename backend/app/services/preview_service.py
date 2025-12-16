@@ -10,7 +10,7 @@ from loguru import logger
 from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
-from src.config_model import TableConfig, TablesConfig
+from src.config_model import ForeignKeyConfig, TableConfig, TablesConfig
 from src.configuration.interface import ConfigLike
 from src.configuration.provider import ConfigStore
 from src.normalizer import ArbodatSurveyNormalizer
@@ -94,7 +94,6 @@ class PreviewService:
         if cached:
             return cached
 
-        # Load configuration from ConfigStore
         config_obj: ConfigLike = ConfigStore.config_global()
         if config_obj is None:
             raise ValueError("Configuration not loaded")
@@ -295,17 +294,17 @@ class PreviewService:
             JoinTestResult with statistics and unmatched rows
         """
 
-        start_time = time.time()
+        start_time: float = time.time()
 
         # Load configuration
-        config_obj = ConfigStore.config_global()
+        config_obj: ConfigLike = ConfigStore.config_global()
         if config_obj is None:
             raise ValueError("Configuration not loaded")
 
         config_dict = config_obj.data
-        entities_cfg = config_dict.get("entities", {})
-        options = config_dict.get("options", {})
-        config = TablesConfig(entities_cfg=entities_cfg, options=options)
+        entities_cfg: dict[str, Any] = config_dict.get("entities", {})
+        options: dict[str, Any] = config_dict.get("options", {})
+        config: TablesConfig = TablesConfig(entities_cfg=entities_cfg, options=options)
 
         # Get entity and foreign key config
         if entity_name not in config.tables:
@@ -316,8 +315,8 @@ class PreviewService:
         if not entity_config.foreign_keys or foreign_key_index >= len(entity_config.foreign_keys):
             raise ValueError(f"Foreign key index {foreign_key_index} out of range")
 
-        fk_config = entity_config.foreign_keys[foreign_key_index]
-        remote_entity_name = fk_config.remote_entity
+        fk_config: ForeignKeyConfig = entity_config.foreign_keys[foreign_key_index]
+        remote_entity_name: str = fk_config.remote_entity
 
         if remote_entity_name not in config.tables:
             raise ValueError(f"Remote entity '{remote_entity_name}' not found")
@@ -325,20 +324,20 @@ class PreviewService:
         # remote_entity_config = config.tables[remote_entity_name]
 
         # Load sample data for both entities
-        local_preview = await self.preview_entity(config_name, entity_name, limit=sample_size)
-        remote_preview = await self.preview_entity(config_name, remote_entity_name, limit=1000)
+        local_preview: PreviewResult = await self.preview_entity(config_name, entity_name, limit=sample_size)
+        remote_preview: PreviewResult = await self.preview_entity(config_name, remote_entity_name, limit=1000)
 
         local_df = pd.DataFrame(local_preview.rows)
         remote_df = pd.DataFrame(remote_preview.rows)
 
         # Perform join analysis
-        local_keys = fk_config.local_keys
-        remote_keys = fk_config.remote_keys
+        local_keys: list[str] = fk_config.local_keys
+        remote_keys: list[str] = fk_config.remote_keys
         join_type = fk_config.how or "left"
 
         # Check if keys exist in dataframes
-        missing_local = [k for k in local_keys if k not in local_df.columns]
-        missing_remote = [k for k in remote_keys if k not in remote_df.columns]
+        missing_local: list[str] = [k for k in local_keys if k not in local_df.columns]
+        missing_remote: list[str] = [k for k in remote_keys if k not in remote_df.columns]
 
         if missing_local or missing_remote:
             error_parts = []
@@ -363,7 +362,7 @@ class PreviewService:
         match_percentage: float = (matched_rows / total_rows * 100) if total_rows > 0 else 0.0
 
         # Check for duplicate matches
-        duplicate_matches = len(merged) - total_rows
+        duplicate_matches: int = len(merged) - total_rows
 
         # Get unmatched samples
         unmatched_df: pd.DataFrame = merged[merged["_merge"] == "left_only"].head(10)
