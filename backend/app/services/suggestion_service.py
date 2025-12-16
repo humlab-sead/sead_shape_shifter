@@ -12,13 +12,13 @@ from backend.app.models.suggestion import (
 )
 from backend.app.services.schema_service import SchemaIntrospectionService
 
-
-CONFIDENCE_MAP: dict[str, float] ={
+CONFIDENCE_MAP: dict[str, float] = {
     "exact": 0.5,
     "fk_pattern": 0.4,
     "entity_pattern": 0.3,
     "other": 0.2,
 }
+
 
 class SuggestionService:
     """Service for suggesting foreign keys and dependencies between entities."""
@@ -208,7 +208,7 @@ class SuggestionService:
         match_type = match.get("match_type", "")
 
         confidence: float = CONFIDENCE_MAP.get(match_type) or CONFIDENCE_MAP.get("other") or 0.2
-        
+
         # Check type compatibility if schemas available
         local_schema: TableSchema | None = schemas.get(local_entity)
         remote_schema: TableSchema | None = schemas.get(remote_entity)
