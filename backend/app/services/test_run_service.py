@@ -184,7 +184,15 @@ class TestRunService:
             EntityTestResult with processing details
         """
         result: EntityTestResult = EntityTestResult(
-            entity_name=entity_name, status="success", rows_in=0, rows_out=0, execution_time_ms=0, **{}
+            entity_name=entity_name,
+            status="success",
+            rows_in=0,
+            rows_out=0,
+            execution_time_ms=0,
+            validation_issues=[],
+            warnings=[],
+            preview_rows=[],
+            error_message=None,
         )
 
         try:
@@ -233,7 +241,7 @@ class TestRunService:
                             severity="error",
                             message="Foreign key missing remote entity name",
                             suggestion="Add 'entity' field to foreign key configuration",
-                            **{},
+                            location=None
                         )
                         result.validation_issues.append(issue)  # pylint: disable=no-member
 
