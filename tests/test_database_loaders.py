@@ -207,14 +207,13 @@ class TestSqliteLoader:
         # Mock pragma table_info result
         pragma_data = pd.DataFrame(
             {
-                "name": ["id", "username", "email"],
-                "type": ["INTEGER", "TEXT", "TEXT"],
-                "notnull": [1, 1, 0],
-                "dflt_value": [None, None, None],
-                "pk": [1, 0, 0],
+                "COLUMN_NAME": ["id", "username", "email"],
+                "DATA_TYPE": ["INTEGER", "TEXT", "TEXT"],
+                "IS_NULLABLE": ["NO", "NO", "YES"],
+                "COLUMN_DEFAULT": [None, None, None],
+                "CHARACTER_MAXIMUM_LENGTH": [None, 100, 100],
             }
         )
-
         count_result = 15
 
         with patch.object(loader, "read_sql", new_callable=AsyncMock) as mock_read_sql:
