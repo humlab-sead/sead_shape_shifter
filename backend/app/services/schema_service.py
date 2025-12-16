@@ -20,7 +20,7 @@ from backend.app.services.data_source_service import DataSourceService
 from src.config_model import DataSourceConfig as CoreDataSourceConfig
 from src.configuration.interface import ConfigLike
 from src.loaders.base_loader import DataLoaders
-from loaders.sql_loaders import CoreSchema, SqlLoader
+from src.loaders.sql_loaders import CoreSchema, SqlLoader
 
 
 class SchemaServiceError(Exception):

@@ -21,7 +21,7 @@ from backend.app.services.schema_service import (
     SchemaIntrospectionService,
     SchemaServiceError,
 )
-from loaders.sql_loaders import CoreSchema
+from src.loaders.sql_loaders import CoreSchema
 
 # pylint: disable=redefined-outer-name, unused-argument
 
