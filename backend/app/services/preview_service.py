@@ -12,6 +12,7 @@ from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
 from src.config_model import TableConfig, TablesConfig
 from src.configuration.provider import ConfigStore
+from src.normalizer import ArbodatSurveyNormalizer
 
 
 class PreviewCache:
@@ -127,40 +128,55 @@ class PreviewService:
 
     async def _preview_with_normalizer(
         self,
-        config: TablesConfig,  # pylint: disable=unused-argument
-        config_name: str,  # pylint: disable=unused-argument
+        config: TablesConfig | str,
         entity_name: str,
         entity_config: TableConfig,
         limit: int,
     ) -> PreviewResult:
-        """Preview entity data without full transformation pipeline."""
+        """Preview entity data using the normalizer to apply all transformations."""
         try:
-            # For preview, just load the raw entity data without running full normalize
-            # This avoids dependency resolution issues
+            # Create normalizer with the entity as default to process
 
-            # Load entity data based on type
-            if entity_config.type == "fixed":
-                # Fixed data from config
-                df = pd.DataFrame(entity_config.values, columns=entity_config.columns)
-            else:
-                # For other types, we'd need data source connection
-                # For now, return empty DataFrame with columns
-                df = pd.DataFrame(columns=entity_config.columns)
+            if isinstance(config, str):
+                # TODO: Load config by name
+                raise ValueError("Config must be TablesConfig instance, not str")
+            
+            normalizer = ArbodatSurveyNormalizer(
+                default_entity=entity_name,
+                config=config,
+                table_store={},
+            )
 
-            # Limit rows
-            preview_df = df.head(limit)
+            # Run normalization process
+            await normalizer.normalize()
 
-            # Get actual row count
-            estimated_total = len(df)
+            if entity_name not in normalizer.table_store:
+                raise RuntimeError(f"Entity {entity_name} was not produced by normalizer")
+
+            df: pd.DataFrame = normalizer.table_store[entity_name]
+
+            estimated_total: int = len(df)
+
+            preview_df: pd.DataFrame = df.head(limit)
 
             # Determine which transformations were applied
-            transformations = ["raw_data"]  # No transformations in preview mode
+            transformations = []
+            if entity_config.filters:
+                transformations.append("filter")
+            if entity_config.unnest:
+                transformations.append("unnest")
+            if entity_config.foreign_keys:
+                transformations.append("foreign_key_joins")
+            # if entity_config.translate:
+            #     transformations.append("column_mapping")
+            if not transformations:
+                transformations = ["raw_data"]
 
             # Build column info
-            columns = self._build_column_info(preview_df, entity_config)
+            columns: list[ColumnInfo] = self._build_column_info(preview_df, entity_config)
 
             # Convert to records for JSON response
-            rows = preview_df.to_dict("records")
+            rows: list[dict] = preview_df.to_dict("records")
 
             # Get dependencies
             dependencies_loaded = []
@@ -169,19 +185,22 @@ class PreviewService:
             if entity_config.depends_on:
                 dependencies_loaded.extend(entity_config.depends_on)
 
+            # Add foreign key dependencies
+            for fk in entity_config.foreign_keys:
+                if fk.remote_entity not in dependencies_loaded:
+                    dependencies_loaded.append(fk.remote_entity)
+
             return PreviewResult(
-                **{
-                    "entity_name": entity_name,
-                    "rows": rows,
-                    "columns": columns,
-                    "total_rows_in_preview": len(rows),
-                    "estimated_total_rows": estimated_total,
-                    "execution_time_ms": 0,  # Will be set by caller
-                    "has_dependencies": len(dependencies_loaded) > 0,
-                    "dependencies_loaded": dependencies_loaded,
-                    "transformations_applied": transformations,
-                    "cache_hit": False,
-                }
+                entity_name=entity_name,
+                rows=rows,
+                columns=columns,
+                total_rows_in_preview=len(rows),
+                estimated_total_rows=estimated_total,
+                execution_time_ms=0,  # Will be set by caller
+                has_dependencies=len(dependencies_loaded) > 0,
+                dependencies_loaded=dependencies_loaded,
+                transformations_applied=transformations,
+                cache_hit=False,
             )
 
         except Exception as e:
@@ -213,16 +232,14 @@ class PreviewService:
                 data_type = dtype
 
             # Check if column has null values
-            nullable = df[col_name].isnull().any()
+            nullable = bool(df[col_name].isnull().any())
 
             columns.append(
                 ColumnInfo(
-                    **{
-                        "name": col_name,
-                        "data_type": data_type,
-                        "nullable": nullable,
-                        "is_key": col_name in key_columns,
-                    }
+                    name=col_name,
+                    data_type=data_type,
+                    nullable=nullable,
+                    is_key=col_name in key_columns,
                 )
             )
 
