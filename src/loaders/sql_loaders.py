@@ -70,7 +70,10 @@ class SqlLoader(DataLoader):
 
     def __init__(self, data_source: "DataSourceConfig") -> None:
         super().__init__(data_source=data_source)
-        self.db_uri: str = self.create_db_uri()
+
+    @property
+    def db_uri(self) -> str:
+        return self.create_db_uri()
 
     @abc.abstractmethod
     def create_db_uri(self) -> str:
