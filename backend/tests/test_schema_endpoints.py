@@ -3,11 +3,12 @@ Tests for schema introspection API endpoints.
 """
 
 import pdb
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.api.dependencies import get_schema_service
 from backend.app.main import app
 from backend.app.models.data_source import ColumnMetadata, TableMetadata, TableSchema
 from backend.app.services.schema_service import SchemaIntrospectionService, SchemaServiceError
@@ -16,16 +17,22 @@ from backend.app.services.schema_service import SchemaIntrospectionService, Sche
 
 
 @pytest.fixture
-def client():
-    """Create test client."""
-    return TestClient(app)
-
-
-@pytest.fixture
 def mock_schema_service():
     """Create mock schema service."""
     service = MagicMock(spec=SchemaIntrospectionService)
     return service
+
+
+@pytest.fixture
+def client(mock_schema_service):
+    """Create test client with mocked schema service."""
+
+    def override_get_schema_service():
+        return mock_schema_service
+
+    app.dependency_overrides[get_schema_service] = override_get_schema_service
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -74,8 +81,7 @@ class TestListTablesEndpoint:
         """Test successful table listing."""
         mock_schema_service.get_tables = AsyncMock(return_value=sample_tables)
 
-        with patch("backend.app.api.dependencies.get_schema_service", return_value=mock_schema_service):
-            response = client.get("/api/v1/data-sources/sead/tables")
+        response = client.get("/api/v1/data-sources/sead/tables")
 
         assert response.status_code == 200
         data = response.json()
@@ -89,8 +95,7 @@ class TestListTablesEndpoint:
         """Test table listing with specific schema."""
         mock_schema_service.get_tables = AsyncMock(return_value=sample_tables)
 
-        with patch("backend.app.api.dependencies.get_schema_service", return_value=mock_schema_service):
-            response = client.get("/api/v1/data-sources/sead/tables?schema=custom_schema")
+        response = client.get("/api/v1/data-sources/sead/tables?schema=custom_schema")
 
         assert response.status_code == 200
         mock_schema_service.get_tables.assert_called_once_with("sead", "custom_schema")
@@ -100,8 +105,7 @@ class TestListTablesEndpoint:
         """Test with non-existent data source."""
         mock_schema_service.get_tables = AsyncMock(side_effect=SchemaServiceError("Data source 'invalid' not found"))
 
-        with patch("backend.app.api.dependencies.get_schema_service", return_value=mock_schema_service):
-            response = client.get("/api/v1/data-sources/invalid/tables")
+        response = client.get("/api/v1/data-sources/invalid/tables")
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
@@ -111,8 +115,7 @@ class TestListTablesEndpoint:
         """Test with unsupported driver."""
         mock_schema_service.get_tables = AsyncMock(side_effect=SchemaServiceError("Schema introspection not supported for this driver"))
 
-        with patch("backend.app.api.dependencies.get_schema_service", return_value=mock_schema_service):
-            response = client.get("/api/v1/data-sources/sead/tables")
+        response = client.get("/api/v1/data-sources/sead/tables")
 
         assert response.status_code == 400
         assert "not supported" in response.json()["detail"].lower()
@@ -122,8 +125,7 @@ class TestListTablesEndpoint:
         """Test with database error."""
         mock_schema_service.get_tables = AsyncMock(side_effect=SchemaServiceError("Database connection failed"))
 
-        with patch("backend.app.api.dependencies.get_schema_service", return_value=mock_schema_service):
-            response = client.get("/api/v1/data-sources/sead/tables")
+        response = client.get("/api/v1/data-sources/sead/tables")
 
         assert response.status_code == 500
         assert "failed" in response.json()["detail"].lower()
@@ -137,8 +139,7 @@ class TestGetTableSchemaEndpoint:
         """Test successful table schema retrieval."""
         mock_schema_service.get_table_schema = AsyncMock(return_value=sample_table_schema)
 
-        with patch("backend.app.api.dependencies.get_schema_service", return_value=mock_schema_service):
-            response = client.get("/api/v1/data-sources/sead/tables/table1/schema")
+        response = client.get("/api/v1/data-sources/sead/tables/table1/schema")
 
         assert response.status_code == 200
         data = response.json()
@@ -167,8 +168,7 @@ class TestPreviewTableDataEndpoint:
         }
         mock_schema_service.preview_table_data = AsyncMock(return_value=preview_data)
 
-        with patch("backend.app.api.dependencies.get_schema_service", return_value=mock_schema_service):
-            response = client.get("/api/v1/data-sources/sead/tables/table1/preview")
+        response = client.get("/api/v1/data-sources/sead/tables/table1/preview")
 
         assert response.status_code == 200
         data = response.json()
@@ -188,8 +188,7 @@ class TestPreviewTableDataEndpoint:
         }
         mock_schema_service.preview_table_data = AsyncMock(return_value=preview_data)
 
-        with patch("backend.app.api.dependencies.get_schema_service", return_value=mock_schema_service):
-            response = client.get("/api/v1/data-sources/sead/tables/table1/preview?limit=10&offset=20")
+        response = client.get("/api/v1/data-sources/sead/tables/table1/preview?limit=10&offset=20")
 
         assert response.status_code == 200
         mock_schema_service.preview_table_data.assert_called_once_with("sead", "table1", None, 10, 20)
@@ -198,8 +197,14 @@ class TestPreviewTableDataEndpoint:
 class TestDebugSeadTables:
     """Specific tests for debugging /data-sources/sead/tables endpoint."""
 
+    @pytest.fixture
+    def real_client(self):
+        """Create test client without mocked dependencies for real testing."""
+        app.dependency_overrides.clear()
+        return TestClient(app)
+
     @pytest.mark.asyncio
-    async def test_sead_tables_real_service(self, client):
+    async def test_sead_tables_real_service(self, real_client):
         """Test with real service - use this for debugging.
 
         To debug:
@@ -210,7 +215,7 @@ class TestDebugSeadTables:
             backend/tests/test_schema_endpoints.py::TestDebugSeadTables::test_sead_tables_real_service -v -s
         """
         # This will use the real dependency injection
-        response = client.get("/api/v1/data-sources/sead/tables")
+        response = real_client.get("/api/v1/data-sources/sead/tables")
 
         print(f"\nResponse Status: {response.status_code}")
         print(f"Response Headers: {response.headers}")
@@ -225,20 +230,21 @@ class TestDebugSeadTables:
         else:
             print(f"Error: {response.json()}")
 
+    @pytest.mark.skip(reason="For step-by-step debugging only")
     @pytest.mark.asyncio
-    async def test_sead_tables_step_by_step(self, client):
+    async def test_sead_tables_step_by_step(self, real_client):
         """Step-by-step debugging test.
 
-        Run with: PYTHONPATH=.:backend uv run pytest \
+        Run with: PYTHONPATH=.:backend uv run pytest \\
             backend/tests/test_schema_endpoints.py::TestDebugSeadTables::test_sead_tables_step_by_step -v -s --pdb
         """
         # Step 1: Check health endpoint
-        health_response = client.get("/api/v1/health")
-        print(f"\n1. Health check: {health_response.status_code}")
+        health_response = real_client.get("/api/v1/health")
+        print(f"\\n1. Health check: {health_response.status_code}")
         assert health_response.status_code == 200
 
         # Step 2: List configurations to verify data source exists
-        config_response = client.get("/api/v1/configurations")
+        config_response = real_client.get("/api/v1/configurations")
         print(f"2. Configurations: {config_response.status_code}")
 
         if config_response.status_code == 200:
@@ -247,7 +253,7 @@ class TestDebugSeadTables:
 
         # Step 3: Try to list tables
         print("3. Attempting to list tables for 'sead' data source...")
-        tables_response = client.get("/api/v1/data-sources/sead/tables")
+        tables_response = real_client.get("/api/v1/data-sources/sead/tables")
 
         print(f"   Status: {tables_response.status_code}")
         print(f"   Body: {tables_response.text[:500]}")  # First 500 chars
@@ -279,8 +285,7 @@ class TestInvalidateCache:
         """Test successful cache invalidation."""
         mock_schema_service.invalidate_cache = MagicMock()
 
-        with patch("backend.app.api.dependencies.get_schema_service", return_value=mock_schema_service):
-            response = client.post("/api/v1/data-sources/sead/cache/invalidate")
+        response = client.post("/api/v1/data-sources/sead/cache/invalidate")
 
         assert response.status_code == 204
         mock_schema_service.invalidate_cache.assert_called_once_with("sead")
