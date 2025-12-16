@@ -4,11 +4,12 @@ Integration tests for Data Source API endpoints
 Tests the complete REST API including request/response handling, validation, and error cases.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.services.data_source_service import DataSourceService
 from backend.app.main import app
 from backend.app.models.data_source import (
     DataSourceConfig,
@@ -17,24 +18,35 @@ from backend.app.models.data_source import (
     DataSourceType,
 )
 
-client = TestClient(app)
-
-# pylint: disable=redefined-outer-name, unused-argument
+from backend.app.api.dependencies import get_data_source_service
 
 
 @pytest.fixture
-def mock_service():
-    """Mock DataSourceService for testing."""
-    with patch("backend.app.api.v1.endpoints.data_sources.get_data_source_service") as mock:
-        service = Mock()
-        mock.return_value = service
-        yield service
+def mock_service() -> MagicMock:
+    """Create mock schema service."""
+    service = MagicMock(spec=DataSourceService)
+    return service
+
+
+@pytest.fixture
+def client(mock_service):
+    """Create test client with mocked data source service."""
+
+    def override_get_data_source_service():
+        return mock_service
+
+    app.dependency_overrides[get_data_source_service] = override_get_data_source_service
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+
+
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 class TestListDataSources:
     """Tests for GET /api/v1/data-sources endpoint."""
 
-    def test_list_data_sources_success(self, mock_service):
+    def test_list_data_sources_success(self, client, mock_service):
         """Should return list of data sources."""
         mock_service.list_data_sources.return_value = [
             DataSourceConfig(
@@ -66,7 +78,7 @@ class TestListDataSources:
         assert data[1]["name"] == "arbodat"
         assert data[1]["driver"] == "access"
 
-    def test_list_data_sources_empty(self, mock_service):
+    def test_list_data_sources_empty(self, client, mock_service):
         """Should return empty list when no data sources configured."""
         mock_service.list_data_sources.return_value = []
 
@@ -75,7 +87,7 @@ class TestListDataSources:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_list_data_sources_error(self, mock_service):
+    def test_list_data_sources_error(self, client, mock_service):
         """Should return 500 on service error."""
         mock_service.list_data_sources.side_effect = Exception("Database error")
 
@@ -88,7 +100,7 @@ class TestListDataSources:
 class TestGetDataSource:
     """Tests for GET /api/v1/data-sources/{name} endpoint."""
 
-    def test_get_data_source_success(self, mock_service):
+    def test_get_data_source_success(self, client, mock_service):
         """Should return specific data source."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             **{
@@ -108,7 +120,7 @@ class TestGetDataSource:
         assert data["name"] == "sead"
         assert data["host"] == "localhost"
 
-    def test_get_data_source_not_found(self, mock_service):
+    def test_get_data_source_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
         mock_service.get_data_source.return_value = None
 
@@ -121,7 +133,7 @@ class TestGetDataSource:
 class TestCreateDataSource:
     """Tests for POST /api/v1/data-sources endpoint."""
 
-    def test_create_data_source_success(self, mock_service):
+    def test_create_data_source_success(self, client, mock_service):
         """Should create new data source."""
         mock_service.get_data_source.return_value = None  # Doesn't exist yet
         mock_service.create_data_source.return_value = None
@@ -142,7 +154,7 @@ class TestCreateDataSource:
         assert data["name"] == "new_db"
         mock_service.create_data_source.assert_called_once()
 
-    def test_create_data_source_already_exists(self, mock_service):
+    def test_create_data_source_already_exists(self, client, mock_service):
         """Should return 400 when data source already exists."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             **{
@@ -169,7 +181,7 @@ class TestCreateDataSource:
         assert response.status_code == 400
         assert "already exists" in response.json()["detail"]
 
-    def test_create_data_source_invalid_port(self, mock_service):
+    def test_create_data_source_invalid_port(self, client, mock_service):
         """Should return 422 for invalid port number."""
         payload = {
             "name": "bad_db",
@@ -188,7 +200,7 @@ class TestCreateDataSource:
 class TestUpdateDataSource:
     """Tests for PUT /api/v1/data-sources/{name} endpoint."""
 
-    def test_update_data_source_success(self, mock_service):
+    def test_update_data_source_success(self, client, mock_service):
         """Should update existing data source."""
         mock_service.get_data_source.side_effect = [
             DataSourceConfig(
@@ -220,7 +232,7 @@ class TestUpdateDataSource:
         data = response.json()
         assert data["name"] == "sead_renamed"
 
-    def test_update_data_source_not_found(self, mock_service):
+    def test_update_data_source_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
         mock_service.get_data_source.return_value = None
 
@@ -237,7 +249,7 @@ class TestUpdateDataSource:
 
         assert response.status_code == 404
 
-    def test_update_data_source_rename_conflict(self, mock_service):
+    def test_update_data_source_rename_conflict(self, client, mock_service):
         """Should return 400 when renaming to existing name."""
         mock_service.get_data_source.side_effect = [
             DataSourceConfig(
@@ -277,7 +289,7 @@ class TestUpdateDataSource:
 class TestDeleteDataSource:
     """Tests for DELETE /api/v1/data-sources/{name} endpoint."""
 
-    def test_delete_data_source_success(self, mock_service):
+    def test_delete_data_source_success(self, client, mock_service):
         """Should delete data source."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             **{
@@ -299,7 +311,7 @@ class TestDeleteDataSource:
         assert response.status_code == 204
         mock_service.delete_data_source.assert_called_once_with("unused")
 
-    def test_delete_data_source_not_found(self, mock_service):
+    def test_delete_data_source_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
         mock_service.get_data_source.return_value = None
 
@@ -307,7 +319,7 @@ class TestDeleteDataSource:
 
         assert response.status_code == 404
 
-    def test_delete_data_source_in_use(self, mock_service):
+    def test_delete_data_source_in_use(self, client, mock_service):
         """Should return 400 when data source is in use."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             **{
@@ -335,7 +347,7 @@ class TestDeleteDataSource:
 class TestTestConnection:
     """Tests for POST /api/v1/data-sources/{name}/test endpoint."""
 
-    def test_test_connection_success(self, mock_service):
+    def test_test_connection_success(self, client, mock_service):
         """Should test connection successfully."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             **{
@@ -349,7 +361,7 @@ class TestTestConnection:
         )
 
         # Mock async method
-        async def mock_test():
+        async def mock_test(config: DataSourceConfig) -> DataSourceTestResult:
             return DataSourceTestResult(
                 success=True,
                 message="Connection successful",
@@ -366,7 +378,7 @@ class TestTestConnection:
         assert data["success"] is True
         assert data["connection_time_ms"] == 45
 
-    def test_test_connection_failure(self, mock_service):
+    def test_test_connection_failure(self, client, mock_service):
         """Should return connection test failure."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             **{
@@ -380,13 +392,12 @@ class TestTestConnection:
         )
 
         # Mock async method
-        async def mock_test():
+        async def mock_test(config: DataSourceConfig) -> DataSourceTestResult:
             return DataSourceTestResult(
-                **{
-                    "success": False,
-                    "message": "Connection refused",
-                    "connection_time_ms": 0,
-                }
+                success=False,
+                message="Connection refused",
+                connection_time_ms=0,
+                metadata=None,
             )
 
         mock_service.test_connection = mock_test
@@ -398,7 +409,7 @@ class TestTestConnection:
         assert data["success"] is False
         assert "refused" in data["message"].lower()
 
-    def test_test_connection_not_found(self, mock_service):
+    def test_test_connection_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
         mock_service.get_data_source.return_value = None
 
@@ -410,7 +421,7 @@ class TestTestConnection:
 class TestGetStatus:
     """Tests for GET /api/v1/data-sources/{name}/status endpoint."""
 
-    def test_get_status_success(self, mock_service):
+    def test_get_status_success(self, client, mock_service):
         """Should return data source status."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             **{
@@ -425,13 +436,7 @@ class TestGetStatus:
         mock_service.get_status.return_value = DataSourceStatus(
             name="sead",
             is_connected=True,
-            last_test_result=DataSourceTestResult(
-                **{
-                    "success": True,
-                    "message": "OK",
-                    "connection_time_ms": 30,
-                }
-            ),
+            last_test_result=DataSourceTestResult(success=True, message="OK", connection_time_ms=30, metadata=None),
             in_use_by_entities=["entity1", "entity2"],
         )
 
@@ -443,7 +448,7 @@ class TestGetStatus:
         assert data["is_connected"] is True
         assert len(data["in_use_by_entities"]) == 2
 
-    def test_get_status_not_found(self, mock_service):
+    def test_get_status_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
         mock_service.get_data_source.return_value = None
 
