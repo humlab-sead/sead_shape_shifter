@@ -2,7 +2,7 @@
 
 import backend.app.models.data_source as api
 import src.config_model as core
-from src.loaders.driver_metadata import DriverSchemaRegistry
+from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
 
 
 class DataSourceMapper:
