@@ -135,6 +135,7 @@ class TestEnvironmentVariableResolution:
                 host="${TEST_HOST}",
                 database="testdb",
                 username="user",
+                password="secret123",  # type: ignore
                 **{},
             )
 

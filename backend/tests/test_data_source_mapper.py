@@ -11,7 +11,7 @@ def test_map_postgresql_config():
     """Test mapping PostgreSQL configuration."""
     api_config = DataSourceConfig(
         name="test_pg",
-        driver="postgresql",
+        driver="postgresql",  # type: ignore
         host="localhost",
         port=5432,
         database="testdb",
@@ -36,7 +36,7 @@ def test_map_postgresql_with_defaults():
     """Test PostgreSQL with default values."""
     api_config = DataSourceConfig(
         name="test_pg",
-        driver="postgresql",
+        driver="postgresql",  # type: ignore
         database="testdb",
         username="testuser",**{}
     )
@@ -55,7 +55,7 @@ def test_map_ucanaccess_config():
     """Test mapping MS Access configuration."""
     api_config = DataSourceConfig(
         name="test_access",
-        driver="ucanaccess",
+        driver="ucanaccess",  # type: ignore
         filename="./input/test.mdb",
         options={"ucanaccess_dir": "lib/ucanaccess"},**{}
     )
@@ -75,7 +75,7 @@ def test_map_sqlite_config():
     """Test mapping SQLite configuration."""
     api_config = DataSourceConfig(
         name="test_sqlite",
-        driver="sqlite",
+        driver="sqlite",  # type: ignore
         filename="./data/test.db",**{}
     )
 
@@ -92,7 +92,7 @@ def test_map_csv_config():
     """Test mapping CSV configuration."""
     api_config = DataSourceConfig(
         name="test_csv",
-        driver="csv",
+        driver="csv",  # type: ignore
         filename="./data/test.csv",
         options={"encoding": "utf-8", "delimiter": ","},**{}
     )
@@ -112,7 +112,7 @@ def test_missing_required_field():
     """Test error when required field is missing."""
     api_config = DataSourceConfig(
         name="test_pg",
-        driver="postgresql",
+        driver="postgresql",  # type: ignore
         host="localhost",**{}
         # Missing required fields: database, username
     )
@@ -133,7 +133,7 @@ def test_password_extraction():
     """Test that password SecretStr is properly extracted."""
     api_config = DataSourceConfig(
         name="test_pg",
-        driver="postgresql",
+        driver="postgresql", # type: ignore
         host="localhost",
         database="testdb",
         username="testuser",
@@ -152,7 +152,7 @@ def test_additional_options_preserved():
     """Test that additional options not in schema are preserved."""
     api_config = DataSourceConfig(
         name="test_pg",
-        driver="postgresql",
+        driver="postgresql",  # type: ignore
         host="localhost",
         database="testdb",
         username="testuser",
