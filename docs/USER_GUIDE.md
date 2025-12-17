@@ -272,30 +272,90 @@ entity_name:
 
 ### Editing Entity Properties
 
+#### Form Editor vs. YAML Editor
+
+Shape Shifter provides **two ways to edit entities**, similar to VS Code's settings editor:
+
+1. **Form Editor** (Default) - Visual form with input fields
+2. **YAML Editor** - Raw YAML code with syntax highlighting
+
+**Switching Between Editors:**
+- Click the **Form** tab for visual editing
+- Click the **YAML** tab for code editing
+- Changes sync automatically when switching tabs
+
+#### Using the Form Editor
+
+The form editor provides a structured interface for editing entity properties:
+
 **Natural Keys:**
+- **Field**: Natural Keys
+- **Description**: Unique identifier columns
+- **Format**: Comma-separated list (e.g., `key1, key2`)
+
+**Surrogate IDs:**
+- **Field**: Surrogate ID
+- **Description**: Generated integer ID column name
+- **Format**: Single column name ending in `_id`
+- **Example**: `entity_name_id`
+
+**Column Selection:**
+- **Field**: Columns
+- **Description**: Columns to extract from source
+- **Format**: Comma-separated list
+- **Example**: `col1, col2, col3`
+
+**Dependencies:**
+- **Field**: Source Entity
+- **Description**: Parent entity this depends on
+- **Format**: Entity name from configuration
+
+- **Field**: Additional Dependencies
+- **Description**: Other entities required for processing
+- **Format**: Comma-separated list of entity names
+
+#### Using the YAML Editor
+
+The YAML editor provides direct access to the entity's YAML definition:
+
+**Features:**
+- **Monaco Editor** - Same editor as VS Code
+- **Syntax Highlighting** - YAML syntax coloring
+- **Real-Time Validation** - Immediate syntax error detection
+- **Error Display** - Clear error messages with line numbers
+
+**Example YAML:**
 ```yaml
 entity_name:
   keys: [key1, key2]  # Unique identifier columns
-```
-
-**Surrogate IDs:**
-```yaml
-entity_name:
   surrogate_id: entity_name_id  # Generated integer ID
-```
-
-**Column Selection:**
-```yaml
-entity_name:
   columns: [col1, col2, col3]  # Columns to extract
-```
-
-**Dependencies:**
-```yaml
-entity_name:
   source: parent_entity  # Depends on parent_entity
   depends_on: [other_entity]  # Additional dependencies
 ```
+
+**When to Use YAML Editor:**
+- Complex nested configurations
+- Copying/pasting entire entity definitions
+- Bulk editing multiple fields
+- Advanced users comfortable with YAML syntax
+
+**When to Use Form Editor:**
+- Learning the configuration structure
+- Editing specific fields
+- Preventing syntax errors
+- Guided field-by-field editing
+
+**YAML Validation:**
+- Invalid YAML shows **red error banner**
+- Error message includes line number and description
+- Cannot switch back to Form until YAML is valid
+- Validation happens automatically as you type
+
+**Auto-Synchronization:**
+- **Form → YAML**: Switching to YAML tab converts form data to YAML
+- **YAML → Form**: Switching from YAML tab (with valid YAML) updates form fields
+- Changes are **not saved** until you click Save/OK button
 
 ### Foreign Key Relationships
 
