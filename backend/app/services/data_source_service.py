@@ -40,7 +40,11 @@ class DataSourceService:
         """List all configured data sources.
 
         Returns:
-            List of data source configurations
+            List of data source configurations with unresolved env vars (as they appear in config)
+        
+        Note:
+            Environment variables are NOT resolved here. They remain as ${VAR_NAME} so that
+            the UI can display and edit them. Resolution happens only when testing connections.
         """
         data_sources_dict: dict[str, Any] = self.config.get("options:data_sources") or {}
         result: list[DataSourceConfig] = []
@@ -51,8 +55,8 @@ class DataSourceService:
             try:
                 if "name" not in config_dict:
                     config_dict["name"] = name
-                resolved_config = self._resolve_env_vars(config_dict)
-                ds_config = DataSourceConfig(**resolved_config)
+                # Don't resolve env vars - keep them as ${VAR_NAME} for UI editing
+                ds_config = DataSourceConfig(**config_dict)
                 result.append(ds_config)
             except Exception as e:  # pylint: disable=broad-except
                 logger.warning(f"Failed to parse data source '{name}': {e}")
@@ -167,6 +171,9 @@ class DataSourceService:
         start_time: float = time.time()
 
         try:
+            # Resolve environment variables in the config before testing
+            config = self._resolve_config_env_vars(config)
+            
             if config.is_database_source():
                 return await self._test_database_connection(config)
             if config.is_file_source():
@@ -178,6 +185,25 @@ class DataSourceService:
             elapsed_ms = int((time.time() - start_time) * 1000)
             logger.error(f"Connection test failed for '{config.name}': {e}")
             return DataSourceTestResult(success=False, message=f"Connection failed: {str(e)}", connection_time_ms=elapsed_ms, metadata={})
+
+    @staticmethod
+    def _get_test_query(driver: str) -> str:
+        """Get driver-specific test query.
+
+        Args:
+            driver: Database driver name
+
+        Returns:
+            SQL query string for testing connection
+        """
+        # Driver-specific test queries
+        test_queries = {
+            "postgresql": "SELECT 1 as test",
+            "sqlite": "SELECT 1 as test",
+            "ucanaccess": "SELECT TOP 1 1 as test FROM MSysObjects",  # Access system table
+            "access": "SELECT TOP 1 1 as test FROM MSysObjects",  # Access system table
+        }
+        return test_queries.get(driver, "SELECT 1 as test")
 
     async def _test_database_connection(self, config: DataSourceConfig) -> DataSourceTestResult:
         """Test database connection by attempting to load a simple query.
@@ -202,6 +228,36 @@ class DataSourceService:
 
             loader: DataLoader = loader_class(data_source=core_ds_cfg)
 
+            # For Access/UCanAccess, we need to query an actual table since it doesn't support
+            # standard test queries. Try to get tables first, then query one.
+            if core_ds_cfg.driver in ["ucanaccess", "access"]:
+                if hasattr(loader, "get_tables"):
+                    assert isinstance(loader, SqlLoader)
+                    try:
+                        tables: dict[str, CoreSchema.TableMetadata] = await loader.get_tables()
+                        if tables:
+                            # Use the first available table for testing
+                            first_table = next(iter(tables.keys()))
+                            test_query = f"SELECT TOP 1 * FROM [{first_table}]"
+                        else:
+                            # Fallback: Just test the connection by attempting table list
+                            # If we got here without error, connection works
+                            elapsed_ms = int((time.time() - start_time) * 1000)
+                            return DataSourceTestResult(
+                                success=True,
+                                message="Connected successfully (no tables found, but connection is valid)",
+                                connection_time_ms=elapsed_ms,
+                                metadata={"table_count": 0},
+                            )
+                    except Exception as table_error:
+                        # If even getting tables fails, the connection is bad
+                        raise ValueError(f"Cannot access database: {table_error}") from table_error
+                else:
+                    raise ValueError("Cannot test connection: driver doesn't support table introspection")
+            else:
+                # Use driver-specific test query for other databases
+                test_query = self._get_test_query(core_ds_cfg.driver)
+
             # Create mock table config with simple test query
             test_table_cfg = TableConfig(
                 cfg={
@@ -211,7 +267,7 @@ class DataSourceService:
                         "keys": [],
                         "columns": [],
                         "source": None,
-                        "query": "SELECT 1 as test",
+                        "query": test_query,
                         "data_source": core_ds_cfg.name,
                     }
                 },  # Simple test query
@@ -346,3 +402,22 @@ class DataSourceService:
             else:
                 resolved[key] = value
         return resolved
+
+    def _resolve_config_env_vars(self, config: DataSourceConfig) -> DataSourceConfig:
+        """Resolve environment variables in a DataSourceConfig model.
+
+        Args:
+            config: Data source configuration
+
+        Returns:
+            New DataSourceConfig with env vars resolved
+        """
+        # Convert to dict, resolve env vars, then recreate model
+        config_dict = config.model_dump(exclude_none=True)
+        resolved_dict = self._resolve_env_vars(config_dict)
+        
+        # Handle password field specially - preserve SecretStr if present
+        if config.password and "password" not in resolved_dict:
+            resolved_dict["password"] = config.password.get_secret_value()
+        
+        return DataSourceConfig(**resolved_dict)
