@@ -19,6 +19,10 @@ export const useConfigurationStore = defineStore('configuration', () => {
   const hasUnsavedChanges = ref(false)
 
   // Getters
+  const currentConfigName = computed(() => {
+    return selectedConfig.value?.metadata?.name || null
+  })
+
   const sortedConfigurations = computed(() => {
     return [...configurations.value].sort((a, b) => a.name.localeCompare(b.name))
   })
@@ -225,6 +229,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
     error,
     hasUnsavedChanges,
     // Getters
+    currentConfigName,
     sortedConfigurations,
     configByName,
     hasErrors,
