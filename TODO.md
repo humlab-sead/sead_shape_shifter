@@ -81,3 +81,16 @@
 # **FIXED** Validation Improvements
 
 Improve validations for configuration files to catch the most common errors and give better feedback. Add an option to run validations without executing the full normalization workflow. 
+
+
+FIXME: #12 [Frontend]: Nothing happens when "Entities" is clicked.
+FIXME: #14 [Frontend]: Nothing happens when clicking "FORCE DIRECTED" in dependency view 
+FIXME: #15 [Frontend/Backend]: Testing data sources fails.
+FIXME: #16 [Crosscutting] Add data source driver specific properties using schema registry.
+FIXME: #17 [Frontend] Sidebar "Entities" unaware of loaded configuration
+TODO: #18 [Frontend/Backend] Add ability to edit entity configuration in a dual-mode editor (Form/YAML). 
+Tech debts:
+
+FIXME: [Backend] Move database vendor specific logic to Loaders
+FIXME: [Backend] Test for MS Access returns 0 tables
+FIXME: [Backend] Postgres Edit doesn't display values fomr data source configuration

@@ -4,7 +4,7 @@
       <v-card-title>Settings</v-card-title>
       <v-card-text>
         <v-alert type="info" variant="tonal">
-          Settings coming in Sprint 8.3
+          Settings not implemented yet. Please edit YAML configuration files directly.
         </v-alert>
       </v-card-text>
     </v-card>

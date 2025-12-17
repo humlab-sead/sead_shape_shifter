@@ -8,7 +8,7 @@
     >
       <v-list-item
         prepend-icon="mdi-shape"
-        :title="rail ? '' : 'Shape Shifter'"
+        :title="rail ? '' : 'SEAD Shape Shifter'"
         :subtitle="rail ? '' : 'Configuration Editor'"
         nav
       >
@@ -107,7 +107,7 @@
       <v-app-bar-nav-icon @click="drawer = !drawer" />
       
       <v-toolbar-title>
-        <span class="font-weight-bold">Shape Shifter</span>
+        <span class="font-weight-bold">SEAD Shape Shifter</span>
         <span v-if="currentConfig" class="ml-2 text-caption">
           / {{ currentConfig }}
         </span>

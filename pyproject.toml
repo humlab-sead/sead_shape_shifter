@@ -172,3 +172,8 @@ source = ["src"]
 show_missing = true
 skip_covered = true
 fail_under = 85
+
+[dependency-groups]
+dev = [
+    "uvicorn[standard]>=0.38.0",
+]

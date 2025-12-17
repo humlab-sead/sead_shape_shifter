@@ -4,7 +4,7 @@
       <v-col cols="12">
         <div class="text-center mb-8">
           <v-icon icon="mdi-shape" size="80" color="primary" class="mb-4" />
-          <h1 class="text-h3 mb-2">Shape Shifter</h1>
+          <h1 class="text-h3 mb-2">SEAD Shape Shifter</h1>
           <p class="text-h6 text-grey">Configuration Editor</p>
         </div>
             
