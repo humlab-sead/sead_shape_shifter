@@ -201,7 +201,149 @@ App
 │   └── Dialogs
 │       ├── PreviewDialog
 │       ├── ConfirmDialog
-│       └── ErrorDialog
+│       ├── ErrorDialog
+│       └── EntityFormDialog (with YAML editor)
+```
+
+#### YAML Editor Component
+
+The **YamlEditor** component provides a dual-mode editing experience for entities, similar to VS Code's settings editor:
+
+**Location:** `frontend/src/components/common/YamlEditor.vue`
+
+**Features:**
+- Monaco Editor integration for professional code editing
+- Real-time YAML syntax validation
+- Error display with line numbers
+- Configurable height and read-only mode
+- Auto-completion and syntax highlighting
+
+**Props:**
+```typescript
+interface YamlEditorProps {
+  modelValue: string;           // YAML content to edit
+  height?: string;              // Editor height (default: '400px')
+  readonly?: boolean;           // Read-only mode (default: false)
+  validateOnChange?: boolean;   // Validate as user types (default: true)
+}
+```
+
+**Events:**
+```typescript
+interface YamlEditorEvents {
+  'update:modelValue': (value: string) => void;  // Content changed
+  'validate': (result: ValidationResult) => void; // Validation result
+  'change': (value: string) => void;             // Content changed (alias)
+}
+
+interface ValidationResult {
+  valid: boolean;
+  error: string | null;
+}
+```
+
+**Usage Example:**
+```vue
+<template>
+  <YamlEditor
+    v-model="yamlContent"
+    height="500px"
+    :readonly="false"
+    @validate="handleValidation"
+  />
+</template>
+
+<script setup lang="ts">
+import YamlEditor from '@/components/common/YamlEditor.vue'
+import { ref } from 'vue'
+
+const yamlContent = ref('entity:\n  type: data')
+
+function handleValidation(result: { valid: boolean; error: string | null }) {
+  if (!result.valid) {
+    console.error('YAML Error:', result.error)
+  }
+}
+</script>
+```
+
+#### EntityFormDialog Component
+
+The **EntityFormDialog** has been enhanced with a tabbed interface for dual-mode editing:
+
+**Location:** `frontend/src/components/entities/EntityFormDialog.vue`
+
+**Tabs:**
+1. **Form Tab** - Visual form editor with input fields
+2. **YAML Tab** - Raw YAML editor with syntax highlighting
+
+**Bidirectional Synchronization:**
+```typescript
+// Form → YAML conversion
+function formDataToYaml(): string {
+  const entityData = {
+    [entityName.value]: {
+      type: entityType.value,
+      keys: naturalKeys.value?.split(',').map(k => k.trim()) || [],
+      surrogate_id: surrogateId.value || undefined,
+      // ... other fields
+    }
+  }
+  return yaml.dump(entityData, { indent: 2, lineWidth: 100 })
+}
+
+// YAML → Form conversion
+function yamlToFormData(yamlString: string): void {
+  try {
+    const parsed = yaml.load(yamlString)
+    const entityKey = Object.keys(parsed)[0]
+    const entity = parsed[entityKey]
+    
+    entityName.value = entityKey
+    entityType.value = entity.type
+    naturalKeys.value = entity.keys?.join(', ') || ''
+    // ... update other fields
+  } catch (error) {
+    yamlError.value = error.message
+  }
+}
+```
+
+**Tab Switching Behavior:**
+```typescript
+// Watch for tab changes to sync data
+watch(activeTab, (newTab, oldTab) => {
+  if (newTab === 'yaml' && oldTab !== 'yaml') {
+    // Switching TO yaml tab - convert form to YAML
+    yamlContent.value = formDataToYaml()
+    yamlError.value = null
+  } else if (oldTab === 'yaml' && newTab !== 'yaml') {
+    // Switching FROM yaml tab - validate and sync to form
+    if (yamlValid.value) {
+      yamlToFormData(yamlContent.value)
+    }
+  }
+})
+```
+
+**Validation Rules:**
+- YAML syntax must be valid before switching from YAML tab
+- Form validation occurs on Save/OK button click
+- Invalid YAML shows error banner with details
+- Cannot save entity until all validation passes
+
+**Dependencies:**
+```json
+{
+  "dependencies": {
+    "monaco-editor": "^0.52.0",
+    "@guolao/vue-monaco-editor": "^1.5.6",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9"
+  }
+}
 ```
 
 ### 4.3 State Management

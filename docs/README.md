@@ -14,10 +14,20 @@ These are the primary system documentation files:
   - Getting started with Shape Shifter
   - Working with configurations
   - Managing entities and relationships
+  - Dual-mode entity editing (Form and YAML)
   - Validation workflows
   - Auto-fix features
   - Performance optimization
   - Tips, troubleshooting, and FAQ
+
+- **[YAML_EDITOR_FEATURE.md](YAML_EDITOR_FEATURE.md)** (600+ lines) **★ NEW FEATURE**
+  - Dual-mode editing (Form ↔ YAML)
+  - Monaco Editor integration
+  - Real-time YAML validation
+  - Bidirectional synchronization
+  - User workflows and best practices
+  - Implementation details
+  - Testing procedures
 
 ### System Requirements & Architecture
 
@@ -91,6 +101,22 @@ These are the primary system documentation files:
   - **Note**: See [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) for comprehensive constraint and validation documentation
 
 ### Advanced Features
+
+- **[YAML_EDITOR_FEATURE.md](YAML_EDITOR_FEATURE.md)** (600+ lines) **★ NEW**
+  - Dual-mode entity editor (Form/YAML)
+  - Monaco Editor integration with syntax highlighting
+  - Real-time validation and error reporting
+  - Bidirectional sync between Form and YAML
+  - User workflows for beginners and advanced users
+  - Component architecture and implementation
+  - Testing strategies
+
+- **[ENTITY_STATE_MANAGEMENT.md](ENTITY_STATE_MANAGEMENT.md)** (800+ lines)
+  - Entity state architecture
+  - Three-layer state management (Pinia → API → YAML files)
+  - State synchronization patterns
+  - Component interactions
+  - Best practices and troubleshooting
 
 - **[BACKEND_INTEGRATION.md](BACKEND_INTEGRATION.md)** (321 lines)
   - Backend architecture overview
