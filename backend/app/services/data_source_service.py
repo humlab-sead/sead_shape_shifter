@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
+import yaml
 from loguru import logger
 
 from backend.app.mappers.data_source_mapper import DataSourceMapper
@@ -36,6 +37,69 @@ class DataSourceService:
         self.config = config
         self._connections: dict[str, Any] = {}  # Connection pool (future)
 
+    def _get_raw_data_sources_from_yaml(self) -> dict[str, Any]:
+        """Get raw data sources from YAML without env var resolution.
+        
+        This method reads data sources configuration directly from the YAML file(s)
+        to preserve environment variable references like ${SEAD_HOST}.
+        
+        Returns:
+            Dictionary of data source configurations with unresolved env vars
+        """
+        try:
+            # Get the main config file path from the config object
+            config_path = getattr(self.config, 'filename', None) or getattr(self.config, 'source', None)
+            
+            if not config_path:
+                # Fallback to looking in default locations
+                possible_paths = [
+                    Path('input/arbodat.yml'),
+                    Path('input/arbodat-database.yml'),
+                    Path('config.yml'),
+                ]
+                config_path = next((p for p in possible_paths if p.exists()), None)
+            
+            if not config_path:
+                logger.warning("Could not find config file to read raw data sources")
+                return {}
+            
+            config_path = Path(config_path)
+            if not config_path.exists():
+                logger.warning(f"Config file not found: {config_path}")
+                return {}
+            
+            # Read raw YAML
+            with open(config_path, 'r', encoding='utf-8') as f:
+                raw_config = yaml.safe_load(f)
+            
+            if not raw_config or not isinstance(raw_config, dict):
+                return {}
+            
+            # Extract data sources from options section
+            options = raw_config.get('options', {})
+            data_sources = options.get('data_sources', {})
+            
+            # Handle @include directives by reading referenced files
+            resolved_sources = {}
+            for name, source_config in data_sources.items():
+                if isinstance(source_config, str) and source_config.startswith('@include:'):
+                    # Load from included file
+                    include_path = source_config.replace('@include:', '').strip()
+                    include_file = config_path.parent / include_path
+                    if include_file.exists():
+                        with open(include_file, 'r', encoding='utf-8') as f:
+                            resolved_sources[name] = yaml.safe_load(f)
+                    else:
+                        logger.warning(f"Included file not found: {include_file}")
+                else:
+                    resolved_sources[name] = source_config
+            
+            return resolved_sources
+            
+        except Exception as e:
+            logger.warning(f"Failed to read raw data sources from YAML: {e}")
+            return {}
+
     def list_data_sources(self) -> list[DataSourceConfig]:
         """List all configured data sources.
 
@@ -46,7 +110,13 @@ class DataSourceService:
             Environment variables are NOT resolved here. They remain as ${VAR_NAME} so that
             the UI can display and edit them. Resolution happens only when testing connections.
         """
-        data_sources_dict: dict[str, Any] = self.config.get("options:data_sources") or {}
+        # Try to get raw data sources from YAML first (preserves env vars)
+        data_sources_dict = self._get_raw_data_sources_from_yaml()
+        
+        # Fallback to config object if YAML reading failed
+        if not data_sources_dict:
+            data_sources_dict = self.config.get("options:data_sources") or {}
+        
         result: list[DataSourceConfig] = []
         for name, config_dict in data_sources_dict.items():
             if not isinstance(config_dict, dict):
