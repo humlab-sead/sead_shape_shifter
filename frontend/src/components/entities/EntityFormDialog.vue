@@ -10,6 +10,10 @@
         <v-tab value="basic">Basic</v-tab>
         <v-tab value="relationships" :disabled="mode === 'create'">Foreign Keys</v-tab>
         <v-tab value="advanced" :disabled="mode === 'create'">Advanced</v-tab>
+        <v-tab value="yaml" :disabled="mode === 'create'">
+          <v-icon icon="mdi-code-braces" class="mr-1" size="small" />
+          YAML
+        </v-tab>
         <v-tab value="preview" :disabled="mode === 'create' || !formData.name">Preview</v-tab>
       </v-tabs>
 
@@ -161,6 +165,38 @@
             />
           </v-window-item>
 
+          <v-window-item value="yaml">
+            <v-alert
+              type="info"
+              variant="tonal"
+              density="compact"
+              class="mb-4"
+            >
+              <div class="text-caption">
+                <v-icon icon="mdi-information" size="small" class="mr-1" />
+                Edit the entity configuration in YAML format. Changes will be synced with the form editor.
+              </div>
+            </v-alert>
+            
+            <yaml-editor
+              v-model="yamlContent"
+              height="500px"
+              :validate-on-change="true"
+              @validate="handleYamlValidation"
+              @change="handleYamlChange"
+            />
+            
+            <v-alert
+              v-if="yamlError"
+              type="error"
+              density="compact"
+              variant="tonal"
+              class="mt-2"
+            >
+              {{ yamlError }}
+            </v-alert>
+          </v-window-item>
+
           <v-window-item value="preview">
             <entity-preview-panel
               :config-name="configName"
@@ -198,10 +234,12 @@ import { ref, computed, watch, watchEffect } from 'vue'
 import { useEntities, useSuggestions } from '@/composables'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
+import * as yaml from 'js-yaml'
 import ForeignKeyEditor from './ForeignKeyEditor.vue'
 import AdvancedEntityConfig from './AdvancedEntityConfig.vue'
 import SuggestionsPanel from './SuggestionsPanel.vue'
 import EntityPreviewPanel from './EntityPreviewPanel.vue'
+import YamlEditor from '../common/YamlEditor.vue'
 
 interface Props {
   modelValue: boolean
@@ -232,6 +270,9 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const suggestions = ref<any>(null)
 const showSuggestions = ref(false)
+const yamlContent = ref('')
+const yamlError = ref<string | null>(null)
+const yamlValid = ref(true)
 
 interface FormData {
   name: string
@@ -307,6 +348,100 @@ const nameRules = [
     return !entities.value.some((e) => e.name === v) || 'Entity name already exists'
   },
 ]
+
+// YAML Editor Functions
+function formDataToYaml(): string {
+  const entityData: Record<string, any> = {
+    name: formData.value.name,
+    type: formData.value.type,
+  }
+
+  if (formData.value.surrogate_id) {
+    entityData.surrogate_id = formData.value.surrogate_id
+  }
+
+  if (formData.value.keys.length > 0) {
+    entityData.keys = formData.value.keys
+  }
+
+  if (formData.value.columns.length > 0) {
+    entityData.columns = formData.value.columns
+  }
+
+  if (formData.value.source) {
+    entityData.source = formData.value.source
+  }
+
+  if (formData.value.type === 'sql') {
+    if (formData.value.data_source) {
+      entityData.data_source = formData.value.data_source
+    }
+    if (formData.value.query) {
+      entityData.query = formData.value.query
+    }
+  }
+
+  if (formData.value.foreign_keys.length > 0) {
+    entityData.foreign_keys = formData.value.foreign_keys
+  }
+
+  if (formData.value.advanced.filters?.length > 0) {
+    entityData.filters = formData.value.advanced.filters
+  }
+
+  if (formData.value.advanced.unnest) {
+    entityData.unnest = formData.value.advanced.unnest
+  }
+
+  if (formData.value.advanced.append?.length > 0) {
+    entityData.append = formData.value.advanced.append
+  }
+
+  return yaml.dump(entityData, { indent: 2, lineWidth: -1 })
+}
+
+function yamlToFormData(yamlString: string): boolean {
+  try {
+    const data = yaml.load(yamlString) as Record<string, any>
+    
+    formData.value = {
+      name: data.name || formData.value.name,
+      type: data.type || 'data',
+      surrogate_id: data.surrogate_id || '',
+      keys: Array.isArray(data.keys) ? data.keys : [],
+      columns: Array.isArray(data.columns) ? data.columns : [],
+      source: data.source || null,
+      data_source: data.data_source || '',
+      query: data.query || '',
+      foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
+      advanced: {
+        filters: Array.isArray(data.filters) ? data.filters : [],
+        unnest: data.unnest || null,
+        append: Array.isArray(data.append) ? data.append : [],
+      },
+    }
+    
+    yamlError.value = null
+    return true
+  } catch (err) {
+    yamlError.value = err instanceof Error ? err.message : 'Invalid YAML'
+    return false
+  }
+}
+
+function handleYamlValidation(isValid: boolean, error?: string) {
+  yamlValid.value = isValid
+  if (!isValid && error) {
+    yamlError.value = error
+  }
+}
+
+function handleYamlChange(value: string) {
+  // Auto-sync YAML to form data when valid
+  if (yamlValid.value) {
+    yamlToFormData(value)
+  }
+}
 
 // Methods
 async function handleSubmit() {
@@ -439,9 +574,29 @@ watch(
       formRef.value?.resetValidation()
       suggestions.value = null
       showSuggestions.value = false
+      yamlError.value = null
+      
+      // Initialize YAML content from form data
+      if (props.mode === 'edit') {
+        yamlContent.value = formDataToYaml()
+      }
     }
   }
 )
+
+// Sync form to YAML when switching to YAML tab
+watch(activeTab, (newTab, oldTab) => {
+  if (newTab === 'yaml' && oldTab !== 'yaml') {
+    // Switching TO yaml tab - convert form data to YAML
+    yamlContent.value = formDataToYaml()
+    yamlError.value = null
+  } else if (oldTab === 'yaml' && newTab !== 'yaml') {
+    // Switching FROM yaml tab - validate and sync to form
+    if (yamlValid.value) {
+      yamlToFormData(yamlContent.value)
+    }
+  }
+})
 
 // Fetch suggestions when columns change (debounced)
 let suggestionTimeout: NodeJS.Timeout | null = null

@@ -71,6 +71,7 @@ A declarative YAML-based system for defining complex data transformation pipelin
 ### Configuration Editor Features 🆕
 
 - **Monaco Editor Integration**: VS Code's powerful editor in your browser
+- **Dual-Mode Entity Editor**: Switch between visual form editor and YAML code editor (like VS Code settings)
 - **Multi-Type Validation**: Structural, data, entity-specific, and comprehensive validation
 - **Auto-Fix Service**: Preview and apply fixes with automatic backups and rollback
 - **Visual Entity Tree**: Navigate complex configurations with tree visualization
