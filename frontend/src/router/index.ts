@@ -100,7 +100,7 @@ const router = createRouter({
 // Update document title on route change
 router.afterEach((to) => {
   const title = to.meta.title as string | undefined
-  document.title = title ? `${title} - Shape Shifter` : 'Shape Shifter Configuration Editor'
+  document.title = title ? `${title} - SEAD Shape Shifter` : 'SEAD Shape Shifter Configuration Editor'
 })
 
 export default router

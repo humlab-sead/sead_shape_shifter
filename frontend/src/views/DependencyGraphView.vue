@@ -272,20 +272,84 @@ function renderGraph() {
   svg.setAttribute('height', String(height))
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`)
 
-  // Calculate positions using hierarchical layout
+  // Calculate positions based on layout type
   const nodes = graphData.value.nodes.map((n) => ({ ...n }))
-  const maxDepth = Math.max(...nodes.map((n) => n.data?.depth || 0))
-  const levelHeight = height / (maxDepth + 2)
 
-  nodes.forEach((node) => {
-    const depth = node.data?.depth || 0
-    const nodesAtLevel = nodes.filter((n) => (n.data?.depth || 0) === depth)
-    const levelIndex = nodesAtLevel.indexOf(node)
-    const levelWidth = width / (nodesAtLevel.length + 1)
+  if (layoutType.value === 'hierarchical') {
+    // Hierarchical layout
+    const maxDepth = Math.max(...nodes.map((n) => n.data?.depth || 0))
+    const levelHeight = height / (maxDepth + 2)
 
-    node.x = levelWidth * (levelIndex + 1)
-    node.y = levelHeight * (depth + 1)
-  })
+    nodes.forEach((node) => {
+      const depth = node.data?.depth || 0
+      const nodesAtLevel = nodes.filter((n) => (n.data?.depth || 0) === depth)
+      const levelIndex = nodesAtLevel.indexOf(node)
+      const levelWidth = width / (nodesAtLevel.length + 1)
+
+      node.x = levelWidth * (levelIndex + 1)
+      node.y = levelHeight * (depth + 1)
+    })
+  } else {
+    // Force-directed layout (simple physics simulation)
+    // Initialize random positions
+    nodes.forEach((node) => {
+      node.x = node.x || Math.random() * width
+      node.y = node.y || Math.random() * height
+      node.vx = 0
+      node.vy = 0
+    })
+
+    // Run simulation
+    const iterations = 100
+    const repulsion = 5000
+    const attraction = 0.01
+    const damping = 0.9
+
+    for (let i = 0; i < iterations; i++) {
+      // Apply repulsion between all nodes
+      for (let j = 0; j < nodes.length; j++) {
+        for (let k = j + 1; k < nodes.length; k++) {
+          const dx = nodes[k].x - nodes[j].x
+          const dy = nodes[k].y - nodes[j].y
+          const distance = Math.sqrt(dx * dx + dy * dy) || 1
+          const force = repulsion / (distance * distance)
+          
+          nodes[j].vx -= (dx / distance) * force
+          nodes[j].vy -= (dy / distance) * force
+          nodes[k].vx += (dx / distance) * force
+          nodes[k].vy += (dy / distance) * force
+        }
+      }
+
+      // Apply attraction along edges
+      graphData.value.edges.forEach((edge) => {
+        const source = nodes.find((n) => n.id === edge.source)
+        const target = nodes.find((n) => n.id === edge.target)
+        if (source && target) {
+          const dx = target.x - source.x
+          const dy = target.y - source.y
+          const force = attraction
+
+          source.vx += dx * force
+          source.vy += dy * force
+          target.vx -= dx * force
+          target.vy -= dy * force
+        }
+      })
+
+      // Update positions with damping
+      nodes.forEach((node) => {
+        node.x += node.vx
+        node.y += node.vy
+        node.vx *= damping
+        node.vy *= damping
+
+        // Keep nodes within bounds
+        node.x = Math.max(50, Math.min(width - 50, node.x))
+        node.y = Math.max(50, Math.min(height - 50, node.y))
+      })
+    }
+  }
 
   // Draw edges
   graphData.value.edges.forEach((edge) => {

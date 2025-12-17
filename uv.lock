@@ -1020,6 +1020,11 @@ dev = [
     { name = "vulture" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "uvicorn", extra = ["standard"] },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=25.9.0" },
@@ -1053,6 +1058,9 @@ requires-dist = [
     { name = "vulture", marker = "extra == 'dev'", specifier = ">=2.14" },
 ]
 provides-extras = ["api", "dev", "all"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "uvicorn", extras = ["standard"], specifier = ">=0.38.0" }]
 
 [[package]]
 name = "six"
