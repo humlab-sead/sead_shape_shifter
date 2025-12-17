@@ -329,7 +329,7 @@ entities:
         how: "left"
         constraints:
           allow_unmatched_left: false
-          allow_null_keys: false
+          # allow_null_keys: false
           cardinality: "many-to-one"
     drop_duplicates: true
     depends_on: ["method", "project"]
