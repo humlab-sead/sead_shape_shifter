@@ -2,10 +2,8 @@
  * Composable for data validation operations
  */
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import { apiClient } from '@/api/client'
 import type { ValidationResult, ValidationError } from '@/types/validation'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8012/api/v1'
 
 // Cache for validation results with 5-minute TTL
 interface CacheEntry {
@@ -107,8 +105,8 @@ export function useDataValidation() {
         ? { entity_names: entityNames.join(',') }
         : {}
 
-      const response = await axios.post<ValidationResult>(
-        `${API_BASE}/configurations/${configName}/validate/data`,
+      const response = await apiClient.post<ValidationResult>(
+        `/configurations/${configName}/validate/data`,
         null,
         { params }
       )
@@ -151,8 +149,8 @@ export function useDataValidation() {
     error.value = null
 
     try {
-      const response = await axios.post(
-        `${API_BASE}/configurations/${configName}/fixes/preview`,
+      const response = await apiClient.post(
+        `/configurations/${configName}/fixes/preview`,
         errors
       )
 
@@ -178,8 +176,8 @@ export function useDataValidation() {
     error.value = null
 
     try {
-      const response = await axios.post(
-        `${API_BASE}/configurations/${configName}/fixes/apply`,
+      const response = await apiClient.post(
+        `/configurations/${configName}/fixes/apply`,
         errors
       )
 
