@@ -39,63 +39,63 @@ class DataSourceService:
 
     def _get_raw_data_sources_from_yaml(self) -> dict[str, Any]:
         """Get raw data sources from YAML without env var resolution.
-        
+
         This method reads data sources configuration directly from the YAML file(s)
         to preserve environment variable references like ${SEAD_HOST}.
-        
+
         Returns:
             Dictionary of data source configurations with unresolved env vars
         """
         try:
             # Get the main config file path from the config object
-            config_path = getattr(self.config, 'filename', None) or getattr(self.config, 'source', None)
-            
+            config_path = getattr(self.config, "filename", None) or getattr(self.config, "source", None)
+
             if not config_path:
                 # Fallback to looking in default locations
                 possible_paths = [
-                    Path('input/arbodat.yml'),
-                    Path('input/arbodat-database.yml'),
-                    Path('config.yml'),
+                    Path("input/arbodat.yml"),
+                    Path("input/arbodat-database.yml"),
+                    Path("config.yml"),
                 ]
                 config_path = next((p for p in possible_paths if p.exists()), None)
-            
+
             if not config_path:
                 logger.warning("Could not find config file to read raw data sources")
                 return {}
-            
+
             config_path = Path(config_path)
             if not config_path.exists():
                 logger.warning(f"Config file not found: {config_path}")
                 return {}
-            
+
             # Read raw YAML
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 raw_config = yaml.safe_load(f)
-            
+
             if not raw_config or not isinstance(raw_config, dict):
                 return {}
-            
+
             # Extract data sources from options section
-            options = raw_config.get('options', {})
-            data_sources = options.get('data_sources', {})
-            
+            options = raw_config.get("options", {})
+            data_sources = options.get("data_sources", {})
+
             # Handle @include directives by reading referenced files
             resolved_sources = {}
             for name, source_config in data_sources.items():
-                if isinstance(source_config, str) and source_config.startswith('@include:'):
+                if isinstance(source_config, str) and source_config.startswith("@include:"):
                     # Load from included file
-                    include_path = source_config.replace('@include:', '').strip()
+                    include_path = source_config.replace("@include:", "").strip()
                     include_file = config_path.parent / include_path
                     if include_file.exists():
-                        with open(include_file, 'r', encoding='utf-8') as f:
+                        with open(include_file, "r", encoding="utf-8") as f:
                             resolved_sources[name] = yaml.safe_load(f)
                     else:
                         logger.warning(f"Included file not found: {include_file}")
                 else:
                     resolved_sources[name] = source_config
-            
+
             return resolved_sources
-            
+
         except Exception as e:
             logger.warning(f"Failed to read raw data sources from YAML: {e}")
             return {}
@@ -105,18 +105,18 @@ class DataSourceService:
 
         Returns:
             List of data source configurations with unresolved env vars (as they appear in config)
-        
+
         Note:
             Environment variables are NOT resolved here. They remain as ${VAR_NAME} so that
             the UI can display and edit them. Resolution happens only when testing connections.
         """
         # Try to get raw data sources from YAML first (preserves env vars)
         data_sources_dict = self._get_raw_data_sources_from_yaml()
-        
+
         # Fallback to config object if YAML reading failed
         if not data_sources_dict:
             data_sources_dict = self.config.get("options:data_sources") or {}
-        
+
         result: list[DataSourceConfig] = []
         for name, config_dict in data_sources_dict.items():
             if not isinstance(config_dict, dict):
@@ -243,7 +243,7 @@ class DataSourceService:
         try:
             # Resolve environment variables in the config before testing
             config = self._resolve_config_env_vars(config)
-            
+
             if config.is_database_source():
                 return await self._test_database_connection(config)
             if config.is_file_source():
@@ -485,9 +485,9 @@ class DataSourceService:
         # Convert to dict, resolve env vars, then recreate model
         config_dict = config.model_dump(exclude_none=True)
         resolved_dict = self._resolve_env_vars(config_dict)
-        
+
         # Handle password field specially - preserve SecretStr if present
         if config.password and "password" not in resolved_dict:
             resolved_dict["password"] = config.password.get_secret_value()
-        
+
         return DataSourceConfig(**resolved_dict)

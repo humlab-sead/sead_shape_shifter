@@ -23,10 +23,10 @@ from src.unnest import unnest
 class ProcessState:
     """Helper class to track processing state of entities during normalization."""
 
-    def __init__(self, config: TablesConfig, table_store: dict[str, pd.DataFrame], default_entity: str | None = None) -> None:
+    def __init__(self, config: TablesConfig, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
         self.config: TablesConfig = config
         self.table_store: dict[str, pd.DataFrame] = table_store
-        self.global_dependencies: set[str] = {default_entity} if default_entity else set()
+        self.target_entities: set[str] = target_entities if target_entities else set(config.tables.keys())
 
     def get_next_entity_to_process(self) -> str | None:
         """Get the next entity that can be processed based on dependencies."""
@@ -43,7 +43,7 @@ class ProcessState:
         return None
 
     def get_unmet_dependencies(self, entity: str) -> set[str]:
-        return (self.config.get_table(entity_name=entity).depends_on | self.global_dependencies) - self.processed_entities
+        return self.config.get_table(entity_name=entity).depends_on - self.processed_entities
 
     def get_all_unmet_dependencies(self) -> dict[str, set[str]]:
         unmet_dependencies: dict[str, set[str]] = {
@@ -62,8 +62,25 @@ class ProcessState:
 
     @property
     def unprocessed_entities(self) -> set[str]:
-        """Return the set of processed entities."""
-        return set(self.config.tables.keys()) - self.processed_entities
+        """Return the set of unprocessed target entities."""
+        return self.target_entities - self.processed_entities
+
+    def get_required_entities(self, entity_name: str) -> set[str]:
+        """Get all entities required to process the given entity (including the entity itself)."""
+        required_entities: set[str] = {entity_name}
+        unprocessed: list[str] = [entity_name]
+
+        while unprocessed:
+            current: str = unprocessed.pop()
+            if current not in self.config.tables:
+                continue
+            for dep in self.config.get_table(entity_name=current).depends_on:
+                if dep in required_entities:
+                    continue
+                required_entities.add(dep)
+                unprocessed.append(dep)
+
+        return required_entities
 
 
 class ArbodatSurveyNormalizer:
@@ -73,12 +90,22 @@ class ArbodatSurveyNormalizer:
         default_entity: str | None = None,
         table_store: dict[str, pd.DataFrame] | None = None,
         config: TablesConfig | None = None,
+        target_entities: set[str] | None = None,
     ) -> None:
 
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
         self.config: TablesConfig = config or TablesConfig()
-        self.state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, default_entity=default_entity)
+
+        # If target_entities is provided, compute all required entities including dependencies
+        if target_entities:
+            state = ProcessState(config=self.config, table_store=self.table_store, target_entities=set())
+            all_required: set[str] = set()
+            for entity in target_entities:
+                all_required.update(state.get_required_entities(entity))
+            self.state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, target_entities=all_required)
+        else:
+            self.state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, target_entities=None)
 
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
