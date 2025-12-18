@@ -23,9 +23,10 @@ For password management using .pgpass:
 
 import asyncio
 import os
+from unittest.mock import Mock
+
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
-from unittest.mock import Mock
 
 
 async def demonstrate_env_var_resolution():

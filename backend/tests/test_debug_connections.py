@@ -7,13 +7,14 @@ Or debug specific test with breakpoint:
     pytest backend/tests/test_debug_connections.py::test_debug_postgresql_connection -v -s
 """
 
-import pytest
 from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
+
+from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
-from backend.app.mappers.data_source_mapper import DataSourceMapper
 from loaders.driver_metadata import DriverSchema
 from src.loaders.driver_metadata import DriverSchemaRegistry
 

@@ -38,7 +38,7 @@ pnpm dev
 make frontend-run
 ```
 
-The frontend will automatically proxy API requests to the backend at `http://localhost:8000`.
+The frontend will automatically proxy API requests to the backend at `http://localhost:8012`.
 
 ### Building for Production
 
@@ -117,7 +117,7 @@ frontend/
 The frontend communicates with the backend via a proxied API:
 
 ```typescript
-// All requests to /api/* are proxied to http://localhost:8000
+// All requests to /api/* are proxied to http://localhost:8012
 import axios from 'axios'
 
 const response = await axios.get('/api/v1/health')
@@ -128,7 +128,7 @@ Configuration in `vite.config.ts`:
 server: {
   proxy: {
     '/api': {
-      target: 'http://localhost:8000',
+      target: 'http://localhost:8012',
       changeOrigin: true,
     },
   },
@@ -158,7 +158,7 @@ Material Design components are auto-imported. Customization in `src/plugins/vuet
 
 2. **Access the application**:
    - Frontend: http://localhost:5173
-   - Backend API docs: http://localhost:8000/api/v1/docs
+   - Backend API docs: http://localhost:8012/api/v1/docs
 
 3. **Auto-reload**: Both servers auto-reload on file changes
 

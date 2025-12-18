@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
     container_name: shapeshifter-backend
     ports:
-      - "8000:8000"
+      - "8012:8012"
     environment:
       - ENVIRONMENT=production
       - LOG_LEVEL=info
@@ -17,7 +17,7 @@ services:
       - ./output:/app/output
       - ./backups:/app/backups
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8012/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -35,7 +35,7 @@ services:
     ports:
       - "80:80"
     environment:
-      - VITE_API_BASE_URL=http://backend:8000
+      - VITE_API_BASE_URL=http://backend:8012
     depends_on:
       backend:
         condition: service_healthy
