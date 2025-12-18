@@ -1,5 +1,8 @@
 SHELL := /bin/bash
 
+BACKEND_PORT ?= 8012
+FRONEND_PORT ?= 5173
+
 .PHONY: csv excel
 excel:
 	@export PYTHONPATH=. && python src/arbodat/survey2excel.py \ 
@@ -71,9 +74,15 @@ check-imports:
 # Backend recipes (now use unified environment)
 # ============================================================================
 
+.PHONY: backend-kill
+backend-kill:
+	@echo "Killing backend server..."
+	@sudo pkill -9 -f "uvicorn.*--port $(BACKEND_PORT)" || true
+	@echo "Backend server stopped."
+
 .PHONY: backend-run
 backend-run:
-	@echo "Starting backend server on http://localhost:8000"
+	@echo "Starting backend server on http://localhost:$(BACKEND_PORT)"
 	@if [ -z "$$CONFIG_FILE" ]; then \
 		echo "Using default config: input/arbodat-database.yml"; \
 		export CONFIG_FILE=$$(pwd)/input/arbodat-database.yml; \
@@ -82,7 +91,7 @@ backend-run:
 		--reload  \
 		--reload-dir backend/app \
 		--log-level debug \
-		--host 0.0.0.0 --port 8000
+		--host 0.0.0.0 --port $(BACKEND_PORT)
 
 .PHONY: backend-test
 backend-test:
@@ -104,7 +113,7 @@ frontend-install:
 
 .PHONY: frontend-run
 frontend-run:
-	@echo "Starting frontend dev server on http://localhost:5173"
+	@echo "Starting frontend dev server on http://localhost:$(FRONEND_PORT)"
 	@cd frontend && pnpm dev
 
 .PHONY: fix-imports

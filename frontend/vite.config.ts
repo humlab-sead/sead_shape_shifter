@@ -29,7 +29,7 @@ export default defineConfig({
     host: true, // Listen on all addresses for remote access
     proxy: {
       '/api': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:8000',
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:8012',
         changeOrigin: true,
         secure: false, // Allow self-signed certificates in dev
         ws: true, // WebSocket support
