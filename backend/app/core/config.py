@@ -29,10 +29,10 @@ class Settings(BaseSettings):
         "http://localhost:3000",  # Alternative frontend port
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
-        "https://*.preview.app.github.dev",  # GitHub remote tunnels
-        # "https://*.ngrok.io",  # ngrok tunnels
-        # "https://*.ngrok-free.app",  # ngrok free tier
     ]
+    
+    # CORS regex patterns for wildcard domains
+    ALLOWED_ORIGIN_REGEX: str = r"https://.*\.(preview\.app\.github\.dev|devtunnels\.ms)"
 
     # File paths
     PROJECT_ROOT: Path = Path(__file__).parent.parent.parent.parent
