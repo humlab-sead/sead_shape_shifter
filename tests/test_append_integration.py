@@ -106,7 +106,7 @@ class TestAppendIntegration:
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
-        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, default_entity="survey")
+        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
         await normalizer.normalize()
@@ -157,7 +157,7 @@ class TestAppendIntegration:
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
-        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, default_entity="survey")
+        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
         await normalizer.normalize()
@@ -207,7 +207,7 @@ class TestAppendIntegration:
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
-        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, default_entity="survey")
+        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
         await normalizer.normalize()
@@ -265,7 +265,7 @@ class TestAppendIntegration:
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
-        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, default_entity="survey")
+        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
         await normalizer.normalize()

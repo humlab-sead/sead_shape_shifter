@@ -16,14 +16,15 @@ def test_map_postgresql_config():
         port=5432,
         database="testdb",
         username="testuser",
-        password=SecretStr("testpass"),**{}
+        password=SecretStr("testpass"),
+        **{},
     )
 
     core_config = DataSourceMapper.to_core_config(api_config)
 
     assert core_config.name == "test_pg"
     assert core_config.data_source_cfg["driver"] == "postgresql"
-    
+
     options = core_config.data_source_cfg["options"]
     assert options["host"] == "localhost"
     assert options["port"] == 5432
@@ -34,12 +35,7 @@ def test_map_postgresql_config():
 
 def test_map_postgresql_with_defaults():
     """Test PostgreSQL with default values."""
-    api_config = DataSourceConfig(
-        name="test_pg",
-        driver="postgresql",  # type: ignore
-        database="testdb",
-        username="testuser",**{}
-    )
+    api_config = DataSourceConfig(name="test_pg", driver="postgresql", database="testdb", username="testuser", **{})  # type: ignore
 
     core_config = DataSourceMapper.to_core_config(api_config)
 
@@ -57,7 +53,8 @@ def test_map_ucanaccess_config():
         name="test_access",
         driver="ucanaccess",  # type: ignore
         filename="./input/test.mdb",
-        options={"ucanaccess_dir": "lib/ucanaccess"},**{}
+        options={"ucanaccess_dir": "lib/ucanaccess"},
+        **{},
     )
 
     core_config = DataSourceMapper.to_core_config(api_config)
@@ -65,7 +62,7 @@ def test_map_ucanaccess_config():
     assert core_config.name == "test_access"
     # Driver is normalized by API model
     assert core_config.data_source_cfg["driver"] in ("ucanaccess", "access")
-    
+
     options = core_config.data_source_cfg["options"]
     assert options["filename"] == "./input/test.mdb"
     assert options["ucanaccess_dir"] == "lib/ucanaccess"
@@ -73,17 +70,13 @@ def test_map_ucanaccess_config():
 
 def test_map_sqlite_config():
     """Test mapping SQLite configuration."""
-    api_config = DataSourceConfig(
-        name="test_sqlite",
-        driver="sqlite",  # type: ignore
-        filename="./data/test.db",**{}
-    )
+    api_config = DataSourceConfig(name="test_sqlite", driver="sqlite", filename="./data/test.db", **{})  # type: ignore
 
     core_config = DataSourceMapper.to_core_config(api_config)
 
     assert core_config.name == "test_sqlite"
     assert core_config.data_source_cfg["driver"] == "sqlite"
-    
+
     options = core_config.data_source_cfg["options"]
     assert options["filename"] == "./data/test.db"
 
@@ -91,17 +84,14 @@ def test_map_sqlite_config():
 def test_map_csv_config():
     """Test mapping CSV configuration."""
     api_config = DataSourceConfig(
-        name="test_csv",
-        driver="csv",  # type: ignore
-        filename="./data/test.csv",
-        options={"encoding": "utf-8", "delimiter": ","},**{}
+        name="test_csv", driver="csv", filename="./data/test.csv", options={"encoding": "utf-8", "delimiter": ","}, **{}  # type: ignore
     )
 
     core_config = DataSourceMapper.to_core_config(api_config)
 
     assert core_config.name == "test_csv"
     assert core_config.data_source_cfg["driver"] == "csv"
-    
+
     options = core_config.data_source_cfg["options"]
     assert options["filename"] == "./data/test.csv"
     assert options["encoding"] == "utf-8"
@@ -113,7 +103,8 @@ def test_missing_required_field():
     api_config = DataSourceConfig(
         name="test_pg",
         driver="postgresql",  # type: ignore
-        host="localhost",**{}
+        host="localhost",
+        **{},
         # Missing required fields: database, username
     )
 
@@ -133,15 +124,16 @@ def test_password_extraction():
     """Test that password SecretStr is properly extracted."""
     api_config = DataSourceConfig(
         name="test_pg",
-        driver="postgresql", # type: ignore
+        driver="postgresql",  # type: ignore
         host="localhost",
         database="testdb",
         username="testuser",
-        password=SecretStr("my_secret_password"),**{}
+        password=SecretStr("my_secret_password"),
+        **{},
     )
 
     core_config = DataSourceMapper.to_core_config(api_config)
-    
+
     options = core_config.data_source_cfg["options"]
     # Password should be extracted as plain string
     assert options["password"] == "my_secret_password"
@@ -159,11 +151,12 @@ def test_additional_options_preserved():
         options={
             "custom_option": "custom_value",
             "another_option": 123,
-        },**{}
+        },
+        **{},
     )
 
     core_config = DataSourceMapper.to_core_config(api_config)
-    
+
     options = core_config.data_source_cfg["options"]
     assert options["custom_option"] == "custom_value"
     assert options["another_option"] == 123

@@ -135,7 +135,6 @@ dead-code:
 	@uv run vulture src tests main.py
 
 
-
 SCHEMA_OPTS = --no-drop-table --not-null --default-values --no-not_empty --comments --indexes --relations
 BACKEND = postgres
 

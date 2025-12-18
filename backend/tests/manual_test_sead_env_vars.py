@@ -6,15 +6,15 @@ from pathlib import Path
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / 'backend'))
+sys.path.insert(0, str(project_root / "backend"))
 
 from backend.app.services.data_source_service import DataSourceService
 from src.configuration.provider import ConfigStore
 
 # Load actual config
-config_file = project_root / 'input' / 'arbodat-database.yml'
+config_file = project_root / "input" / "arbodat-database.yml"
 if not config_file.exists():
-    config_file = project_root / 'input' / 'arbodat.yml'
+    config_file = project_root / "input" / "arbodat.yml"
 
 print(f"Loading config from: {config_file}")
 print()
@@ -28,7 +28,7 @@ config = store.config()
 assert config is not None
 
 # Create service
-service = DataSourceService(config)  
+service = DataSourceService(config)
 
 # List data sources
 print("=" * 80)
@@ -39,20 +39,20 @@ data_sources = service.list_data_sources()
 for ds in data_sources:
     print(f"\n{ds.name} ({ds.driver})")
     print("-" * 40)
-    
+
     if ds.options:
         for key, value in ds.options.items():
             # Highlight env vars
-            if isinstance(value, str) and '${' in value:
+            if isinstance(value, str) and "${" in value:
                 print(f"  {key}: {value} 🔑")
             else:
                 print(f"  {key}: {value}")
-    
+
     # Check specific fields
-    for field in ['host', 'port', 'database', 'dbname', 'username', 'filename']:
+    for field in ["host", "port", "database", "dbname", "username", "filename"]:
         value = getattr(ds, field, None)
         if value:
-            if isinstance(value, str) and '${' in value:
+            if isinstance(value, str) and "${" in value:
                 print(f"  {field}: {value} 🔑")
             else:
                 print(f"  {field}: {value}")
