@@ -45,14 +45,14 @@ uv pip install -e .
 make backend-run
 
 # Or manually with PYTHONPATH
-PYTHONPATH=.:backend uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+PYTHONPATH=.:backend uvicorn app.main:app --reload --host 0.0.0.0 --port 8012
 ```
 
 ### Access API Documentation
 
-- **Swagger UI**: http://localhost:8000/api/v1/docs
-- **ReDoc**: http://localhost:8000/api/v1/redoc
-- **OpenAPI JSON**: http://localhost:8000/api/v1/openapi.json
+- **Swagger UI**: http://localhost:8012/api/v1/docs
+- **ReDoc**: http://localhost:8012/api/v1/redoc
+- **OpenAPI JSON**: http://localhost:8012/api/v1/openapi.json
 
 ## Project Structure
 

@@ -139,10 +139,14 @@ class PreviewService:
                 # TODO: Load config by name
                 raise ValueError("Config must be TablesConfig instance, not str")
 
+            # Determine the default source entity from the target entity config
+            default_source = entity_config.source if entity_config.source else None
+
             normalizer = ArbodatSurveyNormalizer(
-                default_entity=entity_name,
                 config=config,
                 table_store={},
+                default_entity=default_source,
+                target_entities={entity_name},
             )
 
             # Run normalization process

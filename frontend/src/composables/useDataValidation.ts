@@ -5,7 +5,7 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 import type { ValidationResult, ValidationError } from '@/types/validation'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8012/api/v1'
 
 // Cache for validation results with 5-minute TTL
 interface CacheEntry {

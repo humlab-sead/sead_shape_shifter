@@ -1,8 +1,9 @@
 """Test environment variable resolution in data source configurations."""
 
 import os
-import pytest
 from unittest.mock import Mock
+
+import pytest
 
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
