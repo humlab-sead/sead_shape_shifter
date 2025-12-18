@@ -142,7 +142,7 @@ Manages validation results and dependency graphs.
 ```typescript
 // src/api/client.ts
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8012',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -584,7 +584,7 @@ server {
   }
 
   location /api {
-    proxy_pass http://backend:8000;
+    proxy_pass http://backend:8012;
   }
 }
 ```

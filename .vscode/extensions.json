@@ -1,0 +1,20 @@
+{
+    "recommendations": [
+        "eamodio.gitlens",
+        "github.copilot",
+        "github.copilot-chat",
+        "github.vscode-github-actions",
+        "github.vscode-pull-request-github",
+        "grapecity.gc-excelviewer",
+        "ms-python.debugpy",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-vscode.makefile-tools",
+        "ms-ossdata.vscode-pgsql",
+        // "openai.chatgpt",
+        "pustelto.bracketeer",
+        "redhat.vscode-xml",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+    ]
+}

@@ -60,7 +60,7 @@ uv pip install -e .         # Core only
 
 ### Running
 ```bash
-make backend-run          # Start FastAPI at http://localhost:8000
+make backend-run          # Start FastAPI at http://localhost:8012
 make frontend-run         # Start Vue dev server at http://localhost:5173
 ```
 
@@ -159,7 +159,7 @@ response = client.get("/api/v1/health")
 // API clients in frontend/src/api/
 import { apiClient } from '@/api/client'
 
-// Base URL: VITE_API_BASE_URL || 'http://localhost:8000'
+// Base URL: VITE_API_BASE_URL || 'http://localhost:8012'
 // All endpoints prefixed with /api/v1
 const response = await apiClient.get('/configurations')
 ```

@@ -94,3 +94,8 @@ Tech debts:
 FIXME: [Backend] Move database vendor specific logic to Loaders
 FIXME: [Backend] Test for MS Access returns 0 tables
 FIXME: [Backend] Postgres Edit doesn't display values fomr data source configuration
+
+
+INSTALL: Codex AGENTS.md
+
+TODO: #21 Add UX for mapping/reconciling remote/target entities to local entities.
