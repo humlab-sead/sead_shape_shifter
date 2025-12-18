@@ -8,7 +8,7 @@ This guide explains how to access the Shape Shifter Configuration Editor remotel
 
 - VS Code installed locally
 - GitHub account
-- Application running (backend on port 8000, frontend on port 5173)
+- Application running (backend on port 8012, frontend on port 5173)
 
 ## Setup Steps
 
@@ -62,7 +62,7 @@ This guide explains how to access the Shape Shifter Configuration Editor remotel
 1. **Start Backend** (in one terminal):
    ```bash
    make backend-run
-   # Backend will run on http://localhost:8000
+   # Backend will run on http://localhost:8012
    ```
 
 2. **Start Frontend** (in another terminal):
@@ -79,7 +79,7 @@ This guide explains how to access the Shape Shifter Configuration Editor remotel
    uv venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    uv pip install -e ".[dev]"
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8012
    ```
 
 2. **Frontend**:
@@ -91,18 +91,18 @@ This guide explains how to access the Shape Shifter Configuration Editor remotel
 
 ### 4. Forward Ports
 
-VS Code will automatically detect running servers on ports 8000 and 5173.
+VS Code will automatically detect running servers on ports 8012 and 5173.
 
 #### Manual Port Forwarding:
 
 1. **Open Ports Panel**:
    - View → Ports (or Ctrl+Shift+P → "Ports: Focus on Ports View")
 
-2. **Forward Port 8000** (Backend):
+2. **Forward Port 8012** (Backend):
    - Click "+ Forward a Port"
-   - Enter: 8000
+   - Enter: 8012
    - **Set Visibility**: Right-click port → Change Port Visibility → **Public**
-   - You'll get a URL like: `https://machine-name-12345-8000.preview.app.github.dev`
+   - You'll get a URL like: `https://machine-name-12345-8012.preview.app.github.dev`
 
 3. **Forward Port 5173** (Frontend):
    - Click "+ Forward a Port"
@@ -118,11 +118,11 @@ Create a `.env.local` file in the frontend directory with the remote backend URL
 cd frontend
 cat > .env.local << 'EOF'
 # Remote tunnel backend URL (replace with your actual URL from step 4)
-VITE_API_BASE_URL=https://machine-name-12345-8000.preview.app.github.dev
+VITE_API_BASE_URL=https://machine-name-12345-8012.preview.app.github.dev
 EOF
 ```
 
-**Replace** `machine-name-12345-8000.preview.app.github.dev` with your actual forwarded backend port URL.
+**Replace** `machine-name-12345-8012.preview.app.github.dev` with your actual forwarded backend port URL.
 
 ### 6. Restart Frontend
 
@@ -160,7 +160,7 @@ The frontend will now communicate with the backend through the tunneled URLs!
 - Backend must bind to `0.0.0.0` (not `127.0.0.1`)
 - Add `--host 0.0.0.0` to uvicorn command:
   ```bash
-  uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+  uvicorn app.main:app --reload --host 0.0.0.0 --port 8012
   ```
 
 **Solution 4: Check CORS**
@@ -175,8 +175,8 @@ The frontend will now communicate with the backend through the tunneled URLs!
 - Restart tunnel
 
 **Solution 2: Check Firewall**
-- Ensure ports 8000 and 5173 are not blocked
-- Check with: `netstat -tuln | grep -E '8000|5173'`
+- Ensure ports 8012 and 5173 are not blocked
+- Check with: `netstat -tuln | grep -E '8012|5173'`
 
 **Solution 3: Restart Tunnel**
 - Stop tunnel (Ctrl+C)
@@ -236,7 +236,7 @@ server: {
   port: 5173,
   proxy: {
     '/api': {
-      target: process.env.VITE_API_BASE_URL || 'http://localhost:8000',
+      target: process.env.VITE_API_BASE_URL || 'http://localhost:8012',
       changeOrigin: true,
       timeout: 300000, // 5 minutes
     },
@@ -270,7 +270,7 @@ If GitHub tunnels don't work, you can use ngrok:
 3. **Start tunnels**:
    ```bash
    # Backend (terminal 1)
-   ngrok http 8000
+   ngrok http 8012
    # Note the URL: https://abc123.ngrok.io
    
    # Frontend (terminal 2)
@@ -297,13 +297,13 @@ For production-like remote access using Docker:
    services:
      backend:
        ports:
-         - "0.0.0.0:8000:8000"
+         - "0.0.0.0:8012:8012"
      frontend:
        ports:
          - "0.0.0.0:80:80"
    ```
 
-2. **Forward ports**: 80 and 8000
+2. **Forward ports**: 80 and 8012
 
 3. **Access**: Use tunnel URLs (no .env.local needed, nginx handles routing)
 
@@ -341,20 +341,20 @@ make backend-run
 make frontend-run
 
 # Check ports
-netstat -tuln | grep -E '8000|5173'
+netstat -tuln | grep -E '8012|5173'
 ```
 
 ### URLs to Remember
 
 - Frontend: `https://[tunnel-name]-5173.preview.app.github.dev`
-- Backend: `https://[tunnel-name]-8000.preview.app.github.dev`
-- API Docs: `https://[tunnel-name]-8000.preview.app.github.dev/api/v1/docs`
+- Backend: `https://[tunnel-name]-8012.preview.app.github.dev`
+- API Docs: `https://[tunnel-name]-8012.preview.app.github.dev/api/v1/docs`
 
 ### Environment Variables
 
 ```bash
 # .env.local (frontend)
-VITE_API_BASE_URL=https://[tunnel-name]-8000.preview.app.github.dev
+VITE_API_BASE_URL=https://[tunnel-name]-8012.preview.app.github.dev
 VITE_ENV=development
 ```
 
@@ -365,8 +365,8 @@ If you continue to have issues:
 1. Check VS Code output: View → Output → "Remote-Tunnel" or "Ports"
 2. Check browser console for errors (F12)
 3. Check backend logs in terminal
-4. Verify ports are listening: `netstat -tuln | grep -E '8000|5173'`
-5. Test backend directly: `curl https://[tunnel-url]-8000.preview.app.github.dev/api/v1/health`
+4. Verify ports are listening: `netstat -tuln | grep -E '8012|5173'`
+5. Test backend directly: `curl https://[tunnel-url]-8012.preview.app.github.dev/api/v1/health`
 
 ## Summary
 
@@ -375,7 +375,7 @@ If you continue to have issues:
 2. Connect via vscode.dev URL
 3. Start backend: `make backend-run`
 4. Start frontend: `make frontend-run`
-5. Forward ports 8000 and 5173 (set to Public)
+5. Forward ports 8012 and 5173 (set to Public)
 6. Create `frontend/.env.local` with backend tunnel URL
 7. Restart frontend
 8. Access frontend tunnel URL in browser
