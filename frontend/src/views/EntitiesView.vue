@@ -51,9 +51,10 @@ import { useEntities } from '@/composables/useEntities'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 
 const configurationStore = useConfigurationStore()
+const configName = computed(() => configurationStore.currentConfigName || '')
 
 const { entityCount, refetchEntities } = useEntities({
-  configName: computed(() => configurationStore.currentConfigName || ''),
+  configName: configName.value,
 })
 
 function handleEntityUpdated() {
