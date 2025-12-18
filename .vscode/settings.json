@@ -55,5 +55,14 @@
     "python.analysis.inlayHints.variableTypes": true,
     "python.analysis.typeCheckingMode": "standard",
     "python.analysis.typeEvaluation.deprecateTypingAliases": true,
-    "python.analysis.typeEvaluation.disableBytesTypePromotions": false
+    "python.analysis.typeEvaluation.disableBytesTypePromotions": false,
+    "remote.autoForwardPorts": true,
+        "remote.portsAttributes": {
+            "8010": { "onAutoForward": "ignore" },
+            "8011": { "onAutoForward": "ignore" },
+            "8020": { "onAutoForward": "ignore" },
+            "8021": { "onAutoForward": "ignore" },
+            "8030": { "onAutoForward": "ignore" },
+            "8084": { "onAutoForward": "ignore" }
+        }
 }
