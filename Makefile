@@ -116,6 +116,10 @@ frontend-run:
 	@echo "Starting frontend dev server on http://localhost:$(FRONEND_PORT)"
 	@cd frontend && pnpm dev
 
+.PHONY: frontend-rebuild
+frontend-rebuild:
+	@cd frontend && rm -rf node_modules/.vite dist && pnpm dev 
+
 .PHONY: fix-imports
 fix-imports:
 	@python scripts/fix_imports.py
