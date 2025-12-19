@@ -158,6 +158,8 @@ class ConfigurationService:
 
             # Always include 'entities' key to mark this as a configuration file
             data["entities"] = config.entities if config.entities else {}
+            
+            logger.debug(f"Saving configuration '{config.metadata.name}' with {len(config.entities)} entities: {list(config.entities.keys())}")
 
             if config.options:
                 data["options"] = config.options
