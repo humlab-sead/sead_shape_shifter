@@ -209,6 +209,70 @@ export const useConfigurationStore = defineStore('configuration', () => {
     validationResult.value = null
   }
 
+  async function getActiveConfiguration() {
+    try {
+      const result = await api.configurations.getActive()
+      return result.name
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to get active configuration'
+      return null
+    }
+  }
+
+  async function activateConfiguration(name: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const config = await api.configurations.activate(name)
+      selectedConfig.value = config
+      return config
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to activate configuration'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function getConfigurationDataSources(name: string) {
+    try {
+      return await api.configurations.getDataSources(name)
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to get data sources'
+      throw err
+    }
+  }
+
+  async function connectDataSource(name: string, sourceName: string, sourceFilename: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const config = await api.configurations.connectDataSource(name, sourceName, sourceFilename)
+      selectedConfig.value = config
+      return config
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to connect data source'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function disconnectDataSource(name: string, sourceName: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const config = await api.configurations.disconnectDataSource(name, sourceName)
+      selectedConfig.value = config
+      return config
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to disconnect data source'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   function reset() {
     configurations.value = []
     selectedConfig.value = null
@@ -243,6 +307,11 @@ export const useConfigurationStore = defineStore('configuration', () => {
     validateConfiguration,
     fetchBackups,
     restoreBackup,
+    getActiveConfiguration,
+    activateConfiguration,
+    getConfigurationDataSources,
+    connectDataSource,
+    disconnectDataSource,
     markAsChanged,
     clearError,
     clearValidation,

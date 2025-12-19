@@ -97,27 +97,28 @@ async def list_drivers() -> dict[str, DriverSchemaResponse]:
         ) from e
 
 
-@router.get("", response_model=list[DataSourceConfig], summary="List all data sources")
+@router.get("", response_model=list[DataSourceConfig], summary="List all global data sources")
 async def list_data_sources(
     service: DataSourceService = Depends(get_data_source_service),
 ) -> list[DataSourceConfig]:
     """
-    Retrieve all configured data sources.
+    Retrieve all global data source files.
 
-    Returns data sources from the configuration, with environment variables resolved.
+    Returns data sources from separate YAML files in input/ directory.
+    Environment variables remain as ${VAR_NAME} for editing.
     Passwords are excluded from the response.
 
     **Response Fields**:
-    - `name`: Unique identifier for the data source
+    - `name`: Data source identifier (filename without extension)
+    - `filename`: YAML filename (e.g., "sead-options.yml")
     - `driver`: Database/file driver type (postgresql, access, sqlite, csv)
     - `host`, `port`, `database`: Database connection details (for database sources)
-    - `filename`: File path (for file-based sources)
     - `options`: Driver-specific configuration
     """
     try:
-        logger.info("Listing all data sources")
+        logger.info("Listing all global data source files")
         data_sources = service.list_data_sources()
-        logger.info(f"Found {len(data_sources)} data sources")
+        logger.info(f"Found {len(data_sources)} data source files")
         return data_sources
     except Exception as e:
         logger.error(f"Error listing data sources: {e}")
@@ -127,75 +128,81 @@ async def list_data_sources(
         ) from e
 
 
-@router.get("/{name}", response_model=DataSourceConfig, summary="Get data source by name")
+@router.get("/{filename}", response_model=DataSourceConfig, summary="Get data source by filename")
 async def get_data_source(
-    name: str,
+    filename: str,
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceConfig:
     """
-    Retrieve a specific data source by name.
+    Retrieve a specific data source by filename.
 
     **Path Parameters**:
-    - `name`: Data source identifier (e.g., "sead", "arbodat_data")
+    - `filename`: Data source filename (e.g., "sead-options", "sead-options.yml")
 
     **Returns**: Complete data source configuration
 
     **Errors**:
-    - 404: Data source not found
+    - 404: Data source file not found
     """
     try:
-        logger.info(f"Getting data source: {name}")
-        data_source = service.get_data_source(name)
+        logger.info(f"Getting data source: {filename}")
+        data_source = service.get_data_source(filename)
 
         if data_source is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Data source '{name}' not found",
+                detail=f"Data source file '{filename}' not found",
             )
 
         return data_source
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting data source '{name}': {e}")
+        logger.error(f"Error getting data source '{filename}': {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get data source: {str(e)}",
         ) from e
 
 
-@router.post("", response_model=DataSourceConfig, status_code=status.HTTP_201_CREATED, summary="Create data source")
+@router.post("", response_model=DataSourceConfig, status_code=status.HTTP_201_CREATED, summary="Create global data source file")
 async def create_data_source(
     config: DataSourceConfig,
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceConfig:
     """
-    Create a new data source.
+    Create a new global data source file.
+
+    Creates a YAML file in input/ directory (e.g., my-db-options.yml).
+    The filename will be derived from the name field with "-options.yml" suffix.
 
     **Request Body**: DataSourceConfig with all required fields
     - Database sources require: `driver`, `host`, `port`, `database`, `username`
     - File sources require: `driver`, `filename`
+    - `name`: Will be used to generate filename
 
-    **Returns**: Created data source configuration
+    **Returns**: Created data source configuration with filename set
 
     **Errors**:
-    - 400: Invalid configuration or data source already exists
+    - 400: Invalid configuration or file already exists
     - 422: Validation error (invalid port, missing required fields, etc.)
     """
     try:
-        logger.info(f"Creating data source: {config.name}")
+        # Generate filename from name
+        filename = f"{config.name}-options.yml"
+        logger.info(f"Creating data source file: {filename}")
 
         # Check if already exists
-        existing = service.get_data_source(config.name)
+        existing = service.get_data_source(filename)
         if existing is not None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Data source '{config.name}' already exists",
+                detail=f"Data source file '{filename}' already exists",
             )
 
-        service.create_data_source(config)
-        logger.info(f"Created data source: {config.name}")
-        return config
+        created = service.create_data_source(filename, config)
+        logger.info(f"Created data source file: {filename}")
+        return created
     except HTTPException:
         raise
     except Exception as e:
@@ -206,119 +213,104 @@ async def create_data_source(
         ) from e
 
 
-@router.put("/{name}", response_model=DataSourceConfig, summary="Update data source")
+@router.put("/{filename}", response_model=DataSourceConfig, summary="Update data source file")
 async def update_data_source(
-    name: str,
+    filename: str,
     config: DataSourceConfig,
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceConfig:
     """
-    Update an existing data source.
+    Update an existing data source file.
+
+    Updates the content of the YAML file. Filename cannot be changed.
 
     **Path Parameters**:
-    - `name`: Current data source name
+    - `filename`: Data source filename (e.g., "sead-options.yml" or "sead-options")
 
-    **Request Body**: Complete DataSourceConfig (can include new name for renaming)
+    **Request Body**: Complete DataSourceConfig with updated fields
 
     **Returns**: Updated data source configuration
 
     **Errors**:
-    - 404: Data source not found
-    - 400: Invalid configuration or new name conflicts with existing data source
+    - 404: Data source file not found
+    - 400: Invalid configuration
     """
     try:
-        logger.info(f"Updating data source: {name}")
+        logger.info(f"Updating data source file: {filename}")
 
         # Check if exists
-        existing = service.get_data_source(name)
+        existing = service.get_data_source(filename)
         if existing is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Data source '{name}' not found",
+                detail=f"Data source file '{filename}' not found",
             )
 
-        # If renaming, check new name doesn't exist
-        if config.name != name:
-            existing_new = service.get_data_source(config.name)
-            if existing_new is not None:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Data source '{config.name}' already exists",
-                )
-
-        service.update_data_source(name, config)
-        logger.info(f"Updated data source: {name}")
-        return config
+        updated = service.update_data_source(filename, config)
+        logger.info(f"Updated data source file: {filename}")
+        return updated
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating data source '{name}': {e}")
+        logger.error(f"Error updating data source '{filename}': {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to update data source: {str(e)}",
         ) from e
 
 
-@router.delete("/{name}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete data source")
+@router.delete("/{filename}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete data source file")
 async def delete_data_source(
-    name: str,
+    filename: str,
     service: DataSourceService = Depends(get_data_source_service),
 ):
     """
-    Delete a data source.
+    Delete a data source file.
 
     **Path Parameters**:
-    - `name`: Data source identifier
+    - `filename`: Data source filename (e.g., "sead-options.yml" or "sead-options")
 
-    **Safety Check**: Prevents deletion if any entities reference this data source
+    **Warning**: This permanently deletes the file. Configurations using
+    @include references to this file will break.
 
     **Returns**: 204 No Content on success
 
     **Errors**:
-    - 404: Data source not found
-    - 400: Data source is in use by entities (cannot be deleted)
+    - 404: Data source file not found
     """
     try:
-        logger.info(f"Deleting data source: {name}")
+        logger.info(f"Deleting data source file: {filename}")
 
         # Check if exists
-        existing = service.get_data_source(name)
+        existing: DataSourceConfig | None = service.get_data_source(filename)
         if existing is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Data source '{name}' not found",
+                detail=f"Data source file '{filename}' not found",
             )
 
-        # Check if in use
-        status_info = service.get_status(name)
-        if status_info.in_use_by_entities:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot delete data source '{name}': in use by entities {status_info.in_use_by_entities}",
-            )
-
-        service.delete_data_source(name)
-        logger.info(f"Deleted data source: {name}")
+        service.delete_data_source(filename)
+        logger.info(f"Deleted data source: {filename}")
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting data source '{name}': {e}")
+        logger.error(f"Error deleting data source '{filename}': {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete data source: {str(e)}",
         ) from e
 
 
-@router.post("/{name}/test", response_model=DataSourceTestResult, summary="Test data source connection")
+@router.post("/{filename}/test", response_model=DataSourceTestResult, summary="Test data source connection")
 async def test_data_source_connection(
-    name: str,
+    filename: str,
     service: DataSourceService = Depends(get_data_source_service),
 ) -> DataSourceTestResult:
     """
     Test connection to a data source.
 
     **Path Parameters**:
-    - `name`: Data source identifier
+    - `filename`: Data source filename (e.g., \"sead-options\" or \"sead-options.yml\")
 
     **Connection Tests**:
     - **Database**: Executes `SELECT 1 as test` to verify connectivity
@@ -333,33 +325,33 @@ async def test_data_source_connection(
     - `metadata`: Additional info (table count, file size, etc.)
 
     **Errors**:
-    - 404: Data source not found
+    - 404: Data source file not found
     - 400: Connection test failed (invalid credentials, host unreachable, etc.)
     """
     try:
-        logger.info(f"Testing connection to data source: {name}")
+        logger.info(f"Testing connection to data source: {filename}")
 
         # Get data source config
-        config = service.get_data_source(name)
+        config = service.get_data_source(filename)
         if config is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Data source '{name}' not found",
+                detail=f"Data source file '{filename}' not found",
             )
 
         # Test connection
         result = await service.test_connection(config=config)
 
         if result.success:
-            logger.info(f"Connection test successful for '{name}' in {result.connection_time_ms}ms")
+            logger.info(f"Connection test successful for '{filename}' in {result.connection_time_ms}ms")
         else:
-            logger.warning(f"Connection test failed for '{name}': {result.message}")
+            logger.warning(f"Connection test failed for '{filename}': {result.message}")
 
         return result
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error testing connection to '{name}': {e}")
+        logger.error(f"Error testing connection to '{filename}': {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to test connection: {str(e)}",

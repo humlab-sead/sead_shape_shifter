@@ -14,7 +14,7 @@ import type {
  */
 export const dataSourcesApi = {
   /**
-   * List all data sources
+   * List all global data source files
    */
   list: async (): Promise<DataSourceConfig[]> => {
     return apiRequest<DataSourceConfig[]>({
@@ -24,17 +24,17 @@ export const dataSourcesApi = {
   },
 
   /**
-   * Get specific data source
+   * Get specific data source by filename
    */
-  get: async (name: string): Promise<DataSourceConfig> => {
+  get: async (filename: string): Promise<DataSourceConfig> => {
     return apiRequest<DataSourceConfig>({
       method: 'GET',
-      url: `/data-sources/${name}`,
+      url: `/data-sources/${filename}`,
     })
   },
 
   /**
-   * Create new data source
+   * Create new global data source file
    */
   create: async (config: DataSourceConfig): Promise<DataSourceConfig> => {
     return apiRequest<DataSourceConfig>({
@@ -45,43 +45,43 @@ export const dataSourcesApi = {
   },
 
   /**
-   * Update existing data source
+   * Update existing data source file
    */
-  update: async (name: string, config: DataSourceConfig): Promise<DataSourceConfig> => {
+  update: async (filename: string, config: DataSourceConfig): Promise<DataSourceConfig> => {
     return apiRequest<DataSourceConfig>({
       method: 'PUT',
-      url: `/data-sources/${name}`,
+      url: `/data-sources/${filename}`,
       data: config,
     })
   },
 
   /**
-   * Delete data source
+   * Delete data source file
    */
-  delete: async (name: string): Promise<void> => {
+  delete: async (filename: string): Promise<void> => {
     return apiRequest<void>({
       method: 'DELETE',
-      url: `/data-sources/${name}`,
+      url: `/data-sources/${filename}`,
     })
   },
 
   /**
    * Test connection to data source
    */
-  testConnection: async (name: string): Promise<DataSourceTestResult> => {
+  testConnection: async (filename: string): Promise<DataSourceTestResult> => {
     return apiRequest<DataSourceTestResult>({
       method: 'POST',
-      url: `/data-sources/${name}/test`,
+      url: `/data-sources/${filename}/test`,
     })
   },
 
   /**
    * Get data source status
    */
-  getStatus: async (name: string): Promise<DataSourceStatus> => {
+  getStatus: async (filename: string): Promise<DataSourceStatus> => {
     return apiRequest<DataSourceStatus>({
       method: 'GET',
-      url: `/data-sources/${name}/status`,
+      url: `/data-sources/${filename}/status`,
     })
   },
 }
