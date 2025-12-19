@@ -32,16 +32,14 @@ def get_config(
     return provider.get_config()
 
 
-def get_data_source_service(
-    config: ConfigLike = Depends(get_config),
-) -> Generator[DataSourceService, None, None]:
+def get_data_source_service() -> Generator[DataSourceService, None, None]:
     """
     Get DataSourceService instance.
 
-    Creates service with current configuration.
+    Creates service for managing global data source files.
     Used as FastAPI dependency for data source endpoints.
     """
-    service = DataSourceService(config)
+    service = DataSourceService()
     try:
         yield service
     finally:
