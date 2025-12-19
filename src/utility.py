@@ -271,15 +271,18 @@ def _ensure_key_property(cls):
     return cls
 
 
-def replace_env_vars(data: dict[str, Any] | list[Any] | str) -> dict[str, Any] | list[Any] | str:
-    """Replaces recursively values in `data` that matches `${ENV_VAR}` with os.getenv("ENV_VAR", "")"""
+R = TypeVar("R", dict[str, Any], list[Any], str)
+
+
+def replace_env_vars(data: R) -> R:
+    """Replaces recursively values in `data` that match `${ENV_VAR}` with os.getenv("ENV_VAR", "")"""
     if isinstance(data, dict):
-        return {k: replace_env_vars(v) for k, v in data.items()}
+        return {k: replace_env_vars(v) for k, v in data.items()}  # type: ignore[return-value]
     if isinstance(data, list):
-        return [replace_env_vars(i) for i in data]
+        return [replace_env_vars(i) for i in data]  # type: ignore[return-value]
     if isinstance(data, str) and data.startswith("${") and data.endswith("}"):
         env_var: str = data[2:-1]
-        return os.getenv(env_var, "")
+        return os.getenv(env_var, "")  # type: ignore[return-value]
     return data
 
 

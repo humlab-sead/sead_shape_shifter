@@ -3,13 +3,12 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 
 from src.extract import add_surrogate_id
+from src.loaders.base_loader import ConnectTestResult
 
 from .base_loader import DataLoader, DataLoaders
 
 if TYPE_CHECKING:
     from src.config_model import TableConfig
-
-    from .base_loader import DataLoaderRegistry
 
 
 @DataLoaders.register(key=["fixed", "data"])
@@ -51,6 +50,9 @@ class FixedLoader(DataLoader):
                 data = add_surrogate_id(data, table_cfg.surrogate_id)
 
         return data
+
+    async def test_connection(self) -> ConnectTestResult:
+        return ConnectTestResult.create_empty(success=True)
 
 
 @DataLoaders.register(key="fixed2")
@@ -126,3 +128,6 @@ class FixedLoader2(DataLoader):
             data = add_surrogate_id(data, table_cfg.surrogate_id)
 
         return data
+
+    async def test_connection(self) -> ConnectTestResult:
+        return ConnectTestResult.create_empty(success=True)

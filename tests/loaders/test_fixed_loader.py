@@ -3,8 +3,41 @@
 import pandas as pd
 import pytest
 
-from src.config_model import TableConfig
+from src.config_model import DataSourceConfig, TableConfig
 from src.loaders.fixed_loader import FixedLoader
+
+
+class TestFixedLoaderConnection:
+    """Tests for FixedLoader.test_connection method."""
+
+    @pytest.mark.asyncio
+    async def test_connection_always_succeeds(self):
+        """Test that test_connection always succeeds for fixed loader."""
+        config = DataSourceConfig(
+            name="test_fixed",
+            cfg={
+                "driver": "fixed",
+                "options": {},
+            },
+        )
+
+        loader = FixedLoader(data_source=config)
+        result = await loader.test_connection()
+
+        assert result.success
+        assert result.message == "No test performed"
+        assert result.connection_time_ms >= 0
+        assert result.metadata == {}
+
+    @pytest.mark.asyncio
+    async def test_connection_with_none_datasource(self):
+        """Test that test_connection works even with None data source."""
+        loader = FixedLoader(data_source=None)
+        result = await loader.test_connection()
+
+        assert result.success
+        assert result.message == "No test performed"
+        assert result.connection_time_ms >= 0
 
 
 class TestCreateFixedTable:

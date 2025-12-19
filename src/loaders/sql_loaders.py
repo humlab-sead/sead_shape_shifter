@@ -1,5 +1,6 @@
 import abc
 import os
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Generator, Optional
@@ -14,7 +15,7 @@ from src.extract import add_surrogate_id
 from src.utility import create_db_uri as create_pg_uri
 from src.utility import dotget
 
-from .base_loader import DataLoader, DataLoaders
+from .base_loader import ConnectTestResult, DataLoader, DataLoaders
 
 if TYPE_CHECKING:
     from src.config_model import DataSourceConfig, TableConfig
@@ -134,6 +135,76 @@ class SqlLoader(DataLoader):
         except Exception as e:  # pylint: disable=broad-except
             logger.warning(f"Could not get row count for {table_name}: {e}")
         return None
+
+    async def test_connection(self) -> ConnectTestResult:
+        """Test database connection by attempting to load a simple query.
+
+        Args:
+            config: Database data source configuration
+
+        Returns:
+            Test result
+        """
+        from src.config_model import TableConfig  # Avoid circular import;  pylint: disable=import-outside-toplevel
+
+        start_time: float = time.time()
+        result: ConnectTestResult = ConnectTestResult.create_empty()
+        try:
+            tables: dict[str, CoreSchema.TableMetadata] = await self.get_tables()
+
+            # If no tables found, still return success
+            if not tables:
+                elapsed_ms = int((time.time() - start_time) * 1000)
+                return ConnectTestResult(
+                    success=True,
+                    message="Connected successfully (no tables found)",
+                    connection_time_ms=elapsed_ms,
+                    metadata={"table_count": 0},
+                )
+
+            first_table: str = next(iter(tables.keys()))
+
+            # FIXME: We might need loader specific test queries here
+
+            # We need to handle different SQL dialects for limiting rows
+            test_query: str = f"SELECT TOP 1 * FROM [{first_table}]"
+            #     test_query = self._get_test_query(core_ds_cfg.driver)
+
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            result.success = True
+            result.connection_time_ms = elapsed_ms
+            result.message = f"Connected successfully (found {len(tables)} tables"
+
+            # Create mock table config with simple test query
+            test_table_cfg: TableConfig = TableConfig(
+                cfg={
+                    "test": {
+                        "surrogate_id": "test_id",
+                        "type": "sql",
+                        "keys": [],
+                        "columns": [],
+                        "source": None,
+                        "query": test_query,
+                        "data_source": self.data_source.name if self.data_source else None,
+                    }
+                },  # Simple test query
+                entity_name="test",
+            )
+
+            df: pd.DataFrame = await self.load(entity_name="test", table_cfg=test_table_cfg)
+
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            result.metadata.update({"table_count": len(tables)})
+            result.message += f", returned {len(df)} rows)"
+
+        except Exception as e:  # pylint: disable=broad-except
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            result.success = False
+            result.message = f"Connection failed: {str(e)}"
+            result.connection_time_ms = elapsed_ms
+            result.metadata = {}
+
+        return result
 
 
 @DataLoaders.register(key="sqlite")
@@ -555,3 +626,7 @@ class UCanAccessSqlLoader(SqlLoader):
             foreign_keys=[],
             indexes=[],
         )
+
+    def get_test_query(self, limit: int) -> str:
+        """Get a test query for the data source, if applicable."""
+        return f"SELECT TOP {limit} * FROM table_name;"

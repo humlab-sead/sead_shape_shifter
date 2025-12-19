@@ -153,7 +153,7 @@ class ConvertCRS(Transformer):
 
         df: pd.DataFrame = data.copy()
         lon_source_column, lat_source_column = columns
-        resolved_src_crs: pd.Series[str] | str | None= (
+        resolved_src_crs: pd.Series[str] | str | None = (
             df[src_crs_label_column] if src_crs_label_column and src_crs_label_column in df.columns else src_crs
         )
         assert resolved_src_crs is not None, "Source CRS could not be resolved"

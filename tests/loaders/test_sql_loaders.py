@@ -499,3 +499,177 @@ class TestCoreSchemaModels:
         assert fk.column == "user_id"
         assert fk.referenced_table == "users"
         assert fk.referenced_column == "id"
+
+
+class TestSqlLoaderConnectionTest:
+    """Tests for SQL loader test_connection method."""
+
+    @pytest.mark.asyncio
+    async def test_sqlite_connection_success(self):
+        """Should successfully test SQLite connection."""
+        config = DataSourceConfig(
+            name="test_sqlite",
+            cfg={
+                "driver": "sqlite",
+                "options": {
+                    "database": ":memory:",
+                },
+            },
+        )
+
+        loader = SqliteLoader(data_source=config)
+
+        # Mock get_tables to return some tables
+        tables_data = {"users": CoreSchema.TableMetadata(name="users", schema=None, row_count=None, comment=None)}
+
+        with patch.object(loader, "get_tables", new_callable=AsyncMock) as mock_get_tables:
+            with patch.object(loader, "load", new_callable=AsyncMock) as mock_load:
+                mock_get_tables.return_value = tables_data
+                mock_load.return_value = pd.DataFrame({"count": [1]})
+
+                result = await loader.test_connection()
+
+                assert result.success
+                assert "successful" in result.message.lower()
+                assert result.connection_time_ms >= 0
+                assert result.metadata["table_count"] == 1
+
+                # Verify get_tables was called
+                mock_get_tables.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_postgres_connection_success(self):
+        """Should successfully test PostgreSQL connection."""
+        config = DataSourceConfig(
+            name="test_postgres",
+            cfg={
+                "driver": "postgres",
+                "options": {
+                    "host": "localhost",
+                    "port": 5432,
+                    "database": "testdb",
+                    "username": "testuser",
+                },
+            },
+        )
+
+        loader = PostgresSqlLoader(data_source=config)
+
+        tables_data = {
+            "users": CoreSchema.TableMetadata(name="users", schema="public", row_count=None, comment=None),
+            "orders": CoreSchema.TableMetadata(name="orders", schema="public", row_count=None, comment=None),
+        }
+
+        with patch.object(loader, "get_tables", new_callable=AsyncMock) as mock_get_tables:
+            with patch.object(loader, "load", new_callable=AsyncMock) as mock_load:
+                mock_get_tables.return_value = tables_data
+                mock_load.return_value = pd.DataFrame({"result": [1]})
+
+                result = await loader.test_connection()
+
+                assert result.success
+                assert result.connection_time_ms >= 0
+                assert result.metadata["table_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_ucanaccess_connection_success(self):
+        """Should successfully test UCanAccess connection."""
+        config = DataSourceConfig(
+            name="test_access",
+            cfg={
+                "driver": "ucanaccess",
+                "options": {
+                    "database": "/path/to/database.accdb",
+                },
+            },
+        )
+
+        loader = UCanAccessSqlLoader(data_source=config)
+
+        tables_data = {
+            "Products": CoreSchema.TableMetadata(name="Products", schema=None, row_count=None, comment=None),
+        }
+
+        with patch.object(loader, "get_tables", new_callable=AsyncMock) as mock_get_tables:
+            with patch.object(loader, "load", new_callable=AsyncMock) as mock_load:
+                mock_get_tables.return_value = tables_data
+                mock_load.return_value = pd.DataFrame({"test": [1]})
+
+                result = await loader.test_connection()
+
+                assert result.success
+                assert result.metadata["table_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_sqlite_connection_failure_no_tables(self):
+        """Should handle connection failure when no tables found."""
+        config = DataSourceConfig(
+            name="test_sqlite",
+            cfg={
+                "driver": "sqlite",
+                "options": {
+                    "database": ":memory:",
+                },
+            },
+        )
+
+        loader = SqliteLoader(data_source=config)
+
+        with patch.object(loader, "get_tables", new_callable=AsyncMock) as mock_get_tables:
+            mock_get_tables.return_value = {}  # No tables
+
+            result = await loader.test_connection()
+
+            # Should still succeed even with no tables
+            assert result.success
+            assert result.metadata["table_count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_sqlite_connection_failure_exception(self):
+        """Should handle connection exception gracefully."""
+        config = DataSourceConfig(
+            name="test_sqlite",
+            cfg={
+                "driver": "sqlite",
+                "options": {
+                    "database": "/invalid/path/database.db",
+                },
+            },
+        )
+
+        loader = SqliteLoader(data_source=config)
+
+        with patch.object(loader, "get_tables", new_callable=AsyncMock) as mock_get_tables:
+            mock_get_tables.side_effect = Exception("Connection failed")
+
+            result = await loader.test_connection()
+
+            assert not result.success
+            assert "failed" in result.message.lower()
+            assert result.connection_time_ms >= 0
+
+    @pytest.mark.asyncio
+    async def test_postgres_connection_failure_exception(self):
+        """Should handle PostgreSQL connection exception."""
+        config = DataSourceConfig(
+            name="test_postgres",
+            cfg={
+                "driver": "postgres",
+                "options": {
+                    "host": "invalid-host",
+                    "port": 5432,
+                    "database": "testdb",
+                    "username": "testuser",
+                },
+            },
+        )
+
+        loader = PostgresSqlLoader(data_source=config)
+
+        with patch.object(loader, "get_tables", new_callable=AsyncMock) as mock_get_tables:
+            mock_get_tables.side_effect = Exception("Could not connect to database")
+
+            result = await loader.test_connection()
+
+            assert not result.success
+            assert "connect" in result.message.lower() or "failed" in result.message.lower()

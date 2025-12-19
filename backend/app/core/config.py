@@ -30,7 +30,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
     ]
-    
+
     # CORS regex patterns for wildcard domains
     ALLOWED_ORIGIN_REGEX: str = r"https://.*\.(preview\.app\.github\.dev|devtunnels\.ms)"
 

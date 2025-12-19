@@ -5,6 +5,9 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
+from src.loaders.base_loader import ConnectTestResult
+from src.utility import replace_env_vars
+
 
 class DataSourceType(str, Enum):
     """Supported data source types."""
@@ -95,20 +98,6 @@ class DataSourceConfig(BaseModel):
         """Get file path, checking both 'filename' and 'file_path' fields."""
         return self.filename or self.file_path
 
-    def is_database_source(self) -> bool:
-        """Check if this is a database connection (vs file-based)."""
-        return self.driver in (
-            DataSourceType.POSTGRESQL,
-            DataSourceType.POSTGRES,
-            DataSourceType.ACCESS,
-            DataSourceType.UCANACCESS,
-            DataSourceType.SQLITE,
-        )
-
-    def is_file_source(self) -> bool:
-        """Check if this is a file-based source."""
-        return self.driver == DataSourceType.CSV
-
     def get_loader_driver(self) -> str:
         """Get the driver name for the existing loader system."""
         mapping = {
@@ -120,6 +109,10 @@ class DataSourceConfig(BaseModel):
             DataSourceType.CSV: "csv",
         }
         return mapping[self.driver]
+
+    def resolve_config_env_vars(self) -> "DataSourceConfig":
+
+        return DataSourceConfig(**replace_env_vars(self.model_dump(exclude_none=True)))
 
 
 class DataSourceTestResult(BaseModel):
@@ -134,6 +127,24 @@ class DataSourceTestResult(BaseModel):
     def connection_time_seconds(self) -> float:
         """Get connection time in seconds."""
         return self.connection_time_ms / 1000.0
+
+    @staticmethod
+    def create_failure(message: str, connection_time_ms: int = 0) -> "DataSourceTestResult":
+        return DataSourceTestResult(
+            success=False,
+            message=message,
+            connection_time_ms=connection_time_ms,
+            metadata={},
+        )
+
+    @staticmethod
+    def from_core_result(core_result: ConnectTestResult) -> "DataSourceTestResult":
+        return DataSourceTestResult(
+            success=core_result.success,
+            message=core_result.message,
+            connection_time_ms=core_result.connection_time_ms,
+            metadata=core_result.metadata,
+        )
 
 
 class DataSourceStatus(BaseModel):

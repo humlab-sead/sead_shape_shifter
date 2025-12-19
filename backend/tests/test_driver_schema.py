@@ -5,6 +5,8 @@ from fastapi.testclient import TestClient
 
 from backend.app.main import app
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def client():
@@ -87,7 +89,7 @@ def test_all_drivers_have_required_metadata(client):
     assert response.status_code == 200
     data = response.json()
 
-    for driver_name, driver_schema in data.items():
+    for _, driver_schema in data.items():
         # Required fields in schema
         assert "driver" in driver_schema
         assert "display_name" in driver_schema

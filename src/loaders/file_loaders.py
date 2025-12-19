@@ -1,8 +1,10 @@
+import time
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from .base_loader import DataLoader, DataLoaders
+from .base_loader import ConnectTestResult, DataLoader, DataLoaders
 
 if TYPE_CHECKING:
     from src.config_model import DataSourceConfig, TableConfig
@@ -50,3 +52,49 @@ class CsvLoader(FileLoader):
             raise ValueError("Missing 'filename' in options for CSV loader") from exc
         df: pd.DataFrame = pd.read_csv(filename, **clean_opts)
         return df
+
+    async def test_connection(self) -> ConnectTestResult:
+        """Test file-based connection (CSV).
+
+        Args:
+            config: CSV data source configuration
+
+        Returns:
+            Test result
+        """
+        start_time: float = time.time()
+
+        assert self.data_source is not None
+
+        try:
+            file_path: str | None = self.data_source.options.get("filename") if self.data_source.options else None
+            if not file_path:
+                raise ValueError("CSV source requires 'filename' or 'file_path'")
+
+            path: Path = Path(file_path)
+            if not path.exists():
+                raise FileNotFoundError(f"File not found: {file_path}")
+
+            # Try to read first few rows
+            read_opts: dict[str, Any] = dict(self.data_source.options or {})
+            read_opts.pop("filename", None)  # Remove filename to avoid passing it twice
+            df: pd.DataFrame = pd.read_csv(file_path, nrows=5, **read_opts)
+
+            elapsed_ms: int = int((time.time() - start_time) * 1000)
+
+            metadata: dict[str, Any] = {
+                "file_size_bytes": path.stat().st_size,
+                "columns": list(df.columns),
+                "column_count": len(df.columns),
+            }
+
+            return ConnectTestResult(
+                success=True,
+                message=f"File accessible ({len(df.columns)} columns detected)",
+                connection_time_ms=elapsed_ms,
+                metadata=metadata,
+            )
+
+        except Exception as e:  # pylint: disable=broad-except
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            return ConnectTestResult(success=False, message=f"File access failed: {str(e)}", connection_time_ms=elapsed_ms, metadata={})
