@@ -15,8 +15,6 @@ from src.configuration.provider import ConfigStore
 
 # Load actual config
 config_file = project_root / "input" / "arbodat-database.yml"
-if not config_file.exists():
-    config_file = project_root / "input" / "arbodat.yml"
 
 print(f"Loading config from: {config_file}")
 print()

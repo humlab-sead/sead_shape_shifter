@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
-from loaders.base_loader import ConnectTestResult
+from src.loaders.base_loader import ConnectTestResult
 from src.utility import replace_env_vars
 
 

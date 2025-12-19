@@ -2,15 +2,13 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from loaders.base_loader import ConnectTestResult
 from src.extract import add_surrogate_id
+from src.loaders.base_loader import ConnectTestResult
 
 from .base_loader import DataLoader, DataLoaders
 
 if TYPE_CHECKING:
     from src.config_model import TableConfig
-
-    from .base_loader import DataLoaderRegistry
 
 
 @DataLoaders.register(key=["fixed", "data"])

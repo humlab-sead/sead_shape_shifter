@@ -12,6 +12,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
 from src.configuration.provider import ConfigStore
@@ -158,8 +159,6 @@ async def debug_mapper():
     logger.info("=" * 80)
     logger.info("Debugging DataSourceMapper")
     logger.info("=" * 80)
-
-    from backend.app.mappers.data_source_mapper import DataSourceMapper
 
     # Test PostgreSQL mapping
     logger.info("\n--- PostgreSQL Mapping ---")

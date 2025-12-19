@@ -7,6 +7,7 @@ Or debug specific test with breakpoint:
     pytest backend/tests/test_debug_connections.py::test_debug_postgresql_connection -v -s
 """
 
+import os
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -15,10 +16,9 @@ import pytest
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
-from loaders.driver_metadata import DriverSchema
-from src.loaders.driver_metadata import DriverSchemaRegistry
+from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
 
-# pylint: disable=redefined-outer-name, f-string-without-interpolation
+# pylint: disable=redefined-outer-name, f-string-without-interpolation, no-member
 
 
 @pytest.fixture
@@ -175,7 +175,7 @@ async def test_debug_existing_data_sources(mock_config):
                 print(f"  Metadata: {result.metadata}")
         except Exception as e:  # pylint: disable=broad-except
             print(f"  Exception: {e}")
-            import traceback
+            import traceback  # pylint: disable=import-outside-toplevel
 
             traceback.print_exc()
 
@@ -183,7 +183,6 @@ async def test_debug_existing_data_sources(mock_config):
 @pytest.mark.asyncio
 async def test_debug_postgresql_with_env_vars(mock_config):
     """Test PostgreSQL connection with environment variables (like sead-options.yml)."""
-    import os
 
     # Set up environment variables like in sead-options.yml
     os.environ["TEST_SEAD_HOST"] = "localhost"
