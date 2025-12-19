@@ -58,6 +58,9 @@
     "python.analysis.typeEvaluation.disableBytesTypePromotions": false,
     "remote.autoForwardPorts": true,
         "remote.portsAttributes": {
+            "22": { "onAutoForward": "ignore" },
+            "80": { "onAutoForward": "ignore" },
+            "443": { "onAutoForward": "ignore" },
             "8010": { "onAutoForward": "ignore" },
             "8011": { "onAutoForward": "ignore" },
             "8020": { "onAutoForward": "ignore" },
