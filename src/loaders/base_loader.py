@@ -1,5 +1,6 @@
 import abc
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
