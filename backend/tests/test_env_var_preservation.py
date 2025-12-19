@@ -74,7 +74,7 @@ def test_list_data_sources_with_include():
 
         # Create included data source file (like sead-options.yml)
         sead_options_path = tmpdir_path / "sead-options.yml"
-        with open(sead_options_path, "w") as f:
+        with open(sead_options_path, "w", encoding="utf-8") as f:
             yaml.dump(
                 {
                     "driver": "postgres",
@@ -90,7 +90,7 @@ def test_list_data_sources_with_include():
 
         # Create main config file with @include
         main_config_path = tmpdir_path / "main.yml"
-        with open(main_config_path, "w") as f:
+        with open(main_config_path, "w", encoding="utf-8") as f:
             f.write(
                 """options:
   data_sources:

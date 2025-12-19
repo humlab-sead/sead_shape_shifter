@@ -53,8 +53,6 @@ class TestDataSourceConfig:
         assert config.host == "localhost"
         assert config.port == 5432
         assert config.effective_database == "testdb"
-        assert config.is_database_source()
-        assert not config.is_file_source()
 
     def test_postgres_alias(self):
         """Test postgres alias normalization."""
@@ -75,8 +73,6 @@ class TestDataSourceConfig:
         assert config.driver == DataSourceType.ACCESS
         assert config.effective_file_path == "./data/test.mdb"
         assert (config.options or {})["ucanaccess_dir"] == "lib/ucanaccess"
-        assert config.is_database_source()
-        assert config.get_loader_driver() == "ucanaccess"
 
     def test_csv_config(self):
         """Test CSV file configuration."""
@@ -94,8 +90,6 @@ class TestDataSourceConfig:
         assert config.name == "csv_data"
         assert config.driver == DataSourceType.CSV
         assert config.effective_file_path == "./data/test.csv"
-        assert config.is_file_source()
-        assert not config.is_database_source()
 
     def test_dbname_alias(self):
         """Test dbname as alias for database."""

@@ -7,6 +7,7 @@ Or debug specific test with breakpoint:
     pytest backend/tests/test_debug_connections.py::test_debug_postgresql_connection -v -s
 """
 
+import os
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -15,8 +16,9 @@ import pytest
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
-from loaders.driver_metadata import DriverSchema
-from src.loaders.driver_metadata import DriverSchemaRegistry
+from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
+
+# pylint: disable=redefined-outer-name, f-string-without-interpolation, no-member
 
 
 @pytest.fixture
@@ -171,9 +173,9 @@ async def test_debug_existing_data_sources(mock_config):
 
             if result.metadata:
                 print(f"  Metadata: {result.metadata}")
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             print(f"  Exception: {e}")
-            import traceback
+            import traceback  # pylint: disable=import-outside-toplevel
 
             traceback.print_exc()
 
@@ -181,7 +183,6 @@ async def test_debug_existing_data_sources(mock_config):
 @pytest.mark.asyncio
 async def test_debug_postgresql_with_env_vars(mock_config):
     """Test PostgreSQL connection with environment variables (like sead-options.yml)."""
-    import os
 
     # Set up environment variables like in sead-options.yml
     os.environ["TEST_SEAD_HOST"] = "localhost"
@@ -208,10 +209,10 @@ async def test_debug_postgresql_with_env_vars(mock_config):
         )
         assert config.options is not None
         print("Original config (with env var references):")
-        print(f"  host: {config.options.get('host')}")
-        print(f"  port: {config.options.get('port')}")
-        print(f"  database: {config.options.get('database')}")
-        print(f"  username: {config.options.get('username')}")
+        print(f"  host: {config.options.get('host')}")  # type: ignore
+        print(f"  port: {config.options.get('port')}")  # type: ignore
+        print(f"  database: {config.options.get('database')}")  # type: ignore
+        print(f"  username: {config.options.get('username')}")  # type: ignore
         print()
 
         # Test connection - env vars should be resolved automatically
@@ -251,7 +252,7 @@ async def test_debug_mapper_validation():
         core = DataSourceMapper.to_core_config(pg_full)
         print(f"  ✓ Success - Driver: {core.data_source_cfg.get('driver')}")
         print(f"    Options: {core.data_source_cfg.get('options')}")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         print(f"  ✗ Failed: {e}")
 
     # Test 2: PostgreSQL with minimal fields (no port)
@@ -265,7 +266,7 @@ async def test_debug_mapper_validation():
         print(f"  ✓ Success - Driver: {core.data_source_cfg.get('driver')}")
         print(f"    Options: {core.data_source_cfg.get('options')}")
         print(f"    Port in options: {'port' in core.data_source_cfg.get('options', {})}")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         print(f"  ✗ Failed: {e}")
 
     # Test 3: Access with filename
@@ -282,7 +283,7 @@ async def test_debug_mapper_validation():
         core = DataSourceMapper.to_core_config(access)
         print(f"  ✓ Success - Driver: {core.data_source_cfg.get('driver')}")
         print(f"    Options: {core.data_source_cfg.get('options')}")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         print(f"  ✗ Failed: {e}")
 
     # Test 4: CSV with filename
@@ -293,5 +294,5 @@ async def test_debug_mapper_validation():
         core = DataSourceMapper.to_core_config(csv)
         print(f"  ✓ Success - Driver: {core.data_source_cfg.get('driver')}")
         print(f"    Options: {core.data_source_cfg.get('options')}")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         print(f"  ✗ Failed: {e}")
