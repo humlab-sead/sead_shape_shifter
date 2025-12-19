@@ -344,13 +344,14 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
             EntityAlreadyExistsError: If entity already exists
         """
-        config = self.load_configuration(config_name)
+        config: Configuration = self.load_configuration(config_name)
 
         if entity_name in config.entities:
             raise EntityAlreadyExistsError(f"Entity '{entity_name}' already exists")
 
-        config.entities[entity_name] = entity_data
-        self.save_configuration(config)
+        # Use the model's add_entity method to ensure proper handling
+        config.add_entity(entity_name, entity_data)
+        saved_config: Configuration = self.save_configuration(config)
         logger.info(f"Added entity '{entity_name}' to configuration '{config_name}'")
 
     def update_entity_by_name(self, config_name: str, entity_name: str, entity_data: dict[str, Any]) -> None:
@@ -366,12 +367,13 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
             EntityNotFoundError: If entity not found
         """
-        config = self.load_configuration(config_name)
+        config: Configuration = self.load_configuration(config_name)
 
         if entity_name not in config.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
-        config.entities[entity_name] = entity_data
+        # Use the model's add_entity method to ensure proper handling
+        config.add_entity(entity_name, entity_data)
         self.save_configuration(config)
         logger.info(f"Updated entity '{entity_name}' in configuration '{config_name}'")
 
@@ -387,7 +389,7 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
             EntityNotFoundError: If entity not found
         """
-        config = self.load_configuration(config_name)
+        config: Configuration = self.load_configuration(config_name)
 
         if entity_name not in config.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
@@ -417,6 +419,81 @@ class ConfigurationService:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
         return config.entities[entity_name]
+
+    def get_active_configuration_name(self) -> str | None:
+        """
+        Get the currently active (loaded) configuration name.
+        
+        The active configuration is the one loaded into the backend's ConfigStore,
+        which determines which data sources are available.
+        
+        Returns:
+            Configuration name (without .yml extension) or None if no config is loaded
+        """
+        from src.configuration.provider import ConfigStore
+        
+        try:
+            store = ConfigStore.get_instance()
+            if not store.is_configured():
+                return None
+            
+            config = store.config()
+            if config is None:
+                return None
+            
+            # Get filename from config
+            filename = getattr(config, "filename", None) or getattr(config, "source", None)
+            if not filename:
+                return None
+            
+            # Extract name from filename (remove .yml extension and path)
+            from pathlib import Path
+            return Path(filename).stem
+            
+        except Exception as e:  # pylint: disable=broad-except
+            logger.warning(f"Failed to get active configuration name: {e}")
+            return None
+
+    def activate_configuration(self, name: str) -> Configuration:
+        """
+        Activate (load) a configuration into the backend context.
+        
+        This makes the configuration's data sources available and sets it
+        as the active configuration.
+        
+        Args:
+            name: Configuration name to activate
+            
+        Returns:
+            The activated configuration
+            
+        Raises:
+            ConfigurationNotFoundError: If configuration not found
+        """
+        from src.configuration.provider import ConfigStore
+        from src.configuration.config import ConfigFactory
+        
+        # Build file path
+        file_path = self.configurations_dir / f"{name}.yml"
+        
+        if not file_path.exists():
+            raise ConfigurationNotFoundError(f"Configuration not found: {name}")
+        
+        try:
+            # Load configuration using ConfigFactory
+            loaded_config = ConfigFactory().load(source=str(file_path), context="default")
+            
+            # Set as active in ConfigStore
+            ConfigStore.get_instance().set_config(cfg=loaded_config, context="default")
+            
+            logger.info(f"Activated configuration '{name}' from {file_path}")
+            
+            # Return as Configuration model for API response
+            return self.load_configuration(name)
+            
+        except Exception as e:
+            logger.error(f"Failed to activate configuration '{name}': {e}")
+            raise ConfigurationServiceError(f"Failed to activate configuration: {e}") from e
 
 
 # Singleton instance

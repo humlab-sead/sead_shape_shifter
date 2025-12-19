@@ -97,6 +97,10 @@
             <v-icon icon="mdi-cube-outline" class="mr-2" />
             Entities
           </v-tab>
+          <v-tab value="data-sources">
+            <v-icon icon="mdi-database-outline" class="mr-2" />
+            Data Sources
+          </v-tab>
           <v-tab value="validation">
             <v-icon icon="mdi-check-circle-outline" class="mr-2" />
             Validation
@@ -120,6 +124,14 @@
             <entity-list-card
               :config-name="configName"
               @entity-updated="handleEntityUpdated"
+            />
+          </v-window-item>
+
+          <!-- Data Sources Tab -->
+          <v-window-item value="data-sources">
+            <configuration-data-sources
+              :config-name="configName"
+              @updated="handleDataSourcesUpdated"
             />
           </v-window-item>
 
@@ -230,6 +242,7 @@ import { useDataValidation } from '@/composables/useDataValidation'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
 import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
+import ConfigurationDataSources from '@/components/ConfigurationDataSources.vue'
 
 const route = useRoute()
 const configName = computed(() => route.params.name as string)
@@ -445,6 +458,11 @@ async function handleRefresh() {
 
 function handleEntityUpdated() {
   markAsChanged()
+}
+
+async function handleDataSourcesUpdated() {
+  // Reload configuration after data source changes
+  await handleRefresh()
 }
 
 async function handleRestoreBackup(backupPath: string) {
