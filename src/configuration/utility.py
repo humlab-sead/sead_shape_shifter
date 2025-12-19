@@ -6,7 +6,6 @@ from src.utility import dotget
 
 REF_TAG = "@value:"
 
-
 def _parse_list_expression(expr: str, full_data: dict[str, Any]) -> list[Any] | str:
     """
     Parse and evaluate list expressions with "@value:" directives and list operations.
