@@ -6,8 +6,8 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 from loaders.base_loader import ConnectTestResult
-
 from src.utility import replace_env_vars
+
 
 class DataSourceType(str, Enum):
     """Supported data source types."""
@@ -111,8 +111,9 @@ class DataSourceConfig(BaseModel):
         return mapping[self.driver]
 
     def resolve_config_env_vars(self) -> "DataSourceConfig":
-        
+
         return DataSourceConfig(**replace_env_vars(self.model_dump(exclude_none=True)))
+
 
 class DataSourceTestResult(BaseModel):
     """Result of testing a data source connection."""

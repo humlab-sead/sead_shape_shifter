@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from loaders.base_loader import ConnectTestResult
 from src.extract import add_surrogate_id
 
 from .base_loader import DataLoader, DataLoaders
@@ -51,6 +52,9 @@ class FixedLoader(DataLoader):
                 data = add_surrogate_id(data, table_cfg.surrogate_id)
 
         return data
+
+    async def test_connection(self) -> ConnectTestResult:
+        return ConnectTestResult.create_empty(success=True)
 
 
 @DataLoaders.register(key="fixed2")

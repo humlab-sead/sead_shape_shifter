@@ -1,9 +1,10 @@
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-import time
+
 import pandas as pd
 
-from .base_loader import DataLoader, DataLoaders, ConnectTestResult
+from .base_loader import ConnectTestResult, DataLoader, DataLoaders
 
 if TYPE_CHECKING:
     from src.config_model import DataSourceConfig, TableConfig
@@ -52,7 +53,6 @@ class CsvLoader(FileLoader):
         df: pd.DataFrame = pd.read_csv(filename, **clean_opts)
         return df
 
-
     async def test_connection(self) -> ConnectTestResult:
         """Test file-based connection (CSV).
 
@@ -63,7 +63,7 @@ class CsvLoader(FileLoader):
             Test result
         """
         start_time: float = time.time()
-        
+
         assert self.data_source is not None
 
         try:
