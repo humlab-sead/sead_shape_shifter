@@ -25,7 +25,7 @@ class Configuration(BaseModel):
 
     def get_entity(self, name: str) -> dict[str, Any] | None:
         """Get entity by name."""
-        return self.entities.get(name)
+        return self.entities.get(name)  # pylint: disable=no-member
 
     def add_entity(self, name: str, entity_data: dict[str, Any]) -> None:
         """Add or update an entity."""
@@ -41,4 +41,4 @@ class Configuration(BaseModel):
     @property
     def entity_names(self) -> list[str]:
         """Get list of entity names."""
-        return list(self.entities.keys())
+        return list(self.entities.keys())  # pylint: disable=no-member

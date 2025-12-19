@@ -136,7 +136,6 @@ class PreviewService:
             # Create normalizer with the entity as default to process
 
             if isinstance(config, str):
-                # TODO: Load config by name
                 raise ValueError("Config must be TablesConfig instance, not str")
 
             # Determine the default source entity from the target entity config

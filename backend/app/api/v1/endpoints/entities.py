@@ -6,8 +6,10 @@ from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from backend.app.models.config import Configuration
 from backend.app.services.config_service import (
     ConfigurationNotFoundError,
+    ConfigurationService,
     EntityAlreadyExistsError,
     EntityNotFoundError,
     get_config_service,
@@ -15,6 +17,7 @@ from backend.app.services.config_service import (
 
 router = APIRouter()
 
+# pylint: disable=no-member
 
 # Request/Response Models
 class EntityCreateRequest(BaseModel):
@@ -49,9 +52,9 @@ async def list_entities(config_name: str) -> list[EntityResponse]:
     Returns:
         List of entities with their data
     """
-    config_service = get_config_service()
+    config_service: ConfigurationService = get_config_service()
     try:
-        config = config_service.load_configuration(config_name)
+        config: Configuration = config_service.load_configuration(config_name)
         entities = [EntityResponse(name=name, entity_data=data) for name, data in config.entities.items()]
         logger.debug(f"Listed {len(entities)} entities in '{config_name}'")
         return entities
@@ -77,9 +80,9 @@ async def get_entity(config_name: str, entity_name: str) -> EntityResponse:
     Returns:
         Entity data
     """
-    config_service = get_config_service()
+    config_service: ConfigurationService = get_config_service()
     try:
-        entity_data = config_service.get_entity_by_name(config_name, entity_name)
+        entity_data: dict[str, Any] = config_service.get_entity_by_name(config_name, entity_name)
         logger.info(f"Retrieved entity '{entity_name}' from '{config_name}'")
         return EntityResponse(name=entity_name, entity_data=entity_data)
     except (ConfigurationNotFoundError, EntityNotFoundError) as e:
@@ -108,7 +111,7 @@ async def create_entity(config_name: str, request: EntityCreateRequest) -> Entit
     Returns:
         Created entity data
     """
-    config_service = get_config_service()
+    config_service: ConfigurationService = get_config_service()
     try:
         config_service.add_entity_by_name(config_name, request.name, request.entity_data)
         logger.info(f"Added entity '{request.name}' to '{config_name}'")
@@ -138,7 +141,7 @@ async def update_entity(config_name: str, entity_name: str, request: EntityUpdat
     Returns:
         Updated entity data
     """
-    config_service = get_config_service()
+    config_service: ConfigurationService = get_config_service()
     try:
         config_service.update_entity_by_name(config_name, entity_name, request.entity_data)
         logger.info(f"Updated entity '{entity_name}' in '{config_name}'")
@@ -165,7 +168,7 @@ async def delete_entity(config_name: str, entity_name: str) -> None:
         config_name: Configuration name
         entity_name: Entity name
     """
-    config_service = get_config_service()
+    config_service: ConfigurationService = get_config_service()
     try:
         config_service.delete_entity_by_name(config_name, entity_name)
         logger.info(f"Deleted entity '{entity_name}' from '{config_name}'")

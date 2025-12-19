@@ -8,7 +8,7 @@ import pytest
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
 
-# pylint: disable=redefined-outer-name, unused-argument, import-outside-toplevel
+# pylint: disable=redefined-outer-name, unused-argument, import-outside-toplevel, no-member
 
 
 @pytest.fixture
