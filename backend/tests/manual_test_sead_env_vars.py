@@ -1,20 +1,17 @@
 """Manual test to verify sead data source shows env vars in UI."""
 
-import sys
 from pathlib import Path
 
-# pylint: disable=import-outside-toplevel, invalid-name
 
-# Add project root to path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / "backend"))
-
+from app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
 from src.configuration.provider import ConfigStore
 
-# Load actual config
-config_file = project_root / "input" / "arbodat-database.yml"
+# pylint: disable=redefined-outer-name, unused-argument, import-outside-toplevel
+
+project_root: Path = Path(__file__).parent.parent.parent
+
+config_file: Path = project_root / "input" / "arbodat-database.yml"
 
 print(f"Loading config from: {config_file}")
 print()
@@ -34,7 +31,7 @@ service = DataSourceService(config)
 print("=" * 80)
 print("DATA SOURCES")
 print("=" * 80)
-data_sources = service.list_data_sources()
+data_sources: list[DataSourceConfig] = service.list_data_sources()
 
 for ds in data_sources:
     print(f"\n{ds.name} ({ds.driver})")

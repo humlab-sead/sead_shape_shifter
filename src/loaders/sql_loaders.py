@@ -151,6 +151,17 @@ class SqlLoader(DataLoader):
         result: ConnectTestResult = ConnectTestResult.create_empty()
         try:
             tables: dict[str, CoreSchema.TableMetadata] = await self.get_tables()
+
+            # If no tables found, still return success
+            if not tables:
+                elapsed_ms = int((time.time() - start_time) * 1000)
+                return ConnectTestResult(
+                    success=True,
+                    message="Connected successfully (no tables found)",
+                    connection_time_ms=elapsed_ms,
+                    metadata={"table_count": 0},
+                )
+
             first_table: str = next(iter(tables.keys()))
 
             # FIXME: We might need loader specific test queries here
@@ -615,3 +626,7 @@ class UCanAccessSqlLoader(SqlLoader):
             foreign_keys=[],
             indexes=[],
         )
+
+    def get_test_query(self, limit: int) -> str:
+        """Get a test query for the data source, if applicable."""
+        return f"SELECT TOP {limit} * FROM table_name;"

@@ -128,3 +128,6 @@ class FixedLoader2(DataLoader):
             data = add_surrogate_id(data, table_cfg.surrogate_id)
 
         return data
+
+    async def test_connection(self) -> ConnectTestResult:
+        return ConnectTestResult.create_empty(success=True)

@@ -5,10 +5,10 @@ from unittest.mock import Mock
 
 import pytest
 
-from backend.app.models.data_source import DataSourceConfig, DataSourceTestResult
+from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, unused-argument, import-outside-toplevel
 
 
 @pytest.fixture
@@ -47,6 +47,8 @@ class TestEnvironmentVariableResolution:
             }
 
             resolved = replace_env_vars(config_dict)
+
+            assert resolved is not None
 
             assert resolved["host"] == "testhost.com"
             assert resolved["port"] == "5432"
@@ -96,6 +98,9 @@ class TestEnvironmentVariableResolution:
 
             resolved = config.resolve_config_env_vars()
 
+            assert resolved is not None
+            assert resolved.options is not None
+
             assert resolved.options["host"] == "postgres.example.com"
             assert resolved.options["port"] == "5433"
             assert resolved.options["database"] == "mydb"
@@ -121,11 +126,11 @@ class TestEnvironmentVariableResolution:
                 **{},
             )
 
-            resolved = config.resolve_config_env_vars()
+            resolved: DataSourceConfig = config.resolve_config_env_vars()
 
             assert resolved.filename == "/path/to/file.mdb"
-            assert resolved.options["ucanaccess_dir"] == "/path/to/ucanaccess"
-            assert resolved.options["other_param"] == "literal"
+            assert resolved.options["ucanaccess_dir"] == "/path/to/ucanaccess"  # type: ignore
+            assert resolved.options["other_param"] == "literal"  # type: ignore
         finally:
             # Clean up
             del os.environ["TEST_FILENAME"]
@@ -147,6 +152,8 @@ class TestEnvironmentVariableResolution:
             )
 
             resolved = config.resolve_config_env_vars()
+
+            assert resolved is not None
 
             assert resolved.host == "localhost"
             assert resolved.password is not None
@@ -211,7 +218,7 @@ class TestEnvironmentVariableResolution:
             from src.loaders.base_loader import DataLoaders
 
             original_get = DataLoaders.get
-            DataLoaders.get = lambda driver: mock_loader
+            DataLoaders.get = lambda driver: mock_loader  # type: ignore
 
             try:
                 result = await service.test_connection(config)

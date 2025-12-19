@@ -94,14 +94,13 @@ Improve validations for configuration files to catch the most common errors and 
 
 ### Tech debts:
 
- - [] FIXME: [Backend] Move database vendor specific logic to Loaders
- - [] FIXME: [Backend] Test for MS Access returns 0 tables
- - [] FIXME: [Backend] Postgres Edit doesn't display values fomr data source configuration
- - [] INSTALL: Codex AGENTS.md
+ - [x] FIXME: [Backend] Move database vendor specific logic to Loaders
+ - [x] FIXME: [Backend] Test for MS Access returns 0 tables
+ - [x] FIXME: [Backend] Postgres Edit doesn't display values fomr data source configuration
+ - [x] INSTALL: Codex AGENTS.md
 
 
 ### New features
 
- - [] TODO: #18 [Frontend/Backend] Add ability to edit entity configuration in a dual-mode editor (Form/YAML). 
+ - [x] TODO: #18 [Frontend/Backend] Add ability to edit entity configuration in a dual-mode editor (Form/YAML). 
  - [] TODO: #21 Add UX for mapping/reconciling remote/target entities to local entities.
- - 
