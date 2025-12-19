@@ -21,16 +21,16 @@ class ValidationService:
         # Import here to avoid circular dependencies and ensure src is in path
 
         # Get the project root (backend parent is project root)
-        project_root = Path(__file__).parent.parent.parent.parent
+        # project_root = Path(__file__).parent.parent.parent.parent
 
-        # Add both project root and src to path (for src.* imports within specifications.py)
-        project_root_str = str(project_root)
-        src_path = str(project_root / "src")
+        # # Add both project root and src to path (for src.* imports within specifications.py)
+        # project_root_str = str(project_root)
+        # src_path = str(project_root / "src")
 
-        if project_root_str not in sys.path:
-            sys.path.insert(0, project_root_str)
-        if src_path not in sys.path:
-            sys.path.insert(0, src_path)
+        # if project_root_str not in sys.path:
+        #     sys.path.insert(0, project_root_str)
+        # if src_path not in sys.path:
+        #     sys.path.insert(0, src_path)
 
         # Import after path is set
 
