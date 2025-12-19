@@ -94,7 +94,7 @@ Improve validations for configuration files to catch the most common errors and 
 
 ### Tech debts:
 
- - [x] FIXME: [Backend] Move database vendor specific logic to Loaders
+ - [x] FIXME: #26 [Backend] Move database vendor specific logic to Loaders
  - [x] FIXME: [Backend] Test for MS Access returns 0 tables
  - [x] FIXME: [Backend] Postgres Edit doesn't display values fomr data source configuration
  - [x] INSTALL: Codex AGENTS.md
