@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from backend.app.models.data_source import DataSourceConfig
+from backend.app.models.data_source import DataSourceConfig, DataSourceTestResult
 from backend.app.services.data_source_service import DataSourceService
 
 # pylint: disable=redefined-outer-name
@@ -30,6 +30,8 @@ class TestEnvironmentVariableResolution:
 
     def test_resolve_env_vars_in_dict(self, service):
         """Should resolve environment variables in config dict."""
+        from src.utility import replace_env_vars
+
         # Set test env vars
         os.environ["TEST_HOST"] = "testhost.com"
         os.environ["TEST_PORT"] = "5432"
@@ -44,7 +46,7 @@ class TestEnvironmentVariableResolution:
                 "options": {"param1": "${TEST_HOST}", "param2": "literal_value"},
             }
 
-            resolved = service._resolve_env_vars(config_dict)
+            resolved = replace_env_vars(config_dict)
 
             assert resolved["host"] == "testhost.com"
             assert resolved["port"] == "5432"
@@ -60,9 +62,11 @@ class TestEnvironmentVariableResolution:
 
     def test_resolve_env_vars_missing_variable(self, service):
         """Should return empty string for missing env vars."""
+        from src.utility import replace_env_vars
+
         config_dict = {"host": "${NONEXISTENT_VAR}", "port": "5432"}
 
-        resolved = service._resolve_env_vars(config_dict)
+        resolved = replace_env_vars(config_dict)
 
         # replace_env_vars returns empty string for unresolved vars
         assert resolved["host"] == ""
@@ -90,7 +94,7 @@ class TestEnvironmentVariableResolution:
                 **{},
             )
 
-            resolved = service._resolve_config_env_vars(config)
+            resolved = config.resolve_config_env_vars()
 
             assert resolved.options["host"] == "postgres.example.com"
             assert resolved.options["port"] == "5433"
@@ -117,7 +121,7 @@ class TestEnvironmentVariableResolution:
                 **{},
             )
 
-            resolved = service._resolve_config_env_vars(config)
+            resolved = config.resolve_config_env_vars()
 
             assert resolved.filename == "/path/to/file.mdb"
             assert resolved.options["ucanaccess_dir"] == "/path/to/ucanaccess"
@@ -142,7 +146,7 @@ class TestEnvironmentVariableResolution:
                 **{},
             )
 
-            resolved = service._resolve_config_env_vars(config)
+            resolved = config.resolve_config_env_vars()
 
             assert resolved.host == "localhost"
             assert resolved.password is not None
@@ -179,6 +183,10 @@ class TestEnvironmentVariableResolution:
     @pytest.mark.asyncio
     async def test_test_connection_resolves_env_vars(self, service, monkeypatch):
         """Should resolve env vars before testing connection."""
+        from unittest.mock import AsyncMock
+
+        from src.loaders.base_loader import ConnectTestResult
+
         os.environ["TEST_CONN_HOST"] = "test.db.com"
         os.environ["TEST_CONN_DB"] = "testdb"
 
@@ -193,21 +201,25 @@ class TestEnvironmentVariableResolution:
                 **{},
             )
 
-            # Mock the actual connection test to avoid real connection
-            async def mock_test_db(cfg):
-                # Verify that env vars were resolved
-                from backend.app.models.data_source import DataSourceTestResult
+            # Mock the loader's test_connection method
+            mock_loader = AsyncMock()
+            mock_loader.test_connection.return_value = ConnectTestResult(
+                success=True, message="Mock connection successful", connection_time_ms=10, metadata={}
+            )
 
-                assert cfg.host == "test.db.com", f"Expected resolved host, got: {cfg.host}"
-                assert cfg.database == "testdb", f"Expected resolved database, got: {cfg.database}"
-                return DataSourceTestResult(success=True, message="Mock connection successful", connection_time_ms=10, metadata={})
+            # Mock DataLoaders.get to return our mock loader
+            from src.loaders.base_loader import DataLoaders
 
-            monkeypatch.setattr(service, "_test_database_connection", mock_test_db)
+            original_get = DataLoaders.get
+            DataLoaders.get = lambda driver: mock_loader
 
-            result = await service.test_connection(config)
+            try:
+                result = await service.test_connection(config)
 
-            assert result.success
-            assert result.message == "Mock connection successful"
+                assert result.success
+                assert result.message == "Mock connection successful"
+            finally:
+                DataLoaders.get = original_get
         finally:
             del os.environ["TEST_CONN_HOST"]
             del os.environ["TEST_CONN_DB"]

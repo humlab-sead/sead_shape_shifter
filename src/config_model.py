@@ -5,7 +5,7 @@ import pandas as pd
 from loguru import logger
 
 from src.configuration.resolve import ConfigValue
-from src.loaders import DataLoader, DataLoaders
+from src.loaders.base_loader import DataLoader, DataLoaders
 from src.utility import unique
 
 

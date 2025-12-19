@@ -1,7 +1,5 @@
 """Validation service for configuration validation."""
 
-import sys
-from pathlib import Path
 from typing import Any, Literal
 
 from loguru import logger
