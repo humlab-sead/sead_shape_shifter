@@ -21,7 +21,6 @@
 - Methods:
   - `effective_database()` - handles both 'database' and 'dbname' fields
   - `effective_file_path()` - handles both 'filename' and 'file_path' fields
-  - `is_database_source()` / `is_file_source()` - type checking
   - `get_loader_driver()` - maps to existing loader system drivers
 
 **Additional Models**:
