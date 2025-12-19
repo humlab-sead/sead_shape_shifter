@@ -6,26 +6,25 @@ Usage:
     uv run python -m backend.tests.debug_data_source_connections
 """
 
-import asyncio
 import os
-from re import S
-import sys
 from pathlib import Path
 
-from loguru import logger
 import dotenv
 import pytest
+from loguru import logger
+
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
 from src.configuration.config import ConfigFactory
 from src.configuration.interface import ConfigLike
-from tests.decorators import with_test_config
 from src.configuration.provider import ConfigStore
 from src.loaders.driver_metadata import DriverSchemaRegistry
 from src.utility import find_parent_with
+from tests.decorators import with_test_config
 
 project_root: Path = find_parent_with(Path(__file__), "pyproject.toml")
+
 
 class TestPostgresConnection:
     """Tests for multiple append configurations."""
@@ -216,47 +215,47 @@ async def debug_mapper():
         logger.exception(e)
 
 
-async def main():
-    """Run all debug tests."""
-    logger.info("Starting Data Source Connection Debug Tests")
-    logger.info(f"Project Root: {project_root}")
-    logger.info("")
+# async def main():
+#     """Run all debug tests."""
+#     logger.info("Starting Data Source Connection Debug Tests")
+#     logger.info(f"Project Root: {project_root}")
+#     logger.info("")
 
-    # Debug mapper first
-    await debug_mapper()
+#     # Debug mapper first
+#     await debug_mapper()
 
-    # Test existing data sources
-    logger.info("\n")
-    existing_results = await test_existing_data_sources()
+#     # Test existing data sources
+#     logger.info("\n")
+#     existing_results = await test_existing_data_sources()
 
-    # Test PostgreSQL
-    logger.info("\n")
-    pg_success = await test_postgresql_connection()
+#     # Test PostgreSQL
+#     logger.info("\n")
+#     pg_success = await test_postgresql_connection()
 
-    # Test Access
-    logger.info("\n")
-    access_success = await test_access_connection()
+#     # Test Access
+#     logger.info("\n")
+#     access_success = await test_access_connection()
 
-    # Summary
-    logger.info("\n" + "=" * 80)
-    logger.info("SUMMARY")
-    logger.info("=" * 80)
+#     # Summary
+#     logger.info("\n" + "=" * 80)
+#     logger.info("SUMMARY")
+#     logger.info("=" * 80)
 
-    if existing_results:
-        logger.info("Existing Data Sources:")
-        for name, success in existing_results.items():
-            status = "✓ PASS" if success else "✗ FAIL"
-            logger.info(f"  {status} - {name}")
+#     if existing_results:
+#         logger.info("Existing Data Sources:")
+#         for name, success in existing_results.items():
+#             status = "✓ PASS" if success else "✗ FAIL"
+#             logger.info(f"  {status} - {name}")
 
-    logger.info(f"\nDirect PostgreSQL Test: {'✓ PASS' if pg_success else '✗ FAIL'}")
-    logger.info(f"Direct Access Test: {'✓ PASS' if access_success else '✗ FAIL'}")
+#     logger.info(f"\nDirect PostgreSQL Test: {'✓ PASS' if pg_success else '✗ FAIL'}")
+#     logger.info(f"Direct Access Test: {'✓ PASS' if access_success else '✗ FAIL'}")
 
-    # Return exit code
-    all_success = (all(existing_results.values()) if existing_results else True) and pg_success and access_success
+#     # Return exit code
+#     all_success = (all(existing_results.values()) if existing_results else True) and pg_success and access_success
 
-    return 0 if all_success else 1
+#     return 0 if all_success else 1
 
 
-if __name__ == "__main__":
-    exit_code = asyncio.run(main())
-    sys.exit(exit_code)
+# if __name__ == "__main__":
+#     exit_code = asyncio.run(main())
+#     sys.exit(exit_code)

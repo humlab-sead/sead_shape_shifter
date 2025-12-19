@@ -2,12 +2,11 @@
 
 from pathlib import Path
 
-
-from app.models.data_source import DataSourceConfig
+from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
 from src.configuration.provider import ConfigStore
 
-# pylint: disable=redefined-outer-name, unused-argument, import-outside-toplevel
+# pylint: disable=redefined-outer-name, unused-argument, import-outside-toplevel, invalid-name
 
 project_root: Path = Path(__file__).parent.parent.parent
 

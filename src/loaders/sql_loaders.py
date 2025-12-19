@@ -122,6 +122,10 @@ class SqlLoader(DataLoader):
     async def get_table_schema(self, table_name: str, **kwargs) -> CoreSchema.TableSchema:
         pass
 
+    def get_test_query(self, table_name: str, limit: int) -> str:
+        """Get a test query for the data source, if applicable."""
+        return f"select * from {table_name} limit {limit} ;"
+
     @abc.abstractmethod
     async def execute_scalar_sql(self, sql: str) -> Any:
         """Read SQL query that returns a single scalar value."""
@@ -152,7 +156,6 @@ class SqlLoader(DataLoader):
         try:
             tables: dict[str, CoreSchema.TableMetadata] = await self.get_tables()
 
-            # If no tables found, still return success
             if not tables:
                 elapsed_ms = int((time.time() - start_time) * 1000)
                 return ConnectTestResult(
@@ -163,12 +166,7 @@ class SqlLoader(DataLoader):
                 )
 
             first_table: str = next(iter(tables.keys()))
-
-            # FIXME: We might need loader specific test queries here
-
-            # We need to handle different SQL dialects for limiting rows
-            test_query: str = f"SELECT TOP 1 * FROM [{first_table}]"
-            #     test_query = self._get_test_query(core_ds_cfg.driver)
+            test_query: str = self.get_test_query(table_name=first_table, limit=10)
 
             elapsed_ms = int((time.time() - start_time) * 1000)
             result.success = True
@@ -187,7 +185,7 @@ class SqlLoader(DataLoader):
                         "query": test_query,
                         "data_source": self.data_source.name if self.data_source else None,
                     }
-                },  # Simple test query
+                },
                 entity_name="test",
             )
 
@@ -627,6 +625,6 @@ class UCanAccessSqlLoader(SqlLoader):
             indexes=[],
         )
 
-    def get_test_query(self, limit: int) -> str:
+    def get_test_query(self, table_name: str, limit: int) -> str:
         """Get a test query for the data source, if applicable."""
-        return f"SELECT TOP {limit} * FROM table_name;"
+        return f"SELECT TOP {limit} * FROM {table_name};"
