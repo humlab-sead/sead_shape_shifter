@@ -36,7 +36,6 @@ class CSVDispatcher(Dispatcher):
 class ExcelDispatcher(Dispatcher):
     """Dispatcher for Excel data."""
 
-    # TODO: Add support for colors, formats, etc. using openpyxl
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
         with pd.ExcelWriter(target, engine="openpyxl") as writer:
             for entity_name, table in data.items():

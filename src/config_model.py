@@ -158,7 +158,6 @@ class ForeignKeyConfig:
         """Check if the foreign key linking has already been added to the table."""
         if remote_id in table.columns:
             return True
-        # FIXME: This smells like a fix for a bug elsewhere, why should we check extra columns here?
         if self.remote_extra_columns and all(col in table.columns for col in self.remote_extra_columns.values()):
             return True
         return False
