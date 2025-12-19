@@ -76,7 +76,8 @@ class CsvLoader(FileLoader):
                 raise FileNotFoundError(f"File not found: {file_path}")
 
             # Try to read first few rows
-            read_opts: dict[str, Any] = self.data_source.options or {}
+            read_opts: dict[str, Any] = dict(self.data_source.options or {})
+            read_opts.pop("filename", None)  # Remove filename to avoid passing it twice
             df: pd.DataFrame = pd.read_csv(file_path, nrows=5, **read_opts)
 
             elapsed_ms: int = int((time.time() - start_time) * 1000)
