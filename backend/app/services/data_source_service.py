@@ -158,6 +158,13 @@ class DataSourceService:
 
         data_sources_dict[config.name] = config_dict
         self.config.update({"options:data_sources": data_sources_dict})
+        
+        # Save configuration to disk with raw data sources (preserves env vars)
+        if hasattr(self.config, 'save'):
+            # Get raw data sources without env var resolution
+            raw_sources = self._get_raw_data_sources_from_yaml()
+            raw_sources[config.name] = config_dict
+            self.config.save(updates={"options:data_sources": raw_sources})
 
         logger.info(f"Created data source '{config.name}' (driver: {config.driver})")
         return config
@@ -190,6 +197,16 @@ class DataSourceService:
 
         data_sources_dict[config.name] = config_dict
         self.config.update({"options:data_sources": data_sources_dict})
+        
+        # Save configuration to disk with raw data sources (preserves env vars)
+        if hasattr(self.config, 'save'):
+            # Get raw data sources without env var resolution
+            raw_sources = self._get_raw_data_sources_from_yaml()
+            if name != config.name:
+                # Renamed - remove old entry
+                raw_sources.pop(name, None)
+            raw_sources[config.name] = config_dict
+            self.config.save(updates={"options:data_sources": raw_sources})
 
         logger.info(f"Updated data source '{name}' -> '{config.name}'")
         return config
@@ -216,6 +233,13 @@ class DataSourceService:
         data_sources_dict: dict[str, Any] = self.config.get("options:data_sources") or {}
         del data_sources_dict[name]
         self.config.update({"options:data_sources": data_sources_dict})
+        
+        # Save configuration to disk with raw data sources (preserves env vars)
+        if hasattr(self.config, 'save'):
+            # Get raw data sources without env var resolution
+            raw_sources = self._get_raw_data_sources_from_yaml()
+            raw_sources.pop(name, None)
+            self.config.save(updates={"options:data_sources": raw_sources})
 
         logger.info(f"Deleted data source '{name}'")
 
@@ -233,7 +257,8 @@ class DataSourceService:
         try:
             config = config.resolve_config_env_vars()
             core_ds_cfg: CoreDataSourceConfig = DataSourceMapper().to_core_config(config)
-            loader: DataLoader = DataLoaders.get(core_ds_cfg.driver)
+            loader_cls: type[DataLoader] = DataLoaders.get(core_ds_cfg.driver)
+            loader: DataLoader = loader_cls(core_ds_cfg)
             result: ConnectTestResult = await loader.test_connection()
             return DataSourceTestResult.from_core_result(result)
         except Exception as e:  # pylint: disable=broad-except

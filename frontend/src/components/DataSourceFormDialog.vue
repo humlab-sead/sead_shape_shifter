@@ -48,10 +48,10 @@
                 v-if="field.type === 'string' || field.type === 'file_path'"
                 v-model="form.options[field.name]"
                 :label="formatFieldLabel(field)"
-                :hint="field.description"
+                :hint="shouldShowHint(field) ? field.description : undefined"
                 :placeholder="field.placeholder"
                 :rules="field.required ? [rules.required] : []"
-                persistent-hint
+                :persistent-hint="shouldShowHint(field)"
                 variant="outlined"
                 class="mb-2"
               />
@@ -61,13 +61,13 @@
                 v-else-if="field.type === 'integer'"
                 v-model.number="form.options[field.name]"
                 :label="formatFieldLabel(field)"
-                :hint="field.description"
+                :hint="shouldShowHint(field) ? field.description : undefined"
                 :placeholder="field.placeholder"
                 :rules="field.required ? [rules.required, rules.integer] : [rules.integer]"
                 type="number"
                 :min="field.min_value"
                 :max="field.max_value"
-                persistent-hint
+                :persistent-hint="shouldShowHint(field)"
                 variant="outlined"
                 class="mb-2"
               />
@@ -90,8 +90,8 @@
                 v-else-if="field.type === 'boolean'"
                 v-model="form.options[field.name]"
                 :label="formatFieldLabel(field)"
-                :hint="field.description"
-                persistent-hint
+                :hint="shouldShowHint(field) ? field.description : undefined"
+                :persistent-hint="shouldShowHint(field)"
                 class="mb-2"
               />
             </template>
@@ -198,8 +198,14 @@ const rules = {
 
 // Methods
 function formatFieldLabel(field: FieldMetadata): string {
+  // Use description as user-friendly label, fall back to field name
   const label = field.description || field.name
   return field.required ? `${label} *` : label
+}
+
+function shouldShowHint(field: FieldMetadata): boolean {
+  // Don't show hint - description is already used as the label
+  return false
 }
 
 function handleDriverChange(newDriver: string) {
