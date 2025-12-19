@@ -54,6 +54,12 @@ class ConfigurationService:
         for yaml_file in self.configurations_dir.glob("*.yml"):
             try:
                 data = self.yaml_service.load(yaml_file)
+                
+                # Only include files that have 'entities' key (configuration files)
+                if "entities" not in data:
+                    logger.debug(f"Skipping {yaml_file.name} - missing 'entities' key")
+                    continue
+                
                 entity_count = len(data.get("entities", {}))
 
                 metadata = ConfigMetadata(
@@ -68,16 +74,7 @@ class ConfigurationService:
 
             except Exception as e:  # pylint: disable=broad-except
                 logger.warning(f"Failed to load configuration {yaml_file}: {e}")
-                # Include invalid configs with is_valid=False
-                metadata = ConfigMetadata(
-                    name=yaml_file.stem,
-                    file_path=str(yaml_file),
-                    entity_count=0,
-                    created_at=yaml_file.stat().st_ctime,
-                    modified_at=yaml_file.stat().st_mtime,
-                    is_valid=False,
-                )
-                configs.append(metadata)
+                # Skip invalid configs - don't include them in the list
 
         logger.debug(f"Found {len(configs)} configuration(s)")
         return configs
@@ -103,6 +100,12 @@ class ConfigurationService:
 
         try:
             data = self.yaml_service.load(file_path)
+            
+            # Validate that 'entities' key exists (required for configuration files)
+            if "entities" not in data:
+                raise InvalidConfigurationError(
+                    f"Invalid configuration file '{name}': missing required 'entities' key"
+                )
 
             # Extract entities and options
             entities_data = data.get("entities", {})
@@ -153,8 +156,8 @@ class ConfigurationService:
             # Build YAML data
             data: dict[str, Any] = {}
 
-            if config.entities:
-                data["entities"] = config.entities
+            # Always include 'entities' key to mark this as a configuration file
+            data["entities"] = config.entities if config.entities else {}
 
             if config.options:
                 data["options"] = config.options
