@@ -27,7 +27,7 @@ class DataSourceService:
         Args:
             config: Application configuration containing data sources
         """
-        self.config = config
+        self.config: ConfigLike = config
         self._connections: dict[str, Any] = {}  # Connection pool (future)
 
     def _get_raw_data_sources_from_yaml(self) -> dict[str, Any]:
