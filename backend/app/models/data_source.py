@@ -135,6 +135,24 @@ class DataSourceTestResult(BaseModel):
         """Get connection time in seconds."""
         return self.connection_time_ms / 1000.0
 
+    @staticmethod
+    def create_failure(message: str, connection_time_ms: int = 0) -> "DataSourceTestResult":
+        return DataSourceTestResult(
+            success=False,
+            message=message,
+            connection_time_ms=connection_time_ms,
+            metadata={},
+        )
+
+    @staticmethod
+    def from_core_result(core_result: ConnectTestResult) -> "DataSourceTestResult":
+        return DataSourceTestResult(
+            success=core_result.success,
+            message=core_result.message,
+            connection_time_ms=core_result.connection_time_ms,
+            metadata=core_result.metadata,
+        )
+
 
 class DataSourceStatus(BaseModel):
     """Current status of a data source."""
