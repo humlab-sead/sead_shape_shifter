@@ -4,18 +4,14 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-import pandas as pd
 import yaml
 from loguru import logger
 
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig, DataSourceStatus, DataSourceTestResult
 from src.config_model import DataSourceConfig as CoreDataSourceConfig
-from src.config_model import TableConfig
 from src.configuration.interface import ConfigLike
-from src.loaders.base_loader import DataLoader, DataLoaders
-from src.loaders.sql_loaders import CoreSchema, SqlLoader
-from src.utility import replace_env_vars
+from src.loaders.base_loader import ConnectTestResult, DataLoader, DataLoaders
 
 
 class DataSourceService:
@@ -234,185 +230,15 @@ class DataSourceService:
         start_time: float = time.time()
 
         try:
-            # Resolve environment variables in the config before testing
-            config = self._resolve_config_env_vars(config)
-
-            if config.is_database_source():
-                return await self._test_database_connection(config)
-            if config.is_file_source():
-                return await self._test_file_connection(config)
-            return DataSourceTestResult(
-                success=False, message=f"Unsupported data source type: {config.driver}", connection_time_ms=0, metadata={}
-            )
+            config = config.resolve_config_env_vars()
+            core_ds_cfg: CoreDataSourceConfig = DataSourceMapper().to_core_config(config)
+            loader: DataLoader = DataLoaders.get(core_ds_cfg.driver)
+            result: ConnectTestResult = await loader.test_connection()
+            return DataSourceTestResult.from_core_result(result)
         except Exception as e:  # pylint: disable=broad-except
             elapsed_ms = int((time.time() - start_time) * 1000)
             logger.error(f"Connection test failed for '{config.name}': {e}")
-            return DataSourceTestResult(success=False, message=f"Connection failed: {str(e)}", connection_time_ms=elapsed_ms, metadata={})
-
-    @staticmethod
-    def _get_test_query(driver: str) -> str:
-        """Get driver-specific test query.
-
-        Args:
-            driver: Database driver name
-
-        Returns:
-            SQL query string for testing connection
-        """
-        # Driver-specific test queries
-        test_queries = {
-            "postgresql": "SELECT 1 as test",
-            "sqlite": "SELECT 1 as test",
-            "ucanaccess": "SELECT TOP 1 1 as test FROM MSysObjects",  # Access system table
-            "access": "SELECT TOP 1 1 as test FROM MSysObjects",  # Access system table
-        }
-        return test_queries.get(driver, "SELECT 1 as test")
-
-    async def _test_database_connection(self, config: DataSourceConfig) -> DataSourceTestResult:
-        """Test database connection by attempting to load a simple query.
-
-        Args:
-            config: Database data source configuration
-
-        Returns:
-            Test result
-        """
-        start_time = time.time()
-
-        try:
-            # Create a mock TableConfig for testing
-            core_ds_cfg: CoreDataSourceConfig = DataSourceMapper().to_core_config(config)
-            # Create legacy data source config for loader
-
-            # Get loader and test with simple query
-            loader_class: type[DataLoader] | None = DataLoaders.items.get(core_ds_cfg.driver)
-            if not loader_class:
-                raise ValueError(f"No loader found for driver: {core_ds_cfg.driver}")
-
-            loader: DataLoader = loader_class(data_source=core_ds_cfg)
-
-            # For Access/UCanAccess, we need to query an actual table since it doesn't support
-            # standard test queries. Try to get tables first, then query one.
-            if core_ds_cfg.driver in ["ucanaccess", "access"]:
-                if hasattr(loader, "get_tables"):
-                    assert isinstance(loader, SqlLoader)
-                    try:
-                        tables: dict[str, CoreSchema.TableMetadata] = await loader.get_tables()
-                        if tables:
-                            # Use the first available table for testing
-                            first_table = next(iter(tables.keys()))
-                            test_query = f"SELECT TOP 1 * FROM [{first_table}]"
-                        else:
-                            # Fallback: Just test the connection by attempting table list
-                            # If we got here without error, connection works
-                            elapsed_ms = int((time.time() - start_time) * 1000)
-                            return DataSourceTestResult(
-                                success=True,
-                                message="Connected successfully (no tables found, but connection is valid)",
-                                connection_time_ms=elapsed_ms,
-                                metadata={"table_count": 0},
-                            )
-                    except Exception as table_error:
-                        # If even getting tables fails, the connection is bad
-                        raise ValueError(f"Cannot access database: {table_error}") from table_error
-                else:
-                    raise ValueError("Cannot test connection: driver doesn't support table introspection")
-            else:
-                # Use driver-specific test query for other databases
-                test_query = self._get_test_query(core_ds_cfg.driver)
-
-            # Create mock table config with simple test query
-            test_table_cfg = TableConfig(
-                cfg={
-                    "test": {
-                        "surrogate_id": "test_id",
-                        "type": "sql",
-                        "keys": [],
-                        "columns": [],
-                        "source": None,
-                        "query": test_query,
-                        "data_source": core_ds_cfg.name,
-                    }
-                },  # Simple test query
-                entity_name="test",
-            )
-
-            # Try to load (this will test the connection)
-            df: pd.DataFrame = await loader.load(entity_name="test", table_cfg=test_table_cfg)
-
-            elapsed_ms = int((time.time() - start_time) * 1000)
-
-            # Get metadata if possible
-            metadata = {}
-            try:
-                if hasattr(loader, "get_tables"):
-                    assert isinstance(loader, SqlLoader)
-                    tables: dict[str, CoreSchema.TableMetadata] = await loader.get_tables()
-                    metadata["table_count"] = len(tables)
-            except:  # pylint: disable=bare-except
-                pass
-
-            return DataSourceTestResult(
-                success=True,
-                message=f"Connected successfully (returned {len(df)} rows)",
-                connection_time_ms=elapsed_ms,
-                metadata=metadata if metadata else None,
-            )
-
-        except Exception as e:  # pylint: disable=broad-except
-            elapsed_ms = int((time.time() - start_time) * 1000)
-            # Sanitize error message (don't expose passwords, etc.)
-            error_msg = str(e)
-            if config.password:
-                error_msg = error_msg.replace(config.password.get_secret_value(), "***")
-
-            return DataSourceTestResult(
-                success=False, message=f"Connection failed: {error_msg}", connection_time_ms=elapsed_ms, metadata={}
-            )
-
-    async def _test_file_connection(self, config: DataSourceConfig) -> DataSourceTestResult:
-        """Test file-based connection (CSV).
-
-        Args:
-            config: CSV data source configuration
-
-        Returns:
-            Test result
-        """
-        start_time: float = time.time()
-
-        try:
-            file_path: str | None = config.effective_file_path
-            if not file_path:
-                raise ValueError("CSV source requires 'filename' or 'file_path'")
-
-            # Check if file exists
-            path: Path = Path(file_path)
-            if not path.exists():
-                raise FileNotFoundError(f"File not found: {file_path}")
-
-            # Try to read first few rows
-            read_opts: dict[str, Any] = config.options or {}
-            df: pd.DataFrame = pd.read_csv(file_path, nrows=5, **read_opts)
-
-            elapsed_ms: int = int((time.time() - start_time) * 1000)
-
-            metadata: dict[str, Any] = {
-                "file_size_bytes": path.stat().st_size,
-                "columns": list(df.columns),
-                "column_count": len(df.columns),
-            }
-
-            return DataSourceTestResult(
-                success=True,
-                message=f"File accessible ({len(df.columns)} columns detected)",
-                connection_time_ms=elapsed_ms,
-                metadata=metadata,
-            )
-
-        except Exception as e:  # pylint: disable=broad-except
-            elapsed_ms = int((time.time() - start_time) * 1000)
-            return DataSourceTestResult(success=False, message=f"File access failed: {str(e)}", connection_time_ms=elapsed_ms, metadata={})
+            return DataSourceTestResult.create_failure(message=f"Connection failed: {str(e)}", connection_time_ms=elapsed_ms)
 
     def get_status(self, name: str) -> DataSourceStatus:
         """Get current status of a data source.
@@ -446,41 +272,3 @@ class DataSourceService:
             for entity_name, entity_config in (self.config.get("entities") or {}).items()
             if isinstance(entity_config, dict) and entity_config.get("data_source") == data_source_name
         ]
-
-    def _resolve_env_vars(self, config_dict: dict[str, Any]) -> dict[str, Any]:
-        """Resolve environment variables in configuration.
-
-        Args:
-            config_dict: Configuration dictionary
-
-        Returns:
-            Dictionary with env vars resolved
-        """
-        resolved = {}
-        for key, value in config_dict.items():
-            if isinstance(value, str):
-                resolved[key] = replace_env_vars(value)
-            elif isinstance(value, dict):
-                resolved[key] = self._resolve_env_vars(value)
-            else:
-                resolved[key] = value
-        return resolved
-
-    def _resolve_config_env_vars(self, config: DataSourceConfig) -> DataSourceConfig:
-        """Resolve environment variables in a DataSourceConfig model.
-
-        Args:
-            config: Data source configuration
-
-        Returns:
-            New DataSourceConfig with env vars resolved
-        """
-        # Convert to dict, resolve env vars, then recreate model
-        config_dict = config.model_dump(exclude_none=True)
-        resolved_dict = self._resolve_env_vars(config_dict)
-
-        # Handle password field specially - preserve SecretStr if present
-        if config.password and "password" not in resolved_dict:
-            resolved_dict["password"] = config.password.get_secret_value()
-
-        return DataSourceConfig(**resolved_dict)
