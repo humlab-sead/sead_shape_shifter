@@ -43,6 +43,9 @@ class DataLoader(abc.ABC):
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         pass
 
+    @abc.abstractmethod
+    async def test_connection(self) -> ConnectTestResult:
+        pass
 
 class DataLoaderRegistry(Registry):
 
