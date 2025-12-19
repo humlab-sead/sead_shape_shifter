@@ -19,14 +19,7 @@ from src.utility import replace_env_vars
 
 
 class DataSourceService:
-    """Service for managing data source connections.
-
-    This service provides:
-    - CRUD operations for data source configurations
-    - Connection testing
-    - Connection pooling (future)
-    - Integration with existing loader system
-    """
+    """Service for managing data source connections within a configuration."""
 
     def __init__(self, config: ConfigLike):
         """Initialize the data source service.
