@@ -31,7 +31,7 @@ class DataSourceService:
     def _list_data_source_files(self) -> list[Path]:
         """List all data source YAML files in the input directory.
 
-        Looks for files matching patterns like *-options.yml, *-datasource.yml, etc.
+        Looks for files matching patterns like *.yml and test for a top-level "driver" key.
 
         Returns:
             List of data source file paths
@@ -39,12 +39,16 @@ class DataSourceService:
         if not self.data_sources_dir.exists():
             return []
 
-        # Look for data source files (exclude main configuration files)
-        # TODO: Consider making patterns configurable, or to probe content for "driver" key
-        patterns = ["*-options.yml", "*-datasource.yml", "*-source.yml"]
-        files = []
-        for pattern in patterns:
-            files.extend(self.data_sources_dir.glob(pattern))
+        files: list[Path] = []
+        for file in self.data_sources_dir.glob("*.yml"):
+            try:
+                with open(file, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                if isinstance(data, dict) and "driver" in data:
+                    files.append(file)
+            except Exception as e:  # pylint: disable=broad-except
+                logger.error(f"Failed to read data source file {file}: {e}")
+                continue
 
         return sorted(files)
 
