@@ -16,6 +16,7 @@ from backend.app.models.data_source import (
 )
 from backend.app.models.driver_schema import DriverSchemaResponse, FieldMetadataResponse
 from backend.app.services.data_source_service import DataSourceService
+from src.loaders.driver_metadata import DriverSchemaRegistry
 
 router = APIRouter(prefix="/data-sources", tags=["data-sources"])
 
@@ -62,7 +63,6 @@ async def list_drivers() -> dict[str, DriverSchemaResponse]:
     ```
     """
     try:
-        from src.loaders.driver_metadata import DriverSchemaRegistry
 
         logger.debug("Fetching driver schemas")
         schemas = DriverSchemaRegistry.all()

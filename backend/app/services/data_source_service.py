@@ -39,14 +39,15 @@ class DataSourceService:
             # Get the main config file path from the config object
             config_path = getattr(self.config, "filename", None) or getattr(self.config, "source", None)
 
-            if not config_path:
-                # Fallback to looking in default locations
-                possible_paths = [
-                    Path("input/arbodat.yml"),
-                    Path("input/arbodat-database.yml"),
-                    Path("config.yml"),
-                ]
-                config_path = next((p for p in possible_paths if p.exists()), None)
+            # FIXME: #25 Logic for finding raw config file is flawed - needs improvement
+            # if not config_path:
+            #     # Fallback to looking in default locations
+            #     possible_paths = [
+            #         Path("input/arbodat.yml"),
+            #         Path("input/arbodat-database.yml"),
+            #         Path("config.yml"),
+            #     ]
+            #     config_path = next((p for p in possible_paths if p.exists()), None)
 
             if not config_path:
                 logger.warning("Could not find config file to read raw data sources")
@@ -85,7 +86,7 @@ class DataSourceService:
 
             return resolved_sources
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.warning(f"Failed to read raw data sources from YAML: {e}")
             return {}
 

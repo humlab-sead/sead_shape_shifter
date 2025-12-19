@@ -1,9 +1,8 @@
 import abc
 import os
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
-from pickletools import read_uint1
-import time
 from typing import TYPE_CHECKING, Any, Generator, Optional
 
 import jaydebeapi
@@ -11,11 +10,9 @@ import jpype
 import pandas as pd
 from loguru import logger
 from sqlalchemy import create_engine
-from tomlkit import table
 
 from src.extract import add_surrogate_id
-from src.utility import create_db_uri as create_pg_uri
-from src.utility import dotget
+from src.utility import create_db_uri as create_pg_uri, dotget
 
 from .base_loader import ConnectTestResult, DataLoader, DataLoaders
 
@@ -165,7 +162,7 @@ class SqlLoader(DataLoader):
             result.message = f"Connected successfully (found {len(tables)} tables"
 
             # Create mock table config with simple test query
-            test_table_cfg = TableConfig(
+            test_table_cfg: TableConfig = TableConfig(
                 cfg={
                     "test": {
                         "surrogate_id": "test_id",
@@ -183,7 +180,7 @@ class SqlLoader(DataLoader):
             df: pd.DataFrame = await self.load(entity_name="test", table_cfg=test_table_cfg)
 
             elapsed_ms = int((time.time() - start_time) * 1000)
-            result.metadata.update({'table_count': len(tables)})
+            result.metadata.update({"table_count": len(tables)})
             result.message += f", returned {len(df)} rows)"
 
         except Exception as e:  # pylint: disable=broad-except
@@ -194,6 +191,7 @@ class SqlLoader(DataLoader):
             result.metadata = {}
 
         return result
+
 
 @DataLoaders.register(key="sqlite")
 class SqliteLoader(SqlLoader):

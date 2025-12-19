@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 class ConnectTestResult:
 
     success: bool
-    message: str 
-    connection_time_ms: int 
+    message: str
+    connection_time_ms: int
     metadata: dict[str, Any]
 
     @property
@@ -27,13 +27,14 @@ class ConnectTestResult:
         return self.connection_time_ms / 1000.0
 
     @staticmethod
-    def create_empty() -> "ConnectTestResult":
+    def create_empty(success: bool = False) -> "ConnectTestResult":
         return ConnectTestResult(
-            success=False,
+            success=success,
             message="No test performed",
             connection_time_ms=0,
             metadata={},
         )
+
 
 class DataLoader(abc.ABC):
 
@@ -47,6 +48,7 @@ class DataLoader(abc.ABC):
     @abc.abstractmethod
     async def test_connection(self) -> ConnectTestResult:
         pass
+
 
 class DataLoaderRegistry(Registry):
 
