@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry, FieldMetadata
+from src.loaders.driver_metadata import DriverSchemaRegistry
 
 
 def test_load_from_default_yaml():

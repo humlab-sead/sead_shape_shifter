@@ -117,7 +117,6 @@ def test_unknown_driver():
     # Can't test unknown driver as Pydantic validator rejects it
     # Instead test that mapper rejects a driver that passes Pydantic
     # but doesn't have a schema (this shouldn't happen in practice)
-    pass  # Skip this test - Pydantic catches invalid drivers first
 
 
 def test_password_extraction():

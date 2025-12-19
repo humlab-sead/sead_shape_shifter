@@ -32,7 +32,7 @@ def test_ui_behavior():
     for ds in data_sources:
         print(f"Data Source: {ds.name}")
         print(f"  Driver: {ds.driver}")
-        print(f"  Options:")
+        print("  Options:")
         assert ds.options is not None
         for key, value in ds.options.items():
             print(f"    {key}: {value}")

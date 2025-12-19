@@ -12,7 +12,8 @@ from loguru import logger
 from sqlalchemy import create_engine
 
 from src.extract import add_surrogate_id
-from src.utility import create_db_uri as create_pg_uri, dotget
+from src.utility import create_db_uri as create_pg_uri
+from src.utility import dotget
 
 from .base_loader import ConnectTestResult, DataLoader, DataLoaders
 

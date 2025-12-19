@@ -10,16 +10,16 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add project root to path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
-
 from loguru import logger
 
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
 from src.configuration.provider import ConfigStore
 from src.loaders.driver_metadata import DriverSchemaRegistry
+
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 
 async def test_postgresql_connection():
@@ -60,7 +60,7 @@ async def test_postgresql_connection():
         logger.info(f"Metadata: {result.metadata}")
 
         return result.success
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         logger.error(f"Connection test failed with exception: {e}")
         logger.exception(e)
         return False
@@ -109,7 +109,7 @@ async def test_access_connection():
         logger.info(f"Metadata: {result.metadata}")
 
         return result.success
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         logger.error(f"Connection test failed with exception: {e}")
         logger.exception(e)
         return False
@@ -145,7 +145,7 @@ async def test_existing_data_sources():
                 logger.info(f"  Metadata: {result.metadata}")
 
             results[ds.name] = result.success
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.error(f"  Error: {e}")
             logger.exception(e)
             results[ds.name] = False
@@ -174,7 +174,7 @@ async def debug_mapper():
         logger.info(f"Core Config Name: {core_config.name}")
         logger.info(f"Core Config Driver: {core_config.data_source_cfg.get('driver')}")
         logger.info(f"Core Config Options: {core_config.data_source_cfg.get('options')}")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         logger.error(f"Mapping failed: {e}")
         logger.exception(e)
 
@@ -195,7 +195,7 @@ async def debug_mapper():
         logger.info(f"Core Config Name: {core_config.name}")
         logger.info(f"Core Config Driver: {core_config.data_source_cfg.get('driver')}")
         logger.info(f"Core Config Options: {core_config.data_source_cfg.get('options')}")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         logger.error(f"Mapping failed: {e}")
         logger.exception(e)
 
