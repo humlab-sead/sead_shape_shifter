@@ -62,9 +62,9 @@ class SchemaIntrospectionService:
     """Service for introspecting database schemas."""
 
     def __init__(self, config: ConfigLike):
-        self.config = config
-        self.data_source_service = DataSourceService(config)
-        self.cache = SchemaCache(ttl_seconds=300)  # 5 minute cache
+        self.config: ConfigLike = config
+        self.data_source_service: DataSourceService = DataSourceService()
+        self.cache: SchemaCache = SchemaCache(ttl_seconds=300)  # 5 minute cache
 
     def create_loader_for_data_source(self, ds_config: api.DataSourceConfig) -> SqlLoader:
         core_config: CoreDataSourceConfig = DataSourceMapper.to_core_config(ds_config)
@@ -91,7 +91,7 @@ class SchemaIntrospectionService:
         Raises:
             SchemaServiceError: If introspection fails
         """
-        cache_key = f"tables:{data_source_name}:{schema or 'default'}"
+        cache_key: str = f"tables:{data_source_name}:{schema or 'default'}"
         cached = self.cache.get(cache_key)
         if cached is not None:
             logger.debug(f"Returning cached tables for {data_source_name}")
@@ -99,7 +99,7 @@ class SchemaIntrospectionService:
 
         try:
             # Get data source config
-            ds_config = self.data_source_service.get_data_source(data_source_name)
+            ds_config: api.DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
             if ds_config is None:
                 raise SchemaServiceError(f"Data source '{data_source_name}' not found")
 
