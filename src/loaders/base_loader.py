@@ -12,6 +12,28 @@ if TYPE_CHECKING:
 # pylint: disable=unused-argument
 
 
+@dataclass
+class ConnectTestResult:
+
+    success: bool
+    message: str 
+    connection_time_ms: int 
+    metadata: dict[str, Any]
+
+    @property
+    def connection_time_seconds(self) -> float:
+        """Get connection time in seconds."""
+        return self.connection_time_ms / 1000.0
+
+    @staticmethod
+    def create_empty() -> "ConnectTestResult":
+        return ConnectTestResult(
+            success=False,
+            message="No test performed",
+            connection_time_ms=0,
+            metadata={},
+        )
+
 class DataLoader(abc.ABC):
 
     def __init__(self, data_source: "DataSourceConfig | None" = None) -> None:
