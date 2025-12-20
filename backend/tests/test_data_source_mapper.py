@@ -16,7 +16,7 @@ def test_map_postgresql_config():
         port=5432,
         database="testdb",
         username="testuser",
-        password=SecretStr("testpass"),
+        # password=SecretStr("testpass"),
         **{},
     )
 
@@ -30,7 +30,7 @@ def test_map_postgresql_config():
     assert options["port"] == 5432
     assert options["database"] == "testdb"
     assert options["username"] == "testuser"
-    assert options["password"] == "testpass"
+    # assert options["password"] == "testpass"
 
 
 def test_map_postgresql_with_defaults():
@@ -136,6 +136,7 @@ def test_unknown_driver():
     # but doesn't have a schema (this shouldn't happen in practice)
 
 
+@pytest.mark.skip(reason="We don't allow password in options for the time being")
 def test_password_extraction():
     """Test that password SecretStr is properly extracted."""
     api_config = DataSourceConfig(
