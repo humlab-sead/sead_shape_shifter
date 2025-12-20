@@ -45,8 +45,8 @@
             <template #prepend>
               <v-icon>mdi-table</v-icon>
             </template>
-            <template #subtitle v-if="item.raw.schema">
-              Schema: {{ item.raw.schema }}
+            <template #subtitle v-if="item.raw.schema_name">
+              Schema: {{ item.raw.schema_name }}
             </template>
           </v-list-item>
         </template>
