@@ -7,7 +7,7 @@ import pandas as pd
 from .base_loader import ConnectTestResult, DataLoader, DataLoaders
 
 if TYPE_CHECKING:
-    from src.config_model import DataSourceConfig, TableConfig
+    from src.model import DataSourceConfig, TableConfig
 
 
 class FileLoader(DataLoader):

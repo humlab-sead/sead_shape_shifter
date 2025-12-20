@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from src.config_model import TablesConfig
+from src.model import TablesConfig
 from src.normalizer import ArbodatSurveyNormalizer, ProcessState
 
 # pylint: disable=no-member, redefined-outer-name

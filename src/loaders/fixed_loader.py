@@ -8,7 +8,7 @@ from src.loaders.base_loader import ConnectTestResult
 from .base_loader import DataLoader, DataLoaders
 
 if TYPE_CHECKING:
-    from src.config_model import TableConfig
+    from src.model import TableConfig
 
 
 @DataLoaders.register(key=["fixed", "data"])

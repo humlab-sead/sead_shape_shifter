@@ -7,7 +7,7 @@ import pandas as pd
 from src.utility import Registry
 
 if TYPE_CHECKING:
-    from src.config_model import DataSourceConfig, TableConfig
+    from src.model import DataSourceConfig, TableConfig
 
 
 # pylint: disable=unused-argument

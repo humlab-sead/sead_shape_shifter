@@ -5,7 +5,7 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from src.config_model import DataSourceConfig, ForeignKeyConfig, ForeignKeyConstraints, TableConfig, TablesConfig, UnnestConfig
+from src.model import DataSourceConfig, ForeignKeyConfig, ForeignKeyConstraints, TableConfig, TablesConfig, UnnestConfig
 
 
 class TestForeignKeyConstraints:

@@ -179,10 +179,10 @@ sead_shape_shifter/
 │   │   └── main.py             # Application entry
 │   ├── tests/                  # Backend tests
 │   └── pyproject.toml          # Dependencies
-├── frontend/                   # React frontend
+├── frontend/                   # Vue3 frontend
 │   ├── src/
 │   │   ├── api/                # API client
-│   │   ├── components/         # React components
+│   │   ├── components/         # Vue components
 │   │   ├── hooks/              # Custom hooks
 │   │   ├── stores/             # State management
 │   │   ├── types/              # TypeScript types
@@ -203,11 +203,11 @@ sead_shape_shifter/
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     Frontend (React)                     │
-│  ┌──────────┬──────────┬──────────┬──────────────────┐ │
-│  │  Editor  │  Panels  │  Config  │  Validation      │ │
-│  │  Monaco  │  MUI     │  State   │  UI Components   │ │
-│  └──────────┴──────────┴──────────┴──────────────────┘ │
+│                     Frontend (Vue3)                    │
+│  ┌──────────┬──────────┬──────────┬──────────────────┐  │
+│  │  Editor  │  Panels  │  Config  │  Validation      │  │
+│  │  Monaco  │  MUI     │  State   │  UI Components   │  │
+│  └──────────┴──────────┴──────────┴──────────────────┘  │
 │  ┌────────────────────────────────────────────────────┐ │
 │  │           API Client (axios, React Query)          │ │
 │  └────────────────────────────────────────────────────┘ │
@@ -215,11 +215,11 @@ sead_shape_shifter/
                            │ HTTP/REST
                            ▼
 ┌─────────────────────────────────────────────────────────┐
-│                    Backend (FastAPI)                     │
-│  ┌──────────┬──────────┬──────────┬──────────────────┐ │
-│  │  Routes  │  Models  │ Services │  Validation      │ │
-│  │  /api/v1 │ Pydantic │ Business │  Engine          │ │
-│  └──────────┴──────────┴──────────┴──────────────────┘ │
+│                    Backend (FastAPI)                    │
+│  ┌──────────┬──────────┬──────────┬──────────────────┐  │
+│  │  Routes  │  Models  │ Services │  Validation      │  │
+│  │  /api/v1 │ Pydantic │ Business │  Engine          │  │
+│  └──────────┴──────────┴──────────┴──────────────────┘  │
 │  ┌────────────────────────────────────────────────────┐ │
 │  │        Core Systems (Config, YAML, Cache)          │ │
 │  └────────────────────────────────────────────────────┘ │
@@ -228,17 +228,17 @@ sead_shape_shifter/
                            ▼
 ┌─────────────────────────────────────────────────────────┐
 │          Shape Shifter Transformation Engine            │
-│  ┌──────────────┬──────────────┬─────────────────────┐ │
-│  │ config_model │specifications│     normalizer      │ │
-│  └──────────────┴──────────────┴─────────────────────┘ │
+│  ┌──────────────┬──────────────┬─────────────────────┐  │
+│  │     model    │specifications│     normalizer      │  │
+│  └──────────────┴──────────────┴─────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────┐
-│                    File System                           │
-│  ┌──────────┬──────────┬──────────┬──────────────────┐ │
-│  │  Configs │  Backups │  Logs    │  Test Data       │ │
-│  └──────────┴──────────┴──────────┴──────────────────┘ │
+│                    File System                          │
+│  ┌──────────┬──────────┬──────────┬──────────────────┐  │
+│  │  Configs │  Backups │  Logs    │  Test Data       │  │
+│  └──────────┴──────────┴──────────┴──────────────────┘  │
 └─────────────────────────────────────────────────────────┘
 ```
 

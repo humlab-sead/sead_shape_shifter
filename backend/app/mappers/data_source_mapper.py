@@ -2,7 +2,7 @@
 
 from typing import Any
 import backend.app.models.data_source as api
-import src.config_model as core
+import src.model as core
 from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
 
 
