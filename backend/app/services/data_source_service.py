@@ -24,7 +24,7 @@ class DataSourceService:
 
     def __init__(self, data_sources_dir: Path | str) -> None:
         """Initialize the data source service."""
-        self.data_sources_dir: Path = Path(data_sources_dir) if data_sources_dir) else settings.CONFIGURATIONS_DIR 
+        self.data_sources_dir: Path = Path(data_sources_dir) 
 
     def _resolve_data_source_path(self, filename: str|Path, raise_if_not_found: bool = False) -> Path:
         """Resolve the full path to a data source file."""
@@ -112,7 +112,7 @@ class DataSourceService:
 
         for file_path in self._list_data_source_files():
             try:
-                data = self._read_data_source_file(file_path)
+                data: dict[str, Any] = self._read_data_source_file(file_path)
                 if not data:
                     continue
 
@@ -126,7 +126,7 @@ class DataSourceService:
 
         return result
 
-    def get_data_source(self, filename: Path) -> DataSourceConfig | None:
+    def get_data_source(self, filename: str | Path) -> DataSourceConfig | None:
         """Get a specific data source by filename.
 
         Args:
@@ -139,7 +139,7 @@ class DataSourceService:
         if not file_path.exists():
             return None
         try:
-            data = self._read_data_source_file(file_path)
+            data: dict[str, Any] = self._read_data_source_file(file_path)
             if not data:
                 return None
 
@@ -149,7 +149,7 @@ class DataSourceService:
             logger.error(f"Failed to get data source {filename}: {e}")
             return None
 
-    def create_data_source(self, filename: Path, config: DataSourceConfig) -> DataSourceConfig:
+    def create_data_source(self, filename: str | Path, config: DataSourceConfig) -> DataSourceConfig:
         """Create a new global data source file.
 
         Args:
@@ -167,7 +167,7 @@ class DataSourceService:
         if file_path.exists():
             raise ValueError(f"Data source file '{filename}' already exists")
 
-        config_dict = config.model_dump(exclude_none=True, exclude={"name", "filename"})
+        config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name", "filename"})
 
         if config.password:
             config_dict["password"] = config.password.get_secret_value()
@@ -181,7 +181,7 @@ class DataSourceService:
         result.name = file_path.stem
         return result
 
-    def update_data_source(self, filename: Path, config: DataSourceConfig) -> DataSourceConfig:
+    def update_data_source(self, filename: str | Path, config: DataSourceConfig) -> DataSourceConfig:
         """Update an existing data source file.
 
         Args:
@@ -199,7 +199,7 @@ class DataSourceService:
         if not file_path.exists():
             raise ValueError(f"Data source file '{filename}' not found")
 
-        config_dict = config.model_dump(exclude_none=True, exclude={"name", "filename"})
+        config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name", "filename"})
 
         if config.password:
             config_dict["password"] = config.password.get_secret_value()
@@ -209,12 +209,12 @@ class DataSourceService:
         logger.info(f"Updated data source file '{filename}' (driver: {config.driver})")
 
         # Return with filename set
-        result = config.model_copy()
+        result: DataSourceConfig = config.model_copy()
         result.filename = str(filename)
         result.name = file_path.stem
         return result
 
-    def delete_data_source(self, filename: Path) -> None:
+    def delete_data_source(self, filename: str | Path) -> None:
         """Delete a data source file.
 
         Args:
@@ -253,7 +253,7 @@ class DataSourceService:
             logger.error(f"Connection test failed for '{config.name}': {e}")
             return DataSourceTestResult.create_failure(message=f"Connection failed: {str(e)}", connection_time_ms=elapsed_ms)
 
-    def get_status(self, filename: Path) -> DataSourceStatus:
+    def get_status(self, filename: str | Path) -> DataSourceStatus:
         """Get current status of a data source.
 
         Args:
