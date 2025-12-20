@@ -242,7 +242,7 @@ class DataSourceService:
         start_time: float = time.time()
 
         try:
-            config = config.resolve_config_env_vars()
+            # Environment variable resolution happens in the mapper
             core_ds_cfg: CoreDataSourceConfig = DataSourceMapper().to_core_config(config)
             loader_cls: type[DataLoader] = DataLoaders.get(core_ds_cfg.driver)
             loader: DataLoader = loader_cls(core_ds_cfg)

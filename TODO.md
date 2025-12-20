@@ -95,14 +95,18 @@ Improve validations for configuration files to catch the most common errors and 
  - [x] FIXME: #29 Data source editor has strange labels
  - [] FIXME: File modification date is always 1970-01-21 when listing configurations
  - [x] FIXME: [Backend] Postgres Edit doesn't display values fomr data source configuration
- - 
  - [] FIXME: src/config_model.py:161:9: W0511: This smells like a fix for a bug elsewhere, why should we check extra columns here? (fixme)
+ - [] FIXME: Query Tester has no data sources
+ - [] FIXME: Schema Explorer has no data sources
+ - 
+
 
 ### Tech debts:
 
  - [x] FIXME: #26 [Backend] Move database vendor specific logic to Loaders
  - [x] FIXME: [Backend] Test for MS Access returns 0 tables
  - [x] INSTALL: Codex AGENTS.md
+ - [x] FIXME: #33 Remove hardcoded settings in backend/app/core/config.py
 
 ### New features
 

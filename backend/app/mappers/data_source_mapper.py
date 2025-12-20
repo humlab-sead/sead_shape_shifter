@@ -19,15 +19,22 @@ class DataSourceMapper:
         Uses the driver schema to determine which fields are valid
         and how they should be mapped.
 
+        IMPORTANT: This method resolves environment variables during the mapping.
+        API entities remain "raw" with ${ENV_VAR} syntax, but core entities
+        are always fully resolved and ready for use.
+
         Args:
-            ds_config: API data source configuration
+            ds_config: API data source configuration (may contain ${ENV_VARS})
 
         Returns:
-            Core data source configuration
+            Core data source configuration (fully resolved)
 
         Raises:
             ValueError: If driver schema not found or required fields missing
         """
+        # Resolve environment variables at the boundary between API and Core layers
+        ds_config = ds_config.resolve_config_env_vars()
+
         # Get schema for driver
         schema: DriverSchema | None = DriverSchemaRegistry.get(ds_config.driver)
         if not schema:
