@@ -559,7 +559,8 @@ class UCanAccessSqlLoader(SqlLoader):
             try:
                 data = await self.read_sql(query)
                 break
-            except Exception:  # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-except
+                print(f"Error executing query: {e}")
                 pass
 
         if data is None:
