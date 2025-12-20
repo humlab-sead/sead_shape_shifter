@@ -79,7 +79,7 @@ async def test_debug_postgresql_connection(settings: Settings):
     print(f"Fields: {[f.name for f in schema.fields]}")
 
     print(f"\n--- Testing Mapper ---")
-    core_config = DataSourceMapper.to_core_config(ds_config)
+    core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_config)
     print(f"Core Config Name: {core_config.name}")
     print(f"Core Config Driver: {core_config.data_source_cfg.get('driver')}")
     print(f"Core Config Keys: {list(core_config.data_source_cfg.get('options', {}).keys())}")
@@ -87,7 +87,7 @@ async def test_debug_postgresql_connection(settings: Settings):
     # Test connection
     print(f"\n--- Testing Connection ---")
     service = api_services.DataSourceService(settings.CONFIGURATIONS_DIR)
-    result = await service.test_connection(ds_config)
+    result: api.DataSourceTestResult = await service.test_connection(ds_config)
 
     print(f"Success: {result.success}")
     print(f"Message: {result.message}")
@@ -102,13 +102,13 @@ async def test_debug_postgresql_connection(settings: Settings):
 async def test_debug_access_connection(settings: Settings):
     """Debug Access connection with detailed output."""
     # Find an Access database
-    input_dir = Path(__file__).parent.parent.parent / "input"
-    mdb_files = list(input_dir.glob("*.mdb"))
+    input_dir: Path = Path(__file__).parent.parent.parent / "input"
+    mdb_files: list[Path] = list(input_dir.glob("*.mdb"))
 
     if not mdb_files:
         pytest.skip("No .mdb files found in input/ directory")
 
-    mdb_file = mdb_files[0]
+    mdb_file: Path = mdb_files[0]
     print(f"\n--- Using Access Database ---")
     print(f"File: {mdb_file}")
     print(f"Exists: {mdb_file.exists()}")
@@ -165,7 +165,7 @@ async def test_debug_existing_data_sources(settings: Settings):
 
         # Test connection
         try:
-            result = await service.test_connection(ds)
+            result: api.DataSourceTestResult = await service.test_connection(ds)
             print(f"  Result: {'✓ SUCCESS' if result.success else '✗ FAILED'}")
             print(f"  Message: {result.message}")
             print(f"  Time: {result.connection_time_ms}ms")
