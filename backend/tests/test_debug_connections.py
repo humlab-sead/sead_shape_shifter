@@ -14,11 +14,12 @@ from unittest.mock import Mock
 import pytest
 
 from backend.app import models as api
-from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app import services as api_services
+from backend.app.core.config import Settings
+from backend.app.mappers.data_source_mapper import DataSourceMapper
 from src import model as core
 from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
-from backend.app.core.config import Settings
+
 # pylint: disable=redefined-outer-name, f-string-without-interpolation, no-member
 
 

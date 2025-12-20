@@ -3,8 +3,8 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.model import ForeignKeyConfig, TableConfig, TablesConfig
 from src.constraints import ForeignKeyConstraintValidator
+from src.model import ForeignKeyConfig, TableConfig, TablesConfig
 from src.specifications import ForeignKeyDataSpecification
 
 

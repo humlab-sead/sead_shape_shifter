@@ -25,7 +25,7 @@ config: ConfigLike | None = store.config()
 assert config is not None
 
 # Create service
-service = DataSourceService(project_root / "input" )
+service = DataSourceService(project_root / "input")
 
 # List data sources
 print("=" * 80)

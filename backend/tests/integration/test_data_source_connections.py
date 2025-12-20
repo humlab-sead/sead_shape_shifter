@@ -43,7 +43,7 @@ class TestPostgresConnection:
         # Check if required env vars are set
         required_vars = ["SEAD_HOST", "SEAD_PORT", "SEAD_DBNAME", "SEAD_USER"]
         missing_vars = [v for v in required_vars if v not in os.environ]
-        
+
         if missing_vars:
             pytest.skip(f"Required environment variables not set: {', '.join(missing_vars)}")
 

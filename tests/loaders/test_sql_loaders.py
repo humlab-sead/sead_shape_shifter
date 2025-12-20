@@ -9,13 +9,13 @@ from unittest.mock import AsyncMock, patch
 import pandas as pd
 import pytest
 
-from src.model import DataSourceConfig
 from src.loaders.sql_loaders import (
     CoreSchema,
     PostgresSqlLoader,
     SqliteLoader,
     UCanAccessSqlLoader,
 )
+from src.model import DataSourceConfig
 
 # pylint: disable=redefined-outer-name, unused-argument, protected-access
 

@@ -9,8 +9,8 @@ from loguru import logger
 
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig, DataSourceStatus, DataSourceTestResult
-from src.model import DataSourceConfig as CoreDataSourceConfig
 from src.loaders.base_loader import ConnectTestResult, DataLoader, DataLoaders
+from src.model import DataSourceConfig as CoreDataSourceConfig
 
 
 class DataSourceService:

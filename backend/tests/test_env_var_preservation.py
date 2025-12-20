@@ -7,9 +7,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from backend.app.models.data_source import DataSourceTestResult
 from backend.app.core.config import Settings
-from backend.app.models.data_source import DataSourceConfig
+from backend.app.models.data_source import DataSourceConfig, DataSourceTestResult
 from backend.app.services.data_source_service import DataSourceService
 
 
