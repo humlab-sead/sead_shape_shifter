@@ -19,6 +19,7 @@ router = APIRouter()
 
 # pylint: disable=no-member
 
+
 # Request/Response Models
 class EntityCreateRequest(BaseModel):
     """Request to create new entity."""
