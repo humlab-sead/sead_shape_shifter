@@ -153,7 +153,7 @@ uv run pytest tests/api/v1/test_health.py -v
 The backend directly imports and uses existing Shape Shifter components:
 
 ```python
-from src.config_model import TablesConfig, EntityConfig
+from src.model import TablesConfig, EntityConfig
 from src.specifications import CompositeConfigSpecification
 from src.normalizer import ArbodatSurveyNormalizer
 ```
@@ -183,7 +183,7 @@ This ensures:
 
 ## Next Steps (Sprint 1.3)
 
-- [ ] Create Pydantic models matching `src/config_model.py`
+- [ ] Create Pydantic models matching `src/model.py`
 - [ ] Create TypeScript types for frontend
 - [ ] Ensure type compatibility between backend and frontend
 

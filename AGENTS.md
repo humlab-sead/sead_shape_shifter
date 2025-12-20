@@ -17,7 +17,7 @@
 - Register extensible validators/loaders/filters through the registry pattern (`@Validators.register(...)`).
 - Await every async data loader in `src/loaders/`; check backend service signatures before mixing sync/async logic.
 - Decorate async tests with `@pytest.mark.asyncio` (Core) and use FastAPI `TestClient` for backend routes.
-- Import backend usages of Core with absolute paths only (e.g., `from src.config_model import TablesConfig`).
+- Import backend usages of Core with absolute paths only (e.g., `from src.model import TablesConfig`).
 - **Environment variable resolution**: Happens ONLY in mapper layer (`backend/app/mappers/`). API entities stay raw (`${VAR}`), core entities are always resolved. Never call `resolve_config_env_vars()` in services.
 
 ## Code Conventions
@@ -37,7 +37,7 @@
 - Follow the documented Pinia pattern (loading/error refs with guarded async calls) and enforce strict null checks, preferring `type` for unions and `interface` for objects.
 
 ## Key References
-- Use `src/config_model.py`, `src/constraints.py`, and `src/specifications.py` for Core models, constraints, and config rules.
+- Use `src/model.py`, `src/constraints.py`, and `src/specifications.py` for Core models, constraints, and config rules.
 - Touch backend behavior via `backend/app/main.py` and `backend/app/services/validation_service.py`.
 - Manage frontend state under `frontend/src/stores/` and related composables.
 - Consult docs: `docs/CONFIGURATION_GUIDE.md`, `docs/SYSTEM_DOCUMENTATION.md`, `docs/BACKEND_API.md`, `docs/DEVELOPMENT_GUIDE.md` before major changes.

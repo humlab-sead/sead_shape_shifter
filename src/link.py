@@ -3,7 +3,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.config_model import ForeignKeyConfig, TableConfig, TablesConfig
+from src.model import ForeignKeyConfig, TableConfig, TablesConfig
 from src.constraints import ForeignKeyConstraintValidator
 from src.specifications import ForeignKeyDataSpecification
 

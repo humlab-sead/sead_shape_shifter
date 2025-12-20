@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
-from src.config_model import TablesConfig
+from src.model import TablesConfig
 from src.configuration.setup import setup_config_store
 from src.normalizer import ArbodatSurveyNormalizer, ProcessState
 

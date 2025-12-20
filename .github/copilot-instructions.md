@@ -101,7 +101,7 @@ class CardinalityValidator(ConstraintValidator):
 ### Backend Imports
 Backend imports from core using absolute paths:
 ```python
-from src.config_model import TablesConfig  # Core models
+from src.model import TablesConfig  # Core models
 from src.configuration.provider import ConfigStore  # Config singleton
 from backend.app.services.validation_service import ValidationService  # Backend
 ```
@@ -218,7 +218,7 @@ export const useExampleStore = defineStore('example', () => {
 - Prefer `type` for unions, `interface` for objects
 
 ## Key Files
-- `src/config_model.py` - Core configuration Pydantic models
+- `src/model.py` - Core configuration Pydantic models
 - `src/constraints.py` - Foreign key constraint validators
 - `src/specifications.py` - Configuration validation rules
 - `backend/app/main.py` - FastAPI application entry point

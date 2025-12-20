@@ -3,7 +3,7 @@ import os
 import jpype
 import pandas as pd
 
-from src.config_model import DataSourceConfig
+from src.model import DataSourceConfig
 from src.loaders.sql_loaders import UCanAccessSqlLoader
 
 UCANACCESS_HOME = os.path.abspath("lib/ucanaccess")

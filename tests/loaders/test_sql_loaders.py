@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 import pandas as pd
 import pytest
 
-from src.config_model import DataSourceConfig
+from src.model import DataSourceConfig
 from src.loaders.sql_loaders import (
     CoreSchema,
     PostgresSqlLoader,

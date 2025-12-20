@@ -5,7 +5,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.models.config import Configuration
-from src.config_model import TablesConfig
+from src.model import TablesConfig
 
 
 class DependencyServiceError(Exception):

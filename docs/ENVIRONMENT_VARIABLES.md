@@ -166,7 +166,7 @@ The `DataSourceMapper` class handles the boundary between API and Core layers:
 ```python
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig as ApiConfig
-from src.config_model import DataSourceConfig as CoreConfig
+from src.model import DataSourceConfig as CoreConfig
 
 class DataSourceMapper:
     @staticmethod

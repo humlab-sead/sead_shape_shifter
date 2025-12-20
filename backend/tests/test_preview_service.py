@@ -9,7 +9,7 @@ import pytest
 
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.preview_service import PreviewCache, PreviewService
-from src.config_model import TableConfig, TablesConfig
+from src.model import TableConfig, TablesConfig
 
 # pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
 

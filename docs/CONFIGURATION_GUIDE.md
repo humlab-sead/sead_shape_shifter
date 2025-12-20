@@ -1976,7 +1976,7 @@ Validation failed with 2 errors and 1 warnings.
 Validate configurations in code:
 
 ```python
-from src.config_model import TablesConfig
+from src.model import TablesConfig
 from src.specifications import CompositeConfigSpecification
 
 # Load configuration

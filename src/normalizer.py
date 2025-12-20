@@ -10,7 +10,7 @@ from typing import Any, Literal
 import pandas as pd
 from loguru import logger
 
-from src.config_model import TableConfig, TablesConfig
+from src.model import TableConfig, TablesConfig
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
 from src.filter import apply_filters
