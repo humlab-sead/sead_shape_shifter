@@ -64,7 +64,7 @@ This comprehensive guide covers all testing strategies, procedures, and best pra
 
 **Tools**:
 - Backend: pytest
-- Frontend: Vitest + React Testing Library
+- Frontend: Vitest
 
 **Characteristics**:
 - Fast execution (<1ms per test)
@@ -1484,7 +1484,6 @@ python script.py --config-file input/test_config.yml
 ### Documentation
 
 - [pytest Documentation](https://docs.pytest.org/)
-- [React Testing Library](https://testing-library.com/react)
 - [Vitest Guide](https://vitest.dev/guide/)
 - [Playwright Documentation](https://playwright.dev/)
 - [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
@@ -1494,7 +1493,6 @@ python script.py --config-file input/test_config.yml
 **Testing Frameworks:**
 - pytest - Python testing
 - Vitest - JavaScript testing
-- React Testing Library - React component testing
 - Playwright - E2E testing
 
 **Code Coverage:**
@@ -1532,7 +1530,7 @@ python script.py --config-file input/test_config.yml
 This testing guide provides comprehensive procedures for:
 
 - **Backend Testing**: pytest, fixtures, async testing
-- **Frontend Testing**: Vitest, React Testing Library, component testing
+- **Frontend Testing**: Vitest, component testing
 - **Cross-Browser Testing**: Manual procedures for Chrome, Firefox, Edge, Safari
 - **Integration Testing**: API testing, E2E workflows
 - **Performance Testing**: Metrics, profiling, load testing

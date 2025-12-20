@@ -70,7 +70,6 @@ This release marks the completion of Phase 2 of the Shape Shifter Configuration 
 - Filter entities by name or properties
 
 **Technical Details:**
-- React Tree View component
 - Recursive entity rendering
 - Optimized for large entity trees (100+ entities)
 - Virtual scrolling for performance
@@ -155,8 +154,8 @@ This release marks the completion of Phase 2 of the Shape Shifter Configuration 
 - Reduced regression issues
 
 **Technical Details:**
-- pytest for backend (13/13 auto-fix tests passing)
-- Vitest + React Testing Library for frontend
+- pytest for backend
+- Vitest
 - Automated test runs in CI/CD
 - Code coverage reporting
 
@@ -244,7 +243,6 @@ This release marks the completion of Phase 2 of the Shape Shifter Configuration 
 - **Service Layer:** Clean separation of concerns
 - **Dependency Injection:** Testable, flexible services
 - **Repository Pattern:** Abstracted data access
-- **State Management:** React Query + Zustand
 - **API Design:** RESTful with OpenAPI docs
 
 ## 📚 Documentation
@@ -472,7 +470,7 @@ No configuration changes in this release.
 
 **Technologies:**
 - FastAPI team for excellent framework
-- React team for modern UI library
+- Vue3 for modern UI library
 - Monaco Editor for powerful editor
 - Material-UI for component library
 - pytest and Vitest for testing frameworks
