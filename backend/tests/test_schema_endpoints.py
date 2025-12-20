@@ -12,6 +12,7 @@ from backend.app.api.dependencies import get_schema_service
 from backend.app.main import app
 from backend.app.models.data_source import ColumnMetadata, TableMetadata, TableSchema
 from backend.app.services.schema_service import SchemaIntrospectionService, SchemaServiceError
+from tests.decorators import with_test_config
 
 # pylint: disable=redefined-outer-name
 
@@ -204,7 +205,8 @@ class TestDebugSeadTables:
         return TestClient(app)
 
     @pytest.mark.asyncio
-    async def test_sead_tables_real_service(self, real_client):
+    @with_test_config
+    async def test_sead_tables_real_service(self, test_provider, real_client):
         """Test with real service - use this for debugging.
 
         To debug:

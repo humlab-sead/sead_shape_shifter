@@ -193,7 +193,7 @@ class TestEnvironmentVariableResolution:
             del os.environ["DS_DB"]
 
     @pytest.mark.asyncio
-    async def test_test_connection_resolves_env_vars(self, service, monkeypatch):
+    async def test_test_connection_resolves_env_vars(self, service):
         """Should resolve env vars before testing connection."""
         from unittest.mock import AsyncMock
 
@@ -213,25 +213,27 @@ class TestEnvironmentVariableResolution:
                 **{},
             )
 
-            # Mock the loader's test_connection method
+            # Mock the loader instance and its test_connection method
             mock_loader = AsyncMock()
             mock_loader.test_connection.return_value = ConnectTestResult(
                 success=True, message="Mock connection successful", connection_time_ms=10, metadata={}
             )
 
-            # Mock DataLoaders.get to return our mock loader
-            from src.loaders.base_loader import DataLoaders
+            # Mock DataLoaders.get where it's imported (in data_source_service)
+            with patch("backend.app.services.data_source_service.DataLoaders") as mock_data_loaders:
+                # DataLoaders.get returns a class, which when instantiated returns our mock loader
+                mock_loader_class = Mock(return_value=mock_loader)
+                mock_data_loaders.get.return_value = mock_loader_class
 
-            original_get = DataLoaders.get
-            DataLoaders.get = lambda driver: mock_loader  # type: ignore
-
-            try:
                 result = await service.test_connection(config)
 
-                assert result.success
+                assert result.success, result.message
                 assert result.message == "Mock connection successful"
-            finally:
-                DataLoaders.get = original_get
+
+                # Verify DataLoaders.get was called with the correct driver
+                mock_data_loaders.get.assert_called_once_with("postgresql")
+                # Verify the loader class was instantiated
+                mock_loader_class.assert_called_once()
         finally:
             del os.environ["TEST_CONN_HOST"]
             del os.environ["TEST_CONN_DB"]
