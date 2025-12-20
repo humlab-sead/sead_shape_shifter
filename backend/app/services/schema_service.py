@@ -69,6 +69,7 @@ class SchemaIntrospectionService:
 
     def create_loader_for_data_source(self, ds_config: api.DataSourceConfig) -> SqlLoader:
         core_config: CoreDataSourceConfig = DataSourceMapper.to_core_config(ds_config)
+
         loader_cls: type[SqlLoader] | None = DataLoaders.get(core_config.driver)
         if not loader_cls:
             raise SchemaServiceError(f"Schema introspection not supported for driver: {core_config.driver}")
@@ -104,13 +105,15 @@ class SchemaIntrospectionService:
             if ds_config is None:
                 raise SchemaServiceError(f"Data source '{data_source_name}' not found")
 
+            # Resolve environment variables before creating loader
+            ds_config = ds_config.resolve_config_env_vars()
             loader: SqlLoader = self.create_loader_for_data_source(ds_config)
 
-            core_tables: dict[str, CoreSchema.TableMetadata] = await loader.get_tables(schema=schema)
+            core_tables: dict[str, CoreSchema.TableMetadata] = await loader.get_tables(schema_name=schema)
 
             # Convert CoreSchema.TableMetadata to API TableMetadata
             tables: list[api.TableMetadata] = [
-                api.TableMetadata(name=table.name, schema=table.schema, comment=table.comment, row_count=table.row_count)
+                api.TableMetadata(name=table.name, schema_name=table.schema, comment=table.comment, row_count=table.row_count)
                 for table in core_tables.values()
             ]
 
@@ -149,6 +152,8 @@ class SchemaIntrospectionService:
             if ds_config is None:
                 raise SchemaServiceError(f"Data source '{data_source_name}' not found")
 
+            # Resolve environment variables before creating loader
+            ds_config = ds_config.resolve_config_env_vars()
             loader: SqlLoader = self.create_loader_for_data_source(ds_config)
             core_schema: CoreSchema.TableSchema = await loader.get_table_schema(table_name, schema=schema)
             api_schema: api.TableSchema = TableSchemaMapper.to_api_schema(core_schema)
@@ -194,6 +199,8 @@ class SchemaIntrospectionService:
             if ds_config is None:
                 raise SchemaServiceError(f"Data source '{data_source_name}' not found")
 
+            # Resolve environment variables before creating loader
+            ds_config = ds_config.resolve_config_env_vars()
             data_source: CoreDataSourceConfig = DataSourceMapper.to_core_config(ds_config)
             qualified_table: str = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
             query: str = f"SELECT * FROM {qualified_table} LIMIT {limit} OFFSET {offset}"
