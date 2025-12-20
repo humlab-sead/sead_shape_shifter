@@ -22,7 +22,8 @@ The orchestrator is `ArbodatSurveyNormalizer` in `src/normalizer.py` which uses 
 ### Backend Architecture (`backend/app/`)
 - **API Layer** (`api/v1/endpoints/`) - FastAPI routers for each feature
 - **Services** (`services/`) - Business logic (validation, auto-fix, query execution)
-- **Models** (`models/`) - Pydantic v2 schemas for request/response
+- **Models** (`models/`) - Pydantic v2 schemas for request/response (raw `${ENV_VARS}`)
+- **Mappers** (`mappers/`) - Layer boundary translators (resolve env vars here)
 - **Core** (`core/`) - Settings and configuration
 
 Key services:
@@ -30,6 +31,10 @@ Key services:
 - `auto_fix_service.py` - Automated fix suggestions with backup/rollback
 - `query_service.py` - SQL query execution against configured data sources
 - `schema_service.py` - Database schema introspection
+
+Key mappers:
+- `data_source_mapper.py` - API ↔ Core translation + environment variable resolution
+- `table_schema_mapper.py` - Schema metadata translation
 
 ### Frontend Architecture (`frontend/src/`)
 - **Vue 3 Composition API** with `<script setup>` syntax
@@ -100,6 +105,26 @@ from src.config_model import TablesConfig  # Core models
 from src.configuration.provider import ConfigStore  # Config singleton
 from backend.app.services.validation_service import ValidationService  # Backend
 ```
+
+### Mapper Pattern (Environment Variables)
+**Critical**: Environment variable resolution happens ONLY in the mapper layer:
+```python
+# backend/app/mappers/data_source_mapper.py
+class DataSourceMapper:
+    @staticmethod
+    def to_core_config(api_config: ApiDataSourceConfig) -> CoreDataSourceConfig:
+        # Resolution at the API/Core boundary
+        api_config = api_config.resolve_config_env_vars()
+        return CoreDataSourceConfig(...)  # Fully resolved
+```
+
+**Layer responsibilities:**
+- API Models (`backend/app/models/`) - Raw `${ENV_VARS}` (unresolved)
+- Services (`backend/app/services/`) - Work with raw API entities
+- Mappers (`backend/app/mappers/`) - **Resolve env vars here**
+- Core (`src/`) - Always fully resolved
+
+**Never** call `resolve_config_env_vars()` in services - let the mapper handle it.
 
 ### Test Patterns
 ```python
