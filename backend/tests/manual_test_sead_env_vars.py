@@ -4,6 +4,7 @@ from pathlib import Path
 
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
+from src.configuration.interface import ConfigLike
 from src.configuration.provider import ConfigStore
 
 # pylint: disable=redefined-outer-name, unused-argument, import-outside-toplevel, invalid-name
@@ -17,14 +18,14 @@ print()
 
 # Initialize config store
 ConfigStore.reset_instance()
-store = ConfigStore.get_instance()
+store: ConfigStore = ConfigStore.get_instance()
 store.configure_context(source=str(config_file))
-config = store.config()
+config: ConfigLike | None = store.config()
 
 assert config is not None
 
 # Create service
-service = DataSourceService(config)
+service = DataSourceService(project_root / "input" )
 
 # List data sources
 print("=" * 80)

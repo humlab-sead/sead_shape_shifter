@@ -17,22 +17,17 @@ from backend.app.core.config import Settings
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
-from src.configuration.config import ConfigFactory
-from src.configuration.interface import ConfigLike
-from src.configuration.provider import ConfigStore
 from src.loaders.driver_metadata import DriverSchemaRegistry
 from src.utility import find_parent_with
-from tests.decorators import with_test_config
 
 project_root: Path = find_parent_with(Path(__file__), "pyproject.toml")
 
 
 class TestPostgresConnection:
-    """Tests for multiple append configurations."""
+    """Tests for PostgreSQL data source connection."""
 
     @pytest.mark.asyncio
-    @with_test_config
-    async def test_postgresql_connection(self, test_provider, settings: Settings):
+    async def test_postgresql_connection(self, settings: Settings):
         """Test PostgreSQL connection."""
         logger.info("=" * 80)
         logger.info("Testing PostgreSQL Connection")
@@ -40,18 +35,17 @@ class TestPostgresConnection:
 
         dotenv.load_dotenv(project_root / "input/.env")
 
-        config_file: str = "./input/arbodat-test.yml"
-        config: ConfigLike = ConfigFactory().load(source=config_file, env_filename="./input/.env", env_prefix="SEAD_NORMALIZER")
-        test_provider.set_config(config=config)
-
         # Load schemas
         DriverSchemaRegistry.load_from_yaml()
         schema = DriverSchemaRegistry.get("postgresql")
         logger.info(f"PostgreSQL Schema: {schema}")
 
-        assert all(
-            x in os.environ for x in ["SEAD_HOST", "SEAD_PORT", "SEAD_DBNAME", "SEAD_USER"]
-        ), "One or more SEAD environment variables not set"
+        # Check if required env vars are set
+        required_vars = ["SEAD_HOST", "SEAD_PORT", "SEAD_DBNAME", "SEAD_USER"]
+        missing_vars = [v for v in required_vars if v not in os.environ]
+        
+        if missing_vars:
+            pytest.skip(f"Required environment variables not set: {', '.join(missing_vars)}")
 
         # Create test config
         pg_config = DataSourceConfig(
@@ -69,18 +63,16 @@ class TestPostgresConnection:
         # Test connection
         service = DataSourceService(settings.CONFIGURATIONS_DIR)
 
-        try:
-            logger.info("Testing connection...")
-            result = await service.test_connection(pg_config)
+        logger.info("Testing connection...")
+        result = await service.test_connection(pg_config)
 
-            logger.info(f"Success: {result.success}")
-            logger.info(f"Message: {result.message}")
-            logger.info(f"Time: {result.connection_time_ms}ms")
-            logger.info(f"Metadata: {result.metadata}")
+        logger.info(f"Success: {result.success}")
+        logger.info(f"Message: {result.message}")
+        logger.info(f"Time: {result.connection_time_ms}ms")
+        logger.info(f"Metadata: {result.metadata}")
 
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"Connection test failed with exception: {e}")
-            logger.exception(e)
+        # Assert connection was successful
+        assert result.success, f"Connection failed: {result.message}"
 
 
 async def test_access_connection(settings: Settings) -> bool:
