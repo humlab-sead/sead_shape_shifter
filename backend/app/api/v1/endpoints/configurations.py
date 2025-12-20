@@ -23,6 +23,7 @@ router = APIRouter()
 
 # pylint: disable=no-member
 
+
 # Request/Response Models
 class ConfigurationCreateRequest(BaseModel):
     """Request to create new configuration."""
