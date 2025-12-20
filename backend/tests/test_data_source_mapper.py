@@ -68,6 +68,23 @@ def test_map_ucanaccess_config():
     assert options["ucanaccess_dir"] == "lib/ucanaccess"
 
 
+def test_map_ucanaccess_prefers_options_filename_when_metadata_present():
+    """Mapper should ignore YAML filename metadata and use real file path from options."""
+    api_config = DataSourceConfig(
+        name="test_access",
+        driver="ucanaccess",  # type: ignore
+        filename="arbodat-data-options.yml",  # metadata from service
+        options={"filename": "./input/real-db.mdb", "ucanaccess_dir": "lib/ucanaccess"},
+        **{},
+    )
+
+    core_config = DataSourceMapper.to_core_config(api_config)
+
+    options = core_config.data_source_cfg["options"]
+    assert options["filename"] == "./input/real-db.mdb"
+    assert options["ucanaccess_dir"] == "lib/ucanaccess"
+
+
 def test_map_sqlite_config():
     """Test mapping SQLite configuration."""
     api_config = DataSourceConfig(name="test_sqlite", driver="sqlite", filename="./data/test.db", **{})  # type: ignore

@@ -17,6 +17,7 @@
 #   - placeholder: Example value for UI
 #   - min_value: Minimum value (for integers)
 #   - max_value: Maximum value (for integers)
+#   - aliases: alternative names for the field
 
 postgresql:
   display_name: PostgreSQL
@@ -29,6 +30,10 @@ postgresql:
       default: localhost
       description: Database server hostname
       placeholder: localhost
+      aliases:
+        - hostname
+        - server
+        - dbhost
 
     - name: port
       type: integer
@@ -44,13 +49,19 @@ postgresql:
       required: true
       description: Database name
       placeholder: mydb
+      aliases:
+        - db
+        - dbname
 
     - name: username
       type: string
       required: true
       description: Database user
       placeholder: postgres
-
+      aliases:
+        - dbuser
+        - user
+ 
     - name: password
       type: password
       required: false
@@ -66,6 +77,10 @@ access:
       required: true
       description: Path to .mdb or .accdb file
       placeholder: ./input/database.mdb
+      aoliases:
+        - file
+        - filepath
+        - path
 
     - name: ucanaccess_dir
       type: string
@@ -85,6 +100,10 @@ ucanaccess:
       required: true
       description: Path to .mdb or .accdb file
       placeholder: ./input/database.mdb
+      aliases:
+        - file
+        - filepath
+        - path
 
     - name: ucanaccess_dir
       type: string
@@ -103,6 +122,10 @@ sqlite:
       required: true
       description: Path to .db or .sqlite file
       placeholder: ./data/database.db
+      aliases:
+        - file
+        - filepath
+        - path
 
 csv:
   display_name: CSV File
@@ -114,6 +137,10 @@ csv:
       required: true
       description: Path to .csv file
       placeholder: ./data/file.csv
+      aliases:
+        - file
+        - filepath
+        - path
 
     - name: encoding
       type: string
@@ -128,3 +155,7 @@ csv:
       default: ","
       description: Field delimiter
       placeholder: ","
+      aliases:
+        - sep
+        - separator
+        
