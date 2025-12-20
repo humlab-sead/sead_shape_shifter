@@ -21,7 +21,7 @@
 
 Shape Shifter Configuration Editor is a full-stack web application for managing data transformation configurations. The system uses:
 - **Backend:** FastAPI (Python 3.11+)
-- **Frontend:** React 18 + TypeScript
+- **Frontend:** Vue3 + TypeScript
 - **Testing:** pytest + Vitest
 - **Deployment:** Docker + Uvicorn
 
@@ -203,13 +203,13 @@ sead_shape_shifter/
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     Frontend (Vue3)                    │
+│                     Frontend (Vue3)                     │
 │  ┌──────────┬──────────┬──────────┬──────────────────┐  │
 │  │  Editor  │  Panels  │  Config  │  Validation      │  │
 │  │  Monaco  │  MUI     │  State   │  UI Components   │  │
 │  └──────────┴──────────┴──────────┴──────────────────┘  │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │           API Client (axios, React Query)          │ │
+│  │                  API Client (axios)                │ │
 │  └────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
                            │ HTTP/REST
@@ -252,12 +252,11 @@ sead_shape_shifter/
 - **uv** - Package manager
 
 **Frontend:**
-- **React 18** - UI library
+- **Vue3** - UI library
 - **TypeScript** - Type safety
 - **Monaco Editor** - Code editor
 - **Material-UI** - Component library
-- **React Query** - Server state
-- **Zustand** - Client state
+- **Pinia** - Client state
 - **Vite** - Build tool
 
 ### Design Principles
@@ -747,29 +746,21 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 ### Directory Structure
 
+# FIXME: This needs to be updated to Vue3
 ```
 frontend/src/
 ├── api/                        # API client layer
 │   ├── client.ts               # Axios config
 │   ├── configurations.ts
-│   ├── validation.ts
-│   └── autoFix.ts
-├── components/                 # React components
-│   ├── editor/
+│   ├── ...
+│   └── validation.ts
+├── components/                 # Vue3 components
+│   ├── common/
 │   │   ├── ConfigurationEditor.tsx
 │   │   └── MonacoEditor.tsx
-│   ├── panels/
-│   │   ├── ValidationPanel.tsx
-│   │   ├── EntityTreePanel.tsx
-│   │   └── PropertiesPanel.tsx
-│   └── common/
-│       ├── LoadingSkeleton.tsx
-│       └── SuccessSnackbar.tsx
-├── hooks/                      # Custom hooks
-│   ├── useConfiguration.ts
-│   ├── useValidation.ts
-│   ├── useDebounce.ts
-│   └── useCache.ts
+│   ├── configurations/
+│   │   ├── ...
+│   │   └── ...
 ├── stores/                     # State management
 │   └── configStore.ts
 ├── types/                      # TypeScript types
@@ -784,265 +775,15 @@ frontend/src/
 
 ### State Management
 
-#### React Query for Server State
+#### Server State
 
-```typescript
-// src/hooks/useValidation.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { validateConfiguration } from '../api/validation';
-
-export function useValidation(configName: string, validationType: string) {
-  return useQuery({
-    queryKey: ['validation', configName, validationType],
-    queryFn: () => validateConfiguration(configName, validationType),
-    staleTime: 5 * 60 * 1000,     // 5 minutes
-    cacheTime: 10 * 60 * 1000,    // 10 minutes
-    refetchOnWindowFocus: false,
-    enabled: !!configName,
-  });
-}
-
-export function useValidationMutation() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: ({ configName, validationType }) => 
-      validateConfiguration(configName, validationType),
-    onSuccess: (data, variables) => {
-      // Update cache
-      queryClient.setQueryData(
-        ['validation', variables.configName, variables.validationType],
-        data
-      );
-    },
-  });
-}
-```
-
-#### Zustand for UI State
-
-```typescript
-// src/stores/configStore.ts
-import create from 'zustand';
-import { devtools } from 'zustand/middleware';
-
-interface ConfigStore {
-  // State
-  currentConfig: string | null;
-  selectedEntity: string | null;
-  activeTab: 'validation' | 'properties';
-  
-  // Actions
-  setCurrentConfig: (name: string) => void;
-  setSelectedEntity: (entity: string | null) => void;
-  setActiveTab: (tab: 'validation' | 'properties') => void;
-  reset: () => void;
-}
-
-export const useConfigStore = create<ConfigStore>()(
-  devtools((set) => ({
-    // Initial state
-    currentConfig: null,
-    selectedEntity: null,
-    activeTab: 'validation',
-    
-    // Actions
-    setCurrentConfig: (name) => set({ currentConfig: name }),
-    setSelectedEntity: (entity) => set({ selectedEntity: entity }),
-    setActiveTab: (tab) => set({ activeTab: tab }),
-    reset: () => set({
-      currentConfig: null,
-      selectedEntity: null,
-      activeTab: 'validation',
-    }),
-  }), { name: 'ConfigStore' })
-);
-```
-
-### Custom Hooks
-
-#### useDebounce
-
-```typescript
-// src/hooks/useDebounce.ts
-import { useEffect, useState } from 'react';
-
-export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-// Usage
-function SearchComponent() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearch = useDebounce(searchTerm, 500);
-  
-  useEffect(() => {
-    if (debouncedSearch) {
-      performSearch(debouncedSearch);
-    }
-  }, [debouncedSearch]);
-  
-  return <input onChange={(e) => setSearchTerm(e.target.value)} />;
-}
-```
-
-#### useCache
-
-```typescript
-// src/hooks/useCache.ts
-import { useState, useEffect } from 'react';
-
-interface CacheEntry<T> {
-  value: T;
-  expiresAt: number;
-}
-
-export function useCache<T>(
-  key: string,
-  fetcher: () => Promise<T>,
-  ttl: number = 300000  // 5 minutes
-) {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        // Check localStorage cache
-        const cached = localStorage.getItem(key);
-        if (cached) {
-          const entry: CacheEntry<T> = JSON.parse(cached);
-          if (Date.now() < entry.expiresAt) {
-            setData(entry.value);
-            setLoading(false);
-            return;
-          }
-        }
-        
-        // Fetch fresh data
-        const result = await fetcher();
-        
-        // Cache result
-        const entry: CacheEntry<T> = {
-          value: result,
-          expiresAt: Date.now() + ttl,
-        };
-        localStorage.setItem(key, JSON.stringify(entry));
-        
-        setData(result);
-      } catch (err) {
-        setError(err as Error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    fetchData();
-  }, [key, ttl]);
-  
-  return { data, loading, error };
-}
-```
+#### Pinia for UI State
 
 ### Component Patterns
 
 #### Composition Pattern
 
-```typescript
-// src/components/editor/ConfigurationEditor.tsx
-import { Box } from '@mui/material';
-import EntityTreePanel from '../panels/EntityTreePanel';
-import MonacoEditor from './MonacoEditor';
-import ValidationPanel from '../panels/ValidationPanel';
 
-export default function ConfigurationEditor() {
-  return (
-    <Box display="flex" height="100vh">
-      {/* Left: Entity Tree */}
-      <Box width={300} borderRight="1px solid #ddd">
-        <EntityTreePanel />
-      </Box>
-      
-      {/* Center: Monaco Editor */}
-      <Box flex={1}>
-        <MonacoEditor />
-      </Box>
-      
-      {/* Right: Validation Panel */}
-      <Box width={400} borderLeft="1px solid #ddd">
-        <ValidationPanel />
-      </Box>
-    </Box>
-  );
-}
-```
-
-#### Performance Optimization
-
-```typescript
-// src/components/panels/ValidationPanel.tsx
-import { useMemo, memo } from 'react';
-
-interface Props {
-  issues: ValidationIssue[];
-}
-
-const ValidationPanel = memo(({ issues }: Props) => {
-  // Expensive sorting memoized
-  const sortedIssues = useMemo(() => {
-    return [...issues].sort((a, b) => {
-      const severityOrder = { error: 0, warning: 1, info: 2 };
-      return severityOrder[a.severity] - severityOrder[b.severity];
-    });
-  }, [issues]);
-  
-  return (
-    <Box>
-      {sortedIssues.map((issue) => (
-        <IssueItem key={issue.id} issue={issue} />
-      ))}
-    </Box>
-  );
-});
-
-export default ValidationPanel;
-```
-
-#### Code Splitting
-
-```typescript
-// src/App.tsx
-import { lazy, Suspense } from 'react';
-import LoadingSkeleton from './components/common/LoadingSkeleton';
-
-// Lazy load heavy components
-const ConfigurationEditor = lazy(() => 
-  import('./components/editor/ConfigurationEditor')
-);
-
-function App() {
-  return (
-    <Suspense fallback={<LoadingSkeleton />}>
-      <ConfigurationEditor />
-    </Suspense>
-  );
-}
-
-export default App;
-```
 
 ---
 
@@ -1692,8 +1433,6 @@ debugpy.wait_for_client()
 console.log('Debug:', variable);
 debugger;  // Breakpoint
 
-// React DevTools
-// Install React DevTools browser extension
 ```
 
 ---

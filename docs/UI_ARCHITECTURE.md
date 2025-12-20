@@ -78,13 +78,13 @@ This document defines the software architecture for the Shape Shifter Configurat
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| **Framework** | React 18 | UI library with hooks and concurrent features |
+| **Framework** | Vue3 | UI frontend library with hooks and concurrent features |
 | **Language** | TypeScript | Type-safe JavaScript |
 | **Editor** | Monaco Editor | VS Code's editor for YAML editing |
 | **UI Components** | Material-UI (MUI) | Pre-built component library |
-| **State Management** | React Query + Zustand | Server and client state |
+| **State Management** | Vue3 + Pinia | Server and client state |
 | **Build Tool** | Vite | Fast build tool and dev server |
-| **Testing** | Vitest + React Testing Library | Unit and component tests |
+| **Testing** | Vitest  | Unit and component tests |
 | **Styling** | Emotion (CSS-in-JS) | Component styling |
 
 ### 3.2 Backend
@@ -122,7 +122,7 @@ frontend/
 │   │   ├── configurations.ts   # Config API calls
 │   │   ├── validation.ts       # Validation API calls
 │   │   └── autoFix.ts          # Auto-fix API calls
-│   ├── components/             # React components
+│   ├── components/             # Vue3 components
 │   │   ├── editor/
 │   │   │   ├── ConfigurationEditor.tsx
 │   │   │   └── MonacoEditor.tsx
@@ -134,12 +134,12 @@ frontend/
 │   │       ├── LoadingSkeleton.tsx
 │   │       ├── SuccessSnackbar.tsx
 │   │       └── Tooltip.tsx
-│   ├── hooks/                  # Custom React hooks
+│   ├── hooks/                  # Custom hooks
 │   │   ├── useConfiguration.ts
 │   │   ├── useValidation.ts
 │   │   ├── useDebounce.ts
 │   │   └── useCache.ts
-│   ├── stores/                 # Zustand stores
+│   ├── stores/                 # Pinia stores
 │   │   └── configStore.ts
 │   ├── types/                  # TypeScript types
 │   │   ├── configuration.ts
@@ -148,8 +148,8 @@ frontend/
 │   ├── utils/                  # Utility functions
 │   │   ├── formatters.ts
 │   │   └── validators.ts
-│   ├── App.tsx                 # Main application
-│   └── main.tsx                # Entry point
+│   ├── App.vue                 # Main application
+│   └── main.ts                 # Entry point
 ├── tests/                      # Test files
 │   ├── unit/
 │   ├── integration/
@@ -348,32 +348,10 @@ watch(activeTab, (newTab, oldTab) => {
 
 ### 4.3 State Management
 
-#### Server State (React Query)
+#### Server State
 
-```typescript
-// Fetch and cache server data
-const { data, isLoading, error } = useQuery({
-  queryKey: ['configuration', configName],
-  queryFn: () => fetchConfiguration(configName),
-  staleTime: 5 * 60 * 1000,  // 5 minutes
-});
 
-// Mutations with optimistic updates
-const mutation = useMutation({
-  mutationFn: saveConfiguration,
-  onSuccess: () => {
-    queryClient.invalidateQueries(['configuration']);
-  },
-});
-```
-
-**Benefits**:
-- Automatic caching and refetching
-- Loading and error states
-- Optimistic updates
-- Background synchronization
-
-#### Client State (Zustand)
+#### Client State (Pinia)
 
 ```typescript
 // UI state store
@@ -914,7 +892,7 @@ docker-compose up -d
 ### 10.1 Frontend Testing
 
 - **Unit Tests**: Components, hooks, utilities (Vitest)
-- **Integration Tests**: User workflows (React Testing Library)
+- **Integration Tests**: User workflows
 - **E2E Tests**: Critical paths (Playwright, future)
 
 ### 10.2 Backend Testing
