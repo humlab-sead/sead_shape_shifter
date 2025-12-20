@@ -131,20 +131,25 @@ class TestConfigurationsUpdate:
     """Tests for updating configurations."""
 
     def test_update_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
-        """Test updating existing configuration."""
+        """Test updating existing configuration (options only, not entities)."""
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
         # Create config
         client.post("/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]})
 
-        # Update config
-        updated_entities = {"sample": {"type": "data", "keys": ["sample_id"], "columns": ["name", "value", "new_col"]}}
-        response = client.put("/api/v1/configurations/test_config", json={"entities": updated_entities, "options": {}})
+        # Update config options (entities are ignored by update endpoint)
+        updated_options = {"some_option": "value", "another_option": 123}
+        response = client.put("/api/v1/configurations/test_config", json={"entities": {}, "options": updated_options})
 
         assert response.status_code == 200
         data = response.json()
-        assert data["entities"]["sample"]["columns"] == ["name", "value", "new_col"]
+        # Verify entities are preserved from disk
+        assert "sample" in data["entities"]
+        assert data["entities"]["sample"]["columns"] == ["name", "value"]
+        # Verify options were updated
+        assert data["options"]["some_option"] == "value"
+        assert data["options"]["another_option"] == 123
 
     def test_update_nonexistent_configuration(self, tmp_path, monkeypatch, reset_services):
         """Test updating non-existent configuration returns 404."""
