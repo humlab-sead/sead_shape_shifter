@@ -14,11 +14,7 @@ from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.schema_service import SchemaIntrospectionService
 from src.configuration.interface import ConfigLike
 from src.configuration.provider import ConfigProvider, get_config_provider
-
-# Add src directory to path for accessing data loaders and config system
-src_path = Path(__file__).resolve().parent.parent.parent.parent / "src"
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
+from backend.app.core.config import settings
 
 
 def get_config(
@@ -39,7 +35,7 @@ def get_data_source_service() -> Generator[DataSourceService, None, None]:
     Creates service for managing global data source files.
     Used as FastAPI dependency for data source endpoints.
     """
-    service = DataSourceService()
+    service = DataSourceService(settings.CONFIGURATIONS_DIR)
     try:
         yield service
     finally:
