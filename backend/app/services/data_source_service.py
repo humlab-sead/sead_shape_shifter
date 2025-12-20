@@ -24,9 +24,9 @@ class DataSourceService:
 
     def __init__(self, data_sources_dir: Path | str) -> None:
         """Initialize the data source service."""
-        self.data_sources_dir: Path = Path(data_sources_dir) 
+        self.data_sources_dir: Path = Path(data_sources_dir)
 
-    def _resolve_data_source_path(self, filename: str|Path, raise_if_not_found: bool = False) -> Path:
+    def _resolve_data_source_path(self, filename: str | Path, raise_if_not_found: bool = False) -> Path:
         """Resolve the full path to a data source file."""
         filename = Path(filename)
         if not filename.suffix == ".yml":
@@ -35,7 +35,7 @@ class DataSourceService:
         if raise_if_not_found and not path.exists():
             raise ValueError(f"Data source file '{filename}' not found")
         return path
-    
+
     def _list_data_source_files(self) -> list[Path]:
         """List all data source YAML files in the input directory.
 
@@ -272,4 +272,3 @@ class DataSourceService:
             in_use_by_entities=[],  # Would need to scan all configs
             last_test_result=None,
         )
-
