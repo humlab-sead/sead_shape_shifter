@@ -92,14 +92,13 @@ class SqlLoader(DataLoader):
             raise ValueError(f"Entity '{entity_name}' is not configured as fixed SQL data")
 
         data: pd.DataFrame = await self.read_sql(sql=table_cfg.query)  # type: ignore[arg-type]
-        # for now, columns must match those in the SQL result
 
-        if len(set(data.columns)) != len(set(table_cfg.keys_and_columns)):
-            raise ValueError(f"Fixed data entity '{entity_name}' has different number of columns in configuration")
+        if not table_cfg.keys_and_columns and table_cfg.auto_detect_columns:
+            table_cfg.columns = list(data.columns)
 
         if table_cfg.check_column_names:
             if set(data.columns) != set(table_cfg.keys_and_columns):
-                raise ValueError(f"Fixed data entity '{entity_name}' has mismatched columns between configuration and SQL result")
+                raise ValueError(f"Data for entity '{entity_name}' has different columns compared to configuration")
         else:
             data.columns = table_cfg.keys_and_columns
 
@@ -184,6 +183,7 @@ class SqlLoader(DataLoader):
                         "source": None,
                         "query": test_query,
                         "data_source": self.data_source.name if self.data_source else None,
+                        "auto_detect_columns": True
                     }
                 },
                 entity_name="test",

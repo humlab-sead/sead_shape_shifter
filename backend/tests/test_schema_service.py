@@ -237,13 +237,13 @@ class TestSchemaEndpoints:
         """Should create TableMetadata model."""
         table = TableMetadata(
             name="users",
-            schema="public",
+            schema_name="public",
             row_count=100,
             comment="User accounts",
         )
 
         assert table.name == "users"
-        assert table.schema == "public"
+        assert table.schema_name == "public"
         assert table.row_count == 100
         assert table.comment == "User accounts"
 

@@ -179,6 +179,7 @@ class TableConfig:
         self.sql_query: str | None = self._data.get("query", None)
         self.surrogate_id: str = self._data.get("surrogate_id", "")
         self.check_column_names: bool = self._data.get("check_column_names", True)
+        self.auto_detect_columns: bool = self._data.get("auto_detect_columns", False)
 
         """Get the data source name for SQL data tables."""
         self.data_source: str | None = self._data.get("data_source", None)

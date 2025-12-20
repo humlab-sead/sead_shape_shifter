@@ -204,9 +204,9 @@ class TestDebugSeadTables:
         app.dependency_overrides.clear()
         return TestClient(app)
 
+    @pytest.mark.skip(reason="For step-by-step debugging only")
     @pytest.mark.asyncio
-    @with_test_config
-    async def test_sead_tables_real_service(self, test_provider, real_client):
+    async def test_sead_tables_real_service(self, real_client):
         """Test with real service - use this for debugging.
 
         To debug:
