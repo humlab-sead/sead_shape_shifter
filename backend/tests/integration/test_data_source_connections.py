@@ -13,6 +13,7 @@ import dotenv
 import pytest
 from loguru import logger
 
+from backend.app.core.config import Settings
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
@@ -31,7 +32,7 @@ class TestPostgresConnection:
 
     @pytest.mark.asyncio
     @with_test_config
-    async def test_postgresql_connection(self, test_provider):
+    async def test_postgresql_connection(self, test_provider, settings: Settings):
         """Test PostgreSQL connection."""
         logger.info("=" * 80)
         logger.info("Testing PostgreSQL Connection")
@@ -66,8 +67,7 @@ class TestPostgresConnection:
         logger.info(f"Config: {pg_config.model_dump(exclude={'password'})}")
 
         # Test connection
-        config_store = ConfigStore.config_global()
-        service = DataSourceService(config_store)
+        service = DataSourceService(settings.CONFIGURATIONS_DIR)
 
         try:
             logger.info("Testing connection...")
@@ -83,7 +83,7 @@ class TestPostgresConnection:
             logger.exception(e)
 
 
-async def test_access_connection():
+async def test_access_connection(settings: Settings) -> bool:
     """Test MS Access connection."""
     logger.info("=" * 80)
     logger.info("Testing MS Access Connection")
@@ -113,8 +113,7 @@ async def test_access_connection():
     logger.info(f"Config: {access_config.model_dump()}")
 
     # Test connection
-    config_store = ConfigStore.config_global()
-    service = DataSourceService(config_store)
+    service = DataSourceService(settings.CONFIGURATIONS_DIR)
 
     try:
         logger.info("Testing connection...")
@@ -132,14 +131,13 @@ async def test_access_connection():
         return False
 
 
-async def test_existing_data_sources():
+async def test_existing_data_sources(settings: Settings):
     """Test connections to existing configured data sources."""
     logger.info("=" * 80)
     logger.info("Testing Existing Data Sources from Configuration")
     logger.info("=" * 80)
 
-    config_store = ConfigStore.config_global()
-    service = DataSourceService(config_store)
+    service = DataSourceService(settings.CONFIGURATIONS_DIR)
 
     # List all configured data sources
     data_sources = service.list_data_sources()
