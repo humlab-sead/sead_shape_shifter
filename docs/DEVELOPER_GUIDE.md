@@ -144,14 +144,8 @@ uv run mypy app/
 ```bash
 cd frontend
 
-# Run tests
-npm run test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage
-npm run test:coverage
+# Start dev server
+npm run dev
 
 # Lint code
 npm run lint
@@ -159,11 +153,11 @@ npm run lint
 # Format code
 npm run format
 
-# Type check
-npm run type-check
-
-# Build for production
+# Build for production (includes vue-tsc type-check)
 npm run build
+
+# Preview production build
+npm run preview
 ```
 
 ### Project Structure
@@ -181,13 +175,17 @@ sead_shape_shifter/
 │   └── pyproject.toml          # Dependencies
 ├── frontend/                   # Vue3 frontend
 │   ├── src/
-│   │   ├── api/                # API client
-│   │   ├── components/         # Vue components
-│   │   ├── hooks/              # Custom hooks
-│   │   ├── stores/             # State management
+│   │   ├── api/                # Axios client + per-resource modules
+│   │   ├── components/         # Reusable Vue components
+│   │   ├── composables/        # Reusable composition functions
+│   │   ├── stores/             # Pinia state management
+│   │   ├── views/              # Route-level views
+│   │   ├── router/             # Vue Router configuration
+│   │   ├── plugins/            # Vuetify + other plugins
+│   │   ├── styles/             # Global styles and variables
 │   │   ├── types/              # TypeScript types
-│   │   └── App.tsx             # Main component
-│   ├── tests/                  # Frontend tests
+│   │   ├── App.vue             # Root component
+│   │   └── main.ts             # App bootstrap
 │   └── package.json            # Dependencies
 ├── docs/                       # Documentation
 ├── input/                      # Sample configurations
@@ -206,7 +204,7 @@ sead_shape_shifter/
 │                     Frontend (Vue3)                     │
 │  ┌──────────┬──────────┬──────────┬──────────────────┐  │
 │  │  Editor  │  Panels  │  Config  │  Validation      │  │
-│  │  Monaco  │  MUI     │  State   │  UI Components   │  │
+│  │  Monaco  │ Vuetify  │  State   │  UI Components   │  │
 │  └──────────┴──────────┴──────────┴──────────────────┘  │
 │  ┌────────────────────────────────────────────────────┐ │
 │  │                  API Client (axios)                │ │
@@ -746,42 +744,42 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 ### Directory Structure
 
-# FIXME: This needs to be updated to Vue3
 ```
 frontend/src/
-├── api/                        # API client layer
-│   ├── client.ts               # Axios config
-│   ├── configurations.ts
-│   ├── ...
-│   └── validation.ts
-├── components/                 # Vue3 components
-│   ├── common/
-│   │   ├── ConfigurationEditor.tsx
-│   │   └── MonacoEditor.tsx
+├── api/                        # API client layer (axios + per-resource modules)
+├── components/                 # Vue components (layout, panels, shared UI)
+│   ├── common/                 # Reusable pieces (YamlEditor/Monaco wrapper, alerts, skeletons)
 │   ├── configurations/
-│   │   ├── ...
-│   │   └── ...
-├── stores/                     # State management
-│   └── configStore.ts
+│   ├── validation/
+│   └── ...
+├── composables/                # Reusable composition functions (loading/error guards, etc.)
+├── stores/                     # Pinia stores (configuration, validation, UI)
+├── views/                      # Route-level screens
+├── router/                     # Vue Router configuration
+├── plugins/                    # Vuetify and other plugin setup
+├── styles/                     # Global styles and variables
 ├── types/                      # TypeScript types
-│   ├── configuration.ts
-│   ├── validation.ts
-│   └── autoFix.ts
-├── utils/                      # Utilities
-│   ├── formatters.ts
-│   └── validators.ts
-└── App.tsx
+├── App.vue                     # Root component
+└── main.ts                     # App bootstrap
 ```
 
 ### State Management
 
-#### Server State
-
-#### Pinia for UI State
+- **Server state:** Fetch via `frontend/src/api` using axios; keep request/response handling in composables (e.g., `useApiRequest`) to centralize loading/error logic.
+- **Pinia for UI state:** Keep configuration data, validation results, and editor UI flags in stores under `frontend/src/stores`; derive refs with `storeToRefs()` inside components.
 
 ### Component Patterns
 
+- Use `<script setup lang="ts">` with `defineProps`/`defineEmits` for typing.
+- Prefer composables over ad-hoc helpers for shared behavior (debounce, error handling, router guards).
+- Build UI with Vuetify components and encapsulate Monaco usage inside dedicated editor components.
+- Keep route views thin: orchestrate stores/composables and delegate UI rendering to child components.
+
 #### Composition Pattern
+
+- Use `computed` for derived state and `watch`/`watchEffect` for side effects.
+- Leverage VueUse utilities (e.g., `useDebounceFn`) for timers and throttling.
+- Co-locate API calls with related Pinia actions or composables rather than directly in templates.
 
 
 
@@ -930,13 +928,15 @@ async def test_validate_nonexistent_config():
 
 ### Frontend Testing
 
+Use Vitest with `@vue/test-utils`. Place unit specs under `frontend/tests/unit` and run with `npx vitest`.
+
 #### Component Test Example
 
 ```typescript
-// frontend/tests/unit/components/ValidationPanel.test.tsx
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
-import ValidationPanel from '@/components/panels/ValidationPanel';
+// frontend/tests/unit/components/ValidationPanel.spec.ts
+import { mount } from '@vue/test-utils';
+import { describe, it, expect } from 'vitest';
+import ValidationPanel from '@/components/panels/ValidationPanel.vue';
 
 describe('ValidationPanel', () => {
   it('renders validation issues', () => {
@@ -949,77 +949,76 @@ describe('ValidationPanel', () => {
         message: 'Column "missing" not found'
       }
     ];
-    
-    render(<ValidationPanel issues={issues} />);
-    
-    expect(screen.getByText(/Column "missing" not found/)).toBeInTheDocument();
-    expect(screen.getByText('test_entity')).toBeInTheDocument();
+
+    const wrapper = mount(ValidationPanel, { props: { issues } });
+
+    expect(wrapper.text()).toContain('Column "missing" not found');
+    expect(wrapper.text()).toContain('test_entity');
   });
-  
-  it('calls onApplyFix when button clicked', () => {
-    const onApplyFix = vi.fn();
-    const issues = [{
-      id: '1',
-      code: 'COLUMN_NOT_FOUND',
-      auto_fixable: true,
-      suggestion: { /* ... */ }
-    }];
-    
-    render(<ValidationPanel issues={issues} onApplyFix={onApplyFix} />);
-    
-    const button = screen.getByRole('button', { name: /apply fix/i });
-    fireEvent.click(button);
-    
-    expect(onApplyFix).toHaveBeenCalledOnce();
-  });
-  
-  it('filters issues by severity', () => {
+
+  it('emits apply-fix when button clicked', async () => {
     const issues = [
-      { id: '1', severity: 'error', message: 'Error' },
-      { id: '2', severity: 'warning', message: 'Warning' },
+      {
+        id: '1',
+        code: 'COLUMN_NOT_FOUND',
+        severity: 'error',
+        auto_fixable: true,
+        message: 'Column "missing" not found'
+      }
     ];
-    
-    render(<ValidationPanel issues={issues} />);
-    
-    // Click errors filter
-    fireEvent.click(screen.getByText('Errors'));
-    
-    expect(screen.getByText('Error')).toBeInTheDocument();
-    expect(screen.queryByText('Warning')).not.toBeInTheDocument();
+
+    const wrapper = mount(ValidationPanel, { props: { issues } });
+
+    await wrapper.get('[data-testid="apply-fix"]').trigger('click');
+
+    expect(wrapper.emitted('apply-fix')).toHaveLength(1);
   });
 });
 ```
 
-#### Hook Test Example
+#### Composable Test Example
 
 ```typescript
-// frontend/tests/unit/hooks/useDebounce.test.ts
-import { renderHook, act } from '@testing-library/react';
+// frontend/tests/unit/composables/useDebouncedSearch.spec.ts
 import { describe, it, expect, vi } from 'vitest';
-import { useDebounce } from '@/hooks/useDebounce';
+import { ref } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 
-describe('useDebounce', () => {
+const useDebouncedSearch = (search: (term: string) => Promise<void>) => {
+  const term = ref('');
+  const loading = ref(false);
+
+  const run = useDebounceFn(async (value: string) => {
+    loading.value = true;
+    await search(value);
+    loading.value = false;
+  }, 300);
+
+  const update = (value: string) => {
+    term.value = value;
+    run(value);
+  };
+
+  return { term, loading, update };
+};
+
+describe('useDebouncedSearch', () => {
   it('debounces value changes', async () => {
     vi.useFakeTimers();
-    
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value, 500),
-      { initialProps: { value: 'initial' } }
-    );
-    
-    expect(result.current).toBe('initial');
-    
-    // Change value
-    rerender({ value: 'changed' });
-    expect(result.current).toBe('initial'); // Still old value
-    
-    // Fast-forward time
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-    
-    expect(result.current).toBe('changed'); // Now updated
-    
+
+    const search = vi.fn().mockResolvedValue(undefined);
+    const { update, loading } = useDebouncedSearch(search);
+
+    update('config');
+    update('configu'); // rapid change
+
+    expect(loading.value).toBe(false);
+
+    vi.advanceTimersByTime(300);
+
+    expect(search).toHaveBeenCalledTimes(1);
+    expect(loading.value).toBe(false);
+
     vi.useRealTimers();
   });
 });
@@ -1036,7 +1035,7 @@ uv run pytest tests/ --cov=app --cov-report=html --cov-report=term
 
 # Frontend coverage
 cd frontend
-npm run test:coverage
+npx vitest run --coverage
 ```
 
 #### Coverage Targets
@@ -1047,7 +1046,7 @@ npm run test:coverage
 | Backend API | 85%+ | 88% |
 | Backend Models | 100% | 100% |
 | Frontend Components | 85%+ | 88% |
-| Frontend Hooks | 90%+ | 92% |
+| Frontend Composables | 90%+ | 92% |
 | **Overall** | **90%+** | **91%** |
 
 ---
@@ -1230,8 +1229,11 @@ def create_backup(config_name: str) -> Path:
 
 #### TypeScript (Frontend)
 
-```typescript
-// Good - Explicit types
+```vue
+<!-- Good - Explicit types and typed props -->
+<script setup lang="ts">
+import ValidationIssueList from '@/components/panels/ValidationIssueList.vue';
+
 interface ValidationIssue {
   id: string;
   code: string;
@@ -1240,24 +1242,21 @@ interface ValidationIssue {
   message: string;
 }
 
-// Bad - Any types
-interface ValidationIssue {
-  id: any;
-  code: any;
-  severity: any;
-  entity: any;
-  message: any;
-}
+const props = defineProps<{ issues: ValidationIssue[] }>();
+</script>
 
-// Good - Descriptive component names
-function ValidationIssueList({ issues }: { issues: ValidationIssue[] }) {
-  return <>{/* ... */}</>;
-}
+<template>
+  <ValidationIssueList :issues="props.issues" />
+</template>
 
-// Bad - Generic names
-function List({ data }: { data: any[] }) {
-  return <>{/* ... */}</>;
-}
+<!-- Bad - Any types and untyped props -->
+<script setup>
+defineProps(['issues']);
+</script>
+
+<template>
+  <ValidationIssueList :issues="issues" />
+</template>
 ```
 
 ### Error Handling
@@ -1324,25 +1323,23 @@ def test_validation():
 ### Performance
 
 ```typescript
-// Good - Memoize expensive computations
-const sortedIssues = useMemo(() => {
-  return [...issues].sort((a, b) => 
-    a.severity.localeCompare(b.severity)
-  );
-}, [issues]);
+// Good - Derived data via computed
+const sortedIssues = computed(() => [...issues.value].sort((a, b) => a.severity.localeCompare(b.severity)));
 
-// Bad - Compute every render
-const sortedIssues = [...issues].sort((a, b) => 
-  a.severity.localeCompare(b.severity)
-);
+// Bad - Recompute imperatively on every render
+const sortedIssues = ref([]);
+watchEffect(() => {
+  sortedIssues.value = [...issues.value].sort((a, b) => a.severity.localeCompare(b.severity));
+});
 
 // Good - Debounce user input
-const debouncedSearch = useDebounce(searchTerm, 500);
+const debouncedSearch = useDebounceFn(() => performSearch(searchTerm.value), 500);
+watch(searchTerm, () => debouncedSearch());
 
 // Bad - Trigger on every keystroke
-useEffect(() => {
-  performSearch(searchTerm);
-}, [searchTerm]);
+watch(searchTerm, (value) => {
+  performSearch(value);
+});
 ```
 
 ---
@@ -1392,7 +1389,7 @@ uv run pytest tests/test_file.py::test_function -v -s
 
 # Frontend - Run single test
 cd frontend
-npm run test -- ValidationPanel.test.tsx
+npx vitest ValidationPanel.spec.ts
 
 # Check for async issues
 # Ensure @pytest.mark.asyncio decorator present
