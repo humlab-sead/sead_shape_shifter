@@ -160,7 +160,7 @@ class TableMetadata(BaseModel):
     """Metadata about a database table."""
 
     name: str = Field(..., description="Table name")
-    schema: Optional[str] = Field(None, description="Schema name (for databases that support schemas)")  # type: ignore
+    schema_name: Optional[str] = Field(None, description="Schema name (for databases that support schemas)")
     row_count: Optional[int] = Field(None, description="Approximate row count", ge=0)
     comment: Optional[str] = Field(None, description="Table comment/description")
 
