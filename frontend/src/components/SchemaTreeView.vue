@@ -230,8 +230,8 @@ function selectTable(table: TableMetadata) {
 function formatTableSubtitle(table: TableMetadata): string {
   const parts: string[] = []
   
-  if (table.schema && table.schema !== 'public') {
-    parts.push(table.schema)
+  if (table.schema_name && table.schema_name !== 'public') {
+    parts.push(table.schema_name)
   }
   
   if (table.comment) {
