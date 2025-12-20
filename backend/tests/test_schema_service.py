@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
+from backend.app.core.config import Settings
 from backend.app.models.data_source import (
     ColumnMetadata,
     DataSourceConfig,
@@ -72,9 +73,9 @@ class TestSchemaIntrospectionService:
         return config
 
     @pytest.fixture
-    def service(self, mock_config) -> SchemaIntrospectionService:
+    def service(self, mock_config, settings: Settings) -> SchemaIntrospectionService:
         """Create service with mock config."""
-        return SchemaIntrospectionService(mock_config)
+        return SchemaIntrospectionService(settings.CONFIGURATIONS_DIR)
 
     @pytest.fixture
     def postgres_config(self):
@@ -100,7 +101,7 @@ class TestSchemaIntrospectionService:
         return DataSourceConfig(name="test_sqlite", driver=DataSourceType.SQLITE, filename="test.db", **{})
 
     @pytest.mark.asyncio
-    async def test_get_tables_not_found(self, service):
+    async def test_get_tables_not_found(self, service: SchemaIntrospectionService):
         """Should raise error when data source not found."""
         service.data_source_service.get_data_source = Mock(return_value=None)
 

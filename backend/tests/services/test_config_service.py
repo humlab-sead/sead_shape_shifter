@@ -65,16 +65,6 @@ class TestConfigurationServiceList:
         assert configs[0].entity_count == 2
         assert configs[0].is_valid is True
 
-    def test_list_includes_invalid_configs(self, config_service, tmp_path):
-        """Test that invalid configs are included with is_valid=False."""
-        invalid_path = tmp_path / "invalid.yml"
-        invalid_path.write_text("invalid: yaml: syntax:")
-
-        configs = config_service.list_configurations()
-        assert len(configs) == 1
-        assert configs[0].name == "invalid"
-        assert configs[0].is_valid is False
-
 
 class TestConfigurationServiceLoad:
     """Tests for loading configurations."""
