@@ -7,7 +7,6 @@ from typing import Any, Optional
 import yaml
 from loguru import logger
 
-from backend.app.core.config import settings
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig, DataSourceStatus, DataSourceTestResult
 from src.config_model import DataSourceConfig as CoreDataSourceConfig
@@ -23,11 +22,20 @@ class DataSourceService:
     configurations using @include directives.
     """
 
-    def __init__(self):
+    def __init__(self, data_sources_dir: Path | str) -> None:
         """Initialize the data source service."""
-        self.data_sources_dir: Path = settings.CONFIGURATIONS_DIR  # Same as input/
-        self._connections: dict[str, Any] = {}  # Connection pool (future)
+        self.data_sources_dir: Path = Path(data_sources_dir) if data_sources_dir) else settings.CONFIGURATIONS_DIR 
 
+    def _resolve_data_source_path(self, filename: str|Path, raise_if_not_found: bool = False) -> Path:
+        """Resolve the full path to a data source file."""
+        filename = Path(filename)
+        if not filename.suffix == ".yml":
+            filename = filename.with_suffix(".yml")
+        path: Path = Path(self.data_sources_dir) / filename
+        if raise_if_not_found and not path.exists():
+            raise ValueError(f"Data source file '{filename}' not found")
+        return path
+    
     def _list_data_source_files(self) -> list[Path]:
         """List all data source YAML files in the input directory.
 
@@ -108,14 +116,8 @@ class DataSourceService:
                 if not data:
                     continue
 
-                # Use filename (without extension) as the identifier
-                filename: str = file_path.stem  # e.g., "sead-options"
-
-                # Add filename to config for reference
                 data["filename"] = file_path.name
-
-                # Create DataSourceConfig (name will be assigned when connecting to config)
-                ds_config = DataSourceConfig(name=filename, **data)
+                ds_config = DataSourceConfig(name=file_path.stem, **data)
                 result.append(ds_config)
 
             except Exception as e:  # pylint: disable=broad-except
@@ -124,7 +126,7 @@ class DataSourceService:
 
         return result
 
-    def get_data_source(self, filename: str) -> Optional[DataSourceConfig]:
+    def get_data_source(self, filename: Path) -> DataSourceConfig | None:
         """Get a specific data source by filename.
 
         Args:
@@ -133,14 +135,9 @@ class DataSourceService:
         Returns:
             Data source configuration or None if not found
         """
-        # Normalize filename
-        if not filename.endswith(".yml"):
-            filename = f"{filename}.yml"
-
-        file_path = self.data_sources_dir / filename
+        file_path: Path = self._resolve_data_source_path(filename)
         if not file_path.exists():
             return None
-
         try:
             data = self._read_data_source_file(file_path)
             if not data:
@@ -152,7 +149,7 @@ class DataSourceService:
             logger.error(f"Failed to get data source {filename}: {e}")
             return None
 
-    def create_data_source(self, filename: str, config: DataSourceConfig) -> DataSourceConfig:
+    def create_data_source(self, filename: Path, config: DataSourceConfig) -> DataSourceConfig:
         """Create a new global data source file.
 
         Args:
@@ -165,34 +162,26 @@ class DataSourceService:
         Raises:
             ValueError: If data source file already exists
         """
-        # Normalize filename
-        if not filename.endswith(".yml"):
-            filename = f"{filename}.yml"
-
-        file_path = self.data_sources_dir / filename
+        file_path: Path = self._resolve_data_source_path(filename)
 
         if file_path.exists():
             raise ValueError(f"Data source file '{filename}' already exists")
 
-        # Prepare config dict (exclude name and filename - those are external)
         config_dict = config.model_dump(exclude_none=True, exclude={"name", "filename"})
 
-        # Handle SecretStr password
         if config.password:
             config_dict["password"] = config.password.get_secret_value()
 
-        # Write to file
         self._write_data_source_file(file_path, config_dict)
 
         logger.info(f"Created data source file '{filename}' (driver: {config.driver})")
 
-        # Return with filename set
-        result = config.model_copy()
-        result.filename = filename
+        result: DataSourceConfig = config.model_copy()
+        result.filename = str(filename)
         result.name = file_path.stem
         return result
 
-    def update_data_source(self, filename: str, config: DataSourceConfig) -> DataSourceConfig:
+    def update_data_source(self, filename: Path, config: DataSourceConfig) -> DataSourceConfig:
         """Update an existing data source file.
 
         Args:
@@ -205,34 +194,27 @@ class DataSourceService:
         Raises:
             ValueError: If data source file not found
         """
-        # Normalize filename
-        if not filename.endswith(".yml"):
-            filename = f"{filename}.yml"
-
-        file_path = self.data_sources_dir / filename
+        file_path: Path = self._resolve_data_source_path(filename)
 
         if not file_path.exists():
             raise ValueError(f"Data source file '{filename}' not found")
 
-        # Prepare config dict
         config_dict = config.model_dump(exclude_none=True, exclude={"name", "filename"})
 
-        # Handle SecretStr password
         if config.password:
             config_dict["password"] = config.password.get_secret_value()
 
-        # Write to file
         self._write_data_source_file(file_path, config_dict)
 
         logger.info(f"Updated data source file '{filename}' (driver: {config.driver})")
 
         # Return with filename set
         result = config.model_copy()
-        result.filename = filename
+        result.filename = str(filename)
         result.name = file_path.stem
         return result
 
-    def delete_data_source(self, filename: str) -> None:
+    def delete_data_source(self, filename: Path) -> None:
         """Delete a data source file.
 
         Args:
@@ -241,17 +223,10 @@ class DataSourceService:
         Raises:
             ValueError: If data source file not found
         """
-        # Normalize filename
-        if not filename.endswith(".yml"):
-            filename = f"{filename}.yml"
+        file_path: Path = self._resolve_data_source_path(filename)
 
-        file_path = self.data_sources_dir / filename
-
-        if not file_path.exists():
-            raise ValueError(f"Data source file '{filename}' not found")
-
-        # Delete the file
-        file_path.unlink()
+        if file_path.exists():
+            file_path.unlink()
 
         logger.info(f"Deleted data source file '{filename}'")
 
@@ -278,7 +253,7 @@ class DataSourceService:
             logger.error(f"Connection test failed for '{config.name}': {e}")
             return DataSourceTestResult.create_failure(message=f"Connection failed: {str(e)}", connection_time_ms=elapsed_ms)
 
-    def get_status(self, filename: str) -> DataSourceStatus:
+    def get_status(self, filename: Path) -> DataSourceStatus:
         """Get current status of a data source.
 
         Args:
@@ -297,3 +272,4 @@ class DataSourceService:
             in_use_by_entities=[],  # Would need to scan all configs
             last_test_result=None,
         )
+
