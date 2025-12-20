@@ -7,6 +7,7 @@ Discovers tables, columns, data types, and relationships.
 
 import asyncio
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
@@ -61,9 +62,9 @@ class SchemaCache:
 class SchemaIntrospectionService:
     """Service for introspecting database schemas."""
 
-    def __init__(self, config: ConfigLike):
-        self.config: ConfigLike = config
-        self.data_source_service: DataSourceService = DataSourceService()
+    def __init__(self, data_source_dir: str | Path):
+        self.data_source_dir: Path = Path(data_source_dir)
+        self.data_source_service: DataSourceService = DataSourceService(data_source_dir)
         self.cache: SchemaCache = SchemaCache(ttl_seconds=300)  # 5 minute cache
 
     def create_loader_for_data_source(self, ds_config: api.DataSourceConfig) -> SqlLoader:
