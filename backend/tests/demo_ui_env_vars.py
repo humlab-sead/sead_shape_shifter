@@ -23,7 +23,8 @@ def test_ui_behavior():
         }
     }
 
-    service = DataSourceService(mock_config)
+    service = Mock(spec=DataSourceService)
+    service.list_data_sources.return_value = [mock_config]
 
     # List data sources (what the UI receives)
     print("\n=== What the UI sees when listing data sources ===\n")
