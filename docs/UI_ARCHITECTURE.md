@@ -508,10 +508,13 @@ backend/
 │   │   ├── cache.py           # Caching service
 │   │   └── errors.py          # Custom exceptions
 │   ├── models/
-│   │   ├── configuration.py   # Pydantic models
+│   │   ├── configuration.py   # API Pydantic models (raw ${ENV_VARS})
 │   │   ├── validation.py
 │   │   ├── auto_fix.py
 │   │   └── test_run.py
+│   ├── mappers/              # Layer boundary translators
+│   │   ├── data_source_mapper.py  # Resolves env vars here
+│   │   └── table_schema_mapper.py
 │   ├── services/
 │   │   ├── yaml_service.py
 │   │   ├── validation_service.py
@@ -525,6 +528,39 @@ backend/
 ```
 
 ### 5.2 Design Patterns
+
+#### Mapper Pattern (Layer Boundary)
+
+```python
+# Translates between API and Core layers, resolving env vars
+class DataSourceMapper:
+    """Maps between API and Core data source configurations.
+    
+    Environment variable resolution happens at this layer boundary.
+    """
+    
+    @staticmethod
+    def to_core_config(
+        api_config: ApiDataSourceConfig
+    ) -> CoreDataSourceConfig:
+        """Convert API config to Core config.
+        
+        IMPORTANT: Resolves environment variables during mapping.
+        API entities remain raw (${ENV_VAR}), core entities are resolved.
+        """
+        # Resolution at the boundary
+        api_config = api_config.resolve_config_env_vars()
+        
+        return CoreDataSourceConfig(
+            name=api_config.name,
+            cfg={...}  # Fully resolved
+        )
+```
+
+**Layer Responsibilities:**
+- **API Models**: Raw data with `${ENV_VARS}` (unresolved)
+- **Mappers**: Translation + environment variable resolution
+- **Core Models**: Fully resolved, ready for execution
 
 #### Service Layer Pattern
 
