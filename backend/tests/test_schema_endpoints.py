@@ -40,8 +40,8 @@ def client(mock_schema_service):
 def sample_tables():
     """Sample table metadata for testing."""
     return [
-        TableMetadata(name="table1", schema="public", comment="Test table 1", row_count=100),
-        TableMetadata(name="table2", schema="public", comment="Test table 2", row_count=200),
+        TableMetadata(name="table1", schema_name="public", comment="Test table 1", row_count=100),
+        TableMetadata(name="table2", schema_name="public", comment="Test table 2", row_count=200),
     ]
 
 
