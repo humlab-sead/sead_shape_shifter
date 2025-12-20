@@ -121,7 +121,7 @@ class TestCreateDataSource:
     def test_create_data_source_success(self, client, mock_service):
         """Should create new data source."""
         mock_service.get_data_source.return_value = None  # Doesn't exist yet
-        
+
         # Mock the created config that will be returned
         created_config = DataSourceConfig(
             name="new_db",
@@ -295,7 +295,7 @@ class TestDeleteDataSource:
     def test_delete_data_source_success(self, client, mock_service):
         """Should delete data source."""
         from pathlib import Path
-        
+
         mock_service.get_data_source.return_value = DataSourceConfig(
             name="unused", driver=DataSourceType.CSV, filename="unused-datasource.yml", **{}
         )

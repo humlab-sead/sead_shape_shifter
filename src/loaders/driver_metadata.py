@@ -181,7 +181,7 @@ class DriverSchemaRegistry:
                 min_value=field_data.get("min_value"),
                 max_value=field_data.get("max_value"),
                 placeholder=field_data.get("placeholder", ""),
-                aliases=field_data.get("aliases", [])
+                aliases=field_data.get("aliases", []),
             )
             fields.append(field)
 

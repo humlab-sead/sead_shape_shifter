@@ -183,7 +183,7 @@ class SqlLoader(DataLoader):
                         "source": None,
                         "query": test_query,
                         "data_source": self.data_source.name if self.data_source else None,
-                        "auto_detect_columns": True
+                        "auto_detect_columns": True,
                     }
                 },
                 entity_name="test",

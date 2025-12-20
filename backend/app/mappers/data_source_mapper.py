@@ -1,6 +1,7 @@
 """Data source configuration mapper between API and core models."""
 
 from typing import Any
+
 import backend.app.models.data_source as api
 import src.model as core
 from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry

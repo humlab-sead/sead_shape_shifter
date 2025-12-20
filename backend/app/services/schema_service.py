@@ -18,10 +18,10 @@ from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.mappers.table_schema_mapper import TableSchemaMapper
 from backend.app.models.entity_import import KeySuggestion
 from backend.app.services.data_source_service import DataSourceService
-from src.model import DataSourceConfig as CoreDataSourceConfig
 from src.configuration.interface import ConfigLike
 from src.loaders.base_loader import DataLoaders
 from src.loaders.sql_loaders import CoreSchema, SqlLoader
+from src.model import DataSourceConfig as CoreDataSourceConfig
 
 
 class SchemaServiceError(Exception):
