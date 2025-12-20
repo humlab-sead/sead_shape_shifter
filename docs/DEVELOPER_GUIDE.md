@@ -312,7 +312,7 @@ backend/
 
 #### 1. Service Layer Pattern
 
-Encapsulate business logic in services:
+Encapsulate business logic in services. **Important:** Services work with API-layer entities (Pydantic models) which may contain unresolved environment variables.
 
 ```python
 # app/services/validation_service.py
@@ -339,7 +339,7 @@ class ValidationService:
         if cached:
             return cached
         
-        # Load configuration
+        # Load configuration (API entity with raw ${ENV_VARS})
         config = await self.yaml_service.load_configuration(config_name)
         
         # Run validation
@@ -362,6 +362,53 @@ class ValidationService:
 - Reusable across endpoints
 - Clear separation of concerns
 - Easy to maintain
+
+#### 1a. Mapper Pattern for Layer Boundaries
+
+Mappers handle conversion between API and Core layers and **resolve environment variables** at this boundary:
+
+```python
+# app/mappers/data_source_mapper.py
+class DataSourceMapper:
+    """Maps between API and Core data source configurations.
+    
+    IMPORTANT: Environment variable resolution happens here,
+    at the boundary between API and Core layers.
+    """
+    
+    @staticmethod
+    def to_core_config(api_config: ApiDataSourceConfig) -> CoreDataSourceConfig:
+        """Convert API config to Core config.
+        
+        Resolves environment variables during mapping.
+        API entities remain raw (${VAR}), core entities are resolved.
+        """
+        # Resolution at the layer boundary
+        api_config = api_config.resolve_config_env_vars()
+        
+        # Map to core format
+        return CoreDataSourceConfig(
+            name=api_config.name,
+            cfg={
+                "driver": api_config.driver,
+                "options": {...}  # Fully resolved
+            }
+        )
+```
+
+**Layer Responsibilities:**
+
+| Layer | Entity Type | Env Vars | Where |
+|-------|------------|----------|-------|
+| API | Pydantic models | Raw `${VAR}` | `backend/app/models/` |
+| Mapper | Translation | **Resolves** | `backend/app/mappers/` |
+| Core | Domain objects | Resolved | `src/` |
+
+**Benefits:**
+- Single point of resolution (DRY)
+- Services never need to remember to resolve
+- Clear separation: API = raw, Core = resolved
+- Type-safe boundaries
 
 #### 2. Repository Pattern
 

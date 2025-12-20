@@ -138,18 +138,83 @@ Environment="SEAD_USER=sead_user"
 
 ## Implementation Details
 
+### Architecture: Layer-Based Resolution
+
+The system follows a **clean separation of concerns** where environment variable resolution happens **exclusively in the mapper layer** when converting between API and Core entities.
+
+#### Layer Responsibilities
+
+| Layer | Responsibility | Environment Variables |
+|-------|---------------|----------------------|
+| **API Models** (`backend/app/models/`) | Data transfer, validation | Raw, unresolved (`${VAR}`) |
+| **Services** (`backend/app/services/`) | Business logic | Works with raw API entities |
+| **Mapper** (`backend/app/mappers/`) | Translation + **Resolution** | **Resolves here** |
+| **Core** (`src/`) | Processing, execution | Always resolved |
+
+#### Why This Approach?
+
+1. **Single Responsibility**: The `DataSourceMapper.to_core_config()` method is the **only** place that resolves environment variables
+2. **Clear Boundaries**: API layer = raw config, Core layer = resolved config
+3. **No Redundancy**: Services never need to remember to call `resolve_config_env_vars()`
+4. **Type Safety**: Core entities are guaranteed to be fully resolved
+5. **Easier Testing**: Mock the mapper for tests that need unresolved configs
+
+### Mapper Layer
+
+The `DataSourceMapper` class handles the boundary between API and Core layers:
+
+```python
+from backend.app.mappers.data_source_mapper import DataSourceMapper
+from backend.app.models.data_source import DataSourceConfig as ApiConfig
+from src.config_model import DataSourceConfig as CoreConfig
+
+class DataSourceMapper:
+    @staticmethod
+    def to_core_config(api_config: ApiConfig) -> CoreConfig:
+        """Map API config to Core config.
+        
+        IMPORTANT: This method resolves environment variables during mapping.
+        API entities remain "raw" with ${ENV_VAR} syntax, but core entities
+        are always fully resolved and ready for use.
+        """
+        # Resolution happens here at the API/Core boundary
+        api_config = api_config.resolve_config_env_vars()
+        
+        # Map to core format with resolved values
+        return CoreConfig(
+            name=api_config.name,
+            cfg={
+                "driver": api_config.driver,
+                "options": {...}  # Fully resolved
+            }
+        )
+```
+
 ### Service Layer
 
-The `DataSourceService` class provides two methods for environment variable resolution:
+Services work with **raw API entities** and rely on the mapper for resolution:
 
-1. **`_resolve_env_vars(config_dict: dict)`** - Resolves env vars in a dictionary (recursive)
-2. **`_resolve_config_env_vars(config: DataSourceConfig)`** - Resolves env vars in a Pydantic model
+```python
+# SchemaIntrospectionService example
+class SchemaIntrospectionService:
+    async def get_tables(self, data_source_name: str) -> list[TableMetadata]:
+        # Get raw API config (with ${ENV_VARS})
+        api_config = self.data_source_service.get_data_source(data_source_name)
+        
+        # Mapper handles resolution when creating core config
+        core_config = DataSourceMapper.to_core_config(api_config)
+        
+        # Core loader receives fully resolved config
+        loader = DataLoaders.get(core_config.driver)(core_config)
+        return await loader.get_tables()
+```
 
-**Important:** Environment variables are **only resolved when testing connections**, not when listing/editing:
+**Important:** Environment variables are **preserved in API entities** and only resolved when mapping to Core:
 
-- `list_data_sources()` - Returns configs **with unresolved env vars** (e.g., `${SEAD_HOST}`) for UI display/editing
-- `get_data_source(name)` - Returns config **with unresolved env vars** for editing
-- `test_connection(config)` - Resolves env vars **before testing** the connection
+- `list_data_sources()` - Returns API configs **with unresolved env vars** (e.g., `${SEAD_HOST}`) for UI display/editing
+- `get_data_source(name)` - Returns API config **with unresolved env vars** for editing
+- `test_connection(config)` - Mapper resolves env vars **when creating core config** for testing
+- `get_tables(name)` - Mapper resolves env vars **when creating loader** for introspection
 
 This approach allows users to:
 1. **See and edit** the environment variable references in the UI (e.g., `${SEAD_HOST}`)
@@ -169,9 +234,10 @@ This approach allows users to:
 ```python
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.models.data_source import DataSourceConfig
+from backend.app.mappers.data_source_mapper import DataSourceMapper
 
-# Create config with env var references
-config = DataSourceConfig(
+# Create API config with env var references (stays raw)
+api_config = DataSourceConfig(
     name="my_db",
     driver="postgresql",
     options={
@@ -182,9 +248,16 @@ config = DataSourceConfig(
     }
 )
 
-# Test connection - env vars resolved automatically
+# API config remains raw throughout the service layer
 service = DataSourceService(config_store)
-result = await service.test_connection(config)
+
+# Mapper resolves env vars when converting to core config
+core_config = DataSourceMapper.to_core_config(api_config)
+# Now core_config has resolved values: host="localhost", etc.
+
+# Test connection using core config
+result = await service.test_connection(api_config)
+# Internally, test_connection uses mapper to get resolved core config
 ```
 
 ## UI Behavior
@@ -213,11 +286,13 @@ Comprehensive test coverage in `backend/tests/test_env_var_resolution.py`:
 - ✅ Missing environment variables (returns empty string)
 - ✅ Password preservation during resolution
 - ✅ `list_data_sources()` keeps env vars unresolved for UI editing
-- ✅ `test_connection()` resolves env vars before testing
+- ✅ Mapper resolves env vars when creating core configs
+- ✅ Services work with raw API entities, mapper handles resolution
 
 Run tests:
 ```bash
 pytest backend/tests/test_env_var_resolution.py -v
+pytest backend/tests/test_data_source_mapper.py -v
 ```
 
 ## Security Considerations
