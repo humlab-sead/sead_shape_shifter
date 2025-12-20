@@ -26,6 +26,7 @@ class FieldMetadata:
         min_value: Minimum value for integer fields
         max_value: Maximum value for integer fields
         placeholder: Example value to show in UI
+        aliases: Alternative names for the field
     """
 
     name: str
@@ -36,6 +37,7 @@ class FieldMetadata:
     min_value: int | None = None
     max_value: int | None = None
     placeholder: str = ""
+    aliases: list[str] | None = None
 
 
 @dataclass
@@ -179,6 +181,7 @@ class DriverSchemaRegistry:
                 min_value=field_data.get("min_value"),
                 max_value=field_data.get("max_value"),
                 placeholder=field_data.get("placeholder", ""),
+                aliases=field_data.get("aliases", [])
             )
             fields.append(field)
 

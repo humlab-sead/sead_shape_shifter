@@ -1,5 +1,6 @@
 """Data source configuration mapper between API and core models."""
 
+from typing import Any
 import backend.app.models.data_source as api
 import src.config_model as core
 from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
@@ -14,7 +15,7 @@ class DataSourceMapper:
 
     @staticmethod
     def to_core_config(ds_config: api.DataSourceConfig) -> core.DataSourceConfig:
-        """Map API DataSourceConfig to core DataSourceConfig.
+        """Map API DataSourceConfig to SEAD Shape Shifter Core DataSourceConfig.
 
         Uses the driver schema to determine which fields are valid
         and how they should be mapped.
@@ -41,21 +42,33 @@ class DataSourceMapper:
             raise ValueError(f"Unknown driver: {ds_config.driver}")
 
         # Build options dict based on schema
-        options = {}
+        options: dict[str, Any] = {}
 
         # Map fields according to schema
         for field in schema.fields:
-            # Try to get value from top-level API model field first
-            value = getattr(ds_config, field.name, None)
+            value = None
 
-            # If not found at top level, check options
+            # File paths should come from options (actual DB/CSV path), not the YAML filename metadata
+            if field.type == "file_path" and ds_config.options:
+                value = ds_config.options.get(field.name)
+
+            # Try to get value from top-level API model field next
+            if value is None:
+                value = getattr(ds_config, field.name, None)
+
+            # If still not found, check options and aliases
             if value is None and ds_config.options:
                 value = ds_config.options.get(field.name)
 
-            # Handle password fields (extract secret value)
-            if field.type == "password" and value is not None:
-                if hasattr(value, "get_secret_value"):
-                    value = value.get_secret_value()
+                if value is None and field.aliases:
+                    for alias in field.aliases:
+                        value = ds_config.options.get(alias)
+                        if value is not None:
+                            break
+
+            # if field.type == "password" and value is not None:
+            #     if hasattr(value, "get_secret_value"):
+            #         value = value.get_secret_value()
 
             # Skip None/empty values unless field has default
             if value is None or value == "":
