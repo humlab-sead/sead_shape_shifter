@@ -4,15 +4,12 @@ API Dependencies
 Provides dependency injection functions for FastAPI endpoints.
 """
 
-import sys
-from pathlib import Path
 from typing import Generator
 
 from fastapi import Depends
 
+from backend.app import services
 from backend.app.core.config import settings
-from backend.app.services.data_source_service import DataSourceService
-from backend.app.services.schema_service import SchemaIntrospectionService
 from src.configuration.interface import ConfigLike
 from src.configuration.provider import ConfigProvider, get_config_provider
 
@@ -28,14 +25,14 @@ def get_config(
     return provider.get_config()
 
 
-def get_data_source_service() -> Generator[DataSourceService, None, None]:
+def get_data_source_service() -> Generator[services.DataSourceService, None, None]:
     """
     Get DataSourceService instance.
 
     Creates service for managing global data source files.
     Used as FastAPI dependency for data source endpoints.
     """
-    service = DataSourceService(settings.CONFIGURATIONS_DIR)
+    service = services.DataSourceService(settings.CONFIGURATIONS_DIR)
     try:
         yield service
     finally:
@@ -45,14 +42,14 @@ def get_data_source_service() -> Generator[DataSourceService, None, None]:
 
 def get_schema_service(
     config: ConfigLike = Depends(get_config),
-) -> Generator[SchemaIntrospectionService, None, None]:
+) -> Generator[services.SchemaIntrospectionService, None, None]:
     """
     Get SchemaIntrospectionService instance.
 
     Creates service with current configuration.
     Used as FastAPI dependency for schema introspection endpoints.
     """
-    service = SchemaIntrospectionService(config)
+    service = services.SchemaIntrospectionService(settings.CONFIGURATIONS_DIR)
     try:
         yield service
     finally:
