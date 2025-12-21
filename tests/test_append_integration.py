@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from src.model import TablesConfig
+from src.model import ShapeShiftConfig
 from src.normalizer import ArbodatSurveyNormalizer, ProcessState
 
 # pylint: disable=no-member, redefined-outer-name
@@ -51,7 +51,7 @@ class TestAppendIntegration:
 
         normalizer: ArbodatSurveyNormalizer = ArbodatSurveyNormalizer(
             table_store={"survey": survey_df},
-            config=TablesConfig(cfg=cfg),
+            config=ShapeShiftConfig(cfg=cfg),
             default_entity="survey",
         )
         # Run normalization
@@ -109,7 +109,7 @@ class TestAppendIntegration:
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = TablesConfig(cfg=cfg)
+        normalizer.config = ShapeShiftConfig(cfg=cfg)
         normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
@@ -162,7 +162,7 @@ class TestAppendIntegration:
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = TablesConfig(cfg=cfg)
+        normalizer.config = ShapeShiftConfig(cfg=cfg)
         normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
@@ -214,7 +214,7 @@ class TestAppendIntegration:
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = TablesConfig(cfg=cfg)
+        normalizer.config = ShapeShiftConfig(cfg=cfg)
         normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
@@ -274,7 +274,7 @@ class TestAppendIntegration:
         normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = TablesConfig(cfg=cfg)
+        normalizer.config = ShapeShiftConfig(cfg=cfg)
         normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization

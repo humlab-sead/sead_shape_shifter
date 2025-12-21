@@ -101,7 +101,7 @@ class CardinalityValidator(ConstraintValidator):
 ### Backend Imports
 Backend imports from core using absolute paths:
 ```python
-from src.model import TablesConfig  # Core models
+from src.model import ShapeShiftConfig  # Core models
 from src.configuration.provider import ConfigStore  # Config singleton
 from backend.app.services.validation_service import ValidationService  # Backend
 ```

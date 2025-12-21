@@ -9,7 +9,7 @@ import pytest
 
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.preview_service import PreviewCache, PreviewService
-from src.model import TableConfig, TablesConfig
+from src.model import TableConfig, ShapeShiftConfig
 
 # pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
 
@@ -29,7 +29,7 @@ def preview_service(config_service: MagicMock) -> PreviewService:
 
 
 @pytest.fixture
-def sample_config() -> TablesConfig:
+def sample_config() -> ShapeShiftConfig:
     """Create a sample configuration."""
     cfg = {
         "entities": {
@@ -62,7 +62,7 @@ def sample_config() -> TablesConfig:
         }
     }
 
-    return TablesConfig(cfg=cfg)
+    return ShapeShiftConfig(cfg=cfg)
 
 
 @pytest.fixture
@@ -219,10 +219,10 @@ class TestPreviewService:
                 assert result.estimated_total_rows == 100
 
     @pytest.mark.asyncio
-    async def test_preview_with_transformations(self, preview_service: PreviewService, sample_config: TablesConfig):
+    async def test_preview_with_transformations(self, preview_service: PreviewService, sample_config: ShapeShiftConfig):
         """Test preview detects applied transformations."""
         # Modify config to have filters and unnest
-        config_with_transforms: TablesConfig = sample_config.clone()
+        config_with_transforms: ShapeShiftConfig = sample_config.clone()
         config_with_transforms.entities["users"]["filters"] = [{"type": "exists_in", "entity": "orders"}]
         config_with_transforms.entities["users"]["unnest"] = {
             "id_vars": ["user_id"],
@@ -248,7 +248,7 @@ class TestPreviewService:
 
     @pytest.mark.asyncio
     async def test_preview_with_dependencies(
-        self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame
+        self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame
     ):
         """Test preview loads dependencies correctly."""
         mock_config_obj = MagicMock()
@@ -268,7 +268,7 @@ class TestPreviewService:
                 assert "foreign_key_joins" in result.transformations_applied
 
     @pytest.mark.asyncio
-    async def test_preview_caching(self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame):
+    async def test_preview_caching(self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame):
         """Test preview results are cached."""
         mock_config_obj = MagicMock()
         mock_config_obj.data = sample_config.cfg
@@ -292,7 +292,7 @@ class TestPreviewService:
                 assert mock_normalizer.normalize.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_get_entity_sample(self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame):
+    async def test_get_entity_sample(self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame):
         """Test get_entity_sample with higher limit."""
         mock_config_obj = MagicMock()
         mock_config_obj.data = sample_config.cfg
@@ -324,7 +324,7 @@ class TestPreviewService:
         # Verify it's gone
         assert preview_service.cache.get("config1", "entity1", 50) is None
 
-    def test_build_column_info(self, preview_service: PreviewService, sample_dataframe: pd.DataFrame, sample_config: TablesConfig):
+    def test_build_column_info(self, preview_service: PreviewService, sample_dataframe: pd.DataFrame, sample_config: ShapeShiftConfig):
         """Test _build_column_info correctly identifies column types."""
         entity_config: TableConfig = sample_config.get_table("users")
         columns: list[ColumnInfo] = preview_service._build_column_info(sample_dataframe, entity_config)

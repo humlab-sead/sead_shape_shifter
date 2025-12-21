@@ -25,7 +25,7 @@ The normalization system follows a multi-phase pipeline:
 
 - **ProcessState**: Handles topological sorting and dependency resolution
 - **ArbodatSurveyNormalizer**: Orchestrates the normalization pipeline
-- **TablesConfig**: Configuration model for all entities and their relationships
+- **ShapeShiftConfig**: Configuration model for all entities and their relationships
 - **SubsetService**: Extracts data subsets with column selection and transformations
 
 ---
@@ -1976,11 +1976,11 @@ Validation failed with 2 errors and 1 warnings.
 Validate configurations in code:
 
 ```python
-from src.model import TablesConfig
+from src.model import ShapeShiftConfig
 from src.specifications import CompositeConfigSpecification
 
 # Load configuration
-config = TablesConfig.from_yaml("config.yml")
+config = ShapeShiftConfig.from_file("config.yml")
 
 # Validate
 validator = CompositeConfigSpecification()
@@ -2236,7 +2236,7 @@ You can add custom validation specifications by:
 from src.specifications import ConfigSpecification
 
 class MyCustomSpecification(ConfigSpecification):
-    def is_satisfied_by(self, config: TablesConfig) -> bool:
+    def is_satisfied_by(self, config: ShapeShiftConfig) -> bool:
         # Your validation logic
         for entity_name, entity in config.entities.items():
             if self._has_issue(entity):
@@ -2276,7 +2276,7 @@ Validation is integrated at several points:
 
 1. **CLI Validation Tool** (`validate_config.py`): Standalone validation before processing
 2. **Normalizer Initialization**: Automatic validation when creating normalizer instance
-3. **Configuration Loading**: Optional validation during `TablesConfig.from_yaml()`
+3. **Configuration Loading**: Optional validation during `ShapeShiftConfig.from_yaml()`
 4. **Test Suite**: Validation tests ensure specifications work correctly
 
 This comprehensive validation system helps catch configuration errors early, provides clear diagnostics, and makes the configuration format more robust and user-friendly.

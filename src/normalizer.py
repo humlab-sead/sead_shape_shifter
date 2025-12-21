@@ -16,15 +16,15 @@ from src.filter import apply_filters
 from src.link import link_entity
 from src.loaders import DataLoader
 from src.mapping import LinkToRemoteService
-from src.model import TableConfig, TablesConfig
+from src.model import TableConfig, ShapeShiftConfig
 from src.unnest import unnest
 
 
 class ProcessState:
     """Helper class to track processing state of entities during normalization."""
 
-    def __init__(self, config: TablesConfig, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
-        self.config: TablesConfig = config
+    def __init__(self, config: ShapeShiftConfig, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
+        self.config: ShapeShiftConfig = config
         self.table_store: dict[str, pd.DataFrame] = table_store
         self.target_entities: set[str] = target_entities if target_entities else set(config.tables.keys())
 
@@ -87,24 +87,24 @@ class ArbodatSurveyNormalizer:
 
     def __init__(
         self,
-        config: TablesConfig | str,
+        config: ShapeShiftConfig | str,
         default_entity: str | None = None,
         table_store: dict[str, pd.DataFrame] | None = None,
         target_entities: set[str] | None = None,
     ) -> None:
 
-        if not config or not isinstance(config, (TablesConfig, str)):
+        if not config or not isinstance(config, (ShapeShiftConfig, str)):
             raise ValueError("A valid configuration must be provided")
 
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
-        self.config: TablesConfig
+        self.config: ShapeShiftConfig
 
-        if isinstance(config, TablesConfig):
+        if isinstance(config, ShapeShiftConfig):
             self.config = config
         else:
-            # FIXME: add using a config context as config as an alternative to passing TablesConfig directly
-            self.config = TablesConfig.from_file(config)
+            # FIXME: add using a config context as config as an alternative to passing ShapeShiftConfig directly
+            self.config = ShapeShiftConfig.from_file(config)
 
         # If target_entities is provided, compute all required entities including dependencies
         if target_entities:

@@ -5,13 +5,13 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
-from src.model import TablesConfig
+from src.model import ShapeShiftConfig
 from src.normalizer import ArbodatSurveyNormalizer, ProcessState
 
 
 @pytest.fixture
-def survey_only_config() -> TablesConfig:
-    return TablesConfig(
+def survey_only_config() -> ShapeShiftConfig:
+    return ShapeShiftConfig(
         cfg={
             "entities": {
                 "survey": {"depends_on": []},
@@ -21,8 +21,8 @@ def survey_only_config() -> TablesConfig:
 
 
 @pytest.fixture
-def survey_and_site_config() -> TablesConfig:
-    return TablesConfig(
+def survey_and_site_config() -> ShapeShiftConfig:
+    return ShapeShiftConfig(
         cfg={
             "entities": {
                 "survey": {"depends_on": []},
@@ -46,7 +46,7 @@ class TestProcessState:
 
     def test_initialization(self):
         """Test ProcessState initialization."""
-        config = TablesConfig(
+        config = ShapeShiftConfig(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -64,7 +64,7 @@ class TestProcessState:
 
     def test_get_next_entity_no_dependencies(self):
         """Test getting next entity when no dependencies exist."""
-        config = TablesConfig(
+        config = ShapeShiftConfig(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -86,7 +86,7 @@ class TestProcessState:
 
     def test_get_next_entity_with_dependencies(self):
         """Test getting next entity respecting dependencies."""
-        config = TablesConfig(
+        config = ShapeShiftConfig(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -108,7 +108,7 @@ class TestProcessState:
         next_entity = state.get_next_entity_to_process()
         assert next_entity == "sample"
 
-    def test_get_next_entity_all_processed(self, survey_only_config: TablesConfig):
+    def test_get_next_entity_all_processed(self, survey_only_config: ShapeShiftConfig):
         """Test getting next entity when all are processed."""
 
         state = ProcessState(config=survey_only_config, table_store={"survey": Mock()})
@@ -119,7 +119,7 @@ class TestProcessState:
 
     def test_get_unmet_dependencies(self):
         """Test getting unmet dependencies for an entity."""
-        config = TablesConfig(
+        config = ShapeShiftConfig(
             cfg={"entities": {"site": {"depends_on": []}, "sample": {"depends_on": ["site", "taxa"]}, "taxa": {"depends_on": []}}},
         )
 
@@ -135,7 +135,7 @@ class TestProcessState:
 
     def test_discard(self):
         """Test discarding (marking as processed) an entity."""
-        config = TablesConfig(
+        config = ShapeShiftConfig(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -154,7 +154,7 @@ class TestProcessState:
 
     def test_get_all_unmet_dependencies(self):
         """Test getting all unmet dependencies."""
-        config = TablesConfig(
+        config = ShapeShiftConfig(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -176,7 +176,7 @@ class TestProcessState:
 
     def test_processed_entities_property(self):
         """Test the processed_entities property."""
-        config = TablesConfig(
+        config = ShapeShiftConfig(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -199,7 +199,7 @@ class TestProcessState:
 class TestArbodatSurveyNormalizer:
     """Tests for ArbodatSurveyNormalizer class."""
 
-    def test_initialization(self, survey_only_config: TablesConfig):
+    def test_initialization(self, survey_only_config: ShapeShiftConfig):
         """Test ArbodatSurveyNormalizer initialization."""
         df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
@@ -208,10 +208,10 @@ class TestArbodatSurveyNormalizer:
 
         assert "survey" in normalizer.table_store
         pd.testing.assert_frame_equal(normalizer.table_store["survey"], df)
-        assert isinstance(normalizer.config, TablesConfig)
+        assert isinstance(normalizer.config, ShapeShiftConfig)
         assert isinstance(normalizer.state, ProcessState)
 
-    def test_survey_property(self, survey_only_config: TablesConfig):
+    def test_survey_property(self, survey_only_config: ShapeShiftConfig):
         """Test the survey property."""
         df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
@@ -224,7 +224,7 @@ class TestArbodatSurveyNormalizer:
         """Test resolving source from survey DataFrame."""
         survey_df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
-        config = TablesConfig(
+        config = ShapeShiftConfig(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -251,7 +251,7 @@ class TestArbodatSurveyNormalizer:
         df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_name": ["A", "B"]})
 
-        cfg: TablesConfig = TablesConfig(
+        cfg: ShapeShiftConfig = ShapeShiftConfig(
             cfg={
                 "entities": {
                     "survey": {"depends_on": []},
@@ -272,7 +272,7 @@ class TestArbodatSurveyNormalizer:
         pd.testing.assert_frame_equal(result, site_df)
 
     @pytest.mark.asyncio
-    async def test_resolve_source_not_found(self, survey_only_config: TablesConfig):
+    async def test_resolve_source_not_found(self, survey_only_config: ShapeShiftConfig):
         """Test resolving source that doesn't exist."""
         df = pd.DataFrame({"col1": [1, 2]})
 
@@ -287,7 +287,7 @@ class TestArbodatSurveyNormalizer:
             await normalizer.resolve_source(table_cfg)
 
     @pytest.mark.asyncio
-    async def test_resolve_source_fixed_data(self, survey_only_config: TablesConfig):
+    async def test_resolve_source_fixed_data(self, survey_only_config: ShapeShiftConfig):
         """Test resolving fixed data source."""
         df = pd.DataFrame({"col1": [1, 2]})
 
@@ -311,7 +311,7 @@ class TestArbodatSurveyNormalizer:
             mock_loader.load.assert_called_once_with(entity_name="test_entity", table_cfg=table_cfg)
 
     @pytest.mark.asyncio
-    async def test_resolve_source_sql_data(self, survey_only_config: TablesConfig):
+    async def test_resolve_source_sql_data(self, survey_only_config: ShapeShiftConfig):
         """Test resolving SQL data source."""
         df = pd.DataFrame({"col1": [1, 2]})
 
@@ -333,7 +333,7 @@ class TestArbodatSurveyNormalizer:
             pd.testing.assert_frame_equal(result, sql_df)
             mock_loader.load.assert_called_once_with(entity_name="test_sql_entity", table_cfg=table_cfg)
 
-    def test_register(self, survey_only_config: TablesConfig):
+    def test_register(self, survey_only_config: ShapeShiftConfig):
         """Test registering a DataFrame."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey", table_store={"survey": df})
@@ -345,7 +345,7 @@ class TestArbodatSurveyNormalizer:
         pd.testing.assert_frame_equal(normalizer.table_store["site"], new_df)
         pd.testing.assert_frame_equal(result, new_df)
 
-    def test_translate(self, survey_and_site_config: TablesConfig):
+    def test_translate(self, survey_and_site_config: ShapeShiftConfig):
         """Test translating column names."""
         df = pd.DataFrame({"Ort": ["Berlin"], "Datum": ["2020-01-01"]})
         normalizer = ArbodatSurveyNormalizer(config=survey_and_site_config, default_entity="survey")
@@ -369,7 +369,7 @@ class TestArbodatSurveyNormalizer:
             assert list(normalizer.table_store["survey"].columns) == ["location", "date"]
             assert list(normalizer.table_store["site"].columns) == ["location"]
 
-    def test_drop_foreign_key_columns(self, survey_and_site_config: TablesConfig):
+    def test_drop_foreign_key_columns(self, survey_and_site_config: ShapeShiftConfig):
         """Test dropping foreign key columns."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ArbodatSurveyNormalizer(config=survey_and_site_config, default_entity="survey")
@@ -390,7 +390,7 @@ class TestArbodatSurveyNormalizer:
                 mock_table_cfg.drop_fk_columns.assert_called_once()
                 assert "location_id" not in normalizer.table_store["site"].columns
 
-    def test_add_system_id_columns(self, survey_and_site_config: TablesConfig):
+    def test_add_system_id_columns(self, survey_and_site_config: ShapeShiftConfig):
         """Test adding system_id columns."""
         df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
@@ -409,7 +409,7 @@ class TestArbodatSurveyNormalizer:
                 mock_table_cfg.add_system_id_column.assert_called_once()
                 assert "system_id" in normalizer.table_store["site"].columns
 
-    def test_move_keys_to_front(self, survey_and_site_config: TablesConfig):
+    def test_move_keys_to_front(self, survey_and_site_config: ShapeShiftConfig):
         """Test moving key columns to front."""
         survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"name": ["A", "B"], "site_id": [1, 2], "location": ["X", "Y"]})
@@ -427,7 +427,7 @@ class TestArbodatSurveyNormalizer:
                 # Verify site_id is first column
                 assert normalizer.table_store["site"].columns[0] == "site_id"
 
-    def test_unnest_entity(self, survey_and_site_config: TablesConfig):
+    def test_unnest_entity(self, survey_and_site_config: ShapeShiftConfig):
         """Test unnesting a single entity."""
         survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_id": [1], "Ort": ["Berlin"], "Kreis": ["Mitte"]})
@@ -447,7 +447,7 @@ class TestArbodatSurveyNormalizer:
                 pd.testing.assert_frame_equal(result, unnested_df)
                 assert len(normalizer.table_store["site"]) == 2
 
-    def test_unnest_entity_no_unnest_config(self, survey_only_config: TablesConfig):
+    def test_unnest_entity_no_unnest_config(self, survey_only_config: ShapeShiftConfig):
         """Test unnesting when no unnest configuration exists."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
@@ -465,7 +465,7 @@ class TestArbodatSurveyNormalizer:
             # Should return unchanged
             pd.testing.assert_frame_equal(result, site_df)
 
-    def test_store_xlsx(self, survey_only_config: TablesConfig):
+    def test_store_xlsx(self, survey_only_config: ShapeShiftConfig):
         """Test storing data as XLSX."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
@@ -479,7 +479,7 @@ class TestArbodatSurveyNormalizer:
 
             mock_dispatcher.dispatch.assert_called_once_with(target="output.xlsx", data=normalizer.table_store)
 
-    def test_store_csv(self, survey_only_config: TablesConfig):
+    def test_store_csv(self, survey_only_config: ShapeShiftConfig):
         """Test storing data as CSV."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
@@ -493,7 +493,7 @@ class TestArbodatSurveyNormalizer:
 
             mock_dispatcher.dispatch.assert_called_once_with(target="output_dir", data=normalizer.table_store)
 
-    def test_store_unsupported_mode(self, survey_only_config: TablesConfig):
+    def test_store_unsupported_mode(self, survey_only_config: ShapeShiftConfig):
         """Test storing with unsupported mode."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
@@ -509,7 +509,7 @@ class TestArbodatSurveyNormalizer:
         site_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
         sample_df = pd.DataFrame({"sample_id": [1, 2], "type": ["X", "Y"]})
         table_store: dict[str, pd.DataFrame] = {"survey": survey_df, "site": site_df, "sample": sample_df}
-        config = TablesConfig(
+        config = ShapeShiftConfig(
             cfg={
                 "entities": {
                     "survey": {"depends_on": []},
@@ -530,7 +530,7 @@ class TestArbodatSurveyNormalizer:
             assert set(entity_names) == {"survey", "site", "sample"}
 
     @pytest.mark.asyncio
-    async def test_normalize_with_circular_dependency(self, survey_only_config: TablesConfig):
+    async def test_normalize_with_circular_dependency(self, survey_only_config: ShapeShiftConfig):
         """Test that normalize raises error for circular dependencies."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
@@ -551,7 +551,7 @@ class TestArbodatSurveyNormalizer:
             with pytest.raises(ValueError, match="Circular or unresolved dependencies"):
                 await normalizer.normalize()
 
-    def test_unnest_all(self, survey_only_config: TablesConfig):
+    def test_unnest_all(self, survey_only_config: ShapeShiftConfig):
         """Test unnesting all entities."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
