@@ -24,9 +24,16 @@
           <v-card variant="outlined" class="mb-2">
             <v-card-text>
               <div class="d-flex align-center justify-space-between mb-2">
-                <v-chip size="small" prepend-icon="mdi-link-variant">
-                  {{ fk.entity }}
-                </v-chip>
+                <v-autocomplete
+                  v-model="fk.entity"
+                  :items="availableEntities"
+                  label="Target Entity"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  prepend-inner-icon="mdi-link-variant"
+                  class="flex-grow-1 mr-2"
+                />
                 <v-btn
                   icon="mdi-delete"
                   variant="text"
