@@ -17,6 +17,7 @@ from typing import Any, Literal
 import click
 from loguru import logger
 
+from src.model import TablesConfig
 from src.configuration.provider import get_config_provider
 from src.configuration.resolve import ConfigValue
 from src.configuration.setup import setup_config_store
@@ -28,7 +29,14 @@ from src.utility import load_shape_file, setup_logging
 # pylint: disable=no-value-for-parameter
 
 
+def resolve_config(config: TablesConfig | str) -> TablesConfig:
+    if isinstance(config, str):
+        return TablesConfig.from_file(config,)
+    return config
+
+
 async def workflow(
+    config: TablesConfig,
     target: str,
     translate: bool,
     mode: Literal["xlsx", "csv", "db"],
@@ -37,7 +45,7 @@ async def workflow(
     default_entity: str | None = None,
 ) -> None:
 
-    normalizer: ArbodatSurveyNormalizer = ArbodatSurveyNormalizer(default_entity=default_entity)
+    normalizer: ArbodatSurveyNormalizer = ArbodatSurveyNormalizer(config=config, default_entity=default_entity)
 
     if validate_configuration() and validate_then_exit:
         return
@@ -121,20 +129,14 @@ def main(
     if not config_file or not Path(config_file).exists():
         raise FileNotFoundError(f"Configuration file not found: {config_file or 'undefined'}")
 
-    asyncio.run(
-        setup_config_store(
-            config_file,
-            env_prefix="SEAD_NORMALIZER",
-            env_filename=env_file or os.path.join(os.path.dirname(__file__), "input", ".env"),
-            db_opts_path="",
-        )
-    )
+    config: TablesConfig = TablesConfig.from_file(config_file)
 
     # Configure logging AFTER setup_config_store to override its logging configuration
     setup_logging(verbose=verbose, log_file=log_file)
 
     asyncio.run(
         workflow(
+            config=config,
             default_entity=default_entity,
             target=target,
             translate=translate,
