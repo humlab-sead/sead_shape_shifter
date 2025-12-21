@@ -156,7 +156,7 @@ class TestPreviewService:
     async def test_preview_entity_not_found(self, preview_service, sample_config):
         """Test preview with non-existent entity."""
         mock_config_obj = MagicMock()
-        mock_config_obj.data = sample_config
+        mock_config_obj.data = sample_config.cfg
 
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with pytest.raises(ValueError, match="Entity 'nonexistent' not found"):
@@ -165,17 +165,20 @@ class TestPreviewService:
     @pytest.mark.asyncio
     async def test_preview_entity_success(self, preview_service, sample_config, sample_dataframe):
         """Test successful entity preview."""
-        mock_config_obj = MagicMock(
-            entities=sample_config.entities_cfg,
-            options=sample_config.options,
-        )
+
+        # FIXME: preview_entity expects a filename, but we're passing config name
+        # 
+
+        mock_config_obj = MagicMock()
+        mock_config_obj.data = sample_config.cfg
 
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
-                # Setup mock normalizer
+            # Setup mock normalizer
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
                 mock_normalizer.table_store = {"users": sample_dataframe}
+                mock_normalizer.config = sample_config
                 mock_normalizer_class.return_value = mock_normalizer
 
                 result = await preview_service.preview_entity("test_config", "users", 50)
@@ -201,7 +204,7 @@ class TestPreviewService:
         large_df = pd.DataFrame({"col1": range(100), "col2": range(100, 200)})
 
         mock_config_obj = MagicMock()
-        mock_config_obj.data = sample_config
+        mock_config_obj.data = sample_config.cfg
 
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
@@ -229,7 +232,7 @@ class TestPreviewService:
         }
 
         mock_config_obj = MagicMock()
-        mock_config_obj.data = config_with_transforms
+        mock_config_obj.data = config_with_transforms.cfg
 
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
@@ -249,7 +252,7 @@ class TestPreviewService:
     ):
         """Test preview loads dependencies correctly."""
         mock_config_obj = MagicMock()
-        mock_config_obj.data = sample_config
+        mock_config_obj.data = sample_config.cfg
 
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
@@ -268,7 +271,7 @@ class TestPreviewService:
     async def test_preview_caching(self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame):
         """Test preview results are cached."""
         mock_config_obj = MagicMock()
-        mock_config_obj.data = sample_config
+        mock_config_obj.data = sample_config.cfg
 
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
@@ -292,7 +295,7 @@ class TestPreviewService:
     async def test_get_entity_sample(self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame):
         """Test get_entity_sample with higher limit."""
         mock_config_obj = MagicMock()
-        mock_config_obj.data = sample_config
+        mock_config_obj.data = sample_config.cfg
 
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
