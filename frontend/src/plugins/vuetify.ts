@@ -79,6 +79,9 @@ export default createVuetify({
     },
   },
   defaults: {
+    global: {
+      ripple: true,
+    },
     VBtn: {
       variant: 'flat',
     },
@@ -88,6 +91,26 @@ export default createVuetify({
     },
     VSelect: {
       variant: 'outlined',
+      density: 'comfortable',
+    },
+    VTextarea: {
+      variant: 'outlined',
+      density: 'comfortable',
+    },
+    VAutocomplete: {
+      variant: 'outlined',
+      density: 'comfortable',
+    },
+    VCard: {
+      elevation: 1,
+    },
+    VList: {
+      density: 'comfortable',
+    },
+    VListItem: {
+      density: 'comfortable',
+    },
+    VChip: {
       density: 'comfortable',
     },
   },

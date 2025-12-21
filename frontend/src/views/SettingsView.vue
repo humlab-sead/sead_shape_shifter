@@ -99,7 +99,18 @@
       <!-- Theme Preview -->
       <v-col cols="12" lg="4">
         <v-card>
-          <v-card-title>Preview</v-card-title>
+          <v-card-title>
+            Preview
+            <v-chip
+              v-if="appSettings.compactMode.value"
+              size="small"
+              color="info"
+              variant="tonal"
+              class="ml-2"
+            >
+              Compact
+            </v-chip>
+          </v-card-title>
           <v-card-text>
             <div class="preview-container">
               <!-- Color swatches -->
@@ -123,6 +134,13 @@
                 <v-btn color="secondary" size="small" variant="outlined" class="mb-2">
                   Secondary Button
                 </v-btn>
+                <v-text-field
+                  model-value="Text input"
+                  density="comfortable"
+                  variant="outlined"
+                  hide-details
+                  class="mb-2"
+                />
                 <v-alert type="info" variant="tonal" density="compact" class="mb-2">
                   Info message
                 </v-alert>
@@ -151,20 +169,72 @@
       <v-col cols="12" md="6">
         <v-card>
           <v-card-title>Interface</v-card-title>
+          <v-card-subtitle>
+            Customize the interface density and behavior
+          </v-card-subtitle>
           <v-card-text>
             <v-switch
-              v-model="compactMode"
+              v-model="appSettings.compactMode.value"
               label="Compact mode"
               color="primary"
               hide-details
-              class="mb-2"
-            />
+              class="mb-3"
+            >
+              <template #append>
+                <v-tooltip location="top">
+                  <template #activator="{ props }">
+                    <v-icon icon="mdi-information-outline" size="small" v-bind="props" />
+                  </template>
+                  Reduces spacing and component sizes throughout the interface
+                </v-tooltip>
+              </template>
+            </v-switch>
+
             <v-switch
-              v-model="animationsEnabled"
+              v-model="appSettings.animationsEnabled.value"
               label="Enable animations"
               color="primary"
               hide-details
-            />
+              class="mb-3"
+            >
+              <template #append>
+                <v-tooltip location="top">
+                  <template #activator="{ props }">
+                    <v-icon icon="mdi-information-outline" size="small" v-bind="props" />
+                  </template>
+                  Enable smooth transitions and animations
+                </v-tooltip>
+              </template>
+            </v-switch>
+
+            <v-switch
+              v-model="appSettings.railNavigation.value"
+              label="Auto-collapse navigation"
+              color="primary"
+              hide-details
+            >
+              <template #append>
+                <v-tooltip location="top">
+                  <template #activator="{ props }">
+                    <v-icon icon="mdi-information-outline" size="small" v-bind="props" />
+                  </template>
+                  Automatically collapse navigation drawer to icons only
+                </v-tooltip>
+              </template>
+            </v-switch>
+
+            <v-divider class="my-4" />
+
+            <div class="d-flex gap-2">
+              <v-btn
+                variant="outlined"
+                size="small"
+                prepend-icon="mdi-restore"
+                @click="handleResetSettings"
+              >
+                Reset Interface Settings
+              </v-btn>
+            </div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -210,22 +280,36 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Reset Settings Dialog -->
+    <v-dialog v-model="showResetSettingsDialog" max-width="400">
+      <v-card>
+        <v-card-title>Reset Interface Settings</v-card-title>
+        <v-card-text>
+          Are you sure you want to reset all interface settings to defaults?
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showResetSettingsDialog = false">Cancel</v-btn>
+          <v-btn color="primary" variant="flat" @click="confirmResetSettings">Reset</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useTheme } from '@/composables/useTheme'
+import { useSettings } from '@/composables/useSettings'
 import ThemeColorPicker from '@/components/ThemeColorPicker.vue'
 
 const theme = useTheme()
+const appSettings = useSettings()
 
-// Local settings (could be moved to a settings store later)
-const compactMode = ref(false)
-const animationsEnabled = ref(true)
 const version = ref('0.1.0')
-
 const showResetDialog = ref(false)
+const showResetSettingsDialog = ref(false)
 
 function selectTheme(themeName: string) {
   theme.setTheme(themeName)
@@ -238,6 +322,15 @@ function handleResetToDefault() {
 function confirmReset() {
   theme.resetToDefault()
   showResetDialog.value = false
+}
+
+function handleResetSettings() {
+  showResetSettingsDialog.value = true
+}
+
+function confirmResetSettings() {
+  appSettings.resetToDefaults()
+  showResetSettingsDialog.value = false
 }
 </script>
 

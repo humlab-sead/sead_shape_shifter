@@ -256,13 +256,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
+import { useSettings } from '@/composables/useSettings'
 
 const router = useRouter()
 const route = useRoute()
 const theme = useTheme()
+const settings = useSettings()
 
 const drawer = ref(true)
 const rail = ref(false)
@@ -394,7 +396,7 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   if (window.innerWidth > 1280) {
     drawer.value = true
-    rail.value = false
+    rail.value = settings.railNavigation.value
   } else {
     drawer.value = false
   }
@@ -402,6 +404,13 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
+})
+
+// Watch for rail navigation setting changes
+watch(() => settings.railNavigation.value, (newVal) => {
+  if (window.innerWidth > 1280) {
+    rail.value = newVal
+  }
 })
 </script>
 
