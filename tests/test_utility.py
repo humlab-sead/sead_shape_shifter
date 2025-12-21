@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from src.model import ForeignKeyConfig, TableConfig, ShapeShiftConfig, UnnestConfig
+from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig, UnnestConfig
 
 
 class TestUnnestConfig:

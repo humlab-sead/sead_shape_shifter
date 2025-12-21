@@ -3,7 +3,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.model import ForeignKeyConfig, TableConfig, ShapeShiftConfig
+from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig
 
 # pylint: disable=line-too-long
 

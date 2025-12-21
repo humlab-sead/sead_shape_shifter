@@ -5,8 +5,8 @@ from typing import Any, Generator, Literal, Self
 import pandas as pd
 from loguru import logger
 
-from src.configuration.config import is_config_path
 from src.configuration import ConfigFactory, ConfigLike
+from src.configuration.config import is_config_path
 from src.configuration.provider import ConfigProvider, get_config_provider
 from src.loaders.base_loader import DataLoader, DataLoaders
 from src.utility import unique

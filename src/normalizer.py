@@ -16,7 +16,7 @@ from src.filter import apply_filters
 from src.link import link_entity
 from src.loaders import DataLoader
 from src.mapping import LinkToRemoteService
-from src.model import TableConfig, ShapeShiftConfig
+from src.model import ShapeShiftConfig, TableConfig
 from src.unnest import unnest
 
 

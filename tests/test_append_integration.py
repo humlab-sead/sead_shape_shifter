@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from src.model import ShapeShiftConfig
-from src.normalizer import ShapeShifter, ProcessState
+from src.normalizer import ProcessState, ShapeShifter
 
 # pylint: disable=no-member, redefined-outer-name
 
