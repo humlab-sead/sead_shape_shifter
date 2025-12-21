@@ -40,9 +40,11 @@ class ConfigStore:
             reset_config_provider()
 
     def is_configured(self, context: str | None = None) -> bool:
+        """Check if a config context is loaded."""
         return self.store.get(context or self.context) is not None
 
     def config(self, context: str | None = None) -> ConfigLike | None:
+        """Get config for a context (raises if not loaded)."""
         ctx: str = context or self.context
         if not self.is_configured(ctx):
             raise ValueError(f"Config context '{ctx}' not properly initialized")
