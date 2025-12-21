@@ -452,6 +452,19 @@ class TablesConfig:
         table = table[new_column_order]
         return table
 
+    @staticmethod
+    def from_file(filepath: str, env_file: str = ".env", env_prefix: str = "SEAD_NORMALIZER") -> "TablesConfig":
+        """Load TablesConfig from a YAML configuration file."""
+
+        cfg: ConfigLike = ConfigFactory().load(
+            source=filepath,
+            context="shape_shifter",
+            env_filename=env_file,
+            env_prefix=env_prefix,
+        )
+
+        return TablesConfig(cfg=cfg.data)
+
 
 class DataSourceConfig:
     """Configuration for data sources."""
