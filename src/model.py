@@ -5,6 +5,7 @@ from typing import Any, Generator, Literal, Self
 import pandas as pd
 from loguru import logger
 
+from src.configuration.config import is_config_path
 from src.configuration import ConfigFactory, ConfigLike
 from src.configuration.provider import ConfigProvider, get_config_provider
 from src.loaders.base_loader import DataLoader, DataLoaders
@@ -480,19 +481,13 @@ class ShapeShiftConfig:
     @staticmethod
     async def resolve(cfg: "ShapeShiftConfig | str | None") -> "ShapeShiftConfig":
         """Resolve and return the ShapeShiftConfig for the given config name."""
+
         if isinstance(cfg, ShapeShiftConfig):
             return cfg
 
         if isinstance(cfg, str):
-            """Load from named global configuration or file."""
-            # Test if cfg is a file path
-            config_name: str = cfg
-            # Try to load from global store first
-            try:
-                config: ShapeShiftConfig = ShapeShiftConfig.from_file(config_name)
-                return config
-            except FileNotFoundError:
-                pass
+            if is_config_path(cfg, raise_if_missing=False):
+                return ShapeShiftConfig.from_file(cfg)
 
         context: str = cfg or "default"
 
