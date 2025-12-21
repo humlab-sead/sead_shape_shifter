@@ -15,6 +15,7 @@ from pandas.api.types import (
     is_string_dtype,
     is_timedelta64_dtype,
 )
+
 from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
@@ -401,7 +402,6 @@ class PreviewService:
 
 
 def friendly_dtype(dtype):
-
 
     if is_integer_dtype(dtype):
         return "integer"

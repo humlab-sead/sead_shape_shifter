@@ -10,6 +10,7 @@ from src.normalizer import ProcessState, ShapeShifter
 
 # pylint: disable=redefined-outer-name
 
+
 @pytest.fixture
 def survey_only_config() -> ShapeShiftConfig:
     return ShapeShiftConfig(
