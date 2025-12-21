@@ -99,6 +99,7 @@ class PreviewService:
             raise ValueError("Configuration not loaded")
 
         config = TablesConfig(cfg=config_obj.data)
+        # config: TablesConfig = TablesConfig.from_file(config_name)
 
         if entity_name not in config.tables:
             raise ValueError(f"Entity '{entity_name}' not found in configuration")

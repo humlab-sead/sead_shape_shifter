@@ -20,7 +20,6 @@ from loguru import logger
 from src.model import TablesConfig
 from src.configuration.provider import get_config_provider
 from src.configuration.resolve import ConfigValue
-from src.configuration.setup import setup_config_store
 from src.extract import extract_translation_map
 from src.normalizer import ArbodatSurveyNormalizer
 from src.specifications import CompositeConfigSpecification

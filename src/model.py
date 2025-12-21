@@ -6,7 +6,6 @@ import pandas as pd
 from loguru import logger
 
 from src.configuration.provider import ConfigProvider, get_config_provider
-from src.configuration.resolve import ConfigValue
 from src.configuration import ConfigFactory
 from src.configuration import ConfigLike
 from src.loaders.base_loader import DataLoader, DataLoaders
@@ -376,6 +375,9 @@ class TablesConfig:
             provider: ConfigProvider = get_config_provider()
             config: ConfigLike = provider.get_config("default")
             cfg = config.data or {}
+
+        if "entities" not in cfg or not isinstance(cfg["entities"], dict):
+            raise ValueError("Invalid configuration: 'entities' section is missing or not a dictionary.")
 
         self.cfg: dict[str, dict[str, Any]] = cfg
         self.tables: dict[str, TableConfig] = {key: TableConfig(cfg=self.entities, entity_name=key) for key in self.entities.keys()}
