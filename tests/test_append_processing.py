@@ -263,26 +263,28 @@ class TestAppendProcessingEdgeCases:
     @with_test_config
     async def test_append_with_empty_main_data(self, test_provider):
         """Test append when main entity returns no data."""
-        cfg = {"entities": {
-            "default": {
-                "source": None,
-                "type": "fixed",
-                "columns": ["site_name", "latitude"],
-                "values": [],
-                "depends_on": [],
-            },
-            "site": {
-                "source": "default",
-                "type": "fixed",
-                "surrogate_id": "site_id",
-                "keys": ["site_name"],
-                "columns": ["site_name", "latitude"],
-                "values": [],
-                "depends_on": [],
-                "append": [{"type": "fixed", "values": [["Only Site", 50.0]]}],
-                "append_mode": "all",
-            },
-        }}
+        cfg = {
+            "entities": {
+                "default": {
+                    "source": None,
+                    "type": "fixed",
+                    "columns": ["site_name", "latitude"],
+                    "values": [],
+                    "depends_on": [],
+                },
+                "site": {
+                    "source": "default",
+                    "type": "fixed",
+                    "surrogate_id": "site_id",
+                    "keys": ["site_name"],
+                    "columns": ["site_name", "latitude"],
+                    "values": [],
+                    "depends_on": [],
+                    "append": [{"type": "fixed", "values": [["Only Site", 50.0]]}],
+                    "append_mode": "all",
+                },
+            }
+        }
 
         config = TablesConfig(cfg=cfg)
         empty_data = pd.DataFrame(columns=["site_name", "latitude"])
@@ -301,27 +303,29 @@ class TestAppendProcessingEdgeCases:
     @with_test_config
     async def test_append_preserves_columns(self, sample_survey_data, test_provider):  # pylint: disable=unused-argument
         """Test that append preserves all configured columns."""
-        cfg = {"entities": {
-            "survey": {
-                "source": None,
-                "depends_on": [],
-            },
-            "site": {
-                "surrogate_id": "site_id",
-                "keys": ["site_name"],
-                "columns": ["site_name", "latitude", "longitude", "country"],
-                "depends_on": [],
-                "append": [
-                    {
-                        "type": "fixed",
-                        "values": [
-                            ["Partial Site", 50.0, None, None],  # Missing longitude and country
-                        ],
-                    }
-                ],
-                "append_mode": "all",
-            },
-        }}
+        cfg = {
+            "entities": {
+                "survey": {
+                    "source": None,
+                    "depends_on": [],
+                },
+                "site": {
+                    "surrogate_id": "site_id",
+                    "keys": ["site_name"],
+                    "columns": ["site_name", "latitude", "longitude", "country"],
+                    "depends_on": [],
+                    "append": [
+                        {
+                            "type": "fixed",
+                            "values": [
+                                ["Partial Site", 50.0, None, None],  # Missing longitude and country
+                            ],
+                        }
+                    ],
+                    "append_mode": "all",
+                },
+            }
+        }
 
         config = TablesConfig(cfg=cfg)
         table_store = {"survey": sample_survey_data}
