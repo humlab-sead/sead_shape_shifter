@@ -170,16 +170,13 @@ class TestPreviewService:
             options=sample_config.options,
         )
 
-        # FIXME: preview_entity expects a filename, but we're passing config name
-        # 
-
-        with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
-            # Setup mock normalizer
-            mock_normalizer = MagicMock()
-            mock_normalizer.normalize = AsyncMock()
-            mock_normalizer.table_store = {"users": sample_dataframe}
-            mock_normalizer_class.return_value = mock_normalizer
-            mock_config_obj.config = mock_config_obj
+        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
+            with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
+                # Setup mock normalizer
+                mock_normalizer = MagicMock()
+                mock_normalizer.normalize = AsyncMock()
+                mock_normalizer.table_store = {"users": sample_dataframe}
+                mock_normalizer_class.return_value = mock_normalizer
 
                 result = await preview_service.preview_entity("test_config", "users", 50)
 
