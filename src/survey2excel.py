@@ -17,7 +17,6 @@ from typing import Any, Literal
 import click
 from loguru import logger
 
-from src.configuration.provider import get_config_provider
 from src.configuration.resolve import ConfigValue
 from src.extract import extract_translation_map
 from src.model import ShapeShiftConfig
@@ -48,7 +47,7 @@ async def workflow(
 
     normalizer: ShapeShifter = ShapeShifter(config=config, default_entity=default_entity)
 
-    if validate_configuration() and validate_then_exit:
+    if validate_configuration(config) and validate_then_exit:
         return
 
     await normalizer.normalize()
@@ -64,7 +63,7 @@ async def workflow(
     normalizer.add_system_id_columns()
     normalizer.move_keys_to_front()
 
-    link_cfgs: dict[str, dict[str, Any]] = ConfigValue[dict[str, dict[str, dict[str, int]]]]("mappings").resolve() or {}
+    link_cfgs: dict[str, dict[str, Any]] = config.mappings
     normalizer.map_to_remote(link_cfgs)
 
     normalizer.store(target=target, mode=mode)
@@ -76,9 +75,9 @@ async def workflow(
     #         click.echo(f"  - {name}: {len(table)} rows")
 
 
-def validate_configuration() -> bool:
+def validate_configuration(config: ShapeShiftConfig) -> bool:
     specification = CompositeConfigSpecification()
-    errors = specification.is_satisfied_by(get_config_provider().get_config().data)
+    errors = specification.is_satisfied_by(config.cfg)
     if errors:
         for error in specification.errors:
             logger.error(f"Configuration error: {error}")
