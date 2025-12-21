@@ -19,6 +19,7 @@ def survey_only_config() -> TablesConfig:
         },
     )
 
+
 @pytest.fixture
 def survey_and_site_config() -> TablesConfig:
     return TablesConfig(
@@ -29,6 +30,7 @@ def survey_and_site_config() -> TablesConfig:
             }
         },
     )
+
 
 def mock_table_config(depends_on: set[str] | None = None) -> Mock:
     """Helper to create a mock TableConfig with specified dependencies."""
@@ -334,7 +336,7 @@ class TestArbodatSurveyNormalizer:
     def test_register(self, survey_only_config: TablesConfig):
         """Test registering a DataFrame."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey", table_store={"survey": df})      
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey", table_store={"survey": df})
 
         new_df = pd.DataFrame({"site_name": ["A", "B"]})
         result = normalizer.register("site", new_df)

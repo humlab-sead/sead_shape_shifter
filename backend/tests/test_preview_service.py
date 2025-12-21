@@ -31,7 +31,7 @@ def preview_service(config_service: MagicMock) -> PreviewService:
 @pytest.fixture
 def sample_config() -> TablesConfig:
     """Create a sample configuration."""
-    cfg= {
+    cfg = {
         "entities": {
             "users": {
                 "name": "users",
@@ -167,14 +167,14 @@ class TestPreviewService:
         """Test successful entity preview."""
 
         # FIXME: preview_entity expects a filename, but we're passing config name
-        # 
+        #
 
         mock_config_obj = MagicMock()
         mock_config_obj.data = sample_config.cfg
 
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
-            # Setup mock normalizer
+                # Setup mock normalizer
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
                 mock_normalizer.table_store = {"users": sample_dataframe}

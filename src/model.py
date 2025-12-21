@@ -1,13 +1,12 @@
+import copy
 from functools import cached_property
 from typing import Any, Generator, Literal, Self
-import copy
 
 import pandas as pd
 from loguru import logger
 
+from src.configuration import ConfigFactory, ConfigLike
 from src.configuration.provider import ConfigProvider, get_config_provider
-from src.configuration import ConfigFactory
-from src.configuration import ConfigLike
 from src.loaders.base_loader import DataLoader, DataLoaders
 from src.utility import unique
 
@@ -369,7 +368,7 @@ class TableConfig:
 class TablesConfig:
     """Configuration for database tables."""
 
-    def __init__(self, *, cfg: dict[str, dict[str, Any]]|None = None) -> None:
+    def __init__(self, *, cfg: dict[str, dict[str, Any]] | None = None) -> None:
 
         if cfg is None:
             provider: ConfigProvider = get_config_provider()

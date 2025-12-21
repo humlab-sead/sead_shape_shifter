@@ -4,10 +4,10 @@ import shutil
 
 import pytest
 
-from src.model import TablesConfig
 from src.configuration.config import ConfigFactory
 from src.configuration.interface import ConfigLike
 from src.configuration.setup import setup_config_store
+from src.model import TablesConfig
 from src.survey2excel import validate_entity_shapes, workflow
 from src.utility import load_shape_file
 from tests.conftest import ExtendedMockConfigProvider

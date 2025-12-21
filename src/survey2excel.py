@@ -17,10 +17,10 @@ from typing import Any, Literal
 import click
 from loguru import logger
 
-from src.model import TablesConfig
 from src.configuration.provider import get_config_provider
 from src.configuration.resolve import ConfigValue
 from src.extract import extract_translation_map
+from src.model import TablesConfig
 from src.normalizer import ArbodatSurveyNormalizer
 from src.specifications import CompositeConfigSpecification
 from src.utility import load_shape_file, setup_logging
@@ -30,7 +30,9 @@ from src.utility import load_shape_file, setup_logging
 
 def resolve_config(config: TablesConfig | str) -> TablesConfig:
     if isinstance(config, str):
-        return TablesConfig.from_file(config,)
+        return TablesConfig.from_file(
+            config,
+        )
     return config
 
 

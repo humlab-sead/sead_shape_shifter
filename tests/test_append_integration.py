@@ -194,19 +194,20 @@ class TestAppendIntegration:
                     "columns": ["id", "name"],
                 },
                 "test_entity": {
-                "keys": ["id"],
-                "surrogate_id": "test_id",
-                "columns": ["id", "name"],
-                "append": [
-                    {
-                        "type": "fixed",
-                        "values": ["1"],  # Duplicate id=1
-                        "columns": ["id"],
-                    }
-                ],
-                "append_mode": "all",
-            },
-        }}
+                    "keys": ["id"],
+                    "surrogate_id": "test_id",
+                    "columns": ["id", "name"],
+                    "append": [
+                        {
+                            "type": "fixed",
+                            "values": ["1"],  # Duplicate id=1
+                            "columns": ["id"],
+                        }
+                    ],
+                    "append_mode": "all",
+                },
+            }
+        }
 
         # Initialize normalizer directly without ConfigStore
 
@@ -244,28 +245,29 @@ class TestAppendIntegration:
                     "columns": ["id", "name"],
                 },
                 "test_entity": {
-                "keys": ["id"],
-                "surrogate_id": "test_id",
-                "columns": ["id", "name"],
-                "append": [
-                    {
-                        "type": "fixed",
-                        "values": ["2"],
-                        "columns": ["id"],
-                    },
-                    {
-                        "type": "fixed",
-                        "values": ["3"],
-                        "columns": ["id"],
-                    },
-                    {
-                        "type": "fixed",
-                        "values": ["4"],
-                        "columns": ["id"],
-                    },
-                ],
-            },
-        }}
+                    "keys": ["id"],
+                    "surrogate_id": "test_id",
+                    "columns": ["id", "name"],
+                    "append": [
+                        {
+                            "type": "fixed",
+                            "values": ["2"],
+                            "columns": ["id"],
+                        },
+                        {
+                            "type": "fixed",
+                            "values": ["3"],
+                            "columns": ["id"],
+                        },
+                        {
+                            "type": "fixed",
+                            "values": ["4"],
+                            "columns": ["id"],
+                        },
+                    ],
+                },
+            }
+        }
 
         # Initialize normalizer directly without ConfigStore
 
