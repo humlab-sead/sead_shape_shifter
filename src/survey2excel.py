@@ -20,7 +20,7 @@ from loguru import logger
 from src.configuration.provider import get_config_provider
 from src.configuration.resolve import ConfigValue
 from src.extract import extract_translation_map
-from src.model import TablesConfig
+from src.model import ShapeShiftConfig
 from src.normalizer import ArbodatSurveyNormalizer
 from src.specifications import CompositeConfigSpecification
 from src.utility import load_shape_file, setup_logging
@@ -28,16 +28,16 @@ from src.utility import load_shape_file, setup_logging
 # pylint: disable=no-value-for-parameter
 
 
-def resolve_config(config: TablesConfig | str) -> TablesConfig:
+def resolve_config(config: ShapeShiftConfig | str) -> ShapeShiftConfig:
     if isinstance(config, str):
-        return TablesConfig.from_file(
+        return ShapeShiftConfig.from_file(
             config,
         )
     return config
 
 
 async def workflow(
-    config: TablesConfig,
+    config: ShapeShiftConfig,
     target: str,
     translate: bool,
     mode: Literal["xlsx", "csv", "db"],
@@ -130,7 +130,7 @@ def main(
     if not config_file or not Path(config_file).exists():
         raise FileNotFoundError(f"Configuration file not found: {config_file or 'undefined'}")
 
-    config: TablesConfig = TablesConfig.from_file(config_file)
+    config: ShapeShiftConfig = ShapeShiftConfig.from_file(config_file)
 
     # Configure logging AFTER setup_config_store to override its logging configuration
     setup_logging(verbose=verbose, log_file=log_file)

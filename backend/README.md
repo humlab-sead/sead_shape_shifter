@@ -153,7 +153,7 @@ uv run pytest tests/api/v1/test_health.py -v
 The backend directly imports and uses existing Shape Shifter components:
 
 ```python
-from src.model import TablesConfig, EntityConfig
+from src.model import ShapeShiftConfig, EntityConfig
 from src.specifications import CompositeConfigSpecification
 from src.normalizer import ArbodatSurveyNormalizer
 ```

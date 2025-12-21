@@ -365,7 +365,7 @@ class TableConfig:
             del self.config[append_entity_name]
 
 
-class TablesConfig:
+class ShapeShiftConfig:
     """Configuration for database tables."""
 
     def __init__(self, *, cfg: dict[str, dict[str, Any]] | None = None) -> None:
@@ -425,9 +425,9 @@ class TablesConfig:
 
         return None
 
-    def clone(self) -> "TablesConfig":
-        """Create a deep copy of the TablesConfig."""
-        return TablesConfig(cfg=copy.deepcopy(self.cfg))
+    def clone(self) -> "ShapeShiftConfig":
+        """Create a deep copy of the ShapeShiftConfig."""
+        return ShapeShiftConfig(cfg=copy.deepcopy(self.cfg))
 
     @cached_property
     def table_names(self) -> list[str]:
@@ -459,8 +459,8 @@ class TablesConfig:
         return table
 
     @staticmethod
-    def from_file(filepath: str, env_file: str = ".env", env_prefix: str = "SEAD_NORMALIZER") -> "TablesConfig":
-        """Load TablesConfig from a YAML configuration file."""
+    def from_file(filepath: str, env_file: str = ".env", env_prefix: str = "SEAD_NORMALIZER") -> "ShapeShiftConfig":
+        """Load ShapeShiftConfig from a YAML configuration file."""
 
         cfg: ConfigLike = ConfigFactory().load(
             source=filepath,
@@ -469,7 +469,7 @@ class TablesConfig:
             env_prefix=env_prefix,
         )
 
-        return TablesConfig(cfg=cfg.data)
+        return ShapeShiftConfig(cfg=cfg.data)
 
 
 class DataSourceConfig:

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pandas as pd
 import pytest
 
-from src.model import TablesConfig
+from src.model import ShapeShiftConfig
 from src.normalizer import ArbodatSurveyNormalizer
 from tests.decorators import with_test_config
 
@@ -47,7 +47,7 @@ def config_with_append():
             },
         }
     }
-    return TablesConfig(cfg=cfg)
+    return ShapeShiftConfig(cfg=cfg)
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def config_with_source_append():
             },
         }
     }
-    return TablesConfig(cfg=cfg)
+    return ShapeShiftConfig(cfg=cfg)
 
 
 @pytest.fixture
@@ -98,7 +98,7 @@ def config_with_distinct_mode():
             },
         }
     }
-    return TablesConfig(cfg=cfg)
+    return ShapeShiftConfig(cfg=cfg)
 
 
 class TestAppendProcessingBasic:
@@ -159,7 +159,7 @@ class TestAppendProcessingSQL:
     async def test_append_sql_query(self, sample_survey_data, test_provider):  # pylint: disable=unused-argument
         """Test appending data from SQL query."""
 
-        config_with_sql_append = TablesConfig(
+        config_with_sql_append = ShapeShiftConfig(
             cfg={
                 "entities": {
                     "survey": {
@@ -208,8 +208,8 @@ class TestAppendProcessingMultiple:
     """Tests for multiple append configurations."""
 
     @pytest.fixture
-    def survey_only_config(self) -> TablesConfig:
-        return TablesConfig(
+    def survey_only_config(self) -> ShapeShiftConfig:
+        return ShapeShiftConfig(
             cfg={
                 "entities": {
                     "survey": {"depends_on": []},
@@ -242,7 +242,7 @@ class TestAppendProcessingMultiple:
             }
         }
 
-        config = TablesConfig(cfg=cfg)
+        config = ShapeShiftConfig(cfg=cfg)
         table_store: dict[str, pd.DataFrame] = {"survey": sample_survey_data}
         normalizer = ArbodatSurveyNormalizer(config=config, default_entity="survey", table_store=table_store)
 
@@ -286,7 +286,7 @@ class TestAppendProcessingEdgeCases:
             }
         }
 
-        config = TablesConfig(cfg=cfg)
+        config = ShapeShiftConfig(cfg=cfg)
         empty_data = pd.DataFrame(columns=["site_name", "latitude"])
         table_store = {"default": empty_data}
         normalizer = ArbodatSurveyNormalizer(config=config, table_store=table_store, default_entity="default")
@@ -327,7 +327,7 @@ class TestAppendProcessingEdgeCases:
             }
         }
 
-        config = TablesConfig(cfg=cfg)
+        config = ShapeShiftConfig(cfg=cfg)
         table_store = {"survey": sample_survey_data}
         normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config, table_store=table_store)
 

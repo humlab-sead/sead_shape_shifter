@@ -12,7 +12,7 @@ from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
 from src.configuration.interface import ConfigLike
 from src.configuration.provider import ConfigStore
-from src.model import ForeignKeyConfig, TableConfig, TablesConfig
+from src.model import ForeignKeyConfig, TableConfig, ShapeShiftConfig
 from src.normalizer import ArbodatSurveyNormalizer
 
 
@@ -98,8 +98,8 @@ class PreviewService:
         if config_obj is None:
             raise ValueError("Configuration not loaded")
 
-        config = TablesConfig(cfg=config_obj.data)
-        # config: TablesConfig = TablesConfig.from_file(config_name)
+        config = ShapeShiftConfig(cfg=config_obj.data)
+        # config: ShapeShiftConfig = ShapeShiftConfig.from_file(config_name)
 
         if entity_name not in config.tables:
             raise ValueError(f"Entity '{entity_name}' not found in configuration")
@@ -124,7 +124,7 @@ class PreviewService:
 
     async def _preview_with_normalizer(
         self,
-        config: TablesConfig | str,
+        config: ShapeShiftConfig | str,
         entity_name: str,
         entity_config: TableConfig,
         limit: int,
@@ -134,7 +134,7 @@ class PreviewService:
             # Create normalizer with the entity as default to process
 
             if isinstance(config, str):
-                raise ValueError("Config must be TablesConfig instance, not str")
+                raise ValueError("Config must be ShapeShiftConfig instance, not str")
 
             # Determine the default source entity from the target entity config
             default_source = entity_config.source if entity_config.source else None
@@ -302,7 +302,7 @@ class PreviewService:
         if config_obj is None:
             raise ValueError("Configuration not loaded")
 
-        config: TablesConfig = TablesConfig(cfg=config_obj.data)
+        config: ShapeShiftConfig = ShapeShiftConfig(cfg=config_obj.data)
 
         # Get entity and foreign key config
         if entity_name not in config.tables:

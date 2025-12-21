@@ -7,7 +7,7 @@ import pytest
 from src.configuration.config import ConfigFactory
 from src.configuration.interface import ConfigLike
 from src.configuration.setup import setup_config_store
-from src.model import TablesConfig
+from src.model import ShapeShiftConfig
 from src.survey2excel import validate_entity_shapes, workflow
 from src.utility import load_shape_file
 from tests.conftest import ExtendedMockConfigProvider
@@ -54,7 +54,7 @@ def test_workflow_using_survey_report_to_csv():
     translate: bool = False
 
     output_path: str = "tmp/arbodat/"
-    config: TablesConfig = TablesConfig.from_file(
+    config: ShapeShiftConfig = ShapeShiftConfig.from_file(
         config_file,
         env_prefix="SEAD_NORMALIZER",
         env_file=".env",
@@ -102,7 +102,7 @@ def test_workflow_using_survey_report_to_csv():
 def test_access_database_csv_workflow(test_provider: ExtendedMockConfigProvider):
 
     config_file: str = "./input/arbodat-database.yml"
-    config: TablesConfig = TablesConfig.from_file(
+    config: ShapeShiftConfig = ShapeShiftConfig.from_file(
         config_file,
         env_prefix="SEAD_NORMALIZER",
         env_file=".env",

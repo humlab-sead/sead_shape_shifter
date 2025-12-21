@@ -17,7 +17,7 @@
 - Register extensible validators/loaders/filters through the registry pattern (`@Validators.register(...)`).
 - Await every async data loader in `src/loaders/`; check backend service signatures before mixing sync/async logic.
 - Decorate async tests with `@pytest.mark.asyncio` (Core) and use FastAPI `TestClient` for backend routes.
-- Import backend usages of Core with absolute paths only (e.g., `from src.model import TablesConfig`).
+- Import backend usages of Core with absolute paths only (e.g., `from src.model import ShapeShiftConfig`).
 - **Environment variable resolution**: Happens ONLY in mapper layer (`backend/app/mappers/`). API entities stay raw (`${VAR}`), core entities are always resolved. Never call `resolve_config_env_vars()` in services.
 
 ## Code Conventions

@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from src.loaders.base_loader import DataLoader
-from src.model import DataSourceConfig, ForeignKeyConfig, ForeignKeyConstraints, TableConfig, TablesConfig, UnnestConfig
+from src.model import DataSourceConfig, ForeignKeyConfig, ForeignKeyConstraints, TableConfig, ShapeShiftConfig, UnnestConfig
 
 
 class TestForeignKeyConstraints:
@@ -1081,7 +1081,7 @@ class TestTableConfig:
                 "data_sources": {"test_sql_source": {}},
             },
         }
-        config: TablesConfig = TablesConfig(cfg=cfg)
+        config: ShapeShiftConfig = ShapeShiftConfig(cfg=cfg)
 
         sub_configs = list(config.get_table("site").get_sub_table_configs())
 
@@ -1105,13 +1105,13 @@ class TestTableConfig:
         assert sql_append_config._data == expected_append_config
 
 
-class TestTablesConfig:
-    """Tests for TablesConfig class."""
+class TestShapeShiftConfig:
+    """Tests for ShapeShiftConfig class."""
 
-    def test_tables_config_with_provided_config(self):
-        """Test TablesConfig with provided configuration."""
+    def test_shape_shift_config_with_provided_config(self):
+        """Test ShapeShiftConfig with provided configuration."""
 
-        config = TablesConfig(
+        config = ShapeShiftConfig(
             cfg={
                 "entities": {
                     "site": {"surrogate_id": "site_id", "columns": ["site_name"]},
@@ -1128,7 +1128,7 @@ class TestTablesConfig:
     def test_get_table(self):
         """Test getting a specific table configuration."""
 
-        config = TablesConfig(cfg={"entities": {"site": {"surrogate_id": "site_id", "columns": ["site_name"]}}})
+        config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id", "columns": ["site_name"]}}})
         site_table: TableConfig = config.get_table("site")
 
         assert site_table.entity_name == "site"
@@ -1137,16 +1137,16 @@ class TestTablesConfig:
     def test_get_nonexistent_table_raises_error(self):
         """Test that getting nonexistent table raises KeyError."""
 
-        config = TablesConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}})
+        config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}})
 
         with pytest.raises(KeyError):
             config.get_table("nonexistent")
 
     def test_empty_config(self):
-        """Test TablesConfig with empty configuration."""
-        # Note: TablesConfig uses 'or' logic, so empty dict will try to load from ConfigValue
+        """Test ShapeShiftConfig with empty configuration."""
+        # Note: ShapeShiftConfig uses 'or' logic, so empty dict will try to load from ConfigValue
         # We need to provide a dict with at least one entity or use None to avoid the config loader
-        tables = TablesConfig(cfg={"entities": {"dummy": {"surrogate_id": "id"}}})
+        tables = ShapeShiftConfig(cfg={"entities": {"dummy": {"surrogate_id": "id"}}})
 
         assert len(tables.tables) == 1
         assert "dummy" in tables.tables
@@ -1155,7 +1155,7 @@ class TestTablesConfig:
         """Test has_table method."""
         entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
 
         assert tables.has_table("site") is True
         assert tables.has_table("location") is True
@@ -1169,7 +1169,7 @@ class TestTablesConfig:
             "region": {"surrogate_id": "region_id"},
         }
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
         names: list[str] = tables.table_names
 
         assert len(names) == 3
@@ -1191,7 +1191,7 @@ class TestTablesConfig:
             "natural_region": {"surrogate_id": "natural_region_id", "columns": ["NaturE", "NaturrEinh"], "drop_duplicates": True},
         }
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
 
         site_table = tables.get_table("site")
         assert site_table.keys == {"ProjektNr", "Fustel"}
@@ -1212,7 +1212,7 @@ class TestTablesConfig:
             }
         }
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
         sorted_cols = tables.get_sorted_columns("site")
 
         # Surrogate ID should be first, then other columns
@@ -1233,7 +1233,7 @@ class TestTablesConfig:
             },
         }
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
         sorted_cols = tables.get_sorted_columns("site")
 
         # Order: site_id, location_id (FK), then other columns
@@ -1256,7 +1256,7 @@ class TestTablesConfig:
             },
         }
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
         sorted_cols = tables.get_sorted_columns("site")
 
         # Order: site_id, location_id, region_id, then other columns
@@ -1275,7 +1275,7 @@ class TestTablesConfig:
             }
         }
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
         df = pd.DataFrame({"name": ["Site A", "Site B"], "description": ["Desc A", "Desc B"], "site_id": [1, 2]})
 
         reordered = tables.reorder_columns("site", df)
@@ -1295,7 +1295,7 @@ class TestTablesConfig:
             },
         }
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
         df = pd.DataFrame(
             {"site_name": ["Site A", "Site B"], "location_name": ["Loc A", "Loc B"], "location_id": [10, 20], "site_id": [1, 2]}
         )
@@ -1318,7 +1318,7 @@ class TestTablesConfig:
             },
         }
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
         df = pd.DataFrame(
             {
                 "site_name": ["Site A", "Site B"],
@@ -1353,7 +1353,7 @@ class TestTablesConfig:
             }
         }
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
         df = pd.DataFrame({"name": ["Site A", "Site B"], "description": ["Desc A", "Desc B"]})
 
         reordered = tables.reorder_columns("site", df)
@@ -1371,7 +1371,7 @@ class TestTablesConfig:
             }
         }
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
         table_cfg = tables.get_table("site")
         df = pd.DataFrame({"name": ["Site A", "Site B"], "site_id": [1, 2]})
 
@@ -1396,7 +1396,7 @@ class TestTablesConfig:
             },
         }
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
         df = pd.DataFrame(
             {
                 "site_name": ["Site A", "Site B"],
@@ -1437,7 +1437,7 @@ class TestTablesConfig:
             }
         }
 
-        tables = TablesConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities})
         df = pd.DataFrame({"name": ["A", "B", "C"], "value": [1, 2, 3], "site_id": [10, 20, 30]})
 
         reordered: pd.DataFrame = tables.reorder_columns("site", df)
@@ -1453,7 +1453,7 @@ class TestTablesConfig:
         entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
         options = {"data_sources": {"postgres_db": {"driver": "postgresql", "options": {"host": "localhost"}}}}
 
-        config = TablesConfig(cfg={"entities": entities, "options": options})
+        config = ShapeShiftConfig(cfg={"entities": entities, "options": options})
         data_source: DataSourceConfig = config.get_data_source("postgres_db")
 
         assert data_source.name == "postgres_db"
@@ -1462,7 +1462,7 @@ class TestTablesConfig:
     def test_get_data_source_not_found(self):
         """Test get_data_source raises ValueError when source not found."""
 
-        config = TablesConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}, "options": {"data_sources": {}}})
+        config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}, "options": {"data_sources": {}}})
 
         with pytest.raises(ValueError, match="Data source.*not found"):
             config.get_data_source("nonexistent")
@@ -1472,7 +1472,7 @@ class TestTablesConfig:
         entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "data_source": "postgres_db"}}
         options = {"data_sources": {"postgres_db": {"driver": "postgresql", "options": {"host": "localhost"}}}}
 
-        config = TablesConfig(cfg={"entities": entities, "options": options})
+        config = ShapeShiftConfig(cfg={"entities": entities, "options": options})
         table_cfg: TableConfig = config.get_table("site")
 
         # This will fail if the loader type isn't registered, but we're testing the logic
@@ -1490,7 +1490,7 @@ class TestTablesConfig:
         entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "type": "fixed"}}
         options: dict[str, dict[str, Any]] = {}
 
-        config = TablesConfig(cfg={"entities": entities, "options": options})
+        config = ShapeShiftConfig(cfg={"entities": entities, "options": options})
         table_cfg: TableConfig = config.get_table("site")
 
         # This will fail if the loader type isn't registered
@@ -1506,7 +1506,7 @@ class TestTablesConfig:
         entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
         options: dict[str, dict[str, Any]] = {}
 
-        config = TablesConfig(cfg={"entities": entities, "options": options})
+        config = ShapeShiftConfig(cfg={"entities": entities, "options": options})
         table_cfg: TableConfig = config.get_table("site")
 
         loader: DataLoader | None = config.resolve_loader(table_cfg)
@@ -1563,12 +1563,12 @@ class TestDataSourceConfig:
         assert data_source.options == {}
 
     def test_tables_config_with_none_options(self):
-        """Test TablesConfig with None options triggers ConfigValue resolution."""
+        """Test ShapeShiftConfig with None options triggers ConfigValue resolution."""
 
         # This will try to resolve options from ConfigValue when options=None
         # We can't fully test this without the config system, but we ensure it doesn't crash
         try:
-            tables = TablesConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}})
+            tables = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}})
             # If it succeeds, options should be a dict
             assert isinstance(tables.options, dict)
         except Exception:  # pylint: disable=broad-except
@@ -1611,7 +1611,7 @@ class TestIntegration:
             },
         }
 
-        config = TablesConfig(cfg={"entities": entities})
+        config = ShapeShiftConfig(cfg={"entities": entities})
 
         # Test location table
         location: TableConfig = config.get_table("location")
@@ -1652,7 +1652,7 @@ class TestIntegration:
             },
         }
 
-        config = TablesConfig(cfg={"entities": entities})
+        config = ShapeShiftConfig(cfg={"entities": entities})
 
         # Test site foreign key configuration
         site: TableConfig = config.get_table("site")
