@@ -1263,7 +1263,7 @@ class TestShapeShiftConfig:
     async def test_resolve_raises_when_context_not_configured(self):
         """ShapeShiftConfig.resolve should raise when provider lacks requested context."""
 
-        provider = MockConfigProvider(config=None)
+        provider = MockConfigProvider(config=None)  # type: ignore
         old_provider = set_config_provider(provider)
 
         try:

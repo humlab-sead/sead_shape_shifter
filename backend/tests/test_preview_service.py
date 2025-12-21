@@ -1,5 +1,6 @@
 """Tests for entity preview service."""
 
+from operator import is_
 import time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -155,10 +156,12 @@ class TestPreviewService:
     @pytest.mark.asyncio
     async def test_preview_entity_not_found(self, preview_service, sample_config):
         """Test preview with non-existent entity."""
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = sample_config.cfg
 
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)),
+            is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
             with pytest.raises(ValueError, match="Entity 'nonexistent' not found"):
                 await preview_service.preview_entity("test_config", "nonexistent", 50)
 
@@ -166,13 +169,11 @@ class TestPreviewService:
     async def test_preview_entity_success(self, preview_service, sample_config, sample_dataframe):
         """Test successful entity preview."""
 
-        # FIXME: preview_entity expects a filename, but we're passing config name
-        #
-
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = sample_config.cfg
-
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)),
+            is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
             with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
                 # Setup mock normalizer
                 mock_normalizer = MagicMock()
@@ -203,10 +204,11 @@ class TestPreviewService:
         """Test preview respects limit parameter."""
         large_df = pd.DataFrame({"col1": range(100), "col2": range(100, 200)})
 
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = sample_config.cfg
-
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)),
+            is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
             with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
@@ -230,11 +232,11 @@ class TestPreviewService:
             "var_name": "variable",
             "value_name": "value",
         }
-
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = config_with_transforms.cfg
-
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=config_with_transforms.cfg)),
+            is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
             with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
@@ -251,10 +253,11 @@ class TestPreviewService:
         self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame
     ):
         """Test preview loads dependencies correctly."""
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = sample_config.cfg
-
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)),
+            is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
             with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
@@ -270,10 +273,11 @@ class TestPreviewService:
     @pytest.mark.asyncio
     async def test_preview_caching(self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame):
         """Test preview results are cached."""
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = sample_config.cfg
-
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)),
+            is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
             with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
@@ -294,10 +298,11 @@ class TestPreviewService:
     @pytest.mark.asyncio
     async def test_get_entity_sample(self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame):
         """Test get_entity_sample with higher limit."""
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = sample_config.cfg
-
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)),
+            is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
             with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()

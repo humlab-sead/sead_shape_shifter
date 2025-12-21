@@ -11,8 +11,6 @@ from loguru import logger
 from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
-from src.configuration.interface import ConfigLike
-from src.configuration.provider import ConfigStore
 from src.model import ForeignKeyConfig, TableConfig, ShapeShiftConfig
 from src.normalizer import ShapeShifter
 
