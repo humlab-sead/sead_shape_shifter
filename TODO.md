@@ -118,3 +118,6 @@ Improve validations for configuration files to catch the most common errors and 
  - [] TODO: dispatch.py: Add support for colors, formats, etc. using openpyxl
  - [] TODO: #32 backend/app/services/data_source_service.py:43:9: Consider making patterns configurable, or to probe content for "driver" key (fixme)
  - [x] TODO: #34 Improve server side state management for configuration editing, what should be per app (lifespan) vs per request? **COMPLETED** - See docs/STATE_MANAGEMENT_IMPLEMENTATION.md
+ - [x] TODO: #37 Add session management to frontend configuration editors. **COMPLETED** - See frontend/FRONTEND_SESSION_QUICKSTART.md
+ - [] TODO: Add ability to test entity configurations without executing full normalization workflow.
+ - [] TODO: Add setting view to frontend to configure frontend/backend options (e.g., themes, temp directory, logging level, etc.)
