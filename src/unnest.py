@@ -3,7 +3,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.config_model import TableConfig, UnnestConfig
+from src.model import TableConfig, UnnestConfig
 
 
 def unnest(entity: str, table: pd.DataFrame, table_cfg: TableConfig) -> pd.DataFrame:

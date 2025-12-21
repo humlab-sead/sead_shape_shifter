@@ -19,43 +19,43 @@ This document defines the software architecture for the Shape Shifter Configurat
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Web Browser (Client)                    │
+│                      Web Browser (Client)                   │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │          React/TypeScript Frontend                      │ │
-│  │  ┌──────────┐  ┌──────────┐  ┌────────────────────┐   │ │
-│  │  │ Monaco   │  │  Entity  │  │    Validation      │   │ │
-│  │  │ Editor   │  │  Tree    │  │    Panel           │   │ │
-│  │  └──────────┘  └──────────┘  └────────────────────┘   │ │
-│  │  ┌────────────────────────────────────────────────┐   │ │
-│  │  │         State Management (React Query + Zustand)   │ │
-│  │  └────────────────────────────────────────────────┘   │ │
+│  │          Vue3/TypeScript Frontend                      │ │
+│  │  ┌──────────┐  ┌──────────┐  ┌────────────────────┐    │ │
+│  │  │ Monaco   │  │  Entity  │  │    Validation      │    │ │
+│  │  │ Editor   │  │  Tree    │  │    Panel           │    │ │
+│  │  └──────────┘  └──────────┘  └────────────────────┘    │ │
+│  │  ┌────────────────────────────────────────────────┐    │ │
+│  │  │             State Management (Pinia)           │    │ │
+│  │  └────────────────────────────────────────────────┘    │ │
 │  └────────────────────────────────────────────────────────┘ │
 └──────────────────────────┬──────────────────────────────────┘
                            │ REST/JSON API
 ┌──────────────────────────┴──────────────────────────────────┐
-│                    Python Backend (Server)                   │
+│                    Python Backend (Server)                  │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │                FastAPI Application                      │ │
-│  │  ┌──────────────┐  ┌───────────────┐  ┌────────────┐  │ │
-│  │  │ Configuration│  │  Validation   │  │  Auto-Fix  │  │ │
-│  │  │   Service    │  │   Service     │  │  Service   │  │ │
-│  │  └──────────────┘  └───────────────┘  └────────────┘  │ │
+│  │                FastAPI Application                     │ │
+│  │  ┌──────────────┐  ┌───────────────┐  ┌────────────┐   │ │
+│  │  │ Configuration│  │  Validation   │  │  Auto-Fix  │   │ │
+│  │  │   Service    │  │   Service     │  │  Service   │   │ │
+│  │  └──────────────┘  └───────────────┘  └────────────┘   │ │
 │  └────────────────────────────────────────────────────────┘ │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │           Shape Shifter Transformation Engine           │ │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐  │ │
-│  │  │ config_model │  │specifications│  │  normalizer │  │ │
-│  │  │   .py        │  │    .py       │  │     .py     │  │ │
-│  │  └──────────────┘  └──────────────┘  └─────────────┘  │ │
+│  │           Shape Shifter Transformation Engine          │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐   │ │
+│  │  │     model    │  │specifications│  │  normalizer │   │ │
+│  │  │     .py      │  │    .py       │  │     .py     │   │ │
+│  │  └──────────────┘  └──────────────┘  └─────────────┘   │ │
 │  └────────────────────────────────────────────────────────┘ │
 └──────────────────────────┬──────────────────────────────────┘
                            │
 ┌──────────────────────────┴──────────────────────────────────┐
-│                      File System                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐  │
-│  │ Configurations│  │   Backups    │  │      Logs       │  │
-│  │   (YAML)     │  │  (Timestamped)│  │  (Application)  │  │
-│  └──────────────┘  └──────────────┘  └─────────────────┘  │
+│                      File System                            │
+│  ┌───────────────┐  ┌───────────────┐  ┌─────────────────┐  │
+│  │ Configuration │  │   Backups     │  │      Logs       │  │
+│  │   (YAML)      │  │   (YAML)      │  │  (Application)  │  │
+│  └───────────────┘  └───────────────┘  └─────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -78,14 +78,14 @@ This document defines the software architecture for the Shape Shifter Configurat
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| **Framework** | React 18 | UI library with hooks and concurrent features |
+| **Framework** | Vue3 | UI frontend framework (Composition API) |
 | **Language** | TypeScript | Type-safe JavaScript |
 | **Editor** | Monaco Editor | VS Code's editor for YAML editing |
-| **UI Components** | Material-UI (MUI) | Pre-built component library |
-| **State Management** | React Query + Zustand | Server and client state |
+| **UI Components** | Vuetify | Component library and theming |
+| **State Management** | Pinia | Client/UI state management |
 | **Build Tool** | Vite | Fast build tool and dev server |
-| **Testing** | Vitest + React Testing Library | Unit and component tests |
-| **Styling** | Emotion (CSS-in-JS) | Component styling |
+| **Testing** | Vitest + @vue/test-utils | Unit, component, and composable tests |
+| **Styling** | SCSS + Vuetify theme tokens | Component styling |
 
 ### 3.2 Backend
 
@@ -117,43 +117,19 @@ This document defines the software architecture for the Shape Shifter Configurat
 ```
 frontend/
 ├── src/
-│   ├── api/                    # API client layer
-│   │   ├── client.ts           # Axios configuration
-│   │   ├── configurations.ts   # Config API calls
-│   │   ├── validation.ts       # Validation API calls
-│   │   └── autoFix.ts          # Auto-fix API calls
-│   ├── components/             # React components
-│   │   ├── editor/
-│   │   │   ├── ConfigurationEditor.tsx
-│   │   │   └── MonacoEditor.tsx
-│   │   ├── panels/
-│   │   │   ├── ValidationPanel.tsx
-│   │   │   ├── EntityTreePanel.tsx
-│   │   │   └── PropertiesPanel.tsx
-│   │   └── common/
-│   │       ├── LoadingSkeleton.tsx
-│   │       ├── SuccessSnackbar.tsx
-│   │       └── Tooltip.tsx
-│   ├── hooks/                  # Custom React hooks
-│   │   ├── useConfiguration.ts
-│   │   ├── useValidation.ts
-│   │   ├── useDebounce.ts
-│   │   └── useCache.ts
-│   ├── stores/                 # Zustand stores
-│   │   └── configStore.ts
-│   ├── types/                  # TypeScript types
-│   │   ├── configuration.ts
-│   │   ├── validation.ts
-│   │   └── autoFix.ts
-│   ├── utils/                  # Utility functions
-│   │   ├── formatters.ts
-│   │   └── validators.ts
-│   ├── App.tsx                 # Main application
-│   └── main.tsx                # Entry point
-├── tests/                      # Test files
-│   ├── unit/
-│   ├── integration/
-│   └── setup.ts
+│   ├── api/                    # Axios client + per-resource modules
+│   ├── components/             # Vue components (common, validation, entities, data sources, etc.)
+│   ├── composables/            # Reusable Composition API helpers
+│   ├── stores/                 # Pinia stores
+│   ├── views/                  # Route-level screens
+│   ├── router/                 # Vue Router configuration
+│   ├── plugins/                # Vuetify and other plugin setup
+│   ├── styles/                 # Global SCSS and theme variables
+│   ├── types/                  # Shared TypeScript types
+│   ├── App.vue                 # Root component
+│   └── main.ts                 # Entry point
+├── public/                     # Static assets
+├── docs/                       # Frontend-specific notes
 ├── package.json
 ├── tsconfig.json
 └── vite.config.ts
@@ -348,92 +324,110 @@ watch(activeTab, (newTab, oldTab) => {
 
 ### 4.3 State Management
 
-#### Server State (React Query)
+#### Server State
+
+- Fetch via `frontend/src/api` modules (axios client with interceptors).
+- Wrap calls in composables (e.g., `useConfigurations`, `useValidation`) that expose `loading`, `error`, `data`, and `refresh`.
+- Cache per-configuration responses in Pinia or composable-level refs; invalidate after save/auto-fix actions.
 
 ```typescript
-// Fetch and cache server data
-const { data, isLoading, error } = useQuery({
-  queryKey: ['configuration', configName],
-  queryFn: () => fetchConfiguration(configName),
-  staleTime: 5 * 60 * 1000,  // 5 minutes
-});
+// frontend/src/composables/useValidation.ts
+import { ref } from 'vue';
+import { getValidation } from '@/api/validation';
 
-// Mutations with optimistic updates
-const mutation = useMutation({
-  mutationFn: saveConfiguration,
-  onSuccess: () => {
-    queryClient.invalidateQueries(['configuration']);
+export function useValidation() {
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+  const result = ref(null);
+
+  const run = async (configName: string, type: string) => {
+    loading.value = true;
+    error.value = null;
+    try {
+      result.value = await getValidation(configName, type);
+    } catch (err) {
+      error.value = (err as Error).message;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  return { loading, error, result, run };
+}
+```
+
+#### Client State (Pinia)
+
+```typescript
+// frontend/src/stores/configurationStore.ts
+import { defineStore } from 'pinia';
+
+export const useConfigurationStore = defineStore('configuration', {
+  state: () => ({
+    currentConfig: null as string | null,
+    selectedEntity: null as string | null,
+    activeTab: 'validation' as 'validation' | 'properties',
+  }),
+  actions: {
+    setCurrentConfig(name: string) {
+      this.currentConfig = name;
+    },
+    setSelectedEntity(entity: string | null) {
+      this.selectedEntity = entity;
+    },
+    setActiveTab(tab: 'validation' | 'properties') {
+      this.activeTab = tab;
+    },
   },
 });
 ```
 
-**Benefits**:
-- Automatic caching and refetching
-- Loading and error states
-- Optimistic updates
-- Background synchronization
+- Derive store refs with `storeToRefs` inside components.
+- Keep derived/computed UI-only state inside components; persist long-lived app state in stores.
 
-#### Client State (Zustand)
+### 4.4 Composables
 
-```typescript
-// UI state store
-interface ConfigStore {
-  currentConfig: string | null;
-  selectedEntity: string | null;
-  activeTab: 'validation' | 'properties';
-  setCurrentConfig: (name: string) => void;
-  setSelectedEntity: (entity: string | null) => void;
-  setActiveTab: (tab: string) => void;
-}
-
-const useConfigStore = create<ConfigStore>((set) => ({
-  currentConfig: null,
-  selectedEntity: null,
-  activeTab: 'validation',
-  setCurrentConfig: (name) => set({ currentConfig: name }),
-  setSelectedEntity: (entity) => set({ selectedEntity: entity }),
-  setActiveTab: (tab) => set({ activeTab: tab as any }),
-}));
-```
-
-**Benefits**:
-- Simple API
-- No boilerplate
-- TypeScript support
-- DevTools integration
-
-### 4.4 Custom Hooks
-
-#### useDebounce
+#### useDebounceFn
 
 ```typescript
-// Debounce rapidly changing values
-export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+// Debounce rapidly changing values (via VueUse)
+import { ref } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
+export function useDebouncedSearch(delay = 300) {
+  const term = ref('');
+  const run = useDebounceFn((value: string, cb: (value: string) => void) => cb(value), delay);
 
-    return () => clearTimeout(handler);
-  }, [value, delay]);
+  const update = (value: string, cb: (value: string) => void) => {
+    term.value = value;
+    run(value, cb);
+  };
 
-  return debouncedValue;
+  return { term, update };
 }
 ```
 
 #### useValidation
 
 ```typescript
-// Validation with caching
-export function useValidation(configName: string, type: string) {
-  return useQuery({
-    queryKey: ['validation', configName, type],
-    queryFn: () => validateConfiguration(configName, type),
-    staleTime: 5 * 60 * 1000,
-    enabled: !!configName,
-  });
+import { computed } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useValidationStore } from '@/stores/validation';
+
+export function useValidationSummary() {
+  const store = useValidationStore();
+  const { validationResult, loading } = storeToRefs(store);
+
+  const errorCount = computed(() => validationResult.value?.error_count ?? 0);
+  const warningCount = computed(() => validationResult.value?.warning_count ?? 0);
+
+  return {
+    validationResult,
+    loading,
+    errorCount,
+    warningCount,
+    refresh: store.validateConfiguration,
+  };
 }
 ```
 
@@ -441,49 +435,47 @@ export function useValidation(configName: string, type: string) {
 
 #### Code Splitting
 
-```typescript
-// Lazy load heavy components
-const ConfigurationEditor = lazy(() => 
-  import('./components/editor/ConfigurationEditor')
-);
+```vue
+<script setup lang="ts">
+import { defineAsyncComponent } from 'vue';
 
-function App() {
-  return (
-    <Suspense fallback={<LoadingSkeleton />}>
-      <ConfigurationEditor />
-    </Suspense>
-  );
-}
+const ConfigurationEditor = defineAsyncComponent(() =>
+  import('@/components/configurations/ConfigurationEditor.vue')
+);
+</script>
+
+<template>
+  <Suspense>
+    <ConfigurationEditor />
+    <template #fallback>
+      <LoadingSkeleton />
+    </template>
+  </Suspense>
+</template>
 ```
 
-#### Memoization
+#### Derived State
 
 ```typescript
-// Prevent unnecessary re-renders
-const sortedIssues = useMemo(() => {
-  return [...issues].sort((a, b) => 
-    a.severity.localeCompare(b.severity)
-  );
-}, [issues]);
+// Prevent unnecessary recomputation
+import { computed } from 'vue';
+
+const sortedIssues = computed(() =>
+  [...issues.value].sort((a, b) => a.severity.localeCompare(b.severity))
+);
 ```
 
 #### Virtual Scrolling
 
-```typescript
-// Render only visible items
-import { FixedSizeList } from 'react-window';
-
-<FixedSizeList
-  height={600}
-  itemCount={entities.length}
-  itemSize={35}
+```vue
+<VVirtualScroll
+  :items="entities"
+  height="600"
+  item-height="44"
+  v-slot="{ item }"
 >
-  {({ index, style }) => (
-    <div style={style}>
-      <EntityNode entity={entities[index]} />
-    </div>
-  )}
-</FixedSizeList>
+  <EntityNode :entity="item" />
+</VVirtualScroll>
 ```
 
 ---
@@ -508,10 +500,13 @@ backend/
 │   │   ├── cache.py           # Caching service
 │   │   └── errors.py          # Custom exceptions
 │   ├── models/
-│   │   ├── configuration.py   # Pydantic models
+│   │   ├── configuration.py   # API Pydantic models (raw ${ENV_VARS})
 │   │   ├── validation.py
 │   │   ├── auto_fix.py
 │   │   └── test_run.py
+│   ├── mappers/              # Layer boundary translators
+│   │   ├── data_source_mapper.py  # Resolves env vars here
+│   │   └── table_schema_mapper.py
 │   ├── services/
 │   │   ├── yaml_service.py
 │   │   ├── validation_service.py
@@ -525,6 +520,39 @@ backend/
 ```
 
 ### 5.2 Design Patterns
+
+#### Mapper Pattern (Layer Boundary)
+
+```python
+# Translates between API and Core layers, resolving env vars
+class DataSourceMapper:
+    """Maps between API and Core data source configurations.
+    
+    Environment variable resolution happens at this layer boundary.
+    """
+    
+    @staticmethod
+    def to_core_config(
+        api_config: ApiDataSourceConfig
+    ) -> CoreDataSourceConfig:
+        """Convert API config to Core config.
+        
+        IMPORTANT: Resolves environment variables during mapping.
+        API entities remain raw (${ENV_VAR}), core entities are resolved.
+        """
+        # Resolution at the boundary
+        api_config = api_config.resolve_config_env_vars()
+        
+        return CoreDataSourceConfig(
+            name=api_config.name,
+            cfg={...}  # Fully resolved
+        )
+```
+
+**Layer Responsibilities:**
+- **API Models**: Raw data with `${ENV_VARS}` (unresolved)
+- **Mappers**: Translation + environment variable resolution
+- **Core Models**: Fully resolved, ready for execution
 
 #### Service Layer Pattern
 
@@ -877,8 +905,8 @@ docker-compose up -d
 
 ### 10.1 Frontend Testing
 
-- **Unit Tests**: Components, hooks, utilities (Vitest)
-- **Integration Tests**: User workflows (React Testing Library)
+- **Unit Tests**: Components, composables, utilities (Vitest)
+- **Integration Tests**: User workflows
 - **E2E Tests**: Critical paths (Playwright, future)
 
 ### 10.2 Backend Testing

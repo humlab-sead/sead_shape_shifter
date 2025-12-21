@@ -13,9 +13,11 @@ from unittest.mock import Mock
 
 import pytest
 
+from backend.app import models as api
+from backend.app import services as api_services
+from backend.app.core.config import Settings
 from backend.app.mappers.data_source_mapper import DataSourceMapper
-from backend.app.models.data_source import DataSourceConfig
-from backend.app.services.data_source_service import DataSourceService
+from src import model as core
 from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
 
 # pylint: disable=redefined-outer-name, f-string-without-interpolation, no-member
@@ -56,10 +58,10 @@ def ensure_schemas_loaded():
 
 
 @pytest.mark.asyncio
-async def test_debug_postgresql_connection(mock_config):
+async def test_debug_postgresql_connection(settings: Settings):
     """Debug PostgreSQL connection with detailed output."""
-    # Create config
-    config = DataSourceConfig(
+
+    ds_config: api.DataSourceConfig = api.DataSourceConfig(
         name="debug_postgres",
         driver="postgresql",  # type: ignore
         host="localhost",
@@ -70,25 +72,23 @@ async def test_debug_postgresql_connection(mock_config):
     )
 
     print(f"\n--- PostgreSQL Config ---")
-    print(f"Config: {config.model_dump(exclude={'password'})}")
+    print(f"Config: {ds_config.model_dump(exclude={'password'})}")
 
-    # Check schema
-    schema = DriverSchemaRegistry.get("postgresql")
+    schema: DriverSchema | None = DriverSchemaRegistry.get("postgresql")
     assert schema is not None, "Access driver schema not found"
     print(f"\nDriver Schema: {schema.display_name}")
     print(f"Fields: {[f.name for f in schema.fields]}")
 
-    # Test mapper
     print(f"\n--- Testing Mapper ---")
-    core_config = DataSourceMapper.to_core_config(config)
+    core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_config)
     print(f"Core Config Name: {core_config.name}")
     print(f"Core Config Driver: {core_config.data_source_cfg.get('driver')}")
     print(f"Core Config Keys: {list(core_config.data_source_cfg.get('options', {}).keys())}")
 
     # Test connection
     print(f"\n--- Testing Connection ---")
-    service = DataSourceService(mock_config)
-    result = await service.test_connection(config)
+    service = api_services.DataSourceService(settings.CONFIGURATIONS_DIR)
+    result: api.DataSourceTestResult = await service.test_connection(ds_config)
 
     print(f"Success: {result.success}")
     print(f"Message: {result.message}")
@@ -100,28 +100,28 @@ async def test_debug_postgresql_connection(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_debug_access_connection(mock_config):
+async def test_debug_access_connection(settings: Settings):
     """Debug Access connection with detailed output."""
     # Find an Access database
-    input_dir = Path(__file__).parent.parent.parent / "input"
-    mdb_files = list(input_dir.glob("*.mdb"))
+    input_dir: Path = Path(__file__).parent.parent.parent / "input"
+    mdb_files: list[Path] = list(input_dir.glob("*.mdb"))
 
     if not mdb_files:
         pytest.skip("No .mdb files found in input/ directory")
 
-    mdb_file = mdb_files[0]
+    mdb_file: Path = mdb_files[0]
     print(f"\n--- Using Access Database ---")
     print(f"File: {mdb_file}")
     print(f"Exists: {mdb_file.exists()}")
     print(f"Size: {mdb_file.stat().st_size if mdb_file.exists() else 'N/A'} bytes")
 
     # Create config
-    config = DataSourceConfig(
+    ds_cfg: api.DataSourceConfig = api.DataSourceConfig(
         name="debug_access", driver="ucanaccess", filename=str(mdb_file), options={"ucanaccess_dir": "lib/ucanaccess"}, **{}  # type: ignore
     )
 
     print(f"\n--- Access Config ---")
-    print(f"Config: {config.model_dump()}")
+    print(f"Config: {ds_cfg.model_dump()}")
 
     # Check schema
     schema: DriverSchema | None = DriverSchemaRegistry.get("ucanaccess")
@@ -132,15 +132,15 @@ async def test_debug_access_connection(mock_config):
 
     # Test mapper
     print(f"\n--- Testing Mapper ---")
-    core_config = DataSourceMapper.to_core_config(config)
+    core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_cfg)
     print(f"Core Config Name: {core_config.name}")
     print(f"Core Config Driver: {core_config.data_source_cfg.get('driver')}")
     print(f"Core Config Keys: {list(core_config.data_source_cfg.get('options', {}).keys())}")
 
     # Test connection
     print(f"\n--- Testing Connection ---")
-    service = DataSourceService(mock_config)
-    result = await service.test_connection(config)
+    service = api_services.DataSourceService(settings.CONFIGURATIONS_DIR)
+    result: api.DataSourceTestResult = await service.test_connection(ds_cfg)
 
     print(f"Success: {result.success}")
     print(f"Message: {result.message}")
@@ -152,9 +152,9 @@ async def test_debug_access_connection(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_debug_existing_data_sources(mock_config):
+async def test_debug_existing_data_sources(settings: Settings):
     """Test all existing configured data sources."""
-    service = DataSourceService(mock_config)
+    service = api_services.DataSourceService(settings.CONFIGURATIONS_DIR)
     data_sources = service.list_data_sources()
 
     print(f"\n--- Configured Data Sources ---")
@@ -166,7 +166,7 @@ async def test_debug_existing_data_sources(mock_config):
 
         # Test connection
         try:
-            result = await service.test_connection(ds)
+            result: api.DataSourceTestResult = await service.test_connection(ds)
             print(f"  Result: {'✓ SUCCESS' if result.success else '✗ FAILED'}")
             print(f"  Message: {result.message}")
             print(f"  Time: {result.connection_time_ms}ms")
@@ -181,7 +181,7 @@ async def test_debug_existing_data_sources(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_debug_postgresql_with_env_vars(mock_config):
+async def test_debug_postgresql_with_env_vars(settings: Settings):
     """Test PostgreSQL connection with environment variables (like sead-options.yml)."""
 
     # Set up environment variables like in sead-options.yml
@@ -196,7 +196,7 @@ async def test_debug_postgresql_with_env_vars(mock_config):
         print()
 
         # Create config with env var references (like in YAML)
-        config: DataSourceConfig = DataSourceConfig(
+        config: api.DataSourceConfig = api.DataSourceConfig(
             name="test_with_env_vars",
             driver="postgresql",  # type: ignore
             options={
@@ -216,7 +216,7 @@ async def test_debug_postgresql_with_env_vars(mock_config):
         print()
 
         # Test connection - env vars should be resolved automatically
-        service = DataSourceService(mock_config)
+        service = api_services.DataSourceService(settings.CONFIGURATIONS_DIR)
         result = await service.test_connection(config)
 
         print("After resolution (env vars replaced):")
@@ -244,34 +244,34 @@ async def test_debug_mapper_validation():
 
     # Test 1: PostgreSQL with all fields
     print("\nTest 1: PostgreSQL with all fields")
-    pg_full = DataSourceConfig(
+    pg_full = api.DataSourceConfig(
         name="pg_full", driver="postgresql", host="localhost", port=5432, database="testdb", username="testuser", **{}  # type: ignore
     )
 
     try:
-        core = DataSourceMapper.to_core_config(pg_full)
-        print(f"  ✓ Success - Driver: {core.data_source_cfg.get('driver')}")
-        print(f"    Options: {core.data_source_cfg.get('options')}")
+        cfg_core: core.DataSourceConfig = DataSourceMapper.to_core_config(pg_full)
+        print(f"  ✓ Success - Driver: {cfg_core.data_source_cfg.get('driver')}")
+        print(f"    Options: {cfg_core.data_source_cfg.get('options')}")
     except Exception as e:  # pylint: disable=broad-except
         print(f"  ✗ Failed: {e}")
 
     # Test 2: PostgreSQL with minimal fields (no port)
     print("\nTest 2: PostgreSQL without port")
-    pg_minimal = DataSourceConfig(
+    pg_minimal: api.DataSourceConfig = api.DataSourceConfig(
         name="pg_minimal", driver="postgresql", host="localhost", database="testdb", username="testuser", **{}  # type: ignore
     )
 
     try:
-        core = DataSourceMapper.to_core_config(pg_minimal)
-        print(f"  ✓ Success - Driver: {core.data_source_cfg.get('driver')}")
-        print(f"    Options: {core.data_source_cfg.get('options')}")
-        print(f"    Port in options: {'port' in core.data_source_cfg.get('options', {})}")
+        cfg_core: core.DataSourceConfig = DataSourceMapper.to_core_config(pg_minimal)
+        print(f"  ✓ Success - Driver: {cfg_core.data_source_cfg.get('driver')}")
+        print(f"    Options: {cfg_core.data_source_cfg.get('options')}")
+        print(f"    Port in options: {'port' in cfg_core.data_source_cfg.get('options', {})}")
     except Exception as e:  # pylint: disable=broad-except
         print(f"  ✗ Failed: {e}")
 
     # Test 3: Access with filename
     print("\nTest 3: Access with filename")
-    access = DataSourceConfig(
+    access = api.DataSourceConfig(
         name="access_test",
         driver="ucanaccess",  # type: ignore
         filename="./input/test.mdb",
@@ -280,19 +280,19 @@ async def test_debug_mapper_validation():
     )
 
     try:
-        core = DataSourceMapper.to_core_config(access)
-        print(f"  ✓ Success - Driver: {core.data_source_cfg.get('driver')}")
-        print(f"    Options: {core.data_source_cfg.get('options')}")
+        cfg_core = DataSourceMapper.to_core_config(access)
+        print(f"  ✓ Success - Driver: {cfg_core.data_source_cfg.get('driver')}")
+        print(f"    Options: {cfg_core.data_source_cfg.get('options')}")
     except Exception as e:  # pylint: disable=broad-except
         print(f"  ✗ Failed: {e}")
 
     # Test 4: CSV with filename
     print("\nTest 4: CSV with filename")
-    csv = DataSourceConfig(name="csv_test", driver="csv", filename="./input/test.csv", **{})  # type: ignore
+    csv = api.DataSourceConfig(name="csv_test", driver="csv", filename="./input/test.csv", **{})  # type: ignore
 
     try:
-        core = DataSourceMapper.to_core_config(csv)
-        print(f"  ✓ Success - Driver: {core.data_source_cfg.get('driver')}")
-        print(f"    Options: {core.data_source_cfg.get('options')}")
+        cfg_core = DataSourceMapper.to_core_config(csv)
+        print(f"  ✓ Success - Driver: {cfg_core.data_source_cfg.get('driver')}")
+        print(f"    Options: {cfg_core.data_source_cfg.get('options')}")
     except Exception as e:  # pylint: disable=broad-except
         print(f"  ✗ Failed: {e}")

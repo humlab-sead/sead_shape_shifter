@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from src.config_model import TableConfig
+from src.model import TableConfig
 from src.unnest import unnest
 
 

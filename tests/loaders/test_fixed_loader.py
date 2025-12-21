@@ -3,8 +3,8 @@
 import pandas as pd
 import pytest
 
-from src.config_model import DataSourceConfig, TableConfig
 from src.loaders.fixed_loader import FixedLoader
+from src.model import DataSourceConfig, TableConfig
 
 
 class TestFixedLoaderConnection:

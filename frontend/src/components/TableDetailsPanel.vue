@@ -55,12 +55,12 @@
             <v-list-item-subtitle>{{ tableSchema.table_name }}</v-list-item-subtitle>
           </v-list-item>
 
-          <v-list-item v-if="tableSchema.schema">
+          <v-list-item v-if="tableSchema.schema_name">
             <template #prepend>
               <v-icon icon="mdi-folder-outline" size="small" />
             </template>
             <v-list-item-title>Schema</v-list-item-title>
-            <v-list-item-subtitle>{{ tableSchema.schema }}</v-list-item-subtitle>
+            <v-list-item-subtitle>{{ tableSchema.schema_name }}</v-list-item-subtitle>
           </v-list-item>
 
           <v-list-item v-if="tableSchema.row_count !== null && tableSchema.row_count !== undefined">

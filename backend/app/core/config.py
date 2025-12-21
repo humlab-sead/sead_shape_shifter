@@ -15,11 +15,11 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
+        env_prefix="SHAPE_SHIFTER_",
     )
-
-    # Application
+    PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
     PROJECT_NAME: str = "Shape Shifter Configuration Editor"
-    VERSION: str = "0.1.0"
+    VERSION: str = "9.9.9"
     ENVIRONMENT: Literal["development", "production", "test"] = "development"
     API_V1_PREFIX: str = "/api/v1"
 
@@ -35,9 +35,8 @@ class Settings(BaseSettings):
     ALLOWED_ORIGIN_REGEX: str = r"https://.*\.(preview\.app\.github\.dev|devtunnels\.ms)"
 
     # File paths
-    PROJECT_ROOT: Path = Path(__file__).parent.parent.parent.parent
-    CONFIGURATIONS_DIR: Path = PROJECT_ROOT / "input"
-    BACKUPS_DIR: Path = PROJECT_ROOT / "backups"
+    CONFIGURATIONS_DIR: Path = Path("./configurations")
+    BACKUPS_DIR: Path = Path("./backups")
 
     # Validation
     MAX_ENTITIES_PER_CONFIG: int = 1000
@@ -56,4 +55,4 @@ def get_settings() -> Settings:
     return Settings()
 
 
-settings = get_settings()
+settings: Settings = get_settings()

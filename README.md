@@ -329,7 +329,7 @@ For detailed configuration documentation, see:
 ```
 sead_shape_shifter/
 ├── src/
-│   ├── config_model.py       # Configuration data models
+│   ├── model.py               # Configuration data models
 │   ├── constraints.py         # Foreign key constraint validators
 │   ├── normalizer.py          # Main normalization pipeline
 │   ├── extract.py             # Data extraction logic

@@ -1,30 +1,31 @@
 """
-Normalize an Arbodat "Data Survey" CSV export into several tables
-and write them as sheets in a single Excel file.
+Normalize data from various data sources into structured tables
+and write them as CSVs or sheets in a single Excel file.
 
 """
 
+import asyncio
 from pathlib import Path
 from typing import Any, Literal
 
 import pandas as pd
 from loguru import logger
 
-from src.config_model import TableConfig, TablesConfig
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
 from src.filter import apply_filters
 from src.link import link_entity
 from src.loaders import DataLoader
 from src.mapping import LinkToRemoteService
+from src.model import ShapeShiftConfig, TableConfig
 from src.unnest import unnest
 
 
 class ProcessState:
     """Helper class to track processing state of entities during normalization."""
 
-    def __init__(self, config: TablesConfig, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
-        self.config: TablesConfig = config
+    def __init__(self, config: ShapeShiftConfig, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
+        self.config: ShapeShiftConfig = config
         self.table_store: dict[str, pd.DataFrame] = table_store
         self.target_entities: set[str] = target_entities if target_entities else set(config.tables.keys())
 
@@ -83,29 +84,36 @@ class ProcessState:
         return required_entities
 
 
-class ArbodatSurveyNormalizer:
+class ShapeShifter:
 
     def __init__(
         self,
+        config: ShapeShiftConfig | str,
         default_entity: str | None = None,
         table_store: dict[str, pd.DataFrame] | None = None,
-        config: TablesConfig | None = None,
         target_entities: set[str] | None = None,
     ) -> None:
 
+        if not config or not isinstance(config, (ShapeShiftConfig, str)):
+            raise ValueError("A valid configuration must be provided")
+
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
-        self.config: TablesConfig = config or TablesConfig()
+        self.config: ShapeShiftConfig = ShapeShiftConfig.resolve(config)
+        self.state: ProcessState = self._initialize_process_state(target_entities)
 
-        # If target_entities is provided, compute all required entities including dependencies
+    def _initialize_process_state(self, target_entities: set[str] | None = None) -> ProcessState:
+        """Initialize the processing state based on target entities."""
         if target_entities:
             state = ProcessState(config=self.config, table_store=self.table_store, target_entities=set())
             all_required: set[str] = set()
             for entity in target_entities:
                 all_required.update(state.get_required_entities(entity))
-            self.state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, target_entities=all_required)
+            state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, target_entities=all_required)
         else:
-            self.state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, target_entities=None)
+            state = ProcessState(config=self.config, table_store=self.table_store, target_entities=None)
+        return state
+    
 
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
@@ -259,7 +267,7 @@ class ArbodatSurveyNormalizer:
             self.table_store[entity_name] = self.config.reorder_columns(entity_name, self.table_store[entity_name])
 
     def map_to_remote(self, link_cfgs: dict[str, dict[str, Any]]) -> None:
-        """Map local Arbodat PK values to SEAD identities using mapping configuration."""
+        """Map local PK values to remote identities using mapping configuration."""
         if not link_cfgs:
             return
         service = LinkToRemoteService(remote_link_cfgs=link_cfgs)

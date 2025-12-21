@@ -2,18 +2,25 @@
 
 import hashlib
 import time
-from typing import Any, Optional
+from typing import Optional
 
 import pandas as pd
 from loguru import logger
+from pandas.api.types import (
+    CategoricalDtype,
+    is_bool_dtype,
+    is_datetime64_any_dtype,
+    is_float_dtype,
+    is_integer_dtype,
+    is_string_dtype,
+    is_timedelta64_dtype,
+)
 
 from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
-from src.config_model import ForeignKeyConfig, TableConfig, TablesConfig
-from src.configuration.interface import ConfigLike
-from src.configuration.provider import ConfigStore
-from src.normalizer import ArbodatSurveyNormalizer
+from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig
+from src.normalizer import ShapeShifter
 
 
 class PreviewCache:
@@ -23,7 +30,7 @@ class PreviewCache:
         """Initialize cache with TTL in seconds (default 5 minutes)."""
         # Cache maps key -> (result, timestamp, config_name, entity_name, limit)
         self._cache: dict[str, tuple[PreviewResult, float, str, str, int]] = {}
-        self._ttl = ttl_seconds
+        self._ttl: int = ttl_seconds
 
     def _generate_key(self, config_name: str, entity_name: str, limit: int) -> str:
         """Generate cache key from parameters."""
@@ -68,7 +75,7 @@ class PreviewService:
 
     def __init__(self, config_service: ConfigurationService):
         """Initialize preview service."""
-        self.config_service = config_service
+        self.config_service: ConfigurationService = config_service
         self.cache = PreviewCache(ttl_seconds=300)  # 5 minute cache
 
     async def preview_entity(self, config_name: str, entity_name: str, limit: int = 50) -> PreviewResult:
@@ -87,21 +94,14 @@ class PreviewService:
             ValueError: If configuration or entity not found
             RuntimeError: If preview fails
         """
-        start_time = time.time()
+        start_time: float = time.time()
 
         # Check cache first
         cached = self.cache.get(config_name, entity_name, limit)
         if cached:
             return cached
 
-        config_obj: ConfigLike = ConfigStore.config_global()
-        if config_obj is None:
-            raise ValueError("Configuration not loaded")
-
-        config_dict: dict[str, Any] = config_obj.data
-        entities_cfg: dict[str, Any] = config_dict.get("entities", {})
-        options: dict[str, Any] = config_dict.get("options", {})
-        config = TablesConfig(entities_cfg=entities_cfg, options=options)
+        config: ShapeShiftConfig = ShapeShiftConfig.resolve(cfg=config_name)
 
         if entity_name not in config.tables:
             raise ValueError(f"Entity '{entity_name}' not found in configuration")
@@ -126,30 +126,27 @@ class PreviewService:
 
     async def _preview_with_normalizer(
         self,
-        config: TablesConfig | str,
+        config: ShapeShiftConfig | str,
         entity_name: str,
         entity_config: TableConfig,
         limit: int,
     ) -> PreviewResult:
-        """Preview entity data using the normalizer to apply all transformations."""
+        """Preview entity data using the normalizer to shape shifting."""
         try:
-            # Create normalizer with the entity as default to process
 
             if isinstance(config, str):
-                # TODO: Load config by name
-                raise ValueError("Config must be TablesConfig instance, not str")
+                raise ValueError("Config must be ShapeShiftConfig instance, not str")
 
             # Determine the default source entity from the target entity config
-            default_source = entity_config.source if entity_config.source else None
+            default_source: str | None = entity_config.source if entity_config.source else None
 
-            normalizer = ArbodatSurveyNormalizer(
+            normalizer: ShapeShifter = ShapeShifter(
                 config=config,
                 table_store={},
                 default_entity=default_source,
                 target_entities={entity_name},
             )
 
-            # Run normalization process
             await normalizer.normalize()
 
             if entity_name not in normalizer.table_store:
@@ -181,16 +178,7 @@ class PreviewService:
             rows: list[dict] = preview_df.to_dict("records")
 
             # Get dependencies
-            dependencies_loaded = []
-            if entity_config.source:
-                dependencies_loaded.append(entity_config.source)
-            if entity_config.depends_on:
-                dependencies_loaded.extend(entity_config.depends_on)
-
-            # Add foreign key dependencies
-            for fk in entity_config.foreign_keys:
-                if fk.remote_entity not in dependencies_loaded:
-                    dependencies_loaded.append(fk.remote_entity)
+            dependencies_loaded: list[str] = list(entity_config.depends_on)
 
             return PreviewResult(
                 entity_name=entity_name,
@@ -211,40 +199,16 @@ class PreviewService:
 
     def _build_column_info(self, df: pd.DataFrame, entity_config: TableConfig) -> list[ColumnInfo]:
         """Build column information from DataFrame and entity config."""
-        columns = []
-        key_columns = set(entity_config.keys or [])
-        if entity_config.surrogate_id:
-            key_columns.add(entity_config.surrogate_id)
-
-        for col_name in df.columns:
-            # Infer data type
-            dtype = str(df[col_name].dtype)
-            # Map pandas types to more user-friendly names
-            if "int" in dtype:
-                data_type = "integer"
-            elif "float" in dtype:
-                data_type = "float"
-            elif "bool" in dtype:
-                data_type = "boolean"
-            elif "datetime" in dtype:
-                data_type = "datetime"
-            elif "object" in dtype:
-                data_type = "string"
-            else:
-                data_type = dtype
-
-            # Check if column has null values
-            nullable = bool(df[col_name].isnull().any())
-
-            columns.append(
-                ColumnInfo(
-                    name=col_name,
-                    data_type=data_type,
-                    nullable=nullable,
-                    is_key=col_name in key_columns,
-                )
+        key_columns: set[str] = entity_config.get_key_columns()
+        columns: list[ColumnInfo] = [
+            ColumnInfo(
+                name=col_name,
+                data_type=friendly_dtype(df[col_name].dtype),
+                nullable=bool(df[col_name].isnull().any()),
+                is_key=col_name in key_columns,
             )
-
+            for col_name in df.columns
+        ]
         return columns
 
     async def preview_with_transformations(self, config_name: str, entity_name: str, limit: int = 50) -> PreviewResult:
@@ -300,15 +264,7 @@ class PreviewService:
 
         start_time: float = time.time()
 
-        # Load configuration
-        config_obj: ConfigLike = ConfigStore.config_global()
-        if config_obj is None:
-            raise ValueError("Configuration not loaded")
-
-        config_dict = config_obj.data
-        entities_cfg: dict[str, Any] = config_dict.get("entities", {})
-        options: dict[str, Any] = config_dict.get("options", {})
-        config: TablesConfig = TablesConfig(entities_cfg=entities_cfg, options=options)
+        config: ShapeShiftConfig = ShapeShiftConfig.resolve(cfg=config_name)
 
         # Get entity and foreign key config
         if entity_name not in config.tables:
@@ -443,3 +399,22 @@ class PreviewService:
             warnings=warnings,
             recommendations=recommendations,
         )
+
+
+def friendly_dtype(dtype):
+
+    if is_integer_dtype(dtype):
+        return "integer"
+    if is_float_dtype(dtype):
+        return "decimal number"
+    if is_bool_dtype(dtype):
+        return "boolean"
+    if is_datetime64_any_dtype(dtype):
+        return "date/time"
+    if is_timedelta64_dtype(dtype):
+        return "duration"
+    if isinstance(dtype, CategoricalDtype):
+        return "category"
+    if is_string_dtype(dtype):
+        return "text"
+    return "other"

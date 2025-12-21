@@ -39,8 +39,8 @@ def client(mock_schema_service):
 def sample_tables():
     """Sample table metadata for testing."""
     return [
-        TableMetadata(name="table1", schema="public", comment="Test table 1", row_count=100),
-        TableMetadata(name="table2", schema="public", comment="Test table 2", row_count=200),
+        TableMetadata(name="table1", schema_name="public", comment="Test table 1", row_count=100),
+        TableMetadata(name="table2", schema_name="public", comment="Test table 2", row_count=200),
     ]
 
 
@@ -203,6 +203,7 @@ class TestDebugSeadTables:
         app.dependency_overrides.clear()
         return TestClient(app)
 
+    @pytest.mark.skip(reason="For step-by-step debugging only")
     @pytest.mark.asyncio
     async def test_sead_tables_real_service(self, real_client):
         """Test with real service - use this for debugging.

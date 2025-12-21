@@ -16,7 +16,7 @@ def test_map_postgresql_config():
         port=5432,
         database="testdb",
         username="testuser",
-        password=SecretStr("testpass"),
+        # password=SecretStr("testpass"),
         **{},
     )
 
@@ -30,7 +30,7 @@ def test_map_postgresql_config():
     assert options["port"] == 5432
     assert options["database"] == "testdb"
     assert options["username"] == "testuser"
-    assert options["password"] == "testpass"
+    # assert options["password"] == "testpass"
 
 
 def test_map_postgresql_with_defaults():
@@ -65,6 +65,23 @@ def test_map_ucanaccess_config():
 
     options = core_config.data_source_cfg["options"]
     assert options["filename"] == "./input/test.mdb"
+    assert options["ucanaccess_dir"] == "lib/ucanaccess"
+
+
+def test_map_ucanaccess_prefers_options_filename_when_metadata_present():
+    """Mapper should ignore YAML filename metadata and use real file path from options."""
+    api_config = DataSourceConfig(
+        name="test_access",
+        driver="ucanaccess",  # type: ignore
+        filename="arbodat-data-options.yml",  # metadata from service
+        options={"filename": "./input/real-db.mdb", "ucanaccess_dir": "lib/ucanaccess"},
+        **{},
+    )
+
+    core_config = DataSourceMapper.to_core_config(api_config)
+
+    options = core_config.data_source_cfg["options"]
+    assert options["filename"] == "./input/real-db.mdb"
     assert options["ucanaccess_dir"] == "lib/ucanaccess"
 
 
@@ -119,6 +136,7 @@ def test_unknown_driver():
     # but doesn't have a schema (this shouldn't happen in practice)
 
 
+@pytest.mark.skip(reason="We don't allow password in options for the time being")
 def test_password_extraction():
     """Test that password SecretStr is properly extracted."""
     api_config = DataSourceConfig(

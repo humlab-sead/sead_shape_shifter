@@ -3,7 +3,7 @@
 ## Architecture Awareness
 - Treat the repo as a mono-repo with Core (`src/`), Backend (`backend/app/`), and Frontend (`frontend/`).
 - Use the unified Python virtual environment at `.venv/` for every Python command.
-- Preserve the core pipeline order: Extract ➜ Filter ➜ Link ➜ Unnest ➜ Translate ➜ Store; orchestrate via `ArbodatSurveyNormalizer` (`src/normalizer.py`) using `ProcessState`.
+- Preserve the core pipeline order: Extract ➜ Filter ➜ Link ➜ Unnest ➜ Translate ➜ Store; orchestrate via `ShapeShifter` (`src/normalizer.py`) using `ProcessState`.
 - Keep backend layering clear: routers in `api/v1/endpoints/`, services in `services/`, Pydantic v2 models in `models/`, and shared settings in `core/`.
 - Build frontend features with Vue 3 `<script setup>` components, Pinia stores, composables, Axios API layer, and Monaco-based YAML editing.
 
@@ -17,7 +17,8 @@
 - Register extensible validators/loaders/filters through the registry pattern (`@Validators.register(...)`).
 - Await every async data loader in `src/loaders/`; check backend service signatures before mixing sync/async logic.
 - Decorate async tests with `@pytest.mark.asyncio` (Core) and use FastAPI `TestClient` for backend routes.
-- Import backend usages of Core with absolute paths only (e.g., `from src.config_model import TablesConfig`).
+- Import backend usages of Core with absolute paths only (e.g., `from src.model import ShapeShiftConfig`).
+- **Environment variable resolution**: Happens ONLY in mapper layer (`backend/app/mappers/`). API entities stay raw (`${VAR}`), core entities are always resolved. Never call `resolve_config_env_vars()` in services.
 
 ## Code Conventions
 - Keep line length ≤ 140 characters and rely on Black + isort formatting.
@@ -36,7 +37,7 @@
 - Follow the documented Pinia pattern (loading/error refs with guarded async calls) and enforce strict null checks, preferring `type` for unions and `interface` for objects.
 
 ## Key References
-- Use `src/config_model.py`, `src/constraints.py`, and `src/specifications.py` for Core models, constraints, and config rules.
+- Use `src/model.py`, `src/constraints.py`, and `src/specifications.py` for Core models, constraints, and config rules.
 - Touch backend behavior via `backend/app/main.py` and `backend/app/services/validation_service.py`.
 - Manage frontend state under `frontend/src/stores/` and related composables.
 - Consult docs: `docs/CONFIGURATION_GUIDE.md`, `docs/SYSTEM_DOCUMENTATION.md`, `docs/BACKEND_API.md`, `docs/DEVELOPMENT_GUIDE.md` before major changes.

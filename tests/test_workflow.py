@@ -4,13 +4,9 @@ import shutil
 
 import pytest
 
-from src.configuration.config import ConfigFactory
-from src.configuration.interface import ConfigLike
-from src.configuration.setup import setup_config_store
+from src.model import ShapeShiftConfig
 from src.survey2excel import validate_entity_shapes, workflow
 from src.utility import load_shape_file
-from tests.conftest import ExtendedMockConfigProvider
-from tests.decorators import with_test_config
 
 # def test_workflow():
 
@@ -46,20 +42,17 @@ from tests.decorators import with_test_config
 #     assert os.path.exists(output_filename)
 
 
-@pytest.mark.skip(reason="Pending deprecation, will be replaced with Arbodat database tests")
+@pytest.mark.skip(reason="Pending deprecation, will be replaced with database tests")
 def test_workflow_using_survey_report_to_csv():
 
-    config_file: str = "./input/arbodat.yml"
+    config_file: str = "./input/arbodat-test.yml"
     translate: bool = False
 
     output_path: str = "tmp/arbodat/"
-    asyncio.run(
-        setup_config_store(
-            config_file,
-            env_prefix="SEAD_NORMALIZER",
-            env_filename="./input/.env",
-            db_opts_path=None,
-        )
+    config: ShapeShiftConfig = ShapeShiftConfig.from_file(
+        config_file,
+        env_prefix="SEAD_NORMALIZER",
+        env_file=".env",
     )
     asyncio.run(asyncio.sleep(0.1))  # type: ignore ; ensure config is fully loaded;
 
@@ -70,6 +63,7 @@ def test_workflow_using_survey_report_to_csv():
 
     _ = asyncio.run(
         workflow(
+            config=config,
             target=output_path,
             translate=translate,
             mode="csv",
@@ -99,16 +93,14 @@ def test_workflow_using_survey_report_to_csv():
     assert len(entities_with_different_shapes) == 0, f"Entities with different shapes: {entities_with_different_shapes}"
 
 
-@with_test_config
-def test_access_database_csv_workflow(test_provider: ExtendedMockConfigProvider):
+def test_access_database_csv_workflow():
 
     config_file: str = "./input/arbodat-database.yml"
-    config: ConfigLike = ConfigFactory().load(
-        source=config_file,
-        env_filename="./input/.env",
+    config: ShapeShiftConfig = ShapeShiftConfig.from_file(
+        config_file,
         env_prefix="SEAD_NORMALIZER",
+        env_file=".env",
     )
-    test_provider.set_config(config=config)
 
     translate: bool = False
 
@@ -122,6 +114,7 @@ def test_access_database_csv_workflow(test_provider: ExtendedMockConfigProvider)
 
     _ = asyncio.run(
         workflow(
+            config=config,
             target=output_path,
             translate=translate,
             mode="csv",

@@ -19,6 +19,7 @@ class FieldMetadataResponse(BaseModel):
     min_value: int | None = Field(None, description="Minimum value for integer fields")
     max_value: int | None = Field(None, description="Maximum value for integer fields")
     placeholder: str = Field("", description="Example value to show in UI")
+    aliases: list[str] = Field(default_factory=list, description="Alternative names for the field")
 
 
 class DriverSchemaResponse(BaseModel):

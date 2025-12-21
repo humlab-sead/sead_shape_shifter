@@ -1,6 +1,6 @@
 """Tests for append configuration parsing and validation."""
 
-from src.config_model import TableConfig
+from src.model import TableConfig
 
 
 class TestAppendConfigurationParsing:
