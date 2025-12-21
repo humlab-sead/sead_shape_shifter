@@ -101,7 +101,7 @@ class PreviewService:
         if cached:
             return cached
 
-        config: ShapeShiftConfig = await ShapeShiftConfig.resolve(cfg=config_name)
+        config: ShapeShiftConfig = ShapeShiftConfig.resolve(cfg=config_name)
 
         if entity_name not in config.tables:
             raise ValueError(f"Entity '{entity_name}' not found in configuration")
@@ -264,7 +264,7 @@ class PreviewService:
 
         start_time: float = time.time()
 
-        config: ShapeShiftConfig = await ShapeShiftConfig.resolve(cfg=config_name)
+        config: ShapeShiftConfig = ShapeShiftConfig.resolve(cfg=config_name)
 
         # Get entity and foreign key config
         if entity_name not in config.tables:

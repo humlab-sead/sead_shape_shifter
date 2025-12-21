@@ -4,6 +4,7 @@ and write them as CSVs or sheets in a single Excel file.
 
 """
 
+import asyncio
 from pathlib import Path
 from typing import Any, Literal
 
@@ -98,23 +99,21 @@ class ShapeShifter:
 
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
-        self.config: ShapeShiftConfig
+        self.config: ShapeShiftConfig = ShapeShiftConfig.resolve(config)
+        self.state: ProcessState = self._initialize_process_state(target_entities)
 
-        if isinstance(config, ShapeShiftConfig):
-            self.config = config
-        else:
-            # FIXME: add using a config context as config as an alternative to passing ShapeShiftConfig directly
-            self.config = ShapeShiftConfig.from_file(config)
-
-        # If target_entities is provided, compute all required entities including dependencies
+    def _initialize_process_state(self, target_entities: set[str] | None = None) -> ProcessState:
+        """Initialize the processing state based on target entities."""
         if target_entities:
             state = ProcessState(config=self.config, table_store=self.table_store, target_entities=set())
             all_required: set[str] = set()
             for entity in target_entities:
                 all_required.update(state.get_required_entities(entity))
-            self.state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, target_entities=all_required)
+            state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, target_entities=all_required)
         else:
-            self.state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, target_entities=None)
+            state = ProcessState(config=self.config, table_store=self.table_store, target_entities=None)
+        return state
+    
 
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""

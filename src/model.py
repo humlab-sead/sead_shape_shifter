@@ -479,7 +479,7 @@ class ShapeShiftConfig:
         return ShapeShiftConfig(cfg=cfg.data)
 
     @staticmethod
-    async def resolve(cfg: "ShapeShiftConfig | str | None") -> "ShapeShiftConfig":
+    def resolve(cfg: "ShapeShiftConfig | str | None") -> "ShapeShiftConfig":
         """Resolve and return the ShapeShiftConfig for the given config name."""
 
         if isinstance(cfg, ShapeShiftConfig):

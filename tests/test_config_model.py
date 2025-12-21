@@ -1211,7 +1211,7 @@ class TestShapeShiftConfig:
 
         config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}})
 
-        resolved = await ShapeShiftConfig.resolve(config)
+        resolved = ShapeShiftConfig.resolve(config)
 
         assert resolved is config
 
@@ -1225,7 +1225,7 @@ class TestShapeShiftConfig:
             encoding="utf-8",
         )
 
-        resolved = await ShapeShiftConfig.resolve(str(config_path))
+        resolved = ShapeShiftConfig.resolve(str(config_path))
 
         assert resolved.has_table("site") is True
         assert resolved.get_table("site").surrogate_id == "site_id"
@@ -1249,7 +1249,7 @@ class TestShapeShiftConfig:
         old_provider = set_config_provider(provider)
 
         try:
-            resolved = await ShapeShiftConfig.resolve(None)
+            resolved: ShapeShiftConfig = ShapeShiftConfig.resolve(None)
             assert resolved.has_table("site")
             assert provider.last_context == "default"
         finally:
@@ -1264,7 +1264,7 @@ class TestShapeShiftConfig:
 
         try:
             with pytest.raises(ValueError, match="Failed to resolve Config for context 'missing'"):
-                await ShapeShiftConfig.resolve("missing")
+                ShapeShiftConfig.resolve("missing")
         finally:
             set_config_provider(old_provider)
 
