@@ -1,10 +1,12 @@
 from functools import cached_property
 from typing import Any, Generator, Literal, Self
+import copy
 
 import pandas as pd
 from loguru import logger
 
-from src.configuration.resolve import ConfigValue
+from src.configuration import ConfigFactory
+from src.configuration import ConfigLike
 from src.loaders.base_loader import DataLoader, DataLoaders
 from src.utility import unique
 
