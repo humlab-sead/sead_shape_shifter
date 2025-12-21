@@ -98,7 +98,7 @@ Improve validations for configuration files to catch the most common errors and 
  - [] FIXME: src/model.py:161:9: W0511: This smells like a fix for a bug elsewhere, why should we check extra columns here? (fixme)
  - [] FIXME: Query Tester has no data sources
  - [] FIXME: Schema Explorer has no data sources
- - 
+ - [x] FIXME: #39 Nothing happens when clicking "Add" in FK Editor
 
 
 ### Tech debts:

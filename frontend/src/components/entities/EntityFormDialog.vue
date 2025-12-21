@@ -1,9 +1,11 @@
 <template>
   <v-dialog v-model="dialogModel" max-width="900" persistent scrollable>
     <v-card>
-      <v-card-title class="d-flex align-center">
+      <v-card-title class="d-flex align-center" style="overflow: visible;">
         <v-icon :icon="mode === 'create' ? 'mdi-plus-circle' : 'mdi-pencil'" class="mr-2" />
-        <span>{{ mode === 'create' ? 'Create Entity' : `Edit ${entity?.name}` }}</span>
+        <span class="text-truncate" :title="mode === 'create' ? 'Create Entity' : `Edit ${entity?.name}`">
+          {{ mode === 'create' ? 'Create Entity' : `Edit ${entity?.name}` }}
+        </span>
       </v-card-title>
 
       <v-tabs v-model="activeTab" bg-color="primary">
@@ -30,10 +32,12 @@
             density="comfortable"
             :disabled="mode === 'edit'"
             required
-            hint="Unique identifier for this entity"
-            persistent-hint
             class="mb-4"
-          />
+          >
+            <template #message>
+              <span class="text-caption">Unique identifier for this entity</span>
+            </template>
+          </v-text-field>
 
           <!-- Entity Type -->
           <v-select
@@ -44,10 +48,12 @@
             variant="outlined"
             density="comfortable"
             required
-            hint="How this entity gets its data"
-            persistent-hint
             class="mb-4"
-          />
+          >
+            <template #message>
+              <span class="text-caption">How this entity gets its data</span>
+            </template>
+          </v-select>
 
           <!-- Surrogate ID -->
           <v-text-field
@@ -55,10 +61,13 @@
             label="Surrogate ID (Optional)"
             variant="outlined"
             density="comfortable"
-            hint="Generated integer ID field name (e.g., sample_id)"
-            persistent-hint
+            placeholder="e.g., sample_id"
             class="mb-4"
-          />
+          >
+            <template #message>
+              <span class="text-caption">Generated integer ID field name</span>
+            </template>
+          </v-text-field>
 
           <!-- Keys -->
           <v-combobox
@@ -71,10 +80,13 @@
             chips
             closable-chips
             required
-            hint="Natural key columns that uniquely identify records"
-            persistent-hint
+            persistent-placeholder
             class="mb-4"
-          />
+          >
+            <template #message>
+              <span class="text-caption">Natural key columns that uniquely identify records</span>
+            </template>
+          </v-combobox>
 
           <!-- Columns (for data/fixed types) -->
           <v-combobox
@@ -86,10 +98,12 @@
             multiple
             chips
             closable-chips
-            hint="Column names to extract or create"
-            persistent-hint
             class="mb-4"
-          />
+          >
+            <template #message>
+              <span class="text-caption">Column names to extract or create</span>
+            </template>
+          </v-combobox>
 
           <!-- Smart Suggestions Panel -->
           <SuggestionsPanel
@@ -110,10 +124,13 @@
             variant="outlined"
             density="comfortable"
             clearable
-            hint="Parent entity to derive this entity from"
-            persistent-hint
+            persistent-placeholder
             class="mb-4"
-          />
+          >
+            <template #message>
+              <span class="text-caption">Parent entity to derive this entity from</span>
+            </template>
+          </v-autocomplete>
 
           <!-- Data Source (for sql type) -->
           <v-text-field
@@ -123,22 +140,20 @@
             :rules="formData.type === 'sql' ? requiredRule : []"
             variant="outlined"
             density="comfortable"
-            hint="Name of the data source connection"
-            persistent-hint
             class="mb-4"
-          />
+          >
+            <template #message>
+              <span class="text-caption">Name of the data source connection</span>
+            </template>
+          </v-text-field>
 
           <!-- SQL Query (for sql type) -->
-          <v-textarea
+          <SqlEditor
             v-if="formData.type === 'sql'"
             v-model="formData.query"
-            label="SQL Query"
-            :rules="formData.type === 'sql' ? requiredRule : []"
-            variant="outlined"
-            density="comfortable"
-            rows="4"
-            hint="SQL query to execute"
-            persistent-hint
+            height="250px"
+            help-text="SQL query to execute against the selected data source"
+            :error="formValid === false && !formData.query ? 'SQL query is required' : ''"
             class="mb-4"
           />
 
@@ -240,6 +255,7 @@ import AdvancedEntityConfig from './AdvancedEntityConfig.vue'
 import SuggestionsPanel from './SuggestionsPanel.vue'
 import EntityPreviewPanel from './EntityPreviewPanel.vue'
 import YamlEditor from '../common/YamlEditor.vue'
+import SqlEditor from '../common/SqlEditor.vue'
 
 interface Props {
   modelValue: boolean
