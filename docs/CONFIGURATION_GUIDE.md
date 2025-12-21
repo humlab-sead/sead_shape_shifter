@@ -24,7 +24,7 @@ The normalization system follows a multi-phase pipeline:
 ### Key Components
 
 - **ProcessState**: Handles topological sorting and dependency resolution
-- **ArbodatSurveyNormalizer**: Orchestrates the normalization pipeline
+- **ShapeShifter**: Orchestrates the normalization pipeline
 - **ShapeShiftConfig**: Configuration model for all entities and their relationships
 - **SubsetService**: Extracts data subsets with column selection and transformations
 
@@ -2001,10 +2001,10 @@ else:
 Validation is automatically run when initializing the normalizer:
 
 ```python
-from src.normalizer import ArbodatSurveyNormalizer
+from src.normalizer import ShapeShifter
 
 # Validation happens during initialization
-normalizer = ArbodatSurveyNormalizer("config.yml")
+normalizer = ShapeShifter("config.yml")
 # If validation fails, initialization raises an exception
 ```
 

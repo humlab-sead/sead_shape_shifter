@@ -1,6 +1,6 @@
 """
-Normalize an Arbodat "Data Survey" CSV export into several tables
-and write them as sheets in a single Excel file.
+Normalize data from various data sources into structured tables
+and write them as CSVs or sheets in a single Excel file.
 
 """
 
@@ -83,7 +83,7 @@ class ProcessState:
         return required_entities
 
 
-class ArbodatSurveyNormalizer:
+class ShapeShifter:
 
     def __init__(
         self,
@@ -268,7 +268,7 @@ class ArbodatSurveyNormalizer:
             self.table_store[entity_name] = self.config.reorder_columns(entity_name, self.table_store[entity_name])
 
     def map_to_remote(self, link_cfgs: dict[str, dict[str, Any]]) -> None:
-        """Map local Arbodat PK values to SEAD identities using mapping configuration."""
+        """Map local PK values to remote identities using mapping configuration."""
         if not link_cfgs:
             return
         service = LinkToRemoteService(remote_link_cfgs=link_cfgs)

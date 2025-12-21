@@ -897,14 +897,14 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 
 ```python
 import time
 import asyncio
-from src.normalizer import ArbodatSurveyNormalizer
+from src.normalizer import ShapeShifter
 
 async def test_performance():
     start = time.time()
     
     # Load configuration
     config_time = time.time()
-    normalizer = ArbodatSurveyNormalizer("config.yml")
+    normalizer = ShapeShifter("config.yml")
     print(f"Config load: {time.time() - config_time:.2f}s")
     
     # Process entities

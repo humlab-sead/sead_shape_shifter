@@ -17,7 +17,7 @@ All Python code shares a **unified virtual environment** at root `.venv/`.
 5. **Translate** (`src/mapping.py`) - Map column names to target schema
 6. **Store** - Output to CSV, Excel, or database
 
-The orchestrator is `ArbodatSurveyNormalizer` in `src/normalizer.py` which uses `ProcessState` for topological sorting.
+The orchestrator is `ShapeShifter` in `src/normalizer.py` which uses `ProcessState` for topological sorting.
 
 ### Backend Architecture (`backend/app/`)
 - **API Layer** (`api/v1/endpoints/`) - FastAPI routers for each feature
