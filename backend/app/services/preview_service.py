@@ -178,16 +178,7 @@ class PreviewService:
             rows: list[dict] = preview_df.to_dict("records")
 
             # Get dependencies
-            dependencies_loaded = []
-            if entity_config.source:
-                dependencies_loaded.append(entity_config.source)
-            if entity_config.depends_on:
-                dependencies_loaded.extend(entity_config.depends_on)
-
-            # Add foreign key dependencies
-            for fk in entity_config.foreign_keys:
-                if fk.remote_entity not in dependencies_loaded:
-                    dependencies_loaded.append(fk.remote_entity)
+            dependencies_loaded: list[str] = list(entity_config.depends_on)
 
             return PreviewResult(
                 entity_name=entity_name,
@@ -208,40 +199,16 @@ class PreviewService:
 
     def _build_column_info(self, df: pd.DataFrame, entity_config: TableConfig) -> list[ColumnInfo]:
         """Build column information from DataFrame and entity config."""
-        columns = []
-        key_columns = set(entity_config.keys or [])
-        if entity_config.surrogate_id:
-            key_columns.add(entity_config.surrogate_id)
-
-        for col_name in df.columns:
-            # Infer data type
-            dtype = str(df[col_name].dtype)
-            # Map pandas types to more user-friendly names
-            if "int" in dtype:
-                data_type = "integer"
-            elif "float" in dtype:
-                data_type = "float"
-            elif "bool" in dtype:
-                data_type = "boolean"
-            elif "datetime" in dtype:
-                data_type = "datetime"
-            elif "object" in dtype:
-                data_type = "string"
-            else:
-                data_type = dtype
-
-            # Check if column has null values
-            nullable = bool(df[col_name].isnull().any())
-
-            columns.append(
-                ColumnInfo(
-                    name=col_name,
-                    data_type=data_type,
-                    nullable=nullable,
-                    is_key=col_name in key_columns,
-                )
+        key_columns: set[str] = entity_config.get_key_columns()
+        columns: list[ColumnInfo] = [
+            ColumnInfo(
+                name=col_name,
+                data_type=friendly_dtype(df[col_name].dtype),
+                nullable=bool(df[col_name].isnull().any()),
+                is_key=col_name in key_columns,
             )
-
+            for col_name in df.columns
+        ]
         return columns
 
     async def preview_with_transformations(self, config_name: str, entity_name: str, limit: int = 50) -> PreviewResult:
@@ -437,3 +404,31 @@ class PreviewService:
             warnings=warnings,
             recommendations=recommendations,
         )
+
+
+def friendly_dtype(dtype):
+    from pandas.api.types import (
+        is_integer_dtype,
+        is_float_dtype,
+        is_bool_dtype,
+        is_datetime64_any_dtype,
+        is_string_dtype,
+        is_timedelta64_dtype,
+        CategoricalDtype,
+    )
+
+    if is_integer_dtype(dtype):
+        return "integer"
+    if is_float_dtype(dtype):
+        return "decimal number"
+    if is_bool_dtype(dtype):
+        return "boolean"
+    if is_datetime64_any_dtype(dtype):
+        return "date/time"
+    if is_timedelta64_dtype(dtype):
+        return "duration"
+    if isinstance(dtype, CategoricalDtype):
+        return "category"
+    if is_string_dtype(dtype):
+        return "text"
+    return "other"
