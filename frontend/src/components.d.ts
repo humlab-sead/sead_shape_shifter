@@ -40,6 +40,7 @@ declare module 'vue' {
     TestRunConfig: typeof import('./components/TestRun/TestRunConfig.vue')['default']
     TestRunProgress: typeof import('./components/TestRun/TestRunProgress.vue')['default']
     TestRunResults: typeof import('./components/TestRun/TestRunResults.vue')['default']
+    ThemeColorPicker: typeof import('./components/ThemeColorPicker.vue')['default']
     ValidationMessageList: typeof import('./components/validation/ValidationMessageList.vue')['default']
     ValidationPanel: typeof import('./components/validation/ValidationPanel.vue')['default']
     ValidationSuggestion: typeof import('./components/validation/ValidationSuggestion.vue')['default']
