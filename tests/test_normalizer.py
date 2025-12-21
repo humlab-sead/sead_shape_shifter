@@ -1,29 +1,34 @@
 """Unit tests for arbodat normalizer classes."""
 
-import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
 import pytest
 
 from src.model import TablesConfig
-from src.configuration.setup import setup_config_store
 from src.normalizer import ArbodatSurveyNormalizer, ProcessState
 
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_config():
-    """Initialize the config store before running tests."""
-    config_file = "./input/arbodat.yml"
-    asyncio.run(
-        setup_config_store(
-            config_file,
-            env_prefix="SEAD_NORMALIZER",
-            env_filename="./input/.env",
-            db_opts_path=None,
-        )
+@pytest.fixture
+def survey_only_config() -> TablesConfig:
+    return TablesConfig(
+        cfg={
+            "entities": {
+                "survey": {"depends_on": []},
+            }
+        },
     )
 
+@pytest.fixture
+def survey_and_site_config() -> TablesConfig:
+    return TablesConfig(
+        cfg={
+            "entities": {
+                "survey": {"depends_on": []},
+                "site": {"depends_on": ["survey"]},
+            }
+        },
+    )
 
 def mock_table_config(depends_on: set[str] | None = None) -> Mock:
     """Helper to create a mock TableConfig with specified dependencies."""
@@ -40,10 +45,12 @@ class TestProcessState:
     def test_initialization(self):
         """Test ProcessState initialization."""
         config = TablesConfig(
-            entities_cfg={
-                "site": {"depends_on": []},
-                "sample": {"depends_on": []},
-                "taxa": {"depends_on": []},
+            cfg={
+                "entities": {
+                    "site": {"depends_on": []},
+                    "sample": {"depends_on": []},
+                    "taxa": {"depends_on": []},
+                }
             },
         )
 
@@ -56,9 +63,11 @@ class TestProcessState:
     def test_get_next_entity_no_dependencies(self):
         """Test getting next entity when no dependencies exist."""
         config = TablesConfig(
-            entities_cfg={
-                "site": {"depends_on": []},
-                "sample": {"depends_on": []},
+            cfg={
+                "entities": {
+                    "site": {"depends_on": []},
+                    "sample": {"depends_on": []},
+                }
             },
         )
 
@@ -76,9 +85,11 @@ class TestProcessState:
     def test_get_next_entity_with_dependencies(self):
         """Test getting next entity respecting dependencies."""
         config = TablesConfig(
-            entities_cfg={
-                "site": {"depends_on": []},
-                "sample": {"depends_on": ["site"]},
+            cfg={
+                "entities": {
+                    "site": {"depends_on": []},
+                    "sample": {"depends_on": ["site"]},
+                }
             },
         )
 
@@ -95,15 +106,10 @@ class TestProcessState:
         next_entity = state.get_next_entity_to_process()
         assert next_entity == "sample"
 
-    def test_get_next_entity_all_processed(self):
+    def test_get_next_entity_all_processed(self, survey_only_config: TablesConfig):
         """Test getting next entity when all are processed."""
-        config = TablesConfig(
-            entities_cfg={
-                "site": {"depends_on": []},
-            },
-        )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(config=survey_only_config, table_store={"survey": Mock()})
         state.table_store["site"] = Mock()
 
         next_entity: str | None = state.get_next_entity_to_process()
@@ -112,7 +118,7 @@ class TestProcessState:
     def test_get_unmet_dependencies(self):
         """Test getting unmet dependencies for an entity."""
         config = TablesConfig(
-            entities_cfg={"site": {"depends_on": []}, "sample": {"depends_on": ["site", "taxa"]}, "taxa": {"depends_on": []}},
+            cfg={"entities": {"site": {"depends_on": []}, "sample": {"depends_on": ["site", "taxa"]}, "taxa": {"depends_on": []}}},
         )
 
         state = ProcessState(config=config, table_store={})
@@ -128,9 +134,11 @@ class TestProcessState:
     def test_discard(self):
         """Test discarding (marking as processed) an entity."""
         config = TablesConfig(
-            entities_cfg={
-                "site": {"depends_on": []},
-                "sample": {"depends_on": ["site", "taxa"]},
+            cfg={
+                "entities": {
+                    "site": {"depends_on": []},
+                    "sample": {"depends_on": ["site", "taxa"]},
+                }
             },
         )
         state = ProcessState(config=config, table_store={})
@@ -145,10 +153,12 @@ class TestProcessState:
     def test_get_all_unmet_dependencies(self):
         """Test getting all unmet dependencies."""
         config = TablesConfig(
-            entities_cfg={
-                "site": {"depends_on": []},
-                "sample": {"depends_on": ["site"]},
-                "feature": {"depends_on": ["site", "sample"]},
+            cfg={
+                "entities": {
+                    "site": {"depends_on": []},
+                    "sample": {"depends_on": ["site"]},
+                    "feature": {"depends_on": ["site", "sample"]},
+                }
             },
         )
 
@@ -165,10 +175,12 @@ class TestProcessState:
     def test_processed_entities_property(self):
         """Test the processed_entities property."""
         config = TablesConfig(
-            entities_cfg={
-                "site": {"depends_on": []},
-                "sample": {"depends_on": []},
-                "taxa": {"depends_on": []},
+            cfg={
+                "entities": {
+                    "site": {"depends_on": []},
+                    "sample": {"depends_on": []},
+                    "taxa": {"depends_on": []},
+                }
             },
         )
 
@@ -185,11 +197,11 @@ class TestProcessState:
 class TestArbodatSurveyNormalizer:
     """Tests for ArbodatSurveyNormalizer class."""
 
-    def test_initialization(self):
+    def test_initialization(self, survey_only_config: TablesConfig):
         """Test ArbodatSurveyNormalizer initialization."""
         df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
         normalizer.table_store = {"survey": df}
 
         assert "survey" in normalizer.table_store
@@ -197,11 +209,11 @@ class TestArbodatSurveyNormalizer:
         assert isinstance(normalizer.config, TablesConfig)
         assert isinstance(normalizer.state, ProcessState)
 
-    def test_survey_property(self):
+    def test_survey_property(self, survey_only_config: TablesConfig):
         """Test the survey property."""
         df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
-        normalizer.table_store = {"survey": df}
+
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey", table_store={"survey": df})
 
         pd.testing.assert_frame_equal(normalizer.table_store["survey"], df)
 
@@ -211,10 +223,12 @@ class TestArbodatSurveyNormalizer:
         survey_df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
         config = TablesConfig(
-            entities_cfg={
-                "site": {"depends_on": []},
-                "sample": {"depends_on": []},
-                "taxa": {"depends_on": []},
+            cfg={
+                "entities": {
+                    "site": {"depends_on": []},
+                    "sample": {"depends_on": []},
+                    "taxa": {"depends_on": []},
+                }
             },
         )
 
@@ -235,7 +249,16 @@ class TestArbodatSurveyNormalizer:
         df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_name": ["A", "B"]})
 
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store={"survey": df, "site": site_df})
+        cfg: TablesConfig = TablesConfig(
+            cfg={
+                "entities": {
+                    "survey": {"depends_on": []},
+                    "site": {"depends_on": []},
+                }
+            },
+        )
+
+        normalizer = ArbodatSurveyNormalizer(config=cfg, default_entity="survey", table_store={"survey": df, "site": site_df})
 
         table_cfg = Mock()
         table_cfg.type = None
@@ -247,10 +270,11 @@ class TestArbodatSurveyNormalizer:
         pd.testing.assert_frame_equal(result, site_df)
 
     @pytest.mark.asyncio
-    async def test_resolve_source_not_found(self):
+    async def test_resolve_source_not_found(self, survey_only_config: TablesConfig):
         """Test resolving source that doesn't exist."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store={"survey": df})
+
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey", table_store={"survey": df})
 
         table_cfg = Mock()
         table_cfg.type = None
@@ -261,10 +285,11 @@ class TestArbodatSurveyNormalizer:
             await normalizer.resolve_source(table_cfg)
 
     @pytest.mark.asyncio
-    async def test_resolve_source_fixed_data(self):
+    async def test_resolve_source_fixed_data(self, survey_only_config: TablesConfig):
         """Test resolving fixed data source."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store={"survey": df})
+
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey", table_store={"survey": df})
 
         table_cfg = Mock()
         table_cfg.type = "fixed"
@@ -284,10 +309,11 @@ class TestArbodatSurveyNormalizer:
             mock_loader.load.assert_called_once_with(entity_name="test_entity", table_cfg=table_cfg)
 
     @pytest.mark.asyncio
-    async def test_resolve_source_sql_data(self):
+    async def test_resolve_source_sql_data(self, survey_only_config: TablesConfig):
         """Test resolving SQL data source."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store={"survey": df})
+
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey", table_store={"survey": df})
 
         table_cfg = Mock()
         table_cfg.type = "sql"
@@ -305,11 +331,10 @@ class TestArbodatSurveyNormalizer:
             pd.testing.assert_frame_equal(result, sql_df)
             mock_loader.load.assert_called_once_with(entity_name="test_sql_entity", table_cfg=table_cfg)
 
-    def test_register(self):
+    def test_register(self, survey_only_config: TablesConfig):
         """Test registering a DataFrame."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
-        normalizer.table_store = {"survey": df}
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey", table_store={"survey": df})      
 
         new_df = pd.DataFrame({"site_name": ["A", "B"]})
         result = normalizer.register("site", new_df)
@@ -318,10 +343,10 @@ class TestArbodatSurveyNormalizer:
         pd.testing.assert_frame_equal(normalizer.table_store["site"], new_df)
         pd.testing.assert_frame_equal(result, new_df)
 
-    def test_translate(self):
+    def test_translate(self, survey_and_site_config: TablesConfig):
         """Test translating column names."""
         df = pd.DataFrame({"Ort": ["Berlin"], "Datum": ["2020-01-01"]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer = ArbodatSurveyNormalizer(config=survey_and_site_config, default_entity="survey")
         normalizer.table_store = {"survey": df}
         normalizer.table_store["site"] = pd.DataFrame({"Ort": ["Munich"]})
 
@@ -342,10 +367,10 @@ class TestArbodatSurveyNormalizer:
             assert list(normalizer.table_store["survey"].columns) == ["location", "date"]
             assert list(normalizer.table_store["site"].columns) == ["location"]
 
-    def test_drop_foreign_key_columns(self):
+    def test_drop_foreign_key_columns(self, survey_and_site_config: TablesConfig):
         """Test dropping foreign key columns."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer = ArbodatSurveyNormalizer(config=survey_and_site_config, default_entity="survey")
         normalizer.table_store = {"survey": df}
 
         # Add a table with FK columns
@@ -363,12 +388,12 @@ class TestArbodatSurveyNormalizer:
                 mock_table_cfg.drop_fk_columns.assert_called_once()
                 assert "location_id" not in normalizer.table_store["site"].columns
 
-    def test_add_system_id_columns(self):
+    def test_add_system_id_columns(self, survey_and_site_config: TablesConfig):
         """Test adding system_id columns."""
         df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
         table_store: dict[str, pd.DataFrame] = {"survey": df, "site": site_df}
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store=table_store)
+        normalizer = ArbodatSurveyNormalizer(config=survey_and_site_config, default_entity="survey", table_store=table_store)
 
         # Mock config
         mock_table_cfg = Mock()
@@ -382,13 +407,13 @@ class TestArbodatSurveyNormalizer:
                 mock_table_cfg.add_system_id_column.assert_called_once()
                 assert "system_id" in normalizer.table_store["site"].columns
 
-    def test_move_keys_to_front(self):
+    def test_move_keys_to_front(self, survey_and_site_config: TablesConfig):
         """Test moving key columns to front."""
         survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"name": ["A", "B"], "site_id": [1, 2], "location": ["X", "Y"]})
 
         table_store: dict[str, pd.DataFrame] = {"survey": survey_df, "site": site_df}
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", table_store=table_store)
+        normalizer = ArbodatSurveyNormalizer(config=survey_and_site_config, default_entity="survey", table_store=table_store)
 
         # Mock config to reorder columns
         reordered_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"], "location": ["X", "Y"]})
@@ -400,12 +425,12 @@ class TestArbodatSurveyNormalizer:
                 # Verify site_id is first column
                 assert normalizer.table_store["site"].columns[0] == "site_id"
 
-    def test_unnest_entity(self):
+    def test_unnest_entity(self, survey_and_site_config: TablesConfig):
         """Test unnesting a single entity."""
         survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_id": [1], "Ort": ["Berlin"], "Kreis": ["Mitte"]})
         table_store: dict[str, pd.DataFrame] = {"survey": survey_df, "site": site_df}
-        normalizer = ArbodatSurveyNormalizer(table_store=table_store, default_entity="survey")
+        normalizer = ArbodatSurveyNormalizer(config=survey_and_site_config, table_store=table_store, default_entity="survey")
 
         mock_table_cfg = Mock()
         mock_table_cfg.unnest = True
@@ -420,10 +445,10 @@ class TestArbodatSurveyNormalizer:
                 pd.testing.assert_frame_equal(result, unnested_df)
                 assert len(normalizer.table_store["site"]) == 2
 
-    def test_unnest_entity_no_unnest_config(self):
+    def test_unnest_entity_no_unnest_config(self, survey_only_config: TablesConfig):
         """Test unnesting when no unnest configuration exists."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
         normalizer.table_store = {"survey": df}
 
         site_df = pd.DataFrame({"site_id": [1], "name": ["A"]})
@@ -438,10 +463,10 @@ class TestArbodatSurveyNormalizer:
             # Should return unchanged
             pd.testing.assert_frame_equal(result, site_df)
 
-    def test_store_xlsx(self):
+    def test_store_xlsx(self, survey_only_config: TablesConfig):
         """Test storing data as XLSX."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
         normalizer.table_store = {"survey": df}
 
         mock_dispatcher = Mock()
@@ -452,10 +477,10 @@ class TestArbodatSurveyNormalizer:
 
             mock_dispatcher.dispatch.assert_called_once_with(target="output.xlsx", data=normalizer.table_store)
 
-    def test_store_csv(self):
+    def test_store_csv(self, survey_only_config: TablesConfig):
         """Test storing data as CSV."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
         normalizer.table_store = {"survey": df}
 
         mock_dispatcher = Mock()
@@ -466,10 +491,10 @@ class TestArbodatSurveyNormalizer:
 
             mock_dispatcher.dispatch.assert_called_once_with(target="output_dir", data=normalizer.table_store)
 
-    def test_store_unsupported_mode(self):
+    def test_store_unsupported_mode(self, survey_only_config: TablesConfig):
         """Test storing with unsupported mode."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
         normalizer.table_store = {"survey": df}
 
         with patch("src.normalizer.Dispatchers.get", return_value=None):
@@ -483,10 +508,12 @@ class TestArbodatSurveyNormalizer:
         sample_df = pd.DataFrame({"sample_id": [1, 2], "type": ["X", "Y"]})
         table_store: dict[str, pd.DataFrame] = {"survey": survey_df, "site": site_df, "sample": sample_df}
         config = TablesConfig(
-            entities_cfg={
-                "survey": {"depends_on": []},
-                "site": {"depends_on": []},
-                "sample": {"depends_on": []},
+            cfg={
+                "entities": {
+                    "survey": {"depends_on": []},
+                    "site": {"depends_on": []},
+                    "sample": {"depends_on": []},
+                }
             },
         )
         normalizer = ArbodatSurveyNormalizer(config=config, table_store=table_store, default_entity="survey")
@@ -501,10 +528,10 @@ class TestArbodatSurveyNormalizer:
             assert set(entity_names) == {"survey", "site", "sample"}
 
     @pytest.mark.asyncio
-    async def test_normalize_with_circular_dependency(self):
+    async def test_normalize_with_circular_dependency(self, survey_only_config: TablesConfig):
         """Test that normalize raises error for circular dependencies."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
         normalizer.table_store = {"survey": df}
 
         normalizer.config.table_names = ["site", "sample"]
@@ -522,10 +549,10 @@ class TestArbodatSurveyNormalizer:
             with pytest.raises(ValueError, match="Circular or unresolved dependencies"):
                 await normalizer.normalize()
 
-    def test_unnest_all(self):
+    def test_unnest_all(self, survey_only_config: TablesConfig):
         """Test unnesting all entities."""
         df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey")
+        normalizer = ArbodatSurveyNormalizer(config=survey_only_config, default_entity="survey")
         normalizer.table_store = {"survey": df}
 
         site_df = pd.DataFrame({"site_id": [1], "Ort": ["Berlin"]})

@@ -59,7 +59,7 @@ class DependencyService:
             Dependency graph with nodes, edges, and cycle information
         """
 
-        tables_cfg = TablesConfig(entities_cfg=config.entities, options=config.options)
+        tables_cfg = TablesConfig(cfg={"entities": config.entities, "options": config.options})
 
         dependency_map: dict[str, list[str]] = {
             entity_name: list(tables_cfg.get_table(entity_name).depends_on or []) for entity_name in config.entities

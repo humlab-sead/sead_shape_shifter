@@ -28,71 +28,77 @@ def sample_survey_data():
 @pytest.fixture
 def config_with_append():
     """Create a configuration with append settings."""
-    config_dict = {
-        "default": {"source": None, "depends_on": []},
-        "site": {
-            "surrogate_id": "site_id",
-            "keys": ["site_name"],
-            "columns": ["site_name", "latitude", "longitude"],
-            "depends_on": [],
-            "append": [
-                {
-                    "source": None,
-                    "type": "fixed",
-                    "values": [["Default Site", 0.0, 0.0]],
-                }
-            ],
-            "append_mode": "all",
-        },
+    cfg = {
+        "entities": {
+            "default": {"source": None, "depends_on": []},
+            "site": {
+                "surrogate_id": "site_id",
+                "keys": ["site_name"],
+                "columns": ["site_name", "latitude", "longitude"],
+                "depends_on": [],
+                "append": [
+                    {
+                        "source": None,
+                        "type": "fixed",
+                        "values": [["Default Site", 0.0, 0.0]],
+                    }
+                ],
+                "append_mode": "all",
+            },
+        }
     }
-    return TablesConfig(entities_cfg=config_dict, options={})
+    return TablesConfig(cfg=cfg)
 
 
 @pytest.fixture
 def config_with_source_append():
     """Create a configuration with source entity append."""
-    config_dict = {
-        "default": {
-            "surrogate_id": "survey_id",
-            "keys": ["survey_name"],
-            "columns": ["survey_name", "country"],
-            "depends_on": [],
-        },
-        "site": {
-            "surrogate_id": "site_id",
-            "keys": ["site_name"],
-            "columns": ["site_name", "country"],
-            "depends_on": ["default"],
-            "append": [{"source": "default"}],
-            "append_mode": "all",
-        },
+    cfg = {
+        "entities": {
+            "default": {
+                "surrogate_id": "survey_id",
+                "keys": ["survey_name"],
+                "columns": ["survey_name", "country"],
+                "depends_on": [],
+            },
+            "site": {
+                "surrogate_id": "site_id",
+                "keys": ["site_name"],
+                "columns": ["site_name", "country"],
+                "depends_on": ["default"],
+                "append": [{"source": "default"}],
+                "append_mode": "all",
+            },
+        }
     }
-    return TablesConfig(entities_cfg=config_dict, options={})
+    return TablesConfig(cfg=cfg)
 
 
 @pytest.fixture
 def config_with_distinct_mode():
     """Create a configuration with distinct append mode."""
-    config_dict = {
-        "default": {"source": None, "depends_on": []},
-        "site": {
-            "surrogate_id": "site_id",
-            "keys": ["site_name"],
-            "columns": ["site_name", "latitude", "longitude"],
-            "depends_on": [],
-            "append": [
-                {
-                    "type": "fixed",
-                    "values": [
-                        ["Site A", 45.1, 12.1],
-                        ["New Site", 48.0, 16.0],
-                    ],
-                }
-            ],
-            "append_mode": "distinct",
-        },
+    cfg = {
+        "entities": {
+            "default": {"source": None, "depends_on": []},
+            "site": {
+                "surrogate_id": "site_id",
+                "keys": ["site_name"],
+                "columns": ["site_name", "latitude", "longitude"],
+                "depends_on": [],
+                "append": [
+                    {
+                        "type": "fixed",
+                        "values": [
+                            ["Site A", 45.1, 12.1],
+                            ["New Site", 48.0, 16.0],
+                        ],
+                    }
+                ],
+                "append_mode": "distinct",
+            },
+        }
     }
-    return TablesConfig(entities_cfg=config_dict, options={})
+    return TablesConfig(cfg=cfg)
 
 
 class TestAppendProcessingBasic:
@@ -154,28 +160,29 @@ class TestAppendProcessingSQL:
         """Test appending data from SQL query."""
 
         config_with_sql_append = TablesConfig(
-            entities_cfg={
-                "survey": {
-                    "source": None,
-                    "columns": ["site_name", "latitude", "longitude", "country"],
-                    "depends_on": [],
-                },
-                "site": {
-                    "surrogate_id": "site_id",
-                    "keys": ["site_name"],
-                    "columns": ["site_name", "latitude", "longitude"],
-                    "depends_on": [],
-                    "append": [
-                        {
-                            "data_source": "test_sql_source",
-                            "type": "sql",
-                            "values": "sql: SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude",
-                        }
-                    ],
-                    "append_mode": "all",
-                },
-            },
-            options={"data_sources": {"test_sql_source": {}}},
+            cfg={
+                "entities": {
+                    "survey": {
+                        "source": None,
+                        "columns": ["site_name", "latitude", "longitude", "country"],
+                        "depends_on": [],
+                    },
+                    "site": {
+                        "surrogate_id": "site_id",
+                        "keys": ["site_name"],
+                        "columns": ["site_name", "latitude", "longitude"],
+                        "depends_on": [],
+                        "append": [
+                            {
+                                "data_source": "test_sql_source",
+                                "type": "sql",
+                                "values": "sql: SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude",
+                            }
+                        ],
+                        "append_mode": "all",
+                    },
+                }
+            }
         )
         sub_configs = list(config_with_sql_append.get_table("site").get_sub_table_configs())
         assert len(sub_configs) == 2  # Base + SQL append
@@ -200,32 +207,44 @@ class TestAppendProcessingSQL:
 class TestAppendProcessingMultiple:
     """Tests for multiple append configurations."""
 
+    @pytest.fixture
+    def survey_only_config(self) -> TablesConfig:
+        return TablesConfig(
+            cfg={
+                "entities": {
+                    "survey": {"depends_on": []},
+                }
+            },
+        )
+
     @pytest.mark.asyncio
     @with_test_config
     async def test_multiple_append_items(self, sample_survey_data, test_provider):  # pylint: disable=unused-argument
         """Test appending from multiple sources."""
-        config_dict = {
-            "survey": {
-                "source": None,
-                "columns": ["site_name", "latitude", "longitude", "country"],
-                "depends_on": [],
-            },
-            "site": {
-                "surrogate_id": "site_id",
-                "keys": ["site_name"],
-                "columns": ["site_name", "latitude", "longitude"],
-                "depends_on": [],
-                "append": [
-                    {"type": "fixed", "values": [["Fixed 1", 10.0, 20.0]]},
-                    {"type": "fixed", "values": [["Fixed 2", 30.0, 40.0]]},
-                ],
-                "append_mode": "all",
-            },
+        cfg = {
+            "entities": {
+                "survey": {
+                    "source": None,
+                    "columns": ["site_name", "latitude", "longitude", "country"],
+                    "depends_on": [],
+                },
+                "site": {
+                    "surrogate_id": "site_id",
+                    "keys": ["site_name"],
+                    "columns": ["site_name", "latitude", "longitude"],
+                    "depends_on": [],
+                    "append": [
+                        {"type": "fixed", "values": [["Fixed 1", 10.0, 20.0]]},
+                        {"type": "fixed", "values": [["Fixed 2", 30.0, 40.0]]},
+                    ],
+                    "append_mode": "all",
+                },
+            }
         }
 
-        config = TablesConfig(entities_cfg=config_dict, options={})
+        config = TablesConfig(cfg=cfg)
         table_store: dict[str, pd.DataFrame] = {"survey": sample_survey_data}
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config, table_store=table_store)
+        normalizer = ArbodatSurveyNormalizer(config=config, default_entity="survey", table_store=table_store)
 
         await normalizer.normalize()
 
@@ -244,7 +263,7 @@ class TestAppendProcessingEdgeCases:
     @with_test_config
     async def test_append_with_empty_main_data(self, test_provider):
         """Test append when main entity returns no data."""
-        config_dict = {
+        cfg = {"entities": {
             "default": {
                 "source": None,
                 "type": "fixed",
@@ -263,9 +282,9 @@ class TestAppendProcessingEdgeCases:
                 "append": [{"type": "fixed", "values": [["Only Site", 50.0]]}],
                 "append_mode": "all",
             },
-        }
+        }}
 
-        config = TablesConfig(entities_cfg=config_dict, options={})
+        config = TablesConfig(cfg=cfg)
         empty_data = pd.DataFrame(columns=["site_name", "latitude"])
         table_store = {"default": empty_data}
         normalizer = ArbodatSurveyNormalizer(config=config, table_store=table_store, default_entity="default")
@@ -282,7 +301,7 @@ class TestAppendProcessingEdgeCases:
     @with_test_config
     async def test_append_preserves_columns(self, sample_survey_data, test_provider):  # pylint: disable=unused-argument
         """Test that append preserves all configured columns."""
-        config_dict = {
+        cfg = {"entities": {
             "survey": {
                 "source": None,
                 "depends_on": [],
@@ -302,9 +321,9 @@ class TestAppendProcessingEdgeCases:
                 ],
                 "append_mode": "all",
             },
-        }
+        }}
 
-        config = TablesConfig(entities_cfg=config_dict, options={})
+        config = TablesConfig(cfg=cfg)
         table_store = {"survey": sample_survey_data}
         normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config, table_store=table_store)
 

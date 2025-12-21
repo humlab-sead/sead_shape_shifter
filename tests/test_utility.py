@@ -51,13 +51,13 @@ class TestForeignKeyConfig:
 
     def test_valid_foreign_key_config(self):
         """Test creating a valid foreign key configuration."""
-        config = {
+        entities = {
             "site": {"surrogate_id": "site_id", "keys": ["site_name"]},
             "location": {"surrogate_id": "location_id", "keys": ["location_name"]},
         }
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"]}
 
-        fk = ForeignKeyConfig(cfg=config, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
         assert fk.local_entity == "site"
         assert fk.remote_entity == "location"
@@ -67,35 +67,35 @@ class TestForeignKeyConfig:
 
     def test_missing_remote_entity(self):
         """Test that missing remote entity raises ValueError."""
-        config: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
+        entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
         fk_data: dict[str, list[str]] = {"local_keys": ["col1"], "remote_keys": ["col1"]}
 
         with pytest.raises(ValueError, match="missing remote entity"):
-            ForeignKeyConfig(cfg=config, local_entity="site", data=fk_data)
+            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
     def test_unknown_remote_entity(self):
         """Test that unknown remote entity raises ValueError."""
-        config: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
+        entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
         fk_data: dict[str, Any] = {"entity": "unknown_entity", "local_keys": ["col1"], "remote_keys": ["col1"]}
 
         with pytest.raises(ValueError, match="references unknown entity"):
-            ForeignKeyConfig(cfg=config, local_entity="site", data=fk_data)
+            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
     def test_missing_remote_keys(self):
         """Test that missing remote_keys raises ValueError."""
-        config = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
+        entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
         fk_data = {"entity": "location", "local_keys": ["col1"]}
 
         with pytest.raises(ValueError, match="missing local and/or remote keys"):
-            ForeignKeyConfig(cfg=config, local_entity="site", data=fk_data)
+            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
     def test_empty_remote_keys(self):
         """Test that empty remote_keys raises ValueError."""
-        config = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
+        entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
         fk_data = {"entity": "location", "local_keys": ["col1"], "remote_keys": []}
 
         with pytest.raises(ValueError, match="missing local and/or remote keys"):
-            ForeignKeyConfig(cfg=config, local_entity="site", data=fk_data)
+            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
 
 class TestTableConfig:
@@ -103,11 +103,11 @@ class TestTableConfig:
 
     def test_basic_table_config(self):
         """Test creating a basic table configuration."""
-        config = {
+        entities = {
             "site": {"surrogate_id": "site_id", "keys": ["site_name"], "columns": ["site_name", "description"], "depends_on": ["location"]}
         }
 
-        table = TableConfig(cfg=config, entity_name="site")
+        table = TableConfig(cfg=entities, entity_name="site")
 
         assert table.entity_name == "site"
         assert table.surrogate_id == "site_id"
@@ -118,7 +118,7 @@ class TestTableConfig:
 
     def test_table_with_foreign_keys(self):
         """Test table configuration with foreign keys."""
-        config = {
+        entities = {
             "site": {
                 "surrogate_id": "site_id",
                 "columns": ["site_name"],
@@ -127,7 +127,7 @@ class TestTableConfig:
             "location": {"surrogate_id": "location_id", "columns": ["location_name"]},
         }
 
-        table = TableConfig(cfg=config, entity_name="site")
+        table = TableConfig(cfg=entities, entity_name="site")
 
         assert len(table.foreign_keys) == 1
         assert table.foreign_keys[0].remote_entity == "location"
@@ -135,28 +135,28 @@ class TestTableConfig:
 
     def test_table_drop_duplicates_bool(self):
         """Test drop_duplicates as boolean."""
-        config = {"site": {"surrogate_id": "site_id", "drop_duplicates": True}}
+        entities = {"site": {"surrogate_id": "site_id", "drop_duplicates": True}}
 
-        table = TableConfig(cfg=config, entity_name="site")
+        table = TableConfig(cfg=entities, entity_name="site")
         assert table.drop_duplicates is True
 
     def test_table_drop_duplicates_list(self):
         """Test drop_duplicates as list of columns."""
-        config = {"site": {"surrogate_id": "site_id", "drop_duplicates": ["col1", "col2"]}}
+        entities = {"site": {"surrogate_id": "site_id", "drop_duplicates": ["col1", "col2"]}}
 
-        table = TableConfig(cfg=config, entity_name="site")
+        table = TableConfig(cfg=entities, entity_name="site")
         assert table.drop_duplicates == ["col1", "col2"]
 
     def test_table_drop_duplicates_default(self):
         """Test drop_duplicates defaults to False."""
-        config = {"site": {"surrogate_id": "site_id"}}
+        entities = {"site": {"surrogate_id": "site_id"}}
 
-        table = TableConfig(cfg=config, entity_name="site")
+        table = TableConfig(cfg=entities, entity_name="site")
         assert table.drop_duplicates is False
 
     def test_table_with_unnest(self):
         """Test table configuration with unnest."""
-        config = {
+        entities = {
             "location": {
                 "surrogate_id": "location_id",
                 "unnest": {
@@ -168,7 +168,7 @@ class TestTableConfig:
             }
         }
 
-        table = TableConfig(cfg=config, entity_name="location")
+        table = TableConfig(cfg=entities, entity_name="location")
 
         assert table.unnest is not None
         assert table.unnest.id_vars == ["site_id"]
@@ -176,30 +176,30 @@ class TestTableConfig:
 
     def test_table_without_unnest(self):
         """Test table configuration without unnest."""
-        config = {"site": {"surrogate_id": "site_id"}}
+        entities = {"site": {"surrogate_id": "site_id"}}
 
-        table = TableConfig(cfg=config, entity_name="site")
+        table = TableConfig(cfg=entities, entity_name="site")
         assert table.unnest is None
 
     def test_missing_entity_raises_error(self):
         """Test that missing entity raises KeyError."""
-        config = {"site": {"surrogate_id": "site_id"}}
+        entities = {"site": {"surrogate_id": "site_id"}}
 
         with pytest.raises(KeyError):
-            TableConfig(cfg=config, entity_name="nonexistent")
+            TableConfig(cfg=entities, entity_name="nonexistent")
 
     def test_empty_lists_default_correctly(self):
         """Test that empty lists in config return as empty lists."""
-        config = {"site": {"surrogate_id": "site_id", "keys": [], "columns": [], "depends_on": []}}
+        entities = {"site": {"surrogate_id": "site_id", "keys": [], "columns": [], "depends_on": []}}
 
-        table = TableConfig(cfg=config, entity_name="site")
+        table = TableConfig(cfg=entities, entity_name="site")
         assert not table.keys
         assert table.columns == []
         assert table.depends_on == set()
 
     def test_fk_column_set(self):
         """Test fk_column_set returns all foreign key columns."""
-        config = {
+        entities = {
             "site": {
                 "surrogate_id": "site_id",
                 "columns": ["site_name"],
@@ -212,7 +212,7 @@ class TestTableConfig:
             "region": {"surrogate_id": "region_id"},
         }
 
-        table = TableConfig(cfg=config, entity_name="site")
+        table = TableConfig(cfg=entities, entity_name="site")
         fk_cols = table.fk_columns
 
         assert len(fk_cols) == 3
@@ -222,7 +222,7 @@ class TestTableConfig:
 
     def test_extra_fk_columns(self):
         """Test extra_fk_columns returns FK columns not in keys or columns."""
-        config = {
+        entities = {
             "site": {
                 "surrogate_id": "site_id",
                 "keys": ["site_name"],
@@ -234,7 +234,7 @@ class TestTableConfig:
             "location": {"surrogate_id": "location_id"},
         }
 
-        table = TableConfig(cfg=config, entity_name="site")
+        table = TableConfig(cfg=entities, entity_name="site")
         extra_cols = table.extra_fk_columns
 
         # location_id is in columns, location_type is not
@@ -243,7 +243,7 @@ class TestTableConfig:
 
     def test_usage_columns(self):
         """Test usage_columns returns union of columns2 and fk_column_set."""
-        config = {
+        entities = {
             "site": {
                 "surrogate_id": "site_id",
                 "keys": ["site_name"],
@@ -253,8 +253,8 @@ class TestTableConfig:
             "location": {"surrogate_id": "location_id"},
         }
 
-        table = TableConfig(cfg=config, entity_name="site")
-        usage_cols = table.keys_columns_and_fks
+        table = TableConfig(cfg=entities, entity_name="site")
+        usage_cols: list[str] = table.keys_columns_and_fks
 
         assert "site_name" in usage_cols
         assert "description" in usage_cols
@@ -267,67 +267,67 @@ class TestTablesConfig:
 
     def test_tables_config_with_provided_config(self):
         """Test TablesConfig with provided configuration."""
-        config = {
+        entities = {
             "site": {"surrogate_id": "site_id", "columns": ["site_name"]},
             "location": {"surrogate_id": "location_id", "columns": ["location_name"]},
         }
 
-        tables = TablesConfig(entities_cfg=config, options={})
+        config = TablesConfig(cfg={"entities": entities})
 
-        assert len(tables.tables) == 2
-        assert "site" in tables.tables
-        assert "location" in tables.tables
-        assert tables.get_table("site").surrogate_id == "site_id"
+        assert len(config.tables) == 2
+        assert "site" in config.tables
+        assert "location" in config.tables
+        assert config.get_table("site").surrogate_id == "site_id"
 
     def test_get_table(self):
         """Test getting a specific table configuration."""
-        config = {"site": {"surrogate_id": "site_id", "columns": ["site_name"]}}
+        entities = {"site": {"surrogate_id": "site_id", "columns": ["site_name"]}}
 
-        tables = TablesConfig(entities_cfg=config, options={})
-        site_table = tables.get_table("site")
+        config = TablesConfig(cfg={"entities": entities})
+        site_table: TableConfig = config.get_table("site")
 
         assert site_table.entity_name == "site"
         assert site_table.surrogate_id == "site_id"
 
     def test_get_nonexistent_table_raises_error(self):
         """Test that getting nonexistent table raises KeyError."""
-        config = {"site": {"surrogate_id": "site_id"}}
+        entities = {"site": {"surrogate_id": "site_id"}}
 
-        tables = TablesConfig(entities_cfg=config, options={})
+        config = TablesConfig(cfg={"entities": entities})
 
         with pytest.raises(KeyError):
-            tables.get_table("nonexistent")
+            config.get_table("nonexistent")
 
     def test_empty_config(self):
         """Test TablesConfig with empty configuration."""
         # Note: TablesConfig uses 'or' logic, so empty dict will try to load from ConfigValue
         # We need to provide a dict with at least one entity or use None to avoid the config loader
-        config = {"dummy": {"surrogate_id": "id"}}
-        tables = TablesConfig(entities_cfg=config, options={})
+        entities = {"dummy": {"surrogate_id": "id"}}
+        config = TablesConfig(cfg={"entities": entities})
 
-        assert len(tables.tables) == 1
-        assert "dummy" in tables.tables
+        assert len(config.tables) == 1
+        assert "dummy" in config.tables
 
     def test_has_table(self):
         """Test has_table method."""
-        config = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
+        entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
 
-        tables = TablesConfig(entities_cfg=config, options={})
+        config = TablesConfig(cfg={"entities": entities})
 
-        assert tables.has_table("site") is True
-        assert tables.has_table("location") is True
-        assert tables.has_table("nonexistent") is False
+        assert config.has_table("site") is True
+        assert config.has_table("location") is True
+        assert config.has_table("nonexistent") is False
 
     def test_table_names(self):
         """Test table_names property."""
-        config = {
+        entities = {
             "site": {"surrogate_id": "site_id"},
             "location": {"surrogate_id": "location_id"},
             "region": {"surrogate_id": "region_id"},
         }
 
-        tables = TablesConfig(entities_cfg=config, options={})
-        names = tables.table_names
+        config = TablesConfig(cfg={"entities": entities})
+        names: list[str] = config.table_names
 
         assert len(names) == 3
         assert "site" in names
@@ -336,7 +336,7 @@ class TestTablesConfig:
 
     def test_complex_configuration(self):
         """Test with complex nested configuration."""
-        config = {
+        entities = {
             "site": {
                 "surrogate_id": "site_id",
                 "keys": ["ProjektNr", "Fustel"],
@@ -348,16 +348,16 @@ class TestTablesConfig:
             "natural_region": {"surrogate_id": "natural_region_id", "columns": ["NaturE", "NaturrEinh"], "drop_duplicates": True},
         }
 
-        tables = TablesConfig(entities_cfg=config, options={})
+        config = TablesConfig(cfg={"entities": entities})
 
-        site_table = tables.get_table("site")
+        site_table: TableConfig = config.get_table("site")
         assert site_table.keys == {"ProjektNr", "Fustel"}
         assert site_table.drop_duplicates == ["ProjektNr", "Fustel"]
         assert len(site_table.foreign_keys) == 1
         assert site_table.foreign_keys[0].remote_entity == "natural_region"
         assert site_table.depends_on == {"natural_region"}
 
-        nat_region_table = tables.get_table("natural_region")
+        nat_region_table: TableConfig = config.get_table("natural_region")
         assert nat_region_table.drop_duplicates is True
 
 
@@ -366,7 +366,7 @@ class TestIntegration:
 
     def test_full_configuration_workflow(self):
         """Test a full configuration workflow with all features."""
-        config = {
+        entities = {
             "location": {
                 "surrogate_id": "location_id",
                 "keys": ["Ort", "Kreis", "Land"],
@@ -396,16 +396,16 @@ class TestIntegration:
             },
         }
 
-        tables = TablesConfig(entities_cfg=config, options={})
+        config = TablesConfig(cfg={"entities": entities})
 
         # Test location table
-        location = tables.get_table("location")
+        location: TableConfig = config.get_table("location")
         assert location.unnest is not None
         assert location.unnest.var_name == "location_type"
         assert location.drop_duplicates == ["Ort", "Kreis", "Land"]
 
         # Test site table
-        site = tables.get_table("site")
+        site: TableConfig = config.get_table("site")
         assert len(site.foreign_keys) == 1
         assert site.foreign_keys[0].remote_entity == "location"
         assert site.foreign_keys[0].remote_surrogate_id == "location_id"
