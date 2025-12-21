@@ -136,7 +136,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
 import { useDriverSchema } from '@/composables/useDriverSchema'
-import type { DataSourceConfig } from '@/types/data-source'
+import type { DataSourceConfig, DataSourceType } from '@/types/data-source'
 import type { FieldMetadata } from '@/types/driver-schema'
 
 const props = defineProps<{
@@ -232,7 +232,7 @@ async function handleSave() {
     // Build config from form
     const config: DataSourceConfig = {
       name: form.value.name,
-      driver: form.value.driver,
+      driver: form.value.driver as DataSourceType,
       description: form.value.description || undefined,
     }
 

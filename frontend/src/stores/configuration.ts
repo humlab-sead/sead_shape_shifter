@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
+import { useSessionStore } from '@/stores/session'
 import type { Configuration, ConfigMetadata, ValidationResult } from '@/types'
 import type {
   ConfigurationCreateRequest,
@@ -199,6 +200,75 @@ export const useConfigurationStore = defineStore('configuration', () => {
 
   function markAsChanged() {
     hasUnsavedChanges.value = true
+    
+    // Mark session as modified if active
+    const sessionStore = useSessionStore()
+    if (sessionStore.hasActiveSession) {
+      sessionStore.markModified()
+    }
+  }
+
+  /**
+   * Save current configuration (session-aware).
+   */
+  async function saveConfiguration() {
+    if (!selectedConfig.value?.metadata?.name) {
+      throw new Error('No configuration selected')
+    }
+
+    const sessionStore = useSessionStore()
+    const name = selectedConfig.value.metadata.name
+
+    // Build update request
+    const updateData: ConfigurationUpdateRequest = {
+      entities: selectedConfig.value.entities,
+      options: selectedConfig.value.options || {},
+    }
+
+    // Include version if session active (optimistic locking)
+    if (sessionStore.hasActiveSession) {
+      ;(updateData as any).version = sessionStore.version
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const config = await api.configurations.update(name, updateData)
+      
+      // Update metadata in list
+      const index = configurations.value.findIndex((c) => c.name === name)
+      if (index !== -1 && config.metadata) {
+        configurations.value[index] = {
+          name: config.metadata.name,
+          entity_count: config.metadata.entity_count,
+          file_path: config.metadata.file_path,
+          created_at: config.metadata.created_at,
+          modified_at: config.metadata.modified_at,
+          is_valid: config.metadata.is_valid,
+        }
+      }
+      
+      selectedConfig.value = config
+      hasUnsavedChanges.value = false
+
+      // Increment session version on successful save
+      if (sessionStore.hasActiveSession) {
+        sessionStore.incrementVersion()
+      }
+
+      return config
+    } catch (err: any) {
+      // Handle version conflict (409)
+      if (err?.response?.status === 409) {
+        error.value = 'Configuration was modified by another user. Please reload and merge changes.'
+      } else {
+        error.value = err instanceof Error ? err.message : 'Failed to save configuration'
+      }
+      throw err
+    } finally {
+      loading.value = false
+    }
   }
 
   function clearError() {
@@ -312,6 +382,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
     getConfigurationDataSources,
     connectDataSource,
     disconnectDataSource,
+    saveConfiguration,
     markAsChanged,
     clearError,
     clearValidation,

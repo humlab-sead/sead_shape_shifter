@@ -13,10 +13,11 @@ const API_V1_PREFIX = '/api/v1'
 export const createApiClient = (): AxiosInstance => {
   const client = axios.create({
     baseURL: `${API_BASE_URL}${API_V1_PREFIX}`,
-    timeout: 30000,
+    timeout: 120000, // 120 seconds for DevTunnels latency
     headers: {
       'Content-Type': 'application/json',
     },
+    withCredentials: true, // Enable cookies for session management
   })
 
   // Request interceptor for logging

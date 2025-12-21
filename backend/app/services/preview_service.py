@@ -16,6 +16,7 @@ from pandas.api.types import (
     is_timedelta64_dtype,
 )
 
+from backend.app.core.state_manager import get_app_state
 from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
@@ -101,7 +102,20 @@ class PreviewService:
         if cached:
             return cached
 
-        config: ShapeShiftConfig = ShapeShiftConfig.resolve(cfg=config_name)
+        # Load config - try ApplicationState first (production), fall back to ShapeShiftConfig.resolve (tests)
+        try:
+            app_state = get_app_state()
+            config_store = app_state.config_store
+            
+            # Ensure config is loaded
+            if not config_store.is_loaded(config_name):
+                config_store.load_config(config_name)
+            
+            config_like = config_store.get_config(config_name)
+            config: ShapeShiftConfig = ShapeShiftConfig(cfg=config_like.data)
+        except RuntimeError:
+            # Fallback for tests - use ShapeShiftConfig.resolve which uses the mocked provider
+            config = ShapeShiftConfig.resolve(cfg=config_name)
 
         if entity_name not in config.tables:
             raise ValueError(f"Entity '{entity_name}' not found in configuration")
@@ -264,7 +278,20 @@ class PreviewService:
 
         start_time: float = time.time()
 
-        config: ShapeShiftConfig = ShapeShiftConfig.resolve(cfg=config_name)
+        # Load config - try ApplicationState first (production), fall back to ShapeShiftConfig.resolve (tests)
+        try:
+            app_state = get_app_state()
+            config_store = app_state.config_store
+            
+            # Ensure config is loaded
+            if not config_store.is_loaded(config_name):
+                config_store.load_config(config_name)
+            
+            config_like = config_store.get_config(config_name)
+            config: ShapeShiftConfig = ShapeShiftConfig(cfg=config_like.data)
+        except RuntimeError:
+            # Fallback for tests - use ShapeShiftConfig.resolve which uses the mocked provider
+            config = ShapeShiftConfig.resolve(cfg=config_name)
 
         # Get entity and foreign key config
         if entity_name not in config.tables:
