@@ -10,7 +10,6 @@ from typing import Any, Literal
 import pandas as pd
 from loguru import logger
 
-from src.model import TableConfig, TablesConfig
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
 from src.filter import apply_filters
@@ -88,15 +87,24 @@ class ArbodatSurveyNormalizer:
 
     def __init__(
         self,
+        config: TablesConfig | str,
         default_entity: str | None = None,
         table_store: dict[str, pd.DataFrame] | None = None,
-        config: TablesConfig | None = None,
         target_entities: set[str] | None = None,
     ) -> None:
 
+        if not config or not isinstance(config, (TablesConfig, str)):
+            raise ValueError("A valid configuration must be provided")
+
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
-        self.config: TablesConfig = config or TablesConfig()
+        self.config: TablesConfig
+
+        if isinstance(config, TablesConfig):
+            self.config = config
+        else:
+            # FIXME: add using a config context as config as an alternative to passing TablesConfig directly
+            self.config = TablesConfig.from_file(config)
 
         # If target_entities is provided, compute all required entities including dependencies
         if target_entities:
