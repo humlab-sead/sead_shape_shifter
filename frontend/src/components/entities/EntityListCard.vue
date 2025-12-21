@@ -74,38 +74,39 @@
       </div>
 
       <!-- Entity List -->
-      <v-list v-else>
+      <v-list v-else density="compact">
         <v-list-item
           v-for="entity in filteredEntities"
           :key="entity.name"
           :value="entity.name"
+          class="entity-list-item"
           @click="handleSelectEntity(entity)"
         >
           <template #prepend>
-            <v-icon :icon="getEntityIcon(entity.entity_data.type)" />
+            <v-icon :icon="getEntityIcon(entity.entity_data.type)" size="small" />
           </template>
 
-          <v-list-item-title>{{ entity.name }}</v-list-item-title>
-          <v-list-item-subtitle>
-            <v-chip size="x-small" variant="outlined" class="mr-1">
-              {{ entity.entity_data.type || 'unknown' }}
+          <v-list-item-title class="entity-title-row">
+            <span class="entity-name">{{ entity.name }}</span>
+            <v-chip size="x-small" variant="outlined" class="mx-2">
+              {{ entity.entity_data.type || 'data' }}
             </v-chip>
-            <span v-if="entity.entity_data.source" class="text-caption">
+            <span v-if="entity.entity_data.source" class="text-caption text-medium-emphasis">
               Source: {{ entity.entity_data.source }}
             </span>
-          </v-list-item-subtitle>
+          </v-list-item-title>
 
           <template #append>
             <v-btn
               icon="mdi-pencil"
               variant="text"
-              size="small"
+              size="x-small"
               @click.stop="handleEditEntity(entity)"
             />
             <v-btn
               icon="mdi-delete"
               variant="text"
-              size="small"
+              size="x-small"
               color="error"
               @click.stop="handleDeleteClick(entity)"
             />
@@ -266,3 +267,35 @@ watch(showCreateDialog, (newValue) => {
   }
 })
 </script>
+
+<style scoped>
+.entity-list-item {
+  font-size: 0.9rem;
+}
+
+.entity-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.entity-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+/* Compact mode adjustments */
+.compact-mode .entity-list-item {
+  font-size: 0.8125rem;
+  min-height: 36px !important;
+}
+
+.compact-mode .entity-name {
+  font-size: 0.8125rem;
+}
+
+.compact-mode .entity-title-row {
+  gap: 2px;
+}
+</style>
