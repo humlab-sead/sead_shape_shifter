@@ -305,9 +305,9 @@ class PreviewService:
             raise ValueError("Configuration not loaded")
 
         config_dict = config_obj.data
-        entities_cfg: dict[str, Any] = config_dict.get("entities", {})
+        entities: dict[str, Any] = config_dict.get("entities", {})
         options: dict[str, Any] = config_dict.get("options", {})
-        config: TablesConfig = TablesConfig(cfg={"entities": entities_cfg, "options": options})
+        config: TablesConfig = TablesConfig(cfg={"entities": entities, "options": options})
 
         # Get entity and foreign key config
         if entity_name not in config.tables:
