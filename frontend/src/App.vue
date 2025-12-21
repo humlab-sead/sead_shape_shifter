@@ -116,6 +116,16 @@
       <v-spacer />
 
       <v-btn
+        :icon="theme.isDark.value ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent'"
+        variant="text"
+        @click="theme.toggleDarkMode()"
+      >
+        <v-tooltip activator="parent">
+          {{ theme.isDark.value ? 'Switch to light mode' : 'Switch to dark mode' }}
+        </v-tooltip>
+      </v-btn>
+
+      <v-btn
         icon="mdi-magnify"
         variant="text"
         @click="showCommandPalette = true"
@@ -248,9 +258,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useTheme } from '@/composables/useTheme'
 
 const router = useRouter()
 const route = useRoute()
+const theme = useTheme()
 
 const drawer = ref(true)
 const rail = ref(false)
