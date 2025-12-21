@@ -32,3 +32,5 @@ export type {
   UnmatchedRow,
   JoinTestResult
 } from './useForeignKeyTester'
+
+export { useSession } from './useSession'

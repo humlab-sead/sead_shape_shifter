@@ -130,10 +130,10 @@ export function useDriverSchema() {
           if (!Number.isInteger(Number(value))) {
             return { valid: false, error: 'Must be an integer' }
           }
-          if (field.min_value !== null && Number(value) < field.min_value) {
+          if (field.min_value !== null && field.min_value !== undefined && Number(value) < field.min_value) {
             return { valid: false, error: `Must be at least ${field.min_value}` }
           }
-          if (field.max_value !== null && Number(value) > field.max_value) {
+          if (field.max_value !== null && field.max_value !== undefined && Number(value) > field.max_value) {
             return { valid: false, error: `Must be at most ${field.max_value}` }
           }
           break
@@ -155,9 +155,9 @@ export function useDriverSchema() {
   const availableDrivers = computed(() => {
     return Object.keys(schemas.value).map(driver => ({
       value: driver,
-      title: schemas.value[driver].display_name,
-      description: schemas.value[driver].description,
-      category: schemas.value[driver].category,
+      title: schemas.value[driver]?.display_name,
+      description: schemas.value[driver]?.description,
+      category: schemas.value[driver]?.category,
     }))
   })
 

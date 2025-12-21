@@ -72,6 +72,13 @@
       </v-col>
     </v-row>
 
+    <!-- Session Indicator -->
+    <v-row>
+      <v-col>
+        <session-indicator :config-name="configName" />
+      </v-col>
+    </v-row>
+
     <!-- Loading State -->
     <v-row v-if="configLoading">
       <v-col cols="12" class="text-center py-12">
@@ -239,10 +246,12 @@ import { useRoute } from 'vue-router'
 import { useDebounceFn } from '@vueuse/core'
 import { useConfigurations, useEntities, useValidation } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
+import { useSession } from '@/composables/useSession'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
 import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 import ConfigurationDataSources from '@/components/ConfigurationDataSources.vue'
+import SessionIndicator from '@/components/SessionIndicator.vue'
 
 const route = useRoute()
 const configName = computed(() => route.params.name as string)
@@ -270,6 +279,13 @@ const { entityCount, entities } = useEntities({
 const entityNames = computed(() => {
   return entities.value?.map(e => e.name) ?? []
 })
+
+// Session management
+const {
+  startSession,
+  saveWithVersionCheck,
+  hasActiveSession,
+} = useSession()
 
 const {
   validationResult,
@@ -438,14 +454,26 @@ async function handleSave() {
   if (!selectedConfig.value) return
 
   try {
-    await update(configName.value, {
-      entities: selectedConfig.value.entities,
-      options: selectedConfig.value.options ?? {},
-    })
-    successMessage.value = 'Configuration saved successfully'
-    showSuccessSnackbar.value = true
+    // Start session if not already active
+    if (!hasActiveSession.value) {
+      await startSession(configName.value)
+    }
+
+    // Save with version check
+    const saved = await saveWithVersionCheck()
+
+    if (saved) {
+      successMessage.value = 'Configuration saved successfully'
+      showSuccessSnackbar.value = true
+    } else {
+      // Version conflict - show error
+      successMessage.value = 'Save failed: Version conflict detected. Another user modified this configuration.'
+      showSuccessSnackbar.value = true
+    }
   } catch (err) {
     console.error('Failed to save configuration:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to save configuration'
+    showSuccessSnackbar.value = true
   }
 }
 
@@ -485,6 +513,8 @@ onMounted(async () => {
   if (configName.value) {
     await select(configName.value)
     await fetchBackups(configName.value)
+    // Start editing session
+    await startSession(configName.value)
   }
 })
 

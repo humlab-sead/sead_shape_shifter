@@ -36,6 +36,7 @@
 
           <entity-list-card
             v-if="configurationStore.currentConfigName"
+            :config-name="configurationStore.currentConfigName"
             @entity-updated="handleEntityUpdated"
           />
         </div>
@@ -53,11 +54,12 @@ import EntityListCard from '@/components/entities/EntityListCard.vue'
 const configurationStore = useConfigurationStore()
 const configName = computed(() => configurationStore.currentConfigName || '')
 
-const { entityCount, refetchEntities } = useEntities({
+const { entityCount } = useEntities({
   configName: configName.value,
+  autoFetch: false, // EntityListCard handles fetching
 })
 
 function handleEntityUpdated() {
-  refetchEntities()
+  // EntityListCard will re-fetch automatically
 }
 </script>

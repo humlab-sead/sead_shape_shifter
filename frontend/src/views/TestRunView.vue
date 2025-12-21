@@ -125,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import TestRunConfig from '@/components/TestRun/TestRunConfig.vue'
 import TestRunProgress from '@/components/TestRun/TestRunProgress.vue'

@@ -1,6 +1,5 @@
 """FastAPI application entry point."""
 
-import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -10,7 +9,7 @@ from loguru import logger
 
 from backend.app.api.v1.api import api_router
 from backend.app.core.config import settings
-from src.configuration.provider import ConfigStore
+from backend.app.core.state_manager import init_app_state
 
 
 @asynccontextmanager
@@ -20,17 +19,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
     logger.info(f"Version: {settings.VERSION}")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
 
-    # Initialize configuration context
-    config_file = os.getenv("CONFIG_FILE", "input/query_tester_config.yml")
-    logger.info(f"Loading configuration from: {config_file}")
-    try:
-        ConfigStore.get_instance().configure_context(source=config_file)
-        logger.info("Configuration loaded successfully")
-    except Exception as e:
-        logger.error(f"Failed to load configuration: {e}")
-        raise
+    # Initialize application state (NO default config loading)
+    logger.info(f"Configuration directory: {settings.CONFIGURATIONS_DIR}")
+    app_state = init_app_state(settings.CONFIGURATIONS_DIR)
+    await app_state.start()
+
+    logger.info("Application ready - configurations loaded on-demand via sessions")
 
     yield
+
+    # Cleanup
+    await app_state.stop()
     logger.info("Shutting down Shape Shifter Configuration Editor API")
 
 

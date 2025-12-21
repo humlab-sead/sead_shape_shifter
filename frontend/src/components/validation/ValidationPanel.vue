@@ -359,7 +359,7 @@ const performanceErrors = computed(() => {
 })
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const totalIssues = computed(() => {
+const _totalIssues = computed(() => {
   return errorCount.value + warningCount.value
 })
 

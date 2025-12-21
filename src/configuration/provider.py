@@ -1,6 +1,9 @@
 import threading
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, Self
+
+from loguru import logger
 
 from src.utility import recursive_filter_dict, recursive_update
 
@@ -11,15 +14,23 @@ from .interface import ConfigLike
 
 
 class ConfigStore:
-    """A class to manage configuration files and contexts"""
+    """A class to manage configuration files and contexts."""
 
     _instance: "ConfigStore | None" = None
     _lock = threading.Lock()
 
-    def __init__(self):
-        if ConfigStore._instance is not None:
+    def __init__(self, config_directory: Any | None = None):
+        """
+        Initialize ConfigStore.
+
+        Args:
+            config_directory: Path to configuration directory (for non-singleton usage)
+        """
+        if ConfigStore._instance is not None and config_directory is None:
             raise RuntimeError("ConfigStore is a singleton. Use get_instance()")
-        self.store: dict[str, ConfigLike | None] = {"default": None}
+
+        self.config_directory = config_directory
+        self.store: dict[str, ConfigLike | None] = {}
         self.context: str = "default"
 
     @classmethod
@@ -50,6 +61,67 @@ class ConfigStore:
             raise ValueError(f"Config context '{ctx}' not properly initialized")
 
         return self.store[ctx]
+
+    def load_config(self, config_name: str) -> ConfigLike:
+        """
+        Load a config file by name (cached per name).
+
+        Args:
+            config_name: Name of config file (without .yml extension)
+
+        Returns:
+            Loaded configuration
+
+        Raises:
+            FileNotFoundError: If config file doesn't exist
+            ValueError: If config_directory not set
+        """
+        if self.config_directory is None:
+            raise ValueError("config_directory not set. Cannot load config.")
+
+        if config_name not in self.store:
+
+            config_path = Path(self.config_directory) / f"{config_name}.yml"
+            if not config_path.exists():
+                raise FileNotFoundError(f"Config file not found: {config_path}")
+
+            cfg: ConfigLike = ConfigFactory().load(source=str(config_path), context=config_name)
+            self.store[config_name] = cfg
+            logger.info(f"Loaded config '{config_name}' from {config_path}")
+
+        return self.store[config_name]  # type: ignore
+
+    def get_config(self, config_name: str) -> ConfigLike:
+        """
+        Get a loaded config (raises if not loaded).
+
+        Args:
+            config_name: Name of config context
+
+        Returns:
+            Configuration
+
+        Raises:
+            ValueError: If config not loaded
+        """
+        if config_name not in self.store:
+            raise ValueError(f"Config '{config_name}' not loaded. Call load_config() first.")
+        return self.store[config_name]  # type: ignore
+
+    def is_loaded(self, config_name: str) -> bool:
+        """Check if a config is currently loaded."""
+        return config_name in self.store and self.store[config_name] is not None
+
+    def unload_config(self, config_name: str) -> None:
+        """Unload a config from memory."""
+        if config_name in self.store:
+            del self.store[config_name]
+            logger.info(f"Unloaded config '{config_name}'")
+
+    def reload_config(self, config_name: str) -> ConfigLike:
+        """Force reload a config from disk."""
+        self.unload_config(config_name)
+        return self.load_config(config_name)
 
     # Convenience class methods for backward compatibility
     @classmethod
