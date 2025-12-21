@@ -477,6 +477,38 @@ class ShapeShiftConfig:
 
         return ShapeShiftConfig(cfg=cfg.data)
 
+    @staticmethod
+    async def resolve(cfg: "ShapeShiftConfig | str | None") -> "ShapeShiftConfig":
+        """Resolve and return the ShapeShiftConfig for the given config name."""
+        if isinstance(cfg, ShapeShiftConfig):
+            return cfg
+
+        if isinstance(cfg, str):
+            """Load from named global configuration or file."""
+            # Test if cfg is a file path
+            config_name: str = cfg
+            # Try to load from global store first
+            try:
+                config: ShapeShiftConfig = ShapeShiftConfig.from_file(config_name)
+                return config
+            except FileNotFoundError:
+                pass
+
+        context: str = cfg or "default"
+
+        """Load configuration from global store."""
+        provider: ConfigProvider = get_config_provider()
+
+        if not provider.is_configured(context):
+            raise ValueError(f"Failed to resolve Config for context '{context}'")
+
+        if context == "default":
+            logger.warning("Using configuration from default context")
+
+        config = ShapeShiftConfig(cfg=provider.get_config(context).data)
+
+        return config
+
 
 class DataSourceConfig:
     """Configuration for data sources."""

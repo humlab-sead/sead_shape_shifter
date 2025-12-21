@@ -5,6 +5,8 @@ from typing import Any
 import pandas as pd
 import pytest
 
+from src.configuration.config import Config
+from src.configuration.provider import MockConfigProvider, set_config_provider
 from src.loaders.base_loader import DataLoader
 from src.model import DataSourceConfig, ForeignKeyConfig, ForeignKeyConstraints, TableConfig, ShapeShiftConfig, UnnestConfig
 
@@ -1202,6 +1204,73 @@ class TestShapeShiftConfig:
 
         nat_region_table: TableConfig = tables.get_table("natural_region")
         assert nat_region_table.drop_duplicates is True
+
+    @pytest.mark.asyncio
+    async def test_resolve_returns_existing_config_instance(self):
+        """ShapeShiftConfig.resolve should return provided instance unchanged."""
+
+        config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}})
+
+        resolved = await ShapeShiftConfig.resolve(config)
+
+        assert resolved is config
+
+    @pytest.mark.asyncio
+    async def test_resolve_loads_from_file_path(self, tmp_path):
+        """ShapeShiftConfig.resolve should load configuration from file path."""
+
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(
+            "entities:\n"
+            "  site:\n"
+            "    surrogate_id: site_id\n"
+            "    columns:\n"
+            "      - name\n",
+            encoding="utf-8",
+        )
+
+        resolved = await ShapeShiftConfig.resolve(str(config_path))
+
+        assert resolved.has_table("site") is True
+        assert resolved.get_table("site").surrogate_id == "site_id"
+
+    @pytest.mark.asyncio
+    async def test_resolve_uses_config_provider_for_default_context(self):
+        """ShapeShiftConfig.resolve should pull from provider when no config passed."""
+
+        config = Config(data={"entities": {"site": {"surrogate_id": "site_id"}}})
+
+        class RecordingProvider(MockConfigProvider):
+            def __init__(self, config: Config) -> None:
+                super().__init__(config=config)
+                self.last_context: str | None = None
+
+            def is_configured(self, context: str | None = None) -> bool:
+                self.last_context = context
+                return super().is_configured(context)
+
+        provider = RecordingProvider(config)
+        old_provider = set_config_provider(provider)
+
+        try:
+            resolved = await ShapeShiftConfig.resolve(None)
+            assert resolved.has_table("site")
+            assert provider.last_context == "default"
+        finally:
+            set_config_provider(old_provider)
+
+    @pytest.mark.asyncio
+    async def test_resolve_raises_when_context_not_configured(self):
+        """ShapeShiftConfig.resolve should raise when provider lacks requested context."""
+
+        provider = MockConfigProvider(config=None)
+        old_provider = set_config_provider(provider)
+
+        try:
+            with pytest.raises(ValueError, match="Failed to resolve Config for context 'missing'"):
+                await ShapeShiftConfig.resolve("missing")
+        finally:
+            set_config_provider(old_provider)
 
     def test_get_sorted_columns_basic(self):
         """Test get_sorted_columns with basic configuration."""

@@ -4,6 +4,7 @@ import hashlib
 import time
 from typing import Any, Optional
 
+from numpy import isin
 import pandas as pd
 from loguru import logger
 
@@ -87,19 +88,14 @@ class PreviewService:
             ValueError: If configuration or entity not found
             RuntimeError: If preview fails
         """
-        start_time = time.time()
+        start_time: float = time.time()
 
         # Check cache first
         cached = self.cache.get(config_name, entity_name, limit)
         if cached:
             return cached
 
-        config_obj: ConfigLike = ConfigStore.config_global()
-        if config_obj is None:
-            raise ValueError("Configuration not loaded")
-
-        config = ShapeShiftConfig(cfg=config_obj.data)
-        # config: ShapeShiftConfig = ShapeShiftConfig.from_file(config_name)
+        config: ShapeShiftConfig = await ShapeShiftConfig.resolve(cfg=config_name)
 
         if entity_name not in config.tables:
             raise ValueError(f"Entity '{entity_name}' not found in configuration")
@@ -129,24 +125,22 @@ class PreviewService:
         entity_config: TableConfig,
         limit: int,
     ) -> PreviewResult:
-        """Preview entity data using the normalizer to apply all transformations."""
+        """Preview entity data using the normalizer to shape shifting."""
         try:
-            # Create normalizer with the entity as default to process
 
             if isinstance(config, str):
                 raise ValueError("Config must be ShapeShiftConfig instance, not str")
 
             # Determine the default source entity from the target entity config
-            default_source = entity_config.source if entity_config.source else None
+            default_source: str | None = entity_config.source if entity_config.source else None
 
-            normalizer = ShapeShifter(
+            normalizer: ShapeShifter = ShapeShifter(
                 config=config,
                 table_store={},
                 default_entity=default_source,
                 target_entities={entity_name},
             )
 
-            # Run normalization process
             await normalizer.normalize()
 
             if entity_name not in normalizer.table_store:
@@ -264,12 +258,7 @@ class PreviewService:
 
         start_time: float = time.time()
 
-        # Load configuration
-        config_obj: ConfigLike = ConfigStore.config_global()
-        if config_obj is None:
-            raise ValueError("Configuration not loaded")
-
-        config: ShapeShiftConfig = ShapeShiftConfig(cfg=config_obj.data)
+        config: ShapeShiftConfig = await ShapeShiftConfig.resolve(cfg=config_name)
 
         # Get entity and foreign key config
         if entity_name not in config.tables:
