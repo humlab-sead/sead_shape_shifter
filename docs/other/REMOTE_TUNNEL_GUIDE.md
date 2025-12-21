@@ -145,6 +145,22 @@ The frontend will now communicate with the backend through the tunneled URLs!
 
 ## Troubleshooting
 
+### Issue: "CORS Error"
+
+> CORS problem still persisted. But when I opened https://tgx7q4bq-8012.euw.devtunnels.ms/ in a browser, I got a redirect message. After that the CORS problem disappeared..
+
+> Ah, that's a DevTunnels-specific security feature! DevTunnels require you to visit the backend URL in a browser first to authenticate/accept the tunnel before cross-origin requests will work. This is expected behavior.
+
+For future reference, when using DevTunnels:
+
+1. Always visit the backend URL first (https://tgx7q4bq-8012.euw.devtunnels.ms/) in your browser
+2. Accept any authentication prompts or security warnings
+3. Then the frontend can make cross-origin requests to it
+4. This is a one-time requirement per tunnel session. If you restart the tunnel or get a new tunnel URL, you'll need to visit it again.
+
+The CORS configuration we added is still correct and necessary - the initial block was just the DevTunnels authentication gate, not a CORS issue per se.
+
+
 ### Issue: "Cannot connect to backend"
 
 **Solution 1: Check Port Visibility**
