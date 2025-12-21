@@ -155,7 +155,7 @@ The backend directly imports and uses existing Shape Shifter components:
 ```python
 from src.model import ShapeShiftConfig, EntityConfig
 from src.specifications import CompositeConfigSpecification
-from src.normalizer import ArbodatSurveyNormalizer
+from src.normalizer import ShapeShifter
 ```
 
 This ensures:

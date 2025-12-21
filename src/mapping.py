@@ -5,7 +5,7 @@ from loguru import logger
 
 
 class LinkToRemoteService:
-    """Service to link local Arbodat PK values to remote SEAD identities based on provided mapping configuration."""
+    """Service to link local local entities' PK values to remote identities based on provided mapping configuration."""
 
     # TODO: Enable mapping from compound local keys.  # pylint: disable=fixme
 
@@ -13,7 +13,7 @@ class LinkToRemoteService:
         self.remote_link_cfgs: dict[str, dict[str, Any]] = remote_link_cfgs
 
     def link_to_remote(self, entity_name: str, table: pd.DataFrame) -> pd.DataFrame:
-        """Uses content from mapping.yml to Arbodat PK values to SEAD identities.
+        """Uses content from mapping.yml to local PK values to target (SEAD) identities.
         The mapping configuration consists of mappings for various (but not all) entities.
         Each mapping has the following structure:
             entity-name:

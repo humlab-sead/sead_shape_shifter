@@ -13,7 +13,7 @@ from backend.app.services.config_service import ConfigurationService
 from src.configuration.interface import ConfigLike
 from src.configuration.provider import ConfigStore
 from src.model import ForeignKeyConfig, TableConfig, ShapeShiftConfig
-from src.normalizer import ArbodatSurveyNormalizer
+from src.normalizer import ShapeShifter
 
 
 class PreviewCache:
@@ -139,7 +139,7 @@ class PreviewService:
             # Determine the default source entity from the target entity config
             default_source = entity_config.source if entity_config.source else None
 
-            normalizer = ArbodatSurveyNormalizer(
+            normalizer = ShapeShifter(
                 config=config,
                 table_store={},
                 default_entity=default_source,

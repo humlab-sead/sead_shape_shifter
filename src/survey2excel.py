@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Normalize an Arbodat "Data Survey" CSV export into several tables
-and write them as sheets in a single Excel file.
+Normalize data from various data sources into structured tables
+and write them as CSVs or sheets in a single Excel file.
 
 Usage:
-    python arbodat_normalize_to_excel.py input.csv output.xlsx
+    python shaper_shifter.py input.csv output.xlsx
 
 """
 
@@ -21,7 +21,7 @@ from src.configuration.provider import get_config_provider
 from src.configuration.resolve import ConfigValue
 from src.extract import extract_translation_map
 from src.model import ShapeShiftConfig
-from src.normalizer import ArbodatSurveyNormalizer
+from src.normalizer import ShapeShifter
 from src.specifications import CompositeConfigSpecification
 from src.utility import load_shape_file, setup_logging
 
@@ -46,7 +46,7 @@ async def workflow(
     default_entity: str | None = None,
 ) -> None:
 
-    normalizer: ArbodatSurveyNormalizer = ArbodatSurveyNormalizer(config=config, default_entity=default_entity)
+    normalizer: ShapeShifter = ShapeShifter(config=config, default_entity=default_entity)
 
     if validate_configuration() and validate_then_exit:
         return
@@ -114,13 +114,8 @@ def main(
     validate_then_exit: bool = False,
 ) -> None:
     """
-    Normalize an Arbodat "Data Survey" CSV export into several tables.
-
-    Reads INPUT_CSV and writes normalized data as multiple sheets to TARGET.
-
-    The input CSV should contain one row per Sample × Taxon combination, with
-    columns identifying projects, sites, features, samples, and taxa.
-    """
+    Normalize data from various data sources into structured tables.
+    Write them as CSVs or sheets in a single Excel file at TARGET location."""
     if config_file:
         click.echo(f"Using configuration file: {config_file}")
 

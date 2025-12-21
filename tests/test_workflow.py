@@ -47,7 +47,7 @@ from tests.decorators import with_test_config
 #     assert os.path.exists(output_filename)
 
 
-@pytest.mark.skip(reason="Pending deprecation, will be replaced with Arbodat database tests")
+@pytest.mark.skip(reason="Pending deprecation, will be replaced with database tests")
 def test_workflow_using_survey_report_to_csv():
 
     config_file: str = "./input/arbodat-test.yml"

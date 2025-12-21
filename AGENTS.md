@@ -3,7 +3,7 @@
 ## Architecture Awareness
 - Treat the repo as a mono-repo with Core (`src/`), Backend (`backend/app/`), and Frontend (`frontend/`).
 - Use the unified Python virtual environment at `.venv/` for every Python command.
-- Preserve the core pipeline order: Extract ➜ Filter ➜ Link ➜ Unnest ➜ Translate ➜ Store; orchestrate via `ArbodatSurveyNormalizer` (`src/normalizer.py`) using `ProcessState`.
+- Preserve the core pipeline order: Extract ➜ Filter ➜ Link ➜ Unnest ➜ Translate ➜ Store; orchestrate via `ShapeShifter` (`src/normalizer.py`) using `ProcessState`.
 - Keep backend layering clear: routers in `api/v1/endpoints/`, services in `services/`, Pydantic v2 models in `models/`, and shared settings in `core/`.
 - Build frontend features with Vue 3 `<script setup>` components, Pinia stores, composables, Axios API layer, and Monaco-based YAML editing.
 

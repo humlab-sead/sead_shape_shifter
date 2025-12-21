@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from src.model import ShapeShiftConfig
-from src.normalizer import ArbodatSurveyNormalizer, ProcessState
+from src.normalizer import ShapeShifter, ProcessState
 
 # pylint: disable=no-member, redefined-outer-name
 
@@ -49,7 +49,7 @@ class TestAppendIntegration:
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer: ArbodatSurveyNormalizer = ArbodatSurveyNormalizer(
+        normalizer: ShapeShifter = ShapeShifter(
             table_store={"survey": survey_df},
             config=ShapeShiftConfig(cfg=cfg),
             default_entity="survey",
@@ -106,7 +106,7 @@ class TestAppendIntegration:
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
+        normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = ShapeShiftConfig(cfg=cfg)
@@ -159,7 +159,7 @@ class TestAppendIntegration:
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
+        normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = ShapeShiftConfig(cfg=cfg)
@@ -211,7 +211,7 @@ class TestAppendIntegration:
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
+        normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = ShapeShiftConfig(cfg=cfg)
@@ -271,7 +271,7 @@ class TestAppendIntegration:
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
+        normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
         normalizer.config = ShapeShiftConfig(cfg=cfg)
