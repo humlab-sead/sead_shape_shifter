@@ -4,9 +4,6 @@ import shutil
 
 import pytest
 
-from src.configuration.config import ConfigFactory
-from src.configuration.interface import ConfigLike
-from src.configuration.setup import setup_config_store
 from src.model import ShapeShiftConfig
 from src.survey2excel import validate_entity_shapes, workflow
 from src.utility import load_shape_file
@@ -98,8 +95,7 @@ def test_workflow_using_survey_report_to_csv():
     assert len(entities_with_different_shapes) == 0, f"Entities with different shapes: {entities_with_different_shapes}"
 
 
-@with_test_config
-def test_access_database_csv_workflow(test_provider: ExtendedMockConfigProvider):
+def test_access_database_csv_workflow():
 
     config_file: str = "./input/arbodat-database.yml"
     config: ShapeShiftConfig = ShapeShiftConfig.from_file(

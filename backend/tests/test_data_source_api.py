@@ -4,6 +4,7 @@ Integration tests for Data Source API endpoints
 Tests the complete REST API including request/response handling, validation, and error cases.
 """
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -294,7 +295,6 @@ class TestDeleteDataSource:
 
     def test_delete_data_source_success(self, client, mock_service):
         """Should delete data source."""
-        from pathlib import Path
 
         mock_service.get_data_source.return_value = DataSourceConfig(
             name="unused", driver=DataSourceType.CSV, filename="unused-datasource.yml", **{}

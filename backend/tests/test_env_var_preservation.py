@@ -11,6 +11,7 @@ from backend.app.core.config import Settings
 from backend.app.models.data_source import DataSourceConfig, DataSourceTestResult
 from backend.app.services.data_source_service import DataSourceService
 
+# pylint: disable=unused-argument
 
 def test_list_data_sources_preserves_env_vars(settings: Settings):
     """Verify that env vars like ${SEAD_HOST} are preserved when listing data sources."""

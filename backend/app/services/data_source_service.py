@@ -29,7 +29,7 @@ class DataSourceService:
     def _resolve_data_source_path(self, filename: str | Path, raise_if_not_found: bool = False) -> Path:
         """Resolve the full path to a data source file."""
         filename = Path(filename)
-        if not filename.suffix == ".yml":
+        if filename.suffix != ".yml":
             filename = filename.with_suffix(".yml")
         path: Path = Path(self.data_sources_dir) / filename
         if raise_if_not_found and not path.exists():

@@ -41,7 +41,7 @@ def get_data_source_service() -> Generator[services.DataSourceService, None, Non
 
 
 def get_schema_service(
-    config: ConfigLike = Depends(get_config),
+    config: ConfigLike = Depends(get_config),  # pylint: disable=unused-argument
 ) -> Generator[services.SchemaIntrospectionService, None, None]:
     """
     Get SchemaIntrospectionService instance.
