@@ -4,6 +4,7 @@ Integration tests for Data Source API endpoints
 Tests the complete REST API including request/response handling, validation, and error cases.
 """
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -88,10 +89,17 @@ class TestGetDataSource:
     def test_get_data_source_success(self, client, mock_service):
         """Should return specific data source."""
         mock_service.get_data_source.return_value = DataSourceConfig(
-            name="sead", driver=DataSourceType.POSTGRESQL, host="localhost", port=5432, database="sead", username="user", **{}
+            name="sead",
+            driver=DataSourceType.POSTGRESQL,
+            host="localhost",
+            port=5432,
+            database="sead",
+            username="user",
+            filename="sead-options.yml",
+            **{},
         )
 
-        response = client.get("/api/v1/data-sources/sead")
+        response = client.get("/api/v1/data-sources/sead-options.yml")
 
         assert response.status_code == 200
         data = response.json()
@@ -102,7 +110,7 @@ class TestGetDataSource:
         """Should return 404 when data source not found."""
         mock_service.get_data_source.return_value = None
 
-        response = client.get("/api/v1/data-sources/nonexistent")
+        response = client.get("/api/v1/data-sources/nonexistent.yml")
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"]
@@ -114,7 +122,19 @@ class TestCreateDataSource:
     def test_create_data_source_success(self, client, mock_service):
         """Should create new data source."""
         mock_service.get_data_source.return_value = None  # Doesn't exist yet
-        mock_service.create_data_source.return_value = None
+
+        # Mock the created config that will be returned
+        created_config = DataSourceConfig(
+            name="new_db",
+            driver=DataSourceType.POSTGRESQL,
+            host="localhost",
+            port=5432,
+            database="newdb",
+            username="user",
+            filename="new_db-options.yml",
+            **{},
+        )
+        mock_service.create_data_source.return_value = created_config
 
         payload = {
             "name": "new_db",
@@ -130,12 +150,21 @@ class TestCreateDataSource:
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == "new_db"
+        assert data["filename"] == "new_db-options.yml"
         mock_service.create_data_source.assert_called_once()
 
     def test_create_data_source_already_exists(self, client, mock_service):
         """Should return 400 when data source already exists."""
+        # Mock that file already exists
         mock_service.get_data_source.return_value = DataSourceConfig(
-            name="existing", driver=DataSourceType.POSTGRESQL, host="localhost", port=5432, database="db", username="user", **{}
+            name="existing",
+            driver=DataSourceType.POSTGRESQL,
+            host="localhost",
+            port=5432,
+            database="db",
+            username="user",
+            filename="existing-options.yml",
+            **{},
         )
 
         payload = {
@@ -173,28 +202,47 @@ class TestUpdateDataSource:
 
     def test_update_data_source_success(self, client, mock_service):
         """Should update existing data source."""
-        mock_service.get_data_source.side_effect = [
-            DataSourceConfig(
-                name="sead", driver=DataSourceType.POSTGRESQL, host="localhost", port=5432, database="sead", username="user", **{}
-            ),
-            None,  # New name doesn't exist
-        ]
-        mock_service.update_data_source.return_value = None
+        # Mock getting the existing data source
+        mock_service.get_data_source.return_value = DataSourceConfig(
+            name="sead",
+            driver=DataSourceType.POSTGRESQL,
+            host="localhost",
+            port=5432,
+            database="sead",
+            username="user",
+            filename="sead-options.yml",
+            **{},
+        )
+
+        # Mock the update to return updated config
+        updated_config = DataSourceConfig(
+            name="sead",
+            driver=DataSourceType.POSTGRESQL,
+            host="newhost",
+            port=5433,
+            database="sead_updated",
+            username="newuser",
+            filename="sead-options.yml",
+            **{},
+        )
+        mock_service.update_data_source.return_value = updated_config
 
         payload = {
-            "name": "sead_renamed",
+            "name": "sead",
             "driver": "postgresql",
-            "host": "localhost",
-            "port": 5432,
-            "database": "sead",
-            "username": "user",
+            "host": "newhost",
+            "port": 5433,
+            "database": "sead_updated",
+            "username": "newuser",
         }
 
-        response = client.put("/api/v1/data-sources/sead", json=payload)
+        response = client.put("/api/v1/data-sources/sead-options.yml", json=payload)
 
         assert response.status_code == 200
         data = response.json()
-        assert data["name"] == "sead_renamed"
+        assert data["host"] == "newhost"
+        assert data["port"] == 5433
+        assert data["database"] == "sead_updated"
 
     def test_update_data_source_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
@@ -209,21 +257,26 @@ class TestUpdateDataSource:
             "username": "user",
         }
 
-        response = client.put("/api/v1/data-sources/nonexistent", json=payload)
+        response = client.put("/api/v1/data-sources/nonexistent-options.yml", json=payload)
 
         assert response.status_code == 404
 
-    def test_update_data_source_rename_conflict(self, client, mock_service):
-        """Should return 400 when renaming to existing name."""
-        mock_service.get_data_source.side_effect = [
-            DataSourceConfig(
-                name="sead", driver=DataSourceType.POSTGRESQL, host="localhost", port=5432, database="sead", username="user", **{}
-            ),
-            DataSourceConfig(name="arbodat", driver=DataSourceType.ACCESS, filename="arbodat.mdb", **{}),  # New name already exists
-        ]
+    def test_update_data_source_invalid_config(self, client, mock_service):
+        """Should return 400 when update fails due to invalid configuration."""
+        mock_service.get_data_source.return_value = DataSourceConfig(
+            name="sead",
+            driver=DataSourceType.POSTGRESQL,
+            host="localhost",
+            port=5432,
+            database="sead",
+            username="user",
+            filename="sead-options.yml",
+            **{},
+        )
+        mock_service.update_data_source.side_effect = Exception("Invalid configuration")
 
         payload = {
-            "name": "arbodat",  # Trying to rename to existing
+            "name": "sead",
             "driver": "postgresql",
             "host": "localhost",
             "port": 5432,
@@ -231,10 +284,10 @@ class TestUpdateDataSource:
             "username": "user",
         }
 
-        response = client.put("/api/v1/data-sources/sead", json=payload)
+        response = client.put("/api/v1/data-sources/sead-options.yml", json=payload)
 
         assert response.status_code == 400
-        assert "already exists" in response.json()["detail"]
+        assert "Failed to update data source" in response.json()["detail"]
 
 
 class TestDeleteDataSource:
@@ -242,44 +295,47 @@ class TestDeleteDataSource:
 
     def test_delete_data_source_success(self, client, mock_service):
         """Should delete data source."""
-        mock_service.get_data_source.return_value = DataSourceConfig(name="unused", driver=DataSourceType.CSV, filename="test.csv", **{})
-        mock_service.get_status.return_value = DataSourceStatus(
-            name="unused",
-            is_connected=True,
-            last_test_result=None,
-            in_use_by_entities=[],
+
+        mock_service.get_data_source.return_value = DataSourceConfig(
+            name="unused", driver=DataSourceType.CSV, filename="unused-datasource.yml", **{}
         )
         mock_service.delete_data_source.return_value = None
 
-        response = client.delete("/api/v1/data-sources/unused")
+        response = client.delete("/api/v1/data-sources/unused-datasource.yml")
 
         assert response.status_code == 204
-        mock_service.delete_data_source.assert_called_once_with("unused")
+        # Check that delete was called with a Path object
+        mock_service.delete_data_source.assert_called_once()
+        call_args = mock_service.delete_data_source.call_args[0]
+        assert isinstance(call_args[0], Path)
+        assert str(call_args[0]) == "unused-datasource.yml"
 
     def test_delete_data_source_not_found(self, client, mock_service):
         """Should return 404 when data source not found."""
         mock_service.get_data_source.return_value = None
 
-        response = client.delete("/api/v1/data-sources/nonexistent")
+        response = client.delete("/api/v1/data-sources/nonexistent.yml")
 
         assert response.status_code == 404
 
-    def test_delete_data_source_in_use(self, client, mock_service):
-        """Should return 400 when data source is in use."""
+    def test_delete_data_source_service_error(self, client, mock_service):
+        """Should return 500 when service fails to delete."""
         mock_service.get_data_source.return_value = DataSourceConfig(
-            name="in_use", driver=DataSourceType.POSTGRESQL, host="localhost", port=5432, database="db", username="user", **{}
+            name="error_case",
+            driver=DataSourceType.POSTGRESQL,
+            host="localhost",
+            port=5432,
+            database="db",
+            username="user",
+            filename="error_case-options.yml",
+            **{},
         )
-        mock_service.get_status.return_value = DataSourceStatus(
-            name="in_use",
-            is_connected=True,
-            last_test_result=None,
-            in_use_by_entities=["entity1", "entity2"],
-        )
+        mock_service.delete_data_source.side_effect = Exception("Failed to delete file")
 
-        response = client.delete("/api/v1/data-sources/in_use")
+        response = client.delete("/api/v1/data-sources/error_case-options.yml")
 
-        assert response.status_code == 400
-        assert "in use by entities" in response.json()["detail"]
+        assert response.status_code == 500
+        assert "Failed to delete data source" in response.json()["detail"]
 
 
 class TestTestConnection:
@@ -288,7 +344,14 @@ class TestTestConnection:
     def test_test_connection_success(self, client, mock_service):
         """Should test connection successfully."""
         mock_service.get_data_source.return_value = DataSourceConfig(
-            name="sead", driver=DataSourceType.POSTGRESQL, host="localhost", port=5432, database="sead", username="user", **{}
+            name="sead",
+            driver=DataSourceType.POSTGRESQL,
+            host="localhost",
+            port=5432,
+            database="sead",
+            username="user",
+            filename="sead-options.yml",
+            **{},
         )
 
         # Mock async method
@@ -302,7 +365,7 @@ class TestTestConnection:
 
         mock_service.test_connection = mock_test
 
-        response = client.post("/api/v1/data-sources/sead/test")
+        response = client.post("/api/v1/data-sources/sead-options.yml/test")
 
         assert response.status_code == 200
         data = response.json()
@@ -312,7 +375,14 @@ class TestTestConnection:
     def test_test_connection_failure(self, client, mock_service):
         """Should return connection test failure."""
         mock_service.get_data_source.return_value = DataSourceConfig(
-            name="bad_db", driver=DataSourceType.POSTGRESQL, host="invalid-host", port=5432, database="db", username="user", **{}
+            name="bad_db",
+            driver=DataSourceType.POSTGRESQL,
+            host="invalid-host",
+            port=5432,
+            database="db",
+            username="user",
+            filename="bad_db-options.yml",
+            **{},
         )
 
         # Mock async method
@@ -326,7 +396,7 @@ class TestTestConnection:
 
         mock_service.test_connection = mock_test
 
-        response = client.post("/api/v1/data-sources/bad_db/test")
+        response = client.post("/api/v1/data-sources/bad_db-options.yml/test")
 
         assert response.status_code == 200
         data = response.json()
@@ -337,7 +407,7 @@ class TestTestConnection:
         """Should return 404 when data source not found."""
         mock_service.get_data_source.return_value = None
 
-        response = client.post("/api/v1/data-sources/nonexistent/test")
+        response = client.post("/api/v1/data-sources/nonexistent.yml/test")
 
         assert response.status_code == 404
 
@@ -348,7 +418,14 @@ class TestGetStatus:
     def test_get_status_success(self, client, mock_service):
         """Should return data source status."""
         mock_service.get_data_source.return_value = DataSourceConfig(
-            name="sead", driver=DataSourceType.POSTGRESQL, host="localhost", port=5432, database="sead", username="user", **{}
+            name="sead",
+            driver=DataSourceType.POSTGRESQL,
+            host="localhost",
+            port=5432,
+            database="sead",
+            username="user",
+            filename="sead-options.yml",
+            **{},
         )
         mock_service.get_status.return_value = DataSourceStatus(
             name="sead",
@@ -357,7 +434,7 @@ class TestGetStatus:
             in_use_by_entities=["entity1", "entity2"],
         )
 
-        response = client.get("/api/v1/data-sources/sead/status")
+        response = client.get("/api/v1/data-sources/sead-options.yml/status")
 
         assert response.status_code == 200
         data = response.json()
@@ -369,6 +446,6 @@ class TestGetStatus:
         """Should return 404 when data source not found."""
         mock_service.get_data_source.return_value = None
 
-        response = client.get("/api/v1/data-sources/nonexistent/status")
+        response = client.get("/api/v1/data-sources/nonexistent.yml/status")
 
         assert response.status_code == 404

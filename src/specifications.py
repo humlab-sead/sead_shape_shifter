@@ -3,7 +3,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.config_model import ForeignKeyConfig, TableConfig, TablesConfig
+from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig
 
 # pylint: disable=line-too-long
 
@@ -14,8 +14,8 @@ class ForeignKeyConfigSpecification:
     or None if resolvable after unnesting some local keys are in unnest columns.
     """
 
-    def __init__(self, cfg: "TablesConfig") -> None:
-        self.cfg: TablesConfig = cfg
+    def __init__(self, cfg: "ShapeShiftConfig") -> None:
+        self.cfg: ShapeShiftConfig = cfg
         self.error: str = ""
         self.deferred: bool = False
 
@@ -72,7 +72,7 @@ class ForeignKeyConfigSpecification:
 class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
     """Checks if local and remote keys are present in the actual table data (pandas.DataFrames)."""
 
-    def __init__(self, table_store: dict[str, pd.DataFrame], cfg: "TablesConfig") -> None:
+    def __init__(self, table_store: dict[str, pd.DataFrame], cfg: "ShapeShiftConfig") -> None:
         super().__init__(cfg)
         self.table_store: dict[str, pd.DataFrame] = table_store
 

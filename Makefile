@@ -93,6 +93,22 @@ backend-run:
 		--log-level debug \
 		--host 0.0.0.0 --port $(BACKEND_PORT)
 
+# 		watchfiles --filter python --grace-period 1 \
+# 			'uv run uvicorn backend.app.main:app --log-level info --host 0.0.0.0 --port ${BACKEND_PORT}' \
+# 			backend/app src
+
+
+# 	PYTHONPATH=. watchfiles \
+# 		--filter python \
+# 		"uvicorn backend.app.main:app --log-level debug --host 0.0.0.0 --port ${BACKEND_PORT}" \
+# 		backend/app src
+
+# 	PYTHONPATH=. uvicorn backend.app.main:app \
+# 		--reload  \
+# 		--reload-dir backend/app \
+# 		--log-level debug \
+# 		--host 0.0.0.0 --port $(BACKEND_PORT)
+
 .PHONY: backend-test
 backend-test:
 	@echo "Running backend tests..."

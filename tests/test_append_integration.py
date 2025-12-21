@@ -3,8 +3,8 @@
 import pandas as pd
 import pytest
 
-from src.config_model import TablesConfig
-from src.normalizer import ArbodatSurveyNormalizer, ProcessState
+from src.model import ShapeShiftConfig
+from src.normalizer import ProcessState, ShapeShifter
 
 # pylint: disable=no-member, redefined-outer-name
 
@@ -25,31 +25,33 @@ class TestAppendIntegration:
         )
 
         # Create configuration with append
-        entities_cfg = {
-            "survey": {
-                "keys": ["id"],
-                "columns": ["id", "name", "value"],
-            },
-            "test_entity": {
-                "keys": ["id"],
-                "surrogate_id": "test_id",
-                "columns": ["id", "name", "value"],
-                "depends_on": [],
-                "append": [
-                    {
-                        "type": "fixed",
-                        "values": ["3", "4"],
-                        "columns": ["id"],
-                    }
-                ],
-            },
+        cfg = {
+            "entities": {
+                "survey": {
+                    "keys": ["id"],
+                    "columns": ["id", "name", "value"],
+                },
+                "test_entity": {
+                    "keys": ["id"],
+                    "surrogate_id": "test_id",
+                    "columns": ["id", "name", "value"],
+                    "depends_on": [],
+                    "append": [
+                        {
+                            "type": "fixed",
+                            "values": ["3", "4"],
+                            "columns": ["id"],
+                        }
+                    ],
+                },
+            }
         }
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer: ArbodatSurveyNormalizer = ArbodatSurveyNormalizer(
+        normalizer: ShapeShifter = ShapeShifter(
             table_store={"survey": survey_df},
-            config=TablesConfig(entities_cfg=entities_cfg, options={}),
+            config=ShapeShiftConfig(cfg=cfg),
             default_entity="survey",
         )
         # Run normalization
@@ -76,36 +78,38 @@ class TestAppendIntegration:
         )
 
         # Create configuration
-        entities_cfg = {
-            "survey": {
-                "keys": ["id"],
-                "columns": ["id", "name", "category"],
-            },
-            "source_entity": {
-                "keys": ["id"],
-                "surrogate_id": "source_id",
-                "columns": ["id", "category"],
-            },
-            "target_entity": {
-                "keys": ["id"],
-                "surrogate_id": "target_id",
-                "columns": ["id", "name"],
-                "depends_on": ["source_entity"],
-                "append": [
-                    {
-                        "source": "source_entity",
-                        "columns": ["id", "category"],
-                    }
-                ],
-            },
+        cfg = {
+            "entities": {
+                "survey": {
+                    "keys": ["id"],
+                    "columns": ["id", "name", "category"],
+                },
+                "source_entity": {
+                    "keys": ["id"],
+                    "surrogate_id": "source_id",
+                    "columns": ["id", "category"],
+                },
+                "target_entity": {
+                    "keys": ["id"],
+                    "surrogate_id": "target_id",
+                    "columns": ["id", "name"],
+                    "depends_on": ["source_entity"],
+                    "append": [
+                        {
+                            "source": "source_entity",
+                            "columns": ["id", "category"],
+                        }
+                    ],
+                },
+            }
         }
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
+        normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
+        normalizer.config = ShapeShiftConfig(cfg=cfg)
         normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
@@ -130,33 +134,35 @@ class TestAppendIntegration:
         )
 
         # Create configuration with append and distinct mode
-        entities_cfg = {
-            "survey": {
-                "keys": ["id"],
-                "columns": ["id", "name"],
-            },
-            "test_entity": {
-                "keys": ["id"],
-                "surrogate_id": "test_id",
-                "columns": ["id", "name"],
-                "drop_duplicates": ["id"],
-                "append": [
-                    {
-                        "type": "fixed",
-                        "values": ["1"],  # Another duplicate id=1
-                        "columns": ["id"],
-                    }
-                ],
-                "append_mode": "distinct",
-            },
+        cfg = {
+            "entities": {
+                "survey": {
+                    "keys": ["id"],
+                    "columns": ["id", "name"],
+                },
+                "test_entity": {
+                    "keys": ["id"],
+                    "surrogate_id": "test_id",
+                    "columns": ["id", "name"],
+                    "drop_duplicates": ["id"],
+                    "append": [
+                        {
+                            "type": "fixed",
+                            "values": ["1"],  # Another duplicate id=1
+                            "columns": ["id"],
+                        }
+                    ],
+                    "append_mode": "distinct",
+                },
+            }
         }
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
+        normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
+        normalizer.config = ShapeShiftConfig(cfg=cfg)
         normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
@@ -181,32 +187,34 @@ class TestAppendIntegration:
         )
 
         # Create configuration with append and all mode (default)
-        entities_cfg = {
-            "survey": {
-                "keys": ["id"],
-                "columns": ["id", "name"],
-            },
-            "test_entity": {
-                "keys": ["id"],
-                "surrogate_id": "test_id",
-                "columns": ["id", "name"],
-                "append": [
-                    {
-                        "type": "fixed",
-                        "values": ["1"],  # Duplicate id=1
-                        "columns": ["id"],
-                    }
-                ],
-                "append_mode": "all",
-            },
+        cfg = {
+            "entities": {
+                "survey": {
+                    "keys": ["id"],
+                    "columns": ["id", "name"],
+                },
+                "test_entity": {
+                    "keys": ["id"],
+                    "surrogate_id": "test_id",
+                    "columns": ["id", "name"],
+                    "append": [
+                        {
+                            "type": "fixed",
+                            "values": ["1"],  # Duplicate id=1
+                            "columns": ["id"],
+                        }
+                    ],
+                    "append_mode": "all",
+                },
+            }
         }
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
+        normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
+        normalizer.config = ShapeShiftConfig(cfg=cfg)
         normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
@@ -230,41 +238,43 @@ class TestAppendIntegration:
         )
 
         # Create configuration with multiple append sources
-        entities_cfg = {
-            "survey": {
-                "keys": ["id"],
-                "columns": ["id", "name"],
-            },
-            "test_entity": {
-                "keys": ["id"],
-                "surrogate_id": "test_id",
-                "columns": ["id", "name"],
-                "append": [
-                    {
-                        "type": "fixed",
-                        "values": ["2"],
-                        "columns": ["id"],
-                    },
-                    {
-                        "type": "fixed",
-                        "values": ["3"],
-                        "columns": ["id"],
-                    },
-                    {
-                        "type": "fixed",
-                        "values": ["4"],
-                        "columns": ["id"],
-                    },
-                ],
-            },
+        cfg = {
+            "entities": {
+                "survey": {
+                    "keys": ["id"],
+                    "columns": ["id", "name"],
+                },
+                "test_entity": {
+                    "keys": ["id"],
+                    "surrogate_id": "test_id",
+                    "columns": ["id", "name"],
+                    "append": [
+                        {
+                            "type": "fixed",
+                            "values": ["2"],
+                            "columns": ["id"],
+                        },
+                        {
+                            "type": "fixed",
+                            "values": ["3"],
+                            "columns": ["id"],
+                        },
+                        {
+                            "type": "fixed",
+                            "values": ["4"],
+                            "columns": ["id"],
+                        },
+                    ],
+                },
+            }
         }
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ArbodatSurveyNormalizer.__new__(ArbodatSurveyNormalizer)
+        normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = TablesConfig(entities_cfg=entities_cfg, options={})
+        normalizer.config = ShapeShiftConfig(cfg=cfg)
         normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization

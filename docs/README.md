@@ -39,7 +39,7 @@ These are the primary system documentation files:
   - Comprehensive glossary
 
 - **[UI_ARCHITECTURE.md](UI_ARCHITECTURE.md)** (1,000+ lines)
-  - System architecture (React 18 + FastAPI)
+  - System architecture (Vue3 + FastAPI)
   - Backend and frontend architecture details
   - Design patterns and best practices
   - API design and data flow
@@ -66,7 +66,7 @@ These are the primary system documentation files:
   - Development environment setup
   - System architecture deep-dive
   - Backend development with Python/FastAPI
-  - Frontend development with React
+  - Frontend development with Vue3
   - Testing strategies and procedures
   - API development guide
   - Code organization and patterns

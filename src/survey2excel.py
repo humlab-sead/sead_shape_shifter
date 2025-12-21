@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Normalize an Arbodat "Data Survey" CSV export into several tables
-and write them as sheets in a single Excel file.
+Normalize data from various data sources into structured tables
+and write them as CSVs or sheets in a single Excel file.
 
 Usage:
-    python arbodat_normalize_to_excel.py input.csv output.xlsx
+    python shaper_shifter.py input.csv output.xlsx
 
 """
 
@@ -17,18 +17,26 @@ from typing import Any, Literal
 import click
 from loguru import logger
 
-from src.configuration.provider import get_config_provider
 from src.configuration.resolve import ConfigValue
-from src.configuration.setup import setup_config_store
 from src.extract import extract_translation_map
-from src.normalizer import ArbodatSurveyNormalizer
+from src.model import ShapeShiftConfig
+from src.normalizer import ShapeShifter
 from src.specifications import CompositeConfigSpecification
 from src.utility import load_shape_file, setup_logging
 
 # pylint: disable=no-value-for-parameter
 
 
+def resolve_config(config: ShapeShiftConfig | str) -> ShapeShiftConfig:
+    if isinstance(config, str):
+        return ShapeShiftConfig.from_file(
+            config,
+        )
+    return config
+
+
 async def workflow(
+    config: ShapeShiftConfig,
     target: str,
     translate: bool,
     mode: Literal["xlsx", "csv", "db"],
@@ -37,9 +45,9 @@ async def workflow(
     default_entity: str | None = None,
 ) -> None:
 
-    normalizer: ArbodatSurveyNormalizer = ArbodatSurveyNormalizer(default_entity=default_entity)
+    normalizer: ShapeShifter = ShapeShifter(config=config, default_entity=default_entity)
 
-    if validate_configuration() and validate_then_exit:
+    if validate_configuration(config) and validate_then_exit:
         return
 
     await normalizer.normalize()
@@ -55,7 +63,7 @@ async def workflow(
     normalizer.add_system_id_columns()
     normalizer.move_keys_to_front()
 
-    link_cfgs: dict[str, dict[str, Any]] = ConfigValue[dict[str, dict[str, dict[str, int]]]]("mappings").resolve() or {}
+    link_cfgs: dict[str, dict[str, Any]] = config.mappings
     normalizer.map_to_remote(link_cfgs)
 
     normalizer.store(target=target, mode=mode)
@@ -67,9 +75,9 @@ async def workflow(
     #         click.echo(f"  - {name}: {len(table)} rows")
 
 
-def validate_configuration() -> bool:
+def validate_configuration(config: ShapeShiftConfig) -> bool:
     specification = CompositeConfigSpecification()
-    errors = specification.is_satisfied_by(get_config_provider().get_config().data)
+    errors = specification.is_satisfied_by(config.cfg)
     if errors:
         for error in specification.errors:
             logger.error(f"Configuration error: {error}")
@@ -105,13 +113,8 @@ def main(
     validate_then_exit: bool = False,
 ) -> None:
     """
-    Normalize an Arbodat "Data Survey" CSV export into several tables.
-
-    Reads INPUT_CSV and writes normalized data as multiple sheets to TARGET.
-
-    The input CSV should contain one row per Sample × Taxon combination, with
-    columns identifying projects, sites, features, samples, and taxa.
-    """
+    Normalize data from various data sources into structured tables.
+    Write them as CSVs or sheets in a single Excel file at TARGET location."""
     if config_file:
         click.echo(f"Using configuration file: {config_file}")
 
@@ -121,20 +124,14 @@ def main(
     if not config_file or not Path(config_file).exists():
         raise FileNotFoundError(f"Configuration file not found: {config_file or 'undefined'}")
 
-    asyncio.run(
-        setup_config_store(
-            config_file,
-            env_prefix="SEAD_NORMALIZER",
-            env_filename=env_file or os.path.join(os.path.dirname(__file__), "input", ".env"),
-            db_opts_path="",
-        )
-    )
+    config: ShapeShiftConfig = ShapeShiftConfig.from_file(config_file, env_file=env_file, env_prefix="SEAD_NORMALIZER")
 
     # Configure logging AFTER setup_config_store to override its logging configuration
     setup_logging(verbose=verbose, log_file=log_file)
 
     asyncio.run(
         workflow(
+            config=config,
             default_entity=default_entity,
             target=target,
             translate=translate,

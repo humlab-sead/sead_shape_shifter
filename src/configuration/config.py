@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import io
 from abc import abstractmethod
+from datetime import datetime
 from inspect import isclass
 from os.path import join, normpath
 from pathlib import Path
@@ -107,6 +108,49 @@ class Config(ConfigLike):
         items = [data] if isinstance(data, tuple) else data.items() if isinstance(data, dict) else data
         for key, value in items:
             dotset(self.data, key, value)
+
+    def save(self, updates: dict[str, Any] | None = None) -> None:
+        """Save configuration to the YAML file.
+
+        This method preserves the raw YAML structure including @include:, @value:, and
+        environment variables like ${VAR}. It only updates specific sections provided
+        in the updates parameter.
+
+        Args:
+            updates: Dict of dotted paths to values to update (e.g., {"options:data_sources": {...}})
+                    If None, saves self.data as-is (NOT RECOMMENDED for production use)
+        """
+        if not self.filename:
+            raise ValueError("Cannot save configuration: no filename specified")
+
+        file_path = Path(self.filename)
+
+        # Create backup before saving
+        if file_path.exists():
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = file_path.parent / f"{file_path.stem}.backup.{timestamp}{file_path.suffix}"
+            backup_path.write_text(file_path.read_text(encoding="utf-8"), encoding="utf-8")
+            logger.debug(f"Created backup at {backup_path}")
+
+        # Read current raw YAML to preserve structure
+        with open(self.filename, "r", encoding="utf-8") as f:
+            raw_config = yaml.safe_load(f) or {}
+
+        # Apply updates to raw config
+        if updates:
+            for key, value in updates.items():
+                dotset(raw_config, key, value)
+        else:
+            # Fallback: save resolved data (will lose directives and env vars)
+            logger.warning("Saving resolved configuration - env vars and directives will be expanded!")
+            raw_config = self.data
+
+        # Write updated configuration
+        with open(self.filename, "w", encoding="utf-8") as f:
+            yaml.dump(raw_config, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+        logger.info(f"Saved configuration to {self.filename}")
 
     def exists(self, *keys: str) -> bool:
         return False if self.data is None else dotexists(self.data, *keys)

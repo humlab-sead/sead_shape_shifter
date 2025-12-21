@@ -6,6 +6,7 @@ This implementation provides a clean, extensible system for managing data source
 
 ## Architecture
 
+FIXME: Describe new field attribute `aliases` that allows mapping multiple config names to the same field.
 ### 1. Core Components
 
 #### `input/driver_schemas.yml`

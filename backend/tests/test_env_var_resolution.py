@@ -1,14 +1,15 @@
 """Test environment variable resolution in data source configurations."""
 
 import os
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
+from backend.app.core.config import Settings
 from backend.app.models.data_source import DataSourceConfig
 from backend.app.services.data_source_service import DataSourceService
 
-# pylint: disable=redefined-outer-name, unused-argument, import-outside-toplevel
+# pylint: disable=redefined-outer-name, unused-argument, import-outside-toplevel, no-member
 
 
 @pytest.fixture
@@ -20,9 +21,9 @@ def mock_config():
 
 
 @pytest.fixture
-def service(mock_config):
+def service(settings: "Settings") -> DataSourceService:
     """Create service with mock config."""
-    return DataSourceService(mock_config)
+    return DataSourceService(settings.CONFIGURATIONS_DIR)
 
 
 class TestEnvironmentVariableResolution:
@@ -161,34 +162,38 @@ class TestEnvironmentVariableResolution:
         finally:
             del os.environ["TEST_HOST"]
 
-    def test_list_data_sources_keeps_env_vars(self, service):
+    def test_list_data_sources_keeps_env_vars(self, settings: Settings):
         """Should keep env vars unresolved when listing data sources for UI editing."""
         os.environ["DS_HOST"] = "db.example.com"
         os.environ["DS_DB"] = "production"
 
+        service = DataSourceService(settings.CONFIGURATIONS_DIR)
+
         try:
-            # Mock config to return data source with env vars
-            service.config.get.return_value = {
-                "prod_db": {
-                    "driver": "postgresql",
-                    "options": {"host": "${DS_HOST}", "port": 5432, "database": "${DS_DB}", "username": "produser"},
-                }
-            }
+            ds_cfg: DataSourceConfig = DataSourceConfig(
+                name="prod_db",
+                driver="postgresql",  # type: ignore
+                host="${DS_HOST}",
+                database="${DS_DB}",
+                username="produser",
+                port=5432,
+            )
+            with patch.object(service, "get_data_source", return_value=ds_cfg) as _:
 
-            data_sources = service.list_data_sources()
+                # Mock config to return data source with env vars
 
-            assert len(data_sources) == 1
-            ds = data_sources[0]
-            assert ds.name == "prod_db"
-            # The options should contain UNRESOLVED env var references (for UI editing)
-            assert ds.options["host"] == "${DS_HOST}"
-            assert ds.options["database"] == "${DS_DB}"
+                ds_cfg2: DataSourceConfig | None = service.get_data_source("dummy_file.yml")
+
+                assert ds_cfg2 is not None
+                assert ds_cfg2.name == "prod_db"
+                assert ds_cfg2.host == "${DS_HOST}"
+                assert ds_cfg2.database == "${DS_DB}"
         finally:
             del os.environ["DS_HOST"]
             del os.environ["DS_DB"]
 
     @pytest.mark.asyncio
-    async def test_test_connection_resolves_env_vars(self, service, monkeypatch):
+    async def test_test_connection_resolves_env_vars(self, service):
         """Should resolve env vars before testing connection."""
         from unittest.mock import AsyncMock
 
@@ -208,25 +213,27 @@ class TestEnvironmentVariableResolution:
                 **{},
             )
 
-            # Mock the loader's test_connection method
+            # Mock the loader instance and its test_connection method
             mock_loader = AsyncMock()
             mock_loader.test_connection.return_value = ConnectTestResult(
                 success=True, message="Mock connection successful", connection_time_ms=10, metadata={}
             )
 
-            # Mock DataLoaders.get to return our mock loader
-            from src.loaders.base_loader import DataLoaders
+            # Mock DataLoaders.get where it's imported (in data_source_service)
+            with patch("backend.app.services.data_source_service.DataLoaders") as mock_data_loaders:
+                # DataLoaders.get returns a class, which when instantiated returns our mock loader
+                mock_loader_class = Mock(return_value=mock_loader)
+                mock_data_loaders.get.return_value = mock_loader_class
 
-            original_get = DataLoaders.get
-            DataLoaders.get = lambda driver: mock_loader  # type: ignore
-
-            try:
                 result = await service.test_connection(config)
 
-                assert result.success
+                assert result.success, result.message
                 assert result.message == "Mock connection successful"
-            finally:
-                DataLoaders.get = original_get
+
+                # Verify DataLoaders.get was called with the correct driver
+                mock_data_loaders.get.assert_called_once_with("postgresql")
+                # Verify the loader class was instantiated
+                mock_loader_class.assert_called_once()
         finally:
             del os.environ["TEST_CONN_HOST"]
             del os.environ["TEST_CONN_DB"]

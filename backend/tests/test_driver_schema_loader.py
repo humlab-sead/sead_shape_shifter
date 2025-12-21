@@ -43,6 +43,7 @@ test_driver:
       default: localhost
       description: Host name
       placeholder: localhost
+      aliases: []
     
     - name: port
       type: integer

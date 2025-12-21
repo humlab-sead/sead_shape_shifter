@@ -3,8 +3,8 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.config_model import ForeignKeyConfig, TableConfig, TablesConfig
 from src.constraints import ForeignKeyConstraintValidator
+from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig
 from src.specifications import ForeignKeyDataSpecification
 
 
@@ -54,7 +54,7 @@ def _resolve_link_opts(fk: ForeignKeyConfig, validator: ForeignKeyConstraintVali
     return opts
 
 
-def link_entity(entity_name: str, config: TablesConfig, table_store: dict[str, pd.DataFrame]) -> bool:
+def link_entity(entity_name: str, config: ShapeShiftConfig, table_store: dict[str, pd.DataFrame]) -> bool:
     """Link foreign keys for the specified entity in the data store."""
     table_cfg: TableConfig = config.get_table(entity_name=entity_name)
     foreign_keys: list[ForeignKeyConfig] = table_cfg.foreign_keys or []

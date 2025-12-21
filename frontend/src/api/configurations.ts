@@ -121,4 +121,65 @@ export const configurationsApi = {
       data,
     })
   },
+
+  /**
+   * Get currently active configuration name
+   */
+  getActive: async (): Promise<{ name: string | null }> => {
+    return apiRequest<{ name: string | null }>({
+      method: 'GET',
+      url: '/configurations/active/name',
+    })
+  },
+
+  /**
+   * Activate (load) a configuration
+   */
+  activate: async (name: string): Promise<Configuration> => {
+    return apiRequest<Configuration>({
+      method: 'POST',
+      url: `/configurations/${name}/activate`,
+    })
+  },
+
+  /**
+   * Get data sources connected to a configuration
+   */
+  getDataSources: async (name: string): Promise<Record<string, string>> => {
+    return apiRequest<Record<string, string>>({
+      method: 'GET',
+      url: `/configurations/${name}/data-sources`,
+    })
+  },
+
+  /**
+   * Connect a data source to a configuration
+   */
+  connectDataSource: async (
+    name: string,
+    sourceName: string,
+    sourceFilename: string
+  ): Promise<Configuration> => {
+    return apiRequest<Configuration>({
+      method: 'POST',
+      url: `/configurations/${name}/data-sources`,
+      data: {
+        source_name: sourceName,
+        source_filename: sourceFilename,
+      },
+    })
+  },
+
+  /**
+   * Disconnect a data source from a configuration
+   */
+  disconnectDataSource: async (
+    name: string,
+    sourceName: string
+  ): Promise<Configuration> => {
+    return apiRequest<Configuration>({
+      method: 'DELETE',
+      url: `/configurations/${name}/data-sources/${sourceName}`,
+    })
+  },
 }

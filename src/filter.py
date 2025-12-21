@@ -3,7 +3,7 @@ from venv import logger
 
 import pandas as pd
 
-from src.config_model import TableConfig
+from src.model import TableConfig
 from src.utility import Registry
 
 

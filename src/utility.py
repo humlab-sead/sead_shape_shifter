@@ -4,11 +4,21 @@ import pkgutil
 import sys
 import unicodedata
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable, Generic, Literal, Self, TypeVar
 
 import pandas as pd
 import yaml
 from loguru import logger
+
+
+def find_parent_with(path: Path | str, filename: str) -> Path:
+    """Get a path relative to the project root."""
+    path = Path(path) if isinstance(path, str) else path
+    while not (path / filename).exists():
+        path = path.parent
+    project_root: Path = path
+    return project_root
 
 
 def unique(seq: list[Any] | None) -> list[Any]:

@@ -5,7 +5,7 @@ from typing import Any, Self
 import pandas as pd
 from loguru import logger
 
-from src.config_model import ForeignKeyConfig, ForeignKeyConstraints
+from src.model import ForeignKeyConfig, ForeignKeyConstraints
 from src.utility import Registry
 
 # pylint: disable=line-too-long, unnecessary-pass

@@ -2,222 +2,233 @@
 
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 from loguru import logger
 
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig, DataSourceStatus, DataSourceTestResult
-from src.config_model import DataSourceConfig as CoreDataSourceConfig
-from src.configuration.interface import ConfigLike
 from src.loaders.base_loader import ConnectTestResult, DataLoader, DataLoaders
+from src.model import DataSourceConfig as CoreDataSourceConfig
 
 
 class DataSourceService:
-    """Service for managing data source connections within a configuration."""
+    """
+    Service for managing global data source files.
 
-    def __init__(self, config: ConfigLike):
-        """Initialize the data source service.
+    Data sources are stored as separate YAML files in the input/ directory
+    (e.g., sead-options.yml, arbodat-data-options.yml) and referenced by
+    configurations using @include directives.
+    """
+
+    def __init__(self, data_sources_dir: Path | str) -> None:
+        """Initialize the data source service."""
+        self.data_sources_dir: Path = Path(data_sources_dir)
+
+    def _resolve_data_source_path(self, filename: str | Path, raise_if_not_found: bool = False) -> Path:
+        """Resolve the full path to a data source file."""
+        filename = Path(filename)
+        if filename.suffix != ".yml":
+            filename = filename.with_suffix(".yml")
+        path: Path = Path(self.data_sources_dir) / filename
+        if raise_if_not_found and not path.exists():
+            raise ValueError(f"Data source file '{filename}' not found")
+        return path
+
+    def _list_data_source_files(self) -> list[Path]:
+        """List all data source YAML files in the input directory.
+
+        Looks for files matching patterns like *.yml and test for a top-level "driver" key.
+
+        Returns:
+            List of data source file paths
+        """
+        if not self.data_sources_dir.exists():
+            return []
+
+        files: list[Path] = []
+        for file in self.data_sources_dir.glob("*.yml"):
+            try:
+                with open(file, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                if isinstance(data, dict) and "driver" in data:
+                    files.append(file)
+            except Exception as e:  # pylint: disable=broad-except
+                logger.error(f"Failed to read data source file {file}: {e}")
+                continue
+
+        return sorted(files)
+
+    def _read_data_source_file(self, file_path: Path) -> dict[str, Any]:
+        """Read a data source file preserving environment variables.
 
         Args:
-            config: Application configuration containing data sources
-        """
-        self.config: ConfigLike = config
-        self._connections: dict[str, Any] = {}  # Connection pool (future)
-
-    def _get_raw_data_sources_from_yaml(self) -> dict[str, Any]:
-        """Get raw data sources from YAML without env var resolution.
-
-        This method reads data sources configuration directly from the YAML file(s)
-        to preserve environment variable references like ${SEAD_HOST}.
+            file_path: Path to data source YAML file
 
         Returns:
-            Dictionary of data source configurations with unresolved env vars
+            Data source configuration dict with unresolved env vars
         """
         try:
-            # Get the main config file path from the config object
-            config_path = getattr(self.config, "filename", None) or getattr(self.config, "source", None)
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
 
-            # FIXME: #25 Logic for finding raw config file is flawed - needs improvement
-            # if not config_path:
-            #     # Fallback to looking in default locations
-            #     possible_paths = [
-            #         Path("input/arbodat.yml"),
-            #         Path("input/arbodat-database.yml"),
-            #         Path("config.yml"),
-            #     ]
-            #     config_path = next((p for p in possible_paths if p.exists()), None)
-
-            if not config_path:
-                logger.warning("Could not find config file to read raw data sources")
+            if not isinstance(data, dict):
+                logger.warning(f"Data source file {file_path} is not a dict")
                 return {}
 
-            config_path = Path(config_path)
-            if not config_path.exists():
-                logger.warning(f"Config file not found: {config_path}")
-                return {}
-
-            # Read raw YAML
-            with open(config_path, "r", encoding="utf-8") as f:
-                raw_config = yaml.safe_load(f)
-
-            if not raw_config or not isinstance(raw_config, dict):
-                return {}
-
-            # Extract data sources from options section
-            options = raw_config.get("options", {})
-            data_sources = options.get("data_sources", {})
-
-            # Handle @include directives by reading referenced files
-            resolved_sources = {}
-            for name, source_config in data_sources.items():
-                if isinstance(source_config, str) and source_config.startswith("@include:"):
-                    # Load from included file
-                    include_path = source_config.replace("@include:", "").strip()
-                    include_file = config_path.parent / include_path
-                    if include_file.exists():
-                        with open(include_file, "r", encoding="utf-8") as f:
-                            resolved_sources[name] = yaml.safe_load(f)
-                    else:
-                        logger.warning(f"Included file not found: {include_file}")
-                else:
-                    resolved_sources[name] = source_config
-
-            return resolved_sources
-
+            return data
         except Exception as e:  # pylint: disable=broad-except
-            logger.warning(f"Failed to read raw data sources from YAML: {e}")
+            logger.error(f"Failed to read data source file {file_path}: {e}")
             return {}
 
+    def _write_data_source_file(self, file_path: Path, data: dict[str, Any]) -> None:
+        """Write data source configuration to file.
+
+        Args:
+            file_path: Path to data source YAML file
+            data: Data source configuration dict
+        """
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+            logger.debug(f"Wrote data source file: {file_path}")
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error(f"Failed to write data source file {file_path}: {e}")
+            raise
+
     def list_data_sources(self) -> list[DataSourceConfig]:
-        """List all configured data sources.
+        """List all global data source files.
 
         Returns:
-            List of data source configurations with unresolved env vars (as they appear in config)
+            List of data source configurations with unresolved env vars
 
         Note:
-            Environment variables are NOT resolved here. They remain as ${VAR_NAME} so that
-            the UI can display and edit them. Resolution happens only when testing connections.
+            Data sources are loaded from separate YAML files in input/ directory.
+            The filename (without extension) serves as the file identifier.
+            Environment variables remain as ${VAR_NAME} for UI editing.
         """
-        # Try to get raw data sources from YAML first (preserves env vars)
-        data_sources_dict = self._get_raw_data_sources_from_yaml()
-
-        # Fallback to config object if YAML reading failed
-        if not data_sources_dict:
-            data_sources_dict = self.config.get("options:data_sources") or {}
-
         result: list[DataSourceConfig] = []
-        for name, config_dict in data_sources_dict.items():
-            if not isinstance(config_dict, dict):
-                logger.warning(f"Data source '{name}' config is not a dict, skipping")
-                continue
+
+        for file_path in self._list_data_source_files():
             try:
-                if "name" not in config_dict:
-                    config_dict["name"] = name
-                # Don't resolve env vars - keep them as ${VAR_NAME} for UI editing
-                ds_config = DataSourceConfig(**config_dict)
+                data: dict[str, Any] = self._read_data_source_file(file_path)
+                if not data:
+                    continue
+
+                data["filename"] = file_path.name
+                ds_config = DataSourceConfig(name=file_path.stem, **data)
                 result.append(ds_config)
+
             except Exception as e:  # pylint: disable=broad-except
-                logger.warning(f"Failed to parse data source '{name}': {e}")
+                logger.warning(f"Failed to load data source from {file_path}: {e}")
                 continue
 
         return result
 
-    def get_data_source(self, name: str) -> Optional[DataSourceConfig]:
-        """Get a specific data source configuration.
+    def get_data_source(self, filename: str | Path) -> DataSourceConfig | None:
+        """Get a specific data source by filename.
 
         Args:
-            name: Data source name
+            filename: Data source filename (with or without .yml extension)
+
+        Returns:
+            Data source configuration or None if not found
         """
-        return next((ds for ds in self.list_data_sources() if ds.name == name), None)
+        file_path: Path = self._resolve_data_source_path(filename)
+        if not file_path.exists():
+            return None
+        try:
+            data: dict[str, Any] = self._read_data_source_file(file_path)
+            if not data:
+                return None
 
-    def create_data_source(self, config: DataSourceConfig) -> DataSourceConfig:
-        """Create a new data source.
+            data["filename"] = file_path.name
+            return DataSourceConfig(name=file_path.stem, **data)
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error(f"Failed to get data source {filename}: {e}")
+            return None
+
+    def create_data_source(self, filename: str | Path, config: DataSourceConfig) -> DataSourceConfig:
+        """Create a new global data source file.
 
         Args:
+            filename: Filename for the data source (e.g., "my-database-options.yml")
             config: Data source configuration
 
         Returns:
             Created data source configuration
 
         Raises:
-            ValueError: If data source with same name already exists
+            ValueError: If data source file already exists
         """
-        existing: DataSourceConfig | None = self.get_data_source(config.name)
-        if existing:
-            raise ValueError(f"Data source '{config.name}' already exists")
+        file_path: Path = self._resolve_data_source_path(filename)
 
-        # Add to config
-        data_sources_dict: dict[str, Any] = self.config.get("options:data_sources") or {}
-        config_dict = config.model_dump(exclude_none=True, exclude={"name"})
+        if file_path.exists():
+            raise ValueError(f"Data source file '{filename}' already exists")
 
-        # Handle SecretStr password
+        config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name", "filename"})
+
         if config.password:
             config_dict["password"] = config.password.get_secret_value()
 
-        data_sources_dict[config.name] = config_dict
-        self.config.update({"options:data_sources": data_sources_dict})
+        self._write_data_source_file(file_path, config_dict)
 
-        logger.info(f"Created data source '{config.name}' (driver: {config.driver})")
-        return config
+        logger.info(f"Created data source file '{filename}' (driver: {config.driver})")
 
-    def update_data_source(self, name: str, config: DataSourceConfig) -> DataSourceConfig:
-        """Update an existing data source.
+        result: DataSourceConfig = config.model_copy()
+        result.filename = str(filename)
+        result.name = file_path.stem
+        return result
+
+    def update_data_source(self, filename: str | Path, config: DataSourceConfig) -> DataSourceConfig:
+        """Update an existing data source file.
 
         Args:
-            name: Current data source name
+            filename: Current filename (with or without .yml)
             config: New configuration
 
         Returns:
             Updated data source configuration
 
         Raises:
-            ValueError: If data source doesn't exist
+            ValueError: If data source file not found
         """
-        existing: DataSourceConfig | None = self.get_data_source(name)
-        if not existing:
-            raise ValueError(f"Data source '{name}' not found")
+        file_path: Path = self._resolve_data_source_path(filename)
 
-        data_sources_dict: dict[str, Any] = self.config.get("options:data_sources") or {}
-        if name != config.name:
-            del data_sources_dict[name]
+        if not file_path.exists():
+            raise ValueError(f"Data source file '{filename}' not found")
 
-        config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name"})
+        config_dict: dict[str, Any] = config.model_dump(exclude_none=True, exclude={"name", "filename"})
 
         if config.password:
             config_dict["password"] = config.password.get_secret_value()
 
-        data_sources_dict[config.name] = config_dict
-        self.config.update({"options:data_sources": data_sources_dict})
+        self._write_data_source_file(file_path, config_dict)
 
-        logger.info(f"Updated data source '{name}' -> '{config.name}'")
-        return config
+        logger.info(f"Updated data source file '{filename}' (driver: {config.driver})")
 
-    def delete_data_source(self, name: str) -> None:
-        """Delete a data source.
+        # Return with filename set
+        result: DataSourceConfig = config.model_copy()
+        result.filename = str(filename)
+        result.name = file_path.stem
+        return result
+
+    def delete_data_source(self, filename: str | Path) -> None:
+        """Delete a data source file.
 
         Args:
-            name: Data source name
+            filename: Data source filename (with or without .yml)
 
         Raises:
-            ValueError: If data source doesn't exist or is in use
+            ValueError: If data source file not found
         """
-        existing: DataSourceConfig | None = self.get_data_source(name)
-        if not existing:
-            raise ValueError(f"Data source '{name}' not found")
+        file_path: Path = self._resolve_data_source_path(filename)
 
-        # Check if in use by entities
-        entities_using: list[str] = self._get_entities_using_data_source(name)
-        if entities_using:
-            raise ValueError(f"Cannot delete data source '{name}': in use by entities: {', '.join(entities_using)}")
+        if file_path.exists():
+            file_path.unlink()
 
-        # Remove from config
-        data_sources_dict: dict[str, Any] = self.config.get("options:data_sources") or {}
-        del data_sources_dict[name]
-        self.config.update({"options:data_sources": data_sources_dict})
-
-        logger.info(f"Deleted data source '{name}'")
+        logger.info(f"Deleted data source file '{filename}'")
 
     async def test_connection(self, config: DataSourceConfig) -> DataSourceTestResult:
         """Test a data source connection.
@@ -231,9 +242,10 @@ class DataSourceService:
         start_time: float = time.time()
 
         try:
-            config = config.resolve_config_env_vars()
+            # Environment variable resolution happens in the mapper
             core_ds_cfg: CoreDataSourceConfig = DataSourceMapper().to_core_config(config)
-            loader: DataLoader = DataLoaders.get(core_ds_cfg.driver)
+            loader_cls: type[DataLoader] = DataLoaders.get(core_ds_cfg.driver)
+            loader: DataLoader = loader_cls(core_ds_cfg)
             result: ConnectTestResult = await loader.test_connection()
             return DataSourceTestResult.from_core_result(result)
         except Exception as e:  # pylint: disable=broad-except
@@ -241,35 +253,22 @@ class DataSourceService:
             logger.error(f"Connection test failed for '{config.name}': {e}")
             return DataSourceTestResult.create_failure(message=f"Connection failed: {str(e)}", connection_time_ms=elapsed_ms)
 
-    def get_status(self, name: str) -> DataSourceStatus:
+    def get_status(self, filename: str | Path) -> DataSourceStatus:
         """Get current status of a data source.
 
         Args:
-            name: Data source name
+            filename: Data source filename
 
         Returns:
-            Current status including entities using it
+            Current status
         """
-        config: DataSourceConfig | None = self.get_data_source(name)
+        config: DataSourceConfig | None = self.get_data_source(filename)
         if not config:
-            raise ValueError(f"Data source '{name}' not found")
+            raise ValueError(f"Data source file '{filename}' not found")
 
-        entities_using: list[str] = self._get_entities_using_data_source(name)
-
-        return DataSourceStatus(name=name, is_connected=name in self._connections, in_use_by_entities=entities_using, last_test_result=None)
-
-    def _get_entities_using_data_source(self, data_source_name: str) -> list[str]:
-        """Find all entities using a specific data source.
-
-        Args:
-            data_source_name: Name of data source
-
-        Returns:
-            List of entity names
-        """
-
-        return [
-            entity_name
-            for entity_name, entity_config in (self.config.get("entities") or {}).items()
-            if isinstance(entity_config, dict) and entity_config.get("data_source") == data_source_name
-        ]
+        return DataSourceStatus(
+            name=config.name,
+            is_connected=False,  # No persistent connections yet
+            in_use_by_entities=[],  # Would need to scan all configs
+            last_test_result=None,
+        )

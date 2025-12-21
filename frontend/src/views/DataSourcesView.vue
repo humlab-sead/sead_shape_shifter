@@ -2,10 +2,26 @@
   <v-container fluid class="pa-6">
     <v-row>
       <v-col>
-        <h1 class="text-h4 mb-2">Data Sources</h1>
+        <h1 class="text-h4 mb-2">Global Data Sources</h1>
         <p class="text-body-2 text-grey">
-          Manage database and file connections for your configurations
+          Manage global data source files. These can be connected to configurations via @include references.
         </p>
+      </v-col>
+    </v-row>
+
+    <!-- Info Banner -->
+    <v-row class="mt-2">
+      <v-col>
+        <v-alert
+          type="info"
+          variant="tonal"
+          density="compact"
+          border="start"
+        >
+          <strong>Shared Data Sources</strong> - Data sources are stored as separate YAML files
+          and can be connected to multiple configurations. To connect a data source to a
+          configuration, go to the configuration's "Data Sources" tab.
+        </v-alert>
       </v-col>
     </v-row>
 
@@ -244,6 +260,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
+import { useConfigurationStore } from '@/stores/configuration'
 import {
   getDriverDisplayName,
   getDriverIcon,
@@ -383,6 +400,7 @@ async function handleRefresh() {
 
 // Lifecycle
 onMounted(async () => {
+  // Fetch global data source files
   await dataSourceStore.fetchDataSources()
 })
 </script>

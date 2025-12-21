@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, patch
 import pandas as pd
 import pytest
 
-from src.config_model import TablesConfig
-from src.normalizer import ArbodatSurveyNormalizer
+from src.model import ShapeShiftConfig
+from src.normalizer import ShapeShifter
 from tests.decorators import with_test_config
 
 # pylint: disable=no-member, redefined-outer-name, unused-argument
@@ -28,71 +28,77 @@ def sample_survey_data():
 @pytest.fixture
 def config_with_append():
     """Create a configuration with append settings."""
-    config_dict = {
-        "default": {"source": None, "depends_on": []},
-        "site": {
-            "surrogate_id": "site_id",
-            "keys": ["site_name"],
-            "columns": ["site_name", "latitude", "longitude"],
-            "depends_on": [],
-            "append": [
-                {
-                    "source": None,
-                    "type": "fixed",
-                    "values": [["Default Site", 0.0, 0.0]],
-                }
-            ],
-            "append_mode": "all",
-        },
+    cfg = {
+        "entities": {
+            "default": {"source": None, "depends_on": []},
+            "site": {
+                "surrogate_id": "site_id",
+                "keys": ["site_name"],
+                "columns": ["site_name", "latitude", "longitude"],
+                "depends_on": [],
+                "append": [
+                    {
+                        "source": None,
+                        "type": "fixed",
+                        "values": [["Default Site", 0.0, 0.0]],
+                    }
+                ],
+                "append_mode": "all",
+            },
+        }
     }
-    return TablesConfig(entities_cfg=config_dict, options={})
+    return ShapeShiftConfig(cfg=cfg)
 
 
 @pytest.fixture
 def config_with_source_append():
     """Create a configuration with source entity append."""
-    config_dict = {
-        "default": {
-            "surrogate_id": "survey_id",
-            "keys": ["survey_name"],
-            "columns": ["survey_name", "country"],
-            "depends_on": [],
-        },
-        "site": {
-            "surrogate_id": "site_id",
-            "keys": ["site_name"],
-            "columns": ["site_name", "country"],
-            "depends_on": ["default"],
-            "append": [{"source": "default"}],
-            "append_mode": "all",
-        },
+    cfg = {
+        "entities": {
+            "default": {
+                "surrogate_id": "survey_id",
+                "keys": ["survey_name"],
+                "columns": ["survey_name", "country"],
+                "depends_on": [],
+            },
+            "site": {
+                "surrogate_id": "site_id",
+                "keys": ["site_name"],
+                "columns": ["site_name", "country"],
+                "depends_on": ["default"],
+                "append": [{"source": "default"}],
+                "append_mode": "all",
+            },
+        }
     }
-    return TablesConfig(entities_cfg=config_dict, options={})
+    return ShapeShiftConfig(cfg=cfg)
 
 
 @pytest.fixture
 def config_with_distinct_mode():
     """Create a configuration with distinct append mode."""
-    config_dict = {
-        "default": {"source": None, "depends_on": []},
-        "site": {
-            "surrogate_id": "site_id",
-            "keys": ["site_name"],
-            "columns": ["site_name", "latitude", "longitude"],
-            "depends_on": [],
-            "append": [
-                {
-                    "type": "fixed",
-                    "values": [
-                        ["Site A", 45.1, 12.1],
-                        ["New Site", 48.0, 16.0],
-                    ],
-                }
-            ],
-            "append_mode": "distinct",
-        },
+    cfg = {
+        "entities": {
+            "default": {"source": None, "depends_on": []},
+            "site": {
+                "surrogate_id": "site_id",
+                "keys": ["site_name"],
+                "columns": ["site_name", "latitude", "longitude"],
+                "depends_on": [],
+                "append": [
+                    {
+                        "type": "fixed",
+                        "values": [
+                            ["Site A", 45.1, 12.1],
+                            ["New Site", 48.0, 16.0],
+                        ],
+                    }
+                ],
+                "append_mode": "distinct",
+            },
+        }
     }
-    return TablesConfig(entities_cfg=config_dict, options={})
+    return ShapeShiftConfig(cfg=cfg)
 
 
 class TestAppendProcessingBasic:
@@ -103,7 +109,7 @@ class TestAppendProcessingBasic:
     async def test_append_fixed_data(self, sample_survey_data, config_with_append, test_provider):  # pylint: disable=unused-argument
         """Test appending fixed data to an entity."""
         table_store = {"default": sample_survey_data.copy()}
-        normalizer = ArbodatSurveyNormalizer(default_entity="default", config=config_with_append, table_store=table_store)
+        normalizer = ShapeShifter(default_entity="default", config=config_with_append, table_store=table_store)
 
         await normalizer.normalize()
 
@@ -119,7 +125,7 @@ class TestAppendProcessingBasic:
     async def test_append_mode_all(self, sample_survey_data, config_with_append, test_provider):  # pylint: disable=unused-argument
         """Test append mode 'all' keeps duplicates."""
         table_store = {"default": sample_survey_data.copy()}
-        normalizer = ArbodatSurveyNormalizer(default_entity="default", config=config_with_append, table_store=table_store)
+        normalizer = ShapeShifter(default_entity="default", config=config_with_append, table_store=table_store)
 
         await normalizer.normalize()
 
@@ -134,7 +140,7 @@ class TestAppendProcessingBasic:
     ):  # pylint: disable=unused-argument
         """Test append mode 'distinct' removes duplicates."""
         table_store = {"default": sample_survey_data.copy()}
-        normalizer = ArbodatSurveyNormalizer(default_entity="default", config=config_with_distinct_mode, table_store=table_store)
+        normalizer = ShapeShifter(default_entity="default", config=config_with_distinct_mode, table_store=table_store)
 
         await normalizer.normalize()
 
@@ -153,35 +159,36 @@ class TestAppendProcessingSQL:
     async def test_append_sql_query(self, sample_survey_data, test_provider):  # pylint: disable=unused-argument
         """Test appending data from SQL query."""
 
-        config_with_sql_append = TablesConfig(
-            entities_cfg={
-                "survey": {
-                    "source": None,
-                    "columns": ["site_name", "latitude", "longitude", "country"],
-                    "depends_on": [],
-                },
-                "site": {
-                    "surrogate_id": "site_id",
-                    "keys": ["site_name"],
-                    "columns": ["site_name", "latitude", "longitude"],
-                    "depends_on": [],
-                    "append": [
-                        {
-                            "data_source": "test_sql_source",
-                            "type": "sql",
-                            "values": "sql: SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude",
-                        }
-                    ],
-                    "append_mode": "all",
-                },
-            },
-            options={"data_sources": {"test_sql_source": {}}},
+        config_with_sql_append = ShapeShiftConfig(
+            cfg={
+                "entities": {
+                    "survey": {
+                        "source": None,
+                        "columns": ["site_name", "latitude", "longitude", "country"],
+                        "depends_on": [],
+                    },
+                    "site": {
+                        "surrogate_id": "site_id",
+                        "keys": ["site_name"],
+                        "columns": ["site_name", "latitude", "longitude"],
+                        "depends_on": [],
+                        "append": [
+                            {
+                                "data_source": "test_sql_source",
+                                "type": "sql",
+                                "values": "sql: SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude",
+                            }
+                        ],
+                        "append_mode": "all",
+                    },
+                }
+            }
         )
         sub_configs = list(config_with_sql_append.get_table("site").get_sub_table_configs())
         assert len(sub_configs) == 2  # Base + SQL append
 
         table_store = {"survey": sample_survey_data.copy()}
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config_with_sql_append, table_store=table_store)
+        normalizer = ShapeShifter(default_entity="survey", config=config_with_sql_append, table_store=table_store)
 
         sql_result = pd.DataFrame({"site_name": ["SQL Site"], "latitude": [50.0], "longitude": [15.0], "country": ["Sweden"]})
 
@@ -200,32 +207,44 @@ class TestAppendProcessingSQL:
 class TestAppendProcessingMultiple:
     """Tests for multiple append configurations."""
 
+    @pytest.fixture
+    def survey_only_config(self) -> ShapeShiftConfig:
+        return ShapeShiftConfig(
+            cfg={
+                "entities": {
+                    "survey": {"depends_on": []},
+                }
+            },
+        )
+
     @pytest.mark.asyncio
     @with_test_config
     async def test_multiple_append_items(self, sample_survey_data, test_provider):  # pylint: disable=unused-argument
         """Test appending from multiple sources."""
-        config_dict = {
-            "survey": {
-                "source": None,
-                "columns": ["site_name", "latitude", "longitude", "country"],
-                "depends_on": [],
-            },
-            "site": {
-                "surrogate_id": "site_id",
-                "keys": ["site_name"],
-                "columns": ["site_name", "latitude", "longitude"],
-                "depends_on": [],
-                "append": [
-                    {"type": "fixed", "values": [["Fixed 1", 10.0, 20.0]]},
-                    {"type": "fixed", "values": [["Fixed 2", 30.0, 40.0]]},
-                ],
-                "append_mode": "all",
-            },
+        cfg = {
+            "entities": {
+                "survey": {
+                    "source": None,
+                    "columns": ["site_name", "latitude", "longitude", "country"],
+                    "depends_on": [],
+                },
+                "site": {
+                    "surrogate_id": "site_id",
+                    "keys": ["site_name"],
+                    "columns": ["site_name", "latitude", "longitude"],
+                    "depends_on": [],
+                    "append": [
+                        {"type": "fixed", "values": [["Fixed 1", 10.0, 20.0]]},
+                        {"type": "fixed", "values": [["Fixed 2", 30.0, 40.0]]},
+                    ],
+                    "append_mode": "all",
+                },
+            }
         }
 
-        config = TablesConfig(entities_cfg=config_dict, options={})
+        config = ShapeShiftConfig(cfg=cfg)
         table_store: dict[str, pd.DataFrame] = {"survey": sample_survey_data}
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config, table_store=table_store)
+        normalizer = ShapeShifter(config=config, default_entity="survey", table_store=table_store)
 
         await normalizer.normalize()
 
@@ -244,31 +263,33 @@ class TestAppendProcessingEdgeCases:
     @with_test_config
     async def test_append_with_empty_main_data(self, test_provider):
         """Test append when main entity returns no data."""
-        config_dict = {
-            "default": {
-                "source": None,
-                "type": "fixed",
-                "columns": ["site_name", "latitude"],
-                "values": [],
-                "depends_on": [],
-            },
-            "site": {
-                "source": "default",
-                "type": "fixed",
-                "surrogate_id": "site_id",
-                "keys": ["site_name"],
-                "columns": ["site_name", "latitude"],
-                "values": [],
-                "depends_on": [],
-                "append": [{"type": "fixed", "values": [["Only Site", 50.0]]}],
-                "append_mode": "all",
-            },
+        cfg = {
+            "entities": {
+                "default": {
+                    "source": None,
+                    "type": "fixed",
+                    "columns": ["site_name", "latitude"],
+                    "values": [],
+                    "depends_on": [],
+                },
+                "site": {
+                    "source": "default",
+                    "type": "fixed",
+                    "surrogate_id": "site_id",
+                    "keys": ["site_name"],
+                    "columns": ["site_name", "latitude"],
+                    "values": [],
+                    "depends_on": [],
+                    "append": [{"type": "fixed", "values": [["Only Site", 50.0]]}],
+                    "append_mode": "all",
+                },
+            }
         }
 
-        config = TablesConfig(entities_cfg=config_dict, options={})
+        config = ShapeShiftConfig(cfg=cfg)
         empty_data = pd.DataFrame(columns=["site_name", "latitude"])
         table_store = {"default": empty_data}
-        normalizer = ArbodatSurveyNormalizer(config=config, table_store=table_store, default_entity="default")
+        normalizer = ShapeShifter(config=config, table_store=table_store, default_entity="default")
 
         await normalizer.normalize()
 
@@ -282,31 +303,33 @@ class TestAppendProcessingEdgeCases:
     @with_test_config
     async def test_append_preserves_columns(self, sample_survey_data, test_provider):  # pylint: disable=unused-argument
         """Test that append preserves all configured columns."""
-        config_dict = {
-            "survey": {
-                "source": None,
-                "depends_on": [],
-            },
-            "site": {
-                "surrogate_id": "site_id",
-                "keys": ["site_name"],
-                "columns": ["site_name", "latitude", "longitude", "country"],
-                "depends_on": [],
-                "append": [
-                    {
-                        "type": "fixed",
-                        "values": [
-                            ["Partial Site", 50.0, None, None],  # Missing longitude and country
-                        ],
-                    }
-                ],
-                "append_mode": "all",
-            },
+        cfg = {
+            "entities": {
+                "survey": {
+                    "source": None,
+                    "depends_on": [],
+                },
+                "site": {
+                    "surrogate_id": "site_id",
+                    "keys": ["site_name"],
+                    "columns": ["site_name", "latitude", "longitude", "country"],
+                    "depends_on": [],
+                    "append": [
+                        {
+                            "type": "fixed",
+                            "values": [
+                                ["Partial Site", 50.0, None, None],  # Missing longitude and country
+                            ],
+                        }
+                    ],
+                    "append_mode": "all",
+                },
+            }
         }
 
-        config = TablesConfig(entities_cfg=config_dict, options={})
+        config = ShapeShiftConfig(cfg=cfg)
         table_store = {"survey": sample_survey_data}
-        normalizer = ArbodatSurveyNormalizer(default_entity="survey", config=config, table_store=table_store)
+        normalizer = ShapeShifter(default_entity="survey", config=config, table_store=table_store)
 
         await normalizer.normalize()
 

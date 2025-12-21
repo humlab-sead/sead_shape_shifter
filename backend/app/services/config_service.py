@@ -1,5 +1,6 @@
 """Configuration service for managing entity configurations."""
 
+from pathlib import Path
 from typing import Any
 
 from loguru import logger
@@ -8,6 +9,9 @@ from backend.app.core.config import settings
 from backend.app.models.config import ConfigMetadata, Configuration
 from backend.app.models.entity import Entity
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, get_yaml_service
+from src.configuration.config import ConfigFactory
+from src.configuration.interface import ConfigLike
+from src.configuration.provider import ConfigStore
 
 
 class ConfigurationServiceError(Exception):
@@ -54,6 +58,12 @@ class ConfigurationService:
         for yaml_file in self.configurations_dir.glob("*.yml"):
             try:
                 data = self.yaml_service.load(yaml_file)
+
+                # Only include files that have 'entities' key (configuration files)
+                if "entities" not in data:
+                    logger.debug(f"Skipping {yaml_file.name} - missing 'entities' key")
+                    continue
+
                 entity_count = len(data.get("entities", {}))
 
                 metadata = ConfigMetadata(
@@ -68,16 +78,7 @@ class ConfigurationService:
 
             except Exception as e:  # pylint: disable=broad-except
                 logger.warning(f"Failed to load configuration {yaml_file}: {e}")
-                # Include invalid configs with is_valid=False
-                metadata = ConfigMetadata(
-                    name=yaml_file.stem,
-                    file_path=str(yaml_file),
-                    entity_count=0,
-                    created_at=yaml_file.stat().st_ctime,
-                    modified_at=yaml_file.stat().st_mtime,
-                    is_valid=False,
-                )
-                configs.append(metadata)
+                # Skip invalid configs - don't include them in the list
 
         logger.debug(f"Found {len(configs)} configuration(s)")
         return configs
@@ -103,6 +104,10 @@ class ConfigurationService:
 
         try:
             data = self.yaml_service.load(file_path)
+
+            # Validate that 'entities' key exists (required for configuration files)
+            if "entities" not in data:
+                raise InvalidConfigurationError(f"Invalid configuration file '{name}': missing required 'entities' key")
 
             # Extract entities and options
             entities_data = data.get("entities", {})
@@ -153,8 +158,12 @@ class ConfigurationService:
             # Build YAML data
             data: dict[str, Any] = {}
 
-            if config.entities:
-                data["entities"] = config.entities
+            # Always include 'entities' key to mark this as a configuration file
+            data["entities"] = config.entities if config.entities else {}
+
+            logger.debug(
+                f"Saving configuration '{config.metadata.name}' with {len(config.entities)} entities: {list(config.entities.keys())}"
+            )
 
             if config.options:
                 data["options"] = config.options
@@ -339,12 +348,13 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
             EntityAlreadyExistsError: If entity already exists
         """
-        config = self.load_configuration(config_name)
+        config: Configuration = self.load_configuration(config_name)
 
         if entity_name in config.entities:
             raise EntityAlreadyExistsError(f"Entity '{entity_name}' already exists")
 
-        config.entities[entity_name] = entity_data
+        # Use the model's add_entity method to ensure proper handling
+        config.add_entity(entity_name, entity_data)
         self.save_configuration(config)
         logger.info(f"Added entity '{entity_name}' to configuration '{config_name}'")
 
@@ -361,12 +371,13 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
             EntityNotFoundError: If entity not found
         """
-        config = self.load_configuration(config_name)
+        config: Configuration = self.load_configuration(config_name)
 
         if entity_name not in config.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
-        config.entities[entity_name] = entity_data
+        # Use the model's add_entity method to ensure proper handling
+        config.add_entity(entity_name, entity_data)
         self.save_configuration(config)
         logger.info(f"Updated entity '{entity_name}' in configuration '{config_name}'")
 
@@ -382,7 +393,7 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
             EntityNotFoundError: If entity not found
         """
-        config = self.load_configuration(config_name)
+        config: Configuration = self.load_configuration(config_name)
 
         if entity_name not in config.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
@@ -412,6 +423,78 @@ class ConfigurationService:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
         return config.entities[entity_name]
+
+    def get_active_configuration_name(self) -> str | None:
+        """
+        Get the currently active (loaded) configuration name.
+
+        The active configuration is the one loaded into the backend's ConfigStore,
+        which determines which data sources are available.
+
+        Returns:
+            Configuration name (without .yml extension) or None if no config is loaded
+        """
+
+        try:
+            store: ConfigStore = ConfigStore.get_instance()
+            if not store.is_configured():
+                return None
+
+            config: ConfigLike | None = store.config()
+            if config is None:
+                return None
+
+            # Get filename from config
+            filename = getattr(config, "filename", None) or getattr(config, "source", None)
+            if not filename:
+                return None
+
+            # Extract name from filename (remove .yml extension and path)
+
+            return Path(filename).stem
+
+        except Exception as e:  # pylint: disable=broad-except
+            logger.warning(f"Failed to get active configuration name: {e}")
+            return None
+
+    def activate_configuration(self, name: str) -> Configuration:
+        """
+        Activate (load) a configuration into the backend context.
+
+        This makes the configuration's data sources available and sets it
+        as the active configuration.
+
+        Args:
+            name: Configuration name to activate
+
+        Returns:
+            The activated configuration
+
+        Raises:
+            ConfigurationNotFoundError: If configuration not found
+        """
+
+        # Build file path
+        file_path = self.configurations_dir / f"{name}.yml"
+
+        if not file_path.exists():
+            raise ConfigurationNotFoundError(f"Configuration not found: {name}")
+
+        try:
+            # Load configuration using ConfigFactory
+            loaded_config = ConfigFactory().load(source=str(file_path), context="default")
+
+            # Set as active in ConfigStore
+            ConfigStore.get_instance().set_config(cfg=loaded_config, context="default")
+
+            logger.info(f"Activated configuration '{name}' from {file_path}")
+
+            # Return as Configuration model for API response
+            return self.load_configuration(name)
+
+        except Exception as e:
+            logger.error(f"Failed to activate configuration '{name}': {e}")
+            raise ConfigurationServiceError(f"Failed to activate configuration: {e}") from e
 
 
 # Singleton instance

@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from src.config_model import DataSourceConfig
 from src.loaders.file_loaders import CsvLoader
+from src.model import DataSourceConfig
 
 
 class TestCsvLoader:

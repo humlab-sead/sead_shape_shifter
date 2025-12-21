@@ -9,7 +9,7 @@ import pytest
 
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.preview_service import PreviewCache, PreviewService
-from src.config_model import TableConfig, TablesConfig
+from src.model import ShapeShiftConfig, TableConfig
 
 # pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
 
@@ -29,41 +29,40 @@ def preview_service(config_service: MagicMock) -> PreviewService:
 
 
 @pytest.fixture
-def sample_config() -> TablesConfig:
+def sample_config() -> ShapeShiftConfig:
     """Create a sample configuration."""
-    entities_cfg = {
-        "users": {
-            "name": "users",
-            "type": "sql",
-            "data_source": "test_db",
-            "query": "SELECT * FROM users",
-            "surrogate_id": "user_id",
-            "keys": ["username"],
-            "columns": ["user_id", "username", "email"],
-        },
-        "orders": {
-            "name": "orders",
-            "type": "sql",
-            "data_source": "test_db",
-            "query": "SELECT * FROM orders",
-            "source": "users",
-            "surrogate_id": "order_id",
-            "columns": ["order_id", "user_id", "total"],
-            "foreign_keys": [
-                {
-                    "entity": "users",
-                    "local_keys": ["user_id"],
-                    "remote_keys": ["user_id"],
-                    "how": "left",
-                }
-            ],
-        },
+    cfg = {
+        "entities": {
+            "users": {
+                "name": "users",
+                "type": "sql",
+                "data_source": "test_db",
+                "query": "SELECT * FROM users",
+                "surrogate_id": "user_id",
+                "keys": ["username"],
+                "columns": ["user_id", "username", "email"],
+            },
+            "orders": {
+                "name": "orders",
+                "type": "sql",
+                "data_source": "test_db",
+                "query": "SELECT * FROM orders",
+                "source": "users",
+                "surrogate_id": "order_id",
+                "columns": ["order_id", "user_id", "total"],
+                "foreign_keys": [
+                    {
+                        "entity": "users",
+                        "local_keys": ["user_id"],
+                        "remote_keys": ["user_id"],
+                        "how": "left",
+                    }
+                ],
+            },
+        }
     }
 
-    return TablesConfig(
-        entities_cfg=entities_cfg,
-        options={},
-    )
+    return ShapeShiftConfig(cfg=cfg)
 
 
 @pytest.fixture
@@ -156,31 +155,28 @@ class TestPreviewService:
     @pytest.mark.asyncio
     async def test_preview_entity_not_found(self, preview_service, sample_config):
         """Test preview with non-existent entity."""
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = {
-            "entities": sample_config.entities_cfg,
-            "options": sample_config.options,
-        }
 
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)), is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
             with pytest.raises(ValueError, match="Entity 'nonexistent' not found"):
                 await preview_service.preview_entity("test_config", "nonexistent", 50)
 
     @pytest.mark.asyncio
     async def test_preview_entity_success(self, preview_service, sample_config, sample_dataframe):
         """Test successful entity preview."""
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = {
-            "entities": sample_config.entities_cfg,
-            "options": sample_config.options,
-        }
 
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
-            with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)), is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
+            with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
                 # Setup mock normalizer
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
                 mock_normalizer.table_store = {"users": sample_dataframe}
+                mock_normalizer.config = sample_config
                 mock_normalizer_class.return_value = mock_normalizer
 
                 result = await preview_service.preview_entity("test_config", "users", 50)
@@ -205,14 +201,11 @@ class TestPreviewService:
         """Test preview respects limit parameter."""
         large_df = pd.DataFrame({"col1": range(100), "col2": range(100, 200)})
 
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = {
-            "entities": sample_config.entities_cfg,
-            "options": sample_config.options,
-        }
-
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
-            with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)), is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
+            with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
                 mock_normalizer.table_store = {"users": large_df}
@@ -224,26 +217,22 @@ class TestPreviewService:
                 assert result.estimated_total_rows == 100
 
     @pytest.mark.asyncio
-    async def test_preview_with_transformations(self, preview_service: PreviewService, sample_config: TablesConfig):
+    async def test_preview_with_transformations(self, preview_service: PreviewService, sample_config: ShapeShiftConfig):
         """Test preview detects applied transformations."""
         # Modify config to have filters and unnest
-        config_with_transforms: TablesConfig = sample_config.clone()
-        config_with_transforms.entities_cfg["users"]["filters"] = [{"type": "exists_in", "entity": "orders"}]
-        config_with_transforms.entities_cfg["users"]["unnest"] = {
+        config_with_transforms: ShapeShiftConfig = sample_config.clone()
+        config_with_transforms.entities["users"]["filters"] = [{"type": "exists_in", "entity": "orders"}]
+        config_with_transforms.entities["users"]["unnest"] = {
             "id_vars": ["user_id"],
             "value_vars": ["col1", "col2"],
             "var_name": "variable",
             "value_name": "value",
         }
-
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = {
-            "entities": config_with_transforms.entities_cfg,
-            "options": config_with_transforms.options,
-        }
-
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
-            with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=config_with_transforms.cfg)), is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
+            with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
                 mock_normalizer.table_store = {"users": pd.DataFrame({"user_id": [1]})}
@@ -256,17 +245,14 @@ class TestPreviewService:
 
     @pytest.mark.asyncio
     async def test_preview_with_dependencies(
-        self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame
+        self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame
     ):
         """Test preview loads dependencies correctly."""
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = {
-            "entities": sample_config.entities_cfg,
-            "options": sample_config.options,
-        }
-
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
-            with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)), is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
+            with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
                 mock_normalizer.table_store = {"orders": sample_dataframe}
@@ -279,16 +265,13 @@ class TestPreviewService:
                 assert "foreign_key_joins" in result.transformations_applied
 
     @pytest.mark.asyncio
-    async def test_preview_caching(self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame):
+    async def test_preview_caching(self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame):
         """Test preview results are cached."""
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = {
-            "entities": sample_config.entities_cfg,
-            "options": sample_config.options,
-        }
-
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
-            with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)), is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
+            with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
                 mock_normalizer.table_store = {"users": sample_dataframe}
@@ -306,16 +289,15 @@ class TestPreviewService:
                 assert mock_normalizer.normalize.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_get_entity_sample(self, preview_service: PreviewService, sample_config: TablesConfig, sample_dataframe: pd.DataFrame):
+    async def test_get_entity_sample(
+        self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame
+    ):
         """Test get_entity_sample with higher limit."""
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = {
-            "entities": sample_config.entities_cfg,
-            "options": sample_config.options,
-        }
-
-        with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
-            with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:
+        mock_provider = MagicMock(
+            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)), is_configured=MagicMock(return_value=True)
+        )
+        with patch("src.model.get_config_provider", return_value=mock_provider):
+            with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
                 mock_normalizer = MagicMock()
                 mock_normalizer.normalize = AsyncMock()
                 mock_normalizer.table_store = {"users": sample_dataframe}
@@ -341,7 +323,7 @@ class TestPreviewService:
         # Verify it's gone
         assert preview_service.cache.get("config1", "entity1", 50) is None
 
-    def test_build_column_info(self, preview_service: PreviewService, sample_dataframe: pd.DataFrame, sample_config: TablesConfig):
+    def test_build_column_info(self, preview_service: PreviewService, sample_dataframe: pd.DataFrame, sample_config: ShapeShiftConfig):
         """Test _build_column_info correctly identifies column types."""
         entity_config: TableConfig = sample_config.get_table("users")
         columns: list[ColumnInfo] = preview_service._build_column_info(sample_dataframe, entity_config)

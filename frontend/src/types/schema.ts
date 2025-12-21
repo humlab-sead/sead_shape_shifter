@@ -10,7 +10,7 @@
  */
 export interface TableMetadata {
   name: string;
-  schema?: string | null;
+  schema_name?: string | null;
   row_count?: number | null;
   comment?: string | null;
 }

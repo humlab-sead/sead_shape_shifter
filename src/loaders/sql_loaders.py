@@ -18,7 +18,7 @@ from src.utility import dotget
 from .base_loader import ConnectTestResult, DataLoader, DataLoaders
 
 if TYPE_CHECKING:
-    from src.config_model import DataSourceConfig, TableConfig
+    from src.model import DataSourceConfig, TableConfig
 
 
 class CoreSchema:
@@ -92,14 +92,13 @@ class SqlLoader(DataLoader):
             raise ValueError(f"Entity '{entity_name}' is not configured as fixed SQL data")
 
         data: pd.DataFrame = await self.read_sql(sql=table_cfg.query)  # type: ignore[arg-type]
-        # for now, columns must match those in the SQL result
 
-        if len(set(data.columns)) != len(set(table_cfg.keys_and_columns)):
-            raise ValueError(f"Fixed data entity '{entity_name}' has different number of columns in configuration")
+        if not table_cfg.keys_and_columns and table_cfg.auto_detect_columns:
+            table_cfg.columns = list(data.columns)
 
         if table_cfg.check_column_names:
             if set(data.columns) != set(table_cfg.keys_and_columns):
-                raise ValueError(f"Fixed data entity '{entity_name}' has mismatched columns between configuration and SQL result")
+                raise ValueError(f"Data for entity '{entity_name}' has different columns compared to configuration")
         else:
             data.columns = table_cfg.keys_and_columns
 
@@ -121,6 +120,10 @@ class SqlLoader(DataLoader):
     @abc.abstractmethod
     async def get_table_schema(self, table_name: str, **kwargs) -> CoreSchema.TableSchema:
         pass
+
+    def get_test_query(self, table_name: str, limit: int) -> str:
+        """Get a test query for the data source, if applicable."""
+        return f"select * from {table_name} limit {limit} ;"
 
     @abc.abstractmethod
     async def execute_scalar_sql(self, sql: str) -> Any:
@@ -145,14 +148,13 @@ class SqlLoader(DataLoader):
         Returns:
             Test result
         """
-        from src.config_model import TableConfig  # Avoid circular import;  pylint: disable=import-outside-toplevel
+        from src.model import TableConfig  # Avoid circular import;  pylint: disable=import-outside-toplevel
 
         start_time: float = time.time()
         result: ConnectTestResult = ConnectTestResult.create_empty()
         try:
             tables: dict[str, CoreSchema.TableMetadata] = await self.get_tables()
 
-            # If no tables found, still return success
             if not tables:
                 elapsed_ms = int((time.time() - start_time) * 1000)
                 return ConnectTestResult(
@@ -163,12 +165,7 @@ class SqlLoader(DataLoader):
                 )
 
             first_table: str = next(iter(tables.keys()))
-
-            # FIXME: We might need loader specific test queries here
-
-            # We need to handle different SQL dialects for limiting rows
-            test_query: str = f"SELECT TOP 1 * FROM [{first_table}]"
-            #     test_query = self._get_test_query(core_ds_cfg.driver)
+            test_query: str = self.get_test_query(table_name=first_table, limit=10)
 
             elapsed_ms = int((time.time() - start_time) * 1000)
             result.success = True
@@ -186,8 +183,9 @@ class SqlLoader(DataLoader):
                         "source": None,
                         "query": test_query,
                         "data_source": self.data_source.name if self.data_source else None,
+                        "auto_detect_columns": True,
                     }
-                },  # Simple test query
+                },
                 entity_name="test",
             )
 
@@ -561,8 +559,8 @@ class UCanAccessSqlLoader(SqlLoader):
             try:
                 data = await self.read_sql(query)
                 break
-            except Exception:  # pylint: disable=broad-except
-                pass
+            except Exception as e:  # pylint: disable=broad-except
+                logger.error(f"Error executing query: {e}")
 
         if data is None:
             return {}
@@ -627,6 +625,6 @@ class UCanAccessSqlLoader(SqlLoader):
             indexes=[],
         )
 
-    def get_test_query(self, limit: int) -> str:
+    def get_test_query(self, table_name: str, limit: int) -> str:
         """Get a test query for the data source, if applicable."""
-        return f"SELECT TOP {limit} * FROM table_name;"
+        return f"SELECT TOP {limit} * FROM {table_name};"

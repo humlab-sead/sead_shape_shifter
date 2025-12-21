@@ -157,13 +157,13 @@ class TestTableMetadata:
         """Test table metadata."""
         metadata = TableMetadata(
             name="users",
-            schema="public",
+            schema_name="public",
             row_count=1000,
             comment="User accounts table",
         )
 
         assert metadata.name == "users"
-        assert metadata.schema == "public"
+        assert metadata.schema_name == "public"
         assert metadata.row_count == 1000
         assert metadata.comment == "User accounts table"
 
