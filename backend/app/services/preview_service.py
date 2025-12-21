@@ -68,7 +68,7 @@ class PreviewService:
 
     def __init__(self, config_service: ConfigurationService):
         """Initialize preview service."""
-        self.config_service = config_service
+        self.config_service: ConfigurationService = config_service
         self.cache = PreviewCache(ttl_seconds=300)  # 5 minute cache
 
     async def preview_entity(self, config_name: str, entity_name: str, limit: int = 50) -> PreviewResult:
@@ -307,7 +307,7 @@ class PreviewService:
         config_dict = config_obj.data
         entities_cfg: dict[str, Any] = config_dict.get("entities", {})
         options: dict[str, Any] = config_dict.get("options", {})
-        config: TablesConfig = TablesConfig(entities_cfg=entities_cfg, options=options)
+        config: TablesConfig = TablesConfig(cfg={"entities": entities_cfg, "options": options})
 
         # Get entity and foreign key config
         if entity_name not in config.tables:

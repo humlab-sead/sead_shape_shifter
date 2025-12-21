@@ -32,38 +32,37 @@ def preview_service(config_service: MagicMock) -> PreviewService:
 def sample_config() -> TablesConfig:
     """Create a sample configuration."""
     entities_cfg = {
-        "users": {
-            "name": "users",
-            "type": "sql",
-            "data_source": "test_db",
-            "query": "SELECT * FROM users",
-            "surrogate_id": "user_id",
-            "keys": ["username"],
-            "columns": ["user_id", "username", "email"],
-        },
-        "orders": {
-            "name": "orders",
-            "type": "sql",
-            "data_source": "test_db",
-            "query": "SELECT * FROM orders",
-            "source": "users",
-            "surrogate_id": "order_id",
-            "columns": ["order_id", "user_id", "total"],
-            "foreign_keys": [
-                {
-                    "entity": "users",
-                    "local_keys": ["user_id"],
-                    "remote_keys": ["user_id"],
-                    "how": "left",
-                }
-            ],
-        },
+        "entities": {
+            "users": {
+                "name": "users",
+                "type": "sql",
+                "data_source": "test_db",
+                "query": "SELECT * FROM users",
+                "surrogate_id": "user_id",
+                "keys": ["username"],
+                "columns": ["user_id", "username", "email"],
+            },
+            "orders": {
+                "name": "orders",
+                "type": "sql",
+                "data_source": "test_db",
+                "query": "SELECT * FROM orders",
+                "source": "users",
+                "surrogate_id": "order_id",
+                "columns": ["order_id", "user_id", "total"],
+                "foreign_keys": [
+                    {
+                        "entity": "users",
+                        "local_keys": ["user_id"],
+                        "remote_keys": ["user_id"],
+                        "how": "left",
+                    }
+                ],
+            },
+        }
     }
 
-    return TablesConfig(
-        entities_cfg=entities_cfg,
-        options={},
-    )
+    return TablesConfig(cfg=entities_cfg)
 
 
 @pytest.fixture
@@ -169,11 +168,10 @@ class TestPreviewService:
     @pytest.mark.asyncio
     async def test_preview_entity_success(self, preview_service, sample_config, sample_dataframe):
         """Test successful entity preview."""
-        mock_config_obj = MagicMock()
-        mock_config_obj.data = {
-            "entities": sample_config.entities_cfg,
-            "options": sample_config.options,
-        }
+        mock_config_obj = MagicMock(
+            entities=sample_config.entities_cfg,
+            options=sample_config.options,
+        )
 
         with patch("backend.app.services.preview_service.ConfigStore.config_global", return_value=mock_config_obj):
             with patch("backend.app.services.preview_service.ArbodatSurveyNormalizer") as mock_normalizer_class:

@@ -366,7 +366,7 @@ class TableConfig:
 class TablesConfig:
     """Configuration for database tables."""
 
-    def __init__(self, *, entities_cfg: None | dict[str, dict[str, Any]] = None, options: dict[str, Any] | None = None) -> None:
+    def __init__(self, *, cfg: dict[str, dict[str, Any]]) -> None:
 
         self.entities_cfg: dict[str, dict[str, Any]] = (
             entities_cfg or ConfigValue[dict[str, dict[str, Any]]]("entities", default={}).resolve() or {}
@@ -378,7 +378,22 @@ class TablesConfig:
             self.options = options or {}
 
         self.tables: dict[str, TableConfig] = {key: TableConfig(cfg=self.entities_cfg, entity_name=key) for key in self.entities_cfg.keys()}
-        self.data_sources: dict[str, Any] = self.options.get("data_sources", {})
+
+    @property
+    def options(self) -> dict[str, Any]:
+        return self.cfg.get("options", {}) or {}
+    
+    @property
+    def data_sources(self) -> dict[str, dict[str, Any]]:
+        return self.options.get("data_sources", {}) or {}
+    
+    @property
+    def translations(self) -> dict[str, dict[str, str]]:
+        return self.options.get("translations", {}) or {}
+
+    @property
+    def mappings(self) -> dict[str, dict[str, str]]:
+        return self.options.get("mappings", {}) or {}
 
     def get_table(self, entity_name: str) -> "TableConfig":
         if entity_name not in self.tables:
@@ -406,7 +421,7 @@ class TablesConfig:
 
     def clone(self) -> "TablesConfig":
         """Create a deep copy of the TablesConfig."""
-        return TablesConfig(entities_cfg={k: v._data.copy() for k, v in self.tables.items()}, options=self.options.copy())
+        return TablesConfig(cfg=copy.deepcopy(self.cfg))
 
     @cached_property
     def table_names(self) -> list[str]:
