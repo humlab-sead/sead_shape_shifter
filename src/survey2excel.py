@@ -124,7 +124,7 @@ def main(
     if not config_file or not Path(config_file).exists():
         raise FileNotFoundError(f"Configuration file not found: {config_file or 'undefined'}")
 
-    config: ShapeShiftConfig = ShapeShiftConfig.from_file(config_file)
+    config: ShapeShiftConfig = ShapeShiftConfig.from_file(config_file, env_file=env_file, env_prefix="SEAD_NORMALIZER")
 
     # Configure logging AFTER setup_config_store to override its logging configuration
     setup_logging(verbose=verbose, log_file=log_file)

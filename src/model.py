@@ -491,7 +491,7 @@ class ShapeShiftConfig:
 
         context: str = cfg or "default"
 
-        """Load configuration from global store."""
+        # Load configuration from global store.
         provider: ConfigProvider = get_config_provider()
 
         if not provider.is_configured(context):
