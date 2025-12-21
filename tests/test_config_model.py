@@ -1089,7 +1089,7 @@ class TestTableConfig:
 
         base_config = sub_configs[0]
 
-        # This does a deep comparison of the base config to the original entities_cfg
+        # This does a deep comparison!
         assert base_config._data == cfg["entities"]["site"]
 
         expected_append_config = {

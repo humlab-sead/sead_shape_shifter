@@ -379,16 +379,20 @@ class TablesConfig:
         else:
             self.options = options or {}
 
-        self.tables: dict[str, TableConfig] = {key: TableConfig(cfg=self.entities_cfg, entity_name=key) for key in self.entities_cfg.keys()}
+        self.tables: dict[str, TableConfig] = {key: TableConfig(cfg=self.entities, entity_name=key) for key in self.entities.keys()}
+
+    @property
+    def entities(self) -> dict[str, dict[str, Any]]:
+        return self.cfg.get("entities", {}) or {}
 
     @property
     def options(self) -> dict[str, Any]:
         return self.cfg.get("options", {}) or {}
-    
+
     @property
     def data_sources(self) -> dict[str, dict[str, Any]]:
         return self.options.get("data_sources", {}) or {}
-    
+
     @property
     def translations(self) -> dict[str, dict[str, str]]:
         return self.options.get("translations", {}) or {}
