@@ -98,10 +98,7 @@ class PreviewService:
         if config_obj is None:
             raise ValueError("Configuration not loaded")
 
-        config_dict: dict[str, Any] = config_obj.data
-        entities_cfg: dict[str, Any] = config_dict.get("entities", {})
-        options: dict[str, Any] = config_dict.get("options", {})
-        config = TablesConfig(entities_cfg=entities_cfg, options=options)
+        config = TablesConfig(cfg=config_obj.data)
 
         if entity_name not in config.tables:
             raise ValueError(f"Entity '{entity_name}' not found in configuration")
@@ -304,10 +301,7 @@ class PreviewService:
         if config_obj is None:
             raise ValueError("Configuration not loaded")
 
-        config_dict = config_obj.data
-        entities: dict[str, Any] = config_dict.get("entities", {})
-        options: dict[str, Any] = config_dict.get("options", {})
-        config: TablesConfig = TablesConfig(cfg={"entities": entities, "options": options})
+        config: TablesConfig = TablesConfig(cfg=config_obj.data)
 
         # Get entity and foreign key config
         if entity_name not in config.tables:
