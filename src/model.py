@@ -364,6 +364,12 @@ class TableConfig:
             yield TableConfig(cfg=self.config, entity_name=append_entity_name)
             del self.config[append_entity_name]
 
+    def get_key_columns(self) -> set[str]:
+        key_columns = set(self.keys or [])
+        if self.surrogate_id:
+            key_columns.add(self.surrogate_id)
+        return key_columns
+
 
 class ShapeShiftConfig:
     """Configuration for database tables."""
