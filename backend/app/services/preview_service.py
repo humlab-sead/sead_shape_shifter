@@ -4,14 +4,14 @@ import hashlib
 import time
 from typing import Any, Optional
 
-from numpy import isin
 import pandas as pd
 from loguru import logger
+from numpy import isin
 
 from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
-from src.model import ForeignKeyConfig, TableConfig, ShapeShiftConfig
+from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig
 from src.normalizer import ShapeShifter
 
 
@@ -395,13 +395,13 @@ class PreviewService:
 
 def friendly_dtype(dtype):
     from pandas.api.types import (
-        is_integer_dtype,
-        is_float_dtype,
+        CategoricalDtype,
         is_bool_dtype,
         is_datetime64_any_dtype,
+        is_float_dtype,
+        is_integer_dtype,
         is_string_dtype,
         is_timedelta64_dtype,
-        CategoricalDtype,
     )
 
     if is_integer_dtype(dtype):

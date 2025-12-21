@@ -8,7 +8,7 @@ import pytest
 from src.configuration.config import Config
 from src.configuration.provider import MockConfigProvider, set_config_provider
 from src.loaders.base_loader import DataLoader
-from src.model import DataSourceConfig, ForeignKeyConfig, ForeignKeyConstraints, TableConfig, ShapeShiftConfig, UnnestConfig
+from src.model import DataSourceConfig, ForeignKeyConfig, ForeignKeyConstraints, ShapeShiftConfig, TableConfig, UnnestConfig
 
 
 class TestForeignKeyConstraints:
@@ -1221,11 +1221,7 @@ class TestShapeShiftConfig:
 
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
-            "entities:\n"
-            "  site:\n"
-            "    surrogate_id: site_id\n"
-            "    columns:\n"
-            "      - name\n",
+            "entities:\n" "  site:\n" "    surrogate_id: site_id\n" "    columns:\n" "      - name\n",
             encoding="utf-8",
         )
 
