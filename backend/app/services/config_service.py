@@ -34,6 +34,10 @@ class InvalidConfigurationError(ConfigurationServiceError):
     """Raised when configuration is invalid."""
 
 
+class ConfigConflictError(ConfigurationServiceError):
+    """Raised when optimistic lock fails due to concurrent modification."""
+
+
 class ConfigurationService:
     """Service for managing configuration files and entities."""
 
@@ -495,6 +499,40 @@ class ConfigurationService:
         except Exception as e:
             logger.error(f"Failed to activate configuration '{name}': {e}")
             raise ConfigurationServiceError(f"Failed to activate configuration: {e}") from e
+
+    def save_with_version_check(
+        self,
+        config: Configuration,
+        expected_version: int,
+        current_version: int,
+        create_backup: bool = True,
+    ) -> Configuration:
+        """
+        Save configuration with optimistic concurrency control.
+
+        Args:
+            config: Configuration to save
+            expected_version: Client's expected version number
+            current_version: Current server version number
+            create_backup: Whether to create backup before saving
+
+        Returns:
+            Updated configuration
+
+        Raises:
+            ConfigConflictError: If version mismatch (concurrent edit detected)
+            InvalidConfigurationError: If save fails
+        """
+        # Check version match (optimistic lock)
+        if expected_version != current_version:
+            raise ConfigConflictError(
+                f"Configuration was modified by another user. "
+                f"Expected version {expected_version}, current version {current_version}. "
+                f"Reload and merge changes."
+            )
+
+        # Save to disk
+        return self.save_configuration(config, create_backup=create_backup)
 
 
 # Singleton instance
