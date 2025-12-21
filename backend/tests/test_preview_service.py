@@ -31,7 +31,7 @@ def preview_service(config_service: MagicMock) -> PreviewService:
 @pytest.fixture
 def sample_config() -> TablesConfig:
     """Create a sample configuration."""
-    entities_cfg = {
+    cfg= {
         "entities": {
             "users": {
                 "name": "users",
@@ -62,7 +62,7 @@ def sample_config() -> TablesConfig:
         }
     }
 
-    return TablesConfig(cfg=entities_cfg)
+    return TablesConfig(cfg=cfg)
 
 
 @pytest.fixture
@@ -205,7 +205,7 @@ class TestPreviewService:
 
         mock_config_obj = MagicMock()
         mock_config_obj.data = {
-            "entities": sample_config.entities_cfg,
+            "entities": sample_config.entities,
             "options": sample_config.options,
         }
 
@@ -226,8 +226,8 @@ class TestPreviewService:
         """Test preview detects applied transformations."""
         # Modify config to have filters and unnest
         config_with_transforms: TablesConfig = sample_config.clone()
-        config_with_transforms.entities_cfg["users"]["filters"] = [{"type": "exists_in", "entity": "orders"}]
-        config_with_transforms.entities_cfg["users"]["unnest"] = {
+        config_with_transforms.entities["users"]["filters"] = [{"type": "exists_in", "entity": "orders"}]
+        config_with_transforms.entities["users"]["unnest"] = {
             "id_vars": ["user_id"],
             "value_vars": ["col1", "col2"],
             "var_name": "variable",
@@ -236,7 +236,7 @@ class TestPreviewService:
 
         mock_config_obj = MagicMock()
         mock_config_obj.data = {
-            "entities": config_with_transforms.entities_cfg,
+            "entities": config_with_transforms.entities,
             "options": config_with_transforms.options,
         }
 
@@ -259,7 +259,7 @@ class TestPreviewService:
         """Test preview loads dependencies correctly."""
         mock_config_obj = MagicMock()
         mock_config_obj.data = {
-            "entities": sample_config.entities_cfg,
+            "entities": sample_config.entities,
             "options": sample_config.options,
         }
 
@@ -281,7 +281,7 @@ class TestPreviewService:
         """Test preview results are cached."""
         mock_config_obj = MagicMock()
         mock_config_obj.data = {
-            "entities": sample_config.entities_cfg,
+            "entities": sample_config.entities,
             "options": sample_config.options,
         }
 
@@ -308,7 +308,7 @@ class TestPreviewService:
         """Test get_entity_sample with higher limit."""
         mock_config_obj = MagicMock()
         mock_config_obj.data = {
-            "entities": sample_config.entities_cfg,
+            "entities": sample_config.entities,
             "options": sample_config.options,
         }
 
