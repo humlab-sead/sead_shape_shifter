@@ -132,6 +132,21 @@ frontend-run:
 	@echo "Starting frontend dev server on http://localhost:$(FRONEND_PORT)"
 	@cd frontend && pnpm dev
 
+.PHONY: frontend-build
+frontend-build:
+	@echo "Building frontend for production..."
+	@cd frontend && pnpm build
+
+.PHONY: frontend-build-fast
+frontend-build-fast:
+	@echo "Building frontend (skipping type check)..."
+	@cd frontend && pnpm build:skip-check
+
+.PHONY: frontend-preview
+frontend-preview:
+	@echo "Preview production build on http://localhost:4173"
+	@cd frontend && pnpm preview
+
 .PHONY: frontend-rebuild
 frontend-rebuild:
 	@cd frontend && rm -rf node_modules/.vite dist && pnpm dev 

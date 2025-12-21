@@ -153,7 +153,7 @@
               v-model="formData.foreign_keys"
               :available-entities="availableSourceEntities"
               :config-name="configName"
-              :entity-name="entityName"
+              :entity-name="formData.name"
               :is-entity-saved="mode === 'edit'"
             />
           </v-window-item>

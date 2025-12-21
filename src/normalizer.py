@@ -4,7 +4,6 @@ and write them as CSVs or sheets in a single Excel file.
 
 """
 
-import asyncio
 from pathlib import Path
 from typing import Any, Literal
 
@@ -113,7 +112,6 @@ class ShapeShifter:
         else:
             state = ProcessState(config=self.config, table_store=self.table_store, target_entities=None)
         return state
-    
 
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""

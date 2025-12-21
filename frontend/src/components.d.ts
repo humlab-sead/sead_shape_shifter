@@ -33,6 +33,8 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SchemaTreeView: typeof import('./components/SchemaTreeView.vue')['default']
+    SessionIndicator: typeof import('./components/SessionIndicator.vue')['default']
+    SessionManager: typeof import('./components/SessionManager.vue')['default']
     SuggestionsPanel: typeof import('./components/entities/SuggestionsPanel.vue')['default']
     TableDetailsPanel: typeof import('./components/TableDetailsPanel.vue')['default']
     TestRunConfig: typeof import('./components/TestRun/TestRunConfig.vue')['default']

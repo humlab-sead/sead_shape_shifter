@@ -29,10 +29,13 @@ class Settings(BaseSettings):
         "http://localhost:3000",  # Alternative frontend port
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
+        "https://tgx7q4bq-5173.euw.devtunnels.ms",  # DevTunnels frontend
+        "https://tgx7q4bq-8012.euw.devtunnels.ms",  # DevTunnels backend
     ]
 
-    # CORS regex patterns for wildcard domains
-    ALLOWED_ORIGIN_REGEX: str = r"https://.*\.(preview\.app\.github\.dev|devtunnels\.ms)"
+    # CORS regex patterns for wildcard domains (allows any devtunnel or github dev preview)
+    # Pattern matches: https://anything-port.region.devtunnels.ms
+    ALLOWED_ORIGIN_REGEX: str = r"https://[a-zA-Z0-9\-]+\.(euw|eus|weu|neu|sasia|asia|[a-z]+)\.devtunnels\.ms$|https://[a-zA-Z0-9\-]+\.preview\.app\.github\.dev$"
 
     # File paths
     CONFIGURATIONS_DIR: Path = Path("./configurations")

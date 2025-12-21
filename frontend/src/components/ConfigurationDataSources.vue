@@ -251,8 +251,10 @@ async function loadDataSources() {
     // Load connected sources for this configuration
     connectedSourcesData.value = await configurationStore.getConfigurationDataSources(props.configName)
     
-    // Also load global data sources for connection dialog
-    await dataSourceStore.fetchDataSources()
+    // Only load global data sources if not already loaded (avoid duplicate fetch)
+    if (dataSourceStore.dataSourceCount === 0) {
+      await dataSourceStore.fetchDataSources()
+    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load data sources'
   } finally {
