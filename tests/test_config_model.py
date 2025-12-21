@@ -1221,7 +1221,7 @@ class TestShapeShiftConfig:
 
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
-            "entities:\n" "  site:\n" "    surrogate_id: site_id\n" "    columns:\n" "      - name\n",
+            "entities:\n  site:\n" "    surrogate_id: site_id\n" "    columns:\n" "      - name\n",
             encoding="utf-8",
         )
 

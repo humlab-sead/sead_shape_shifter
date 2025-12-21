@@ -1,8 +1,6 @@
-import os
-
 import pytest
 
-from backend.app.core.config import Settings, get_settings
+from backend.app.core.config import get_settings
 
 
 @pytest.fixture

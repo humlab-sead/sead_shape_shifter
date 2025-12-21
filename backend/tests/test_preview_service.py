@@ -1,7 +1,6 @@
 """Tests for entity preview service."""
 
 import time
-from operator import is_
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 

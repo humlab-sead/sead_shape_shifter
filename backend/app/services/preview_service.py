@@ -2,12 +2,19 @@
 
 import hashlib
 import time
-from typing import Any, Optional
+from typing import Optional
 
 import pandas as pd
 from loguru import logger
-from numpy import isin
-
+from pandas.api.types import (
+    CategoricalDtype,
+    is_bool_dtype,
+    is_datetime64_any_dtype,
+    is_float_dtype,
+    is_integer_dtype,
+    is_string_dtype,
+    is_timedelta64_dtype,
+)
 from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
@@ -22,7 +29,7 @@ class PreviewCache:
         """Initialize cache with TTL in seconds (default 5 minutes)."""
         # Cache maps key -> (result, timestamp, config_name, entity_name, limit)
         self._cache: dict[str, tuple[PreviewResult, float, str, str, int]] = {}
-        self._ttl = ttl_seconds
+        self._ttl: int = ttl_seconds
 
     def _generate_key(self, config_name: str, entity_name: str, limit: int) -> str:
         """Generate cache key from parameters."""
@@ -394,15 +401,7 @@ class PreviewService:
 
 
 def friendly_dtype(dtype):
-    from pandas.api.types import (
-        CategoricalDtype,
-        is_bool_dtype,
-        is_datetime64_any_dtype,
-        is_float_dtype,
-        is_integer_dtype,
-        is_string_dtype,
-        is_timedelta64_dtype,
-    )
+
 
     if is_integer_dtype(dtype):
         return "integer"

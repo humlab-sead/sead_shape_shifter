@@ -12,7 +12,6 @@ from backend.app.api.dependencies import get_schema_service
 from backend.app.main import app
 from backend.app.models.data_source import ColumnMetadata, TableMetadata, TableSchema
 from backend.app.services.schema_service import SchemaIntrospectionService, SchemaServiceError
-from tests.decorators import with_test_config
 
 # pylint: disable=redefined-outer-name
 
