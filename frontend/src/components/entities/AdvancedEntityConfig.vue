@@ -222,6 +222,71 @@
         </v-btn>
       </v-expansion-panel-text>
     </v-expansion-panel>
+
+    <!-- Extra Columns Section -->
+    <v-expansion-panel>
+      <v-expansion-panel-title>
+        <v-icon icon="mdi-table-column-plus-after" class="mr-2" />
+        Extra Columns
+        <v-chip v-if="extraColumns.length > 0" size="small" class="ml-2">
+          {{ extraColumns.length }}
+        </v-chip>
+      </v-expansion-panel-title>
+      <v-expansion-panel-text>
+        <v-list>
+          <v-list-item
+            v-for="(item, index) in extraColumns"
+            :key="index"
+            class="px-0 mb-2"
+          >
+            <v-card variant="outlined">
+              <v-card-text>
+                <v-row dense>
+                  <v-col cols="12" md="5">
+                    <v-text-field
+                      v-model="item.column"
+                      label="New Column Name"
+                      variant="outlined"
+                      density="compact"
+                      placeholder="e.g., new_column"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="item.source"
+                      label="Source Column (or leave empty for null)"
+                      variant="outlined"
+                      density="compact"
+                      placeholder="e.g., existing_column"
+                      clearable
+                    />
+                  </v-col>
+                  <v-col cols="12" md="1" class="d-flex align-center">
+                    <v-btn
+                      icon="mdi-delete"
+                      variant="text"
+                      size="small"
+                      color="error"
+                      @click="handleRemoveExtraColumn(index)"
+                    />
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+          </v-list-item>
+        </v-list>
+
+        <v-btn
+          variant="outlined"
+          prepend-icon="mdi-plus"
+          size="small"
+          block
+          @click="handleAddExtraColumn"
+        >
+          Add Extra Column
+        </v-btn>
+      </v-expansion-panel-text>
+    </v-expansion-panel>
   </v-expansion-panels>
 </template>
 
@@ -250,11 +315,17 @@ interface AppendConfig {
   query?: string
 }
 
+interface ExtraColumnConfig {
+  column: string
+  source: string | null
+}
+
 interface Props {
   modelValue: {
     filters?: FilterConfig[]
     unnest?: UnnestConfig | null
     append?: AppendConfig[]
+    extra_columns?: Record<string, string | null>
   }
   availableEntities?: string[]
 }
@@ -280,6 +351,16 @@ const unnest = ref<UnnestConfig>(
 const unnestEnabled = ref(!!props.modelValue.unnest)
 const append = ref<AppendConfig[]>(props.modelValue.append || [])
 
+// Convert extra_columns from object to array for editing
+const extraColumns = ref<ExtraColumnConfig[]>(
+  props.modelValue.extra_columns
+    ? Object.entries(props.modelValue.extra_columns).map(([column, source]) => ({
+        column,
+        source: source || null,
+      }))
+    : []
+)
+
 const filterTypes = [
   { title: 'Exists In', value: 'exists_in' },
 ]
@@ -290,11 +371,23 @@ const appendTypes = [
 ]
 
 // Computed
-const configValue = computed(() => ({
-  filters: filters.value.length > 0 ? filters.value : undefined,
-  unnest: unnestEnabled.value ? unnest.value : null,
-  append: append.value.length > 0 ? append.value : undefined,
-}))
+const configValue = computed(() => {
+  // Convert extra_columns array back to object
+  const extraColumnsObj = extraColumns.value.length > 0
+    ? Object.fromEntries(
+        extraColumns.value
+          .filter(item => item.column)
+          .map(item => [item.column, item.source || null])
+      )
+    : undefined
+
+  return {
+    filters: filters.value.length > 0 ? filters.value : undefined,
+    unnest: unnestEnabled.value ? unnest.value : null,
+    append: append.value.length > 0 ? append.value : undefined,
+    extra_columns: extraColumnsObj,
+  }
+})
 
 // Methods
 function handleAddFilter() {
@@ -321,9 +414,20 @@ function handleRemoveAppend(index: number) {
   append.value.splice(index, 1)
 }
 
+function handleAddExtraColumn() {
+  extraColumns.value.push({
+    column: '',
+    source: null,
+  })
+}
+
+function handleRemoveExtraColumn(index: number) {
+  extraColumns.value.splice(index, 1)
+}
+
 // Watch for changes and emit
 watch(
-  [filters, unnest, unnestEnabled, append],
+  [filters, unnest, unnestEnabled, append, extraColumns],
   () => {
     emit('update:modelValue', configValue.value)
   },
@@ -343,6 +447,12 @@ watch(
     }
     unnestEnabled.value = !!newValue.unnest
     append.value = newValue.append || []
+    extraColumns.value = newValue.extra_columns
+      ? Object.entries(newValue.extra_columns).map(([column, source]) => ({
+          column,
+          source: source || null,
+        }))
+      : []
   }
 )
 </script>
