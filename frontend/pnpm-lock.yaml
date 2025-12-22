@@ -14,6 +14,12 @@ importers:
       '@vueuse/core':
         specifier: ^11.3.0
         version: 11.3.0(vue@3.5.25(typescript@5.6.3))
+      ag-grid-community:
+        specifier: ^32.3.3
+        version: 32.3.9
+      ag-grid-vue3:
+        specifier: ^32.3.3
+        version: 32.3.9(typescript@5.6.3)
       axios:
         specifier: ^1.7.9
         version: 1.13.2
@@ -844,6 +850,15 @@ packages:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+
+  ag-charts-types@10.3.9:
+    resolution: {integrity: sha512-drcRiJVencliC8LnRwk4MmeQDNNBg5GzmOoLFihO3/k0CUK0VF/N+2nc7iFozwaNG0btSB9vAhYuJLjqHMtRrQ==}
+
+  ag-grid-community@32.3.9:
+    resolution: {integrity: sha512-l07SB0mCbGPkC1R8rQQFgBtI5+1FoXBi3RUk1+dHKV/UPeorMEFAzCokcsOhz0qwcWCPrHauUsbRa1SIxfVEJQ==}
+
+  ag-grid-vue3@32.3.9:
+    resolution: {integrity: sha512-86Xynbfg8bq/tGW0Yfl2O8HSUgT7nDtNzioMs4r8hNfPiqOfKUUWrTveP5S4Acs8Astr495ZdKKFDIcQVLx3Yg==}
 
   ajv@6.12.6:
     resolution: {integrity: sha512-j3fVLgvTo527anyYyJOGTYJbG+vnnQYvE0m5mmkc1TK+nxAppkCLMIL0aZ4dblVCNoGShhm+kzE4ZUykBoMg4g==}
@@ -2692,6 +2707,19 @@ snapshots:
       acorn: 8.15.0
 
   acorn@8.15.0: {}
+
+  ag-charts-types@10.3.9: {}
+
+  ag-grid-community@32.3.9:
+    dependencies:
+      ag-charts-types: 10.3.9
+
+  ag-grid-vue3@32.3.9(typescript@5.6.3):
+    dependencies:
+      ag-grid-community: 32.3.9
+      vue: 3.5.25(typescript@5.6.3)
+    transitivePeerDependencies:
+      - typescript
 
   ajv@6.12.6:
     dependencies:

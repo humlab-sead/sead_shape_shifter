@@ -151,6 +151,16 @@
             </v-combobox>
           </div>
 
+          <!-- Fixed Values Grid (only for fixed type) -->
+          <div class="form-row" v-show="formData.type === 'fixed' && allColumns.length > 0">
+            <FixedValuesGrid
+              v-if="formData.type === 'fixed' && allColumns.length > 0"
+              v-model="formData.values"
+              :columns="allColumns"
+              height="400px"
+            />
+          </div>
+
           <!-- Depends On -->
           <div class="form-row">
             <v-combobox
@@ -368,6 +378,10 @@ import SuggestionsPanel from './SuggestionsPanel.vue'
 import EntityPreviewPanel from './EntityPreviewPanel.vue'
 import YamlEditor from '../common/YamlEditor.vue'
 import SqlEditor from '../common/SqlEditor.vue'
+import { defineAsyncComponent } from 'vue'
+
+// Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
+const FixedValuesGrid = defineAsyncComponent(() => import('./FixedValuesGrid.vue'))
 
 interface Props {
   modelValue: boolean
@@ -408,6 +422,7 @@ interface FormData {
   surrogate_id: string
   keys: string[]
   columns: string[]
+  values: any[][] // For fixed type entities
   source: string | null
   data_source: string
   query: string
@@ -436,6 +451,7 @@ const formData = ref<FormData>({
   surrogate_id: '',
   keys: [],
   columns: [],
+  values: [],
   source: null,
   data_source: '',
   query: '',
@@ -459,6 +475,13 @@ const formData = ref<FormData>({
 })
 
 const activeTab = ref('basic')
+
+// Computed property for all columns (keys + columns) for fixed values grid
+const allColumns = computed(() => {
+  const keys = formData.value.keys || []
+  const columns = formData.value.columns || []
+  return [...keys, ...columns]
+})
 
 // Preview handlers
 function handlePreviewLoaded(rows: number) {
@@ -520,6 +543,10 @@ function formDataToYaml(): string {
 
   if (formData.value.columns.length > 0) {
     entityData.columns = formData.value.columns
+  }
+
+  if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
+    entityData.values = formData.value.values
   }
 
   if (formData.value.source) {
@@ -604,6 +631,7 @@ function yamlToFormData(yamlString: string): boolean {
       surrogate_id: data.surrogate_id || '',
       keys: Array.isArray(data.keys) ? data.keys : [],
       columns: Array.isArray(data.columns) ? data.columns : [],
+      values: Array.isArray(data.values) ? data.values : [],
       source: data.source || null,
       data_source: data.data_source || '',
       query: data.query || '',
@@ -664,6 +692,10 @@ async function handleSubmit() {
 
     if (formData.value.columns.length > 0) {
       entityData.columns = formData.value.columns
+    }
+
+    if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
+      entityData.values = formData.value.values
     }
 
     if (formData.value.source) {
@@ -775,6 +807,7 @@ watch(
         surrogate_id: (newEntity.entity_data.surrogate_id as string) || '',
         keys: (newEntity.entity_data.keys as string[]) || [],
         columns: (newEntity.entity_data.columns as string[]) || [],
+        values: (newEntity.entity_data.values as any[][]) || [],
         source: (newEntity.entity_data.source as string) || null,
         data_source: (newEntity.entity_data.data_source as string) || '',
         query: (newEntity.entity_data.query as string) || '',
@@ -797,6 +830,7 @@ watch(
         surrogate_id: '',
         keys: [],
         columns: [],
+        values: [],
         source: null,
         data_source: '',
         query: '',
