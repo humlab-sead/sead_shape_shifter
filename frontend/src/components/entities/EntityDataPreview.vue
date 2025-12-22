@@ -76,7 +76,7 @@
       <!-- Data Table -->
       <div v-else>
         <!-- Metadata chips and controls -->
-        <div class="d-flex flex-wrap gap-2 pa-3 bg-grey-lighten-5 align-center">
+        <div class="d-flex flex-wrap gap-2 pa-3 metadata-bar align-center">
           <v-chip
             v-if="previewData.has_dependencies"
             size="small"
@@ -204,7 +204,7 @@
               <tr
                 v-for="(row, idx) in filteredRows"
                 :key="idx"
-                :class="{ 'bg-grey-lighten-4': idx % 2 === 0 }"
+                :class="{ 'striped-row': idx % 2 === 0 }"
               >
                 <td
                   v-for="column in previewData.columns"
@@ -348,8 +348,12 @@ function formatValue(value: any): string {
   background: white;
 }
 
+.metadata-bar {
+  background: rgb(var(--v-theme-surface-variant));
+}
+
 :deep(.v-table th) {
-  background: #f5f5f5;
+  background: rgb(var(--v-theme-surface));
   font-weight: 600;
   white-space: nowrap;
   position: sticky;
@@ -363,15 +367,20 @@ function formatValue(value: any): string {
 }
 
 :deep(.v-table th.column-header:hover) {
-  background: #e8e8e8;
+  background: rgba(var(--v-theme-on-surface), 0.08);
 }
 
 :deep(.v-table tr.filter-row th) {
   position: sticky;
   top: 48px;
   z-index: 2;
-  background: #ffffff;
-  border-bottom: 2px solid #e0e0e0;
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 2px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+/* Striped rows - theme aware */
+:deep(.v-table tbody tr.striped-row) {
+  background: rgba(var(--v-theme-on-surface), 0.05);
 }
 
 :deep(.v-table td) {

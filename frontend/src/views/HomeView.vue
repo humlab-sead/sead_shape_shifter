@@ -44,12 +44,12 @@
                 <v-card variant="outlined">
                   <v-card-title>Quick Start</v-card-title>
                   <v-card-text>
-                    <ol>
-                      <li>Load a configuration file</li>
-                      <li>Edit entities and dependencies</li>
-                      <li>Validate your changes</li>
-                      <li>Save the configuration</li>
-                    </ol>
+                    <div class="mt-2">
+                      <div><strong>1.</strong> Load configuration file</div>
+                      <div><strong>2.</strong> Edit entities and dependencies</div>
+                      <div><strong>3.</strong> Validate your changes</div>
+                      <div><strong>4.</strong> Save the configuration</div>
+                    </div>
                   </v-card-text>
                 </v-card>
               </v-col>

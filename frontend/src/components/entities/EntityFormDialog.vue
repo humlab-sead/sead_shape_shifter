@@ -19,143 +19,265 @@
         <v-tab value="preview" :disabled="mode === 'create' || !formData.name">Preview</v-tab>
       </v-tabs>
 
-      <v-card-text class="pt-4">
+      <v-card-text class="pt-6 px-4">
         <v-window v-model="activeTab">
           <v-window-item value="basic">
-            <v-form ref="formRef" v-model="formValid">
-          <!-- Entity Name -->
-          <v-text-field
-            v-model="formData.name"
-            label="Entity Name"
-            :rules="nameRules"
-            variant="outlined"
-            density="comfortable"
-            :disabled="mode === 'edit'"
-            required
-            class="mb-4"
-          >
-            <template #message>
-              <span class="text-caption">Unique identifier for this entity</span>
-            </template>
-          </v-text-field>
+            <v-form ref="formRef" v-model="formValid" class="compact-form">
+          <!-- Entity Name, Type, and Source/Data Source on same row -->
+          <div class="form-row">
+            <v-row no-gutters>
+              <v-col cols="4" class="pr-2">
+                <v-text-field
+                  v-model="formData.name"
+                  label="Entity Name *"
+                  :rules="nameRules"
+                  variant="outlined"
+                  density="comfortable"
+                  :disabled="mode === 'edit'"
+                  required
+                >
+                  <template #message>
+                    <span class="text-caption">Unique identifier for this entity</span>
+                  </template>
+                </v-text-field>
+              </v-col>
 
-          <!-- Entity Type -->
-          <v-select
-            v-model="formData.type"
-            :items="entityTypeOptions"
-            label="Type"
-            :rules="requiredRule"
-            variant="outlined"
-            density="comfortable"
-            required
-            class="mb-4"
-          >
-            <template #message>
-              <span class="text-caption">How this entity gets its data</span>
-            </template>
-          </v-select>
+              <v-col cols="4" class="px-1">
+                <!-- Entity Type -->
+                <v-select
+                  v-model="formData.type"
+                  :items="entityTypeOptions"
+                  label="Type *"
+                  :rules="requiredRule"
+                  variant="outlined"
+                  density="comfortable"
+                  required
+                >
+                  <template #message>
+                    <span class="text-caption">How this entity gets its data</span>
+                  </template>
+                </v-select>
+              </v-col>
 
-          <!-- Surrogate ID -->
-          <v-text-field
-            v-model="formData.surrogate_id"
-            label="Surrogate ID (Optional)"
-            variant="outlined"
-            density="comfortable"
-            placeholder="e.g., sample_id"
-            class="mb-4"
-          >
-            <template #message>
-              <span class="text-caption">Generated integer ID field name</span>
-            </template>
-          </v-text-field>
+              <v-col cols="4" class="pl-2">
+                <!-- Source Entity (only for 'data' type) -->
+                <v-autocomplete
+                  v-if="formData.type === 'data'"
+                  v-model="formData.source"
+                  :items="availableSourceEntities"
+                  label="Source Entity"
+                  variant="outlined"
+                  density="comfortable"
+                  clearable
+                  persistent-placeholder
+                >
+                  <template #message>
+                    <span class="text-caption">Parent entity to derive this entity from</span>
+                  </template>
+                </v-autocomplete>
 
-          <!-- Keys -->
-          <v-combobox
-            v-model="formData.keys"
-            label="Keys"
-            :rules="requiredRule"
-            variant="outlined"
-            density="comfortable"
-            multiple
-            chips
-            closable-chips
-            required
-            persistent-placeholder
-            class="mb-4"
-          >
-            <template #message>
-              <span class="text-caption">Natural key columns that uniquely identify records</span>
-            </template>
-          </v-combobox>
+                <!-- Data Source (only for 'sql' type) -->
+                <v-text-field
+                  v-if="formData.type === 'sql'"
+                  v-model="formData.data_source"
+                  label="Data Source *"
+                  :rules="formData.type === 'sql' ? requiredRule : []"
+                  variant="outlined"
+                  density="comfortable"
+                >
+                  <template #message>
+                    <span class="text-caption">Name of the data source connection</span>
+                  </template>
+                </v-text-field>
+              </v-col>
+            </v-row>
+          </div>
+
+          <!-- Surrogate ID and Keys on same row -->
+          <div class="form-row">
+            <v-row no-gutters>
+              <v-col cols="4" class="pr-2">
+                <!-- Surrogate ID -->
+                <v-text-field
+                  v-model="formData.surrogate_id"
+                  label="Surrogate ID"
+                  variant="outlined"
+                  density="comfortable"
+                  placeholder="e.g., sample_id"
+                >
+                  <template #message>
+                    <span class="text-caption">Generated integer ID field name</span>
+                  </template>
+                </v-text-field>
+              </v-col>
+
+              <v-col cols="8" class="pl-2">
+                <!-- Keys -->
+                <v-combobox
+                  v-model="formData.keys"
+                  label="Keys *"
+                  :rules="requiredRule"
+                  variant="outlined"
+                  density="comfortable"
+                  multiple
+                  chips
+                  closable-chips
+                  required
+                  persistent-placeholder
+                >
+                  <template #message>
+                    <span class="text-caption">Natural key columns that uniquely identify records</span>
+                  </template>
+                </v-combobox>
+              </v-col>
+            </v-row>
+          </div>
 
           <!-- Columns (for data/fixed types) -->
-          <v-combobox
-            v-if="formData.type === 'data' || formData.type === 'fixed'"
-            v-model="formData.columns"
-            label="Columns"
-            variant="outlined"
-            density="comfortable"
-            multiple
-            chips
-            closable-chips
-            class="mb-4"
-          >
-            <template #message>
-              <span class="text-caption">Column names to extract or create</span>
-            </template>
-          </v-combobox>
+          <div class="form-row" v-if="formData.type === 'data' || formData.type === 'fixed'">
+            <v-combobox
+              v-model="formData.columns"
+              label="Columns"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              persistent-placeholder
+            >
+              <template #message>
+                <span class="text-caption">Column names to extract or create</span>
+              </template>
+            </v-combobox>
+          </div>
+
+          <!-- Fixed Values Grid (only for fixed type) -->
+          <div class="form-row" v-show="formData.type === 'fixed' && allColumns.length > 0">
+            <FixedValuesGrid
+              v-if="formData.type === 'fixed' && allColumns.length > 0"
+              v-model="formData.values"
+              :columns="allColumns"
+              height="400px"
+            />
+          </div>
+
+          <!-- Depends On -->
+          <div class="form-row">
+            <v-combobox
+              v-model="formData.depends_on"
+              label="Depends On"
+              :items="availableSourceEntities"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              persistent-placeholder
+            >
+              <template #message>
+                <span class="text-caption">Entities that must be processed before this entity</span>
+              </template>
+            </v-combobox>
+          </div>
+
+          <!-- Drop Duplicates and Drop Empty Rows on same row -->
+          <div class="form-row">
+            <v-row no-gutters>
+              <!-- Drop Duplicates -->
+              <v-col cols="6" class="pr-2">
+                <v-checkbox
+                  v-model="formData.drop_duplicates.enabled"
+                  label="Drop Duplicates"
+                  density="comfortable"
+                  hide-details
+                  class="mb-2"
+                >
+                </v-checkbox>
+                <v-combobox
+                  v-model="formData.drop_duplicates.columns"
+                  label="Deduplication Columns"
+                  variant="outlined"
+                  density="comfortable"
+                  multiple
+                  chips
+                  closable-chips
+                  persistent-placeholder
+                  :disabled="!formData.drop_duplicates.enabled"
+                >
+                  <template #message>
+                    <span class="text-caption">Columns to use for deduplication (empty = all columns)</span>
+                  </template>
+                </v-combobox>
+              </v-col>
+
+              <!-- Drop Empty Rows -->
+              <v-col cols="6" class="pl-2">
+                <v-checkbox
+                  v-model="formData.drop_empty_rows.enabled"
+                  label="Drop Empty Rows"
+                  density="comfortable"
+                  hide-details
+                  class="mb-2"
+                >
+                </v-checkbox>
+                <v-combobox
+                  v-model="formData.drop_empty_rows.columns"
+                  label="Columns to Check for Empty Values"
+                  variant="outlined"
+                  density="comfortable"
+                  multiple
+                  chips
+                  closable-chips
+                  persistent-placeholder
+                  :disabled="!formData.drop_empty_rows.enabled"
+                >
+                  <template #message>
+                    <span class="text-caption">Columns to check for empty values (empty = all columns)</span>
+                  </template>
+                </v-combobox>
+              </v-col>
+            </v-row>
+          </div>
+
+          <!-- Check Functional Dependency -->
+          <div class="form-row">
+            <v-row no-gutters>
+              <v-col cols="6" class="pr-2">
+                <!-- Empty space on left -->
+              </v-col>
+              <v-col cols="6" class="pl-2">
+                <v-checkbox
+                  v-model="formData.check_functional_dependency"
+                  label="Check Functional Dependency"
+                  density="comfortable"
+                  hide-details
+                  :disabled="!formData.drop_empty_rows.enabled"
+                >
+                </v-checkbox>
+              </v-col>
+            </v-row>
+          </div>
 
           <!-- Smart Suggestions Panel -->
-          <SuggestionsPanel
-            v-if="showSuggestions && suggestions"
-            :suggestions="suggestions"
-            @accept-foreign-key="handleAcceptForeignKey"
-            @reject-foreign-key="handleRejectForeignKey"
-            @accept-dependency="handleAcceptDependency"
-            @reject-dependency="handleRejectDependency"
-            class="mb-4"
-          />
-
-          <!-- Source Entity -->
-          <v-autocomplete
-            v-model="formData.source"
-            :items="availableSourceEntities"
-            label="Source Entity (Optional)"
-            variant="outlined"
-            density="comfortable"
-            clearable
-            persistent-placeholder
-            class="mb-4"
-          >
-            <template #message>
-              <span class="text-caption">Parent entity to derive this entity from</span>
-            </template>
-          </v-autocomplete>
-
-          <!-- Data Source (for sql type) -->
-          <v-text-field
-            v-if="formData.type === 'sql'"
-            v-model="formData.data_source"
-            label="Data Source"
-            :rules="formData.type === 'sql' ? requiredRule : []"
-            variant="outlined"
-            density="comfortable"
-            class="mb-4"
-          >
-            <template #message>
-              <span class="text-caption">Name of the data source connection</span>
-            </template>
-          </v-text-field>
+          <div class="form-row" v-if="showSuggestions && suggestions">
+            <SuggestionsPanel
+              :suggestions="suggestions"
+              @accept-foreign-key="handleAcceptForeignKey"
+              @reject-foreign-key="handleRejectForeignKey"
+              @accept-dependency="handleAcceptDependency"
+              @reject-dependency="handleRejectDependency"
+            />
+          </div>
 
           <!-- SQL Query (for sql type) -->
-          <SqlEditor
-            v-if="formData.type === 'sql'"
-            v-model="formData.query"
-            height="250px"
-            help-text="SQL query to execute against the selected data source"
-            :error="formValid === false && !formData.query ? 'SQL query is required' : ''"
-            class="mb-4"
-          />
+          <div class="form-row" v-if="formData.type === 'sql'">
+            <SqlEditor
+              v-model="formData.query"
+              height="250px"
+              help-text="SQL query to execute against the selected data source"
+              :error="formValid === false && !formData.query ? 'SQL query is required' : ''"
+            />
+          </div>
 
               <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
                 {{ error }}
@@ -256,6 +378,10 @@ import SuggestionsPanel from './SuggestionsPanel.vue'
 import EntityPreviewPanel from './EntityPreviewPanel.vue'
 import YamlEditor from '../common/YamlEditor.vue'
 import SqlEditor from '../common/SqlEditor.vue'
+import { defineAsyncComponent } from 'vue'
+
+// Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
+const FixedValuesGrid = defineAsyncComponent(() => import('./FixedValuesGrid.vue'))
 
 interface Props {
   modelValue: boolean
@@ -296,11 +422,27 @@ interface FormData {
   surrogate_id: string
   keys: string[]
   columns: string[]
+  values: any[][] // For fixed type entities
   source: string | null
   data_source: string
   query: string
   foreign_keys: any[]
-  advanced: any
+  depends_on: string[]
+  drop_duplicates: {
+    enabled: boolean
+    columns: string[]
+  }
+  drop_empty_rows: {
+    enabled: boolean
+    columns: string[]
+  }
+  check_functional_dependency: boolean
+  advanced: {
+    filters?: any[]
+    unnest?: any | null
+    append?: any[]
+    extra_columns?: Record<string, string | null>
+  }
 }
 
 const formData = ref<FormData>({
@@ -309,18 +451,37 @@ const formData = ref<FormData>({
   surrogate_id: '',
   keys: [],
   columns: [],
+  values: [],
   source: null,
   data_source: '',
   query: '',
   foreign_keys: [],
+  depends_on: [],
+  drop_duplicates: {
+    enabled: false,
+    columns: [],
+  },
+  drop_empty_rows: {
+    enabled: false,
+    columns: [],
+  },
+  check_functional_dependency: false,
   advanced: {
     filters: [],
     unnest: null,
     append: [],
+    extra_columns: undefined,
   },
 })
 
 const activeTab = ref('basic')
+
+// Computed property for all columns (keys + columns) for fixed values grid
+const allColumns = computed(() => {
+  const keys = formData.value.keys || []
+  const columns = formData.value.columns || []
+  return [...keys, ...columns]
+})
 
 // Preview handlers
 function handlePreviewLoaded(rows: number) {
@@ -384,6 +545,10 @@ function formDataToYaml(): string {
     entityData.columns = formData.value.columns
   }
 
+  if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
+    entityData.values = formData.value.values
+  }
+
   if (formData.value.source) {
     entityData.source = formData.value.source
   }
@@ -413,6 +578,34 @@ function formDataToYaml(): string {
     entityData.append = formData.value.advanced.append
   }
 
+  if (formData.value.advanced.extra_columns) {
+    entityData.extra_columns = formData.value.advanced.extra_columns
+  }
+
+  if (formData.value.depends_on.length > 0) {
+    entityData.depends_on = formData.value.depends_on
+  }
+
+  if (formData.value.drop_duplicates.enabled) {
+    if (formData.value.drop_duplicates.columns.length > 0) {
+      entityData.drop_duplicates = formData.value.drop_duplicates.columns
+    } else {
+      entityData.drop_duplicates = true
+    }
+  }
+
+  if (formData.value.drop_empty_rows.enabled) {
+    if (formData.value.drop_empty_rows.columns.length > 0) {
+      entityData.drop_empty_rows = formData.value.drop_empty_rows.columns
+    } else {
+      entityData.drop_empty_rows = true
+    }
+  }
+
+  if (formData.value.check_functional_dependency) {
+    entityData.check_functional_dependency = true
+  }
+
   return yaml.dump(entityData, { indent: 2, lineWidth: -1 })
 }
 
@@ -420,20 +613,38 @@ function yamlToFormData(yamlString: string): boolean {
   try {
     const data = yaml.load(yamlString) as Record<string, any>
     
+    const dropDuplicates = data.drop_duplicates
+    const dropDuplicatesData = {
+      enabled: dropDuplicates !== undefined && dropDuplicates !== null,
+      columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
+    }
+
+    const dropEmptyRows = data.drop_empty_rows
+    const dropEmptyRowsData = {
+      enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
+      columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
+    }
+    
     formData.value = {
       name: data.name || formData.value.name,
       type: data.type || 'data',
       surrogate_id: data.surrogate_id || '',
       keys: Array.isArray(data.keys) ? data.keys : [],
       columns: Array.isArray(data.columns) ? data.columns : [],
+      values: Array.isArray(data.values) ? data.values : [],
       source: data.source || null,
       data_source: data.data_source || '',
       query: data.query || '',
       foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
+      depends_on: Array.isArray(data.depends_on) ? data.depends_on : [],
+      drop_duplicates: dropDuplicatesData,
+      drop_empty_rows: dropEmptyRowsData,
+      check_functional_dependency: data.check_functional_dependency || false,
       advanced: {
         filters: Array.isArray(data.filters) ? data.filters : [],
         unnest: data.unnest || null,
         append: Array.isArray(data.append) ? data.append : [],
+        extra_columns: data.extra_columns || undefined,
       },
     }
     
@@ -483,6 +694,10 @@ async function handleSubmit() {
       entityData.columns = formData.value.columns
     }
 
+    if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
+      entityData.values = formData.value.values
+    }
+
     if (formData.value.source) {
       entityData.source = formData.value.source
     }
@@ -497,6 +712,34 @@ async function handleSubmit() {
       entityData.foreign_keys = formData.value.foreign_keys
     }
 
+    // Include depends_on if specified
+    if (formData.value.depends_on.length > 0) {
+      entityData.depends_on = formData.value.depends_on
+    }
+
+    // Include drop_duplicates if enabled
+    if (formData.value.drop_duplicates.enabled) {
+      if (formData.value.drop_duplicates.columns.length > 0) {
+        entityData.drop_duplicates = formData.value.drop_duplicates.columns
+      } else {
+        entityData.drop_duplicates = true
+      }
+    }
+
+    // Include drop_empty_rows if enabled
+    if (formData.value.drop_empty_rows.enabled) {
+      if (formData.value.drop_empty_rows.columns.length > 0) {
+        entityData.drop_empty_rows = formData.value.drop_empty_rows.columns
+      } else {
+        entityData.drop_empty_rows = true
+      }
+    }
+
+    // Include check_functional_dependency if enabled
+    if (formData.value.check_functional_dependency) {
+      entityData.check_functional_dependency = true
+    }
+
     // Include advanced configuration
     if (formData.value.advanced.filters?.length > 0) {
       entityData.filters = formData.value.advanced.filters
@@ -506,6 +749,9 @@ async function handleSubmit() {
     }
     if (formData.value.advanced.append?.length > 0) {
       entityData.append = formData.value.advanced.append
+    }
+    if (formData.value.advanced.extra_columns) {
+      entityData.extra_columns = formData.value.advanced.extra_columns
     }
 
     if (props.mode === 'create') {
@@ -543,20 +789,38 @@ watch(
   () => props.entity,
   (newEntity) => {
     if (newEntity && props.mode === 'edit') {
+      const dropDuplicates = newEntity.entity_data.drop_duplicates
+      const dropDuplicatesData = {
+        enabled: dropDuplicates !== undefined && dropDuplicates !== null,
+        columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
+      }
+
+      const dropEmptyRows = newEntity.entity_data.drop_empty_rows
+      const dropEmptyRowsData = {
+        enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
+        columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
+      }
+
       formData.value = {
         name: newEntity.name,
         type: (newEntity.entity_data.type as string) || 'data',
         surrogate_id: (newEntity.entity_data.surrogate_id as string) || '',
         keys: (newEntity.entity_data.keys as string[]) || [],
         columns: (newEntity.entity_data.columns as string[]) || [],
+        values: (newEntity.entity_data.values as any[][]) || [],
         source: (newEntity.entity_data.source as string) || null,
         data_source: (newEntity.entity_data.data_source as string) || '',
         query: (newEntity.entity_data.query as string) || '',
         foreign_keys: (newEntity.entity_data.foreign_keys as any[]) || [],
+        depends_on: (newEntity.entity_data.depends_on as string[]) || [],
+        drop_duplicates: dropDuplicatesData,
+        drop_empty_rows: dropEmptyRowsData,
+        check_functional_dependency: (newEntity.entity_data.check_functional_dependency as boolean) || false,
         advanced: {
           filters: (newEntity.entity_data.filters as any[]) || [],
           unnest: newEntity.entity_data.unnest || null,
           append: (newEntity.entity_data.append as any[]) || [],
+          extra_columns: (newEntity.entity_data.extra_columns as Record<string, string | null>) || undefined,
         },
       }
     } else if (props.mode === 'create') {
@@ -566,14 +830,26 @@ watch(
         surrogate_id: '',
         keys: [],
         columns: [],
+        values: [],
         source: null,
         data_source: '',
         query: '',
         foreign_keys: [],
+        depends_on: [],
+        drop_duplicates: {
+          enabled: false,
+          columns: [],
+        },
+        drop_empty_rows: {
+          enabled: false,
+          columns: [],
+        },
+        check_functional_dependency: false,
         advanced: {
           filters: [],
           unnest: null,
           append: [],
+          extra_columns: undefined,
         },
       }
     }
@@ -690,3 +966,65 @@ function handleRejectDependency(dep: DependencySuggestion) {
   console.log('Rejected dependency suggestion:', dep)
 }
 </script>
+
+<style scoped>
+/* Compact form styling with smaller font size */
+.compact-form {
+  margin-top: 8px;
+}
+
+/* Consistent spacing for all form rows */
+.form-row {
+  margin-bottom: 4px;
+}
+
+:deep(.v-field__input) {
+  font-size: 12px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+:deep(.v-select__selection-text) {
+  font-size: 12px;
+}
+
+:deep(.v-autocomplete .v-field__input) {
+  font-size: 12px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+:deep(.v-chip) {
+  font-size: 11px;
+}
+
+/* Reduce field padding */
+:deep(.v-field) {
+  --v-field-padding-top: 4px;
+  --v-field-padding-bottom: 4px;
+}
+
+:deep(.v-field__field) {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+:deep(.v-field--variant-outlined .v-field__outline) {
+  --v-field-border-opacity: 0.3;
+}
+
+/* Remove all default Vuetify row/col margins and ensure left alignment */
+.form-row :deep(.v-row) {
+  margin: 0 !important;
+}
+
+.form-row :deep(.v-col) {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Reduce checkbox font size */
+:deep(.v-checkbox .v-label) {
+  font-size: 12px;
+}
+</style>
