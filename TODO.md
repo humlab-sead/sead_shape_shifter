@@ -121,3 +121,4 @@ Improve validations for configuration files to catch the most common errors and 
  - [x] TODO: #37 Add session management to frontend configuration editors. **COMPLETED** - See frontend/FRONTEND_SESSION_QUICKSTART.md
  - [] TODO: Add ability to test entity configurations without executing full normalization workflow.
  - [] TODO: Add setting view to frontend to configure frontend/backend options (e.g., themes, temp directory, logging level, etc.)
+ - [] TODO: #41 Add grid editor for editing fixed entity

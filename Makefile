@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
 BACKEND_PORT ?= 8012
-FRONEND_PORT ?= 5173
+FRONTEND_PORT ?= 5173
 
 .PHONY: csv excel
 excel:
@@ -69,16 +69,30 @@ lint: tidy pylint check-imports
 check-imports:
 	@python scripts/check_imports.py
 
+################################################################################
+# Backend & frontend recipes
+################################################################################
 
-# ============================================================================
-# Backend recipes (now use unified environment)
-# ============================================================================
+.PHONY: kill
+kill: backend-kill frontend-kill
 
-.PHONY: backend-kill
-backend-kill:
-	@echo "Killing backend server..."
-	@sudo pkill -9 -f "uvicorn.*--port $(BACKEND_PORT)" || true
-	@echo "Backend server stopped."
+.PHONY: br
+br: backend-kill backend-run
+
+.PHONY: fr
+fr: frontend-kill frontend-run
+
+.PHONY: fr2
+fr2: frontend-kill frontend-build-fast frontend-run
+
+################################################################################
+# Backend recipes
+################################################################################
+
+.PHONY: kill
+backend-kill: 
+	@lsof -t -i ':$(BACKEND_PORT)' | xargs -r kill -9
+	@echo "Killed all running servers."
 
 .PHONY: backend-run
 backend-run:
@@ -93,34 +107,22 @@ backend-run:
 		--log-level debug \
 		--host 0.0.0.0 --port $(BACKEND_PORT)
 
-# 		watchfiles --filter python --grace-period 1 \
-# 			'uv run uvicorn backend.app.main:app --log-level info --host 0.0.0.0 --port ${BACKEND_PORT}' \
-# 			backend/app src
-
-
-# 	PYTHONPATH=. watchfiles \
-# 		--filter python \
-# 		"uvicorn backend.app.main:app --log-level debug --host 0.0.0.0 --port ${BACKEND_PORT}" \
-# 		backend/app src
-
-# 	PYTHONPATH=. uvicorn backend.app.main:app \
-# 		--reload  \
-# 		--reload-dir backend/app \
-# 		--log-level debug \
-# 		--host 0.0.0.0 --port $(BACKEND_PORT)
-
 .PHONY: backend-test
 backend-test:
 	@echo "Running backend tests..."
 	@uv run pytest backend/tests -v
 
-# ============================================================================
+################################################################################
 # Configuration Editor UI
-# ============================================================================
+################################################################################
 
 .PHONY: ui-install
 ui-install: install frontend-install
 	@echo "✓ Full UI stack installed (core + api + frontend)"
+
+frontend-kill: 
+	@lsof -t -i ':$(FRONTEND_PORT)' | xargs -r kill -9
+	@echo "Killed all running servers."
 
 .PHONY: frontend-install
 frontend-install:
@@ -129,13 +131,8 @@ frontend-install:
 
 .PHONY: frontend-run
 frontend-run:
-	@echo "Starting frontend dev server on http://localhost:$(FRONEND_PORT)"
+	@echo "Starting frontend dev server on http://localhost:$(FRONTEND_PORT)"
 	@cd frontend && pnpm dev
-
-.PHONY: frontend-build
-frontend-build:
-	@echo "Building frontend for production..."
-	@cd frontend && pnpm build
 
 .PHONY: frontend-build-fast
 frontend-build-fast:
@@ -147,9 +144,13 @@ frontend-preview:
 	@echo "Preview production build on http://localhost:4173"
 	@cd frontend && pnpm preview
 
-.PHONY: frontend-rebuild
-frontend-rebuild:
+.PHONY: frontend-build
+frontend-build:
 	@cd frontend && rm -rf node_modules/.vite dist && pnpm dev 
+
+################################################################################
+# Other stuff
+################################################################################
 
 .PHONY: fix-imports
 fix-imports:
