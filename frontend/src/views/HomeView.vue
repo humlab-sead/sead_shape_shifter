@@ -66,22 +66,16 @@ import axios from 'axios'
 
 const navItems = [
   {
-    title: 'Entities',
-    description: 'Manage entities and their properties',
-    icon: 'mdi-table',
-    path: '/entities',
+    title: 'Configurations',
+    description: 'Manage configuration files',
+    icon: 'mdi-file-document-multiple',
+    path: '/configurations',
   },
   {
-    title: 'Dependency Graph',
-    description: 'Visualize entity dependencies',
-    icon: 'mdi-graph',
-    path: '/graph',
-  },
-  {
-    title: 'Validation',
-    description: 'Check configuration for errors',
-    icon: 'mdi-check-circle',
-    path: '/validation',
+    title: 'Data Sources',
+    description: 'Configure database connections',
+    icon: 'mdi-database',
+    path: '/data-sources',
   },
   {
     title: 'Settings',
