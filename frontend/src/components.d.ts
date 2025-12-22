@@ -22,6 +22,7 @@ declare module 'vue' {
     EntityPreviewPanel: typeof import('./components/entities/EntityPreviewPanel.vue')['default']
     EntityResultsList: typeof import('./components/TestRun/EntityResultsList.vue')['default']
     ErrorAlert: typeof import('./components/common/ErrorAlert.vue')['default']
+    FixedValuesGrid: typeof import('./components/entities/FixedValuesGrid.vue')['default']
     ForeignKeyEditor: typeof import('./components/entities/ForeignKeyEditor.vue')['default']
     ForeignKeyTester: typeof import('./components/entities/ForeignKeyTester.vue')['default']
     LoadingSkeleton: typeof import('./components/common/LoadingSkeleton.vue')['default']
