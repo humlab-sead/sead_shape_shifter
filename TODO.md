@@ -120,7 +120,7 @@ Improve validations for configuration files to catch the most common errors and 
  - [x] TODO: #34 Improve server side state management for configuration editing, what should be per app (lifespan) vs per request? **COMPLETED** - See docs/STATE_MANAGEMENT_IMPLEMENTATION.md
  - [x] TODO: #37 Add session management to frontend configuration editors. **COMPLETED** - See frontend/FRONTEND_SESSION_QUICKSTART.md
  - [] TODO: Add ability to test entity configurations without executing full normalization workflow.
- - [] TODO: Add setting view to frontend to configure frontend/backend options (e.g., themes, temp directory, logging level, etc.)
+ - [x] TODO: Add setting view to frontend to configure frontend/backend options (e.g., themes, temp directory, logging level, etc.)
  - [] TODO: #41 Add grid editor for editing fixed entity
  - [] TODO: #44 Use grid editor in preview
  - [] TODO: #45 Improve REPL experience
