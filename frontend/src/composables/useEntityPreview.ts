@@ -2,6 +2,7 @@
  * Composable for entity data preview functionality
  */
 import { ref, computed } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import axios from 'axios'
 
 export interface ColumnInfo {
@@ -28,6 +29,7 @@ export function useEntityPreview() {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const previewData = ref<PreviewResult | null>(null)
+  const lastRefresh = ref<Date | null>(null)
 
   const hasData = computed(() => previewData.value !== null)
   const rowCount = computed(() => previewData.value?.total_rows_in_preview ?? 0)
@@ -57,6 +59,7 @@ export function useEntityPreview() {
       )
 
       previewData.value = response.data
+      lastRefresh.value = new Date()
       return response.data
     } catch (err: any) {
       const message = err.response?.data?.detail || err.message || 'Failed to load preview'
@@ -67,6 +70,16 @@ export function useEntityPreview() {
       loading.value = false
     }
   }
+
+  /**
+   * Debounced preview entity - waits 1000ms after last call
+   */
+  const debouncedPreviewEntity = useDebounceFn(
+    (configName: string, entityName: string, limit?: number) => {
+      return previewEntity(configName, entityName, limit)
+    },
+    1000
+  )
 
   /**
    * Get entity sample (larger dataset)
@@ -143,12 +156,14 @@ export function useEntityPreview() {
     loading,
     error,
     previewData,
+    lastRefresh,
     hasData,
     rowCount,
     totalRows,
 
     // Actions
     previewEntity,
+    debouncedPreviewEntity,
     getEntitySample,
     invalidateCache,
     clearPreview,

@@ -1,12 +1,29 @@
 <template>
-  <v-dialog v-model="dialogModel" max-width="900" persistent scrollable>
+  <v-dialog v-model="dialogModel" :max-width="splitView ? '95vw' : '900'" persistent scrollable>
     <v-card>
-      <v-card-title class="d-flex align-center" style="overflow: visible;">
-        <v-icon :icon="mode === 'create' ? 'mdi-plus-circle' : 'mdi-pencil'" class="mr-2" />
-        <span class="text-truncate" :title="mode === 'create' ? 'Create Entity' : `Edit ${entity?.name}`">
+      <v-toolbar color="primary" density="compact">
+        <v-toolbar-title>
+          <v-icon :icon="mode === 'create' ? 'mdi-plus-circle' : 'mdi-pencil'" class="mr-2" />
           {{ mode === 'create' ? 'Create Entity' : `Edit ${entity?.name}` }}
-        </span>
-      </v-card-title>
+        </v-toolbar-title>
+        <v-spacer />
+        
+        <!-- Split view toggle -->
+        <v-tooltip location="bottom">
+          <template #activator="{ props: tooltipProps }">
+            <v-btn
+              v-bind="tooltipProps"
+              icon
+              variant="text"
+              @click="toggleSplitView"
+              :disabled="mode === 'create'"
+            >
+              <v-icon>{{ splitView ? 'mdi-arrow-collapse-horizontal' : 'mdi-arrow-expand-horizontal' }}</v-icon>
+            </v-btn>
+          </template>
+          <span>{{ splitView ? 'Collapse' : 'Expand' }} Preview Panel (Ctrl+Shift+P)</span>
+        </v-tooltip>
+      </v-toolbar>
 
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="basic">Basic</v-tab>
@@ -19,8 +36,11 @@
         <v-tab value="preview" :disabled="mode === 'create' || !formData.name">Preview</v-tab>
       </v-tabs>
 
-      <v-card-text class="pt-6 px-4">
-        <v-window v-model="activeTab">
+      <v-card-text class="pa-0" :class="{ 'split-container': splitView }">
+        <div :class="splitView ? 'split-layout' : ''">
+          <!-- Left: Entity Form -->
+          <div :class="splitView ? 'form-panel' : 'pt-6 px-4'">
+            <v-window v-model="activeTab">
           <v-window-item value="basic">
             <v-form ref="formRef" v-model="formValid" class="compact-form">
           <!-- Entity Name, Type, and Source/Data Source on same row -->
@@ -345,6 +365,134 @@
             />
           </v-window-item>
         </v-window>
+          </div>
+
+          <!-- Right: Live Preview Panel -->
+          <div v-if="splitView" class="preview-panel">
+            <div class="preview-header">
+              <div class="d-flex align-center justify-space-between pa-2">
+                <div class="d-flex align-center gap-2">
+                  <v-btn
+                    size="small"
+                    variant="tonal"
+                    @click="refreshPreview"
+                    :loading="previewLoading"
+                    :disabled="!canPreview"
+                  >
+                    <v-icon start size="small">mdi-refresh</v-icon>
+                    Refresh
+                  </v-btn>
+                  
+                  <v-chip
+                    v-if="livePreviewData"
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                  >
+                    {{ livePreviewData.total_rows_in_preview || 0 }} rows
+                  </v-chip>
+
+                  <v-chip
+                    v-if="livePreviewLastRefresh"
+                    size="small"
+                    variant="text"
+                  >
+                    <v-icon start size="x-small">mdi-clock-outline</v-icon>
+                    {{ formatRefreshTime(livePreviewLastRefresh) }}
+                  </v-chip>
+                </div>
+
+                <v-checkbox
+                  v-model="autoRefreshEnabled"
+                  label="Auto-refresh"
+                  density="compact"
+                  hide-details
+                  class="mt-0"
+                />
+              </div>
+
+              <v-alert
+                v-if="previewError"
+                type="error"
+                density="compact"
+                closable
+                class="ma-2"
+                @click:close="previewError = null"
+              >
+                {{ previewError }}
+              </v-alert>
+
+              <v-alert
+                v-if="!canPreview"
+                type="info"
+                density="compact"
+                class="ma-2"
+              >
+                Entity must be saved before preview is available
+              </v-alert>
+            </div>
+
+            <div class="preview-content">
+              <v-progress-linear v-if="previewLoading" indeterminate color="primary" />
+              
+              <div v-if="livePreviewData && !previewLoading" class="preview-table-container">
+                <v-table density="compact" fixed-header height="100%">
+                  <thead>
+                    <tr>
+                      <th
+                        v-for="col in livePreviewData.columns"
+                        :key="col.name"
+                        class="text-left"
+                      >
+                        <div class="d-flex align-center gap-1">
+                          <v-icon
+                            v-if="col.is_key"
+                            icon="mdi-key"
+                            size="x-small"
+                            color="warning"
+                          />
+                          <span>{{ col.name }}</span>
+                          <v-chip
+                            size="x-small"
+                            variant="flat"
+                            class="ml-1"
+                          >
+                            {{ col.data_type }}
+                          </v-chip>
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(row, idx) in livePreviewData.rows"
+                      :key="idx"
+                      :class="{ 'striped-row': idx % 2 === 1 }"
+                    >
+                      <td v-for="col in livePreviewData.columns" :key="col.name">
+                        <span v-if="row[col.name] === null || row[col.name] === undefined" class="text-grey font-italic">
+                          null
+                        </span>
+                        <span v-else>{{ row[col.name] }}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </v-table>
+              </div>
+
+              <div
+                v-else-if="!previewLoading && !livePreviewData"
+                class="d-flex align-center justify-center pa-8 text-disabled"
+              >
+                <div class="text-center">
+                  <v-icon size="64" color="disabled">mdi-table-off</v-icon>
+                  <div class="mt-2">No preview data</div>
+                  <div class="text-caption">Click Refresh to load preview</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </v-card-text>
 
       <v-card-actions>
@@ -367,8 +515,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect } from 'vue'
-import { useEntities, useSuggestions } from '@/composables'
+import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
+import { useEntities, useSuggestions, useEntityPreview } from '@/composables'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
 import * as yaml from 'js-yaml'
@@ -404,6 +552,22 @@ const { entities, create, update } = useEntities({
 })
 
 const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions()
+
+// Split-pane and preview state
+const splitView = ref(false)
+const autoRefreshEnabled = ref(false)
+
+// Live preview composable (separate from the preview tab)
+const {
+  previewData: livePreviewData,
+  loading: previewLoading,
+  error: livePreviewError,
+  lastRefresh: livePreviewLastRefresh,
+  previewEntity,
+  debouncedPreviewEntity,
+} = useEntityPreview()
+
+const previewError = ref<string | null>(null)
 
 // Form state
 const formRef = ref()
@@ -481,6 +645,65 @@ const allColumns = computed(() => {
   const keys = formData.value.keys || []
   const columns = formData.value.columns || []
   return [...keys, ...columns]
+})
+
+// Can preview only in edit mode
+const canPreview = computed(() => {
+  return props.mode === 'edit' && formData.value.name
+})
+
+// Split-pane functions
+function toggleSplitView() {
+  splitView.value = !splitView.value
+  if (splitView.value && canPreview.value) {
+    refreshPreview()
+  }
+}
+
+async function refreshPreview() {
+  if (!canPreview.value) return
+  
+  previewError.value = null
+  await previewEntity(props.configName, formData.value.name, 100)
+  
+  if (livePreviewError.value) {
+    previewError.value = livePreviewError.value
+  }
+}
+
+function formatRefreshTime(date: Date): string {
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000)
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  return date.toLocaleTimeString()
+}
+
+// Watch for changes and auto-refresh if enabled
+watch(
+  formData,
+  () => {
+    if (autoRefreshEnabled.value && splitView.value && canPreview.value) {
+      debouncedPreviewEntity(props.configName, formData.value.name, 100)
+    }
+  },
+  { deep: true }
+)
+
+// Keyboard shortcut for split view toggle (Ctrl+Shift+P)
+function handleKeyPress(e: KeyboardEvent) {
+  if (e.ctrlKey && e.shiftKey && e.key === 'P' && dialogModel.value && props.mode === 'edit') {
+    e.preventDefault()
+    toggleSplitView()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyPress)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyPress)
 })
 
 // Preview handlers
@@ -968,6 +1191,85 @@ function handleRejectDependency(dep: DependencySuggestion) {
 </script>
 
 <style scoped>
+/* Split-pane layout */
+.split-container {
+  height: calc(100vh - 180px);
+  overflow: hidden;
+}
+
+.split-layout {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.form-panel {
+  flex: 0 0 50%;
+  overflow-y: auto;
+  padding: 24px;
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.preview-panel {
+  flex: 0 0 50%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+}
+
+.preview-header {
+  flex: 0 0 auto;
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.preview-content {
+  flex: 1 1 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-table-container {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.preview-table-container :deep(.v-table) {
+  background: transparent;
+}
+
+.preview-table-container :deep(.v-table th) {
+  background: rgb(var(--v-theme-surface));
+  font-weight: 600;
+  font-size: 11px;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 4px 8px;
+}
+
+.preview-table-container :deep(.v-table td) {
+  font-size: 11px;
+  white-space: nowrap;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 4px 8px;
+}
+
+.preview-table-container :deep(.v-chip) {
+  font-size: 8px;
+  height: 14px;
+  padding: 0 4px;
+}
+
+.striped-row {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+}
+
 /* Compact form styling with smaller font size */
 .compact-form {
   margin-top: 8px;
