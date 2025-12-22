@@ -436,48 +436,17 @@
               <v-progress-linear v-if="previewLoading" indeterminate color="primary" />
               
               <div v-if="livePreviewData && !previewLoading" class="preview-table-container">
-                <v-table density="compact" fixed-header height="100%">
-                  <thead>
-                    <tr>
-                      <th
-                        v-for="col in livePreviewData.columns"
-                        :key="col.name"
-                        class="text-left"
-                      >
-                        <div class="d-flex align-center gap-1">
-                          <v-icon
-                            v-if="col.is_key"
-                            icon="mdi-key"
-                            size="x-small"
-                            color="warning"
-                          />
-                          <span>{{ col.name }}</span>
-                          <v-chip
-                            size="x-small"
-                            variant="flat"
-                            class="ml-1"
-                          >
-                            {{ col.data_type }}
-                          </v-chip>
-                        </div>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="(row, idx) in livePreviewData.rows"
-                      :key="idx"
-                      :class="{ 'striped-row': idx % 2 === 1 }"
-                    >
-                      <td v-for="col in livePreviewData.columns" :key="col.name">
-                        <span v-if="row[col.name] === null || row[col.name] === undefined" class="text-grey font-italic">
-                          null
-                        </span>
-                        <span v-else>{{ row[col.name] }}</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </v-table>
+                <ag-grid-vue
+                  class="ag-theme-alpine preview-ag-grid"
+                  :style="{ height: '100%', width: '100%' }"
+                  :columnDefs="previewColumnDefs"
+                  :rowData="previewRowData"
+                  :defaultColDef="previewDefaultColDef"
+                  :animateRows="true"
+                  :suppressCellFocus="true"
+                  :headerHeight="32"
+                  :rowHeight="28"
+                />
               </div>
 
               <div
@@ -520,6 +489,10 @@ import { useEntities, useSuggestions, useEntityPreview } from '@/composables'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
 import * as yaml from 'js-yaml'
+import { AgGridVue } from 'ag-grid-vue3'
+import type { ColDef } from 'ag-grid-community'
+import 'ag-grid-community/styles/ag-grid.css'
+import 'ag-grid-community/styles/ag-theme-alpine.css'
 import ForeignKeyEditor from './ForeignKeyEditor.vue'
 import AdvancedEntityConfig from './AdvancedEntityConfig.vue'
 import SuggestionsPanel from './SuggestionsPanel.vue'
@@ -651,6 +624,37 @@ const allColumns = computed(() => {
 const canPreview = computed(() => {
   return props.mode === 'edit' && formData.value.name
 })
+
+// Ag-grid configuration for preview
+const previewColumnDefs = computed<ColDef[]>(() => {
+  if (!livePreviewData.value?.columns) return []
+  
+  return livePreviewData.value.columns.map(col => ({
+    field: col.name,
+    headerName: col.name,
+    sortable: true,
+    filter: true,
+    resizable: true,
+    minWidth: 100,
+    flex: 1,
+    cellClass: col.is_key ? 'key-column' : '',
+    headerComponent: undefined,
+    headerComponentParams: {
+      columnInfo: col
+    }
+  }))
+})
+
+const previewRowData = computed(() => {
+  return livePreviewData.value?.rows || []
+})
+
+const previewDefaultColDef: ColDef = {
+  sortable: true,
+  filter: true,
+  resizable: true,
+  minWidth: 80,
+}
 
 // Split-pane functions
 function toggleSplitView() {
@@ -1233,37 +1237,75 @@ function handleRejectDependency(dep: DependencySuggestion) {
 
 .preview-table-container {
   flex: 1 1 auto;
-  overflow: auto;
+  overflow: hidden;
+  position: relative;
 }
 
-.preview-table-container :deep(.v-table) {
+/* Ag-grid preview styles */
+.preview-ag-grid {
+  font-size: 11px;
+}
+
+.preview-ag-grid :deep(.ag-header) {
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.preview-ag-grid :deep(.ag-header-cell) {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  background: rgb(var(--v-theme-surface));
+}
+
+.preview-ag-grid :deep(.ag-header-cell-label) {
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.preview-ag-grid :deep(.ag-cell) {
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 20px;
+  color: rgb(var(--v-theme-on-surface)) !important;
+  border-color: rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.preview-ag-grid :deep(.ag-row) {
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.preview-ag-grid :deep(.ag-row-odd) {
+  background: rgba(var(--v-theme-on-surface), 0.03);
+}
+
+.preview-ag-grid :deep(.ag-row-even) {
   background: transparent;
 }
 
-.preview-table-container :deep(.v-table th) {
-  background: rgb(var(--v-theme-surface));
-  font-weight: 600;
-  font-size: 11px;
-  white-space: nowrap;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  padding: 4px 8px;
+.preview-ag-grid :deep(.ag-row-hover) {
+  background: rgba(var(--v-theme-primary), 0.08);
 }
 
-.preview-table-container :deep(.v-table td) {
-  font-size: 11px;
-  white-space: nowrap;
-  max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 4px 8px;
+.preview-ag-grid :deep(.key-column) {
+  font-weight: 500;
+  background: rgba(var(--v-theme-warning), 0.05);
 }
 
-.preview-table-container :deep(.v-chip) {
-  font-size: 8px;
-  height: 14px;
-  padding: 0 4px;
+/* Dark mode support for ag-grid */
+.preview-ag-grid :deep(.ag-root-wrapper) {
+  border: none;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.preview-ag-grid :deep(.ag-theme-alpine) {
+  --ag-background-color: transparent;
+  --ag-foreground-color: rgb(var(--v-theme-on-surface));
+  --ag-header-foreground-color: rgb(var(--v-theme-on-surface));
+  --ag-header-background-color: rgb(var(--v-theme-surface));
+  --ag-odd-row-background-color: rgba(var(--v-theme-on-surface), 0.03);
+  --ag-row-hover-color: rgba(var(--v-theme-primary), 0.08);
+  --ag-border-color: rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .striped-row {
