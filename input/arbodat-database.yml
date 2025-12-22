@@ -1,12 +1,9 @@
 entities:
-  # TIPS #1: Use "@value: entities.entity_name.keys" to refer to the keys of another entity.
-  # TIPS #2: Use Ctrl-Alt-2 to fold/unfold all entities (create a shortcut)
 
   survey:
     source: null
     type: csv
     options:
-      # Use ONLY options valid for pandas.read_csv!
       filename: "input/arbodat_mal_elena_input.csv"
       sep: ";"
       encoding: "utf-8"
@@ -234,7 +231,6 @@ entities:
     depends_on: ["contact_type", "_project_contact"]
 
   contact_type:
-    # FIXME: Aut, PublJath should be moved to Citations
     source: null
     surrogate_id: contact_type_id
     surrogate_name: contact_type
@@ -357,7 +353,6 @@ entities:
       date_submitted: null
       submission_type_id: 1
       notes: null
-      # FIXME: contact_id: null
     depends_on: ["dataset"]
 
   dataset_submission_type:
@@ -539,7 +534,6 @@ entities:
       feature_property_type: 1
       feature_property_name: 1
       feature_property_description: 1
-    # TODO: update values names to Arbodat DB column names (not survey names)
     values: ["gebäud", "okBefu", "okErh", "BestJa", "FlSchn", "Anmerkung"]
     # "GrJahrBefu",
 
@@ -613,7 +607,6 @@ entities:
     depends_on: []
 
   method:
-    # FIXME: #3 Public ID is missing in generated data if explicit system_id   
     type: fixed
     arbodat_codes: ["ORG2,0", "ORG1,0", "ORG0,5", "ORG0,25", "MIN2,0", "MIN1,0", "MIN0,5", "MIN0,25"]
     columns: ["system_id", "method_id", "biblio_id", "description", "method_name", "method_abbrev_or_alt_name", "method_group_id", "arbodat_code"]
@@ -1178,11 +1171,6 @@ entities:
       value_name: contact_name
     drop_duplicates: True
 
-# TODO: add BotBest contact connection to what??
-# TODO: Add dataset_submission
-
-translation: "@load: options.translations"
-
 options:
   translations:
     filename: translations.tsv
@@ -1193,35 +1181,22 @@ options:
     arbodat_data: "@include: arbodat-data-options.yml"
     arbodat_lookup: "@include: arbodat-lookup-options.yml"
 
-mappings: "@include: mappings.yml"
+  translation: "@load: options.translations"
 
-finally:
-  drop:
-    tables:
-      - _pcodes
-      - _project_contact
-    columns:
-      - site.surrogate_id
-      - project.surrogate_id
-      - feature.surrogate_id
-      - sample.surrogate_id
-      - analysis_entity.surrogate_id
-      - abundance.surrogate_id
-      - location.surrogate_id
-      
-replacements: "@include: replacements.yml"
+  mappings: "@include: mappings.yml"
 
-
-  # natural_sub_region:
-  #   source: null
-  #   data_source: arbodat_lookup
-  #   type: sql
-  #   surrogate_id: natural_sub_region_id
-  #   keys: ["xxx"]
-  #   columns: ["xxx", "xxx"]
-  #   query: "select [xxx], [xxx] from [xxx];"
-  #   foreign_keys:
-  #     - entity: natural_region
-  #       local_keys: ["NaturE"]
-  #       remote_keys: ["NaturE"]
-  #   depends_on: ["natural_region"]
+  finally:
+    drop:
+      tables:
+        - _pcodes
+        - _project_contact
+      columns:
+        - site.surrogate_id
+        - project.surrogate_id
+        - feature.surrogate_id
+        - sample.surrogate_id
+        - analysis_entity.surrogate_id
+        - abundance.surrogate_id
+        - location.surrogate_id
+        
+  replacements: "@include: replacements.yml"
