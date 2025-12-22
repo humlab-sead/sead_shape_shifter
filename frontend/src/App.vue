@@ -60,27 +60,6 @@
           value="query-tester"
           :to="{ name: 'query-tester' }"
         />
-
-        <v-list-item
-          prepend-icon="mdi-graph-outline"
-          title="Dependency Graph"
-          value="graph"
-          :to="{ name: 'graph' }"
-        />
-
-        <v-list-item
-          prepend-icon="mdi-cube-outline"
-          title="Entities"
-          value="entities"
-          :to="{ name: 'entities' }"
-        />
-
-        <v-list-item
-          prepend-icon="mdi-check-circle"
-          title="Validation"
-          value="validation"
-          :to="{ name: 'validation' }"
-        />
       </v-list>
 
       <template #append>

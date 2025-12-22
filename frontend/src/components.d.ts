@@ -15,6 +15,7 @@ declare module 'vue' {
     DataSourceFormDialog: typeof import('./components/DataSourceFormDialog.vue')['default']
     DataValidationConfig: typeof import('./components/validation/DataValidationConfig.vue')['default']
     DeleteConfirmationDialog: typeof import('./components/common/DeleteConfirmationDialog.vue')['default']
+    DependencyGraph: typeof import('./components/dependencies/DependencyGraph.vue')['default']
     EmptyState: typeof import('./components/common/EmptyState.vue')['default']
     EntityDataPreview: typeof import('./components/entities/EntityDataPreview.vue')['default']
     EntityFormDialog: typeof import('./components/entities/EntityFormDialog.vue')['default']
