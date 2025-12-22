@@ -1178,50 +1178,33 @@ entities:
       value_name: contact_name
     drop_duplicates: True
 
-# TODO: add BotBest contact connection to what??
-# TODO: Add dataset_submission
-
-translation: "@load: options.translations"
-
 options:
   translations:
     filename: translations.tsv
     delimiter: "\t"
+
+  translation: "@load: options.translations"
 
   data_sources:
     sead: "@include: sead-options.yml"
     arbodat_data: "@include: arbodat-data-options.yml"
     arbodat_lookup: "@include: arbodat-lookup-options.yml"
 
-mappings: "@include: mappings.yml"
+  mappings: "@include: mappings.yml"
 
-finally:
-  drop:
-    tables:
-      - _pcodes
-      - _project_contact
-    columns:
-      - site.surrogate_id
-      - project.surrogate_id
-      - feature.surrogate_id
-      - sample.surrogate_id
-      - analysis_entity.surrogate_id
-      - abundance.surrogate_id
-      - location.surrogate_id
-      
-replacements: "@include: replacements.yml"
+  finally:
+    drop:
+      tables:
+        - _pcodes
+        - _project_contact
+      columns:
+        - site.surrogate_id
+        - project.surrogate_id
+        - feature.surrogate_id
+        - sample.surrogate_id
+        - analysis_entity.surrogate_id
+        - abundance.surrogate_id
+        - location.surrogate_id
+        
+  replacements: "@include: replacements.yml"
 
-
-  # natural_sub_region:
-  #   source: null
-  #   data_source: arbodat_lookup
-  #   type: sql
-  #   surrogate_id: natural_sub_region_id
-  #   keys: ["xxx"]
-  #   columns: ["xxx", "xxx"]
-  #   query: "select [xxx], [xxx] from [xxx];"
-  #   foreign_keys:
-  #     - entity: natural_region
-  #       local_keys: ["NaturE"]
-  #       remote_keys: ["NaturE"]
-  #   depends_on: ["natural_region"]
