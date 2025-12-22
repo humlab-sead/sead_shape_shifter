@@ -104,6 +104,10 @@
             <v-icon icon="mdi-cube-outline" class="mr-2" />
             Entities
           </v-tab>
+          <v-tab value="dependencies">
+            <v-icon icon="mdi-graph-outline" class="mr-2" />
+            Dependencies
+          </v-tab>
           <v-tab value="data-sources">
             <v-icon icon="mdi-database-outline" class="mr-2" />
             Data Sources
@@ -131,6 +135,14 @@
             <entity-list-card
               :config-name="configName"
               @entity-updated="handleEntityUpdated"
+            />
+          </v-window-item>
+
+          <!-- Dependencies Tab -->
+          <v-window-item value="dependencies">
+            <dependency-graph
+              :config-name="configName"
+              @edit-entity="handleEditEntity"
             />
           </v-window-item>
 
@@ -252,6 +264,7 @@ import ValidationPanel from '@/components/validation/ValidationPanel.vue'
 import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 import ConfigurationDataSources from '@/components/ConfigurationDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
+import DependencyGraph from '@/components/dependencies/DependencyGraph.vue'
 
 const route = useRoute()
 const configName = computed(() => route.params.name as string)
@@ -486,6 +499,14 @@ async function handleRefresh() {
 
 function handleEntityUpdated() {
   markAsChanged()
+}
+
+function handleEditEntity(entityName: string) {
+  // Switch to entities tab and trigger entity edit
+  activeTab.value = 'entities'
+  // The entity list will need to handle the actual editing
+  // We could potentially pass the entity name via a ref or event bus
+  console.log('Edit entity requested:', entityName)
 }
 
 async function handleDataSourcesUpdated() {

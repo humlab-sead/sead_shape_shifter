@@ -122,3 +122,6 @@ Improve validations for configuration files to catch the most common errors and 
  - [] TODO: Add ability to test entity configurations without executing full normalization workflow.
  - [] TODO: Add setting view to frontend to configure frontend/backend options (e.g., themes, temp directory, logging level, etc.)
  - [] TODO: #41 Add grid editor for editing fixed entity
+ - [] TODO: #44 Use grid editor in preview
+ - [] TODO: #45 Improve REPL experience
+ - [] TODO: #43 Move configuration tools inside editor
