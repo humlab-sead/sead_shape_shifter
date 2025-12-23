@@ -32,6 +32,8 @@ declare module 'vue' {
     QueryCondition: typeof import('./components/query/QueryCondition.vue')['default']
     QueryEditor: typeof import('./components/query/QueryEditor.vue')['default']
     QueryResults: typeof import('./components/query/QueryResults.vue')['default']
+    ReconciliationGrid: typeof import('./components/reconciliation/ReconciliationGrid.vue')['default']
+    ReconciliationView: typeof import('./components/reconciliation/ReconciliationView.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SchemaTreeView: typeof import('./components/SchemaTreeView.vue')['default']

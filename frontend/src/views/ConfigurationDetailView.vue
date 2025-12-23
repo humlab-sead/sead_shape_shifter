@@ -108,6 +108,10 @@
             <v-icon icon="mdi-graph-outline" class="mr-2" />
             Dependencies
           </v-tab>
+          <v-tab value="reconciliation">
+            <v-icon icon="mdi-link-variant" class="mr-2" />
+            Reconciliation
+          </v-tab>
           <v-tab value="data-sources">
             <v-icon icon="mdi-database-outline" class="mr-2" />
             Data Sources
@@ -143,6 +147,13 @@
             <dependency-graph
               :config-name="configName"
               @edit-entity="handleEditEntity"
+            />
+          </v-window-item>
+
+          <!-- Reconciliation Tab -->
+          <v-window-item value="reconciliation">
+            <reconciliation-view
+              :config-name="configName"
             />
           </v-window-item>
 
@@ -265,6 +276,7 @@ import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 import ConfigurationDataSources from '@/components/ConfigurationDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
 import DependencyGraph from '@/components/dependencies/DependencyGraph.vue'
+import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 
 const route = useRoute()
 const configName = computed(() => route.params.name as string)
