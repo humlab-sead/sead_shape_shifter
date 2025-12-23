@@ -85,43 +85,22 @@ Improve validations for configuration files to catch the most common errors and 
 
 ### Bugs
 
- - [] FIXME: #12 [Frontend]: Nothing happens when "Entities" is clicked.
- - [] FIXME: #14 [Frontend]: Nothing happens when clicking "FORCE DIRECTED" in dependency view 
- - [] FIXME: #15 [Frontend/Backend]: Testing data sources fails.
- - [] FIXME: #16 [Crosscutting] Add data source driver specific properties using schema registry.
- - [] FIXME: #17 [Frontend] Sidebar "Entities" unaware of loaded configuration
- - [] FIXME: #23 Preview of data fails with strange error message
- - [x] FIXME: #28 When saving a configuration all "macros" are resolved/lost.
- - [x] FIXME: #29 Data source editor has strange labels
  - [] FIXME: File modification date is always 1970-01-21 when listing configurations
- - [x] FIXME: [Backend] Postgres Edit doesn't display values fomr data source configuration
- - [] FIXME: src/model.py:161:9: W0511: This smells like a fix for a bug elsewhere, why should we check extra columns here? (fixme)
- - [] FIXME: Query Tester has no data sources
- - [] FIXME: Schema Explorer has no data sources
- - [x] FIXME: #39 Nothing happens when clicking "Add" in FK Editor
+ - [] FIXME: #48 [Frontend] Unnest tool doesn't work, nothing happens
+ - [] FIXME: #49 [Frontend] Text color in preview grid is the same as background color in dark mode
+ - [] 
 
 
 ### Tech debts:
 
- - [x] FIXME: #26 [Backend] Move database vendor specific logic to Loaders
- - [x] FIXME: [Backend] Test for MS Access returns 0 tables
- - [x] INSTALL: Codex AGENTS.md
- - [x] FIXME: #33 Remove hardcoded settings in backend/app/core/config.py
+ - [x] FIXME:
 
 ### New features
 
- - [x] TODO: #18 [Frontend/Backend] Add ability to edit entity configuration in a dual-mode editor (Form/YAML). 
- - [] TODO: [Frontend/Backend] Add ability to edit data source configuration in a dual-mode editor (Form/YAML).
- - [] TODO: #31 [Frontend/Backend] Simplify data source management.
+ - [] TODO: [Frontend/Backend] Edit data source configuration in a dual-mode editor (Form/YAML).
  - [] TODO: #21 Add UX for mapping/reconciling remote/target entities to local entities.
- - [] TODO: #30 Add logic to identify a YAML file as a shape shifter config file
  - [] TODO: dispatch.py: Add support for colors, formats, etc. using openpyxl
- - [] TODO: #32 backend/app/services/data_source_service.py:43:9: Consider making patterns configurable, or to probe content for "driver" key (fixme)
- - [x] TODO: #34 Improve server side state management for configuration editing, what should be per app (lifespan) vs per request? **COMPLETED** - See docs/STATE_MANAGEMENT_IMPLEMENTATION.md
- - [x] TODO: #37 Add session management to frontend configuration editors. **COMPLETED** - See frontend/FRONTEND_SESSION_QUICKSTART.md
  - [] TODO: Add ability to test entity configurations without executing full normalization workflow.
- - [x] TODO: Add setting view to frontend to configure frontend/backend options (e.g., themes, temp directory, logging level, etc.)
- - [] TODO: #41 Add grid editor for editing fixed entity
- - [] TODO: #44 Use grid editor in preview
- - [] TODO: #45 Improve REPL experience
- - [] TODO: #43 Move configuration tools inside editor
+ - [] TODO: Add additional frontend/backend options (e.g., themes, temp directory, logging level, etc.)
+ - [] TODO: Add capability to generate a default reconciliation YAML based on service manifest received from calling services /reconcile endpoint.
+ - [] TODO: Change so that entities avaliable for service reconciliation  
