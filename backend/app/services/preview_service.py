@@ -15,10 +15,13 @@ from pandas.api.types import (
     is_timedelta64_dtype,
 )
 
+from app.core.state_manager import ApplicationState
 from backend.app.core.state_manager import get_app_state
 from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
+from configuration.interface import ConfigLike
+from configuration.provider import ConfigStore
 from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig
 from src.normalizer import ShapeShifter
 
@@ -103,14 +106,14 @@ class PreviewService:
 
         # Load config - try ApplicationState first (production), fall back to ShapeShiftConfig.resolve (tests)
         try:
-            app_state = get_app_state()
-            config_store = app_state.config_store
-            
+            app_state: ApplicationState = get_app_state()
+            config_store: ConfigStore = app_state.config_store
+
             # Ensure config is loaded
             if not config_store.is_loaded(config_name):
                 config_store.load_config(config_name)
-            
-            config_like = config_store.get_config(config_name)
+
+            config_like: ConfigLike = config_store.get_config(config_name)
             config: ShapeShiftConfig = ShapeShiftConfig(cfg=config_like.data)
         except RuntimeError:
             # Fallback for tests - use ShapeShiftConfig.resolve which uses the mocked provider
@@ -245,7 +248,7 @@ class PreviewService:
             PreviewResult with sample data
         """
         # Clamp limit to max 1000
-        limit = min(limit, 1000)
+        limit: int = min(limit, 1000)
         return await self.preview_entity(config_name, entity_name, limit)
 
     def invalidate_cache(self, config_name: str, entity_name: str | None = None) -> None:
@@ -281,11 +284,11 @@ class PreviewService:
         try:
             app_state = get_app_state()
             config_store = app_state.config_store
-            
+
             # Ensure config is loaded
             if not config_store.is_loaded(config_name):
                 config_store.load_config(config_name)
-            
+
             config_like = config_store.get_config(config_name)
             config: ShapeShiftConfig = ShapeShiftConfig(cfg=config_like.data)
         except RuntimeError:
