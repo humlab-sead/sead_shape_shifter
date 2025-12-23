@@ -100,7 +100,7 @@ class PreviewService:
         start_time: float = time.time()
 
         # Check cache first
-        cached = self.cache.get(config_name, entity_name, limit)
+        cached: PreviewResult | None = self.cache.get(config_name, entity_name, limit)
         if cached:
             return cached
 
@@ -248,7 +248,7 @@ class PreviewService:
             PreviewResult with sample data
         """
         # Clamp limit to max 1000
-        limit: int = min(limit, 1000)
+        limit = min(limit, 1000)
         return await self.preview_entity(config_name, entity_name, limit)
 
     def invalidate_cache(self, config_name: str, entity_name: str | None = None) -> None:
