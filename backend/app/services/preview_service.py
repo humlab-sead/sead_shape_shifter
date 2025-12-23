@@ -2,7 +2,6 @@
 
 import hashlib
 import time
-from typing import Optional
 
 import pandas as pd
 from loguru import logger
@@ -38,7 +37,7 @@ class PreviewCache:
         key_str = f"{config_name}:{entity_name}:{limit}"
         return hashlib.md5(key_str.encode()).hexdigest()
 
-    def get(self, config_name: str, entity_name: str, limit: int) -> Optional[PreviewResult]:
+    def get(self, config_name: str, entity_name: str, limit: int) -> PreviewResult | None:
         """Get cached preview result if not expired."""
         key = self._generate_key(config_name, entity_name, limit)
         if key in self._cache:
@@ -58,7 +57,7 @@ class PreviewCache:
         self._cache[key] = (result, time.time(), config_name, entity_name, limit)
         logger.debug(f"Cached preview for {entity_name}")
 
-    def invalidate(self, config_name: str, entity_name: Optional[str] = None) -> None:
+    def invalidate(self, config_name: str, entity_name: str | None = None) -> None:
         """Invalidate cache entries for a configuration or specific entity."""
         keys_to_remove = []
         for key, (_, _, cached_config, cached_entity, _) in list(self._cache.items()):
@@ -249,7 +248,7 @@ class PreviewService:
         limit = min(limit, 1000)
         return await self.preview_entity(config_name, entity_name, limit)
 
-    def invalidate_cache(self, config_name: str, entity_name: Optional[str] = None) -> None:
+    def invalidate_cache(self, config_name: str, entity_name: str | None = None) -> None:
         """
         Invalidate preview cache for a configuration or specific entity.
 
