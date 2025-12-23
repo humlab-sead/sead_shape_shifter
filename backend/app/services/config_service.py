@@ -9,6 +9,7 @@ from backend.app.core.config import settings
 from backend.app.models.config import ConfigMetadata, Configuration
 from backend.app.models.entity import Entity
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, get_yaml_service
+from configuration.config import Config
 from src.configuration.config import ConfigFactory
 from src.configuration.interface import ConfigLike
 from src.configuration.provider import ConfigStore
@@ -101,13 +102,13 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
             InvalidConfigurationError: If configuration is invalid
         """
-        file_path = self.configurations_dir / f"{name}.yml"
+        file_path: Path = self.configurations_dir / f"{name}.yml"
 
         if not file_path.exists():
             raise ConfigurationNotFoundError(f"Configuration not found: {name}")
 
         try:
-            data = self.yaml_service.load(file_path)
+            data: dict[str, Any] = self.yaml_service.load(file_path)
 
             # Validate that 'entities' key exists (required for configuration files)
             if "entities" not in data:
@@ -156,7 +157,7 @@ class ConfigurationService:
         if not config.metadata or not config.metadata.name:
             raise InvalidConfigurationError("Configuration must have metadata with name")
 
-        file_path = self.configurations_dir / f"{config.metadata.name}.yml"
+        file_path: Path = self.configurations_dir / f"{config.metadata.name}.yml"
 
         try:
             # Build YAML data
@@ -202,7 +203,7 @@ class ConfigurationService:
         Raises:
             ConfigurationServiceError: If configuration already exists
         """
-        file_path = self.configurations_dir / f"{name}.yml"
+        file_path: Path = self.configurations_dir / f"{name}.yml"
 
         if file_path.exists():
             raise ConfigurationServiceError(f"Configuration '{name}' already exists")
@@ -233,7 +234,7 @@ class ConfigurationService:
         Raises:
             ConfigurationNotFoundError: If configuration not found
         """
-        file_path = self.configurations_dir / f"{name}.yml"
+        file_path: Path = self.configurations_dir / f"{name}.yml"
 
         if not file_path.exists():
             raise ConfigurationNotFoundError(f"Configuration not found: {name}")
@@ -421,7 +422,7 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
             EntityNotFoundError: If entity not found
         """
-        config = self.load_configuration(config_name)
+        config: Configuration = self.load_configuration(config_name)
 
         if entity_name not in config.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
@@ -449,7 +450,7 @@ class ConfigurationService:
                 return None
 
             # Get filename from config
-            filename = getattr(config, "filename", None) or getattr(config, "source", None)
+            filename: str | None = getattr(config, "filename", None) or getattr(config, "source", None)
             if not filename:
                 return None
 
@@ -479,14 +480,14 @@ class ConfigurationService:
         """
 
         # Build file path
-        file_path = self.configurations_dir / f"{name}.yml"
+        file_path: Path = self.configurations_dir / f"{name}.yml"
 
         if not file_path.exists():
             raise ConfigurationNotFoundError(f"Configuration not found: {name}")
 
         try:
             # Load configuration using ConfigFactory
-            loaded_config = ConfigFactory().load(source=str(file_path), context="default")
+            loaded_config: Config | ConfigLike = ConfigFactory().load(source=str(file_path), context="default")
 
             # Set as active in ConfigStore
             ConfigStore.get_instance().set_config(cfg=loaded_config, context="default")
