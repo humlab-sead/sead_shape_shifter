@@ -15,13 +15,12 @@ from pandas.api.types import (
     is_timedelta64_dtype,
 )
 
-from app.core.state_manager import ApplicationState
-from backend.app.core.state_manager import get_app_state
+from backend.app.core.state_manager import ApplicationState, get_app_state
+from backend.app.mappers.config_mapper import ConfigMapper
+from backend.app.models.config import Configuration
 from backend.app.models.join_test import CardinalityInfo, JoinStatistics, JoinTestResult, UnmatchedRow
 from backend.app.models.preview import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
-from configuration.interface import ConfigLike
-from configuration.provider import ConfigStore
 from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig
 from src.normalizer import ShapeShifter
 
@@ -74,16 +73,22 @@ class PreviewCache:
 
 
 class PreviewService:
-    """Service for previewing entity data."""
+    """Service for previewing entity data with ShapeShiftConfig caching."""
 
     def __init__(self, config_service: ConfigurationService):
         """Initialize preview service."""
         self.config_service: ConfigurationService = config_service
         self.cache = PreviewCache(ttl_seconds=300)  # 5 minute cache
 
+        # Cache ShapeShiftConfig instances for performance
+        self._shapeshift_cache: dict[str, ShapeShiftConfig] = {}
+        self._shapeshift_versions: dict[str, int] = {}
+
     async def preview_entity(self, config_name: str, entity_name: str, limit: int = 50) -> PreviewResult:
         """
         Preview entity data with all transformations applied.
+
+        Uses cached ShapeShiftConfig with version tracking for optimal performance.
 
         Args:
             config_name: Name of the configuration file
@@ -104,29 +109,17 @@ class PreviewService:
         if cached:
             return cached
 
-        # Load config - try ApplicationState first (production), fall back to ShapeShiftConfig.resolve (tests)
-        try:
-            app_state: ApplicationState = get_app_state()
-            config_store: ConfigStore = app_state.config_store
+        # Get ShapeShiftConfig (cached with version tracking)
+        shapeshift_config: ShapeShiftConfig = await self._get_shapeshift_config(config_name)
 
-            # Ensure config is loaded
-            if not config_store.is_loaded(config_name):
-                config_store.load_config(config_name)
-
-            config_like: ConfigLike = config_store.get_config(config_name)
-            config: ShapeShiftConfig = ShapeShiftConfig(cfg=config_like.data)
-        except RuntimeError:
-            # Fallback for tests - use ShapeShiftConfig.resolve which uses the mocked provider
-            config = ShapeShiftConfig.resolve(cfg=config_name)
-
-        if entity_name not in config.tables:
+        if entity_name not in shapeshift_config.tables:
             raise ValueError(f"Entity '{entity_name}' not found in configuration")
 
-        entity_config: TableConfig = config.tables[entity_name]
+        entity_config: TableConfig = shapeshift_config.tables[entity_name]
 
         try:
             result: PreviewResult = await self._preview_with_normalizer(
-                config=config, entity_name=entity_name, entity_config=entity_config, limit=limit
+                config=shapeshift_config, entity_name=entity_name, entity_config=entity_config, limit=limit
             )
 
             execution_time_ms: int = int((time.time() - start_time) * 1000)
@@ -139,6 +132,59 @@ class PreviewService:
         except Exception as e:
             logger.error(f"Failed to preview entity {entity_name}: {e}", exc_info=True)
             raise RuntimeError(f"Preview failed: {str(e)}") from e
+
+    async def _get_shapeshift_config(self, config_name: str) -> ShapeShiftConfig:
+        """
+        Get ShapeShiftConfig with caching and version tracking.
+
+        Uses ApplicationState version tracking to invalidate cache when
+        configuration is edited.
+
+        Args:
+            config_name: Configuration name
+
+        Returns:
+            ShapeShiftConfig instance
+        """
+        # Get current version from ApplicationState
+        try:
+            app_state = get_app_state()
+            current_version = app_state.get_version(config_name)
+            cached_version = self._shapeshift_versions.get(config_name, -1)
+
+            # Check if cached version is still valid
+            if config_name in self._shapeshift_cache and cached_version == current_version:
+                logger.debug(f"ShapeShiftConfig cache hit for '{config_name}' (version {current_version})")
+                return self._shapeshift_cache[config_name]
+
+            # Version mismatch or no cache - reload
+            logger.debug(f"ShapeShiftConfig cache miss/invalid for '{config_name}' (cached: {cached_version}, current: {current_version})")
+            api_config = app_state.get_configuration(config_name)
+
+            if api_config:
+                # Convert from active API Configuration
+                cfg_dict = ConfigMapper.to_core_dict(api_config)
+                shapeshift = ShapeShiftConfig(cfg=cfg_dict)
+                self._shapeshift_cache[config_name] = shapeshift
+                self._shapeshift_versions[config_name] = current_version
+                logger.debug(f"Loaded ShapeShiftConfig from ApplicationState for '{config_name}'")
+                return shapeshift
+
+        except RuntimeError:
+            # ApplicationState not initialized
+            pass
+
+        # Fallback: Load from disk
+        logger.debug(f"Loading ShapeShiftConfig from disk for '{config_name}'")
+        api_config = self.config_service.load_configuration(config_name)
+        cfg_dict = ConfigMapper.to_core_dict(api_config)
+        shapeshift = ShapeShiftConfig(cfg=cfg_dict)
+
+        # Cache it (version 0 since not in active editing)
+        self._shapeshift_cache[config_name] = shapeshift
+        self._shapeshift_versions[config_name] = 0
+
+        return shapeshift
 
     async def _preview_with_normalizer(
         self,
@@ -282,15 +328,11 @@ class PreviewService:
 
         # Load config - try ApplicationState first (production), fall back to ShapeShiftConfig.resolve (tests)
         try:
-            app_state = get_app_state()
-            config_store = app_state.config_store
-
-            # Ensure config is loaded
-            if not config_store.is_loaded(config_name):
-                config_store.load_config(config_name)
-
-            config_like = config_store.get_config(config_name)
-            config: ShapeShiftConfig = ShapeShiftConfig(cfg=config_like.data)
+            app_state: ApplicationState = get_app_state()
+            api_cfg: Configuration | None = app_state.get_configuration(config_name)
+            assert api_cfg is not None
+            core_cfg_dict: dict = ConfigMapper.to_core_dict(api_cfg)
+            config: ShapeShiftConfig = ShapeShiftConfig(cfg=core_cfg_dict)
         except RuntimeError:
             # Fallback for tests - use ShapeShiftConfig.resolve which uses the mocked provider
             config = ShapeShiftConfig.resolve(cfg=config_name)
