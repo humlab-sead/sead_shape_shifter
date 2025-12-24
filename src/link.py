@@ -33,8 +33,8 @@ def link_foreign_key(
 
     remote_select_df: pd.DataFrame = remote_df[[remote_id] + remote_extra_cols]
 
-    if fk.remote_extra_columns:
-        remote_select_df = remote_select_df.rename(columns=fk.remote_extra_columns)
+    if fk.extra_columns:
+        remote_select_df = remote_select_df.rename(columns=fk.resolved_extra_columns())
 
     opts: dict[str, Any] = _resolve_link_opts(fk, validator)
 
@@ -42,7 +42,7 @@ def link_foreign_key(
 
     validator.validate_after_merge(local_df, remote_df, linked_df)
 
-    if fk.remote_extra_columns and fk.drop_remote_id:
+    if fk.extra_columns and fk.drop_remote_id:
         linked_df = linked_df.drop(columns=[remote_id], errors="ignore")
     return linked_df
 
