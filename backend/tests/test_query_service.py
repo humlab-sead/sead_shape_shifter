@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
-from backend.app.models.data_source import DataSourceConfig, DataSourceType
+from backend.app.models.data_source import DataSourceConfig
 from backend.app.models.query import QueryResult, QueryValidation
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError, QueryService
 
@@ -129,7 +129,7 @@ class TestQueryExecution:
     def mock_ds_service(self) -> Mock:
         """Mock pandas read_sql_query."""
         mock_ds_config = DataSourceConfig(
-            name="test_db", driver=DataSourceType.POSTGRESQL, host="localhost", port=5432, database="testdb", username="testuser", **{}
+            name="test_db", driver="postgresql", host="localhost", port=5432, database="testdb", username="testuser", **{}
         )
         mock_ds_service = Mock(get_data_source=Mock(return_value=mock_ds_config))
         return mock_ds_service
