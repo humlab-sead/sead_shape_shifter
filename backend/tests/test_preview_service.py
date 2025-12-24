@@ -32,6 +32,11 @@ def preview_service(config_service: MagicMock) -> PreviewService:
 def sample_config() -> ShapeShiftConfig:
     """Create a sample configuration."""
     cfg = {
+        "metadata" : {
+            "name": "test_config",
+            "description": "A test configuration",
+            "version": "1.0.0",
+        },
         "entities": {
             "users": {
                 "name": "users",
@@ -59,6 +64,8 @@ def sample_config() -> ShapeShiftConfig:
                     }
                 ],
             },
+        },
+        "options": {
         }
     }
 
@@ -156,30 +163,40 @@ class TestPreviewService:
     async def test_preview_entity_not_found(self, preview_service, sample_config):
         """Test preview with non-existent entity."""
 
-        mock_provider = MagicMock(
-            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)), is_configured=MagicMock(return_value=True)
-        )
-        with patch("src.model.get_config_provider", return_value=mock_provider):
-            with pytest.raises(ValueError, match="Entity 'nonexistent' not found"):
-                await preview_service.preview_entity("test_config", "nonexistent", 50)
+        # Mock ApplicationState
+        mock_app_state = MagicMock()
+        mock_app_state.get_version.return_value = 1
+        mock_api_config = MagicMock()
+        mock_api_config.metadata.name = "test_config"
+        mock_app_state.get_configuration.return_value = mock_api_config
+        
+        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
+                with pytest.raises(ValueError, match="Entity 'nonexistent' not found"):
+                    await preview_service.preview_entity("test_config", "nonexistent", 50)
 
     @pytest.mark.asyncio
     async def test_preview_entity_success(self, preview_service, sample_config, sample_dataframe):
         """Test successful entity preview."""
 
-        mock_provider = MagicMock(
-            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)), is_configured=MagicMock(return_value=True)
-        )
-        with patch("src.model.get_config_provider", return_value=mock_provider):
-            with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
-                # Setup mock normalizer
-                mock_normalizer = MagicMock()
-                mock_normalizer.normalize = AsyncMock()
-                mock_normalizer.table_store = {"users": sample_dataframe}
-                mock_normalizer.config = sample_config
-                mock_normalizer_class.return_value = mock_normalizer
+        # Mock ApplicationState to return our sample config
+        mock_app_state = MagicMock()
+        mock_app_state.get_version.return_value = 1
+        mock_api_config = MagicMock()
+        mock_api_config.metadata.name = "test_config"
+        mock_app_state.get_configuration.return_value = mock_api_config
+        
+        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
+                with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
+                    # Setup mock normalizer
+                    mock_normalizer = MagicMock()
+                    mock_normalizer.normalize = AsyncMock()
+                    mock_normalizer.table_store = {"users": sample_dataframe}
+                    mock_normalizer.config = sample_config
+                    mock_normalizer_class.return_value = mock_normalizer
 
-                result = await preview_service.preview_entity("test_config", "users", 50)
+                    result = await preview_service.preview_entity("test_config", "users", 50)
 
                 assert result.entity_name == "users"
                 assert result.total_rows_in_preview == 5
@@ -201,17 +218,22 @@ class TestPreviewService:
         """Test preview respects limit parameter."""
         large_df = pd.DataFrame({"col1": range(100), "col2": range(100, 200)})
 
-        mock_provider = MagicMock(
-            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)), is_configured=MagicMock(return_value=True)
-        )
-        with patch("src.model.get_config_provider", return_value=mock_provider):
-            with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
-                mock_normalizer = MagicMock()
-                mock_normalizer.normalize = AsyncMock()
-                mock_normalizer.table_store = {"users": large_df}
-                mock_normalizer_class.return_value = mock_normalizer
+        # Mock ApplicationState
+        mock_app_state = MagicMock()
+        mock_app_state.get_version.return_value = 1
+        mock_api_config = MagicMock()
+        mock_api_config.metadata.name = "test_config"
+        mock_app_state.get_configuration.return_value = mock_api_config
+        
+        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
+                with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
+                    mock_normalizer = MagicMock()
+                    mock_normalizer.normalize = AsyncMock()
+                    mock_normalizer.table_store = {"users": large_df}
+                    mock_normalizer_class.return_value = mock_normalizer
 
-                result = await preview_service.preview_entity("test_config", "users", limit=10)
+                    result = await preview_service.preview_entity("test_config", "users", limit=10)
 
                 assert result.total_rows_in_preview == 10
                 assert result.estimated_total_rows == 100
@@ -228,17 +250,23 @@ class TestPreviewService:
             "var_name": "variable",
             "value_name": "value",
         }
-        mock_provider = MagicMock(
-            get_config=MagicMock(return_value=MagicMock(data=config_with_transforms.cfg)), is_configured=MagicMock(return_value=True)
-        )
-        with patch("src.model.get_config_provider", return_value=mock_provider):
-            with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
-                mock_normalizer = MagicMock()
-                mock_normalizer.normalize = AsyncMock()
-                mock_normalizer.table_store = {"users": pd.DataFrame({"user_id": [1]})}
-                mock_normalizer_class.return_value = mock_normalizer
+        
+        # Mock ApplicationState
+        mock_app_state = MagicMock()
+        mock_app_state.get_version.return_value = 1
+        mock_api_config = MagicMock()
+        mock_api_config.metadata.name = "test_config"
+        mock_app_state.get_configuration.return_value = mock_api_config
+        
+        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=config_with_transforms.cfg):
+                with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
+                    mock_normalizer = MagicMock()
+                    mock_normalizer.normalize = AsyncMock()
+                    mock_normalizer.table_store = {"users": pd.DataFrame({"user_id": [1]})}
+                    mock_normalizer_class.return_value = mock_normalizer
 
-                result: PreviewResult = await preview_service.preview_entity("test_config", "users", 50)
+                    result: PreviewResult = await preview_service.preview_entity("test_config", "users", 50)
 
                 assert "filter" in result.transformations_applied
                 assert "unnest" in result.transformations_applied
@@ -248,17 +276,22 @@ class TestPreviewService:
         self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame
     ):
         """Test preview loads dependencies correctly."""
-        mock_provider = MagicMock(
-            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)), is_configured=MagicMock(return_value=True)
-        )
-        with patch("src.model.get_config_provider", return_value=mock_provider):
-            with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
-                mock_normalizer = MagicMock()
-                mock_normalizer.normalize = AsyncMock()
-                mock_normalizer.table_store = {"orders": sample_dataframe}
-                mock_normalizer_class.return_value = mock_normalizer
+        # Mock ApplicationState
+        mock_app_state = MagicMock()
+        mock_app_state.get_version.return_value = 1
+        mock_api_config = MagicMock()
+        mock_api_config.metadata.name = "test_config"
+        mock_app_state.get_configuration.return_value = mock_api_config
+        
+        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
+                with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
+                    mock_normalizer = MagicMock()
+                    mock_normalizer.normalize = AsyncMock()
+                    mock_normalizer.table_store = {"orders": sample_dataframe}
+                    mock_normalizer_class.return_value = mock_normalizer
 
-                result = await preview_service.preview_entity("test_config", "orders", 50)
+                    result = await preview_service.preview_entity("test_config", "orders", 50)
 
                 assert result.has_dependencies is True
                 assert "users" in result.dependencies_loaded
@@ -267,43 +300,53 @@ class TestPreviewService:
     @pytest.mark.asyncio
     async def test_preview_caching(self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame):
         """Test preview results are cached."""
-        mock_provider = MagicMock(
-            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)), is_configured=MagicMock(return_value=True)
-        )
-        with patch("src.model.get_config_provider", return_value=mock_provider):
-            with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
-                mock_normalizer = MagicMock()
-                mock_normalizer.normalize = AsyncMock()
-                mock_normalizer.table_store = {"users": sample_dataframe}
-                mock_normalizer_class.return_value = mock_normalizer
+        # Mock ApplicationState
+        mock_app_state = MagicMock()
+        mock_app_state.get_version.return_value = 1
+        mock_api_config = MagicMock()
+        mock_api_config.metadata.name = "test_config"
+        mock_app_state.get_configuration.return_value = mock_api_config
+        
+        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
+                with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
+                    mock_normalizer = MagicMock()
+                    mock_normalizer.normalize = AsyncMock()
+                    mock_normalizer.table_store = {"users": sample_dataframe}
+                    mock_normalizer_class.return_value = mock_normalizer
 
-                # First call - should hit normalizer
-                result1 = await preview_service.preview_entity("test_config", "users", 50)
-                assert result1.cache_hit is False
+                    # First call - should hit normalizer
+                    result1 = await preview_service.preview_entity("test_config", "users", 50)
+                    assert result1.cache_hit is False
 
-                # Second call - should hit cache
-                result2 = await preview_service.preview_entity("test_config", "users", 50)
-                assert result2.cache_hit is True
+                    # Second call - should hit cache
+                    result2 = await preview_service.preview_entity("test_config", "users", 50)
+                    assert result2.cache_hit is True
 
-                # Verify normalizer was only called once
-                assert mock_normalizer.normalize.call_count == 1
+                    # Verify normalizer was only called once
+                    assert mock_normalizer.normalize.call_count == 1
 
     @pytest.mark.asyncio
     async def test_get_entity_sample(
         self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame
     ):
         """Test get_entity_sample with higher limit."""
-        mock_provider = MagicMock(
-            get_config=MagicMock(return_value=MagicMock(data=sample_config.cfg)), is_configured=MagicMock(return_value=True)
-        )
-        with patch("src.model.get_config_provider", return_value=mock_provider):
-            with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
-                mock_normalizer = MagicMock()
-                mock_normalizer.normalize = AsyncMock()
-                mock_normalizer.table_store = {"users": sample_dataframe}
-                mock_normalizer_class.return_value = mock_normalizer
+        # Mock ApplicationState
+        mock_app_state = MagicMock()
+        mock_app_state.get_version.return_value = 1
+        mock_api_config = MagicMock()
+        mock_api_config.metadata.name = "test_config"
+        mock_app_state.get_configuration.return_value = mock_api_config
+        
+        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
+                with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
+                    mock_normalizer = MagicMock()
+                    mock_normalizer.normalize = AsyncMock()
+                    mock_normalizer.table_store = {"users": sample_dataframe}
+                    mock_normalizer_class.return_value = mock_normalizer
 
-                result = await preview_service.get_entity_sample("test_config", "users", limit=100)
+                    result = await preview_service.get_entity_sample("test_config", "users", limit=100)
 
                 assert result.entity_name == "users"
                 assert result.total_rows_in_preview == 5  # Sample df only has 5 rows
