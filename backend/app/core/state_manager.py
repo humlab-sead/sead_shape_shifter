@@ -40,7 +40,7 @@ class ApplicationState:
     """
 
     def __init__(self, config_dir: Path):
-        self.config_dir = config_dir
+        self.config_dir: Path = config_dir
 
         # Active configurations (editing state)
         self._active_configs: dict[str, Configuration] = {}
@@ -76,7 +76,7 @@ class ApplicationState:
     async def create_session(self, config_name: str, user_id: str | None = None) -> UUID:
         """Create a new editing session for a config file."""
         async with self._session_lock:
-            session_id = uuid4()
+            session_id: UUID = uuid4()
             session = ConfigSession(
                 session_id=session_id,
                 config_name=config_name,
@@ -109,7 +109,7 @@ class ApplicationState:
         """Release a session and clear config if no other sessions."""
         async with self._session_lock:
             if session := self._sessions.pop(session_id, None):
-                config_name = session.config_name
+                config_name: str = session.config_name
 
                 # Remove from config index
                 if config_name in self._sessions_by_config:
@@ -144,7 +144,7 @@ class ApplicationState:
         """
         assert config.metadata, "Configuration metadata missing"
 
-        name = config.metadata.name
+        name: str = config.metadata.name
         self._active_configs[name] = config
         self._active_config_name = name
         self._config_versions[name] = self._config_versions.get(name, 0) + 1
@@ -171,7 +171,7 @@ class ApplicationState:
             try:
                 await asyncio.sleep(300)  # Check every 5 minutes
 
-                stale_threshold = datetime.now().timestamp() - 1800  # 30 minutes
+                stale_threshold: float = datetime.now().timestamp() - 1800  # 30 minutes
                 stale_sessions = []
 
                 async with self._session_lock:
