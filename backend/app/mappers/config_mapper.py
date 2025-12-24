@@ -1,8 +1,23 @@
-"""Mapper between core ShapeShiftConfig and API Configuration models."""
+"""Mapper between core ShapeShiftConfig and API Configuration models.
 
+This mapper uses Pydantic's schema introspection (model_dump/model_fields) as the
+single source of truth, eliminating hardcoded field lists. The Entity Pydantic model
+defines all valid fields - adding new fields to Entity automatically updates the mapper.
+
+Architecture:
+- YAML files are the source of truth for configuration structure
+- Core (ShapeShiftConfig) is a thin dict wrapper over YAML structure  
+- API (Configuration/Entity) uses Pydantic models for validation
+- This mapper bridges the two layers, preserving sparse YAML structure
+
+No hardcoded field lists - all field handling is derived from Pydantic schemas.
+"""
+
+from _collections_abc import dict_keys
 from typing import Any
 
 from loguru import logger
+from pydantic.fields import FieldInfo
 
 from backend.app.models import (
     ConfigMetadata,
@@ -91,76 +106,32 @@ class ConfigMapper:
         """
         Convert core entity dict to API entity dict.
 
-        Only includes fields that are explicitly set (non-None/non-empty).
-        This preserves sparse YAML structure.
-
+        Uses Entity model schema to identify known fields, preserving custom fields.
+        No hardcoded field lists - relies on Pydantic model as source of truth.
         """
-        # Build entity dict with only defined fields
-        api_dict: dict[str, Any] = {
-            "name": entity_name,
-        }
+        # Get Entity model fields from Pydantic schema
+        entity_fields: dict_keys[str, FieldInfo] = Entity.model_fields.keys()
+        
+        # Start with entity name (API-only field, not in core)
+        api_dict: dict[str, Any] = {"name": entity_name}
 
-        # Add type only if explicitly set
-        if "type" in entity_dict:
-            api_dict["type"] = entity_dict["type"]
-
-        # Known fields to handle explicitly
-        known_fields: set[str] = {
-            "name", "type", "source", "data_source", "query", "surrogate_id",
-            "keys", "columns", "extra_columns", "values", "depends_on",
-            "drop_duplicates", "drop_empty_rows", "check_column_names", "options",
-            "foreign_keys", "filters", "unnest", "append"
-        }
-
-        # Conditionally add known fields with primitive types
-        # Note: source and options can be None/empty and should be preserved
-        for field in [ 
-            "source",
-            "data_source",
-            "query",
-            "surrogate_id",
-            "keys",
-            "columns",
-            "extra_columns",
-            "values",
-            "depends_on",
-            "drop_duplicates",
-            "drop_empty_rows",
-            "check_column_names",
-            "options",
-        ]:
-            if field in entity_dict:
-                api_dict[field] = entity_dict[field]
-
-        if entity_dict.get("foreign_keys"):
-            fk_data = entity_dict["foreign_keys"]
-            
-            # Keep foreign_keys as plain dicts (not ForeignKeyConfig objects)
-            # since Configuration.entities stores plain dicts
-            if isinstance(fk_data, dict):
+        # Copy all fields present in input, handling special cases
+        for field, value in entity_dict.items():
+            # Handle foreign_keys dict-to-list conversion
+            if field == "foreign_keys" and isinstance(value, dict):
                 # Dict format: {"fk_name": {"entity": "...", "key": "..."}}
-                # Convert to list format
+                # Convert to list format expected by API
                 api_dict["foreign_keys"] = [
                     {
                         "entity": fk["entity"],
                         "local_keys": fk.get("local_keys", fk.get("key", [])),
                         "remote_keys": fk.get("remote_keys", fk.get("key", [])),
+                        **{k: v for k, v in fk.items() if k not in ["entity", "local_keys", "remote_keys", "key"]}
                     }
-                    for fk_name, fk in fk_data.items()
+                    for fk_name, fk in value.items()
                 ]
             else:
-                # List format: [{"entity": "...", "local_keys": [...], "remote_keys": [...]}]
-                # Keep as-is (already in correct format)
-                api_dict["foreign_keys"] = fk_data
-
-        # Handle top-level fields: filters, unnest, append
-        for field in ["filters", "unnest", "append"]:
-            if entity_dict.get(field):
-                api_dict[field] = entity_dict[field]
-
-        # Preserve any other fields not explicitly handled (custom fields like arbodat_codes, surrogate_name, etc.)
-        for field, value in entity_dict.items():
-            if field not in known_fields and field not in api_dict:
+                # Preserve all other fields as-is (both Entity fields and custom fields)
                 api_dict[field] = value
 
         # Return dict directly since Configuration.entities expects dict[str, dict[str, Any]]
@@ -171,80 +142,60 @@ class ConfigMapper:
         """
         Convert API Entity to core entity dict.
 
-        Only includes fields that are explicitly set (non-None/non-empty).
-        This preserves sparse YAML structure.
+        Uses Pydantic model_dump() to eliminate hardcoded field lists.
+        The Entity model schema is the single source of truth.
         """
-        # If already a dict, return as-is (for direct dict inputs)
-        # but remove 'name' field as it's not part of core entity structure
+        # If already a dict, return as-is but remove 'name' (API-only field)
         if isinstance(api_entity, dict):
-            entity_dict = api_entity.copy()
-            entity_dict.pop('name', None)  # Remove name if present
+            entity_dict: dict[str, Any] = api_entity.copy()
+            entity_dict.pop('name', None)
             return entity_dict
 
-        # Build entity dict with only defined fields
-        entity_dict: dict[str, Any] = {}
+        # Use Pydantic's model_dump to automatically serialize all fields
+        # exclude_none: Don't include fields that are None
+        # exclude_unset: Don't include fields that weren't explicitly set
+        # exclude={'name'}: name is API metadata, not part of core entity structure
+        entity_dict = api_entity.model_dump(
+            exclude_none=True,
+            exclude_unset=True,
+            exclude={'name'},
+            mode='python'
+        )
 
-        # Only include type if it was explicitly set
-        if api_entity.type:
-            entity_dict["type"] = api_entity.type
-
-        # Conditionally add fields only if they have values
-        if api_entity.source is not None:
-            entity_dict["source"] = api_entity.source
-
-        if api_entity.data_source:
-            entity_dict["data_source"] = api_entity.data_source
-
-        if api_entity.query:
-            entity_dict["query"] = api_entity.query
-
-        if api_entity.surrogate_id:
-            entity_dict["surrogate_id"] = api_entity.surrogate_id
-
-        if api_entity.keys:
-            entity_dict["keys"] = api_entity.keys
-
-        if api_entity.columns:
-            entity_dict["columns"] = api_entity.columns
-
-        if api_entity.values:
-            entity_dict["values"] = api_entity.values
-
+        # Special handling for nested Pydantic models - serialize them explicitly
+        # This ensures proper dict format instead of model instances
+        
         if api_entity.foreign_keys:
-            # Convert list of ForeignKeyConfig to list format (preserving original structure)
             entity_dict["foreign_keys"] = [
-                {
-                    "entity": fk.entity,
-                    "local_keys": fk.local_keys,
-                    "remote_keys": fk.remote_keys,
-                    **({"how": fk.how} if fk.how else {}),
-                    **({"extra_columns": fk.extra_columns} if fk.extra_columns else {}),
-                    **({"drop_remote_id": fk.drop_remote_id} if fk.drop_remote_id else {}),
-                }
+                fk.model_dump(exclude_none=True, exclude_unset=True)
                 for fk in api_entity.foreign_keys
             ]
 
-        # Handle filters, unnest, append as direct fields (not under 'advanced')
         if api_entity.filters:
-            entity_dict["filters"] = [filter_cfg.model_dump(exclude_none=True) for filter_cfg in api_entity.filters]
+            entity_dict["filters"] = [
+                filter_cfg.model_dump(exclude_none=True, exclude_unset=True)
+                for filter_cfg in api_entity.filters
+            ]
 
         if api_entity.unnest:
-            entity_dict["unnest"] = api_entity.unnest.model_dump(exclude_none=True)
+            entity_dict["unnest"] = api_entity.unnest.model_dump(exclude_none=True, exclude_unset=True)
 
         if api_entity.append:
-            entity_dict["append"] = [append_cfg.model_dump(exclude_none=True) for append_cfg in api_entity.append]
+            entity_dict["append"] = [
+                append_cfg.model_dump(exclude_none=True, exclude_unset=True)
+                for append_cfg in api_entity.append
+            ]
 
-        if api_entity.depends_on:
-            entity_dict["depends_on"] = api_entity.depends_on
+        # Handle check_column_names default: only include if explicitly False
+        # (Pydantic includes default=True values, we want sparse YAML)
+        if entity_dict.get("check_column_names") is True:
+            entity_dict.pop("check_column_names", None)
 
-        if api_entity.drop_duplicates is not None:
-            entity_dict["drop_duplicates"] = api_entity.drop_duplicates
-
-        if api_entity.drop_empty_rows is not None:
-            entity_dict["drop_empty_rows"] = api_entity.drop_empty_rows
-
-        # check_column_names defaults to True, only include if explicitly set to False
-        if api_entity.check_column_names is False:
-            entity_dict["check_column_names"] = False
+        # Handle drop_duplicates and drop_empty_rows defaults
+        # Only include if not False (the default)
+        if entity_dict.get("drop_duplicates") is False:
+            entity_dict.pop("drop_duplicates", None)
+        if entity_dict.get("drop_empty_rows") is False:
+            entity_dict.pop("drop_empty_rows", None)
 
         return entity_dict
