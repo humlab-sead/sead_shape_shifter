@@ -5,6 +5,15 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 
+class UnnestConfig(BaseModel):
+    """Configuration for unnesting (melting) wide data to long format."""
+
+    id_vars: list[str] = Field(..., description="Identifier columns to keep")
+    value_vars: list[str] = Field(..., description="Columns to melt")
+    var_name: str = Field(..., description="Name for the variable column")
+    value_name: str = Field(..., description="Name for the value column")
+
+
 class ForeignKeyConstraints(BaseModel):
     """Constraints for foreign key relationships."""
 
@@ -59,15 +68,6 @@ class ForeignKeyConfig(BaseModel):
         if isinstance(v, str):
             return [v]
         return list(v)
-
-
-class UnnestConfig(BaseModel):
-    """Configuration for unnesting (melting) wide data to long format."""
-
-    id_vars: list[str] = Field(..., description="Identifier columns to keep")
-    value_vars: list[str] = Field(..., description="Columns to melt")
-    var_name: str = Field(..., description="Name for the variable column")
-    value_name: str = Field(..., description="Name for the value column")
 
 
 class FilterConfig(BaseModel):
