@@ -59,9 +59,7 @@ class ReconciliationClient:
             await self._client.aclose()
             self._client = None
 
-    async def reconcile_batch(
-        self, queries: dict[str, ReconciliationQuery]
-    ) -> dict[str, list[ReconciliationCandidate]]:
+    async def reconcile_batch(self, queries: dict[str, ReconciliationQuery]) -> dict[str, list[ReconciliationCandidate]]:
         """
         Batch reconcile multiple queries.
 
@@ -83,9 +81,7 @@ class ReconciliationClient:
         logger.debug(f"Reconciling {len(queries)} queries: {list(queries.keys())}")
 
         client: httpx.AsyncClient = await self._get_client()
-        response: httpx.Response = await client.post(
-            f"{self.base_url}/reconcile", data={"queries": queries_json}
-        )
+        response: httpx.Response = await client.post(f"{self.base_url}/reconcile", data={"queries": queries_json})
         response.raise_for_status()
 
         # Parse response
@@ -98,16 +94,11 @@ class ReconciliationClient:
                 candidates.append(ReconciliationCandidate(**candidate_data))
             results[qid] = candidates
 
-        logger.info(
-            f"Reconciliation completed: {len(results)} queries, "
-            f"{sum(len(c) for c in results.values())} total candidates"
-        )
+        logger.info(f"Reconciliation completed: {len(results)} queries, " f"{sum(len(c) for c in results.values())} total candidates")
 
         return results
 
-    async def suggest_entities(
-        self, prefix: str, entity_type: str | None = None, limit: int = 10
-    ) -> list[ReconciliationCandidate]:
+    async def suggest_entities(self, prefix: str, entity_type: str | None = None, limit: int = 10) -> list[ReconciliationCandidate]:
         """
         Get entity suggestions for autocomplete.
 
@@ -126,9 +117,7 @@ class ReconciliationClient:
         logger.debug(f"Fetching entity suggestions for prefix: {prefix}, type: {entity_type}")
 
         client: httpx.AsyncClient = await self._get_client()
-        response: httpx.Response = await client.get(
-            f"{self.base_url}/suggest/entity", params=params
-        )
+        response: httpx.Response = await client.get(f"{self.base_url}/suggest/entity", params=params)
         response.raise_for_status()
 
         candidates = []
@@ -148,9 +137,7 @@ class ReconciliationClient:
             dict with 'id' and 'html' keys
         """
         client: httpx.AsyncClient = await self._get_client()
-        response: httpx.Response = await client.get(
-            f"{self.base_url}/flyout/entity", params={"id": entity_id}
-        )
+        response: httpx.Response = await client.get(f"{self.base_url}/flyout/entity", params={"id": entity_id})
         response.raise_for_status()
         return response.json()
 
