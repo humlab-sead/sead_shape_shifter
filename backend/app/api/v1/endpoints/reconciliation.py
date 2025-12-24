@@ -1,10 +1,13 @@
 """API endpoints for entity reconciliation."""
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 
+from backend.app.clients.reconciliation_client import ReconciliationClient
+from backend.app.core.config import settings
 from backend.app.models.reconciliation import (
     AutoReconcileResult,
     ReconciliationCandidate,
@@ -12,27 +15,18 @@ from backend.app.models.reconciliation import (
 )
 from backend.app.services.reconciliation_service import ReconciliationService
 
-
 router = APIRouter()
 
 
 async def get_reconciliation_service() -> ReconciliationService:
     """Dependency to get reconciliation service instance."""
-    from pathlib import Path
-
-    from backend.app.clients.reconciliation_client import ReconciliationClient
-    from backend.app.core.config import settings
 
     # Get reconciliation service URL from settings or use default
-    service_url = getattr(
-        settings, "RECONCILIATION_SERVICE_URL", "http://localhost:8000"
-    )
+    service_url = getattr(settings, "RECONCILIATION_SERVICE_URL", "http://localhost:8000")
 
     recon_client = ReconciliationClient(base_url=service_url)
 
-    return ReconciliationService(
-        config_dir=Path(settings.CONFIGURATIONS_DIR), reconciliation_client=recon_client
-    )
+    return ReconciliationService(config_dir=Path(settings.CONFIGURATIONS_DIR), reconciliation_client=recon_client)
 
 
 @router.get("/configurations/{config_name}/reconciliation")
@@ -48,7 +42,7 @@ async def get_reconciliation_config(
         return service.load_reconciliation_config(config_name)
     except Exception as e:
         logger.error(f"Failed to load reconciliation config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.put("/configurations/{config_name}/reconciliation")
@@ -63,7 +57,7 @@ async def update_reconciliation_config(
         return recon_config
     except Exception as e:
         logger.error(f"Failed to save reconciliation config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/configurations/{config_name}/reconciliation/{entity_name}/auto-reconcile")
@@ -105,9 +99,7 @@ async def auto_reconcile_entity(
         # In production, you'd call entity preview service here
         entity_data = []
 
-        logger.info(
-            f"Starting auto-reconciliation for {entity_name} with threshold {threshold}"
-        )
+        logger.info(f"Starting auto-reconciliation for {entity_name} with threshold {threshold}")
 
         result = await service.auto_reconcile_entity(
             config_name=config_name,
@@ -122,7 +114,7 @@ async def auto_reconcile_entity(
         raise
     except Exception as e:
         logger.error(f"Auto-reconciliation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/configurations/{config_name}/reconciliation/{entity_name}/suggest")
@@ -146,15 +138,15 @@ async def suggest_entities(
     try:
         # Get entity spec to resolve service type
         recon_config = service.load_reconciliation_config(config_name)
-        
+
         if entity_name not in recon_config.entities:
             raise HTTPException(
                 status_code=404,
                 detail=f"No reconciliation spec for entity '{entity_name}'",
             )
-        
+
         entity_spec = recon_config.entities[entity_name]
-        
+
         # Get service type from entity spec
         if not entity_spec.remote.service_type:
             raise HTTPException(
@@ -170,7 +162,7 @@ async def suggest_entities(
 
     except Exception as e:
         logger.error(f"Entity suggestion failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/configurations/{config_name}/reconciliation/{entity_name}/mapping")
@@ -204,10 +196,10 @@ async def update_mapping(
             notes=notes,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to update mapping: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.delete("/configurations/{config_name}/reconciliation/{entity_name}/mapping")
@@ -236,7 +228,7 @@ async def delete_mapping(
             sead_id=None,  # None = delete
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to delete mapping: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
