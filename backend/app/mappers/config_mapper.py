@@ -30,8 +30,8 @@ class ConfigMapper:
         logger.debug(f"Converting core config dict to API config: {name}")
 
         # Extract metadata from YAML metadata section or use defaults
-        metadata_dict = cfg_dict.get("metadata", {})
-        metadata = ConfigMetadata(
+        metadata_dict: dict[str, Any] = cfg_dict.get("metadata", {})
+        metadata: ConfigMetadata = ConfigMetadata(
             name=metadata_dict.get("name", name),
             description=metadata_dict.get("description", ""),
             version=metadata_dict.get("version", "1.0.0"),
@@ -43,7 +43,7 @@ class ConfigMapper:
         )
 
         # Map entities (preserve sparse structure)
-        entities = {}
+        entities: dict[str, dict[str, Any]] = {}
         for entity_name, entity_dict in cfg_dict.get("entities", {}).items():
             entities[entity_name] = ConfigMapper._dict_to_api_entity(entity_name, entity_dict)
 
@@ -70,7 +70,6 @@ class ConfigMapper:
         assert api_config.metadata is not None
         logger.debug(f"Converting API config to core dict: {api_config.metadata.name}")
 
-        # Build core config dict with all three required sections
         cfg_dict: dict[str, Any] = {
             "metadata": {
                 "name": api_config.metadata.name,
@@ -106,7 +105,7 @@ class ConfigMapper:
             api_dict["type"] = entity_dict["type"]
 
         # Known fields to handle explicitly
-        known_fields = {
+        known_fields: set[str] = {
             "name", "type", "source", "data_source", "query", "surrogate_id",
             "keys", "columns", "extra_columns", "values", "depends_on",
             "drop_duplicates", "drop_empty_rows", "check_column_names", "options",
@@ -115,7 +114,7 @@ class ConfigMapper:
 
         # Conditionally add known fields with primitive types
         # Note: source and options can be None/empty and should be preserved
-        for field in [
+        for field in [ 
             "source",
             "data_source",
             "query",
