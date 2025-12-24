@@ -11,7 +11,6 @@ from backend.app.models.data_source import (
     DataSourceConfig,
     DataSourceStatus,
     DataSourceTestResult,
-    DataSourceType,
     ForeignKeyMetadata,
     TableMetadata,
     TableSchema,
