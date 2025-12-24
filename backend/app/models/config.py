@@ -9,6 +9,8 @@ class ConfigMetadata(BaseModel):
     """Metadata about a configuration."""
 
     name: str = Field(..., description="Configuration name")
+    description: str | None = Field(default=None, description="Configuration description")
+    version: str | None = Field(default=None, description="Configuration version")
     file_path: str | None = Field(default=None, description="File path if loaded from file")
     entity_count: int = Field(..., description="Number of entities")
     created_at: float = Field(default=0, description="Creation timestamp (Unix timestamp)")
