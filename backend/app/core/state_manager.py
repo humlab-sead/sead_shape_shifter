@@ -10,7 +10,7 @@ from uuid import UUID, uuid4
 
 from loguru import logger
 
-from src.configuration.provider import ConfigStore
+from backend.app.models.config import Configuration
 
 
 @dataclass
@@ -32,16 +32,28 @@ class ConfigSession:
 
 
 class ApplicationState:
-    """Application-level singleton state (lifespan scope)."""
+    """
+    Application-level singleton state (lifespan scope).
+
+    Manages active editing sessions with Configuration objects (API model).
+    This replaces ConfigStore usage for editing state management.
+    """
 
     def __init__(self, config_dir: Path):
         self.config_dir = config_dir
-        self.config_store = ConfigStore(config_directory=config_dir)
+
+        # Active configurations (editing state)
+        self._active_configs: dict[str, Configuration] = {}
+        self._active_config_name: str | None = None
 
         # Session management
         self._sessions: dict[UUID, ConfigSession] = {}
         self._sessions_by_config: dict[str, set[UUID]] = {}
         self._session_lock = asyncio.Lock()
+
+        # Cache invalidation tracking
+        self._config_versions: dict[str, int] = {}
+        self._config_dirty: dict[str, bool] = {}
 
         # Cleanup task
         self._cleanup_task: asyncio.Task | None = None
@@ -94,7 +106,7 @@ class ApplicationState:
             return [self._sessions[sid] for sid in session_ids if sid in self._sessions]
 
     async def release_session(self, session_id: UUID) -> None:
-        """Release a session and unload config if no other sessions."""
+        """Release a session and clear config if no other sessions."""
         async with self._session_lock:
             if session := self._sessions.pop(session_id, None):
                 config_name = session.config_name
@@ -103,13 +115,55 @@ class ApplicationState:
                 if config_name in self._sessions_by_config:
                     self._sessions_by_config[config_name].discard(session_id)
 
-                    # Unload config if no active sessions
+                    # Clear config from memory if no active sessions
                     if not self._sessions_by_config[config_name]:
                         del self._sessions_by_config[config_name]
-                        self.config_store.unload_config(config_name)
-                        logger.info(f"Unloaded config '{config_name}' (no active sessions)")
+                        self._active_configs.pop(config_name, None)
+                        self._config_versions.pop(config_name, None)
+                        self._config_dirty.pop(config_name, None)
+                        logger.info(f"Cleared config '{config_name}' from memory (no active sessions)")
 
                 logger.info(f"Released session {session_id}")
+
+    def get_active_configuration(self) -> Configuration | None:
+        """Get the currently active configuration being edited."""
+        if self._active_config_name:
+            return self._active_configs.get(self._active_config_name)
+        return None
+
+    def get_configuration(self, name: str) -> Configuration | None:
+        """Get a specific configuration from active editing sessions."""
+        return self._active_configs.get(name)
+
+    def set_active_configuration(self, config: Configuration) -> None:
+        """
+        Set/update the active configuration.
+
+        Args:
+            config: Configuration to set as active
+        """
+        assert config.metadata, "Configuration metadata missing"
+
+        name = config.metadata.name
+        self._active_configs[name] = config
+        self._active_config_name = name
+        self._config_versions[name] = self._config_versions.get(name, 0) + 1
+        self._config_dirty[name] = True
+        logger.debug(f"Set active configuration: {name} (version {self._config_versions[name]})")
+
+    def mark_saved(self, name: str) -> None:
+        """Mark a configuration as saved (no unsaved changes)."""
+        if name in self._config_dirty:
+            self._config_dirty[name] = False
+            logger.debug(f"Marked configuration '{name}' as saved")
+
+    def is_dirty(self, name: str) -> bool:
+        """Check if configuration has unsaved changes."""
+        return self._config_dirty.get(name, False)
+
+    def get_version(self, name: str) -> int:
+        """Get configuration version for cache invalidation."""
+        return self._config_versions.get(name, 0)
 
     async def _cleanup_stale_sessions(self) -> None:
         """Periodically cleanup inactive sessions (30min timeout)."""
