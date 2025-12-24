@@ -108,6 +108,7 @@ class Entity(BaseModel):
     drop_duplicates: bool | list[str] = Field(default=False, description="Drop duplicate rows")
     drop_empty_rows: bool | list[str] = Field(default=False, description="Drop empty rows")
     check_column_names: bool = Field(default=True, description="Validate column names")
+    values: list[list[Any]] | None = Field(default=None, description="Fixed values for 'fixed' type entities")
 
     @field_validator("name")
     @classmethod

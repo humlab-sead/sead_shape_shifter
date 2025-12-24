@@ -65,6 +65,7 @@ export interface Entity {
   drop_duplicates?: boolean | string[]
   drop_empty_rows?: boolean | string[]
   check_column_names?: boolean
+  values?: any[][] | null
 }
 
 // Helper type for entity creation (all optional except name)
