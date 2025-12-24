@@ -166,6 +166,7 @@ class ConfigFactory:
         context: str | None = None,
         env_filename: str | None = None,
         env_prefix: str | None = None,
+        skip_resolve: bool = False,
     ) -> Config | ConfigLike:
 
         load_dotenv(dotenv_path=env_filename)
@@ -199,16 +200,18 @@ class ConfigFactory:
 
         # Resolve sub-configurations by loading referenced files recursively
 
-        for resolver_cls in [SubConfigResolver, LoadResolver]:
-            data = resolver_cls(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path).resolve(data)
+        if not skip_resolve:
+            
+            for resolver_cls in [SubConfigResolver, LoadResolver]:
+                data = resolver_cls(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path).resolve(data)
 
-        # Update data based on environment variables with a name that starts with `env_prefix`
-        if env_prefix:
-            data = env2dict(env_prefix, data)
+            # Update data based on environment variables with a name that starts with `env_prefix`
+            if env_prefix:
+                data = env2dict(env_prefix, data)
 
-        # Do a recursive replace of values with pattern "${ENV_NAME}" with value of environment
-        data = replace_env_vars(data)  # type: ignore
-        data = replace_references(data)  # type: ignore
+            # Do a recursive replace of values with pattern "${ENV_NAME}" with value of environment
+            data = replace_env_vars(data)  # type: ignore
+            data = replace_references(data)  # type: ignore
 
         return Config(
             data=data,
