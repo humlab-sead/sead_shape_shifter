@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from loguru import logger
 
+from backend.app.services.validate_fk_service import ValidateForeignKeyService
 from backend.app.models.join_test import JoinTestResult
 from backend.app.models.preview import PreviewResult
 from backend.app.services.config_service import ConfigurationService
@@ -22,7 +23,14 @@ def get_preview_service(
     config_service: ConfigurationService = Depends(get_config_service),
 ) -> PreviewService:
     """Dependency to get preview service instance."""
-    return PreviewService(config_service)
+    return PreviewService(config_service=config_service)
+
+
+def get_validate_fk_service(
+    preview_service: PreviewService = Depends(get_preview_service),
+) -> ValidateForeignKeyService:
+    """Dependency to get validate foreign key service instance."""
+    return ValidateForeignKeyService(preview_service=preview_service)
 
 
 @router.post(
@@ -146,7 +154,7 @@ async def test_foreign_key_join(
     entity_name: str = Path(..., description="Name of the entity with the foreign key"),
     fk_index: int = Path(..., description="Index of the foreign key to test", ge=0),
     sample_size: int = Query(100, description="Number of rows to test", ge=10, le=1000),
-    preview_service: PreviewService = Depends(get_preview_service),
+    validate_fk_service: ValidateForeignKeyService = Depends(get_validate_fk_service),
 ) -> JoinTestResult:
     """
     Test a foreign key join relationship.
@@ -165,7 +173,7 @@ async def test_foreign_key_join(
     - Preview join behavior
     """
     try:
-        result = await preview_service.test_foreign_key(
+        result = await validate_fk_service.test_foreign_key(
             config_name=config_name, entity_name=entity_name, foreign_key_index=fk_index, sample_size=sample_size
         )
         return result

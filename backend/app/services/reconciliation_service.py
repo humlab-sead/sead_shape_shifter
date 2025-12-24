@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import yaml
 from loguru import logger
 
@@ -24,7 +25,8 @@ from backend.app.models.reconciliation import (
 )
 from backend.app.services.config_service import ConfigurationService
 from backend.app.services.preview_service import PreviewService
-from src.loaders.base_loader import DataLoaders
+from src.model import DataSourceConfig, TableConfig
+from src.loaders.base_loader import DataLoader, DataLoaders
 from src.model import ShapeShiftConfig
 
 
@@ -118,7 +120,7 @@ class ReconciliationService:
         entity_name: str,
         entity_spec: EntityReconciliationSpec,
         entity_preview_data: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict]:
         """
         Resolve source data based on entity spec source configuration.
 
@@ -143,7 +145,7 @@ class ReconciliationService:
         # Load fresh ShapeShiftConfig from disk (read-only)
         api_config: Configuration = self.config_service.load_configuration(config_name)
         cfg_dict: dict[str, Any] = ConfigMapper.to_core_dict(api_config)
-        shapeshift_config = ShapeShiftConfig(cfg=cfg_dict)
+        shapeshift_config: ShapeShiftConfig = ShapeShiftConfig(cfg=cfg_dict)
 
         # Case 2: Source is another entity name
         if isinstance(source, str):
@@ -168,13 +170,21 @@ class ReconciliationService:
             if source.data_source not in shapeshift_config.data_sources:
                 raise ValueError(f"Data source '{source.data_source}' not found in configuration")
 
-            data_source_config = shapeshift_config.data_sources[source.data_source]
+            data_source_config: DataSourceConfig = shapeshift_config.get_data_source(source.data_source)
 
-            # Execute query
-            loader = DataLoaders.get(data_source_config.driver)
-            custom_data = await loader.load(source.query)
+            loader: DataLoader = DataLoaders.get(data_source_config.driver)
+            table_cfg_dict: dict[str, Any] = {
+                "source": None,
+                "type": source.type,
+                "keys": [],
+                "columns": [],
+                "data_source": source.data_source,
+                "query": source.query,
+            }
+            table_cfg: TableConfig = TableConfig(cfg=table_cfg_dict, entity_name="recon_temp")
+            custom_data: pd.DataFrame = await loader.load(entity_name=entity_name, table_cfg=table_cfg)
             logger.debug(f"Custom query returned {len(custom_data)} rows")
-            return custom_data
+            return custom_data.to_dict(orient="records")
 
         raise ValueError(f"Invalid source specification: {source}")
 
