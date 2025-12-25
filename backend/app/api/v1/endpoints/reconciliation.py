@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 
+from backend.app.models.reconciliation import EntityReconciliationSpec
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
 from backend.app.models.reconciliation import (
@@ -80,7 +81,7 @@ async def auto_reconcile_entity(
     """
     try:
         # Load reconciliation config
-        recon_config = service.load_reconciliation_config(config_name)
+        recon_config: ReconciliationConfig = service.load_reconciliation_config(config_name)
 
         if entity_name not in recon_config.entities:
             raise HTTPException(
@@ -88,7 +89,7 @@ async def auto_reconcile_entity(
                 detail=f"No reconciliation spec for entity '{entity_name}'",
             )
 
-        entity_spec = recon_config.entities[entity_name]
+        entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
 
         # Update threshold if provided
         if threshold != entity_spec.auto_accept_threshold:
