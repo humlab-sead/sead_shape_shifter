@@ -21,7 +21,6 @@ export interface PreviewResult {
   execution_time_ms: number
   has_dependencies: boolean
   dependencies_loaded: string[]
-  transformations_applied: string[]
   cache_hit: boolean
 }
 
