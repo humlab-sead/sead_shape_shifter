@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any
 
+from backend.app.core.state_manager import ApplicationState, get_app_state
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 
@@ -96,6 +97,15 @@ async def auto_reconcile_entity(
             entity_spec.auto_accept_threshold = threshold
 
         logger.info(f"Starting auto-reconciliation for {entity_name} with threshold {threshold}")
+        try:
+            app_state: ApplicationState = get_app_state()
+            if app_state.is_dirty(config_name):
+                raise ValueError(
+                    f"Configuration '{config_name}' has unsaved changes. " "Save or discard changes before starting reconciliation."
+                )
+        except RuntimeError:
+            # ApplicationState not initialized (e.g., in tests) - allow reconciliation
+            pass
 
         result: AutoReconcileResult = await service.auto_reconcile_entity(
             config_name=config_name,
