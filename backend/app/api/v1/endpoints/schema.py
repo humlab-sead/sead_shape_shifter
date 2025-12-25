@@ -9,6 +9,9 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
 
+from backend.app.utils.error_handlers import handle_endpoint_errors
+from backend.app.utils.exceptions import BadRequestError, NotFoundError
+
 from backend.app.api.dependencies import get_schema_service
 from backend.app.models.data_source import TableMetadata, TableSchema
 from backend.app.models.entity_import import EntityImportRequest, EntityImportResult
@@ -19,6 +22,7 @@ router = APIRouter(prefix="/data-sources", tags=["schema"])
 
 
 @router.get("/{name}/tables", response_model=list[TableMetadata], summary="List tables in data source")
+@handle_endpoint_errors
 async def list_tables(
     name: str,
     schema: Optional[str] = Query(None, description="Schema name (PostgreSQL only)"),
@@ -54,19 +58,14 @@ async def list_tables(
         return tables
     except SchemaServiceError as e:
         if "not found" in str(e).lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+            raise NotFoundError(str(e)) from e
         if "not supported" in str(e).lower():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Unexpected error listing tables for {name}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list tables: {str(e)}",
-        ) from e
+            raise BadRequestError(str(e)) from e
+        raise
 
 
 @router.get("/{name}/tables/{table_name}/schema", response_model=TableSchema, summary="Get table schema")
+@handle_endpoint_errors
 async def get_table_schema(
     name: str,
     table_name: str,
@@ -112,19 +111,14 @@ async def get_table_schema(
         return table_schema
     except SchemaServiceError as e:
         if "not found" in str(e).lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+            raise NotFoundError(str(e)) from e
         if "not supported" in str(e).lower():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Unexpected error getting schema for {table_name}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get table schema: {str(e)}",
-        ) from e
+            raise BadRequestError(str(e)) from e
+        raise
 
 
 @router.get("/{name}/tables/{table_name}/preview", summary="Preview table data")
+@handle_endpoint_errors
 async def preview_table_data(
     name: str,
     table_name: str,
@@ -181,19 +175,14 @@ async def preview_table_data(
         return preview
     except SchemaServiceError as e:
         if "not found" in str(e).lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+            raise NotFoundError(str(e)) from e
         if "not supported" in str(e).lower() or "timed out" in str(e).lower():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Unexpected error previewing {table_name}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to preview table data: {str(e)}",
-        ) from e
+            raise BadRequestError(str(e)) from e
+        raise
 
 
 @router.get("/{name}/tables/{table_name}/type-mappings", response_model=dict[str, dict[str, Any]], summary="Get type mapping suggestions")
+@handle_endpoint_errors
 async def get_type_mappings(
     name: str,
     table_name: str,
@@ -266,17 +255,12 @@ async def get_type_mappings(
 
     except SchemaServiceError as e:
         if "not found" in str(e).lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Error getting type mappings for {table_name}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get type mappings: {str(e)}",
-        ) from e
+            raise NotFoundError(str(e)) from e
+        raise
 
 
 @router.post("/{name}/tables/{table_name}/import", summary="Import entity from table")
+@handle_endpoint_errors
 async def import_entity_from_table(
     name: str,
     table_name: str,
@@ -318,14 +302,12 @@ async def import_entity_from_table(
     except SchemaServiceError as e:
         logger.error(f"Error importing entity from {table_name}: {e}")
         if "not found" in str(e).lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Error importing entity from {table_name}: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to import entity: {str(e)}") from e
+            raise NotFoundError(str(e)) from e
+        raise
 
 
 @router.post("/{name}/cache/invalidate", status_code=status.HTTP_204_NO_CONTENT, summary="Invalidate schema cache")
+@handle_endpoint_errors
 async def invalidate_cache(
     name: str,
     service: SchemaIntrospectionService = Depends(get_schema_service),
@@ -345,13 +327,6 @@ async def invalidate_cache(
 
     **Note**: Cache automatically expires after 5 minutes
     """
-    try:
-        logger.info(f"Invalidating schema cache for {name}")
-        service.invalidate_cache(name)
-        logger.info(f"Cache invalidated for {name}")
-    except Exception as e:
-        logger.error(f"Error invalidating cache for {name}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to invalidate cache: {str(e)}",
-        ) from e
+    logger.info(f"Invalidating schema cache for {name}")
+    service.invalidate_cache(name)
+    logger.info(f"Cache invalidated for {name}")

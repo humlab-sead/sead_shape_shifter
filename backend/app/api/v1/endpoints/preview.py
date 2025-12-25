@@ -5,6 +5,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from loguru import logger
 
+from backend.app.utils.error_handlers import handle_endpoint_errors
+from backend.app.utils.exceptions import BadRequestError, NotFoundError
+
 from backend.app.models.join_test import JoinTestResult
 from backend.app.models.preview import PreviewResult
 from backend.app.services.config_service import ConfigurationService
@@ -44,6 +47,7 @@ def get_validate_fk_service(
         500: {"description": "Preview generation failed"},
     },
 )
+@handle_endpoint_errors
 async def preview_entity(
     config_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity to preview"),
@@ -64,10 +68,7 @@ async def preview_entity(
         return result
     except ValueError as e:
         logger.warning(f"Preview request failed: {e}")
-        raise HTTPException(status_code=404, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Preview generation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Preview generation failed: {str(e)}") from e
+        raise NotFoundError(str(e)) from e
 
 
 @router.post(
@@ -81,6 +82,7 @@ async def preview_entity(
         500: {"description": "Sample generation failed"},
     },
 )
+@handle_endpoint_errors
 async def get_entity_sample(
     config_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity"),
@@ -100,10 +102,7 @@ async def get_entity_sample(
         return result
     except ValueError as e:
         logger.warning(f"Sample request failed: {e}")
-        raise HTTPException(status_code=404, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Sample generation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Sample generation failed: {str(e)}") from e
+        raise NotFoundError(str(e)) from e
 
 
 @router.delete(
@@ -114,6 +113,7 @@ async def get_entity_sample(
         200: {"description": "Cache invalidated successfully"},
     },
 )
+@handle_endpoint_errors
 async def invalidate_preview_cache(
     config_name: str = Path(..., description="Name of the configuration"),
     entity_name: Optional[str] = Query(None, description="Optional entity name to clear specific cache"),
@@ -127,15 +127,11 @@ async def invalidate_preview_cache(
     - Changing data source data
     - Updating transformations
     """
-    try:
-        preview_service.invalidate_cache(config_name, entity_name)
-        message = f"Cache cleared for {config_name}"
-        if entity_name:
-            message += f":{entity_name}"
-        return {"message": message, "config_name": config_name, "entity_name": entity_name}
-    except Exception as e:
-        logger.error(f"Cache invalidation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Cache invalidation failed: {str(e)}") from e
+    preview_service.invalidate_cache(config_name, entity_name)
+    message = f"Cache cleared for {config_name}"
+    if entity_name:
+        message += f":{entity_name}"
+    return {"message": message, "config_name": config_name, "entity_name": entity_name}
 
 
 @router.post(
@@ -149,6 +145,7 @@ async def invalidate_preview_cache(
         400: {"description": "Invalid request parameters"},
     },
 )
+@handle_endpoint_errors
 async def test_foreign_key_join(
     config_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity with the foreign key"),
@@ -179,7 +176,4 @@ async def test_foreign_key_join(
         return result
     except ValueError as e:
         logger.error(f"Join test validation error: {e}")
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Join test failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Join test failed: {str(e)}") from e
+        raise BadRequestError(str(e)) from e

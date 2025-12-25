@@ -26,6 +26,7 @@ from backend.app.models import (
 )
 from backend.app.models.preview import PreviewResult
 from backend.app.services import ConfigurationService, PreviewService
+from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.loaders import DataLoader, DataLoaders
 from src.model import DataSourceConfig, ShapeShiftConfig, TableConfig
 
@@ -59,7 +60,7 @@ class ReconciliationSourceResolver(abc.ABC):
         if isinstance(source, ReconciliationSource):
             return SqlQueryReconciliationSourceResolver
 
-        raise ValueError(f"Invalid source specification: {source}")
+        raise BadRequestError(f"Invalid source specification: {source}")
 
 
 class TargetEntityReconciliationSourceResolver(ReconciliationSourceResolver):
@@ -83,7 +84,7 @@ class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
         logger.info(f"Fetching preview data from entity '{source}' for reconciliation of '{entity_name}'")
 
         if source not in self.config.tables:
-            raise ValueError(f"Source entity '{source}' not found in configuration")
+            raise NotFoundError(f"Source entity '{source}' not found in configuration")
 
         preview_result: PreviewResult = await self.preview_service.preview_entity(self.config_name, source, limit=1000)
         source_data = preview_result.rows
@@ -104,7 +105,7 @@ class SqlQueryReconciliationSourceResolver(ReconciliationSourceResolver):
 
         # Get data source config from ShapeShiftConfig
         if source.data_source not in self.config.data_sources:
-            raise ValueError(f"Data source '{source.data_source}' not found in configuration")
+            raise NotFoundError(f"Data source '{source.data_source}' not found in configuration")
 
         data_source_config: DataSourceConfig = self.config.get_data_source(source.data_source)
 
@@ -291,7 +292,7 @@ class ReconciliationService:
         match: re.Match[str] | None = re.search(r"/(\d+)/?$", uri)
         if match:
             return int(match.group(1))
-        raise ValueError(f"Cannot extract numeric ID from URI: {uri}")
+        raise BadRequestError(f"Cannot extract numeric ID from URI: {uri}")
 
     async def auto_reconcile_entity(
         self, config_name: str, entity_name: str, entity_spec: EntityReconciliationSpec, max_candidates: int = 3
@@ -435,7 +436,7 @@ class ReconciliationService:
         recon_config = self.load_reconciliation_config(config_name)
 
         if entity_name not in recon_config.entities:
-            raise ValueError(f"Entity '{entity_name}' not in reconciliation config")
+            raise NotFoundError(f"Entity '{entity_name}' not in reconciliation config")
 
         entity_spec = recon_config.entities[entity_name]
 
