@@ -22,6 +22,7 @@ from backend.app.models import (
     Configuration,
     Entity,
 )
+from src.model import ShapeShiftConfig
 
 
 class ConfigMapper:
@@ -97,6 +98,12 @@ class ConfigMapper:
             cfg_dict["entities"][entity_name] = ConfigMapper._api_entity_to_dict(api_entity)
 
         return cfg_dict
+
+    @staticmethod
+    def to_core(api_config: Configuration) -> ShapeShiftConfig:
+        cfg_dict: dict[str, Any] = ConfigMapper.to_core_dict(api_config=api_config)
+        shapeshift = ShapeShiftConfig(cfg=cfg_dict)
+        return shapeshift
 
     @staticmethod
     def _dict_to_api_entity(entity_name: str, entity_dict: dict[str, Any]) -> dict[str, Any]:

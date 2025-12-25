@@ -4,7 +4,7 @@ import time
 
 import pandas as pd
 
-from backend.app.core.state_manager import ApplicationState, get_app_state
+from backend.app.core.state_manager import get_app_state_manager
 from backend.app.mappers.config_mapper import ConfigMapper
 from backend.app.models import CardinalityInfo, Configuration, JoinStatistics, JoinTestResult, PreviewResult, UnmatchedRow
 from backend.app.services.preview_service import PreviewService
@@ -37,15 +37,8 @@ class ValidateForeignKeyService:
         start_time: float = time.time()
 
         # Load config - try ApplicationState first (production), fall back to ShapeShiftConfig.resolve (tests)
-        try:
-            app_state: ApplicationState = get_app_state()
-            api_cfg: Configuration | None = app_state.get_configuration(config_name)
-            assert api_cfg is not None
-            core_cfg_dict: dict = ConfigMapper.to_core_dict(api_cfg)
-            config: ShapeShiftConfig = ShapeShiftConfig(cfg=core_cfg_dict)
-        except RuntimeError:
-            # Fallback for tests - use ShapeShiftConfig.resolve which uses the mocked provider
-            config = ShapeShiftConfig.resolve(cfg=config_name)
+        api_cfg: Configuration | None = get_app_state_manager().get(config_name)
+        config: ShapeShiftConfig = ConfigMapper.to_core(api_cfg) if api_cfg else ShapeShiftConfig.resolve(cfg=config_name)
 
         # Get entity and foreign key config
         if entity_name not in config.tables:
