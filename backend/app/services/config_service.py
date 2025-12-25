@@ -5,6 +5,7 @@ from typing import Any
 
 from loguru import logger
 
+from app.services.yaml_service import YamlService
 from backend.app.core.config import settings
 from backend.app.core.state_manager import ApplicationState, get_app_state
 from backend.app.mappers.config_mapper import ConfigMapper
@@ -42,8 +43,8 @@ class ConfigurationService:
 
     def __init__(self) -> None:
         """Initialize configuration service."""
-        self.yaml_service = get_yaml_service()
-        self.configurations_dir = settings.CONFIGURATIONS_DIR
+        self.yaml_service: YamlService = get_yaml_service()
+        self.configurations_dir: Path = settings.CONFIGURATIONS_DIR
 
     def list_configurations(self) -> list[ConfigMetadata]:
         """
@@ -105,8 +106,8 @@ class ConfigurationService:
         """
         # Check if this is the active configuration
         try:
-            app_state = get_app_state()
-            active_config = app_state.get_configuration(name)
+            app_state: ApplicationState = get_app_state()
+            active_config: Configuration | None = app_state.get_configuration(name)
             if active_config:
                 logger.debug(f"Loading active configuration '{name}' from ApplicationState")
                 return active_config
@@ -128,7 +129,7 @@ class ConfigurationService:
                 raise InvalidConfigurationError(f"Invalid configuration file '{name}': missing required 'entities' key")
 
             # Convert to Configuration model via mapper
-            config = ConfigMapper.to_api_config(data, name)
+            config: Configuration = ConfigMapper.to_api_config(data, name)
 
             assert config.metadata is not None  # For mypy
 

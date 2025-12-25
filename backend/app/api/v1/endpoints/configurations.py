@@ -207,7 +207,7 @@ async def list_backups(name: str) -> list[BackupInfo]:
     """
     yaml_service: YamlService = get_yaml_service()
     backups: list[Path] = yaml_service.list_backups(f"{name}.yml")
-    backup_infos = [
+    backup_infos: list[BackupInfo] = [
         BackupInfo(
             file_name=backup.name,
             file_path=str(backup),
