@@ -58,6 +58,14 @@ from backend.app.models.query import (
     QueryResult,
     QueryValidation,
 )
+from backend.app.models.reconciliation import (
+    AutoReconcileResult,
+    EntityReconciliationSpec,
+    ReconciliationCandidate,
+    ReconciliationConfig,
+    ReconciliationMapping,
+    ReconciliationSource,
+)
 from backend.app.models.suggestion import (
     DependencySuggestion,
     EntitySuggestions,
