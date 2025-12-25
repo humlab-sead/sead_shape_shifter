@@ -3,12 +3,12 @@
 from pathlib import Path
 from typing import Any
 
-from backend.app.core.state_manager import ApplicationState, get_app_state
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from loguru import logger
 
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
+from backend.app.core.state_manager import ApplicationState, get_app_state
 from backend.app.models.reconciliation import (
     AutoReconcileResult,
     EntityReconciliationSpec,
@@ -16,6 +16,8 @@ from backend.app.models.reconciliation import (
     ReconciliationConfig,
 )
 from backend.app.services.reconciliation_service import ReconciliationService
+from backend.app.utils.error_handlers import handle_endpoint_errors
+from backend.app.utils.exceptions import BadRequestError, NotFoundError
 
 router = APIRouter()
 
@@ -32,6 +34,7 @@ async def get_reconciliation_service() -> ReconciliationService:
 
 
 @router.get("/configurations/{config_name}/reconciliation")
+@handle_endpoint_errors
 async def get_reconciliation_config(
     config_name: str, service: ReconciliationService = Depends(get_reconciliation_service)
 ) -> ReconciliationConfig:
@@ -40,29 +43,23 @@ async def get_reconciliation_config(
 
     Returns the reconciliation spec including entity mappings and settings.
     """
-    try:
-        return service.load_reconciliation_config(config_name)
-    except Exception as e:
-        logger.error(f"Failed to load reconciliation config: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return service.load_reconciliation_config(config_name)
 
 
 @router.put("/configurations/{config_name}/reconciliation")
+@handle_endpoint_errors
 async def update_reconciliation_config(
     config_name: str,
     recon_config: ReconciliationConfig,
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> ReconciliationConfig:
     """Update entire reconciliation configuration."""
-    try:
-        service.save_reconciliation_config(config_name, recon_config)
-        return recon_config
-    except Exception as e:
-        logger.error(f"Failed to save reconciliation config: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    service.save_reconciliation_config(config_name, recon_config)
+    return recon_config
 
 
 @router.post("/configurations/{config_name}/reconciliation/{entity_name}/auto-reconcile")
+@handle_endpoint_errors
 async def auto_reconcile_entity(
     config_name: str,
     entity_name: str,
@@ -80,49 +77,40 @@ async def auto_reconcile_entity(
     Returns:
         AutoReconcileResult with counts and candidates
     """
+    # Load reconciliation config
+    recon_config: ReconciliationConfig = service.load_reconciliation_config(config_name)
+
+    if entity_name not in recon_config.entities:
+        raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
+
+    entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
+
+    # Update threshold if provided
+    if threshold != entity_spec.auto_accept_threshold:
+        entity_spec.auto_accept_threshold = threshold
+
+    logger.info(f"Starting auto-reconciliation for {entity_name} with threshold {threshold}")
     try:
-        # Load reconciliation config
-        recon_config: ReconciliationConfig = service.load_reconciliation_config(config_name)
-
-        if entity_name not in recon_config.entities:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No reconciliation spec for entity '{entity_name}'",
+        app_state: ApplicationState = get_app_state()
+        if app_state.is_dirty(config_name):
+            raise BadRequestError(
+                f"Configuration '{config_name}' has unsaved changes. Save or discard changes before starting reconciliation."
             )
+    except RuntimeError:
+        # ApplicationState not initialized (e.g., in tests) - allow reconciliation
+        pass
 
-        entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
+    result: AutoReconcileResult = await service.auto_reconcile_entity(
+        config_name=config_name,
+        entity_name=entity_name,
+        entity_spec=entity_spec,
+    )
 
-        # Update threshold if provided
-        if threshold != entity_spec.auto_accept_threshold:
-            entity_spec.auto_accept_threshold = threshold
-
-        logger.info(f"Starting auto-reconciliation for {entity_name} with threshold {threshold}")
-        try:
-            app_state: ApplicationState = get_app_state()
-            if app_state.is_dirty(config_name):
-                raise ValueError(
-                    f"Configuration '{config_name}' has unsaved changes. " "Save or discard changes before starting reconciliation."
-                )
-        except RuntimeError:
-            # ApplicationState not initialized (e.g., in tests) - allow reconciliation
-            pass
-
-        result: AutoReconcileResult = await service.auto_reconcile_entity(
-            config_name=config_name,
-            entity_name=entity_name,
-            entity_spec=entity_spec,
-        )
-
-        return result
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Auto-reconciliation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return result
 
 
 @router.get("/configurations/{config_name}/reconciliation/{entity_name}/suggest")
+@handle_endpoint_errors
 async def suggest_entities(
     config_name: str,
     entity_name: str,
@@ -140,37 +128,27 @@ async def suggest_entities(
     Returns:
         list of matching candidates with scores
     """
-    try:
-        # Get entity spec to resolve service type
-        recon_config: ReconciliationConfig = service.load_reconciliation_config(config_name)
+    # Get entity spec to resolve service type
+    recon_config: ReconciliationConfig = service.load_reconciliation_config(config_name)
 
-        if entity_name not in recon_config.entities:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No reconciliation spec for entity '{entity_name}'",
-            )
+    if entity_name not in recon_config.entities:
+        raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
 
-        entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
+    entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
 
-        # Get service type from entity spec
-        if not entity_spec.remote.service_type:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Entity '{entity_name}' has no service_type configured",
-            )
+    # Get service type from entity spec
+    if not entity_spec.remote.service_type:
+        raise BadRequestError(f"Entity '{entity_name}' has no service_type configured")
 
-        candidates: list[ReconciliationCandidate] = await service.recon_client.suggest_entities(
-            prefix=query, entity_type=entity_spec.remote.service_type.lower(), limit=10
-        )
+    candidates: list[ReconciliationCandidate] = await service.recon_client.suggest_entities(
+        prefix=query, entity_type=entity_spec.remote.service_type.lower(), limit=10
+    )
 
-        return candidates
-
-    except Exception as e:
-        logger.error(f"Entity suggestion failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return candidates
 
 
 @router.post("/configurations/{config_name}/reconciliation/{entity_name}/mapping")
+@handle_endpoint_errors
 async def update_mapping(
     config_name: str,
     entity_name: str,
@@ -192,22 +170,17 @@ async def update_mapping(
     Returns:
         Updated reconciliation configuration
     """
-    try:
-        return service.update_mapping(
-            config_name=config_name,
-            entity_name=entity_name,
-            source_values=source_values,
-            sead_id=sead_id,
-            notes=notes,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Failed to update mapping: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return service.update_mapping(
+        config_name=config_name,
+        entity_name=entity_name,
+        source_values=source_values,
+        sead_id=sead_id,
+        notes=notes,
+    )
 
 
 @router.delete("/configurations/{config_name}/reconciliation/{entity_name}/mapping")
+@handle_endpoint_errors
 async def delete_mapping(
     config_name: str,
     entity_name: str,
@@ -225,15 +198,9 @@ async def delete_mapping(
     Returns:
         Updated reconciliation configuration
     """
-    try:
-        return service.update_mapping(
-            config_name=config_name,
-            entity_name=entity_name,
-            source_values=source_values,
-            sead_id=None,  # None = delete
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Failed to delete mapping: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return service.update_mapping(
+        config_name=config_name,
+        entity_name=entity_name,
+        source_values=source_values,
+        sead_id=None,  # None = delete
+    )
