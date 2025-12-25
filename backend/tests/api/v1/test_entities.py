@@ -144,7 +144,7 @@ class TestEntitiesCreate:
         assert get_response.status_code == 200
 
     def test_create_duplicate_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
-        """Test creating duplicate entity fails."""
+        """Test creating duplicate entity returns 409 Conflict."""
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -159,7 +159,7 @@ class TestEntitiesCreate:
             "/api/v1/configurations/test_config/entities",
             json={"name": "existing", "entity_data": sample_entity_data},
         )
-        assert response.status_code == 400
+        assert response.status_code == 409
 
     def test_create_entity_nonexistent_config(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test creating entity in non-existent configuration fails."""

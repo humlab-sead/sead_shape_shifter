@@ -3,6 +3,8 @@
 from pathlib import Path
 from typing import Any
 
+from backend.app.utils.error_handlers import handle_endpoint_errors
+from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -55,6 +57,7 @@ class RestoreBackupRequest(BaseModel):
 
 # Endpoints
 @router.get("/configurations", response_model=list[ConfigMetadata])
+@handle_endpoint_errors
 async def list_configurations() -> list[ConfigMetadata]:
     """
     List all available configuration files.
@@ -66,19 +69,13 @@ async def list_configurations() -> list[ConfigMetadata]:
     - Validation status
     """
     config_service: ConfigurationService = get_config_service()
-    try:
-        configs = config_service.list_configurations()
-        logger.debug(f"Listed {len(configs)} configuration(s)")
-        return configs
-    except Exception as e:
-        logger.error(f"Failed to list configurations: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list configurations: {str(e)}",
-        ) from e
+    configs = config_service.list_configurations()
+    logger.debug(f"Listed {len(configs)} configuration(s)")
+    return configs
 
 
 @router.get("/configurations/{name}", response_model=Configuration)
+@handle_endpoint_errors
 async def get_configuration(name: str) -> Configuration:
     """
     Get specific configuration by name.
@@ -90,21 +87,13 @@ async def get_configuration(name: str) -> Configuration:
         Complete configuration with entities, options, and metadata
     """
     config_service: ConfigurationService = get_config_service()
-    try:
-        config: Configuration = config_service.load_configuration(name)
-        logger.info(f"Retrieved configuration '{name}'")
-        return config
-    except ConfigurationNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Failed to get configuration '{name}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get configuration: {str(e)}",
-        ) from e
+    config: Configuration = config_service.load_configuration(name)
+    logger.info(f"Retrieved configuration '{name}'")
+    return config
 
 
 @router.post("/configurations", response_model=Configuration, status_code=status.HTTP_201_CREATED)
+@handle_endpoint_errors
 async def create_configuration(request: ConfigurationCreateRequest) -> Configuration:
     """
     Create new configuration.
@@ -116,21 +105,13 @@ async def create_configuration(request: ConfigurationCreateRequest) -> Configura
         Created configuration with metadata
     """
     config_service: ConfigurationService = get_config_service()
-    try:
-        config: Configuration = config_service.create_configuration(request.name, request.entities)
-        logger.info(f"Created configuration '{request.name}'")
-        return config
-    except ConfigurationServiceError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Failed to create configuration: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create configuration: {str(e)}",
-        ) from e
+    config: Configuration = config_service.create_configuration(request.name, request.entities)
+    logger.info(f"Created configuration '{request.name}'")
+    return config
 
 
 @router.put("/configurations/{name}", response_model=Configuration)
+@handle_endpoint_errors
 async def update_configuration(name: str, request: ConfigurationUpdateRequest) -> Configuration:
     """
     Update existing configuration.
@@ -146,32 +127,24 @@ async def update_configuration(name: str, request: ConfigurationUpdateRequest) -
         Updated configuration with new metadata
     """
     config_service: ConfigurationService = get_config_service()
-    try:
-        # Load existing config from disk to preserve entities
-        config: Configuration = config_service.load_configuration(name)
+    # Load existing config from disk to preserve entities
+    config: Configuration = config_service.load_configuration(name)
 
-        # Only update options - entities are managed via /entities endpoints
-        # This prevents the frontend from overwriting entities with stale data
-        config.options = request.options
-        # Explicitly preserve entities from disk
-        logger.debug(f"Updating config '{name}': preserving {len(config.entities)} entities from disk, " f"updating options only")
+    # Only update options - entities are managed via /entities endpoints
+    # This prevents the frontend from overwriting entities with stale data
+    config.options = request.options
+    # Explicitly preserve entities from disk
+    logger.debug(f"Updating config '{name}': preserving {len(config.entities)} entities from disk, " f"updating options only")
 
-        updated_config: Configuration = config_service.save_configuration(config)
-        logger.info(
-            f"Updated configuration '{name}' options (entities preserved: " f"{list(updated_config.entities.keys())})",
-        )
-        return updated_config
-    except ConfigurationNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Failed to update configuration '{name}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update configuration: {str(e)}",
-        ) from e
+    updated_config: Configuration = config_service.save_configuration(config)
+    logger.info(
+        f"Updated configuration '{name}' options (entities preserved: " f"{list(updated_config.entities.keys())})",
+    )
+    return updated_config
 
 
 @router.delete("/configurations/{name}", status_code=status.HTTP_204_NO_CONTENT)
+@handle_endpoint_errors
 async def delete_configuration(name: str) -> None:
     """
     Delete configuration file.
@@ -182,20 +155,12 @@ async def delete_configuration(name: str) -> None:
         name: Configuration name to delete
     """
     config_service: ConfigurationService = get_config_service()
-    try:
-        config_service.delete_configuration(name)
-        logger.info(f"Deleted configuration '{name}'")
-    except ConfigurationNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Failed to delete configuration '{name}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete configuration: {str(e)}",
-        ) from e
+    config_service.delete_configuration(name)
+    logger.info(f"Deleted configuration '{name}'")
 
 
 @router.post("/configurations/{name}/validate", response_model=ValidationResult)
+@handle_endpoint_errors
 async def validate_configuration(name: str) -> ValidationResult:
     """
     Validate configuration against specifications.
@@ -216,28 +181,20 @@ async def validate_configuration(name: str) -> ValidationResult:
     config_service: ConfigurationService = get_config_service()
     validation_service: ValidationService = get_validation_service()
 
-    try:
-        # Load configuration
-        config: Configuration = config_service.load_configuration(name)
+    # Load configuration
+    config: Configuration = config_service.load_configuration(name)
 
-        # Build config dict for validation
-        config_data = {"entities": config.entities, "options": config.options}
+    # Build config dict for validation
+    config_data = {"entities": config.entities, "options": config.options}
 
-        # Validate
-        result = validation_service.validate_configuration(config_data)
-        logger.info(f"Validated configuration '{name}': {'valid' if result.is_valid else 'invalid'}")
-        return result
-    except ConfigurationNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Failed to validate configuration '{name}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to validate configuration: {str(e)}",
-        ) from e
+    # Validate
+    result = validation_service.validate_configuration(config_data)
+    logger.info(f"Validated configuration '{name}': {'valid' if result.is_valid else 'invalid'}")
+    return result
 
 
 @router.get("/configurations/{name}/backups", response_model=list[BackupInfo])
+@handle_endpoint_errors
 async def list_backups(name: str) -> list[BackupInfo]:
     """
     List all backup files for a configuration.
@@ -251,27 +208,21 @@ async def list_backups(name: str) -> list[BackupInfo]:
         List of backup file information
     """
     yaml_service: YamlService = get_yaml_service()
-    try:
-        backups: list[Path] = yaml_service.list_backups(f"{name}.yml")
-        backup_infos = [
-            BackupInfo(
-                file_name=backup.name,
-                file_path=str(backup),
-                created_at=backup.stat().st_mtime,
-            )
-            for backup in backups
-        ]
-        logger.debug(f"Listed {len(backup_infos)} backup(s) for '{name}'")
-        return backup_infos
-    except Exception as e:
-        logger.error(f"Failed to list backups for '{name}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list backups: {str(e)}",
-        ) from e
+    backups: list[Path] = yaml_service.list_backups(f"{name}.yml")
+    backup_infos = [
+        BackupInfo(
+            file_name=backup.name,
+            file_path=str(backup),
+            created_at=backup.stat().st_mtime,
+        )
+        for backup in backups
+    ]
+    logger.debug(f"Listed {len(backup_infos)} backup(s) for '{name}'")
+    return backup_infos
 
 
 @router.post("/configurations/{name}/restore", response_model=Configuration)
+@handle_endpoint_errors
 async def restore_backup(name: str, request: RestoreBackupRequest) -> Configuration:
     """
     Restore configuration from backup file.
@@ -288,45 +239,36 @@ async def restore_backup(name: str, request: RestoreBackupRequest) -> Configurat
     # config_service = get_config_service()
     yaml_service: YamlService = get_yaml_service()
 
-    try:
+    # Build target path in CONFIGURATIONS_DIR
+    target_path: Path = settings.CONFIGURATIONS_DIR / f"{name}.yml"
 
-        # Build target path in CONFIGURATIONS_DIR
-        target_path: Path = settings.CONFIGURATIONS_DIR / f"{name}.yml"
+    # Restore backup - this writes to target_path
+    yaml_service.restore_backup(request.backup_path, str(target_path), create_backup=True)
 
-        # Restore backup - this writes to target_path
-        yaml_service.restore_backup(request.backup_path, str(target_path), create_backup=True)
+    # Load configuration directly from the target path to avoid cache issues
+    restored_data = yaml_service.load(target_path)
 
-        # Load configuration directly from the target path to avoid cache issues
-        restored_data = yaml_service.load(target_path)
+    # Build Configuration with proper metadata
+    stat = target_path.stat()
+    config = Configuration(
+        metadata=ConfigMetadata(
+            name=name,
+            file_path=str(target_path),
+            entity_count=len(restored_data.get("entities", {})),
+            created_at=stat.st_ctime,
+            modified_at=stat.st_mtime,
+            is_valid=True,  # Will be validated separately if needed
+        ),
+        entities=restored_data.get("entities", {}),
+        options=restored_data.get("options", {}),
+    )
 
-        # Build Configuration with proper metadata
-        stat = target_path.stat()
-        config = Configuration(
-            metadata=ConfigMetadata(
-                name=name,
-                file_path=str(target_path),
-                entity_count=len(restored_data.get("entities", {})),
-                created_at=stat.st_ctime,
-                modified_at=stat.st_mtime,
-                is_valid=True,  # Will be validated separately if needed
-            ),
-            entities=restored_data.get("entities", {}),
-            options=restored_data.get("options", {}),
-        )
-
-        logger.info(f"Restored configuration '{name}' from backup")
-        return config
-    except YamlServiceError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Failed to restore configuration '{name}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to restore configuration: {str(e)}",
-        ) from e
+    logger.info(f"Restored configuration '{name}' from backup")
+    return config
 
 
 @router.get("/configurations/active/name", response_model=dict[str, str | None])
+@handle_endpoint_errors
 async def get_active_configuration() -> dict[str, str | None]:
     """
     Get the currently active configuration name.
@@ -339,18 +281,12 @@ async def get_active_configuration() -> dict[str, str | None]:
         (without .yml extension), or null if no configuration is loaded.
     """
     config_service: ConfigurationService = get_config_service()
-    try:
-        active_name: str | None = config_service.get_active_configuration_name()
-        return {"name": active_name}
-    except Exception as e:
-        logger.error(f"Failed to get active configuration: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get active configuration: {str(e)}",
-        ) from e
+    active_name: str | None = config_service.get_active_configuration_name()
+    return {"name": active_name}
 
 
 @router.post("/configurations/{name}/activate", response_model=Configuration)
+@handle_endpoint_errors
 async def activate_configuration(name: str) -> Configuration:
     """
     Activate (load) a configuration into the backend context.
@@ -365,18 +301,9 @@ async def activate_configuration(name: str) -> Configuration:
         The activated configuration
     """
     config_service: ConfigurationService = get_config_service()
-    try:
-        config: Configuration = config_service.activate_configuration(name)
-        logger.info(f"Activated configuration '{name}'")
-        return config
-    except ConfigurationNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Failed to activate configuration '{name}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to activate configuration: {str(e)}",
-        ) from e
+    config: Configuration = config_service.activate_configuration(name)
+    logger.info(f"Activated configuration '{name}'")
+    return config
 
 
 # Data Source Connection Endpoints
@@ -390,6 +317,7 @@ class DataSourceConnectionRequest(BaseModel):
 
 
 @router.get("/configurations/{name}/data-sources", response_model=dict[str, str])
+@handle_endpoint_errors
 async def get_configuration_data_sources(name: str) -> dict[str, str]:
     """
     Get all data sources connected to a configuration.
@@ -403,21 +331,13 @@ async def get_configuration_data_sources(name: str) -> dict[str, str]:
         Dict of source_name -> "@include: filename.yml" or inline config
     """
     config_service: ConfigurationService = get_config_service()
-    try:
-        config: Configuration = config_service.load_configuration(name)
-        data_sources = config.options.get("data_sources", {})
-        return data_sources
-    except ConfigurationNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Failed to get data sources for '{name}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get data sources: {str(e)}",
-        ) from e
+    config: Configuration = config_service.load_configuration(name)
+    data_sources = config.options.get("data_sources", {})
+    return data_sources
 
 
 @router.post("/configurations/{name}/data-sources", response_model=Configuration)
+@handle_endpoint_errors
 async def connect_data_source_to_configuration(name: str, request: DataSourceConnectionRequest) -> Configuration:
     """
     Connect a data source to a configuration.
@@ -433,42 +353,28 @@ async def connect_data_source_to_configuration(name: str, request: DataSourceCon
     """
     config_service: ConfigurationService = get_config_service()
 
-    try:
-        # Load configuration
-        config: Configuration = config_service.load_configuration(name)
+    # Load configuration
+    config: Configuration = config_service.load_configuration(name)
 
-        # Check if source name already exists
-        data_sources = config.options.get("data_sources", {})
-        if request.source_name in data_sources:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Data source '{request.source_name}' already connected to this configuration",
-            )
+    # Check if source name already exists
+    data_sources = config.options.get("data_sources", {})
+    if request.source_name in data_sources:
+        raise BadRequestError(f"Data source '{request.source_name}' already connected to this configuration")
 
-        # Add @include reference
-        data_sources[request.source_name] = f"@include: {request.source_filename}"
-        config.options["data_sources"] = data_sources
+    # Add @include reference
+    data_sources[request.source_name] = f"@include: {request.source_filename}"
+    config.options["data_sources"] = data_sources
 
-        # Save configuration
-        updated_config: Configuration = config_service.save_configuration(config)
+    # Save configuration
+    updated_config: Configuration = config_service.save_configuration(config)
 
-        logger.info(f"Connected data source '{request.source_name}' (@include: {request.source_filename}) " f"to configuration '{name}'")
+    logger.info(f"Connected data source '{request.source_name}' (@include: {request.source_filename}) " f"to configuration '{name}'")
 
-        return updated_config
-
-    except ConfigurationNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to connect data source to '{name}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to connect data source: {str(e)}",
-        ) from e
+    return updated_config
 
 
 @router.delete("/configurations/{name}/data-sources/{source_name}", response_model=Configuration)
+@handle_endpoint_errors
 async def disconnect_data_source_from_configuration(name: str, source_name: str) -> Configuration:
     """
     Disconnect a data source from a configuration.
@@ -484,35 +390,21 @@ async def disconnect_data_source_from_configuration(name: str, source_name: str)
     """
     config_service: ConfigurationService = get_config_service()
 
-    try:
-        # Load configuration
-        config: Configuration = config_service.load_configuration(name)
+    # Load configuration
+    config: Configuration = config_service.load_configuration(name)
 
-        # Check if source exists
-        data_sources = config.options.get("data_sources", {})
-        if source_name not in data_sources:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=f"Data source '{source_name}' not found in configuration '{name}'"
-            )
+    # Check if source exists
+    data_sources = config.options.get("data_sources", {})
+    if source_name not in data_sources:
+        raise NotFoundError(f"Data source '{source_name}' not found in configuration '{name}'")
 
-        # Remove data source
-        del data_sources[source_name]
-        config.options["data_sources"] = data_sources
+    # Remove data source
+    del data_sources[source_name]
+    config.options["data_sources"] = data_sources
 
-        # Save configuration
-        updated_config: Configuration = config_service.save_configuration(config)
+    # Save configuration
+    updated_config: Configuration = config_service.save_configuration(config)
 
-        logger.info(f"Disconnected data source '{source_name}' from configuration '{name}'")
+    logger.info(f"Disconnected data source '{source_name}' from configuration '{name}'")
 
-        return updated_config
-
-    except ConfigurationNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to disconnect data source from '{name}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to disconnect data source: {str(e)}",
-        ) from e
+    return updated_config

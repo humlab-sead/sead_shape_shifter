@@ -29,8 +29,8 @@ from backend.app.models import (
     ReconciliationMapping,
     ReconciliationSource,
 )
-from backend.app.models.reconciliation import ReconciliationRemote
 from backend.app.models.preview import PreviewResult
+from backend.app.models.reconciliation import ReconciliationRemote
 from backend.app.services.reconciliation_service import (
     AnotherEntityReconciliationSourceResolver,
     ReconciliationQueryService,
@@ -146,8 +146,10 @@ class TestReconciliationSourceResolver:
 
     def test_get_resolver_cls_invalid_source(self):
         """Test resolver class selection raises for invalid source."""
-        with pytest.raises(ValueError, match="Invalid source specification"):
-            ReconciliationSourceResolver.get_resolver_cls_for_source("site", 123) # type: ignore
+        from backend.app.utils.exceptions import BadRequestError
+
+        with pytest.raises(BadRequestError, match="Invalid source specification"):
+            ReconciliationSourceResolver.get_resolver_cls_for_source("site", 123)  # type: ignore
 
 
 class TestTargetEntityReconciliationSourceResolver:
@@ -220,7 +222,9 @@ class TestAnotherEntityReconciliationSourceResolver:
             review_threshold=0.70,
         )
 
-        with pytest.raises(ValueError, match="Source entity 'nonexistent' not found"):
+        from backend.app.utils.exceptions import NotFoundError
+
+        with pytest.raises(NotFoundError, match="Source entity 'nonexistent' not found"):
             await resolver.resolve("entity", entity_spec)
 
 
@@ -232,7 +236,7 @@ class TestSqlQueryReconciliationSourceResolver:
         """Test resolve attempts to execute custom SQL query (verifies code path)."""
         # This test is simplified to verify the code path without deep mocking
         # Full integration would require a real ShapeShiftConfig with data sources
-        
+
         mock_config_service.load_configuration.return_value.options = {
             "data_sources": {
                 "test_db": {
@@ -271,7 +275,9 @@ class TestSqlQueryReconciliationSourceResolver:
             review_threshold=0.70,
         )
 
-        with pytest.raises(ValueError, match="Data source 'nonexistent_db' not found"):
+        from backend.app.utils.exceptions import NotFoundError
+
+        with pytest.raises(NotFoundError, match="Data source 'nonexistent_db' not found"):
             await resolver.resolve("entity", entity_spec)
 
 
@@ -390,9 +396,7 @@ class TestReconciliationService:
     @pytest.mark.asyncio
     async def test_get_resolved_source_data_uses_correct_resolver(self, reconciliation_service, sample_entity_spec):
         """Test get_resolved_source_data selects and uses correct resolver."""
-        with patch(
-            "backend.app.services.reconciliation_service.TargetEntityReconciliationSourceResolver"
-        ) as mock_resolver_cls:
+        with patch("backend.app.services.reconciliation_service.TargetEntityReconciliationSourceResolver") as mock_resolver_cls:
             mock_resolver = AsyncMock()
             mock_resolver.resolve.return_value = [{"key": "value"}]
             mock_resolver_cls.return_value = mock_resolver
@@ -416,7 +420,9 @@ class TestReconciliationService:
 
     def test_extract_id_from_uri_raises_on_invalid(self, reconciliation_service):
         """Test _extract_id_from_uri raises on invalid URI."""
-        with pytest.raises(ValueError, match="Cannot extract numeric ID"):
+        from backend.app.utils.exceptions import BadRequestError
+
+        with pytest.raises(BadRequestError, match="Cannot extract numeric ID"):
             reconciliation_service._extract_id_from_uri("https://example.com/invalid")
 
     @pytest.mark.asyncio
@@ -469,9 +475,7 @@ class TestReconciliationService:
             config_file = tmp_path / "test-reconciliation.yml"
             config_file.write_text(yaml.dump({"service_url": "http://localhost:8000", "entities": {}}))
 
-            result = await reconciliation_service.auto_reconcile_entity(
-                "test", "site", sample_entity_spec, max_candidates=3
-            )
+            result = await reconciliation_service.auto_reconcile_entity("test", "site", sample_entity_spec, max_candidates=3)
 
             assert result.auto_accepted == 1
             assert result.needs_review == 0
@@ -491,7 +495,9 @@ class TestReconciliationService:
         source_data = [{"site_code": "SITE001"}]
 
         candidates = [
-            ReconciliationCandidate(id="https://w3id.org/sead/id/site/123", name="Test", score=80.0, match=False, type=[], distance_km=None, description=None)
+            ReconciliationCandidate(
+                id="https://w3id.org/sead/id/site/123", name="Test", score=80.0, match=False, type=[], distance_km=None, description=None
+            )
         ]
 
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
@@ -513,7 +519,9 @@ class TestReconciliationService:
         source_data = [{"site_code": "SITE001"}]
 
         candidates = [
-            ReconciliationCandidate(id="https://w3id.org/sead/id/site/123", name="Test", score=50.0, match=False, type=[], distance_km=None, description=None)
+            ReconciliationCandidate(
+                id="https://w3id.org/sead/id/site/123", name="Test", score=50.0, match=False, type=[], distance_km=None, description=None
+            )
         ]
 
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
@@ -617,5 +625,7 @@ class TestReconciliationService:
         config_file = tmp_path / "test-reconciliation.yml"
         config_file.write_text(yaml.dump({"service_url": "http://localhost:8000", "entities": {}}))
 
-        with pytest.raises(ValueError, match="Entity 'nonexistent' not in reconciliation config"):
+        from backend.app.utils.exceptions import NotFoundError
+
+        with pytest.raises(NotFoundError, match="Entity 'nonexistent' not in reconciliation config"):
             reconciliation_service.update_mapping("test", "nonexistent", source_values=["KEY"], sead_id=123)

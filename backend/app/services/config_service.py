@@ -216,12 +216,12 @@ class ConfigurationService:
             New configuration
 
         Raises:
-            ConfigurationServiceError: If configuration already exists
+            ConfigConflictError: If configuration already exists
         """
         file_path: Path = self.configurations_dir / f"{name}.yml"
 
         if file_path.exists():
-            raise ConfigurationServiceError(f"Configuration '{name}' already exists")
+            raise ConfigConflictError(f"Configuration '{name}' already exists")
 
         # Create metadata with required fields
         metadata = ConfigMetadata(

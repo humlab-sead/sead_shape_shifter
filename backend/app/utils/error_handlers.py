@@ -1,6 +1,7 @@
 """Centralized error handling utilities for API endpoints."""
 
 from functools import wraps
+import inspect
 from typing import Any, Callable, TypeVar
 
 from fastapi import HTTPException
@@ -39,6 +40,9 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
     Returns:
         Wrapped function with error handling
     """
+    # Validate function is async before creating wrapper
+    if not inspect.iscoroutinefunction(func):
+        raise TypeError(f"{func.__name__} must be an async function to use @handle_endpoint_errors")
 
     @wraps(func)
     async def wrapper(*args: Any, **kwargs: Any) -> T:
