@@ -14,7 +14,6 @@ from backend.app.core.config import settings
 from backend.app.core.state_manager import ApplicationState, ConfigSession, get_app_state
 
 
-
 def get_data_source_service() -> Generator[services.DataSourceService, None, None]:
     """
     Get DataSourceService instance.
