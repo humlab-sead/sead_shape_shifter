@@ -211,19 +211,6 @@ class PreviewService:
 
             preview_df: pd.DataFrame = df.head(limit)
 
-            # Determine which transformations were applied
-            transformations = []
-            if entity_config.filters:
-                transformations.append("filter")
-            if entity_config.unnest:
-                transformations.append("unnest")
-            if entity_config.foreign_keys:
-                transformations.append("foreign_key_joins")
-            # if entity_config.translate:
-            #     transformations.append("column_mapping")
-            if not transformations:
-                transformations = ["raw_data"]
-
             # Build column info
             columns: list[ColumnInfo] = self._build_column_info(preview_df, entity_config)
 
@@ -242,7 +229,6 @@ class PreviewService:
                 execution_time_ms=0,  # Will be set by caller
                 has_dependencies=len(dependencies_loaded) > 0,
                 dependencies_loaded=dependencies_loaded,
-                transformations_applied=transformations,
                 cache_hit=False,
             )
 
