@@ -39,7 +39,7 @@ from backend.app.services.reconciliation_service import (
     SqlQueryReconciliationSourceResolver,
     TargetEntityReconciliationSourceResolver,
 )
-from src.model import ShapeShiftConfig
+from backend.app.utils.exceptions import BadRequestError, NotFoundError
 
 # pylint: disable=redefined-outer-name,unused-argument,protected-access
 
@@ -146,7 +146,6 @@ class TestReconciliationSourceResolver:
 
     def test_get_resolver_cls_invalid_source(self):
         """Test resolver class selection raises for invalid source."""
-        from backend.app.utils.exceptions import BadRequestError
 
         with pytest.raises(BadRequestError, match="Invalid source specification"):
             ReconciliationSourceResolver.get_resolver_cls_for_source("site", 123)  # type: ignore
@@ -222,8 +221,6 @@ class TestAnotherEntityReconciliationSourceResolver:
             review_threshold=0.70,
         )
 
-        from backend.app.utils.exceptions import NotFoundError
-
         with pytest.raises(NotFoundError, match="Source entity 'nonexistent' not found"):
             await resolver.resolve("entity", entity_spec)
 
@@ -274,8 +271,6 @@ class TestSqlQueryReconciliationSourceResolver:
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
-
-        from backend.app.utils.exceptions import NotFoundError
 
         with pytest.raises(NotFoundError, match="Data source 'nonexistent_db' not found"):
             await resolver.resolve("entity", entity_spec)
@@ -372,7 +367,7 @@ class TestReconciliationService:
     def test_load_reconciliation_config_reads_yaml(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test load reads config from YAML file."""
         config_file = tmp_path / "test-reconciliation.yml"
-        with open(config_file, "w") as f:
+        with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
         loaded = reconciliation_service.load_reconciliation_config("test", recon_config_filename=config_file)
@@ -387,7 +382,7 @@ class TestReconciliationService:
         reconciliation_service.save_reconciliation_config("test", sample_recon_config, recon_config_filename=config_file)
 
         assert config_file.exists()
-        with open(config_file) as f:
+        with open(config_file, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         assert data["service_url"] == sample_recon_config.service_url
@@ -420,7 +415,6 @@ class TestReconciliationService:
 
     def test_extract_id_from_uri_raises_on_invalid(self, reconciliation_service):
         """Test _extract_id_from_uri raises on invalid URI."""
-        from backend.app.utils.exceptions import BadRequestError
 
         with pytest.raises(BadRequestError, match="Cannot extract numeric ID"):
             reconciliation_service._extract_id_from_uri("https://example.com/invalid")
@@ -557,7 +551,7 @@ class TestReconciliationService:
     def test_update_mapping_adds_new_mapping(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test update_mapping adds new mapping entry."""
         config_file = tmp_path / "test-reconciliation.yml"
-        with open(config_file, "w") as f:
+        with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
         updated = reconciliation_service.update_mapping(
@@ -589,7 +583,7 @@ class TestReconciliationService:
         sample_recon_config.entities["site"].mapping = [existing_mapping]
 
         config_file = tmp_path / "test-reconciliation.yml"
-        with open(config_file, "w") as f:
+        with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
         updated = reconciliation_service.update_mapping(
@@ -613,7 +607,7 @@ class TestReconciliationService:
         sample_recon_config.entities["site"].mapping = [existing_mapping]
 
         config_file = tmp_path / "test-reconciliation.yml"
-        with open(config_file, "w") as f:
+        with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
         updated = reconciliation_service.update_mapping("test", "site", source_values=["SITE001"], sead_id=None)
@@ -624,8 +618,6 @@ class TestReconciliationService:
         """Test update_mapping raises if entity not in config."""
         config_file = tmp_path / "test-reconciliation.yml"
         config_file.write_text(yaml.dump({"service_url": "http://localhost:8000", "entities": {}}))
-
-        from backend.app.utils.exceptions import NotFoundError
 
         with pytest.raises(NotFoundError, match="Entity 'nonexistent' not in reconciliation config"):
             reconciliation_service.update_mapping("test", "nonexistent", source_values=["KEY"], sead_id=123)

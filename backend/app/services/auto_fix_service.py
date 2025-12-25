@@ -2,6 +2,7 @@
 Service for applying automatic fixes to configurations.
 """
 
+import abc
 import re
 import shutil
 from datetime import datetime
@@ -18,39 +19,17 @@ from backend.app.services.config_service import ConfigurationService
 from backend.app.services.yaml_service import YamlService
 
 
-class AutoFixService:
-    """Service to apply automatic fixes to configurations."""
+class AutoFixStrategy(abc.ABC):
+    """Abstract base class for auto-fix strategies."""
 
-    def __init__(self, config_service: ConfigurationService):
-        self.config_service = config_service
-        self.yaml_service = YamlService()
+    @abc.abstractmethod
+    def resolve(self, error: ValidationError) -> FixSuggestion | None:
+        """Generate a fix suggestion for a given validation error."""
 
-    def generate_fix_suggestions(self, errors: list[ValidationError]) -> list[FixSuggestion]:
-        """Generate fix suggestions from validation errors."""
-        suggestions = []
 
-        for error in errors:
-            if not error.entity:
-                continue
+class ColumnNotFoundAutoFixStrategy(AutoFixStrategy):
 
-            if error.code == "COLUMN_NOT_FOUND":
-                suggestion = self._fix_missing_column(error)
-                if suggestion:
-                    suggestions.append(suggestion)
-
-            elif error.code == "UNRESOLVED_REFERENCE":
-                suggestion = self._fix_unresolved_reference(error)
-                if suggestion:
-                    suggestions.append(suggestion)
-
-            elif error.code == "DUPLICATE_NATURAL_KEYS":
-                suggestion = self._fix_duplicate_keys(error)
-                if suggestion:
-                    suggestions.append(suggestion)
-
-        return suggestions
-
-    def _fix_missing_column(self, error: ValidationError) -> FixSuggestion | None:
+    def resolve(self, error: ValidationError) -> FixSuggestion | None:
         """Generate fix for missing column error."""
         if not error.field or not error.entity:
             return None
@@ -59,7 +38,7 @@ class AutoFixService:
         if not match:
             return None
 
-        column_name = match.group(1)
+        column_name: str | Any = match.group(1)
 
         # Check if it's a reference that needs resolution
         if "@value:" in column_name:
@@ -85,7 +64,10 @@ class AutoFixService:
             warnings=["This will remove the column from your configuration"],
         )
 
-    def _fix_unresolved_reference(self, error: ValidationError) -> FixSuggestion | None:
+
+class UnresolvedReferenceAutoFixStrategy(AutoFixStrategy):
+
+    def resolve(self, error: ValidationError) -> FixSuggestion | None:
         """Generate fix for unresolved @value reference."""
         if not error.entity:
             return None
@@ -102,7 +84,10 @@ class AutoFixService:
             warnings=["This cannot be fixed automatically"],
         )
 
-    def _fix_duplicate_keys(self, error: ValidationError) -> FixSuggestion | None:
+
+class DuplicateKeysAutoFixStrategy(AutoFixStrategy):
+
+    def resolve(self, error: ValidationError) -> FixSuggestion | None:
         """Generate fix for duplicate natural keys."""
         if not error.entity:
             return None
@@ -118,6 +103,35 @@ class AutoFixService:
             requires_confirmation=False,
             warnings=["This requires reviewing your data or changing the natural key definition"],
         )
+
+
+AutoFixStrategies: dict[str, AutoFixStrategy] = {  # pylint: disable=invalid-name
+    "COLUMN_NOT_FOUND": ColumnNotFoundAutoFixStrategy(),
+    "UNRESOLVED_REFERENCE": UnresolvedReferenceAutoFixStrategy(),
+    "DUPLICATE_NATURAL_KEYS": DuplicateKeysAutoFixStrategy(),
+}
+
+
+class AutoFixService:
+    """Service to apply automatic fixes to configurations."""
+
+    def __init__(self, config_service: ConfigurationService):
+        self.config_service: ConfigurationService = config_service
+        self.yaml_service = YamlService()
+
+    def generate_fix_suggestions(self, errors: list[ValidationError]) -> list[FixSuggestion]:
+        """Generate fix suggestions from validation errors."""
+        suggestions = []
+        for error in errors:
+            if not error.entity:
+                continue
+            strategy: AutoFixStrategy | None = AutoFixStrategies.get(error.code or "")
+            if strategy:
+                suggestion: FixSuggestion | None = strategy.resolve(error)
+                if suggestion:
+                    suggestions.append(suggestion)
+
+        return suggestions
 
     async def preview_fixes(self, config_name: str, suggestions: list[FixSuggestion]) -> dict[str, Any]:
         """

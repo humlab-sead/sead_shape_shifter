@@ -1,7 +1,7 @@
 """Centralized error handling utilities for API endpoints."""
 
-from functools import wraps
 import inspect
+from functools import wraps
 from typing import Any, Callable, TypeVar
 
 from fastapi import HTTPException
