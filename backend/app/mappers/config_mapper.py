@@ -15,15 +15,12 @@ No hardcoded field lists - all field handling is derived from Pydantic schemas.
 
 from typing import Any
 
-from _collections_abc import dict_keys
 from loguru import logger
-from pydantic.fields import FieldInfo
 
 from backend.app.models import (
     ConfigMetadata,
     Configuration,
     Entity,
-    ForeignKeyConfig,
 )
 
 
@@ -110,7 +107,7 @@ class ConfigMapper:
         No hardcoded field lists - relies on Pydantic model as source of truth.
         """
         # Get Entity model fields from Pydantic schema
-        entity_fields: dict_keys[str, FieldInfo] = Entity.model_fields.keys()
+        # entity_fields: dict_keys[str, FieldInfo] = Entity.model_fields.keys()
 
         # Start with entity name (API-only field, not in core)
         api_dict: dict[str, Any] = {"name": entity_name}
