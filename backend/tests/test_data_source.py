@@ -87,9 +87,7 @@ class TestDataSourceConfig:
     def test_password_is_secret(self):
         """Test that password is stored as SecretStr."""
 
-        config = DataSourceConfig(
-            name="test_db", driver="postgresql", host="localhost", password=SecretStr("secret123"), **{}
-        )
+        config = DataSourceConfig(name="test_db", driver="postgresql", host="localhost", password=SecretStr("secret123"), **{})
         assert isinstance(config.password, SecretStr)
         assert config.password.get_secret_value() == "secret123"  # pylint: disable=no-member
 

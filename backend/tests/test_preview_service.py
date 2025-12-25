@@ -32,7 +32,7 @@ def preview_service(config_service: MagicMock) -> PreviewService:
 def sample_config() -> ShapeShiftConfig:
     """Create a sample configuration."""
     cfg = {
-        "metadata" : {
+        "metadata": {
             "name": "test_config",
             "description": "A test configuration",
             "version": "1.0.0",
@@ -65,8 +65,7 @@ def sample_config() -> ShapeShiftConfig:
                 ],
             },
         },
-        "options": {
-        }
+        "options": {},
     }
 
     return ShapeShiftConfig(cfg=cfg)
@@ -169,7 +168,7 @@ class TestPreviewService:
         mock_api_config = MagicMock()
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
-        
+
         with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
             with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
                 with pytest.raises(ValueError, match="Entity 'nonexistent' not found"):
@@ -185,7 +184,7 @@ class TestPreviewService:
         mock_api_config = MagicMock()
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
-        
+
         with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
             with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
                 with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
@@ -224,7 +223,7 @@ class TestPreviewService:
         mock_api_config = MagicMock()
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
-        
+
         with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
             with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
                 with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
@@ -250,14 +249,14 @@ class TestPreviewService:
             "var_name": "variable",
             "value_name": "value",
         }
-        
+
         # Mock ApplicationState
         mock_app_state = MagicMock()
         mock_app_state.get_version.return_value = 1
         mock_api_config = MagicMock()
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
-        
+
         with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
             with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=config_with_transforms.cfg):
                 with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
@@ -282,7 +281,7 @@ class TestPreviewService:
         mock_api_config = MagicMock()
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
-        
+
         with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
             with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
                 with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
@@ -306,7 +305,7 @@ class TestPreviewService:
         mock_api_config = MagicMock()
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
-        
+
         with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
             with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
                 with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
@@ -337,7 +336,7 @@ class TestPreviewService:
         mock_api_config = MagicMock()
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
-        
+
         with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
             with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
                 with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:

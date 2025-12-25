@@ -201,9 +201,11 @@ class ConfigFactory:
         # Resolve sub-configurations by loading referenced files recursively
 
         if not skip_resolve:
-            
+
             for resolver_cls in [SubConfigResolver, LoadResolver]:
-                data = resolver_cls(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path).resolve(data)
+                data = resolver_cls(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path).resolve(
+                    data
+                )
 
             # Update data based on environment variables with a name that starts with `env_prefix`
             if env_prefix:

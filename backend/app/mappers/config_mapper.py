@@ -6,16 +6,16 @@ defines all valid fields - adding new fields to Entity automatically updates the
 
 Architecture:
 - YAML files are the source of truth for configuration structure
-- Core (ShapeShiftConfig) is a thin dict wrapper over YAML structure  
+- Core (ShapeShiftConfig) is a thin dict wrapper over YAML structure
 - API (Configuration/Entity) uses Pydantic models for validation
 - This mapper bridges the two layers, preserving sparse YAML structure
 
 No hardcoded field lists - all field handling is derived from Pydantic schemas.
 """
 
-from _collections_abc import dict_keys
 from typing import Any
 
+from _collections_abc import dict_keys
 from loguru import logger
 from pydantic.fields import FieldInfo
 
@@ -111,7 +111,7 @@ class ConfigMapper:
         """
         # Get Entity model fields from Pydantic schema
         entity_fields: dict_keys[str, FieldInfo] = Entity.model_fields.keys()
-        
+
         # Start with entity name (API-only field, not in core)
         api_dict: dict[str, Any] = {"name": entity_name}
 
@@ -126,7 +126,7 @@ class ConfigMapper:
                         "entity": fk["entity"],
                         "local_keys": fk.get("local_keys", fk.get("key", [])),
                         "remote_keys": fk.get("remote_keys", fk.get("key", [])),
-                        **{k: v for k, v in fk.items() if k not in ["entity", "local_keys", "remote_keys", "key"]}
+                        **{k: v for k, v in fk.items() if k not in ["entity", "local_keys", "remote_keys", "key"]},
                     }
                     for fk_name, fk in value.items()
                 ]
@@ -148,43 +148,29 @@ class ConfigMapper:
         # If already a dict, return as-is but remove 'name' (API-only field)
         if isinstance(api_entity, dict):
             entity_dict: dict[str, Any] = api_entity.copy()
-            entity_dict.pop('name', None)
+            entity_dict.pop("name", None)
             return entity_dict
 
         # Use Pydantic's model_dump to automatically serialize all fields
         # exclude_none: Don't include fields that are None
         # exclude_unset: Don't include fields that weren't explicitly set
         # exclude={'name'}: name is API metadata, not part of core entity structure
-        entity_dict = api_entity.model_dump(
-            exclude_none=True,
-            exclude_unset=True,
-            exclude={'name'},
-            mode='python'
-        )
+        entity_dict = api_entity.model_dump(exclude_none=True, exclude_unset=True, exclude={"name"}, mode="python")
 
         # Special handling for nested Pydantic models - serialize them explicitly
         # This ensures proper dict format instead of model instances
-        
+
         if api_entity.foreign_keys:
-            entity_dict["foreign_keys"] = [
-                fk.model_dump(exclude_none=True, exclude_unset=True)
-                for fk in api_entity.foreign_keys
-            ]
+            entity_dict["foreign_keys"] = [fk.model_dump(exclude_none=True, exclude_unset=True) for fk in api_entity.foreign_keys]
 
         if api_entity.filters:
-            entity_dict["filters"] = [
-                filter_cfg.model_dump(exclude_none=True, exclude_unset=True)
-                for filter_cfg in api_entity.filters
-            ]
+            entity_dict["filters"] = [filter_cfg.model_dump(exclude_none=True, exclude_unset=True) for filter_cfg in api_entity.filters]
 
         if api_entity.unnest:
             entity_dict["unnest"] = api_entity.unnest.model_dump(exclude_none=True, exclude_unset=True)
 
         if api_entity.append:
-            entity_dict["append"] = [
-                append_cfg.model_dump(exclude_none=True, exclude_unset=True)
-                for append_cfg in api_entity.append
-            ]
+            entity_dict["append"] = [append_cfg.model_dump(exclude_none=True, exclude_unset=True) for append_cfg in api_entity.append]
 
         # Handle check_column_names default: only include if explicitly False
         # (Pydantic includes default=True values, we want sparse YAML)
