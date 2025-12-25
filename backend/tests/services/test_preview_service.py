@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from backend.app.models.preview import ColumnInfo, PreviewResult
-from backend.app.services.preview_service import PreviewCache, PreviewService
+from backend.app.services.shapeshift_service import PreviewCache, PreviewService
 from src.model import ShapeShiftConfig, TableConfig
 
 # pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init

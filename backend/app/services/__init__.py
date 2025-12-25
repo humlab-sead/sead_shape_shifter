@@ -76,7 +76,7 @@ from backend.app.services.dependency_service import (
 )
 
 # Preview service
-from backend.app.services.preview_service import PreviewCache, PreviewService
+from backend.app.services.shapeshift_service import PreviewCache, PreviewService
 
 # Query service
 from backend.app.services.query_service import (

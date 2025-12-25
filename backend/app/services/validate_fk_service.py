@@ -7,7 +7,7 @@ import pandas as pd
 from backend.app.core.state_manager import get_app_state_manager
 from backend.app.mappers.config_mapper import ConfigMapper
 from backend.app.models import CardinalityInfo, Configuration, JoinStatistics, JoinTestResult, PreviewResult, UnmatchedRow
-from backend.app.services.preview_service import PreviewService
+from backend.app.services.shapeshift_service import PreviewService
 from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig
 
 

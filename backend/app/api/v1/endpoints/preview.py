@@ -8,7 +8,7 @@ from loguru import logger
 from backend.app.models.join_test import JoinTestResult
 from backend.app.models.preview import PreviewResult
 from backend.app.services.config_service import ConfigurationService
-from backend.app.services.preview_service import PreviewService
+from backend.app.services.shapeshift_service import PreviewService
 from backend.app.services.validate_fk_service import ValidateForeignKeyService
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.exceptions import BadRequestError, NotFoundError

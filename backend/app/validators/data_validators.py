@@ -12,7 +12,7 @@ from backend.app.models.validation import (
     ValidationPriority,
 )
 from backend.app.services.config_service import ConfigurationService
-from backend.app.services.preview_service import PreviewService
+from backend.app.services.shapeshift_service import PreviewService
 
 
 class ColumnExistsValidator:
