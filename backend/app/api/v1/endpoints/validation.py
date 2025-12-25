@@ -5,6 +5,11 @@ from typing import Any
 from fastapi import APIRouter
 from loguru import logger
 
+from app.models.config import Configuration
+from app.models.fix import FixResult, FixSuggestion
+from app.services.config_service import ConfigurationService
+from app.services.dependency_service import DependencyGraph, DependencyService
+from app.services.validation_service import ValidationService
 from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.auto_fix_service import AutoFixService
 from backend.app.services.config_service import get_config_service
@@ -57,14 +62,14 @@ async def validate_entity(name: str, entity_name: str) -> ValidationResult:
     Returns:
         Validation result with entity-specific errors and warnings
     """
-    config_service = get_config_service()
-    validation_service = get_validation_service()
+    config_service: ConfigurationService = get_config_service()
+    validation_service: ValidationService = get_validation_service()
 
     # Load configuration
-    config = config_service.load_configuration(name)
+    config: Configuration = config_service.load_configuration(name)
 
     # Validate specific entity
-    result = validation_service.validate_entity(config, entity_name)
+    result: ValidationResult = validation_service.validate_entity(config, entity_name)
 
     logger.info(f"Validated entity '{entity_name}' in configuration '{name}': " f"valid={result.is_valid}, errors={result.error_count}")
     return result
@@ -87,14 +92,14 @@ async def get_dependencies(name: str) -> dict[str, Any]:
     Returns:
         Dependency graph with nodes, edges, cycles, and topological order
     """
-    config_service = get_config_service()
-    dependency_service = get_dependency_service()
+    config_service: ConfigurationService = get_config_service()
+    dependency_service: DependencyService = get_dependency_service()
 
     # Load configuration
-    config = config_service.load_configuration(name)
+    config: Configuration = config_service.load_configuration(name)
 
     # Analyze dependencies
-    graph = dependency_service.analyze_dependencies(config)
+    graph: DependencyGraph = dependency_service.analyze_dependencies(config)
 
     logger.debug(f"Retrieved dependency graph for '{name}': " f"{len(graph['nodes'])} nodes, {len(graph['edges'])} edges")
     return dict(graph)
@@ -112,11 +117,11 @@ async def check_dependencies(name: str) -> dict[str, Any]:
     Returns:
         Dictionary with has_cycles flag, list of cycles, and cycle count
     """
-    config_service = get_config_service()
-    dependency_service = get_dependency_service()
+    config_service: ConfigurationService = get_config_service()
+    dependency_service: DependencyService = get_dependency_service()
 
     # Load configuration
-    config = config_service.load_configuration(name)
+    config: Configuration = config_service.load_configuration(name)
 
     # Check for circular dependencies
     result = dependency_service.check_circular_dependencies(config)
@@ -139,17 +144,17 @@ async def preview_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, An
         Preview of fixes that would be applied
     """
 
-    config_service = get_config_service()
+    config_service: ConfigurationService = get_config_service()
     auto_fix_service = AutoFixService(config_service)
 
     # Convert dicts to ValidationError objects
-    validation_errors = [ValidationError(**error) for error in errors]
+    validation_errors: list[ValidationError] = [ValidationError(**error) for error in errors]
 
     # Generate fix suggestions
-    suggestions = auto_fix_service.generate_fix_suggestions(validation_errors)
+    suggestions: list[FixSuggestion] = auto_fix_service.generate_fix_suggestions(validation_errors)
 
     # Preview fixes
-    preview = await auto_fix_service.preview_fixes(name, suggestions)
+    preview: dict[str, Any] = await auto_fix_service.preview_fixes(name, suggestions)
 
     return preview
 
@@ -174,17 +179,17 @@ async def apply_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]
         Result of applying fixes including backup path
     """
 
-    config_service = get_config_service()
+    config_service: ConfigurationService = get_config_service()
     auto_fix_service = AutoFixService(config_service)
 
     # Convert dicts to ValidationError objects
-    validation_errors = [ValidationError(**error) for error in errors]
+    validation_errors: list[ValidationError] = [ValidationError(**error) for error in errors]
 
     # Generate fix suggestions
-    suggestions = auto_fix_service.generate_fix_suggestions(validation_errors)
+    suggestions: list[FixSuggestion] = auto_fix_service.generate_fix_suggestions(validation_errors)
 
     # Apply fixes
-    result = await auto_fix_service.apply_fixes(name, suggestions)
+    result: FixResult = await auto_fix_service.apply_fixes(name, suggestions)
 
     if result.success:
         logger.info(f"Applied {result.fixes_applied} fixes to '{name}', backup at {result.backup_path}")
