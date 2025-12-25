@@ -266,7 +266,7 @@ class TestPreviewService:
                     mock_normalizer_class.return_value = mock_normalizer
 
                     result: PreviewResult = await preview_service.preview_entity("test_config", "users", 50)
-                    
+
                     assert result is not None
 
     @pytest.mark.asyncio

@@ -278,8 +278,7 @@ async def get_active_configuration() -> dict[str, str | None]:
         Dictionary with 'name' key containing the active configuration filename
         (without .yml extension), or null if no configuration is loaded.
     """
-    config_service: ConfigurationService = get_config_service()
-    active_name: str | None = config_service.get_active_configuration_name()
+    active_name: str = get_config_service().get_active_configuration_metadata().name
     return {"name": active_name}
 
 
@@ -298,8 +297,7 @@ async def activate_configuration(name: str) -> Configuration:
     Returns:
         The activated configuration
     """
-    config_service: ConfigurationService = get_config_service()
-    config: Configuration = config_service.activate_configuration(name)
+    config: Configuration = get_config_service().activate_configuration(name)
     logger.info(f"Activated configuration '{name}'")
     return config
 
@@ -328,8 +326,7 @@ async def get_configuration_data_sources(name: str) -> dict[str, str]:
     Returns:
         Dict of source_name -> "@include: filename.yml" or inline config
     """
-    config_service: ConfigurationService = get_config_service()
-    config: Configuration = config_service.load_configuration(name)
+    config: Configuration = get_config_service().load_configuration(name)
     data_sources = config.options.get("data_sources", {})
     return data_sources
 
@@ -349,10 +346,9 @@ async def connect_data_source_to_configuration(name: str, request: DataSourceCon
     Returns:
         Updated configuration
     """
-    config_service: ConfigurationService = get_config_service()
 
     # Load configuration
-    config: Configuration = config_service.load_configuration(name)
+    config: Configuration = get_config_service().load_configuration(name)
 
     # Check if source name already exists
     data_sources = config.options.get("data_sources", {})
@@ -364,7 +360,7 @@ async def connect_data_source_to_configuration(name: str, request: DataSourceCon
     config.options["data_sources"] = data_sources
 
     # Save configuration
-    updated_config: Configuration = config_service.save_configuration(config)
+    updated_config: Configuration = get_config_service().save_configuration(config)
 
     logger.info(f"Connected data source '{request.source_name}' (@include: {request.source_filename}) " f"to configuration '{name}'")
 
@@ -386,10 +382,9 @@ async def disconnect_data_source_from_configuration(name: str, source_name: str)
     Returns:
         Updated configuration
     """
-    config_service: ConfigurationService = get_config_service()
 
     # Load configuration
-    config: Configuration = config_service.load_configuration(name)
+    config: Configuration = get_config_service().load_configuration(name)
 
     # Check if source exists
     data_sources = config.options.get("data_sources", {})
@@ -401,7 +396,7 @@ async def disconnect_data_source_from_configuration(name: str, source_name: str)
     config.options["data_sources"] = data_sources
 
     # Save configuration
-    updated_config: Configuration = config_service.save_configuration(config)
+    updated_config: Configuration = get_config_service().save_configuration(config)
 
     logger.info(f"Disconnected data source '{source_name}' from configuration '{name}'")
 

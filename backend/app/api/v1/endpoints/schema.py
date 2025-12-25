@@ -36,14 +36,7 @@ async def list_tables(
     **Query Parameters**:
     - `schema`: Optional schema name (PostgreSQL only, defaults to 'public')
 
-    **Supported Drivers**:
-    - PostgreSQL: Queries information_schema.tables
-    - MS Access: Queries INFORMATION_SCHEMA or MSysObjects
-    - SQLite: Queries sqlite_master
-
     **Returns**: List of table metadata with name, schema (if applicable), and comment
-
-    **Caching**: Results cached for 5 minutes
 
     **Errors**:
     - 404: Data source not found

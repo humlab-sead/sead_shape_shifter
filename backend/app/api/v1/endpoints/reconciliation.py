@@ -8,7 +8,7 @@ from loguru import logger
 
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
-from backend.app.core.state_manager import ApplicationState, get_app_state
+from backend.app.core.state_manager import get_app_state_manager
 from backend.app.models.reconciliation import (
     AutoReconcileResult,
     EntityReconciliationSpec,
@@ -89,17 +89,10 @@ async def auto_reconcile_entity(
     if threshold != entity_spec.auto_accept_threshold:
         entity_spec.auto_accept_threshold = threshold
 
-    logger.info(f"Starting auto-reconciliation for {entity_name} with threshold {threshold}")
-    try:
-        app_state: ApplicationState = get_app_state()
-        if app_state.is_dirty(config_name):
-            raise BadRequestError(
-                f"Configuration '{config_name}' has unsaved changes. Save or discard changes before starting reconciliation."
-            )
-    except RuntimeError:
-        # ApplicationState not initialized (e.g., in tests) - allow reconciliation
-        pass
+    if get_app_state_manager().is_dirty(config_name):
+        raise BadRequestError(f"Configuration '{config_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
 
+    logger.info(f"Starting auto-reconciliation for {entity_name} with threshold {threshold}")
     result: AutoReconcileResult = await service.auto_reconcile_entity(
         config_name=config_name,
         entity_name=entity_name,

@@ -71,7 +71,7 @@ class PreviewService:
         self.config_service: ConfigurationService = config_service
         self.cache = PreviewCache(ttl_seconds=ttl_seconds)  # 5 minute cache
 
-        # Cache ShapeShiftConfig instances for performance
+        # Cache ShapeShiftConfig instances for performazznce
         self._shapeshift_cache: dict[str, ShapeShiftConfig] = {}
         self._shapeshift_versions: dict[str, int] = {}
 
@@ -211,13 +211,10 @@ class PreviewService:
 
             preview_df: pd.DataFrame = df.head(limit)
 
-            # Build column info
             columns: list[ColumnInfo] = self._build_column_info(preview_df, entity_config)
 
-            # Convert to records for JSON response
             rows: list[dict] = preview_df.to_dict("records")
 
-            # Get dependencies
             dependencies_loaded: list[str] = list(entity_config.depends_on)
 
             return PreviewResult(
@@ -249,14 +246,6 @@ class PreviewService:
             for col_name in df.columns
         ]
         return columns
-
-    async def preview_with_transformations(self, config_name: str, entity_name: str, limit: int = 50) -> PreviewResult:
-        """
-        Preview entity with transformations applied.
-
-        This is an alias for preview_entity for backward compatibility.
-        """
-        return await self.preview_entity(config_name, entity_name, limit)
 
     async def get_entity_sample(self, config_name: str, entity_name: str, limit: int = 100) -> PreviewResult:
         """

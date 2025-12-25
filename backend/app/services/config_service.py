@@ -5,13 +5,12 @@ from typing import Any
 
 from loguru import logger
 
-from app.services.yaml_service import YamlService
 from backend.app.core.config import settings
-from backend.app.core.state_manager import ApplicationState, get_app_state
+from backend.app.core.state_manager import get_app_state_manager
 from backend.app.mappers.config_mapper import ConfigMapper
 from backend.app.models.config import ConfigMetadata, Configuration
 from backend.app.models.entity import Entity
-from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, get_yaml_service
+from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
 
 
 class ConfigurationServiceError(Exception):
@@ -105,15 +104,11 @@ class ConfigurationService:
             InvalidConfigurationError: If configuration is invalid
         """
         # Check if this is the active configuration
-        try:
-            app_state: ApplicationState = get_app_state()
-            active_config: Configuration | None = app_state.get_configuration(name)
-            if active_config:
-                logger.debug(f"Loading active configuration '{name}' from ApplicationState")
-                return active_config
-        except RuntimeError:
-            # ApplicationState not initialized (e.g., in tests)
-            pass
+
+        active_config: Configuration | None = get_app_state_manager().get(name)
+        if active_config:
+            logger.debug(f"Loading active configuration '{name}' from ApplicationState")
+            return active_config
 
         # Load from file
         file_path: Path = self.configurations_dir / f"{name}.yml"
@@ -186,16 +181,7 @@ class ConfigurationService:
 
             logger.info(f"Saved configuration '{config.metadata.name}'")
 
-            # Update ApplicationState if this is an active configuration
-            try:
-                app_state = get_app_state()
-                if app_state.get_configuration(config.metadata.name):
-                    app_state.set_active_configuration(config)
-                    app_state.mark_saved(config.metadata.name)
-                    logger.debug(f"Updated ApplicationState for '{config.metadata.name}'")
-            except RuntimeError:
-                # ApplicationState not initialized (e.g., in tests)
-                pass
+            get_app_state_manager().update(config)
 
             return config
 
@@ -462,44 +448,27 @@ class ConfigurationService:
         Raises:
             ConfigurationNotFoundError: If configuration not found
         """
-        # Load configuration from disk
-        config = self.load_configuration(name)
 
-        # Set as active in ApplicationState
-        try:
-            app_state = get_app_state()
-            app_state.set_active_configuration(config)
-            app_state.mark_saved(name)  # Freshly loaded is not dirty
-            logger.info(f"Activated configuration '{name}' for editing")
-        except RuntimeError:
-            # ApplicationState not initialized (e.g., in tests)
-            logger.warning("ApplicationState not initialized - configuration not activated")
+        config: Configuration = self.load_configuration(name)
+
+        get_app_state_manager().activate(config)
 
         return config
 
-    def get_active_configuration_name(self) -> str | None:
+    def get_active_configuration_metadata(self) -> ConfigMetadata:
         """
         Get the name of the currently active editing configuration.
 
         Returns:
             Configuration name or None if no configuration is active
         """
-        try:
-            app_state: ApplicationState = get_app_state()
-            active_config: Configuration | None = app_state.get_active_configuration()
 
-            assert active_config is not None
-            assert active_config.metadata is not None
-
-            return active_config.metadata.name if active_config else None
-        except RuntimeError:
-            # ApplicationState not initialized
-            return None
+        return get_app_state_manager().get_active_metadata()
 
     def save_with_version_check(
         self,
         config: Configuration,
-        expected_version: int,
+        expected_version: str,
         create_backup: bool = True,
     ) -> Configuration:
         """
@@ -517,25 +486,15 @@ class ConfigurationService:
             ConfigConflictError: If version mismatch (concurrent edit detected)
             InvalidConfigurationError: If save fails
         """
-        # Check version match against ApplicationState
-        try:
-            app_state: ApplicationState = get_app_state()
 
-            assert config.metadata is not None
+        current_version: str = get_app_state_manager().get_active_metadata().version or expected_version
+        if expected_version != current_version:
+            raise ConfigConflictError(
+                f"Configuration was modified by another user. "
+                f"Expected version {expected_version}, current version {current_version}. "
+                f"Reload and merge changes."
+            )
 
-            current_version = app_state.get_version(config.metadata.name)
-
-            if expected_version != current_version:
-                raise ConfigConflictError(
-                    f"Configuration was modified by another user. "
-                    f"Expected version {expected_version}, current version {current_version}. "
-                    f"Reload and merge changes."
-                )
-        except RuntimeError:
-            # ApplicationState not initialized - skip version check
-            pass
-
-        # Save to disk
         return self.save_configuration(config, create_backup=create_backup)
 
 
