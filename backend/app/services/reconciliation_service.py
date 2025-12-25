@@ -1,5 +1,6 @@
 """Service for entity reconciliation against SEAD database."""
 
+import abc
 import re
 from pathlib import Path
 from typing import Any
@@ -14,276 +15,158 @@ from backend.app.clients.reconciliation_client import (
 )
 from backend.app.core.state_manager import get_app_state
 from backend.app.mappers.config_mapper import ConfigMapper
-from backend.app.models.config import Configuration
-from backend.app.models.reconciliation import (
+from backend.app.models import (
     AutoReconcileResult,
+    Configuration,
     EntityReconciliationSpec,
     ReconciliationCandidate,
     ReconciliationConfig,
     ReconciliationMapping,
     ReconciliationSource,
 )
-from backend.app.services.config_service import ConfigurationService
-from backend.app.services.preview_service import PreviewService
-from src.model import DataSourceConfig, TableConfig
-from src.loaders.base_loader import DataLoader, DataLoaders
-from src.model import ShapeShiftConfig
+from backend.app.models.preview import PreviewResult
+from backend.app.services import ConfigurationService, PreviewService
+from src.loaders import DataLoader, DataLoaders
+from src.model import DataSourceConfig, ShapeShiftConfig, TableConfig
 
 
-class ReconciliationService:
-    """
-    Service for managing entity reconciliation.
+class ReconciliationSourceResolver(abc.ABC):
 
-    Uses read-only ShapeShiftConfig from disk for reconciliation workflow.
-    Prevents reconciliation if configuration has unsaved changes.
-    """
+    def __init__(self, config_name: str, config_service: ConfigurationService):
 
-    def __init__(
-        self,
-        config_dir: Path,
-        reconciliation_client: ReconciliationClient,
-    ):
-        """
-        Initialize reconciliation service.
+        self.config_name: str = config_name
+        self.config_service: ConfigurationService = config_service
+        self.preview_service: PreviewService = PreviewService(config_service)
 
-        Args:
-            config_dir: Directory containing configuration files
-            reconciliation_client: Client for OpenRefine reconciliation API
-        """
-        self.config_dir = Path(config_dir)
-        self.recon_client = reconciliation_client
-        self.config_service = ConfigurationService()
+        self.api_config: Configuration = self.config_service.load_configuration(config_name)
 
-    def _get_reconciliation_file_path(self, config_name: str) -> Path:
-        """Get path to reconciliation YAML file."""
-        # FIXME: Should use value in configuration if specified!
-        return self.config_dir / f"{config_name}-reconciliation.yml"
+        cfg_dict: dict[str, Any] = ConfigMapper.to_core_dict(self.api_config)
+        self.config: ShapeShiftConfig = ShapeShiftConfig(cfg=cfg_dict)
 
-    def load_reconciliation_config(self, config_name: str) -> ReconciliationConfig:
-        """
-        Load reconciliation configuration from YAML file.
+    @abc.abstractmethod
+    async def resolve(self, entity_name: str, entity_spec: EntityReconciliationSpec) -> list[dict]:
+        """Resolve source data based on entity spec source configuration."""
 
-        Args:
-            config_name: Configuration name
-
-        Returns:
-            Reconciliation configuration
-        """
-        recon_file = self._get_reconciliation_file_path(config_name)
-
-        if not recon_file.exists():
-            logger.info(f"No reconciliation config found for '{config_name}', creating empty config")
-            # Return empty config with default service URL
-            return ReconciliationConfig(service_url="http://localhost:8000", entities={})
-
-        logger.debug(f"Loading reconciliation config from {recon_file}")
-        with open(recon_file, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-
-        return ReconciliationConfig(**data)
-
-    def save_reconciliation_config(self, config_name: str, recon_config: ReconciliationConfig) -> None:
-        """
-        Save reconciliation configuration to YAML file.
-
-        Args:
-            config_name: Configuration name
-            recon_config: Reconciliation configuration to save
-        """
-        recon_file = self._get_reconciliation_file_path(config_name)
-
-        logger.info(f"Saving reconciliation config to {recon_file}")
-        with open(recon_file, "w", encoding="utf-8") as f:
-            yaml.dump(
-                recon_config.model_dump(exclude_none=True),
-                f,
-                default_flow_style=False,
-                sort_keys=False,
-                allow_unicode=True,
-            )
-
-    def _get_service_type(self, entity_spec: EntityReconciliationSpec) -> str | None:
-        """
-        Get reconciliation service type from entity spec.
-
-        Args:
-            entity_spec: Entity reconciliation specification
-
-        Returns:
-            Service type string or None if not configured
-        """
-        return entity_spec.remote.service_type
-
-    async def _resolve_source_data(
-        self,
-        config_name: str,
-        entity_name: str,
-        entity_spec: EntityReconciliationSpec,
-        entity_preview_data: list[dict[str, Any]],
-    ) -> list[dict]:
-        """
-        Resolve source data based on entity spec source configuration.
-
-        Loads fresh ShapeShiftConfig from disk (read-only for reconciliation).
-
-        Args:
-            config_name: Configuration name
-            entity_name: Entity to reconcile
-            entity_spec: Reconciliation specification
-            entity_preview_data: Default entity preview data
-
-        Returns:
-            Data to use for reconciliation (may be from different source)
-        """
-        source: str | ReconciliationSource | None = entity_spec.source
-
-        # Case 1: No source, empty, or same as entity name -> use entity preview
+    @staticmethod
+    def get_resolver_cls_for_source(entity_name: str, source: str | ReconciliationSource | None) -> "type[ReconciliationSourceResolver]":
+        """Get appropriate resolver class for the given source specification."""
         if not source or (isinstance(source, str) and source == entity_name):
-            logger.debug(f"Using preview data from entity '{entity_name}'")
-            return entity_preview_data
+            return TargetEntityReconciliationSourceResolver
 
-        # Load fresh ShapeShiftConfig from disk (read-only)
-        api_config: Configuration = self.config_service.load_configuration(config_name)
-        cfg_dict: dict[str, Any] = ConfigMapper.to_core_dict(api_config)
-        shapeshift_config: ShapeShiftConfig = ShapeShiftConfig(cfg=cfg_dict)
-
-        # Case 2: Source is another entity name
         if isinstance(source, str):
-            logger.info(f"Fetching preview data from entity '{source}' for reconciliation of '{entity_name}'")
+            return AnotherEntityReconciliationSourceResolver
 
-            if source not in shapeshift_config.tables:
-                raise ValueError(f"Source entity '{source}' not found in configuration")
-
-            # Use PreviewService to get data from the source entity
-            preview_service = PreviewService(self.config_service)
-            preview_result = await preview_service.preview_entity(config_name, source, limit=1000)
-            source_data = preview_result.rows
-
-            logger.debug(f"Fetched {len(source_data)} rows from entity '{source}'")
-            return source_data
-
-        # Case 3: Source is a custom query dict
         if isinstance(source, ReconciliationSource):
-            logger.info(f"Executing custom query for reconciliation of '{entity_name}'")
-
-            # Get data source config from ShapeShiftConfig
-            if source.data_source not in shapeshift_config.data_sources:
-                raise ValueError(f"Data source '{source.data_source}' not found in configuration")
-
-            data_source_config: DataSourceConfig = shapeshift_config.get_data_source(source.data_source)
-
-            loader: DataLoader = DataLoaders.get(data_source_config.driver)
-            table_cfg_dict: dict[str, Any] = {
-                "source": None,
-                "type": source.type,
-                "keys": [],
-                "columns": [],
-                "data_source": source.data_source,
-                "query": source.query,
-            }
-            table_cfg: TableConfig = TableConfig(cfg=table_cfg_dict, entity_name="recon_temp")
-            custom_data: pd.DataFrame = await loader.load(entity_name=entity_name, table_cfg=table_cfg)
-            logger.debug(f"Custom query returned {len(custom_data)} rows")
-            return custom_data.to_dict(orient="records")
+            return SqlQueryReconciliationSourceResolver
 
         raise ValueError(f"Invalid source specification: {source}")
 
-    def _extract_id_from_uri(self, uri: str) -> int:
-        """
-        Extract numeric ID from SEAD URI.
+
+class TargetEntityReconciliationSourceResolver(ReconciliationSourceResolver):
+    """Case 1: No source, empty, or same as entity name -> use entity pource == entity_name)"""
+
+    async def resolve(self, entity_name: str, entity_spec: EntityReconciliationSpec) -> list[dict]:
+        logger.debug(f"Using preview data from entity '{entity_name}'")
+        preview_result: PreviewResult = await self.preview_service.preview_entity(self.config_name, entity_name, limit=1000)
+        return preview_result.rows
+
+
+class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
+    """Case 2: Reconciliation source is the the result of another entity's data."""
+
+    async def resolve(self, entity_name: str, entity_spec: EntityReconciliationSpec) -> list[dict]:
+
+        assert isinstance(entity_spec.source, str)
+
+        source: str = entity_spec.source
+
+        logger.info(f"Fetching preview data from entity '{source}' for reconciliation of '{entity_name}'")
+
+        if source not in self.config.tables:
+            raise ValueError(f"Source entity '{source}' not found in configuration")
+
+        preview_result: PreviewResult = await self.preview_service.preview_entity(self.config_name, source, limit=1000)
+        source_data = preview_result.rows
+
+        logger.debug(f"Fetched {len(source_data)} rows from entity '{source}'")
+        return source_data
+
+
+class SqlQueryReconciliationSourceResolver(ReconciliationSourceResolver):
+    """Case 3: Reconciliation source is a custom SQL query."""
+
+    async def resolve(self, entity_name: str, entity_spec: EntityReconciliationSpec) -> list[dict]:
+
+        assert isinstance(entity_spec.source, ReconciliationSource)
+
+        source: str | ReconciliationSource = entity_spec.source
+        logger.info(f"Executing custom query for reconciliation of '{entity_name}'")
+
+        # Get data source config from ShapeShiftConfig
+        if source.data_source not in self.config.data_sources:
+            raise ValueError(f"Data source '{source.data_source}' not found in configuration")
+
+        data_source_config: DataSourceConfig = self.config.get_data_source(source.data_source)
+
+        loader: DataLoader = DataLoaders.get(data_source_config.driver)(data_source_config)
+        sql_cfg_dict: dict[str, Any] = {
+            "source": None,
+            "type": source.type,
+            "keys": [],
+            "columns": [],
+            "data_source": source.data_source,
+            "query": source.query,
+        }
+        table_cfg: TableConfig = TableConfig(cfg=sql_cfg_dict, entity_name="recon_temp")
+        custom_data: pd.DataFrame = await loader.load(entity_name=entity_name, table_cfg=table_cfg)
+        logger.debug(f"Custom query returned {len(custom_data)} rows")
+        return custom_data.to_dict(orient="records")
+
+
+class ReconciliationQueryService:
+    """Service for building reconciliation queries."""
+
+    class QueryBuildResult:
+        def __init__(self, queries: dict[str, ReconciliationQuery], key_mapping: dict[str, tuple[Any, ...]]):
+            self.queries: dict[str, ReconciliationQuery] = queries
+            self.key_mapping: dict[str, tuple[Any, ...]] = key_mapping
+
+    def create(self, entity_spec: EntityReconciliationSpec, max_candidates: int, source_data: list[dict[str, Any]], service_type: str):
+        """Build reconciliation queries from source data based on entity spec.
 
         Args:
-            uri: Entity URI like 'https://w3id.org/sead/id/site/123'
-
-        Returns:
-            Numeric ID
-        """
-        # Extract last numeric segment
-        match = re.search(r"/(\d+)/?$", uri)
-        if match:
-            return int(match.group(1))
-        raise ValueError(f"Cannot extract numeric ID from URI: {uri}")
-
-    async def auto_reconcile_entity(
-        self,
-        config_name: str,
-        entity_name: str,
-        entity_spec: EntityReconciliationSpec,
-        entity_data: list[dict[str, Any]],
-        max_candidates: int = 3,
-    ) -> AutoReconcileResult:
-        """
-        Perform automatic reconciliation for an entity.
-
-        Prevents reconciliation if configuration has unsaved changes.
-
-        Args:
-            config_name: Configuration name
-            entity_name: Entity to reconcile
             entity_spec: Reconciliation specification
-            entity_data: Default entity preview data (may be overridden by spec.source)
             max_candidates: Max candidates per query
-
-        Returns:
-            AutoReconcileResult with counts and candidates
-
-        Raises:
-            ValueError: If configuration has unsaved changes
+            source_data: Source data rows
+            service_type: Reconciliation service entity type
+            Returns:
+            dict of query_id -> ReconciliationQuery
+            dict of query_id -> source_key_tuple
         """
-        # Check for unsaved changes - reconciliation requires saved config
-        try:
-            app_state = get_app_state()
-            if app_state.is_dirty(config_name):
-                raise ValueError(
-                    f"Configuration '{config_name}' has unsaved changes. " "Save or discard changes before starting reconciliation."
-                )
-        except RuntimeError:
-            # ApplicationState not initialized (e.g., in tests) - allow reconciliation
-            pass
-
-        logger.info(f"Auto-reconciling entity '{entity_name}'")
-
-        # Resolve source data based on entity_spec.source (uses fresh config from disk)
-        source_data = await self._resolve_source_data(config_name, entity_name, entity_spec, entity_data)
-        logger.info(f"Using {len(source_data)} rows for reconciliation")
-
-        # Check if reconciliation is enabled for this entity
-        service_type = self._get_service_type(entity_spec)
-        if not service_type:
-            logger.info(f"Reconciliation disabled for entity '{entity_name}' (no service_type configured)")
-            return AutoReconcileResult(
-                auto_accepted=0,
-                needs_review=0,
-                unmatched=0,
-                total=0,
-                candidates={},
-            )
-
-        # Build reconciliation queries
         queries: dict[str, ReconciliationQuery] = {}
         key_mapping: dict[str, tuple[Any, ...]] = {}  # query_id -> source_key_tuple
 
         for idx, row in enumerate(source_data):
             # Extract key values
-            key_values = tuple(row.get(k) for k in entity_spec.keys)
+            key_values: tuple[Any, ...] = tuple(row.get(k) for k in entity_spec.keys)
 
             # Skip if all keys are None
             if all(v is None for v in key_values):
                 continue
 
             # Build search query string from keys only
-            query_parts = []
+            query_parts: list[str] = []
             for k in entity_spec.keys:
                 value = row.get(k)
                 if value is not None:
                     query_parts.append(str(value))
 
-            query_string = " ".join(query_parts)
+            query_string: str = " ".join(query_parts)
 
             if not query_string.strip():
                 continue
 
-            query_id = f"q{idx}"
+            query_id: str = f"q{idx}"
             key_mapping[query_id] = key_values
 
             # Build properties from property_mappings
@@ -301,30 +184,168 @@ class ReconciliationService:
                 properties=properties if properties else None,
             )
 
-        if not queries:
-            logger.warning("No valid queries to reconcile")
-            return AutoReconcileResult(
-                auto_accepted=0,
-                needs_review=0,
-                unmatched=0,
-                total=0,
-                candidates={},
+        return ReconciliationQueryService.QueryBuildResult(queries=queries, key_mapping=key_mapping)
+
+
+class ReconciliationService:
+    """
+    Service for managing entity reconciliation.
+
+    Uses read-only ShapeShiftConfig from disk for reconciliation workflow.
+    Prevents reconciliation if configuration has unsaved changes.
+    """
+
+    def __init__(self, config_dir: Path, reconciliation_client: ReconciliationClient):
+        """
+        Initialize reconciliation service.
+
+        Args:
+            config_dir: Directory containing configuration files
+            reconciliation_client: Client for OpenRefine reconciliation API
+        """
+        self.config_dir = Path(config_dir)
+        self.recon_client: ReconciliationClient = reconciliation_client
+        self.config_service: ConfigurationService = ConfigurationService()
+        self.query_builder: ReconciliationQueryService = ReconciliationQueryService()
+
+    def _get_default_recon_config_filename(self, config_name: str) -> Path:
+        """Get path to reconciliation YAML file."""
+        return self.config_dir / f"{config_name}-reconciliation.yml"
+
+    def load_reconciliation_config(self, config_name: str, recon_config_filename: Path | None = None) -> ReconciliationConfig:
+        """
+        Load reconciliation configuration from YAML file.
+
+        Args:
+            config_name: Configuration name
+
+        Returns:
+            Reconciliation configuration
+        """
+        recon_config_filename = recon_config_filename or self._get_default_recon_config_filename(config_name)
+
+        if not recon_config_filename.exists():
+            logger.info(f"No reconciliation config found for '{config_name}', creating empty config")
+            return ReconciliationConfig(service_url="http://localhost:8000", entities={})
+
+        logger.debug(f"Loading reconciliation config from {recon_config_filename}")
+        with open(recon_config_filename, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+
+        return ReconciliationConfig(**data)
+
+    def save_reconciliation_config(
+        self, config_name: str, recon_config: ReconciliationConfig, recon_config_filename: Path | None = None
+    ) -> None:
+        """
+        Save reconciliation configuration to YAML file.
+
+        Args:
+            config_name: Configuration name
+            recon_config: Reconciliation configuration to save
+        """
+        recon_config_filename = recon_config_filename or self._get_default_recon_config_filename(config_name)
+
+        logger.info(f"Saving reconciliation config to {recon_config_filename}")
+        with open(recon_config_filename, "w", encoding="utf-8") as f:
+            yaml.dump(
+                recon_config.model_dump(exclude_none=True),
+                f,
+                default_flow_style=False,
+                sort_keys=False,
+                allow_unicode=True,
             )
 
+    async def get_resolved_source_data(self, config_name: str, entity_name: str, entity_spec: EntityReconciliationSpec) -> list[dict]:
+        """
+        Resolve source data based on entity spec source configuration.
+
+        Loads fresh ShapeShiftConfig from disk (read-only for reconciliation).
+
+        Args:
+            config_name: Configuration name
+            entity_name: Entity to reconcile
+            entity_spec: Reconciliation specification
+
+        Returns:
+            Data to use for reconciliation (may be from different source)
+        """
+        resolver_cls: type[ReconciliationSourceResolver] = ReconciliationSourceResolver.get_resolver_cls_for_source(
+            entity_name, entity_spec.source
+        )
+        resolver: ReconciliationSourceResolver = resolver_cls(config_name, self.config_service)
+        data = await resolver.resolve(entity_name, entity_spec)
+        return data
+
+    def _extract_id_from_uri(self, uri: str) -> int:
+        """
+        Extract integer ID at the end of the SEAD URI
+
+        Args:
+            uri: Entity URI like 'https://w3id.org/sead/id/site/123'
+
+        Returns:
+            SEAD numeric ID
+        """
+        # Extract integer at the end of the URI
+        match: re.Match[str] | None = re.search(r"/(\d+)/?$", uri)
+        if match:
+            return int(match.group(1))
+        raise ValueError(f"Cannot extract numeric ID from URI: {uri}")
+
+    async def auto_reconcile_entity(
+        self, config_name: str, entity_name: str, entity_spec: EntityReconciliationSpec, max_candidates: int = 3
+    ) -> AutoReconcileResult:
+        """
+        Perform automatic reconciliation for an entity.
+
+        Prevents reconciliation if configuration has unsaved changes.
+
+        Args:
+            config_name: Configuration name
+            entity_name: Entity to reconcile
+            entity_spec: Reconciliation specification
+            max_candidates: Max candidates per query
+
+        Returns:
+            AutoReconcileResult with counts and candidates
+
+        Raises:
+            ValueError: If configuration has unsaved changes
+        """
+
+        service_type: str | None = entity_spec.remote.service_type
+        if not service_type:
+            logger.info(f"Reconciliation disabled for entity '{entity_name}' (no service_type configured)")
+            return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
+
+        logger.info(f"Auto-reconciling entity '{entity_name}'")
+
+        source_data: list[dict] = await self.get_resolved_source_data(config_name, entity_name, entity_spec)
+        logger.info(f"Using {len(source_data)} rows for reconciliation")
+
+        query_data: ReconciliationQueryService.QueryBuildResult = self.query_builder.create(
+            entity_spec, max_candidates, source_data, service_type
+        )
+
+        if not query_data.queries:
+            logger.warning("No valid queries to reconcile")
+            return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
+
         # Execute batch reconciliation
-        logger.debug(f"Executing batch reconciliation for {len(queries)} queries")
-        results = await self.recon_client.reconcile_batch(queries)
+        logger.debug(f"Executing batch reconciliation for {len(query_data.queries)} queries")
+        results = await self.recon_client.reconcile_batch(query_data.queries)
 
         # Map back to source keys
         candidate_map: dict[str, list[ReconciliationCandidate]] = {}
         for query_id, candidates in results.items():
-            source_key = key_mapping[query_id]
+            source_key = query_data.key_mapping[query_id]
             # Convert tuple to string key for JSON serialization
             key_str = "|".join(str(v) if v is not None else "" for v in source_key)
             candidate_map[key_str] = candidates
 
         # Load existing config
-        recon_config = self.load_reconciliation_config(config_name)
+        recon_config: ReconciliationConfig = self.load_reconciliation_config(config_name)
         if entity_name not in recon_config.entities:
             recon_config.entities[entity_name] = entity_spec
 
