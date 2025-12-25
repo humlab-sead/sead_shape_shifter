@@ -5,11 +5,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from loguru import logger
 
-from backend.app.services.validate_fk_service import ValidateForeignKeyService
 from backend.app.models.join_test import JoinTestResult
 from backend.app.models.preview import PreviewResult
 from backend.app.services.config_service import ConfigurationService
 from backend.app.services.preview_service import PreviewService
+from backend.app.services.validate_fk_service import ValidateForeignKeyService
 
 router = APIRouter()
 

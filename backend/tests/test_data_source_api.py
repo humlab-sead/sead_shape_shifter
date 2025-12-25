@@ -47,9 +47,7 @@ class TestListDataSources:
     def test_list_data_sources_success(self, client, mock_service):
         """Should return list of data sources."""
         mock_service.list_data_sources.return_value = [
-            DataSourceConfig(
-                name="sead", driver="postgresql", host="localhost", port=5432, database="sead", username="user", **{}
-            ),
+            DataSourceConfig(name="sead", driver="postgresql", host="localhost", port=5432, database="sead", username="user", **{}),
             DataSourceConfig(name="arbodat", driver="access", filename="arbodat.mdb", **{}),
         ]
 
@@ -295,9 +293,7 @@ class TestDeleteDataSource:
     def test_delete_data_source_success(self, client, mock_service):
         """Should delete data source."""
 
-        mock_service.get_data_source.return_value = DataSourceConfig(
-            name="unused", driver="csv", filename="unused-datasource.yml", **{}
-        )
+        mock_service.get_data_source.return_value = DataSourceConfig(name="unused", driver="csv", filename="unused-datasource.yml", **{})
         mock_service.delete_data_source.return_value = None
 
         response = client.delete("/api/v1/data-sources/unused-datasource.yml")
