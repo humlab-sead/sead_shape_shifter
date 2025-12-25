@@ -6,11 +6,11 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 
-from backend.app.models.reconciliation import EntityReconciliationSpec
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
 from backend.app.models.reconciliation import (
     AutoReconcileResult,
+    EntityReconciliationSpec,
     ReconciliationCandidate,
     ReconciliationConfig,
 )
@@ -95,18 +95,12 @@ async def auto_reconcile_entity(
         if threshold != entity_spec.auto_accept_threshold:
             entity_spec.auto_accept_threshold = threshold
 
-        # TODO: Get entity preview data
-        # For now, return empty result
-        # In production, you'd call entity preview service here
-        entity_data = []
-
         logger.info(f"Starting auto-reconciliation for {entity_name} with threshold {threshold}")
 
-        result = await service.auto_reconcile_entity(
+        result: AutoReconcileResult = await service.auto_reconcile_entity(
             config_name=config_name,
             entity_name=entity_name,
             entity_spec=entity_spec,
-            entity_data=entity_data,
         )
 
         return result
@@ -138,7 +132,7 @@ async def suggest_entities(
     """
     try:
         # Get entity spec to resolve service type
-        recon_config = service.load_reconciliation_config(config_name)
+        recon_config: ReconciliationConfig = service.load_reconciliation_config(config_name)
 
         if entity_name not in recon_config.entities:
             raise HTTPException(
@@ -146,7 +140,7 @@ async def suggest_entities(
                 detail=f"No reconciliation spec for entity '{entity_name}'",
             )
 
-        entity_spec = recon_config.entities[entity_name]
+        entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
 
         # Get service type from entity spec
         if not entity_spec.remote.service_type:
@@ -155,7 +149,7 @@ async def suggest_entities(
                 detail=f"Entity '{entity_name}' has no service_type configured",
             )
 
-        candidates = await service.recon_client.suggest_entities(
+        candidates: list[ReconciliationCandidate] = await service.recon_client.suggest_entities(
             prefix=query, entity_type=entity_spec.remote.service_type.lower(), limit=10
         )
 
