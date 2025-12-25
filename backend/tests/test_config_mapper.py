@@ -6,7 +6,6 @@ import pytest
 
 from backend.app.mappers.config_mapper import ConfigMapper
 from backend.app.models.config import ConfigMetadata, Configuration
-from backend.app.models.entity import ForeignKeyConfig
 from src.model import ShapeShiftConfig
 
 # pylint: disable=no-member

@@ -6,7 +6,9 @@ import pytest
 
 from backend.app.mappers.config_mapper import ConfigMapper
 from backend.app.models.config import ConfigMetadata, Configuration
-from src.model import ShapeShiftConfig
+from src.model import Metadata, ShapeShiftConfig
+
+# pylint: disable=no-member
 
 
 class TestMetadataHandling:
@@ -39,7 +41,6 @@ class TestMetadataHandling:
 
     def test_core_metadata_class(self):
         """Test that ShapeShiftConfig has Metadata class."""
-        from src.model import Metadata
 
         metadata_data = {
             "name": "Core Config",

@@ -12,20 +12,7 @@ from fastapi import Cookie, Depends, Header, HTTPException
 from backend.app import services
 from backend.app.core.config import settings
 from backend.app.core.state_manager import ApplicationState, ConfigSession, get_app_state
-from src.configuration.interface import ConfigLike
-from src.configuration.provider import ConfigProvider, get_config_provider
 
-
-def get_config(
-    provider: ConfigProvider = Depends(get_config_provider),
-) -> ConfigLike:
-    """
-    Get configuration from provider.
-
-    Used as FastAPI dependency for endpoints needing config access.
-    """
-    # FIXME: Do not use default context for Shape Shifter configuration
-    return provider.get_config()
 
 
 def get_data_source_service() -> Generator[services.DataSourceService, None, None]:
@@ -43,9 +30,7 @@ def get_data_source_service() -> Generator[services.DataSourceService, None, Non
         pass
 
 
-def get_schema_service(
-    config: ConfigLike = Depends(get_config),  # pylint: disable=unused-argument
-) -> Generator[services.SchemaIntrospectionService, None, None]:
+def get_schema_service() -> Generator[services.SchemaIntrospectionService, None, None]:
     """
     Get SchemaIntrospectionService instance.
 

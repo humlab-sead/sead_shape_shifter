@@ -1,9 +1,8 @@
 """Data source models for Phase 2 data-aware features."""
 
-from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from src.loaders.base_loader import ConnectTestResult
 from src.utility import replace_env_vars
