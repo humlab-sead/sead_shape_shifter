@@ -2,16 +2,15 @@
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 from loguru import logger
-
-from backend.app.utils.error_handlers import handle_endpoint_errors
 
 from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.auto_fix_service import AutoFixService
-from backend.app.services.config_service import ConfigurationNotFoundError, get_config_service
+from backend.app.services.config_service import get_config_service
 from backend.app.services.dependency_service import get_dependency_service
 from backend.app.services.validation_service import get_validation_service
+from backend.app.utils.error_handlers import handle_endpoint_errors
 
 router = APIRouter()
 
@@ -40,8 +39,7 @@ async def validate_configuration_data(name: str, entity_names: list[str] | None 
     result = await validation_service.validate_configuration_data(name, entity_names)
 
     logger.info(
-        f"Data validation for '{name}' completed: "
-        f"valid={result.is_valid}, errors={result.error_count}, warnings={result.warning_count}"
+        f"Data validation for '{name}' completed: " f"valid={result.is_valid}, errors={result.error_count}, warnings={result.warning_count}"
     )
     return result
 

@@ -13,7 +13,6 @@ from backend.app.clients.reconciliation_client import (
     ReconciliationClient,
     ReconciliationQuery,
 )
-from backend.app.core.state_manager import get_app_state
 from backend.app.mappers.config_mapper import ConfigMapper
 from backend.app.models import (
     AutoReconcileResult,

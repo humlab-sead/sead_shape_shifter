@@ -3,9 +3,7 @@
 from pathlib import Path
 from typing import Any
 
-from backend.app.utils.error_handlers import handle_endpoint_errors
-from backend.app.utils.exceptions import BadRequestError, NotFoundError
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -13,13 +11,13 @@ from backend.app.core.config import settings
 from backend.app.models.config import ConfigMetadata, Configuration
 from backend.app.models.validation import ValidationResult
 from backend.app.services.config_service import (
-    ConfigurationNotFoundError,
     ConfigurationService,
-    ConfigurationServiceError,
     get_config_service,
 )
 from backend.app.services.validation_service import ValidationService, get_validation_service
-from backend.app.services.yaml_service import YamlService, YamlServiceError, get_yaml_service
+from backend.app.services.yaml_service import YamlService, get_yaml_service
+from backend.app.utils.error_handlers import handle_endpoint_errors
+from backend.app.utils.exceptions import BadRequestError, NotFoundError
 
 router = APIRouter()
 
