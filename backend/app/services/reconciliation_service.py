@@ -23,7 +23,7 @@ from backend.app.models import (
     ReconciliationMapping,
     ReconciliationSource,
 )
-from backend.app.models.preview import PreviewResult
+from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import ConfigurationService, PreviewService
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.loaders import DataLoader, DataLoaders

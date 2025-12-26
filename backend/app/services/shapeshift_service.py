@@ -10,7 +10,7 @@ from backend.app.core.state_manager import ApplicationState, get_app_state
 from backend.app.core.utility import friendly_dtype
 from backend.app.mappers.config_mapper import ConfigMapper
 from backend.app.models.config import Configuration
-from backend.app.models.preview import ColumnInfo, PreviewResult
+from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.config_service import ConfigurationService
 from src.model import ShapeShiftConfig, TableConfig
 from src.normalizer import ShapeShifter

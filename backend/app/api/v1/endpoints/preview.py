@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Path, Query
 from loguru import logger
 
 from backend.app.models.join_test import JoinTestResult
-from backend.app.models.preview import PreviewResult
+from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.config_service import ConfigurationService
 from backend.app.services.shapeshift_service import PreviewService
 from backend.app.services.validate_fk_service import ValidateForeignKeyService

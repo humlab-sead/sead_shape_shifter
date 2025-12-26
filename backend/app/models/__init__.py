@@ -46,12 +46,6 @@ from backend.app.models.join_test import (
     JoinTestResult,
     UnmatchedRow,
 )
-from backend.app.models.preview import (
-    ColumnInfo,
-    EntityPreviewError,
-    PreviewRequest,
-    PreviewResult,
-)
 from backend.app.models.query import (
     QueryExecution,
     QueryPlan,
@@ -65,6 +59,12 @@ from backend.app.models.reconciliation import (
     ReconciliationConfig,
     ReconciliationMapping,
     ReconciliationSource,
+)
+from backend.app.models.shapeshift import (
+    ColumnInfo,
+    EntityPreviewError,
+    PreviewRequest,
+    PreviewResult,
 )
 from backend.app.models.suggestion import (
     DependencySuggestion,
