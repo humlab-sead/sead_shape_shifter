@@ -29,8 +29,8 @@ from backend.app.models import (
     ReconciliationMapping,
     ReconciliationSource,
 )
-from backend.app.models.preview import PreviewResult
 from backend.app.models.reconciliation import ReconciliationRemote
+from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.reconciliation_service import (
     AnotherEntityReconciliationSourceResolver,
     ReconciliationQueryService,

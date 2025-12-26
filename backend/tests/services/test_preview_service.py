@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 import pytest
 
-from backend.app.models.preview import ColumnInfo, PreviewResult
+from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.shapeshift_service import PreviewCache, PreviewService
 from src.model import ShapeShiftConfig, TableConfig
 
