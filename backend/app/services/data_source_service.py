@@ -90,6 +90,7 @@ class DataSourceService:
             data: Data source configuration dict
         """
         try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
             with open(file_path, "w", encoding="utf-8") as f:
                 yaml.safe_dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
             logger.debug(f"Wrote data source file: {file_path}")
