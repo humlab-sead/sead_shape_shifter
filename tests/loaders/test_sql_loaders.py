@@ -4,7 +4,7 @@ Tests for Database Loaders
 Tests the vendor-specific database introspection methods in database loaders.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
 import pytest
@@ -12,12 +12,11 @@ import pytest
 from src.loaders.sql_loaders import (
     CoreSchema,
     PostgresSqlLoader,
-    SqlLoader,
     SqliteLoader,
+    SqlLoader,
     UCanAccessSqlLoader,
 )
-from src.model import DataSourceConfig
-from src.model import TableConfig
+from src.model import DataSourceConfig, TableConfig
 
 # pylint: disable=redefined-outer-name, unused-argument, protected-access
 
@@ -378,9 +377,7 @@ class DummySqlLoader(SqlLoader):
         return {}
 
     async def get_table_schema(self, table_name: str, **kwargs):
-        return CoreSchema.TableSchema(
-            table_name=table_name, columns=[], primary_keys=[], indexes=[], row_count=0, foreign_keys=[]
-        )
+        return CoreSchema.TableSchema(table_name=table_name, columns=[], primary_keys=[], indexes=[], row_count=0, foreign_keys=[])
 
     async def execute_scalar_sql(self, sql: str):
         return 0
@@ -392,7 +389,7 @@ class TestSqlLoaderCore:
     @pytest.fixture
     def loader(self) -> DummySqlLoader:
         """Provide a fresh dummy SQL loader."""
-        return DummySqlLoader(data_source=None)
+        return DummySqlLoader(data_source=Mock())
 
     @pytest.mark.asyncio
     async def test_load_auto_detects_columns_and_adds_surrogate_id(self, monkeypatch: pytest.MonkeyPatch):
@@ -427,7 +424,7 @@ class TestSqlLoaderCore:
     @pytest.mark.asyncio
     async def test_load_rejects_non_sql_entity(self):
         """SqlLoader.load should raise for non-sql entities."""
-        loader = DummySqlLoader(data_source=None)
+        loader = DummySqlLoader(data_source=Mock())
         table_cfg = TableConfig(
             cfg={"not_sql": {"type": "fixed", "query": "select 1", "columns": ["a"], "keys": []}},
             entity_name="not_sql",
@@ -454,7 +451,7 @@ class TestSqlLoaderCore:
         assert "returned 2 rows" in success_result.message
 
         # Failure path
-        failing_loader = DummySqlLoader(data_source=None)
+        failing_loader = DummySqlLoader(data_source=Mock())
         failing_loader.get_tables = AsyncMock(side_effect=Exception("boom"))  # type: ignore[method-assign]
 
         failure_result = await failing_loader.test_connection()

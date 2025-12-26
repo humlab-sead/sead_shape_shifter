@@ -1,8 +1,6 @@
 """Tests for QueryService."""
 
 import asyncio
-from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
@@ -15,7 +13,6 @@ from backend.app.services.query_service import QueryExecutionError, QueryService
 
 class TestQueryService:
     """Test QueryService for SQL query validation and execution."""
-
 
     @pytest.fixture
     def service(self) -> QueryService:
@@ -214,7 +211,7 @@ class TestQueryService:
         """Test execution timeout handling."""
         query = "SELECT * FROM users"
 
-        async def slow_read_sql(query):
+        async def slow_read_sql(query):  # pylint: disable=unused-argument
             await asyncio.sleep(10)
             return pd.DataFrame()
 
@@ -343,7 +340,7 @@ class TestQueryService:
         # Create loader with read_sql method
         mock_loader = AsyncMock()
         mock_loader.read_sql = AsyncMock(return_value=pd.DataFrame({"id": [1, 2], "name": ["Alice", "Bob"]}))
-        
+
         with (
             patch("backend.app.services.query_service.DataSourceService") as mock_ds,
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,

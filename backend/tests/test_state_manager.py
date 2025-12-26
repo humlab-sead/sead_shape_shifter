@@ -17,7 +17,7 @@ from backend.app.core.state_manager import (
 )
 from backend.app.models.config import ConfigMetadata, Configuration
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 @pytest.fixture

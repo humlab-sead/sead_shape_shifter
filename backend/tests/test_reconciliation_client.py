@@ -229,9 +229,7 @@ class TestReconciliationClientBatchReconcile:
         mock_http_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock(
-            side_effect=httpx.HTTPStatusError(
-                "500 Server Error", request=MagicMock(), response=MagicMock()
-            )
+            side_effect=httpx.HTTPStatusError("500 Server Error", request=MagicMock(), response=MagicMock())
         )
         mock_http_client.post.return_value = mock_response
 
@@ -270,11 +268,7 @@ class TestReconciliationClientBatchReconcile:
         """Test batch reconciliation with property filters."""
         client = ReconciliationClient(base_url="http://localhost:8000")
 
-        queries = {
-            "q0": ReconciliationQuery(
-                query="Site Name", entity_type="Site", properties=[{"pid": "latitude", "v": 60.0}]
-            )
-        }
+        queries = {"q0": ReconciliationQuery(query="Site Name", entity_type="Site", properties=[{"pid": "latitude", "v": 60.0}])}
 
         mock_response = {"q0": {"result": [{"id": "site_1", "name": "Site Name", "score": 100.0, "match": True}]}}
 
@@ -354,11 +348,7 @@ class TestReconciliationClientSuggestEntities:
         client = ReconciliationClient(base_url="http://localhost:8000")
 
         # Return more results than limit
-        mock_response = {
-            "result": [
-                {"id": f"site_{i}", "name": f"Site {i}", "score": 90.0 - i, "match": False} for i in range(20)
-            ]
-        }
+        mock_response = {"result": [{"id": f"site_{i}", "name": f"Site {i}", "score": 90.0 - i, "match": False} for i in range(20)]}
 
         mock_http_client = AsyncMock()
         mock_http_client.get.return_value = AsyncMock(json=lambda: mock_response, raise_for_status=lambda: None)
@@ -399,9 +389,7 @@ class TestReconciliationClientSuggestEntities:
         mock_http_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock(
-            side_effect=httpx.HTTPStatusError(
-                "404 Not Found", request=MagicMock(), response=MagicMock()
-            )
+            side_effect=httpx.HTTPStatusError("404 Not Found", request=MagicMock(), response=MagicMock())
         )
         mock_http_client.get.return_value = mock_response
 
@@ -469,9 +457,7 @@ class TestReconciliationClientEntityPreview:
         mock_http_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock(
-            side_effect=httpx.HTTPStatusError(
-                "500 Server Error", request=MagicMock(), response=MagicMock()
-            )
+            side_effect=httpx.HTTPStatusError("500 Server Error", request=MagicMock(), response=MagicMock())
         )
         mock_http_client.get.return_value = mock_response
 
@@ -546,9 +532,7 @@ class TestReconciliationClientServiceManifest:
         mock_http_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock(
-            side_effect=httpx.HTTPStatusError(
-                "503 Service Unavailable", request=MagicMock(), response=MagicMock()
-            )
+            side_effect=httpx.HTTPStatusError("503 Service Unavailable", request=MagicMock(), response=MagicMock())
         )
         mock_http_client.get.return_value = mock_response
 
