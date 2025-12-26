@@ -33,7 +33,6 @@ class PreviewResult(BaseModel):
     execution_time_ms: int
     has_dependencies: bool = False
     dependencies_loaded: list[str] = []
-    transformations_applied: list[str] = []  # e.g., ["filter", "unnest"]
     cache_hit: bool = False
     row_count: int = 0
 

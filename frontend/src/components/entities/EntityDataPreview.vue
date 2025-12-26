@@ -88,17 +88,6 @@
           </v-chip>
           
           <v-chip
-            v-for="transform in previewData.transformations_applied"
-            :key="transform"
-            size="small"
-            variant="outlined"
-            color="secondary"
-          >
-            <v-icon icon="mdi-cog-outline" start size="small" />
-            {{ transform }}
-          </v-chip>
-
-          <v-chip
             size="small"
             variant="outlined"
             color="success"

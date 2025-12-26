@@ -35,7 +35,9 @@ class Settings(BaseSettings):
 
     # CORS regex patterns for wildcard domains (allows any devtunnel or github dev preview)
     # Pattern matches: https://anything-port.region.devtunnels.ms
-    ALLOWED_ORIGIN_REGEX: str = r"https://[a-zA-Z0-9\-]+\.(euw|eus|weu|neu|sasia|asia|[a-z]+)\.devtunnels\.ms$|https://[a-zA-Z0-9\-]+\.preview\.app\.github\.dev$"
+    ALLOWED_ORIGIN_REGEX: str = (
+        r"https://[a-zA-Z0-9\-]+\.(euw|eus|weu|neu|sasia|asia|[a-z]+)\.devtunnels\.ms$|https://[a-zA-Z0-9\-]+\.preview\.app\.github\.dev$"
+    )
 
     # File paths
     CONFIGURATIONS_DIR: Path = Path("./configurations")

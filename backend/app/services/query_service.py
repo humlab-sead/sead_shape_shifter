@@ -135,7 +135,8 @@ class QueryService:
 
         core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_cfg)
 
-        loader: SqlLoader = DataLoaders.get(core_config.driver)(data_source=core_config)
+        loader_cls: type[SqlLoader] = DataLoaders.get(core_config.driver)
+        loader: SqlLoader = loader_cls(data_source=core_config)
 
         # Execute query with timeout
         start_time: float = time.time()
@@ -233,7 +234,7 @@ class QueryService:
 
     def _has_where_clause(self, statement: Statement) -> bool:
         """Check if statement contains a WHERE clause."""
-        return any(t.ttype is Keyword and t.value.upper() == "WHERE" for t in statement.tokens)
+        return any(t.ttype is Keyword and t.value.upper() == "WHERE" for t in statement.flatten())
 
     def _add_limit_clause(self, query: str, limit: int) -> str:
         """

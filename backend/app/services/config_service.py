@@ -6,12 +6,11 @@ from typing import Any
 from loguru import logger
 
 from backend.app.core.config import settings
+from backend.app.core.state_manager import get_app_state_manager
+from backend.app.mappers.config_mapper import ConfigMapper
 from backend.app.models.config import ConfigMetadata, Configuration
 from backend.app.models.entity import Entity
-from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, get_yaml_service
-from src.configuration.config import ConfigFactory
-from src.configuration.interface import ConfigLike
-from src.configuration.provider import ConfigStore
+from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
 
 
 class ConfigurationServiceError(Exception):
@@ -43,8 +42,8 @@ class ConfigurationService:
 
     def __init__(self) -> None:
         """Initialize configuration service."""
-        self.yaml_service = get_yaml_service()
-        self.configurations_dir = settings.CONFIGURATIONS_DIR
+        self.yaml_service: YamlService = get_yaml_service()
+        self.configurations_dir: Path = settings.CONFIGURATIONS_DIR
 
     def list_configurations(self) -> list[ConfigMetadata]:
         """
@@ -91,6 +90,9 @@ class ConfigurationService:
         """
         Load configuration by name.
 
+        If the configuration is currently active in ApplicationState,
+        loads from there to ensure consistency with editing session.
+
         Args:
             name: Configuration name (without .yml extension)
 
@@ -101,36 +103,38 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
             InvalidConfigurationError: If configuration is invalid
         """
-        file_path = self.configurations_dir / f"{name}.yml"
+        # Check if this is the active configuration
+
+        active_config: Configuration | None = get_app_state_manager().get(name)
+        if active_config:
+            logger.debug(f"Loading active configuration '{name}' from ApplicationState")
+            return active_config
+
+        # Load from file
+        file_path: Path = self.configurations_dir / (f"{name}.yml" if not name.endswith(".yml") else name)
 
         if not file_path.exists():
             raise ConfigurationNotFoundError(f"Configuration not found: {name}")
 
         try:
-            data = self.yaml_service.load(file_path)
+            data: dict[str, Any] = self.yaml_service.load(file_path)
 
             # Validate that 'entities' key exists (required for configuration files)
             if "entities" not in data:
                 raise InvalidConfigurationError(f"Invalid configuration file '{name}': missing required 'entities' key")
 
-            # Extract entities and options
-            entities_data = data.get("entities", {})
-            options_data = data.get("options", {})
+            # Convert to Configuration model via mapper
+            config: Configuration = ConfigMapper.to_api_config(data, name)
 
-            # Create metadata
-            metadata = ConfigMetadata(
-                name=name,
-                file_path=str(file_path),
-                entity_count=len(entities_data),
-                created_at=file_path.stat().st_ctime,
-                modified_at=file_path.stat().st_mtime,
-                is_valid=True,
-            )
+            assert config.metadata is not None  # For mypy
 
-            # Build configuration
-            config = Configuration(entities=entities_data, options=options_data, metadata=metadata)
+            config.metadata.file_path = str(file_path)
+            config.metadata.created_at = file_path.stat().st_ctime
+            config.metadata.modified_at = file_path.stat().st_mtime
+            config.metadata.entity_count = len(config.entities or {})
+            config.metadata.is_valid = True
 
-            logger.info(f"Loaded configuration '{name}' with {len(entities_data)} entities")
+            logger.info(f"Loaded configuration '{name}' with {len(config.entities)} entities")
             return config
 
         except YamlLoadError as e:
@@ -142,6 +146,8 @@ class ConfigurationService:
     def save_configuration(self, config: Configuration, create_backup: bool = True) -> Configuration:
         """
         Save configuration to file.
+
+        Updates ApplicationState if this is the active configuration.
 
         Args:
             config: Configuration to save
@@ -156,30 +162,27 @@ class ConfigurationService:
         if not config.metadata or not config.metadata.name:
             raise InvalidConfigurationError("Configuration must have metadata with name")
 
-        file_path = self.configurations_dir / f"{config.metadata.name}.yml"
+        file_path: Path = self.configurations_dir / f"{config.metadata.name}.yml"
 
         try:
-            # Build YAML data
-            data: dict[str, Any] = {}
-
-            # Always include 'entities' key to mark this as a configuration file
-            data["entities"] = config.entities if config.entities else {}
+            # Convert to core dict for saving (sparse structure)
+            cfg_dict = ConfigMapper.to_core_dict(config)
 
             logger.debug(
                 f"Saving configuration '{config.metadata.name}' with {len(config.entities)} entities: {list(config.entities.keys())}"
             )
 
-            if config.options:
-                data["options"] = config.options
-
             # Save with backup
-            self.yaml_service.save(data, file_path, create_backup=create_backup)
+            self.yaml_service.save(cfg_dict, file_path, create_backup=create_backup)
 
             # Update metadata
             config.metadata.modified_at = file_path.stat().st_mtime
             config.metadata.entity_count = len(config.entities)
 
             logger.info(f"Saved configuration '{config.metadata.name}'")
+
+            get_app_state_manager().update(config)
+
             return config
 
         except YamlSaveError as e:
@@ -200,16 +203,18 @@ class ConfigurationService:
             New configuration
 
         Raises:
-            ConfigurationServiceError: If configuration already exists
+            ConfigConflictError: If configuration already exists
         """
-        file_path = self.configurations_dir / f"{name}.yml"
+        file_path: Path = self.configurations_dir / f"{name}.yml"
 
         if file_path.exists():
-            raise ConfigurationServiceError(f"Configuration '{name}' already exists")
+            raise ConfigConflictError(f"Configuration '{name}' already exists")
 
-        # Create metadata
+        # Create metadata with required fields
         metadata = ConfigMetadata(
             name=name,
+            description=f"Configuration for {name}",
+            version="1.0.0",
             file_path=str(file_path),
             entity_count=len(entities) if entities else 0,
             created_at=0,
@@ -217,7 +222,7 @@ class ConfigurationService:
             is_valid=True,
         )
 
-        # Create configuration
+        # Create configuration with all three required sections
         config = Configuration(entities=entities or {}, options={}, metadata=metadata)
 
         # Save to file
@@ -233,7 +238,7 @@ class ConfigurationService:
         Raises:
             ConfigurationNotFoundError: If configuration not found
         """
-        file_path = self.configurations_dir / f"{name}.yml"
+        file_path: Path = self.configurations_dir / f"{name}.yml"
 
         if not file_path.exists():
             raise ConfigurationNotFoundError(f"Configuration not found: {name}")
@@ -421,52 +426,18 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
             EntityNotFoundError: If entity not found
         """
-        config = self.load_configuration(config_name)
+        config: Configuration = self.load_configuration(config_name)
 
         if entity_name not in config.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
         return config.entities[entity_name]
 
-    def get_active_configuration_name(self) -> str | None:
-        """
-        Get the currently active (loaded) configuration name.
-
-        The active configuration is the one loaded into the backend's ConfigStore,
-        which determines which data sources are available.
-
-        Returns:
-            Configuration name (without .yml extension) or None if no config is loaded
-        """
-
-        try:
-            store: ConfigStore = ConfigStore.get_instance()
-            if not store.is_configured():
-                return None
-
-            config: ConfigLike | None = store.config()
-            if config is None:
-                return None
-
-            # Get filename from config
-            filename = getattr(config, "filename", None) or getattr(config, "source", None)
-            if not filename:
-                return None
-
-            # Extract name from filename (remove .yml extension and path)
-
-            return Path(filename).stem
-
-        except Exception as e:  # pylint: disable=broad-except
-            logger.warning(f"Failed to get active configuration name: {e}")
-            return None
-
     def activate_configuration(self, name: str) -> Configuration:
         """
-        Activate (load) a configuration into the backend context.
+        Activate a configuration for editing.
 
-        This makes the configuration's data sources available and sets it
-        as the active configuration.
+        Loads the configuration into ApplicationState as the active editing session.
 
         Args:
             name: Configuration name to activate
@@ -478,33 +449,26 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
         """
 
-        # Build file path
-        file_path = self.configurations_dir / f"{name}.yml"
+        config: Configuration = self.load_configuration(name)
 
-        if not file_path.exists():
-            raise ConfigurationNotFoundError(f"Configuration not found: {name}")
+        get_app_state_manager().activate(config)
 
-        try:
-            # Load configuration using ConfigFactory
-            loaded_config = ConfigFactory().load(source=str(file_path), context="default")
+        return config
 
-            # Set as active in ConfigStore
-            ConfigStore.get_instance().set_config(cfg=loaded_config, context="default")
+    def get_active_configuration_metadata(self) -> ConfigMetadata:
+        """
+        Get the name of the currently active editing configuration.
 
-            logger.info(f"Activated configuration '{name}' from {file_path}")
+        Returns:
+            Configuration name or None if no configuration is active
+        """
 
-            # Return as Configuration model for API response
-            return self.load_configuration(name)
-
-        except Exception as e:
-            logger.error(f"Failed to activate configuration '{name}': {e}")
-            raise ConfigurationServiceError(f"Failed to activate configuration: {e}") from e
+        return get_app_state_manager().get_active_metadata()
 
     def save_with_version_check(
         self,
         config: Configuration,
-        expected_version: int,
-        current_version: int,
+        expected_version: str,
         create_backup: bool = True,
     ) -> Configuration:
         """
@@ -513,7 +477,6 @@ class ConfigurationService:
         Args:
             config: Configuration to save
             expected_version: Client's expected version number
-            current_version: Current server version number
             create_backup: Whether to create backup before saving
 
         Returns:
@@ -523,7 +486,8 @@ class ConfigurationService:
             ConfigConflictError: If version mismatch (concurrent edit detected)
             InvalidConfigurationError: If save fails
         """
-        # Check version match (optimistic lock)
+
+        current_version: str = get_app_state_manager().get_active_metadata().version or expected_version
         if expected_version != current_version:
             raise ConfigConflictError(
                 f"Configuration was modified by another user. "
@@ -531,7 +495,6 @@ class ConfigurationService:
                 f"Reload and merge changes."
             )
 
-        # Save to disk
         return self.save_configuration(config, create_backup=create_backup)
 
 

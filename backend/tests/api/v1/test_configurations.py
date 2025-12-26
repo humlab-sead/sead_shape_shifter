@@ -115,7 +115,7 @@ class TestConfigurationsCreate:
         assert data["metadata"]["entity_count"] == 1
 
     def test_create_duplicate_configuration(self, tmp_path, monkeypatch, reset_services, sample_config_data):
-        """Test creating duplicate configuration returns 400."""
+        """Test creating duplicate configuration returns 409 Conflict."""
 
         monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
 
@@ -124,7 +124,7 @@ class TestConfigurationsCreate:
 
         # Try to create duplicate
         response = client.post("/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]})
-        assert response.status_code == 400
+        assert response.status_code == 409
 
 
 class TestConfigurationsUpdate:

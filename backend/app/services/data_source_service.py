@@ -32,6 +32,8 @@ class DataSourceService:
         if filename.suffix != ".yml":
             filename = filename.with_suffix(".yml")
         path: Path = Path(self.data_sources_dir) / filename
+        if not path.resolve().is_relative_to(self.data_sources_dir.resolve()):
+            return self.data_sources_dir / path.name
         if raise_if_not_found and not path.exists():
             raise ValueError(f"Data source file '{filename}' not found")
         return path
@@ -90,6 +92,7 @@ class DataSourceService:
             data: Data source configuration dict
         """
         try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
             with open(file_path, "w", encoding="utf-8") as f:
                 yaml.safe_dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
             logger.debug(f"Wrote data source file: {file_path}")

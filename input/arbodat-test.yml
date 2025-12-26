@@ -1183,7 +1183,7 @@ options:
 
   translation: "@load: options.translations"
 
-  mappings: "@include: mappings.yml"
+  reconciliation: "@include: arbodat-reconciliation.yml"
 
   finally:
     drop:

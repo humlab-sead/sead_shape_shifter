@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from backend.app.models.preview import ColumnInfo, PreviewResult
+from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.models.validation import ValidationCategory, ValidationPriority
 from backend.app.validators.data_validators import (
     ColumnExistsValidator,

@@ -2,13 +2,16 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, Path, Query
 from loguru import logger
 
 from backend.app.models.join_test import JoinTestResult
-from backend.app.models.preview import PreviewResult
+from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.config_service import ConfigurationService
-from backend.app.services.preview_service import PreviewService
+from backend.app.services.shapeshift_service import PreviewService
+from backend.app.services.validate_fk_service import ValidateForeignKeyService
+from backend.app.utils.error_handlers import handle_endpoint_errors
+from backend.app.utils.exceptions import BadRequestError, NotFoundError
 
 router = APIRouter()
 
@@ -22,7 +25,14 @@ def get_preview_service(
     config_service: ConfigurationService = Depends(get_config_service),
 ) -> PreviewService:
     """Dependency to get preview service instance."""
-    return PreviewService(config_service)
+    return PreviewService(config_service=config_service)
+
+
+def get_validate_fk_service(
+    preview_service: PreviewService = Depends(get_preview_service),
+) -> ValidateForeignKeyService:
+    """Dependency to get validate foreign key service instance."""
+    return ValidateForeignKeyService(preview_service=preview_service)
 
 
 @router.post(
@@ -36,6 +46,7 @@ def get_preview_service(
         500: {"description": "Preview generation failed"},
     },
 )
+@handle_endpoint_errors
 async def preview_entity(
     config_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity to preview"),
@@ -56,10 +67,7 @@ async def preview_entity(
         return result
     except ValueError as e:
         logger.warning(f"Preview request failed: {e}")
-        raise HTTPException(status_code=404, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Preview generation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Preview generation failed: {str(e)}") from e
+        raise NotFoundError(str(e)) from e
 
 
 @router.post(
@@ -73,6 +81,7 @@ async def preview_entity(
         500: {"description": "Sample generation failed"},
     },
 )
+@handle_endpoint_errors
 async def get_entity_sample(
     config_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity"),
@@ -92,10 +101,7 @@ async def get_entity_sample(
         return result
     except ValueError as e:
         logger.warning(f"Sample request failed: {e}")
-        raise HTTPException(status_code=404, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Sample generation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Sample generation failed: {str(e)}") from e
+        raise NotFoundError(str(e)) from e
 
 
 @router.delete(
@@ -106,6 +112,7 @@ async def get_entity_sample(
         200: {"description": "Cache invalidated successfully"},
     },
 )
+@handle_endpoint_errors
 async def invalidate_preview_cache(
     config_name: str = Path(..., description="Name of the configuration"),
     entity_name: Optional[str] = Query(None, description="Optional entity name to clear specific cache"),
@@ -119,15 +126,11 @@ async def invalidate_preview_cache(
     - Changing data source data
     - Updating transformations
     """
-    try:
-        preview_service.invalidate_cache(config_name, entity_name)
-        message = f"Cache cleared for {config_name}"
-        if entity_name:
-            message += f":{entity_name}"
-        return {"message": message, "config_name": config_name, "entity_name": entity_name}
-    except Exception as e:
-        logger.error(f"Cache invalidation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Cache invalidation failed: {str(e)}") from e
+    preview_service.invalidate_cache(config_name, entity_name)
+    message = f"Cache cleared for {config_name}"
+    if entity_name:
+        message += f":{entity_name}"
+    return {"message": message, "config_name": config_name, "entity_name": entity_name}
 
 
 @router.post(
@@ -141,12 +144,13 @@ async def invalidate_preview_cache(
         400: {"description": "Invalid request parameters"},
     },
 )
+@handle_endpoint_errors
 async def test_foreign_key_join(
     config_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity with the foreign key"),
     fk_index: int = Path(..., description="Index of the foreign key to test", ge=0),
     sample_size: int = Query(100, description="Number of rows to test", ge=10, le=1000),
-    preview_service: PreviewService = Depends(get_preview_service),
+    validate_fk_service: ValidateForeignKeyService = Depends(get_validate_fk_service),
 ) -> JoinTestResult:
     """
     Test a foreign key join relationship.
@@ -165,13 +169,10 @@ async def test_foreign_key_join(
     - Preview join behavior
     """
     try:
-        result = await preview_service.test_foreign_key(
+        result = await validate_fk_service.test_foreign_key(
             config_name=config_name, entity_name=entity_name, foreign_key_index=fk_index, sample_size=sample_size
         )
         return result
     except ValueError as e:
         logger.error(f"Join test validation error: {e}")
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    except Exception as e:
-        logger.error(f"Join test failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Join test failed: {str(e)}") from e
+        raise BadRequestError(str(e)) from e

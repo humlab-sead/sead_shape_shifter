@@ -5,6 +5,15 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 
+class UnnestConfig(BaseModel):
+    """Configuration for unnesting (melting) wide data to long format."""
+
+    id_vars: list[str] = Field(..., description="Identifier columns to keep")
+    value_vars: list[str] = Field(..., description="Columns to melt")
+    var_name: str = Field(..., description="Name for the variable column")
+    value_name: str = Field(..., description="Name for the value column")
+
+
 class ForeignKeyConstraints(BaseModel):
     """Constraints for foreign key relationships."""
 
@@ -61,15 +70,6 @@ class ForeignKeyConfig(BaseModel):
         return list(v)
 
 
-class UnnestConfig(BaseModel):
-    """Configuration for unnesting (melting) wide data to long format."""
-
-    id_vars: list[str] = Field(..., description="Identifier columns to keep")
-    value_vars: list[str] = Field(..., description="Columns to melt")
-    var_name: str = Field(..., description="Name for the variable column")
-    value_name: str = Field(..., description="Name for the value column")
-
-
 class FilterConfig(BaseModel):
     """Configuration for post-extraction filters."""
 
@@ -108,6 +108,7 @@ class Entity(BaseModel):
     drop_duplicates: bool | list[str] = Field(default=False, description="Drop duplicate rows")
     drop_empty_rows: bool | list[str] = Field(default=False, description="Drop empty rows")
     check_column_names: bool = Field(default=True, description="Validate column names")
+    values: list[list[Any]] | None = Field(default=None, description="Fixed values for 'fixed' type entities")
 
     @field_validator("name")
     @classmethod
