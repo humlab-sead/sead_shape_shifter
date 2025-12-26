@@ -169,8 +169,8 @@ class TestPreviewService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
+        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
                 with pytest.raises(ValueError, match="Entity 'nonexistent' not found"):
                     await preview_service.preview_entity("test_config", "nonexistent", 50)
 
@@ -185,9 +185,9 @@ class TestPreviewService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
-                with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
+        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
+                with patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class:
                     # Setup mock normalizer
                     mock_normalizer = MagicMock()
                     mock_normalizer.normalize = AsyncMock()
@@ -224,9 +224,9 @@ class TestPreviewService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
-                with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
+        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
+                with patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class:
                     mock_normalizer = MagicMock()
                     mock_normalizer.normalize = AsyncMock()
                     mock_normalizer.table_store = {"users": large_df}
@@ -257,9 +257,9 @@ class TestPreviewService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=config_with_transforms.cfg):
-                with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
+        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core_dict", return_value=config_with_transforms.cfg):
+                with patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class:
                     mock_normalizer = MagicMock()
                     mock_normalizer.normalize = AsyncMock()
                     mock_normalizer.table_store = {"users": pd.DataFrame({"user_id": [1]})}
@@ -281,9 +281,9 @@ class TestPreviewService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
-                with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
+        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
+                with patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class:
                     mock_normalizer = MagicMock()
                     mock_normalizer.normalize = AsyncMock()
                     mock_normalizer.table_store = {"orders": sample_dataframe}
@@ -304,9 +304,9 @@ class TestPreviewService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
-                with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
+        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
+                with patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class:
                     mock_normalizer = MagicMock()
                     mock_normalizer.normalize = AsyncMock()
                     mock_normalizer.table_store = {"users": sample_dataframe}
@@ -335,9 +335,9 @@ class TestPreviewService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.preview_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.preview_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
-                with patch("backend.app.services.preview_service.ShapeShifter") as mock_normalizer_class:
+        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
+            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
+                with patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class:
                     mock_normalizer = MagicMock()
                     mock_normalizer.normalize = AsyncMock()
                     mock_normalizer.table_store = {"users": sample_dataframe}

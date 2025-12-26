@@ -119,6 +119,22 @@ class TestProcessState:
         next_entity: str | None = state.get_next_entity_to_process()
         assert next_entity is None
 
+    def test_get_required_entities_collects_dependencies(self):
+        """Test collecting all dependencies for a target entity."""
+        cfg = ShapeShiftConfig(
+            cfg={
+                "entities": {
+                    "survey": {"depends_on": []},
+                    "site": {"depends_on": ["survey"]},
+                    "sample": {"depends_on": ["site"]},
+                }
+            }
+        )
+
+        state = ProcessState(config=cfg, table_store={})
+
+        assert state.get_required_entities("sample") == {"sample", "site", "survey"}
+
     def test_get_unmet_dependencies(self):
         """Test getting unmet dependencies for an entity."""
         config = ShapeShiftConfig(
@@ -504,6 +520,42 @@ class TestShapeShifter:
         with patch("src.normalizer.Dispatchers.get", return_value=None):
             with pytest.raises(ValueError, match="Unsupported dispatch mode: invalid"):
                 normalizer.store(target="output", mode="invalid")  # type: ignore
+
+    def test_initialize_process_state_for_target_entities(self):
+        """Targeted initialization should include dependencies for requested entities."""
+        cfg = ShapeShiftConfig(
+            cfg={
+                "entities": {
+                    "survey": {"depends_on": []},
+                    "site": {"depends_on": ["survey"]},
+                    "sample": {"depends_on": ["site"]},
+                }
+            }
+        )
+
+        normalizer = ShapeShifter(config=cfg, default_entity="survey", target_entities={"sample"})
+
+        assert normalizer.state.target_entities == {"sample", "site", "survey"}
+
+    @pytest.mark.asyncio
+    async def test_normalize_raises_for_invalid_columns(self):
+        """Normalize should fail fast when columns contain non-strings."""
+        cfg = ShapeShiftConfig(
+            cfg={
+                "entities": {
+                    "bad": {
+                        "depends_on": [],
+                        "columns": ["valid", 1],
+                        "keys": [],
+                    }
+                }
+            }
+        )
+
+        normalizer = ShapeShifter(config=cfg, default_entity="bad")
+
+        with pytest.raises(ValueError, match="Invalid columns configuration"):
+            await normalizer.normalize()
 
     def test_link_calls_link_entity(self):
         """Test that link() calls link_entity for all processed entities."""

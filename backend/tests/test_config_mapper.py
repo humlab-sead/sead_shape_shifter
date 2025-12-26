@@ -6,6 +6,7 @@ import pytest
 
 from backend.app.mappers.config_mapper import ConfigMapper
 from backend.app.models.config import ConfigMetadata, Configuration
+from backend.app.models.entity import AppendConfig, Entity, FilterConfig, ForeignKeyConfig, ForeignKeyConstraints, UnnestConfig
 from src.model import ShapeShiftConfig
 
 # pylint: disable=no-member
@@ -280,6 +281,22 @@ class TestDictToApiEntity:
         assert isinstance(result["foreign_keys"][0], dict)
         assert result["foreign_keys"][0]["entity"] == "sites"
 
+    def test_foreign_keys_with_key_field(self):
+        """Test foreign key dict uses key field for local and remote keys."""
+        entity_dict = {
+            "type": "data",
+            "keys": ["id"],
+            "foreign_keys": {"sample_fk": {"entity": "targets", "key": ["target_id"]}},
+        }
+
+        result = ConfigMapper._dict_to_api_entity("sample", entity_dict)
+
+        assert "foreign_keys" in result
+        foreign_key = result["foreign_keys"][0]
+        assert foreign_key["entity"] == "targets"
+        assert foreign_key["local_keys"] == ["target_id"]
+        assert foreign_key["remote_keys"] == ["target_id"]
+
     def test_all_fields_preserved(self):
         """Test all supported fields are preserved."""
         entity_dict = {
@@ -333,6 +350,58 @@ class TestApiEntityToDict:
 
         assert result["type"] == "data"
         assert result["keys"] == ["id"]
+
+    def test_pydantic_entity_conversion_strips_defaults(self):
+        """Test conversion strips API-only name and default flags while dumping nested models."""
+        entity = Entity(
+            name="sample_entity",
+            type="data",
+            keys=["id"],
+            columns=["name"],
+            foreign_keys=[
+                ForeignKeyConfig(
+                    entity="sites",
+                    local_keys=["site_id"],
+                    remote_keys=["site_id"],
+                    constraints=ForeignKeyConstraints(require_unique_left=True),
+                )
+            ],
+            filters=[FilterConfig(type="exists_in", entity="sites", column="site_id", remote_column="site_id")],
+            unnest=UnnestConfig(id_vars=["id"], value_vars=["name"], var_name="field", value_name="value"),
+            append=[AppendConfig(type="fixed", values=[["value"]])],
+            drop_duplicates=False,
+            drop_empty_rows=False,
+            check_column_names=True,
+        )
+
+        result = ConfigMapper._api_entity_to_dict(entity)
+
+        assert "name" not in result
+        assert isinstance(result["foreign_keys"][0], dict)
+        assert result["foreign_keys"][0]["constraints"]["require_unique_left"] is True
+        assert isinstance(result["filters"][0], dict)
+        assert isinstance(result["unnest"], dict)
+        assert isinstance(result["append"][0], dict)
+        assert "drop_duplicates" not in result
+        assert "drop_empty_rows" not in result
+        assert "check_column_names" not in result
+
+    def test_flags_preserved_when_truthy(self):
+        """Test conversion keeps explicit True/False flags for drop and column checks."""
+        entity = Entity(
+            name="another_entity",
+            type="data",
+            keys=["id"],
+            drop_duplicates=True,
+            drop_empty_rows=["col1"],
+            check_column_names=False,
+        )
+
+        result = ConfigMapper._api_entity_to_dict(entity)
+
+        assert result["drop_duplicates"] is True
+        assert result["drop_empty_rows"] == ["col1"]
+        assert result["check_column_names"] is False
 
 
 class TestRoundTripConversion:
