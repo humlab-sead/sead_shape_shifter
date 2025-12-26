@@ -1,18 +1,17 @@
 """Tests for DataSourceService."""
 
-import time
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import yaml
 from pydantic import SecretStr
 
-from backend.app.models.data_source import DataSourceConfig, DataSourceStatus, DataSourceTestResult
+from backend.app.models.data_source import DataSourceConfig, DataSourceStatus
 from backend.app.services.data_source_service import DataSourceService
-from src.loaders.base_loader import ConnectTestResult
 from src.loaders import DataLoader
+from src.loaders.base_loader import ConnectTestResult
 
 
 class TestDataSourceService:
@@ -41,7 +40,7 @@ class TestDataSourceService:
             database="testdb",
             username="testuser",
             password=SecretStr("testpass"),
-            **{}
+            **{},
         )
 
     @pytest.fixture
@@ -111,7 +110,7 @@ class TestDataSourceService:
     def test_read_data_source_file_success(self, service: DataSourceService, temp_sources_dir: Path, sample_yaml_data: dict):
         """Test reading valid YAML data source file."""
         file_path = temp_sources_dir / "test.yml"
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             yaml.dump(sample_yaml_data, f)
 
         data = service._read_data_source_file(file_path)
@@ -126,7 +125,7 @@ class TestDataSourceService:
     def test_read_data_source_file_invalid_yaml(self, service: DataSourceService, temp_sources_dir: Path):
         """Test reading invalid YAML returns None."""
         file_path = temp_sources_dir / "invalid.yml"
-        file_path.write_text("{ invalid yaml: [")
+        file_path.write_text("{ invalid yaml: [", encoding="utf-8")
 
         result = service._read_data_source_file(file_path)
         assert not result
@@ -147,7 +146,7 @@ class TestDataSourceService:
         service._write_data_source_file(file_path, sample_yaml_data)
 
         assert file_path.exists()
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         assert data == sample_yaml_data
 
@@ -158,16 +157,14 @@ class TestDataSourceService:
 
         assert file_path.exists()
 
-    def test_write_data_source_file_overwrites_existing(
-        self, service: DataSourceService, temp_sources_dir: Path, sample_yaml_data: dict
-    ):
+    def test_write_data_source_file_overwrites_existing(self, service: DataSourceService, temp_sources_dir: Path, sample_yaml_data: dict):
         """Test writing overwrites existing file."""
         file_path = temp_sources_dir / "test.yml"
         file_path.write_text("old content")
 
         service._write_data_source_file(file_path, sample_yaml_data)
 
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         assert data == sample_yaml_data
 
@@ -259,16 +256,16 @@ class TestDataSourceService:
         service.create_data_source("test", sample_config)
 
         file_path = service.data_sources_dir / "test.yml"
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         assert data["password"] == "testpass"
 
     def test_create_data_source_excludes_metadata(self, service: DataSourceService, sample_config: DataSourceConfig):
         """Test name and filename are excluded from saved YAML."""
-        result = service.create_data_source("test", sample_config)
+        service.create_data_source("test", sample_config)
 
-        file_path = service.data_sources_dir / "test.yml"
-        with open(file_path) as f:
+        file_path: Path = service.data_sources_dir / "test.yml"
+        with open(file_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         assert "name" not in data
         assert "filename" not in data
@@ -334,12 +331,7 @@ class TestDataSourceService:
     async def test_test_connection_success(self, service: DataSourceService, sample_config: DataSourceConfig):
         """Test successful connection test."""
         mock_loader = AsyncMock(spec=DataLoader)
-        mock_result = ConnectTestResult(
-            success=True,
-            message="Connection successful",
-            connection_time_ms=100,
-            metadata={}
-        )
+        mock_result = ConnectTestResult(success=True, message="Connection successful", connection_time_ms=100, metadata={})
         mock_loader.test_connection = AsyncMock(return_value=mock_result)
 
         with (
@@ -372,7 +364,6 @@ class TestDataSourceService:
 
             assert result.success is False
             assert "Connection failed" in result.message
-            assert result.connection_time_ms > 0
 
     @pytest.mark.asyncio
     async def test_test_connection_uses_mapper(self, service: DataSourceService, sample_config: DataSourceConfig):

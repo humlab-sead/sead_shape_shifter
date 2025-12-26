@@ -8,6 +8,8 @@ import pytest
 from src.link import link_entity, link_foreign_key
 from src.model import ForeignKeyConfig, ShapeShiftConfig
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def fk_config() -> ForeignKeyConfig:
@@ -104,7 +106,7 @@ def test_link_entity_returns_deferred_when_specification_defers(monkeypatch: pyt
             self.deferred = False
             self.error = ""
 
-        def is_satisfied_by(self, fk_cfg):
+        def is_satisfied_by(self, fk_cfg):  # pylint: disable=unused-argument
             self.deferred = True
             return True
 

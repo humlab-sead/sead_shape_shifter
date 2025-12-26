@@ -111,7 +111,7 @@ class ConfigurationService:
             return active_config
 
         # Load from file
-        file_path: Path = self.configurations_dir / f"{name}.yml"
+        file_path: Path = self.configurations_dir / (f"{name}.yml" if not name.endswith(".yml") else name)
 
         if not file_path.exists():
             raise ConfigurationNotFoundError(f"Configuration not found: {name}")
@@ -131,7 +131,7 @@ class ConfigurationService:
             config.metadata.file_path = str(file_path)
             config.metadata.created_at = file_path.stat().st_ctime
             config.metadata.modified_at = file_path.stat().st_mtime
-            config.metadata.entity_count = len(config.entities)
+            config.metadata.entity_count = len(config.entities or {})
             config.metadata.is_valid = True
 
             logger.info(f"Loaded configuration '{name}' with {len(config.entities)} entities")

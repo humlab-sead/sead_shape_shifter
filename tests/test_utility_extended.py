@@ -15,7 +15,6 @@ Tests cover functions that weren't previously tested:
 """
 
 import os
-from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, mock_open, patch
 
@@ -26,12 +25,15 @@ from src.utility import (
     create_db_uri,
     dotset,
     env2dict,
+    get_connection_uri,
     normalize_text,
     recursive_filter_dict,
     recursive_update,
     replace_env_vars,
     resolve_specification,
 )
+
+# pylint: disable=redefined-outer-name, unused-argument, unused-variable, no-member
 
 
 class TestNormalizeText:
@@ -299,8 +301,8 @@ class TestEnv2dict:
             result = env2dict("TEST", lower_key=True)
 
             assert "db" in result
-            assert result["db"]["host"] == "localhost"
-            assert result["db"]["port"] == "5432"
+            assert result["db"]["host"] == "localhost"  # type: ignore
+            assert result["db"]["port"] == "5432"  # type: ignore
 
     def test_env2dict_no_prefix_match(self):
         """Test when no environment variables match prefix."""
@@ -599,8 +601,6 @@ class TestGetConnectionUri:
             "dbname": "testdb",
         }
 
-        from src.utility import get_connection_uri
-
         uri = get_connection_uri(mock_conn)
 
         assert uri == "postgresql://testuser@localhost:5432/testdb"
@@ -615,8 +615,6 @@ class TestGetConnectionUri:
             "dbname": "production",
         }
 
-        from src.utility import get_connection_uri
-
-        uri = get_connection_uri(mock_conn)
+        uri: str = get_connection_uri(mock_conn)
 
         assert uri == "postgresql://admin@db.example.com:5433/production"

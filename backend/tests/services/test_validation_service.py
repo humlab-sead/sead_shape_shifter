@@ -6,7 +6,7 @@ from backend.app.models.validation import ValidationError
 from backend.app.services import validation_service as validation_service_module
 from backend.app.services.validation_service import ValidationService, get_validation_service
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 @pytest.fixture
