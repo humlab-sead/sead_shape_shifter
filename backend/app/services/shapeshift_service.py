@@ -109,7 +109,7 @@ class ShapeShiftService:
         entity_config: TableConfig = shapeshift_config.tables[entity_name]
 
         try:
-            result: PreviewResult = await self._preview_with_normalizer(
+            result: PreviewResult = await self._shapeshift(
                 config=shapeshift_config, entity_name=entity_name, entity_config=entity_config, limit=limit
             )
 
@@ -177,7 +177,7 @@ class ShapeShiftService:
 
         return shapeshift
 
-    async def _preview_with_normalizer(
+    async def _shapeshift(
         self,
         config: ShapeShiftConfig | str,
         entity_name: str,
