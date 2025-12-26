@@ -441,3 +441,4 @@ class TestCreateFixedTable:
         assert list(result.columns) == ["dimension_id", "dimension_name"]
         assert result["dimension_id"].tolist() == [1, 2, 3]
         assert result["dimension_name"].tolist() == ["Width", "Height", "Depth"]
+

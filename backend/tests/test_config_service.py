@@ -1,0 +1,530 @@
+"""Tests for ConfigurationService."""
+
+from pathlib import Path
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+import pytest
+import yaml
+
+from backend.app.models.config import ConfigMetadata, Configuration
+from backend.app.models.entity import Entity
+from backend.app.services.config_service import (
+    ConfigConflictError,
+    ConfigurationNotFoundError,
+    ConfigurationService,
+    ConfigurationServiceError,
+    EntityAlreadyExistsError,
+    EntityNotFoundError,
+    InvalidConfigurationError,
+)
+
+
+class TestConfigurationService:
+    """Test ConfigurationService for managing entity configurations."""
+
+    @pytest.fixture
+    def temp_config_dir(self, tmp_path: Path) -> Path:
+        """Create temporary configurations directory."""
+        config_dir = tmp_path / "configurations"
+        config_dir.mkdir()
+        return config_dir
+
+    @pytest.fixture
+    def service(self, temp_config_dir: Path) -> ConfigurationService:
+        """Create service instance with temporary directory."""
+        with (
+            patch("backend.app.services.config_service.settings") as mock_settings,
+            patch("backend.app.services.config_service.get_app_state_manager") as mock_state,
+        ):
+            mock_settings.CONFIGURATIONS_DIR = temp_config_dir
+            mock_state.return_value.update = MagicMock()
+            mock_state.return_value.activate = MagicMock()
+            mock_state.return_value.get_active_metadata = MagicMock(
+                return_value=ConfigMetadata(
+                    name="test",
+                    description="Test",
+                    version="1.0.0",
+                    file_path="test.yml",
+                    entity_count=0,
+                    created_at=0,
+                    modified_at=0,
+                    is_valid=True,
+                )
+            )
+
+            service = ConfigurationService()
+            return service
+
+    @pytest.fixture
+    def sample_config(self) -> Configuration:
+        """Create sample configuration."""
+        return Configuration(
+            entities={
+                "sample": {
+                    "source": "test_table",
+                    "columns": ["id", "name"],
+                }
+            },
+            options={},
+            metadata=ConfigMetadata(
+                name="test",
+                description="Test configuration",
+                version="1.0.0",
+                file_path="test.yml",
+                entity_count=1,
+                created_at=0,
+                modified_at=0,
+                is_valid=True,
+            ),
+        )
+
+    @pytest.fixture
+    def sample_yaml_dict(self) -> dict[str, Any]:
+        """Sample YAML dictionary for configuration."""
+        return {
+            "entities": {
+                "sample": {
+                    "source": "test_table",
+                    "columns": ["id", "name"],
+                }
+            },
+            "options": {},
+        }
+
+    # List configurations tests
+
+    def test_list_configurations_empty(self, service: ConfigurationService):
+        """Test listing with no configurations."""
+        configs = service.list_configurations()
+        assert configs == []
+
+    def test_list_configurations_with_files(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test listing existing configurations."""
+        (temp_config_dir / "config1.yml").write_text(yaml.dump(sample_yaml_dict))
+        (temp_config_dir / "config2.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        configs = service.list_configurations()
+        assert len(configs) == 2
+        assert all(isinstance(m, ConfigMetadata) for m in configs)
+
+    def test_list_configurations_sets_metadata(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test list sets correct metadata."""
+        file_path = temp_config_dir / "myconfig.yml"
+        file_path.write_text(yaml.dump(sample_yaml_dict))
+
+        configs = service.list_configurations()
+        assert len(configs) == 1
+        assert configs[0].name == "myconfig"
+        assert configs[0].entity_count == 1
+        assert configs[0].created_at > 0
+        assert configs[0].modified_at > 0
+
+    def test_list_configurations_skips_non_yml(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test list ignores non-YAML files."""
+        (temp_config_dir / "valid.yml").write_text(yaml.dump(sample_yaml_dict))
+        (temp_config_dir / "readme.txt").write_text("not yaml")
+
+        configs = service.list_configurations()
+        assert len(configs) == 1
+
+    def test_list_configurations_validates_files(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test list sets is_valid based on validation."""
+        (temp_config_dir / "valid.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        configs = service.list_configurations()
+        assert len(configs) == 1
+        # is_valid should be set (True or False depending on validation)
+        assert isinstance(configs[0].is_valid, bool)
+
+    # Load configuration tests
+
+    def test_load_configuration_success(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test loading existing configuration."""
+        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        config = service.load_configuration("test")
+        assert config.metadata
+        assert config.metadata.name == "test"
+        assert "sample" in config.entities
+
+    def test_load_configuration_not_found(self, service: ConfigurationService):
+        """Test loading non-existent configuration raises error."""
+        with pytest.raises(ConfigurationNotFoundError, match="not found"):
+            service.load_configuration("nonexistent")
+
+    def test_load_configuration_with_yml_extension(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test loading with .yml extension."""
+        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        config = service.load_configuration("test.yml")
+        assert config.metadata
+        assert config.metadata.name == "test"
+
+    def test_load_configuration_invalid_yaml(self, service: ConfigurationService, temp_config_dir: Path):
+        """Test loading invalid YAML raises error."""
+        (temp_config_dir / "invalid.yml").write_text("{ invalid yaml")
+
+        with pytest.raises(InvalidConfigurationError):
+            service.load_configuration("invalid")
+
+    def test_load_configuration_sets_metadata(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test load sets file metadata."""
+        file_path = temp_config_dir / "test.yml"
+        file_path.write_text(yaml.dump(sample_yaml_dict))
+
+        config = service.load_configuration("test")
+        assert config.metadata
+        assert config.metadata.file_path == str(file_path)
+        assert config.metadata.entity_count == 1
+
+    # Save configuration tests
+
+    def test_save_configuration_success(self, service: ConfigurationService, sample_config: Configuration):
+        """Test saving configuration."""
+        result = service.save_configuration(sample_config, create_backup=False)
+
+        assert result.metadata
+        assert result.metadata.name == "test"
+        file_path = service.configurations_dir / "test.yml"
+        assert file_path.exists()
+
+    def test_save_configuration_updates_metadata(self, service: ConfigurationService, sample_config: Configuration):
+        """Test save updates metadata timestamps."""
+        assert sample_config.metadata
+        original_modified = sample_config.metadata.modified_at
+        config = service.save_configuration(sample_config, create_backup=False)
+
+        # Modified timestamp should be updated
+        assert config.metadata
+        assert config.metadata.modified_at >= original_modified
+
+    def test_save_configuration_without_metadata(self, service: ConfigurationService):
+        """Test save without metadata raises error."""
+        config = Configuration(entities={}, options={})
+
+        with pytest.raises(InvalidConfigurationError, match="must have metadata"):
+            service.save_configuration(config, create_backup=False)
+
+    def test_save_configuration_without_name(self, service: ConfigurationService):
+        """Test save without name raises error."""
+        config = Configuration(
+            entities={},
+            options={},
+            metadata=ConfigMetadata(
+                name="",
+                description="",
+                version="1.0.0",
+                file_path="",
+                entity_count=0,
+                created_at=0,
+                modified_at=0,
+                is_valid=True,
+            ),
+        )
+
+        with pytest.raises(InvalidConfigurationError, match="must have metadata"):
+            service.save_configuration(config, create_backup=False)
+
+    def test_save_configuration_creates_backup(self, service: ConfigurationService, temp_config_dir: Path, sample_config: Configuration):
+        """Test save with backup option."""
+        # Create existing file
+        file_path = temp_config_dir / "test.yml"
+        file_path.write_text("old content")
+
+        with patch("backend.app.services.config_service.YamlService") as mock_yaml:
+            mock_yaml.return_value.save = MagicMock()
+            service.yaml_service = mock_yaml.return_value
+
+            service.save_configuration(sample_config, create_backup=True)
+
+            # Verify backup was requested
+            mock_yaml.return_value.save.assert_called_once()
+            call_kwargs = mock_yaml.return_value.save.call_args[1]
+            assert call_kwargs.get("create_backup") is True
+
+    def test_save_configuration_updates_app_state(self, service: ConfigurationService, sample_config: Configuration):
+        """Test save updates ApplicationState."""
+        with patch("backend.app.services.config_service.get_app_state_manager") as mock_state:
+            mock_update = MagicMock()
+            mock_state.return_value.update = mock_update
+
+            service.save_configuration(sample_config, create_backup=False)
+
+            mock_update.assert_called_once_with(sample_config)
+
+    # Create configuration tests
+
+    def test_create_configuration_success(self, service: ConfigurationService):
+        """Test creating new configuration."""
+        config = service.create_configuration("newconfig")
+
+        assert config.metadata
+        assert config.metadata.name == "newconfig"
+        assert (service.configurations_dir / "newconfig.yml").exists()
+
+    def test_create_configuration_with_entities(self, service: ConfigurationService):
+        """Test creating configuration with initial entities."""
+        entities = {"entity1": {"source": "table1"}}
+        config = service.create_configuration("newconfig", entities=entities)
+
+        assert "entity1" in config.entities
+        assert config.metadata
+        assert config.metadata.entity_count == 1
+
+    def test_create_configuration_already_exists(self, service: ConfigurationService, temp_config_dir: Path):
+        """Test creating configuration that already exists raises error."""
+        (temp_config_dir / "existing.yml").touch()
+
+        with pytest.raises(ConfigConflictError, match="already exists"):
+            service.create_configuration("existing")
+
+    def test_create_configuration_sets_metadata(self, service: ConfigurationService):
+        """Test create sets proper metadata."""
+        config = service.create_configuration("test")
+        assert config.metadata
+        assert config.metadata.version == "1.0.0"
+        assert config.metadata.entity_count == 0
+        assert config.metadata.is_valid is True
+
+    # Delete configuration tests
+
+    def test_delete_configuration_success(self, service: ConfigurationService, temp_config_dir: Path):
+        """Test deleting existing configuration."""
+        file_path = temp_config_dir / "test.yml"
+        file_path.touch()
+
+        service.delete_configuration("test")
+        assert not file_path.exists()
+
+    def test_delete_configuration_not_found(self, service: ConfigurationService):
+        """Test deleting non-existent configuration raises error."""
+        with pytest.raises(ConfigurationNotFoundError, match="not found"):
+            service.delete_configuration("nonexistent")
+
+    def test_delete_configuration_creates_backup(self, service: ConfigurationService, temp_config_dir: Path):
+        """Test delete creates backup before removing file."""
+        file_path = temp_config_dir / "test.yml"
+        file_path.write_text("content")
+
+        with patch("backend.app.services.config_service.YamlService") as mock_yaml:
+            mock_backup = MagicMock()
+            mock_yaml.return_value.create_backup = mock_backup
+            service.yaml_service = mock_yaml.return_value
+
+            service.delete_configuration("test")
+
+            mock_backup.assert_called_once_with(file_path)
+
+    # Add entity tests
+
+    def test_add_entity_success(self, service: ConfigurationService, sample_config: Configuration):
+        """Test adding entity to configuration."""
+        entity = Entity(source="new_table", name="new_entity", type="data", columns=["id", "name"])
+        config = service.add_entity(sample_config, "new_entity", entity)
+
+        assert "new_entity" in config.entities
+        assert config.entities["new_entity"]["source"] == "new_table"
+
+    def test_add_entity_already_exists(self, service: ConfigurationService, sample_config: Configuration):
+        """Test adding duplicate entity raises error."""
+        entity = Entity(source="table", name="sample", type="data")
+
+        with pytest.raises(EntityAlreadyExistsError, match="already exists"):
+            service.add_entity(sample_config, "sample", entity)
+
+    def test_add_entity_serializes_model(self, service: ConfigurationService, sample_config: Configuration):
+        """Test entity is serialized as dict."""
+        entity = Entity(source="table", name="new", type="data", columns=["id"])
+        config = service.add_entity(sample_config, "new", entity)
+
+        assert isinstance(config.entities["new"], dict)
+
+    # Update entity tests
+
+    def test_update_entity_success(self, service: ConfigurationService, sample_config: Configuration):
+        """Test updating existing entity."""
+        entity = Entity(source="updated_table", name="sample", type="data", columns=["id", "name", "value"])
+        config = service.update_entity(sample_config, "sample", entity)
+
+        assert config.entities["sample"]["source"] == "updated_table"
+        assert len(config.entities["sample"]["columns"]) == 3
+
+    def test_update_entity_not_found(self, service: ConfigurationService, sample_config: Configuration):
+        """Test updating non-existent entity raises error."""
+        entity = Entity(source="table", name="new", type="data", columns=[])
+
+        with pytest.raises(EntityNotFoundError, match="not found"):
+            service.update_entity(sample_config, "nonexistent", entity)
+
+    # Delete entity tests
+
+    def test_delete_entity_success(self, service: ConfigurationService, sample_config: Configuration):
+        """Test deleting entity from configuration."""
+        config = service.delete_entity(sample_config, "sample")
+
+        assert "sample" not in config.entities
+
+    def test_delete_entity_not_found(self, service: ConfigurationService, sample_config: Configuration):
+        """Test deleting non-existent entity raises error."""
+        with pytest.raises(EntityNotFoundError, match="not found"):
+            service.delete_entity(sample_config, "nonexistent")
+
+    # Get entity tests
+
+    def test_get_entity_success(self, service: ConfigurationService, sample_config: Configuration):
+        """Test getting entity from configuration."""
+        entity = service.get_entity(sample_config, "sample")
+
+        assert entity["source"] == "test_table"
+        assert "columns" in entity
+
+    def test_get_entity_not_found(self, service: ConfigurationService, sample_config: Configuration):
+        """Test getting non-existent entity raises error."""
+        with pytest.raises(EntityNotFoundError, match="not found"):
+            service.get_entity(sample_config, "nonexistent")
+
+    # Entity operations by name tests
+
+    def test_add_entity_by_name(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test adding entity by configuration name."""
+        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        entity_data = {"source": "new_table", "columns": ["id"]}
+        service.add_entity_by_name("test", "new_entity", entity_data)
+
+        config = service.load_configuration("test")
+        assert "new_entity" in config.entities
+
+    def test_add_entity_by_name_already_exists(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test adding duplicate entity by name raises error."""
+        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        with pytest.raises(EntityAlreadyExistsError):
+            service.add_entity_by_name("test", "sample", {"source": "table"})
+
+    def test_update_entity_by_name(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test updating entity by configuration name."""
+        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        entity_data = {"source": "updated_table", "columns": ["id", "name"]}
+        service.update_entity_by_name("test", "sample", entity_data)
+
+        config = service.load_configuration("test")
+        assert config.entities["sample"]["source"] == "updated_table"
+
+    def test_update_entity_by_name_not_found(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test updating non-existent entity by name raises error."""
+        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        with pytest.raises(EntityNotFoundError):
+            service.update_entity_by_name("test", "nonexistent", {"source": "table"})
+
+    def test_delete_entity_by_name(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test deleting entity by configuration name."""
+        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        service.delete_entity_by_name("test", "sample")
+
+        config = service.load_configuration("test")
+        assert "sample" not in config.entities
+
+    def test_delete_entity_by_name_not_found(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test deleting non-existent entity by name raises error."""
+        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        with pytest.raises(EntityNotFoundError):
+            service.delete_entity_by_name("test", "nonexistent")
+
+    def test_get_entity_by_name(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test getting entity by configuration name."""
+        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        entity = service.get_entity_by_name("test", "sample")
+        assert entity["source"] == "test_table"
+
+    def test_get_entity_by_name_not_found(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test getting non-existent entity by name raises error."""
+        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        with pytest.raises(EntityNotFoundError):
+            service.get_entity_by_name("test", "nonexistent")
+
+    # Activate configuration tests
+
+    def test_activate_configuration(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
+        """Test activating configuration."""
+        (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        with patch("backend.app.services.config_service.get_app_state_manager") as mock_state:
+            mock_activate = MagicMock()
+            mock_state.return_value.activate = mock_activate
+
+            config = service.activate_configuration("test")
+
+            mock_activate.assert_called_once()
+            assert config.metadata.name == "test"
+
+    def test_activate_configuration_not_found(self, service: ConfigurationService):
+        """Test activating non-existent configuration raises error."""
+        with pytest.raises(ConfigurationNotFoundError):
+            service.activate_configuration("nonexistent")
+
+    # Version check tests
+
+    def test_save_with_version_check_success(self, service: ConfigurationService, sample_config: Configuration):
+        """Test save with matching version."""
+        with patch("backend.app.services.config_service.get_app_state_manager") as mock_state:
+            mock_state.return_value.get_active_metadata = MagicMock(
+                return_value=ConfigMetadata(
+                    name="test",
+                    description="Test",
+                    version="1.0.0",
+                    file_path="test.yml",
+                    entity_count=0,
+                    created_at=0,
+                    modified_at=0,
+                    is_valid=True,
+                )
+            )
+
+            config = service.save_with_version_check(sample_config, "1.0.0", create_backup=False)
+            assert config.metadata
+            assert config.metadata.name == "test"
+
+    def test_save_with_version_check_conflict(self, service: ConfigurationService, sample_config: Configuration):
+        """Test save with version mismatch raises conflict error."""
+        with patch("backend.app.services.config_service.get_app_state_manager") as mock_state:
+            mock_state.return_value.get_active_metadata = MagicMock(
+                return_value=ConfigMetadata(
+                    name="test",
+                    description="Test",
+                    version="2.0.0",
+                    file_path="test.yml",
+                    entity_count=0,
+                    created_at=0,
+                    modified_at=0,
+                    is_valid=True,
+                )
+            )
+
+            with pytest.raises(ConfigConflictError, match="modified by another user"):
+                service.save_with_version_check(sample_config, "1.0.0")
+
+    # Singleton instance tests
+
+    def test_get_config_service_singleton(self):
+        """Test get_config_service returns singleton instance."""
+        from backend.app.services.config_service import get_config_service
+
+        with (
+            patch("backend.app.services.config_service.get_settings") as mock_settings,
+            patch("backend.app.services.config_service.get_app_state_manager") as mock_state,
+        ):
+            mock_settings.return_value.configurations_dir = Path("/tmp/configs")
+            mock_state.return_value.update = MagicMock()
+
+            service1 = get_config_service()
+            service2 = get_config_service()
+
+            assert service1 is service2

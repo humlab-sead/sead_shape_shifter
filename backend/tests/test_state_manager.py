@@ -10,6 +10,7 @@ import pytest
 import backend.app.core.state_manager as sm
 from backend.app.core.state_manager import (
     ApplicationState,
+    ApplicationStateManager,
     ConfigSession,
     get_app_state,
     init_app_state,
@@ -39,6 +40,18 @@ def sample_config() -> Configuration:
         entities={},
         options={},
     )
+
+
+@pytest.fixture
+def reset_singletons():
+    """Reset module-level singletons before and after a test."""
+    original_state = sm._app_state
+    original_manager = sm._app_state_manager
+    sm._app_state = None
+    sm._app_state_manager = None
+    yield
+    sm._app_state = original_state
+    sm._app_state_manager = original_manager
 
 
 class TestConfigSession:
@@ -435,3 +448,76 @@ class TestEdgeCases:
 
         assert app_state.get_version("config1") == 2
         assert app_state.get_version("config2") == 1
+
+
+class TestApplicationStateManagerHelpers:
+    """Test ApplicationStateManager convenience methods."""
+
+    def test_get_and_get_active(self, config_dir: Path, sample_config: Configuration, reset_singletons):
+        """Test manager returns active configs when singleton is initialized."""
+        sm._app_state = ApplicationState(config_dir)
+        manager = sm.get_app_state_manager()
+        assert sm._app_state is not None
+
+        sm._app_state.set_active_configuration(sample_config)
+        sm._app_state.mark_saved(sample_config.metadata.name)  # type: ignore[union-attr]
+
+        assert manager.get("test-config") is sample_config
+        assert manager.get_active() is sample_config
+
+    def test_update_only_applies_when_config_known(self, config_dir: Path, sample_config: Configuration, reset_singletons):
+        """Test update refreshes existing config but ignores unknown ones."""
+        sm._app_state = ApplicationState(config_dir)
+        manager = sm.get_app_state_manager()
+
+        manager.update(sample_config)
+        assert sm._app_state.get_configuration("test-config") is None  # type: ignore[union-attr]
+
+        sm._app_state.set_active_configuration(sample_config)  # type: ignore[union-attr]
+        updated_config = Configuration(
+            metadata=ConfigMetadata(name="test-config", entity_count=0),
+            entities={"updated": {"type": "data", "keys": ["id"]}},
+            options={"flag": True},
+        )
+
+        manager.update(updated_config)
+
+        assert sm._app_state.get_configuration("test-config") is updated_config  # type: ignore[union-attr]
+        assert sm._app_state.get_version("test-config") == 2  # type: ignore[union-attr]
+        assert sm._app_state.is_dirty("test-config") is False  # type: ignore[union-attr]
+        expected_entities = {"updated": {"type": "data", "keys": ["id"]}}
+        assert sm._app_state._active_configs["test-config"].entities == expected_entities  # type: ignore[attr-defined]
+
+    def test_activate_and_metadata(self, config_dir: Path, sample_config: Configuration, reset_singletons):
+        """Test activate sets active config and returns metadata."""
+        sm._app_state = ApplicationState(config_dir)
+        manager = sm.get_app_state_manager()
+
+        manager.activate(sample_config)
+
+        assert sm._app_state.get_active_configuration() is sample_config  # type: ignore[union-attr]
+        assert sm._app_state.is_dirty("test-config") is False  # type: ignore[union-attr]
+        active_metadata = manager.get_active_metadata()
+        assert active_metadata.name == "test-config"
+        assert active_metadata.entity_count == 0
+
+    def test_activate_without_name_raises(self, reset_singletons):
+        """Test activate raises when no name available."""
+        manager = sm.get_app_state_manager()
+        nameless_config = Configuration(metadata=None, entities={}, options={})
+
+        with pytest.raises(ValueError):
+            manager.activate(nameless_config)
+
+    def test_get_active_metadata_defaults_when_uninitialized(self, reset_singletons):
+        """Test metadata fallback when state is not initialized."""
+        manager = sm.get_app_state_manager()
+
+        metadata = manager.get_active_metadata()
+
+        assert metadata.name == ""
+        assert metadata.entity_count == 0
+
+    def test_is_dirty_handles_missing_state(self, reset_singletons):
+        """Test is_dirty safely handles missing app state."""
+        assert ApplicationStateManager.is_dirty("unknown") is False

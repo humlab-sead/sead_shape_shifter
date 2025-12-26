@@ -2,7 +2,9 @@
 
 import pytest
 
-from backend.app.services.validation_service import ValidationService
+from backend.app.models.validation import ValidationError
+from backend.app.services import validation_service as validation_service_module
+from backend.app.services.validation_service import ValidationService, get_validation_service
 
 # pylint: disable=redefined-outer-name
 
@@ -11,6 +13,15 @@ from backend.app.services.validation_service import ValidationService
 def validation_service():
     """Create ValidationService instance."""
     return ValidationService()
+
+
+@pytest.fixture
+def reset_validation_singleton():
+    """Reset validation service singleton between tests."""
+    original = validation_service_module._validation_service
+    validation_service_module._validation_service = None
+    yield
+    validation_service_module._validation_service = original
 
 
 class TestValidationServiceBasic:
@@ -269,3 +280,50 @@ class TestValidationServiceIntegration:
 
         assert result.is_valid is True
         assert result.error_count == 0
+
+
+class TestDataValidation:
+    """Tests for data-aware validation that depends on preview and data validators."""
+
+    @pytest.mark.asyncio
+    async def test_validate_configuration_data_groups_by_severity(self, monkeypatch: pytest.MonkeyPatch, reset_validation_singleton):
+        """Test data validation groups issues by severity and wires dependencies."""
+        captured: dict[str, object] = {}
+
+        class DummyPreviewService:
+            def __init__(self, config_service: object) -> None:
+                captured["config_service"] = config_service
+
+        class DummyDataValidationService:
+            def __init__(self, preview_service: object) -> None:
+                captured["preview_service"] = preview_service
+
+            async def validate_configuration(self, config_name: str, entity_names: list[str] | None):
+                captured["args"] = (config_name, entity_names)
+                return [
+                    ValidationError(severity="error", entity="a", field=None, message="err", code="E1"),
+                    ValidationError(severity="warning", entity="b", field=None, message="warn", code="W1"),
+                    ValidationError(severity="info", entity="c", field=None, message="info", code="I1"),
+                ]
+
+        monkeypatch.setattr(validation_service_module, "get_config_service", lambda: "config-service")
+        monkeypatch.setattr(validation_service_module, "PreviewService", DummyPreviewService)
+        monkeypatch.setattr(validation_service_module, "DataValidationService", DummyDataValidationService)
+
+        result = await ValidationService().validate_configuration_data("cfg-name", ["entity1"])
+
+        assert result.is_valid is False
+        assert result.error_count == 1
+        assert result.warning_count == 1
+        assert len(result.info) == 1
+        assert captured["args"] == ("cfg-name", ["entity1"])
+        assert captured["config_service"] == "config-service"
+        assert isinstance(captured["preview_service"], DummyPreviewService)
+
+    def test_get_validation_service_singleton(self, reset_validation_singleton):
+        """Test get_validation_service returns a singleton instance."""
+        first = get_validation_service()
+        second = get_validation_service()
+
+        assert isinstance(first, ValidationService)
+        assert first is second
