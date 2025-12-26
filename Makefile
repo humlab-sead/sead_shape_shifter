@@ -63,7 +63,7 @@ tidy:
 	@uv run black src tests backend/app backend/tests
 
 .PHONY: lint
-lint: tidy pylint check-imports
+lint: tidy pylint
 
 .PHONY: check-imports
 check-imports:
@@ -175,8 +175,11 @@ test-coverage:
 
 .PHONY: dead-code
 dead-code:
-	@uv run vulture src tests main.py
+	@uv run vulture src backend
 
+serve-coverage:
+	@python -m http.server --directory htmlcov 8080
+	
 
 SCHEMA_OPTS = --no-drop-table --not-null --default-values --no-not_empty --comments --indexes --relations
 BACKEND = postgres
