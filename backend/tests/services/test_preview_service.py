@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from backend.app.models.shapeshift import ColumnInfo, PreviewResult
-from backend.app.services.shapeshift_service import PreviewCache, PreviewService
+from backend.app.services.shapeshift_service import ShapeShiftCache, ShapeShiftService
 from src.model import ShapeShiftConfig, TableConfig
 
 # pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
@@ -23,9 +23,9 @@ def config_service() -> MagicMock:
 
 
 @pytest.fixture
-def preview_service(config_service: MagicMock) -> PreviewService:
+def preview_service(config_service: MagicMock) -> ShapeShiftService:
     """Create preview service instance."""
-    return PreviewService(config_service)
+    return ShapeShiftService(config_service)
 
 
 @pytest.fixture
@@ -88,13 +88,13 @@ class TestPreviewCache:
 
     def test_cache_miss(self):
         """Test cache miss returns None."""
-        cache = PreviewCache(ttl_seconds=60)
+        cache = ShapeShiftCache(ttl_seconds=60)
         result: PreviewResult | None = cache.get("config1", "entity1", 50)
         assert result is None
 
     def test_cache_hit(self):
         """Test cache hit returns cached result."""
-        cache = PreviewCache(ttl_seconds=60)
+        cache = ShapeShiftCache(ttl_seconds=60)
         preview_result = PreviewResult(
             entity_name="entity1",
             rows=[],
@@ -111,7 +111,7 @@ class TestPreviewCache:
 
     def test_cache_expiry(self):
         """Test cache entries expire after TTL."""
-        cache = PreviewCache(ttl_seconds=0)  # Immediate expiry
+        cache = ShapeShiftCache(ttl_seconds=0)  # Immediate expiry
         preview_result = PreviewResult(
             entity_name="entity1",
             rows=[],
@@ -128,7 +128,7 @@ class TestPreviewCache:
 
     def test_cache_invalidate_specific(self):
         """Test invalidating specific entity cache."""
-        cache = PreviewCache(ttl_seconds=60)
+        cache = ShapeShiftCache(ttl_seconds=60)
         preview1 = PreviewResult(entity_name="entity1", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100)
         preview2 = PreviewResult(entity_name="entity2", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100)
 
@@ -142,7 +142,7 @@ class TestPreviewCache:
 
     def test_cache_invalidate_all(self):
         """Test invalidating all cache entries for a config."""
-        cache = PreviewCache(ttl_seconds=60)
+        cache = ShapeShiftCache(ttl_seconds=60)
         preview1 = PreviewResult(entity_name="entity1", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100)
         preview2 = PreviewResult(entity_name="entity2", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100)
 
@@ -238,7 +238,7 @@ class TestPreviewService:
                 assert result.estimated_total_rows == 100
 
     @pytest.mark.asyncio
-    async def test_preview_with_transformations(self, preview_service: PreviewService, sample_config: ShapeShiftConfig):
+    async def test_preview_with_transformations(self, preview_service: ShapeShiftService, sample_config: ShapeShiftConfig):
         """Test preview detects applied transformations."""
         # Modify config to have filters and unnest
         config_with_transforms: ShapeShiftConfig = sample_config.clone()
@@ -271,7 +271,7 @@ class TestPreviewService:
 
     @pytest.mark.asyncio
     async def test_preview_with_dependencies(
-        self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame
+        self, preview_service: ShapeShiftService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame
     ):
         """Test preview loads dependencies correctly."""
         # Mock ApplicationState
@@ -295,7 +295,9 @@ class TestPreviewService:
                 assert "users" in result.dependencies_loaded
 
     @pytest.mark.asyncio
-    async def test_preview_caching(self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame):
+    async def test_preview_caching(
+        self, preview_service: ShapeShiftService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame
+    ):
         """Test preview results are cached."""
         # Mock ApplicationState
         mock_app_state = MagicMock()
@@ -325,7 +327,7 @@ class TestPreviewService:
 
     @pytest.mark.asyncio
     async def test_get_entity_sample(
-        self, preview_service: PreviewService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame
+        self, preview_service: ShapeShiftService, sample_config: ShapeShiftConfig, sample_dataframe: pd.DataFrame
     ):
         """Test get_entity_sample with higher limit."""
         # Mock ApplicationState
@@ -348,7 +350,7 @@ class TestPreviewService:
                 assert result.entity_name == "users"
                 assert result.total_rows_in_preview == 5  # Sample df only has 5 rows
 
-    def test_invalidate_cache(self, preview_service: PreviewService):
+    def test_invalidate_cache(self, preview_service: ShapeShiftService):
         """Test cache invalidation."""
         # Add something to cache
         preview_result = PreviewResult(entity_name="entity1", rows=[], columns=[], total_rows_in_preview=0, execution_time_ms=100)
@@ -363,7 +365,7 @@ class TestPreviewService:
         # Verify it's gone
         assert preview_service.cache.get("config1", "entity1", 50) is None
 
-    def test_build_column_info(self, preview_service: PreviewService, sample_dataframe: pd.DataFrame, sample_config: ShapeShiftConfig):
+    def test_build_column_info(self, preview_service: ShapeShiftService, sample_dataframe: pd.DataFrame, sample_config: ShapeShiftConfig):
         """Test _build_column_info correctly identifies column types."""
         entity_config: TableConfig = sample_config.get_table("users")
         columns: list[ColumnInfo] = preview_service._build_column_info(sample_dataframe, entity_config)

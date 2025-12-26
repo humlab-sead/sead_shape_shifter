@@ -1,4 +1,4 @@
-"""Tests for PreviewService (ShapeShift service)."""
+"""Tests for ShapeShiftService (ShapeShift service)."""
 
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from backend.app.models.shapeshift import ColumnInfo, PreviewResult
-from backend.app.services.shapeshift_service import PreviewCache, PreviewService
+from backend.app.services.shapeshift_service import ShapeShiftCache, ShapeShiftService
 from src.model import TableConfig
 
 # pylint: disable=redefined-outer-name, unused-argument
@@ -17,16 +17,16 @@ class TestPreviewCache:
     """Test PreviewCache for TTL-based caching."""
 
     @pytest.fixture
-    def cache(self) -> PreviewCache:
+    def cache(self) -> ShapeShiftCache:
         """Create cache with short TTL for testing."""
-        return PreviewCache(ttl_seconds=1)
+        return ShapeShiftCache(ttl_seconds=1)
 
-    def test_cache_miss_on_empty(self, cache: PreviewCache):
+    def test_cache_miss_on_empty(self, cache: ShapeShiftCache):
         """Test cache miss when cache is empty."""
         result = cache.get("config", "entity", 10)
         assert result is None
 
-    def test_cache_hit_after_set(self, cache: PreviewCache):
+    def test_cache_hit_after_set(self, cache: ShapeShiftCache):
         """Test cache hit after setting value."""
         preview = PreviewResult(
             entity_name="test",
@@ -50,7 +50,7 @@ class TestPreviewCache:
         assert result is not None
         assert result.entity_name == "test"
 
-    def test_cache_expiration(self, cache: PreviewCache):
+    def test_cache_expiration(self, cache: ShapeShiftCache):
         """Test cache entries expire after TTL."""
         preview = PreviewResult(
             entity_name="test",
@@ -72,7 +72,7 @@ class TestPreviewCache:
         result = cache.get("config", "entity", 10)
         assert result is None
 
-    def test_cache_invalidate_specific_entity(self, cache: PreviewCache):
+    def test_cache_invalidate_specific_entity(self, cache: ShapeShiftCache):
         """Test invalidating specific entity cache."""
         preview = PreviewResult(
             entity_name="test",
@@ -94,7 +94,7 @@ class TestPreviewCache:
         assert cache.get("config", "entity1", 10) is None
         assert cache.get("config", "entity2", 10) is not None
 
-    def test_cache_invalidate_all_entities(self, cache: PreviewCache):
+    def test_cache_invalidate_all_entities(self, cache: ShapeShiftCache):
         """Test invalidating all entities for a config."""
         preview = PreviewResult(
             entity_name="test",
@@ -116,7 +116,7 @@ class TestPreviewCache:
         assert cache.get("config", "entity1", 10) is None
         assert cache.get("config", "entity2", 10) is None
 
-    def test_cache_key_generation(self, cache: PreviewCache):
+    def test_cache_key_generation(self, cache: ShapeShiftCache):
         """Test cache key is generated correctly."""
         key1 = cache._generate_key("config1", "entity1", 10)
         key2 = cache._generate_key("config1", "entity2", 10)
@@ -126,7 +126,7 @@ class TestPreviewCache:
         assert key1 != key3
         assert key2 != key3
 
-    def test_cache_isolation_between_configs(self, cache: PreviewCache):
+    def test_cache_isolation_between_configs(self, cache: ShapeShiftCache):
         """Test cache entries are isolated by config name."""
         preview1 = PreviewResult(
             entity_name="entity1",
@@ -163,7 +163,7 @@ class TestPreviewCache:
 
 
 class TestPreviewService:
-    """Test PreviewService for entity data preview."""
+    """Test ShapeShiftService for entity data preview."""
 
     @pytest.fixture
     def mock_config_service(self) -> MagicMock:
@@ -173,9 +173,9 @@ class TestPreviewService:
         return service
 
     @pytest.fixture
-    def service(self, mock_config_service: MagicMock) -> PreviewService:
-        """Create PreviewService instance."""
-        return PreviewService(config_service=mock_config_service)
+    def service(self, mock_config_service: MagicMock) -> ShapeShiftService:
+        """Create ShapeShiftService instance."""
+        return ShapeShiftService(config_service=mock_config_service)
 
     @pytest.fixture
     def sample_entity_config(self) -> TableConfig:
@@ -198,7 +198,7 @@ class TestPreviewService:
 
     @pytest.mark.asyncio
     async def test_preview_entity_success(
-        self, service: PreviewService, mock_config_service: MagicMock, sample_entity_config: TableConfig, sample_dataframe: pd.DataFrame
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_entity_config: TableConfig, sample_dataframe: pd.DataFrame
     ):
         """Test successful entity preview."""
         # Mock ShapeShifter
@@ -228,7 +228,7 @@ class TestPreviewService:
 
     @pytest.mark.asyncio
     async def test_preview_entity_cache_hit(
-        self, service: PreviewService, mock_config_service: MagicMock, sample_entity_config: TableConfig, sample_dataframe: pd.DataFrame
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_entity_config: TableConfig, sample_dataframe: pd.DataFrame
     ):
         """Test preview returns cached result."""
         # Set up cache
@@ -255,7 +255,7 @@ class TestPreviewService:
             assert result.total_rows_in_preview == 1
 
     @pytest.mark.asyncio
-    async def test_preview_entity_entity_not_found(self, service: PreviewService, mock_config_service: MagicMock):
+    async def test_preview_entity_entity_not_found(self, service: ShapeShiftService, mock_config_service: MagicMock):
         """Test preview with non-existent entity raises error."""
         mock_api_config = MagicMock()
         mock_config_service.load_configuration = MagicMock(return_value=mock_api_config)
@@ -272,7 +272,7 @@ class TestPreviewService:
 
     @pytest.mark.asyncio
     async def test_preview_entity_applies_limit(
-        self, service: PreviewService, mock_config_service: MagicMock, sample_entity_config: TableConfig
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_entity_config: TableConfig
     ):
         """Test preview applies row limit."""
         large_df = pd.DataFrame({"id": range(100), "name": [f"User{i}" for i in range(100)]})
@@ -300,7 +300,7 @@ class TestPreviewService:
 
     @pytest.mark.asyncio
     async def test_preview_entity_with_dependencies(
-        self, service: PreviewService, mock_config_service: MagicMock, sample_dataframe: pd.DataFrame
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_dataframe: pd.DataFrame
     ):
         """Test preview detects entity dependencies."""
         cfg = {
@@ -336,7 +336,7 @@ class TestPreviewService:
 
     @pytest.mark.asyncio
     async def test_preview_entity_normalizer_error(
-        self, service: PreviewService, mock_config_service: MagicMock, sample_entity_config: TableConfig
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_entity_config: TableConfig
     ):
         """Test preview handles normalizer errors."""
         mock_normalizer = MagicMock()
@@ -359,7 +359,7 @@ class TestPreviewService:
 
     # Build column info tests
 
-    def test_build_column_info_basic(self, service: PreviewService, sample_dataframe: pd.DataFrame, sample_entity_config: TableConfig):
+    def test_build_column_info_basic(self, service: ShapeShiftService, sample_dataframe: pd.DataFrame, sample_entity_config: TableConfig):
         """Test building column info from DataFrame."""
         columns = service._build_column_info(sample_dataframe, sample_entity_config)
 
@@ -369,7 +369,7 @@ class TestPreviewService:
         assert columns[1].name == "name"
         assert columns[1].is_key is False
 
-    def test_build_column_info_nullable(self, service: PreviewService, sample_entity_config: TableConfig):
+    def test_build_column_info_nullable(self, service: ShapeShiftService, sample_entity_config: TableConfig):
         """Test nullable column detection."""
         df = pd.DataFrame({"id": [1, 2], "name": ["Alice", None]})
         columns = service._build_column_info(df, sample_entity_config)
@@ -380,7 +380,7 @@ class TestPreviewService:
         assert id_col.nullable is False
         assert name_col.nullable is True
 
-    def test_build_column_info_data_types(self, service: PreviewService):
+    def test_build_column_info_data_types(self, service: ShapeShiftService):
         """Test data type detection."""
         df = pd.DataFrame({"int_col": [1, 2], "float_col": [1.5, 2.5], "str_col": ["a", "b"], "bool_col": [True, False]})
 
@@ -398,7 +398,7 @@ class TestPreviewService:
 
     @pytest.mark.asyncio
     async def test_get_entity_sample_default_limit(
-        self, service: PreviewService, mock_config_service: MagicMock, sample_entity_config: TableConfig, sample_dataframe: pd.DataFrame
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_entity_config: TableConfig, sample_dataframe: pd.DataFrame
     ):
         """Test get_entity_sample uses default limit of 100."""
         mock_normalizer = MagicMock()
@@ -423,7 +423,7 @@ class TestPreviewService:
 
     @pytest.mark.asyncio
     async def test_get_entity_sample_clamps_limit(
-        self, service: PreviewService, mock_config_service: MagicMock, sample_entity_config: TableConfig
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_entity_config: TableConfig
     ):
         """Test get_entity_sample clamps limit to max 1000."""
         # Create large dataframe with more than 1000 rows
@@ -452,7 +452,7 @@ class TestPreviewService:
 
     # Cache invalidation tests
 
-    def test_invalidate_cache_specific_entity(self, service: PreviewService):
+    def test_invalidate_cache_specific_entity(self, service: ShapeShiftService):
         """Test invalidating cache for specific entity."""
         # Pre-populate cache
         preview = PreviewResult(
@@ -474,7 +474,7 @@ class TestPreviewService:
         assert service.cache.get("config", "entity1", 10) is None
         assert service.cache.get("config", "entity2", 10) is not None
 
-    def test_invalidate_cache_all_entities(self, service: PreviewService):
+    def test_invalidate_cache_all_entities(self, service: ShapeShiftService):
         """Test invalidating all entities for a config."""
         preview = PreviewResult(
             entity_name="test",
@@ -498,7 +498,7 @@ class TestPreviewService:
     # ShapeShift config loading tests
 
     @pytest.mark.asyncio
-    async def test_get_shapeshift_config_from_app_state(self, service: PreviewService):
+    async def test_get_shapeshift_config_from_app_state(self, service: ShapeShiftService):
         """Test loading ShapeShift config from ApplicationState."""
         mock_api_config = MagicMock()
 
@@ -518,7 +518,7 @@ class TestPreviewService:
             mock_state.return_value.get_configuration.assert_called_once_with("test_config")
 
     @pytest.mark.asyncio
-    async def test_get_shapeshift_config_from_disk(self, service: PreviewService, mock_config_service: MagicMock):
+    async def test_get_shapeshift_config_from_disk(self, service: ShapeShiftService, mock_config_service: MagicMock):
         """Test loading ShapeShift config from disk when not in app state."""
         mock_api_config = MagicMock()
         mock_config_service.load_configuration = MagicMock(return_value=mock_api_config)
@@ -538,7 +538,7 @@ class TestPreviewService:
             mock_config_service.load_configuration.assert_called_once_with("test_config")
 
     @pytest.mark.asyncio
-    async def test_get_shapeshift_config_caching(self, service: PreviewService):
+    async def test_get_shapeshift_config_caching(self, service: ShapeShiftService):
         """Test ShapeShift config is cached."""
         mock_api_config = MagicMock()
 
@@ -562,7 +562,7 @@ class TestPreviewService:
             assert mock_state.return_value.get_configuration.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_get_shapeshift_config_version_tracking(self, service: PreviewService):
+    async def test_get_shapeshift_config_version_tracking(self, service: ShapeShiftService):
         """Test config cache is invalidated when version changes."""
         mock_api_config = MagicMock()
 

@@ -24,7 +24,7 @@ from backend.app.models import (
     ReconciliationSource,
 )
 from backend.app.models.shapeshift import PreviewResult
-from backend.app.services import ConfigurationService, PreviewService
+from backend.app.services import ConfigurationService, ShapeShiftService
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.loaders import DataLoader, DataLoaders
 from src.model import DataSourceConfig, ShapeShiftConfig, TableConfig
@@ -36,7 +36,7 @@ class ReconciliationSourceResolver(abc.ABC):
 
         self.config_name: str = config_name
         self.config_service: ConfigurationService = config_service
-        self.preview_service: PreviewService = PreviewService(config_service)
+        self.preview_service: ShapeShiftService = ShapeShiftService(config_service)
 
         self.api_config: Configuration = self.config_service.load_configuration(config_name)
 

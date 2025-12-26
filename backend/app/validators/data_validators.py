@@ -12,13 +12,13 @@ from backend.app.models.validation import (
     ValidationPriority,
 )
 from backend.app.services.config_service import ConfigurationService
-from backend.app.services.shapeshift_service import PreviewService
+from backend.app.services.shapeshift_service import ShapeShiftService
 
 
 class ColumnExistsValidator:
     """Validate that configured columns actually exist in the data."""
 
-    def __init__(self, preview_service: PreviewService):
+    def __init__(self, preview_service: ShapeShiftService):
         """Initialize validator with preview service for data sampling."""
         self.preview_service = preview_service
 
@@ -96,7 +96,7 @@ class ColumnExistsValidator:
 class NaturalKeyUniquenessValidator:
     """Validate that natural keys are actually unique in the data."""
 
-    def __init__(self, preview_service: PreviewService):
+    def __init__(self, preview_service: ShapeShiftService):
         """Initialize validator with preview service for data sampling."""
         self.preview_service = preview_service
 
@@ -185,7 +185,7 @@ class NaturalKeyUniquenessValidator:
 class NonEmptyResultValidator:
     """Validate that data source returns at least one row."""
 
-    def __init__(self, preview_service: PreviewService):
+    def __init__(self, preview_service: ShapeShiftService):
         """Initialize validator with preview service for data sampling."""
         self.preview_service = preview_service
 
@@ -268,7 +268,7 @@ class ForeignKeyDataValidator:
             return errors
 
         config_service = ConfigurationService()
-        preview_service = PreviewService(config_service)
+        preview_service = ShapeShiftService(config_service)
 
         try:
             # Load sample data for this entity
@@ -405,7 +405,7 @@ class DataTypeCompatibilityValidator:
             return errors
 
         config_service = ConfigurationService()
-        preview_service = PreviewService(config_service)
+        preview_service = ShapeShiftService(config_service)
 
         try:
             # Load sample data for this entity
@@ -494,7 +494,7 @@ class DataTypeCompatibilityValidator:
 class DataValidationService:
     """Service to run all data validators."""
 
-    def __init__(self, preview_service: PreviewService):
+    def __init__(self, preview_service: ShapeShiftService):
         """Initialize data validation service."""
         self.preview_service = preview_service
         self.validators = [
