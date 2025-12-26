@@ -7,12 +7,10 @@ import contextlib
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from re import A
 from uuid import UUID, uuid4
 
 from loguru import logger
 
-import app
 from backend.app.models.config import ConfigMetadata, Configuration
 
 
@@ -215,16 +213,14 @@ class ApplicationStateManager:
 
     def get(self, name: str) -> Configuration | None:
         """Load active configuration from ApplicationState if available."""
-        try:
+        with contextlib.suppress(RuntimeError):
             if not get_app_state():
                 return None
             config: Configuration | None = get_app_state().get_configuration(name)
             if config:
                 logger.debug(f"Loading active configuration '{name}' from ApplicationState")
                 return config
-        except RuntimeError:
-            # ApplicationState not initialized (e.g., in tests)
-            return None
+        return None
 
     def get_active(self) -> Configuration | None:
         with contextlib.suppress(RuntimeError):
@@ -239,10 +235,10 @@ class ApplicationStateManager:
         with contextlib.suppress(RuntimeError):
 
             if not config.metadata:
-                return None
+                return
 
             if not get_app_state():
-                return None
+                return
 
             app_state: ApplicationState = get_app_state()
 
@@ -288,7 +284,7 @@ _app_state_manager: ApplicationStateManager | None = None  # pylint: disable=inv
 
 def get_app_state_manager() -> ApplicationStateManager:
     """Get the application state singleton."""
-    global _app_state_manager
+    global _app_state_manager  # pylint: disable=global-statement
     if _app_state_manager is None:
         _app_state_manager = ApplicationStateManager()
     return _app_state_manager
