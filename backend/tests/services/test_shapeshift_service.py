@@ -11,6 +11,12 @@ from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.shapeshift_service import PreviewResultBuilder, ShapeShiftCache, ShapeShiftService
 from src.model import ShapeShiftConfig, TableConfig
 
+
+from backend.app.services.shapeshift_service import ShapeShiftCache, ShapeShiftService
+
+# pylint: disable=redefined-outer-name, unused-argument
+
+
 # pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
 
 
@@ -406,3 +412,318 @@ class TestShapeShiftService:
         # Check dependencies
         assert result.has_dependencies is True
         assert "orders" in result.dependencies_loaded
+
+
+@pytest.mark.skip(reason="These tests must be consolidated with above tests!")
+class TestPreviewService:
+    """Test ShapeShiftService for entity data preview."""
+
+    @pytest.fixture
+    def mock_config_service(self) -> MagicMock:
+        """Create mock ConfigurationService."""
+        service = MagicMock()
+        service.load_configuration = MagicMock()
+        return service
+
+    @pytest.fixture
+    def service(self, mock_config_service: MagicMock) -> ShapeShiftService:
+        """Create ShapeShiftService instance."""
+        return ShapeShiftService(config_service=mock_config_service)
+
+    @pytest.fixture
+    def sample_entity_config(self) -> TableConfig:
+        """Create sample entity configuration."""
+        cfg = {
+            "test_entity": {
+                "source": "test_table",
+                "columns": ["id", "name"],
+                "keys": ["id"],
+            }
+        }
+        return TableConfig(cfg=cfg, entity_name="test_entity")
+
+    @pytest.fixture
+    def sample_dataframe(self) -> pd.DataFrame:
+        """Create sample DataFrame."""
+        return pd.DataFrame({"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"]})
+
+    # Preview entity tests
+
+    @pytest.mark.asyncio
+    async def test_preview_entity_success(
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_entity_config: TableConfig, sample_dataframe: pd.DataFrame
+    ):
+        """Test successful entity preview."""
+        # Mock ShapeShifter
+        mock_normalizer = MagicMock()
+        mock_normalizer.table_store = {"test_entity": sample_dataframe}
+        mock_normalizer.normalize = AsyncMock()
+
+        # Mock config loading
+        mock_api_config = MagicMock()
+        mock_config_service.load_configuration = MagicMock(return_value=mock_api_config)
+
+        with (
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
+            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
+        ):
+            mock_shifter.return_value = mock_normalizer
+            mock_mapper.to_core_dict = MagicMock(return_value={})
+            mock_cfg.return_value.tables = {"test_entity": sample_entity_config}
+
+            result = await service.preview_entity("test_config", "test_entity", limit=10)
+
+            assert result.entity_name == "test_entity"
+            assert result.total_rows_in_preview == 3
+            assert len(result.rows) == 3
+            assert result.cache_hit is False
+
+    @pytest.mark.asyncio
+    async def test_preview_entity_entity_not_found(self, service: ShapeShiftService, mock_config_service: MagicMock):
+        """Test preview with non-existent entity raises error."""
+        mock_api_config = MagicMock()
+        mock_config_service.load_configuration = MagicMock(return_value=mock_api_config)
+
+        with (
+            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
+        ):
+            mock_mapper.to_core_dict = MagicMock(return_value={})
+            mock_cfg.return_value.tables = {}
+
+            with pytest.raises(ValueError, match="Entity .* not found"):
+                await service.preview_entity("test_config", "nonexistent", limit=10)
+
+    @pytest.mark.asyncio
+    async def test_preview_entity_applies_limit(
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_entity_config: TableConfig
+    ):
+        """Test preview applies row limit."""
+        large_df = pd.DataFrame({"id": range(100), "name": [f"User{i}" for i in range(100)]})
+
+        mock_normalizer = MagicMock()
+        mock_normalizer.table_store = {"test_entity": large_df}
+        mock_normalizer.normalize = AsyncMock()
+
+        mock_api_config = MagicMock()
+        mock_config_service.load_configuration = MagicMock(return_value=mock_api_config)
+
+        with (
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
+            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
+        ):
+            mock_shifter.return_value = mock_normalizer
+            mock_mapper.to_core_dict = MagicMock(return_value={})
+            mock_cfg.return_value.tables = {"test_entity": sample_entity_config}
+
+            result = await service.preview_entity("test_config", "test_entity", limit=10)
+
+            assert result.total_rows_in_preview == 10
+            assert result.estimated_total_rows == 100
+
+    @pytest.mark.asyncio
+    async def test_preview_entity_with_dependencies(
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_dataframe: pd.DataFrame
+    ):
+        """Test preview detects entity dependencies."""
+        cfg = {
+            "test_entity": {
+                "source": "test_table",
+                "columns": ["id", "name"],
+                "keys": ["id"],
+                "depends_on": ["parent_entity"],
+            }
+        }
+        entity_config = TableConfig(cfg=cfg, entity_name="test_entity")
+
+        mock_normalizer = MagicMock()
+        mock_normalizer.table_store = {"test_entity": sample_dataframe}
+        mock_normalizer.normalize = AsyncMock()
+
+        mock_api_config = MagicMock()
+        mock_config_service.load_configuration = MagicMock(return_value=mock_api_config)
+
+        with (
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
+            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
+        ):
+            mock_shifter.return_value = mock_normalizer
+            mock_mapper.to_core_dict = MagicMock(return_value={})
+            mock_cfg.return_value.tables = {"test_entity": entity_config}
+
+            result = await service.preview_entity("test_config", "test_entity", limit=10)
+
+            assert result.has_dependencies is True
+            assert "parent_entity" in result.dependencies_loaded
+
+    @pytest.mark.asyncio
+    async def test_preview_entity_normalizer_error(
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_entity_config: TableConfig
+    ):
+        """Test preview handles normalizer errors."""
+        mock_normalizer = MagicMock()
+        mock_normalizer.normalize = AsyncMock(side_effect=RuntimeError("Normalization failed"))
+
+        mock_api_config = MagicMock()
+        mock_config_service.load_configuration = MagicMock(return_value=mock_api_config)
+
+        with (
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
+            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
+        ):
+            mock_shifter.return_value = mock_normalizer
+            mock_mapper.to_core_dict = MagicMock(return_value={})
+            mock_cfg.return_value.tables = {"test_entity": sample_entity_config}
+
+            with pytest.raises(RuntimeError, match="Normalization failed"):
+                await service.preview_entity("test_config", "test_entity", limit=10)
+
+    # Get entity sample tests
+
+    @pytest.mark.asyncio
+    async def test_get_entity_sample_default_limit(
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_entity_config: TableConfig, sample_dataframe: pd.DataFrame
+    ):
+        """Test get_entity_sample uses default limit of 100."""
+        mock_normalizer = MagicMock()
+        mock_normalizer.table_store = {"test_entity": sample_dataframe}
+        mock_normalizer.normalize = AsyncMock()
+
+        mock_api_config = MagicMock()
+        mock_config_service.load_configuration = MagicMock(return_value=mock_api_config)
+
+        with (
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
+            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
+        ):
+            mock_shifter.return_value = mock_normalizer
+            mock_mapper.to_core_dict = MagicMock(return_value={})
+            mock_cfg.return_value.tables = {"test_entity": sample_entity_config}
+
+            result = await service.get_entity_sample("test_config", "test_entity")
+
+            assert result.total_rows_in_preview <= 100
+
+    @pytest.mark.asyncio
+    async def test_get_entity_sample_clamps_limit(
+        self, service: ShapeShiftService, mock_config_service: MagicMock, sample_entity_config: TableConfig
+    ):
+        """Test get_entity_sample clamps limit to max 1000."""
+        # Create large dataframe with more than 1000 rows
+        large_df = pd.DataFrame({"id": range(2000), "name": [f"User{i}" for i in range(2000)]})
+
+        mock_normalizer = MagicMock()
+        mock_normalizer.table_store = {"test_entity": large_df}
+        mock_normalizer.normalize = AsyncMock()
+
+        # Mock ShapeShiftConfig with the entity
+        mock_shapeshift_config = MagicMock()
+        mock_shapeshift_config.tables = {"test_entity": sample_entity_config}
+
+        with (
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
+            patch.object(service, "_get_shapeshift_config", return_value=mock_shapeshift_config) as _,
+        ):
+            mock_shifter.return_value = mock_normalizer
+
+            # Request more than max
+            result = await service.get_entity_sample("test_config", "test_entity", limit=5000)
+
+            # Should be clamped to 1000
+            assert result.total_rows_in_preview == 1000
+            assert result.estimated_total_rows == 2000
+
+    @pytest.mark.asyncio
+    async def test_get_shapeshift_config_from_app_state(self, service: ShapeShiftService):
+        """Test loading ShapeShift config from ApplicationState."""
+        mock_api_config = MagicMock()
+
+        with (
+            patch("backend.app.services.shapeshift_service.get_app_state") as mock_state,
+            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
+        ):
+            mock_state.return_value.get_version = MagicMock(return_value=1)
+            mock_state.return_value.get_configuration = MagicMock(return_value=mock_api_config)
+            mock_mapper.to_core_dict = MagicMock(return_value={})
+            mock_cfg.return_value = MagicMock()
+
+            result = await service._get_shapeshift_config("test_config")
+
+            assert result is not None
+            mock_state.return_value.get_configuration.assert_called_once_with("test_config")
+
+    @pytest.mark.asyncio
+    async def test_get_shapeshift_config_from_disk(self, service: ShapeShiftService, mock_config_service: MagicMock):
+        """Test loading ShapeShift config from disk when not in app state."""
+        mock_api_config = MagicMock()
+        mock_config_service.load_configuration = MagicMock(return_value=mock_api_config)
+
+        with (
+            patch("backend.app.services.shapeshift_service.get_app_state") as mock_state,
+            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
+        ):
+            mock_state.side_effect = RuntimeError("Not initialized")
+            mock_mapper.to_core_dict = MagicMock(return_value={})
+            mock_cfg.return_value = MagicMock()
+
+            result = await service._get_shapeshift_config("test_config")
+
+            assert result is not None
+            mock_config_service.load_configuration.assert_called_once_with("test_config")
+
+    @pytest.mark.asyncio
+    async def test_get_shapeshift_config_caching(self, service: ShapeShiftService):
+        """Test ShapeShift config is cached."""
+        mock_api_config = MagicMock()
+
+        with (
+            patch("backend.app.services.shapeshift_service.get_app_state") as mock_state,
+            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
+        ):
+            mock_state.return_value.get_version = MagicMock(return_value=1)
+            mock_state.return_value.get_configuration = MagicMock(return_value=mock_api_config)
+            mock_mapper.to_core_dict = MagicMock(return_value={})
+            mock_cfg_instance = MagicMock()
+            mock_cfg.return_value = mock_cfg_instance
+
+            result1 = await service._get_shapeshift_config("test_config")
+            result2 = await service._get_shapeshift_config("test_config")
+
+            # Should return same cached instance
+            assert result1 is result2
+            # Should only load once
+            assert mock_state.return_value.get_configuration.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_get_shapeshift_config_version_tracking(self, service: ShapeShiftService):
+        """Test config cache is invalidated when version changes."""
+        mock_api_config = MagicMock()
+
+        with (
+            patch("backend.app.services.shapeshift_service.get_app_state") as mock_state,
+            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
+        ):
+            # First call with version 1
+            mock_state.return_value.get_version = MagicMock(return_value=1)
+            mock_state.return_value.get_configuration = MagicMock(return_value=mock_api_config)
+            mock_mapper.to_core_dict = MagicMock(return_value={})
+            mock_cfg.return_value = MagicMock()
+
+            await service._get_shapeshift_config("test_config")
+
+            # Second call with version 2
+            mock_state.return_value.get_version = MagicMock(return_value=2)
+
+            await service._get_shapeshift_config("test_config")
+
+            # Should reload due to version change
+            assert mock_state.return_value.get_configuration.call_count == 2
