@@ -75,9 +75,6 @@ from backend.app.services.dependency_service import (
     DependencyServiceError,
 )
 
-# Preview service
-from backend.app.services.shapeshift_service import PreviewCache, PreviewService
-
 # Query service
 from backend.app.services.query_service import (
     QueryExecutionError,
@@ -91,6 +88,9 @@ from backend.app.services.schema_service import (
     SchemaIntrospectionService,
     SchemaServiceError,
 )
+
+# Preview service
+from backend.app.services.shapeshift_service import PreviewCache, PreviewService
 
 # Suggestion service
 from backend.app.services.suggestion_service import SuggestionService

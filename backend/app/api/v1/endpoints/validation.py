@@ -5,16 +5,13 @@ from typing import Any
 from fastapi import APIRouter
 from loguru import logger
 
-from app.models.config import Configuration
-from app.models.fix import FixResult, FixSuggestion
-from app.services.config_service import ConfigurationService
-from app.services.dependency_service import DependencyGraph, DependencyService
-from app.services.validation_service import ValidationService
+from backend.app.models.config import Configuration
+from backend.app.models.fix import FixResult, FixSuggestion
 from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.auto_fix_service import AutoFixService
-from backend.app.services.config_service import get_config_service
-from backend.app.services.dependency_service import get_dependency_service
-from backend.app.services.validation_service import get_validation_service
+from backend.app.services.config_service import ConfigurationService, get_config_service
+from backend.app.services.dependency_service import DependencyGraph, DependencyService, get_dependency_service
+from backend.app.services.validation_service import ValidationService, get_validation_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
 
 router = APIRouter()
