@@ -16,7 +16,6 @@ from backend.app.models.data_source import (
     DataSourceConfig,
     DataSourceStatus,
     DataSourceTestResult,
-    DataSourceType,
 )
 from backend.app.services.data_source_service import DataSourceService
 
@@ -48,10 +47,8 @@ class TestListDataSources:
     def test_list_data_sources_success(self, client, mock_service):
         """Should return list of data sources."""
         mock_service.list_data_sources.return_value = [
-            DataSourceConfig(
-                name="sead", driver=DataSourceType.POSTGRESQL, host="localhost", port=5432, database="sead", username="user", **{}
-            ),
-            DataSourceConfig(name="arbodat", driver=DataSourceType.ACCESS, filename="arbodat.mdb", **{}),
+            DataSourceConfig(name="sead", driver="postgresql", host="localhost", port=5432, database="sead", username="user", **{}),
+            DataSourceConfig(name="arbodat", driver="access", filename="arbodat.mdb", **{}),
         ]
 
         response = client.get("/api/v1/data-sources")
@@ -90,7 +87,7 @@ class TestGetDataSource:
         """Should return specific data source."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             name="sead",
-            driver=DataSourceType.POSTGRESQL,
+            driver="postgresql",
             host="localhost",
             port=5432,
             database="sead",
@@ -126,7 +123,7 @@ class TestCreateDataSource:
         # Mock the created config that will be returned
         created_config = DataSourceConfig(
             name="new_db",
-            driver=DataSourceType.POSTGRESQL,
+            driver="postgresql",
             host="localhost",
             port=5432,
             database="newdb",
@@ -158,7 +155,7 @@ class TestCreateDataSource:
         # Mock that file already exists
         mock_service.get_data_source.return_value = DataSourceConfig(
             name="existing",
-            driver=DataSourceType.POSTGRESQL,
+            driver="postgresql",
             host="localhost",
             port=5432,
             database="db",
@@ -205,7 +202,7 @@ class TestUpdateDataSource:
         # Mock getting the existing data source
         mock_service.get_data_source.return_value = DataSourceConfig(
             name="sead",
-            driver=DataSourceType.POSTGRESQL,
+            driver="postgresql",
             host="localhost",
             port=5432,
             database="sead",
@@ -217,7 +214,7 @@ class TestUpdateDataSource:
         # Mock the update to return updated config
         updated_config = DataSourceConfig(
             name="sead",
-            driver=DataSourceType.POSTGRESQL,
+            driver="postgresql",
             host="newhost",
             port=5433,
             database="sead_updated",
@@ -265,7 +262,7 @@ class TestUpdateDataSource:
         """Should return 400 when update fails due to invalid configuration."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             name="sead",
-            driver=DataSourceType.POSTGRESQL,
+            driver="postgresql",
             host="localhost",
             port=5432,
             database="sead",
@@ -296,9 +293,7 @@ class TestDeleteDataSource:
     def test_delete_data_source_success(self, client, mock_service):
         """Should delete data source."""
 
-        mock_service.get_data_source.return_value = DataSourceConfig(
-            name="unused", driver=DataSourceType.CSV, filename="unused-datasource.yml", **{}
-        )
+        mock_service.get_data_source.return_value = DataSourceConfig(name="unused", driver="csv", filename="unused-datasource.yml", **{})
         mock_service.delete_data_source.return_value = None
 
         response = client.delete("/api/v1/data-sources/unused-datasource.yml")
@@ -322,7 +317,7 @@ class TestDeleteDataSource:
         """Should return 500 when service fails to delete."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             name="error_case",
-            driver=DataSourceType.POSTGRESQL,
+            driver="postgresql",
             host="localhost",
             port=5432,
             database="db",
@@ -345,7 +340,7 @@ class TestTestConnection:
         """Should test connection successfully."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             name="sead",
-            driver=DataSourceType.POSTGRESQL,
+            driver="postgresql",
             host="localhost",
             port=5432,
             database="sead",
@@ -376,7 +371,7 @@ class TestTestConnection:
         """Should return connection test failure."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             name="bad_db",
-            driver=DataSourceType.POSTGRESQL,
+            driver="postgresql",
             host="invalid-host",
             port=5432,
             database="db",
@@ -419,7 +414,7 @@ class TestGetStatus:
         """Should return data source status."""
         mock_service.get_data_source.return_value = DataSourceConfig(
             name="sead",
-            driver=DataSourceType.POSTGRESQL,
+            driver="postgresql",
             host="localhost",
             port=5432,
             database="sead",

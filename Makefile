@@ -63,7 +63,7 @@ tidy:
 	@uv run black src tests backend/app backend/tests
 
 .PHONY: lint
-lint: tidy pylint check-imports
+lint: tidy pylint
 
 .PHONY: check-imports
 check-imports:
@@ -75,6 +75,12 @@ check-imports:
 
 .PHONY: kill
 kill: backend-kill frontend-kill
+
+stop:
+	@echo "Stopping all processes..."
+	@lsof -ti:$(BACKEND_PORT) 2>/dev/null | xargs -r kill -9 || true
+	@lsof -ti:$(FRONTEND_PORT) 2>/dev/null | xargs -r kill -9 || true
+	@echo "Done."
 
 .PHONY: br
 br: backend-kill backend-run
@@ -94,6 +100,8 @@ backend-kill:
 	@lsof -t -i ':$(BACKEND_PORT)' | xargs -r kill -9
 	@echo "Killed all running servers."
 
+RELOAD_EXCLUDE="./docs,output,input,*.pyc,__pycache__/*,*.pyo,*~,./frontend/*,.venv/*,dist/*,.tox/*,*sqlite*,./tests/*,,*.csv"
+
 .PHONY: backend-run
 backend-run:
 	@echo "Starting backend server on http://localhost:$(BACKEND_PORT)"
@@ -102,8 +110,7 @@ backend-run:
 		export CONFIG_FILE=$$(pwd)/input/arbodat-database.yml; \
 	fi && \
 	PYTHONPATH=. uvicorn backend.app.main:app \
-		--reload  \
-		--reload-dir backend/app \
+		--reload --reload-exclude $(RELOAD_EXCLUDE) \
 		--log-level debug \
 		--host 0.0.0.0 --port $(BACKEND_PORT)
 
@@ -168,8 +175,11 @@ test-coverage:
 
 .PHONY: dead-code
 dead-code:
-	@uv run vulture src tests main.py
+	@uv run vulture src backend
 
+serve-coverage:
+	@python -m http.server --directory htmlcov 8080
+	
 
 SCHEMA_OPTS = --no-drop-table --not-null --default-values --no-not_empty --comments --indexes --relations
 BACKEND = postgres

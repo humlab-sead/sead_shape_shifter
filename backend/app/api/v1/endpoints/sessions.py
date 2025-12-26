@@ -1,5 +1,6 @@
 """Session management endpoints."""
 
+from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
@@ -49,19 +50,19 @@ async def create_session(
     """
 
     # Verify config file exists
-    config_path = app_state.config_dir / f"{request.config_name}.yml"
+    config_path: Path = app_state.config_dir / f"{request.config_name}.yml"
     if not config_path.exists():
         raise HTTPException(404, f"Configuration '{request.config_name}' not found")
 
     # Create session
-    session_id = await app_state.create_session(request.config_name, request.user_id)
-    session = await app_state.get_session(session_id)
+    session_id: UUID = await app_state.create_session(request.config_name, request.user_id)
+    session: ConfigSession | None = await app_state.get_session(session_id)
 
     if not session:
         raise HTTPException(500, "Failed to create session")
 
     # Load config into store (lazy loading)
-    app_state.config_store.load_config(request.config_name)
+    app_state.get_configuration(request.config_name)
 
     # Get concurrent session count
     active_sessions = await app_state.get_active_sessions(request.config_name)

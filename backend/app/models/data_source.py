@@ -1,39 +1,11 @@
 """Data source models for Phase 2 data-aware features."""
 
-from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from src.loaders.base_loader import ConnectTestResult
 from src.utility import replace_env_vars
-
-
-class DataSourceType(str, Enum):
-    """Supported data source types."""
-
-    POSTGRESQL = "postgresql"
-    POSTGRES = "postgres"  # Alias for postgresql
-    ACCESS = "access"
-    UCANACCESS = "ucanaccess"  # Alias for access
-    SQLITE = "sqlite"
-    CSV = "csv"
-
-    @classmethod
-    def normalize(cls, value: str) -> "DataSourceType":
-        """Normalize driver names to canonical form."""
-        mapping = {
-            "postgres": cls.POSTGRESQL,
-            "postgresql": cls.POSTGRESQL,
-            "access": cls.ACCESS,
-            "ucanaccess": cls.ACCESS,
-            "sqlite": cls.SQLITE,
-            "csv": cls.CSV,
-        }
-        normalized = mapping.get(value.lower())
-        if not normalized:
-            raise ValueError(f"Unsupported data source type: {value}")
-        return normalized
 
 
 class DataSourceConfig(BaseModel):
@@ -57,7 +29,7 @@ class DataSourceConfig(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
     name: str = Field(..., description="Unique identifier for this data source")
-    driver: DataSourceType = Field(..., description="Data source driver type")
+    driver: str = Field(..., description="Data source driver type")
 
     # Database connection fields (optional, used for PostgreSQL, SQLite)
     host: Optional[str] = Field(None, description="Database host")
@@ -82,12 +54,6 @@ class DataSourceConfig(BaseModel):
     # Metadata
     description: Optional[str] = Field(None, description="Human-readable description")
 
-    @field_validator("driver", mode="before")
-    @classmethod
-    def normalize_driver(cls, v: str) -> DataSourceType:
-        """Normalize driver name to canonical form."""
-        return DataSourceType.normalize(v)
-
     @property
     def effective_database(self) -> Optional[str]:
         """Get database name, checking both 'database' and 'dbname' fields."""
@@ -97,18 +63,6 @@ class DataSourceConfig(BaseModel):
     def effective_file_path(self) -> Optional[str]:
         """Get file path, checking both 'filename' and 'file_path' fields."""
         return self.filename or self.file_path
-
-    def get_loader_driver(self) -> str:
-        """Get the driver name for the existing loader system."""
-        mapping = {
-            DataSourceType.POSTGRESQL: "postgres",
-            DataSourceType.POSTGRES: "postgres",
-            DataSourceType.ACCESS: "ucanaccess",
-            DataSourceType.UCANACCESS: "ucanaccess",
-            DataSourceType.SQLITE: "sqlite",
-            DataSourceType.CSV: "csv",
-        }
-        return mapping[self.driver]
 
     def resolve_config_env_vars(self) -> "DataSourceConfig":
 

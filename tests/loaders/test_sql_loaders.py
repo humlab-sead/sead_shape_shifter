@@ -4,7 +4,7 @@ Tests for Database Loaders
 Tests the vendor-specific database introspection methods in database loaders.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
 import pytest
@@ -13,9 +13,10 @@ from src.loaders.sql_loaders import (
     CoreSchema,
     PostgresSqlLoader,
     SqliteLoader,
+    SqlLoader,
     UCanAccessSqlLoader,
 )
-from src.model import DataSourceConfig
+from src.model import DataSourceConfig, TableConfig
 
 # pylint: disable=redefined-outer-name, unused-argument, protected-access
 
@@ -362,9 +363,106 @@ class TestUCanAccessLoader:
                 assert schema.columns[2].nullable is True
                 assert schema.row_count == 25
 
+
+class DummySqlLoader(SqlLoader):
+    """Simple concrete SqlLoader for testing base behaviors."""
+
+    def create_db_uri(self) -> str:
+        return "sqlite://"
+
+    async def read_sql(self, sql: str) -> pd.DataFrame:
+        return pd.DataFrame()
+
+    async def get_tables(self, **kwargs):
+        return {}
+
+    async def get_table_schema(self, table_name: str, **kwargs):
+        return CoreSchema.TableSchema(table_name=table_name, columns=[], primary_keys=[], indexes=[], row_count=0, foreign_keys=[])
+
+    async def execute_scalar_sql(self, sql: str):
+        return 0
+
+
+class TestSqlLoaderCore:
+    """Tests for shared SqlLoader behavior."""
+
+    @pytest.fixture
+    def loader(self) -> DummySqlLoader:
+        """Provide a fresh dummy SQL loader."""
+        return DummySqlLoader(data_source=Mock())
+
     @pytest.mark.asyncio
-    async def test_get_table_schema_no_primary_keys(self, loader):
+    async def test_load_auto_detects_columns_and_adds_surrogate_id(self, monkeypatch: pytest.MonkeyPatch):
+        """SqlLoader.load should infer columns when configured and append surrogate id."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
+
+        sample_df = pd.DataFrame({"col_a": [1, 2], "col_b": ["x", "y"]})
+        monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
+
+        table_cfg = TableConfig(
+            cfg={
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "select * from t",
+                    "keys": [],
+                    "columns": [],
+                    "auto_detect_columns": True,
+                    "check_column_names": True,
+                    "surrogate_id": "sql_id",
+                }
+            },
+            entity_name="sql_entity",
+        )
+
+        with patch("src.loaders.sql_loaders.add_surrogate_id", side_effect=lambda df, col: df.assign(**{col: [10, 20]})):
+            result = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
+
+        assert list(table_cfg.columns) == ["col_a", "col_b"]
+        assert list(result.columns) == ["col_a", "col_b", "sql_id"]
+        assert result["sql_id"].tolist() == [10, 20]
+
+    @pytest.mark.asyncio
+    async def test_load_rejects_non_sql_entity(self):
+        """SqlLoader.load should raise for non-sql entities."""
+        loader = DummySqlLoader(data_source=Mock())
+        table_cfg = TableConfig(
+            cfg={"not_sql": {"type": "fixed", "query": "select 1", "columns": ["a"], "keys": []}},
+            entity_name="not_sql",
+        )
+
+        with pytest.raises(ValueError, match="is not configured as fixed SQL data"):
+            await loader.load("not_sql", table_cfg)
+
+    @pytest.mark.asyncio
+    async def test_test_connection_success_and_failure(self):
+        """Test connection returns informative results in both success and failure scenarios."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="ds", cfg={"driver": "postgres"}))
+
+        # Success path
+        tables = {"example": CoreSchema.TableMetadata(name="example", schema=None, row_count=0, comment=None)}
+        loader.get_tables = AsyncMock(return_value=tables)  # type: ignore[method-assign]
+        loader.load = AsyncMock(return_value=pd.DataFrame({"x": [1, 2]}))  # type: ignore[method-assign]
+
+        success_result = await loader.test_connection()
+
+        assert success_result.success is True
+        assert loader.get_tables.called
+        assert success_result.metadata["table_count"] == 1
+        assert "returned 2 rows" in success_result.message
+
+        # Failure path
+        failing_loader = DummySqlLoader(data_source=Mock())
+        failing_loader.get_tables = AsyncMock(side_effect=Exception("boom"))  # type: ignore[method-assign]
+
+        failure_result = await failing_loader.test_connection()
+
+        assert failure_result.success is False
+        assert "Connection failed" in failure_result.message
+
+    @pytest.mark.asyncio
+    async def test_get_table_schema_no_primary_keys(self):
         """Should handle tables without primary keys."""
+        loader = SqliteLoader(data_source=DataSourceConfig(name="sqlite", cfg={"driver": "sqlite"}))
         columns_data = pd.DataFrame(
             {
                 "COLUMN_NAME": ["Field1", "Field2"],

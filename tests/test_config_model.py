@@ -210,7 +210,7 @@ class TestForeignKeyConfig:
 
         fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
-        assert fk.remote_extra_columns == {v: k for k, v in extra_columns_cfg.items()}
+        assert fk.resolved_extra_columns() == {v: k for k, v in extra_columns_cfg.items()}
 
     def test_extra_columns_as_list(self):
         """Test extra_columns as a list (maps column names to themselves)."""
@@ -224,7 +224,7 @@ class TestForeignKeyConfig:
 
         fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
-        assert fk.remote_extra_columns == {"col1": "col1", "col2": "col2", "col3": "col3"}
+        assert fk.resolved_extra_columns() == {"col1": "col1", "col2": "col2", "col3": "col3"}
 
     def test_extra_columns_as_string(self):
         """Test extra_columns as a single string (converted to list, then dict)."""
@@ -233,7 +233,7 @@ class TestForeignKeyConfig:
 
         fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
-        assert fk.remote_extra_columns == {"column1": "column1"}
+        assert fk.resolved_extra_columns() == {"column1": "column1"}
 
     def test_extra_columns_empty_dict(self):
         """Test extra_columns with empty dict returns empty dict."""
@@ -242,7 +242,7 @@ class TestForeignKeyConfig:
 
         fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
-        assert fk.remote_extra_columns == {}
+        assert fk.resolved_extra_columns() == {}
 
     def test_extra_columns_missing(self):
         """Test that missing extra_columns defaults to empty dict."""
@@ -251,7 +251,7 @@ class TestForeignKeyConfig:
 
         fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
-        assert fk.remote_extra_columns == {}
+        assert fk.resolved_extra_columns() == {}
 
     def test_extra_columns_invalid_type(self):
         """Test that invalid extra_columns type raises ValueError."""
@@ -259,7 +259,7 @@ class TestForeignKeyConfig:
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"], "extra_columns": 123}
 
         with pytest.raises(ValueError, match="Invalid extra_columns format"):
-            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data).resolved_extra_columns()
 
     def test_drop_remote_id_true(self):
         """Test drop_remote_id set to True."""
@@ -301,7 +301,7 @@ class TestForeignKeyConfig:
 
         fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
-        assert fk.remote_extra_columns == {"description": "description", "code": "code"}
+        assert fk.resolved_extra_columns() == {"description": "description", "code": "code"}
         assert fk.drop_remote_id is True
 
     def test_cross_join_no_keys_required(self):
@@ -484,7 +484,7 @@ class TestTableConfig:
         assert len(table.foreign_keys) == 1
         fk = table.foreign_keys[0]
         assert fk.remote_entity == "location"
-        assert fk.remote_extra_columns == {"latitude": "latitude", "longitude": "longitude"}
+        assert fk.resolved_extra_columns() == {"latitude": "latitude", "longitude": "longitude"}
         assert fk.drop_remote_id is True
 
     def test_table_drop_duplicates_bool(self):
@@ -1092,7 +1092,7 @@ class TestTableConfig:
         base_config = sub_configs[0]
 
         # This does a deep comparison!
-        assert base_config._data == cfg["entities"]["site"]
+        assert base_config.data == cfg["entities"]["site"]
 
         expected_append_config = {
             "surrogate_id": "site_id",
@@ -1104,7 +1104,7 @@ class TestTableConfig:
         }
 
         sql_append_config = sub_configs[1]
-        assert sql_append_config._data == expected_append_config
+        assert sql_append_config.data == expected_append_config
 
 
 class TestShapeShiftConfig:
@@ -1727,5 +1727,5 @@ class TestIntegration:
         assert fk.remote_entity == "location"
         assert fk.local_keys == ["location_name"]
         assert fk.remote_keys == ["location_name"]
-        assert fk.remote_extra_columns == {v: k for k, v in extra_columns_cfg.items()}
+        assert fk.resolved_extra_columns() == {v: k for k, v in extra_columns_cfg.items()}
         assert fk.drop_remote_id is False

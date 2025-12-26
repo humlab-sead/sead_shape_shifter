@@ -9,6 +9,7 @@ from backend.app.api.v1.endpoints import (
     health,
     preview,
     query,
+    reconciliation,
     schema,
     sessions,
     suggestions,
@@ -30,3 +31,4 @@ api_router.include_router(query.router, tags=["query"])
 api_router.include_router(suggestions.router, tags=["suggestions"])
 api_router.include_router(preview.router, tags=["preview"])
 api_router.include_router(test_run.router, tags=["test-run"])
+api_router.include_router(reconciliation.router, tags=["reconciliation"])

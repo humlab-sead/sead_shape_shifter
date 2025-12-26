@@ -9,6 +9,7 @@ export * from './validation'
 export * from './graph'
 export * from './data-source'
 export * from './session'
+export * from './reconciliation'
 
 // Common utility types
 export interface ApiResponse<T = any> {
