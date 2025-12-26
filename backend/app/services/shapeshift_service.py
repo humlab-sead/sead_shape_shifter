@@ -5,6 +5,7 @@ import time
 
 import pandas as pd
 from loguru import logger
+import pytest
 
 from backend.app.core.state_manager import ApplicationState, get_app_state
 from backend.app.core.utility import friendly_dtype
