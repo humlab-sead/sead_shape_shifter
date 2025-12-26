@@ -8,7 +8,7 @@ from loguru import logger
 from backend.app.models.join_test import JoinTestResult
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.config_service import ConfigurationService
-from backend.app.services.shapeshift_service import PreviewService
+from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.services.validate_fk_service import ValidateForeignKeyService
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
@@ -23,13 +23,13 @@ def get_config_service() -> ConfigurationService:
 
 def get_preview_service(
     config_service: ConfigurationService = Depends(get_config_service),
-) -> PreviewService:
+) -> ShapeShiftService:
     """Dependency to get preview service instance."""
-    return PreviewService(config_service=config_service)
+    return ShapeShiftService(config_service=config_service)
 
 
 def get_validate_fk_service(
-    preview_service: PreviewService = Depends(get_preview_service),
+    preview_service: ShapeShiftService = Depends(get_preview_service),
 ) -> ValidateForeignKeyService:
     """Dependency to get validate foreign key service instance."""
     return ValidateForeignKeyService(preview_service=preview_service)
@@ -51,7 +51,7 @@ async def preview_entity(
     config_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity to preview"),
     limit: int = Query(50, ge=1, le=1000, description="Maximum number of rows to return"),
-    preview_service: PreviewService = Depends(get_preview_service),
+    preview_service: ShapeShiftService = Depends(get_preview_service),
 ) -> PreviewResult:
     """
     Preview entity data with transformations.
@@ -86,7 +86,7 @@ async def get_entity_sample(
     config_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of rows (default 100)"),
-    preview_service: PreviewService = Depends(get_preview_service),
+    preview_service: ShapeShiftService = Depends(get_preview_service),
 ) -> PreviewResult:
     """
     Get a larger sample of entity data.
@@ -116,7 +116,7 @@ async def get_entity_sample(
 async def invalidate_preview_cache(
     config_name: str = Path(..., description="Name of the configuration"),
     entity_name: Optional[str] = Query(None, description="Optional entity name to clear specific cache"),
-    preview_service: PreviewService = Depends(get_preview_service),
+    preview_service: ShapeShiftService = Depends(get_preview_service),
 ) -> dict:
     """
     Invalidate preview cache.

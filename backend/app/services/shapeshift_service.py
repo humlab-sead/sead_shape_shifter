@@ -16,8 +16,8 @@ from src.model import ShapeShiftConfig, TableConfig
 from src.normalizer import ShapeShifter
 
 
-class PreviewCache:
-    """Simple in-memory cache for preview results with TTL."""
+class ShapeShiftCache:
+    """Simple in-memory cache for shapeshift/preview results with TTL."""
 
     def __init__(self, ttl_seconds: int = 300):
         """Initialize cache with TTL in seconds (default 5 minutes)."""
@@ -31,7 +31,7 @@ class PreviewCache:
         return hashlib.md5(key_str.encode()).hexdigest()
 
     def get(self, config_name: str, entity_name: str, limit: int) -> PreviewResult | None:
-        """Get cached preview result if not expired."""
+        """Get cached shapeshift/preview result if not expired."""
         key = self._generate_key(config_name, entity_name, limit)
         if key in self._cache:
             result, timestamp, _, _, _ = self._cache[key]
@@ -45,10 +45,10 @@ class PreviewCache:
         return None
 
     def set(self, config_name: str, entity_name: str, limit: int, result: PreviewResult) -> None:
-        """Cache preview result with current timestamp."""
+        """Cache shapeshift/preview result with current timestamp."""
         key = self._generate_key(config_name, entity_name, limit)
         self._cache[key] = (result, time.time(), config_name, entity_name, limit)
-        logger.debug(f"Cached preview for {entity_name}")
+        logger.debug(f"Cached shapeshift/preview for {entity_name}")
 
     def invalidate(self, config_name: str, entity_name: str | None = None) -> None:
         """Invalidate cache entries for a configuration or specific entity."""
@@ -63,13 +63,13 @@ class PreviewCache:
         logger.debug(f"Invalidated {len(keys_to_remove)} cache entries for {config_name}:{entity_name or 'all'}")
 
 
-class PreviewService:
-    """Service for previewing entity data with ShapeShiftConfig caching."""
+class ShapeShiftService:
+    """Service for previewing entity data with caching."""
 
     def __init__(self, config_service: ConfigurationService, ttl_seconds: int = 300):
-        """Initialize preview service."""
+        """Initialize shapeshift/preview service."""
         self.config_service: ConfigurationService = config_service
-        self.cache = PreviewCache(ttl_seconds=ttl_seconds)  # 5 minute cache
+        self.cache = ShapeShiftCache(ttl_seconds=ttl_seconds)  # 5 minute cache
 
         # Cache ShapeShiftConfig instances for performazznce
         self._shapeshift_cache: dict[str, ShapeShiftConfig] = {}

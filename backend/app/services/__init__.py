@@ -9,7 +9,7 @@ Service Classes:
     - ConfigurationService: Configuration file management (CRUD operations)
     - DataSourceService: Global data source file management
     - DependencyService: Entity dependency analysis and topological sorting
-    - PreviewService: Configuration change preview generation
+    - ShapeShiftService: Configuration change preview generation
     - QueryService: SQL query execution against configured data sources
     - SchemaIntrospectionService: Database schema introspection
     - SuggestionService: Entity and configuration suggestions
@@ -90,7 +90,7 @@ from backend.app.services.schema_service import (
 )
 
 # Preview service
-from backend.app.services.shapeshift_service import PreviewCache, PreviewService
+from backend.app.services.shapeshift_service import ShapeShiftCache, ShapeShiftService
 
 # Suggestion service
 from backend.app.services.suggestion_service import SuggestionService
@@ -118,7 +118,7 @@ __all__ = [
     "ConfigurationService",
     "DataSourceService",
     "DependencyService",
-    "PreviewService",
+    "ShapeShiftService",
     "QueryService",
     "SchemaIntrospectionService",
     "SuggestionService",
@@ -148,6 +148,6 @@ __all__ = [
     "YamlLoadError",
     "YamlSaveError",
     # Data classes
-    "PreviewCache",
+    "ShapeShiftCache",
     "TypeMapping",
 ]

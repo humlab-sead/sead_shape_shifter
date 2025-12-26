@@ -307,7 +307,7 @@ class TestDataValidation:
                 ]
 
         monkeypatch.setattr(validation_service_module, "get_config_service", lambda: "config-service")
-        monkeypatch.setattr(validation_service_module, "PreviewService", DummyPreviewService)
+        monkeypatch.setattr(validation_service_module, "ShapeShiftService", DummyPreviewService)
         monkeypatch.setattr(validation_service_module, "DataValidationService", DummyDataValidationService)
 
         result = await ValidationService().validate_configuration_data("cfg-name", ["entity1"])
