@@ -25,7 +25,7 @@ class SuggestionService:
 
     def __init__(self, schema_service: SchemaIntrospectionService):
         """Initialize with schema service for database introspection."""
-        self.schema_service = schema_service
+        self.schema_service: SchemaIntrospectionService = schema_service
 
     async def suggest_for_entity(
         self, entity: dict[str, Any], all_entities: list[dict[str, Any]], data_source_name: Optional[str] = None
@@ -139,57 +139,8 @@ class SuggestionService:
         3. Entity name pattern (e.g., user_id matches remote entity 'users')
         """
         matches = []
-
-        for local_col in local_columns:
-            local_lower = local_col.lower()
-
-            # Strategy 1: Exact match
-            if local_col in remote_columns:
-                matches.append(
-                    {"local": local_col, "remote": local_col, "reason": f"Exact column name match: '{local_col}'", "match_type": "exact"}
-                )
-                continue
-
-            # Strategy 2: Foreign key pattern (local_id matches remote id)
-            # e.g., user_id -> users.user_id or users.id
-            if local_lower.endswith("_id"):
-                prefix = local_lower[:-3]  # Remove _id
-
-                # Check if local column matches remote entity name
-                if prefix == remote_entity.lower().rstrip("s"):  # users -> user
-                    # Look for id or entity_id in remote
-                    for remote_col in remote_columns:
-                        remote_lower = remote_col.lower()
-                        if remote_lower in ["id", local_lower]:
-                            matches.append(
-                                {
-                                    "local": local_col,
-                                    "remote": remote_col,
-                                    "reason": f"Foreign key pattern: '{local_col}' references '{remote_entity}.{remote_col}'",
-                                    "match_type": "fk_pattern",
-                                }
-                            )
-                            break
-
-            # Strategy 3: Remote entity pattern
-            # e.g., orders has user_id, remote entity is 'users'
-            if local_lower.endswith("_id"):
-                prefix = local_lower[:-3]
-                if prefix in remote_entity.lower() or remote_entity.lower() in prefix:
-                    # Look for matching column in remote
-                    for remote_col in remote_columns:
-                        remote_lower = remote_col.lower()
-                        if remote_lower in [local_lower, f"{remote_entity.lower()}_id", "id"]:
-                            matches.append(
-                                {
-                                    "local": local_col,
-                                    "remote": remote_col,
-                                    "reason": f"Entity name pattern: '{local_col}' likely references '{remote_entity}'",
-                                    "match_type": "entity_pattern",
-                                }
-                            )
-                            break
-
+        for strategy in [ExactColumnMatch(), ForeignKeyPatternColumnMatch(), RemoteEntityPatternColumnMatch()]:
+            matches.extend(strategy.match(list(local_columns), remote_entity, list(remote_columns)))
         return matches
 
     def _calculate_fk_confidence(
@@ -214,11 +165,11 @@ class SuggestionService:
         remote_schema: TableSchema | None = schemas.get(remote_entity)
 
         if local_schema and remote_schema:
-            local_col = match["local"]
-            remote_col = match["remote"]
+            local_col: str = match["local"]
+            remote_col: str = match["remote"]
 
-            local_type = self._get_column_type(local_schema, local_col)
-            remote_type = self._get_column_type(remote_schema, remote_col)
+            local_type: str | None = self._get_column_type(local_schema, local_col)
+            remote_type: str | None = self._get_column_type(remote_schema, remote_col)
 
             if local_type and remote_type:
                 # Both are integer types
@@ -329,6 +280,83 @@ class SuggestionService:
                     logger.warning(f"Could not load schema for {table_name}: {e}")
 
         return schemas
+
+
+class ColumnMatchStrategy:
+    def match(self, local_columns: list[str], remote_entity: str, remote_columns: list[str]) -> list[dict[str, Any]]:
+        return []
+
+
+class ExactColumnMatch(ColumnMatchStrategy):
+    """Exact column name matches."""
+
+    def match(self, local_columns: list[str], remote_entity: str, remote_columns: list[str]) -> list[dict[str, Any]]:
+        matches = []
+        for local_col in local_columns:
+            if local_col in remote_columns:
+                matches.append(
+                    {"local": local_col, "remote": local_col, "reason": f"Exact column name match: '{local_col}'", "match_type": "exact"}
+                )
+        return matches
+
+
+class ForeignKeyPatternColumnMatch(ColumnMatchStrategy):
+    """Exact column name matches."""
+
+    def match(self, local_columns: list[str], remote_entity: str, remote_columns: list[str]) -> list[dict[str, Any]]:
+        matches: list[dict[str, Any]] = []
+        for local_col in local_columns:
+            local_lower: str = local_col.lower()
+            if not local_lower.endswith("_id"):
+                continue
+
+            prefix: str = local_lower[:-3]  # Remove _id
+            # Check if local column matches remote entity name
+            if prefix != remote_entity.lower():
+                continue
+
+            for remote_col in remote_columns:
+                remote_lower: str = remote_col.lower()
+                if remote_lower not in ["id", local_lower]:
+                    continue
+                matches.append(
+                    {
+                        "local": local_col,
+                        "remote": remote_col,
+                        "reason": f"Foreign key pattern: '{local_col}' references '{remote_entity}.{remote_col}'",
+                        "match_type": "fk_pattern",
+                    }
+                )
+                break
+        return matches
+
+
+class RemoteEntityPatternColumnMatch(ColumnMatchStrategy):
+    """Remote entity pattern e.g., orders has user_id, remote entity is 'users'."""
+
+    def match(self, local_columns: list[str], remote_entity: str, remote_columns: list[str]) -> list[dict[str, Any]]:
+        matches: list[dict[str, Any]] = []
+        for local_col in local_columns:
+            local_lower = local_col.lower()
+            if not local_lower.endswith("_id"):
+                continue
+            prefix: str = local_lower[:-3]
+            if prefix not in remote_entity.lower() and remote_entity.lower() not in prefix:
+                continue
+            for remote_col in remote_columns:
+                remote_lower: str = remote_col.lower()
+                if remote_lower not in [local_lower, f"{remote_entity.lower()}_id", "id"]:
+                    continue
+                matches.append(
+                    {
+                        "local": local_col,
+                        "remote": remote_col,
+                        "reason": f"Entity name pattern: '{local_col}' likely references '{remote_entity}'",
+                        "match_type": "entity_pattern",
+                    }
+                )
+                break
+        return matches
 
 
 # Dependency injection helper
