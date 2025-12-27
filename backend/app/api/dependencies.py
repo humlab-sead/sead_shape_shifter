@@ -54,7 +54,7 @@ async def get_session_id(
     session_id: Annotated[str | None, Cookie()] = None,
 ) -> UUID | None:
     """Extract session ID from header or cookie."""
-    session_str = x_session_id or session_id
+    session_str: str | None = x_session_id or session_id
     if session_str:
         try:
             return UUID(session_str)
@@ -69,7 +69,7 @@ async def get_current_session(
 ) -> ConfigSession | None:
     """Get current editing session (optional)."""
     if session_id:
-        session = await app_state.get_session(session_id)
+        session: ConfigSession | None = await app_state.get_session(session_id)
         if not session:
             raise HTTPException(404, f"Session {session_id} not found or expired")
         return session
