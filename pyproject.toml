@@ -168,7 +168,16 @@ markers = [
 # --------------------
 [tool.coverage.run]
 branch = true
-source = ["src"]
+source = ["src", "backend/app"]
+omit = [
+  "backend/tests/*",
+  "tests/*",
+  "backend/app/api/v1/endpoints/*",
+  "src/configuration/*",
+  "*/__init__.py",
+  "*/venv/*",
+  "*/.venv/*"
+]
 
 [tool.coverage.report]
 show_missing = true
