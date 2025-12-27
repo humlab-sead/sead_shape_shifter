@@ -497,6 +497,69 @@ class TestSqlLoaderCore:
                 assert all(not col.is_primary_key for col in schema.columns)
                 assert schema.primary_keys == []
 
+    @pytest.mark.asyncio
+    async def test_load_with_relaxed_column_check_overwrites_columns(self, monkeypatch: pytest.MonkeyPatch):
+        """When check_column_names is False, load should accept differing columns and coerce order."""
+        loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
+        sample_df = pd.DataFrame({"b": [1], "a": [2]})
+        monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
+
+        table_cfg = TableConfig(
+            cfg={
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "select * from t",
+                    "keys": [],
+                    "columns": ["a", "b"],
+                    "auto_detect_columns": False,
+                    "check_column_names": False,
+                    "surrogate_id": None,
+                }
+            },
+            entity_name="sql_entity",
+        )
+
+        result = await loader.load("sql_entity", table_cfg)
+        assert list(result.columns) == ["a", "b"]
+
+    def test_get_test_query_formats_default(self):
+        loader = DummySqlLoader(data_source=Mock())
+        assert loader.get_test_query("tbl", 5) == "select * from tbl limit 5 ;"
+
+    async def test_get_table_row_count_logs_and_returns_none_on_error(self, caplog):
+        loader = DummySqlLoader(data_source=Mock())
+
+        async def boom(sql: str):
+            raise RuntimeError("fail")
+
+        loader.execute_scalar_sql = boom  # type: ignore[assignment]
+        assert await loader.get_table_row_count("tbl") is None
+
+
+class TestPostgresDefaults:
+    """Ensure Postgres loader derives sane defaults."""
+
+    def test_db_opts_defaults(self):
+        ds = DataSourceConfig(name="pg", cfg={"driver": "postgres", "options": {}})
+        loader = PostgresSqlLoader(ds)
+        opts = loader.db_opts
+        assert opts["host"] == "localhost"
+        assert opts["port"] == 5432
+        assert opts["user"] == "postgres"
+        assert opts["dbname"] == "postgres"
+
+
+class TestUCanAccessExtras:
+    """Additional behaviors for UCanAccess loader."""
+
+    @pytest.fixture
+    def access_config(self):
+        return DataSourceConfig(name="access", cfg={"driver": "ucanaccess", "options": {"filename": "f"}})
+
+    def test_get_test_query_uses_top(self, access_config):
+        loader = UCanAccessSqlLoader(access_config)
+        assert loader.get_test_query("MyTable", 3).startswith("SELECT TOP 3")
+
 
 class TestCoreSchemaModels:
     """Tests for CoreSchema dataclasses."""
