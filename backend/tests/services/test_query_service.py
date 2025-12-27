@@ -1,12 +1,12 @@
 """
 Tests for Query Service
 """
+
 """Tests for QueryService."""
 
 import asyncio
-from unittest.mock import AsyncMock, Mock, MagicMock, patch
-
 from typing import Literal
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pandas as pd
 import pytest
