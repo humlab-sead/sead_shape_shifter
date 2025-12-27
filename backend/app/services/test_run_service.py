@@ -3,7 +3,7 @@
 import time
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from loguru import logger
 
@@ -24,7 +24,7 @@ class TestRunService:
     """Service for running configuration tests."""
 
     def __init__(self, config_service: ConfigurationService):
-        self.config_service = config_service
+        self.config_service: ConfigurationService = config_service
         self._active_runs: dict[str, TestRunResult] = {}
         self._cancel_flags: dict[str, bool] = {}
 
@@ -39,11 +39,11 @@ class TestRunService:
         Returns:
             TestRunResult with PENDING status
         """
-        run_id = str(uuid.uuid4())
-        started_at = datetime.utcnow()
+        run_id: str = str(uuid.uuid4())
+        started_at: datetime = datetime.utcnow()
 
         # Initialize result with PENDING status
-        result = TestRunResult(
+        result: TestRunResult = TestRunResult(
             run_id=run_id,
             config_name=config_name,
             status=TestRunStatus.PENDING,
@@ -53,7 +53,6 @@ class TestRunService:
             **{},
         )
 
-        # Store active run
         self._active_runs[run_id] = result
         self._cancel_flags[run_id] = False
 
@@ -87,12 +86,12 @@ class TestRunService:
                 raise ValueError(f"Configuration '{result.config_name}' not found")
 
             # Get entities from configuration
-            entities_data = config.entities
+            entities_data: dict[str, dict[str, Any]] = config.entities
 
             # Determine entities to process
             if result.options.entities:
                 # Validate entity names
-                invalid_entities = [e for e in result.options.entities if e not in entities_data]
+                invalid_entities: list[str] = [e for e in result.options.entities if e not in entities_data]
                 if invalid_entities:
                     raise ValueError(f"Invalid entities: {', '.join(invalid_entities)}")
                 entity_names = result.options.entities

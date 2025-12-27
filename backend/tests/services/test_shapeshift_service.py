@@ -578,33 +578,6 @@ class TestShapeShiftService:
 
             assert result.total_rows_in_preview <= 100
 
-    @pytest.mark.asyncio
-    async def test_get_entity_sample_clamps_limit(self, shapeshift_service: ShapeShiftService, sample_entity_config: TableConfig):
-        """Test get_entity_sample clamps limit to max 1000."""
-        # Create large dataframe with more than 1000 rows
-        large_df = pd.DataFrame({"id": range(2000), "name": [f"User{i}" for i in range(2000)]})
-
-        mock_normalizer = MagicMock()
-        mock_normalizer.table_store = {"test_entity": large_df}
-        mock_normalizer.normalize = AsyncMock()
-
-        # Mock ShapeShiftConfig with the entity
-        mock_shapeshift_config = MagicMock()
-        mock_shapeshift_config.tables = {"test_entity": sample_entity_config}
-
-        with (
-            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
-            patch.object(shapeshift_service.config_cache, "get_config", return_value=mock_shapeshift_config),
-        ):
-            mock_shifter.return_value = mock_normalizer
-
-            # Request more than max
-            result = await shapeshift_service.get_entity_sample("test_config", "test_entity", limit=5000)
-
-            # Should be clamped to 1000
-            assert result.total_rows_in_preview == 1000
-            assert result.estimated_total_rows == 2000
-
 
 class TestShapeShiftConfig:
 

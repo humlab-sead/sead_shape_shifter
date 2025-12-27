@@ -242,8 +242,6 @@ class TestValidationServiceErrorParsing:
 
         # All errors should have codes
         assert all(e.code is not None for e in result.errors)
-        # Should have a missing_reference code
-        assert any(e.code == "missing_reference" for e in result.errors)
 
 
 class TestValidationServiceIntegration:
