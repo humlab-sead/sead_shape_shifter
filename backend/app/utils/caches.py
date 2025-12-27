@@ -156,7 +156,7 @@ class ShapeShiftCache:
             entity_configs: Optional dict of entity_name -> TableConfig for hash computation
         """
         for entity_name, df in table_store.items():
-            entity_config = entity_configs.get(entity_name) if entity_configs else None
+            entity_config: TableConfig | None = entity_configs.get(entity_name) if entity_configs else None
             self.set_dataframe(config_name, entity_name, df, config_version, entity_config)
         logger.debug(f"Cached {len(table_store)} entities from {target_entity} execution")
 
@@ -181,8 +181,8 @@ class ShapeShiftCache:
         cached_deps: dict[str, pd.DataFrame] = {}
         for dep_name in entity_config.depends_on:
             # Get dependency config for hash validation if available
-            dep_config = shapeshift_config.get_table(dep_name) if shapeshift_config else None
-            cached_df = self.get_dataframe(config_name, dep_name, config_version, dep_config)
+            dep_config: TableConfig | None = shapeshift_config.get_table(dep_name) if shapeshift_config else None
+            cached_df: pd.DataFrame | None = self.get_dataframe(config_name, dep_name, config_version, dep_config)
             if cached_df is not None:
                 cached_deps[dep_name] = cached_df
 
