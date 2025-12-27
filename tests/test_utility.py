@@ -1,10 +1,12 @@
 """Unit tests for arbodat utility configuration classes."""
 
+import os
 from typing import Any
 
 import pytest
 
 from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig, UnnestConfig
+from src.utility import dotget, dotset, env2dict, normalize_text, recursive_filter_dict, replace_env_vars
 
 
 class TestUnnestConfig:
@@ -410,3 +412,51 @@ class TestIntegration:
         assert site.foreign_keys[0].remote_entity == "location"
         assert site.foreign_keys[0].remote_surrogate_id == "location_id"
         assert site.depends_on == {"location"}
+
+
+class TestUtilityHelpers:
+    """Tests for helper functions in src.utility."""
+
+    def test_normalize_text_removes_accents_and_lowercases(self):
+        """Should strip accents and lowercase to mimic Postgres unaccent behavior."""
+        assert normalize_text("Café École") == "cafe ecole"
+        assert normalize_text("") == ""
+
+    def test_dotget_and_dotset_support_colon_and_underscore_paths(self):
+        """dotset creates nested dicts; dotget resolves colon/underscore variants."""
+        data: dict[str, Any] = {}
+        dotset(data, "a:b:c", 5)
+        assert data == {"a": {"b": {"c": 5}}}
+        assert dotget(data, "a.b.c") == 5
+        assert dotget(data, "a:b:c") == 5
+        assert dotget(data, "missing", default="fallback") == "fallback"
+
+    def test_env2dict_populates_nested_structure(self, monkeypatch: pytest.MonkeyPatch):
+        """Environment variables with prefix populate nested dict with colon splitting."""
+        monkeypatch.setenv("TESTENV_DB_HOST", "localhost")
+        monkeypatch.setenv("TESTENV_DB_PORT", "5432")
+
+        result = env2dict("TESTENV")
+
+        assert result == {"db": {"host": "localhost", "port": "5432"}}
+
+    def test_replace_env_vars_recurses(self, monkeypatch: pytest.MonkeyPatch):
+        """Environment placeholders get replaced in nested structures."""
+        monkeypatch.setenv("TEST_TOKEN", "secret")
+
+        data = {"a": "${TEST_TOKEN}", "nested": {"value": "${TEST_TOKEN}"}, "list": ["${TEST_TOKEN}", 1]}
+        resolved = replace_env_vars(data)
+
+        assert resolved["a"] == "secret"
+        assert resolved["nested"]["value"] == "secret"
+        assert resolved["list"][0] == "secret"
+
+    def test_recursive_filter_dict_keep_and_exclude_modes(self):
+        """Filter nested dictionaries using both include and exclude semantics."""
+        data = {"a": 1, "b": {"inner": 2, "other": 3}, "c": 4}
+
+        kept = recursive_filter_dict(data, {"b", "inner"}, filter_mode="keep")
+        assert kept == {"b": {"inner": 2}}
+
+        excluded = recursive_filter_dict(data, {"b"}, filter_mode="exclude")
+        assert excluded == {"a": 1, "c": 4}

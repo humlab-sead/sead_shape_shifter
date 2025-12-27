@@ -467,7 +467,7 @@ class TableConfig:
         Yields self first (the base configuration), then creates and yields
         a TableConfig for each append item with inherited properties.
 
-        This allows the normalizer to treat the base table and append items
+        This allows the shapeshifter to treat the base table and append items
         uniformly through the same processing pipeline.
 
         Yields:
