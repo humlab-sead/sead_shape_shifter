@@ -4,11 +4,12 @@ from typing import Any, Literal
 
 from loguru import logger
 
+from backend.app.services.config_service import ConfigurationService
 from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.config_service import get_config_service
 from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.validators.data_validators import DataValidationService
-from src.specifications import CompositeConfigSpecification
+from src.specifications import CompositeConfigSpecification, SpecificationIssue
 
 
 class ValidationService:
@@ -48,17 +49,15 @@ class ValidationService:
 
         logger.debug(f"Running data validation for configuration: {config_name}")
 
-        config_service = get_config_service()
-        preview_service = ShapeShiftService(config_service)
-        data_validator = DataValidationService(preview_service)
+        config_service: ConfigurationService = get_config_service()
+        shapeshift_service: ShapeShiftService = ShapeShiftService(config_service)
+        data_validator: DataValidationService = DataValidationService(shapeshift_service)
 
-        # Run data validators
-        errors_list = await data_validator.validate_configuration(config_name, entity_names)
+        errors_list: list[ValidationError] = await data_validator.validate_configuration(config_name, entity_names)
 
-        # Separate by severity
-        errors = [e for e in errors_list if e.severity == "error"]
-        warnings = [e for e in errors_list if e.severity == "warning"]
-        info = [e for e in errors_list if e.severity == "info"]
+        errors: list[ValidationError] = [e for e in errors_list if e.severity == "error"]
+        warnings: list[ValidationError] = [e for e in errors_list if e.severity == "warning"]
+        info: list[ValidationError] = [e for e in errors_list if e.severity == "info"]
 
         result = ValidationResult(
             is_valid=len(errors) == 0,
@@ -85,89 +84,32 @@ class ValidationService:
         """
         logger.debug("Validating configuration")
 
-        # Run validation
-        is_valid = self.validator.is_satisfied_by(config_data)
-
-        # Convert specification errors/warnings to ValidationError objects
-        errors: list[ValidationError] = []
-        warnings: list[ValidationError] = []
-
-        # Parse errors
-        for error_msg in self.validator.errors:
-            validation_error = self._parse_error_message(error_msg, severity="error")
-            errors.append(validation_error)
-
-        # Parse warnings
-        for warning_msg in self.validator.warnings:
-            validation_warning = self._parse_error_message(warning_msg, severity="warning")
-            warnings.append(validation_warning)
+        is_valid: bool = self.validator.is_satisfied_by(config_data)
 
         result = ValidationResult(
             is_valid=is_valid,
-            errors=errors,
-            warnings=warnings,
-            error_count=len(errors),
-            warning_count=len(warnings),
+            errors=[self._map_issue(error) for error in self.validator.errors],
+            warnings=[self._map_issue(warning) for warning in self.validator.warnings],
+            error_count=len(self.validator.errors),
+            warning_count=len(self.validator.warnings),
         )
 
         if is_valid:
             logger.info("Configuration validation passed")
         else:
-            logger.warning(f"Configuration validation failed with {len(errors)} error(s)")
+            logger.warning(f"Configuration validation failed with {len(self.validator.errors)} error(s)")
 
         return result
 
-    def _parse_error_message(self, message: str, severity: Literal["error", "warning", "info"] = "error") -> ValidationError:
-        """
-        Parse error message to extract entity and field information.
-
-        Error messages typically follow patterns like:
-        - "Entity 'sample': references non-existent entity 'missing' in foreign key"
-        - "Configuration must contain 'entities' section"
-        - "Entity 'sample': field 'surrogate_id' must end with '_id'"
-
-        Args:
-            message: Error message from specification
-            severity: Severity level (error, warning, info)
-
-        Returns:
-            ValidationError object
-        """
-        entity = None
-        field = None
-        code = None
-
-        # Try to extract entity name (pattern: Entity 'name':)
-        if "Entity '" in message:
-            start = message.find("Entity '") + 8
-            end = message.find("'", start)
-            if end > start:
-                entity = message[start:end]
-
-        # Try to extract field name (pattern: field 'name')
-        if "field '" in message:
-            start = message.find("field '") + 7
-            end = message.find("'", start)
-            if end > start:
-                field = message[start:end]
-
-        # Determine error code based on message content
-        if "non-existent" in message:
-            code = "missing_reference"
-        elif "circular" in message.lower():
-            code = "circular_dependency"
-        elif "required" in message.lower() or "must contain" in message:
-            code = "required_field"
-        elif "foreign key" in message.lower():
-            code = "foreign_key_error"
-        elif "data source" in message.lower():
-            code = "data_source_error"
-        elif "duplicate" in message.lower():
-            code = "duplicate_error"
-        else:
-            code = "validation_error"
-
-        return ValidationError(severity=severity, entity=entity, field=field, message=message, code=code)
+    def _map_issue(self, issue: SpecificationIssue) -> ValidationError:
+        """Parse error message to extract entity and field information."""
+        return ValidationError(
+            severity=issue.severity,  # type: ignore[arg-type]
+            entity=issue.entity_name,
+            field=issue.entity_field or issue.column_name,
+            message=issue.message,
+            code=", ".join(str(v) for k, v in issue.kwargs.items()),
+        )
 
     def validate_entity(self, config: Any, entity_name: str) -> ValidationResult:
         """
@@ -189,11 +131,11 @@ class ValidationService:
             config_data = {"entities": config.entities, "options": config.options}
 
         # Validate full configuration
-        result = self.validate_configuration(config_data)
+        result: ValidationResult = self.validate_configuration(config_data)
 
         # Filter to only errors/warnings for this entity
-        entity_errors = [e for e in result.errors if e.entity == entity_name or e.entity is None]
-        entity_warnings = [w for w in result.warnings if w.entity == entity_name or w.entity is None]
+        entity_errors: list[ValidationError] = [e for e in result.errors if e.entity == entity_name or e.entity is None]
+        entity_warnings: list[ValidationError] = [w for w in result.warnings if w.entity == entity_name or w.entity is None]
 
         return ValidationResult(is_valid=len(entity_errors) == 0, errors=entity_errors, warnings=entity_warnings)
 
