@@ -1,6 +1,6 @@
 """Validation service for configuration validation."""
 
-from typing import Any, Literal
+from typing import Any
 
 from loguru import logger
 
