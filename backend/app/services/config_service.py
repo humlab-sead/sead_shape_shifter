@@ -207,8 +207,7 @@ class ConfigurationService:
         if file_path.exists():
             raise ConfigConflictError(f"Configuration '{name}' already exists")
 
-        # Create metadata with required fields
-        metadata = ConfigMetadata(
+        metadata: ConfigMetadata = ConfigMetadata(
             name=name,
             description=f"Configuration for {name}",
             version="1.0.0",
@@ -219,10 +218,8 @@ class ConfigurationService:
             is_valid=True,
         )
 
-        # Create configuration with all three required sections
-        config = Configuration(entities=entities or {}, options={}, metadata=metadata)
+        config: Configuration = Configuration(entities=entities or {}, options={}, metadata=metadata)
 
-        # Save to file
         return self.save_configuration(config, create_backup=False)
 
     def delete_configuration(self, name: str) -> None:
@@ -241,7 +238,6 @@ class ConfigurationService:
             raise ConfigurationNotFoundError(f"Configuration not found: {name}")
 
         try:
-            # Create backup before deleting
             self.yaml_service.create_backup(file_path)
             file_path.unlink()
             logger.info(f"Deleted configuration '{name}'")
@@ -268,7 +264,6 @@ class ConfigurationService:
         if entity_name in config.entities:
             raise EntityAlreadyExistsError(f"Entity '{entity_name}' already exists")
 
-        # Add entity (Pydantic model will be serialized to dict)
         config.entities[entity_name] = entity.model_dump(exclude_none=True, mode="json")
 
         logger.debug(f"Added entity '{entity_name}'")
@@ -292,7 +287,6 @@ class ConfigurationService:
         if entity_name not in config.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
-        # Update entity
         config.entities[entity_name] = entity.model_dump(exclude_none=True, mode="json")
 
         logger.debug(f"Updated entity '{entity_name}'")

@@ -1,8 +1,5 @@
 """
-Query execution service for the Shape Shifter Configuration Editor.
-
-Provides secure SQL query execution with validation, timeout protection,
-and result size limiting.
+SQL Query execution service for the Shape Shifter Configuration Editor.
 """
 
 import asyncio
@@ -150,10 +147,8 @@ class QueryService:
 
             execution_time_ms: int = max(1, int((time.time() - start_time) * 1000))
 
-            # Check result size
             is_truncated: bool = len(df) >= limit
 
-            # Convert to list of dicts
             rows: list[dict] = df.to_dict("records")
             columns: list[str] = df.columns.tolist()
 
