@@ -2,8 +2,10 @@
 
 import hashlib
 import time
+from dataclasses import dataclass
 
 import pandas as pd
+import xxhash
 from loguru import logger
 
 from backend.app.core.state_manager import ApplicationState, get_app_state
@@ -16,20 +18,36 @@ from src.model import ShapeShiftConfig, TableConfig
 from src.normalizer import ShapeShifter
 
 
+@dataclass
+class CacheMetadata:
+    """Metadata for cached entity DataFrame."""
+
+    timestamp: float
+    config_name: str
+    entity_name: str
+    config_version: int
+    entity_hash: str  # Hash of entity configuration
+
+
 class ShapeShiftCache:
     """Cache for ShapeShifter results with individual entity storage.
 
     Caches individual DataFrames per entity, enabling better cache efficiency
     and granular invalidation. Dependencies are stored separately and reused
     across multiple entities.
+
+    Uses 3-tier cache validation:
+    1. TTL (time-to-live) - Expire after fixed duration
+    2. Config version - Invalidate on configuration file changes
+    3. Entity hash - Invalidate on entity-specific configuration changes
     """
 
     def __init__(self, ttl_seconds: int = 300):
         """Initialize cache with TTL in seconds (default 5 minutes)."""
         # Store individual DataFrames: key -> DataFrame
         self._dataframes: dict[str, pd.DataFrame] = {}
-        # Store metadata: key -> (timestamp, config_name, entity_name, config_version)
-        self._metadata: dict[str, tuple[float, str, str, int]] = {}
+        # Store metadata: key -> CacheMetadata
+        self._metadata: dict[str, CacheMetadata] = {}
         self._ttl: int = ttl_seconds
 
     def _generate_key(self, config_name: str, entity_name: str) -> str:
@@ -37,87 +55,169 @@ class ShapeShiftCache:
         key_str = f"{config_name}:{entity_name}"
         return hashlib.md5(key_str.encode()).hexdigest()
 
-    def get_dataframe(self, config_name: str, entity_name: str, config_version: int | None = None) -> pd.DataFrame | None:
-        """Get cached DataFrame for entity if not expired and version matches.
+    def _compute_entity_hash(self, entity_config: TableConfig) -> str:
+        """Compute hash of entity configuration.
+
+        Uses xxhash for fast hashing of entity configuration dict.
+        This detects changes to entity-specific settings like columns,
+        filters, transformations, foreign keys, etc.
+
+        Args:
+            entity_config: Entity configuration
+
+        Returns:
+            Hexadecimal hash string
+        """
+        # Serialize entity config to stable string representation
+        # Use sorted dict representation for deterministic hashing
+        config_str = str(sorted(entity_config.data.items()))
+        return xxhash.xxh64(config_str.encode()).hexdigest()
+
+    def get_dataframe(
+        self,
+        config_name: str,
+        entity_name: str,
+        config_version: int | None = None,
+        entity_config: TableConfig | None = None,
+    ) -> pd.DataFrame | None:
+        """Get cached DataFrame for entity with 3-tier validation.
+
+        Validation order:
+        1. TTL - Check if cache entry has expired
+        2. Config version - Validate against ApplicationState version
+        3. Entity hash - Validate against entity configuration hash
 
         Args:
             config_name: Configuration name
             entity_name: Entity name
             config_version: Optional config version for validation (from ApplicationState)
+            entity_config: Optional entity configuration for hash validation
 
         Returns:
             DataFrame if cached and valid, None otherwise
         """
         key = self._generate_key(config_name, entity_name)
-        if key in self._dataframes and key in self._metadata:
-            timestamp, _, _, cached_version = self._metadata[key]
+        if key not in self._dataframes or key not in self._metadata:
+            return None
 
-            # Check TTL
-            if time.time() - timestamp >= self._ttl:
+        metadata = self._metadata[key]
+
+        # Tier 1: Check TTL
+        if time.time() - metadata.timestamp >= self._ttl:
+            del self._dataframes[key]
+            del self._metadata[key]
+            logger.debug(f"Cache expired for {entity_name} (TTL)")
+            return None
+
+        # Tier 2: Check config version if provided
+        if config_version is not None and metadata.config_version != config_version:
+            del self._dataframes[key]
+            del self._metadata[key]
+            logger.debug(
+                f"Cache invalidated for {entity_name} (version mismatch: {metadata.config_version} != {config_version})"
+            )
+            return None
+
+        # Tier 3: Check entity hash if entity_config provided
+        if entity_config is not None:
+            current_hash = self._compute_entity_hash(entity_config)
+            if metadata.entity_hash != current_hash:
                 del self._dataframes[key]
                 del self._metadata[key]
-                logger.debug(f"Cache expired for {entity_name}")
+                logger.debug(
+                    f"Cache invalidated for {entity_name} (entity config changed: {metadata.entity_hash[:8]} != {current_hash[:8]})"
+                )
                 return None
 
-            # Check version if provided
-            if config_version is not None and cached_version != config_version:
-                del self._dataframes[key]
-                del self._metadata[key]
-                logger.debug(f"Cache invalidated for {entity_name} (version mismatch: {cached_version} != {config_version})")
-                return None
+        logger.debug(f"Cache hit for {entity_name} (valid: TTL + version + hash)")
+        return self._dataframes[key].copy()  # Return copy to prevent modifications
 
-            logger.debug(f"Cache hit for {entity_name}")
-            return self._dataframes[key].copy()  # Return copy to prevent modifications
-        return None
-
-    def set_dataframe(self, config_name: str, entity_name: str, dataframe: pd.DataFrame, config_version: int = 0) -> None:
-        """Cache DataFrame for entity with current timestamp.
+    def set_dataframe(
+        self,
+        config_name: str,
+        entity_name: str,
+        dataframe: pd.DataFrame,
+        config_version: int = 0,
+        entity_config: TableConfig | None = None,
+    ) -> None:
+        """Cache DataFrame for entity with metadata including entity hash.
 
         Args:
             config_name: Configuration name
             entity_name: Entity name
             dataframe: DataFrame to cache
             config_version: Configuration version from ApplicationState
+            entity_config: Entity configuration for hash computation
         """
         key = self._generate_key(config_name, entity_name)
         self._dataframes[key] = dataframe.copy()  # Store copy to prevent external modifications
-        self._metadata[key] = (time.time(), config_name, entity_name, config_version)
-        logger.debug(f"Cached DataFrame for {entity_name} (version {config_version}, {len(dataframe)} rows)")
 
-    def set_table_store(self, config_name: str, table_store: dict[str, pd.DataFrame], target_entity: str, config_version: int = 0) -> None:
-        """Cache all entities from table_store individually.
+        # Compute entity hash if config provided, otherwise use empty hash
+        entity_hash = self._compute_entity_hash(entity_config) if entity_config else ""
+
+        self._metadata[key] = CacheMetadata(
+            timestamp=time.time(),
+            config_name=config_name,
+            entity_name=entity_name,
+            config_version=config_version,
+            entity_hash=entity_hash,
+        )
+        logger.debug(
+            f"Cached DataFrame for {entity_name} (version {config_version}, hash {entity_hash[:8]}, {len(dataframe)} rows)"
+        )
+
+    def set_table_store(
+        self,
+        config_name: str,
+        table_store: dict[str, pd.DataFrame],
+        target_entity: str,
+        config_version: int = 0,
+        entity_configs: dict[str, TableConfig] | None = None,
+    ) -> None:
+        """Cache all entities from table_store individually with entity hashes.
 
         Args:
             config_name: Configuration name
             table_store: Dict of entity_name -> DataFrame
             target_entity: Target entity name (for logging)
             config_version: Configuration version from ApplicationState
+            entity_configs: Optional dict of entity_name -> TableConfig for hash computation
         """
         for entity_name, df in table_store.items():
-            self.set_dataframe(config_name, entity_name, df, config_version)
+            entity_config = entity_configs.get(entity_name) if entity_configs else None
+            self.set_dataframe(config_name, entity_name, df, config_version, entity_config)
         logger.debug(f"Cached {len(table_store)} entities from {target_entity} execution")
 
     def gather_cached_dependencies(
-        self, config_name: str, entity_config: TableConfig, config_version: int | None = None
+        self,
+        config_name: str,
+        entity_config: TableConfig,
+        config_version: int | None = None,
+        shapeshift_config: ShapeShiftConfig | None = None,
     ) -> dict[str, pd.DataFrame]:
-        """Gather all cached dependencies for an entity.
+        """Gather all cached dependencies for an entity with hash validation.
 
         Args:
             config_name: Configuration name
             entity_config: Target entity configuration
             config_version: Optional config version for validation
+            shapeshift_config: Optional ShapeShiftConfig for dependency hash validation
 
         Returns:
             Dict of cached entity DataFrames
         """
         cached_deps: dict[str, pd.DataFrame] = {}
         for dep_name in entity_config.depends_on:
-            cached_df = self.get_dataframe(config_name, dep_name, config_version)
+            # Get dependency config for hash validation if available
+            dep_config = shapeshift_config.get_table(dep_name) if shapeshift_config else None
+            cached_df = self.get_dataframe(config_name, dep_name, config_version, dep_config)
             if cached_df is not None:
                 cached_deps[dep_name] = cached_df
 
         if cached_deps:
-            logger.debug(f"Found {len(cached_deps)} cached dependencies for {entity_config.entity_name}: {list(cached_deps.keys())}")
+            logger.debug(
+                f"Found {len(cached_deps)} cached dependencies for {entity_config.entity_name}: {list(cached_deps.keys())}"
+            )
 
         return cached_deps
 
@@ -125,10 +225,10 @@ class ShapeShiftCache:
         """Get all entity names available in cache for a configuration."""
         available = set()
         current_time = time.time()
-        for key, (timestamp, cached_config, entity_name, _) in list(self._metadata.items()):
-            if cached_config == config_name and (current_time - timestamp) < self._ttl:
+        for key, metadata in list(self._metadata.items()):
+            if metadata.config_name == config_name and (current_time - metadata.timestamp) < self._ttl:
                 if key in self._dataframes:
-                    available.add(entity_name)
+                    available.add(metadata.entity_name)
         return available
 
     def invalidate(self, config_name: str, entity_name: str | None = None) -> None:
@@ -140,9 +240,9 @@ class ShapeShiftCache:
                         None to invalidate all entities for config
         """
         keys_to_remove = []
-        for key, (_, cached_config, cached_entity, _) in list(self._metadata.items()):
-            if cached_config == config_name:
-                if entity_name is None or cached_entity == entity_name:
+        for key, metadata in list(self._metadata.items()):
+            if metadata.config_name == config_name:
+                if entity_name is None or metadata.entity_name == entity_name:
                     keys_to_remove.append(key)
 
         for key in keys_to_remove:
@@ -262,8 +362,10 @@ class ShapeShiftService:
 
         entity_config: TableConfig = shapeshift_config.tables[entity_name]
 
-        # Check if target entity is cached
-        cached_target: pd.DataFrame | None = self.cache.get_dataframe(config_name, entity_name, config_version)
+        # Check if target entity is cached (with hash validation)
+        cached_target: pd.DataFrame | None = self.cache.get_dataframe(
+            config_name, entity_name, config_version, entity_config
+        )
 
         if cached_target is not None:
             # Full cache hit - target entity is cached
@@ -271,12 +373,16 @@ class ShapeShiftService:
             cache_hit = True
             table_store: dict[str, pd.DataFrame] = {entity_name: cached_target}
 
-            # Also gather any cached dependencies for dependency tracking
-            cached_deps = self.cache.gather_cached_dependencies(config_name, entity_config, config_version)
+            # Also gather any cached dependencies for dependency tracking (with hash validation)
+            cached_deps = self.cache.gather_cached_dependencies(
+                config_name, entity_config, config_version, shapeshift_config
+            )
             table_store.update(cached_deps)
         else:
             # Cache miss - gather cached dependencies and run ShapeShifter
-            initial_table_store: dict[str, pd.DataFrame] = self.cache.gather_cached_dependencies(config_name, entity_config, config_version)
+            initial_table_store: dict[str, pd.DataFrame] = self.cache.gather_cached_dependencies(
+                config_name, entity_config, config_version, shapeshift_config
+            )
 
             table_store = await self._shapeshift(
                 config=shapeshift_config,
@@ -285,8 +391,9 @@ class ShapeShiftService:
                 initial_table_store=initial_table_store,
             )
 
-            # Cache all entities from the result individually
-            self.cache.set_table_store(config_name, table_store, entity_name, config_version)
+            # Cache all entities from the result individually (with entity configs for hashing)
+            entity_configs = {name: shapeshift_config.get_table(name) for name in table_store.keys()}
+            self.cache.set_table_store(config_name, table_store, entity_name, config_version, entity_configs)
 
         # Build PreviewResult from table_store (apply limit here)
         result: PreviewResult = PreviewResultBuilder().build(

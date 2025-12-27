@@ -168,6 +168,39 @@ class TestShapeShiftCache:
         assert cache.get_dataframe("config1", "entity1") is None
         assert cache.get_dataframe("config1", "entity2") is None
 
+    def test_cache_hash_invalidation(self, sample_config):
+        """Test hash-based cache invalidation when entity config changes."""
+
+        cache = ShapeShiftCache(ttl_seconds=60)
+        df = pd.DataFrame({"user_id": [1, 2, 3], "username": ["alice", "bob", "charlie"]})
+
+        # Get original entity config
+        entity_config = sample_config.get_table("users")
+
+        # Cache with original config
+        cache.set_dataframe("config1", "users", df, config_version=1, entity_config=entity_config)
+
+        # Verify cache hit with same config
+        assert cache.get_dataframe("config1", "users", 1, entity_config) is not None
+
+        # Modify entity configuration (simulate editing)
+        modified_cfg = {
+            "users": {
+                "name": "users",
+                "type": "sql",
+                "data_source": "test_db",
+                "query": "SELECT * FROM users WHERE active = 1",  # Changed query
+                "surrogate_id": "user_id",
+                "keys": ["username"],
+                "columns": ["user_id", "username", "email"],
+            }
+        }
+        modified_entity_config = TableConfig(cfg=modified_cfg, entity_name="users")
+
+        # Cache should be invalidated due to hash mismatch
+        result = cache.get_dataframe("config1", "users", 1, modified_entity_config)
+        assert result is None
+
 
 class TestShapeShiftService:
     """Tests for preview service."""
