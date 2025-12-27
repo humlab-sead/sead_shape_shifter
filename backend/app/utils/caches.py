@@ -226,7 +226,7 @@ class ShapeShiftCache:
 class ShapeShiftConfigCache:
     """Cache for ShapeShiftConfig instances with version tracking."""
 
-    def __init__(self,  config_service: ConfigurationService):
+    def __init__(self, config_service: ConfigurationService):
         """Initialize ShapeShiftConfig cache."""
         self.config_service: ConfigurationService = config_service
         self._cache: dict[str, ShapeShiftConfig] = {}

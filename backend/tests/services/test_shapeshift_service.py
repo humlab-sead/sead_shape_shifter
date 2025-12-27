@@ -1,7 +1,6 @@
 """Tests for entity preview service."""
 
 import time
-
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -12,8 +11,7 @@ from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.shapeshift_service import PreviewResultBuilder, ShapeShiftCache, ShapeShiftService
 from src.model import ShapeShiftConfig, TableConfig
 
-
-# pylint: disable=redefined-outer-name, unused-argument, attribute-defined-outside-init
+# pylint: disable=redefined-outer-name, attribute-defined-outside-init
 
 
 @pytest.fixture
@@ -243,7 +241,6 @@ class TestShapeShiftService:
     @pytest.mark.asyncio
     async def test_preview_entity_success(self, shapeshift_service, sample_config):
         """Test successful entity preview."""
-        import pandas as pd
 
         users_df = pd.DataFrame(
             {
@@ -434,7 +431,6 @@ class TestShapeShiftService:
 
     def test_invalidate_cache(self, shapeshift_service: ShapeShiftService):
         """Test cache invalidation."""
-        import pandas as pd
 
         # Add something to cache
         df = pd.DataFrame({"id": [1, 2, 3]})
@@ -448,8 +444,6 @@ class TestShapeShiftService:
 
         # Verify it's gone
         assert shapeshift_service.cache.get_dataframe("config1", "entity1") is None
-
-    """Test ShapeShiftService for entity data preview."""
 
     # Possibly redundant with previous tests, but included for completeness
 
@@ -619,7 +613,6 @@ class TestShapeShiftConfig:
         """Test loading ShapeShift config from ApplicationState."""
         mock_api_config = MagicMock()
 
-
         with (
             patch("backend.app.utils.caches.get_app_state") as mock_state,
             patch("backend.app.utils.caches.ConfigMapper") as mock_mapper,
@@ -730,9 +723,7 @@ class TestPreviewBuilder:
         assert result.has_dependencies is True
         assert "users" in result.dependencies_loaded
 
-    def test_build_preview_result(
-        self, shapeshift_service: ShapeShiftService, sample_dataframe: pd.DataFrame, sample_config: ShapeShiftConfig
-    ):
+    def test_build_preview_result(self, sample_dataframe: pd.DataFrame, sample_config: ShapeShiftConfig):
         """Test _build_preview_result correctly builds PreviewResult from table_store."""
         entity_config: TableConfig = sample_config.get_table("users")
         table_store = {"users": sample_dataframe, "orders": pd.DataFrame({"order_id": [1, 2], "user_id": [1, 2]})}
