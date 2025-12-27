@@ -100,17 +100,17 @@ class ShapeShiftService:
             # Determine the default source entity from the target entity config
             default_source: str | None = entity_config.source if entity_config.source else None
 
-            normalizer: ShapeShifter = ShapeShifter(
+            shapeshifter: ShapeShifter = ShapeShifter(
                 config=config, table_store=initial_table_store, default_entity=default_source, target_entities={entity_name}
             )
 
-            await normalizer.normalize()
+            await shapeshifter.normalize()
 
-            if entity_name not in normalizer.table_store:
+            if entity_name not in shapeshifter.table_store:
                 raise RuntimeError(f"Entity {entity_name} was not produced by normalizer")
 
             # Return the complete table_store (includes target + all dependencies)
-            return normalizer.table_store
+            return shapeshifter.table_store
 
         except Exception as e:
             logger.error(f"ShapeShift failed for {entity_name}: {e}", exc_info=True)

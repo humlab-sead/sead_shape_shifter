@@ -1,5 +1,6 @@
 """Unit tests for arbodat normalizer classes."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
@@ -212,6 +213,26 @@ class TestProcessState:
 
         state.table_store["sample"] = Mock()
         assert state.processed_entities == {"site", "sample"}
+
+    def test_get_next_entity_with_unresolvable_dependencies(self):
+        """Circular dependencies should yield no next entity."""
+        config = ShapeShiftConfig(
+            cfg={
+                "entities": {
+                    "a": {"depends_on": ["b"]},
+                    "b": {"depends_on": ["a"]},
+                }
+            },
+        )
+
+        state = ProcessState(config=config, table_store={})
+
+        with patch.object(config, "get_table") as mock_get_table:
+            mock_table = Mock()
+            mock_table.depends_on = {"b"}
+            mock_get_table.side_effect = [mock_table, Mock(depends_on={"a"})]
+
+            assert state.get_next_entity_to_process() is None
 
 
 class TestShapeShifter:
@@ -623,3 +644,43 @@ class TestShapeShifter:
 
             # Should be called for all entities including survey
             assert mock_unnest.call_count == 3
+
+    def test_map_to_remote_links_only_configured_entities(self, survey_and_site_config: ShapeShiftConfig):
+        """map_to_remote should link only entities present in link config."""
+        table_store = {
+            "survey": pd.DataFrame({"id": [1]}),
+            "site": pd.DataFrame({"site_id": [10]}),
+            "other": pd.DataFrame({"x": [1]}),
+        }
+        normalizer = ShapeShifter(config=survey_and_site_config, default_entity="survey", table_store=table_store)
+
+        mocked_service = Mock()
+        mocked_service.link_to_remote = Mock(return_value=pd.DataFrame({"site_id": [10], "remote_id": [99]}))
+
+        with patch("src.normalizer.LinkToRemoteService", return_value=mocked_service) as mock_service:
+            normalizer.map_to_remote({"site": {"remote": "cfg"}})
+
+        mock_service.assert_called_once()
+        assert mocked_service.link_to_remote.call_count == 1
+        called_entity, passed_df = mocked_service.link_to_remote.call_args.args
+        assert called_entity == "site"
+        assert "site_id" in passed_df.columns
+        assert "remote_id" in normalizer.table_store["site"].columns
+        pd.testing.assert_frame_equal(normalizer.table_store["other"], table_store["other"])
+
+    def test_log_shapes_writes_tsv(self, tmp_path: Path, survey_only_config: ShapeShiftConfig):
+        """log_shapes should write table shapes TSV next to target."""
+        normalizer = ShapeShifter(config=survey_only_config, default_entity="survey")
+        normalizer.table_store = {
+            "survey": pd.DataFrame({"a": [1, 2], "b": [3, 4]}),
+            "site": pd.DataFrame({"x": [1], "y": [2]}),
+        }
+
+        target = tmp_path / "output.xlsx"
+        normalizer.log_shapes(str(target))
+
+        tsv_path = tmp_path / "table_shapes.tsv"
+        assert tsv_path.exists()
+        content = tsv_path.read_text().strip().splitlines()
+        assert content[0] == "entity\tnum_rows\tnum_columns"
+        assert len(content) == 3  # header + two entities
