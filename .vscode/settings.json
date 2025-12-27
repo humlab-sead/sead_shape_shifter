@@ -22,9 +22,11 @@
         "titleBar.activeBackground": "#85dbce",
         "titleBar.activeForeground": "#15202b",
         "titleBar.inactiveBackground": "#85dbce99",
-        "titleBar.inactiveForeground": "#15202b99"
+        "titleBar.inactiveForeground": "#15202b99",
+        "editor.background": "#000000",
+        "sideBar.background": "#000000",
+        "panel.background": "#000000",
     },
-    "peacock.remoteColor": "#85dbce",
     "yaml.keyOrdering": false,
     "python.analysis.exclude": [
         "frontend"
