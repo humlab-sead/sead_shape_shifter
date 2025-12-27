@@ -2,8 +2,6 @@
 Tests for Query Service
 """
 
-"""Tests for QueryService."""
-
 import asyncio
 from typing import Literal
 from unittest.mock import AsyncMock, MagicMock, Mock, patch

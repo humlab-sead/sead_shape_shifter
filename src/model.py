@@ -491,7 +491,7 @@ class TableConfig:
         """Compute a hash of the metadata for change detection."""
         metadata_str = str(sorted(self.data.items()))
         return xxhash.xxh64(metadata_str.encode()).hexdigest()
-    
+
 
 class Metadata:
     """Configuration metadata. Read-Only. Wraps metadata section from configuration."""
@@ -514,7 +514,8 @@ class Metadata:
     def version(self) -> str:
         """Configuration version."""
         return self.data.get("version", "1.0.0")
-    
+
+
 class ShapeShiftConfig:
     """Configuration for database tables. Read-Only. Wraps overall configuration."""
 
