@@ -391,7 +391,7 @@ class TestShapeShiftService:
             mock_normalizer.table_store = {"users": sample_dataframe}
             mock_normalizer_class.return_value = mock_normalizer
 
-            # First call - should hit normalizer
+            # First call - should hit shapeshifter
             result1 = await shapeshift_service.preview_entity("test_config", "users", 50)
             assert result1.cache_hit is False
 
@@ -399,7 +399,7 @@ class TestShapeShiftService:
             result2 = await shapeshift_service.preview_entity("test_config", "users", 50)
             assert result2.cache_hit is True
 
-            # Verify normalizer was only called once
+            # Verify shapeshifter was only called once
             assert mock_normalizer.normalize.call_count == 1
 
     @pytest.mark.asyncio
@@ -534,10 +534,10 @@ class TestShapeShiftService:
             assert "parent_entity" in result.dependencies_loaded
 
     @pytest.mark.asyncio
-    async def test_preview_entity_normalizer_error(self, shapeshift_service: ShapeShiftService, sample_entity_config: TableConfig):
-        """Test preview handles normalizer errors."""
-        mock_normalizer = MagicMock()
-        mock_normalizer.normalize = AsyncMock(side_effect=RuntimeError("Normalization failed"))
+    async def test_preview_entity_shapeshifter_error(self, shapeshift_service: ShapeShiftService, sample_entity_config: TableConfig):
+        """Test preview handles shapeshifter errors."""
+        mock_shapeshifter = MagicMock()
+        mock_shapeshifter.normalize = AsyncMock(side_effect=RuntimeError("Normalization failed"))
 
         # Mock ShapeShiftConfig with the entity
         mock_shapeshift_config = MagicMock()
@@ -547,7 +547,7 @@ class TestShapeShiftService:
             patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
             patch.object(shapeshift_service.config_cache, "get_config", return_value=mock_shapeshift_config),
         ):
-            mock_shifter.return_value = mock_normalizer
+            mock_shifter.return_value = mock_shapeshifter
 
             with pytest.raises(RuntimeError, match="ShapeShift failed"):
                 await shapeshift_service.preview_entity("test_config", "test_entity", limit=10)
@@ -560,9 +560,9 @@ class TestShapeShiftService:
         sample_dataframe: pd.DataFrame,
     ):
         """Test get_entity_sample uses default limit of 100."""
-        mock_normalizer = MagicMock()
-        mock_normalizer.table_store = {"test_entity": sample_dataframe}
-        mock_normalizer.normalize = AsyncMock()
+        mock_shapeshifter = MagicMock()
+        mock_shapeshifter.table_store = {"test_entity": sample_dataframe}
+        mock_shapeshifter.normalize = AsyncMock()
 
         # Mock ShapeShiftConfig with the entity
         mock_shapeshift_config = MagicMock()
@@ -572,7 +572,7 @@ class TestShapeShiftService:
             patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
             patch.object(shapeshift_service.config_cache, "get_config", return_value=mock_shapeshift_config),
         ):
-            mock_shifter.return_value = mock_normalizer
+            mock_shifter.return_value = mock_shapeshifter
 
             result = await shapeshift_service.get_entity_sample("test_config", "test_entity")
 
