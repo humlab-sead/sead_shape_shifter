@@ -3,6 +3,7 @@ from functools import cached_property
 from typing import Any, Generator, Literal, Self
 
 import pandas as pd
+import xxhash
 from loguru import logger
 
 from src.configuration import ConfigFactory, ConfigLike
@@ -486,6 +487,11 @@ class TableConfig:
             key_columns.add(self.surrogate_id)
         return key_columns
 
+    def hash(self) -> str:
+        """Compute a hash of the metadata for change detection."""
+        metadata_str = str(sorted(self.data.items()))
+        return xxhash.xxh64(metadata_str.encode()).hexdigest()
+    
 
 class Metadata:
     """Configuration metadata. Read-Only. Wraps metadata section from configuration."""
@@ -508,8 +514,7 @@ class Metadata:
     def version(self) -> str:
         """Configuration version."""
         return self.data.get("version", "1.0.0")
-
-
+    
 class ShapeShiftConfig:
     """Configuration for database tables. Read-Only. Wraps overall configuration."""
 
