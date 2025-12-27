@@ -1,5 +1,6 @@
 """Service for previewing entity data with transformations."""
 
+import contextlib
 import time
 
 import pandas as pd
@@ -45,16 +46,10 @@ class ShapeShiftService:
         start_time: float = time.time()
         cache_hit: bool = False
 
-        # Get ShapeShiftConfig and version (always needed for entity_config)
         shapeshift_config: ShapeShiftConfig = await self._config_cache.get_config(config_name)
 
         # Get current version from ApplicationState if available
-        config_version: int = 0
-        try:
-            app_state: ApplicationState = get_app_state()
-            config_version = app_state.get_version(config_name)
-        except RuntimeError:
-            pass  # ApplicationState not initialized
+        config_version: int = self.get_config_version(config_name)
 
         if entity_name not in shapeshift_config.tables:
             raise ValueError(f"Entity '{entity_name}' not found in configuration")
@@ -63,16 +58,15 @@ class ShapeShiftService:
 
         # Check if target entity is cached (with hash validation)
         cached_target: pd.DataFrame | None = self.cache.get_dataframe(config_name, entity_name, config_version, entity_config)
+        table_store: dict[str, pd.DataFrame]
 
         if cached_target is not None:
             # Full cache hit - target entity is cached
             logger.debug(f"Building preview from cached DataFrame for {entity_name}")
             cache_hit = True
-            table_store: dict[str, pd.DataFrame] = {entity_name: cached_target}
-
-            # Also gather any cached dependencies for dependency tracking (with hash validation)
-            cached_deps = self.cache.gather_cached_dependencies(config_name, entity_config, config_version, shapeshift_config)
-            table_store.update(cached_deps)
+            table_store = {entity_name: cached_target} | self.cache.gather_cached_dependencies(
+                config_name, entity_config, config_version, shapeshift_config
+            )
         else:
             # Cache miss - gather cached dependencies and run ShapeShifter
             initial_table_store: dict[str, pd.DataFrame] = self.cache.gather_cached_dependencies(
@@ -87,7 +81,7 @@ class ShapeShiftService:
             )
 
             # Cache all entities from the result individually (with entity configs for hashing)
-            entity_configs = {name: shapeshift_config.get_table(name) for name in table_store.keys()}
+            entity_configs: dict[str, TableConfig] = {name: shapeshift_config.get_table(name) for name in table_store.keys()}
             self.cache.set_table_store(config_name, table_store, entity_name, config_version, entity_configs)
 
         # Build PreviewResult from table_store (apply limit here)
@@ -173,6 +167,13 @@ class ShapeShiftService:
         self.cache.invalidate(config_name, entity_name)
         logger.info(f"Invalidated preview cache for {config_name}:{entity_name or 'all'}")
 
+    def get_config_version(self, config_name: str) -> int:
+        """Get the current version of a configuration from ApplicationState."""
+        with contextlib.suppress(RuntimeError):
+            app_state: ApplicationState = get_app_state()
+            return app_state.get_version(config_name)
+        return 0  # ApplicationState not initialized
+
 
 class PreviewResultBuilder:
 
@@ -183,7 +184,6 @@ class PreviewResultBuilder:
         if entity_name not in table_store:
             raise RuntimeError(f"Entity {entity_name} not found in table_store")
 
-        estimated_total: int = len(table_store[entity_name])
         preview_df: pd.DataFrame = table_store[entity_name].head(limit)
 
         key_columns: set[str] = entity_config.get_key_columns()
@@ -207,7 +207,7 @@ class PreviewResultBuilder:
             rows=rows,
             columns=columns,
             total_rows_in_preview=len(rows),
-            estimated_total_rows=estimated_total,
+            estimated_total_rows=len(table_store[entity_name]),
             execution_time_ms=0,  # Will be set by caller
             has_dependencies=len(dependencies_loaded) > 0,
             dependencies_loaded=dependencies_loaded,
