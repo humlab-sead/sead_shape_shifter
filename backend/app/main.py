@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
+from backend.app.core.state_manager import ApplicationState
 from backend.app.api.v1.api import api_router
 from backend.app.core.config import settings
 from backend.app.core.state_manager import init_app_state
@@ -21,7 +22,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
 
     # Initialize application state (NO default config loading)
     logger.info(f"Configuration directory: {settings.CONFIGURATIONS_DIR}")
-    app_state = init_app_state(settings.CONFIGURATIONS_DIR)
+    app_state: ApplicationState = init_app_state(settings.CONFIGURATIONS_DIR)
     await app_state.start()
 
     logger.info("Application ready - configurations loaded on-demand via sessions")
