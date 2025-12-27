@@ -55,24 +55,6 @@ class ShapeShiftCache:
         key_str = f"{config_name}:{entity_name}"
         return hashlib.md5(key_str.encode()).hexdigest()
 
-    def _compute_entity_hash(self, entity_config: TableConfig) -> str:
-        """Compute hash of entity configuration.
-
-        Uses xxhash for fast hashing of entity configuration dict.
-        This detects changes to entity-specific settings like columns,
-        filters, transformations, foreign keys, etc.
-
-        Args:
-            entity_config: Entity configuration
-
-        Returns:
-            Hexadecimal hash string
-        """
-        # Serialize entity config to stable string representation
-        # Use sorted dict representation for deterministic hashing
-        config_str = str(sorted(entity_config.data.items()))
-        return xxhash.xxh64(config_str.encode()).hexdigest()
-
     def get_dataframe(
         self,
         config_name: str,
@@ -113,14 +95,12 @@ class ShapeShiftCache:
         if config_version is not None and metadata.config_version != config_version:
             del self._dataframes[key]
             del self._metadata[key]
-            logger.debug(
-                f"Cache invalidated for {entity_name} (version mismatch: {metadata.config_version} != {config_version})"
-            )
+            logger.debug(f"Cache invalidated for {entity_name} (version mismatch: {metadata.config_version} != {config_version})")
             return None
 
         # Tier 3: Check entity hash if entity_config provided
         if entity_config is not None:
-            current_hash = self._compute_entity_hash(entity_config)
+            current_hash = entity_config.hash()
             if metadata.entity_hash != current_hash:
                 del self._dataframes[key]
                 del self._metadata[key]
@@ -149,11 +129,11 @@ class ShapeShiftCache:
             config_version: Configuration version from ApplicationState
             entity_config: Entity configuration for hash computation
         """
-        key = self._generate_key(config_name, entity_name)
+        key: str = self._generate_key(config_name, entity_name)
         self._dataframes[key] = dataframe.copy()  # Store copy to prevent external modifications
 
         # Compute entity hash if config provided, otherwise use empty hash
-        entity_hash = self._compute_entity_hash(entity_config) if entity_config else ""
+        entity_hash = entity_config.hash() if entity_config else ""
 
         self._metadata[key] = CacheMetadata(
             timestamp=time.time(),
@@ -162,9 +142,7 @@ class ShapeShiftCache:
             config_version=config_version,
             entity_hash=entity_hash,
         )
-        logger.debug(
-            f"Cached DataFrame for {entity_name} (version {config_version}, hash {entity_hash[:8]}, {len(dataframe)} rows)"
-        )
+        logger.debug(f"Cached DataFrame for {entity_name} (version {config_version}, hash {entity_hash[:8]}, {len(dataframe)} rows)")
 
     def set_table_store(
         self,
@@ -215,9 +193,7 @@ class ShapeShiftCache:
                 cached_deps[dep_name] = cached_df
 
         if cached_deps:
-            logger.debug(
-                f"Found {len(cached_deps)} cached dependencies for {entity_config.entity_name}: {list(cached_deps.keys())}"
-            )
+            logger.debug(f"Found {len(cached_deps)} cached dependencies for {entity_config.entity_name}: {list(cached_deps.keys())}")
 
         return cached_deps
 
@@ -256,8 +232,9 @@ class ShapeShiftCache:
 class ShapeShiftConfigCache:
     """Cache for ShapeShiftConfig instances with version tracking."""
 
-    def __init__(self, config_service: ConfigurationService):
+    def __init__(self, app_state: ApplicationState, config_service: ConfigurationService):
         """Initialize ShapeShiftConfig cache."""
+        self.app_state: ApplicationState = app_state
         self.config_service: ConfigurationService = config_service
         self._cache: dict[str, ShapeShiftConfig] = {}
         self._versions: dict[str, int] = {}
@@ -277,8 +254,7 @@ class ShapeShiftConfigCache:
         """
         # Get current version from ApplicationState
         try:
-            app_state: ApplicationState = get_app_state()
-            current_version: int = app_state.get_version(config_name)
+            current_version: int = self.app_state.get_version(config_name)
             cached_version: int = self._versions.get(config_name, -1)
 
             # Check if cached version is still valid
@@ -288,7 +264,7 @@ class ShapeShiftConfigCache:
 
             # Version mismatch or no cache - reload
             logger.debug(f"ShapeShiftConfig cache miss/invalid for '{config_name}' (cached: {cached_version}, current: {current_version})")
-            api_config: Configuration | None = app_state.get_configuration(config_name)
+            api_config: Configuration | None = self.app_state.get_configuration(config_name)
 
             if api_config:
                 # Convert from active API Configuration
@@ -321,9 +297,9 @@ class ShapeShiftService:
         """Initialize shapeshift/preview service."""
         self.config_service: ConfigurationService = config_service
         self.cache = ShapeShiftCache(ttl_seconds=ttl_seconds)  # 5 minute cache
-
+        self.app_state: ApplicationState = get_app_state()
         # Cache ShapeShiftConfig instances for performance
-        self._config_cache = ShapeShiftConfigCache(config_service)
+        self._config_cache = ShapeShiftConfigCache(self.app_state, config_service)
 
     async def preview_entity(self, config_name: str, entity_name: str, limit: int = 50) -> PreviewResult:
         """
@@ -363,9 +339,7 @@ class ShapeShiftService:
         entity_config: TableConfig = shapeshift_config.tables[entity_name]
 
         # Check if target entity is cached (with hash validation)
-        cached_target: pd.DataFrame | None = self.cache.get_dataframe(
-            config_name, entity_name, config_version, entity_config
-        )
+        cached_target: pd.DataFrame | None = self.cache.get_dataframe(config_name, entity_name, config_version, entity_config)
 
         if cached_target is not None:
             # Full cache hit - target entity is cached
@@ -374,9 +348,7 @@ class ShapeShiftService:
             table_store: dict[str, pd.DataFrame] = {entity_name: cached_target}
 
             # Also gather any cached dependencies for dependency tracking (with hash validation)
-            cached_deps = self.cache.gather_cached_dependencies(
-                config_name, entity_config, config_version, shapeshift_config
-            )
+            cached_deps = self.cache.gather_cached_dependencies(config_name, entity_config, config_version, shapeshift_config)
             table_store.update(cached_deps)
         else:
             # Cache miss - gather cached dependencies and run ShapeShifter
