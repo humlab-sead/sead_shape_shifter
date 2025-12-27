@@ -1,18 +1,4 @@
-"""Additional unit tests for utility functions in src/utility.py.
-
-Tests cover functions that weren't previously tested:
-- normalize_text
-- recursive_update
-- recursive_filter_dict
-- dotset
-- env2dict
-- replace_env_vars
-- Registry class
-- create_db_uri
-- get_connection_uri
-- load_resource_yaml
-- resolve_specification
-"""
+"""Additional unit tests for utility functions in src/utility.py."""
 
 import os
 from typing import Any
