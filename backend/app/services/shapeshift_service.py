@@ -19,11 +19,9 @@ class ShapeShiftService:
     """Service for previewing entity data with caching."""
 
     def __init__(self, config_service: ConfigurationService, ttl_seconds: int = 300):
-        """Initialize shapeshift/preview service."""
         self.config_service: ConfigurationService = config_service
         self.cache: ShapeShiftCache = ShapeShiftCache(ttl_seconds=ttl_seconds)  # 5 minute cache
-        # Cache ShapeShiftConfig instances for performance
-        self._config_cache = ShapeShiftConfigCache(config_service)
+        self.config_cache = ShapeShiftConfigCache(config_service)
 
     async def preview_entity(self, config_name: str, entity_name: str, limit: int = 50) -> PreviewResult:
         """
@@ -44,11 +42,8 @@ class ShapeShiftService:
             RuntimeError: If preview fails
         """
         start_time: float = time.time()
-        cache_hit: bool = False
 
-        shapeshift_config: ShapeShiftConfig = await self._config_cache.get_config(config_name)
-
-        # Get current version from ApplicationState if available
+        shapeshift_config: ShapeShiftConfig = await self.config_cache.get_config(config_name)
         config_version: int = self.get_config_version(config_name)
 
         if entity_name not in shapeshift_config.tables:
@@ -56,41 +51,25 @@ class ShapeShiftService:
 
         entity_config: TableConfig = shapeshift_config.tables[entity_name]
 
-        # Check if target entity is cached (with hash validation)
+        # Check if target entity is cached
         cached_target: pd.DataFrame | None = self.cache.get_dataframe(config_name, entity_name, config_version, entity_config)
+        cache_hit: bool = cached_target is not None
+        cached_dependencies: dict[str, pd.DataFrame] = self.cache.gather_cached_dependencies(
+            config_name, entity_config, config_version, shapeshift_config
+        )
+
         table_store: dict[str, pd.DataFrame]
-
         if cached_target is not None:
-            # Full cache hit - target entity is cached
-            logger.debug(f"Building preview from cached DataFrame for {entity_name}")
-            cache_hit = True
-            table_store = {entity_name: cached_target} | self.cache.gather_cached_dependencies(
-                config_name, entity_config, config_version, shapeshift_config
-            )
+            table_store = {entity_name: cached_target} | cached_dependencies
         else:
-            # Cache miss - gather cached dependencies and run ShapeShifter
-            initial_table_store: dict[str, pd.DataFrame] = self.cache.gather_cached_dependencies(
-                config_name, entity_config, config_version, shapeshift_config
+            table_store = await self.shapeshift(
+                config=shapeshift_config, entity_name=entity_name, entity_config=entity_config, initial_table_store=cached_dependencies
             )
-
-            table_store = await self._shapeshift(
-                config=shapeshift_config,
-                entity_name=entity_name,
-                entity_config=entity_config,
-                initial_table_store=initial_table_store,
-            )
-
-            # Cache all entities from the result individually (with entity configs for hashing)
             entity_configs: dict[str, TableConfig] = {name: shapeshift_config.get_table(name) for name in table_store.keys()}
             self.cache.set_table_store(config_name, table_store, entity_name, config_version, entity_configs)
 
-        # Build PreviewResult from table_store (apply limit here)
         result: PreviewResult = PreviewResultBuilder().build(
-            entity_name=entity_name,
-            entity_config=entity_config,
-            table_store=table_store,
-            limit=limit,
-            cache_hit=cache_hit,
+            entity_name=entity_name, entity_config=entity_config, table_store=table_store, limit=limit, cache_hit=cache_hit
         )
 
         execution_time_ms: int = int((time.time() - start_time) * 1000)
@@ -98,7 +77,7 @@ class ShapeShiftService:
 
         return result
 
-    async def _shapeshift(
+    async def shapeshift(
         self,
         config: ShapeShiftConfig,
         entity_name: str,
@@ -122,10 +101,7 @@ class ShapeShiftService:
             default_source: str | None = entity_config.source if entity_config.source else None
 
             normalizer: ShapeShifter = ShapeShifter(
-                config=config,
-                table_store=initial_table_store,  # Pass cached entities
-                default_entity=default_source,
-                target_entities={entity_name},
+                config=config, table_store=initial_table_store, default_entity=default_source, target_entities={entity_name}
             )
 
             await normalizer.normalize()
@@ -152,18 +128,10 @@ class ShapeShiftService:
         Returns:
             PreviewResult with sample data
         """
-        # Clamp limit to max 1000
-        limit = min(limit, 1000)
         return await self.preview_entity(config_name, entity_name, limit)
 
     def invalidate_cache(self, config_name: str, entity_name: str | None = None) -> None:
-        """
-        Invalidate preview cache for a configuration or specific entity.
-
-        Args:
-            config_name: Name of the configuration
-            entity_name: Optional entity name to invalidate specific entity
-        """
+        """Invalidate preview cache for a configuration or specific entity."""
         self.cache.invalidate(config_name, entity_name)
         logger.info(f"Invalidated preview cache for {config_name}:{entity_name or 'all'}")
 

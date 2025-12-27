@@ -256,7 +256,7 @@ class TestShapeShiftService:
 
         with (
             patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
-            patch.object(shapeshift_service._config_cache, "get_config", return_value=sample_config),
+            patch.object(shapeshift_service.config_cache, "get_config", return_value=sample_config),
         ):
             mock_shifter.return_value = mock_normalizer
 
@@ -466,7 +466,7 @@ class TestShapeShiftService:
 
         with (
             patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
-            patch.object(shapeshift_service._config_cache, "get_config", return_value=mock_shapeshift_config),
+            patch.object(shapeshift_service.config_cache, "get_config", return_value=mock_shapeshift_config),
         ):
             mock_shifter.return_value = mock_normalizer
 
@@ -492,7 +492,7 @@ class TestShapeShiftService:
 
         with (
             patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
-            patch.object(shapeshift_service._config_cache, "get_config", return_value=mock_shapeshift_config),
+            patch.object(shapeshift_service.config_cache, "get_config", return_value=mock_shapeshift_config),
         ):
             mock_shifter.return_value = mock_normalizer
 
@@ -524,7 +524,7 @@ class TestShapeShiftService:
 
         with (
             patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
-            patch.object(shapeshift_service._config_cache, "get_config", return_value=mock_shapeshift_config),
+            patch.object(shapeshift_service.config_cache, "get_config", return_value=mock_shapeshift_config),
         ):
             mock_shifter.return_value = mock_normalizer
 
@@ -545,7 +545,7 @@ class TestShapeShiftService:
 
         with (
             patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
-            patch.object(shapeshift_service._config_cache, "get_config", return_value=mock_shapeshift_config),
+            patch.object(shapeshift_service.config_cache, "get_config", return_value=mock_shapeshift_config),
         ):
             mock_shifter.return_value = mock_normalizer
 
@@ -570,7 +570,7 @@ class TestShapeShiftService:
 
         with (
             patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
-            patch.object(shapeshift_service._config_cache, "get_config", return_value=mock_shapeshift_config),
+            patch.object(shapeshift_service.config_cache, "get_config", return_value=mock_shapeshift_config),
         ):
             mock_shifter.return_value = mock_normalizer
 
@@ -594,7 +594,7 @@ class TestShapeShiftService:
 
         with (
             patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_shifter,
-            patch.object(shapeshift_service._config_cache, "get_config", return_value=mock_shapeshift_config),
+            patch.object(shapeshift_service.config_cache, "get_config", return_value=mock_shapeshift_config),
         ):
             mock_shifter.return_value = mock_normalizer
 
@@ -623,7 +623,7 @@ class TestShapeShiftConfig:
             mock_mapper.to_core_dict = MagicMock(return_value={})
             mock_cfg.return_value = MagicMock()
 
-            result = await shapeshift_service._config_cache.get_config("test_config")
+            result = await shapeshift_service.config_cache.get_config("test_config")
 
             assert result is not None
             mock_state.return_value.get_configuration.assert_called_once_with("test_config")
@@ -643,7 +643,7 @@ class TestShapeShiftConfig:
             mock_mapper.to_core_dict = MagicMock(return_value={})
             mock_cfg.return_value = MagicMock()
 
-            result = await shapeshift_service._config_cache.get_config("test_config")
+            result = await shapeshift_service.config_cache.get_config("test_config")
 
             assert result is not None
             config_service.load_configuration.assert_called_once_with("test_config")
@@ -664,8 +664,8 @@ class TestShapeShiftConfig:
             mock_cfg_instance = MagicMock()
             mock_cfg.return_value = mock_cfg_instance
 
-            result1 = await shapeshift_service._config_cache.get_config("test_config")
-            result2 = await shapeshift_service._config_cache.get_config("test_config")
+            result1 = await shapeshift_service.config_cache.get_config("test_config")
+            result2 = await shapeshift_service.config_cache.get_config("test_config")
 
             # Should return same cached instance
             assert result1 is result2
@@ -688,12 +688,12 @@ class TestShapeShiftConfig:
             mock_mapper.to_core_dict = MagicMock(return_value={})
             mock_cfg.return_value = MagicMock()
 
-            await shapeshift_service._config_cache.get_config("test_config")
+            await shapeshift_service.config_cache.get_config("test_config")
 
             # Second call with version 2
             mock_state.return_value.get_version = MagicMock(return_value=2)
 
-            await shapeshift_service._config_cache.get_config("test_config")
+            await shapeshift_service.config_cache.get_config("test_config")
 
             # Should reload due to version change
             assert mock_state.return_value.get_configuration.call_count == 2
