@@ -228,6 +228,51 @@ class TestSchemaIntrospectionService:
         # ds2 entries should remain
         assert service.cache.get("tables:ds2:default") == ["table2"]
 
+    @pytest.mark.asyncio
+    async def test_get_table_schema_cached_and_mapped_once(self, service: SchemaIntrospectionService, postgres_config: DataSourceConfig):
+        """Schema retrieval caches result and reuses mapped object."""
+        core_schema = CoreSchema.TableSchema(
+            table_name="users",
+            columns=[
+                CoreSchema.ColumnMetadata(name="id", data_type="INTEGER", nullable=False, default=None, is_primary_key=True, max_length=None)
+            ],
+            primary_keys=["id"],
+            indexes=[],
+            row_count=10,
+            foreign_keys=[],
+        )
+
+        loader = AsyncMock(get_table_schema=AsyncMock(return_value=core_schema))
+        mapped_schema = TableSchema(
+            table_name="users",
+            columns=[ColumnMetadata(name="id", data_type="INTEGER", nullable=False, default=None, is_primary_key=True, max_length=None)],
+            primary_keys=["id"],
+            indexes=[],
+            row_count=10,
+        )
+
+        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
+
+        with patch.object(service, "create_loader_for_data_source", return_value=loader) as mock_create_loader, patch(
+            "backend.app.services.schema_service.TableSchemaMapper.to_api_schema", return_value=mapped_schema
+        ) as mock_mapper:
+            first = await service.get_table_schema("ds1", "users")
+            second = await service.get_table_schema("ds1", "users")
+
+        mock_create_loader.assert_called_once()
+        loader.get_table_schema.assert_awaited_once_with("users", schema=None)
+        mock_mapper.assert_called_once()
+        assert first is second  # cached result reused
+        assert first.table_name == "users"
+
+    def test_create_loader_for_data_source_rejects_non_sql_loader(
+        self, service: SchemaIntrospectionService, postgres_config: DataSourceConfig
+    ):
+        """Non-SqlLoader implementations are rejected with a clear error."""
+        with patch("backend.app.services.schema_service.DataLoaders.get", return_value=lambda data_source: object()):
+            with pytest.raises(SchemaServiceError, match="not supported"):
+                service.create_loader_for_data_source(postgres_config)
+
 
 class TestSchemaEndpoints:
     """Integration-style tests for schema endpoints (would use TestClient in real scenario)."""
