@@ -216,10 +216,13 @@ class TestShapeShiftService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
-                with pytest.raises(ValueError, match="Entity 'nonexistent' not found"):
-                    await shapeshift_service.preview_entity("test_config", "nonexistent", 50)
+        with (
+            patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state),
+            patch("backend.app.utils.caches.get_app_state", return_value=mock_app_state),
+            patch("backend.app.utils.caches.ConfigMapper.to_core_dict", return_value=sample_config.cfg),
+        ):
+            with pytest.raises(ValueError, match="Entity 'nonexistent' not found"):
+                await shapeshift_service.preview_entity("test_config", "nonexistent", 50)
 
     @pytest.mark.asyncio
     async def test_preview_entity_entity_not_found(self, shapeshift_service: ShapeShiftService, config_service: MagicMock):
@@ -228,7 +231,7 @@ class TestShapeShiftService:
         config_service.load_configuration = MagicMock(return_value=mock_api_config)
 
         with (
-            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.utils.caches.ConfigMapper") as mock_mapper,
             patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
         ):
             mock_mapper.to_core_dict = MagicMock(return_value={})
@@ -289,18 +292,20 @@ class TestShapeShiftService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
-                with patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class:
-                    mock_normalizer = MagicMock()
-                    mock_normalizer.normalize = AsyncMock()
-                    mock_normalizer.table_store = {"users": large_df}
-                    mock_normalizer_class.return_value = mock_normalizer
+        with (
+            patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state),
+            patch("backend.app.utils.caches.ConfigMapper.to_core_dict", return_value=sample_config.cfg),
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class,
+        ):
+            mock_normalizer = MagicMock()
+            mock_normalizer.normalize = AsyncMock()
+            mock_normalizer.table_store = {"users": large_df}
+            mock_normalizer_class.return_value = mock_normalizer
 
-                    result = await shapeshift_service.preview_entity("test_config", "users", limit=10)
+            result = await shapeshift_service.preview_entity("test_config", "users", limit=10)
 
-                assert result.total_rows_in_preview == 10
-                assert result.estimated_total_rows == 100
+            assert result.total_rows_in_preview == 10
+            assert result.estimated_total_rows == 100
 
     @pytest.mark.asyncio
     async def test_preview_with_transformations(self, shapeshift_service: ShapeShiftService, sample_config: ShapeShiftConfig):
@@ -322,17 +327,19 @@ class TestShapeShiftService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core_dict", return_value=config_with_transforms.cfg):
-                with patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class:
-                    mock_normalizer = MagicMock()
-                    mock_normalizer.normalize = AsyncMock()
-                    mock_normalizer.table_store = {"users": pd.DataFrame({"user_id": [1]})}
-                    mock_normalizer_class.return_value = mock_normalizer
+        with (
+            patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state),
+            patch("backend.app.utils.caches.ConfigMapper.to_core_dict", return_value=sample_config.cfg),
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class,
+        ):
+            mock_normalizer = MagicMock()
+            mock_normalizer.normalize = AsyncMock()
+            mock_normalizer.table_store = {"users": pd.DataFrame({"user_id": [1]})}
+            mock_normalizer_class.return_value = mock_normalizer
 
-                    result: PreviewResult = await shapeshift_service.preview_entity("test_config", "users", 50)
+            result: PreviewResult = await shapeshift_service.preview_entity("test_config", "users", 50)
 
-                    assert result is not None
+            assert result is not None
 
     @pytest.mark.asyncio
     async def test_preview_with_dependencies(
@@ -346,22 +353,24 @@ class TestShapeShiftService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core", return_value=sample_config):
-                with patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class:
-                    mock_normalizer = MagicMock()
-                    mock_normalizer.normalize = AsyncMock()
-                    # table_store now contains target + dependencies
-                    mock_normalizer.table_store = {
-                        "orders": sample_dataframe,
-                        "users": pd.DataFrame({"user_id": [1, 2], "username": ["alice", "bob"]}),
-                    }
-                    mock_normalizer_class.return_value = mock_normalizer
+        with (
+            patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state),
+            patch("backend.app.utils.caches.ConfigMapper.to_core_dict", return_value=sample_config.cfg),
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class,
+        ):
+            mock_normalizer = MagicMock()
+            mock_normalizer.normalize = AsyncMock()
+            # table_store now contains target + dependencies
+            mock_normalizer.table_store = {
+                "orders": sample_dataframe,
+                "users": pd.DataFrame({"user_id": [1, 2], "username": ["alice", "bob"]}),
+            }
+            mock_normalizer_class.return_value = mock_normalizer
 
-                    result = await shapeshift_service.preview_entity("test_config", "orders", 50)
+            result = await shapeshift_service.preview_entity("test_config", "orders", 50)
 
-                assert result.has_dependencies is True
-                assert "users" in result.dependencies_loaded
+            assert result.has_dependencies is True
+            assert "users" in result.dependencies_loaded
 
     @pytest.mark.asyncio
     async def test_preview_caching(
@@ -375,24 +384,26 @@ class TestShapeShiftService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
-                with patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class:
-                    mock_normalizer = MagicMock()
-                    mock_normalizer.normalize = AsyncMock()
-                    mock_normalizer.table_store = {"users": sample_dataframe}
-                    mock_normalizer_class.return_value = mock_normalizer
+        with (
+            patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state),
+            patch("backend.app.utils.caches.ConfigMapper.to_core_dict", return_value=sample_config.cfg),
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class,
+        ):
+            mock_normalizer = MagicMock()
+            mock_normalizer.normalize = AsyncMock()
+            mock_normalizer.table_store = {"users": sample_dataframe}
+            mock_normalizer_class.return_value = mock_normalizer
 
-                    # First call - should hit normalizer
-                    result1 = await shapeshift_service.preview_entity("test_config", "users", 50)
-                    assert result1.cache_hit is False
+            # First call - should hit normalizer
+            result1 = await shapeshift_service.preview_entity("test_config", "users", 50)
+            assert result1.cache_hit is False
 
-                    # Second call - should hit cache
-                    result2 = await shapeshift_service.preview_entity("test_config", "users", 50)
-                    assert result2.cache_hit is True
+            # Second call - should hit cache
+            result2 = await shapeshift_service.preview_entity("test_config", "users", 50)
+            assert result2.cache_hit is True
 
-                    # Verify normalizer was only called once
-                    assert mock_normalizer.normalize.call_count == 1
+            # Verify normalizer was only called once
+            assert mock_normalizer.normalize.call_count == 1
 
     @pytest.mark.asyncio
     async def test_get_entity_sample(
@@ -406,18 +417,20 @@ class TestShapeShiftService:
         mock_api_config.metadata.name = "test_config"
         mock_app_state.get_configuration.return_value = mock_api_config
 
-        with patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state):
-            with patch("backend.app.services.shapeshift_service.ConfigMapper.to_core_dict", return_value=sample_config.cfg):
-                with patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class:
-                    mock_normalizer = MagicMock()
-                    mock_normalizer.normalize = AsyncMock()
-                    mock_normalizer.table_store = {"users": sample_dataframe}
-                    mock_normalizer_class.return_value = mock_normalizer
+        with (
+            patch("backend.app.services.shapeshift_service.get_app_state", return_value=mock_app_state),
+            patch("backend.app.utils.caches.ConfigMapper.to_core_dict", return_value=sample_config.cfg),
+            patch("backend.app.services.shapeshift_service.ShapeShifter") as mock_normalizer_class,
+        ):
+            mock_normalizer = MagicMock()
+            mock_normalizer.normalize = AsyncMock()
+            mock_normalizer.table_store = {"users": sample_dataframe}
+            mock_normalizer_class.return_value = mock_normalizer
 
-                    result = await shapeshift_service.get_entity_sample("test_config", "users", limit=100)
+            result = await shapeshift_service.get_entity_sample("test_config", "users", limit=100)
 
-                assert result.entity_name == "users"
-                assert result.total_rows_in_preview == 5  # Sample df only has 5 rows
+            assert result.entity_name == "users"
+            assert result.total_rows_in_preview == 5  # Sample df only has 5 rows
 
     def test_invalidate_cache(self, shapeshift_service: ShapeShiftService):
         """Test cache invalidation."""
@@ -471,9 +484,7 @@ class TestShapeShiftService:
             assert result.cache_hit is False
 
     @pytest.mark.asyncio
-    async def test_preview_entity_applies_limit(
-        self, shapeshift_service: ShapeShiftService, sample_entity_config: TableConfig
-    ):
+    async def test_preview_entity_applies_limit(self, shapeshift_service: ShapeShiftService, sample_entity_config: TableConfig):
         """Test preview applies row limit."""
         large_df = pd.DataFrame({"id": range(100), "name": [f"User{i}" for i in range(100)]})
 
@@ -497,9 +508,7 @@ class TestShapeShiftService:
             assert result.estimated_total_rows == 100
 
     @pytest.mark.asyncio
-    async def test_preview_entity_with_dependencies(
-        self, shapeshift_service: ShapeShiftService, sample_dataframe: pd.DataFrame
-    ):
+    async def test_preview_entity_with_dependencies(self, shapeshift_service: ShapeShiftService, sample_dataframe: pd.DataFrame):
         """Test preview detects entity dependencies."""
         cfg = {
             "test_entity": {
@@ -531,9 +540,7 @@ class TestShapeShiftService:
             assert "parent_entity" in result.dependencies_loaded
 
     @pytest.mark.asyncio
-    async def test_preview_entity_normalizer_error(
-        self, shapeshift_service: ShapeShiftService, sample_entity_config: TableConfig
-    ):
+    async def test_preview_entity_normalizer_error(self, shapeshift_service: ShapeShiftService, sample_entity_config: TableConfig):
         """Test preview handles normalizer errors."""
         mock_normalizer = MagicMock()
         mock_normalizer.normalize = AsyncMock(side_effect=RuntimeError("Normalization failed"))
@@ -578,9 +585,7 @@ class TestShapeShiftService:
             assert result.total_rows_in_preview <= 100
 
     @pytest.mark.asyncio
-    async def test_get_entity_sample_clamps_limit(
-        self, shapeshift_service: ShapeShiftService, sample_entity_config: TableConfig
-    ):
+    async def test_get_entity_sample_clamps_limit(self, shapeshift_service: ShapeShiftService, sample_entity_config: TableConfig):
         """Test get_entity_sample clamps limit to max 1000."""
         # Create large dataframe with more than 1000 rows
         large_df = pd.DataFrame({"id": range(2000), "name": [f"User{i}" for i in range(2000)]})
@@ -614,9 +619,10 @@ class TestShapeShiftConfig:
         """Test loading ShapeShift config from ApplicationState."""
         mock_api_config = MagicMock()
 
+
         with (
-            patch("backend.app.services.shapeshift_service.get_app_state") as mock_state,
-            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.utils.caches.get_app_state") as mock_state,
+            patch("backend.app.utils.caches.ConfigMapper") as mock_mapper,
             patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
         ):
             mock_state.return_value.get_version = MagicMock(return_value=1)
@@ -636,8 +642,8 @@ class TestShapeShiftConfig:
         config_service.load_configuration = MagicMock(return_value=mock_api_config)
 
         with (
-            patch("backend.app.services.shapeshift_service.get_app_state") as mock_state,
-            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.utils.caches.get_app_state") as mock_state,
+            patch("backend.app.utils.caches.ConfigMapper") as mock_mapper,
             patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
         ):
             mock_state.side_effect = RuntimeError("Not initialized")
@@ -655,8 +661,8 @@ class TestShapeShiftConfig:
         mock_api_config = MagicMock()
 
         with (
-            patch("backend.app.services.shapeshift_service.get_app_state") as mock_state,
-            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.utils.caches.get_app_state") as mock_state,
+            patch("backend.app.utils.caches.ConfigMapper") as mock_mapper,
             patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
         ):
             mock_state.return_value.get_version = MagicMock(return_value=1)
@@ -679,8 +685,8 @@ class TestShapeShiftConfig:
         mock_api_config = MagicMock()
 
         with (
-            patch("backend.app.services.shapeshift_service.get_app_state") as mock_state,
-            patch("backend.app.services.shapeshift_service.ConfigMapper") as mock_mapper,
+            patch("backend.app.utils.caches.get_app_state") as mock_state,
+            patch("backend.app.utils.caches.ConfigMapper") as mock_mapper,
             patch("backend.app.services.shapeshift_service.ShapeShiftConfig") as mock_cfg,
         ):
             # First call with version 1
@@ -703,9 +709,7 @@ class TestShapeShiftConfig:
 class TestPreviewBuilder:
     """Tests for PreviewResultBuilder."""
 
-    def test_build_preview_result_with_dependencies(
-        self, sample_dataframe: pd.DataFrame, sample_config: ShapeShiftConfig
-    ):
+    def test_build_preview_result_with_dependencies(self, sample_dataframe: pd.DataFrame, sample_config: ShapeShiftConfig):
         """Test _build_preview_result correctly identifies dependencies."""
         entity_config: TableConfig = sample_config.get_table("orders")
         table_store = {"orders": sample_dataframe, "users": pd.DataFrame({"user_id": [1, 2], "username": ["alice", "bob"]})}
@@ -719,7 +723,7 @@ class TestPreviewBuilder:
 
         # Check user_id (foreign key column)
         user_id_col: ColumnInfo = next(c for c in result.columns if c.name == "user_id")
-        #assert user_id_col.is_key is True
+        # assert user_id_col.is_key is True
         assert user_id_col.data_type == "integer"
 
         # Check dependencies
