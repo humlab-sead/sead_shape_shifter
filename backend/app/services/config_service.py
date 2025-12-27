@@ -60,7 +60,7 @@ class ConfigurationService:
 
         for yaml_file in self.configurations_dir.glob("*.yml"):
             try:
-                data = self.yaml_service.load(yaml_file)
+                data: dict[str, Any] = self.yaml_service.load(yaml_file)
 
                 # Only include files that have 'entities' key (configuration files)
                 if "entities" not in data:
@@ -103,15 +103,14 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
             InvalidConfigurationError: If configuration is invalid
         """
-        # Check if this is the active configuration
-
+        # Check application state if this is the active configuration
         active_config: Configuration | None = get_app_state_manager().get(name)
         if active_config:
             logger.debug(f"Loading active configuration '{name}' from ApplicationState")
             return active_config
 
         # Load from file
-        file_path: Path = self.configurations_dir / (f"{name}.yml" if not name.endswith(".yml") else name)
+        file_path: Path = self.configurations_dir / (f"{name.rstrip('.yml')}.yml")
 
         if not file_path.exists():
             raise ConfigurationNotFoundError(f"Configuration not found: {name}")
@@ -119,11 +118,9 @@ class ConfigurationService:
         try:
             data: dict[str, Any] = self.yaml_service.load(file_path)
 
-            # Validate that 'entities' key exists (required for configuration files)
             if "entities" not in data:
                 raise InvalidConfigurationError(f"Invalid configuration file '{name}': missing required 'entities' key")
 
-            # Convert to Configuration model via mapper
             config: Configuration = ConfigMapper.to_api_config(data, name)
 
             assert config.metadata is not None  # For mypy
@@ -162,11 +159,11 @@ class ConfigurationService:
         if not config.metadata or not config.metadata.name:
             raise InvalidConfigurationError("Configuration must have metadata with name")
 
-        file_path: Path = self.configurations_dir / f"{config.metadata.name}.yml"
+        file_path: Path = self.configurations_dir / f"{config.metadata.name.rstrip(".yml")}.yml"
 
         try:
             # Convert to core dict for saving (sparse structure)
-            cfg_dict = ConfigMapper.to_core_dict(config)
+            cfg_dict: dict[str, Any] = ConfigMapper.to_core_dict(config)
 
             logger.debug(
                 f"Saving configuration '{config.metadata.name}' with {len(config.entities)} entities: {list(config.entities.keys())}"
