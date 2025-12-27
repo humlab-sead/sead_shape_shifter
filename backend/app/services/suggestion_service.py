@@ -283,7 +283,12 @@ class SuggestionService:
 
 
 class ColumnMatchStrategy:
-    def match(self, local_columns: list[str], remote_entity: str, remote_columns: list[str]) -> list[dict[str, Any]]:
+    def match(
+        self,
+        local_columns: list[str],  # pylint: disable=unused-argument
+        remote_entity: str,  # pylint: disable=unused-argument
+        remote_columns: list[str],  # pylint: disable=unused-argument
+    ) -> list[dict[str, Any]]:
         return []
 
 
