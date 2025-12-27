@@ -4,9 +4,8 @@ from typing import Any, Literal
 
 from loguru import logger
 
-from backend.app.services.config_service import ConfigurationService
 from backend.app.models.validation import ValidationError, ValidationResult
-from backend.app.services.config_service import get_config_service
+from backend.app.services.config_service import ConfigurationService, get_config_service
 from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.validators.data_validators import DataValidationService
 from src.specifications import CompositeConfigSpecification, SpecificationIssue

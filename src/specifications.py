@@ -502,7 +502,11 @@ class SurrogateIdSpecification(ConfigSpecification):
         # Check for duplicate surrogate IDs
         for surrogate_id, entities in surrogate_ids.items():
             if len(entities) > 1:
-                self.add_error(f"Surrogate ID '{surrogate_id}' is used by multiple entities: {', '.join(entities)}", entity="configuration", surrogate_id=surrogate_id)
+                self.add_error(
+                    f"Surrogate ID '{surrogate_id}' is used by multiple entities: {', '.join(entities)}",
+                    entity="configuration",
+                    surrogate_id=surrogate_id,
+                )
                 valid = False
 
         return valid
@@ -526,7 +530,9 @@ class SqlDataSpecification(ConfigSpecification):
             if is_sql:
                 # Check required fields for SQL type
                 if not entity_data.get("data_source"):
-                    self.add_error(f"Entity '{entity_name}': type 'sql' requires 'data_source' field", entity=entity_name, field="data_source")
+                    self.add_error(
+                        f"Entity '{entity_name}': type 'sql' requires 'data_source' field", entity=entity_name, field="data_source"
+                    )
                     valid = False
 
                 query = entity_data.get("query")
@@ -539,7 +545,11 @@ class SqlDataSpecification(ConfigSpecification):
 
                 # Warn if source is not None (SQL entities should load directly from database)
                 if entity_data.get("source") is not None:
-                    self.add_warning(f"Entity '{entity_name}': SQL entity has 'source' field (should be null for direct SQL queries)", entity=entity_name, field="source")
+                    self.add_warning(
+                        f"Entity '{entity_name}': SQL entity has 'source' field (should be null for direct SQL queries)",
+                        entity=entity_name,
+                        field="source",
+                    )
 
         return valid
 
@@ -572,7 +582,9 @@ class FixedDataSpecification(ConfigSpecification):
                     columns = entity_data.get("columns", [])
 
                     if not columns:
-                        self.add_error(f"Entity '{entity_name}': type 'fixed' requires 'columns' field", entity=entity_name, field="columns")
+                        self.add_error(
+                            f"Entity '{entity_name}': type 'fixed' requires 'columns' field", entity=entity_name, field="columns"
+                        )
                         valid = False
                         continue
 
@@ -581,15 +593,21 @@ class FixedDataSpecification(ConfigSpecification):
                         if isinstance(value_row, list):
                             if len(value_row) != len(columns):
                                 self.add_error(
-                                    f"Entity '{entity_name}': value row {idx + 1} has {len(value_row)} items but {len(columns)} columns defined", entity=entity_name, field="values"
+                                    f"Entity '{entity_name}': value row {idx + 1} has {len(value_row)} items but {len(columns)} columns defined",
+                                    entity=entity_name,
+                                    field="values",
                                 )
                                 valid = False
                         else:
-                            self.add_warning(f"Entity '{entity_name}': value row {idx + 1} is not a list", entity=entity_name, field="values")
+                            self.add_warning(
+                                f"Entity '{entity_name}': value row {idx + 1} is not a list", entity=entity_name, field="values"
+                            )
 
                 # Warn if source is not None (shouldn't be used for fixed data)
                 if entity_data.get("source") is not None:
-                    self.add_warning(f"Entity '{entity_name}': fixed data table has 'source' field (should be null)", entity=entity_name, field="source")
+                    self.add_warning(
+                        f"Entity '{entity_name}': fixed data table has 'source' field (should be null)", entity=entity_name, field="source"
+                    )
         return valid
 
 
@@ -613,7 +631,11 @@ class DataSourceExistsSpecification(ConfigSpecification):
             data_source = entity_data.get("data_source")
             if data_source and isinstance(data_source, str):
                 if data_source not in data_sources:
-                    self.add_error(f"Entity '{entity_name}': references non-existent data source '{data_source}'", entity=entity_name, field="data_source")
+                    self.add_error(
+                        f"Entity '{entity_name}': references non-existent data source '{data_source}'",
+                        entity=entity_name,
+                        field="data_source",
+                    )
                     valid = False
 
             # Check append configurations
@@ -626,7 +648,9 @@ class DataSourceExistsSpecification(ConfigSpecification):
                 if append_data_source and isinstance(append_data_source, str):
                     if append_data_source not in data_sources:
                         self.add_error(
-                            f"Entity '{entity_name}', append item #{idx + 1}: references non-existent data source '{append_data_source}'", entity=entity_name, field="append"
+                            f"Entity '{entity_name}', append item #{idx + 1}: references non-existent data source '{append_data_source}'",
+                            entity=entity_name,
+                            field="append",
                         )
                         valid = False
 
@@ -655,7 +679,11 @@ class AppendConfigurationSpecification(ConfigSpecification):
             # Validate append_mode if present
             if append_configs:
                 if append_mode not in ["all", "distinct"]:
-                    self.add_error(f"Entity '{entity_name}': invalid append_mode '{append_mode}'. Must be 'all' or 'distinct'", entity=entity_name, field="append_mode")
+                    self.add_error(
+                        f"Entity '{entity_name}': invalid append_mode '{append_mode}'. Must be 'all' or 'distinct'",
+                        entity=entity_name,
+                        field="append_mode",
+                    )
                     valid = False
 
             # Validate each append configuration
@@ -679,7 +707,9 @@ class AppendConfigurationSpecification(ConfigSpecification):
                 # Validate type-based append
                 if append_type:
                     if append_type not in ["fixed", "sql"]:
-                        self.add_error(f"{append_id}: invalid type '{append_type}'. Must be 'fixed' or 'sql'", entity=entity_name, field="append")
+                        self.add_error(
+                            f"{append_id}: invalid type '{append_type}'. Must be 'fixed' or 'sql'", entity=entity_name, field="append"
+                        )
                         valid = False
 
                     if append_type == "fixed":
@@ -710,7 +740,11 @@ class AppendConfigurationSpecification(ConfigSpecification):
 
                     # Source-based append should have columns mapping
                     if not append_cfg.get("columns"):
-                        self.add_warning(f"{append_id}: source-based append should specify 'columns' mapping for clarity", entity=entity_name, field="append")
+                        self.add_warning(
+                            f"{append_id}: source-based append should specify 'columns' mapping for clarity",
+                            entity=entity_name,
+                            field="append",
+                        )
 
         return valid
 
