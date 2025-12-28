@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-from pandas import options
 import pytest
 import yaml
 
@@ -129,7 +128,7 @@ class TestConfigurationService:
         """Test loading existing configuration."""
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
 
-        with patch.object(service, 'state') as mock_state:
+        with patch.object(service, "state") as mock_state:
             mock_state.get.return_value = None
             config: Configuration = service.load_configuration("test")
             assert config.metadata
@@ -138,7 +137,7 @@ class TestConfigurationService:
 
     def test_load_configuration_not_found(self, service: ConfigurationService):
         """Test loading non-existent configuration raises error."""
-        with patch.object(service, 'state') as mock_state:
+        with patch.object(service, "state") as mock_state:
             mock_state.get.return_value = None
             with pytest.raises(ConfigurationNotFoundError, match="not found"):
                 service.load_configuration("nonexistent")
@@ -154,7 +153,7 @@ class TestConfigurationService:
     def test_load_configuration_invalid_yaml(self, service: ConfigurationService, temp_config_dir: Path):
         """Test loading invalid YAML raises error."""
         (temp_config_dir / "invalid.yml").write_text("{ invalid yaml")
-        with patch.object(service, 'state') as mock_state:
+        with patch.object(service, "state") as mock_state:
             mock_state.get.return_value = None
             with pytest.raises(InvalidConfigurationError):
                 service.load_configuration("invalid")
@@ -163,7 +162,7 @@ class TestConfigurationService:
         """Test load sets file metadata."""
         file_path = temp_config_dir / "test.yml"
         file_path.write_text(yaml.dump(sample_yaml_dict))
-        with patch.object(service, 'state') as mock_state:
+        with patch.object(service, "state") as mock_state:
             mock_state.get.return_value = None
 
             config = service.load_configuration("test")

@@ -1,6 +1,5 @@
 """Unit tests for arbodat utility configuration classes."""
 
-import os
 from typing import Any
 
 import pytest

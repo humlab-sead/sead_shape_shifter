@@ -8,6 +8,8 @@ from backend.app.models.config import Configuration
 from backend.app.models.test_run import OutputFormat, TestRunOptions, TestRunStatus
 from backend.app.services.test_run_service import TestRunService
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def config_service() -> MagicMock:

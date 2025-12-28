@@ -10,7 +10,7 @@ from src.configuration.config import Config
 from src.configuration.provider import ConfigProvider, MockConfigProvider, set_config_provider
 from src.configuration.resolve import Configurable, ConfigValue, inject_config
 
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,redefined-outer-name
 
 
 @pytest.fixture()

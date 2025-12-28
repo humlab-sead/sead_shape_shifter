@@ -49,5 +49,4 @@ class Configuration(BaseModel):
     @property
     def filename(self) -> str | None:
         """Get configuration filename from metadata."""
-        return self.metadata.file_path if self.metadata else None
-    
+        return self.metadata.file_path if self.metadata else None  # pylint: disable=no-member

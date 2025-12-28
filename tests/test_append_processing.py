@@ -182,7 +182,8 @@ class TestAppendProcessingSQL:
                         "append_mode": "all",
                     },
                 }
-            }, filename="test-config.yml"
+            },
+            filename="test-config.yml",
         )
         sub_configs = list(config_with_sql_append.get_table("site").get_sub_table_configs())
         assert len(sub_configs) == 2  # Base + SQL append
@@ -214,7 +215,8 @@ class TestAppendProcessingMultiple:
                 "entities": {
                     "survey": {"depends_on": []},
                 }
-            }, filename="test-config.yml"
+            },
+            filename="test-config.yml",
         )
 
     @pytest.mark.asyncio
