@@ -91,6 +91,23 @@ fr: frontend-kill frontend-run
 .PHONY: fr2
 fr2: frontend-kill frontend-build-fast frontend-run
 
+.PHONY: run-all
+run-all:
+	@lsof -ti:$(BACKEND_PORT) 2>/dev/null | xargs -r kill -9 || true && \
+	 lsof -ti:$(FRONTEND_PORT) 2>/dev/null | xargs -r kill -9 || true && \
+	 echo "Starting backend and frontend servers..." && \
+		make -j2 br
+	@if [ -z "$$CONFIG_FILE" ]; then \
+		echo "Using default config: input/arbodat-database.yml"; \
+		export CONFIG_FILE=$$(pwd)/input/arbodat-database.yml; \
+	fi && \
+	PYTHONPATH=. uvicorn backend.app.main:app \
+		--reload --reload-exclude $(RELOAD_EXCLUDE) \
+		--log-level debug \
+		--host 0.0.0.0 --port $(BACKEND_PORT) &
+	@cd frontend &&pnpm build:skip-check && pnpm dev &
+	@echo "Both servers started."
+
 ################################################################################
 # Backend recipes
 ################################################################################
