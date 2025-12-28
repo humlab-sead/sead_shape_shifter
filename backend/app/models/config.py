@@ -16,6 +16,7 @@ class ConfigMetadata(BaseModel):
     created_at: float = Field(default=0, description="Creation timestamp (Unix timestamp)")
     modified_at: float = Field(default=0, description="Last modification timestamp (Unix timestamp)")
     is_valid: bool = Field(default=True, description="Whether configuration is valid")
+    default_entity: str | None = Field(default=None, description="Default source entity name")
 
 
 class Configuration(BaseModel):
