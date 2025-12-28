@@ -99,12 +99,14 @@ class ShapeShiftService:
             Complete table_store with target entity and all dependencies
         """
         try:
-            shapeshifter: ShapeShifter = await ShapeShifter(
+            shapeshifter: ShapeShifter = ShapeShifter(
                 config=config,
                 table_store=initial_table_store,
                 default_entity=config.metadata.default_entity,
                 target_entities={entity_name},
-            ).normalize()
+            )
+            
+            await shapeshifter.normalize()
 
             if entity_name not in shapeshifter.table_store:
                 raise RuntimeError(f"Entity {entity_name} was not produced by normalizer")
