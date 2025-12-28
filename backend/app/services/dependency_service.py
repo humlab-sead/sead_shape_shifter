@@ -58,8 +58,7 @@ class DependencyService:
         Returns:
             Dependency graph with nodes, edges, and cycle information
         """
-
-        tables_cfg = ShapeShiftConfig(cfg={"entities": config.entities, "options": config.options})
+        tables_cfg = ShapeShiftConfig(cfg={"entities": config.entities, "options": config.options}, filename=config.filename or "")
 
         dependency_map: dict[str, list[str]] = {
             entity_name: list(tables_cfg.get_table(entity_name).depends_on or []) for entity_name in config.entities
