@@ -51,25 +51,29 @@ class ShapeShiftService:
 
         entity_config: TableConfig = shapeshift_config.tables[entity_name]
 
-        # Check if target entity is cached
-        cached_target: pd.DataFrame | None = self.cache.get_dataframe(config_name, entity_name, config_version, entity_config)
-        cache_hit: bool = cached_target is not None
-        cached_dependencies: dict[str, pd.DataFrame] = self.cache.gather_cached_dependencies(
-            config_name, entity_config, config_version, shapeshift_config
+        cached_data: ShapeShiftCache.CacheCheckResult = self.cache.fetch_cached_entity_data(
+            config_name, entity_name, config_version, entity_config, shapeshift_config
         )
 
         table_store: dict[str, pd.DataFrame]
-        if cached_target is not None:
-            table_store = {entity_name: cached_target} | cached_dependencies
+        if cached_data.data is not None:
+            table_store = {entity_name: cached_data.data} | cached_data.dependencies
         else:
             table_store = await self.shapeshift(
-                config=shapeshift_config, entity_name=entity_name, entity_config=entity_config, initial_table_store=cached_dependencies
+                config=shapeshift_config,
+                entity_name=entity_name,
+                entity_config=entity_config,
+                initial_table_store=cached_data.dependencies,
             )
             entity_configs: dict[str, TableConfig] = {name: shapeshift_config.get_table(name) for name in table_store.keys()}
             self.cache.set_table_store(config_name, table_store, entity_name, config_version, entity_configs)
 
         result: PreviewResult = PreviewResultBuilder().build(
-            entity_name=entity_name, entity_config=entity_config, table_store=table_store, limit=limit, cache_hit=cache_hit
+            entity_name=entity_name,
+            entity_config=entity_config,
+            table_store=table_store,
+            limit=limit,
+            cache_hit=cached_data.found,
         )
 
         execution_time_ms: int = int((time.time() - start_time) * 1000)
