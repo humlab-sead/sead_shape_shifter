@@ -624,11 +624,11 @@ class ShapeShiftConfig:
         return table
 
     @staticmethod
-    def from_file(filepath: str, env_file: str = ".env", env_prefix: str = "SEAD_NORMALIZER") -> "ShapeShiftConfig":
+    def from_file(filename: str, env_file: str = ".env", env_prefix: str = "SEAD_NORMALIZER") -> "ShapeShiftConfig":
         """Load ShapeShiftConfig from a YAML configuration file."""
 
         cfg: ConfigLike = ConfigFactory().load(
-            source=filepath,
+            source=filename,
             context="shape_shifter",
             env_filename=env_file,
             env_prefix=env_prefix,
