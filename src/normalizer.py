@@ -209,13 +209,13 @@ class ShapeShifter:
 
             self.link()  # Try to resolve any pending deferred links after each entity is processed
         return self
-    
+
     def link(self) -> Self:
         """Link entities based on foreign key configuration."""
         for entity_name in self.state.processed_entities:
             link_entity(entity_name=entity_name, config=self.config, table_store=self.table_store)
         return self
-    
+
     def store(self, target: str, mode: Literal["xlsx", "csv", "db"]) -> Self:
         """Write to specified target based on the specified mode."""
         dispatcher_cls: Dispatcher = Dispatchers.get(mode)
@@ -225,13 +225,13 @@ class ShapeShifter:
         else:
             raise ValueError(f"Unsupported dispatch mode: {mode}")
         return self
-    
+
     def unnest_all(self) -> Self:
         """Unnest dataframes based on configuration."""
         for entity in self.table_store:
             self.table_store[entity] = self.unnest_entity(entity=entity)
         return self
-    
+
     def unnest_entity(self, *, entity: str) -> pd.DataFrame:
         try:
             table_cfg: TableConfig = self.config.get_table(entity)
@@ -254,7 +254,7 @@ class ShapeShifter:
             table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
             self.table_store[entity_name] = table_cfg.drop_fk_columns(table=self.table_store[entity_name])
         return self
-    
+
     def add_system_id_columns(self) -> Self:
         """Add "system_id" with same value as surrogate_id. Set surrogate_id to None."""
         for entity_name in self.table_store.keys():
@@ -263,7 +263,7 @@ class ShapeShifter:
             table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
             self.table_store[entity_name] = table_cfg.add_system_id_column(table=self.table_store[entity_name])
         return self
-    
+
     def move_keys_to_front(self) -> Self:
         """Reorder columns in this order: primary key, foreign key column, extra columns, other columns."""
         for entity_name in self.table_store.keys():
@@ -282,7 +282,7 @@ class ShapeShifter:
                 continue
             self.table_store[entity_name] = service.link_to_remote(entity_name, self.table_store[entity_name])
         return self
-    
+
     def log_shapes(self, target: str) -> Self:
         """Log the shape of each table as a TSV in same folder as target."""
         try:

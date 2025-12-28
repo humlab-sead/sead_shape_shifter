@@ -678,7 +678,10 @@ class TestPreviewBuilder:
     def test_build_preview_result_with_dependencies(self, sample_dataframe: pd.DataFrame, sample_config: ShapeShiftConfig):
         """Test _build_preview_result correctly identifies dependencies."""
         entity_cfg: TableConfig = sample_config.get_table("orders")
-        table_store: dict[str, pd.DataFrame] = {"orders": sample_dataframe, "users": pd.DataFrame({"user_id": [1, 2], "username": ["alice", "bob"]})}
+        table_store: dict[str, pd.DataFrame] = {
+            "orders": sample_dataframe,
+            "users": pd.DataFrame({"user_id": [1, 2], "username": ["alice", "bob"]}),
+        }
         builder: PreviewResultBuilder = PreviewResultBuilder()
         result: PreviewResult = builder.build(
             entity_name="orders", entity_cfg=entity_cfg, table_store=table_store, limit=50, cache_hit=False

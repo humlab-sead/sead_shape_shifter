@@ -6,16 +6,16 @@ from pathlib import Path
 
 import pytest
 
-from src.configuration.provider import ConfigProvider
 from src.configuration.config import Config
+from src.configuration.interface import ConfigLike
 from src.configuration.provider import (
+    ConfigProvider,
     ConfigStore,
     MockConfigProvider,
     get_config_provider,
     reset_config_provider,
     set_config_provider,
 )
-from src.configuration.interface import ConfigLike
 
 
 @pytest.fixture(autouse=True)

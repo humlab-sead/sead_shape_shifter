@@ -105,7 +105,7 @@ class ShapeShiftService:
                 default_entity=config.metadata.default_entity,
                 target_entities={entity_name},
             )
-            
+
             await shapeshifter.normalize()
 
             if entity_name not in shapeshifter.table_store:

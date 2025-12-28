@@ -234,7 +234,9 @@ class TestSchemaIntrospectionService:
         core_schema = CoreSchema.TableSchema(
             table_name="users",
             columns=[
-                CoreSchema.ColumnMetadata(name="id", data_type="INTEGER", nullable=False, default=None, is_primary_key=True, max_length=None)
+                CoreSchema.ColumnMetadata(
+                    name="id", data_type="INTEGER", nullable=False, default=None, is_primary_key=True, max_length=None
+                )
             ],
             primary_keys=["id"],
             indexes=[],
@@ -253,9 +255,10 @@ class TestSchemaIntrospectionService:
 
         service.data_source_service.get_data_source = Mock(return_value=postgres_config)
 
-        with patch.object(service, "create_loader_for_data_source", return_value=loader) as mock_create_loader, patch(
-            "backend.app.services.schema_service.TableSchemaMapper.to_api_schema", return_value=mapped_schema
-        ) as mock_mapper:
+        with (
+            patch.object(service, "create_loader_for_data_source", return_value=loader) as mock_create_loader,
+            patch("backend.app.services.schema_service.TableSchemaMapper.to_api_schema", return_value=mapped_schema) as mock_mapper,
+        ):
             first = await service.get_table_schema("ds1", "users")
             second = await service.get_table_schema("ds1", "users")
 

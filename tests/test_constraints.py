@@ -3,13 +3,11 @@
 import pandas as pd
 import pytest
 
-from src.constraints import ForeignKeyConstraintViolation, ForeignKeyConstraintValidator, Validators
+from src.constraints import ForeignKeyConstraintValidator, ForeignKeyConstraintViolation, Validators
 from src.model import ForeignKeyConfig, ShapeShiftConfig
 
 
-def build_fk(
-    *, local_entity: str = "orders", remote_entity: str = "customers", constraints: dict | None = None
-) -> ForeignKeyConfig:
+def build_fk(*, local_entity: str = "orders", remote_entity: str = "customers", constraints: dict | None = None) -> ForeignKeyConfig:
     cfg = {
         "entities": {
             local_entity: {
@@ -70,9 +68,7 @@ def test_post_merge_cardinality_and_unmatched_checks():
     remote_df = pd.DataFrame({"id": [1]})
 
     # Simulate a merge with unmatched rows and row count change
-    linked_df = pd.DataFrame(
-        {"order_id": [1, 2], "customer_id": [1, 2], "_merge_indicator_customers": ["both", "left_only"]}
-    )
+    linked_df = pd.DataFrame({"order_id": [1, 2], "customer_id": [1, 2], "_merge_indicator_customers": ["both", "left_only"]})
 
     validator.validate_before_merge(local_df=local_df, remote_df=remote_df)
 

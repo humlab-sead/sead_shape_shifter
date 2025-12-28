@@ -215,7 +215,7 @@ class ApplicationStateManager:
         """Get ApplicationState, raising error if not initialized."""
         app_state: ApplicationState = get_app_state()
         return app_state
-    
+
     def get(self, name: str) -> Configuration | None:
         """Load active configuration from ApplicationState if available."""
         with contextlib.suppress(RuntimeError):
