@@ -1,5 +1,6 @@
 import copy
 from functools import cached_property
+from tkinter import N
 from typing import Any, Generator, Literal, Self
 
 import pandas as pd
@@ -524,12 +525,14 @@ class Metadata:
 class ShapeShiftConfig:
     """Configuration for database tables. Read-Only. Wraps overall configuration."""
 
-    def __init__(self, *, cfg: dict[str, dict[str, Any]]) -> None:
+    def __init__(self, *, cfg: dict[str, dict[str, Any]], filename: str | None = None) -> None:
 
         if "entities" not in cfg or not isinstance(cfg["entities"], dict):
             raise ValueError("Invalid configuration: 'entities' section is missing or not a dictionary.")
 
         self.cfg: dict[str, dict[str, Any]] = cfg
+        self.filename: str = filename or "in-memory-config.yml"
+        
 
     @cached_property
     def tables(self) -> dict[str, TableConfig]:
@@ -586,7 +589,7 @@ class ShapeShiftConfig:
 
     def clone(self) -> "ShapeShiftConfig":
         """Create a deep copy of the ShapeShiftConfig."""
-        return ShapeShiftConfig(cfg=copy.deepcopy(self.cfg))
+        return ShapeShiftConfig(cfg=copy.deepcopy(self.cfg), filename=self.filename)
 
     def resolve(self, env_filename: str = ".env", env_prefix: str = "SEAD_NORMALIZER", filename: str | None = None) -> "ShapeShiftConfig":
         """Resolve and return a new ShapeShiftConfig instance."""
@@ -597,7 +600,8 @@ class ShapeShiftConfig:
                 env_prefix=env_prefix,
                 source_path=filename,
                 inplace=False,
-            )
+            ),
+            filename=filename or self.filename,
         )
 
     @cached_property
@@ -640,7 +644,7 @@ class ShapeShiftConfig:
             env_prefix=env_prefix,
         )
 
-        return ShapeShiftConfig(cfg=cfg.data)
+        return ShapeShiftConfig(cfg=cfg.data, filename=filename)
 
     @staticmethod
     def from_source(source: "ShapeShiftConfig | str | None") -> "ShapeShiftConfig":
@@ -653,27 +657,28 @@ class ShapeShiftConfig:
             if is_config_path(source, raise_if_missing=False):
                 return ShapeShiftConfig.from_file(source)
 
-        return ShapeShiftConfig.from_context(source)
+        raise ValueError("ShapeShiftConfig source must be a ShapeShiftConfig instance or a valid config file path")
+        # return ShapeShiftConfig.from_context(source)
 
-    @staticmethod
-    def from_context(source: str | None) -> "ShapeShiftConfig":
-        """Resolve and return the ShapeShiftConfig for the given context name."""
+    # @staticmethod
+    # def from_context(source: str | None) -> "ShapeShiftConfig":
+    #     """Resolve and return the ShapeShiftConfig for the given context name."""
 
-        context: str = source or "default"
+    #     context: str = source or "default"
 
-        logger.warning(f"[deprecation warning] Resolving ShapeShiftConfig from global context '{context}'")
+    #     logger.warning(f"[deprecation warning] Resolving ShapeShiftConfig from global context '{context}'")
 
-        provider: ConfigProvider = get_config_provider()
+    #     provider: ConfigProvider = get_config_provider()
 
-        if not provider.is_configured(context):
-            raise ValueError(f"Failed to resolve ShapeShiftConfig for context '{context}'")
+    #     if not provider.is_configured(context):
+    #         raise ValueError(f"Failed to resolve ShapeShiftConfig for context '{context}'")
 
-        if context == "default":
-            logger.warning("Using configuration from default context")
+    #     if context == "default":
+    #         logger.warning("Using configuration from default context")
 
-        config = ShapeShiftConfig(cfg=provider.get_config(context).data)
+    #     config = ShapeShiftConfig(cfg=provider.get_config(context).data)
 
-        return config
+    #     return config
 
 
 class DataSourceConfig:
