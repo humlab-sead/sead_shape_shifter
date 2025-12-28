@@ -514,6 +514,12 @@ class Metadata:
     def version(self) -> str:
         """Configuration version."""
         return self.data.get("version", "1.0.0")
+    
+    @property
+    def default_entity(self) -> str | None:
+        """Configuration version."""
+        return self.data.get("default_entity")  # e.g. "survey"
+
 
 
 class ShapeShiftConfig:
