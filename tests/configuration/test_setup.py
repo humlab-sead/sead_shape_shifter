@@ -6,10 +6,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.configuration.provider import ConfigProvider
-from src.configuration.config import Config
-from src.configuration.provider import ConfigStore, MockConfigProvider, reset_config_provider, set_config_provider
 from src.configuration import setup
+from src.configuration.config import Config
+from src.configuration.provider import ConfigProvider, ConfigStore, MockConfigProvider, reset_config_provider, set_config_provider
 
 
 @pytest.fixture()

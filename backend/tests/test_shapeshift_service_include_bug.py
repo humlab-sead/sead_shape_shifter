@@ -10,7 +10,7 @@ hasn't been resolved/processed before being used. The ruamel.yaml library preser
 the string "@include: filename.yml" as a DoubleQuotedScalarString object instead of
 loading and merging the referenced file's contents.
 
-When the code tries to access properties of what should be a dictionary (e.g., 
+When the code tries to access properties of what should be a dictionary (e.g.,
 data_source.driver), it fails because it's actually trying to call .get() on a string.
 
 EXAMPLE BUGGY YAML:
@@ -32,7 +32,7 @@ options:
 HOW TO FIX:
 -----------
 1. Ensure @include directives are processed BEFORE the config is converted to ShapeShiftConfig
-2. Check the configuration loading code (likely in backend/app/services/config_service.py 
+2. Check the configuration loading code (likely in backend/app/services/config_service.py
    or backend/app/mappers/config_mapper.py) to ensure includes are resolved
 3. Add validation to detect unresolved @include directives (see test_detect_unresolved_includes_in_config)
 4. The configuration provider/loader should handle @include processing, not the consumers
@@ -97,11 +97,7 @@ class TestShapeShiftServiceIncludeBug:
                     # Don't use data_source to avoid get_dependencies
                 }
             },
-            "options": {
-                "data_sources": {
-                    "lookup_db": unresolved_include  # BUG: This should be a dict, not a string!
-                }
-            },
+            "options": {"data_sources": {"lookup_db": unresolved_include}},  # BUG: This should be a dict, not a string!
         }
 
         # Mock the config cache to return this buggy config

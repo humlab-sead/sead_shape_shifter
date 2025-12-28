@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
 import pytest
+import yaml
 
-from src.configuration.interface import ConfigLike
 from src.configuration.config import Config, ConfigFactory, is_config_path, is_path_to_existing_file
+from src.configuration.interface import ConfigLike
 
 
 def test_is_config_path_validation(tmp_path) -> None:
@@ -97,7 +97,7 @@ def test_configfactory_resolves_include_and_load(tmp_path: Path, monkeypatch) ->
 
     main_file: Path = tmp_path / "config.yml"
     main_file.write_text(
-        f"nested: \"@include:{sub_file.name}\"\nvalues: \"@load:{csv_file.name}\"\napi: \"${{API_URL}}\"\n",
+        f'nested: "@include:{sub_file.name}"\nvalues: "@load:{csv_file.name}"\napi: "${{API_URL}}"\n',
         encoding="utf-8",
     )
 

@@ -7,10 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from backend.app.core.state_manager import ApplicationState
 from backend.app.api.v1.api import api_router
 from backend.app.core.config import settings
-from backend.app.core.state_manager import init_app_state
+from backend.app.core.state_manager import ApplicationState, init_app_state
 
 
 @asynccontextmanager

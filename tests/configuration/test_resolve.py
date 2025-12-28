@@ -6,11 +6,9 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from src.configuration.provider import ConfigProvider
 from src.configuration.config import Config
-from src.configuration.provider import MockConfigProvider, set_config_provider
-from src.configuration.resolve import ConfigValue, Configurable, inject_config
-
+from src.configuration.provider import ConfigProvider, MockConfigProvider, set_config_provider
+from src.configuration.resolve import Configurable, ConfigValue, inject_config
 
 # pylint: disable=unused-argument
 
