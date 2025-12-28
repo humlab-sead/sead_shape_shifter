@@ -73,6 +73,11 @@ class Settings(BaseSettings):
         """Get project root directory path."""
         return self.PROJECT_ROOT
 
+    @property
+    def env_opts(self) -> dict[str, str]:
+        """Get environment options."""
+        return {"env_file": self.env_file, "env_prefix": self.env_prefix}
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -13,6 +13,7 @@ from backend.app.services.config_service import ConfigurationService
 from backend.app.utils.caches import ShapeShiftCache, ShapeShiftConfigCache
 from src.model import ShapeShiftConfig, TableConfig
 from src.normalizer import ShapeShifter
+from backend.app.core.config import settings, Settings
 
 
 class ShapeShiftService:
@@ -22,6 +23,7 @@ class ShapeShiftService:
         self.config_service: ConfigurationService = config_service
         self.cache: ShapeShiftCache = ShapeShiftCache(ttl_seconds=ttl_seconds)  # 5 minute cache
         self.config_cache = ShapeShiftConfigCache(config_service)
+        self.settings: Settings = settings
 
     async def preview_entity(self, config_name: str, entity_name: str, limit: int = 50) -> PreviewResult:
         """
@@ -59,8 +61,9 @@ class ShapeShiftService:
         if cached_data.data is not None:
             table_store = {entity_name: cached_data.data} | cached_data.dependencies
         else:
+            resolved_cfg: ShapeShiftConfig = shapeshift_cfg.clone().resolve(filename=shapeshift_cfg.filename, **self.settings.env_opts)
             table_store = await self.shapeshift(
-                config=shapeshift_cfg,
+                config=resolved_cfg,
                 entity_name=entity_name,
                 initial_table_store=cached_data.dependencies,
             )
