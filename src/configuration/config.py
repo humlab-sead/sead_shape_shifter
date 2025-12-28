@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import copy
 import io
 from abc import abstractmethod
 from datetime import datetime
@@ -159,33 +160,46 @@ class Config(ConfigLike):
     def exists(self, *keys: str) -> bool:
         return False if self.data is None else dotexists(self.data, *keys)
 
-    def resolve(self) -> Config:
-        """Resolve configuration directives in self.data."""
-        data: dict[str, Any] = self.resolve_macros(
-            self.data,
-            context=self.context,
-            env_filename=self.env_filename,
-            env_prefix=self.env_prefix,
-            source_path=self.filename,
-        )
+    def clone(self) -> Config:
+        """Create a deep copy of the configuration."""
         return Config(
-            data=data,
+            data=copy.deepcopy(self.data),
             context=self.context,
             filename=self.filename,
             env_filename=self.env_filename,
             env_prefix=self.env_prefix,
         )
 
+    def resolve(self) -> Config:
+        """Resolve configuration directives in self.data."""
+        self.data: dict[str, Any] = self.resolve_references(
+            self.data,
+            context=self.context,
+            env_filename=self.env_filename,
+            env_prefix=self.env_prefix,
+            source_path=self.filename,
+            inplace=True,
+        )
+        return self
+
     @staticmethod
-    def resolve_macros(
+    def resolve_references(
         data: dict[str, Any],
         *,
         context: str | None = None,
         env_filename: str | None = None,
         env_prefix: str | None = None,
         source_path: str | None = None,
+        inplace: bool = False,
     ) -> dict[str, Any]:
-        """Resolve configuration directives in the provided data dictionary."""
+        """Resolve configuration directives in the provided data dictionary.
+
+        Note: This method does NOT mutate the input data parameter.
+        It creates a deep copy to ensure the original remains unchanged.
+        """
+        if not inplace:
+            data = copy.deepcopy(data)
+
         for resolver_cls in [SubConfigResolver, LoadResolver]:
             data = resolver_cls(
                 context=context,
@@ -244,7 +258,7 @@ class ConfigFactory:
         assert isinstance(data, dict)
 
         if not skip_resolve:
-            data = Config.resolve_macros(
+            data = Config.resolve_references(
                 data,
                 context=context,
                 env_filename=env_filename,
