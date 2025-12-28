@@ -160,7 +160,7 @@ class ShapeShiftCache:
             self.set_dataframe(config_name, entity_name, df, config_version, entity_config)
         logger.debug(f"Cached {len(table_store)} entities from {target_entity} execution")
 
-    def gather_cached_dependencies(
+    def get_dependencies(
         self,
         config_name: str,
         entity_config: TableConfig,
@@ -190,6 +190,20 @@ class ShapeShiftCache:
             logger.debug(f"Found {len(cached_deps)} cached dependencies for {entity_config.entity_name}: {list(cached_deps.keys())}")
 
         return cached_deps
+
+    @dataclass
+    class CacheCheckResult:
+        found: bool
+        data: pd.DataFrame | None
+        dependencies: dict[str, pd.DataFrame]
+
+    def fetch_cached_entity_data(
+        self, config_name: str, entity_name: str, config_version: int, entity_config: TableConfig, shapeshift_config: ShapeShiftConfig
+    ) -> CacheCheckResult:
+        data: pd.DataFrame | None = self.get_dataframe(config_name, entity_name, config_version, entity_config)
+        found: bool = data is not None
+        dependencies: dict[str, pd.DataFrame] = self.get_dependencies(config_name, entity_config, config_version, shapeshift_config)
+        return self.CacheCheckResult(found=found, data=data, dependencies=dependencies)
 
     def get_available_entities(self, config_name: str) -> set[str]:
         """Get all entity names available in cache for a configuration."""
