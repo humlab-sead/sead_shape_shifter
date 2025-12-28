@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from fastapi.background import P
+
 import yaml
 import pytest
 
@@ -74,7 +74,20 @@ def test_config_save_creates_backup_and_applies_updates(tmp_path: Path) -> None:
     assert len(backups) == 1
 
 
-def test_configfactory_resolves_include_and_load(tmp_path: Path) -> None:
+def test_config_resolve_applies_env(monkeypatch) -> None:
+    """Config.resolve should apply env var replacement and prefix injection."""
+    monkeypatch.setenv("API_URL", "https://example.test")
+    monkeypatch.setenv("APP_SETTINGS_TOKEN", "secret")
+
+    cfg = Config(data={"settings": {"url": "${API_URL}"}}, env_prefix="APP")
+    resolved = cfg.resolve()
+
+    assert resolved.data["settings"]["url"] == "https://example.test"
+    assert resolved.data["settings"]["token"] == "secret"
+    assert resolved is not cfg
+
+
+def test_configfactory_resolves_include_and_load(tmp_path: Path, monkeypatch) -> None:
     """ConfigFactory resolves @include and @load directives using base path."""
     sub_file: Path = tmp_path / "sub.yml"
     sub_file.write_text("child:\n  key: sub\n", encoding="utf-8")
@@ -84,11 +97,26 @@ def test_configfactory_resolves_include_and_load(tmp_path: Path) -> None:
 
     main_file: Path = tmp_path / "config.yml"
     main_file.write_text(
-        f"nested: \"@include:{sub_file.name}\"\nvalues: \"@load:{csv_file.name}\"\n",
+        f"nested: \"@include:{sub_file.name}\"\nvalues: \"@load:{csv_file.name}\"\napi: \"${{API_URL}}\"\n",
         encoding="utf-8",
     )
 
+    monkeypatch.setenv("API_URL", "https://example.test")
     cfg: Config | ConfigLike = ConfigFactory().load(source=str(main_file), context="test_ctx")
 
     assert cfg.data["nested"]["child"]["key"] == "sub"
     assert cfg.data["values"] == [{"name": "alice", "age": "30"}, {"name": "bob", "age": "40"}]
+    assert cfg.data["api"] == "https://example.test"
+
+
+def test_configfactory_applies_env_prefix(tmp_path: Path, monkeypatch) -> None:
+    """ConfigFactory should inject env-prefixed values into loaded data."""
+    monkeypatch.setenv("MYAPP_SECTION_KEY", "from_env")
+
+    cfg_file = tmp_path / "config.yml"
+    cfg_file.write_text("section:\n  placeholder: 1\n", encoding="utf-8")
+
+    cfg: Config = ConfigFactory().load(source=str(cfg_file), env_prefix="MYAPP")  # type: ignore[assignment]
+
+    assert cfg.data["section"]["key"] == "from_env"
+    assert cfg.env_prefix == "MYAPP"
