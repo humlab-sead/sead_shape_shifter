@@ -43,16 +43,16 @@ class ShapeShiftService:
         """
         start_time: float = time.time()
 
-        shapeshift_config: ShapeShiftConfig = await self.config_cache.get_config(config_name)
+        shapeshift_cfg: ShapeShiftConfig = await self.config_cache.get_config(config_name)
         config_version: int = self.get_config_version(config_name)
 
-        if entity_name not in shapeshift_config.tables:
+        if entity_name not in shapeshift_cfg.tables:
             raise ValueError(f"Entity '{entity_name}' not found in configuration")
 
-        entity_config: TableConfig = shapeshift_config.tables[entity_name]
+        entity_cfg: TableConfig = shapeshift_cfg.tables[entity_name]
 
         cached_data: ShapeShiftCache.CacheCheckResult = self.cache.fetch_cached_entity_data(
-            config_name, entity_name, config_version, entity_config, shapeshift_config
+            config_name, entity_name, config_version, entity_cfg, shapeshift_cfg
         )
 
         table_store: dict[str, pd.DataFrame]
@@ -60,17 +60,16 @@ class ShapeShiftService:
             table_store = {entity_name: cached_data.data} | cached_data.dependencies
         else:
             table_store = await self.shapeshift(
-                config=shapeshift_config,
+                config=shapeshift_cfg,
                 entity_name=entity_name,
-                entity_config=entity_config,
                 initial_table_store=cached_data.dependencies,
             )
-            entity_configs: dict[str, TableConfig] = {name: shapeshift_config.get_table(name) for name in table_store.keys()}
+            entity_configs: dict[str, TableConfig] = {name: shapeshift_cfg.get_table(name) for name in table_store.keys()}
             self.cache.set_table_store(config_name, table_store, entity_name, config_version, entity_configs)
 
         result: PreviewResult = PreviewResultBuilder().build(
             entity_name=entity_name,
-            entity_config=entity_config,
+            entity_cfg=entity_cfg,
             table_store=table_store,
             limit=limit,
             cache_hit=cached_data.found,
@@ -85,7 +84,6 @@ class ShapeShiftService:
         self,
         config: ShapeShiftConfig,
         entity_name: str,
-        entity_config: TableConfig,
         initial_table_store: dict[str, pd.DataFrame],
     ) -> dict[str, pd.DataFrame]:
         """
@@ -101,23 +99,20 @@ class ShapeShiftService:
             Complete table_store with target entity and all dependencies
         """
         try:
-            # Determine the default source entity from the target entity config
-            default_source: str | None = entity_config.source if entity_config.source else None
-
-            shapeshifter: ShapeShifter = ShapeShifter(
-                config=config, table_store=initial_table_store, default_entity=default_source, target_entities={entity_name}
-            )
-
-            await shapeshifter.normalize()
+            shapeshifter: ShapeShifter = await ShapeShifter(
+                config=config,
+                table_store=initial_table_store,
+                default_entity=config.metadata.default_entity,
+                target_entities={entity_name},
+            ).normalize()
 
             if entity_name not in shapeshifter.table_store:
                 raise RuntimeError(f"Entity {entity_name} was not produced by normalizer")
 
-            # Return the complete table_store (includes target + all dependencies)
             return shapeshifter.table_store
 
         except Exception as e:
-            logger.error(f"ShapeShift failed for {entity_name}: {e}", exc_info=True)
+            logger.exception(f"ShapeShift failed for {entity_name}: {e}", exc_info=True)
             raise RuntimeError(f"ShapeShift failed for {entity_name}: {str(e)}") from e
 
     async def get_entity_sample(self, config_name: str, entity_name: str, limit: int = 100) -> PreviewResult:
@@ -150,7 +145,12 @@ class ShapeShiftService:
 class PreviewResultBuilder:
 
     def build(
-        self, entity_name: str, entity_config: TableConfig, table_store: dict[str, pd.DataFrame], limit: int, cache_hit: bool
+        self,
+        entity_name: str,
+        entity_cfg: TableConfig,
+        table_store: dict[str, pd.DataFrame],
+        limit: int,
+        cache_hit: bool,
     ) -> PreviewResult:
         """Build PreviewResult from table_store with limit applied."""
         if entity_name not in table_store:
@@ -158,7 +158,7 @@ class PreviewResultBuilder:
 
         preview_df: pd.DataFrame = table_store[entity_name].head(limit)
 
-        key_columns: set[str] = entity_config.get_key_columns()
+        key_columns: set[str] = entity_cfg.get_key_columns()
 
         columns: list[ColumnInfo] = [
             ColumnInfo(
@@ -180,7 +180,7 @@ class PreviewResultBuilder:
             columns=columns,
             total_rows_in_preview=len(rows),
             estimated_total_rows=len(table_store[entity_name]),
-            execution_time_ms=0,  # Will be set by caller
+            execution_time_ms=0,
             has_dependencies=len(dependencies_loaded) > 0,
             dependencies_loaded=dependencies_loaded,
             cache_hit=cache_hit,
