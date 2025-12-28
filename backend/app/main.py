@@ -44,6 +44,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+logger.debug("Configuring FastAPI application")
+logger.debug(f"Allowed CORS origins: {settings.ALLOWED_ORIGINS}")
+logger.debug(f"Allowed CORS origin regex: {settings.ALLOWED_ORIGIN_REGEX}")
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
