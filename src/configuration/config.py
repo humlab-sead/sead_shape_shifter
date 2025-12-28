@@ -79,10 +79,14 @@ class Config(ConfigLike):
         data: dict[str, Any] | None = None,
         context: str = "default",
         filename: str | None = None,
+        env_filename: str | None = None,
+        env_prefix: str | None = None,
     ) -> None:
         self.data: dict[str, Any] = data or {}
         self.context: str = context
         self.filename: str | None = filename
+        self.env_filename: str | None = env_filename
+        self.env_prefix: str | None = env_prefix
 
     def get(self, *keys: str, default: Any | type[Any] = None, mandatory: bool = False) -> Any:
         if self.data is None:
@@ -155,6 +159,51 @@ class Config(ConfigLike):
     def exists(self, *keys: str) -> bool:
         return False if self.data is None else dotexists(self.data, *keys)
 
+    def resolve(self) -> Config:
+        """Resolve configuration directives in self.data."""
+        data: dict[str, Any] = self.resolve_macros(
+            self.data,
+            context=self.context,
+            env_filename=self.env_filename,
+            env_prefix=self.env_prefix,
+            source_path=self.filename,
+        )
+        return Config(
+            data=data,
+            context=self.context,
+            filename=self.filename,
+            env_filename=self.env_filename,
+            env_prefix=self.env_prefix,
+        )
+
+    @staticmethod
+    def resolve_macros(
+        data: dict[str, Any],
+        *,
+        context: str | None = None,
+        env_filename: str | None = None,
+        env_prefix: str | None = None,
+        source_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Resolve configuration directives in the provided data dictionary."""
+        for resolver_cls in [SubConfigResolver, LoadResolver]:
+            data = resolver_cls(
+                context=context,
+                env_filename=env_filename,
+                env_prefix=env_prefix,
+                source_path=source_path,
+            ).resolve(data)
+
+        # Update data based on environment variables with a name that starts with `env_prefix`
+        if env_prefix:
+            data = env2dict(env_prefix, data)
+
+        # Do a recursive replace of values with pattern "${ENV_NAME}" with value of environment
+        data = replace_env_vars(data)  # type: ignore
+        data = replace_references(data)  # type: ignore
+
+        return data
+
 
 class ConfigFactory:
     """Factory for creating Config instances."""
@@ -174,7 +223,7 @@ class ConfigFactory:
         if isinstance(source, (Config, ConfigLike)):
             return source
 
-        source_path: str | None = source if isinstance(source, str) and is_config_path(source, raise_if_missing=False) else None
+        filename: str | None = source if isinstance(source, str) and is_config_path(source, raise_if_missing=False) else None
 
         if source is None:
             source = {}
@@ -190,35 +239,25 @@ class ConfigFactory:
             )
             if isinstance(source, str)
             else source
-        )
-
-        # Handle empty YAML files (loads as None)
-        if data is None:
-            data = {}
+        ) or {}
 
         assert isinstance(data, dict)
 
-        # Resolve sub-configurations by loading referenced files recursively
-
         if not skip_resolve:
-
-            for resolver_cls in [SubConfigResolver, LoadResolver]:
-                data = resolver_cls(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path).resolve(
-                    data
-                )
-
-            # Update data based on environment variables with a name that starts with `env_prefix`
-            if env_prefix:
-                data = env2dict(env_prefix, data)
-
-            # Do a recursive replace of values with pattern "${ENV_NAME}" with value of environment
-            data = replace_env_vars(data)  # type: ignore
-            data = replace_references(data)  # type: ignore
+            data = Config.resolve_macros(
+                data,
+                context=context,
+                env_filename=env_filename,
+                env_prefix=env_prefix,
+                source_path=filename,
+            )
 
         return Config(
             data=data,
             context=context or "default",
-            filename=source if isinstance(source, str) and is_config_path(source) else None,
+            filename=filename,
+            env_filename=env_filename,
+            env_prefix=env_prefix,
         )
 
 
