@@ -12,12 +12,11 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 import click
 from loguru import logger
 
-from src.configuration.resolve import ConfigValue
 from src.extract import extract_translation_map
 from src.model import ShapeShiftConfig
 from src.normalizer import ShapeShifter
@@ -56,15 +55,13 @@ async def workflow(
         shapeshifter.drop_foreign_key_columns()
 
     if translate:
-        fields_metadata: list[dict[str, str]] = ConfigValue[list[dict[str, str]]]("translation").resolve() or []
-        translations_map: dict[str, str] = extract_translation_map(fields_metadata=fields_metadata)
+        translations_map: dict[str, str] = extract_translation_map(fields_metadata=config.options.get("translation") or [])
         shapeshifter.translate(translations_map=translations_map)
 
     shapeshifter.add_system_id_columns()
     shapeshifter.move_keys_to_front()
 
-    link_cfgs: dict[str, dict[str, Any]] = config.mappings
-    shapeshifter.map_to_remote(link_cfgs)
+    shapeshifter.map_to_remote(config.mappings)
 
     shapeshifter.store(target=target, mode=mode)
     shapeshifter.log_shapes(target=target)
