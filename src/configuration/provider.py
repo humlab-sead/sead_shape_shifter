@@ -81,13 +81,13 @@ class ConfigStore:
 
         if config_name not in self.store:
 
-            config_path = Path(self.config_directory) / f"{config_name}.yml"
-            if not config_path.exists():
-                raise FileNotFoundError(f"Config file not found: {config_path}")
+            filename: Path = Path(self.config_directory) / f"{config_name.strip(".yml")}.yml"
+            if not filename.exists():
+                raise FileNotFoundError(f"Config file not found: {filename}")
 
-            cfg: ConfigLike = ConfigFactory().load(source=str(config_path), context=config_name)
+            cfg: ConfigLike = ConfigFactory().load(source=str(filename), context=config_name)
             self.store[config_name] = cfg
-            logger.info(f"Loaded config '{config_name}' from {config_path}")
+            logger.info(f"Loaded config '{config_name}' from {filename}")
 
         return self.store[config_name]  # type: ignore
 
