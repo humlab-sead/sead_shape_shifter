@@ -524,12 +524,7 @@ class Metadata:
 class ShapeShiftConfig:
     """Configuration for database tables. Read-Only. Wraps overall configuration."""
 
-    def __init__(self, *, cfg: dict[str, dict[str, Any]] | None = None) -> None:
-
-        if cfg is None:
-            provider: ConfigProvider = get_config_provider()
-            config: ConfigLike = provider.get_config("default")
-            cfg = config.data or {}
+    def __init__(self, *, cfg: dict[str, dict[str, Any]]) -> None:
 
         if "entities" not in cfg or not isinstance(cfg["entities"], dict):
             raise ValueError("Invalid configuration: 'entities' section is missing or not a dictionary.")
