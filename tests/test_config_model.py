@@ -1207,17 +1207,17 @@ class TestShapeShiftConfig:
 
     @pytest.mark.asyncio
     async def test_resolve_returns_existing_config_instance(self):
-        """ShapeShiftConfig.resolve should return provided instance unchanged."""
+        """ShapeShiftConfig.from_source should return provided instance unchanged."""
 
         config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}})
 
-        resolved = ShapeShiftConfig.resolve(config)
+        resolved = ShapeShiftConfig.from_source(config)
 
         assert resolved is config
 
     @pytest.mark.asyncio
     async def test_resolve_loads_from_file_path(self, tmp_path):
-        """ShapeShiftConfig.resolve should load configuration from file path."""
+        """ShapeShiftConfig.from_source should load configuration from file path."""
 
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
@@ -1225,14 +1225,14 @@ class TestShapeShiftConfig:
             encoding="utf-8",
         )
 
-        resolved = ShapeShiftConfig.resolve(str(config_path))
+        resolved = ShapeShiftConfig.from_source(str(config_path))
 
         assert resolved.has_table("site") is True
         assert resolved.get_table("site").surrogate_id == "site_id"
 
     @pytest.mark.asyncio
     async def test_resolve_uses_config_provider_for_default_context(self):
-        """ShapeShiftConfig.resolve should pull from provider when no config passed."""
+        """ShapeShiftConfig.from_source should pull from provider when no config passed."""
 
         config = Config(data={"entities": {"site": {"surrogate_id": "site_id"}}})
 
@@ -1249,7 +1249,7 @@ class TestShapeShiftConfig:
         old_provider = set_config_provider(provider)
 
         try:
-            resolved: ShapeShiftConfig = ShapeShiftConfig.resolve(None)
+            resolved: ShapeShiftConfig = ShapeShiftConfig.from_source(None)
             assert resolved.has_table("site")
             assert provider.last_context == "default"
         finally:
@@ -1257,14 +1257,14 @@ class TestShapeShiftConfig:
 
     @pytest.mark.asyncio
     async def test_resolve_raises_when_context_not_configured(self):
-        """ShapeShiftConfig.resolve should raise when provider lacks requested context."""
+        """ShapeShiftConfig.from_source should raise when provider lacks requested context."""
 
         provider = MockConfigProvider(config=None)  # type: ignore
         old_provider = set_config_provider(provider)
 
         try:
-            with pytest.raises(ValueError, match="Failed to resolve Config for context 'missing'"):
-                ShapeShiftConfig.resolve("missing")
+            with pytest.raises(ValueError, match="Failed to from_source Config for context 'missing'"):
+                ShapeShiftConfig.from_source("missing")
         finally:
             set_config_provider(old_provider)
 

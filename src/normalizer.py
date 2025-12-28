@@ -98,7 +98,7 @@ class ShapeShifter:
 
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
-        self.config: ShapeShiftConfig = ShapeShiftConfig.resolve(config)
+        self.config: ShapeShiftConfig = ShapeShiftConfig.from_source(config)
         self.state: ProcessState = self._initialize_process_state(target_entities)
 
     def _initialize_process_state(self, target_entities: set[str] | None = None) -> ProcessState:
