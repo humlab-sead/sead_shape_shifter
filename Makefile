@@ -117,7 +117,7 @@ backend-kill:
 	@lsof -t -i ':$(BACKEND_PORT)' | xargs -r kill -9
 	@echo "Killed all running servers."
 
-RELOAD_EXCLUDE="./docs,output,input,*.pyc,__pycache__/*,*.pyo,*~,./frontend/*,.venv/*,dist/*,.tox/*,*sqlite*,./tests/*,,*.csv"
+RELOAD_EXCLUDE="./docs,output,input,*.pyc,__pycache__/*,*.pyo,*~,./frontend/*,.venv/*,dist/*,.tox/*,*sqlite*,./tests/*,*.csv"
 
 .PHONY: backend-run
 backend-run:
