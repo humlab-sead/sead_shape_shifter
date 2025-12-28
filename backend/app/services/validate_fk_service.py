@@ -36,9 +36,9 @@ class ValidateForeignKeyService:
 
         start_time: float = time.time()
 
-        # Load config - try ApplicationState first (production), fall back to ShapeShiftConfig.resolve (tests)
+        # Load config - try ApplicationState first (production), fall back to ShapeShiftConfig.from_source (tests)
         api_cfg: Configuration | None = get_app_state_manager().get(config_name)
-        config: ShapeShiftConfig = ConfigMapper.to_core(api_cfg) if api_cfg else ShapeShiftConfig.resolve(cfg=config_name)
+        config: ShapeShiftConfig = ConfigMapper.to_core(api_cfg) if api_cfg else ShapeShiftConfig.from_source(source=config_name)
 
         # Get entity and foreign key config
         if entity_name not in config.tables:

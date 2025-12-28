@@ -636,23 +636,30 @@ class ShapeShiftConfig:
         return ShapeShiftConfig(cfg=cfg.data)
 
     @staticmethod
-    def resolve(cfg: "ShapeShiftConfig | str | None") -> "ShapeShiftConfig":
+    def from_source(source: "ShapeShiftConfig | str | None") -> "ShapeShiftConfig":
         """Resolve and return the ShapeShiftConfig for the given config name."""
 
-        if isinstance(cfg, ShapeShiftConfig):
-            return cfg
+        if isinstance(source, ShapeShiftConfig):
+            return source
 
-        if isinstance(cfg, str):
-            if is_config_path(cfg, raise_if_missing=False):
-                return ShapeShiftConfig.from_file(cfg)
+        if isinstance(source, str):
+            if is_config_path(source, raise_if_missing=False):
+                return ShapeShiftConfig.from_file(source)
 
-        context: str = cfg or "default"
+        return ShapeShiftConfig.from_context(source)
 
-        # Load configuration from global store.
+    @staticmethod
+    def from_context(source: str | None) -> "ShapeShiftConfig":
+        """Resolve and return the ShapeShiftConfig for the given context name."""
+
+        context: str = source or "default"
+
+        logger.warning(f"[deprecation warning] Resolving ShapeShiftConfig from global context '{context}'")
+
         provider: ConfigProvider = get_config_provider()
 
         if not provider.is_configured(context):
-            raise ValueError(f"Failed to resolve Config for context '{context}'")
+            raise ValueError(f"Failed to resolve ShapeShiftConfig for context '{context}'")
 
         if context == "default":
             logger.warning("Using configuration from default context")

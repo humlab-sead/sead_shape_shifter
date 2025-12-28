@@ -60,8 +60,8 @@ def build_config(cardinality: str | None = "one_to_one") -> ShapeShiftConfig:
 
 
 def patch_config_resolution(monkeypatch: pytest.MonkeyPatch, config: ShapeShiftConfig) -> None:
-    """Force ShapeShiftConfig.resolve to return provided config."""
-    monkeypatch.setattr(validate_fk_service.ShapeShiftConfig, "resolve", staticmethod(lambda cfg: config))
+    """Force ShapeShiftConfig.from_source to return provided config."""
+    monkeypatch.setattr(validate_fk_service.ShapeShiftConfig, "from_source", staticmethod(lambda source: config))
 
 
 @pytest.mark.asyncio
