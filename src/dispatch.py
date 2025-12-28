@@ -47,6 +47,7 @@ class DatabaseDispatcher(Dispatcher):
     """Dispatcher for Database data."""
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
+        # FIXME: This won't work since configuration no longer resides in ConfigStore
         db_opts: dict[str, Any] = ConfigValue[dict[str, Any]]("options.database").resolve() or {}
         db_url: str = create_db_uri(**db_opts)
         # use pandas to_sql to write dataframes to the database
