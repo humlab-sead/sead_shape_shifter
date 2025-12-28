@@ -84,7 +84,7 @@ def test_config_resolve_applies_env(monkeypatch) -> None:
 
     assert resolved.data["settings"]["url"] == "https://example.test"
     assert resolved.data["settings"]["token"] == "secret"
-    assert resolved is not cfg
+    assert resolved is cfg
 
 
 def test_configfactory_resolves_include_and_load(tmp_path: Path, monkeypatch) -> None:
