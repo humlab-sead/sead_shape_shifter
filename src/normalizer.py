@@ -5,7 +5,7 @@ and write them as CSVs or sheets in a single Excel file.
 """
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 import pandas as pd
 from loguru import logger
@@ -131,7 +131,7 @@ class ShapeShifter:
         self.table_store[name] = df
         return df
 
-    async def normalize(self) -> None:
+    async def normalize(self) -> Self:
         """Extract all configured entities and store them."""
         subset_service: SubsetService = SubsetService()
 
@@ -208,13 +208,15 @@ class ShapeShifter:
                 self.table_store[entity] = add_surrogate_id(self.table_store[entity], table_cfg.surrogate_id)
 
             self.link()  # Try to resolve any pending deferred links after each entity is processed
-
-    def link(self):
+        return self
+    
+    def link(self) -> Self:
         """Link entities based on foreign key configuration."""
         for entity_name in self.state.processed_entities:
             link_entity(entity_name=entity_name, config=self.config, table_store=self.table_store)
-
-    def store(self, target: str, mode: Literal["xlsx", "csv", "db"]) -> None:
+        return self
+    
+    def store(self, target: str, mode: Literal["xlsx", "csv", "db"]) -> Self:
         """Write to specified target based on the specified mode."""
         dispatcher_cls: Dispatcher = Dispatchers.get(mode)
         if dispatcher_cls:
@@ -222,12 +224,14 @@ class ShapeShifter:
             dispatcher.dispatch(target=target, data=self.table_store)
         else:
             raise ValueError(f"Unsupported dispatch mode: {mode}")
-
-    def unnest_all(self) -> None:
+        return self
+    
+    def unnest_all(self) -> Self:
         """Unnest dataframes based on configuration."""
         for entity in self.table_store:
             self.table_store[entity] = self.unnest_entity(entity=entity)
-
+        return self
+    
     def unnest_entity(self, *, entity: str) -> pd.DataFrame:
         try:
             table_cfg: TableConfig = self.config.get_table(entity)
@@ -237,44 +241,49 @@ class ShapeShifter:
             logger.error(f"Error unnesting entity {entity}: {e}")
         return self.table_store[entity]
 
-    def translate(self, translations_map: dict[str, str]) -> None:
+    def translate(self, translations_map: dict[str, str]) -> Self:
         """Translate column names using translation from config."""
         self.table_store = translate(self.table_store, translations_map=translations_map)
+        return self
 
-    def drop_foreign_key_columns(self) -> None:
+    def drop_foreign_key_columns(self) -> Self:
         """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
         for entity_name in self.table_store.keys():
             if entity_name not in self.config.table_names:
                 continue
             table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
             self.table_store[entity_name] = table_cfg.drop_fk_columns(table=self.table_store[entity_name])
-
-    def add_system_id_columns(self) -> None:
+        return self
+    
+    def add_system_id_columns(self) -> Self:
         """Add "system_id" with same value as surrogate_id. Set surrogate_id to None."""
         for entity_name in self.table_store.keys():
             if entity_name not in self.config.table_names:
                 continue
             table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
             self.table_store[entity_name] = table_cfg.add_system_id_column(table=self.table_store[entity_name])
-
-    def move_keys_to_front(self) -> None:
+        return self
+    
+    def move_keys_to_front(self) -> Self:
         """Reorder columns in this order: primary key, foreign key column, extra columns, other columns."""
         for entity_name in self.table_store.keys():
             if entity_name not in self.config.table_names:
                 continue
             self.table_store[entity_name] = self.config.reorder_columns(entity_name, self.table_store[entity_name])
+        return self
 
-    def map_to_remote(self, link_cfgs: dict[str, dict[str, Any]]) -> None:
+    def map_to_remote(self, link_cfgs: dict[str, dict[str, Any]]) -> Self:
         """Map local PK values to remote identities using mapping configuration."""
         if not link_cfgs:
-            return
+            return self
         service = LinkToRemoteService(remote_link_cfgs=link_cfgs)
         for entity_name in self.table_store.keys():
             if entity_name not in link_cfgs:
                 continue
             self.table_store[entity_name] = service.link_to_remote(entity_name, self.table_store[entity_name])
-
-    def log_shapes(self, target: str) -> None:
+        return self
+    
+    def log_shapes(self, target: str) -> Self:
         """Log the shape of each table as a TSV in same folder as target."""
         try:
             folder: str = target if Path(target).is_dir() else str(Path(target).parent)
@@ -286,10 +295,12 @@ class ShapeShifter:
             logger.info(f"Table shapes written to {tsv_filename}")
         except Exception as e:  # type: ignore ; pylint: disable=broad-except
             logger.error(f"Failed to write table shapes to TSV: {e}")
+        return self
 
-    def finalize(self) -> None:
+    def finalize(self) -> Self:
         """Finalize processing by performing final transformations."""
         # self.drop_foreign_key_columns()
         # self.add_system_id_columns()
         # self.move_keys_to_front()
         # drops = self.config.options.get("finally.drops")
+        return self
