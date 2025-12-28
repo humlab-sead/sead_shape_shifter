@@ -11,7 +11,7 @@ from src.configuration import ConfigFactory, ConfigLike
 from src.configuration.config import Config, is_config_path
 from src.configuration.provider import ConfigProvider, get_config_provider
 from src.loaders.base_loader import DataLoader, DataLoaders
-from src.utility import unique
+from src.utility import dotget, unique
 
 
 # pylint: disable=line-too-long
@@ -591,17 +591,17 @@ class ShapeShiftConfig:
         """Create a deep copy of the ShapeShiftConfig."""
         return ShapeShiftConfig(cfg=copy.deepcopy(self.cfg), filename=self.filename)
 
-    def resolve(self, env_filename: str = ".env", env_prefix: str = "SEAD_NORMALIZER", filename: str | None = None) -> "ShapeShiftConfig":
+    def resolve(self, **context) -> "ShapeShiftConfig":
         """Resolve and return a new ShapeShiftConfig instance."""
         return ShapeShiftConfig(
             cfg=Config.resolve_references(
                 self.cfg,
-                env_filename=env_filename,
-                env_prefix=env_prefix,
-                source_path=filename,
+                env_filename=dotget(context, "env_filename, env_file"),
+                env_prefix=dotget(context, "env_prefix"),
+                source_path=dotget(context, "filename, file_path") or self.filename,
                 inplace=False,
             ),
-            filename=filename or self.filename,
+            filename=context.get("filename") or self.filename,
         )
 
     @cached_property
