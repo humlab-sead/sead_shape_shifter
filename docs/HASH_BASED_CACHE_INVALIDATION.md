@@ -112,11 +112,11 @@ else:
     )
 ```
 
-### gather_cached_dependencies() Integration
+### get_dependencies() Integration
 
 ```python
 # Gather dependencies with hash validation
-cached_deps = self.cache.gather_cached_dependencies(
+cached_deps = self.cache.get_dependencies(
     config_name,
     entity_config,
     config_version,
@@ -195,7 +195,7 @@ def test_cache_hash_invalidation(self, sample_config):
    - Updated `get_dataframe()` with 3-tier validation
    - Updated `set_dataframe()` to compute hashes
    - Updated `set_table_store()` to accept entity_configs
-   - Updated `gather_cached_dependencies()` for hash validation
+   - Updated `get_dependencies()` for hash validation
    - Updated `preview_entity()` to pass entity configs
 
 2. `backend/tests/services/test_shapeshift_service.py`:
