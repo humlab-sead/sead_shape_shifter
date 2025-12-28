@@ -29,7 +29,7 @@ class ConfigMapper:
     """Bidirectional mapper between core and API configuration models."""
 
     @staticmethod
-    def to_api_config(cfg_dict: dict[str, Any], name: str) -> Configuration:
+    def to_api_config(cfg_dict: dict[str, Any], name: str, filename: str | None = None) -> Configuration:
         """
         Convert core config dict to API Configuration.
 
@@ -48,7 +48,7 @@ class ConfigMapper:
             name=metadata_dict.get("name", name),
             description=metadata_dict.get("description", ""),
             version=metadata_dict.get("version", "1.0.0"),
-            file_path=None,
+            file_path=filename,
             entity_count=len(cfg_dict.get("entities", {})),
             created_at=0,
             modified_at=0,
