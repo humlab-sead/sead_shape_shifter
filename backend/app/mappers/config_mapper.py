@@ -102,7 +102,7 @@ class ConfigMapper:
     @staticmethod
     def to_core(api_config: Configuration) -> ShapeShiftConfig:
         cfg_dict: dict[str, Any] = ConfigMapper.to_core_dict(api_config=api_config)
-        shapeshift = ShapeShiftConfig(cfg=cfg_dict)
+        shapeshift = ShapeShiftConfig(cfg=cfg_dict, filename=api_config.filename or "")
         return shapeshift
 
     @staticmethod

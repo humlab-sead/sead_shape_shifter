@@ -45,3 +45,9 @@ class Configuration(BaseModel):
     def entity_names(self) -> list[str]:
         """Get list of entity names."""
         return list(self.entities.keys())  # pylint: disable=no-member
+
+    @property
+    def filename(self) -> str | None:
+        """Get configuration filename from metadata."""
+        return self.metadata.file_path if self.metadata else None
+    
