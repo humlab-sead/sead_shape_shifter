@@ -69,7 +69,7 @@ def sample_config() -> ShapeShiftConfig:
         "options": {},
     }
 
-    return ShapeShiftConfig(cfg=cfg)
+    return ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
 
 
 @pytest.fixture

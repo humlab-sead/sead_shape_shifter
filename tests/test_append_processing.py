@@ -47,7 +47,7 @@ def config_with_append():
             },
         }
     }
-    return ShapeShiftConfig(cfg=cfg)
+    return ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def config_with_source_append():
             },
         }
     }
-    return ShapeShiftConfig(cfg=cfg)
+    return ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
 
 
 @pytest.fixture
@@ -98,7 +98,7 @@ def config_with_distinct_mode():
             },
         }
     }
-    return ShapeShiftConfig(cfg=cfg)
+    return ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
 
 
 class TestAppendProcessingBasic:
@@ -182,7 +182,7 @@ class TestAppendProcessingSQL:
                         "append_mode": "all",
                     },
                 }
-            }
+            }, filename="test-config.yml"
         )
         sub_configs = list(config_with_sql_append.get_table("site").get_sub_table_configs())
         assert len(sub_configs) == 2  # Base + SQL append
@@ -214,7 +214,7 @@ class TestAppendProcessingMultiple:
                 "entities": {
                     "survey": {"depends_on": []},
                 }
-            },
+            }, filename="test-config.yml"
         )
 
     @pytest.mark.asyncio
@@ -242,7 +242,7 @@ class TestAppendProcessingMultiple:
             }
         }
 
-        config = ShapeShiftConfig(cfg=cfg)
+        config = ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
         table_store: dict[str, pd.DataFrame] = {"survey": sample_survey_data}
         normalizer = ShapeShifter(config=config, default_entity="survey", table_store=table_store)
 
@@ -286,7 +286,7 @@ class TestAppendProcessingEdgeCases:
             }
         }
 
-        config = ShapeShiftConfig(cfg=cfg)
+        config = ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
         empty_data = pd.DataFrame(columns=["site_name", "latitude"])
         table_store = {"default": empty_data}
         normalizer = ShapeShifter(config=config, table_store=table_store, default_entity="default")
@@ -327,7 +327,7 @@ class TestAppendProcessingEdgeCases:
             }
         }
 
-        config = ShapeShiftConfig(cfg=cfg)
+        config = ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
         table_store = {"survey": sample_survey_data}
         normalizer = ShapeShifter(default_entity="survey", config=config, table_store=table_store)
 
