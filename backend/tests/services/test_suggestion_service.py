@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from backend.app.models.data_source import ColumnMetadata, TableSchema
+from backend.app.models.data_source import ColumnMetadata, TableMetadata, TableSchema
 from backend.app.services.suggestion_service import SuggestionService
 
 
@@ -94,3 +94,56 @@ async def test_suggest_foreign_keys_string_type_compatibility() -> None:
     assert suggestion.remote_keys == ["email"]
     assert suggestion.confidence > 0.5  # base exact + compatible string types
     assert "compatible types" in suggestion.reason
+
+
+@pytest.mark.asyncio
+async def test_get_table_schemas_matches_tables_case_insensitive() -> None:
+    """_get_table_schemas should load schemas for matching entities, respecting case-insensitive table names."""
+    schema_service = AsyncMock()
+    schema_service.get_tables.return_value = [
+        TableMetadata(name="users", schema_name="public", **{}),
+        TableMetadata(name="Orders", schema_name=None, **{}),
+    ]
+    schema_service.get_table_schema.side_effect = lambda ds, table: build_schema(
+        table,
+        [ColumnMetadata(name="id", data_type="INTEGER", nullable=False, is_primary_key=True, **{})],
+    )
+
+    service = SuggestionService(schema_service=schema_service)
+    entities = [{"name": "Users", "columns": ["id"]}, {"name": "orders", "columns": ["id"]}, {"name": "skipped", "columns": ["id"]}]
+
+    schemas = await service._get_table_schemas("ds1", entities)  # pylint: disable=protected-access
+
+    assert set(schemas.keys()) == {"Users", "orders"}
+    assert schemas["Users"].table_name.lower() == "users"
+    assert schema_service.get_table_schema.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_get_table_schemas_handles_listing_failure() -> None:
+    """If table listing fails, no schemas are loaded."""
+    schema_service = AsyncMock()
+    schema_service.get_tables.side_effect = Exception("boom")
+    schema_service.get_table_schema = AsyncMock()
+
+    service = SuggestionService(schema_service=schema_service)
+    schemas = await service._get_table_schemas("ds1", [{"name": "users", "columns": ["id"]}])  # pylint: disable=protected-access
+
+    assert schemas == {}
+    assert schema_service.get_table_schema.await_count == 0
+
+
+def test_find_column_matches_runs_all_strategies() -> None:
+    """_find_column_matches should return results from all strategies."""
+    service = SuggestionService(schema_service=AsyncMock())
+
+    matches = service._find_column_matches(  # pylint: disable=protected-access
+        local_columns={"user_id", "users_id", "id"},
+        remote_columns={"id", "user_id"},
+        local_entity="orders",
+        remote_entity="Users",
+        schemas={},
+    )
+
+    match_types = {m["match_type"] for m in matches}
+    assert {"exact", "fk_pattern", "entity_pattern"} <= match_types
