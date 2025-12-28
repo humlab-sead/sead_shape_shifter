@@ -7,7 +7,7 @@ import xxhash
 from loguru import logger
 
 from src.configuration import ConfigFactory, ConfigLike
-from src.configuration.config import is_config_path
+from src.configuration.config import Config, is_config_path
 from src.configuration.provider import ConfigProvider, get_config_provider
 from src.loaders.base_loader import DataLoader, DataLoaders
 from src.utility import unique
@@ -587,6 +587,18 @@ class ShapeShiftConfig:
     def clone(self) -> "ShapeShiftConfig":
         """Create a deep copy of the ShapeShiftConfig."""
         return ShapeShiftConfig(cfg=copy.deepcopy(self.cfg))
+
+    def resolve(self, env_filename: str = ".env", env_prefix: str = "SEAD_NORMALIZER", filename: str | None = None) -> "ShapeShiftConfig":
+        """Resolve and return a new ShapeShiftConfig instance."""
+        return ShapeShiftConfig(
+            cfg=Config.resolve_references(
+                self.cfg,
+                env_filename=env_filename,
+                env_prefix=env_prefix,
+                source_path=filename,
+                inplace=False,
+            )
+        )
 
     @cached_property
     def table_names(self) -> list[str]:
