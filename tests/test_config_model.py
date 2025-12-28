@@ -1263,7 +1263,7 @@ class TestShapeShiftConfig:
         old_provider = set_config_provider(provider)
 
         try:
-            with pytest.raises(ValueError, match="Failed to from_source Config for context 'missing'"):
+            with pytest.raises(ValueError, match="Failed to resolve ShapeShiftConfig for context 'missing'"):
                 ShapeShiftConfig.from_source("missing")
         finally:
             set_config_provider(old_provider)
