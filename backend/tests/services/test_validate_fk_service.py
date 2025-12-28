@@ -56,7 +56,7 @@ def build_config(cardinality: str | None = "one_to_one") -> ShapeShiftConfig:
             },
         },
     }
-    return ShapeShiftConfig(cfg=cfg)
+    return ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
 
 
 def patch_config_resolution(monkeypatch: pytest.MonkeyPatch, config: ShapeShiftConfig) -> None:

@@ -101,7 +101,7 @@ class TestShapeShiftServiceIncludeBug:
         }
 
         # Mock the config cache to return this buggy config
-        mock_shapeshift_config = ShapeShiftConfig(cfg=config_dict)
+        mock_shapeshift_config = ShapeShiftConfig(cfg=config_dict, filename="test-config.yml")
 
         # Now let's directly test that getting the data source fails
         with pytest.raises(AttributeError, match="'DoubleQuotedScalarString' object has no attribute 'get'"):
@@ -146,7 +146,7 @@ class TestShapeShiftServiceIncludeBug:
             "options": {"data_sources": {"test_source": unresolved_include}},
         }
 
-        config = ShapeShiftConfig(cfg=config_dict)
+        config = ShapeShiftConfig(cfg=config_dict, filename="test-config.yml")
 
         # Attempting to get the data source will fail
         with pytest.raises(AttributeError, match="'DoubleQuotedScalarString' object has no attribute 'get'"):
@@ -186,7 +186,7 @@ class TestShapeShiftServiceIncludeBug:
             },
         }
 
-        mock_shapeshift_config = ShapeShiftConfig(cfg=config_dict)
+        mock_shapeshift_config = ShapeShiftConfig(cfg=config_dict, filename="test-config.yml")
 
         # Mock the ShapeShifter to return test data
         mock_normalizer = MagicMock()
