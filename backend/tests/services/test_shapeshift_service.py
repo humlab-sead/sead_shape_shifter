@@ -677,11 +677,11 @@ class TestPreviewBuilder:
 
     def test_build_preview_result_with_dependencies(self, sample_dataframe: pd.DataFrame, sample_config: ShapeShiftConfig):
         """Test _build_preview_result correctly identifies dependencies."""
-        entity_config: TableConfig = sample_config.get_table("orders")
-        table_store = {"orders": sample_dataframe, "users": pd.DataFrame({"user_id": [1, 2], "username": ["alice", "bob"]})}
+        entity_cfg: TableConfig = sample_config.get_table("orders")
+        table_store: dict[str, pd.DataFrame] = {"orders": sample_dataframe, "users": pd.DataFrame({"user_id": [1, 2], "username": ["alice", "bob"]})}
         builder: PreviewResultBuilder = PreviewResultBuilder()
         result: PreviewResult = builder.build(
-            entity_name="orders", entity_config=entity_config, table_store=table_store, limit=50, cache_hit=False
+            entity_name="orders", entity_cfg=entity_cfg, table_store=table_store, limit=50, cache_hit=False
         )
 
         assert result.entity_name == "orders"
@@ -698,12 +698,12 @@ class TestPreviewBuilder:
 
     def test_build_preview_result(self, sample_dataframe: pd.DataFrame, sample_config: ShapeShiftConfig):
         """Test _build_preview_result correctly builds PreviewResult from table_store."""
-        entity_config: TableConfig = sample_config.get_table("users")
-        table_store = {"users": sample_dataframe, "orders": pd.DataFrame({"order_id": [1, 2], "user_id": [1, 2]})}
+        entity_cfg: TableConfig = sample_config.get_table("users")
+        table_store: dict[str, pd.DataFrame] = {"users": sample_dataframe, "orders": pd.DataFrame({"order_id": [1, 2], "user_id": [1, 2]})}
 
         builder: PreviewResultBuilder = PreviewResultBuilder()
         result: PreviewResult = builder.build(
-            entity_name="users", entity_config=entity_config, table_store=table_store, limit=50, cache_hit=False
+            entity_name="users", entity_cfg=entity_cfg, table_store=table_store, limit=50, cache_hit=False
         )
 
         assert result.entity_name == "users"
