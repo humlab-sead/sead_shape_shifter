@@ -1119,7 +1119,8 @@ class TestShapeShiftConfig:
                     "site": {"surrogate_id": "site_id", "columns": ["site_name"]},
                     "location": {"surrogate_id": "location_id", "columns": ["location_name"]},
                 }
-            }, filename="test-config.yml"
+            },
+            filename="test-config.yml",
         )
 
         assert len(config.tables) == 2
@@ -1130,7 +1131,9 @@ class TestShapeShiftConfig:
     def test_get_table(self):
         """Test getting a specific table configuration."""
 
-        config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id", "columns": ["site_name"]}}}, filename="test-config.yml")
+        config = ShapeShiftConfig(
+            cfg={"entities": {"site": {"surrogate_id": "site_id", "columns": ["site_name"]}}}, filename="test-config.yml"
+        )
         site_table: TableConfig = config.get_table("site")
 
         assert site_table.entity_name == "site"
@@ -1528,7 +1531,9 @@ class TestShapeShiftConfig:
     def test_get_data_source_not_found(self):
         """Test get_data_source raises ValueError when source not found."""
 
-        config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}, "options": {"data_sources": {}}}, filename="test-config.yml")
+        config = ShapeShiftConfig(
+            cfg={"entities": {"site": {"surrogate_id": "site_id"}}, "options": {"data_sources": {}}}, filename="test-config.yml"
+        )
 
         with pytest.raises(ValueError, match="Data source.*not found"):
             config.get_data_source("nonexistent")

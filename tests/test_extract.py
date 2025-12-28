@@ -64,7 +64,7 @@ def test_subset_service_replacements_and_extra_columns():
     assert result["const"].tolist() == [99, 99]
 
 
-def test_extract_translation_map_missing_keys_warns(monkeypatch: pytest.MonkeyPatch):
+def test_extract_translation_map_missing_keys_warns():
     """Missing required keys yields empty translation map."""
     # keys missing -> empty result
     assert extract_translation_map([{"wrong": "v"}]) == {}

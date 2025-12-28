@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
+from src.loaders.base_loader import ConnectTestResult
 from src.loaders.file_loaders import CsvLoader, FileLoader
 from src.model import DataSourceConfig
 
@@ -17,7 +18,6 @@ class DummyFileLoader(FileLoader):
         return pd.DataFrame({"value": [opts.get("value", "")]})
 
     async def test_connection(self):
-        from src.loaders.base_loader import ConnectTestResult
 
         return ConnectTestResult.create_empty(success=True)
 

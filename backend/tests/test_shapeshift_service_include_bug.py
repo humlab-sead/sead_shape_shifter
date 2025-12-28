@@ -49,10 +49,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
-from ruamel.yaml.scalarstring import DoubleQuotedScalarString
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString, ScalarString
 
 from backend.app.services.shapeshift_service import ShapeShiftService
-from src.model import ShapeShiftConfig
+from src.model import DataSourceConfig, ShapeShiftConfig
 
 
 class TestShapeShiftServiceIncludeBug:
@@ -71,7 +71,7 @@ class TestShapeShiftServiceIncludeBug:
         return ShapeShiftService(config_service=mock_config_service)
 
     @pytest.mark.asyncio
-    async def test_preview_entity_with_unresolved_include_directive(self, service: ShapeShiftService):
+    async def test_preview_entity_with_unresolved_include_directive(self):
         """
         Test that reproduces the error when @include directive is not resolved.
 
@@ -115,7 +115,6 @@ class TestShapeShiftServiceIncludeBug:
 
         This demonstrates the root cause: DataSourceConfig expects a dict but receives a string.
         """
-        from src.model import DataSourceConfig
 
         # Simulate what happens when @include isn't resolved
         unresolved_include = DoubleQuotedScalarString("@include: arbodat-lookup-options.yml")
@@ -221,7 +220,6 @@ class TestConfigurationResolution:
 
         This can be used as a validation step before using a config.
         """
-        from ruamel.yaml.scalarstring import ScalarString
 
         unresolved_include = DoubleQuotedScalarString("@include: some-file.yml")
 
@@ -265,8 +263,6 @@ class TestConfigurationResolution:
                 }
             },
         }
-
-        from ruamel.yaml.scalarstring import ScalarString
 
         def has_unresolved_includes(obj, path=""):
             if isinstance(obj, ScalarString):

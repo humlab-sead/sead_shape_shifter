@@ -1,6 +1,5 @@
 import copy
 from functools import cached_property
-from tkinter import N
 from typing import Any, Generator, Literal, Self
 
 import pandas as pd
@@ -9,7 +8,6 @@ from loguru import logger
 
 from src.configuration import ConfigFactory, ConfigLike
 from src.configuration.config import Config, is_config_path
-from src.configuration.provider import ConfigProvider, get_config_provider
 from src.loaders.base_loader import DataLoader, DataLoaders
 from src.utility import dotget, unique
 
@@ -532,7 +530,6 @@ class ShapeShiftConfig:
 
         self.cfg: dict[str, dict[str, Any]] = cfg
         self.filename: str = filename or "in-memory-config.yml"
-        
 
     @cached_property
     def tables(self) -> dict[str, TableConfig]:

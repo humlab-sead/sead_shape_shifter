@@ -4,10 +4,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-import backend.app.services.validate_fk_service as validate_fk_service
 from backend.app.models.shapeshift import PreviewResult
+from backend.app.services import validate_fk_service
 from backend.app.services.validate_fk_service import ValidateForeignKeyService
 from src.model import ShapeShiftConfig
+
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture(autouse=True)

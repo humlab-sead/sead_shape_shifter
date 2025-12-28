@@ -10,6 +10,8 @@ from src.configuration import setup
 from src.configuration.config import Config
 from src.configuration.provider import ConfigProvider, ConfigStore, MockConfigProvider, reset_config_provider, set_config_provider
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture()
 def reset_store_and_provider():
@@ -60,7 +62,7 @@ async def test_get_connection_returns_existing(provider_with_config: Config) -> 
 
 
 @pytest.mark.asyncio
-async def test_get_connection_missing_provider_raises(reset_store_and_provider) -> None:  # type: ignore
+async def test_get_connection_missing_provider_raises() -> None:  # type: ignore
     """get_connection should raise when no config is available."""
     with pytest.raises(ValueError):
         await setup.get_connection()
