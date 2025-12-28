@@ -10,7 +10,7 @@ from backend.app.services.suggestion_service import SuggestionService
 
 def build_schema(table_name: str, columns: list[ColumnMetadata]) -> TableSchema:
     """Helper to build a TableSchema."""
-    return TableSchema(table_name=table_name, columns=columns, primary_keys=[c.name for c in columns if c.is_primary_key])
+    return TableSchema(table_name=table_name, columns=columns, primary_keys=[c.name for c in columns if c.is_primary_key], **{})
 
 
 @pytest.mark.asyncio
@@ -25,13 +25,13 @@ async def test_suggest_foreign_keys_with_schema_types() -> None:
         "orders": build_schema(
             "orders",
             [
-                ColumnMetadata(name="order_id", data_type="INTEGER", nullable=False, is_primary_key=True),
-                ColumnMetadata(name="customer_id", data_type="INTEGER", nullable=False, is_primary_key=False),
+                ColumnMetadata(name="order_id", data_type="INTEGER", nullable=False, is_primary_key=True, **{}),
+                ColumnMetadata(name="customer_id", data_type="INTEGER", nullable=False, is_primary_key=False, **{}),
             ],
         ),
         "customers": build_schema(
             "customers",
-            [ColumnMetadata(name="customer_id", data_type="INTEGER", nullable=False, is_primary_key=True)],
+            [ColumnMetadata(name="customer_id", data_type="INTEGER", nullable=False, is_primary_key=True, **{})],
         ),
     }
 
@@ -77,11 +77,11 @@ async def test_suggest_foreign_keys_string_type_compatibility() -> None:
     schemas = {
         "users": build_schema(
             "users",
-            [ColumnMetadata(name="email", data_type="varchar(50)", nullable=False, is_primary_key=False)],
+            [ColumnMetadata(name="email", data_type="varchar(50)", nullable=False, is_primary_key=False, **{})],
         ),
         "subscribers": build_schema(
             "subscribers",
-            [ColumnMetadata(name="email", data_type="text", nullable=False, is_primary_key=False)],
+            [ColumnMetadata(name="email", data_type="text", nullable=False, is_primary_key=False, **{})],
         ),
     }
 
