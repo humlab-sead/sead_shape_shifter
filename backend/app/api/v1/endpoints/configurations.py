@@ -67,7 +67,7 @@ async def list_configurations() -> list[ConfigMetadata]:
     - Validation status
     """
     config_service: ConfigurationService = get_config_service()
-    configs = config_service.list_configurations()
+    configs: list[ConfigMetadata] = config_service.list_configurations()
     logger.debug(f"Listed {len(configs)} configuration(s)")
     return configs
 
@@ -125,13 +125,9 @@ async def update_configuration(name: str, request: ConfigurationUpdateRequest) -
         Updated configuration with new metadata
     """
     config_service: ConfigurationService = get_config_service()
-    # Load existing config from disk to preserve entities
     config: Configuration = config_service.load_configuration(name)
-
-    # Only update options - entities are managed via /entities endpoints
-    # This prevents the frontend from overwriting entities with stale data
     config.options = request.options
-    # Explicitly preserve entities from disk
+
     logger.debug(f"Updating config '{name}': preserving {len(config.entities)} entities from disk, " f"updating options only")
 
     updated_config: Configuration = config_service.save_configuration(config)
@@ -178,15 +174,9 @@ async def validate_configuration(name: str) -> ValidationResult:
     """
     config_service: ConfigurationService = get_config_service()
     validation_service: ValidationService = get_validation_service()
-
-    # Load configuration
     config: Configuration = config_service.load_configuration(name)
-
-    # Build config dict for validation
-    config_data = {"entities": config.entities, "options": config.options}
-
-    # Validate
-    result = validation_service.validate_configuration(config_data)
+    config_data: dict[str, Any] = {"entities": config.entities, "options": config.options}
+    result: ValidationResult = validation_service.validate_configuration(config_data)
     logger.info(f"Validated configuration '{name}': {'valid' if result.is_valid else 'invalid'}")
     return result
 
@@ -234,19 +224,10 @@ async def restore_backup(name: str, request: RestoreBackupRequest) -> Configurat
     Returns:
         Restored configuration
     """
-    # config_service = get_config_service()
     yaml_service: YamlService = get_yaml_service()
-
-    # Build target path in CONFIGURATIONS_DIR
     target_path: Path = settings.CONFIGURATIONS_DIR / f"{name}.yml"
-
-    # Restore backup - this writes to target_path
     yaml_service.restore_backup(request.backup_path, str(target_path), create_backup=True)
-
-    # Load configuration directly from the target path to avoid cache issues
-    restored_data = yaml_service.load(target_path)
-
-    # Build Configuration with proper metadata
+    restored_data: dict[str, Any] = yaml_service.load(target_path)
     stat = target_path.stat()
     config = Configuration(
         metadata=ConfigMetadata(
@@ -383,19 +364,15 @@ async def disconnect_data_source_from_configuration(name: str, source_name: str)
         Updated configuration
     """
 
-    # Load configuration
     config: Configuration = get_config_service().load_configuration(name)
 
-    # Check if source exists
-    data_sources = config.options.get("data_sources", {})
+    data_sources: dict[str, str] = config.options.get("data_sources", {})
     if source_name not in data_sources:
         raise NotFoundError(f"Data source '{source_name}' not found in configuration '{name}'")
 
-    # Remove data source
     del data_sources[source_name]
     config.options["data_sources"] = data_sources
 
-    # Save configuration
     updated_config: Configuration = get_config_service().save_configuration(config)
 
     logger.info(f"Disconnected data source '{source_name}' from configuration '{name}'")
