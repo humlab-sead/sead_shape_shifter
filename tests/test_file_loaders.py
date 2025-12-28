@@ -29,7 +29,7 @@ async def test_get_loader_opts_precedence():
     table_cfg = SimpleNamespace(options={"value": "from_table"}, source={"value": "from_source"})
 
     loader = DummyFileLoader(data_source=ds)
-    result = await loader.load("entity", table_cfg)
+    result = await loader.load("entity", table_cfg)  # type: ignore
 
     assert result["value"].iloc[0] == "from_ds"
 
@@ -41,7 +41,7 @@ async def test_file_loader_load_requires_options():
     table_cfg = SimpleNamespace(options=None, source=None)
 
     with pytest.raises(ValueError, match="no load options"):
-        await loader.load("e", table_cfg)
+        await loader.load("e", table_cfg)  # type: ignore
 
 
 @pytest.mark.asyncio

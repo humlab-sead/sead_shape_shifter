@@ -30,7 +30,7 @@ async def test_execute_test_run_success_fixed_entity(config_service: MagicMock) 
     )
 
     service = TestRunService(config_service=config_service)
-    options = TestRunOptions(output_format=OutputFormat.PREVIEW)
+    options = TestRunOptions(output_format=OutputFormat.PREVIEW, **{})
     result = service.init_test_run("test_cfg", options)
 
     await service.execute_test_run(result.run_id)
@@ -54,7 +54,7 @@ async def test_execute_test_run_invalid_entity_fails(config_service: MagicMock) 
     )
 
     service = TestRunService(config_service=config_service)
-    options = TestRunOptions(entities=["orders", "missing"])
+    options = TestRunOptions(entities=["orders", "missing"], **{})
     result = service.init_test_run("test_cfg", options)
 
     await service.execute_test_run(result.run_id)
@@ -70,7 +70,7 @@ async def test_execute_test_run_invalid_entity_fails(config_service: MagicMock) 
 async def test_process_entity_adds_validation_issue(config_service: MagicMock) -> None:
     """Foreign key validation creates a validation issue when remote entity missing."""
     service = TestRunService(config_service=config_service)
-    options = TestRunOptions(validate_foreign_keys=True)
+    options = TestRunOptions(validate_foreign_keys=True, **{})
     entity_config = {
         "type": "fixed",
         "columns": ["id"],
