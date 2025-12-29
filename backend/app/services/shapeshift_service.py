@@ -3,9 +3,9 @@
 import contextlib
 import time
 
-from numpy import add
 import pandas as pd
 from loguru import logger
+from numpy import add
 
 from backend.app.core.config import Settings, settings
 from backend.app.core.state_manager import ApplicationState, get_app_state
@@ -111,7 +111,9 @@ class ShapeShiftService:
                 target_entities={entity_name},
             )
 
-            (await shapeshifter.normalize()).add_system_id_columns().move_keys_to_front()
+            (await shapeshifter.normalize())
+            shapeshifter.add_system_id_columns()
+            shapeshifter.move_keys_to_front()
 
             if entity_name not in shapeshifter.table_store:
                 raise RuntimeError(f"Entity {entity_name} was not produced by normalizer")
