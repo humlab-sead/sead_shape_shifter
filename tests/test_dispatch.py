@@ -69,19 +69,19 @@ class TestDispatcherProtocol:
 
     def test_csv_dispatcher_implements_protocol(self):
         """Test that CSVDispatcher implements Dispatcher protocol."""
-        dispatcher = CSVDispatcher()
+        dispatcher = CSVDispatcher(cfg={})
         assert hasattr(dispatcher, "dispatch")
         assert callable(dispatcher.dispatch)
 
     def test_excel_dispatcher_implements_protocol(self):
         """Test that ExcelDispatcher implements Dispatcher protocol."""
-        dispatcher = ExcelDispatcher()
+        dispatcher = ExcelDispatcher(cfg={})
         assert hasattr(dispatcher, "dispatch")
         assert callable(dispatcher.dispatch)
 
     def test_database_dispatcher_implements_protocol(self):
         """Test that DatabaseDispatcher implements Dispatcher protocol."""
-        dispatcher = DatabaseDispatcher()
+        dispatcher = DatabaseDispatcher(cfg={})
         assert hasattr(dispatcher, "dispatch")
         assert callable(dispatcher.dispatch)
 
@@ -91,12 +91,12 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_instantiation(self):
         """Test creating a CSVDispatcher instance."""
-        dispatcher = CSVDispatcher()
+        dispatcher = CSVDispatcher(cfg={})
         assert dispatcher is not None
 
     def test_csv_dispatcher_creates_directory(self, tmp_path: Path):
         """Test that CSVDispatcher creates the output directory."""
-        dispatcher = CSVDispatcher()
+        dispatcher = CSVDispatcher(cfg={})
         output_dir = tmp_path / "csv_output"
         data = {"table1": pd.DataFrame({"col1": [1, 2], "col2": ["a", "b"]})}
 
@@ -107,7 +107,7 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_creates_csv_files(self, tmp_path: Path):
         """Test that CSVDispatcher creates CSV files for each table."""
-        dispatcher = CSVDispatcher()
+        dispatcher = CSVDispatcher(cfg={})
         output_dir = tmp_path / "csv_output"
         data = {
             "table1": pd.DataFrame({"col1": [1, 2], "col2": ["a", "b"]}),
@@ -121,7 +121,7 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_file_contents(self, tmp_path: Path):
         """Test that CSV files contain correct data."""
-        dispatcher = CSVDispatcher()
+        dispatcher = CSVDispatcher(cfg={})
         output_dir = tmp_path / "csv_output"
         df = pd.DataFrame({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
         data = {"test_table": df}
@@ -133,7 +133,7 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_no_index_in_output(self, tmp_path: Path):
         """Test that CSV files are written without index."""
-        dispatcher = CSVDispatcher()
+        dispatcher = CSVDispatcher(cfg={})
         output_dir = tmp_path / "csv_output"
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
@@ -147,7 +147,7 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_empty_dataframe(self, tmp_path: Path):
         """Test dispatching empty DataFrame."""
-        dispatcher = CSVDispatcher()
+        dispatcher = CSVDispatcher(cfg={})
         output_dir = tmp_path / "csv_output"
         data = {"empty_table": pd.DataFrame()}
 
@@ -157,7 +157,7 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_multiple_tables(self, tmp_path: Path):
         """Test dispatching multiple tables."""
-        dispatcher = CSVDispatcher()
+        dispatcher = CSVDispatcher(cfg={})
         output_dir = tmp_path / "csv_output"
         data = {
             "table1": pd.DataFrame({"a": [1, 2]}),
@@ -171,7 +171,7 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_overwrites_existing_directory(self, tmp_path: Path):
         """Test that dispatcher works with existing directory."""
-        dispatcher = CSVDispatcher()
+        dispatcher = CSVDispatcher(cfg={})
         output_dir = tmp_path / "csv_output"
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -186,12 +186,12 @@ class TestExcelDispatcher:
 
     def test_excel_dispatcher_instantiation(self):
         """Test creating an ExcelDispatcher instance."""
-        dispatcher = ExcelDispatcher()
+        dispatcher = ExcelDispatcher(cfg={})
         assert dispatcher is not None
 
     def test_excel_dispatcher_creates_excel_file(self, tmp_path: Path):
         """Test that ExcelDispatcher creates an Excel file."""
-        dispatcher = ExcelDispatcher()
+        dispatcher = ExcelDispatcher(cfg={})
         output_file = tmp_path / "output.xlsx"
         data = {"table1": pd.DataFrame({"col1": [1, 2], "col2": ["a", "b"]})}
 
@@ -201,7 +201,7 @@ class TestExcelDispatcher:
 
     def test_excel_dispatcher_creates_sheets(self, tmp_path: Path):
         """Test that ExcelDispatcher creates sheets for each table."""
-        dispatcher = ExcelDispatcher()
+        dispatcher = ExcelDispatcher(cfg={})
         output_file = tmp_path / "output.xlsx"
         data = {
             "table1": pd.DataFrame({"col1": [1, 2]}),
@@ -217,7 +217,7 @@ class TestExcelDispatcher:
 
     def test_excel_dispatcher_sheet_contents(self, tmp_path: Path):
         """Test that Excel sheets contain correct data."""
-        dispatcher = ExcelDispatcher()
+        dispatcher = ExcelDispatcher(cfg={})
         output_file = tmp_path / "output.xlsx"
         df = pd.DataFrame({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
         data = {"test_sheet": df}
@@ -229,7 +229,7 @@ class TestExcelDispatcher:
 
     def test_excel_dispatcher_no_index_in_output(self, tmp_path: Path):
         """Test that Excel sheets are written without index."""
-        dispatcher = ExcelDispatcher()
+        dispatcher = ExcelDispatcher(cfg={})
         output_file = tmp_path / "output.xlsx"
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
@@ -240,7 +240,7 @@ class TestExcelDispatcher:
 
     def test_excel_dispatcher_empty_dataframe(self, tmp_path: Path):
         """Test dispatching empty DataFrame to Excel."""
-        dispatcher = ExcelDispatcher()
+        dispatcher = ExcelDispatcher(cfg={})
         output_file = tmp_path / "output.xlsx"
         data = {"empty_sheet": pd.DataFrame()}
 
@@ -252,7 +252,7 @@ class TestExcelDispatcher:
 
     def test_excel_dispatcher_multiple_sheets(self, tmp_path: Path):
         """Test dispatching multiple tables as sheets."""
-        dispatcher = ExcelDispatcher()
+        dispatcher = ExcelDispatcher(cfg={})
         output_file = tmp_path / "output.xlsx"
         data = {
             "sheet1": pd.DataFrame({"a": [1, 2]}),
@@ -267,7 +267,7 @@ class TestExcelDispatcher:
 
     def test_excel_dispatcher_uses_openpyxl_engine(self, tmp_path: Path):
         """Test that ExcelDispatcher uses openpyxl engine."""
-        dispatcher = ExcelDispatcher()
+        dispatcher = ExcelDispatcher(cfg={})
         output_file = tmp_path / "output.xlsx"
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
@@ -285,7 +285,7 @@ class TestDatabaseDispatcher:
 
     def test_database_dispatcher_instantiation(self):
         """Test creating a DatabaseDispatcher instance."""
-        dispatcher = DatabaseDispatcher()
+        dispatcher = DatabaseDispatcher(cfg={})
         assert dispatcher is not None
 
     @with_test_config
@@ -293,7 +293,7 @@ class TestDatabaseDispatcher:
     @patch("src.dispatch.create_db_uri")
     def test_database_dispatcher_gets_config(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher calls create_db_uri."""
-        dispatcher = DatabaseDispatcher()
+        dispatcher = DatabaseDispatcher(cfg={})
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         # Setup mocks
@@ -315,7 +315,7 @@ class TestDatabaseDispatcher:
     @patch("src.dispatch.create_db_uri")
     def test_database_dispatcher_creates_db_uri(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher creates database URI."""
-        dispatcher = DatabaseDispatcher()
+        dispatcher = DatabaseDispatcher(cfg={})
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         mock_create_uri.return_value = "postgresql+psycopg://testuser@localhost:5432/testdb"
@@ -336,7 +336,7 @@ class TestDatabaseDispatcher:
     @patch("src.dispatch.create_db_uri")
     def test_database_dispatcher_creates_engine(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher creates SQLAlchemy engine."""
-        dispatcher = DatabaseDispatcher()
+        dispatcher = DatabaseDispatcher(cfg={})
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         db_url = "postgresql+psycopg://user@localhost:5432/db"
@@ -357,7 +357,7 @@ class TestDatabaseDispatcher:
     @patch("src.dispatch.create_db_uri")
     def test_database_dispatcher_writes_tables(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher writes all tables to database."""
-        dispatcher = DatabaseDispatcher()
+        dispatcher = DatabaseDispatcher(cfg={})
         df1 = pd.DataFrame({"col1": [1, 2]})
         df2 = pd.DataFrame({"col2": [3, 4]})
         data = {"table1": df1, "table2": df2}
@@ -379,7 +379,7 @@ class TestDatabaseDispatcher:
     @patch("src.dispatch.create_db_uri")
     def test_database_dispatcher_replaces_existing_tables(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher replaces existing tables."""
-        dispatcher = DatabaseDispatcher()
+        dispatcher = DatabaseDispatcher(cfg={})
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
@@ -401,7 +401,7 @@ class TestDatabaseDispatcher:
     @patch("src.dispatch.create_db_uri")
     def test_database_dispatcher_no_index_in_output(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher writes tables without index."""
-        dispatcher = DatabaseDispatcher()
+        dispatcher = DatabaseDispatcher(cfg={})
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
@@ -423,7 +423,7 @@ class TestDatabaseDispatcher:
     @patch("src.dispatch.create_db_uri")
     def test_database_dispatcher_uses_transaction(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher uses transaction context."""
-        dispatcher = DatabaseDispatcher()
+        dispatcher = DatabaseDispatcher(cfg={})
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
@@ -444,7 +444,7 @@ class TestDatabaseDispatcher:
     @patch("src.dispatch.create_db_uri")
     def test_database_dispatcher_uses_create_db_uri(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
         """Test that DatabaseDispatcher calls create_db_uri to build connection string."""
-        dispatcher = DatabaseDispatcher()
+        dispatcher = DatabaseDispatcher(cfg={})
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
@@ -466,7 +466,7 @@ class TestIntegration:
 
     def test_csv_dispatcher_round_trip(self, tmp_path: Path):
         """Test writing and reading CSV data maintains integrity."""
-        dispatcher = CSVDispatcher()
+        dispatcher = CSVDispatcher(cfg={})
         output_dir = tmp_path / "csv_output"
 
         original_df = pd.DataFrame(
@@ -486,7 +486,7 @@ class TestIntegration:
 
     def test_excel_dispatcher_round_trip(self, tmp_path: Path):
         """Test writing and reading Excel data maintains integrity."""
-        dispatcher = ExcelDispatcher()
+        dispatcher = ExcelDispatcher(cfg={})
         output_file = tmp_path / "output.xlsx"
 
         original_df = pd.DataFrame(
@@ -512,9 +512,9 @@ class TestIntegration:
         db_dispatcher_cls = Dispatchers.get("db")
 
         # Verify they can be instantiated
-        csv_dispatcher = csv_dispatcher_cls()
-        xlsx_dispatcher = xlsx_dispatcher_cls()
-        db_dispatcher = db_dispatcher_cls()
+        csv_dispatcher = csv_dispatcher_cls(cfg={})
+        xlsx_dispatcher = xlsx_dispatcher_cls(cfg={})
+        db_dispatcher = db_dispatcher_cls(cfg={})
 
         assert isinstance(csv_dispatcher, CSVDispatcher)
         assert isinstance(xlsx_dispatcher, ExcelDispatcher)
@@ -522,7 +522,7 @@ class TestIntegration:
 
     def test_multiple_tables_csv(self, tmp_path: Path):
         """Test dispatching multiple related tables to CSV."""
-        dispatcher = CSVDispatcher()
+        dispatcher = CSVDispatcher(cfg={})
         output_dir = tmp_path / "csv_output"
 
         data = {
@@ -540,7 +540,7 @@ class TestIntegration:
 
     def test_multiple_tables_excel(self, tmp_path: Path):
         """Test dispatching multiple related tables to Excel sheets."""
-        dispatcher = ExcelDispatcher()
+        dispatcher = ExcelDispatcher(cfg={})
         output_file = tmp_path / "output.xlsx"
 
         data = {
