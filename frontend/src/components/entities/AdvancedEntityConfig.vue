@@ -291,7 +291,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, watchEffect } from 'vue'
 
 interface FilterConfig {
   type: string
@@ -425,19 +425,23 @@ function handleRemoveExtraColumn(index: number) {
   extraColumns.value.splice(index, 1)
 }
 
-// Watch for changes and emit
-watch(
-  [filters, unnest, unnestEnabled, append, extraColumns],
-  () => {
-    emit('update:modelValue', configValue.value)
-  },
-  { deep: true }
-)
+// Flag to prevent infinite loops when syncing from props
+let isSyncing = false
+
+// Watch for changes and emit using watchEffect for automatic dependency tracking
+watchEffect(() => {
+  if (!isSyncing) {
+    // Access all reactive dependencies to track them
+    const value = configValue.value
+    emit('update:modelValue', value)
+  }
+})
 
 // Sync with prop changes
 watch(
   () => props.modelValue,
   (newValue) => {
+    isSyncing = true
     filters.value = newValue.filters || []
     unnest.value = newValue.unnest || {
       id_vars: [],
@@ -453,6 +457,11 @@ watch(
           source: source || null,
         }))
       : []
-  }
+    // Use nextTick to ensure the sync flag is reset after updates
+    setTimeout(() => {
+      isSyncing = false
+    }, 0)
+  },
+  { deep: true }
 )
 </script>
