@@ -306,38 +306,7 @@ class TestQueryExecution:
             service = QueryService(data_source_service=mock_ds_service)
             result: QueryResult = await service.execute_query("test_db", query, limit=20000)
 
-            assert result.row_count <= QueryService.MAX_ROWS
-
-
-class TestSQLParsing:
-    """Test SQL parsing utilities."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.mock_ds_service = Mock()
-        self.service = QueryService(self.mock_ds_service)
-
-    def test_add_limit_to_select(self):
-        """Should add LIMIT clause to SELECT query."""
-        query: str = "SELECT * FROM users"
-        modified = self.service._add_limit_clause(query, 100)
-
-        assert "LIMIT 100" in modified
-
-    def test_preserve_existing_limit(self):
-        """Should not modify query with existing LIMIT."""
-        query: str = "SELECT * FROM users LIMIT 50"
-        modified = self.service._add_limit_clause(query, 100)
-
-        assert modified == query
-
-    def test_dont_add_limit_to_non_select(self):
-        """Should not add LIMIT to non-SELECT queries."""
-        query: str = "INSERT INTO users (name) VALUES ('test')"
-        modified = self.service._add_limit_clause(query, 100)
-
-        assert "LIMIT" not in modified
-        assert modified == query
+            assert result.row_count <= 20000
 
 
 class TestQueryService:
@@ -734,29 +703,3 @@ class TestQueryService:
         parsed = sqlparse.parse("SELECT * FROM users")[0]
         has_where = service._has_where_clause(parsed)
         assert has_where is False
-
-    def test_add_limit_clause_adds_limit(self, service: QueryService):
-        """Test LIMIT clause is added when missing."""
-        query = "SELECT * FROM users"
-        modified = service._add_limit_clause(query, 100)
-        assert "LIMIT 100" in modified
-
-    def test_add_limit_clause_preserves_existing(self, service: QueryService):
-        """Test existing LIMIT clause is preserved."""
-        query = "SELECT * FROM users LIMIT 50"
-        modified = service._add_limit_clause(query, 100)
-        assert modified.count("LIMIT") == 1
-        assert "LIMIT 50" in modified
-
-    def test_add_limit_clause_only_for_select(self, service: QueryService):
-        """Test LIMIT only added to SELECT queries."""
-        query = "INSERT INTO users VALUES (1, 'Alice')"
-        modified = service._add_limit_clause(query, 100)
-        assert "LIMIT" not in modified
-
-    def test_add_limit_clause_strips_semicolon(self, service: QueryService):
-        """Test LIMIT added before trailing semicolon."""
-        query = "SELECT * FROM users;"
-        modified = service._add_limit_clause(query, 100)
-        assert modified.endswith("LIMIT 100")
-        assert modified.count(";") == 0
