@@ -52,13 +52,9 @@ class QueryService:
         Args:
             data_source_service: Service for managing data source connections
         """
-        self.data_source_service = data_source_service
+        self.data_source_service: DataSourceService = data_source_service
 
-    def validate_query(
-        self,
-        query: str,
-        data_source_name: Optional[str] = None,  #  pylint: disable=unused-argument
-    ) -> QueryValidation:
+    def validate_query(self, query: str, data_source_name: str | None = None) -> QueryValidation:  #  pylint: disable=unused-argument
         """
         Validate a SQL query for safety and syntax.
 
@@ -75,15 +71,14 @@ class QueryService:
         try:
             parsed = sqlparse.parse(query)
             if not parsed:
-                return QueryValidation(is_valid=False, errors=["Empty or invalid SQL query"], warnings=[], statement_type=None, tables=[])
+                return QueryValidation(is_valid=False, errors=["Empty or invalid SQL query"], warnings=[], statement_type=None)
         except Exception as e:  # pylint: disable=broad-except
-            return QueryValidation(is_valid=False, errors=[f"SQL syntax error: {str(e)}"], warnings=[], statement_type=None, tables=[])
+            return QueryValidation(is_valid=False, errors=[f"SQL syntax error: {str(e)}"], warnings=[], statement_type=None)
 
         statement: Statement = parsed[0]
         statement_type: str | None = self._get_statement_type(statement)
 
-        # Check for destructive operations
-        if statement_type and statement_type.upper() in self.DESTRUCTIVE_KEYWORDS:
+        if statement_type and statement_type.upper() in self.FORBIDDEN_KEYWORDS:
             errors.append(f"Destructive SQL operation '{statement_type}' is not allowed. " f"Only SELECT queries are permitted.")
 
         tables: list[str] = self._extract_table_names(statement)
@@ -107,7 +102,7 @@ class QueryService:
 
         return QueryValidation(is_valid=is_valid, errors=errors, warnings=warnings, statement_type=statement_type, tables=tables)
 
-    async def execute_query(self, data_source_name: str, query: str, limit: int = 100, timeout: int = 30) -> QueryResult:
+    async def execute_query(self, data_source_name: str, query: str, limit: int | None = 100, timeout: int = 30) -> QueryResult:
         """
         Execute a SQL query against a data source.
 
@@ -143,11 +138,11 @@ class QueryService:
         start_time: float = time.time()
 
         try:
-            # Add LIMIT clause if not present (for SELECT queries)
-            modified_query: str = self._add_limit_clause(query, limit)
 
-            # Execute query using loader
-            df: pd.DataFrame = await asyncio.wait_for(loader.read_sql(modified_query), timeout=timeout)
+            if limit is not None:
+                query = loader.inject_limit(query, limit)
+
+            df: pd.DataFrame = await asyncio.wait_for(loader.read_sql(query), timeout=timeout)
 
             execution_time_ms: int = max(1, int((time.time() - start_time) * 1000))
 
@@ -184,7 +179,7 @@ class QueryService:
                 return token.value.upper()
             if token.ttype is DDL:
                 return token.value.upper()
-            if token.ttype is Keyword and token.value.upper() in self.DESTRUCTIVE_KEYWORDS:
+            if token.ttype is Keyword and token.value.upper() in self.FORBIDDEN_KEYWORDS:
                 return token.value.upper()
         return None
 
