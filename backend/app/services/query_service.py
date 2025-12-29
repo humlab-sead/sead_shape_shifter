@@ -31,14 +31,19 @@ class QuerySecurityError(Exception):
 class QueryService:
     """Service for executing and validating SQL queries."""
 
-    # Destructive SQL keywords that should be blocked
-    DESTRUCTIVE_KEYWORDS = {"INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER", "TRUNCATE", "REPLACE", "MERGE", "GRANT", "REVOKE"}
-
-    # Maximum result size in bytes (100 MB)
-    MAX_RESULT_SIZE_BYTES = 100 * 1024 * 1024
-
-    # Maximum number of rows (safety limit)
-    MAX_ROWS = 10000
+    FORBIDDEN_KEYWORDS: set[str] = {
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "DROP",
+        "CREATE",
+        "ALTER",
+        "TRUNCATE",
+        "REPLACE",
+        "MERGE",
+        "GRANT",
+        "REVOKE",
+    }
 
     def __init__(self, data_source_service: DataSourceService):
         """
@@ -117,7 +122,6 @@ class QueryService:
         if not validation.is_valid:
             raise QuerySecurityError(f"Query validation failed: {', '.join(validation.errors)}")
 
-        limit = min(limit, self.MAX_ROWS)
         timeout = min(timeout, 300)  # Max 5 minutes
 
         ds_cfg: api.DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
