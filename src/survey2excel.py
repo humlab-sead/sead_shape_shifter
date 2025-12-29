@@ -28,9 +28,7 @@ from src.utility import load_shape_file, setup_logging
 
 def resolve_config(config: ShapeShiftConfig | str) -> ShapeShiftConfig:
     if isinstance(config, str):
-        return ShapeShiftConfig.from_file(
-            config,
-        )
+        return ShapeShiftConfig.from_file(config)
     return config
 
 
@@ -60,9 +58,7 @@ async def workflow(
 
     shapeshifter.add_system_id_columns()
     shapeshifter.move_keys_to_front()
-
     shapeshifter.map_to_remote(config.mappings)
-
     shapeshifter.store(target=target, mode=mode)
     shapeshifter.log_shapes(target=target)
 
