@@ -230,32 +230,3 @@ class QueryService:
     def _has_where_clause(self, statement: Statement) -> bool:
         """Check if statement contains a WHERE clause."""
         return any(t.ttype is Keyword and t.value.upper() == "WHERE" for t in statement.flatten())
-
-    def _add_limit_clause(self, query: str, limit: int) -> str:
-        """
-        Add LIMIT clause to query if not present.
-
-        Args:
-            query: Original SQL query
-            limit: Maximum number of rows
-
-        Returns:
-            Modified query with LIMIT clause
-        """
-        query_upper: str = query.upper().strip()
-
-        if "LIMIT" in query_upper:
-            return query
-
-        # Check if it's a SELECT query
-        parsed = sqlparse.parse(query)
-        if not parsed:
-            return query
-
-        statement_type: str | None = self._get_statement_type(statement=parsed[0])
-
-        if statement_type != "SELECT":
-            return query
-
-        query = query.rstrip(";").strip()
-        return f"{query} LIMIT {limit}"
