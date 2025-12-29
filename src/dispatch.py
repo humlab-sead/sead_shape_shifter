@@ -2,15 +2,14 @@ from pathlib import Path
 from typing import Any, Protocol
 
 import pandas as pd
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill
+from openpyxl.utils.dataframe import dataframe_to_rows
 from sqlalchemy import create_engine
 
-from src.model import ShapeShiftConfig, TableConfig
 from src.configuration.resolve import ConfigValue
+from src.model import ShapeShiftConfig, TableConfig
 from src.utility import Registry, create_db_uri
-
-from openpyxl import Workbook
-from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.styles import PatternFill
 
 
 class DispatchRegistry(Registry):
@@ -85,7 +84,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
 
         columns: list[str] = table.columns.to_list()
         entity_cfg: TableConfig = self.cfg.get_table(entity_name)
-            
+
         for column in columns:
             # FIXME: Read colors from configuration
             if column in entity_cfg.get_key_columns():
@@ -107,7 +106,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
                         max_length = max(max_length, len(str(cell.value)))
                 except Exception:
                     pass
-            adjusted_width = (max_length + 2)
+            adjusted_width = max_length + 2
             ws.column_dimensions[column].width = adjusted_width
 
     def set_column_background_color(self, column_name: str, columns: list[str], ws, color: str = "D3D3D3") -> None:
@@ -116,7 +115,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
             return
         for cell in ws[2 : ws.max_row + 1]:
             cell[idx - 1].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
-            
+
     def find_column_index(self, column_name: str, columns: list[str]) -> int | None:
         for idx, col in enumerate(columns):
             if col == column_name:
