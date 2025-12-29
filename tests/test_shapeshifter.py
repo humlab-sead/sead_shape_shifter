@@ -1,7 +1,7 @@
 """Unit tests for arbodat normalizer classes."""
 
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pandas as pd
 import pytest
@@ -512,10 +512,12 @@ class TestShapeShifter:
 
         mock_dispatcher = Mock()
         mock_dispatcher.dispatch = Mock()
+        mock_dispatcher_cls = Mock(return_value=mock_dispatcher)
 
-        with patch("src.normalizer.Dispatchers.get", return_value=lambda: mock_dispatcher):
+        with patch("src.normalizer.Dispatchers.get", return_value=mock_dispatcher_cls):
             normalizer.store(target="output.xlsx", mode="xlsx")
 
+            mock_dispatcher_cls.assert_called_once_with(survey_only_config)
             mock_dispatcher.dispatch.assert_called_once_with(target="output.xlsx", data=normalizer.table_store)
 
     def test_store_csv(self, survey_only_config: ShapeShiftConfig):
@@ -526,10 +528,12 @@ class TestShapeShifter:
 
         mock_dispatcher = Mock()
         mock_dispatcher.dispatch = Mock()
+        mock_dispatcher_cls = Mock(return_value=mock_dispatcher)
 
-        with patch("src.normalizer.Dispatchers.get", return_value=lambda: mock_dispatcher):
+        with patch("src.normalizer.Dispatchers.get", return_value=mock_dispatcher_cls):
             normalizer.store(target="output_dir", mode="csv")
 
+            mock_dispatcher_cls.assert_called_once_with(survey_only_config)
             mock_dispatcher.dispatch.assert_called_once_with(target="output_dir", data=normalizer.table_store)
 
     def test_store_unsupported_mode(self, survey_only_config: ShapeShiftConfig):
