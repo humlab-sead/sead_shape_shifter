@@ -114,7 +114,16 @@ backend-run:
 		--reload \
 		--reload-delay 2 \
 		--reload-include '*.py' \
-		--reload-exclude 'backend/tests/**' \
+		--reload-exclude '.venv' \
+		--reload-exclude '.git' \
+		--reload-exclude 'frontend' \
+		--reload-exclude 'input' \
+		--reload-exclude 'backups' \
+		--reload-exclude 'tmp' \
+		--reload-exclude 'htmlcov' \
+		--reload-exclude '.pytest_cache' \
+		--reload-exclude 'tests' \
+		--reload-exclude 'backend/tests' \
 		--host 0.0.0.0 --port $(BACKEND_PORT)
 
 
