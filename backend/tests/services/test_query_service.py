@@ -322,8 +322,9 @@ class TestQueryService:
     @pytest.fixture
     def mock_loader(self) -> AsyncMock:
         """Create mock SQL loader."""
-        loader = AsyncMock()
+        loader = Mock()
         loader.read_sql = AsyncMock(return_value=pd.DataFrame({"id": [1, 2], "name": ["Alice", "Bob"]}))
+        loader.load_table = AsyncMock(return_value=pd.DataFrame({"id": [1, 2], "name": ["Alice", "Bob"]}))
         return loader
 
     # SQL validation tests
