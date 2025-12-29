@@ -331,210 +331,25 @@ it('handles button click', async () => {
 
 ## Cross-Browser Testing
 
-### Supported Browsers
+For comprehensive cross-browser testing procedures and feature-specific tests, see **[FRONTEND_MANUAL_TESTING_GUIDE.md](FRONTEND_MANUAL_TESTING_GUIDE.md)**.
 
-| Browser | Minimum Version | Testing Priority | Notes |
-|---------|----------------|------------------|-------|
-| Chrome  | 120+          | **High**         | Primary development browser |
-| Firefox | 115+          | **High**         | Second most used |
-| Edge    | 120+          | **Medium**       | Chromium-based |
-| Safari  | 16+           | **Medium**       | macOS/iOS users |
+### Supported Browsers (Quick Reference)
 
-### Manual Cross-Browser Testing
+| Browser | Minimum Version | Testing Priority |
+|---------|----------------|------------------|
+| Chrome  | 120+          | **High**         |
+| Firefox | 115+          | **High**         |
+| Edge    | 120+          | **Medium**       |
+| Safari  | 16+           | **Medium**       |
 
-#### 1. Start Development Servers
+### Quick Cross-Browser Checklist
 
-```bash
-# Terminal 1: Backend
-cd backend
-uv run uvicorn app.main:app --reload --port 8000
-
-# Terminal 2: Frontend
-cd frontend
-npm run dev
-```
-
-Frontend: http://localhost:5176
-
-#### 2. Core Functionality Checklist
-
-**All Browsers:**
-
-- [ ] Configuration list view loads
-- [ ] YAML editor displays and is editable
-- [ ] Syntax highlighting works
-- [ ] Validation panel displays results
-- [ ] Error/warning counts accurate
-- [ ] Expand/collapse functionality works
-- [ ] Save configuration works
-- [ ] Success notifications appear
-
-#### 3. Feature-Specific Testing
-
-**Validation Result Caching:**
-
-1. Open a configuration
-2. Click "Validate All"
-3. Note request time in Network tab
-4. Click "Validate All" again immediately
-5. **Expected**: No new API request (cached)
-6. Wait 5+ minutes
-7. Click "Validate All" again
-8. **Expected**: New API request (cache expired)
-
-**Browser Notes:**
-- Chrome: Check "Preserve log" in Network tab
-- Firefox: Network tab auto-clears on reload
-- Safari: Network tab under "Develop" menu
-
-**Tooltips:**
-
-1. Hover over "Validate All" button
-2. Hover over validation tabs
-3. Hover over entity validation buttons
-4. Hover over "Apply Fix" buttons
-
-**Expected:**
-- Tooltip appears within 500ms
-- Text is readable
-- Tooltip disappears on mouse-out
-- No overlapping elements
-
-**Safari Note**: Tooltips may appear slower
-
-**Loading Indicators:**
-
-1. Click "Validate All"
-2. Observe loading skeleton
-
-**Expected:**
-- Skeleton appears immediately
-- Realistic multi-line structure
-- Smooth pulsing animation
-- Instant replacement when data loads
-- No flash of empty content
-
-**Performance Tip**: Throttle to "Slow 3G" to see skeleton longer
-
-**Success Animations:**
-
-1. Make YAML change
-2. Save configuration
-3. Observe success notification
-
-**Expected:**
-- Smooth scale-in transition (~300ms)
-- No stuttering
-- Auto-dismiss after 3 seconds
-- GPU-accelerated (no jank)
-
-**Debounced Validation:**
-
-1. Type rapidly in YAML editor
-2. Monitor Network tab
-
-**Expected:**
-- Validation waits 500ms after last keystroke
-- Only one request after typing stops
-- No "validation storm"
-- Typing remains responsive
-
-### Browser-Specific Testing
-
-#### Chrome (Primary)
-
-**DevTools**: `F12` or `Ctrl+Shift+I` / `Cmd+Option+I`
-
-**Key Tests:**
-- Console warnings/errors
-- Network timing
-- Performance profiling
-- Memory usage
-
-#### Firefox
-
-**DevTools**: `F12` or `Ctrl+Shift+I` / `Cmd+Option+I`
-
-**Key Tests:**
-- CSS Grid Inspector
-- Accessibility inspector
-- Storage inspector (cache)
-
-**Common Issues:**
-- CSS variable differences
-- Flexbox quirks
-- Font rendering
-
-#### Edge
-
-**DevTools**: Same as Chrome (Chromium-based)
-
-**Key Tests:**
-- Windows-specific rendering
-- High DPI scaling
-- Touch input
-
-#### Safari
-
-**Enable Developer Tools**:
-1. Safari → Settings → Advanced
-2. Check "Show Develop menu in menu bar"
-
-**DevTools**: `Cmd+Option+I`
-
-**Key Tests:**
-- WebKit-specific rendering
-- Touch gestures
-- Mobile Safari simulation
-
-**Common Issues:**
-- CSS Grid gaps
-- Flexbox `gap` property
-- Backdrop filters
-- Scrollbar styling
-
-### Performance Metrics
-
-**Target Metrics (All Browsers):**
-
-1. **Initial Page Load**: < 2 seconds
-2. **Validation Response**: < 5 seconds
-3. **UI Responsiveness**: 60 FPS during animations
-4. **Memory Usage**: < 100MB after 10 minutes
-
-**Measuring Performance:**
-
-```javascript
-// In DevTools Console
-performance.mark('validation-start');
-// Click "Validate All"
-performance.mark('validation-end');
-performance.measure('validation', 'validation-start', 'validation-end');
-console.table(performance.getEntriesByType('measure'));
-```
-
-### Cross-Browser Test Results Template
-
-```markdown
-### Cross-Browser Test Results - [Date]
-
-**Tester**: [Name]
-
-| Feature | Chrome | Firefox | Edge | Safari | Notes |
-|---------|--------|---------|------|--------|-------|
-| Config List | ✅ | ✅ | ✅ | ⚠️ | Safari: Slow loading |
-| YAML Editor | ✅ | ✅ | ✅ | ✅ | - |
-| Validation Cache | ✅ | ✅ | ✅ | ❌ | Safari: Cache not working |
-| Tooltips | ✅ | ✅ | ✅ | ⚠️ | Safari: Delayed |
-| Loading Skeleton | ✅ | ✅ | ✅ | ✅ | - |
-| Success Animation | ✅ | ✅ | ✅ | ✅ | - |
-
-**Legend:**
-- ✅ Pass - Works as expected
-- ⚠️ Minor Issue - Works with minor problems
-- ❌ Fail - Does not work
-- ⏸️ Blocked - Cannot test
-```
+For each browser, verify:
+- [ ] Application loads
+- [ ] YAML editor works
+- [ ] Validation runs
+- [ ] Entity editor functional
+- [ ] No console errors
 
 ---
 
@@ -762,122 +577,22 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 
 
 ## Manual Testing
 
-### Configuration Editor Testing
+For comprehensive frontend manual testing procedures, see **[FRONTEND_MANUAL_TESTING_GUIDE.md](FRONTEND_MANUAL_TESTING_GUIDE.md)**.
 
-#### Create New Configuration
+### Quick Manual Test Checklist
 
-1. Navigate to configuration list
-2. Click "Create New Configuration"
-3. Enter configuration name
-4. **Expected**: New config created, editor opens
+**Essential Checks:**
 
-#### Edit Configuration
+- [ ] Application loads without errors
+- [ ] Can navigate between pages
+- [ ] Can open and edit configurations
+- [ ] Can save changes successfully
+- [ ] Validation runs and displays results
+- [ ] Entity editor opens and functions
+- [ ] Theme toggle works
+- [ ] No console errors during normal use
 
-1. Open existing configuration
-2. Modify YAML content
-3. Click "Save"
-4. **Expected**: Success notification, changes saved
-5. Refresh page
-6. **Expected**: Changes persisted
-
-#### Validation Workflow
-
-1. Open configuration with errors
-2. Click "Validate All"
-3. **Expected**: Validation results appear
-4. **Expected**: Error count displayed
-5. Click "Structural" tab
-6. **Expected**: Structural validations shown
-7. Click "Data" tab
-8. **Expected**: Data validations shown
-9. Expand error details
-10. **Expected**: Error message and location shown
-
-#### Auto-Fix Feature
-
-1. Open configuration with fixable errors
-2. Run validation
-3. Find suggestion with "Apply Fix" button
-4. Click "Apply Fix"
-5. **Expected**: YAML updated automatically
-6. **Expected**: Success notification
-7. Run validation again
-8. **Expected**: Error resolved
-
-#### Entity Validation
-
-1. Select entity from entity list
-2. Click "Validate Entity"
-3. **Expected**: Only that entity's validations run
-4. **Expected**: Results filtered to entity
-
-### Query Builder Testing
-
-#### Basic SQL Generation
-
-1. Select data source
-2. Select table
-3. Select columns
-4. **Expected**: Valid SQL generated
-5. Verify SQL syntax
-
-#### Complex Query Building
-
-1. Build query with:
-   - Multiple columns
-   - 3+ WHERE conditions
-   - 2+ ORDER BY clauses
-   - Custom LIMIT
-2. **Expected**: All clauses in SQL
-3. **Expected**: Correct syntax
-
-#### Query Execution
-
-1. Generate query
-2. Transfer to SQL Editor
-3. Execute query
-4. **Expected**: Results display
-5. **Expected**: Statistics accurate
-6. Export to CSV
-7. **Expected**: File downloads
-8. Open CSV file
-9. **Expected**: Data correct
-
-### Error Scenarios
-
-#### Syntax Errors
-
-1. Enter invalid YAML
-2. Run validation
-3. **Expected**: Syntax error displayed
-4. **Expected**: Line number indicated
-
-#### Missing References
-
-1. Reference non-existent entity
-2. Run validation
-3. **Expected**: Error about missing entity
-
-#### Circular Dependencies
-
-1. Create circular entity dependencies
-2. Run validation
-3. **Expected**: Error about circular dependency
-
-#### Invalid SQL
-
-1. Enter malformed SQL in Query Tester
-2. Execute query
-3. **Expected**: Syntax error message
-4. **Expected**: No server crash
-
-#### Destructive SQL Prevention
-
-1. Enter DELETE query
-2. Execute
-3. **Expected**: "Destructive operation not allowed" error
-4. Test with: INSERT, UPDATE, DROP, CREATE, ALTER, TRUNCATE
-5. **Expected**: All blocked
+For detailed step-by-step testing procedures, browser compatibility testing, and feature-specific tests, refer to the dedicated frontend manual testing guide.
 
 ---
 
@@ -899,105 +614,24 @@ import time
 import asyncio
 from src.normalizer import ShapeShifter
 
-async def test_performance():
-    start = time.time()
-    
-    # Load configuration
-    config_time = time.time()
-    normalizer = ShapeShifter("config.yml")
-    print(f"Config load: {time.time() - config_time:.2f}s")
-    
-    # Process entities
-    process_time = time.time()
-    result = await normalizer.normalize()
-    print(f"Processing: {time.time() - process_time:.2f}s")
-    
-    print(f"Total: {time.time() - start:.2f}s")
+For detailed frontend integration testing procedures including Query Tester, Visual Builder, and complex query testing, see **[FRONTEND_MANUAL_TESTING_GUIDE.md](FRONTEND_MANUAL_TESTING_GUIDE.md)**.
 
-asyncio.run(test_performance())
-```
+#### Quick Integration Test
 
-### Frontend Performance
+**Application Loading:**
 
-#### Metrics to Monitor
+- [ ] Frontend loads at http://localhost:5173
+- [ ] No JavaScript errors in console
+- [ ] Navigation menu visible
+- [ ] Page renders correctly
 
-1. **Initial Load**: < 2 seconds
-2. **Component Render**: < 100ms
-3. **API Call**: < 1 second
-4. **UI Interaction**: < 50ms
-5. **Animation Frame Rate**: 60 FPS
+**Basic API Integration:**
 
-#### Performance Testing in DevTools
-
-```javascript
-// Measure component render
-performance.mark('render-start');
-// Component renders
-performance.mark('render-end');
-performance.measure('render', 'render-start', 'render-end');
-console.table(performance.getEntriesByType('measure'));
-```
-
-### Load Testing
-
-#### API Load Test
-
-```bash
-# Install Apache Bench
-sudo apt-get install apache2-utils
-
-# Test health endpoint
-ab -n 1000 -c 10 http://localhost:8000/api/v1/health
-
-# Test data sources endpoint
-ab -n 500 -c 5 http://localhost:8000/api/v1/data-sources
-```
-
-**Target Metrics:**
-- **Requests per second**: > 100
-- **Mean response time**: < 100ms
-- **Failed requests**: 0
-
-#### Stress Testing
-
-```bash
-# Concurrent validation requests
-for i in {1..10}; do
-  curl -X POST http://localhost:8000/api/v1/validate &
-done
-wait
-```
-
-**Expected:**
-- All requests complete successfully
-- No timeouts
-- No memory leaks
-- Server remains responsive
-
-### Memory Profiling
-
-#### Backend Memory
-
-```bash
-# Install memory_profiler
-uv pip install memory-profiler
-
-# Profile script
-python -m memory_profiler src/normalizer.py
-```
-
-**Target**: < 500MB peak memory usage
-
-#### Frontend Memory
-
-1. Open DevTools → Memory
-2. Take heap snapshot
-3. Interact with application
-4. Take another snapshot
-5. Compare snapshots
-
-**Expected:**
-- No detached DOM nodes
+- [ ] Can load configuration list
+- [ ] Can open configuration
+- [ ] Can save configuration
+- [ ] Can run validation
+- [ ] Error handling works
 - No memory leaks
 - < 100MB after 10 minutes of use
 
