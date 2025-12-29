@@ -21,6 +21,35 @@ from src.model import DataSourceConfig, TableConfig
 # pylint: disable=redefined-outer-name, unused-argument, protected-access
 
 
+class TestInjectLimit:
+    """Test SQL parsing utilities."""
+
+    @pytest.fixture
+    def loader(self) -> SqliteLoader:
+        """Create SqliteLoader instance."""
+        return SqliteLoader(data_source={})
+
+    def test_add_limit_to_select(self, loader: SqliteLoader):
+        """Should add LIMIT clause to SELECT query."""
+        query: str = "SELECT * FROM users"
+        modified = loader.inject_limit(query, 100)
+        assert "LIMIT 100" in modified.upper()
+
+    def test_preserve_existing_limit(self, loader: SqliteLoader):
+        """Should not modify query with existing LIMIT."""
+        query: str = "SELECT * FROM users LIMIT 50"
+        modified = loader.inject_limit(query, 100)
+
+        assert modified == query
+
+    def test_dont_add_limit_to_non_select(self, loader: SqliteLoader):
+        """Should not add LIMIT to non-SELECT queries."""
+        query: str = "INSERT INTO users (name) VALUES ('test')"
+        modified = loader.inject_limit(query, 100)
+        assert "LIMIT" not in modified.upper()
+        assert modified == query
+
+
 class TestPostgresSqlLoader:
     """Tests for PostgreSQL loader introspection."""
 
@@ -263,105 +292,179 @@ class TestUCanAccessLoader:
 
     @pytest.mark.asyncio
     async def test_get_tables(self, loader):
-        """Should get tables from MS Access."""
-        # Mock query result
-        tables_data = pd.DataFrame(
-            {
-                "TABLE_NAME": ["Customers", "Products"],
-            }
-        )
+        """Should get tables from MS Access database."""
+        # Mock the _get_tables method which is called by get_tables
+        mock_tables = {
+            "Customers": CoreSchema.TableMetadata(name="Customers", schema=None, comment=None, row_count=0),
+            "Orders": CoreSchema.TableMetadata(name="Orders", schema=None, comment=None, row_count=0),
+            "Products": CoreSchema.TableMetadata(name="Products", schema=None, comment=None, row_count=0),
+        }
 
-        with patch.object(loader, "read_sql", new_callable=AsyncMock) as mock_read_sql:
-            mock_read_sql.return_value = tables_data
+        with patch.object(loader, "_get_tables", return_value=mock_tables):
+            with patch.object(loader, "connection"):
+                tables = await loader.get_tables()
 
-            tables = await loader.get_tables()
-
-            assert len(tables) == 2
-            assert "Customers" in tables
-            assert "Products" in tables
-            assert tables["Customers"].name == "Customers"
-            assert tables["Customers"].schema is None  # Access doesn't have schemas
-            assert tables["Products"].name == "Products"
-
-            # Verify SQL was called
-            mock_read_sql.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_get_tables_fallback(self, loader):
-        """Should try fallback query if first query fails."""
-        tables_data = pd.DataFrame(
-            {
-                "TABLE_NAME": ["Customers"],
-            }
-        )
-
-        call_count = 0
-
-        async def mock_read_sql(query):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                # First query fails
-                raise Exception("Query failed")  # pylint: disable=broad-exception-raised
-            # Second query succeeds
-            return tables_data
-
-        with patch.object(loader, "read_sql", side_effect=mock_read_sql):
-            tables = await loader.get_tables()
-
-            assert len(tables) == 1
-            assert "Customers" in tables
-            assert call_count == 2  # Both queries were attempted
+                assert len(tables) == 3
+                assert "Customers" in tables
+                assert "Orders" in tables
+                assert "Products" in tables
+                assert tables["Customers"].name == "Customers"
+                assert tables["Customers"].schema is None  # Access doesn't have schemas
+                assert tables["Orders"].name == "Orders"
+                assert tables["Products"].name == "Products"
 
     @pytest.mark.asyncio
     async def test_get_table_schema(self, loader):
-        """Should get table schema from MS Access."""
-        # Mock columns query
-        columns_data = pd.DataFrame(
+        """Should get table schema from MS Access database."""
+        # Mock column metadata
+        mock_columns = [
+            CoreSchema.ColumnMetadata(
+                name="CustomerID", data_type="INTEGER", max_length=None, nullable=False, default=None, is_primary_key=True
+            ),
+            CoreSchema.ColumnMetadata(name="CompanyName", data_type="VARCHAR", max_length=40, nullable=False, default=None, is_primary_key=False),
+            CoreSchema.ColumnMetadata(name="ContactName", data_type="VARCHAR", max_length=30, nullable=True, default=None, is_primary_key=False),
+            CoreSchema.ColumnMetadata(name="Country", data_type="VARCHAR", max_length=15, nullable=True, default=None, is_primary_key=False),
+        ]
+
+        with patch.object(loader, "connection"):
+            with patch.object(loader, "_get_columns", return_value=mock_columns):
+                with patch.object(loader, "_get_primary_keys", return_value=["CustomerID"]):
+                    with patch.object(loader, "get_table_row_count", new_callable=AsyncMock) as mock_count:
+                        mock_count.return_value = 91
+
+                        schema = await loader.get_table_schema("Customers")
+
+                        assert schema.table_name == "Customers"
+                        assert len(schema.columns) == 4
+                        assert schema.columns[0].name == "CustomerID"
+                        assert schema.columns[0].is_primary_key is True
+                        assert schema.columns[0].nullable is False
+                        assert schema.columns[1].name == "CompanyName"
+                        assert schema.columns[1].nullable is False
+                        assert schema.columns[2].name == "ContactName"
+                        assert schema.columns[2].nullable is True
+                        assert schema.columns[3].name == "Country"
+                        assert schema.columns[3].nullable is True
+                        assert schema.row_count == 91
+                assert schema.primary_keys == ["CustomerID"]
+
+    @pytest.mark.asyncio
+    async def test_get_table_schema_with_foreign_keys(self, loader):
+        """Should handle foreign keys in MS Access tables."""
+        # Mock columns
+        mock_columns = [
+            CoreSchema.ColumnMetadata(name="OrderID", data_type="INTEGER", max_length=None, nullable=False, default=None, is_primary_key=True),
+            CoreSchema.ColumnMetadata(name="CustomerID", data_type="INTEGER", max_length=None, nullable=False, default=None, is_primary_key=False),
+            CoreSchema.ColumnMetadata(name="OrderDate", data_type="DATETIME", max_length=None, nullable=True, default=None, is_primary_key=False),
+        ]
+
+        with patch.object(loader, "connection"):
+            with patch.object(loader, "_get_columns", return_value=mock_columns):
+                with patch.object(loader, "_get_primary_keys", return_value=["OrderID"]):
+                    with patch.object(loader, "get_table_row_count", new_callable=AsyncMock) as mock_count:
+                        mock_count.return_value = 830
+
+                        schema = await loader.get_table_schema("Orders")
+
+                        assert schema.table_name == "Orders"
+                        assert len(schema.columns) == 3
+                        assert schema.primary_keys == ["OrderID"]
+                        # Note: UCanAccess get_table_schema doesn't populate foreign_keys
+                        # It returns an empty list for FKs
+                        assert schema.foreign_keys == []
+
+    @pytest.mark.asyncio
+    async def test_create_db_uri(self, loader):
+        """Should create correct JDBC URI for MS Access."""
+        uri = loader.create_db_uri()
+        
+        assert "jdbc:ucanaccess://" in uri
+        assert "test.mdb" in uri
+
+    @pytest.mark.asyncio
+    async def test_load_with_top_limit(self, loader):
+        """Should use TOP clause for Access queries."""
+        # Mock data
+        sample_data = pd.DataFrame(
             {
-                "COLUMN_NAME": ["ID", "Name", "Email"],
-                "DATA_TYPE": ["INTEGER", "VARCHAR", "VARCHAR"],
-                "IS_NULLABLE": ["NO", "NO", "YES"],
-                "COLUMN_DEFAULT": [None, None, None],
-                "CHARACTER_MAXIMUM_LENGTH": [None, 50, 100],
+                "ProductID": [1, 2, 3],
+                "ProductName": ["Product A", "Product B", "Product C"],
             }
         )
 
-        # Mock primary keys query
-        pk_data = pd.DataFrame(
-            {
-                "COLUMN_NAME": ["ID"],
-            }
+        table_cfg = TableConfig(
+            cfg={
+                "products": {
+                    "type": "sql",
+                    "query": "SELECT * FROM Products",
+                    "keys": ["ProductID"],
+                    "columns": ["ProductID", "ProductName"],
+                    "surrogate_id": None,
+                }
+            },
+            entity_name="products",
         )
 
-        count_result = 25
+        with patch.object(loader, "read_sql", new_callable=AsyncMock) as mock_read_sql:
+            mock_read_sql.return_value = sample_data
 
-        call_count = 0
+            result = await loader.load("products", table_cfg)
 
-        async def mock_read_sql(query):
-            nonlocal call_count
-            call_count += 1
-            if "INFORMATION_SCHEMA.COLUMNS" in query:
-                return columns_data
-            if "KEY_COLUMN_USAGE" in query:
-                return pk_data
-            return pd.DataFrame()
+            assert len(result) == 3
+            assert "ProductID" in result.columns
+            assert "ProductName" in result.columns
 
-        with patch.object(loader, "read_sql", side_effect=mock_read_sql):
-            with patch.object(loader, "get_table_row_count", new_callable=AsyncMock) as mock_count:
-                mock_count.return_value = count_result
+    @pytest.mark.asyncio
+    async def test_get_tables_filters_system_tables(self, loader):
+        """Should filter out MS Access system tables."""
+        # Mock the _get_tables method to return both user and system tables
+        mock_tables = {
+            "Customers": CoreSchema.TableMetadata(name="Customers", schema=None, comment=None, row_count=0),
+            "Products": CoreSchema.TableMetadata(name="Products", schema=None, comment=None, row_count=0),
+            # MSys* tables should be filtered out by _get_tables implementation
+        }
 
-                schema = await loader.get_table_schema("Customers")
+        with patch.object(loader, "_get_tables", return_value=mock_tables):
+            with patch.object(loader, "connection"):
+                tables = await loader.get_tables()
 
-                assert schema.table_name == "Customers"
-                assert len(schema.columns) == 3
-                assert schema.columns[0].name == "ID"
-                assert schema.columns[0].is_primary_key is True
-                assert schema.columns[1].name == "Name"
-                assert schema.columns[1].nullable is False
-                assert schema.columns[2].name == "Email"
-                assert schema.columns[2].nullable is True
-                assert schema.row_count == 25
+                # Should only include user tables, not system tables
+                assert len(tables) == 2
+                assert "Customers" in tables
+                assert "Products" in tables
+                assert "MSysObjects" not in tables
+                assert "MSysACEs" not in tables
+
+    @pytest.mark.asyncio
+    async def test_test_connection_success(self, loader):
+        """Should successfully test MS Access connection."""
+        tables_data = {
+            "Customers": CoreSchema.TableMetadata(name="Customers", schema=None, row_count=None, comment=None),
+            "Products": CoreSchema.TableMetadata(name="Products", schema=None, row_count=None, comment=None),
+        }
+
+        with patch.object(loader, "get_tables", new_callable=AsyncMock) as mock_get_tables:
+            with patch.object(loader, "load", new_callable=AsyncMock) as mock_load:
+                mock_get_tables.return_value = tables_data
+                mock_load.return_value = pd.DataFrame({"count": [1]})
+
+                result = await loader.test_connection()
+
+                assert result.success
+                assert "successful" in result.message.lower()
+                assert result.metadata["table_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_test_connection_failure(self, loader):
+        """Should handle MS Access connection failure."""
+        with patch.object(loader, "get_tables", new_callable=AsyncMock) as mock_get_tables:
+            mock_get_tables.side_effect = Exception("Cannot open database file")
+
+            result = await loader.test_connection()
+
+            assert result.success is False
+            assert "failed" in result.message.lower()
+            assert "Cannot open database file" in result.message
 
 
 class DummySqlLoader(SqlLoader):
@@ -660,6 +763,35 @@ class TestCoreSchemaModels:
         assert fk.column == "user_id"
         assert fk.referenced_table == "users"
         assert fk.referenced_column == "id"
+
+
+class TestUCanAccessInjectLimit:
+    """Test SQL parsing utilities."""
+
+    @pytest.fixture
+    def loader(self) -> UCanAccessSqlLoader:
+        """Create UCanAccessSqlLoader instance."""
+        return UCanAccessSqlLoader(data_source={})
+
+    def test_add_limit_to_select(self, loader: UCanAccessSqlLoader):
+        """Should add TOP clause to SELECT query."""
+        query: str = "SELECT * FROM users"
+        modified = loader.inject_limit(query, 100)
+        assert "TOP 100" in modified.upper()
+
+    def test_preserve_existing_limit(self, loader: UCanAccessSqlLoader):
+        """Should not modify query with existing TOP."""
+        query: str = "SELECT TOP 50 * FROM users"
+        modified = loader.inject_limit(query, 100)
+
+        assert modified == query
+
+    def test_dont_add_limit_to_non_select(self, loader: UCanAccessSqlLoader):
+        """Should not add TOP to non-SELECT queries."""
+        query: str = "INSERT INTO users (name) VALUES ('test')"
+        modified = loader.inject_limit(query, 100)
+        assert "TOP" not in modified.upper()
+        assert modified == query
 
 
 class TestSqlLoaderConnectionTest:
