@@ -88,6 +88,13 @@ class QueryService:
 
         tables: list[str] = self._extract_table_names(statement)
 
+        # if not statement_type:
+        #     errors.append("Could not determine SQL statement type.")
+
+        # Block non-SELECT statements for now
+        if statement_type and statement_type.upper() != "SELECT":
+            errors.append(f"Only SELECT queries are allowed. Found '{statement_type}' statement.")
+
         # Check for multiple statements
         if len(parsed) > 1:
             warnings.append("Query contains multiple statements. Only the first will be executed.")
