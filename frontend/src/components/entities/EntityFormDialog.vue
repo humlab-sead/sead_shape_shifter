@@ -1244,6 +1244,20 @@ function handleRejectDependency(dep: DependencySuggestion) {
 /* Ag-grid preview styles */
 .preview-ag-grid {
   font-size: 11px;
+  --ag-background-color: rgb(var(--v-theme-background)) !important;
+  --ag-foreground-color: rgb(var(--v-theme-on-background)) !important;
+  --ag-header-foreground-color: rgb(var(--v-theme-on-surface)) !important;
+  --ag-header-background-color: rgb(var(--v-theme-surface)) !important;
+  --ag-odd-row-background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
+  --ag-row-hover-color: rgba(var(--v-theme-primary), 0.08) !important;
+  --ag-border-color: rgba(var(--v-theme-on-surface), 0.12) !important;
+  --ag-cell-horizontal-border: solid rgba(var(--v-theme-on-surface), 0.08) !important;
+}
+
+.preview-ag-grid :deep(.ag-root-wrapper) {
+  border: none;
+  background: rgb(var(--v-theme-background)) !important;
+  color: rgb(var(--v-theme-on-background)) !important;
 }
 
 .preview-ag-grid :deep(.ag-header) {
@@ -1293,20 +1307,6 @@ function handleRejectDependency(dep: DependencySuggestion) {
 }
 
 /* Dark mode support for ag-grid */
-.preview-ag-grid :deep(.ag-root-wrapper) {
-  border: none;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.preview-ag-grid :deep(.ag-theme-alpine) {
-  --ag-background-color: transparent;
-  --ag-foreground-color: rgb(var(--v-theme-on-surface));
-  --ag-header-foreground-color: rgb(var(--v-theme-on-surface));
-  --ag-header-background-color: rgb(var(--v-theme-surface));
-  --ag-odd-row-background-color: rgba(var(--v-theme-on-surface), 0.03);
-  --ag-row-hover-color: rgba(var(--v-theme-primary), 0.08);
-  --ag-border-color: rgba(var(--v-theme-on-surface), 0.08);
-}
 
 .striped-row {
   background: rgba(var(--v-theme-on-surface), 0.05);
