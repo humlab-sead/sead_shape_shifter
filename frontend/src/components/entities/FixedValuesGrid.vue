@@ -34,6 +34,8 @@
       :rowSelection="'multiple'"
       :suppressRowClickSelection="true"
       :animateRows="true"
+      :headerHeight="28"
+      :rowHeight="26"
       @grid-ready="onGridReady"
       @cell-value-changed="onCellValueChanged"
       @selection-changed="onSelectionChanged"
@@ -200,19 +202,65 @@ watch(
 }
 
 .compact-grid {
-  font-size: 12px;
+  font-size: 10px;
+  --ag-background-color: rgb(var(--v-theme-background)) !important;
+  --ag-foreground-color: rgb(var(--v-theme-on-background)) !important;
+  --ag-header-foreground-color: rgb(var(--v-theme-on-surface)) !important;
+  --ag-header-background-color: rgb(var(--v-theme-surface)) !important;
+  --ag-odd-row-background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
+  --ag-row-hover-color: rgba(var(--v-theme-primary), 0.08) !important;
+  --ag-border-color: rgba(var(--v-theme-on-surface), 0.12) !important;
+  --ag-cell-horizontal-border: solid rgba(var(--v-theme-on-surface), 0.08) !important;
 }
 
-:deep(.ag-header-cell-label) {
-  font-size: 12px;
-}
-
-:deep(.ag-cell) {
-  font-size: 12px;
-}
-
-:deep(.ag-root-wrapper) {
-  border: 1px solid rgba(0, 0, 0, 0.12);
+.compact-grid :deep(.ag-root-wrapper) {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 4px;
+  background: rgb(var(--v-theme-background)) !important;
+  color: rgb(var(--v-theme-on-background)) !important;
+}
+
+.compact-grid :deep(.ag-header) {
+  background: rgb(var(--v-theme-surface)) !important;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12) !important;
+}
+
+.compact-grid :deep(.ag-header-cell) {
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface)) !important;
+  background: rgb(var(--v-theme-surface)) !important;
+}
+
+.compact-grid :deep(.ag-header-cell-label) {
+  font-size: 10px;
+  color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+.compact-grid :deep(.ag-cell) {
+  padding: 2px 6px;
+  font-size: 10px;
+  line-height: 16px;
+  color: rgb(var(--v-theme-on-background)) !important;
+  border-color: rgba(var(--v-theme-on-surface), 0.08) !important;
+  background: transparent;
+}
+
+.compact-grid :deep(.ag-row) {
+  color: rgb(var(--v-theme-on-background)) !important;
+  background: transparent;
+}
+
+.compact-grid :deep(.ag-row-odd) {
+  background: rgba(var(--v-theme-on-surface), 0.03) !important;
+}
+
+.compact-grid :deep(.ag-row-even) {
+  background: transparent !important;
+}
+
+.compact-grid :deep(.ag-row-hover) {
+  background: rgba(var(--v-theme-primary), 0.08) !important;
 }
 </style>
