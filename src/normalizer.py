@@ -220,7 +220,7 @@ class ShapeShifter:
         """Write to specified target based on the specified mode."""
         dispatcher_cls: Dispatcher = Dispatchers.get(mode)
         if dispatcher_cls:
-            dispatcher = dispatcher_cls()  # type: ignore
+            dispatcher = dispatcher_cls(self.config)  # type: ignore
             dispatcher.dispatch(target=target, data=self.table_store)
         else:
             raise ValueError(f"Unsupported dispatch mode: {mode}")
