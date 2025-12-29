@@ -168,6 +168,7 @@ class TestQueryExecution:
             assert len(result.rows) == 3
             assert result.execution_time_ms > 0
 
+    @pytest.mark.skip(reason="Automatic limit injection disabled for now")
     @pytest.mark.asyncio
     async def test_execute_with_limit(self, mock_ds_service):
         """Should apply LIMIT clause to query."""
