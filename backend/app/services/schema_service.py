@@ -198,11 +198,11 @@ class SchemaIntrospectionService:
                 raise SchemaServiceError(f"Data source '{data_source_name}' not found")
 
             data_source: CoreDataSourceConfig = DataSourceMapper.to_core_config(ds_config)
-            qualified_table: str = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
-            query: str = f"SELECT * FROM {qualified_table} LIMIT {limit} OFFSET {offset}"
+
             loader: SqlLoader = DataLoaders.get(data_source.driver)(data_source=data_source)
 
-            data: pd.DataFrame = await asyncio.wait_for(loader.read_sql(query), timeout=30.0)
+            # qualified_table: str = loader.qualify_name(schema=schema, table=table_name)  # --- IGNORE ---
+            data: pd.DataFrame = await asyncio.wait_for(loader.load_table(table_name=table_name, limit=limit, offset=offset), timeout=30.0)
 
             if data.empty:
                 return {"columns": [], "rows": [], "total_rows": 0, "limit": limit, "offset": offset}
