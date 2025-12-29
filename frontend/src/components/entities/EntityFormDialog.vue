@@ -1261,49 +1261,52 @@ function handleRejectDependency(dep: DependencySuggestion) {
 }
 
 .preview-ag-grid :deep(.ag-header) {
-  background: rgb(var(--v-theme-surface));
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgb(var(--v-theme-surface)) !important;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12) !important;
 }
 
 .preview-ag-grid :deep(.ag-header-cell) {
   padding: 4px 8px;
   font-size: 11px;
   font-weight: 600;
-  color: rgb(var(--v-theme-on-surface));
-  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface)) !important;
+  background: rgb(var(--v-theme-surface)) !important;
 }
 
 .preview-ag-grid :deep(.ag-header-cell-label) {
-  color: rgb(var(--v-theme-on-surface));
+  color: rgb(var(--v-theme-on-surface)) !important;
 }
 
 .preview-ag-grid :deep(.ag-cell) {
   padding: 4px 8px;
   font-size: 11px;
   line-height: 20px;
-  color: rgb(var(--v-theme-on-surface)) !important;
-  border-color: rgba(var(--v-theme-on-surface), 0.08);
-}
-
-.preview-ag-grid :deep(.ag-row) {
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.preview-ag-grid :deep(.ag-row-odd) {
-  background: rgba(var(--v-theme-on-surface), 0.03);
-}
-
-.preview-ag-grid :deep(.ag-row-even) {
+  color: rgb(var(--v-theme-on-background)) !important;
+  border-color: rgba(var(--v-theme-on-surface), 0.08) !important;
   background: transparent;
 }
 
+.preview-ag-grid :deep(.ag-row) {
+  color: rgb(var(--v-theme-on-background)) !important;
+  background: transparent;
+}
+
+.preview-ag-grid :deep(.ag-row-odd) {
+  background: rgba(var(--v-theme-on-surface), 0.03) !important;
+}
+
+.preview-ag-grid :deep(.ag-row-even) {
+  background: transparent !important;
+}
+
 .preview-ag-grid :deep(.ag-row-hover) {
-  background: rgba(var(--v-theme-primary), 0.08);
+  background: rgba(var(--v-theme-primary), 0.08) !important;
 }
 
 .preview-ag-grid :deep(.key-column) {
   font-weight: 500;
-  background: rgba(var(--v-theme-warning), 0.05);
+  background: rgba(var(--v-theme-warning), 0.05) !important;
+  color: rgb(var(--v-theme-on-background)) !important;
 }
 
 /* Dark mode support for ag-grid */
