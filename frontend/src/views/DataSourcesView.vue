@@ -120,31 +120,61 @@
           </v-card-title>
 
           <v-card-text>
-            <div v-if="isDatabaseSource(dataSource.driver)" class="text-body-2">
-              <div class="d-flex align-center mb-1">
+            <div class="text-body-2">
+              <!-- Host -->
+              <div v-if="dataSource.host" class="d-flex align-center mb-1">
                 <v-icon icon="mdi-server" size="small" class="mr-2" />
                 <span class="text-grey">Host:</span>
                 <span class="ml-1 font-weight-medium">{{ dataSource.host }}</span>
               </div>
-              <div class="d-flex align-center mb-1">
+              
+              <!-- Port -->
+              <div v-if="dataSource.port" class="d-flex align-center mb-1">
+                <v-icon icon="mdi-ethernet" size="small" class="mr-2" />
+                <span class="text-grey">Port:</span>
+                <span class="ml-1 font-weight-medium">{{ dataSource.port }}</span>
+              </div>
+              
+              <!-- Database -->
+              <div v-if="dataSource.database || dataSource.dbname" class="d-flex align-center mb-1">
                 <v-icon icon="mdi-database" size="small" class="mr-2" />
                 <span class="text-grey">Database:</span>
                 <span class="ml-1 font-weight-medium">
                   {{ dataSource.database || dataSource.dbname }}
                 </span>
               </div>
-              <div class="d-flex align-center">
+              
+              <!-- Username -->
+              <div v-if="dataSource.username" class="d-flex align-center mb-1">
                 <v-icon icon="mdi-account" size="small" class="mr-2" />
                 <span class="text-grey">User:</span>
                 <span class="ml-1 font-weight-medium">{{ dataSource.username }}</span>
               </div>
-            </div>
-            <div v-else class="text-body-2">
-              <div class="d-flex align-center">
+              
+              <!-- Filename (top-level or from options) -->
+              <div v-if="getFilePath(dataSource)" class="d-flex align-center mb-1">
                 <v-icon icon="mdi-file" size="small" class="mr-2" />
                 <span class="text-grey">File:</span>
                 <span class="ml-1 font-weight-medium text-truncate">
-                  {{ dataSource.filename || dataSource.file_path }}
+                  {{ getFilePath(dataSource) }}
+                </span>
+              </div>
+              
+              <!-- Connection String -->
+              <div v-if="dataSource.connection_string" class="d-flex align-center mb-1">
+                <v-icon icon="mdi-link" size="small" class="mr-2" />
+                <span class="text-grey">Connection:</span>
+                <span class="ml-1 font-weight-medium text-truncate">
+                  {{ maskConnectionString(dataSource.connection_string) }}
+                </span>
+              </div>
+              
+              <!-- Driver-specific options -->
+              <div v-if="hasDriverOptions(dataSource)" class="d-flex align-center mb-1">
+                <v-icon icon="mdi-cog" size="small" class="mr-2" />
+                <span class="text-grey">Options:</span>
+                <span class="ml-1 font-weight-medium">
+                  {{ getDriverOptionsCount(dataSource) }} configured
                 </span>
               </div>
             </div>
@@ -342,6 +372,37 @@ function getDriverColor(driver: string): string {
     csv: 'purple',
   }
   return colors[driver] || 'grey'
+}
+
+function getFilePath(dataSource: DataSourceConfig): string | undefined {
+  // Check top-level filename or file_path
+  if (dataSource.filename) return dataSource.filename
+  if (dataSource.file_path) return dataSource.file_path
+  
+  // Check options.filename (for Access databases)
+  if (dataSource.options?.filename) return dataSource.options.filename
+  
+  return undefined
+}
+
+function maskConnectionString(connStr: string): string {
+  // Hide password in connection strings
+  return connStr.replace(/password=[^;\s]*/gi, 'password=***')
+}
+
+function hasDriverOptions(dataSource: DataSourceConfig): boolean {
+  return (
+    dataSource.options !== null &&
+    dataSource.options !== undefined &&
+    Object.keys(dataSource.options).length > 0
+  )
+}
+
+function getDriverOptionsCount(dataSource: DataSourceConfig): number {
+  if (!dataSource.options) return 0
+  // Exclude filename from count as it's displayed separately
+  const keys = Object.keys(dataSource.options).filter(k => k !== 'filename')
+  return keys.length
 }
 
 function handleCreate() {
