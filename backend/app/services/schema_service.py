@@ -168,7 +168,7 @@ class SchemaIntrospectionService:
         self,
         data_source_name: str,
         table_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,  # pylint: disable=unused-argument
         limit: int = 50,
         offset: int = 0,
     ) -> dict[str, Any]:
@@ -197,7 +197,6 @@ class SchemaIntrospectionService:
             if ds_config is None:
                 raise SchemaServiceError(f"Data source '{data_source_name}' not found")
 
-            # Environment variable resolution happens in the mapper
             data_source: CoreDataSourceConfig = DataSourceMapper.to_core_config(ds_config)
             qualified_table: str = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
             query: str = f"SELECT * FROM {qualified_table} LIMIT {limit} OFFSET {offset}"
