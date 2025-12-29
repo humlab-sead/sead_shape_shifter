@@ -67,7 +67,6 @@ class QueryService:
         errors: list[str] = []
         warnings: list[str] = []
 
-        # Parse query
         try:
             parsed = sqlparse.parse(query)
             if not parsed:
@@ -75,17 +74,13 @@ class QueryService:
         except Exception as e:  # pylint: disable=broad-except
             return QueryValidation(is_valid=False, errors=[f"SQL syntax error: {str(e)}"], warnings=[], statement_type=None, tables=[])
 
-        # Get first statement
         statement: Statement = parsed[0]
-
-        # Detect statement type
         statement_type: str | None = self._get_statement_type(statement)
 
         # Check for destructive operations
         if statement_type and statement_type.upper() in self.DESTRUCTIVE_KEYWORDS:
             errors.append(f"Destructive SQL operation '{statement_type}' is not allowed. " f"Only SELECT queries are permitted.")
 
-        # Extract table names
         tables: list[str] = self._extract_table_names(statement)
 
         # Check for multiple statements
@@ -131,11 +126,9 @@ class QueryService:
             raise QueryExecutionError(f"Data source '{data_source_name}' does not exist")
 
         core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_cfg)
-
         loader_cls: type[SqlLoader] = DataLoaders.get(core_config.driver)
         loader: SqlLoader = loader_cls(data_source=core_config)
 
-        # Execute query with timeout
         start_time: float = time.time()
 
         try:
@@ -147,12 +140,10 @@ class QueryService:
 
             execution_time_ms: int = max(1, int((time.time() - start_time) * 1000))
 
-            is_truncated: bool = len(df) >= limit
-
+            is_truncated: bool = limit is not None and len(df) >= limit
             rows: list[dict] = df.to_dict("records")
             columns: list[str] = df.columns.tolist()
 
-            # Handle datetime serialization
             for row in rows:
                 for key, value in row.items():
                     if pd.isna(value):
