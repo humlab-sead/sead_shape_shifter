@@ -1,0 +1,19 @@
+metadata:
+  name: new_configuration
+  description: Configuration for new_configuration
+  version: 1.0.0
+entities:
+  site:
+    type: sql
+    keys:
+    - site_id
+    surrogate_id: site_id
+    columns:
+    - site_name
+    data_source: sead
+    query: "select site_id, site_name\r\nfrom tbl_sites ;\r\n"
+    drop_duplicates: true
+    drop_empty_rows: true
+options:
+  data_sources:
+    sead: '@include: sead-options.yml'
