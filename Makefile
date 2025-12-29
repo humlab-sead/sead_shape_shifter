@@ -92,21 +92,9 @@ fr: frontend-kill frontend-run
 fr2: frontend-kill frontend-build-fast frontend-run
 
 .PHONY: run-all
-run-all:
-	@lsof -ti:$(BACKEND_PORT) 2>/dev/null | xargs -r kill -9 || true && \
-	 lsof -ti:$(FRONTEND_PORT) 2>/dev/null | xargs -r kill -9 || true && \
-	 echo "Starting backend and frontend servers..." && \
-		make -j2 br
-	@if [ -z "$$CONFIG_FILE" ]; then \
-		echo "Using default config: input/arbodat-database.yml"; \
-		export CONFIG_FILE=$$(pwd)/input/arbodat-database.yml; \
-	fi && \
-	PYTHONPATH=. uvicorn backend.app.main:app \
-		--reload --reload-exclude $(RELOAD_EXCLUDE) \
-		--log-level debug \
-		--host 0.0.0.0 --port $(BACKEND_PORT) &
-	@cd frontend &&pnpm build:skip-check && pnpm dev &
-	@echo "Both servers started."
+run-all: backend-kill frontend-kill
+	@echo "Starting backend and frontend servers..."
+	@make -j2 backend-run frontend-run
 
 ################################################################################
 # Backend recipes
@@ -117,19 +105,18 @@ backend-kill:
 	@lsof -t -i ':$(BACKEND_PORT)' | xargs -r kill -9
 	@echo "Killed all running servers."
 
-RELOAD_EXCLUDE="./docs,output,input,*.pyc,__pycache__/*,*.pyo,*~,./frontend/*,.venv/*,dist/*,.tox/*,*sqlite*,./tests/*,*.csv"
 
 .PHONY: backend-run
 backend-run:
 	@echo "Starting backend server on http://localhost:$(BACKEND_PORT)"
-	@if [ -z "$$CONFIG_FILE" ]; then \
-		echo "Using default config: input/arbodat-database.yml"; \
-		export CONFIG_FILE=$$(pwd)/input/arbodat-database.yml; \
-	fi && \
-	PYTHONPATH=. uvicorn backend.app.main:app \
-		--reload --reload-exclude $(RELOAD_EXCLUDE) \
+	@PYTHONPATH=. uvicorn backend.app.main:app \
 		--log-level debug \
+		--reload \
+		--reload-delay 2 \
+		--reload-include '*.py' \
+		--reload-exclude 'backend/tests/**' \
 		--host 0.0.0.0 --port $(BACKEND_PORT)
+
 
 .PHONY: backend-test
 backend-test:
