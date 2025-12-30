@@ -127,9 +127,9 @@
               class="ml-2"
             />
           </v-tab>
-          <v-tab value="settings">
-            <v-icon icon="mdi-cog-outline" class="mr-2" />
-            Settings
+          <v-tab value="metadata">
+            <v-icon icon="mdi-information-outline" class="mr-2" />
+            Metadata
           </v-tab>
         </v-tabs>
 
@@ -180,16 +180,9 @@
             />
           </v-window-item>
 
-          <!-- Settings Tab -->
-          <v-window-item value="settings">
-            <v-card variant="outlined">
-              <v-card-text>
-                <p class="text-h6 mb-4">Configuration Settings</p>
-                <p class="text-body-2 text-grey">
-                  Advanced settings and options will be available here.
-                </p>
-              </v-card-text>
-            </v-card>
+          <!-- Metadata Tab -->
+          <v-window-item value="metadata">
+            <metadata-editor :config-name="configName" />
           </v-window-item>
         </v-window>
       </v-col>
@@ -277,6 +270,7 @@ import ConfigurationDataSources from '@/components/ConfigurationDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
 import DependencyGraph from '@/components/dependencies/DependencyGraph.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
+import MetadataEditor from '@/components/MetadataEditor.vue'
 
 const route = useRoute()
 const configName = computed(() => route.params.name as string)

@@ -53,6 +53,15 @@ class RestoreBackupRequest(BaseModel):
     backup_path: str = Field(..., description="Path to backup file to restore")
 
 
+class MetadataUpdateRequest(BaseModel):
+    """Request to update configuration metadata."""
+
+    name: str | None = Field(default=None, description="Configuration name")
+    description: str | None = Field(default=None, description="Configuration description")
+    version: str | None = Field(default=None, description="Configuration version (x.y.z format)")
+    default_entity: str | None = Field(default=None, description="Default entity name")
+
+
 # Endpoints
 @router.get("/configurations", response_model=list[ConfigMetadata])
 @handle_endpoint_errors
@@ -135,6 +144,34 @@ async def update_configuration(name: str, request: ConfigurationUpdateRequest) -
         f"Updated configuration '{name}' options (entities preserved: " f"{list(updated_config.entities.keys())})",
     )
     return updated_config
+
+
+@router.patch("/configurations/{name}/metadata", response_model=Configuration)
+@handle_endpoint_errors
+async def update_configuration_metadata(name: str, request: MetadataUpdateRequest) -> Configuration:
+    """
+    Update configuration metadata.
+
+    Updates the metadata section of a configuration including name, description,
+    version, and default_entity. Only provided fields are updated.
+
+    Args:
+        name: Current configuration name
+        request: Metadata fields to update
+
+    Returns:
+        Updated configuration with new metadata
+    """
+    config_service: ConfigurationService = get_config_service()
+    config: Configuration = config_service.update_metadata(
+        name=name,
+        new_name=request.name,
+        description=request.description,
+        version=request.version,
+        default_entity=request.default_entity,
+    )
+    logger.info(f"Updated metadata for configuration '{name}'")
+    return config
 
 
 @router.delete("/configurations/{name}", status_code=status.HTTP_204_NO_CONTENT)
