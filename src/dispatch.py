@@ -7,9 +7,8 @@ from openpyxl.styles import PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 from sqlalchemy import create_engine
 
-from src.configuration.resolve import ConfigValue
 from src.model import ShapeShiftConfig, TableConfig
-from src.utility import Registry, create_db_uri
+from src.utility import Registry, create_db_uri, dotget
 
 
 class DispatchRegistry(Registry):
@@ -141,10 +140,13 @@ class DatabaseDispatcher(Dispatcher):
     """Dispatcher for Database data."""
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
-        # FIXME: This won't work since configuration no longer resides in ConfigStore
-        db_opts: dict[str, Any] = ConfigValue[dict[str, Any]]("options.database").resolve() or {}
+
+        db_opts: dict[str, Any] = dotget(self.cfg.options, "dispatch.database", {}) or {}
+
+        if not db_opts:
+            raise ValueError("Database dispatch requires 'dispatch.database' configuration options")
+
         db_url: str = create_db_uri(**db_opts)
-        # use pandas to_sql to write dataframes to the database
 
         engine = create_engine(url=db_url)
         with engine.begin() as connection:
