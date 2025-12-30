@@ -321,9 +321,15 @@ class TestUCanAccessLoader:
             CoreSchema.ColumnMetadata(
                 name="CustomerID", data_type="INTEGER", max_length=None, nullable=False, default=None, is_primary_key=True
             ),
-            CoreSchema.ColumnMetadata(name="CompanyName", data_type="VARCHAR", max_length=40, nullable=False, default=None, is_primary_key=False),
-            CoreSchema.ColumnMetadata(name="ContactName", data_type="VARCHAR", max_length=30, nullable=True, default=None, is_primary_key=False),
-            CoreSchema.ColumnMetadata(name="Country", data_type="VARCHAR", max_length=15, nullable=True, default=None, is_primary_key=False),
+            CoreSchema.ColumnMetadata(
+                name="CompanyName", data_type="VARCHAR", max_length=40, nullable=False, default=None, is_primary_key=False
+            ),
+            CoreSchema.ColumnMetadata(
+                name="ContactName", data_type="VARCHAR", max_length=30, nullable=True, default=None, is_primary_key=False
+            ),
+            CoreSchema.ColumnMetadata(
+                name="Country", data_type="VARCHAR", max_length=15, nullable=True, default=None, is_primary_key=False
+            ),
         ]
 
         with patch.object(loader, "connection"):
@@ -353,9 +359,15 @@ class TestUCanAccessLoader:
         """Should handle foreign keys in MS Access tables."""
         # Mock columns
         mock_columns = [
-            CoreSchema.ColumnMetadata(name="OrderID", data_type="INTEGER", max_length=None, nullable=False, default=None, is_primary_key=True),
-            CoreSchema.ColumnMetadata(name="CustomerID", data_type="INTEGER", max_length=None, nullable=False, default=None, is_primary_key=False),
-            CoreSchema.ColumnMetadata(name="OrderDate", data_type="DATETIME", max_length=None, nullable=True, default=None, is_primary_key=False),
+            CoreSchema.ColumnMetadata(
+                name="OrderID", data_type="INTEGER", max_length=None, nullable=False, default=None, is_primary_key=True
+            ),
+            CoreSchema.ColumnMetadata(
+                name="CustomerID", data_type="INTEGER", max_length=None, nullable=False, default=None, is_primary_key=False
+            ),
+            CoreSchema.ColumnMetadata(
+                name="OrderDate", data_type="DATETIME", max_length=None, nullable=True, default=None, is_primary_key=False
+            ),
         ]
 
         with patch.object(loader, "connection"):
@@ -377,7 +389,7 @@ class TestUCanAccessLoader:
     async def test_create_db_uri(self, loader):
         """Should create correct JDBC URI for MS Access."""
         uri = loader.create_db_uri()
-        
+
         assert "jdbc:ucanaccess://" in uri
         assert "test.mdb" in uri
 
