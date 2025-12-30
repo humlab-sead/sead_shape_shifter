@@ -6,11 +6,14 @@ import type { Entity } from './entity'
 
 export interface ConfigMetadata {
   name: string
+  description?: string | null
+  version?: string | null
   file_path?: string | null
   entity_count: number
   created_at?: string | null
   modified_at?: string | null
   is_valid?: boolean
+  default_entity?: string | null
 }
 
 export interface Configuration {

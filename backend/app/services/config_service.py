@@ -249,6 +249,71 @@ class ConfigurationService:
             logger.error(f"Failed to delete configuration '{name}': {e}")
             raise ConfigurationServiceError(f"Failed to delete configuration: {e}") from e
 
+    def update_metadata(
+        self,
+        name: str,
+        new_name: str | None = None,
+        description: str | None = None,
+        version: str | None = None,
+        default_entity: str | None = None,
+    ) -> Configuration:
+        """
+        Update configuration metadata.
+
+        Args:
+            name: Current configuration name
+            new_name: New configuration name (optional)
+            description: Configuration description (optional)
+            version: Configuration version (optional)
+            default_entity: Default entity name (optional)
+
+        Returns:
+            Updated configuration
+
+        Raises:
+            ConfigurationNotFoundError: If configuration not found
+            ConfigConflictError: If new name conflicts with existing configuration
+        """
+        # Load current configuration
+        config: Configuration = self.load_configuration(name)
+
+        if not config.metadata:
+            raise InvalidConfigurationError(f"Configuration '{name}' has no metadata")
+
+        # Handle rename if requested
+        old_file_path: Path = self.configurations_dir / f"{name}.yml"
+        new_file_path: Path | None = None
+
+        if new_name and new_name != name:
+            new_file_path = self.configurations_dir / f"{new_name}.yml"
+            if new_file_path.exists():
+                raise ConfigConflictError(f"Configuration '{new_name}' already exists")
+
+        # Update metadata fields (only if provided)
+        if new_name:
+            config.metadata.name = new_name
+        if description is not None:
+            config.metadata.description = description
+        if version is not None:
+            config.metadata.version = version
+        if default_entity is not None:
+            config.metadata.default_entity = default_entity
+
+        # Save configuration
+        saved_config: Configuration = self.save_configuration(config, create_backup=True)
+
+        # Rename file if needed
+        if new_file_path and new_name != name:
+            old_file_path.rename(new_file_path)
+            if saved_config.metadata:
+                saved_config.metadata.file_path = str(new_file_path)
+            logger.info(f"Renamed configuration from '{name}' to '{new_name}'")
+
+            # Update application state with new name by activating the renamed config
+            self.state.activate(saved_config, new_name)
+
+        return saved_config
+
     def add_entity(self, config: Configuration, entity_name: str, entity: Entity) -> Configuration:
         """
         Add entity to configuration.
