@@ -94,6 +94,39 @@ class CardinalityValidator(ConstraintValidator):
     pass
 ```
 
+### Driver Schema Pattern (Loaders)
+**Critical**: Driver configuration schemas are defined directly in loader classes using `ClassVar`:
+```python
+from typing import ClassVar
+from src.loaders.driver_metadata import DriverSchema, FieldMetadata
+
+@DataLoaders.register(key="postgresql")
+class PostgresSqlLoader(DataLoader):
+    schema: ClassVar[DriverSchema] = DriverSchema(
+        driver="postgresql",
+        display_name="PostgreSQL",
+        description="Connect to PostgreSQL database",
+        category="database",
+        fields=[
+            FieldMetadata(name="host", type="string", required=True, ...),
+            FieldMetadata(name="port", type="number", required=False, ...),
+            # ...
+        ]
+    )
+```
+
+**Pattern responsibilities:**
+- Loader classes (`src/loaders/`) - Define `schema` as `ClassVar[DriverSchema]`
+- DriverSchemaRegistry (`src/loaders/driver_metadata.py`) - Introspects `DataLoaders.items` for schemas
+- Backend endpoint (`backend/app/api/v1/endpoints/data_sources.py`) - Uses `DriverSchemaRegistry.all()`
+
+**Benefits:**
+- Single source of truth (schema lives with implementation)
+- Impossible to forget updating schema when adding new loader
+- Type safety with Pydantic validation
+- Follows existing registry pattern
+- No separate YAML file to maintain
+
 ### Async/Await
 - **Data loaders** (`src/loaders/`) are async - always `await loader.load()`
 - **Backend services** mix sync/async - check method signatures carefully
@@ -385,6 +418,14 @@ Reason: causes performance degradation in production."
 3. Implement service in `backend/app/services/`
 4. Register router in `backend/app/api/v1/api.py`
 
+### Adding a Data Loader
+1. Create class in appropriate file (`sql_loaders.py`, `file_loaders.py`, `exel_loaders.py`)
+2. Inherit from `DataLoader` base class
+3. Register: `@DataLoaders.register(key="driver_name")`
+4. **Define schema**: Add `schema: ClassVar[DriverSchema]` with field definitions
+5. Implement async `load()` method
+6. Add tests in `tests/loaders/test_*_loaders.py`
+
 ### Adding a Constraint Validator
 1. Create class in `src/constraints.py` inheriting `ConstraintValidator`
 2. Register: `@Validators.register(key="name", stage="pre-merge|post-merge")`
@@ -452,6 +493,12 @@ export const useExampleStore = defineStore('example', () => {
 - `frontend/src/stores/` - Pinia state management
 
 ## Recent Improvements (Dec 2024)
+
+### Class-Based Driver Schemas
+- **Schema location**: Defined in loader classes as `ClassVar[DriverSchema]`
+- **Introspection**: `DriverSchemaRegistry` loads schemas from registered loader classes
+- **Benefits**: Single source of truth, impossible to forget updating, type safety
+- **Implementation**: All loaders (PostgreSQL, SQLite, MS Access, CSV, Excel) have embedded schemas
 
 ### Cache System (shapeshift_service.py)
 - **3-tier validation**: TTL (300s) → Config version → Entity hash (xxhash)
