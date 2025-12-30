@@ -51,13 +51,6 @@ def mock_config():
     return config
 
 
-@pytest.fixture(autouse=True)
-def ensure_schemas_loaded():
-    """Ensure driver schemas are loaded before tests."""
-    # Schemas now auto-load from DataLoader classes
-    pass
-
-
 @pytest.mark.asyncio
 async def test_debug_postgresql_connection(settings: Settings):
     """Debug PostgreSQL connection with detailed output."""
