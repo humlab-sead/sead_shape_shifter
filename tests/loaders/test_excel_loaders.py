@@ -1,8 +1,9 @@
 from typing import Any
+
 import pytest
-from src.loaders.exel_loaders import PandasLoader
-from src.loaders.file_loaders import FileLoader
+
 from src.loaders.base_loader import DataLoaders
+from src.loaders.file_loaders import FileLoader
 
 
 @pytest.mark.parametrize("key", ["xlsx", "xls", "openpyxl"])
@@ -59,6 +60,7 @@ async def test_excel_openpyxl_load_two_columns():
     assert not df.empty
     assert list(df.columns) == ["B", "C"]
     assert len(df) == 4
+
 
 async def test_excel_openpyxl_load_subset_without_header():
     loader_cls = DataLoaders.get("openpyxl")

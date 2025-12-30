@@ -122,7 +122,7 @@ class DriverSchemaRegistry:
         their schemas to the registry.
         """
         # Import here to avoid circular dependency
-        from src.loaders.base_loader import DataLoaders
+        from src.loaders.base_loader import DataLoaders  # pylint: disable=import-outside-toplevel
 
         for key, loader_cls in DataLoaders.items.items():
             schema = loader_cls.get_schema()

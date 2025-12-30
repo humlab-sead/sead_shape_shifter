@@ -12,7 +12,6 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Literal
 
 import click
 from loguru import logger

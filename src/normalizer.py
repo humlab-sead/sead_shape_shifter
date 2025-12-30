@@ -5,7 +5,7 @@ and write them as CSVs or sheets in a single Excel file.
 """
 
 from pathlib import Path
-from typing import Any, Literal, Self
+from typing import Any, Self
 
 import pandas as pd
 from loguru import logger

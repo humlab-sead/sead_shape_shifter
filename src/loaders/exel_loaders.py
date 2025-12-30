@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Any, ClassVar
 
-import pandas as pd
 import openpyxl
+import pandas as pd
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.loaders.file_loaders import FileLoader
@@ -13,7 +13,7 @@ from .base_loader import ConnectTestResult, DataLoaders
 @DataLoaders.register(key=["xlsx", "xls"])
 class PandasLoader(FileLoader):
     """Loader for Excel files using pandas."""
-    
+
     schema: ClassVar["DriverSchema | None"] = DriverSchema(
         driver="xlsx",
         display_name="Excel File (pandas)",
@@ -26,16 +26,10 @@ class PandasLoader(FileLoader):
                 required=True,
                 description="Path to .xlsx or .xls file",
                 placeholder="./data/file.xlsx",
-                aliases=["file", "filepath", "path"]
+                aliases=["file", "filepath", "path"],
             ),
-            FieldMetadata(
-                name="sheet_name",
-                type="string",
-                required=False,
-                description="Sheet name to load",
-                placeholder="Sheet1"
-            ),
-        ]
+            FieldMetadata(name="sheet_name", type="string", required=False, description="Sheet name to load", placeholder="Sheet1"),
+        ],
     )
 
     async def load_file(self, opts: dict[str, Any]) -> pd.DataFrame:  # type: ignore[unused-argument]
@@ -57,7 +51,7 @@ class PandasLoader(FileLoader):
 @DataLoaders.register(key=["openpyxl"])
 class OpenPyxlLoader(FileLoader):
     """Loader for Excel files using openpyxl."""
-    
+
     schema: ClassVar["DriverSchema | None"] = DriverSchema(
         driver="openpyxl",
         display_name="Excel File (openpyxl)",
@@ -70,23 +64,13 @@ class OpenPyxlLoader(FileLoader):
                 required=True,
                 description="Path to .xlsx file",
                 placeholder="./data/file.xlsx",
-                aliases=["file", "filepath", "path"]
+                aliases=["file", "filepath", "path"],
             ),
+            FieldMetadata(name="sheet_name", type="string", required=False, description="Sheet name to load", placeholder="Sheet1"),
             FieldMetadata(
-                name="sheet_name",
-                type="string",
-                required=False,
-                description="Sheet name to load",
-                placeholder="Sheet1"
+                name="range", type="string", required=False, description="Cell range to load (e.g., A1:D10)", placeholder="A1:D10"
             ),
-            FieldMetadata(
-                name="range",
-                type="string",
-                required=False,
-                description="Cell range to load (e.g., A1:D10)",
-                placeholder="A1:D10"
-            ),
-        ]
+        ],
     )
 
     async def load_file(self, opts: dict[str, Any]) -> pd.DataFrame:  # type: ignore[unused-argument]
