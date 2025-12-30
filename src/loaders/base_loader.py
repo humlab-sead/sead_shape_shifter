@@ -1,12 +1,13 @@
 import abc
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import pandas as pd
 
 from src.utility import Registry
 
 if TYPE_CHECKING:
+    from src.loaders.driver_metadata import DriverSchema
     from src.model import DataSourceConfig, TableConfig
 
 
@@ -37,9 +38,26 @@ class ConnectTestResult:
 
 
 class DataLoader(abc.ABC):
+    """Base class for all data loaders.
+
+    Subclasses should define a 'schema' class variable to describe
+    their configuration fields for dynamic form generation.
+    """
+
+    # Subclasses can define their schema for configuration metadata
+    schema: ClassVar["DriverSchema | None"] = None
 
     def __init__(self, data_source: "DataSourceConfig | None" = None) -> None:
         self.data_source: "DataSourceConfig | None" = data_source
+
+    @classmethod
+    def get_schema(cls) -> "DriverSchema | None":
+        """Get loader configuration schema.
+
+        Returns:
+            DriverSchema if defined, None otherwise
+        """
+        return cls.schema
 
     @abc.abstractmethod
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:

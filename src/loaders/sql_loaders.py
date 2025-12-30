@@ -3,7 +3,7 @@ import os
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Generator, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Generator, Optional
 
 import jaydebeapi
 import jpype
@@ -12,6 +12,7 @@ from loguru import logger
 from sqlalchemy import create_engine
 
 from src.extract import add_surrogate_id
+from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.utility import create_db_uri as create_pg_uri
 from src.utility import dotget
 
@@ -235,6 +236,23 @@ class SqliteLoader(SqlLoader):
 
     driver: str = "sqlite"
 
+    schema: ClassVar["DriverSchema | None"] = DriverSchema(
+        driver="sqlite",
+        display_name="SQLite",
+        description="SQLite database file",
+        category="file",
+        fields=[
+            FieldMetadata(
+                name="filename",
+                type="file_path",
+                required=True,
+                description="Path to .db or .sqlite file",
+                placeholder="./data/database.db",
+                aliases=["file", "filepath", "path"],
+            ),
+        ],
+    )
+
     def create_db_uri(self) -> str:
         if not self.data_source:
             raise ValueError("Data source configuration is required for SqliteLoader")
@@ -326,9 +344,49 @@ class SqliteLoader(SqlLoader):
 
 @DataLoaders.register(key=["postgres", "postgresql"])
 class PostgresSqlLoader(SqlLoader):
-    """Loader for fixed data entities."""
+    """Loader for PostgreSQL databases."""
 
     driver: str = "postgres"
+
+    schema: ClassVar["DriverSchema | None"] = DriverSchema(
+        driver="postgresql",
+        display_name="PostgreSQL",
+        description="PostgreSQL database connection",
+        category="database",
+        fields=[
+            FieldMetadata(
+                name="host",
+                type="string",
+                required=True,
+                default="localhost",
+                description="Database server hostname",
+                placeholder="localhost",
+                aliases=["hostname", "server", "dbhost"],
+            ),
+            FieldMetadata(
+                name="port",
+                type="integer",
+                required=False,
+                default=5432,
+                description="Database server port",
+                placeholder="5432",
+                min_value=1,
+                max_value=65535,
+            ),
+            FieldMetadata(
+                name="database", type="string", required=True, description="Database name", placeholder="mydb", aliases=["db", "dbname"]
+            ),
+            FieldMetadata(
+                name="username",
+                type="string",
+                required=True,
+                description="Database user",
+                placeholder="postgres",
+                aliases=["dbuser", "user"],
+            ),
+            FieldMetadata(name="password", type="password", required=False, description="Database password"),
+        ],
+    )
 
     @property
     def db_opts(self) -> dict[str, Any]:
@@ -484,6 +542,31 @@ class UCanAccessSqlLoader(SqlLoader):
     """Loader for fixed data entities. https://ucanaccess.sourceforge.net/site.html"""
 
     driver: str = "ucanaccess"
+
+    schema: ClassVar["DriverSchema | None"] = DriverSchema(
+        driver="access",
+        display_name="MS Access",
+        description="Microsoft Access database via UCanAccess",
+        category="file",
+        fields=[
+            FieldMetadata(
+                name="filename",
+                type="file_path",
+                required=True,
+                description="Path to .mdb or .accdb file",
+                placeholder="./input/database.mdb",
+                aliases=["file", "filepath", "path"],
+            ),
+            FieldMetadata(
+                name="ucanaccess_dir",
+                type="string",
+                required=False,
+                default="lib/ucanaccess",
+                description="Path to UCanAccess library directory",
+                placeholder="lib/ucanaccess",
+            ),
+        ],
+    )
 
     def __init__(self, data_source: "DataSourceConfig") -> None:
         super().__init__(data_source=data_source)
