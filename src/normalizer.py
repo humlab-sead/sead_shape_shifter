@@ -216,7 +216,7 @@ class ShapeShifter:
             link_entity(entity_name=entity_name, config=self.config, table_store=self.table_store)
         return self
 
-    def store(self, target: str, mode: Literal["xlsx", "csv", "db"]) -> Self:
+    def store(self, target: str, mode: str) -> Self:
         """Write to specified target based on the specified mode."""
         dispatcher_cls: Dispatcher = Dispatchers.get(mode)
         if dispatcher_cls:
