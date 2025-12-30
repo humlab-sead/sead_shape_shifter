@@ -1473,7 +1473,7 @@ debugger;  // Breakpoint
 5. **Commit Changes**
    ```bash
    git add .
-   git commit -m "feat: add my feature"
+   git commit -m "feat(feature-area): add my feature"
    ```
 
 6. **Push and Create PR**
@@ -1484,24 +1484,143 @@ debugger;  // Breakpoint
 
 ### Commit Convention
 
-Use conventional commits:
+This project uses **[Conventional Commits](https://www.conventionalcommits.org/)** with **semantic-release** for automated versioning and changelog generation.
 
-- `feat:` - New feature
-- `fix:` - Bug fix
-- `docs:` - Documentation
-- `test:` - Tests
-- `refactor:` - Code refactoring
-- `chore:` - Maintenance
+#### Commit Message Format
 
-Examples:
 ```
-feat: add auto-fix for missing columns
-fix: resolve validation cache invalidation bug
-docs: update developer guide with testing section
-test: add integration tests for auto-fix API
-refactor: extract validation logic into service
-chore: update dependencies
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
 ```
+
+#### Commit Types and Release Impact
+
+- **feat**: New feature (→ **MINOR** release, e.g., 1.1.0)
+- **fix**: Bug fix (→ **PATCH** release, e.g., 1.0.1)
+- **docs**: Documentation changes (→ **PATCH** if scope is README)
+- **refactor**: Code refactoring (→ **PATCH** release)
+- **perf**: Performance improvements (→ **PATCH** release)
+- **style**: Code style changes (→ **PATCH** release)
+- **test**: Adding or updating tests (no release)
+- **build**: Build system changes (no release)
+- **ci**: CI/CD configuration (no release)
+- **chore**: Other maintenance tasks (no release)
+- **revert**: Revert a previous commit (no release)
+
+#### Common Scopes
+
+- `core`: Core processing pipeline
+- `backend`: Backend API
+- `frontend`: Frontend application
+- `config`: Configuration handling
+- `validation`: Validation services
+- `cache`: Caching functionality
+- `loaders`: Data loaders
+- `api`: API endpoints
+- `deps`: Dependencies
+
+#### Examples
+
+```bash
+# Features (MINOR release)
+git commit -m "feat(cache): implement 3-tier cache validation"
+git commit -m "feat(frontend): add entity preview with auto-refresh"
+
+# Bug fixes (PATCH release)
+git commit -m "fix(validation): prevent mutation in resolve_references"
+git commit -m "fix(frontend): resolve dark mode text color issue"
+
+# Documentation (PATCH if scope is README)
+git commit -m "docs(README): add installation instructions"
+git commit -m "docs(api): update endpoint examples"
+
+# Refactoring (PATCH release)
+git commit -m "refactor(services): extract validation logic"
+
+# Tests (no release)
+git commit -m "test(loaders): add UCanAccessSqlLoader tests"
+
+# Chores (no release)
+git commit -m "chore(deps): bump pydantic to 2.5.0"
+git commit -m "chore: update pre-commit hooks"
+```
+
+#### Breaking Changes (MAJOR release)
+
+Use `!` or `BREAKING CHANGE:` footer to trigger a **MAJOR** release (e.g., 2.0.0):
+
+```bash
+# With ! notation
+git commit -m "feat(api)!: change validation response format"
+
+# With footer
+git commit -m "feat(api): change validation response format
+
+BREAKING CHANGE: validation errors now return array instead of object.
+Update API clients to handle the new format."
+```
+
+#### Multi-line Commits
+
+Use the body for detailed explanations:
+
+```bash
+git commit -m "feat(cache): implement hash-based invalidation
+
+Add xxhash-based entity configuration hashing to detect changes
+beyond version numbers. Implements 3-tier validation:
+1. TTL check (300s)
+2. Config version comparison  
+3. Entity hash validation
+
+This prevents serving stale cached data when entity configuration
+changes without version bump.
+
+Closes #123"
+```
+
+#### Best Practices
+
+- **Keep subject line under 72 characters**
+- **Use imperative mood**: "add" not "added" or "adds"
+- **Don't capitalize** the first letter
+- **Don't end** with a period
+- **Reference issues**: Use `Closes #123`, `Fixes #456` in footer
+- **Explain why**: Use body to explain **what** and **why**, not **how**
+- **Skip CI when needed**: Add `[skip ci]` to skip CI builds
+- **Add co-authors**: `Co-authored-by: Name <email@example.com>`
+
+#### Common Mistakes
+
+❌ **Avoid**:
+```bash
+git commit -m "Fixed bug"           # No type
+git commit -m "feat: Added feature." # Capitalized + period
+git commit -m "WIP"                 # Not descriptive
+```
+
+✅ **Prefer**:
+```bash
+git commit -m "fix(validation): prevent null pointer in entity resolution"
+git commit -m "feat(api): add batch validation endpoint"
+git commit -m "refactor(core): simplify dependency resolution"
+```
+
+#### Automated Releases
+
+Semantic-release automatically:
+- Analyzes commits on `main` branch
+- Determines next version number
+- Generates `CHANGELOG.md`
+- Updates version in `pyproject.toml`
+- Creates git tags
+
+See `.releaserc.json` for full configuration.
+
+For complete details, see the **Conventional Commit Messages** section in [TODO.md](../TODO.md).
 
 ---
 
@@ -1515,6 +1634,6 @@ chore: update dependencies
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: December 14, 2025  
+**Document Version**: 1.1  
+**Last Updated**: December 30, 2025  
 **For**: Shape Shifter Configuration Editor v0.1.0
