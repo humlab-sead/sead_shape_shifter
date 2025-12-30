@@ -17,20 +17,6 @@
     full_name: ["first_name", " ", "last_name"]
   ```
 
-# **FIXED** Improved deletion of empty row data
-
-- Add support for specifying which values except np.na that should be considered as empty for row deletion.
-
-  ```
-  drop_empty_rows:
-      column_name_1:
-        - ""
-        - "N/A"
-        - "null"
-      column_name_2:
-        - "unknown"
-      etc.
-  ```
 
 # STARTED Add value transformations
 
@@ -66,18 +52,6 @@
           - sample: [temp_column3]
   """
 
-# **FIXED** Use "query" prefix for SQL data source values instead of "values: sql: ..."
-- Standardize SQL data source queries by using a "query" prefix instead of embedding SQL directly in "values".
-  This improves clarity and consistency in configuration files.
-
-  Example:
-  ```yaml
-  append:
-    - type: sql
-      data_source: test_sql_source
-      query: SELECT 'SQL Site' as site_name, 50.0 as latitude, 15.0 as longitude
-  ```
-
 # **FIXED** Validation Improvements
 
 Improve validations for configuration files to catch the most common errors and give better feedback. Add an option to run validations without executing the full normalization workflow. 
@@ -95,7 +69,7 @@ Improve validations for configuration files to catch the most common errors and 
  - [] FIXME: Keys is a mandatory field, but many entities has no value in Keys
  - [x] FIXME: #61 Information missing in Global Data Sources view
  - [] FIXME: #63 Wrong modified data in Configurations view 
- - [] FIXME: #62 Testing a UCanAccess data source returns success, but no tables are found.
+ - [x] FIXME: #62 Testing a UCanAccess data source returns success, but no tables are found.
  - [] FIXME:
  - [] FIXME:
  - [] FIXME:
@@ -106,6 +80,8 @@ Improve validations for configuration files to catch the most common errors and 
  - [x] FIXME: Improve test coverage (+85%)
  - [ ] FIXME: #59 [Frontend] Create frontend (manual) testing guide 
 
+ 
+
 ### New features
 
  - [] TODO: [Frontend/Backend] Edit data source configuration in a dual-mode editor (Form/YAML).
@@ -115,8 +91,9 @@ Improve validations for configuration files to catch the most common errors and 
  - [] TODO: Add additional frontend/backend options (e.g., themes, temp directory, logging level, etc.)
  - [] TODO: Add capability to generate a default reconciliation YAML based on service manifest received from calling services /reconcile endpoint.
  - [] TODO: Change so that only entities avaliable for service reconciliation are displayed  
- - [] TODO: #53 Fixed value grid must be more compact
- - [] TODO: #55 Not all transformations are shown in Preview mode 
+ - [x] TODO: #53 Fixed value grid must be more compact
+ - [x] TODO: #55 Not all transformations are shown in Preview mode 
  - [] TODO: #56 Add capability to export preview
  - [] TODO: #57 Add capability to set number of rows (including all) from preview
- - [] TODO: #58 FK editor needs styling
+ - [x] TODO: #58 FK editor needs styling
+ - [] TODO: Add capability to run full normalization from frontend, and save output to selected dispatch target.
