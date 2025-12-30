@@ -54,7 +54,8 @@ def mock_config():
 @pytest.fixture(autouse=True)
 def ensure_schemas_loaded():
     """Ensure driver schemas are loaded before tests."""
-    DriverSchemaRegistry.load_from_yaml()
+    # Schemas now auto-load from DataLoader classes
+    pass
 
 
 @pytest.mark.asyncio

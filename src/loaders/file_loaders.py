@@ -1,8 +1,10 @@
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import pandas as pd
+
+from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 
 from .base_loader import ConnectTestResult, DataLoader, DataLoaders
 
@@ -42,6 +44,35 @@ class FileLoader(DataLoader):
 @DataLoaders.register(key=["csv", "tsv"])
 class CsvLoader(FileLoader):
     """Loader for CSV/TSV files."""
+
+    schema: ClassVar["DriverSchema | None"] = DriverSchema(
+        driver="csv",
+        display_name="CSV File",
+        description="Comma-separated values file",
+        category="file",
+        fields=[
+            FieldMetadata(
+                name="filename",
+                type="file_path",
+                required=True,
+                description="Path to .csv file",
+                placeholder="./data/file.csv",
+                aliases=["file", "filepath", "path"],
+            ),
+            FieldMetadata(
+                name="encoding", type="string", required=False, default="utf-8", description="File encoding", placeholder="utf-8"
+            ),
+            FieldMetadata(
+                name="delimiter",
+                type="string",
+                required=False,
+                default=",",
+                description="Field delimiter",
+                placeholder=",",
+                aliases=["sep", "separator"],
+            ),
+        ],
+    )
 
     async def load_file(self, opts: dict[str, Any]) -> pd.DataFrame:  # type: ignore[unused-argument]
         """Load data from a delimited text file into a DataFrame."""
