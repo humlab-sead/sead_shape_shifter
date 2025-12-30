@@ -104,7 +104,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
                 try:
                     if cell.value:
                         max_length = max(max_length, len(str(cell.value)))
-                except Exception:
+                except Exception:  # pylint: disable=broad-except
                     pass
             adjusted_width = max_length + 2
             ws.column_dimensions[column].width = adjusted_width

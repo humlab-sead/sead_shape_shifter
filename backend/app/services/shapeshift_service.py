@@ -5,7 +5,6 @@ import time
 
 import pandas as pd
 from loguru import logger
-from numpy import add
 
 from backend.app.core.config import Settings, settings
 from backend.app.core.state_manager import ApplicationState, get_app_state
