@@ -8,7 +8,7 @@
       @mount="handleMount"
       @change="handleChange"
     />
-    
+
     <!-- Validation Errors -->
     <v-alert
       v-if="error"
@@ -93,7 +93,7 @@ function handleChange(value: string) {
   content.value = value
   emit('update:modelValue', value)
   emit('change', value)
-  
+
   // Validate if enabled
   if (props.validateOnChange) {
     const validation = validateYaml(value)

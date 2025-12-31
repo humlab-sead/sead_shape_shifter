@@ -12,24 +12,13 @@
           <strong>{{ itemType }} "{{ itemName }}"</strong>?
         </p>
 
-        <v-alert type="warning" variant="tonal" density="compact">
-          This action cannot be undone.
-        </v-alert>
+        <v-alert type="warning" variant="tonal" density="compact"> This action cannot be undone. </v-alert>
       </v-card-text>
 
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" @click="handleCancel" :disabled="loading">
-          Cancel
-        </v-btn>
-        <v-btn
-          color="error"
-          variant="flat"
-          :loading="loading"
-          @click="handleConfirm"
-        >
-          Delete
-        </v-btn>
+        <v-btn variant="text" @click="handleCancel" :disabled="loading"> Cancel </v-btn>
+        <v-btn color="error" variant="flat" :loading="loading" @click="handleConfirm"> Delete </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

@@ -1,29 +1,13 @@
 <template>
-  <v-alert
-    v-if="hasActiveSession"
-    density="compact"
-    variant="outlined"
-    :color="alertColor"
-    class="mb-4"
-  >
+  <v-alert v-if="hasActiveSession" density="compact" variant="outlined" :color="alertColor" class="mb-4">
     <v-row align="center" no-gutters>
       <v-col>
         <div class="d-flex align-center">
           <v-icon :icon="alertIcon" size="small" class="mr-2" />
           <span class="text-body-2">
             <strong>Session active:</strong> {{ configName }}
-            <v-chip
-              v-if="isModified"
-              size="x-small"
-              color="warning"
-              variant="flat"
-              class="ml-2"
-            >
-              Unsaved
-            </v-chip>
-            <span v-if="version" class="ml-2 text-caption text-grey">
-              v{{ version }}
-            </span>
+            <v-chip v-if="isModified" size="x-small" color="warning" variant="flat" class="ml-2"> Unsaved </v-chip>
+            <span v-if="version" class="ml-2 text-caption text-grey"> v{{ version }} </span>
           </span>
         </div>
       </v-col>
@@ -38,23 +22,22 @@
         >
           {{ concurrentEditors }} {{ concurrentEditors === 1 ? 'Editor' : 'Editors' }}
         </v-btn>
-        <v-btn
-          size="x-small"
-          variant="text"
-          @click="handleCloseSession"
-        >
-          Close
-        </v-btn>
+        <v-btn size="x-small" variant="text" @click="handleCloseSession"> Close </v-btn>
       </v-col>
     </v-row>
 
     <!-- Concurrent Edit Warning Expansion -->
     <v-expand-transition>
-      <div v-if="showConcurrentWarning && concurrentEditWarning" class="mt-2 pt-2" style="border-top: 1px solid rgba(var(--v-theme-warning), 0.3)">
+      <div
+        v-if="showConcurrentWarning && concurrentEditWarning"
+        class="mt-2 pt-2"
+        style="border-top: 1px solid rgba(var(--v-theme-warning), 0.3)"
+      >
         <v-icon icon="mdi-alert" color="warning" size="small" class="mr-2" />
         <span class="text-caption">
-          <strong>Warning:</strong> {{ concurrentEditors }} other {{ concurrentEditors === 1 ? 'session is' : 'sessions are' }} editing this configuration.
-          Changes may conflict. Save carefully.
+          <strong>Warning:</strong> {{ concurrentEditors }} other
+          {{ concurrentEditors === 1 ? 'session is' : 'sessions are' }} editing this configuration. Changes may
+          conflict. Save carefully.
         </span>
       </div>
     </v-expand-transition>
@@ -71,14 +54,7 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const {
-  hasActiveSession,
-  isModified,
-  version,
-  concurrentEditWarning,
-  otherActiveSessions,
-  endSession,
-} = useSession()
+const { hasActiveSession, isModified, version, concurrentEditWarning, otherActiveSessions, endSession } = useSession()
 
 const showConcurrentWarning = ref(false)
 

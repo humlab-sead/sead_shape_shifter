@@ -6,12 +6,7 @@
           <v-icon icon="mdi-auto-fix" class="mr-2" />
           <span>Preview Auto-Fixes</span>
         </div>
-        <v-btn
-          icon="mdi-close"
-          variant="text"
-          size="small"
-          @click="handleCancel"
-        />
+        <v-btn icon="mdi-close" variant="text" size="small" @click="handleCancel" />
       </v-card-title>
 
       <!-- Loading State -->
@@ -33,8 +28,8 @@
             <div class="d-flex align-center">
               <v-icon icon="mdi-information" class="mr-2" />
               <div>
-                <strong>{{ preview.fixable_count }}</strong> of 
-                <strong>{{ preview.total_suggestions }}</strong> issues can be automatically fixed.
+                <strong>{{ preview.fixable_count }}</strong> of <strong>{{ preview.total_suggestions }}</strong> issues
+                can be automatically fixed.
                 <div v-if="preview.fixable_count > 0" class="text-caption mt-1">
                   A backup will be created before applying changes.
                 </div>
@@ -44,11 +39,7 @@
 
           <!-- Changes List -->
           <v-list v-if="preview.changes && preview.changes.length > 0">
-            <v-list-item
-              v-for="(change, index) in preview.changes"
-              :key="index"
-              class="mb-2"
-            >
+            <v-list-item v-for="(change, index) in preview.changes" :key="index" class="mb-2">
               <template #prepend>
                 <v-icon
                   :icon="change.auto_fixable ? 'mdi-check-circle' : 'mdi-alert-circle'"
@@ -60,32 +51,22 @@
                 {{ change.entity }}
               </v-list-item-title>
 
-              <v-list-item-subtitle class="mb-2">
-                Issue: {{ change.issue_code }}
-              </v-list-item-subtitle>
+              <v-list-item-subtitle class="mb-2"> Issue: {{ change.issue_code }} </v-list-item-subtitle>
 
               <!-- Actions -->
               <v-expansion-panels variant="accordion" class="mt-2">
                 <v-expansion-panel>
                   <v-expansion-panel-title>
                     <span class="text-body-2">
-                      {{ change.actions.length }} 
+                      {{ change.actions.length }}
                       {{ change.actions.length === 1 ? 'action' : 'actions' }}
                     </span>
                   </v-expansion-panel-title>
                   <v-expansion-panel-text>
                     <v-list density="compact">
-                      <v-list-item
-                        v-for="(action, actionIndex) in change.actions"
-                        :key="actionIndex"
-                        class="px-0"
-                      >
+                      <v-list-item v-for="(action, actionIndex) in change.actions" :key="actionIndex" class="px-0">
                         <v-list-item-title class="text-body-2">
-                          <v-chip
-                            size="x-small"
-                            :color="getActionColor(action.type)"
-                            class="mr-2"
-                          >
+                          <v-chip size="x-small" :color="getActionColor(action.type)" class="mr-2">
                             {{ action.type }}
                           </v-chip>
                           {{ action.description }}
@@ -112,13 +93,7 @@
               </v-alert>
 
               <!-- Non-auto-fixable notice -->
-              <v-alert
-                v-if="!change.auto_fixable"
-                type="info"
-                variant="tonal"
-                density="compact"
-                class="mt-2"
-              >
+              <v-alert v-if="!change.auto_fixable" type="info" variant="tonal" density="compact" class="mt-2">
                 <div class="d-flex align-center">
                   <v-icon icon="mdi-hand-back-right" size="small" class="mr-2" />
                   <span class="text-body-2">Manual fix required</span>
@@ -137,13 +112,7 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn
-            variant="outlined"
-            prepend-icon="mdi-cancel"
-            @click="handleCancel"
-          >
-            Cancel
-          </v-btn>
+          <v-btn variant="outlined" prepend-icon="mdi-cancel" @click="handleCancel"> Cancel </v-btn>
           <v-btn
             v-if="preview.fixable_count > 0"
             color="info"
@@ -152,7 +121,7 @@
             :loading="applying"
             @click="handleApply"
           >
-            Apply {{ preview.fixable_count }} 
+            Apply {{ preview.fixable_count }}
             {{ preview.fixable_count === 1 ? 'Fix' : 'Fixes' }}
           </v-btn>
         </v-card-actions>
@@ -217,14 +186,14 @@ const internalShow = computed({
 
 function getActionColor(type: string): string {
   const colorMap: Record<string, string> = {
-    'remove_column': 'error',
-    'add_column': 'success',
-    'update_reference': 'warning',
-    'add_constraint': 'info',
-    'remove_constraint': 'warning',
-    'update_query': 'primary',
-    'add_entity': 'success',
-    'remove_entity': 'error',
+    remove_column: 'error',
+    add_column: 'success',
+    update_reference: 'warning',
+    add_constraint: 'info',
+    remove_constraint: 'warning',
+    update_query: 'primary',
+    add_entity: 'success',
+    remove_entity: 'error',
   }
   return colorMap[type] || 'default'
 }
@@ -247,9 +216,12 @@ async function handleApply() {
 }
 
 // Reset applying state when dialog closes
-watch(() => props.show, (newValue) => {
-  if (!newValue) {
-    applying.value = false
+watch(
+  () => props.show,
+  (newValue) => {
+    if (!newValue) {
+      applying.value = false
+    }
   }
-})
+)
 </script>

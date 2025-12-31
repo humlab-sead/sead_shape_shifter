@@ -35,10 +35,7 @@ export const entitiesApi = {
   /**
    * Get specific entity
    */
-  get: async (
-    configName: string,
-    entityName: string
-  ): Promise<EntityResponse> => {
+  get: async (configName: string, entityName: string): Promise<EntityResponse> => {
     return apiRequest<EntityResponse>({
       method: 'GET',
       url: `/configurations/${configName}/entities/${entityName}`,
@@ -48,10 +45,7 @@ export const entitiesApi = {
   /**
    * Create new entity
    */
-  create: async (
-    configName: string,
-    data: EntityCreateRequest
-  ): Promise<EntityResponse> => {
+  create: async (configName: string, data: EntityCreateRequest): Promise<EntityResponse> => {
     return apiRequest<EntityResponse>({
       method: 'POST',
       url: `/configurations/${configName}/entities`,
@@ -62,11 +56,7 @@ export const entitiesApi = {
   /**
    * Update entity
    */
-  update: async (
-    configName: string,
-    entityName: string,
-    data: EntityUpdateRequest
-  ): Promise<EntityResponse> => {
+  update: async (configName: string, entityName: string, data: EntityUpdateRequest): Promise<EntityResponse> => {
     return apiRequest<EntityResponse>({
       method: 'PUT',
       url: `/configurations/${configName}/entities/${entityName}`,

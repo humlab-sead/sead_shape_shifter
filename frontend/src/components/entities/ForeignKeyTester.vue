@@ -35,9 +35,7 @@
             Keys: {{ foreignKey.local_keys.join(', ') }} →
             {{ foreignKey.remote_keys.join(', ') }}
           </div>
-          <div class="text-caption">
-            Type: {{ foreignKey.how || 'left' }}
-          </div>
+          <div class="text-caption">Type: {{ foreignKey.how || 'left' }}</div>
         </v-alert>
 
         <!-- Test Project -->
@@ -55,13 +53,7 @@
 
         <!-- Test Button -->
         <div class="mb-4">
-          <v-btn
-            color="primary"
-            :loading="loading"
-            @click="runTest"
-            prepend-icon="mdi-play"
-            block
-          >
+          <v-btn color="primary" :loading="loading" @click="runTest" prepend-icon="mdi-play" block>
             Run Join Test
           </v-btn>
         </div>
@@ -69,23 +61,14 @@
         <!-- Results -->
         <div v-if="testResult">
           <!-- Overall Status -->
-          <v-alert
-            :type="testPassed ? 'success' : 'warning'"
-            variant="tonal"
-            class="mb-4"
-          >
+          <v-alert :type="testPassed ? 'success' : 'warning'" variant="tonal" class="mb-4">
             <div class="d-flex align-center">
-              <v-icon
-                :icon="testPassed ? 'mdi-check-circle' : 'mdi-alert-circle'"
-                class="mr-2"
-              />
+              <v-icon :icon="testPassed ? 'mdi-check-circle' : 'mdi-alert-circle'" class="mr-2" />
               <span class="text-subtitle-1">
                 {{ testPassed ? 'Join Test Passed' : 'Join Test Issues Detected' }}
               </span>
               <v-spacer />
-              <v-chip size="small" variant="text">
-                {{ testResult.execution_time_ms }}ms
-              </v-chip>
+              <v-chip size="small" variant="text"> {{ testResult.execution_time_ms }}ms </v-chip>
             </div>
           </v-alert>
 
@@ -153,11 +136,7 @@
                   :color="testResult.cardinality.matches ? 'success' : 'warning'"
                 />
                 <span class="text-body-2 mr-2">Actual:</span>
-                <v-chip
-                  size="small"
-                  :color="cardinalityStatusColor"
-                  variant="tonal"
-                >
+                <v-chip size="small" :color="cardinalityStatusColor" variant="tonal">
                   {{ testResult.cardinality.actual }}
                 </v-chip>
               </div>
@@ -245,9 +224,7 @@
 
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" @click="dialog = false">
-          Close
-        </v-btn>
+        <v-btn variant="text" @click="dialog = false"> Close </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -288,7 +265,7 @@ const {
   cardinalityStatusColor,
   hasWarnings,
   hasRecommendations,
-  matchPercentageText
+  matchPercentageText,
 } = useForeignKeyTester()
 
 const runTest = async () => {

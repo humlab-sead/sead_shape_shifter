@@ -22,24 +22,12 @@
       </div>
 
       <!-- Error Display -->
-      <v-alert
-        v-else-if="error"
-        type="error"
-        variant="tonal"
-        density="compact"
-        closable
-        @click:close="clearError"
-      >
+      <v-alert v-else-if="error" type="error" variant="tonal" density="compact" closable @click:close="clearError">
         {{ error }}
       </v-alert>
 
       <!-- Empty State -->
-      <v-alert
-        v-else-if="!tableSchema"
-        type="info"
-        variant="tonal"
-        density="compact"
-      >
+      <v-alert v-else-if="!tableSchema" type="info" variant="tonal" density="compact">
         Select a table to view its schema
       </v-alert>
 
@@ -87,13 +75,7 @@
             Primary Keys
           </v-card-title>
           <v-card-text>
-            <v-chip
-              v-for="pk in tableSchema.primary_keys"
-              :key="pk"
-              size="small"
-              color="amber"
-              class="mr-1 mb-1"
-            >
+            <v-chip v-for="pk in tableSchema.primary_keys" :key="pk" size="small" color="amber" class="mr-1 mb-1">
               {{ pk }}
             </v-chip>
           </v-card-text>
@@ -145,47 +127,23 @@
           <v-divider />
 
           <v-list density="compact">
-            <v-list-item
-              v-for="column in filteredColumns"
-              :key="column.name"
-              class="column-item"
-            >
+            <v-list-item v-for="column in filteredColumns" :key="column.name" class="column-item">
               <template #prepend>
-                <v-icon
-                  :icon="getColumnIcon(column)"
-                  :color="getColumnColor(column)"
-                  size="small"
-                />
+                <v-icon :icon="getColumnIcon(column)" :color="getColumnColor(column)" size="small" />
               </template>
 
               <v-list-item-title>
                 <span class="font-weight-medium">{{ column.name }}</span>
-                <v-chip
-                  v-if="column.is_primary_key"
-                  size="x-small"
-                  color="amber"
-                  class="ml-2"
-                >
-                  PK
-                </v-chip>
+                <v-chip v-if="column.is_primary_key" size="x-small" color="amber" class="ml-2"> PK </v-chip>
               </v-list-item-title>
 
               <v-list-item-subtitle>
                 <div class="d-flex align-center flex-wrap">
                   <span class="text-monospace mr-2">{{ formatDataType(column) }}</span>
-                  <v-chip
-                    v-if="column.default"
-                    size="x-small"
-                    variant="outlined"
-                    class="mr-1"
-                  >
+                  <v-chip v-if="column.default" size="x-small" variant="outlined" class="mr-1">
                     default: {{ column.default }}
                   </v-chip>
-                  <v-chip
-                    v-if="column.comment"
-                    size="x-small"
-                    variant="text"
-                  >
+                  <v-chip v-if="column.comment" size="x-small" variant="text">
                     {{ column.comment }}
                   </v-chip>
                 </div>
@@ -201,10 +159,13 @@
                     {{ typeMappings[column.name]?.suggested_type }}
                     <v-tooltip activator="parent" location="bottom">
                       {{ typeMappings[column.name]?.reason }}
-                      <br>Confidence: {{ ((typeMappings[column.name]?.confidence ?? 0) * 100).toFixed(0) }}%
+                      <br />Confidence: {{ ((typeMappings[column.name]?.confidence ?? 0) * 100).toFixed(0) }}%
                     </v-tooltip>
                   </v-chip>
-                  <span v-if="(typeMappings[column.name]?.alternatives?.length ?? 0) > 0" class="text-caption text-grey">
+                  <span
+                    v-if="(typeMappings[column.name]?.alternatives?.length ?? 0) > 0"
+                    class="text-caption text-grey"
+                  >
                     or {{ typeMappings[column.name]?.alternatives?.join(', ') }}
                   </span>
                 </div>
@@ -214,20 +175,13 @@
         </v-card>
 
         <!-- Foreign Keys -->
-        <v-card
-          v-if="tableSchema.foreign_keys && tableSchema.foreign_keys.length > 0"
-          variant="outlined"
-          class="mt-4"
-        >
+        <v-card v-if="tableSchema.foreign_keys && tableSchema.foreign_keys.length > 0" variant="outlined" class="mt-4">
           <v-card-title class="text-subtitle-1">
             <v-icon icon="mdi-link-variant" size="small" class="mr-2" />
             Foreign Keys
           </v-card-title>
           <v-list density="compact">
-            <v-list-item
-              v-for="(fk, index) in tableSchema.foreign_keys"
-              :key="index"
-            >
+            <v-list-item v-for="(fk, index) in tableSchema.foreign_keys" :key="index">
               <template #prepend>
                 <v-icon icon="mdi-arrow-right-thin" size="small" />
               </template>
@@ -242,44 +196,20 @@
         </v-card>
 
         <!-- Indexes -->
-        <v-card
-          v-if="tableSchema.indexes && tableSchema.indexes.length > 0"
-          variant="outlined"
-          class="mt-4"
-        >
+        <v-card v-if="tableSchema.indexes && tableSchema.indexes.length > 0" variant="outlined" class="mt-4">
           <v-card-title class="text-subtitle-1">
             <v-icon icon="mdi-speedometer" size="small" class="mr-2" />
             Indexes
           </v-card-title>
           <v-list density="compact">
-            <v-list-item
-              v-for="index in tableSchema.indexes"
-              :key="index.name"
-            >
+            <v-list-item v-for="index in tableSchema.indexes" :key="index.name">
               <template #prepend>
-                <v-icon
-                  :icon="index.is_unique ? 'mdi-key-variant' : 'mdi-speedometer'"
-                  size="small"
-                />
+                <v-icon :icon="index.is_unique ? 'mdi-key-variant' : 'mdi-speedometer'" size="small" />
               </template>
               <v-list-item-title>
                 {{ index.name }}
-                <v-chip
-                  v-if="index.is_unique"
-                  size="x-small"
-                  color="blue"
-                  class="ml-2"
-                >
-                  UNIQUE
-                </v-chip>
-                <v-chip
-                  v-if="index.is_primary"
-                  size="x-small"
-                  color="amber"
-                  class="ml-2"
-                >
-                  PRIMARY
-                </v-chip>
+                <v-chip v-if="index.is_unique" size="x-small" color="blue" class="ml-2"> UNIQUE </v-chip>
+                <v-chip v-if="index.is_primary" size="x-small" color="amber" class="ml-2"> PRIMARY </v-chip>
               </v-list-item-title>
               <v-list-item-subtitle>
                 {{ index.columns.join(', ') }}
@@ -297,11 +227,7 @@ import { ref, computed, watch } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
 import schemaApi from '@/api/schema'
 import type { TableSchema, TypeMapping } from '@/types/schema'
-import {
-  formatDataType,
-  getColumnIcon,
-  getColumnColor,
-} from '@/types/schema'
+import { formatDataType, getColumnIcon, getColumnColor } from '@/types/schema'
 
 // Props
 interface Props {
@@ -335,10 +261,11 @@ const filteredColumns = computed(() => {
   if (!columnSearchQuery.value) return tableSchema.value.columns
 
   const query = columnSearchQuery.value.toLowerCase()
-  return tableSchema.value.columns.filter((column) =>
-    column.name.toLowerCase().includes(query) ||
-    column.data_type.toLowerCase().includes(query) ||
-    (column.comment && column.comment.toLowerCase().includes(query))
+  return tableSchema.value.columns.filter(
+    (column) =>
+      column.name.toLowerCase().includes(query) ||
+      column.data_type.toLowerCase().includes(query) ||
+      (column.comment && column.comment.toLowerCase().includes(query))
   )
 })
 
@@ -350,11 +277,7 @@ async function loadSchema() {
   error.value = null
 
   try {
-    tableSchema.value = await dataSourceStore.fetchTableSchema(
-      props.dataSource,
-      props.tableName,
-      props.schema
-    )
+    tableSchema.value = await dataSourceStore.fetchTableSchema(props.dataSource, props.tableName, props.schema)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load table schema'
     tableSchema.value = null
@@ -366,7 +289,8 @@ async function loadSchema() {
 function refreshSchema() {
   if (props.dataSource) {
     // Invalidate cache and reload
-    dataSourceStore.invalidateSchemaCache(props.dataSource)
+    dataSourceStore
+      .invalidateSchemaCache(props.dataSource)
       .then(() => loadSchema())
       .catch((e) => {
         error.value = e instanceof Error ? e.message : 'Failed to refresh schema'
@@ -384,11 +308,7 @@ async function loadTypeMappings() {
   loadingTypeMappings.value = true
 
   try {
-    typeMappings.value = await schemaApi.getTypeMappings(
-      props.dataSource,
-      props.tableName,
-      { schema: props.schema }
-    )
+    typeMappings.value = await schemaApi.getTypeMappings(props.dataSource, props.tableName, { schema: props.schema })
     showTypeMappings.value = true
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load type mappings'

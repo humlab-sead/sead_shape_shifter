@@ -22,24 +22,12 @@
       </div>
 
       <!-- Error Display -->
-      <v-alert
-        v-else-if="error"
-        type="error"
-        variant="tonal"
-        density="compact"
-        closable
-        @click:close="clearError"
-      >
+      <v-alert v-else-if="error" type="error" variant="tonal" density="compact" closable @click:close="clearError">
         {{ error }}
       </v-alert>
 
       <!-- Empty State -->
-      <v-alert
-        v-else-if="!previewData"
-        type="info"
-        variant="tonal"
-        density="compact"
-      >
+      <v-alert v-else-if="!previewData" type="info" variant="tonal" density="compact">
         Select a table to preview its data
       </v-alert>
 
@@ -47,12 +35,8 @@
       <div v-else>
         <!-- Info Bar -->
         <div class="d-flex align-center mb-3">
-          <v-chip size="small" variant="text">
-            {{ previewData.total_rows.toLocaleString() }} total rows
-          </v-chip>
-          <v-chip size="small" variant="text">
-            Showing {{ previewData.rows.length }} rows
-          </v-chip>
+          <v-chip size="small" variant="text"> {{ previewData.total_rows.toLocaleString() }} total rows </v-chip>
+          <v-chip size="small" variant="text"> Showing {{ previewData.rows.length }} rows </v-chip>
           <v-spacer />
           <v-select
             v-model="limit"
@@ -71,11 +55,7 @@
           <v-table density="compact" fixed-header height="400px">
             <thead>
               <tr>
-                <th
-                  v-for="column in previewData.columns"
-                  :key="column"
-                  class="text-left"
-                >
+                <th v-for="column in previewData.columns" :key="column" class="text-left">
                   {{ column }}
                 </th>
               </tr>
@@ -160,15 +140,11 @@ async function loadPreview() {
   error.value = null
 
   try {
-    previewData.value = await dataSourceStore.previewTable(
-      props.dataSource,
-      props.tableName,
-      {
-        schema: props.schema,
-        limit: limit.value,
-        offset: offset.value,
-      }
-    )
+    previewData.value = await dataSourceStore.previewTable(props.dataSource, props.tableName, {
+      schema: props.schema,
+      limit: limit.value,
+      offset: offset.value,
+    })
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load table data'
     previewData.value = null
@@ -204,19 +180,19 @@ function formatCellValue(value: any): string {
   if (value === null || value === undefined) {
     return 'NULL'
   }
-  
+
   if (typeof value === 'boolean') {
     return value ? 'true' : 'false'
   }
-  
+
   if (typeof value === 'object') {
     return JSON.stringify(value)
   }
-  
+
   if (typeof value === 'string' && value.length > 100) {
     return value.substring(0, 100) + '...'
   }
-  
+
   return String(value)
 }
 
@@ -224,15 +200,15 @@ function getCellClass(value: any): string {
   if (value === null || value === undefined) {
     return 'text-grey'
   }
-  
+
   if (typeof value === 'number') {
     return 'text-blue'
   }
-  
+
   if (typeof value === 'boolean') {
     return 'text-green'
   }
-  
+
   return ''
 }
 

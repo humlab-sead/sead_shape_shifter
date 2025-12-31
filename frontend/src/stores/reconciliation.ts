@@ -9,7 +9,7 @@ import type {
   EntityReconciliationSpec,
   ReconciliationCandidate,
   AutoReconcileResult,
-  ReconciliationPreviewRow
+  ReconciliationPreviewRow,
 } from '@/types/reconciliation'
 import { apiClient } from '@/api/client'
 
@@ -52,10 +52,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.put(
-        `/configurations/${configName}/reconciliation`,
-        config.value
-      )
+      const response = await apiClient.put(`/configurations/${configName}/reconciliation`, config.value)
       config.value = response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to save reconciliation config'
@@ -103,14 +100,11 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.post(
-        `/configurations/${configName}/reconciliation/${entityName}/mapping`,
-        {
-          source_values: sourceValues,
-          sead_id: seadId,
-          notes
-        }
-      )
+      const response = await apiClient.post(`/configurations/${configName}/reconciliation/${entityName}/mapping`, {
+        source_values: sourceValues,
+        sead_id: seadId,
+        notes,
+      })
       config.value = response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to update mapping'
@@ -121,20 +115,13 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function deleteMapping(
-    configName: string,
-    entityName: string,
-    sourceValues: any[]
-  ) {
+  async function deleteMapping(configName: string, entityName: string, sourceValues: any[]) {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.delete(
-        `/configurations/${configName}/reconciliation/${entityName}/mapping`,
-        {
-          params: { source_values: JSON.stringify(sourceValues) }
-        }
-      )
+      const response = await apiClient.delete(`/configurations/${configName}/reconciliation/${entityName}/mapping`, {
+        params: { source_values: JSON.stringify(sourceValues) },
+      })
       config.value = response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to delete mapping'
@@ -155,10 +142,9 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
 
     try {
-      const response = await apiClient.get(
-        `/configurations/${configName}/reconciliation/${entityName}/suggest`,
-        { params: { query } }
-      )
+      const response = await apiClient.get(`/configurations/${configName}/reconciliation/${entityName}/suggest`, {
+        params: { query },
+      })
       return response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to get suggestions'
@@ -197,6 +183,6 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     deleteMapping,
     suggestEntities,
     clearError,
-    $reset
+    $reset,
   }
 })

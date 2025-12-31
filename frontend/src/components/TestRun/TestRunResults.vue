@@ -14,12 +14,7 @@
     </v-card>
 
     <!-- Global Validation Issues -->
-    <v-alert
-      v-if="result.validation_issues.length > 0"
-      type="warning"
-      variant="tonal"
-      class="mb-4"
-    >
+    <v-alert v-if="result.validation_issues.length > 0" type="warning" variant="tonal" class="mb-4">
       <strong>Validation Issues ({{ result.validation_issues.length }})</strong>
       <br />
       Found {{ result.validation_issues.length }} validation issue(s) across entities

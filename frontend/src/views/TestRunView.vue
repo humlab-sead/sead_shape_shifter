@@ -7,12 +7,7 @@
           <div class="d-flex justify-space-between align-center">
             <h1 class="text-h4">Project Test Run</h1>
             <div class="d-flex ga-2">
-              <v-btn
-                variant="outlined"
-                prepend-icon="mdi-refresh"
-                @click="handleReset"
-                :disabled="isRunning"
-              >
+              <v-btn variant="outlined" prepend-icon="mdi-refresh" @click="handleReset" :disabled="isRunning">
                 Reset
               </v-btn>
               <v-btn
@@ -34,9 +29,7 @@
         <v-col>
           <v-alert type="info" variant="tonal">
             <div class="d-flex justify-space-between align-center">
-              <div>
-                <strong>Project:</strong> {{ configName }}
-              </div>
+              <div><strong>Project:</strong> {{ configName }}</div>
               <v-chip
                 v-if="testResult"
                 :color="getStatusColor(testResult.status)"
@@ -44,13 +37,7 @@
                 variant="flat"
               >
                 {{ testResult.status.toUpperCase() }}
-                <v-progress-circular
-                  v-if="isPolling"
-                  indeterminate
-                  size="16"
-                  width="2"
-                  class="ml-2"
-                />
+                <v-progress-circular v-if="isPolling" indeterminate size="16" width="2" class="ml-2" />
               </v-chip>
             </div>
           </v-alert>
@@ -60,12 +47,7 @@
       <!-- Error Alert -->
       <v-row v-if="error" class="mb-4">
         <v-col>
-          <v-alert
-            type="error"
-            variant="tonal"
-            closable
-            @click:close="error = null"
-          >
+          <v-alert type="error" variant="tonal" closable @click:close="error = null">
             <strong>Error:</strong> {{ error }}
           </v-alert>
         </v-col>

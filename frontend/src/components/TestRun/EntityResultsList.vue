@@ -1,8 +1,6 @@
 <template>
   <div class="entity-results-list">
-    <div v-if="entities.length === 0" class="text-center text-medium-emphasis py-8">
-      No entities in this category
-    </div>
+    <div v-if="entities.length === 0" class="text-center text-medium-emphasis py-8">No entities in this category</div>
 
     <v-expansion-panels v-else>
       <v-expansion-panel v-for="entity in entities" :key="entity.entity_name">
@@ -49,9 +47,7 @@
 
             <!-- Validation Issues -->
             <div v-if="entity.validation_issues.length > 0" class="mb-4">
-              <h4 class="text-subtitle-2 mb-2">
-                Validation Issues ({{ entity.validation_issues.length }})
-              </h4>
+              <h4 class="text-subtitle-2 mb-2">Validation Issues ({{ entity.validation_issues.length }})</h4>
               <v-alert
                 v-for="(issue, idx) in entity.validation_issues"
                 :key="idx"

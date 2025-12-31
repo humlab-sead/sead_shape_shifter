@@ -1,13 +1,7 @@
 <template>
-  <v-alert
-    :type="type"
-    :variant="variant"
-    prominent
-    border="start"
-    :closable="closable"
-  >
+  <v-alert :type="type" :variant="variant" prominent border="start" :closable="closable">
     <v-alert-title v-if="title">{{ title }}</v-alert-title>
-    
+
     <p>{{ message }}</p>
 
     <p v-if="details" class="text-caption mt-2">
@@ -15,12 +9,7 @@
     </p>
 
     <slot name="actions">
-      <v-btn
-        v-if="actionText"
-        variant="outlined"
-        class="mt-4"
-        @click="$emit('action')"
-      >
+      <v-btn v-if="actionText" variant="outlined" class="mt-4" @click="$emit('action')">
         {{ actionText }}
       </v-btn>
     </slot>

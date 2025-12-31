@@ -12,10 +12,7 @@ export const validationApi = {
   /**
    * Validate specific entity
    */
-  validateEntity: async (
-    configName: string,
-    entityName: string
-  ): Promise<ValidationResult> => {
+  validateEntity: async (configName: string, entityName: string): Promise<ValidationResult> => {
     return apiRequest<ValidationResult>({
       method: 'POST',
       url: `/configurations/${configName}/entities/${entityName}/validate`,
@@ -35,9 +32,7 @@ export const validationApi = {
   /**
    * Check for circular dependencies
    */
-  checkCircularDependencies: async (
-    configName: string
-  ): Promise<CircularDependencyCheck> => {
+  checkCircularDependencies: async (configName: string): Promise<CircularDependencyCheck> => {
     return apiRequest<CircularDependencyCheck>({
       method: 'POST',
       url: `/configurations/${configName}/dependencies/check`,

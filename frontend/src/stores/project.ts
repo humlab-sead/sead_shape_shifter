@@ -3,12 +3,7 @@ import { ref, computed } from 'vue'
 import { api } from '@/api'
 import { useSessionStore } from '@/stores/session'
 import type { Project, ProjectMetadata, ValidationResult } from '@/types'
-import type {
-  ProjectCreateRequest,
-  ProjectUpdateRequest,
-  BackupInfo,
-  MetadataUpdateRequest,
-} from '@/api/projects'
+import type { ProjectCreateRequest, ProjectUpdateRequest, BackupInfo, MetadataUpdateRequest } from '@/api/projects'
 
 export const useProjectStore = defineStore('project', () => {
   // State
@@ -99,7 +94,7 @@ export const useProjectStore = defineStore('project', () => {
     error.value = null
     try {
       const config = await api.projects.update(name, data)
-      
+
       // Update metadata in list
       const index = projects.value.findIndex((c) => c.name === name)
       if (index !== -1) {
@@ -112,7 +107,7 @@ export const useProjectStore = defineStore('project', () => {
           is_valid: config.metadata?.is_valid,
         }
       }
-      
+
       selectedProject.value = config
       hasUnsavedChanges.value = false
       return config
@@ -129,12 +124,12 @@ export const useProjectStore = defineStore('project', () => {
     error.value = null
     try {
       const config = await api.projects.updateMetadata(name, data)
-      
+
       // Update metadata in list
       const oldName = name
       const newName = config.metadata?.name ?? name
       const index = projects.value.findIndex((c) => c.name === oldName)
-      
+
       if (index !== -1 && config.metadata) {
         projects.value[index] = {
           name: config.metadata.name,
@@ -148,10 +143,10 @@ export const useProjectStore = defineStore('project', () => {
           default_entity: config.metadata.default_entity,
         }
       }
-      
+
       selectedProject.value = config
       hasUnsavedChanges.value = false
-      
+
       return config
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update metadata'
@@ -212,7 +207,7 @@ export const useProjectStore = defineStore('project', () => {
     try {
       const config = await api.projects.restore(name, { backup_path: backupPath })
       selectedProject.value = config
-      
+
       // Update in list if exists
       const index = projects.value.findIndex((c) => c.name === name)
       if (index !== -1 && config.metadata) {
@@ -225,7 +220,7 @@ export const useProjectStore = defineStore('project', () => {
           is_valid: config.metadata.is_valid,
         }
       }
-      
+
       hasUnsavedChanges.value = false
       return config
     } catch (err) {
@@ -238,7 +233,7 @@ export const useProjectStore = defineStore('project', () => {
 
   function markAsChanged() {
     hasUnsavedChanges.value = true
-    
+
     // Mark session as modified if active
     const sessionStore = useSessionStore()
     if (sessionStore.hasActiveSession) {
@@ -273,7 +268,7 @@ export const useProjectStore = defineStore('project', () => {
 
     try {
       const config = await api.projects.update(name, updateData)
-      
+
       // Update metadata in list
       const index = projects.value.findIndex((c) => c.name === name)
       if (index !== -1 && config.metadata) {
@@ -286,7 +281,7 @@ export const useProjectStore = defineStore('project', () => {
           is_valid: config.metadata.is_valid,
         }
       }
-      
+
       selectedProject.value = config
       hasUnsavedChanges.value = false
 

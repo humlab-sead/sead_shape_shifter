@@ -14,12 +14,7 @@
               hide-details
               style="min-width: 250px"
             />
-            <v-btn
-              variant="outlined"
-              prepend-icon="mdi-refresh"
-              :loading="loading"
-              @click="handleRefresh"
-            >
+            <v-btn variant="outlined" prepend-icon="mdi-refresh" :loading="loading" @click="handleRefresh">
               Refresh
             </v-btn>
           </div>
@@ -28,11 +23,7 @@
     </v-row>
 
     <!-- Circular Dependencies Alert -->
-    <circular-dependency-alert
-      v-if="hasCircularDependencies"
-      :cycles="cycles"
-      class="mb-4"
-    />
+    <circular-dependency-alert v-if="hasCircularDependencies" :cycles="cycles" class="mb-4" />
 
     <!-- Graph Controls -->
     <v-row>
@@ -40,22 +31,13 @@
         <v-card variant="outlined" class="mb-4">
           <v-card-text class="d-flex align-center gap-4">
             <v-btn-toggle v-model="layoutType" mandatory density="compact">
-              <v-btn value="hierarchical" prepend-icon="mdi-file-tree">
-                Hierarchical
-              </v-btn>
-              <v-btn value="force" prepend-icon="mdi-vector-arrange-above">
-                Force-Directed
-              </v-btn>
+              <v-btn value="hierarchical" prepend-icon="mdi-file-tree"> Hierarchical </v-btn>
+              <v-btn value="force" prepend-icon="mdi-vector-arrange-above"> Force-Directed </v-btn>
             </v-btn-toggle>
 
             <v-divider vertical />
 
-            <v-switch
-              v-model="showLabels"
-              label="Show Labels"
-              density="compact"
-              hide-details
-            />
+            <v-switch v-model="showLabels" label="Show Labels" density="compact" hide-details />
 
             <v-switch
               v-model="highlightCycles"
@@ -67,12 +49,8 @@
 
             <v-spacer />
 
-            <v-chip prepend-icon="mdi-cube-outline">
-              {{ statistics.nodeCount }} nodes
-            </v-chip>
-            <v-chip prepend-icon="mdi-arrow-right">
-              {{ statistics.edgeCount }} edges
-            </v-chip>
+            <v-chip prepend-icon="mdi-cube-outline"> {{ statistics.nodeCount }} nodes </v-chip>
+            <v-chip prepend-icon="mdi-arrow-right"> {{ statistics.edgeCount }} edges </v-chip>
           </v-card-text>
         </v-card>
       </v-col>
@@ -116,12 +94,7 @@
     </v-row>
 
     <!-- Entity Details Drawer -->
-    <v-navigation-drawer
-      v-model="showDetailsDrawer"
-      location="right"
-      temporary
-      width="400"
-    >
+    <v-navigation-drawer v-model="showDetailsDrawer" location="right" temporary width="400">
       <template v-if="selectedNode">
         <v-toolbar color="primary">
           <v-toolbar-title>{{ selectedNode.label }}</v-toolbar-title>
@@ -142,12 +115,7 @@
           <v-list-item>
             <v-list-item-title>Dependencies</v-list-item-title>
             <v-list-item-subtitle>
-              <v-chip
-                v-for="dep in getDependenciesOf(selectedNode.id)"
-                :key="dep"
-                size="small"
-                class="mr-1 mt-1"
-              >
+              <v-chip v-for="dep in getDependenciesOf(selectedNode.id)" :key="dep" size="small" class="mr-1 mt-1">
                 {{ dep }}
               </v-chip>
               <span v-if="getDependenciesOf(selectedNode.id).length === 0">None</span>
@@ -179,12 +147,7 @@
         <v-divider />
 
         <v-card-actions>
-          <v-btn
-            variant="text"
-            prepend-icon="mdi-pencil"
-            block
-            @click="handleEditEntity(selectedNode.id)"
-          >
+          <v-btn variant="text" prepend-icon="mdi-pencil" block @click="handleEditEntity(selectedNode.id)">
             Edit Entity
           </v-btn>
         </v-card-actions>
@@ -313,7 +276,7 @@ function renderGraph() {
           const dy = nodes[k].y - nodes[j].y
           const distance = Math.sqrt(dx * dx + dy * dy) || 1
           const force = repulsion / (distance * distance)
-          
+
           nodes[j].vx -= (dx / distance) * force
           nodes[j].vy -= (dy / distance) * force
           nodes[k].vx += (dx / distance) * force
@@ -362,9 +325,13 @@ function renderGraph() {
       line.setAttribute('y1', String(sourceNode.y))
       line.setAttribute('x2', String(targetNode.x))
       line.setAttribute('y2', String(targetNode.y))
-      line.setAttribute('stroke', highlightCycles.value && cycles.value.some((cycle) =>
-        cycle.includes(edge.source) && cycle.includes(edge.target)
-      ) ? '#ef5350' : '#999')
+      line.setAttribute(
+        'stroke',
+        highlightCycles.value &&
+          cycles.value.some((cycle) => cycle.includes(edge.source) && cycle.includes(edge.target))
+          ? '#ef5350'
+          : '#999'
+      )
       line.setAttribute('stroke-width', '2')
       line.setAttribute('marker-end', 'url(#arrowhead)')
       svg.appendChild(line)

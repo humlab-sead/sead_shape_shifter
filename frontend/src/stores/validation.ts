@@ -1,12 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
-import type {
-  ValidationResult,
-  ValidationError,
-  DependencyGraph,
-  CircularDependencyCheck,
-} from '@/types'
+import type { ValidationResult, ValidationError, DependencyGraph, CircularDependencyCheck } from '@/types'
 
 export const useValidationStore = defineStore('validation', () => {
   // State
@@ -144,8 +139,7 @@ export const useValidationStore = defineStore('validation', () => {
       circularDependencyCheck.value = await api.validation.checkCircularDependencies(configName)
       return circularDependencyCheck.value
     } catch (err) {
-      error.value =
-        err instanceof Error ? err.message : 'Failed to check circular dependencies'
+      error.value = err instanceof Error ? err.message : 'Failed to check circular dependencies'
       throw err
     } finally {
       loading.value = false

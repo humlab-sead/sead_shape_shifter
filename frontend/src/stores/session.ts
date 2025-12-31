@@ -31,9 +31,7 @@ export const useSessionStore = defineStore('session', () => {
 
   const otherActiveSessions = computed(() => {
     if (!currentSession.value) return []
-    return activeSessions.value.filter(
-      (s) => s.session_id !== currentSession.value?.session_id
-    )
+    return activeSessions.value.filter((s) => s.session_id !== currentSession.value?.session_id)
   })
 
   // Actions
@@ -48,7 +46,7 @@ export const useSessionStore = defineStore('session', () => {
     try {
       const session = await sessionsApi.create(request)
       currentSession.value = session
-      
+
       // Load active sessions to detect concurrent editing
       await refreshActiveSessions()
 
@@ -116,9 +114,7 @@ export const useSessionStore = defineStore('session', () => {
     if (!currentSession.value) return
 
     try {
-      activeSessions.value = await sessionsApi.listActive(
-        currentSession.value.project_name
-      )
+      activeSessions.value = await sessionsApi.listActive(currentSession.value.project_name)
 
       // Update concurrent sessions count
       if (currentSession.value) {

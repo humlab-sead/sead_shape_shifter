@@ -64,7 +64,7 @@ export function useForeignKeyTester() {
         `/configurations/${encodeURIComponent(configName)}/entities/${encodeURIComponent(entityName)}/foreign-keys/${fkIndex}/test`,
         null,
         {
-          params: { sample_size: sampleSize }
+          params: { sample_size: sampleSize },
         }
       )
 
@@ -152,6 +152,6 @@ export function useForeignKeyTester() {
     cardinalityStatusColor,
     hasWarnings,
     hasRecommendations,
-    matchPercentageText
+    matchPercentageText,
   }
 }

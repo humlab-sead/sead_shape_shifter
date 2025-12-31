@@ -2,11 +2,7 @@
   <v-card variant="outlined">
     <v-card-title class="d-flex align-center justify-space-between">
       <span>Connected Data Sources</span>
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-link-plus"
-        @click="showConnectDialog = true"
-      >
+      <v-btn color="primary" prepend-icon="mdi-link-plus" @click="showConnectDialog = true">
         Connect Data Source
       </v-btn>
     </v-card-title>
@@ -31,14 +27,8 @@
     <v-card-text v-else-if="connectedSources.length === 0" class="text-center py-12">
       <v-icon icon="mdi-database-off-outline" size="64" color="grey" />
       <h3 class="text-h6 mt-4 mb-2">No Data Sources Connected</h3>
-      <p class="text-grey mb-4">
-        Connect global data sources to use them in your entities
-      </p>
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-link-plus"
-        @click="showConnectDialog = true"
-      >
+      <p class="text-grey mb-4">Connect global data sources to use them in your entities</p>
+      <v-btn color="primary" prepend-icon="mdi-link-plus" @click="showConnectDialog = true">
         Connect Data Source
       </v-btn>
     </v-card-text>
@@ -58,17 +48,9 @@
         </template>
 
         <template #append>
-          <v-btn
-            icon="mdi-link-off"
-            variant="text"
-            color="error"
-            size="small"
-            @click="handleDisconnect(source.name)"
-          >
+          <v-btn icon="mdi-link-off" variant="text" color="error" size="small" @click="handleDisconnect(source.name)">
             <v-icon>mdi-link-off</v-icon>
-            <v-tooltip activator="parent" location="top">
-              Disconnect
-            </v-tooltip>
+            <v-tooltip activator="parent" location="top"> Disconnect </v-tooltip>
           </v-btn>
         </template>
 
@@ -87,9 +69,7 @@
     <v-dialog v-model="showConnectDialog" max-width="600">
       <v-card>
         <v-card-title>Connect Data Source</v-card-title>
-        <v-card-subtitle>
-          Select a global data source file to connect to this configuration
-        </v-card-subtitle>
+        <v-card-subtitle> Select a global data source file to connect to this configuration </v-card-subtitle>
 
         <v-card-text>
           <v-text-field
@@ -120,9 +100,7 @@
                 </template>
                 <template #subtitle>
                   <span class="text-caption">{{ item.raw.driver }}</span>
-                  <span v-if="item.raw.host" class="text-caption ml-2">
-                    • {{ item.raw.host }}
-                  </span>
+                  <span v-if="item.raw.host" class="text-caption ml-2"> • {{ item.raw.host }} </span>
                 </template>
               </v-list-item>
             </template>
@@ -135,9 +113,7 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showConnectDialog = false">
-            Cancel
-          </v-btn>
+          <v-btn variant="text" @click="showConnectDialog = false"> Cancel </v-btn>
           <v-btn
             color="primary"
             :disabled="!newSourceName || !selectedSourceFile"
@@ -157,7 +133,8 @@
         <v-card-text>
           <p>
             Are you sure you want to disconnect
-            <strong>{{ disconnectingSource }}</strong>?
+            <strong>{{ disconnectingSource }}</strong
+            >?
           </p>
           <p class="text-caption text-warning mt-2">
             <v-icon icon="mdi-alert" size="small" class="mr-1" />
@@ -167,16 +144,8 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showDisconnectDialog = false">
-            Cancel
-          </v-btn>
-          <v-btn
-            color="error"
-            :loading="disconnecting"
-            @click="confirmDisconnect"
-          >
-            Disconnect
-          </v-btn>
+          <v-btn variant="text" @click="showDisconnectDialog = false"> Cancel </v-btn>
+          <v-btn color="error" :loading="disconnecting" @click="confirmDisconnect"> Disconnect </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -217,28 +186,28 @@ const connectedSources = computed(() => {
   return Object.entries(connectedSourcesData.value).map(([name, reference]) => {
     // Parse @include reference to get filename
     const filename = reference.replace('@include:', '').trim()
-    
+
     // Try to find details from loaded data sources
     const details = dataSourceStore.dataSources.find(
-      ds => ds.filename === filename || ds.name === filename.replace('.yml', '')
+      (ds) => ds.filename === filename || ds.name === filename.replace('.yml', '')
     )
-    
+
     return {
       name,
       reference,
       filename,
-      details: details || null
+      details: details || null,
     }
   })
 })
 
 const availableSourceFiles = computed(() => {
-  return dataSourceStore.sortedDataSources.map(ds => ({
+  return dataSourceStore.sortedDataSources.map((ds) => ({
     filename: ds.filename || `${ds.name}.yml`,
     display: `${ds.name} (${ds.filename || `${ds.name}.yml`})`,
     driver: ds.driver,
     host: ds.host,
-    name: ds.name
+    name: ds.name,
   }))
 })
 
@@ -246,11 +215,11 @@ const availableSourceFiles = computed(() => {
 async function loadDataSources() {
   loading.value = true
   error.value = null
-  
+
   try {
     // Load connected sources for this configuration
     connectedSourcesData.value = await configurationStore.getConfigurationDataSources(props.configName)
-    
+
     // Only load global data sources if not already loaded (avoid duplicate fetch)
     if (dataSourceStore.dataSourceCount === 0) {
       await dataSourceStore.fetchDataSources()
@@ -264,25 +233,21 @@ async function loadDataSources() {
 
 async function handleConnect() {
   if (!newSourceName.value || !selectedSourceFile.value) return
-  
+
   connecting.value = true
   connectError.value = null
-  
+
   try {
-    await configurationStore.connectDataSource(
-      props.configName,
-      newSourceName.value,
-      selectedSourceFile.value
-    )
-    
+    await configurationStore.connectDataSource(props.configName, newSourceName.value, selectedSourceFile.value)
+
     // Reload data sources
     await loadDataSources()
-    
+
     // Close dialog and reset
     showConnectDialog.value = false
     newSourceName.value = ''
     selectedSourceFile.value = null
-    
+
     emit('updated')
   } catch (e) {
     connectError.value = e instanceof Error ? e.message : 'Failed to connect data source'
@@ -298,22 +263,19 @@ function handleDisconnect(sourceName: string) {
 
 async function confirmDisconnect() {
   if (!disconnectingSource.value) return
-  
+
   disconnecting.value = true
-  
+
   try {
-    await configurationStore.disconnectDataSource(
-      props.configName,
-      disconnectingSource.value
-    )
-    
+    await configurationStore.disconnectDataSource(props.configName, disconnectingSource.value)
+
     // Reload data sources
     await loadDataSources()
-    
+
     // Close dialog
     showDisconnectDialog.value = false
     disconnectingSource.value = null
-    
+
     emit('updated')
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to disconnect data source'

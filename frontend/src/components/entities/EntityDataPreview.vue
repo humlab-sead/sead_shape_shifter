@@ -4,37 +4,20 @@
       <v-icon icon="mdi-eye-outline" class="mr-2" size="small" />
       <span class="text-body-1">Entity Data Preview</span>
       <v-spacer />
-      
+
       <!-- Cache indicator -->
-      <v-chip
-        v-if="previewData?.cache_hit"
-        size="x-small"
-        color="info"
-        variant="flat"
-        class="mr-2"
-      >
+      <v-chip v-if="previewData?.cache_hit" size="x-small" color="info" variant="flat" class="mr-2">
         <v-icon icon="mdi-cached" start size="x-small" />
         Cached
       </v-chip>
 
       <!-- Row count -->
-      <v-chip
-        v-if="previewData"
-        size="x-small"
-        variant="text"
-        class="mr-2"
-      >
+      <v-chip v-if="previewData" size="x-small" variant="text" class="mr-2">
         {{ previewData.total_rows_in_preview }} / {{ previewData.estimated_total_rows || '?' }} rows
       </v-chip>
 
       <!-- Refresh button -->
-      <v-btn
-        icon="mdi-refresh"
-        size="small"
-        variant="text"
-        :loading="loading"
-        @click="emit('refresh')"
-      />
+      <v-btn icon="mdi-refresh" size="small" variant="text" :loading="loading" @click="emit('refresh')" />
     </v-card-title>
 
     <v-divider />
@@ -47,13 +30,7 @@
       </div>
 
       <!-- Error Display -->
-      <v-alert
-        v-else-if="error"
-        type="error"
-        variant="tonal"
-        density="compact"
-        class="ma-4"
-      >
+      <v-alert v-else-if="error" type="error" variant="tonal" density="compact" class="ma-4">
         {{ error }}
       </v-alert>
 
@@ -65,33 +42,20 @@
         density="compact"
         class="ma-4"
       >
-        <template v-if="!previewData">
-          No preview data available
-        </template>
-        <template v-else>
-          Entity has no data rows
-        </template>
+        <template v-if="!previewData"> No preview data available </template>
+        <template v-else> Entity has no data rows </template>
       </v-alert>
 
       <!-- Data Table -->
       <div v-else>
         <!-- Metadata chips and controls -->
         <div class="d-flex flex-wrap gap-2 pa-3 metadata-bar align-center">
-          <v-chip
-            v-if="previewData.has_dependencies"
-            size="small"
-            variant="outlined"
-            color="primary"
-          >
+          <v-chip v-if="previewData.has_dependencies" size="small" variant="outlined" color="primary">
             <v-icon icon="mdi-link-variant" start size="small" />
             {{ previewData.dependencies_loaded.length }} dependencies
           </v-chip>
-          
-          <v-chip
-            size="small"
-            variant="outlined"
-            color="success"
-          >
+
+          <v-chip size="small" variant="outlined" color="success">
             <v-icon icon="mdi-clock-outline" start size="small" />
             {{ previewData.execution_time_ms }}ms
           </v-chip>
@@ -111,11 +75,7 @@
             {{ Object.keys(columnFilters).length }} filters
           </v-chip>
 
-          <v-chip
-            v-if="filteredRows.length !== previewData.rows.length"
-            size="small"
-            variant="text"
-          >
+          <v-chip v-if="filteredRows.length !== previewData.rows.length" size="small" variant="text">
             Showing {{ filteredRows.length }} / {{ previewData.rows.length }} rows
           </v-chip>
         </div>
@@ -135,28 +95,12 @@
                   @click="toggleSort(column.name)"
                 >
                   <div class="d-flex align-center gap-1">
-                    <v-icon
-                      v-if="column.is_key"
-                      icon="mdi-key"
-                      size="x-small"
-                      color="warning"
-                      class="mr-1"
-                    />
+                    <v-icon v-if="column.is_key" icon="mdi-key" size="x-small" color="warning" class="mr-1" />
                     <span class="font-weight-medium">{{ column.name }}</span>
-                    <v-chip
-                      size="x-small"
-                      variant="flat"
-                      :color="getTypeColor(column.data_type)"
-                      class="ml-1"
-                    >
+                    <v-chip size="x-small" variant="flat" :color="getTypeColor(column.data_type)" class="ml-1">
                       {{ column.data_type }}
                     </v-chip>
-                    <v-icon
-                      v-if="column.nullable"
-                      icon="mdi-null"
-                      size="x-small"
-                      color="grey"
-                    />
+                    <v-icon v-if="column.nullable" icon="mdi-null" size="x-small" color="grey" />
                     <v-spacer />
                     <v-icon
                       :icon="getSortIcon(column.name)"
@@ -168,11 +112,7 @@
               </tr>
               <!-- Column filters -->
               <tr class="filter-row">
-                <th
-                  v-for="column in previewData.columns"
-                  :key="`filter-${column.name}`"
-                  class="pa-1"
-                >
+                <th v-for="column in previewData.columns" :key="`filter-${column.name}`" class="pa-1">
                   <v-text-field
                     v-model="columnFilters[column.name]"
                     density="compact"
@@ -190,16 +130,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="(row, idx) in filteredRows"
-                :key="idx"
-                :class="{ 'striped-row': idx % 2 === 0 }"
-              >
-                <td
-                  v-for="column in previewData.columns"
-                  :key="column.name"
-                  class="text-left"
-                >
+              <tr v-for="(row, idx) in filteredRows" :key="idx" :class="{ 'striped-row': idx % 2 === 0 }">
+                <td v-for="column in previewData.columns" :key="column.name" class="text-left">
                   <span
                     v-if="row[column.name] === null || row[column.name] === undefined"
                     class="text-grey font-italic"
@@ -246,30 +178,30 @@ const columnFilters = ref<Record<string, string>>({})
 // Computed filtered and sorted rows
 const filteredRows = computed(() => {
   if (!props.previewData) return []
-  
+
   let rows = [...props.previewData.rows]
-  
+
   // Apply column filters
   Object.entries(columnFilters.value).forEach(([column, filterText]) => {
     if (filterText.trim()) {
-      rows = rows.filter(row => {
+      rows = rows.filter((row) => {
         const value = row[column]
         if (value === null || value === undefined) return false
         return String(value).toLowerCase().includes(filterText.toLowerCase())
       })
     }
   })
-  
+
   // Apply sorting
   if (sortColumn.value) {
     rows.sort((a, b) => {
       const aVal = a[sortColumn.value!]
       const bVal = b[sortColumn.value!]
-      
+
       // Handle nulls
       if (aVal === null || aVal === undefined) return 1
       if (bVal === null || bVal === undefined) return -1
-      
+
       // Compare values
       let comparison = 0
       if (typeof aVal === 'number' && typeof bVal === 'number') {
@@ -277,11 +209,11 @@ const filteredRows = computed(() => {
       } else {
         comparison = String(aVal).localeCompare(String(bVal))
       }
-      
+
       return sortDirection.value === 'asc' ? comparison : -comparison
     })
   }
-  
+
   return rows
 })
 
