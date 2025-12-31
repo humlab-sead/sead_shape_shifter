@@ -60,7 +60,7 @@
         <v-col>
           <v-card>
             <v-card-text>
-              <TestRunConfig
+              <TestRunProject
                 v-model:options="options"
                 v-model:selected-entities="selectedEntities"
                 :entities="availableEntities"
@@ -109,7 +109,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import TestRunConfig from '@/components/testrun/TestRunConfig.vue'
+import TestRunProject from '@/components/testrun/TestRunProject.vue'
 import TestRunProgress from '@/components/testrun/TestRunProgress.vue'
 import TestRunResults from '@/components/testrun/TestRunResults.vue'
 import testRunApi from '@/api/testRunApi'

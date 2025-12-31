@@ -1,5 +1,5 @@
 <template>
-  <div class="test-run-config">
+  <div class="test-run-project">
     <h3 class="text-h6 mb-4">Test Run Project</h3>
 
     <v-form>
@@ -159,7 +159,7 @@ const handleClear = () => {
 </script>
 
 <style scoped>
-.test-run-config {
+.test-run-project {
   width: 100%;
 }
 </style>

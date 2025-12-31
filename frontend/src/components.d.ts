@@ -43,7 +43,7 @@ declare module 'vue' {
     SqlEditor: typeof import('./components/common/SqlEditor.vue')['default']
     SuggestionsPanel: typeof import('./components/entities/SuggestionsPanel.vue')['default']
     TableDetailsPanel: typeof import('./components/TableDetailsPanel.vue')['default']
-    TestRunConfig: typeof import('./components/testrun/TestRunConfig.vue')['default']
+    TestRunProject: typeof import('./components/testrun/TestRunProject.vue')['default']
     TestRunProgress: typeof import('./components/testrun/TestRunProgress.vue')['default']
     TestRunResults: typeof import('./components/testrun/TestRunResults.vue')['default']
     ThemeColorPicker: typeof import('./components/ThemeColorPicker.vue')['default']
