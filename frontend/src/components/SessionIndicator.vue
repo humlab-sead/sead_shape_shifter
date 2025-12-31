@@ -36,8 +36,8 @@
         <v-icon icon="mdi-alert" color="warning" size="small" class="mr-2" />
         <span class="text-caption">
           <strong>Warning:</strong> {{ concurrentEditors }} other
-          {{ concurrentEditors === 1 ? 'session is' : 'sessions are' }} editing this project. Changes may
-          conflict. Save carefully.
+          {{ concurrentEditors === 1 ? 'session is' : 'sessions are' }} editing this project. Changes may conflict. Save
+          carefully.
         </span>
       </div>
     </v-expand-transition>
