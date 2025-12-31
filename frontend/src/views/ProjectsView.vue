@@ -140,7 +140,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjects } from '@/composables'
 import type { ProjectMetadata } from '@/types'
-import CreateConfigurationDialog from '@/components/configurations/CreateConfigurationDialog.vue'
+import CreateConfigurationDialog from '@/components/configurations/CreateProjectDialog.vue'
 import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDialog.vue'
 
 const router = useRouter()

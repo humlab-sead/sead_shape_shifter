@@ -13,7 +13,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/projects',
     name: 'projects',
-    component: () => import('@/views/ConfigurationsView.vue'),
+    component: () => import('@/views/ProjectsView.vue'),
     meta: {
       title: 'Projects',
     },
