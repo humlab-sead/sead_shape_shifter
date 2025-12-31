@@ -37,7 +37,7 @@ const {
 
 onMounted(async () => {
   await startSession('my_config')
-  await configStore.selectConfiguration('my_config')
+  await configStore.selectProject('my_config')
 })
 
 onUnmounted(async () => {

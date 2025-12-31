@@ -2,17 +2,17 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
 import { useSessionStore } from '@/stores/session'
-import type { Project, ConfigMetadata, ValidationResult } from '@/types'
+import type { Project, ProjectMetadata, ValidationResult } from '@/types'
 import type {
-  ConfigurationCreateRequest,
-  ConfigurationUpdateRequest,
+  ProjectCreateRequest,
+  ProjectUpdateRequest,
   BackupInfo,
   MetadataUpdateRequest,
 } from '@/api/projects'
 
 export const useProjectStore = defineStore('project', () => {
   // State
-  const projects = ref<ConfigMetadata[]>([])
+  const projects = ref<ProjectMetadata[]>([])
   const selectedProject = ref<Project | null>(null)
   const validationResult = ref<ValidationResult | null>(null)
   const backups = ref<BackupInfo[]>([])

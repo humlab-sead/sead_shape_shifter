@@ -22,7 +22,7 @@ class ShapeShiftService:
     def __init__(self, project_service: ProjectService, ttl_seconds: int = 300):
         self.project_service: ProjectService = project_service
         self.cache: ShapeShiftCache = ShapeShiftCache(ttl_seconds=ttl_seconds)  # 5 minute cache
-        self.config_cache = ShapeShiftProjectCache(project_service)
+        self.project_cache = ShapeShiftProjectCache(project_service)
         self.settings: Settings = settings
 
     async def preview_entity(self, project_name: str, entity_name: str, limit: int | None = 50) -> PreviewResult:
@@ -32,7 +32,7 @@ class ShapeShiftService:
         Uses cached DataFrames to reuse dependencies and target entity from previous runs.
 
         Args:
-            project_name: Name of the configuration file
+            project_name: Name of the project file
             entity_name: Name of the entity to preview
             limit: Maximum number of rows to return (default 50). Use None for all rows.
 
@@ -40,36 +40,36 @@ class ShapeShiftService:
             PreviewResult with data and metadata
 
         Raises:
-            ValueError: If configuration or entity not found
+            ValueError: If project or entity not found
             RuntimeError: If preview fails
         """
         start_time: float = time.time()
 
-        shapeshift_cfg: ShapeShiftProject = await self.config_cache.get_config(project_name)
-        config_version: int = self.get_config_version(project_name)
+        project: ShapeShiftProject = await self.project_cache.get_project(project_name)
+        project_version: int = self.get_project_version(project_name)
 
-        if entity_name not in shapeshift_cfg.tables:
-            raise ValueError(f"Entity '{entity_name}' not found in configuration")
+        if entity_name not in project.tables:
+            raise ValueError(f"Entity '{entity_name}' not found in project")
 
-        entity_cfg: TableConfig = shapeshift_cfg.tables[entity_name]
+        entity_cfg: TableConfig = project.tables[entity_name]
 
         cached_data: ShapeShiftCache.CacheCheckResult = self.cache.fetch_cached_entity_data(
-            project_name, entity_name, config_version, entity_cfg, shapeshift_cfg
+            project_name, entity_name, project_version, entity_cfg, project
         )
 
         table_store: dict[str, pd.DataFrame]
         if cached_data.data is not None:
             table_store = {entity_name: cached_data.data} | cached_data.dependencies
         else:
-            resolved_cfg: ShapeShiftProject = shapeshift_cfg.clone().resolve(filename=shapeshift_cfg.filename, **self.settings.env_opts)
+            resolved_cfg: ShapeShiftProject = project.clone().resolve(filename=project.filename, **self.settings.env_opts)
             table_store = await self.shapeshift(
-                config=resolved_cfg,
+                project=resolved_cfg,
                 entity_name=entity_name,
                 initial_table_store=cached_data.dependencies,
             )
 
-            entity_configs: dict[str, TableConfig] = {name: shapeshift_cfg.get_table(name) for name in table_store.keys()}
-            self.cache.set_table_store(project_name, table_store, entity_name, config_version, entity_configs)
+            entities: dict[str, TableConfig] = {name: project.get_table(name) for name in table_store.keys()}
+            self.cache.set_table_store(project_name, table_store, entity_name, project_version, entities)
 
         result: PreviewResult = PreviewResultBuilder().build(
             entity_name=entity_name,
@@ -86,7 +86,7 @@ class ShapeShiftService:
 
     async def shapeshift(
         self,
-        config: ShapeShiftProject,
+        project: ShapeShiftProject,
         entity_name: str,
         initial_table_store: dict[str, pd.DataFrame],
     ) -> dict[str, pd.DataFrame]:
@@ -94,9 +94,8 @@ class ShapeShiftService:
         Run ShapeShifter to produce entity data.
 
         Args:
-            config: ShapeShiftProject instance
-            entity_name: Target entity name
-            entity_config: Target entity configuration
+            project: ShapeShiftProject instance
+            entity: Target entity name
             initial_table_store: Pre-existing cached entities to reuse
 
         Returns:
@@ -104,9 +103,9 @@ class ShapeShiftService:
         """
         try:
             shapeshifter: ShapeShifter = ShapeShifter(
-                config=config,
+                project=project,
                 table_store=initial_table_store,
-                default_entity=config.metadata.default_entity,
+                default_entity=project.metadata.default_entity,
                 target_entities={entity_name},
             )
 
@@ -128,7 +127,7 @@ class ShapeShiftService:
         Get a sample of entity data (larger limit for validation/testing).
 
         Args:
-            project_name: Name of the configuration file
+            project_name: Name of the project file
             entity_name: Name of the entity
             limit: Maximum number of rows (default 100, max 1000)
 
@@ -138,12 +137,12 @@ class ShapeShiftService:
         return await self.preview_entity(project_name, entity_name, limit)
 
     def invalidate_cache(self, project_name: str, entity_name: str | None = None) -> None:
-        """Invalidate preview cache for a configuration or specific entity."""
+        """Invalidate preview cache for a project or specific entity."""
         self.cache.invalidate(project_name, entity_name)
         logger.info(f"Invalidated preview cache for {project_name}:{entity_name or 'all'}")
 
-    def get_config_version(self, project_name: str) -> int:
-        """Get the current version of a configuration from ApplicationState."""
+    def get_project_version(self, project_name: str) -> int:
+        """Get the current version of a project from ApplicationState."""
         with contextlib.suppress(RuntimeError):
             app_state: ApplicationState = get_app_state()
             return app_state.get_version(project_name)
@@ -164,7 +163,7 @@ class PreviewResultBuilder:
 
         Args:
             entity_name: Name of the entity
-            entity_cfg: Entity configuration
+            entity_cfg: Entity project
             table_store: Dictionary of DataFrames
             limit: Maximum rows to return, or None for all rows
             cache_hit: Whether result came from cache

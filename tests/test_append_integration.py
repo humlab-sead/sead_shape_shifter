@@ -51,7 +51,7 @@ class TestAppendIntegration:
 
         normalizer: ShapeShifter = ShapeShifter(
             table_store={"survey": survey_df},
-            config=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
+            project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
         # Run normalization

@@ -4,7 +4,7 @@
 
 import type { Entity } from './entity'
 
-export interface ConfigMetadata {
+export interface ProjectMetadata {
   name: string
   description?: string | null
   version?: string | null
@@ -19,7 +19,7 @@ export interface ConfigMetadata {
 export interface Project {
   entities: Record<string, Entity>
   options?: Record<string, any>
-  metadata?: ConfigMetadata | null
+  metadata?: ProjectMetadata | null
 }
 
 // Helper types for API operations

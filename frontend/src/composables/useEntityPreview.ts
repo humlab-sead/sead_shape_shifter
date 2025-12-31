@@ -43,7 +43,7 @@ export function useEntityPreview() {
     limit: number | null = 50
   ): Promise<PreviewResult | null> {
     if (!configName || !entityName) {
-      error.value = 'Configuration and entity name are required'
+      error.value = 'Project and entity name are required'
       return null
     }
 
@@ -89,7 +89,7 @@ export function useEntityPreview() {
     limit: number = 100
   ): Promise<PreviewResult | null> {
     if (!configName || !entityName) {
-      error.value = 'Configuration and entity name are required'
+      error.value = 'Project and entity name are required'
       return null
     }
 

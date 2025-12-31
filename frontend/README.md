@@ -1,6 +1,6 @@
-# SEAD Shape Shifter Configuration Editor - Frontend
+# SEAD Shape Shifter Project Editor - Frontend
 
-Vue 3 + TypeScript + Vuetify frontend for editing Shape Shifter YAML configurations.
+Vue 3 + TypeScript + Vuetify frontend for editing Shape Shifter YAML projects.
 
 ## Technology Stack
 
@@ -72,7 +72,7 @@ frontend/
 │   │   ├── useValidation.ts
 │   │   └── useDependencyGraph.ts
 │   ├── stores/                 # Pinia stores (Sprint 4.2)
-│   │   ├── config.ts          # Configuration state
+│   │   ├── config.ts          # Project state
 │   │   ├── validation.ts      # Validation state
 │   │   └── ui.ts              # UI state
 │   ├── types/                  # TypeScript type definitions (Sprint 1.3)
@@ -123,7 +123,7 @@ import axios from 'axios'
 const response = await axios.get('/api/v1/health')
 ```
 
-Configuration in `vite.config.ts`:
+Project in `vite.config.ts`:
 ```typescript
 server: {
   proxy: {

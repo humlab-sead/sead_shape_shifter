@@ -101,11 +101,11 @@ class TestShapeShiftServiceIncludeBug:
         }
 
         # Mock the config cache to return this buggy config
-        mock_shapeshift_config = ShapeShiftProject(cfg=config_dict, filename="test-config.yml")
+        mock_shapeshift_project = ShapeShiftProject(cfg=config_dict, filename="test-config.yml")
 
         # Now let's directly test that getting the data source fails
         with pytest.raises(AttributeError, match="'DoubleQuotedScalarString' object has no attribute 'get'"):
-            ds = mock_shapeshift_config.get_data_source("lookup_db")
+            ds = mock_shapeshift_project.get_data_source("lookup_db")
             _ = ds.driver  # This triggers the error
 
     @pytest.mark.asyncio
@@ -185,7 +185,7 @@ class TestShapeShiftServiceIncludeBug:
             },
         }
 
-        mock_shapeshift_config = ShapeShiftProject(cfg=config_dict, filename="test-config.yml")
+        mock_shapeshift_project = ShapeShiftProject(cfg=config_dict, filename="test-config.yml")
 
         # Mock the ShapeShifter to return test data
         mock_normalizer = MagicMock()
@@ -194,8 +194,8 @@ class TestShapeShiftServiceIncludeBug:
         mock_normalizer.normalize = AsyncMock()
 
         with (
-            patch.object(service.config_cache, "get_config", return_value=mock_shapeshift_config),
-            patch.object(service, "get_config_version", return_value=1),
+            patch.object(service.project_cache, "get_project", return_value=mock_shapeshift_project),
+            patch.object(service, "get_project_version", return_value=1),
             patch("backend.app.services.shapeshift_service.ShapeShifter", return_value=mock_normalizer),
         ):
             # This should work without errors
@@ -206,7 +206,7 @@ class TestShapeShiftServiceIncludeBug:
             assert len(result.rows) == 2
 
             # Verify the data source config is properly accessible as a dict
-            ds = mock_shapeshift_config.get_data_source("lookup_db")
+            ds = mock_shapeshift_project.get_data_source("lookup_db")
             assert ds.driver == "postgresql"
             assert ds.options["host"] == "localhost"
 

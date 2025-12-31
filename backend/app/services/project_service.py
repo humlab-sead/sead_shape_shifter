@@ -14,11 +14,11 @@ from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, Yaml
 
 
 class ProjectServiceError(Exception):
-    """Base exception for configuration service errors."""
+    """Base exception for project service errors."""
 
 
 class ProjectNotFoundError(ProjectServiceError):
-    """Raised when configuration file is not found."""
+    """Raised when project file is not found."""
 
 
 class EntityNotFoundError(ProjectServiceError):
@@ -30,7 +30,7 @@ class EntityAlreadyExistsError(ProjectServiceError):
 
 
 class InvalidProjectError(ProjectServiceError):
-    """Raised when configuration is invalid."""
+    """Raised when project is invalid."""
 
 
 class ProjectConflictError(ProjectServiceError):
@@ -38,17 +38,17 @@ class ProjectConflictError(ProjectServiceError):
 
 
 class ProjectYamlSpecification:
-    """Specification for configuration files."""
+    """Specification for project files."""
 
     def is_satisfied_by(self, data: dict[str, Any]) -> bool:
         return "entities" in (data or {})
 
 
 class ProjectService:
-    """Service for managing configuration files and entities."""
+    """Service for managing project files and entities."""
 
     def __init__(self, projects_dir: Path | None = None, state: ApplicationStateManager | None = None) -> None:
-        """Initialize configuration service."""
+        """Initialize project service."""
         self.yaml_service: YamlService = get_yaml_service()
         self.projects_dir: Path = projects_dir or settings.PROJECTS_DIR
         self.specification = ProjectYamlSpecification()
@@ -56,10 +56,10 @@ class ProjectService:
 
     def list_projects(self) -> list[ProjectMetadata]:
         """
-        List all available configuration files.
+        List all available project files.
 
         Returns:
-            List of configuration metadata
+            List of project metadata
         """
         if not self.projects_dir.exists():
             logger.warning(f"Projects directory does not exist: {self.projects_dir}")
@@ -72,7 +72,7 @@ class ProjectService:
                 data: dict[str, Any] = self.yaml_service.load(yaml_file)
 
                 if not self.specification.is_satisfied_by(data):
-                    logger.debug(f"Skipping {yaml_file.name} - does not satisfy configuration specification")
+                    logger.debug(f"Skipping {yaml_file.name} - does not satisfy project specification")
                     continue
 
                 entity_count = len(data.get("entities", {}))
@@ -88,16 +88,16 @@ class ProjectService:
                 configs.append(metadata)
 
             except Exception as e:  # pylint: disable=broad-except
-                logger.warning(f"Failed to load configuration {yaml_file}: {e}")
+                logger.warning(f"Failed to load project {yaml_file}: {e}")
 
-        logger.debug(f"Found {len(configs)} configuration(s) satisfying specification")
+        logger.debug(f"Found {len(configs)} project(s) satisfying specification")
         return configs
 
     def load_project(self, name: str) -> Project:
         """
-        Load configuration by name.
+        Load project by name.
 
-        If the configuration is currently active in ApplicationState,
+        If the project is currently active in ApplicationState,
         loads from there to ensure consistency with editing session.
 
         Args:
@@ -107,14 +107,14 @@ class ProjectService:
             Project object
 
         Raises:
-            ProjectNotFoundError: If configuration not found
-            InvalidProjectError: If configuration is invalid
+            ProjectNotFoundError: If project not found
+            InvalidProjectError: If project is invalid
         """
-        # Check application state if this is the active configuration
-        active_config: Project | None = self.state.get(name)
-        if active_config:
-            logger.debug(f"Loading active configuration '{name}' from ApplicationState")
-            return active_config
+        # Check application state if this is the active project
+        active_project: Project | None = self.state.get(name)
+        if active_project:
+            logger.debug(f"Loading active project '{name}' from ApplicationState")
+            return active_project
 
         filename: Path = self.projects_dir / (f"{name.rstrip('.yml')}.yml")
         if not filename.exists():
@@ -124,86 +124,84 @@ class ProjectService:
             data: dict[str, Any] = self.yaml_service.load(filename)
 
             if not self.specification.is_satisfied_by(data):
-                raise InvalidProjectError(f"Invalid configuration file '{name}': missing required 'entities' key")
+                raise InvalidProjectError(f"Invalid project file '{name}': missing required 'entities' key")
 
-            config: Project = ProjectMapper.to_api_config(data, name)
+            project: Project = ProjectMapper.to_api_config(data, name)
 
-            assert config.metadata is not None  # For mypy
+            assert project.metadata is not None  # For mypy
 
-            config.metadata.file_path = str(filename)
-            config.metadata.created_at = filename.stat().st_ctime
-            config.metadata.modified_at = filename.stat().st_mtime
-            config.metadata.entity_count = len(config.entities or {})
-            config.metadata.is_valid = True
+            project.metadata.file_path = str(filename)
+            project.metadata.created_at = filename.stat().st_ctime
+            project.metadata.modified_at = filename.stat().st_mtime
+            project.metadata.entity_count = len(project.entities or {})
+            project.metadata.is_valid = True
 
-            logger.info(f"Loaded configuration '{name}' with {len(config.entities)} entities")
-            return config
+            logger.info(f"Loaded project '{name}' with {len(project.entities)} entities")
+            return project
 
         except YamlLoadError as e:
-            raise InvalidProjectError(f"Invalid YAML in configuration '{name}': {e}") from e
+            raise InvalidProjectError(f"Invalid YAML in project '{name}': {e}") from e
         except Exception as e:
-            logger.error(f"Failed to load configuration '{name}': {e}")
-            raise InvalidProjectError(f"Failed to load configuration '{name}': {e}") from e
+            logger.error(f"Failed to load project '{name}': {e}")
+            raise InvalidProjectError(f"Failed to load project '{name}': {e}") from e
 
-    def save_project(self, config: Project, create_backup: bool = True) -> Project:
+    def save_project(self, project: Project, create_backup: bool = True) -> Project:
         """
-        Save configuration to file.
+        Save project to file.
 
-        Updates ApplicationState if this is the active configuration.
+        Updates ApplicationState if this is the active project.
 
         Args:
-            config: Project to save
+            project: Project to save
             create_backup: Whether to create backup before saving
 
         Returns:
-            Updated configuration with new metadata
+            Updated project with new metadata
 
         Raises:
             InvalidProjectError: If save fails
         """
-        if not config.metadata or not config.metadata.name:
+        if not project.metadata or not project.metadata.name:
             raise InvalidProjectError("Project must have metadata with name")
 
-        file_path: Path = self.projects_dir / f"{config.metadata.name.rstrip(".yml")}.yml"
+        file_path: Path = self.projects_dir / f"{project.metadata.name.rstrip(".yml")}.yml"
 
         try:
             # Convert to core dict for saving (sparse structure)
-            cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(config)
+            cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(project)
 
-            logger.debug(
-                f"Saving configuration '{config.metadata.name}' with {len(config.entities)} entities: {list(config.entities.keys())}"
-            )
+            logger.debug(f"Saving project '{project.metadata.name}' with {len(project.entities)} entities: {list(project.entities.keys())}")
 
             self.yaml_service.save(cfg_dict, file_path, create_backup=create_backup)
 
-            config.metadata.modified_at = file_path.stat().st_mtime
-            config.metadata.entity_count = len(config.entities)
+            project.metadata.modified_at = file_path.stat().st_mtime
+            project.metadata.entity_count = len(project.entities)
 
-            logger.info(f"Saved configuration '{config.metadata.name}'")
+            logger.info(f"Saved project '{project.metadata.name}'")
 
-            self.state.update(config)
+            self.state.update(project)
 
-            return config
+            return project
 
         except YamlSaveError as e:
-            raise InvalidProjectError(f"Failed to save configuration: {e}") from e
+            raise InvalidProjectError(f"Failed to save project: {e}") from e
         except Exception as e:
-            logger.error(f"Failed to save configuration: {e}")
-            raise InvalidProjectError(f"Failed to save configuration: {e}") from e
+            logger.error(f"Failed to save project: {e}")
+            raise InvalidProjectError(f"Failed to save project: {e}") from e
 
     def create_project(self, name: str, entities: dict[str, Any] | None = None) -> Project:
         """
-        Create new configuration.
+        Create new project.
 
         Args:
             name: Project name
             entities: Optional initial entities
 
         Returns:
-            New configuration
+            New project
 
         Raises:
-            ProjectConflictError: If configuration already exists
+            ProjectConflictError: If project already exists
         """
         file_path: Path = self.projects_dir / f"{name}.yml"
 
@@ -221,19 +219,19 @@ class ProjectService:
             is_valid=True,
         )
 
-        config: Project = Project(entities=entities or {}, options={}, metadata=metadata)
+        project: Project = Project(entities=entities or {}, options={}, metadata=metadata)
 
-        return self.save_project(config, create_backup=False)
+        return self.save_project(project, create_backup=False)
 
     def delete_project(self, name: str) -> None:
         """
-        Delete configuration file.
+        Delete project file.
 
         Args:
             name: Project name
 
         Raises:
-            ProjectNotFoundError: If configuration not found
+            ProjectNotFoundError: If project not found
         """
         file_path: Path = self.projects_dir / f"{name}.yml"
 
@@ -243,11 +241,11 @@ class ProjectService:
         try:
             self.yaml_service.create_backup(file_path)
             file_path.unlink()
-            logger.info(f"Deleted configuration '{name}'")
+            logger.info(f"Deleted project '{name}'")
 
         except Exception as e:
-            logger.error(f"Failed to delete configuration '{name}': {e}")
-            raise ProjectServiceError(f"Failed to delete configuration: {e}") from e
+            logger.error(f"Failed to delete project '{name}': {e}")
+            raise ProjectServiceError(f"Failed to delete project: {e}") from e
 
     def update_metadata(
         self,
@@ -258,26 +256,26 @@ class ProjectService:
         default_entity: str | None = None,
     ) -> Project:
         """
-        Update configuration metadata.
+        Update project metadata.
 
         Args:
-            name: Current configuration name
-            new_name: New configuration name (optional)
+            name: Current project name
+            new_name: New project name (optional)
             description: Project description (optional)
             version: Project version (optional)
             default_entity: Default entity name (optional)
 
         Returns:
-            Updated configuration
+            Updated project
 
         Raises:
-            ProjectNotFoundError: If configuration not found
-            ProjectConflictError: If new name conflicts with existing configuration
+            ProjectNotFoundError: If project not found
+            ProjectConflictError: If new name conflicts with existing project
         """
-        # Load current configuration
-        config: Project = self.load_project(name)
+        # Load current project
+        project: Project = self.load_project(name)
 
-        if not config.metadata:
+        if not project.metadata:
             raise InvalidProjectError(f"Project '{name}' has no metadata")
 
         # Handle rename if requested
@@ -291,103 +289,103 @@ class ProjectService:
 
         # Update metadata fields (only if provided)
         if new_name:
-            config.metadata.name = new_name
+            project.metadata.name = new_name
         if description is not None:
-            config.metadata.description = description
+            project.metadata.description = description
         if version is not None:
-            config.metadata.version = version
+            project.metadata.version = version
         if default_entity is not None:
-            config.metadata.default_entity = default_entity
+            project.metadata.default_entity = default_entity
 
-        # Save configuration
-        saved_config: Project = self.save_project(config, create_backup=True)
+        # Save project
+        saved_config: Project = self.save_project(project, create_backup=True)
 
         # Rename file if needed
         if new_file_path and new_name != name:
             old_file_path.rename(new_file_path)
             if saved_config.metadata:
                 saved_config.metadata.file_path = str(new_file_path)
-            logger.info(f"Renamed configuration from '{name}' to '{new_name}'")
+            logger.info(f"Renamed project from '{name}' to '{new_name}'")
 
-            # Update application state with new name by activating the renamed config
+            # Update application state with new name by activating the renamed project
             self.state.activate(saved_config, new_name)
 
         return saved_config
 
-    def add_entity(self, config: Project, entity_name: str, entity: Entity) -> Project:
+    def add_entity(self, project: Project, entity_name: str, entity: Entity) -> Project:
         """
-        Add entity to configuration.
+        Add entity to project.
 
         Args:
-            config: Project to modify
+            project: Project to modify
             entity_name: Entity name
             entity: Entity data
 
         Returns:
-            Updated configuration
+            Updated project
 
         Raises:
             EntityAlreadyExistsError: If entity already exists
         """
-        if entity_name in config.entities:
+        if entity_name in project.entities:
             raise EntityAlreadyExistsError(f"Entity '{entity_name}' already exists")
 
-        config.entities[entity_name] = entity.model_dump(exclude_none=True, mode="json")
+        project.entities[entity_name] = entity.model_dump(exclude_none=True, mode="json")
 
         logger.debug(f"Added entity '{entity_name}'")
-        return config
+        return project
 
-    def update_entity(self, config: Project, entity_name: str, entity: Entity) -> Project:
+    def update_entity(self, project: Project, entity_name: str, entity: Entity) -> Project:
         """
-        Update entity in configuration.
+        Update entity in project.
 
         Args:
-            config: Project to modify
+            project: Project to modify
             entity_name: Entity name
             entity: Updated entity data
 
         Returns:
-            Updated configuration
+            Updated project
 
         Raises:
             EntityNotFoundError: If entity not found
         """
-        if entity_name not in config.entities:
+        if entity_name not in project.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
-        config.entities[entity_name] = entity.model_dump(exclude_none=True, mode="json")
+        project.entities[entity_name] = entity.model_dump(exclude_none=True, mode="json")
 
         logger.debug(f"Updated entity '{entity_name}'")
-        return config
+        return project
 
-    def delete_entity(self, config: Project, entity_name: str) -> Project:
+    def delete_entity(self, project: Project, entity_name: str) -> Project:
         """
-        Delete entity from configuration.
+        Delete entity from project.
 
         Args:
-            config: Project to modify
+            project: Project to modify
             entity_name: Entity name
 
         Returns:
-            Updated configuration
+            Updated project
 
         Raises:
             EntityNotFoundError: If entity not found
         """
-        if entity_name not in config.entities:
+        if entity_name not in project.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
-        del config.entities[entity_name]
+        del project.entities[entity_name]
 
         logger.debug(f"Deleted entity '{entity_name}'")
-        return config
+        return project
 
-    def get_entity(self, config: Project, entity_name: str) -> dict[str, Any]:
+    def get_entity(self, project: Project, entity_name: str) -> dict[str, Any]:
         """
-        Get entity from configuration.
+        Get entity from project.
 
         Args:
-            config: Project
+            project: Project
             entity_name: Entity name
 
         Returns:
@@ -396,16 +394,16 @@ class ProjectService:
         Raises:
             EntityNotFoundError: If entity not found
         """
-        if entity_name not in config.entities:
+        if entity_name not in project.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
-        return config.entities[entity_name]
+        return project.entities[entity_name]
 
-    # Convenience wrapper methods for entity operations by config name
+    # Convenience wrapper methods for entity operations by project name
 
     def add_entity_by_name(self, project_name: str, entity_name: str, entity_data: dict[str, Any]) -> None:
         """
-        Add entity to configuration by config name.
+        Add entity to project by project name.
 
         Args:
             project_name: Project name
@@ -413,22 +411,22 @@ class ProjectService:
             entity_data: Entity data as dict
 
         Raises:
-            ProjectNotFoundError: If configuration not found
+            ProjectNotFoundError: If project not found
             EntityAlreadyExistsError: If entity already exists
         """
-        config: Project = self.load_project(project_name)
+        project: Project = self.load_project(project_name)
 
-        if entity_name in config.entities:
+        if entity_name in project.entities:
             raise EntityAlreadyExistsError(f"Entity '{entity_name}' already exists")
 
         # Use the model's add_entity method to ensure proper handling
-        config.add_entity(entity_name, entity_data)
-        self.save_project(config)
-        logger.info(f"Added entity '{entity_name}' to configuration '{project_name}'")
+        project.add_entity(entity_name, entity_data)
+        self.save_project(project)
+        logger.info(f"Added entity '{entity_name}' to project '{project_name}'")
 
     def update_entity_by_name(self, project_name: str, entity_name: str, entity_data: dict[str, Any]) -> None:
         """
-        Update entity in configuration by config name.
+        Update entity in project by project name.
 
         Args:
             project_name: Project name
@@ -436,43 +434,43 @@ class ProjectService:
             entity_data: Updated entity data as dict
 
         Raises:
-            ProjectNotFoundError: If configuration not found
+            ProjectNotFoundError: If project not found
             EntityNotFoundError: If entity not found
         """
-        config: Project = self.load_project(project_name)
+        project: Project = self.load_project(project_name)
 
-        if entity_name not in config.entities:
+        if entity_name not in project.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
         # Use the model's add_entity method to ensure proper handling
-        config.add_entity(entity_name, entity_data)
-        self.save_project(config)
-        logger.info(f"Updated entity '{entity_name}' in configuration '{project_name}'")
+        project.add_entity(entity_name, entity_data)
+        self.save_project(project)
+        logger.info(f"Updated entity '{entity_name}' in project '{project_name}'")
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:
         """
-        Delete entity from configuration by config name.
+        Delete entity from project by project name.
 
         Args:
             project_name: Project name
             entity_name: Entity name
 
         Raises:
-            ProjectNotFoundError: If configuration not found
+            ProjectNotFoundError: If project not found
             EntityNotFoundError: If entity not found
         """
-        config: Project = self.load_project(project_name)
+        project: Project = self.load_project(project_name)
 
-        if entity_name not in config.entities:
+        if entity_name not in project.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
-        del config.entities[entity_name]
-        self.save_project(config)
-        logger.info(f"Deleted entity '{entity_name}' from configuration '{project_name}'")
+        del project.entities[entity_name]
+        self.save_project(project)
+        logger.info(f"Deleted entity '{entity_name}' from project '{project_name}'")
 
     def get_entity_by_name(self, project_name: str, entity_name: str) -> dict[str, Any]:
         """
-        Get entity from configuration by config name.
+        Get entity from project by project name.
 
         Args:
             project_name: Project name
@@ -482,64 +480,64 @@ class ProjectService:
             Entity data as dict
 
         Raises:
-            ProjectNotFoundError: If configuration not found
+            ProjectNotFoundError: If project not found
             EntityNotFoundError: If entity not found
         """
-        config: Project = self.load_project(project_name)
+        project: Project = self.load_project(project_name)
 
-        if entity_name not in config.entities:
+        if entity_name not in project.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
-        return config.entities[entity_name]
+        return project.entities[entity_name]
 
-    def activate_configuration(self, name: str) -> Project:
+    def activate_project(self, name: str) -> Project:
         """
-        Activate a configuration for editing.
+        Activate a project for editing.
 
-        Loads the configuration into ApplicationState as the active editing session.
+        Loads the project into ApplicationState as the active editing session.
 
         Args:
             name: Project name to activate
 
         Returns:
-            The activated configuration
+            The activated project
 
         Raises:
-            ProjectNotFoundError: If configuration not found
+            ProjectNotFoundError: If project not found
         """
 
-        config: Project = self.load_project(name)
+        project: Project = self.load_project(name)
 
-        self.state.activate(config)
+        self.state.activate(project)
 
-        return config
+        return project
 
-    def get_active_configuration_metadata(self) -> ProjectMetadata:
+    def get_active_project_metadata(self) -> ProjectMetadata:
         """
-        Get the name of the currently active editing configuration.
+        Get the name of the currently active editing project.
 
         Returns:
-            Project name or None if no configuration is active
+            Project name or None if no project is active
         """
 
         return self.state.get_active_metadata()
 
     def save_with_version_check(
         self,
-        config: Project,
+        project: Project,
         expected_version: str,
         create_backup: bool = True,
     ) -> Project:
         """
-        Save configuration with optimistic concurrency control.
+        Save project with optimistic concurrency control.
 
         Args:
-            config: Project to save
+            project: Project to save
             expected_version: Client's expected version number
             create_backup: Whether to create backup before saving
 
         Returns:
-            Updated configuration
+            Updated project
 
         Raises:
             ProjectConflictError: If version mismatch (concurrent edit detected)
@@ -554,7 +552,7 @@ class ProjectService:
                 f"Reload and merge changes."
             )
 
-        return self.save_project(config, create_backup=create_backup)
+        return self.save_project(project, create_backup=create_backup)
 
 
 # Singleton instance

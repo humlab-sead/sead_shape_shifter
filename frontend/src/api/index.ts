@@ -10,14 +10,14 @@ export * from './data-sources'
 export * from './sessions'
 
 // Convenience re-export of all API services
-import { configurationsApi } from './projects'
+import { projectsApi } from './projects'
 import { entitiesApi } from './entities'
 import { validationApi } from './validation'
 import { dataSourcesApi } from './data-sources'
 import { sessionsApi } from './sessions'
 
 export const api = {
-  configurations: configurationsApi,
+  projects: projectsApi,
   entities: entitiesApi,
   validation: validationApi,
   dataSources: dataSourcesApi,

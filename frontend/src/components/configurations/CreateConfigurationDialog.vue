@@ -3,14 +3,14 @@
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon icon="mdi-plus-circle" class="mr-2" />
-        <span>Create New Configuration</span>
+        <span>Create New Project</span>
       </v-card-title>
 
       <v-card-text>
         <v-form ref="formRef" v-model="formValid" @submit.prevent="handleSubmit">
           <v-text-field
             v-model="configName"
-            label="Configuration Name"
+            label="Project Name"
             :rules="nameRules"
             variant="outlined"
             density="comfortable"
@@ -79,7 +79,7 @@ const dialogModel = computed({
 
 // Validation rules
 const nameRules = [
-  (v: string) => !!v || 'Configuration name is required',
+  (v: string) => !!v || 'Project name is required',
   (v: string) => v.length >= 3 || 'Name must be at least 3 characters',
   (v: string) => v.length <= 50 || 'Name must be less than 50 characters',
   (v: string) =>

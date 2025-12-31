@@ -98,7 +98,7 @@ export const useValidationStore = defineStore('validation', () => {
     loading.value = true
     error.value = null
     try {
-      validationResult.value = await api.configurations.validate(configName)
+      validationResult.value = await api.projects.validate(configName)
       return validationResult.value
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to validate configuration'

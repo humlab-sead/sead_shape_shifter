@@ -19,7 +19,7 @@ export const useSessionStore = defineStore('session', () => {
 
   const sessionId = computed(() => currentSession.value?.session_id || null)
 
-  const configName = computed(() => currentSession.value?.project_name || null)
+  const projectName = computed(() => currentSession.value?.project_name || null)
 
   const version = computed(() => currentSession.value?.version || 1)
 
@@ -196,7 +196,7 @@ export const useSessionStore = defineStore('session', () => {
     // Getters
     hasActiveSession,
     sessionId,
-    configName,
+    projectName: projectName,
     version,
     isModified,
     hasConcurrentEdits,

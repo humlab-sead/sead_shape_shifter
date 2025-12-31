@@ -5,21 +5,21 @@
 
 import { computed, onMounted, ref } from 'vue'
 import { useProjectStore } from '@/stores'
-import type { ProjectCreateRequest, ConfigurationUpdateRequest } from '@/api/configurations'
+import type { ProjectCreateRequest, ProjectUpdateRequest } from '@/api/projects'
 
-export interface UseConfigurationsOptions {
+export interface UseProjectsOptions {
   autoFetch?: boolean
-  configName?: string
+  projectName?: string
 }
 
-export function useConfigurations(options: UseConfigurationsOptions = {}) {
-  const { autoFetch = true, configName } = options
+export function useProjects(options: UseProjectsOptions = {}) {
+  const { autoFetch = true, projectName } = options
   const store = useProjectStore()
   const initialized = ref(false)
 
   // Computed state from store
-  const configurations = computed(() => store.sortedConfigurations)
-  const selectedConfig = computed(() => store.selectedConfig)
+  const projects = computed(() => store.sortedProjects)
+  const selectedProject = computed(() => store.selectedProject)
   const validationResult = computed(() => store.validationResult)
   const backups = computed(() => store.backups)
   const loading = computed(() => store.loading)
@@ -31,7 +31,7 @@ export function useConfigurations(options: UseConfigurationsOptions = {}) {
   // Actions
   async function fetch() {
     try {
-      await store.fetchConfigurations()
+      await store.fetchProjects()
       initialized.value = true
     } catch (err) {
       console.error('Failed to fetch configurations:', err)
@@ -41,7 +41,7 @@ export function useConfigurations(options: UseConfigurationsOptions = {}) {
 
   async function select(name: string) {
     try {
-      return await store.selectConfiguration(name)
+      return await store.selectProject(name)
     } catch (err) {
       console.error(`Failed to select configuration "${name}":`, err)
       throw err
@@ -50,36 +50,36 @@ export function useConfigurations(options: UseConfigurationsOptions = {}) {
 
   async function create(data: ProjectCreateRequest) {
     try {
-      return await store.createConfiguration(data)
+      return await store.createProject(data)
     } catch (err) {
-      console.error('Failed to create configuration:', err)
+      console.error('Failed to create project:', err)
       throw err
     }
   }
 
   async function update(name: string, data: ProjectUpdateRequest) {
     try {
-      return await store.updateConfiguration(name, data)
+      return await store.updateProject(name, data)
     } catch (err) {
-      console.error(`Failed to update configuration "${name}":`, err)
+      console.error(`Failed to update project "${name}":`, err)
       throw err
     }
   }
 
   async function remove(name: string) {
     try {
-      await store.deleteConfiguration(name)
+      await store.deleteProject(name)
     } catch (err) {
-      console.error(`Failed to delete configuration "${name}":`, err)
+      console.error(`Failed to delete project "${name}":`, err)
       throw err
     }
   }
 
   async function validate(name: string) {
     try {
-      return await store.validateConfiguration(name)
+      return await store.validateProject(name)
     } catch (err) {
-      console.error(`Failed to validate configuration "${name}":`, err)
+      console.error(`Failed to validate project "${name}":`, err)
       throw err
     }
   }
@@ -115,9 +115,9 @@ export function useConfigurations(options: UseConfigurationsOptions = {}) {
   }
 
   // Helper getters
-  const configByName = (name: string) => store.configByName(name)
-  const isEmpty = computed(() => configurations.value.length === 0)
-  const count = computed(() => configurations.value.length)
+  const projectByName = (name: string) => store.projectByName(name)
+  const isEmpty = computed(() => projects.value.length === 0)
+  const count = computed(() => projects.value.length)
 
   // Auto-fetch on mount if enabled
   onMounted(async () => {
@@ -125,16 +125,16 @@ export function useConfigurations(options: UseConfigurationsOptions = {}) {
       await fetch()
     }
 
-    // Auto-select configuration if specified
-    if (configName && !loading.value) {
-      await select(configName)
+    // Auto-select project if specified
+    if (projectName && !loading.value) {
+      await select(projectName)
     }
   })
 
   return {
     // State
-    configurations,
-    selectedConfig,
+    configurations: projects,
+    selectedConfig: selectedProject,
     validationResult,
     backups,
     loading,
@@ -158,6 +158,6 @@ export function useConfigurations(options: UseConfigurationsOptions = {}) {
     clearError,
     clearValidation,
     // Helpers
-    configByName,
+    projectByName,
   }
 }

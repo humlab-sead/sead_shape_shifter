@@ -38,7 +38,7 @@ async def validate_configuration_data(name: str, entity_names: list[str] | None 
     """
     validation_service = get_validation_service()
     # Run data validation
-    result = await validation_service.validate_configuration_data(name, entity_names)
+    result = await validation_service.validate_project_data(name, entity_names)
 
     logger.info(
         f"Data validation for '{name}' completed: " f"valid={result.is_valid}, errors={result.error_count}, warnings={result.warning_count}"

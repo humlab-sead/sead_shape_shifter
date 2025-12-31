@@ -2,7 +2,7 @@
  * Composable for managing driver schemas
  * 
  * Provides access to data source driver metadata including:
- * - Configuration field definitions
+ * - Field definitions
  * - Validation rules
  * - Display information
  */

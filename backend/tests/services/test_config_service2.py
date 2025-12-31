@@ -467,7 +467,7 @@ class TestProjectService:
 
     # Activate configuration tests
 
-    def test_activate_configuration(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
+    def test_activate_project(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test activating configuration."""
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
 
@@ -475,20 +475,20 @@ class TestProjectService:
         mock_state.get.return_value = None
         service.state = mock_state
 
-        config = service.activate_configuration("test")
+        config = service.activate_project("test")
 
         mock_state.activate.assert_called_once()
         assert config.metadata
         assert config.metadata.name.startswith("test")
 
-    def test_activate_configuration_not_found(self, service: ProjectService):
+    def test_activate_project_not_found(self, service: ProjectService):
         """Test activating non-existent configuration raises error."""
         mock_state = MagicMock()
         mock_state.get.return_value = None
         service.state = mock_state
 
         with pytest.raises(ProjectNotFoundError):
-            service.activate_configuration("nonexistent")
+            service.activate_project("nonexistent")
 
     # Version check tests
 

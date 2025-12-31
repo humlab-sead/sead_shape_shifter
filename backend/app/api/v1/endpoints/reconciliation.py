@@ -39,7 +39,7 @@ async def get_reconciliation_config(
     project_name: str, service: ReconciliationService = Depends(get_reconciliation_service)
 ) -> ReconciliationConfig:
     """
-    Get reconciliation configuration for a configuration.
+    Get reconciliation configuration for a project.
 
     Returns the reconciliation spec including entity mappings and settings.
     """

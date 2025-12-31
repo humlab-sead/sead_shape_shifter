@@ -34,8 +34,8 @@ class SuggestionService:
         Generate complete suggestions for an entity.
 
         Args:
-            entity: Entity configuration dict with 'name' and 'columns'
-            all_entities: list of all entity configurations
+            entity: Entity dict with 'name' and 'columns'
+            all_entities: list of all entity dicts
             data_source_name: Optional data source for type checking
 
         Returns:
@@ -75,7 +75,7 @@ class SuggestionService:
            - Column name patterns (_id, id): +0.2
 
         Args:
-            entity: Entity configuration
+            entity: Entity dict with 'name' and 'columns'
             all_entities: All other entities to check against
             schemas: Optional table schemas for type checking
 

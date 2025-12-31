@@ -2,7 +2,7 @@
 
 from src.specifications import (
     CircularDependencySpecification,
-    CompositeConfigSpecification,
+    CompositeProjectSpecification,
     EntityExistsSpecification,
     FixedDataSpecification,
     ForeignKeySpecification,
@@ -432,7 +432,7 @@ class TestCompositeConfigSpecification:
                 },
             }
         }
-        spec = CompositeConfigSpecification()
+        spec = CompositeProjectSpecification()
         assert spec.is_satisfied_by(config) is True
         assert not spec.has_errors()
         assert not spec.has_warnings()
@@ -447,14 +447,14 @@ class TestCompositeConfigSpecification:
                 }
             }
         }
-        spec = CompositeConfigSpecification()
+        spec = CompositeProjectSpecification()
         assert spec.is_satisfied_by(config) is False
         assert len(spec.errors) > 1
 
     def test_get_report_valid_config(self):
         """Test report generation for valid config."""
         config = {"entities": {"table": {"columns": ["id"]}}}
-        spec = CompositeConfigSpecification()
+        spec = CompositeProjectSpecification()
         spec.is_satisfied_by(config)
         report = spec.get_report()
         assert "✓ Configuration is valid" in report
@@ -462,7 +462,7 @@ class TestCompositeConfigSpecification:
     def test_get_report_with_errors(self):
         """Test report generation with errors."""
         config = {"entities": {"table": {}}}  # Missing columns/keys
-        spec = CompositeConfigSpecification()
+        spec = CompositeProjectSpecification()
         spec.is_satisfied_by(config)
         report = spec.get_report()
         assert "✗ Configuration has" in report
@@ -471,7 +471,7 @@ class TestCompositeConfigSpecification:
     def test_get_report_with_warnings(self):
         """Test report generation with warnings."""
         config = {"entities": {"table": {"columns": ["id"], "surrogate_id": "pk"}}}  # Warning: no _id suffix
-        spec = CompositeConfigSpecification()
+        spec = CompositeProjectSpecification()
         spec.is_satisfied_by(config)
         report = spec.get_report()
         assert "⚠ Configuration has" in report

@@ -23,7 +23,7 @@ const routes: RouteRecordRaw[] = [
     name: 'config-detail',
     component: () => import('@/views/ConfigurationDetailView.vue'),
     meta: {
-      title: 'Configuration Details',
+      title: 'Project Details',
     },
   },
   {
@@ -100,7 +100,7 @@ const router = createRouter({
 // Update document title on route change
 router.afterEach((to) => {
   const title = to.meta.title as string | undefined
-  document.title = title ? `${title} - SEAD Shape Shifter` : 'SEAD Shape Shifter Configuration Editor'
+  document.title = title ? `${title} - SEAD Shape Shifter` : 'SEAD Shape Shifter Project Editor'
 })
 
 export default router

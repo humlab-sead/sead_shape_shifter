@@ -87,18 +87,18 @@ class ShapeShifter:
 
     def __init__(
         self,
-        config: ShapeShiftProject | str,
+        project: ShapeShiftProject | str,
         default_entity: str | None = None,
         table_store: dict[str, pd.DataFrame] | None = None,
         target_entities: set[str] | None = None,
     ) -> None:
 
-        if not config or not isinstance(config, (ShapeShiftProject, str)):
+        if not project or not isinstance(project, (ShapeShiftProject, str)):
             raise ValueError("A valid configuration must be provided")
 
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
-        self.config: ShapeShiftProject = ShapeShiftProject.from_source(config)
+        self.config: ShapeShiftProject = ShapeShiftProject.from_source(project)
         self.state: ProcessState = self._initialize_process_state(target_entities)
 
     def _initialize_process_state(self, target_entities: set[str] | None = None) -> ProcessState:

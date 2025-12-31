@@ -8,7 +8,7 @@
     >
       <v-list-item
         :title="rail ? '' : 'SEAD Shape Shifter'"
-        :subtitle="rail ? '' : 'Configuration Editor'"
+        :subtitle="rail ? '' : 'Project Editor'"
         nav
       >
         <!-- <template #prepend>
@@ -39,7 +39,7 @@
         
         <v-list-item
           prepend-icon="mdi-file-document-multiple"
-          title="Configurations"
+          title="Projects"
           value="configurations"
           :to="{ name: 'configurations' }"
         />
@@ -126,7 +126,7 @@
           <v-list-item @click="handleNewConfiguration">
             <v-list-item-title>
               <v-icon icon="mdi-plus" class="mr-2" />
-              New Configuration
+              New Project
             </v-list-item-title>
           </v-list-item>
           <v-list-item @click="handleRefresh">

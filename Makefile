@@ -133,7 +133,7 @@ backend-test:
 	@uv run pytest backend/tests -v
 
 ################################################################################
-# Configuration Editor UI
+# Project Editor UI
 ################################################################################
 
 .PHONY: ui-install

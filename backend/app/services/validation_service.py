@@ -1,4 +1,4 @@
-"""Validation service for configuration validation."""
+"""Validation service for project validation."""
 
 from typing import Any
 
@@ -8,11 +8,11 @@ from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.validators.data_validators import DataValidationService
-from src.specifications import CompositeConfigSpecification, SpecificationIssue
+from src.specifications import CompositeProjectSpecification, SpecificationIssue
 
 
 class ValidationService:
-    """Service for validating configurations using existing specifications."""
+    """Service for validating projects using existing specifications."""
 
     def __init__(self) -> None:
         """Initialize validation service."""
@@ -32,27 +32,27 @@ class ValidationService:
 
         # Import after path is set
 
-        self.validator = CompositeConfigSpecification()
+        self.validator = CompositeProjectSpecification()
 
-    async def validate_configuration_data(self, project_name: str, entity_names: list[str] | None = None) -> ValidationResult:
+    async def validate_project_data(self, project_name: str, entity_names: list[str] | None = None) -> ValidationResult:
         """
-        Run data-aware validation on configuration.
+        Run data-aware validation on project.
 
         Args:
-            project_name: Configuration name
+            project_name: Project name
             entity_names: Optional list of entity names to validate (None = all)
 
         Returns:
             ValidationResult with data validation errors and warnings
         """
 
-        logger.debug(f"Running data validation for configuration: {project_name}")
+        logger.debug(f"Running data validation for project: {project_name}")
 
         project_service: ProjectService = get_project_service()
         shapeshift_service: ShapeShiftService = ShapeShiftService(project_service)
         data_validator: DataValidationService = DataValidationService(shapeshift_service)
 
-        errors_list: list[ValidationError] = await data_validator.validate_configuration(project_name, entity_names)
+        errors_list: list[ValidationError] = await data_validator.validate_project(project_name, entity_names)
 
         errors: list[ValidationError] = [e for e in errors_list if e.severity == "error"]
         warnings: list[ValidationError] = [e for e in errors_list if e.severity == "warning"]
@@ -71,9 +71,9 @@ class ValidationService:
 
         return result
 
-    def validate_configuration(self, config_data: dict[str, Any]) -> ValidationResult:
+    def validate_project(self, config_data: dict[str, Any]) -> ValidationResult:
         """
-        Validate configuration using CompositeConfigSpecification.
+        Validate project using CompositeConfigSpecification.
 
         Args:
             config_data: Configuration dictionary with entities and options
@@ -81,7 +81,7 @@ class ValidationService:
         Returns:
             ValidationResult with errors and warnings
         """
-        logger.debug("Validating configuration")
+        logger.debug("Validating project")
 
         is_valid: bool = self.validator.is_satisfied_by(config_data)
 
@@ -112,7 +112,7 @@ class ValidationService:
 
     def validate_entity(self, config: Any, entity_name: str) -> ValidationResult:
         """
-        Validate a single entity within a configuration.
+        Validate a single entity within a project.
 
         Args:
             config: Configuration object (will be converted to dict)
@@ -129,8 +129,8 @@ class ValidationService:
         else:
             config_data = {"entities": config.entities, "options": config.options}
 
-        # Validate full configuration
-        result: ValidationResult = self.validate_configuration(config_data)
+        # Validate full project
+        result: ValidationResult = self.validate_project(config_data)
 
         # Filter to only errors/warnings for this entity
         entity_errors: list[ValidationError] = [e for e in result.errors if e.entity == entity_name or e.entity is None]
