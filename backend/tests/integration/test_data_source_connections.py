@@ -16,10 +16,9 @@ from loguru import logger
 from backend.app.core.config import Settings
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig
+from src import model as core
 from backend.app.services.data_source_service import DataSourceService
-from model import DataSourceConfig
-from src.loaders.driver_metadata import DriverSchema
-from src.loaders.driver_metadata import DriverSchemaRegistry
+from src.loaders.driver_metadata import DriverSchema, DriverSchemaRegistry
 from src.utility import find_parent_with
 
 project_root: Path = find_parent_with(Path(__file__), "pyproject.toml")
@@ -175,7 +174,7 @@ async def debug_mapper():
     logger.info(f"API Config: {pg_config.model_dump(exclude={'password'})}")
 
     try:
-        core_config: DataSourceConfig = DataSourceMapper.to_core_config(pg_config)
+        core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(pg_config)
         logger.info(f"Core Config Name: {core_config.name}")
         logger.info(f"Core Config Driver: {core_config.data_source_cfg.get('driver')}")
         logger.info(f"Core Config Options: {core_config.data_source_cfg.get('options')}")
