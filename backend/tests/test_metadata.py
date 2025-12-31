@@ -17,13 +17,13 @@ class TestMetadataHandling:
     def test_api_metadata_has_description_and_version(self):
         """Test that ProjectMetadata has description and version fields."""
         metadata = ProjectMetadata(
-            name="Test Config",
+            name="Test Project",
             description="A test configuration",
             version="1.2.3",
             entity_count=5,
         )
 
-        assert metadata.name == "Test Config"
+        assert metadata.name == "Test Project"
         assert metadata.description == "A test configuration"
         assert metadata.version == "1.2.3"
         assert metadata.entity_count == 5
@@ -31,11 +31,11 @@ class TestMetadataHandling:
     def test_metadata_optional_fields(self):
         """Test that description and version are optional."""
         metadata = ProjectMetadata(
-            name="Minimal Config",
+            name="Minimal Project",
             entity_count=0,
         )
 
-        assert metadata.name == "Minimal Config"
+        assert metadata.name == "Minimal Project"
         assert metadata.description is None
         assert metadata.version is None
 
@@ -43,14 +43,14 @@ class TestMetadataHandling:
         """Test that ShapeShiftProject has Metadata class."""
 
         metadata_data = {
-            "name": "Core Config",
+            "name": "Core Project",
             "description": "Core test",
             "version": "2.0.0",
         }
 
         metadata = Metadata(metadata_data)
 
-        assert metadata.name == "Core Config"
+        assert metadata.name == "Core Project"
         assert metadata.description == "Core test"
         assert metadata.version == "2.0.0"
 
@@ -58,7 +58,7 @@ class TestMetadataHandling:
         """Test that ShapeShiftProject has metadata property."""
         cfg_dict = {
             "metadata": {
-                "name": "Test Config",
+                "name": "Test Project",
                 "description": "Testing metadata",
                 "version": "1.0.0",
             },
@@ -72,7 +72,7 @@ class TestMetadataHandling:
 
         config = ShapeShiftProject(cfg=cfg_dict, filename="test-config.yml")
 
-        assert config.metadata.name == "Test Config"
+        assert config.metadata.name == "Test Project"
         assert config.metadata.description == "Testing metadata"
         assert config.metadata.version == "1.0.0"
 
