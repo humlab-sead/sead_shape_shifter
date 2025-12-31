@@ -94,7 +94,7 @@ export function useTheme() {
   })
 
   const isDark = computed(() => {
-    return currentPreset.value.isDark
+    return currentPreset?.value?.isDark
   })
 
   const hasCustomColors = computed(() => {
@@ -124,6 +124,7 @@ export function useTheme() {
     // Apply to current theme
     Object.entries(colors).forEach(([key, value]) => {
       if (value) {
+        // @ts-ignore
         vuetifyTheme.current.value.colors[key] = value
       }
     })
