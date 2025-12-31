@@ -176,7 +176,7 @@ class TestShapeShiftCache:
         entity_config = sample_project.get_table("users")
 
         # Cache with original config
-        cache.set_dataframe("config1", "users", df, config_version=1, entity_config=entity_config)
+        cache.set_dataframe("config1", "users", df, project_version=1, entity_config=entity_config)
 
         # Verify cache hit with same config
         assert cache.get_dataframe("config1", "users", 1, entity_config) is not None
