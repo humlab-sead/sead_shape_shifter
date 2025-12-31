@@ -354,7 +354,7 @@ entities:
         "A": "Type_A"
         "B": "Type_B"
   
-  # Replacements can reference external configuration files
+  # Replacements can reference external project files
   site:
     replacements:
       coordinate_system: "@value: replacements.site.KoordSys"
@@ -2320,7 +2320,7 @@ This comprehensive validation system helps catch configuration errors early, pro
 - **Use `@value:` references** to avoid duplication
 - **Split large configs** using `@include:`
 - **Keep data sources** in separate files
-- **Version control** your configuration files
+- **Version control** your project files
 
 ### 7. Performance
 

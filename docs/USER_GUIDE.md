@@ -1069,7 +1069,7 @@ Wait 500ms
 #### Slow Editor Response
 
 **Causes:**
-- Large configuration files (> 10MB)
+- Large project files (> 10MB)
 - Too many entities (> 100)
 - Complex dependency trees
 - Low system resources

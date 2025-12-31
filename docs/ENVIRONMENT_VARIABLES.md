@@ -79,7 +79,7 @@ For PostgreSQL connections, the recommended approach is to use `.pgpass` file fo
 
 ### Benefits
 
-- **Security**: Passwords never appear in configuration files or environment variables
+- **Security**: Passwords never appear in project files or environment variables
 - **Convenience**: No need to pass passwords in connection strings
 - **Standard**: `.pgpass` is the PostgreSQL-recommended approach
 - **Multi-environment**: Different passwords for different databases in one file
