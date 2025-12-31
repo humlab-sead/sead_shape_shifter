@@ -37,7 +37,7 @@ class TestEntityExistsSpecification:
         spec = EntityExistsSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "must contain 'entities' section" in spec.errors[0]
+        assert "must contain 'entities' section" in spec.errors[0].message
 
     def test_foreign_key_references_nonexistent_entity(self):
         """Test that foreign key referencing non-existent entity is caught."""
@@ -52,7 +52,7 @@ class TestEntityExistsSpecification:
         spec = EntityExistsSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "non-existent entity 'parent'" in spec.errors[0]
+        assert "non-existent entity 'parent'" in spec.errors[0].message
 
     def test_depends_on_references_nonexistent_entity(self):
         """Test that depends_on referencing non-existent entity is caught."""
@@ -60,7 +60,7 @@ class TestEntityExistsSpecification:
         spec = EntityExistsSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "depends on non-existent entity 'parent'" in spec.errors[0]
+        assert "depends on non-existent entity 'parent'" in spec.errors[0].message
 
     def test_source_references_nonexistent_entity(self):
         """Test that source referencing non-existent entity is caught."""
@@ -68,7 +68,7 @@ class TestEntityExistsSpecification:
         spec = EntityExistsSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "non-existent source entity 'parent'" in spec.errors[0]
+        assert "non-existent source entity 'parent'" in spec.errors[0].message
 
 
 class TestCircularDependencySpecification:
@@ -98,7 +98,7 @@ class TestCircularDependencySpecification:
         spec = CircularDependencySpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "Circular dependency detected" in spec.errors[0]
+        assert "Circular dependency detected" in spec.errors[0].message
 
     def test_indirect_circular_dependency(self):
         """Test that indirect circular dependency is caught."""
@@ -112,7 +112,7 @@ class TestCircularDependencySpecification:
         spec = CircularDependencySpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "Circular dependency detected" in spec.errors[0]
+        assert "Circular dependency detected" in spec.errors[0].message
 
     def test_circular_dependency_via_source(self):
         """Test that circular dependency through source is caught."""
@@ -150,7 +150,7 @@ class TestRequiredFieldsSpecification:
         spec = RequiredFieldsSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "must have 'columns' or 'keys'" in spec.errors[0]
+        assert "must have 'columns' or 'keys'" in spec.errors[0].message
 
     def test_valid_fixed_data_table(self):
         """Test that valid fixed data table passes."""
@@ -174,7 +174,7 @@ class TestRequiredFieldsSpecification:
         spec = RequiredFieldsSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "missing required 'surrogate_id'" in spec.errors[0]
+        assert "missing required 'surrogate_id'" in spec.errors[0].message
 
     def test_fixed_data_table_missing_columns(self):
         """Test that fixed data table without columns is caught."""
@@ -182,7 +182,7 @@ class TestRequiredFieldsSpecification:
         spec = RequiredFieldsSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "missing required 'columns'" in spec.errors[0]
+        assert "missing required 'columns'" in spec.errors[0].message
 
     def test_fixed_data_table_missing_values(self):
         """Test that fixed data table without values is caught."""
@@ -190,7 +190,7 @@ class TestRequiredFieldsSpecification:
         spec = RequiredFieldsSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "missing required 'values'" in spec.errors[0]
+        assert "missing required 'values'" in spec.errors[0].message
 
 
 class TestForeignKeySpecification:
@@ -216,7 +216,7 @@ class TestForeignKeySpecification:
         spec = ForeignKeySpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "missing required field 'entity'" in spec.errors[0]
+        assert "missing required field 'entity'" in spec.errors[0].message
 
     def test_foreign_key_missing_local_keys(self):
         """Test that foreign key without local_keys is caught."""
@@ -224,7 +224,7 @@ class TestForeignKeySpecification:
         spec = ForeignKeySpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "missing required field 'local_keys'" in spec.errors[0]
+        assert "missing required field 'local_keys'" in spec.errors[0].message
 
     def test_foreign_key_missing_remote_keys(self):
         """Test that foreign key without remote_keys is caught."""
@@ -232,7 +232,7 @@ class TestForeignKeySpecification:
         spec = ForeignKeySpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "missing required field 'remote_keys'" in spec.errors[0]
+        assert "missing required field 'remote_keys'" in spec.errors[0].message
 
     def test_foreign_key_mismatched_lengths(self):
         """Test that foreign key with mismatched key lengths is caught."""
@@ -247,7 +247,7 @@ class TestForeignKeySpecification:
         spec = ForeignKeySpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "does not match" in spec.errors[0]
+        assert "does not match" in spec.errors[0].message
 
     def test_foreign_key_invalid_extra_columns(self):
         """Test that foreign key with invalid extra_columns is caught."""
@@ -262,7 +262,7 @@ class TestForeignKeySpecification:
         spec = ForeignKeySpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "must be string, list, or dict" in spec.errors[0]
+        assert "must be string, list, or dict" in spec.errors[0].message
 
 
 class TestUnnestSpecification:
@@ -288,7 +288,7 @@ class TestUnnestSpecification:
         spec = UnnestSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "missing required 'value_vars'" in spec.errors[0]
+        assert "missing required 'value_vars'" in spec.errors[0].message
 
     def test_unnest_missing_var_name(self):
         """Test that unnest without var_name is caught."""
@@ -296,7 +296,7 @@ class TestUnnestSpecification:
         spec = UnnestSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "missing required 'var_name'" in spec.errors[0]
+        assert "missing required 'var_name'" in spec.errors[0].message
 
     def test_unnest_missing_value_name(self):
         """Test that unnest without value_name is caught."""
@@ -304,7 +304,7 @@ class TestUnnestSpecification:
         spec = UnnestSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "missing required 'value_name'" in spec.errors[0]
+        assert "missing required 'value_name'" in spec.errors[0].message
 
     def test_unnest_missing_id_vars_warning(self):
         """Test that unnest without id_vars generates warning."""
@@ -312,7 +312,7 @@ class TestUnnestSpecification:
         spec = UnnestSpecification()
         assert spec.is_satisfied_by(config) is True
         assert spec.has_warnings()
-        assert "missing 'id_vars'" in spec.warnings[0]
+        assert "missing 'id_vars'" in spec.warnings[0].message
 
 
 class TestSurrogateIdSpecification:
@@ -336,7 +336,7 @@ class TestSurrogateIdSpecification:
         spec = SurrogateIdSpecification()
         assert spec.is_satisfied_by(config) is True
         assert spec.has_warnings()
-        assert "does not follow convention" in spec.warnings[0]
+        assert "does not follow convention" in spec.warnings[0].message
 
     def test_duplicate_surrogate_ids(self):
         """Test that duplicate surrogate IDs are caught."""
@@ -349,7 +349,7 @@ class TestSurrogateIdSpecification:
         spec = SurrogateIdSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "used by multiple entities" in spec.errors[0]
+        assert "used by multiple entities" in spec.errors[0].message
 
 
 class TestFixedDataSpecification:
@@ -395,7 +395,7 @@ class TestFixedDataSpecification:
         spec = FixedDataSpecification()
         assert spec.is_satisfied_by(config) is False
         assert spec.has_errors()
-        assert "has 1 items but 2 columns" in spec.errors[0]
+        assert "has 1 items but 2 columns" in spec.errors[0].message
 
     def test_fixed_data_with_source_warning(self):
         """Test that fixed data with source field generates warning."""
@@ -413,7 +413,7 @@ class TestFixedDataSpecification:
         spec = FixedDataSpecification()
         assert spec.is_satisfied_by(config) is True
         assert spec.has_warnings()
-        assert "has 'source' field" in spec.warnings[0]
+        assert "has 'source' field" in spec.warnings[0].message
 
 
 class TestCompositeConfigSpecification:

@@ -53,6 +53,31 @@ class Settings(BaseSettings):
         self.CONFIGURATIONS_DIR.mkdir(exist_ok=True)
         self.BACKUPS_DIR.mkdir(exist_ok=True)
 
+    @property
+    def env_prefix(self) -> str:
+        """Get full environment variable name with prefix."""
+        return self.model_config.get("env_prefix", "")
+
+    @property
+    def env_file(self) -> str:
+        """Get full environment variable name with prefix."""
+        return str(self.model_config.get("env_file", ""))
+
+    @property
+    def configurations_dir(self) -> Path:
+        """Get configurations directory path."""
+        return self.CONFIGURATIONS_DIR
+
+    @property
+    def project_root(self) -> Path:
+        """Get project root directory path."""
+        return self.PROJECT_ROOT
+
+    @property
+    def env_opts(self) -> dict[str, str]:
+        """Get environment options."""
+        return {"env_file": self.env_file, "env_prefix": self.env_prefix}
+
 
 @lru_cache
 def get_settings() -> Settings:

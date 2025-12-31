@@ -51,7 +51,7 @@ class TestAppendIntegration:
 
         normalizer: ShapeShifter = ShapeShifter(
             table_store={"survey": survey_df},
-            config=ShapeShiftConfig(cfg=cfg),
+            config=ShapeShiftConfig(cfg=cfg, filename="test-config.yml"),
             default_entity="survey",
         )
         # Run normalization
@@ -109,7 +109,7 @@ class TestAppendIntegration:
         normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = ShapeShiftConfig(cfg=cfg)
+        normalizer.config = ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
         normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
@@ -162,7 +162,7 @@ class TestAppendIntegration:
         normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = ShapeShiftConfig(cfg=cfg)
+        normalizer.config = ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
         normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
@@ -214,7 +214,7 @@ class TestAppendIntegration:
         normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = ShapeShiftConfig(cfg=cfg)
+        normalizer.config = ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
         normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
@@ -274,7 +274,7 @@ class TestAppendIntegration:
         normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = ShapeShiftConfig(cfg=cfg)
+        normalizer.config = ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
         normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization

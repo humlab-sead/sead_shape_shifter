@@ -355,14 +355,89 @@
           </v-window-item>
 
           <v-window-item value="preview">
-            <entity-preview-panel
-              :config-name="configName"
-              :entity-name="formData.name"
-              :auto-load="false"
-              :auto-refresh="mode === 'edit'"
-              @loaded="handlePreviewLoaded"
-              @error="handlePreviewError"
-            />
+            <div class="preview-tab-content">
+              <div class="d-flex align-center justify-space-between pa-3">
+                <div class="d-flex align-center gap-2">
+                  <v-btn
+                    size="small"
+                    color="primary"
+                    variant="flat"
+                    @click="refreshPreview"
+                    :loading="previewLoading"
+                    :disabled="!canPreview"
+                  >
+                    <v-icon start size="small">mdi-refresh</v-icon>
+                    Refresh
+                  </v-btn>
+                  
+                  <v-chip
+                    v-if="livePreviewData"
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                  >
+                    {{ livePreviewData.total_rows_in_preview || 0 }} rows
+                  </v-chip>
+
+                  <v-chip
+                    v-if="livePreviewLastRefresh"
+                    size="small"
+                    variant="text"
+                  >
+                    <v-icon start size="x-small">mdi-clock-outline</v-icon>
+                    {{ formatRefreshTime(livePreviewLastRefresh) }}
+                  </v-chip>
+                </div>
+              </div>
+
+              <v-alert
+                v-if="previewError"
+                type="error"
+                density="compact"
+                closable
+                class="mx-3 mb-3"
+                @click:close="previewError = null"
+              >
+                {{ previewError }}
+              </v-alert>
+
+              <v-alert
+                v-if="!canPreview"
+                type="info"
+                density="compact"
+                class="mx-3 mb-3"
+              >
+                Entity must be saved before preview is available
+              </v-alert>
+
+              <v-progress-linear v-if="previewLoading" indeterminate color="primary" />
+              
+              <div v-if="livePreviewData && !previewLoading" class="preview-table-container" style="height: 500px;">
+                <ag-grid-vue
+                  class="ag-theme-alpine preview-ag-grid"
+                  :style="{ height: '100%', width: '100%' }"
+                  :columnDefs="previewColumnDefs"
+                  :rowData="previewRowData"
+                  :defaultColDef="previewDefaultColDef"
+                  :animateRows="true"
+                  :suppressCellFocus="true"
+                  :headerHeight="32"
+                  :rowHeight="28"
+                />
+              </div>
+
+              <div
+                v-else-if="!previewLoading && !livePreviewData"
+                class="d-flex align-center justify-center pa-8 text-disabled"
+                style="height: 400px;"
+              >
+                <div class="text-center">
+                  <v-icon size="64" color="disabled">mdi-table-off</v-icon>
+                  <div class="mt-2">No preview data</div>
+                  <div class="text-caption">Click Refresh to load preview</div>
+                </div>
+              </div>
+            </div>
           </v-window-item>
         </v-window>
           </div>
@@ -1244,69 +1319,72 @@ function handleRejectDependency(dep: DependencySuggestion) {
 /* Ag-grid preview styles */
 .preview-ag-grid {
   font-size: 11px;
+  --ag-background-color: rgb(var(--v-theme-background)) !important;
+  --ag-foreground-color: rgb(var(--v-theme-on-background)) !important;
+  --ag-header-foreground-color: rgb(var(--v-theme-on-surface)) !important;
+  --ag-header-background-color: rgb(var(--v-theme-surface)) !important;
+  --ag-odd-row-background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
+  --ag-row-hover-color: rgba(var(--v-theme-primary), 0.08) !important;
+  --ag-border-color: rgba(var(--v-theme-on-surface), 0.12) !important;
+  --ag-cell-horizontal-border: solid rgba(var(--v-theme-on-surface), 0.08) !important;
+}
+
+.preview-ag-grid :deep(.ag-root-wrapper) {
+  border: none;
+  background: rgb(var(--v-theme-background)) !important;
+  color: rgb(var(--v-theme-on-background)) !important;
 }
 
 .preview-ag-grid :deep(.ag-header) {
-  background: rgb(var(--v-theme-surface));
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgb(var(--v-theme-surface)) !important;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12) !important;
 }
 
 .preview-ag-grid :deep(.ag-header-cell) {
   padding: 4px 8px;
   font-size: 11px;
   font-weight: 600;
-  color: rgb(var(--v-theme-on-surface));
-  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface)) !important;
+  background: rgb(var(--v-theme-surface)) !important;
 }
 
 .preview-ag-grid :deep(.ag-header-cell-label) {
-  color: rgb(var(--v-theme-on-surface));
+  color: rgb(var(--v-theme-on-surface)) !important;
 }
 
 .preview-ag-grid :deep(.ag-cell) {
   padding: 4px 8px;
   font-size: 11px;
   line-height: 20px;
-  color: rgb(var(--v-theme-on-surface)) !important;
-  border-color: rgba(var(--v-theme-on-surface), 0.08);
-}
-
-.preview-ag-grid :deep(.ag-row) {
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.preview-ag-grid :deep(.ag-row-odd) {
-  background: rgba(var(--v-theme-on-surface), 0.03);
-}
-
-.preview-ag-grid :deep(.ag-row-even) {
+  color: rgb(var(--v-theme-on-background)) !important;
+  border-color: rgba(var(--v-theme-on-surface), 0.08) !important;
   background: transparent;
 }
 
+.preview-ag-grid :deep(.ag-row) {
+  color: rgb(var(--v-theme-on-background)) !important;
+  background: transparent;
+}
+
+.preview-ag-grid :deep(.ag-row-odd) {
+  background: rgba(var(--v-theme-on-surface), 0.03) !important;
+}
+
+.preview-ag-grid :deep(.ag-row-even) {
+  background: transparent !important;
+}
+
 .preview-ag-grid :deep(.ag-row-hover) {
-  background: rgba(var(--v-theme-primary), 0.08);
+  background: rgba(var(--v-theme-primary), 0.08) !important;
 }
 
 .preview-ag-grid :deep(.key-column) {
   font-weight: 500;
-  background: rgba(var(--v-theme-warning), 0.05);
+  background: rgba(var(--v-theme-warning), 0.05) !important;
+  color: rgb(var(--v-theme-on-background)) !important;
 }
 
 /* Dark mode support for ag-grid */
-.preview-ag-grid :deep(.ag-root-wrapper) {
-  border: none;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.preview-ag-grid :deep(.ag-theme-alpine) {
-  --ag-background-color: transparent;
-  --ag-foreground-color: rgb(var(--v-theme-on-surface));
-  --ag-header-foreground-color: rgb(var(--v-theme-on-surface));
-  --ag-header-background-color: rgb(var(--v-theme-surface));
-  --ag-odd-row-background-color: rgba(var(--v-theme-on-surface), 0.03);
-  --ag-row-hover-color: rgba(var(--v-theme-primary), 0.08);
-  --ag-border-color: rgba(var(--v-theme-on-surface), 0.08);
-}
 
 .striped-row {
   background: rgba(var(--v-theme-on-surface), 0.05);

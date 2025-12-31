@@ -553,7 +553,7 @@ class TestConfigMapperIntegration:
         4. The result matches the original configuration
         """
         # Load real configuration file
-        config_path = Path(__file__).parent / "test_data" / "configurations" / "arbodat-database.yml"
+        config_path = Path(__file__).parent.parent / "test_data" / "configurations" / "arbodat-database.yml"
         assert config_path.exists(), f"Test config file not found: {config_path}"
 
         # Load as ShapeShiftConfig (core model)
@@ -643,7 +643,7 @@ class TestConfigMapperIntegration:
 
     def test_arbodat_config_entity_details(self):
         """Test detailed entity conversion for complex arbodat entities."""
-        config_path = Path(__file__).parent / "test_data" / "configurations" / "arbodat-database.yml"
+        config_path = Path(__file__).parent.parent / "test_data" / "configurations" / "arbodat-database.yml"
         original_shape_config = ShapeShiftConfig.from_file(str(config_path))
         original_cfg_dict = original_shape_config.cfg
 
@@ -706,7 +706,7 @@ class TestConfigMapperIntegration:
 
     def test_arbodat_config_metadata_preservation(self):
         """Test that metadata fields are correctly set during conversion."""
-        config_path: Path = Path(__file__).parent / "test_data" / "configurations" / "arbodat-database.yml"
+        config_path: Path = Path(__file__).parent.parent / "test_data" / "configurations" / "arbodat-database.yml"
         original_shape_config: ShapeShiftConfig = ShapeShiftConfig.from_file(str(config_path))
         original_cfg_dict = original_shape_config.cfg
 

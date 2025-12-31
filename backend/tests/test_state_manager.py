@@ -60,7 +60,7 @@ class TestConfigSession:
     def test_create_session(self):
         """Test creating a session."""
         session_id = UUID("12345678-1234-5678-1234-567812345678")
-        now = datetime.now()
+        now: datetime = datetime.now()
 
         session = ConfigSession(
             session_id=session_id,
@@ -81,7 +81,7 @@ class TestConfigSession:
 
     def test_touch_updates_last_accessed(self):
         """Test that touch() updates last_accessed timestamp."""
-        now = datetime.now()
+        now: datetime = datetime.now()
         session = ConfigSession(
             session_id=UUID("12345678-1234-5678-1234-567812345678"),
             config_name="test-config",
@@ -314,7 +314,7 @@ class TestApplicationState:
 
         # Now manually check if it would be cleaned
         stale_threshold = datetime.now().timestamp() - 1800  # 30 minutes
-        is_stale = app_state._sessions[session_id].last_accessed.timestamp() < stale_threshold
+        is_stale: bool = app_state._sessions[session_id].last_accessed.timestamp() < stale_threshold
 
         assert is_stale is True
 
@@ -331,7 +331,7 @@ class TestSingletonFunctions:
         # Reset to None first
         sm._app_state = None
 
-        state = init_app_state(config_dir)
+        state: ApplicationState = init_app_state(config_dir)
 
         assert isinstance(state, ApplicationState)
         assert state.config_dir == config_dir
@@ -342,7 +342,7 @@ class TestSingletonFunctions:
 
         sm._app_state = ApplicationState(config_dir)
 
-        state = get_app_state()
+        state: ApplicationState = get_app_state()
 
         assert isinstance(state, ApplicationState)
         assert state is sm._app_state

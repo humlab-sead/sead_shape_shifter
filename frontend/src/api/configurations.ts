@@ -29,6 +29,13 @@ export interface RestoreBackupRequest {
   backup_path: string
 }
 
+export interface MetadataUpdateRequest {
+  name?: string | null
+  description?: string | null
+  version?: string | null
+  default_entity?: string | null
+}
+
 /**
  * Configuration API service
  */
@@ -74,6 +81,20 @@ export const configurationsApi = {
     return apiRequest<Configuration>({
       method: 'PUT',
       url: `/configurations/${name}`,
+      data,
+    })
+  },
+
+  /**
+   * Update configuration metadata
+   */
+  updateMetadata: async (
+    name: string,
+    data: MetadataUpdateRequest
+  ): Promise<Configuration> => {
+    return apiRequest<Configuration>({
+      method: 'PATCH',
+      url: `/configurations/${name}/metadata`,
       data,
     })
   },

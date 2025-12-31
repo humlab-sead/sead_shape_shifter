@@ -70,7 +70,7 @@ class TestMetadataHandling:
             },
         }
 
-        config = ShapeShiftConfig(cfg=cfg_dict)
+        config = ShapeShiftConfig(cfg=cfg_dict, filename="test-config.yml")
 
         assert config.metadata.name == "Test Config"
         assert config.metadata.description == "Testing metadata"

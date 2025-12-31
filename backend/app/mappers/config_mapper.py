@@ -29,7 +29,7 @@ class ConfigMapper:
     """Bidirectional mapper between core and API configuration models."""
 
     @staticmethod
-    def to_api_config(cfg_dict: dict[str, Any], name: str) -> Configuration:
+    def to_api_config(cfg_dict: dict[str, Any], name: str, filename: str | None = None) -> Configuration:
         """
         Convert core config dict to API Configuration.
 
@@ -48,7 +48,8 @@ class ConfigMapper:
             name=metadata_dict.get("name", name),
             description=metadata_dict.get("description", ""),
             version=metadata_dict.get("version", "1.0.0"),
-            file_path=None,
+            default_entity=metadata_dict.get("default_entity"),
+            file_path=filename,
             entity_count=len(cfg_dict.get("entities", {})),
             created_at=0,
             modified_at=0,
@@ -88,6 +89,7 @@ class ConfigMapper:
                 "name": api_config.metadata.name,
                 "description": api_config.metadata.description,
                 "version": api_config.metadata.version,
+                "default_entity": api_config.metadata.default_entity,
             },
             "entities": {},
             "options": api_config.options or {},
@@ -102,7 +104,7 @@ class ConfigMapper:
     @staticmethod
     def to_core(api_config: Configuration) -> ShapeShiftConfig:
         cfg_dict: dict[str, Any] = ConfigMapper.to_core_dict(api_config=api_config)
-        shapeshift = ShapeShiftConfig(cfg=cfg_dict)
+        shapeshift = ShapeShiftConfig(cfg=cfg_dict, filename=api_config.filename or "")
         return shapeshift
 
     @staticmethod

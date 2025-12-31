@@ -91,6 +91,11 @@ fr: frontend-kill frontend-run
 .PHONY: fr2
 fr2: frontend-kill frontend-build-fast frontend-run
 
+.PHONY: run-all
+run-all: backend-kill frontend-kill
+	@echo "Starting backend and frontend servers..."
+	@make -j2 backend-run frontend-run
+
 ################################################################################
 # Backend recipes
 ################################################################################
@@ -100,19 +105,27 @@ backend-kill:
 	@lsof -t -i ':$(BACKEND_PORT)' | xargs -r kill -9
 	@echo "Killed all running servers."
 
-RELOAD_EXCLUDE="./docs,output,input,*.pyc,__pycache__/*,*.pyo,*~,./frontend/*,.venv/*,dist/*,.tox/*,*sqlite*,./tests/*,,*.csv"
 
 .PHONY: backend-run
 backend-run:
 	@echo "Starting backend server on http://localhost:$(BACKEND_PORT)"
-	@if [ -z "$$CONFIG_FILE" ]; then \
-		echo "Using default config: input/arbodat-database.yml"; \
-		export CONFIG_FILE=$$(pwd)/input/arbodat-database.yml; \
-	fi && \
-	PYTHONPATH=. uvicorn backend.app.main:app \
-		--reload --reload-exclude $(RELOAD_EXCLUDE) \
+	@PYTHONPATH=. uvicorn backend.app.main:app \
 		--log-level debug \
+		--reload \
+		--reload-delay 2 \
+		--reload-include '*.py' \
+		--reload-exclude '.venv' \
+		--reload-exclude '.git' \
+		--reload-exclude 'frontend' \
+		--reload-exclude 'input' \
+		--reload-exclude 'backups' \
+		--reload-exclude 'tmp' \
+		--reload-exclude 'htmlcov' \
+		--reload-exclude '.pytest_cache' \
+		--reload-exclude 'tests' \
+		--reload-exclude 'backend/tests' \
 		--host 0.0.0.0 --port $(BACKEND_PORT)
+
 
 .PHONY: backend-test
 backend-test:

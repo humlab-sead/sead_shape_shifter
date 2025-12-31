@@ -12,12 +12,10 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Any, Literal
 
 import click
 from loguru import logger
 
-from src.configuration.resolve import ConfigValue
 from src.extract import extract_translation_map
 from src.model import ShapeShiftConfig
 from src.normalizer import ShapeShifter
@@ -29,9 +27,7 @@ from src.utility import load_shape_file, setup_logging
 
 def resolve_config(config: ShapeShiftConfig | str) -> ShapeShiftConfig:
     if isinstance(config, str):
-        return ShapeShiftConfig.from_file(
-            config,
-        )
+        return ShapeShiftConfig.from_file(config)
     return config
 
 
@@ -39,39 +35,35 @@ async def workflow(
     config: ShapeShiftConfig,
     target: str,
     translate: bool,
-    mode: Literal["xlsx", "csv", "db"],
+    mode: str,
     drop_foreign_keys: bool,
     validate_then_exit: bool = False,
     default_entity: str | None = None,
 ) -> None:
 
-    normalizer: ShapeShifter = ShapeShifter(config=config, default_entity=default_entity)
+    shapeshifter: ShapeShifter = ShapeShifter(config=config, default_entity=default_entity)
 
     if validate_configuration(config) and validate_then_exit:
         return
 
-    await normalizer.normalize()
+    await shapeshifter.normalize()
 
     if drop_foreign_keys:
-        normalizer.drop_foreign_key_columns()
+        shapeshifter.drop_foreign_key_columns()
 
     if translate:
-        fields_metadata: list[dict[str, str]] = ConfigValue[list[dict[str, str]]]("translation").resolve() or []
-        translations_map: dict[str, str] = extract_translation_map(fields_metadata=fields_metadata)
-        normalizer.translate(translations_map=translations_map)
+        translations_map: dict[str, str] = extract_translation_map(fields_metadata=config.options.get("translation") or [])
+        shapeshifter.translate(translations_map=translations_map)
 
-    normalizer.add_system_id_columns()
-    normalizer.move_keys_to_front()
-
-    link_cfgs: dict[str, dict[str, Any]] = config.mappings
-    normalizer.map_to_remote(link_cfgs)
-
-    normalizer.store(target=target, mode=mode)
-    normalizer.log_shapes(target=target)
+    shapeshifter.add_system_id_columns()
+    shapeshifter.move_keys_to_front()
+    shapeshifter.map_to_remote(config.mappings)
+    shapeshifter.store(target=target, mode=mode)
+    shapeshifter.log_shapes(target=target)
 
     # if verbose:
     #     click.echo("\nTable Summary:")
-    #     for name, table in normalizer.table_store.items():
+    #     for name, table in shapeshifter.table_store.items():
     #         click.echo(f"  - {name}: {len(table)} rows")
 
 
@@ -106,7 +98,7 @@ def main(
     env_file: str,
     verbose: bool,
     translate: bool,
-    mode: Literal["xlsx", "csv", "db"],
+    mode: str,
     drop_foreign_keys: bool,
     log_file: str | None,
     regression_file: str | None,

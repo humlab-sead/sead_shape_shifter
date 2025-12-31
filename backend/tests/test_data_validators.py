@@ -242,7 +242,7 @@ class TestForeignKeyDataValidator:
 
         # Mock preview service and config service
         with (
-            patch("backend.app.validators.data_validators.PreviewService") as mock_preview_class,
+            patch("backend.app.validators.data_validators.ShapeShiftService") as mock_preview_class,
             patch("backend.app.services.config_service.ConfigurationService"),
             patch("src.configuration.provider.ConfigStore.config_global"),
         ):
@@ -272,7 +272,7 @@ class TestForeignKeyDataValidator:
         config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
 
         with (
-            patch("backend.app.validators.data_validators.PreviewService") as mock_preview_class,
+            patch("backend.app.validators.data_validators.ShapeShiftService") as mock_preview_class,
             patch("backend.app.services.config_service.ConfigurationService"),
             patch("src.configuration.provider.ConfigStore.config_global"),
         ):
@@ -311,7 +311,7 @@ class TestDataTypeCompatibilityValidator:
 
         config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
 
-        with patch("backend.app.validators.data_validators.PreviewService") as mock_preview_class:
+        with patch("backend.app.validators.data_validators.ShapeShiftService") as mock_preview_class:
             mock_service = Mock()
             mock_preview_class.return_value = mock_service
 
@@ -337,7 +337,7 @@ class TestDataTypeCompatibilityValidator:
 
         config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
 
-        with patch("backend.app.validators.data_validators.PreviewService") as mock_preview_class:
+        with patch("backend.app.validators.data_validators.ShapeShiftService") as mock_preview_class:
             mock_service = Mock()
             mock_preview_class.return_value = mock_service
 

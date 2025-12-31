@@ -56,7 +56,7 @@ Refactored backend architecture to eliminate ConfigStore confusion and implement
 - Uses `ApplicationState.get_version()` for optimistic locking
 - Simplified signature (no manual version passing)
 
-### 4. PreviewService with ShapeShiftConfig Caching ([backend/app/services/preview_service.py](backend/app/services/preview_service.py))
+### 4. ShapeShiftService with ShapeShiftConfig Caching ([backend/app/services/shapeshift_service.py](backend/app/services/shapeshift_service.py))
 
 **New Caching Strategy:**
 - `_shapeshift_cache: dict[str, ShapeShiftConfig]` - Cached core configs

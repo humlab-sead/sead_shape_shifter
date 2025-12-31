@@ -7,11 +7,15 @@
       @click="rail = false"
     >
       <v-list-item
-        prepend-icon="mdi-shape"
         :title="rail ? '' : 'SEAD Shape Shifter'"
         :subtitle="rail ? '' : 'Configuration Editor'"
         nav
       >
+        <!-- <template #prepend>
+          <v-avatar size="40" class="mr-2">
+            <v-img :src="logo" alt="SEAD Logo" />
+          </v-avatar>
+        </template> -->
         <template #append>
           <v-btn
             v-if="!rail"
@@ -239,6 +243,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
 import { useSettings } from '@/composables/useSettings'
+import logo from '@/assets/images/SEAD-logo-with-subtext.png'
 
 const router = useRouter()
 const route = useRoute()

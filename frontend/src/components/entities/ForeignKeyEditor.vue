@@ -1,10 +1,10 @@
 <template>
-  <v-card>
-    <v-card-title class="d-flex align-center justify-space-between">
-      <span>Foreign Keys</span>
+  <v-card class="fk-editor-compact">
+    <v-card-title class="d-flex align-center justify-space-between py-2">
+      <span class="text-body-2">Foreign Keys</span>
       <v-btn
         variant="text"
-        size="small"
+        size="x-small"
         prepend-icon="mdi-plus"
         @click="handleAddForeignKey"
       >
@@ -14,7 +14,7 @@
 
     <v-divider />
 
-    <v-card-text>
+    <v-card-text class="pa-2">
       <v-list v-if="foreignKeys.length > 0">
         <v-list-item
           v-for="(fk, index) in foreignKeys"
@@ -22,8 +22,8 @@
           class="px-0"
         >
           <v-card variant="outlined" class="mb-2">
-            <v-card-text>
-              <div class="d-flex align-center justify-space-between mb-2">
+            <v-card-text class="pa-2">
+              <div class="d-flex align-center justify-space-between mb-1">
                 <v-autocomplete
                   v-model="fk.entity"
                   :items="availableEntities"
@@ -37,7 +37,7 @@
                 <v-btn
                   icon="mdi-delete"
                   variant="text"
-                  size="small"
+                  size="x-small"
                   color="error"
                   @click="handleRemoveForeignKey(index)"
                 />
@@ -57,7 +57,7 @@
                 </v-col>
 
                 <v-col cols="12" md="2" class="d-flex align-center justify-center">
-                  <v-icon icon="mdi-arrow-right" />
+                  <v-icon icon="mdi-arrow-right" size="small" />
                 </v-col>
 
                 <v-col cols="12" md="5">
@@ -73,7 +73,7 @@
                 </v-col>
               </v-row>
 
-              <v-row dense class="mt-2">
+              <v-row dense class="mt-1">
                 <v-col cols="12" md="4">
                   <v-select
                     v-model="fk.how"
@@ -87,15 +87,18 @@
 
                 <v-col cols="12" md="8">
                   <v-expansion-panels variant="accordion" density="compact">
-                    <v-expansion-panel title="Constraints">
-                      <v-expansion-panel-text>
+                    <v-expansion-panel>
+                      <v-expansion-panel-title class="py-1 text-caption">
+                        Constraints
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text class="pt-1">
                         <v-select
                           v-model="fk.constraints!.cardinality"
                           :items="cardinalityTypes"
                           label="Cardinality"
                           variant="outlined"
                           density="compact"
-                          class="mb-2"
+                          class="mb-1"
                         />
 
                         <v-checkbox
@@ -118,7 +121,7 @@
               </v-row>
 
               <!-- Test Join Button -->
-              <v-row dense class="mt-2">
+              <v-row dense class="mt-1">
                 <v-col cols="12">
                   <ForeignKeyTester
                     :config-name="configName"
@@ -214,3 +217,49 @@ watch(
   }
 )
 </script>
+<style scoped>
+.fk-editor-compact :deep(.v-field__input) {
+  font-size: 11px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.fk-editor-compact :deep(.v-field__prepend-inner) {
+  padding-top: 2px;
+}
+
+.fk-editor-compact :deep(.v-label) {
+  font-size: 11px;
+}
+
+.fk-editor-compact :deep(.v-chip) {
+  font-size: 10px;
+  height: 20px;
+}
+
+.fk-editor-compact :deep(.v-checkbox .v-label) {
+  font-size: 11px;
+}
+
+.fk-editor-compact :deep(.v-field) {
+  --v-field-padding-top: 2px;
+  --v-field-padding-bottom: 2px;
+}
+
+.fk-editor-compact :deep(.v-field--variant-outlined .v-field__outline) {
+  --v-field-border-opacity: 0.3;
+}
+
+.fk-editor-compact :deep(.v-expansion-panel-title) {
+  min-height: 32px;
+  font-size: 11px;
+}
+
+.fk-editor-compact :deep(.v-expansion-panel-text__wrapper) {
+  padding: 4px 8px;
+}
+
+.fk-editor-compact :deep(.v-btn) {
+  font-size: 11px;
+}
+</style>

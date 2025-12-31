@@ -211,6 +211,11 @@ def init_app_state(config_dir: Path) -> ApplicationState:
 class ApplicationStateManager:
     """Helper methods for accessing possibly uninitialized ApplicationState."""
 
+    def get_app_state(self) -> ApplicationState:
+        """Get ApplicationState, raising error if not initialized."""
+        app_state: ApplicationState = get_app_state()
+        return app_state
+
     def get(self, name: str) -> Configuration | None:
         """Load active configuration from ApplicationState if available."""
         with contextlib.suppress(RuntimeError):

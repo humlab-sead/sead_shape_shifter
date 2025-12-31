@@ -40,7 +40,7 @@ export function useEntityPreview() {
   async function previewEntity(
     configName: string,
     entityName: string,
-    limit: number = 50
+    limit: number | null = 50
   ): Promise<PreviewResult | null> {
     if (!configName || !entityName) {
       error.value = 'Configuration and entity name are required'
@@ -74,7 +74,7 @@ export function useEntityPreview() {
    * Debounced preview entity - waits 1000ms after last call
    */
   const debouncedPreviewEntity = useDebounceFn(
-    (configName: string, entityName: string, limit?: number) => {
+    (configName: string, entityName: string, limit?: number | null) => {
       return previewEntity(configName, entityName, limit)
     },
     1000

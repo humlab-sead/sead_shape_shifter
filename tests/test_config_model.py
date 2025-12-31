@@ -1083,7 +1083,7 @@ class TestTableConfig:
                 "data_sources": {"test_sql_source": {}},
             },
         }
-        config: ShapeShiftConfig = ShapeShiftConfig(cfg=cfg)
+        config: ShapeShiftConfig = ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
 
         sub_configs = list(config.get_table("site").get_sub_table_configs())
 
@@ -1119,7 +1119,8 @@ class TestShapeShiftConfig:
                     "site": {"surrogate_id": "site_id", "columns": ["site_name"]},
                     "location": {"surrogate_id": "location_id", "columns": ["location_name"]},
                 }
-            }
+            },
+            filename="test-config.yml",
         )
 
         assert len(config.tables) == 2
@@ -1130,7 +1131,9 @@ class TestShapeShiftConfig:
     def test_get_table(self):
         """Test getting a specific table configuration."""
 
-        config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id", "columns": ["site_name"]}}})
+        config = ShapeShiftConfig(
+            cfg={"entities": {"site": {"surrogate_id": "site_id", "columns": ["site_name"]}}}, filename="test-config.yml"
+        )
         site_table: TableConfig = config.get_table("site")
 
         assert site_table.entity_name == "site"
@@ -1139,7 +1142,7 @@ class TestShapeShiftConfig:
     def test_get_nonexistent_table_raises_error(self):
         """Test that getting nonexistent table raises KeyError."""
 
-        config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}})
+        config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}}, filename="test-config.yml")
 
         with pytest.raises(KeyError):
             config.get_table("nonexistent")
@@ -1148,7 +1151,7 @@ class TestShapeShiftConfig:
         """Test ShapeShiftConfig with empty configuration."""
         # Note: ShapeShiftConfig uses 'or' logic, so empty dict will try to load from ConfigValue
         # We need to provide a dict with at least one entity or use None to avoid the config loader
-        tables = ShapeShiftConfig(cfg={"entities": {"dummy": {"surrogate_id": "id"}}})
+        tables = ShapeShiftConfig(cfg={"entities": {"dummy": {"surrogate_id": "id"}}}, filename="test-config.yml")
 
         assert len(tables.tables) == 1
         assert "dummy" in tables.tables
@@ -1157,7 +1160,7 @@ class TestShapeShiftConfig:
         """Test has_table method."""
         entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
 
         assert tables.has_table("site") is True
         assert tables.has_table("location") is True
@@ -1171,7 +1174,7 @@ class TestShapeShiftConfig:
             "region": {"surrogate_id": "region_id"},
         }
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
         names: list[str] = tables.table_names
 
         assert len(names) == 3
@@ -1193,7 +1196,7 @@ class TestShapeShiftConfig:
             "natural_region": {"surrogate_id": "natural_region_id", "columns": ["NaturE", "NaturrEinh"], "drop_duplicates": True},
         }
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
 
         site_table = tables.get_table("site")
         assert site_table.keys == {"ProjektNr", "Fustel"}
@@ -1207,17 +1210,17 @@ class TestShapeShiftConfig:
 
     @pytest.mark.asyncio
     async def test_resolve_returns_existing_config_instance(self):
-        """ShapeShiftConfig.resolve should return provided instance unchanged."""
+        """ShapeShiftConfig.from_source should return provided instance unchanged."""
 
-        config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}})
+        config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}}, filename="test-config.yml")
 
-        resolved = ShapeShiftConfig.resolve(config)
+        resolved = ShapeShiftConfig.from_source(config)
 
         assert resolved is config
 
     @pytest.mark.asyncio
     async def test_resolve_loads_from_file_path(self, tmp_path):
-        """ShapeShiftConfig.resolve should load configuration from file path."""
+        """ShapeShiftConfig.from_source should load configuration from file path."""
 
         config_path = tmp_path / "config.yaml"
         config_path.write_text(
@@ -1225,14 +1228,15 @@ class TestShapeShiftConfig:
             encoding="utf-8",
         )
 
-        resolved = ShapeShiftConfig.resolve(str(config_path))
+        resolved = ShapeShiftConfig.from_source(str(config_path))
 
         assert resolved.has_table("site") is True
         assert resolved.get_table("site").surrogate_id == "site_id"
 
+    @pytest.mark.skip("Config context-based config loading has been deprecated.")
     @pytest.mark.asyncio
     async def test_resolve_uses_config_provider_for_default_context(self):
-        """ShapeShiftConfig.resolve should pull from provider when no config passed."""
+        """ShapeShiftConfig.from_source should pull from provider when no config passed."""
 
         config = Config(data={"entities": {"site": {"surrogate_id": "site_id"}}})
 
@@ -1249,7 +1253,7 @@ class TestShapeShiftConfig:
         old_provider = set_config_provider(provider)
 
         try:
-            resolved: ShapeShiftConfig = ShapeShiftConfig.resolve(None)
+            resolved: ShapeShiftConfig = ShapeShiftConfig.from_source(None)
             assert resolved.has_table("site")
             assert provider.last_context == "default"
         finally:
@@ -1257,14 +1261,14 @@ class TestShapeShiftConfig:
 
     @pytest.mark.asyncio
     async def test_resolve_raises_when_context_not_configured(self):
-        """ShapeShiftConfig.resolve should raise when provider lacks requested context."""
+        """ShapeShiftConfig.from_source should raise when provider lacks requested context."""
 
         provider = MockConfigProvider(config=None)  # type: ignore
         old_provider = set_config_provider(provider)
 
         try:
-            with pytest.raises(ValueError, match="Failed to resolve Config for context 'missing'"):
-                ShapeShiftConfig.resolve("missing")
+            with pytest.raises(ValueError, match="ShapeShiftConfig source must be a ShapeShiftConfig instance or a valid config file path"):
+                ShapeShiftConfig.from_source("missing")
         finally:
             set_config_provider(old_provider)
 
@@ -1277,7 +1281,7 @@ class TestShapeShiftConfig:
             }
         }
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
         sorted_cols = tables.get_sorted_columns("site")
 
         # Surrogate ID should be first, then other columns
@@ -1298,7 +1302,7 @@ class TestShapeShiftConfig:
             },
         }
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
         sorted_cols = tables.get_sorted_columns("site")
 
         # Order: site_id, location_id (FK), then other columns
@@ -1321,7 +1325,7 @@ class TestShapeShiftConfig:
             },
         }
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
         sorted_cols = tables.get_sorted_columns("site")
 
         # Order: site_id, location_id, region_id, then other columns
@@ -1340,7 +1344,7 @@ class TestShapeShiftConfig:
             }
         }
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
         df = pd.DataFrame({"name": ["Site A", "Site B"], "description": ["Desc A", "Desc B"], "site_id": [1, 2]})
 
         reordered = tables.reorder_columns("site", df)
@@ -1360,7 +1364,7 @@ class TestShapeShiftConfig:
             },
         }
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
         df = pd.DataFrame(
             {"site_name": ["Site A", "Site B"], "location_name": ["Loc A", "Loc B"], "location_id": [10, 20], "site_id": [1, 2]}
         )
@@ -1383,7 +1387,7 @@ class TestShapeShiftConfig:
             },
         }
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
         df = pd.DataFrame(
             {
                 "site_name": ["Site A", "Site B"],
@@ -1418,7 +1422,7 @@ class TestShapeShiftConfig:
             }
         }
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
         df = pd.DataFrame({"name": ["Site A", "Site B"], "description": ["Desc A", "Desc B"]})
 
         reordered = tables.reorder_columns("site", df)
@@ -1436,7 +1440,7 @@ class TestShapeShiftConfig:
             }
         }
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
         table_cfg = tables.get_table("site")
         df = pd.DataFrame({"name": ["Site A", "Site B"], "site_id": [1, 2]})
 
@@ -1461,7 +1465,7 @@ class TestShapeShiftConfig:
             },
         }
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
         df = pd.DataFrame(
             {
                 "site_name": ["Site A", "Site B"],
@@ -1502,7 +1506,7 @@ class TestShapeShiftConfig:
             }
         }
 
-        tables = ShapeShiftConfig(cfg={"entities": entities})
+        tables = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
         df = pd.DataFrame({"name": ["A", "B", "C"], "value": [1, 2, 3], "site_id": [10, 20, 30]})
 
         reordered: pd.DataFrame = tables.reorder_columns("site", df)
@@ -1518,7 +1522,7 @@ class TestShapeShiftConfig:
         entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
         options = {"data_sources": {"postgres_db": {"driver": "postgresql", "options": {"host": "localhost"}}}}
 
-        config = ShapeShiftConfig(cfg={"entities": entities, "options": options})
+        config = ShapeShiftConfig(cfg={"entities": entities, "options": options}, filename="test-config.yml")
         data_source: DataSourceConfig = config.get_data_source("postgres_db")
 
         assert data_source.name == "postgres_db"
@@ -1527,7 +1531,9 @@ class TestShapeShiftConfig:
     def test_get_data_source_not_found(self):
         """Test get_data_source raises ValueError when source not found."""
 
-        config = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}, "options": {"data_sources": {}}})
+        config = ShapeShiftConfig(
+            cfg={"entities": {"site": {"surrogate_id": "site_id"}}, "options": {"data_sources": {}}}, filename="test-config.yml"
+        )
 
         with pytest.raises(ValueError, match="Data source.*not found"):
             config.get_data_source("nonexistent")
@@ -1537,7 +1543,7 @@ class TestShapeShiftConfig:
         entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "data_source": "postgres_db"}}
         options = {"data_sources": {"postgres_db": {"driver": "postgresql", "options": {"host": "localhost"}}}}
 
-        config = ShapeShiftConfig(cfg={"entities": entities, "options": options})
+        config = ShapeShiftConfig(cfg={"entities": entities, "options": options}, filename="test-config.yml")
         table_cfg: TableConfig = config.get_table("site")
 
         # This will fail if the loader type isn't registered, but we're testing the logic
@@ -1555,7 +1561,7 @@ class TestShapeShiftConfig:
         entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "type": "fixed"}}
         options: dict[str, dict[str, Any]] = {}
 
-        config = ShapeShiftConfig(cfg={"entities": entities, "options": options})
+        config = ShapeShiftConfig(cfg={"entities": entities, "options": options}, filename="test-config.yml")
         table_cfg: TableConfig = config.get_table("site")
 
         # This will fail if the loader type isn't registered
@@ -1571,7 +1577,7 @@ class TestShapeShiftConfig:
         entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
         options: dict[str, dict[str, Any]] = {}
 
-        config = ShapeShiftConfig(cfg={"entities": entities, "options": options})
+        config = ShapeShiftConfig(cfg={"entities": entities, "options": options}, filename="test-config.yml")
         table_cfg: TableConfig = config.get_table("site")
 
         loader: DataLoader | None = config.resolve_loader(table_cfg)
@@ -1633,7 +1639,7 @@ class TestDataSourceConfig:
         # This will try to resolve options from ConfigValue when options=None
         # We can't fully test this without the config system, but we ensure it doesn't crash
         try:
-            tables = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}})
+            tables = ShapeShiftConfig(cfg={"entities": {"site": {"surrogate_id": "site_id"}}}, filename="test-config.yml")
             # If it succeeds, options should be a dict
             assert isinstance(tables.options, dict)
         except Exception:  # pylint: disable=broad-except
@@ -1676,7 +1682,7 @@ class TestIntegration:
             },
         }
 
-        config = ShapeShiftConfig(cfg={"entities": entities})
+        config = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
 
         # Test location table
         location: TableConfig = config.get_table("location")
@@ -1717,7 +1723,7 @@ class TestIntegration:
             },
         }
 
-        config = ShapeShiftConfig(cfg={"entities": entities})
+        config = ShapeShiftConfig(cfg={"entities": entities}, filename="test-config.yml")
 
         # Test site foreign key configuration
         site: TableConfig = config.get_table("site")
