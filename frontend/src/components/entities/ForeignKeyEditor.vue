@@ -132,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import type { ForeignKeyConfig } from '@/types'
 import ForeignKeyTester from './ForeignKeyTester.vue'
 

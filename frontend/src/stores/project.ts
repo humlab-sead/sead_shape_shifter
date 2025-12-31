@@ -127,7 +127,6 @@ export const useProjectStore = defineStore('project', () => {
 
       // Update metadata in list
       const oldName = name
-      const newName = config.metadata?.name ?? name
       const index = projects.value.findIndex((c) => c.name === oldName)
 
       if (index !== -1 && config.metadata) {

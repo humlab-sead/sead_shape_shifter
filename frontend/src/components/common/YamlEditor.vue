@@ -74,7 +74,7 @@ const editorOptions = {
   },
 }
 
-function handleMount(editor: any) {
+function handleMount(_editor: any) {
   // Editor mounted - can add custom functionality here
   console.log('Monaco editor mounted')
 }
