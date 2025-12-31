@@ -273,8 +273,16 @@
                   </div>
 
                   <!-- Smart Suggestions Panel -->
-                  <div class="form-row" v-if="showSuggestions && suggestions">
+                  <div class="form-row" v-if="showSuggestions || suggestionsLoading">
+                    <v-progress-linear
+                      v-if="suggestionsLoading"
+                      indeterminate
+                      color="primary"
+                      class="mb-2"
+                    />
+
                     <SuggestionsPanel
+                      v-if="suggestions && !suggestionsLoading"
                       :suggestions="suggestions"
                       @accept-foreign-key="handleAcceptForeignKey"
                       @reject-foreign-key="handleRejectForeignKey"
@@ -728,15 +736,6 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyPress)
 })
-
-// Preview handlers
-function handlePreviewLoaded(rows: number) {
-  console.log(`Preview loaded: ${rows} rows`)
-}
-
-function handlePreviewError(error: string) {
-  console.error('Preview error:', error)
-}
 
 // Computed
 const dialogModel = computed({

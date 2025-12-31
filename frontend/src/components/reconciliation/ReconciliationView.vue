@@ -86,9 +86,9 @@
 
         <!-- Reconciliation Grid -->
         <reconciliation-grid
-          v-if="selectedEntity && entitySpec && previewData.length"
+          v-if="selectedEntity && entitySpec && entityPreviewData.length"
           :entity-spec="entitySpec"
-          :preview-data="previewData"
+          :preview-data="entityPreviewData"
           :loading="loading"
           @update:mapping="handleUpdateMapping"
           @save="handleSaveChanges"
@@ -96,7 +96,7 @@
 
         <!-- Empty State - No Data -->
         <v-card
-          v-else-if="selectedEntity && entitySpec && !previewData.length"
+          v-else-if="selectedEntity && entitySpec && !entityPreviewData.length"
           variant="outlined"
           class="pa-8 text-center"
         >
@@ -139,7 +139,7 @@ const props = defineProps<Props>()
 
 // Store
 const reconciliationStore = useReconciliationStore()
-const { config, loading, reconcilableEntities, hasConfig, previewData } = storeToRefs(reconciliationStore)
+const { reconciliationConfig, loading, reconcilableEntities, hasConfig, previewData } = storeToRefs(reconciliationStore)
 
 // Local state
 const selectedEntity = ref<string | null>(null)
@@ -149,8 +149,13 @@ const resultColor = ref('success')
 
 // Computed
 const entitySpec = computed(() => {
-  if (!selectedEntity.value || !config.value) return null
-  return config.value.entities[selectedEntity.value] || null
+  if (!selectedEntity.value || !reconciliationConfig.value) return null
+  return reconciliationConfig.value.entities[selectedEntity.value] || null
+})
+
+const entityPreviewData = computed(() => {
+  if (!selectedEntity.value) return []
+  return previewData.value[selectedEntity.value] || []
 })
 
 // Methods
@@ -171,10 +176,12 @@ async function handleAutoReconcile() {
 }
 
 async function handleUpdateMapping(row: ReconciliationPreviewRow, seadId: number | null, notes?: string) {
-  if (!selectedEntity.value) return
+  if (!selectedEntity.value || !entitySpec.value) return
 
   try {
-    await reconciliationStore.updateMapping(props.projectName, selectedEntity.value, row, seadId, notes)
+    // Extract source values from row based on entity keys
+    const sourceValues = entitySpec.value.keys.map((key) => row[key])
+    await reconciliationStore.updateMapping(props.projectName, selectedEntity.value, sourceValues, seadId, notes)
   } catch (e: any) {
     resultMessage.value = `Failed to update mapping: ${e.message}`
     resultColor.value = 'error'
