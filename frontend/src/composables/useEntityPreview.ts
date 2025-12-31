@@ -73,12 +73,9 @@ export function useEntityPreview() {
   /**
    * Debounced preview entity - waits 1000ms after last call
    */
-  const debouncedPreviewEntity = useDebounceFn(
-    (configName: string, entityName: string, limit?: number | null) => {
-      return previewEntity(configName, entityName, limit)
-    },
-    1000
-  )
+  const debouncedPreviewEntity = useDebounceFn((configName: string, entityName: string, limit?: number | null) => {
+    return previewEntity(configName, entityName, limit)
+  }, 1000)
 
   /**
    * Get entity sample (larger dataset)
@@ -118,16 +115,10 @@ export function useEntityPreview() {
   /**
    * Invalidate preview cache for entity
    */
-  async function invalidateCache(
-    configName: string,
-    entityName?: string
-  ): Promise<boolean> {
+  async function invalidateCache(configName: string, entityName?: string): Promise<boolean> {
     try {
       const params = entityName ? { entity_name: entityName } : {}
-      await axios.delete(
-        `/api/v1/projects/${configName}/preview-cache`,
-        { params }
-      )
+      await axios.delete(`/api/v1/projects/${configName}/preview-cache`, { params })
       return true
     } catch (err: any) {
       console.error('Cache invalidation error:', err)

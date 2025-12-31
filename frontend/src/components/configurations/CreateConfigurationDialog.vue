@@ -29,9 +29,7 @@
 
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" @click="handleCancel" :disabled="loading">
-          Cancel
-        </v-btn>
+        <v-btn variant="text" @click="handleCancel" :disabled="loading"> Cancel </v-btn>
         <v-btn
           color="primary"
           variant="flat"
@@ -82,11 +80,8 @@ const nameRules = [
   (v: string) => !!v || 'Project name is required',
   (v: string) => v.length >= 3 || 'Name must be at least 3 characters',
   (v: string) => v.length <= 50 || 'Name must be less than 50 characters',
-  (v: string) =>
-    /^[a-zA-Z0-9_-]+$/.test(v) || 'Name can only contain letters, numbers, hyphens, and underscores',
-  (v: string) =>
-    !configurations.value.some((c) => c.name === v) ||
-    'A configuration with this name already exists',
+  (v: string) => /^[a-zA-Z0-9_-]+$/.test(v) || 'Name can only contain letters, numbers, hyphens, and underscores',
+  (v: string) => !configurations.value.some((c) => c.name === v) || 'A configuration with this name already exists',
 ]
 
 // Methods

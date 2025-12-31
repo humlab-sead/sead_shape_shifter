@@ -9,7 +9,7 @@
       @mount="handleMount"
       @change="handleChange"
     />
-    
+
     <!-- Help Text -->
     <div v-if="showHelp" class="text-caption text-medium-emphasis mt-1">
       {{ helpText }}

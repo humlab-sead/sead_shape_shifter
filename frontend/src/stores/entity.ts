@@ -100,22 +100,18 @@ export const useEntityStore = defineStore('entity', () => {
     }
   }
 
-  async function updateEntity(
-    configName: string,
-    entityName: string,
-    data: EntityUpdateRequest
-  ) {
+  async function updateEntity(configName: string, entityName: string, data: EntityUpdateRequest) {
     loading.value = true
     error.value = null
     try {
       const entity = await api.entities.update(configName, entityName, data)
-      
+
       // Update entity in list
       const index = entities.value.findIndex((e: EntityResponse) => e.name === entityName)
       if (index !== -1) {
         entities.value[index] = entity
       }
-      
+
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
       return entity

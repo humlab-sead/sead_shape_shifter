@@ -1,13 +1,13 @@
 /**
  * Test Run API Client
- * 
+ *
  * API client for configuration test run operations.
  */
 
 import { apiRequest } from './client'
 import type { TestRunRequest, TestRunResult, TestProgress } from '../types/testRun'
 
-const BASE_URL = '/test-runs';
+const BASE_URL = '/test-runs'
 
 export const testRunApi = {
   /**

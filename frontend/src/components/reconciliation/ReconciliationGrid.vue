@@ -2,32 +2,15 @@
   <div class="reconciliation-grid">
     <!-- Toolbar -->
     <v-toolbar density="compact" color="transparent" flat>
-      <v-chip
-        v-if="stats.autoMatched > 0"
-        size="small"
-        color="success"
-        variant="tonal"
-        class="mr-2"
-      >
+      <v-chip v-if="stats.autoMatched > 0" size="small" color="success" variant="tonal" class="mr-2">
         <v-icon start size="small">mdi-check-circle</v-icon>
         {{ stats.autoMatched }} Auto-matched
       </v-chip>
-      <v-chip
-        v-if="stats.needsReview > 0"
-        size="small"
-        color="warning"
-        variant="tonal"
-        class="mr-2"
-      >
+      <v-chip v-if="stats.needsReview > 0" size="small" color="warning" variant="tonal" class="mr-2">
         <v-icon start size="small">mdi-help-circle</v-icon>
         {{ stats.needsReview }} Needs Review
       </v-chip>
-      <v-chip
-        v-if="stats.unmatched > 0"
-        size="small"
-        color="error"
-        variant="tonal"
-      >
+      <v-chip v-if="stats.unmatched > 0" size="small" color="error" variant="tonal">
         <v-icon start size="small">mdi-close-circle</v-icon>
         {{ stats.unmatched }} Unmatched
       </v-chip>
@@ -58,10 +41,7 @@
     />
 
     <!-- Candidate Review Dialog -->
-    <v-dialog
-      v-model="candidateDialog"
-      max-width="700"
-    >
+    <v-dialog v-model="candidateDialog" max-width="700">
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-magnify</v-icon>
@@ -91,31 +71,17 @@
                 {{ candidate.description }}
               </v-list-item-subtitle>
               <template v-slot:append>
-                <v-chip size="small" variant="outlined">
-                  ID: {{ extractIdFromUri(candidate.id) }}
-                </v-chip>
+                <v-chip size="small" variant="outlined"> ID: {{ extractIdFromUri(candidate.id) }} </v-chip>
               </template>
             </v-list-item>
           </v-list>
-          <div v-else class="text-center text-grey py-8">
-            No candidates available
-          </div>
+          <div v-else class="text-center text-grey py-8">No candidates available</div>
         </v-card-text>
 
         <v-card-actions>
           <v-spacer />
-          <v-btn
-            variant="text"
-            @click="candidateDialog = false"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            variant="tonal"
-            color="primary"
-            @click="acceptCandidate"
-            :disabled="!selectedCandidate"
-          >
+          <v-btn variant="text" @click="candidateDialog = false"> Cancel </v-btn>
+          <v-btn variant="tonal" color="primary" @click="acceptCandidate" :disabled="!selectedCandidate">
             Accept
           </v-btn>
         </v-card-actions>
@@ -141,12 +107,12 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  loading: false
+  loading: false,
 })
 
 const emit = defineEmits<{
   'update:mapping': [row: ReconciliationPreviewRow, seadId: number | null, notes?: string]
-  'save': []
+  save: []
 }>()
 
 // Grid reference
@@ -165,7 +131,7 @@ const defaultColDef: ColDef = {
   resizable: true,
   sortable: true,
   filter: true,
-  editable: false
+  editable: false,
 }
 
 // Column definitions
@@ -175,23 +141,23 @@ const columnDefs = computed<ColDef[]>(() => {
   const cols: ColDef[] = []
 
   // Key columns (read-only, pinned left)
-  props.entitySpec.keys.forEach(key => {
+  props.entitySpec.keys.forEach((key) => {
     cols.push({
       field: key,
       headerName: key.replace(/_/g, ' ').toUpperCase(),
       pinned: 'left',
-      width: 150
+      width: 150,
     })
   })
 
   // Property-mapped columns (read-only)
   // Get unique source columns from property_mappings
   const propertyColumns = new Set(Object.values(props.entitySpec.property_mappings))
-  propertyColumns.forEach(col => {
+  propertyColumns.forEach((col) => {
     cols.push({
       field: col,
       headerName: col.replace(/_/g, ' ').toUpperCase(),
-      width: 150
+      width: 150,
     })
   })
 
@@ -206,7 +172,7 @@ const columnDefs = computed<ColDef[]>(() => {
         return `<span class="font-weight-bold">${params.value}</span>`
       }
       return '<span class="text-grey">—</span>'
-    }
+    },
   })
 
   // Confidence column
@@ -217,10 +183,10 @@ const columnDefs = computed<ColDef[]>(() => {
     cellRenderer: (params: any) => {
       const confidence = params.value
       if (confidence == null) return '—'
-      
+
       const color = getConfidenceColorHex(confidence)
       return `<span style="color: ${color}; font-weight: 600;">${Math.round(confidence)}%</span>`
-    }
+    },
   })
 
   // Notes column (editable)
@@ -229,7 +195,7 @@ const columnDefs = computed<ColDef[]>(() => {
     headerName: 'Notes',
     width: 200,
     editable: true,
-    cellEditor: 'agTextCellEditor'
+    cellEditor: 'agTextCellEditor',
   })
 
   // Candidates action column
@@ -241,7 +207,7 @@ const columnDefs = computed<ColDef[]>(() => {
     cellRenderer: (params: any) => {
       const candidatesCount = params.value?.length || 0
       if (candidatesCount === 0) return ''
-      
+
       return `<button class="candidate-btn" data-row-index="${params.node.rowIndex}">
         <span class="mdi mdi-magnify"></span> ${candidatesCount}
       </button>`
@@ -250,7 +216,7 @@ const columnDefs = computed<ColDef[]>(() => {
       if (params.value && params.value.length > 0) {
         showCandidates(params.data)
       }
-    }
+    },
   })
 
   return cols
@@ -261,18 +227,19 @@ const rowData = computed(() => props.previewData)
 
 // Statistics
 const stats = computed(() => {
-  const autoMatched = props.previewData.filter(row => 
-    row.confidence != null && row.confidence >= (props.entitySpec?.auto_accept_threshold || 95)
+  const autoMatched = props.previewData.filter(
+    (row) => row.confidence != null && row.confidence >= (props.entitySpec?.auto_accept_threshold || 95)
   ).length
 
-  const needsReview = props.previewData.filter(row => 
-    row.confidence != null && 
-    row.confidence < (props.entitySpec?.auto_accept_threshold || 95) &&
-    row.confidence >= (props.entitySpec?.review_threshold || 70)
+  const needsReview = props.previewData.filter(
+    (row) =>
+      row.confidence != null &&
+      row.confidence < (props.entitySpec?.auto_accept_threshold || 95) &&
+      row.confidence >= (props.entitySpec?.review_threshold || 70)
   ).length
 
-  const unmatched = props.previewData.filter(row => 
-    row.confidence == null || row.confidence < (props.entitySpec?.review_threshold || 70)
+  const unmatched = props.previewData.filter(
+    (row) => row.confidence == null || row.confidence < (props.entitySpec?.review_threshold || 70)
   ).length
 
   return { autoMatched, needsReview, unmatched }
@@ -298,7 +265,7 @@ function getRowStyle(params: any) {
   } else if (row.confidence >= reviewThreshold) {
     return { background: '#fff3e0' } // Light orange for needs review
   }
-  
+
   return { background: '#ffebee' } // Light red for low confidence
 }
 
@@ -350,10 +317,10 @@ function acceptCandidate() {
   if (seadId) {
     selectedRow.value.sead_id = seadId
     selectedRow.value.confidence = selectedCandidate.value.score * 100
-    
+
     emit('update:mapping', selectedRow.value, seadId, selectedRow.value.notes)
     hasChanges.value = true
-    
+
     // Refresh grid
     gridApi.value?.refreshCells()
   }
@@ -370,12 +337,12 @@ function extractIdFromUri(uri: string): number | null {
 // Get row display text
 function getRowDisplayText(row: ReconciliationPreviewRow): string {
   if (!props.entitySpec) return ''
-  
+
   const keyValues = props.entitySpec.keys
-    .map(key => row[key])
-    .filter(val => val != null)
+    .map((key) => row[key])
+    .filter((val) => val != null)
     .join(' | ')
-  
+
   return keyValues
 }
 
@@ -383,7 +350,7 @@ function getRowDisplayText(row: ReconciliationPreviewRow): string {
 function saveChanges() {
   saving.value = true
   emit('save')
-  
+
   // Simulate save delay
   setTimeout(() => {
     saving.value = false
@@ -392,9 +359,12 @@ function saveChanges() {
 }
 
 // Watch for data changes
-watch(() => props.previewData, () => {
-  hasChanges.value = false
-})
+watch(
+  () => props.previewData,
+  () => {
+    hasChanges.value = false
+  }
+)
 </script>
 
 <style scoped>

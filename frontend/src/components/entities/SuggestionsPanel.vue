@@ -4,9 +4,7 @@
       <v-icon icon="mdi-lightbulb-on" class="mr-2" color="info" />
       <span>Smart Suggestions</span>
       <v-spacer />
-      <v-chip size="small" color="info" variant="flat">
-        {{ totalSuggestions }} suggestions
-      </v-chip>
+      <v-chip size="small" color="info" variant="flat"> {{ totalSuggestions }} suggestions </v-chip>
     </v-card-title>
 
     <v-card-text class="pa-4">
@@ -25,14 +23,8 @@
             :style="{ backgroundColor: getConfidenceColor(fk.confidence, 0.05) }"
           >
             <template #prepend>
-              <v-avatar
-                :color="getConfidenceColor(fk.confidence)"
-                size="32"
-                class="mr-2"
-              >
-                <span class="text-caption font-weight-bold">
-                  {{ Math.round(fk.confidence * 100) }}%
-                </span>
+              <v-avatar :color="getConfidenceColor(fk.confidence)" size="32" class="mr-2">
+                <span class="text-caption font-weight-bold"> {{ Math.round(fk.confidence * 100) }}% </span>
               </v-avatar>
             </template>
 
@@ -40,12 +32,7 @@
               <code class="text-primary">{{ fk.local_keys.join(', ') }}</code>
               <v-icon icon="mdi-arrow-right" size="small" class="mx-2" />
               <code class="text-success">{{ fk.remote_entity }}.{{ fk.remote_keys.join(', ') }}</code>
-              <v-chip
-                v-if="fk.cardinality"
-                size="x-small"
-                variant="outlined"
-                class="ml-2"
-              >
+              <v-chip v-if="fk.cardinality" size="x-small" variant="outlined" class="ml-2">
                 {{ fk.cardinality }}
               </v-chip>
             </v-list-item-title>
@@ -95,14 +82,8 @@
             :style="{ backgroundColor: getConfidenceColor(dep.confidence, 0.05) }"
           >
             <template #prepend>
-              <v-avatar
-                :color="getConfidenceColor(dep.confidence)"
-                size="32"
-                class="mr-2"
-              >
-                <span class="text-caption font-weight-bold">
-                  {{ Math.round(dep.confidence * 100) }}%
-                </span>
+              <v-avatar :color="getConfidenceColor(dep.confidence)" size="32" class="mr-2">
+                <span class="text-caption font-weight-bold"> {{ Math.round(dep.confidence * 100) }}% </span>
               </v-avatar>
             </template>
 
@@ -143,23 +124,8 @@
       <!-- Actions -->
       <v-divider class="my-3" />
       <div class="d-flex justify-end gap-2">
-        <v-btn
-          variant="text"
-          size="small"
-          @click="acceptAll"
-          :disabled="allAccepted"
-        >
-          Accept All
-        </v-btn>
-        <v-btn
-          variant="text"
-          size="small"
-          color="error"
-          @click="rejectAll"
-          :disabled="allRejected"
-        >
-          Reject All
-        </v-btn>
+        <v-btn variant="text" size="small" @click="acceptAll" :disabled="allAccepted"> Accept All </v-btn>
+        <v-btn variant="text" size="small" color="error" @click="rejectAll" :disabled="allRejected"> Reject All </v-btn>
       </div>
     </v-card-text>
   </v-card>
@@ -209,17 +175,13 @@ const rejectedDependencies = ref<Set<string>>(new Set())
 
 const hasSuggestions = computed(() => {
   if (!props.suggestions) return false
-  return (
-    props.suggestions.foreign_key_suggestions?.length > 0 ||
-    props.suggestions.dependency_suggestions?.length > 0
-  )
+  return props.suggestions.foreign_key_suggestions?.length > 0 || props.suggestions.dependency_suggestions?.length > 0
 })
 
 const totalSuggestions = computed(() => {
   if (!props.suggestions) return 0
   return (
-    (props.suggestions.foreign_key_suggestions?.length || 0) +
-    (props.suggestions.dependency_suggestions?.length || 0)
+    (props.suggestions.foreign_key_suggestions?.length || 0) + (props.suggestions.dependency_suggestions?.length || 0)
   )
 })
 
@@ -227,20 +189,14 @@ const allAccepted = computed(() => {
   if (!props.suggestions) return true
   const totalFks = props.suggestions.foreign_key_suggestions?.length || 0
   const totalDeps = props.suggestions.dependency_suggestions?.length || 0
-  return (
-    acceptedForeignKeys.value.size === totalFks &&
-    acceptedDependencies.value.size === totalDeps
-  )
+  return acceptedForeignKeys.value.size === totalFks && acceptedDependencies.value.size === totalDeps
 })
 
 const allRejected = computed(() => {
   if (!props.suggestions) return true
   const totalFks = props.suggestions.foreign_key_suggestions?.length || 0
   const totalDeps = props.suggestions.dependency_suggestions?.length || 0
-  return (
-    rejectedForeignKeys.value.size === totalFks &&
-    rejectedDependencies.value.size === totalDeps
-  )
+  return rejectedForeignKeys.value.size === totalFks && rejectedDependencies.value.size === totalDeps
 })
 
 function getForeignKeyId(fk: ForeignKeySuggestion): string {
@@ -297,37 +253,37 @@ function rejectDependency(dep: DependencySuggestion) {
 
 function acceptAll() {
   if (!props.suggestions) return
-  
-  props.suggestions.foreign_key_suggestions?.forEach(fk => {
+
+  props.suggestions.foreign_key_suggestions?.forEach((fk) => {
     if (!isAccepted(fk)) {
       acceptForeignKey(fk)
     }
   })
-  
-  props.suggestions.dependency_suggestions?.forEach(dep => {
+
+  props.suggestions.dependency_suggestions?.forEach((dep) => {
     if (!isDependencyAccepted(dep)) {
       acceptDependency(dep)
     }
   })
-  
+
   emit('accept-all')
 }
 
 function rejectAll() {
   if (!props.suggestions) return
-  
-  props.suggestions.foreign_key_suggestions?.forEach(fk => {
+
+  props.suggestions.foreign_key_suggestions?.forEach((fk) => {
     if (!isRejected(fk)) {
       rejectForeignKey(fk)
     }
   })
-  
-  props.suggestions.dependency_suggestions?.forEach(dep => {
+
+  props.suggestions.dependency_suggestions?.forEach((dep) => {
     if (!isDependencyRejected(dep)) {
       rejectDependency(dep)
     }
   })
-  
+
   emit('reject-all')
 }
 

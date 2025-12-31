@@ -3,15 +3,7 @@
     <div class="d-flex justify-space-between align-center mb-2">
       <span class="text-caption">Fixed Values Data</span>
       <div>
-        <v-btn
-          size="small"
-          variant="outlined"
-          prepend-icon="mdi-plus"
-          @click="addRow"
-          class="mr-2"
-        >
-          Add Row
-        </v-btn>
+        <v-btn size="small" variant="outlined" prepend-icon="mdi-plus" @click="addRow" class="mr-2"> Add Row </v-btn>
         <v-btn
           size="small"
           variant="outlined"
@@ -140,7 +132,7 @@ function onSelectionChanged() {
 
 function getAllRows(): any[][] {
   if (!gridApi.value) return []
-  
+
   const rows: any[][] = []
   gridApi.value.forEachNode((node) => {
     const row: any[] = []
@@ -163,7 +155,7 @@ function addRow() {
   }
 
   gridApi.value.applyTransaction({ add: [newRow] })
-  
+
   // Update model
   const allRows = getAllRows()
   emit('update:modelValue', allRows)
@@ -176,11 +168,11 @@ function deleteSelectedRows() {
   if (selectedRows.length === 0) return
 
   gridApi.value.applyTransaction({ remove: selectedRows })
-  
+
   // Update model
   const allRows = getAllRows()
   emit('update:modelValue', allRows)
-  
+
   hasSelection.value = false
 }
 

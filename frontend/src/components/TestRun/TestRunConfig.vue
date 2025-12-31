@@ -66,16 +66,14 @@
       <!-- Validation Options -->
       <div class="mb-2">
         <h4 class="text-subtitle-1 mb-3">Validation Options</h4>
-        
+
         <v-switch
           v-model="localOptions.validate_foreign_keys"
           label="Validate Foreign Keys"
           color="primary"
           hide-details
         />
-        <div class="text-caption text-medium-emphasis ml-12 mb-3">
-          Check foreign key relationships and constraints
-        </div>
+        <div class="text-caption text-medium-emphasis ml-12 mb-3">Check foreign key relationships and constraints</div>
 
         <v-switch
           v-model="localOptions.validate_constraints"
@@ -83,19 +81,10 @@
           color="primary"
           hide-details
         />
-        <div class="text-caption text-medium-emphasis ml-12 mb-3">
-          Check all constraint validations
-        </div>
+        <div class="text-caption text-medium-emphasis ml-12 mb-3">Check all constraint validations</div>
 
-        <v-switch
-          v-model="localOptions.stop_on_error"
-          label="Stop on Error"
-          color="primary"
-          hide-details
-        />
-        <div class="text-caption text-medium-emphasis ml-12">
-          Stop test run when first error encountered
-        </div>
+        <v-switch v-model="localOptions.stop_on_error" label="Stop on Error" color="primary" hide-details />
+        <div class="text-caption text-medium-emphasis ml-12">Stop test run when first error encountered</div>
       </div>
     </v-form>
   </div>

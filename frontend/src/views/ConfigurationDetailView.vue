@@ -5,11 +5,7 @@
       <v-col>
         <div class="d-flex align-center justify-space-between mb-6">
           <div class="d-flex align-center">
-            <v-btn
-              icon="mdi-arrow-left"
-              variant="text"
-              @click="$router.push({ name: 'configurations' })"
-            />
+            <v-btn icon="mdi-arrow-left" variant="text" @click="$router.push({ name: 'configurations' })" />
             <div class="ml-2">
               <h1 class="text-h4">{{ configName }}</h1>
               <div class="d-flex align-center mt-1">
@@ -36,12 +32,7 @@
           </div>
 
           <div class="d-flex gap-2">
-            <v-btn
-              variant="outlined"
-              prepend-icon="mdi-play-circle-outline"
-              color="success"
-              @click="handleTestRun"
-            >
+            <v-btn variant="outlined" prepend-icon="mdi-play-circle-outline" color="success" @click="handleTestRun">
               Test Run
             </v-btn>
             <v-btn
@@ -52,19 +43,8 @@
             >
               Validate
             </v-btn>
-            <v-btn
-              variant="outlined"
-              prepend-icon="mdi-history"
-              @click="showBackupsDialog = true"
-            >
-              Backups
-            </v-btn>
-            <v-btn
-              color="primary"
-              prepend-icon="mdi-content-save"
-              :disabled="!hasUnsavedChanges"
-              @click="handleSave"
-            >
+            <v-btn variant="outlined" prepend-icon="mdi-history" @click="showBackupsDialog = true"> Backups </v-btn>
+            <v-btn color="primary" prepend-icon="mdi-content-save" :disabled="!hasUnsavedChanges" @click="handleSave">
               Save Changes
             </v-btn>
           </div>
@@ -136,33 +116,22 @@
         <v-window v-model="activeTab" class="mt-4">
           <!-- Entities Tab -->
           <v-window-item value="entities">
-            <entity-list-card
-              :config-name="configName"
-              @entity-updated="handleEntityUpdated"
-            />
+            <entity-list-card :config-name="configName" @entity-updated="handleEntityUpdated" />
           </v-window-item>
 
           <!-- Dependencies Tab -->
           <v-window-item value="dependencies">
-            <dependency-graph
-              :config-name="configName"
-              @edit-entity="handleEditEntity"
-            />
+            <dependency-graph :config-name="configName" @edit-entity="handleEditEntity" />
           </v-window-item>
 
           <!-- Reconciliation Tab -->
           <v-window-item value="reconciliation">
-            <reconciliation-view
-              :config-name="configName"
-            />
+            <reconciliation-view :config-name="configName" />
           </v-window-item>
 
           <!-- Data Sources Tab -->
           <v-window-item value="data-sources">
-            <configuration-data-sources
-              :config-name="configName"
-              @updated="handleDataSourcesUpdated"
-            />
+            <configuration-data-sources :config-name="configName" @updated="handleDataSourcesUpdated" />
           </v-window-item>
 
           <!-- Validation Tab -->
@@ -219,15 +188,11 @@
               </template>
             </v-list-item>
           </v-list>
-          <v-alert v-else type="info" variant="tonal">
-            No backups available for this configuration.
-          </v-alert>
+          <v-alert v-else type="info" variant="tonal"> No backups available for this configuration. </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showBackupsDialog = false">
-            Close
-          </v-btn>
+          <v-btn variant="text" @click="showBackupsDialog = false"> Close </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -247,9 +212,7 @@
       <v-snackbar v-if="showSuccessSnackbar" v-model="showSuccessSnackbar" color="success" timeout="3000">
         {{ successMessage }}
         <template #actions>
-          <v-btn variant="text" @click="showSuccessSnackbar = false">
-            Close
-          </v-btn>
+          <v-btn variant="text" @click="showSuccessSnackbar = false"> Close </v-btn>
         </template>
       </v-snackbar>
     </v-scale-transition>
@@ -296,15 +259,11 @@ const { entityCount, entities } = useEntities({
 })
 
 const entityNames = computed(() => {
-  return entities.value?.map(e => e.name) ?? []
+  return entities.value?.map((e) => e.name) ?? []
 })
 
 // Session management
-const {
-  startSession,
-  saveWithVersionCheck,
-  hasActiveSession,
-} = useSession()
+const { startSession, saveWithVersionCheck, hasActiveSession } = useSession()
 
 const {
   validationResult,
@@ -341,14 +300,14 @@ const fixPreviewError = ref<string | null>(null)
 // Computed
 const mergedValidationResult = computed(() => {
   if (!validationResult.value && !dataValidationResult.value) return null
-  
+
   const structural = validationResult.value
   const data = dataValidationResult.value
-  
+
   if (!structural && data) return data
   if (structural && !data) return structural
   if (!structural || !data) return null
-  
+
   // Merge both results
   return {
     is_valid: structural.is_valid && data.is_valid,
@@ -397,7 +356,7 @@ async function handleValidate() {
 }
 
 // Debounced validation to prevent excessive API calls (500ms delay)
-// Usage: Replace direct handleValidate() calls with debouncedValidate() 
+// Usage: Replace direct handleValidate() calls with debouncedValidate()
 // in scenarios with rapid changes (e.g., auto-save, real-time editing)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const debouncedValidate = useDebounceFn(handleValidate, 500)
@@ -434,7 +393,7 @@ async function handlePreviewFixes(issues: any[]) {
     fixPreviewLoading.value = true
     fixPreviewError.value = null
     showPreviewModal.value = true
-    
+
     const preview = await previewFixes(configName.value, issues)
     fixPreview.value = preview
   } catch (err) {
@@ -449,11 +408,11 @@ async function handleApplyFixesConfirmed() {
   try {
     const issues = autoFixableIssues.value
     const result = await applyFixes(configName.value, issues)
-    
+
     showPreviewModal.value = false
     successMessage.value = `Successfully applied ${result.fixes_applied} fixes. Backup: ${result.backup_path}`
     showSuccessSnackbar.value = true
-    
+
     // Reload configuration and re-validate
     await handleRefresh()
     await handleValidate()

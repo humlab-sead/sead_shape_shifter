@@ -34,17 +34,12 @@ export function useSuggestions() {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  async function analyzeSuggestions(
-    request: AnalyzeSuggestionsRequest
-  ): Promise<EntitySuggestions[]> {
+  async function analyzeSuggestions(request: AnalyzeSuggestionsRequest): Promise<EntitySuggestions[]> {
     loading.value = true
     error.value = null
 
     try {
-      const response = await apiClient.post<EntitySuggestions[]>(
-        '/suggestions/analyze',
-        request
-      )
+      const response = await apiClient.post<EntitySuggestions[]>('/suggestions/analyze', request)
       return response.data
     } catch (err: any) {
       error.value = err.response?.data?.detail || err.message || 'Failed to analyze suggestions'

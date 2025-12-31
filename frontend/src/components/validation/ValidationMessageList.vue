@@ -5,11 +5,7 @@
   </div>
 
   <v-list v-else>
-    <v-list-item
-      v-for="(message, index) in messages"
-      :key="index"
-      :value="index"
-    >
+    <v-list-item v-for="(message, index) in messages" :key="index" :value="index">
       <template #prepend>
         <v-icon
           :icon="message.severity === 'error' ? 'mdi-alert-circle' : 'mdi-alert'"
@@ -20,47 +16,19 @@
       <v-list-item-title>{{ message.message }}</v-list-item-title>
 
       <v-list-item-subtitle class="mt-1">
-        <v-chip
-          v-if="message.priority"
-          size="x-small"
-          :color="getPriorityColor(message.priority)"
-          class="mr-1"
-        >
+        <v-chip v-if="message.priority" size="x-small" :color="getPriorityColor(message.priority)" class="mr-1">
           {{ message.priority.toUpperCase() }}
         </v-chip>
-        <v-chip
-          v-if="message.category"
-          size="x-small"
-          variant="outlined"
-          prepend-icon="mdi-tag"
-          class="mr-1"
-        >
+        <v-chip v-if="message.category" size="x-small" variant="outlined" prepend-icon="mdi-tag" class="mr-1">
           {{ message.category }}
         </v-chip>
-        <v-chip
-          v-if="message.entity"
-          size="x-small"
-          variant="outlined"
-          prepend-icon="mdi-cube"
-          class="mr-1"
-        >
+        <v-chip v-if="message.entity" size="x-small" variant="outlined" prepend-icon="mdi-cube" class="mr-1">
           {{ message.entity }}
         </v-chip>
-        <v-chip
-          v-if="message.field"
-          size="x-small"
-          variant="outlined"
-          prepend-icon="mdi-table-column"
-          class="mr-1"
-        >
+        <v-chip v-if="message.field" size="x-small" variant="outlined" prepend-icon="mdi-table-column" class="mr-1">
           {{ message.field }}
         </v-chip>
-        <v-chip
-          v-if="message.code"
-          size="x-small"
-          variant="outlined"
-          class="mr-1"
-        >
+        <v-chip v-if="message.code" size="x-small" variant="outlined" class="mr-1">
           {{ message.code }}
         </v-chip>
         <v-chip
@@ -78,12 +46,7 @@
       <template v-if="message.suggestion" #append>
         <v-tooltip location="top">
           <template #activator="{ props: tooltipProps }">
-            <v-icon
-              v-bind="tooltipProps"
-              icon="mdi-lightbulb-outline"
-              color="info"
-              size="small"
-            />
+            <v-icon v-bind="tooltipProps" icon="mdi-lightbulb-outline" color="info" size="small" />
           </template>
           <span>{{ message.suggestion }}</span>
         </v-tooltip>

@@ -103,11 +103,7 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
 
   // Helper: Get dependents (reverse dependencies)
   const getDependentsOf = (name: string) => {
-    return (
-      dependencyGraph.value?.nodes
-        .filter((n) => n.depends_on.includes(name))
-        .map((n) => n.name) ?? []
-    )
+    return dependencyGraph.value?.nodes.filter((n) => n.depends_on.includes(name)).map((n) => n.name) ?? []
   }
 
   // Helper: Check if node is in a cycle

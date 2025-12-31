@@ -37,7 +37,7 @@ export function useSession() {
 
     try {
       await sessionStore.createSession(request)
-      
+
       // Start auto-refresh to detect concurrent edits
       sessionStore.startAutoRefresh(30000) // 30 seconds
 
@@ -84,12 +84,12 @@ export function useSession() {
       if (err?.response?.status === 409) {
         // Version conflict detected
         const serverVersion = err.response.data?.current_version
-        
+
         if (serverVersion && sessionStore.checkVersionConflict(serverVersion)) {
           throw new Error(
             `Project was modified by another user. ` +
-            `Expected version ${currentVersion}, current version ${serverVersion}. ` +
-            `Please reload and merge changes.`
+              `Expected version ${currentVersion}, current version ${serverVersion}. ` +
+              `Please reload and merge changes.`
           )
         }
       }

@@ -1,85 +1,43 @@
 <template>
   <v-container>
     <!-- Session Status Bar -->
-    <v-alert
-      v-if="hasActiveSession"
-      type="info"
-      variant="tonal"
-      class="mb-4"
-    >
+    <v-alert v-if="hasActiveSession" type="info" variant="tonal" class="mb-4">
       <v-row align="center">
         <v-col>
           <strong>Editing:</strong> {{ configName }}
           <span class="ml-2 text-caption">Version {{ version }}</span>
-          <v-chip
-            v-if="isModified"
-            size="x-small"
-            color="warning"
-            class="ml-2"
-          >
-            Modified
-          </v-chip>
+          <v-chip v-if="isModified" size="x-small" color="warning" class="ml-2"> Modified </v-chip>
         </v-col>
         <v-col cols="auto">
-          <v-btn
-            size="small"
-            color="primary"
-            :loading="loading"
-            :disabled="!isModified"
-            @click="handleSave"
-          >
+          <v-btn size="small" color="primary" :loading="loading" :disabled="!isModified" @click="handleSave">
             Save
           </v-btn>
-          <v-btn
-            size="small"
-            variant="text"
-            class="ml-2"
-            @click="handleClose"
-          >
-            Close Session
-          </v-btn>
+          <v-btn size="small" variant="text" class="ml-2" @click="handleClose"> Close Session </v-btn>
         </v-col>
       </v-row>
     </v-alert>
 
     <!-- Concurrent Edit Warning -->
-    <v-alert
-      v-if="concurrentEditWarning"
-      type="warning"
-      variant="tonal"
-      closable
-      class="mb-4"
-    >
+    <v-alert v-if="concurrentEditWarning" type="warning" variant="tonal" closable class="mb-4">
       <v-row align="center">
         <v-col>
           {{ concurrentEditWarning }}
         </v-col>
         <v-col cols="auto">
-          <v-btn
-            size="small"
-            variant="outlined"
-            @click="refreshActiveSessions"
-          >
-            Refresh
-          </v-btn>
+          <v-btn size="small" variant="outlined" @click="refreshActiveSessions"> Refresh </v-btn>
         </v-col>
       </v-row>
 
       <!-- List other active sessions -->
       <v-list v-if="otherActiveSessions.length > 0" density="compact" class="mt-2">
-        <v-list-item
-          v-for="session in otherActiveSessions"
-          :key="session.session_id"
-        >
+        <v-list-item v-for="session in otherActiveSessions" :key="session.session_id">
           <template #prepend>
             <v-icon>mdi-account</v-icon>
           </template>
           <v-list-item-title>
             {{ session.user_id || 'Anonymous User' }}
           </v-list-item-title>
-          <v-list-item-subtitle>
-            Active since {{ formatTime(session.loaded_at) }}
-          </v-list-item-subtitle>
+          <v-list-item-subtitle> Active since {{ formatTime(session.loaded_at) }} </v-list-item-subtitle>
         </v-list-item>
       </v-list>
     </v-alert>
@@ -98,26 +56,14 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn
-          color="primary"
-          :disabled="!selectedConfigName"
-          :loading="loading"
-          @click="handleStartSession"
-        >
+        <v-btn color="primary" :disabled="!selectedConfigName" :loading="loading" @click="handleStartSession">
           Start Session
         </v-btn>
       </v-card-actions>
     </v-card>
 
     <!-- Error Display -->
-    <v-alert
-      v-if="error"
-      type="error"
-      variant="tonal"
-      closable
-      class="mb-4"
-      @click:close="error = null"
-    >
+    <v-alert v-if="error" type="error" variant="tonal" closable class="mb-4" @click:close="error = null">
       {{ error }}
     </v-alert>
 
@@ -196,12 +142,11 @@ async function handleSave() {
     console.log('Project saved successfully')
   } catch (err: any) {
     console.error('Failed to save:', err)
-    
+
     // Handle conflict
     if (err.message.includes('modified by another user')) {
       const shouldReload = confirm(
-        'This configuration was modified by another user. ' +
-        'Would you like to reload it? (Your changes will be lost)'
+        'This configuration was modified by another user. ' + 'Would you like to reload it? (Your changes will be lost)'
       )
       if (shouldReload) {
         await configStore.selectProject(configName.value!)
@@ -217,7 +162,7 @@ async function handleClose() {
       await handleSave()
     }
   }
-  
+
   await endSession()
   selectedConfigName.value = null
 }

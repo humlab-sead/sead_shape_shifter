@@ -1,14 +1,9 @@
 <template>
   <div class="empty-state text-center py-12">
-    <v-icon
-      :icon="icon"
-      :size="iconSize"
-      :color="iconColor"
-      class="mb-4"
-    />
-    
+    <v-icon :icon="icon" :size="iconSize" :color="iconColor" class="mb-4" />
+
     <h3 class="text-h6 mb-2">{{ title }}</h3>
-    
+
     <p v-if="description" class="text-grey mb-4">
       {{ description }}
     </p>

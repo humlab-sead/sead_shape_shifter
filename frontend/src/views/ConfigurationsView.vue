@@ -30,13 +30,7 @@
         />
       </v-col>
       <v-col cols="12" md="3" class="text-right">
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-plus"
-          @click="showCreateDialog = true"
-        >
-          New Project
-        </v-btn>
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="showCreateDialog = true"> New Project </v-btn>
       </v-col>
     </v-row>
 
@@ -63,35 +57,16 @@
         <v-card variant="outlined" class="text-center py-12">
           <v-icon icon="mdi-file-document-outline" size="64" color="grey" />
           <h3 class="text-h6 mt-4 mb-2">No Configurations Yet</h3>
-          <p class="text-grey mb-4">
-            Create your first configuration to get started
-          </p>
-          <v-btn
-            color="primary"
-            prepend-icon="mdi-plus"
-            @click="showCreateDialog = true"
-          >
-            Create Project
-          </v-btn>
+          <p class="text-grey mb-4">Create your first configuration to get started</p>
+          <v-btn color="primary" prepend-icon="mdi-plus" @click="showCreateDialog = true"> Create Project </v-btn>
         </v-card>
       </v-col>
     </v-row>
 
     <!-- Project List -->
     <v-row v-else class="mt-4">
-      <v-col
-        v-for="config in filteredConfigurations"
-        :key="config.name"
-        cols="12"
-        md="6"
-        lg="4"
-      >
-        <v-card
-          variant="outlined"
-          hover
-          :ripple="false"
-          @click="handleSelectConfig(config.name)"
-        >
+      <v-col v-for="config in filteredConfigurations" :key="config.name" cols="12" md="6" lg="4">
+        <v-card variant="outlined" hover :ripple="false" @click="handleSelectConfig(config.name)">
           <v-card-title class="d-flex align-center">
             <v-icon icon="mdi-file-document" class="mr-2" />
             <span class="text-truncate">{{ config.name }}</span>
@@ -108,19 +83,12 @@
 
             <div v-if="config.modified_at" class="d-flex align-center">
               <v-icon icon="mdi-clock-outline" size="small" class="mr-2" />
-              <span class="text-body-2 text-grey">
-                Modified {{ formatDate(config.modified_at) }}
-              </span>
+              <span class="text-body-2 text-grey"> Modified {{ formatDate(config.modified_at) }} </span>
             </div>
           </v-card-text>
 
           <v-card-actions>
-            <v-btn
-              variant="text"
-              size="small"
-              prepend-icon="mdi-pencil"
-              @click.stop="handleSelectConfig(config.name)"
-            >
+            <v-btn variant="text" size="small" prepend-icon="mdi-pencil" @click.stop="handleSelectConfig(config.name)">
               Edit
             </v-btn>
             <v-btn
@@ -145,10 +113,7 @@
     </v-row>
 
     <!-- Create Dialog -->
-    <create-configuration-dialog
-      v-model="showCreateDialog"
-      @created="handleConfigCreated"
-    />
+    <create-configuration-dialog v-model="showCreateDialog" @created="handleConfigCreated" />
 
     <!-- Delete Confirmation Dialog -->
     <delete-confirmation-dialog
@@ -163,9 +128,7 @@
       <v-snackbar v-if="showSuccessSnackbar" v-model="showSuccessSnackbar" color="success" timeout="3000">
         {{ successMessage }}
         <template #actions>
-          <v-btn variant="text" @click="showSuccessSnackbar = false">
-            Close
-          </v-btn>
+          <v-btn variant="text" @click="showSuccessSnackbar = false"> Close </v-btn>
         </template>
       </v-snackbar>
     </v-scale-transition>
@@ -183,17 +146,9 @@ import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDial
 const router = useRouter()
 
 // Composables
-const {
-  configurations,
-  loading,
-  error,
-  isEmpty,
-  select,
-  remove,
-  validate,
-  fetch,
-  clearError,
-} = useConfigurations({ autoFetch: true })
+const { configurations, loading, error, isEmpty, select, remove, validate, fetch, clearError } = useConfigurations({
+  autoFetch: true,
+})
 
 // Local state
 const searchQuery = ref('')

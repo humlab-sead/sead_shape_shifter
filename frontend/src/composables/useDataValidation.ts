@@ -26,15 +26,11 @@ export function useDataValidation() {
   const issuesByCategory = computed(() => {
     if (!result.value) return {}
 
-    const allIssues = [
-      ...(result.value.errors || []),
-      ...(result.value.warnings || []),
-      ...(result.value.info || [])
-    ]
+    const allIssues = [...(result.value.errors || []), ...(result.value.warnings || []), ...(result.value.info || [])]
 
     const grouped: Record<string, ValidationError[]> = {}
-    
-    allIssues.forEach(issue => {
+
+    allIssues.forEach((issue) => {
       const category = issue.category || 'structural'
       if (!grouped[category]) {
         grouped[category] = []
@@ -49,15 +45,11 @@ export function useDataValidation() {
   const issuesByPriority = computed(() => {
     if (!result.value) return {}
 
-    const allIssues = [
-      ...(result.value.errors || []),
-      ...(result.value.warnings || []),
-      ...(result.value.info || [])
-    ]
+    const allIssues = [...(result.value.errors || []), ...(result.value.warnings || []), ...(result.value.info || [])]
 
     const grouped: Record<string, ValidationError[]> = {}
-    
-    allIssues.forEach(issue => {
+
+    allIssues.forEach((issue) => {
       const priority = issue.priority || 'medium'
       if (!grouped[priority]) {
         grouped[priority] = []
@@ -72,25 +64,19 @@ export function useDataValidation() {
   const autoFixableIssues = computed(() => {
     if (!result.value) return []
 
-    const allIssues = [
-      ...(result.value.errors || []),
-      ...(result.value.warnings || [])
-    ]
+    const allIssues = [...(result.value.errors || []), ...(result.value.warnings || [])]
 
-    return allIssues.filter(issue => issue.auto_fixable)
+    return allIssues.filter((issue) => issue.auto_fixable)
   })
 
   /**
    * Run data validation on configuration
    */
-  async function validateData(
-    configName: string,
-    entityNames?: string[]
-  ): Promise<ValidationResult | null> {
+  async function validateData(configName: string, entityNames?: string[]): Promise<ValidationResult | null> {
     // Check cache first
     const cacheKey = `${configName}:${entityNames?.join(',') || 'all'}`
     const cached = validationCache.get(cacheKey)
-    
+
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       result.value = cached.result
       return cached.result
@@ -101,24 +87,20 @@ export function useDataValidation() {
     result.value = null
 
     try {
-      const params = entityNames && entityNames.length > 0
-        ? { entity_names: entityNames.join(',') }
-        : {}
+      const params = entityNames && entityNames.length > 0 ? { entity_names: entityNames.join(',') } : {}
 
-      const response = await apiClient.post<ValidationResult>(
-        `/configurations/${configName}/validate/data`,
-        null,
-        { params }
-      )
+      const response = await apiClient.post<ValidationResult>(`/configurations/${configName}/validate/data`, null, {
+        params,
+      })
 
       result.value = response.data
-      
+
       // Update cache
       validationCache.set(cacheKey, {
         result: response.data,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       })
-      
+
       return response.data
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Data validation failed'
@@ -141,18 +123,12 @@ export function useDataValidation() {
   /**
    * Preview fixes for validation errors
    */
-  async function previewFixes(
-    configName: string,
-    errors: ValidationError[]
-  ): Promise<any> {
+  async function previewFixes(configName: string, errors: ValidationError[]): Promise<any> {
     loading.value = true
     error.value = null
 
     try {
-      const response = await apiClient.post(
-        `/configurations/${configName}/fixes/preview`,
-        errors
-      )
+      const response = await apiClient.post(`/configurations/${configName}/fixes/preview`, errors)
 
       return response.data
     } catch (err) {
@@ -168,18 +144,12 @@ export function useDataValidation() {
   /**
    * Apply fixes for validation errors
    */
-  async function applyFixes(
-    configName: string,
-    errors: ValidationError[]
-  ): Promise<any> {
+  async function applyFixes(configName: string, errors: ValidationError[]): Promise<any> {
     loading.value = true
     error.value = null
 
     try {
-      const response = await apiClient.post(
-        `/configurations/${configName}/fixes/apply`,
-        errors
-      )
+      const response = await apiClient.post(`/configurations/${configName}/fixes/apply`, errors)
 
       return response.data
     } catch (err) {
@@ -218,6 +188,6 @@ export function useDataValidation() {
     clearResults,
     previewFixes,
     applyFixes,
-    clearCache
+    clearCache,
   }
 }

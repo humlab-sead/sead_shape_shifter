@@ -3,11 +3,7 @@
  */
 
 import { apiRequest } from './client'
-import type {
-  DataSourceConfig,
-  DataSourceTestResult,
-  DataSourceStatus,
-} from '@/types/data-source'
+import type { DataSourceConfig, DataSourceTestResult, DataSourceStatus } from '@/types/data-source'
 
 /**
  * Data Source API service

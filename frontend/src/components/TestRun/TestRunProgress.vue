@@ -17,9 +17,7 @@
         <span class="text-caption">
           Progress: {{ progress.entities_completed }} / {{ progress.entities_total }} entities
         </span>
-        <span class="text-caption font-weight-bold">
-          {{ getProgressPercent() }}%
-        </span>
+        <span class="text-caption font-weight-bold"> {{ getProgressPercent() }}% </span>
       </div>
       <v-progress-linear
         :model-value="getProgressPercent()"
@@ -30,12 +28,7 @@
     </div>
 
     <!-- Current Entity -->
-    <v-alert
-      v-if="progress.current_entity && progress.status === 'running'"
-      type="info"
-      variant="tonal"
-      class="mb-4"
-    >
+    <v-alert v-if="progress.current_entity && progress.status === 'running'" type="info" variant="tonal" class="mb-4">
       <strong>Currently processing:</strong> {{ progress.current_entity }}
     </v-alert>
 
@@ -68,12 +61,7 @@
     </v-row>
 
     <!-- Error Message -->
-    <v-alert
-      v-if="'error_message' in progress && progress.error_message"
-      type="error"
-      variant="tonal"
-      class="mt-4"
-    >
+    <v-alert v-if="'error_message' in progress && progress.error_message" type="error" variant="tonal" class="mt-4">
       <strong>Error:</strong> {{ progress.error_message }}
     </v-alert>
   </div>

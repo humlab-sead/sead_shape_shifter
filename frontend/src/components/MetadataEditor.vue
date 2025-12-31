@@ -79,13 +79,7 @@
           >
             Save Metadata
           </v-btn>
-          <v-btn
-            variant="outlined"
-            :disabled="!hasChanges"
-            @click="handleReset"
-          >
-            Reset
-          </v-btn>
+          <v-btn variant="outlined" :disabled="!hasChanges" @click="handleReset"> Reset </v-btn>
         </div>
       </v-form>
     </v-card-text>
@@ -186,12 +180,12 @@ async function handleSave() {
     }
 
     await configStore.updateMetadata(props.configName, updateData)
-    
+
     // Update initial values after successful save
     initialValues.value = { ...formData.value }
-    
+
     successMessage.value = 'Metadata updated successfully'
-    
+
     // Clear success message after 3 seconds
     setTimeout(() => {
       successMessage.value = null
@@ -212,9 +206,13 @@ function handleReset() {
 }
 
 // Watch for config changes
-watch(() => selectedConfig.value, () => {
-  loadMetadata()
-}, { immediate: true })
+watch(
+  () => selectedConfig.value,
+  () => {
+    loadMetadata()
+  },
+  { immediate: true }
+)
 
 onMounted(() => {
   loadMetadata()

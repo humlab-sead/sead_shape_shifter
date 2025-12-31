@@ -2,11 +2,7 @@
  * API service for configuration management
  */
 
-import type {
-  Project,
-  ProjectMetadata,
-  ValidationResult,
-} from '@/types'
+import type { Project, ProjectMetadata, ValidationResult } from '@/types'
 import { apiRequest } from './client'
 
 export interface ProjectCreateRequest {
@@ -74,10 +70,7 @@ export const projectsApi = {
   /**
    * Update configuration
    */
-  update: async (
-    name: string,
-    data: ProjectUpdateRequest
-  ): Promise<Project> => {
+  update: async (name: string, data: ProjectUpdateRequest): Promise<Project> => {
     return apiRequest<Project>({
       method: 'PUT',
       url: `/projects/${name}`,
@@ -88,10 +81,7 @@ export const projectsApi = {
   /**
    * Update configuration metadata
    */
-  updateMetadata: async (
-    name: string,
-    data: MetadataUpdateRequest
-  ): Promise<Project> => {
+  updateMetadata: async (name: string, data: MetadataUpdateRequest): Promise<Project> => {
     return apiRequest<Project>({
       method: 'PATCH',
       url: `/projects/${name}/metadata`,
@@ -132,10 +122,7 @@ export const projectsApi = {
   /**
    * Restore project from backup
    */
-  restore: async (
-    name: string,
-    data: RestoreBackupRequest
-  ): Promise<Project> => {
+  restore: async (name: string, data: RestoreBackupRequest): Promise<Project> => {
     return apiRequest<Project>({
       method: 'POST',
       url: `/projects/${name}/restore`,
@@ -176,11 +163,7 @@ export const projectsApi = {
   /**
    * Connect a data source to a project
    */
-  connectDataSource: async (
-    name: string,
-    sourceName: string,
-    sourceFilename: string
-  ): Promise<Project> => {
+  connectDataSource: async (name: string, sourceName: string, sourceFilename: string): Promise<Project> => {
     return apiRequest<Project>({
       method: 'POST',
       url: `/projects/${name}/data-sources`,
@@ -194,10 +177,7 @@ export const projectsApi = {
   /**
    * Disconnect a data source from a project
    */
-  disconnectDataSource: async (
-    name: string,
-    sourceName: string
-  ): Promise<Project> => {
+  disconnectDataSource: async (name: string, sourceName: string): Promise<Project> => {
     return apiRequest<Project>({
       method: 'DELETE',
       url: `/projects/${name}/data-sources/${sourceName}`,

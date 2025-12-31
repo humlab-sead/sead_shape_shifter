@@ -3,22 +3,17 @@
     <v-card-title class="d-flex align-center">
       <v-icon icon="mdi-lightbulb-on" class="mr-2" color="info" />
       <span>Suggested Fixes</span>
-      <v-chip size="small" class="ml-2">
-        {{ autoFixableCount }} auto-fixable
-      </v-chip>
+      <v-chip size="small" class="ml-2"> {{ autoFixableCount }} auto-fixable </v-chip>
     </v-card-title>
 
     <v-card-text>
       <p class="text-body-2 mb-4">
-        The following issues can be automatically fixed. Review the suggestions and apply them individually or all at once.
+        The following issues can be automatically fixed. Review the suggestions and apply them individually or all at
+        once.
       </p>
 
       <v-list>
-        <v-list-item
-          v-for="(issue, index) in autoFixableIssues"
-          :key="index"
-          class="mb-2"
-        >
+        <v-list-item v-for="(issue, index) in autoFixableIssues" :key="index" class="mb-2">
           <template #prepend>
             <v-icon
               :icon="issue.severity === 'error' ? 'mdi-alert-circle' : 'mdi-alert'"
@@ -29,37 +24,17 @@
           <v-list-item-title class="mb-1">{{ issue.message }}</v-list-item-title>
 
           <v-list-item-subtitle v-if="issue.entity || issue.field" class="mb-2">
-            <v-chip
-              v-if="issue.entity"
-              size="x-small"
-              variant="outlined"
-              prepend-icon="mdi-cube"
-              class="mr-1"
-            >
+            <v-chip v-if="issue.entity" size="x-small" variant="outlined" prepend-icon="mdi-cube" class="mr-1">
               {{ issue.entity }}
             </v-chip>
-            <v-chip
-              v-if="issue.field"
-              size="x-small"
-              variant="outlined"
-              prepend-icon="mdi-table-column"
-              class="mr-1"
-            >
+            <v-chip v-if="issue.field" size="x-small" variant="outlined" prepend-icon="mdi-table-column" class="mr-1">
               {{ issue.field }}
             </v-chip>
           </v-list-item-subtitle>
 
-          <v-alert
-            v-if="issue.suggestion"
-            type="info"
-            variant="tonal"
-            density="compact"
-            class="mt-2 mb-2"
-          >
+          <v-alert v-if="issue.suggestion" type="info" variant="tonal" density="compact" class="mt-2 mb-2">
             <div class="d-flex align-center justify-space-between">
-              <div class="text-body-2">
-                <strong>Suggestion:</strong> {{ issue.suggestion }}
-              </div>
+              <div class="text-body-2"><strong>Suggestion:</strong> {{ issue.suggestion }}</div>
               <v-tooltip text="Preview and apply automated fix with backup" location="bottom">
                 <template v-slot:activator="{ props }">
                   <v-btn
@@ -83,13 +58,7 @@
 
     <v-card-actions>
       <v-spacer />
-      <v-btn
-        variant="outlined"
-        prepend-icon="mdi-close"
-        @click="emit('dismiss')"
-      >
-        Dismiss
-      </v-btn>
+      <v-btn variant="outlined" prepend-icon="mdi-close" @click="emit('dismiss')"> Dismiss </v-btn>
       <v-btn
         color="info"
         variant="flat"
