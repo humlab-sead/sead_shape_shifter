@@ -43,7 +43,7 @@ class ReconciliationSourceResolver(abc.ABC):
 
     @abc.abstractmethod
     async def resolve(self, entity_name: str, entity_spec: EntityReconciliationSpec) -> list[dict]:
-        """Resolve source data based on entity spec source configuration."""
+        """Resolve source data based on entity spec source project."""
 
     @staticmethod
     def get_resolver_cls_for_source(entity_name: str, source: str | ReconciliationSource | None) -> "type[ReconciliationSourceResolver]":
@@ -81,7 +81,7 @@ class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
         logger.info(f"Fetching preview data from entity '{source}' for reconciliation of '{entity_name}'")
 
         if source not in self.config.tables:
-            raise NotFoundError(f"Source entity '{source}' not found in configuration")
+            raise NotFoundError(f"Source entity '{source}' not found in project")
 
         preview_result: PreviewResult = await self.preview_service.preview_entity(self.project_name, source, limit=1000)
         source_data = preview_result.rows
@@ -102,7 +102,7 @@ class SqlQueryReconciliationSourceResolver(ReconciliationSourceResolver):
 
         # Get data source config from ShapeShiftProject
         if source.data_source not in self.config.data_sources:
-            raise NotFoundError(f"Data source '{source.data_source}' not found in configuration")
+            raise NotFoundError(f"Data source '{source.data_source}' not found in project")
 
         data_source_config: DataSourceConfig = self.config.get_data_source(source.data_source)
 
@@ -190,7 +190,7 @@ class ReconciliationService:
     Service for managing entity reconciliation.
 
     Uses read-only ShapeShiftProject from disk for reconciliation workflow.
-    Prevents reconciliation if configuration has unsaved changes.
+    Prevents reconciliation if project has unsaved changes.
     """
 
     def __init__(self, config_dir: Path, reconciliation_client: ReconciliationClient):
@@ -198,7 +198,7 @@ class ReconciliationService:
         Initialize reconciliation service.
 
         Args:
-            config_dir: Directory containing configuration files
+            config_dir: Directory containing project files
             reconciliation_client: Client for OpenRefine reconciliation API
         """
         self.config_dir = Path(config_dir)
@@ -212,7 +212,7 @@ class ReconciliationService:
 
     def load_reconciliation_config(self, project_name: str, recon_config_filename: Path | None = None) -> ReconciliationConfig:
         """
-        Load reconciliation configuration from YAML file.
+        Load reconciliation from YAML file.
 
         Args:
             project_name: Project name
@@ -256,7 +256,7 @@ class ReconciliationService:
 
     async def get_resolved_source_data(self, project_name: str, entity_name: str, entity_spec: EntityReconciliationSpec) -> list[dict]:
         """
-        Resolve source data based on entity spec source configuration.
+        Resolve source data based on source in entity.
 
         Loads fresh ShapeShiftProject from disk (read-only for reconciliation).
 
@@ -297,7 +297,7 @@ class ReconciliationService:
         """
         Perform automatic reconciliation for an entity.
 
-        Prevents reconciliation if configuration has unsaved changes.
+        Prevents reconciliation if project has unsaved changes.
 
         Args:
             project_name: Project name
@@ -309,7 +309,7 @@ class ReconciliationService:
             AutoReconcileResult with counts and candidates
 
         Raises:
-            ValueError: If configuration has unsaved changes
+            ValueError: If project has unsaved changes
         """
 
         service_type: str | None = entity_spec.remote.service_type

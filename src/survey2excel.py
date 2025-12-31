@@ -19,7 +19,7 @@ from loguru import logger
 from src.extract import extract_translation_map
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
-from src.specifications import CompositeConfigSpecification
+from src.specifications import CompositeProjectSpecification
 from src.utility import load_shape_file, setup_logging
 
 # pylint: disable=no-value-for-parameter
@@ -41,7 +41,7 @@ async def workflow(
     default_entity: str | None = None,
 ) -> None:
 
-    shapeshifter: ShapeShifter = ShapeShifter(config=config, default_entity=default_entity)
+    shapeshifter: ShapeShifter = ShapeShifter(project=config, default_entity=default_entity)
 
     if validate_configuration(config) and validate_then_exit:
         return
@@ -68,7 +68,7 @@ async def workflow(
 
 
 def validate_configuration(config: ShapeShiftProject) -> bool:
-    specification = CompositeConfigSpecification()
+    specification = CompositeProjectSpecification()
     errors = specification.is_satisfied_by(config.cfg)
     if errors:
         for error in specification.errors:

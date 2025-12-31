@@ -19,7 +19,7 @@ class DataSourceService:
 
     Data sources are stored as separate YAML files in the input/ directory
     (e.g., sead-options.yml, arbodat-data-options.yml) and referenced by
-    configurations using @include directives.
+    projects using @include directives.
     """
 
     def __init__(self, data_sources_dir: Path | str) -> None:
@@ -69,7 +69,7 @@ class DataSourceService:
             file_path: Path to data source YAML file
 
         Returns:
-            Data source configuration dict with unresolved env vars
+            Data source dict with unresolved env vars
         """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
@@ -85,11 +85,11 @@ class DataSourceService:
             return {}
 
     def _write_data_source_file(self, file_path: Path, data: dict[str, Any]) -> None:
-        """Write data source configuration to file.
+        """Write data source to file.
 
         Args:
             file_path: Path to data source YAML file
-            data: Data source configuration dict
+            data: Data source dict
         """
         try:
             file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -104,7 +104,7 @@ class DataSourceService:
         """List all global data source files.
 
         Returns:
-            List of data source configurations with unresolved env vars
+            List of data source projects with unresolved env vars
 
         Note:
             Data sources are loaded from separate YAML files in input/ directory.
@@ -136,7 +136,7 @@ class DataSourceService:
             filename: Data source filename (with or without .yml extension)
 
         Returns:
-            Data source configuration or None if not found
+            Data source or None if not found
         """
         file_path: Path = self._resolve_data_source_path(filename)
         if not file_path.exists():
@@ -157,11 +157,9 @@ class DataSourceService:
 
         Args:
             filename: Filename for the data source (e.g., "my-database-options.yml")
-            config: Data source configuration
-
+            config: Data source
         Returns:
-            Created data source configuration
-
+            Created data source
         Raises:
             ValueError: If data source file already exists
         """
@@ -189,11 +187,9 @@ class DataSourceService:
 
         Args:
             filename: Current filename (with or without .yml)
-            config: New configuration
-
+            config: New
         Returns:
-            Updated data source configuration
-
+            Updated data source
         Raises:
             ValueError: If data source file not found
         """
@@ -237,7 +233,7 @@ class DataSourceService:
         """Test a data source connection.
 
         Args:
-            config: Data source configuration to test
+            config: Data source to test
 
         Returns:
             Test result with success/failure and timing

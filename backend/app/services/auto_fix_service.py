@@ -48,7 +48,7 @@ class ColumnNotFoundAutoFixStrategy(AutoFixStrategy):
             issue_code=error.code or "",
             entity=error.entity,
             field=error.field,
-            suggestion=f"Remove column '{column_name}' from configuration as it doesn't exist in the data",
+            suggestion=f"Remove column '{column_name}' from project as it doesn't exist in the data",
             actions=[
                 FixAction(
                     type=FixActionType.REMOVE_COLUMN,
@@ -61,7 +61,7 @@ class ColumnNotFoundAutoFixStrategy(AutoFixStrategy):
             ],
             auto_fixable=True,
             requires_confirmation=True,
-            warnings=["This will remove the column from your configuration"],
+            warnings=["This will remove the column from your project"],
         )
 
 
@@ -97,7 +97,7 @@ class DuplicateKeysAutoFixStrategy(AutoFixStrategy):
             issue_code=error.code or "DUPLICATE_KEYS",
             entity=error.entity,
             field=error.field,
-            suggestion="Duplicate natural keys require data cleaning or adjusting the key configuration",
+            suggestion="Duplicate natural keys require data cleaning or adjusting the key project",
             actions=[],
             auto_fixable=False,
             requires_confirmation=False,
@@ -144,9 +144,9 @@ class AutoFixService:
         Returns:
             Preview of changes that would be made
         """
-        config = self.project_service.load_project(project_name)
-        if not config:
-            return {"error": f"Configuration '{project_name}' not found"}
+        project: Project = self.project_service.load_project(project_name)
+        if not project:
+            return {"error": f"Project '{project_name}' not found"}
 
         changes = []
 
@@ -174,7 +174,7 @@ class AutoFixService:
 
     async def apply_fixes(self, project_name: str, suggestions: list[FixSuggestion]) -> FixResult:
         """
-        Apply fixes to configuration.
+        Apply fixes to project.
 
         Args:
             project_name: Project name
@@ -210,7 +210,7 @@ class AutoFixService:
                         errors.append(f"Failed to apply fix for {action.entity}: {str(e)}")
 
             if not errors:
-                # Save updated configuration
+                # Save updated project
                 # Config is already a dict, no need to call model_dump
                 config_dict = config if isinstance(config, dict) else config.model_dump(exclude_none=True, by_alias=True)
 
@@ -232,7 +232,7 @@ class AutoFixService:
             return FixResult(success=False, fixes_applied=0, errors=[str(e)])
 
     def _create_backup(self, project_name: str) -> Path:
-        """Create backup of configuration before applying fixes."""
+        """Create backup of project before applying fixes."""
 
         config_dir = settings.PROJECTS_DIR
         config_path = config_dir / f"{project_name}.yml"
@@ -248,16 +248,16 @@ class AutoFixService:
         return backup_path
 
     def _rollback(self, project_name: str, backup_path: Path):
-        """Rollback configuration to backup."""
+        """Rollback project to backup."""
 
         config_dir = settings.PROJECTS_DIR
         config_path = config_dir / f"{project_name}.yml"
 
         shutil.copy2(backup_path, config_path)
-        logger.info(f"Rolled back configuration from {backup_path}")
+        logger.info(f"Rolled back project from {backup_path}")
 
     def _apply_action(self, config: Any, action: FixAction):
-        """Apply a single fix action to configuration."""
+        """Apply a single fix action to project."""
         if action.type == FixActionType.REMOVE_COLUMN:
             self._remove_column(config, action)
         elif action.type == FixActionType.ADD_COLUMN:
@@ -268,7 +268,7 @@ class AutoFixService:
             raise ValueError(f"Unsupported action type: {action.type}")
 
     def _remove_column(self, config: Any, action: FixAction):
-        """Remove a column from entity configuration."""
+        """Remove a column from entity project."""
         # Handle both dict and object config
         entities = config.get("entities") if isinstance(config, dict) else config.entities
         if not entities:
@@ -287,7 +287,7 @@ class AutoFixService:
         logger.info(f"Removed column '{action.old_value}' from entity '{action.entity}'")
 
     def _add_column(self, config: Any, action: FixAction):
-        """Add a column to entity configuration."""
+        """Add a column to entity project."""
         # Handle both dict and object config
         entities = config.get("entities") if isinstance(config, dict) else config.entities
         if not entities:
@@ -312,7 +312,7 @@ class AutoFixService:
             logger.info(f"Added column '{action.new_value}' to entity '{action.entity}'")
 
     def _update_reference(self, config: Any, action: FixAction):
-        """Update a @value reference in entity configuration."""
+        """Update a @value reference in entity project."""
         # Handle both dict and object config
         entities = config.get("entities") if isinstance(config, dict) else config.entities
         if not entities:

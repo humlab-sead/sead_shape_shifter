@@ -8,7 +8,7 @@
             <v-select
               v-model="selectedConfig"
               :items="configOptions"
-              label="Configuration"
+              label="Project"
               variant="outlined"
               density="compact"
               hide-details

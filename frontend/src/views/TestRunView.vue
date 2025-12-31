@@ -5,7 +5,7 @@
       <v-row class="mb-4">
         <v-col>
           <div class="d-flex justify-space-between align-center">
-            <h1 class="text-h4">Configuration Test Run</h1>
+            <h1 class="text-h4">Project Test Run</h1>
             <div class="d-flex ga-2">
               <v-btn
                 variant="outlined"
@@ -35,7 +35,7 @@
           <v-alert type="info" variant="tonal">
             <div class="d-flex justify-space-between align-center">
               <div>
-                <strong>Configuration:</strong> {{ configName }}
+                <strong>Project:</strong> {{ configName }}
               </div>
               <v-chip
                 v-if="testResult"
@@ -73,7 +73,7 @@
 
       <v-divider class="my-4" />
 
-      <!-- Test Configuration (before run) -->
+      <!-- Test Project (before run) -->
       <v-row v-if="!testResult">
         <v-col>
           <v-card>

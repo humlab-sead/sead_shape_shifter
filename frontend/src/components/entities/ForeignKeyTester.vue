@@ -40,7 +40,7 @@
           </div>
         </v-alert>
 
-        <!-- Test Configuration -->
+        <!-- Test Project -->
         <div class="mb-4">
           <v-select
             v-model="sampleSize"

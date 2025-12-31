@@ -1,4 +1,4 @@
-"""Service for running configuration tests with sample data."""
+"""Service for running project tests with sample data."""
 
 import time
 import uuid
@@ -21,7 +21,7 @@ from backend.app.services.project_service import ProjectService
 
 
 class TestRunService:
-    """Service for running configuration tests."""
+    """Service for running project tests."""
 
     def __init__(self, project_service: ProjectService):
         self.project_service: ProjectService = project_service
@@ -33,7 +33,7 @@ class TestRunService:
         Initialize a test run (returns immediately with PENDING status).
 
         Args:
-            project_name: Name of the configuration to test
+            project_name: Name of the project to test
             options: Test run options
 
         Returns:
@@ -80,13 +80,13 @@ class TestRunService:
             self._active_runs[run_id] = result
             logger.info("[BACKGROUND] Status updated, stored back to active_runs")
 
-            # Load configuration
-            config: Project = self.project_service.load_project(result.project_name)
-            if not config:
-                raise ValueError(f"Configuration '{result.project_name}' not found")
+            # Load project
+            project: Project = self.project_service.load_project(result.project_name)
+            if not project:
+                raise ValueError(f"Project '{result.project_name}' not found")
 
-            # Get entities from configuration
-            entities_data: dict[str, dict[str, Any]] = config.entities
+            # Get entities from project
+            entities_data: dict[str, dict[str, Any]] = project.entities
 
             # Determine entities to process
             if result.options.entities:
@@ -176,7 +176,7 @@ class TestRunService:
 
         Args:
             entity_name: Name of entity to process
-            entity_config: Entity configuration dict
+            entity_config: Entity project dict
             options: Test run options
 
         Returns:
@@ -198,7 +198,7 @@ class TestRunService:
             # Get entity type
             entity_type = entity_config.get("type", "data")
 
-            # For now, just analyze configuration
+            # For now, just analyze project
             # Full implementation would actually run the transformation pipeline
 
             if entity_type == "fixed":
@@ -237,7 +237,7 @@ class TestRunService:
                         entity_name=entity_name,
                         severity="error",
                         message="Foreign key missing remote entity name",
-                        suggestion="Add 'entity' field to foreign key configuration",
+                        suggestion="Add 'entity' field to foreign key project",
                         location=None,
                     )
                     result.validation_issues.append(issue)  # pylint: disable=no-member

@@ -89,7 +89,7 @@
 
     <!-- Error State -->
     <v-alert v-else-if="configError" type="error" variant="tonal">
-      <v-alert-title>Error Loading Configuration</v-alert-title>
+      <v-alert-title>Error Loading Project</v-alert-title>
       {{ configError }}
       <template #append>
         <v-btn variant="text" @click="handleRefresh">Retry</v-btn>
@@ -193,7 +193,7 @@
       <v-card>
         <v-card-title>
           <v-icon icon="mdi-history" class="mr-2" />
-          Configuration Backups
+          Project Backups
         </v-card-title>
         <v-card-text>
           <v-list v-if="backups.length > 0">
@@ -389,7 +389,7 @@ function handleTestRun() {
 async function handleValidate() {
   try {
     await validate(configName.value)
-    successMessage.value = 'Configuration validated successfully'
+    successMessage.value = 'Project validated successfully'
     showSuccessSnackbar.value = true
   } catch (err) {
     console.error('Validation failed:', err)
@@ -482,7 +482,7 @@ async function handleSave() {
     const saved = await saveWithVersionCheck()
 
     if (saved) {
-      successMessage.value = 'Configuration saved successfully'
+      successMessage.value = 'Project saved successfully'
       showSuccessSnackbar.value = true
     } else {
       // Version conflict - show error

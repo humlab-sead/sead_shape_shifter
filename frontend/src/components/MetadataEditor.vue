@@ -1,6 +1,6 @@
 <template>
   <v-card variant="outlined">
-    <v-card-title>Configuration Metadata</v-card-title>
+    <v-card-title>Project Metadata</v-card-title>
     <v-divider />
 
     <!-- Loading State -->
@@ -14,8 +14,8 @@
       <v-form ref="formRef" @submit.prevent="handleSave">
         <v-text-field
           v-model="formData.name"
-          label="Configuration Name"
-          hint="Name of this configuration"
+          label="Project Name"
+          hint="Name of this project"
           persistent-hint
           variant="outlined"
           density="comfortable"
@@ -96,14 +96,14 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useProjectStore } from '@/stores/project'
 import { storeToRefs } from 'pinia'
-import type { MetadataUpdateRequest } from '@/api/configurations'
+import type { MetadataUpdateRequest } from '@/api/projects'
 
 const props = defineProps<{
   configName: string
 }>()
 
 const configStore = useProjectStore()
-const { selectedConfig, loading } = storeToRefs(configStore)
+const { selectedProject, loading } = storeToRefs(configStore)
 
 const formRef = ref()
 const saving = ref(false)

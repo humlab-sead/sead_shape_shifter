@@ -222,7 +222,7 @@ This document outlines the step-by-step plan to rename "configuration" to "proje
   - `selectedConfig` → `selectedProject`
 - [ ] Rename getters:
   - `currentConfigName` → `currentProjectName`
-  - `sortedConfigurations` → `sortedProjects`
+  - `sortedProjects` → `sortedProjects`
   - `configByName` → `projectByName`
 - [ ] Rename actions:
   - `fetchConfigurations()` → `fetchProjects()`

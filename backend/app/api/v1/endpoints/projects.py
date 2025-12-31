@@ -65,7 +65,7 @@ class MetadataUpdateRequest(BaseModel):
 # Endpoints
 @router.get("/projects", response_model=list[ProjectMetadata])
 @handle_endpoint_errors
-async def list_configurations() -> list[ProjectMetadata]:
+async def list_projects() -> list[ProjectMetadata]:
     """
     List all available project files.
 
@@ -118,7 +118,7 @@ async def create_project(request: ProjectCreateRequest) -> Project:
 
 @router.put("/projects/{name}", response_model=Project)
 @handle_endpoint_errors
-async def update_configuration(name: str, request: ProjectUpdateRequest) -> Project:
+async def update_project(name: str, request: ProjectUpdateRequest) -> Project:
     """
     Update existing project.
 
@@ -138,16 +138,16 @@ async def update_configuration(name: str, request: ProjectUpdateRequest) -> Proj
 
     logger.debug(f"Updating project '{name}': preserving {len(project.entities)} entities from disk, " f"updating options only")
 
-    updated_config: Project = project_service.save_project(project)
+    updated_project: Project = project_service.save_project(project)
     logger.info(
-        f"Updated project '{name}' options (entities preserved: " f"{list(updated_config.entities.keys())})",
+        f"Updated project '{name}' options (entities preserved: " f"{list(updated_project.entities.keys())})",
     )
-    return updated_config
+    return updated_project
 
 
 @router.patch("/projects/{name}/metadata", response_model=Project)
 @handle_endpoint_errors
-async def update_configuration_metadata(name: str, request: MetadataUpdateRequest) -> Project:
+async def update_project_metadata(name: str, request: MetadataUpdateRequest) -> Project:
     """
     Update project metadata.
 
@@ -191,7 +191,7 @@ async def delete_project(name: str) -> None:
 
 @router.post("/projects/{name}/validate", response_model=ValidationResult)
 @handle_endpoint_errors
-async def validate_configuration(name: str) -> ValidationResult:
+async def validate_project(name: str) -> ValidationResult:
     """
     Validate project against specifications.
 
@@ -212,7 +212,7 @@ async def validate_configuration(name: str) -> ValidationResult:
     validation_service: ValidationService = get_validation_service()
     project: Project = project_service.load_project(name)
     config_data: dict[str, Any] = {"entities": project.entities, "options": project.options}
-    result: ValidationResult = validation_service.validate_configuration(config_data)
+    result: ValidationResult = validation_service.validate_project(config_data)
     logger.info(f"Validated project '{name}': {'valid' if result.is_valid else 'invalid'}")
     return result
 
@@ -284,7 +284,7 @@ async def restore_backup(name: str, request: RestoreBackupRequest) -> Project:
 
 @router.get("/projects/active/name", response_model=dict[str, str | None])
 @handle_endpoint_errors
-async def get_active_configuration() -> dict[str, str | None]:
+async def get_active_project_name() -> dict[str, str | None]:
     """
     Get the currently active project name.
 
@@ -295,13 +295,13 @@ async def get_active_configuration() -> dict[str, str | None]:
         Dictionary with 'name' key containing the active project filename
         (without .yml extension), or null if no project is loaded.
     """
-    active_name: str = get_project_service().get_active_configuration_metadata().name
+    active_name: str = get_project_service().get_active_project_metadata().name
     return {"name": active_name}
 
 
 @router.post("/projects/{name}/activate", response_model=Project)
 @handle_endpoint_errors
-async def activate_configuration(name: str) -> Project:
+async def activate_project(name: str) -> Project:
     """
     Activate (load) a project into the backend context.
 
@@ -314,7 +314,7 @@ async def activate_configuration(name: str) -> Project:
     Returns:
         The activated project
     """
-    project: Project = get_project_service().activate_configuration(name)
+    project: Project = get_project_service().activate_project(name)
     logger.info(f"Activated project '{name}'")
     return project
 
@@ -331,7 +331,7 @@ class DataSourceConnectionRequest(BaseModel):
 
 @router.get("/projects/{name}/data-sources", response_model=dict[str, str])
 @handle_endpoint_errors
-async def get_configuration_data_sources(name: str) -> dict[str, str]:
+async def get_project_data_sources(name: str) -> dict[str, str]:
     """
     Get all data sources connected to a project.
 
@@ -350,7 +350,7 @@ async def get_configuration_data_sources(name: str) -> dict[str, str]:
 
 @router.post("/projects/{name}/data-sources", response_model=Project)
 @handle_endpoint_errors
-async def connect_data_source_to_configuration(name: str, request: DataSourceConnectionRequest) -> Project:
+async def connect_data_source_to_project(name: str, request: DataSourceConnectionRequest) -> Project:
     """
     Connect a data source to a project.
 
@@ -386,7 +386,7 @@ async def connect_data_source_to_configuration(name: str, request: DataSourceCon
 
 @router.delete("/projects/{name}/data-sources/{source_name}", response_model=Project)
 @handle_endpoint_errors
-async def disconnect_data_source_from_configuration(name: str, source_name: str) -> Project:
+async def disconnect_data_source_from_project(name: str, source_name: str) -> Project:
     """
     Disconnect a data source from a project.
 

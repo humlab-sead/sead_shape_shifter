@@ -19,7 +19,7 @@ export function useSession() {
     error,
     hasActiveSession,
     sessionId,
-    configName,
+    projectName: configName,
     version,
     isModified,
     hasConcurrentEdits,
@@ -87,7 +87,7 @@ export function useSession() {
         
         if (serverVersion && sessionStore.checkVersionConflict(serverVersion)) {
           throw new Error(
-            `Configuration was modified by another user. ` +
+            `Project was modified by another user. ` +
             `Expected version ${currentVersion}, current version ${serverVersion}. ` +
             `Please reload and merge changes.`
           )

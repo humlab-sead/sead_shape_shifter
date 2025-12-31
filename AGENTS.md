@@ -28,7 +28,7 @@
 ## Common Implementation Tasks
 - **Backend endpoint**: add router (`backend/app/api/v1/endpoints/`), define Pydantic models (`backend/app/models/`), implement service (`backend/app/services/`), and register in `backend/app/api/v1/api.py`.
 - **Constraint validator**: create class in `src/constraints.py`, decorate with `@Validators.register(key=..., stage=...)`, and add tests in `tests/test_constraints.py`.
-- **Configuration validation**: subclass `ConfigSpecification` in `src/specifications.py`, implement `is_satisfied_by()`, and include it inside `CompositeConfigSpecification.__init__()`.
+- **Project validation**: subclass `ProjectSpecification` in `src/specifications.py`, implement `is_satisfied_by()`, and include it inside `CompositeProjectSpecification.__init__()`.
 
 ## Frontend Practices
 - Always use `<script setup lang="ts">`, composables over mixins, and `defineProps<T>()` / `defineEmits<T>()` for typing.

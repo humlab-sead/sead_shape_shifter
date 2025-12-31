@@ -4,32 +4,32 @@ Sprint 4.2 deliverable: Three Pinia stores for managing application state.
 
 ## Stores Created
 
-### 1. Configuration Store (`stores/configuration.ts`)
+### 1. Project Store (`stores/configuration.ts`)
 
 Manages configuration CRUD operations, validation, and backups.
 
 **State:**
-- `configurations: ConfigMetadata[]` - List of all configurations
-- `selectedConfig: Configuration | null` - Currently selected configuration
+- `projects: ConfigMetadata[]` - List of all projects
+- `selectedProject: Project | null` - Currently selected project
 - `validationResult: ValidationResult | null` - Last validation result
-- `backups: BackupInfo[]` - Available backups
+- `backups: BackupInfo[]` - Available§ backups
 - `loading: boolean` - Loading state
 - `error: string | null` - Error message
 - `hasUnsavedChanges: boolean` - Unsaved changes flag
 
 **Getters:**
-- `sortedConfigurations` - Alphabetically sorted configurations
+- `sortedProjects` - Alphabetically sorted configurations
 - `configByName(name)` - Find configuration by name
 - `hasErrors` - Whether validation has errors
 - `hasWarnings` - Whether validation has warnings
 
 **Actions:**
-- `fetchConfigurations()` - Load all configurations
-- `selectConfiguration(name)` - Load specific configuration
-- `createConfiguration(data)` - Create new configuration
-- `updateConfiguration(name, data)` - Update configuration
-- `deleteConfiguration(name)` - Delete configuration
-- `validateConfiguration(name)` - Validate configuration
+- `fetchProjects()` - Load all projects
+- `selectProject(name)` - Load specific project
+- `createProject(data)` - Create new project
+- `updateProject(name, data)` - Update project
+- `deleteProject(name)` - Delete project
+- `validateProject(name)` - Validate project
 - `fetchBackups(name)` - List backups
 - `restoreBackup(name, backupPath)` - Restore from backup
 - `markAsChanged()` - Mark as unsaved
@@ -39,24 +39,24 @@ Manages configuration CRUD operations, validation, and backups.
 
 **Usage Example:**
 ```typescript
-import { useConfigurationStore } from '@/stores'
+import { useProjectStore } from '@/stores'
 
-const configStore = useConfigurationStore()
+const projectStore = useProjectStore()
 
-// Fetch all configurations
-await configStore.fetchConfigurations()
+// Fetch all projects
+await projectStore.fetchProjects()
 
-// Select a configuration
-await configStore.selectConfiguration('my-config')
+// Select a project
+await projectStore.selectProject('my-project')
 
-// Create new configuration
-await configStore.createConfiguration({
-  name: 'new-config',
+// Create new project
+await projectStore.createProject({
+  name: 'new-project',
   entities: {},
 })
 
-// Update configuration
-await configStore.updateConfiguration('my-config', {
+// Update project
+await projectStore.updateProject('my-project', {
   entities: updatedEntities,
   options: configOptions,
 })
@@ -66,8 +66,8 @@ await configStore.validateConfiguration('my-config')
 console.log(`Errors: ${configStore.errorCount}`)
 
 // Backup operations
-await configStore.fetchBackups('my-config')
-await configStore.restoreBackup('my-config', backupPath)
+await projectStore.fetchBackups('my-project')
+await projectStore.restoreBackup('my-project', backupPath)
 ```
 
 ### 2. Entity Store (`stores/entity.ts`)
@@ -146,7 +146,7 @@ const hasFK = entityStore.hasForeignKeys('sample')
 Manages validation results and dependency graph analysis.
 
 **State:**
-- `validationResult: ValidationResult | null` - Configuration validation result
+- `validationResult: ValidationResult | null` - Project validation result
 - `entityValidationResults: Map<string, ValidationResult>` - Per-entity validation
 - `dependencyGraph: DependencyGraph | null` - Dependency graph
 - `circularDependencyCheck: CircularDependencyCheck | null` - Cycle check result

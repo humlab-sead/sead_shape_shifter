@@ -4,7 +4,7 @@
 
 import type {
   Project,
-  ConfigMetadata,
+  ProjectMetadata,
   ValidationResult,
 } from '@/types'
 import { apiRequest } from './client'
@@ -39,34 +39,34 @@ export interface MetadataUpdateRequest {
 /**
  * Project API service
  */
-export const configurationsApi = {
+export const projectsApi = {
   /**
-   * List all configurations
+   * List all projects
    */
-  list: async (): Promise<ConfigMetadata[]> => {
-    return apiRequest<ConfigMetadata[]>({
+  list: async (): Promise<ProjectMetadata[]> => {
+    return apiRequest<ProjectMetadata[]>({
       method: 'GET',
-      url: '/configurations',
+      url: '/projects',
     })
   },
 
   /**
-   * Get specific configuration
+   * Get specific project
    */
   get: async (name: string): Promise<Project> => {
     return apiRequest<Project>({
       method: 'GET',
-      url: `/configurations/${name}`,
+      url: `/projects/${name}`,
     })
   },
 
   /**
-   * Create new configuration
+   * Create new project
    */
   create: async (data: ProjectCreateRequest): Promise<Project> => {
     return apiRequest<Project>({
       method: 'POST',
-      url: '/configurations',
+      url: '/projects',
       data,
     })
   },
@@ -80,7 +80,7 @@ export const configurationsApi = {
   ): Promise<Project> => {
     return apiRequest<Project>({
       method: 'PUT',
-      url: `/configurations/${name}`,
+      url: `/projects/${name}`,
       data,
     })
   },
@@ -94,7 +94,7 @@ export const configurationsApi = {
   ): Promise<Project> => {
     return apiRequest<Project>({
       method: 'PATCH',
-      url: `/configurations/${name}/metadata`,
+      url: `/projects/${name}/metadata`,
       data,
     })
   },
@@ -105,17 +105,17 @@ export const configurationsApi = {
   delete: async (name: string): Promise<void> => {
     return apiRequest<void>({
       method: 'DELETE',
-      url: `/configurations/${name}`,
+      url: `/projects/${name}`,
     })
   },
 
   /**
-   * Validate configuration
+   * Validate project
    */
   validate: async (name: string): Promise<ValidationResult> => {
     return apiRequest<ValidationResult>({
       method: 'POST',
-      url: `/configurations/${name}/validate`,
+      url: `/projects/${name}/validate`,
     })
   },
 
@@ -125,12 +125,12 @@ export const configurationsApi = {
   listBackups: async (name: string): Promise<BackupInfo[]> => {
     return apiRequest<BackupInfo[]>({
       method: 'GET',
-      url: `/configurations/${name}/backups`,
+      url: `/projects/${name}/backups`,
     })
   },
 
   /**
-   * Restore configuration from backup
+   * Restore project from backup
    */
   restore: async (
     name: string,
@@ -138,43 +138,43 @@ export const configurationsApi = {
   ): Promise<Project> => {
     return apiRequest<Project>({
       method: 'POST',
-      url: `/configurations/${name}/restore`,
+      url: `/projects/${name}/restore`,
       data,
     })
   },
 
   /**
-   * Get currently active configuration name
+   * Get currently active project name
    */
   getActive: async (): Promise<{ name: string | null }> => {
     return apiRequest<{ name: string | null }>({
       method: 'GET',
-      url: '/configurations/active/name',
+      url: '/projects/active/name',
     })
   },
 
   /**
-   * Activate (load) a configuration
+   * Activate (load) a project
    */
   activate: async (name: string): Promise<Project> => {
     return apiRequest<Project>({
       method: 'POST',
-      url: `/configurations/${name}/activate`,
+      url: `/projects/${name}/activate`,
     })
   },
 
   /**
-   * Get data sources connected to a configuration
+   * Get data sources connected to a project
    */
   getDataSources: async (name: string): Promise<Record<string, string>> => {
     return apiRequest<Record<string, string>>({
       method: 'GET',
-      url: `/configurations/${name}/data-sources`,
+      url: `/projects/${name}/data-sources`,
     })
   },
 
   /**
-   * Connect a data source to a configuration
+   * Connect a data source to a project
    */
   connectDataSource: async (
     name: string,
@@ -183,7 +183,7 @@ export const configurationsApi = {
   ): Promise<Project> => {
     return apiRequest<Project>({
       method: 'POST',
-      url: `/configurations/${name}/data-sources`,
+      url: `/projects/${name}/data-sources`,
       data: {
         source_name: sourceName,
         source_filename: sourceFilename,
@@ -192,7 +192,7 @@ export const configurationsApi = {
   },
 
   /**
-   * Disconnect a data source from a configuration
+   * Disconnect a data source from a project
    */
   disconnectDataSource: async (
     name: string,
@@ -200,7 +200,7 @@ export const configurationsApi = {
   ): Promise<Project> => {
     return apiRequest<Project>({
       method: 'DELETE',
-      url: `/configurations/${name}/data-sources/${sourceName}`,
+      url: `/projects/${name}/data-sources/${sourceName}`,
     })
   },
 }

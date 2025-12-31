@@ -377,7 +377,7 @@ class TestDataValidationService:
             }
             mock_config_svc.return_value.load_project.return_value = mock_config
 
-            _ = await service.validate_configuration("test_project")
+            _ = await service.validate_project("test_project")
 
             # Assert - called validator for each entity
             assert mock_preview_service.preview_entity.call_count >= 2
@@ -399,7 +399,7 @@ class TestDataValidationService:
             mock_config_svc.return_value.load_project.return_value = mock_config
 
             # Execute - only validate entity1
-            _ = await service.validate_configuration("test_project", ["entity1"])
+            _ = await service.validate_project("test_project", ["entity1"])
 
             # Assert - only called once for entity1
             assert mock_preview_service.preview_entity.call_count >= 1

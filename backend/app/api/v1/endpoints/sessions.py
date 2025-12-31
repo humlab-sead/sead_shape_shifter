@@ -45,14 +45,14 @@ async def create_session(
     A session must be created before editing a configuration. The session ID
     is returned in the response and set as a cookie for convenience.
 
-    Multiple users can have sessions for the same configuration file, but
+    Multiple users can have sessions for the same project, but
     optimistic concurrency control is used to prevent conflicts when saving.
     """
 
-    # Verify config file exists
-    config_path: Path = app_state.config_dir / f"{request.project_name}.yml"
-    if not config_path.exists():
-        raise HTTPException(404, f"Configuration '{request.project_name}' not found")
+    # Verify project file exists
+    project_path: Path = app_state.projects_dir / f"{request.project_name}.yml"
+    if not project_path.exists():
+        raise HTTPException(404, f"Project '{request.project_name}' not found")
 
     # Create session
     session_id: UUID = await app_state.create_session(request.project_name, request.user_id)

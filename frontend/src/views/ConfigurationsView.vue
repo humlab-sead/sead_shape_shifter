@@ -35,7 +35,7 @@
           prepend-icon="mdi-plus"
           @click="showCreateDialog = true"
         >
-          New Configuration
+          New Project
         </v-btn>
       </v-col>
     </v-row>
@@ -71,13 +71,13 @@
             prepend-icon="mdi-plus"
             @click="showCreateDialog = true"
           >
-            Create Configuration
+            Create Project
           </v-btn>
         </v-card>
       </v-col>
     </v-row>
 
-    <!-- Configuration List -->
+    <!-- Project List -->
     <v-row v-else class="mt-4">
       <v-col
         v-for="config in filteredConfigurations"
@@ -176,7 +176,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfigurations } from '@/composables'
-import type { ConfigMetadata } from '@/types'
+import type { ProjectMetadata } from '@/types'
 import CreateConfigurationDialog from '@/components/configurations/CreateConfigurationDialog.vue'
 import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDialog.vue'
 
@@ -200,7 +200,7 @@ const searchQuery = ref('')
 const sortBy = ref('name')
 const showCreateDialog = ref(false)
 const showDeleteDialog = ref(false)
-const configToDelete = ref<ConfigMetadata | null>(null)
+const configToDelete = ref<ProjectMetadata | null>(null)
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
 
@@ -280,14 +280,14 @@ async function handleSelectConfig(name: string) {
 async function handleValidate(name: string) {
   try {
     await validate(name)
-    successMessage.value = `Configuration "${name}" validated successfully`
+    successMessage.value = `Project "${name}" validated successfully`
     showSuccessSnackbar.value = true
   } catch (err) {
     console.error('Failed to validate configuration:', err)
   }
 }
 
-function handleDeleteClick(config: ConfigMetadata) {
+function handleDeleteClick(config: ProjectMetadata) {
   configToDelete.value = config
   showDeleteDialog.value = true
 }
@@ -297,7 +297,7 @@ async function handleDeleteConfirm() {
 
   try {
     await remove(configToDelete.value.name)
-    successMessage.value = `Configuration "${configToDelete.value.name}" deleted`
+    successMessage.value = `Project "${configToDelete.value.name}" deleted`
     showSuccessSnackbar.value = true
     configToDelete.value = null
   } catch (err) {
@@ -306,7 +306,7 @@ async function handleDeleteConfirm() {
 }
 
 function handleConfigCreated(name: string) {
-  successMessage.value = `Configuration "${name}" created`
+  successMessage.value = `Project "${name}" created`
   showSuccessSnackbar.value = true
   router.push({ name: 'config-detail', params: { name } })
 }

@@ -84,15 +84,15 @@
       </v-list>
     </v-alert>
 
-    <!-- Configuration Selector -->
+    <!-- Project Selector -->
     <v-card v-if="!hasActiveSession" class="mb-4">
-      <v-card-title>Select Configuration</v-card-title>
+      <v-card-title>Select Project</v-card-title>
       <v-card-text>
         <v-select
           v-model="selectedConfigName"
           :items="configNames"
-          label="Configuration"
-          hint="Select a configuration to start editing"
+          label="Project"
+          hint="Select a project to start editing"
           persistent-hint
         />
       </v-card-text>
@@ -153,15 +153,15 @@ const {
 const selectedConfigName = ref<string | null>(null)
 
 const configNames = computed(() => {
-  return configStore.sortedConfigurations.map((c) => c.name)
+  return configStore.sortedProjects.map((c) => c.name)
 })
 
 // Fetch configurations on mount
 onMounted(async () => {
   try {
-    await configStore.fetchConfigurations()
+    await configStore.fetchProjects()
   } catch (err) {
-    console.error('Failed to fetch configurations:', err)
+    console.error('Failed to fetch projects:', err)
   }
 })
 
@@ -183,7 +183,7 @@ async function handleStartSession() {
 
   try {
     await startSession(selectedConfigName.value)
-    await configStore.selectConfiguration(selectedConfigName.value)
+    await configStore.selectProject(selectedConfigName.value)
   } catch (err) {
     console.error('Failed to start session:', err)
   }
@@ -193,7 +193,7 @@ async function handleSave() {
   try {
     await saveWithVersionCheck()
     // Show success message
-    console.log('Configuration saved successfully')
+    console.log('Project saved successfully')
   } catch (err: any) {
     console.error('Failed to save:', err)
     
@@ -204,7 +204,7 @@ async function handleSave() {
         'Would you like to reload it? (Your changes will be lost)'
       )
       if (shouldReload) {
-        await configStore.selectConfiguration(configName.value!)
+        await configStore.selectProject(configName.value!)
       }
     }
   }

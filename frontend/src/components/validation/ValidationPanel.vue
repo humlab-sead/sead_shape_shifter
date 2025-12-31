@@ -34,7 +34,7 @@
     </v-card-title>
 
     <v-card-text>
-      <!-- Data Validation Configuration -->
+      <!-- Data Validation Project -->
       <data-validation-config
         v-if="showDataConfig"
         :available-entities="availableEntities"
@@ -158,7 +158,7 @@
           <v-window-item value="all">
             <validation-message-list
               :messages="allMessages"
-              :empty-message="'No validation issues found. Configuration looks good!'"
+              :empty-message="'No validation issues found. Project looks good!'"
             />
           </v-window-item>
 

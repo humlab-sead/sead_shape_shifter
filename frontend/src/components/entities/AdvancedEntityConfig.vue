@@ -84,7 +84,7 @@
     <v-expansion-panel>
       <v-expansion-panel-title>
         <v-icon icon="mdi-table-pivot" class="mr-2" />
-        Unnest Configuration
+        Unnest 
         <v-chip v-if="unnest" size="small" color="success" class="ml-2">
           Enabled
         </v-chip>

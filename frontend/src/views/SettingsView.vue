@@ -245,7 +245,7 @@
           <v-card-text>
             <div class="d-flex align-center mb-2">
               <v-icon icon="mdi-information" class="mr-2" />
-              <span class="text-body-2">SEAD Shape Shifter Configuration Editor</span>
+              <span class="text-body-2">SEAD Shape Shifter Project Editor</span>
             </div>
             <div class="d-flex align-center mb-2">
               <v-icon icon="mdi-tag" class="mr-2" />

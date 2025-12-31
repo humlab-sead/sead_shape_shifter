@@ -103,13 +103,13 @@ class TestApplicationState:
         """Test ApplicationState initialization."""
         state = ApplicationState(config_dir)
 
-        assert state.config_dir == config_dir
+        assert state.projects_dir == config_dir
         assert not state._active_projects
         assert state._active_project_name is None
         assert not state._sessions
         assert not state._sessions_by_project
-        assert not state._config_versions
-        assert not state._config_dirty
+        assert not state._project_versions
+        assert not state._project_dirty
         assert state._cleanup_task is None
 
     @pytest.mark.asyncio
@@ -185,8 +185,8 @@ class TestApplicationState:
         assert session_id not in app_state._sessions
         assert "test-config" not in app_state._sessions_by_project
         assert "test-config" not in app_state._active_projects
-        assert "test-config" not in app_state._config_versions
-        assert "test-config" not in app_state._config_dirty
+        assert "test-config" not in app_state._project_versions
+        assert "test-config" not in app_state._project_dirty
 
     @pytest.mark.asyncio
     async def test_release_session_keeps_config_if_other_sessions(self, app_state: ApplicationState, sample_config: Project):
@@ -234,27 +234,27 @@ class TestApplicationState:
 
         assert app_state._active_project_name == "test-config"
         assert "test-config" in app_state._active_projects
-        assert app_state._config_versions["test-config"] == 1
-        assert app_state._config_dirty["test-config"] is True
+        assert app_state._project_versions["test-config"] == 1
+        assert app_state._project_dirty["test-config"] is True
 
     def test_set_active_projecturation_increments_version(self, app_state: ApplicationState, sample_config: Project):
         """Test that setting active config increments version."""
         app_state.set_active_project(sample_config)
-        initial_version = app_state._config_versions["test-config"]
+        initial_version = app_state._project_versions["test-config"]
 
         # Update again
         app_state.set_active_project(sample_config)
 
-        assert app_state._config_versions["test-config"] == initial_version + 1
+        assert app_state._project_versions["test-config"] == initial_version + 1
 
     def test_mark_saved(self, app_state: ApplicationState, sample_config: Project):
         """Test marking a configuration as saved."""
         app_state.set_active_project(sample_config)
-        assert app_state._config_dirty["test-config"] is True
+        assert app_state._project_dirty["test-config"] is True
 
         app_state.mark_saved("test-config")
 
-        assert app_state._config_dirty["test-config"] is False
+        assert app_state._project_dirty["test-config"] is False
 
     def test_mark_saved_nonexistent(self, app_state: ApplicationState):
         """Test marking a non-existent configuration as saved."""
@@ -334,7 +334,7 @@ class TestSingletonFunctions:
         state: ApplicationState = init_app_state(config_dir)
 
         assert isinstance(state, ApplicationState)
-        assert state.config_dir == config_dir
+        assert state.projects_dir == config_dir
         assert sm._app_state is state
 
     def test_get_app_state_when_initialized(self, config_dir: Path):

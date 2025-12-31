@@ -246,7 +246,7 @@ class ShapeShiftProjectCache:
         self._cache: dict[str, ShapeShiftProject] = {}
         self._versions: dict[str, int] = {}
 
-    async def get_config(self, project_name: str) -> ShapeShiftProject:
+    async def get_project(self, project_name: str) -> ShapeShiftProject:
         """
         Get ShapeShiftProject with caching and version tracking.
 

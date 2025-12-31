@@ -1,6 +1,6 @@
 <template>
   <div class="test-run-config">
-    <h3 class="text-h6 mb-4">Test Run Configuration</h3>
+    <h3 class="text-h6 mb-4">Test Run Project</h3>
 
     <v-form>
       <!-- Entity Selection -->

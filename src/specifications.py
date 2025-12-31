@@ -142,8 +142,8 @@ class SpecificationIssue:
         self.kwargs = kwargs
 
 
-class ConfigSpecification(ABC):
-    """Base specification for configuration validation."""
+class ProjectSpecification(ABC):
+    """Base specification for project validation."""
 
     def __init__(self) -> None:
         self.errors: list[SpecificationIssue] = []
@@ -182,7 +182,7 @@ class ConfigSpecification(ABC):
         return len(self.warnings) > 0
 
 
-class EntityExistsSpecification(ConfigSpecification):
+class EntityExistsSpecification(ProjectSpecification):
     """Validates that all referenced entities exist in the configuration."""
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
@@ -230,7 +230,7 @@ class EntityExistsSpecification(ConfigSpecification):
         return valid
 
 
-class CircularDependencySpecification(ConfigSpecification):
+class CircularDependencySpecification(ProjectSpecification):
     """Validates that there are no circular dependencies between entities."""
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
@@ -287,8 +287,8 @@ class CircularDependencySpecification(ConfigSpecification):
         return valid
 
 
-class RequiredFieldsSpecification(ConfigSpecification):
-    """Validates that all required fields are present in entity configurations."""
+class RequiredFieldsSpecification(ProjectSpecification):
+    """Validates that all required fields are present in all entities."""
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
         """Check that required fields are present for each entity."""
@@ -334,8 +334,8 @@ class RequiredFieldsSpecification(ConfigSpecification):
         return valid
 
 
-class ForeignKeySpecification(ConfigSpecification):
-    """Validates foreign key configurations."""
+class ForeignKeySpecification(ProjectSpecification):
+    """Validates foreign key setups."""
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
         """Check that foreign key configurations are valid."""
@@ -388,19 +388,19 @@ class ForeignKeySpecification(ConfigSpecification):
         return valid
 
 
-class UnnestSpecification(ConfigSpecification):
-    """Validates unnest configurations."""
+class UnnestSpecification(ProjectSpecification):
+    """Validates unnest setups."""
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
-        """Check that unnest configurations are valid."""
+        """Check that unnest setups are valid."""
         self.clear()
         valid = True
 
-        entities_config = config.get("entities", {})
-        if not entities_config:
+        entities_cfg = config.get("entities", {})
+        if not entities_cfg:
             return True
 
-        for entity_name, entity_data in entities_config.items():
+        for entity_name, entity_data in entities_cfg.items():
             unnest = entity_data.get("unnest")
 
             if unnest:
@@ -438,7 +438,7 @@ class UnnestSpecification(ConfigSpecification):
         return valid
 
 
-class DropDuplicatesSpecification(ConfigSpecification):
+class DropDuplicatesSpecification(ProjectSpecification):
     """Validates drop_duplicates configurations."""
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
@@ -466,7 +466,7 @@ class DropDuplicatesSpecification(ConfigSpecification):
         return valid
 
 
-class SurrogateIdSpecification(ConfigSpecification):
+class SurrogateIdSpecification(ProjectSpecification):
     """Validates surrogate ID configurations."""
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
@@ -510,7 +510,7 @@ class SurrogateIdSpecification(ConfigSpecification):
         return valid
 
 
-class SqlDataSpecification(ConfigSpecification):
+class SqlDataSpecification(ProjectSpecification):
     """Validates SQL-type entity configurations."""
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
@@ -552,7 +552,7 @@ class SqlDataSpecification(ConfigSpecification):
         return valid
 
 
-class FixedDataSpecification(ConfigSpecification):
+class FixedDataSpecification(ProjectSpecification):
     """Validates fixed data table configurations."""
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
@@ -609,7 +609,7 @@ class FixedDataSpecification(ConfigSpecification):
         return valid
 
 
-class DataSourceExistsSpecification(ConfigSpecification):
+class DataSourceExistsSpecification(ProjectSpecification):
     """Validates that all referenced data sources exist in options.data_sources."""
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
@@ -655,7 +655,7 @@ class DataSourceExistsSpecification(ConfigSpecification):
         return valid
 
 
-class AppendConfigurationSpecification(ConfigSpecification):
+class AppendConfigurationSpecification(ProjectSpecification):
     """Validates append configuration settings."""
 
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
@@ -747,10 +747,10 @@ class AppendConfigurationSpecification(ConfigSpecification):
         return valid
 
 
-class CompositeConfigSpecification(ConfigSpecification):
+class CompositeProjectSpecification(ProjectSpecification):
     """Composite specification that runs multiple validation specifications."""
 
-    def __init__(self, specifications: list[ConfigSpecification] | None = None) -> None:
+    def __init__(self, specifications: list[ProjectSpecification] | None = None) -> None:
         super().__init__()
         self.specifications = specifications or [
             RequiredFieldsSpecification(),

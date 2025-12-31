@@ -1,18 +1,18 @@
 # SEAD Shape Shifter
 
-A general-purpose data transformation and normalization framework with a modern web-based configuration editor. Harmonize diverse data sources into a target schema through declarative YAML configurations, comprehensive validation, and intelligent auto-fix capabilities.
+A general-purpose data transformation and normalization framework with a modern web-based project editor. Harmonize diverse data sources into a target schema through declarative YAML projects, comprehensive validation, and intelligent auto-fix capabilities.
 
 While initially developed for Arbodat archaeological data integration with the SEAD (Strategic Environmental Archaeology Database) system, the framework is designed to be adaptable to any domain requiring complex data transformations.
 
 ## 🎉 Phase 2 Complete! (December 2025)
 
-**Shape Shifter Configuration Editor v0.1.0** - Now available for beta testing
+**Shape Shifter Project Editor v0.1.0** - Now available for beta testing
 
 **Status:** ✅ Phase 2 Complete | 🚀 Ready for Beta Deployment
 
 ### What's New in Phase 2
 
-- 🎨 **Web-Based Configuration Editor** - Professional Monaco editor with YAML syntax highlighting
+- 🎨 **Web-Based Project Editor** - Professional Monaco editor with YAML syntax highlighting
 - ✅ **Comprehensive Validation** - Real-time structural and data validation with detailed error reporting
 - 🔧 **Auto-Fix Service** - One-click fixes for common errors with preview and automatic backups
 - ⚡ **Quick Wins UX** - 70% fewer API calls, instant cached validations, smooth animations
@@ -92,7 +92,7 @@ A declarative YAML-based system for defining complex data transformation pipelin
   - Match requirements (enforce all rows match)
   - Uniqueness constraints (ensure key uniqueness)
   - Null value handling
-- **Data Validation**: Built-in validation for configuration files and data integrity
+- **Data Validation**: Built-in validation for project files and data integrity
 - **Multiple Output Formats**: Export to CSV, Excel, or directly to databases
 - **Extensible Architecture**: Plugin-style loaders for different data sources
 
@@ -312,7 +312,7 @@ Violations raise descriptive errors with context about which entity and constrai
 
 ## Configuration
 
-Configuration files use YAML format with three main sections:
+Project files use YAML format with three main sections:
 
 - **entities**: Define data entities, their columns, relationships, and transformations
 - **options**: Global settings including data source connections
