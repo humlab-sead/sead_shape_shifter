@@ -163,6 +163,14 @@ import { useProjects, useDependencies } from '@/composables'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
 import type { GraphNode } from '@/types'
 
+// Extended type for simulation nodes with physics properties
+interface SimulationNode extends GraphNode {
+  x: number
+  y: number
+  vx: number
+  vy: number
+}
+
 const router = useRouter()
 
 // Composables
@@ -236,7 +244,13 @@ function renderGraph() {
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`)
 
   // Calculate positions based on layout type
-  const nodes = graphData.value.nodes.map((n) => ({ ...n }))
+  const nodes: SimulationNode[] = graphData.value.nodes.map((n) => ({
+    ...n,
+    x: n.x ?? 0,
+    y: n.y ?? 0,
+    vx: 0,
+    vy: 0,
+  }))
 
   if (layoutType.value === 'hierarchical') {
     // Hierarchical layout
@@ -272,15 +286,19 @@ function renderGraph() {
       // Apply repulsion between all nodes
       for (let j = 0; j < nodes.length; j++) {
         for (let k = j + 1; k < nodes.length; k++) {
-          const dx = nodes[k].x - nodes[j].x
-          const dy = nodes[k].y - nodes[j].y
+          const nodeJ = nodes[j]
+          const nodeK = nodes[k]
+          if (!nodeJ || !nodeK) continue
+
+          const dx = nodeK.x - nodeJ.x
+          const dy = nodeK.y - nodeJ.y
           const distance = Math.sqrt(dx * dx + dy * dy) || 1
           const force = repulsion / (distance * distance)
 
-          nodes[j].vx -= (dx / distance) * force
-          nodes[j].vy -= (dy / distance) * force
-          nodes[k].vx += (dx / distance) * force
-          nodes[k].vy += (dy / distance) * force
+          nodeJ.vx -= (dx / distance) * force
+          nodeJ.vy -= (dy / distance) * force
+          nodeK.vx += (dx / distance) * force
+          nodeK.vy += (dy / distance) * force
         }
       }
 

@@ -515,7 +515,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css'
 import ForeignKeyEditor from './ForeignKeyEditor.vue'
 import AdvancedEntityConfig from './AdvancedEntityConfig.vue'
 import SuggestionsPanel from './SuggestionsPanel.vue'
-import EntityPreviewPanel from './EntityPreviewPanel.vue'
+// import EntityPreviewPanel from './EntityPreviewPanel.vue'
 import YamlEditor from '../common/YamlEditor.vue'
 import SqlEditor from '../common/SqlEditor.vue'
 import { defineAsyncComponent } from 'vue'
@@ -812,7 +812,7 @@ function formDataToYaml(): string {
     entityData.foreign_keys = formData.value.foreign_keys
   }
 
-  if (formData.value.advanced.filters?.length > 0) {
+  if (formData.value.advanced.filters?.length) {
     entityData.filters = formData.value.advanced.filters
   }
 
@@ -820,7 +820,7 @@ function formDataToYaml(): string {
     entityData.unnest = formData.value.advanced.unnest
   }
 
-  if (formData.value.advanced.append?.length > 0) {
+  if (formData.value.advanced.append?.length) {
     entityData.append = formData.value.advanced.append
   }
 
@@ -987,13 +987,13 @@ async function handleSubmit() {
     }
 
     // Include advanced configuration
-    if (formData.value.advanced.filters?.length > 0) {
+    if (formData.value.advanced.filters?.length) {
       entityData.filters = formData.value.advanced.filters
     }
     if (formData.value.advanced.unnest) {
       entityData.unnest = formData.value.advanced.unnest
     }
-    if (formData.value.advanced.append?.length > 0) {
+    if (formData.value.advanced.append?.length) {
       entityData.append = formData.value.advanced.append
     }
     if (formData.value.advanced.extra_columns) {

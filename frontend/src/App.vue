@@ -195,7 +195,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
 import { useSettings } from '@/composables/useSettings'
-import logo from '@/assets/images/SEAD-logo-with-subtext.png'
+// import logo from '@/assets/images/SEAD-logo-with-subtext.png'
 
 const router = useRouter()
 const route = useRoute()
