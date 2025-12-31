@@ -154,6 +154,21 @@ frontend-lint:
 	@echo "Linting frontend code..."
 	@cd frontend && pnpm lint
 
+.PHONY: frontend-test
+frontend-test:
+	@echo "Running frontend tests..."
+	@cd frontend && pnpm test:run
+
+.PHONY: frontend-test-ui
+frontend-test-ui:
+	@echo "Running frontend tests with UI..."
+	@cd frontend && pnpm test:ui
+
+.PHONY: frontend-coverage
+frontend-coverage:
+	@echo "Running frontend tests with coverage..."
+	@cd frontend && pnpm test:coverage
+
 .PHONY: frontend-run
 frontend-run:
 	@echo "Starting frontend dev server on http://localhost:$(FRONTEND_PORT)"

@@ -232,8 +232,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
-import { useProjectStore } from '@/stores/project'
-import { getDriverDisplayName, getDriverIcon, isDatabaseSource, type DataSourceConfig } from '@/types/data-source'
+import { getDriverDisplayName, getDriverIcon, type DataSourceConfig } from '@/types/data-source'
 import DataSourceFormDialog from '@/components/DataSourceFormDialog.vue'
 
 const dataSourceStore = useDataSourceStore()
