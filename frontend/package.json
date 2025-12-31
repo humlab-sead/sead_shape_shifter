@@ -21,6 +21,9 @@
     "ag-grid-community": "^32.3.3",
     "ag-grid-vue3": "^32.3.3",
     "axios": "^1.7.9",
+    "cytoscape": "^3.33.1",
+    "cytoscape-cose-bilkent": "^4.1.0",
+    "cytoscape-dagre": "^2.5.0",
     "d3": "^7.9.0",
     "js-yaml": "^4.1.0",
     "monaco-editor": "^0.52.0",
@@ -34,6 +37,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@mdi/font": "^7.4.47",
+    "@types/cytoscape": "^3.31.0",
     "@types/d3": "^7.4.3",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.10.2",

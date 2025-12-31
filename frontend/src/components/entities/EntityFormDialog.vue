@@ -274,12 +274,7 @@
 
                   <!-- Smart Suggestions Panel -->
                   <div class="form-row" v-if="showSuggestions || suggestionsLoading">
-                    <v-progress-linear
-                      v-if="suggestionsLoading"
-                      indeterminate
-                      color="primary"
-                      class="mb-2"
-                    />
+                    <v-progress-linear v-if="suggestionsLoading" indeterminate color="primary" class="mb-2" />
 
                     <SuggestionsPanel
                       v-if="suggestions && !suggestionsLoading"

@@ -200,9 +200,7 @@ describe('entitiesApi', () => {
     it('should handle deletion of non-existent entity', async () => {
       vi.mocked(apiRequest).mockRejectedValue(new Error('Entity not found'))
 
-      await expect(entitiesApi.delete('test-project', 'non-existent')).rejects.toThrow(
-        'Entity not found'
-      )
+      await expect(entitiesApi.delete('test-project', 'non-existent')).rejects.toThrow('Entity not found')
     })
   })
 
@@ -241,9 +239,7 @@ describe('entitiesApi', () => {
         entity_data: {},
       }
 
-      await expect(entitiesApi.update('test-project', 'entity', request)).rejects.toThrow(
-        'Update conflict'
-      )
+      await expect(entitiesApi.update('test-project', 'entity', request)).rejects.toThrow('Update conflict')
     })
   })
 })

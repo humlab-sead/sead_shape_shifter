@@ -88,7 +88,12 @@
           </v-card-text>
 
           <v-card-actions>
-            <v-btn variant="text" size="small" prepend-icon="mdi-pencil" @click.stop="handleSelectProject(project.name)">
+            <v-btn
+              variant="text"
+              size="small"
+              prepend-icon="mdi-pencil"
+              @click.stop="handleSelectProject(project.name)"
+            >
               Edit
             </v-btn>
             <v-btn

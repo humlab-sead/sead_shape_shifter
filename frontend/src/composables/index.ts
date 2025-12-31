@@ -14,6 +14,9 @@ export type { UseValidationOptions } from './useValidation'
 export { useDependencies } from './useDependencies'
 export type { UseDependenciesOptions } from './useDependencies'
 
+export { useCytoscape } from './useCytoscape'
+export type { UseCytoscapeOptions } from './useCytoscape'
+
 export { useSuggestions } from './useSuggestions'
 export type {
   ForeignKeySuggestion,

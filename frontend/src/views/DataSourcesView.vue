@@ -14,8 +14,7 @@
       <v-col>
         <v-alert type="info" variant="tonal" density="compact" border="start">
           <strong>Shared Data Sources</strong> - Data sources are stored as separate YAML files and can be connected to
-          multiple projects. To connect a data source to a project, go to the project's "Data Sources"
-          tab.
+          multiple projects. To connect a data source to a project, go to the project's "Data Sources" tab.
         </v-alert>
       </v-col>
     </v-row>
