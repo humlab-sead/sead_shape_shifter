@@ -1,6 +1,7 @@
 """Unit tests for arbodat dispatch module."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pandas as pd
@@ -283,17 +284,34 @@ class TestExcelDispatcher:
 class TestDatabaseDispatcher:
     """Tests for DatabaseDispatcher class."""
 
-    def test_database_dispatcher_instantiation(self):
+    @pytest.fixture
+    def cfg(self) -> dict[str, Any]:
+        """Fixture for database dispatcher config."""
+        return {
+            "entities": {},
+            "options": {
+                "dispatch": {
+                    "database": {
+                        "driver": "postgresql",
+                        "host": "localhost",
+                        "port": 5432,
+                        "database": "testdb",
+                        "user": "testuser",
+                        "password": "testpass",
+                    }
+                }
+            },
+        }
+    def test_database_dispatcher_instantiation(self, cfg: dict[str, Any]):
         """Test creating a DatabaseDispatcher instance."""
-        dispatcher = DatabaseDispatcher(cfg={})
+        dispatcher = DatabaseDispatcher(cfg=cfg)
         assert dispatcher is not None
 
-    @with_test_config
     @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    def test_database_dispatcher_gets_config(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
+    def test_database_dispatcher_gets_config(self, mock_create_uri, mock_create_engine,  cfg: dict[str, Any]):
         """Test that DatabaseDispatcher calls create_db_uri."""
-        dispatcher = DatabaseDispatcher(cfg={})
+        dispatcher = DatabaseDispatcher(cfg=cfg)
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         # Setup mocks
@@ -310,12 +328,11 @@ class TestDatabaseDispatcher:
         # Just verify that create_db_uri was called
         mock_create_uri.assert_called_once()
 
-    @with_test_config
     @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    def test_database_dispatcher_creates_db_uri(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
+    def test_database_dispatcher_creates_db_uri(self, mock_create_uri, mock_create_engine, cfg: dict[str, Any]):
         """Test that DatabaseDispatcher creates database URI."""
-        dispatcher = DatabaseDispatcher(cfg={})
+        dispatcher = DatabaseDispatcher(cfg=cfg)
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         mock_create_uri.return_value = "postgresql+psycopg://testuser@localhost:5432/testdb"
@@ -331,12 +348,11 @@ class TestDatabaseDispatcher:
         # Verify create_db_uri was called
         mock_create_uri.assert_called_once()
 
-    @with_test_config
     @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    def test_database_dispatcher_creates_engine(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
+    def test_database_dispatcher_creates_engine(self, mock_create_uri, mock_create_engine, cfg: dict[str, Any]):
         """Test that DatabaseDispatcher creates SQLAlchemy engine."""
-        dispatcher = DatabaseDispatcher(cfg={})
+        dispatcher = DatabaseDispatcher(cfg=cfg)
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         db_url = "postgresql+psycopg://user@localhost:5432/db"
@@ -352,12 +368,11 @@ class TestDatabaseDispatcher:
 
         mock_create_engine.assert_called_once_with(url=db_url)
 
-    @with_test_config
     @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    def test_database_dispatcher_writes_tables(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
+    def test_database_dispatcher_writes_tables(self, mock_create_uri, mock_create_engine, cfg: dict[str, Any]):
         """Test that DatabaseDispatcher writes all tables to database."""
-        dispatcher = DatabaseDispatcher(cfg={})
+        dispatcher = DatabaseDispatcher(cfg=cfg)
         df1 = pd.DataFrame({"col1": [1, 2]})
         df2 = pd.DataFrame({"col2": [3, 4]})
         data = {"table1": df1, "table2": df2}
@@ -374,12 +389,11 @@ class TestDatabaseDispatcher:
 
             assert mock_to_sql.call_count == 2
 
-    @with_test_config
     @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    def test_database_dispatcher_replaces_existing_tables(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
+    def test_database_dispatcher_replaces_existing_tables(self, mock_create_uri, mock_create_engine, cfg: dict[str, Any]):
         """Test that DatabaseDispatcher replaces existing tables."""
-        dispatcher = DatabaseDispatcher(cfg={})
+        dispatcher = DatabaseDispatcher(cfg=cfg)
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
@@ -396,12 +410,11 @@ class TestDatabaseDispatcher:
             call_kwargs = mock_to_sql.call_args[1]
             assert call_kwargs["if_exists"] == "replace"
 
-    @with_test_config
     @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    def test_database_dispatcher_no_index_in_output(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
+    def test_database_dispatcher_no_index_in_output(self, mock_create_uri, mock_create_engine, cfg: dict[str, Any]):
         """Test that DatabaseDispatcher writes tables without index."""
-        dispatcher = DatabaseDispatcher(cfg={})
+        dispatcher = DatabaseDispatcher(cfg=cfg)
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
@@ -418,12 +431,11 @@ class TestDatabaseDispatcher:
             call_kwargs = mock_to_sql.call_args[1]
             assert call_kwargs["index"] is False
 
-    @with_test_config
     @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    def test_database_dispatcher_uses_transaction(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
+    def test_database_dispatcher_uses_transaction(self, mock_create_uri, mock_create_engine, cfg: dict[str, Any]):
         """Test that DatabaseDispatcher uses transaction context."""
-        dispatcher = DatabaseDispatcher(cfg={})
+        dispatcher = DatabaseDispatcher(cfg=cfg)
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
@@ -439,12 +451,11 @@ class TestDatabaseDispatcher:
             # Verify begin() was called to start transaction
             mock_engine.begin.assert_called_once()
 
-    @with_test_config
     @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    def test_database_dispatcher_uses_create_db_uri(self, mock_create_uri, mock_create_engine, test_provider: MockConfigProvider):
+    def test_database_dispatcher_uses_create_db_uri(self, mock_create_uri, mock_create_engine, cfg: dict[str, Any]):
         """Test that DatabaseDispatcher calls create_db_uri to build connection string."""
-        dispatcher = DatabaseDispatcher(cfg={})
+        dispatcher = DatabaseDispatcher(cfg=cfg)
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
         mock_create_uri.return_value = "postgresql+psycopg://user@localhost:5432/db"
