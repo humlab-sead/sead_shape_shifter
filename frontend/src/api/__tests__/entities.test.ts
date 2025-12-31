@@ -19,7 +19,7 @@ describe('entitiesApi', () => {
   })
 
   describe('list', () => {
-    it('should fetch all entities for a configuration', async () => {
+    it('should fetch all entities for a project', async () => {
       const mockEntities: EntityResponse[] = [
         { name: 'entity1', entity_data: { field: 'value1' } },
         { name: 'entity2', entity_data: { field: 'value2' } },
@@ -27,11 +27,11 @@ describe('entitiesApi', () => {
 
       vi.mocked(apiRequest).mockResolvedValue(mockEntities)
 
-      const result = await entitiesApi.list('test-config')
+      const result = await entitiesApi.list('test-project')
 
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'GET',
-        url: '/configurations/test-config/entities',
+        url: '/projects/test-project/entities',
       })
       expect(result).toEqual(mockEntities)
     })
@@ -54,11 +54,11 @@ describe('entitiesApi', () => {
 
       vi.mocked(apiRequest).mockResolvedValue(mockEntity)
 
-      const result = await entitiesApi.get('test-config', 'test-entity')
+      const result = await entitiesApi.get('test-project', 'test-entity')
 
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'GET',
-        url: '/configurations/test-config/entities/test-entity',
+        url: '/projects/test-project/entities/test-entity',
       })
       expect(result).toEqual(mockEntity)
     })
@@ -75,7 +75,7 @@ describe('entitiesApi', () => {
 
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'GET',
-        url: '/configurations/config-1/entities/entity-with-dash',
+        url: '/projects/config-1/entities/entity-with-dash',
       })
     })
   })
@@ -97,11 +97,11 @@ describe('entitiesApi', () => {
 
       vi.mocked(apiRequest).mockResolvedValue(mockResponse)
 
-      const result = await entitiesApi.create('test-config', createRequest)
+      const result = await entitiesApi.create('test-project', createRequest)
 
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'POST',
-        url: '/configurations/test-config/entities',
+        url: '/projects/test-project/entities',
         data: createRequest,
       })
       expect(result).toEqual(mockResponse)
@@ -118,11 +118,11 @@ describe('entitiesApi', () => {
         entity_data: {},
       })
 
-      await entitiesApi.create('test-config', createRequest)
+      await entitiesApi.create('test-project', createRequest)
 
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'POST',
-        url: '/configurations/test-config/entities',
+        url: '/projects/test-project/entities',
         data: createRequest,
       })
     })
@@ -145,11 +145,11 @@ describe('entitiesApi', () => {
 
       vi.mocked(apiRequest).mockResolvedValue(mockResponse)
 
-      const result = await entitiesApi.update('test-config', 'test-entity', updateRequest)
+      const result = await entitiesApi.update('test-project', 'test-entity', updateRequest)
 
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'PUT',
-        url: '/configurations/test-config/entities/test-entity',
+        url: '/projects/test-project/entities/test-entity',
         data: updateRequest,
       })
       expect(result).toEqual(mockResponse)
@@ -175,11 +175,11 @@ describe('entitiesApi', () => {
         entity_data: updateRequest.entity_data,
       })
 
-      await entitiesApi.update('test-config', 'orders', updateRequest)
+      await entitiesApi.update('test-project', 'orders', updateRequest)
 
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'PUT',
-        url: '/configurations/test-config/entities/orders',
+        url: '/projects/test-project/entities/orders',
         data: updateRequest,
       })
     })
@@ -189,18 +189,18 @@ describe('entitiesApi', () => {
     it('should delete an entity', async () => {
       vi.mocked(apiRequest).mockResolvedValue(undefined)
 
-      await entitiesApi.delete('test-config', 'test-entity')
+      await entitiesApi.delete('test-project', 'test-entity')
 
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'DELETE',
-        url: '/configurations/test-config/entities/test-entity',
+        url: '/projects/test-project/entities/test-entity',
       })
     })
 
     it('should handle deletion of non-existent entity', async () => {
       vi.mocked(apiRequest).mockRejectedValue(new Error('Entity not found'))
 
-      await expect(entitiesApi.delete('test-config', 'non-existent')).rejects.toThrow(
+      await expect(entitiesApi.delete('test-project', 'non-existent')).rejects.toThrow(
         'Entity not found'
       )
     })
@@ -211,14 +211,14 @@ describe('entitiesApi', () => {
       const error = new Error('Network error')
       vi.mocked(apiRequest).mockRejectedValue(error)
 
-      await expect(entitiesApi.list('test-config')).rejects.toThrow('Network error')
+      await expect(entitiesApi.list('test-project')).rejects.toThrow('Network error')
     })
 
     it('should propagate API errors from get', async () => {
       const error = new Error('Entity not found')
       vi.mocked(apiRequest).mockRejectedValue(error)
 
-      await expect(entitiesApi.get('test-config', 'missing')).rejects.toThrow('Entity not found')
+      await expect(entitiesApi.get('test-project', 'missing')).rejects.toThrow('Entity not found')
     })
 
     it('should propagate API errors from create', async () => {
@@ -230,7 +230,7 @@ describe('entitiesApi', () => {
         entity_data: {},
       }
 
-      await expect(entitiesApi.create('test-config', request)).rejects.toThrow('Validation failed')
+      await expect(entitiesApi.create('test-project', request)).rejects.toThrow('Validation failed')
     })
 
     it('should propagate API errors from update', async () => {
@@ -241,7 +241,7 @@ describe('entitiesApi', () => {
         entity_data: {},
       }
 
-      await expect(entitiesApi.update('test-config', 'entity', request)).rejects.toThrow(
+      await expect(entitiesApi.update('test-project', 'entity', request)).rejects.toThrow(
         'Update conflict'
       )
     })

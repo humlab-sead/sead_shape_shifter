@@ -3,7 +3,7 @@
     <v-card-title class="d-flex align-center justify-space-between">
       <span>Validation Results</span>
       <div class="d-flex gap-2">
-        <v-tooltip text="Check configuration structure and references" location="bottom">
+        <v-tooltip text="Check project structure and references" location="bottom">
           <template v-slot:activator="{ props }">
             <v-btn
               v-bind="props"
@@ -47,7 +47,7 @@
       <div v-if="!validationResult" class="text-center py-8">
         <v-icon icon="mdi-help-circle-outline" size="64" color="grey" />
         <p class="text-h6 mt-4 mb-2">Not Validated</p>
-        <p class="text-grey mb-4">Run validation to check for configuration errors and warnings</p>
+        <p class="text-grey mb-4">Run validation to check for project errors and warnings</p>
         <div class="d-flex gap-2 justify-center">
           <v-btn color="primary" prepend-icon="mdi-check-circle-outline" :loading="loading" @click="emit('validate')">
             Structural Validation
@@ -66,7 +66,7 @@
         />
         <div class="text-center">
           <v-progress-circular indeterminate color="primary" size="32" />
-          <p class="mt-2 text-grey">Validating configuration...</p>
+          <p class="mt-2 text-grey">Validating project...</p>
         </div>
       </div>
 
@@ -213,7 +213,7 @@ import ValidationSuggestion from './ValidationSuggestion.vue'
 import DataValidationConfig from './DataValidationConfig.vue'
 
 interface Props {
-  configName: string
+  projectName: string
   validationResult: ValidationResult | null
   loading: boolean
   dataValidationLoading?: boolean

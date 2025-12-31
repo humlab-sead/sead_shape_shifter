@@ -4,7 +4,7 @@
       <v-col>
         <h1 class="text-h4 mb-2">Global Data Sources</h1>
         <p class="text-body-2 text-grey">
-          Manage global data source files. These can be connected to configurations via @include references.
+          Manage global data source files. These can be connected to project via @include references.
         </p>
       </v-col>
     </v-row>
@@ -14,7 +14,7 @@
       <v-col>
         <v-alert type="info" variant="tonal" density="compact" border="start">
           <strong>Shared Data Sources</strong> - Data sources are stored as separate YAML files and can be connected to
-          multiple configurations. To connect a data source to a configuration, go to the configuration's "Data Sources"
+          multiple projects. To connect a data source to a project, go to the project's "Data Sources"
           tab.
         </v-alert>
       </v-col>

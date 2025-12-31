@@ -10,7 +10,7 @@ import type { SessionCreateRequest } from '@/types/session'
 
 export function useSession() {
   const sessionStore = useSessionStore()
-  const configStore = useProjectStore()
+  const projectStore = useProjectStore()
 
   const {
     currentSession,
@@ -19,7 +19,7 @@ export function useSession() {
     error,
     hasActiveSession,
     sessionId,
-    projectName: configName,
+    projectName: projectName,
     version,
     isModified,
     hasConcurrentEdits,
@@ -27,11 +27,11 @@ export function useSession() {
   } = storeToRefs(sessionStore)
 
   /**
-   * Start a new editing session for a configuration.
+   * Start a new editing session for a project.
    */
-  async function startSession(configName: string, userId?: string) {
+  async function startSession(projectName: string, userId?: string) {
     const request: SessionCreateRequest = {
-      project_name: configName,
+      project_name: projectName,
       user_id: userId,
     }
 
@@ -62,7 +62,7 @@ export function useSession() {
   }
 
   /**
-   * Save configuration with version check.
+   * Save project with version check.
    */
   async function saveWithVersionCheck() {
     if (!hasActiveSession.value) {
@@ -72,8 +72,8 @@ export function useSession() {
     const currentVersion = version.value
 
     try {
-      // Save through config store (will include version in request)
-      await configStore.saveConfiguration()
+      // Save through project store (will include version in request)
+      await projectStore.saveProject()
 
       // Increment version on successful save
       sessionStore.incrementVersion()
@@ -98,11 +98,11 @@ export function useSession() {
   }
 
   /**
-   * Mark configuration as modified.
+   * Mark project as modified.
    */
   function markAsModified() {
     sessionStore.markModified()
-    configStore.hasUnsavedChanges = true
+    projectStore.hasUnsavedChanges = true
   }
 
   /**
@@ -123,7 +123,7 @@ export function useSession() {
     if (!hasConcurrentEdits.value) return null
 
     const count = otherActiveSessions.value.length
-    return `${count} other user${count > 1 ? 's are' : ' is'} currently editing this configuration`
+    return `${count} other user${count > 1 ? 's are' : ' is'} currently editing this project`
   })
 
   /**
@@ -134,11 +134,11 @@ export function useSession() {
   })
 
   /**
-   * Watch for configuration changes and mark as modified.
+   * Watch for project changes and mark as modified.
    */
-  function watchConfigChanges(callback?: () => void) {
+  function watchProjectChanges(callback?: () => void) {
     return watch(
-      () => configStore.selectedConfig,
+      () => projectStore.selectedProject,
       () => {
         if (hasActiveSession.value) {
           markAsModified()
@@ -159,7 +159,7 @@ export function useSession() {
     // Computed
     hasActiveSession,
     sessionId,
-    configName,
+    projectName,
     version,
     isModified,
     hasConcurrentEdits,
@@ -172,6 +172,6 @@ export function useSession() {
     saveWithVersionCheck,
     markAsModified,
     checkConcurrentEditors,
-    watchConfigChanges,
+    watchProjectChanges,
   }
 }

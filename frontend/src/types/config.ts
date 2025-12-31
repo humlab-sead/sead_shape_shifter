@@ -1,5 +1,5 @@
 /**
- * TypeScript types for configuration.
+ * TypeScript types for project.
  */
 
 import type { Entity } from './entity'

@@ -69,13 +69,13 @@
     <v-dialog v-model="showConnectDialog" max-width="600">
       <v-card>
         <v-card-title>Connect Data Source</v-card-title>
-        <v-card-subtitle> Select a global data source file to connect to this configuration </v-card-subtitle>
+        <v-card-subtitle> Select a global data source file to connect to this project </v-card-subtitle>
 
         <v-card-text>
           <v-text-field
             v-model="newSourceName"
             label="Source Name"
-            hint="Name to use in this configuration (e.g., 'sead', 'arbodat_data')"
+            hint="Name to use in this project (e.g., 'sead', 'arbodat_data')"
             persistent-hint
             variant="outlined"
             density="comfortable"
@@ -158,14 +158,14 @@ import { useProjectStore } from '@/stores/project'
 import { useDataSourceStore } from '@/stores/data-source'
 
 const props = defineProps<{
-  configName: string
+  projectName: string
 }>()
 
 const emit = defineEmits<{
   updated: []
 }>()
 
-const configurationStore = useProjectStore()
+const projectStore = useProjectStore()
 const dataSourceStore = useDataSourceStore()
 
 // State
@@ -217,8 +217,8 @@ async function loadDataSources() {
   error.value = null
 
   try {
-    // Load connected sources for this configuration
-    connectedSourcesData.value = await configurationStore.getConfigurationDataSources(props.configName)
+    // Load connected sources for this project
+    connectedSourcesData.value = await projectStore.getProjectDataSources(props.projectName)
 
     // Only load global data sources if not already loaded (avoid duplicate fetch)
     if (dataSourceStore.dataSourceCount === 0) {
@@ -238,7 +238,7 @@ async function handleConnect() {
   connectError.value = null
 
   try {
-    await configurationStore.connectDataSource(props.configName, newSourceName.value, selectedSourceFile.value)
+    await projectStore.connectDataSource(props.projectName, newSourceName.value, selectedSourceFile.value)
 
     // Reload data sources
     await loadDataSources()
@@ -267,7 +267,7 @@ async function confirmDisconnect() {
   disconnecting.value = true
 
   try {
-    await configurationStore.disconnectDataSource(props.configName, disconnectingSource.value)
+    await projectStore.disconnectDataSource(props.projectName, disconnectingSource.value)
 
     // Reload data sources
     await loadDataSources()

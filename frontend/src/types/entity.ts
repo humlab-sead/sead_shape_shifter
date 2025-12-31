@@ -1,5 +1,5 @@
 /**
- * TypeScript types for entity configuration.
+ * TypeScript types for entity.
  */
 
 export type Cardinality = 'one_to_one' | 'many_to_one' | 'one_to_many' | 'many_to_many'

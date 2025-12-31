@@ -5,9 +5,9 @@
       <v-col>
         <div class="d-flex align-center justify-space-between mb-6">
           <div class="d-flex align-center">
-            <v-btn icon="mdi-arrow-left" variant="text" @click="$router.push({ name: 'configurations' })" />
+            <v-btn icon="mdi-arrow-left" variant="text" @click="$router.push({ name: 'projects' })" />
             <div class="ml-2">
-              <h1 class="text-h4">{{ configName }}</h1>
+              <h1 class="text-h4">{{ projectName }}</h1>
               <div class="d-flex align-center mt-1">
                 <v-chip
                   v-if="entityCount > 0"
@@ -55,29 +55,29 @@
     <!-- Session Indicator -->
     <v-row>
       <v-col>
-        <session-indicator :config-name="configName" />
+        <session-indicator :project-name="projectName" />
       </v-col>
     </v-row>
 
     <!-- Loading State -->
-    <v-row v-if="configLoading">
+    <v-row v-if="projectLoading">
       <v-col cols="12" class="text-center py-12">
         <v-progress-circular indeterminate color="primary" size="64" />
-        <p class="mt-4 text-grey">Loading configuration...</p>
+        <p class="mt-4 text-grey">Loading project...</p>
       </v-col>
     </v-row>
 
     <!-- Error State -->
-    <v-alert v-else-if="configError" type="error" variant="tonal">
+    <v-alert v-else-if="projectError" type="error" variant="tonal">
       <v-alert-title>Error Loading Project</v-alert-title>
-      {{ configError }}
+      {{ projectError }}
       <template #append>
         <v-btn variant="text" @click="handleRefresh">Retry</v-btn>
       </template>
     </v-alert>
 
     <!-- Main Content -->
-    <v-row v-else-if="selectedConfig">
+    <v-row v-else-if="selectedProject">
       <v-col cols="12">
         <v-tabs v-model="activeTab" bg-color="transparent">
           <v-tab value="entities">
@@ -116,28 +116,28 @@
         <v-window v-model="activeTab" class="mt-4">
           <!-- Entities Tab -->
           <v-window-item value="entities">
-            <entity-list-card :config-name="configName" @entity-updated="handleEntityUpdated" />
+            <entity-list-card :project-name="projectName" @entity-updated="handleEntityUpdated" />
           </v-window-item>
 
           <!-- Dependencies Tab -->
           <v-window-item value="dependencies">
-            <dependency-graph :config-name="configName" @edit-entity="handleEditEntity" />
+            <dependency-graph :project-name="projectName" @edit-entity="handleEditEntity" />
           </v-window-item>
 
           <!-- Reconciliation Tab -->
           <v-window-item value="reconciliation">
-            <reconciliation-view :config-name="configName" />
+            <reconciliation-view :project-name="projectName" />
           </v-window-item>
 
           <!-- Data Sources Tab -->
           <v-window-item value="data-sources">
-            <configuration-data-sources :config-name="configName" @updated="handleDataSourcesUpdated" />
+            <configuration-data-sources :project-name="projectName" @updated="handleDataSourcesUpdated" />
           </v-window-item>
 
           <!-- Validation Tab -->
           <v-window-item value="validation">
             <validation-panel
-              :config-name="configName"
+              :project-name="projectName"
               :validation-result="mergedValidationResult"
               :loading="validationLoading"
               :data-validation-loading="dataValidationLoading"
@@ -151,7 +151,7 @@
 
           <!-- Metadata Tab -->
           <v-window-item value="metadata">
-            <metadata-editor :config-name="configName" />
+            <metadata-editor :project-name="projectName" />
           </v-window-item>
         </v-window>
       </v-col>
@@ -188,7 +188,7 @@
               </template>
             </v-list-item>
           </v-list>
-          <v-alert v-else type="info" variant="tonal"> No backups available for this configuration. </v-alert>
+          <v-alert v-else type="info" variant="tonal"> No backups available for this project. </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -223,7 +223,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDebounceFn } from '@vueuse/core'
-import { useConfigurations, useEntities, useValidation } from '@/composables'
+import { useProjects, useEntities, useValidation } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
@@ -236,13 +236,13 @@ import ReconciliationView from '@/components/reconciliation/ReconciliationView.v
 import MetadataEditor from '@/components/MetadataEditor.vue'
 
 const route = useRoute()
-const configName = computed(() => route.params.name as string)
+const projectName = computed(() => route.params.name as string)
 
 // Composables
 const {
-  selectedConfig,
-  loading: configLoading,
-  error: configError,
+  selectedProject,
+  loading: projectLoading,
+  error: projectError,
   hasUnsavedChanges,
   backups,
   select,
@@ -251,10 +251,10 @@ const {
   fetchBackups,
   restore,
   markAsChanged,
-} = useConfigurations({ autoFetch: false })
+} = useProjects({ autoFetch: false })
 
 const { entityCount, entities } = useEntities({
-  configName: configName.value,
+  projectName: projectName.value,
   autoFetch: true,
 })
 
@@ -274,7 +274,7 @@ const {
   warningCount,
   validate,
 } = useValidation({
-  configName: configName.value,
+  projectName: projectName.value,
   autoValidate: false,
 })
 
@@ -342,12 +342,12 @@ const validationChipText = computed(() => {
 
 // Methods
 function handleTestRun() {
-  window.location.href = `/test-run/${configName.value}`
+  window.location.href = `/test-run/${projectName.value}`
 }
 
 async function handleValidate() {
   try {
-    await validate(configName.value)
+    await validate(projectName.value)
     successMessage.value = 'Project validated successfully'
     showSuccessSnackbar.value = true
   } catch (err) {
@@ -361,10 +361,10 @@ async function handleValidate() {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const debouncedValidate = useDebounceFn(handleValidate, 500)
 
-async function handleDataValidate(config?: any) {
+async function handleDataValidate(project?: any) {
   try {
-    const entityNames = config?.entities
-    await validateData(configName.value, entityNames)
+    const entityNames = project?.entities
+    await validateData(projectName.value, entityNames)
     successMessage.value = 'Data validation completed'
     showSuccessSnackbar.value = true
   } catch (err) {
@@ -394,7 +394,7 @@ async function handlePreviewFixes(issues: any[]) {
     fixPreviewError.value = null
     showPreviewModal.value = true
 
-    const preview = await previewFixes(configName.value, issues)
+    const preview = await previewFixes(projectName.value, issues)
     fixPreview.value = preview
   } catch (err) {
     fixPreviewError.value = err instanceof Error ? err.message : 'Failed to preview fixes'
@@ -407,13 +407,13 @@ async function handlePreviewFixes(issues: any[]) {
 async function handleApplyFixesConfirmed() {
   try {
     const issues = autoFixableIssues.value
-    const result = await applyFixes(configName.value, issues)
+    const result = await applyFixes(projectName.value, issues)
 
     showPreviewModal.value = false
     successMessage.value = `Successfully applied ${result.fixes_applied} fixes. Backup: ${result.backup_path}`
     showSuccessSnackbar.value = true
 
-    // Reload configuration and re-validate
+    // Reload project and re-validate
     await handleRefresh()
     await handleValidate()
   } catch (err) {
@@ -429,12 +429,12 @@ function handleCancelPreview() {
 }
 
 async function handleSave() {
-  if (!selectedConfig.value) return
+  if (!selectedProject.value) return
 
   try {
     // Start session if not already active
     if (!hasActiveSession.value) {
-      await startSession(configName.value)
+      await startSession(projectName.value)
     }
 
     // Save with version check
@@ -445,20 +445,20 @@ async function handleSave() {
       showSuccessSnackbar.value = true
     } else {
       // Version conflict - show error
-      successMessage.value = 'Save failed: Version conflict detected. Another user modified this configuration.'
+      successMessage.value = 'Save failed: Version conflict detected. Another user modified this project.'
       showSuccessSnackbar.value = true
     }
   } catch (err) {
-    console.error('Failed to save configuration:', err)
-    successMessage.value = err instanceof Error ? err.message : 'Failed to save configuration'
+    console.error('Failed to save project:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to save project'
     showSuccessSnackbar.value = true
   }
 }
 
 async function handleRefresh() {
   clearError()
-  if (configName.value) {
-    await select(configName.value)
+  if (projectName.value) {
+    await select(projectName.value)
   }
 }
 
@@ -475,13 +475,13 @@ function handleEditEntity(entityName: string) {
 }
 
 async function handleDataSourcesUpdated() {
-  // Reload configuration after data source changes
+  // Reload project after data source changes
   await handleRefresh()
 }
 
 async function handleRestoreBackup(backupPath: string) {
   try {
-    await restore(configName.value, backupPath)
+    await restore(projectName.value, backupPath)
     successMessage.value = 'Backup restored successfully'
     showSuccessSnackbar.value = true
     showBackupsDialog.value = false
@@ -496,17 +496,17 @@ function formatBackupDate(timestamp: number): string {
 
 // Lifecycle
 onMounted(async () => {
-  if (configName.value) {
-    await select(configName.value)
-    await fetchBackups(configName.value)
+  if (projectName.value) {
+    await select(projectName.value)
+    await fetchBackups(projectName.value)
     // Start editing session
-    await startSession(configName.value)
+    await startSession(projectName.value)
   }
 })
 
-// Watch for config name changes
+// Watch for project name changes
 watch(
-  () => configName.value,
+  () => projectName.value,
   async (newName) => {
     if (newName) {
       await select(newName)

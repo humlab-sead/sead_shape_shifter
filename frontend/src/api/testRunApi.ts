@@ -1,7 +1,7 @@
 /**
  * Test Run API Client
  *
- * API client for configuration test run operations.
+ * API client for project test run operations.
  */
 
 import { apiRequest } from './client'

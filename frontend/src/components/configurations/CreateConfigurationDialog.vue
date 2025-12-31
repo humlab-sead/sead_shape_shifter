@@ -9,14 +9,14 @@
       <v-card-text>
         <v-form ref="formRef" v-model="formValid" @submit.prevent="handleSubmit">
           <v-text-field
-            v-model="configName"
+            v-model="projectName"
             label="Project Name"
             :rules="nameRules"
             variant="outlined"
             density="comfortable"
             autofocus
             required
-            hint="Enter a unique name for this configuration"
+            hint="Enter a unique name for this project"
             persistent-hint
             class="mb-4"
           />
@@ -34,7 +34,7 @@
           color="primary"
           variant="flat"
           :loading="loading"
-          :disabled="!formValid || !configName"
+          :disabled="!formValid || !projectName"
           @click="handleSubmit"
         >
           Create
@@ -46,7 +46,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useConfigurations } from '@/composables'
+import { useProjects } from '@/composables'
 
 interface Props {
   modelValue: boolean
@@ -60,12 +60,12 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const { create, configurations } = useConfigurations({ autoFetch: false })
+const { create, projects } = useProjects({ autoFetch: false })
 
 // Form state
 const formRef = ref()
 const formValid = ref(false)
-const configName = ref('')
+const projectName = ref('')
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -81,12 +81,12 @@ const nameRules = [
   (v: string) => v.length >= 3 || 'Name must be at least 3 characters',
   (v: string) => v.length <= 50 || 'Name must be less than 50 characters',
   (v: string) => /^[a-zA-Z0-9_-]+$/.test(v) || 'Name can only contain letters, numbers, hyphens, and underscores',
-  (v: string) => !configurations.value.some((c) => c.name === v) || 'A configuration with this name already exists',
+  (v: string) => !projects.value.some((c) => c.name === v) || 'A project with this name already exists',
 ]
 
 // Methods
 async function handleSubmit() {
-  if (!formValid.value || !configName.value) return
+  if (!formValid.value || !projectName.value) return
 
   // Validate form
   const { valid } = await formRef.value.validate()
@@ -97,14 +97,14 @@ async function handleSubmit() {
 
   try {
     await create({
-      name: configName.value,
+      name: projectName.value,
       entities: {},
     })
 
-    emit('created', configName.value)
+    emit('created', projectName.value)
     handleClose()
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to create configuration'
+    error.value = err instanceof Error ? err.message : 'Failed to create project'
   } finally {
     loading.value = false
   }
@@ -115,7 +115,7 @@ function handleCancel() {
 }
 
 function handleClose() {
-  configName.value = ''
+  projectName.value = ''
   error.value = null
   formRef.value?.reset()
   dialogModel.value = false
@@ -126,7 +126,7 @@ watch(
   () => props.modelValue,
   (newValue) => {
     if (newValue) {
-      configName.value = ''
+      projectName.value = ''
       error.value = null
       formRef.value?.resetValidation()
     }

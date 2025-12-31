@@ -58,7 +58,7 @@ export const useProjectStore = defineStore('project', () => {
       hasUnsavedChanges.value = false
       return selectedProject.value
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to load configuration'
+      error.value = err instanceof Error ? err.message : 'Failed to load project'
       throw err
     } finally {
       loading.value = false
@@ -82,7 +82,7 @@ export const useProjectStore = defineStore('project', () => {
       hasUnsavedChanges.value = false
       return config
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to create configuration'
+      error.value = err instanceof Error ? err.message : 'Failed to create project'
       throw err
     } finally {
       loading.value = false
@@ -112,7 +112,7 @@ export const useProjectStore = defineStore('project', () => {
       hasUnsavedChanges.value = false
       return config
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to update configuration'
+      error.value = err instanceof Error ? err.message : 'Failed to update project'
       throw err
     } finally {
       loading.value = false
@@ -165,7 +165,7 @@ export const useProjectStore = defineStore('project', () => {
         selectedProject.value = null
       }
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to delete configuration'
+      error.value = err instanceof Error ? err.message : 'Failed to delete project'
       throw err
     } finally {
       loading.value = false
@@ -179,7 +179,7 @@ export const useProjectStore = defineStore('project', () => {
       validationResult.value = await api.projects.validate(name)
       return validationResult.value
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to validate configuration'
+      error.value = err instanceof Error ? err.message : 'Failed to validate project'
       throw err
     } finally {
       loading.value = false
@@ -241,11 +241,11 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   /**
-   * Save current configuration (session-aware).
+   * Save current project (session-aware).
    */
   async function saveProject() {
     if (!selectedProject.value?.metadata?.name) {
-      throw new Error('No configuration selected')
+      throw new Error('No project selected')
     }
 
     const sessionStore = useSessionStore()
@@ -295,7 +295,7 @@ export const useProjectStore = defineStore('project', () => {
       if (err?.response?.status === 409) {
         error.value = 'Project was modified by another user. Please reload and merge changes.'
       } else {
-        error.value = err instanceof Error ? err.message : 'Failed to save configuration'
+        error.value = err instanceof Error ? err.message : 'Failed to save project'
       }
       throw err
     } finally {
@@ -316,7 +316,7 @@ export const useProjectStore = defineStore('project', () => {
       const result = await api.projects.getActive()
       return result.name
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to get active configuration'
+      error.value = err instanceof Error ? err.message : 'Failed to get active project'
       return null
     }
   }
@@ -329,7 +329,7 @@ export const useProjectStore = defineStore('project', () => {
       selectedProject.value = config
       return config
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to activate configuration'
+      error.value = err instanceof Error ? err.message : 'Failed to activate project'
       throw err
     } finally {
       loading.value = false
@@ -412,7 +412,7 @@ export const useProjectStore = defineStore('project', () => {
     restoreBackup,
     getActiveProject,
     activateProject,
-    getConfigurationDataSources,
+    getProjectDataSources: getConfigurationDataSources,
     connectDataSource,
     disconnectDataSource,
     saveProject,

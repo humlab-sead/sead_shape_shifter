@@ -38,11 +38,11 @@ export function useEntityPreview() {
    * Preview entity data with transformations
    */
   async function previewEntity(
-    configName: string,
+    projectName: string,
     entityName: string,
     limit: number | null = 50
   ): Promise<PreviewResult | null> {
-    if (!configName || !entityName) {
+    if (!projectName || !entityName) {
       error.value = 'Project and entity name are required'
       return null
     }
@@ -52,7 +52,7 @@ export function useEntityPreview() {
 
     try {
       const response = await axios.post<PreviewResult>(
-        `/api/v1/projects/${configName}/entities/${entityName}/preview`,
+        `/api/v1/projects/${projectName}/entities/${entityName}/preview`,
         {},
         { params: { limit } }
       )
@@ -73,19 +73,19 @@ export function useEntityPreview() {
   /**
    * Debounced preview entity - waits 1000ms after last call
    */
-  const debouncedPreviewEntity = useDebounceFn((configName: string, entityName: string, limit?: number | null) => {
-    return previewEntity(configName, entityName, limit)
+  const debouncedPreviewEntity = useDebounceFn((projectName: string, entityName: string, limit?: number | null) => {
+    return previewEntity(projectName, entityName, limit)
   }, 1000)
 
   /**
    * Get entity sample (larger dataset)
    */
   async function getEntitySample(
-    configName: string,
+    projectName: string,
     entityName: string,
     limit: number = 100
   ): Promise<PreviewResult | null> {
-    if (!configName || !entityName) {
+    if (!projectName || !entityName) {
       error.value = 'Project and entity name are required'
       return null
     }
@@ -95,7 +95,7 @@ export function useEntityPreview() {
 
     try {
       const response = await axios.post<PreviewResult>(
-        `/api/v1/projects/${configName}/entities/${entityName}/sample`,
+        `/api/v1/projects/${projectName}/entities/${entityName}/sample`,
         {},
         { params: { limit } }
       )
@@ -115,10 +115,10 @@ export function useEntityPreview() {
   /**
    * Invalidate preview cache for entity
    */
-  async function invalidateCache(configName: string, entityName?: string): Promise<boolean> {
+  async function invalidateCache(projectName: string, entityName?: string): Promise<boolean> {
     try {
       const params = entityName ? { entity_name: entityName } : {}
-      await axios.delete(`/api/v1/projects/${configName}/preview-cache`, { params })
+      await axios.delete(`/api/v1/projects/${projectName}/preview-cache`, { params })
       return true
     } catch (err: any) {
       console.error('Cache invalidation error:', err)

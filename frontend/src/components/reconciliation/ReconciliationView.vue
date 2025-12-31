@@ -27,7 +27,7 @@
               <template #no-data>
                 <v-list-item>
                   <v-list-item-title class="text-grey"> No entities configured for reconciliation </v-list-item-title>
-                  <v-list-item-subtitle> Add reconciliation specs to your configuration YAML </v-list-item-subtitle>
+                  <v-list-item-subtitle> Add reconciliation specs to your project YAML </v-list-item-subtitle>
                 </v-list-item>
               </template>
             </v-select>
@@ -132,7 +132,7 @@ import ReconciliationGrid from './ReconciliationGrid.vue'
 import type { ReconciliationPreviewRow } from '@/types'
 
 interface Props {
-  configName: string
+  projectName: string
 }
 
 const props = defineProps<Props>()
@@ -158,7 +158,7 @@ async function handleAutoReconcile() {
   if (!selectedEntity.value) return
 
   try {
-    const result = await reconciliationStore.autoReconcile(props.configName, selectedEntity.value)
+    const result = await reconciliationStore.autoReconcile(props.projectName, selectedEntity.value)
 
     resultMessage.value = `Auto-reconciliation complete: ${result.auto_accepted} auto-matched, ${result.needs_review} need review, ${result.unmatched} unmatched`
     resultColor.value = 'success'
@@ -174,7 +174,7 @@ async function handleUpdateMapping(row: ReconciliationPreviewRow, seadId: number
   if (!selectedEntity.value) return
 
   try {
-    await reconciliationStore.updateMapping(props.configName, selectedEntity.value, row, seadId, notes)
+    await reconciliationStore.updateMapping(props.projectName, selectedEntity.value, row, seadId, notes)
   } catch (e: any) {
     resultMessage.value = `Failed to update mapping: ${e.message}`
     resultColor.value = 'error'
@@ -184,7 +184,7 @@ async function handleUpdateMapping(row: ReconciliationPreviewRow, seadId: number
 
 async function handleSaveChanges() {
   try {
-    await reconciliationStore.saveConfig(props.configName)
+    await reconciliationStore.saveConfig(props.projectName)
     resultMessage.value = 'Changes saved successfully'
     resultColor.value = 'success'
     showResultSnackbar.value = true
@@ -198,7 +198,7 @@ async function handleSaveChanges() {
 // Load config on mount
 onMounted(async () => {
   try {
-    await reconciliationStore.loadConfig(props.configName)
+    await reconciliationStore.loadConfig(props.projectName)
 
     // Auto-select first entity if available
     if (reconcilableEntities.value.length > 0) {
@@ -211,7 +211,7 @@ onMounted(async () => {
 
 // Watch for config changes
 watch(
-  () => props.configName,
+  () => props.projectName,
   async (newConfigName) => {
     if (newConfigName) {
       selectedEntity.value = null

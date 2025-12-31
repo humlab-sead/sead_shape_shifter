@@ -40,10 +40,10 @@
               <v-card-title>Quick Start</v-card-title>
               <v-card-text>
                 <div class="mt-2">
-                  <div><strong>1.</strong> Load configuration file</div>
+                  <div><strong>1.</strong> Load project file</div>
                   <div><strong>2.</strong> Edit entities and dependencies</div>
                   <div><strong>3.</strong> Validate your changes</div>
-                  <div><strong>4.</strong> Save the configuration</div>
+                  <div><strong>4.</strong> Save the project</div>
                 </div>
               </v-card-text>
             </v-card>
@@ -60,10 +60,10 @@ import axios from 'axios'
 
 const navItems = [
   {
-    title: 'Configurations',
-    description: 'Manage configuration files',
+    title: 'Projects',
+    description: 'Manage project files',
     icon: 'mdi-file-document-multiple',
-    path: '/configurations',
+    path: '/projects',
   },
   {
     title: 'Data Sources',

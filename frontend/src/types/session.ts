@@ -1,5 +1,5 @@
 /**
- * Session management types for multi-user configuration editing.
+ * Session management types for multi-user project editing.
  */
 
 export interface SessionCreateRequest {

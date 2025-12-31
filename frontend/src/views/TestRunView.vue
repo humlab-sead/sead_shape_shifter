@@ -15,7 +15,7 @@
                 prepend-icon="mdi-play"
                 @click="handleStartTest"
                 :loading="isRunning"
-                :disabled="isRunning || !configName"
+                :disabled="isRunning || !projectName"
               >
                 Run Test
               </v-btn>
@@ -25,11 +25,11 @@
       </v-row>
 
       <!-- Config Info and Status -->
-      <v-row v-if="configName" class="mb-4">
+      <v-row v-if="projectName" class="mb-4">
         <v-col>
           <v-alert type="info" variant="tonal">
             <div class="d-flex justify-space-between align-center">
-              <div><strong>Project:</strong> {{ configName }}</div>
+              <div><strong>Project:</strong> {{ projectName }}</div>
               <v-chip
                 v-if="testResult"
                 :color="getStatusColor(testResult.status)"
@@ -99,7 +99,7 @@
       <v-row v-if="isLoadingConfig">
         <v-col class="text-center">
           <v-progress-circular indeterminate size="64" />
-          <p class="mt-4">Loading configuration...</p>
+          <p class="mt-4">Loading project...</p>
         </v-col>
       </v-row>
     </v-container>
@@ -113,13 +113,13 @@ import TestRunConfig from '@/components/TestRun/TestRunConfig.vue'
 import TestRunProgress from '@/components/TestRun/TestRunProgress.vue'
 import TestRunResults from '@/components/TestRun/TestRunResults.vue'
 import testRunApi from '@/api/testRunApi'
-import { configurationsApi } from '@/api/configurations'
+import { projectsApi } from '@/api/projects'
 import type { TestRunOptions, TestRunResult } from '@/types/testRun'
 import { DEFAULT_TEST_RUN_OPTIONS } from '@/types/testRun'
 
 const route = useRoute()
 
-const configName = ref<string>(route.params.name as string)
+const projectName = ref<string>(route.params.name as string)
 const options = ref<Partial<TestRunOptions>>({ ...DEFAULT_TEST_RUN_OPTIONS })
 const selectedEntities = ref<string[]>([])
 const availableEntities = ref<string[]>([])
@@ -130,22 +130,22 @@ const error = ref<string | null>(null)
 const pollInterval = ref<number | null>(null)
 const currentRunId = ref<string | null>(null)
 
-// Load configuration and available entities
+// Load project and available entities
 onMounted(async () => {
-  if (!configName.value) {
-    error.value = 'No configuration name provided'
+  if (!projectName.value) {
+    error.value = 'No project name provided'
     isLoadingConfig.value = false
     return
   }
 
   try {
     isLoadingConfig.value = true
-    const config = await configurationsApi.get(configName.value)
-    availableEntities.value = Object.keys(config.entities || {})
+    const project = await projectsApi.get(projectName.value)
+    availableEntities.value = Object.keys(project.entities || {})
     error.value = null
   } catch (err) {
-    console.error('Failed to load configuration:', err)
-    error.value = `Failed to load configuration: ${err instanceof Error ? err.message : String(err)}`
+    console.error('Failed to load project:', err)
+    error.value = `Failed to load project: ${err instanceof Error ? err.message : String(err)}`
   } finally {
     isLoadingConfig.value = false
   }
@@ -229,8 +229,8 @@ const startPolling = () => {
 }
 
 const handleStartTest = async () => {
-  if (!configName.value) {
-    error.value = 'No configuration selected'
+  if (!projectName.value) {
+    error.value = 'No project selected'
     return
   }
 
@@ -248,7 +248,7 @@ const handleStartTest = async () => {
     }
 
     const result = await testRunApi.startTestRun({
-      project_name: configName.value,
+      project_name: projectName.value,
       options: testOptions,
     })
 

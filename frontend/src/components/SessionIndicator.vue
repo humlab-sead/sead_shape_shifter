@@ -5,7 +5,7 @@
         <div class="d-flex align-center">
           <v-icon :icon="alertIcon" size="small" class="mr-2" />
           <span class="text-body-2">
-            <strong>Session active:</strong> {{ configName }}
+            <strong>Session active:</strong> {{ projectName }}
             <v-chip v-if="isModified" size="x-small" color="warning" variant="flat" class="ml-2"> Unsaved </v-chip>
             <span v-if="version" class="ml-2 text-caption text-grey"> v{{ version }} </span>
           </span>
@@ -36,7 +36,7 @@
         <v-icon icon="mdi-alert" color="warning" size="small" class="mr-2" />
         <span class="text-caption">
           <strong>Warning:</strong> {{ concurrentEditors }} other
-          {{ concurrentEditors === 1 ? 'session is' : 'sessions are' }} editing this configuration. Changes may
+          {{ concurrentEditors === 1 ? 'session is' : 'sessions are' }} editing this project. Changes may
           conflict. Save carefully.
         </span>
       </div>
@@ -49,7 +49,7 @@ import { ref, computed } from 'vue'
 import { useSession } from '@/composables/useSession'
 
 interface Props {
-  configName: string
+  projectName: string
 }
 
 const props = defineProps<Props>()

@@ -4,7 +4,7 @@
     <v-alert v-if="hasActiveSession" type="info" variant="tonal" class="mb-4">
       <v-row align="center">
         <v-col>
-          <strong>Editing:</strong> {{ configName }}
+          <strong>Editing:</strong> {{ projectName }}
           <span class="ml-2 text-caption">Version {{ version }}</span>
           <v-chip v-if="isModified" size="x-small" color="warning" class="ml-2"> Modified </v-chip>
         </v-col>
@@ -47,8 +47,8 @@
       <v-card-title>Select Project</v-card-title>
       <v-card-text>
         <v-select
-          v-model="selectedConfigName"
-          :items="configNames"
+          v-model="selectedProjectName"
+          :items="projectNames"
           label="Project"
           hint="Select a project to start editing"
           persistent-hint
@@ -56,7 +56,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn color="primary" :disabled="!selectedConfigName" :loading="loading" @click="handleStartSession">
+        <v-btn color="primary" :disabled="!selectedProjectName" :loading="loading" @click="handleStartSession">
           Start Session
         </v-btn>
       </v-card-actions>
@@ -69,7 +69,7 @@
 
     <!-- Content Area -->
     <div v-if="hasActiveSession">
-      <!-- Your configuration editing UI goes here -->
+      <!-- Your project editing UI goes here -->
       <slot />
     </div>
   </v-container>
@@ -80,10 +80,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSession } from '@/composables'
 import { useProjectStore } from '@/stores'
 
-const configStore = useProjectStore()
+const projectStore = useProjectStore()
 const {
   hasActiveSession,
-  configName,
+  projectName,
   version,
   isModified,
   loading,
@@ -96,16 +96,16 @@ const {
   checkConcurrentEditors,
 } = useSession()
 
-const selectedConfigName = ref<string | null>(null)
+const selectedProjectName = ref<string | null>(null)
 
-const configNames = computed(() => {
-  return configStore.sortedProjects.map((c) => c.name)
+const projectNames = computed(() => {
+  return projectStore.sortedProjects.map((c) => c.name)
 })
 
-// Fetch configurations on mount
+// Fetch project on mount
 onMounted(async () => {
   try {
-    await configStore.fetchProjects()
+    await projectStore.fetchProjects()
   } catch (err) {
     console.error('Failed to fetch projects:', err)
   }
@@ -125,11 +125,11 @@ onUnmounted(async () => {
 })
 
 async function handleStartSession() {
-  if (!selectedConfigName.value) return
+  if (!selectedProjectName.value) return
 
   try {
-    await startSession(selectedConfigName.value)
-    await configStore.selectProject(selectedConfigName.value)
+    await startSession(selectedProjectName.value)
+    await projectStore.selectProject(selectedProjectName.value)
   } catch (err) {
     console.error('Failed to start session:', err)
   }
@@ -146,10 +146,10 @@ async function handleSave() {
     // Handle conflict
     if (err.message.includes('modified by another user')) {
       const shouldReload = confirm(
-        'This configuration was modified by another user. ' + 'Would you like to reload it? (Your changes will be lost)'
+        'This project was modified by another user. ' + 'Would you like to reload it? (Your changes will be lost)'
       )
       if (shouldReload) {
-        await configStore.selectProject(configName.value!)
+        await projectStore.selectProject(projectName.value!)
       }
     }
   }
@@ -164,7 +164,7 @@ async function handleClose() {
   }
 
   await endSession()
-  selectedConfigName.value = null
+  selectedProjectName.value = null
 }
 
 async function refreshActiveSessions() {

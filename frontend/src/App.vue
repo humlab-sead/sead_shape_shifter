@@ -20,8 +20,8 @@
         <v-list-item
           prepend-icon="mdi-file-document-multiple"
           title="Projects"
-          value="configurations"
-          :to="{ name: 'configurations' }"
+          value="projects"
+          :to="{ name: 'projects' }"
         />
 
         <v-list-item
@@ -83,7 +83,7 @@
           <v-btn icon="mdi-dots-vertical" variant="text" v-bind="props" />
         </template>
         <v-list>
-          <v-list-item @click="handleNewConfiguration">
+          <v-list-item @click="handleNewProject">
             <v-list-item-title>
               <v-icon icon="mdi-plus" class="mr-2" />
               New Project
@@ -223,10 +223,10 @@ const breadcrumbs = computed<Breadcrumb[]>(() => {
 
   crumbs.push({ title: 'Home', href: '/' })
 
-  if (route.name === 'configurations') {
-    crumbs.push({ title: 'Configurations', disabled: true })
-  } else if (route.name === 'config-detail' && route.params.name) {
-    crumbs.push({ title: 'Configurations', href: '/configurations' })
+  if (route.name === 'projects') {
+    crumbs.push({ title: 'Projects', disabled: true })
+  } else if (route.name === 'project-detail' && route.params.name) {
+    crumbs.push({ title: 'Projects', href: '/projects' })
     crumbs.push({ title: String(route.params.name), disabled: true })
   } else if (route.name === 'graph') {
     crumbs.push({ title: 'Dependency Graph', disabled: true })
@@ -259,10 +259,10 @@ const commands = ref<Command[]>([
   },
   {
     id: 'goto-configs',
-    title: 'Go to Configurations',
+    title: 'Go to Projects',
     icon: 'mdi-file-document-multiple',
     shortcut: 'Ctrl+Shift+C',
-    action: () => router.push('/configurations'),
+    action: () => router.push('/projects'),
   },
   {
     id: 'goto-graph',
@@ -291,8 +291,8 @@ const snackbar = ref({
   color: 'success' as 'success' | 'error' | 'info',
 })
 
-function handleNewConfiguration() {
-  router.push('/configurations')
+function handleNewProject() {
+  router.push('/projects')
 }
 
 function handleRefresh() {
@@ -317,7 +317,7 @@ function handleKeydown(event: KeyboardEvent) {
 
   if (event.ctrlKey && event.shiftKey && event.key === 'C') {
     event.preventDefault()
-    router.push('/configurations')
+    router.push('/projects')
   }
 
   if (event.key === 'Escape') {

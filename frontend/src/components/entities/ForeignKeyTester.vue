@@ -242,7 +242,7 @@ interface ForeignKey {
 }
 
 interface Props {
-  configName: string
+  projectName: string
   entityName: string
   foreignKey: ForeignKey
   foreignKeyIndex: number
@@ -269,7 +269,7 @@ const {
 } = useForeignKeyTester()
 
 const runTest = async () => {
-  await testForeignKey(props.configName, props.entityName, props.foreignKeyIndex, sampleSize.value)
+  await testForeignKey(props.projectName, props.entityName, props.foreignKeyIndex, sampleSize.value)
 }
 </script>
 

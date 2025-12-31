@@ -1,5 +1,5 @@
 /**
- * Session management store for multi-user configuration editing.
+ * Session management store for multi-user project editing.
  */
 
 import { defineStore } from 'pinia'

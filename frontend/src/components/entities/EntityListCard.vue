@@ -106,7 +106,7 @@
     <!-- Entity Form Dialog -->
     <entity-form-dialog
       v-model="showFormDialog"
-      :config-name="configName"
+      :config-name="projectName"
       :entity="selectedEntity"
       :mode="dialogMode"
       @saved="handleEntitySaved"
@@ -135,7 +135,7 @@ import EntityFormDialog from './EntityFormDialog.vue'
 import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDialog.vue'
 
 interface Props {
-  configName: string
+  projectName: string
 }
 
 interface Emits {
@@ -146,7 +146,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const { entities, loading, error, remove } = useEntities({
-  configName: props.configName,
+  projectName: props.projectName,
   autoFetch: true,
 })
 

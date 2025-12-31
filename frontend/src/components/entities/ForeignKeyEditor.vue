@@ -111,7 +111,7 @@
               <v-row dense class="mt-1">
                 <v-col cols="12">
                   <ForeignKeyTester
-                    :config-name="configName"
+                    :config-name="projectName"
                     :entity-name="entityName"
                     :foreign-key="fk"
                     :foreign-key-index="index"
@@ -139,7 +139,7 @@ import ForeignKeyTester from './ForeignKeyTester.vue'
 interface Props {
   modelValue: ForeignKeyConfig[]
   availableEntities?: string[]
-  configName: string
+  projectName: string
   entityName: string
   isEntitySaved?: boolean
 }

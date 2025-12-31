@@ -1,5 +1,5 @@
 /**
- * TypeScript types for data source configuration.
+ * TypeScript types for data source.
  */
 
 export type DataSourceType = 'postgresql' | 'postgres' | 'access' | 'ucanaccess' | 'sqlite' | 'csv'

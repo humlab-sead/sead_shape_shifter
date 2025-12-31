@@ -4,12 +4,12 @@ Sprint 4.2 deliverable: Three Pinia stores for managing application state.
 
 ## Stores Created
 
-### 1. Project Store (`stores/configuration.ts`)
+### 1. Project Store (`stores/project.ts`)
 
-Manages configuration CRUD operations, validation, and backups.
+Manages project CRUD operations, validation, and backups.
 
 **State:**
-- `projects: ConfigMetadata[]` - List of all projects
+- `projects: ProjectMetadata[]` - List of all projects
 - `selectedProject: Project | null` - Currently selected project
 - `validationResult: ValidationResult | null` - Last validation result
 - `backups: BackupInfo[]` - Available§ backups
@@ -18,8 +18,8 @@ Manages configuration CRUD operations, validation, and backups.
 - `hasUnsavedChanges: boolean` - Unsaved changes flag
 
 **Getters:**
-- `sortedProjects` - Alphabetically sorted configurations
-- `configByName(name)` - Find configuration by name
+- `sortedProjects` - Alphabetically sorted projects
+- `projectByName(name)` - Find project by name
 - `hasErrors` - Whether validation has errors
 - `hasWarnings` - Whether validation has warnings
 
@@ -58,12 +58,12 @@ await projectStore.createProject({
 // Update project
 await projectStore.updateProject('my-project', {
   entities: updatedEntities,
-  options: configOptions,
+  options: projectOptions,
 })
 
 // Validate
-await configStore.validateConfiguration('my-config')
-console.log(`Errors: ${configStore.errorCount}`)
+await projectStore.validateProject('my-project')
+console.log(`Errors: ${projectStore.errorCount}`)
 
 // Backup operations
 await projectStore.fetchBackups('my-project')
@@ -72,12 +72,12 @@ await projectStore.restoreBackup('my-project', backupPath)
 
 ### 2. Entity Store (`stores/entity.ts`)
 
-Manages entity operations within a configuration.
+Manages entity operations within a project.
 
 **State:**
 - `entities: EntityResponse[]` - List of entities
 - `selectedEntity: EntityResponse | null` - Currently selected entity
-- `currentConfigName: string | null` - Current configuration name
+- `currentProjectName: string | null` - Current project name
 - `loading: boolean` - Loading state
 - `error: string | null` - Error message
 - `hasUnsavedChanges: boolean` - Unsaved changes flag
@@ -92,11 +92,11 @@ Manages entity operations within a configuration.
 - `hasForeignKeys(entityName)` - Whether entity has foreign keys
 
 **Actions:**
-- `fetchEntities(configName)` - Load all entities
-- `selectEntity(configName, entityName)` - Load specific entity
-- `createEntity(configName, data)` - Create new entity
-- `updateEntity(configName, entityName, data)` - Update entity
-- `deleteEntity(configName, entityName)` - Delete entity
+- `fetchEntities(projectName)` - Load all entities
+- `selectEntity(projectName, entityName)` - Load specific entity
+- `createEntity(projectName, data)` - Create new entity
+- `updateEntity(projectName, entityName, data)` - Update entity
+- `deleteEntity(projectName, entityName)` - Delete entity
 - `markAsChanged()` - Mark as unsaved
 - `clearError()` - Clear error state
 - `reset()` - Reset store
@@ -107,7 +107,7 @@ import { useEntityStore } from '@/stores'
 
 const entityStore = useEntityStore()
 
-// Fetch entities for a configuration
+// Fetch entities for a project
 await entityStore.fetchEntities('my-config')
 
 // Get entities by type
@@ -170,10 +170,10 @@ Manages validation results and dependency graph analysis.
 - `isValid` - Overall validity
 
 **Actions:**
-- `validateConfiguration(configName)` - Validate entire configuration
-- `validateEntity(configName, entityName)` - Validate single entity
-- `fetchDependencies(configName)` - Get dependency graph
-- `checkCircularDependencies(configName)` - Check for cycles
+- `validateConfiguration(projectName)` - Validate entire project
+- `validateEntity(projectName, entityName)` - Validate single entity
+- `fetchDependencies(projectName)` - Get dependency graph
+- `checkCircularDependencies(projectName)` - Check for cycles
 - `getEntityValidation(entityName)` - Get entity validation result
 - `hasEntityErrors(entityName)` - Check entity errors
 - `hasEntityWarnings(entityName)` - Check entity warnings
@@ -188,7 +188,7 @@ import { useValidationStore } from '@/stores'
 
 const validationStore = useValidationStore()
 
-// Validate configuration
+// Validate project
 await validationStore.validateConfiguration('my-config')
 console.log(`Valid: ${validationStore.isValid}`)
 console.log(`Errors: ${validationStore.errorCount}`)
@@ -232,9 +232,9 @@ All stores use the API client from Sprint 4.1:
 import { api } from '@/api'
 
 // Stores internally call:
-api.configurations.list()
-api.entities.create(configName, data)
-api.validation.getDependencies(configName)
+api.projects.list()
+api.entities.create(projectName, data)
+api.validation.getDependencies(projectName)
 ```
 
 ## Store Export
@@ -253,7 +253,7 @@ const validationStore = useValidationStore()
 ## Next Steps (Sprint 4.3)
 
 Create Vue composables that wrap these stores for use in components:
-- `useConfigurations` - Auto-fetch configurations
+- `useConfigurations` - Auto-fetch projects
 - `useEntities` - Auto-fetch entities for selected config
 - `useValidation` - Reactive validation on changes
 - `useDependencies` - Dependency graph visualization data

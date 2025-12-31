@@ -88,7 +88,7 @@
         <v-card variant="outlined" class="text-center py-12">
           <v-icon icon="mdi-graph-outline" size="64" color="grey" />
           <h3 class="text-h6 mt-4 mb-2">No Graph Data</h3>
-          <p class="text-grey mb-4">Select a configuration to view its dependency graph</p>
+          <p class="text-grey mb-4">Select a project to view its dependency graph</p>
         </v-card>
       </v-col>
     </v-row>
@@ -182,7 +182,7 @@ const {
   isInCycle,
   clearError,
 } = useDependencies({
-  configName: selectedConfig.value ?? undefined,
+  projectName: selectedConfig.value ?? undefined,
   autoFetch: false,
 })
 
@@ -213,7 +213,7 @@ async function handleRefresh() {
 function handleEditEntity(entityName: string) {
   if (selectedConfig.value) {
     router.push({
-      name: 'config-detail',
+      name: 'project-detail',
       params: { name: selectedConfig.value },
       query: { entity: entityName },
     })
