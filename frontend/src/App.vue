@@ -258,7 +258,7 @@ const commands = ref<Command[]>([
     action: () => router.push('/'),
   },
   {
-    id: 'goto-configs',
+    id: 'goto-projects',
     title: 'Go to Projects',
     icon: 'mdi-file-document-multiple',
     shortcut: 'Ctrl+Shift+C',
