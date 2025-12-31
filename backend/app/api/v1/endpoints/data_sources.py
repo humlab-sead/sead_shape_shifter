@@ -71,7 +71,7 @@ async def list_drivers() -> dict[str, DriverSchemaResponse]:
 
         return {
             driver: DriverSchemaResponse(
-                driver=schema.driver,
+                driver=driver,  # Use the registry key as the driver name
                 display_name=schema.display_name,
                 description=schema.description,
                 category=schema.category,

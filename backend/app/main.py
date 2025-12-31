@@ -9,7 +9,7 @@ from loguru import logger
 
 from backend.app.api.v1.api import api_router
 from backend.app.core.config import settings
-from backend.app.core.state_manager import init_app_state
+from backend.app.core.state_manager import ApplicationState, init_app_state
 
 
 @asynccontextmanager
@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
 
     # Initialize application state (NO default config loading)
     logger.info(f"Configuration directory: {settings.CONFIGURATIONS_DIR}")
-    app_state = init_app_state(settings.CONFIGURATIONS_DIR)
+    app_state: ApplicationState = init_app_state(settings.CONFIGURATIONS_DIR)
     await app_state.start()
 
     logger.info("Application ready - configurations loaded on-demand via sessions")
@@ -42,6 +42,10 @@ app = FastAPI(
     redoc_url=f"{settings.API_V1_PREFIX}/redoc",
     lifespan=lifespan,
 )
+
+# logger.debug("Configuring FastAPI application")
+# logger.debug(f"Allowed CORS origins: {settings.ALLOWED_ORIGINS}")
+# logger.debug(f"Allowed CORS origin regex: {settings.ALLOWED_ORIGIN_REGEX}")
 
 # Configure CORS
 app.add_middleware(

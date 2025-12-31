@@ -24,7 +24,7 @@ from backend.app.models import (
     ReconciliationSource,
 )
 from backend.app.models.shapeshift import PreviewResult
-from backend.app.services import ConfigurationService, PreviewService
+from backend.app.services import ConfigurationService, ShapeShiftService
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.loaders import DataLoader, DataLoaders
 from src.model import DataSourceConfig, ShapeShiftConfig, TableConfig
@@ -36,12 +36,10 @@ class ReconciliationSourceResolver(abc.ABC):
 
         self.config_name: str = config_name
         self.config_service: ConfigurationService = config_service
-        self.preview_service: PreviewService = PreviewService(config_service)
+        self.preview_service: ShapeShiftService = ShapeShiftService(config_service)
 
         self.api_config: Configuration = self.config_service.load_configuration(config_name)
-
-        cfg_dict: dict[str, Any] = ConfigMapper.to_core_dict(self.api_config)
-        self.config: ShapeShiftConfig = ShapeShiftConfig(cfg=cfg_dict)
+        self.config: ShapeShiftConfig = ConfigMapper.to_core(self.api_config)
 
     @abc.abstractmethod
     async def resolve(self, entity_name: str, entity_spec: EntityReconciliationSpec) -> list[dict]:
@@ -353,12 +351,30 @@ class ReconciliationService:
         entity_spec = recon_config.entities[entity_name]
 
         # Auto-accept high confidence matches
-        auto_accepted = 0
-        needs_review = 0
-        unmatched = 0
+        auto_accepted, needs_review, unmatched = self.auto_accept_candidates(entity_spec, candidate_map)
+
+        # Save updated config
+        self.save_reconciliation_config(config_name, recon_config)
+
+        logger.info(f"Auto-reconciliation complete: {auto_accepted} auto-accepted, " f"{needs_review} need review, {unmatched} unmatched")
+
+        return AutoReconcileResult(
+            auto_accepted=auto_accepted,
+            needs_review=needs_review,
+            unmatched=unmatched,
+            total=len(candidate_map),
+            candidates=candidate_map,
+        )
+
+    def auto_accept_candidates(
+        self, entity_spec: EntityReconciliationSpec, candidate_map: dict[str, list[ReconciliationCandidate]]
+    ) -> tuple[int, int, int]:
+        auto_accepted: int = 0
+        needs_review: int = 0
+        unmatched: int = 0
 
         threshold = entity_spec.auto_accept_threshold
-        review_threshold = entity_spec.review_threshold
+        review_threshold: float = entity_spec.review_threshold
 
         for key_str, candidates in candidate_map.items():
             source_key = tuple(v if v != "" else None for v in key_str.split("|"))  # Convert back
@@ -367,13 +383,13 @@ class ReconciliationService:
                 unmatched += 1
                 continue
 
-            best_match = candidates[0]
-            score_normalized = best_match.score / 100.0 if best_match.score else 0.0
+            best_match: ReconciliationCandidate = candidates[0]
+            score_normalized: float = best_match.score / 100.0 if best_match.score else 0.0
 
             if score_normalized >= threshold:
                 # Auto-accept
                 try:
-                    sead_id = self._extract_id_from_uri(best_match.id)
+                    sead_id: int = self._extract_id_from_uri(best_match.id)
 
                     # Remove existing mapping for this key
                     entity_spec.mapping = [m for m in entity_spec.mapping if tuple(m.source_values) != source_key]
@@ -397,19 +413,7 @@ class ReconciliationService:
                 needs_review += 1
             else:
                 unmatched += 1
-
-        # Save updated config
-        self.save_reconciliation_config(config_name, recon_config)
-
-        logger.info(f"Auto-reconciliation complete: {auto_accepted} auto-accepted, " f"{needs_review} need review, {unmatched} unmatched")
-
-        return AutoReconcileResult(
-            auto_accepted=auto_accepted,
-            needs_review=needs_review,
-            unmatched=unmatched,
-            total=len(candidate_map),
-            candidates=candidate_map,
-        )
+        return auto_accepted, needs_review, unmatched
 
     def update_mapping(
         self,
@@ -432,7 +436,7 @@ class ReconciliationService:
         Returns:
             Updated reconciliation configuration
         """
-        recon_config = self.load_reconciliation_config(config_name)
+        recon_config: ReconciliationConfig = self.load_reconciliation_config(config_name)
 
         if entity_name not in recon_config.entities:
             raise NotFoundError(f"Entity '{entity_name}' not in reconciliation config")

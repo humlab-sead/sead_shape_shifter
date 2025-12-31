@@ -81,7 +81,7 @@ export function useTheme() {
 
   // Apply theme on load
   if (savedTheme) {
-    vuetifyTheme.global.name.value = savedTheme
+    vuetifyTheme.change(savedTheme)
   }
 
   // Apply custom colors if any
@@ -106,7 +106,7 @@ export function useTheme() {
   // Methods
   function setTheme(themeName: string) {
     currentThemeName.value = themeName
-    vuetifyTheme.global.name.value = themeName
+    vuetifyTheme.change(themeName)
     localStorage.setItem(STORAGE_KEY_THEME, themeName)
 
     // Reapply custom colors to new theme
@@ -140,9 +140,9 @@ export function useTheme() {
 
     // Reset to theme defaults by reloading the theme
     const currentTheme = currentThemeName.value
-    vuetifyTheme.global.name.value = 'light' // temp switch
+    vuetifyTheme.change('light') // temp switch
     setTimeout(() => {
-      vuetifyTheme.global.name.value = currentTheme
+      vuetifyTheme.change(currentTheme)
     }, 10)
   }
 

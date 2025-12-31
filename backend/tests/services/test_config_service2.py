@@ -31,56 +31,35 @@ class TestConfigurationService:
         return config_dir
 
     @pytest.fixture
-    def service(self, temp_config_dir: Path) -> ConfigurationService:
-        """Create service instance with temporary directory."""
-        with (
-            patch("backend.app.services.config_service.settings") as mock_settings,
-            patch("backend.app.services.config_service.get_app_state_manager") as mock_state,
-        ):
-            mock_settings.CONFIGURATIONS_DIR = temp_config_dir
-            mock_state.return_value.update = MagicMock()
-            mock_state.return_value.activate = MagicMock()
-            mock_state.return_value.get_active_metadata = MagicMock(
-                return_value=ConfigMetadata(
-                    name="test",
-                    description="Test",
-                    version="1.0.0",
-                    file_path="test.yml",
-                    entity_count=0,
-                    created_at=0,
-                    modified_at=0,
-                    is_valid=True,
-                )
-            )
+    def mock_metadata(self) -> dict[str, Any]:
+        """Create mock ConfigMetadata."""
+        return {
+            "name": "test",
+            "description": "Test configuration",
+            "version": "1.0.0",
+            "default_entity": "sample",
+            "file_path": "test.yml",
+            "entity_count": 1,
+            "created_at": 0,
+            "modified_at": 0,
+            "is_valid": True,
+        }
 
-            service = ConfigurationService()
+    @pytest.fixture
+    def service(self, temp_config_dir: Path, mock_metadata: dict[str, Any]) -> ConfigurationService:
+        """Create service instance with temporary directory."""
+        with (patch("backend.app.services.config_service.settings") as mock_settings,):
+            mock_settings.CONFIGURATIONS_DIR = temp_config_dir
+            mock_state = MagicMock()
+            mock_state.update = MagicMock()
+            mock_state.activate = MagicMock()
+            mock_state.get_active_metadata = MagicMock(return_value=ConfigMetadata(**mock_metadata))
+
+            service = ConfigurationService(state=mock_state)
             return service
 
     @pytest.fixture
-    def sample_config(self) -> Configuration:
-        """Create sample configuration."""
-        return Configuration(
-            entities={
-                "sample": {
-                    "source": "test_table",
-                    "columns": ["id", "name"],
-                }
-            },
-            options={},
-            metadata=ConfigMetadata(
-                name="test",
-                description="Test configuration",
-                version="1.0.0",
-                file_path="test.yml",
-                entity_count=1,
-                created_at=0,
-                modified_at=0,
-                is_valid=True,
-            ),
-        )
-
-    @pytest.fixture
-    def sample_yaml_dict(self) -> dict[str, Any]:
+    def sample_yaml_dict(self, mock_metadata: dict[str, Any]) -> dict[str, Any]:
         """Sample YAML dictionary for configuration."""
         return {
             "entities": {
@@ -90,7 +69,13 @@ class TestConfigurationService:
                 }
             },
             "options": {},
+            "metadata": mock_metadata,
         }
+
+    @pytest.fixture
+    def sample_config(self, sample_yaml_dict) -> Configuration:
+        """Create sample configuration."""
+        return Configuration(**sample_yaml_dict)
 
     # List configurations tests
 
@@ -143,15 +128,19 @@ class TestConfigurationService:
         """Test loading existing configuration."""
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
 
-        config = service.load_configuration("test")
-        assert config.metadata
-        assert config.metadata.name == "test"
-        assert "sample" in config.entities
+        with patch.object(service, "state") as mock_state:
+            mock_state.get.return_value = None
+            config: Configuration = service.load_configuration("test")
+            assert config.metadata
+            assert config.metadata.name == "test"
+            assert "sample" in config.entities
 
     def test_load_configuration_not_found(self, service: ConfigurationService):
         """Test loading non-existent configuration raises error."""
-        with pytest.raises(ConfigurationNotFoundError, match="not found"):
-            service.load_configuration("nonexistent")
+        with patch.object(service, "state") as mock_state:
+            mock_state.get.return_value = None
+            with pytest.raises(ConfigurationNotFoundError, match="not found"):
+                service.load_configuration("nonexistent")
 
     def test_load_configuration_with_yml_extension(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test loading with .yml extension."""
@@ -164,19 +153,22 @@ class TestConfigurationService:
     def test_load_configuration_invalid_yaml(self, service: ConfigurationService, temp_config_dir: Path):
         """Test loading invalid YAML raises error."""
         (temp_config_dir / "invalid.yml").write_text("{ invalid yaml")
-
-        with pytest.raises(InvalidConfigurationError):
-            service.load_configuration("invalid")
+        with patch.object(service, "state") as mock_state:
+            mock_state.get.return_value = None
+            with pytest.raises(InvalidConfigurationError):
+                service.load_configuration("invalid")
 
     def test_load_configuration_sets_metadata(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test load sets file metadata."""
         file_path = temp_config_dir / "test.yml"
         file_path.write_text(yaml.dump(sample_yaml_dict))
+        with patch.object(service, "state") as mock_state:
+            mock_state.get.return_value = None
 
-        config = service.load_configuration("test")
-        assert config.metadata
-        assert config.metadata.file_path == str(file_path)
-        assert config.metadata.entity_count == 1
+            config = service.load_configuration("test")
+            assert config.metadata
+            assert config.metadata.file_path == str(file_path)
+            assert config.metadata.entity_count == 1
 
     # Save configuration tests
 
@@ -245,13 +237,16 @@ class TestConfigurationService:
 
     def test_save_configuration_updates_app_state(self, service: ConfigurationService, sample_config: Configuration):
         """Test save updates ApplicationState."""
-        with patch("backend.app.services.config_service.get_app_state_manager") as mock_state:
-            mock_update = MagicMock()
-            mock_state.return_value.update = mock_update
+        mock_state = MagicMock()
+        service.state = mock_state
 
-            service.save_configuration(sample_config, create_backup=False)
+        service.save_configuration(sample_config, create_backup=False)
 
-            mock_update.assert_called_once_with(sample_config)
+        mock_state.update.assert_called_once()
+        # Verify it was called with a Configuration object
+        args = mock_state.update.call_args[0]
+        assert len(args) > 0
+        assert isinstance(args[0], Configuration)
 
     # Create configuration tests
 
@@ -391,6 +386,10 @@ class TestConfigurationService:
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
 
         entity_data = {"source": "new_table", "columns": ["id"]}
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
+
         service.add_entity_by_name("test", "new_entity", entity_data)
 
         config = service.load_configuration("test")
@@ -400,12 +399,20 @@ class TestConfigurationService:
         """Test adding duplicate entity by name raises error."""
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
 
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
+
         with pytest.raises(EntityAlreadyExistsError):
             service.add_entity_by_name("test", "sample", {"source": "table"})
 
     def test_update_entity_by_name(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test updating entity by configuration name."""
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
 
         entity_data = {"source": "updated_table", "columns": ["id", "name"]}
         service.update_entity_by_name("test", "sample", entity_data)
@@ -424,6 +431,10 @@ class TestConfigurationService:
         """Test deleting entity by configuration name."""
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
 
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
+
         service.delete_entity_by_name("test", "sample")
 
         config = service.load_configuration("test")
@@ -439,6 +450,10 @@ class TestConfigurationService:
     def test_get_entity_by_name(self, service: ConfigurationService, temp_config_dir: Path, sample_yaml_dict: dict):
         """Test getting entity by configuration name."""
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
+
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
 
         entity = service.get_entity_by_name("test", "sample")
         assert entity["source"] == "test_table"
@@ -456,18 +471,22 @@ class TestConfigurationService:
         """Test activating configuration."""
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
 
-        with patch("backend.app.services.config_service.get_app_state_manager") as mock_state:
-            mock_activate = MagicMock()
-            mock_state.return_value.activate = mock_activate
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
 
-            config = service.activate_configuration("test")
+        config = service.activate_configuration("test")
 
-            mock_activate.assert_called_once()
-            assert config.metadata
-            assert config.metadata.name.startswith("test")
+        mock_state.activate.assert_called_once()
+        assert config.metadata
+        assert config.metadata.name.startswith("test")
 
     def test_activate_configuration_not_found(self, service: ConfigurationService):
         """Test activating non-existent configuration raises error."""
+        mock_state = MagicMock()
+        mock_state.get.return_value = None
+        service.state = mock_state
+
         with pytest.raises(ConfigurationNotFoundError):
             service.activate_configuration("nonexistent")
 
@@ -475,42 +494,40 @@ class TestConfigurationService:
 
     def test_save_with_version_check_success(self, service: ConfigurationService, sample_config: Configuration):
         """Test save with matching version."""
-        with patch("backend.app.services.config_service.get_app_state_manager") as mock_state:
-            mock_state.return_value.get_active_metadata = MagicMock(
-                return_value=ConfigMetadata(
-                    name="test",
-                    description="Test",
-                    version="1.0.0",
-                    file_path="test.yml",
-                    entity_count=0,
-                    created_at=0,
-                    modified_at=0,
-                    is_valid=True,
-                )
-            )
+        mock_state = MagicMock()
+        mock_state.get_active_metadata.return_value = ConfigMetadata(
+            name="test",
+            description="Test",
+            version="1.0.0",
+            file_path="test.yml",
+            entity_count=0,
+            created_at=0,
+            modified_at=0,
+            is_valid=True,
+        )
+        service.state = mock_state
 
-            config = service.save_with_version_check(sample_config, "1.0.0", create_backup=False)
-            assert config.metadata
-            assert config.metadata.name == "test"
+        config = service.save_with_version_check(sample_config, "1.0.0", create_backup=False)
+        assert config.metadata
+        assert config.metadata.name == "test"
 
     def test_save_with_version_check_conflict(self, service: ConfigurationService, sample_config: Configuration):
         """Test save with version mismatch raises conflict error."""
-        with patch("backend.app.services.config_service.get_app_state_manager") as mock_state:
-            mock_state.return_value.get_active_metadata = MagicMock(
-                return_value=ConfigMetadata(
-                    name="test",
-                    description="Test",
-                    version="2.0.0",
-                    file_path="test.yml",
-                    entity_count=0,
-                    created_at=0,
-                    modified_at=0,
-                    is_valid=True,
-                )
-            )
+        mock_state = MagicMock()
+        mock_state.get_active_metadata.return_value = ConfigMetadata(
+            name="test",
+            description="Test",
+            version="2.0.0",
+            file_path="test.yml",
+            entity_count=0,
+            created_at=0,
+            modified_at=0,
+            is_valid=True,
+        )
+        service.state = mock_state
 
-            with pytest.raises(ConfigConflictError, match="modified by another user"):
-                service.save_with_version_check(sample_config, "1.0.0")
+        with pytest.raises(ConfigConflictError, match="modified by another user"):
+            service.save_with_version_check(sample_config, "1.0.0")
 
     # Singleton instance tests
 

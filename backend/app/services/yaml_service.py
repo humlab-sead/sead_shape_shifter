@@ -35,12 +35,12 @@ class YamlService:
         self.yaml.width = 4096  # Prevent line wrapping
         self.yaml.indent(mapping=2, sequence=2, offset=0)
 
-    def load(self, file_path: str | Path) -> dict[str, Any]:
+    def load(self, filename: str | Path) -> dict[str, Any]:
         """
         Load YAML file preserving format and comments.
 
         Args:
-            file_path: Path to YAML file
+            filename: Path to YAML file
 
         Returns:
             Parsed YAML data as dictionary
@@ -48,7 +48,7 @@ class YamlService:
         Raises:
             YamlLoadError: If file cannot be loaded or parsed
         """
-        path = Path(file_path)
+        path = Path(filename)
 
         if not path.exists():
             raise YamlLoadError(f"File not found: {path}")
@@ -78,7 +78,7 @@ class YamlService:
     def save(
         self,
         data: dict[str, Any],
-        file_path: str | Path,
+        filename: str | Path,
         create_backup: bool = True,
     ) -> Path:
         """
@@ -98,7 +98,7 @@ class YamlService:
         Raises:
             YamlSaveError: If file cannot be saved
         """
-        path = Path(file_path)
+        path = Path(filename)
         temp_path: Path = path.with_suffix(path.suffix + ".tmp")
 
         try:

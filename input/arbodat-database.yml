@@ -2,6 +2,7 @@ metadata:
   name: "ArboDat Database Configuration"
   description: "Configuration for importing data from ArboDat database into SEAD."
   version: "1.0.0"
+  default_entity: "survey"
   
 entities:
 
@@ -1188,7 +1189,7 @@ options:
 
   translation: "@load: options.translations"
 
-  mappings: "@include: mappings.yml"
+  reconciliation: "@include: arbodat-reconciliation.yml"
 
   finally:
     drop:

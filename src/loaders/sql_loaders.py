@@ -2,8 +2,8 @@ import abc
 import os
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generator, Optional
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, ClassVar, Generator, Optional
 
 import jaydebeapi
 import jpype
@@ -12,6 +12,7 @@ from loguru import logger
 from sqlalchemy import create_engine
 
 from src.extract import add_surrogate_id
+from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.utility import create_db_uri as create_pg_uri
 from src.utility import dotget
 
@@ -28,6 +29,7 @@ class CoreSchema:
         schema: Optional[str]
         row_count: Optional[int]
         comment: Optional[str]
+        columns: list["CoreSchema.ColumnMetadata"] = field(default_factory=list)
 
         @staticmethod
         def from_dataframe(df: pd.DataFrame) -> dict[str, "CoreSchema.TableMetadata"]:
@@ -107,11 +109,34 @@ class SqlLoader(DataLoader):
 
         return data
 
+    def qualify_name(self, *, schema: str | None, table: str) -> str:
+        """Return fully qualified table name."""
+        if schema:
+            return f'"{schema}"."{table}"'
+        return f'"{table}"'
+
+    async def load_table(
+        self, *, table_name: str, limit: int | None = None, offset: int | None = None, **kwargs  # pylint: disable=unused-argument
+    ) -> pd.DataFrame:
+        """Load entire table as DataFrame."""
+        sql: str = f"select * from {table_name} {f'limit {limit}' if limit else ''} {f'offset {offset}' if offset else ''} ;"
+        data: pd.DataFrame = await self.read_sql(sql=sql)
+        return data
+
     async def read_sql(self, sql: str) -> pd.DataFrame:
         """Read SQL query into a DataFrame using the provided connection."""
         with create_engine(url=self.db_uri).begin() as connection:
             data: pd.DataFrame = pd.read_sql_query(sql=sql, con=connection)  # type: ignore[arg-type]
         return data
+
+    def inject_limit(self, sql: str, limit: int) -> str:
+        """Add LIMIT clause to SQL query if not already present."""
+        sql_lower: str = sql.lower()
+        if "limit" in sql_lower:
+            return sql
+        if "select" not in sql_lower:
+            return sql
+        return f"{sql.strip().rstrip(';')} limit {limit};"
 
     @abc.abstractmethod
     async def get_tables(self, **kwargs) -> dict[str, "CoreSchema.TableMetadata"]:
@@ -211,6 +236,23 @@ class SqliteLoader(SqlLoader):
 
     driver: str = "sqlite"
 
+    schema: ClassVar["DriverSchema | None"] = DriverSchema(
+        driver="sqlite",
+        display_name="SQLite",
+        description="SQLite database file",
+        category="file",
+        fields=[
+            FieldMetadata(
+                name="filename",
+                type="file_path",
+                required=True,
+                description="Path to .db or .sqlite file",
+                placeholder="./data/database.db",
+                aliases=["file", "filepath", "path"],
+            ),
+        ],
+    )
+
     def create_db_uri(self) -> str:
         if not self.data_source:
             raise ValueError("Data source configuration is required for SqliteLoader")
@@ -302,9 +344,49 @@ class SqliteLoader(SqlLoader):
 
 @DataLoaders.register(key=["postgres", "postgresql"])
 class PostgresSqlLoader(SqlLoader):
-    """Loader for fixed data entities."""
+    """Loader for PostgreSQL databases."""
 
     driver: str = "postgres"
+
+    schema: ClassVar["DriverSchema | None"] = DriverSchema(
+        driver="postgresql",
+        display_name="PostgreSQL",
+        description="PostgreSQL database connection",
+        category="database",
+        fields=[
+            FieldMetadata(
+                name="host",
+                type="string",
+                required=True,
+                default="localhost",
+                description="Database server hostname",
+                placeholder="localhost",
+                aliases=["hostname", "server", "dbhost"],
+            ),
+            FieldMetadata(
+                name="port",
+                type="integer",
+                required=False,
+                default=5432,
+                description="Database server port",
+                placeholder="5432",
+                min_value=1,
+                max_value=65535,
+            ),
+            FieldMetadata(
+                name="database", type="string", required=True, description="Database name", placeholder="mydb", aliases=["db", "dbname"]
+            ),
+            FieldMetadata(
+                name="username",
+                type="string",
+                required=True,
+                description="Database user",
+                placeholder="postgres",
+                aliases=["dbuser", "user"],
+            ),
+            FieldMetadata(name="password", type="password", required=False, description="Database password"),
+        ],
+    )
 
     @property
     def db_opts(self) -> dict[str, Any]:
@@ -461,6 +543,31 @@ class UCanAccessSqlLoader(SqlLoader):
 
     driver: str = "ucanaccess"
 
+    schema: ClassVar["DriverSchema | None"] = DriverSchema(
+        driver="access",
+        display_name="MS Access",
+        description="Microsoft Access database via UCanAccess",
+        category="file",
+        fields=[
+            FieldMetadata(
+                name="filename",
+                type="file_path",
+                required=True,
+                description="Path to .mdb or .accdb file",
+                placeholder="./input/database.mdb",
+                aliases=["file", "filepath", "path"],
+            ),
+            FieldMetadata(
+                name="ucanaccess_dir",
+                type="string",
+                required=False,
+                default="lib/ucanaccess",
+                description="Path to UCanAccess library directory",
+                placeholder="lib/ucanaccess",
+            ),
+        ],
+    )
+
     def __init__(self, data_source: "DataSourceConfig") -> None:
         super().__init__(data_source=data_source)
         opts: dict[str, Any] = data_source.options if data_source else {}
@@ -475,6 +582,15 @@ class UCanAccessSqlLoader(SqlLoader):
 
     async def read_sql(self, sql: str) -> pd.DataFrame:
         return self.read_sql_sync(sql)
+
+    def inject_limit(self, sql: str, limit: int) -> str:
+        """Add top clause to SQL query if not already present."""
+        sql_lower: str = sql.lower().strip()
+        if " top " in sql_lower:
+            return sql
+        if not sql_lower.startswith("select"):
+            return sql
+        return f"select top {limit} {sql_lower[6:].strip()};"
 
     def read_sql_sync(self, sql: str) -> pd.DataFrame:
         with self.connection() as conn:
@@ -492,6 +608,22 @@ class UCanAccessSqlLoader(SqlLoader):
                 if result:
                     return result[0]
                 return None
+
+    async def load_table(
+        self,
+        *,
+        table_name: str,
+        limit: int | None = None,
+        offset: int | None = None,  # pylint: disable=unused-argument
+        **kwargs,  # pylint: disable=unused-argument
+    ) -> pd.DataFrame:
+        """Load entire table as DataFrame."""
+        sql: str = f"select {f'top {limit}' if limit else ''} * from {table_name};"
+        data: pd.DataFrame = await self.read_sql(sql=sql)
+        return data
+
+    def qualify_name(self, *, schema: str | None, table: str) -> str:  # pylint: disable=unused-argument
+        return f"[{table}]"
 
     @contextmanager
     def _cursor(self, conn: jaydebeapi.Connection) -> Generator[Any, Any, None]:
@@ -536,7 +668,7 @@ class UCanAccessSqlLoader(SqlLoader):
 
         # Use Java's DriverManager directly
         driver_manager = jpype.JClass("java.sql.DriverManager")
-        conn = driver_manager.getConnection(f"jdbc:ucanaccess:///{self.filename}")
+        conn = driver_manager.getConnection(f"jdbc:ucanaccess://{self.filename}")
 
         try:
             dbio = conn.getDbIO()
@@ -548,82 +680,78 @@ class UCanAccessSqlLoader(SqlLoader):
         return result
 
     async def get_tables(self, **kwargs) -> dict[str, CoreSchema.TableMetadata]:
-        """Get tables from MS Access database."""
-        queries: list[str] = [
-            "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'TABLE' ORDER BY TABLE_NAME ",
-            "SELECT Name as TABLE_NAME FROM MSysObjects WHERE Type = 1 AND Flags = 0 ORDER BY Name",
-        ]
-
-        data: pd.DataFrame | None = None
-        for query in queries:
-            try:
-                data = await self.read_sql(query)
-                break
-            except Exception as e:  # pylint: disable=broad-except
-                logger.error(f"Error executing query: {e}")
-
-        if data is None:
-            return {}
-
-        tables: dict[str, CoreSchema.TableMetadata] = {
-            row["TABLE_NAME"]: CoreSchema.TableMetadata(name=row["TABLE_NAME"], schema=None, comment=None, row_count=0)
-            for _, row in data.iterrows()
-        }
-
-        return tables
-
-    async def get_table_schema(self, table_name: str, **kwargs) -> CoreSchema.TableSchema:
-        """Get detailed schema for MS Access table."""
-        # Get columns using information schema
-        columns_query = f"""
-            SELECT 
-                COLUMN_NAME,
-                DATA_TYPE,
-                IS_NULLABLE,
-                COLUMN_DEFAULT,
-                CHARACTER_MAXIMUM_LENGTH
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = '{table_name}'
-            ORDER BY ORDINAL_POSITION
         """
+        Retrieve user table names from an MS Access database using UCanAccess.
 
-        columns_data = await self.read_sql(columns_query)
+        :param db_path: Path to .mdb or .accdb file
+        :param ucanaccess_jars: List of paths to required UCanAccess JAR files
+        :return: List of table names
+        """
+        with self.connection() as conn:
+            with self._cursor(conn) as _:
+                return self._get_tables(conn.jconn.getMetaData())
 
-        # Get primary keys
-        # UCanAccess may not support this reliably, so we try
-        try:
-            pk_query = f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_NAME = '{table_name}'"
-            pk_data = await self.read_sql(pk_query)
-            primary_keys = pk_data["COLUMN_NAME"].tolist() if not pk_data.empty else []
-        except Exception:  # pylint: disable=broad-except
-            logger.warning(f"Could not determine primary keys for {table_name}")
-            primary_keys = []
-
-        # Build columns list
-        columns = []
-        for _, row in columns_data.iterrows():
-            columns.append(
-                CoreSchema.ColumnMetadata(
-                    name=row["COLUMN_NAME"],
-                    data_type=row["DATA_TYPE"],
-                    nullable=row["IS_NULLABLE"] == "YES",
-                    default=row.get("COLUMN_DEFAULT"),
-                    is_primary_key=row["COLUMN_NAME"] in primary_keys,
-                    max_length=row.get("CHARACTER_MAXIMUM_LENGTH"),
-                )
+    async def get_table_schema(self, table_name: str, **kwargs) -> CoreSchema.TableSchema:  # pylint: disable=unused-argument
+        with self.connection() as conn:
+            meta = conn.jconn.getMetaData()
+            primary_keys: list[str] = self._get_primary_keys(meta, table_name)
+            columns: list[CoreSchema.ColumnMetadata] = self._get_columns(meta, table_name)
+            row_count: int | None = await self.get_table_row_count(table_name, None)
+            return CoreSchema.TableSchema(
+                table_name=table_name,
+                columns=columns,
+                primary_keys=primary_keys,
+                row_count=row_count,
+                foreign_keys=[],
+                indexes=[],
             )
 
-        # Get row count
-        row_count = await self.get_table_row_count(table_name, None)
+    def _get_tables(self, meta, **kwargs) -> dict[str, CoreSchema.TableMetadata]:  # pylint: disable=unused-argument
+        rs = meta.getTables(None, None, "%", ["TABLE"])
+        try:
+            tables: dict[str, CoreSchema.TableMetadata] = {}
+            while rs.next():
+                table_name = rs.getString("TABLE_NAME")
+                if table_name.startswith("MSys") or table_name.startswith("~"):
+                    continue
+                tables[table_name] = CoreSchema.TableMetadata(name=table_name, schema=None, comment=rs.getString("REMARKS"), row_count=0)
+        finally:
+            rs.close()
+        return tables
 
-        return CoreSchema.TableSchema(
-            table_name=table_name,
-            columns=columns,
-            primary_keys=primary_keys,
-            row_count=row_count,
-            foreign_keys=[],
-            indexes=[],
-        )
+    def _get_columns(self, meta, table_name: str) -> list[CoreSchema.ColumnMetadata]:
+        rs = meta.getColumns(None, None, table_name, "%")
+        try:
+            columns: list[CoreSchema.ColumnMetadata] = []
+            primary_keys: set[str] = set(self._get_primary_keys(meta, table_name))
+            while rs.next():
+                columns.append(
+                    CoreSchema.ColumnMetadata(
+                        name=rs.getString("COLUMN_NAME"),
+                        data_type=rs.getString("TYPE_NAME"),
+                        max_length=rs.getInt("COLUMN_SIZE"),
+                        nullable=rs.getInt("NULLABLE") == meta.columnNullable,
+                        default=rs.getString("COLUMN_DEF"),
+                        is_primary_key=rs.getString("COLUMN_NAME") in primary_keys,
+                    )
+                )
+        finally:
+            rs.close()
+        return columns
+
+    def _get_primary_keys(self, meta, table_name: str) -> list[str]:
+        """
+        Return primary key column names in correct order.
+        """
+        rs = meta.getPrimaryKeys(None, None, table_name)
+        pks: list[tuple[int, str]] = []
+        try:
+            while rs.next():
+                pks.append((rs.getInt("KEY_SEQ"), rs.getString("COLUMN_NAME")))
+        finally:
+            rs.close()
+
+        return [name for _, name in sorted(pks)]
 
     def get_test_query(self, table_name: str, limit: int) -> str:
         """Get a test query for the data source, if applicable."""

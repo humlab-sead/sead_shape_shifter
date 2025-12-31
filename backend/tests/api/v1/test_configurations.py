@@ -162,6 +162,69 @@ class TestConfigurationsUpdate:
         )
         assert response.status_code == 404
 
+    def test_update_metadata(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+        """Test updating configuration metadata."""
+
+        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+
+        # Create config
+        client.post("/api/v1/configurations", json={"name": "test_config", "entities": sample_config_data["entities"]})
+
+        # Update metadata
+        metadata_update = {
+            "description": "Updated description",
+            "version": "2.0.1",
+            "default_entity": "sample",
+        }
+        response = client.patch("/api/v1/configurations/test_config/metadata", json=metadata_update)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["metadata"]["description"] == "Updated description"
+        assert data["metadata"]["version"] == "2.0.1"
+        assert data["metadata"]["default_entity"] == "sample"
+        # Verify entities are preserved
+        assert "sample" in data["entities"]
+
+    def test_update_metadata_rename(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+        """Test renaming configuration via metadata update."""
+
+        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+
+        # Create config
+        client.post("/api/v1/configurations", json={"name": "old_name", "entities": sample_config_data["entities"]})
+
+        # Rename via metadata
+        metadata_update = {"name": "new_name"}
+        response = client.patch("/api/v1/configurations/old_name/metadata", json=metadata_update)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["metadata"]["name"] == "new_name"
+
+        # Verify old name no longer exists
+        get_old = client.get("/api/v1/configurations/old_name")
+        assert get_old.status_code == 404
+
+        # Verify new name exists
+        get_new = client.get("/api/v1/configurations/new_name")
+        assert get_new.status_code == 200
+
+    def test_update_metadata_rename_conflict(self, tmp_path, monkeypatch, reset_services, sample_config_data):
+        """Test renaming to existing name returns conflict error."""
+
+        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+
+        # Create two configs
+        client.post("/api/v1/configurations", json={"name": "config1", "entities": sample_config_data["entities"]})
+        client.post("/api/v1/configurations", json={"name": "config2", "entities": sample_config_data["entities"]})
+
+        # Try to rename config1 to config2
+        metadata_update = {"name": "config2"}
+        response = client.patch("/api/v1/configurations/config1/metadata", json=metadata_update)
+
+        assert response.status_code == 409  # Conflict
+
 
 class TestConfigurationsDelete:
     """Tests for deleting configurations."""

@@ -7,6 +7,7 @@ import type {
   ConfigurationCreateRequest,
   ConfigurationUpdateRequest,
   BackupInfo,
+  MetadataUpdateRequest,
 } from '@/api/configurations'
 
 export const useConfigurationStore = defineStore('configuration', () => {
@@ -117,6 +118,43 @@ export const useConfigurationStore = defineStore('configuration', () => {
       return config
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update configuration'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateMetadata(name: string, data: MetadataUpdateRequest) {
+    loading.value = true
+    error.value = null
+    try {
+      const config = await api.configurations.updateMetadata(name, data)
+      
+      // Update metadata in list
+      const oldName = name
+      const newName = config.metadata?.name ?? name
+      const index = configurations.value.findIndex((c) => c.name === oldName)
+      
+      if (index !== -1 && config.metadata) {
+        configurations.value[index] = {
+          name: config.metadata.name,
+          description: config.metadata.description,
+          version: config.metadata.version,
+          entity_count: config.metadata.entity_count,
+          file_path: config.metadata.file_path,
+          created_at: config.metadata.created_at,
+          modified_at: config.metadata.modified_at,
+          is_valid: config.metadata.is_valid,
+          default_entity: config.metadata.default_entity,
+        }
+      }
+      
+      selectedConfig.value = config
+      hasUnsavedChanges.value = false
+      
+      return config
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to update metadata'
       throw err
     } finally {
       loading.value = false
@@ -373,6 +411,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
     selectConfiguration,
     createConfiguration,
     updateConfiguration,
+    updateMetadata,
     deleteConfiguration,
     validateConfiguration,
     fetchBackups,

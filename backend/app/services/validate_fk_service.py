@@ -7,16 +7,16 @@ import pandas as pd
 from backend.app.core.state_manager import get_app_state_manager
 from backend.app.mappers.config_mapper import ConfigMapper
 from backend.app.models import CardinalityInfo, Configuration, JoinStatistics, JoinTestResult, PreviewResult, UnmatchedRow
-from backend.app.services.shapeshift_service import PreviewService
+from backend.app.services.shapeshift_service import ShapeShiftService
 from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig
 
 
 class ValidateForeignKeyService:
     """Service for previewing entity data with ShapeShiftConfig caching."""
 
-    def __init__(self, preview_service: PreviewService):
+    def __init__(self, preview_service: ShapeShiftService):
         """Initialize preview service."""
-        self.preview_service: PreviewService = preview_service
+        self.preview_service: ShapeShiftService = preview_service
 
     async def test_foreign_key(
         self, config_name: str, entity_name: str, foreign_key_index: int, sample_size: int = 100
@@ -36,9 +36,9 @@ class ValidateForeignKeyService:
 
         start_time: float = time.time()
 
-        # Load config - try ApplicationState first (production), fall back to ShapeShiftConfig.resolve (tests)
+        # Load config - try ApplicationState first (production), fall back to ShapeShiftConfig.from_source (tests)
         api_cfg: Configuration | None = get_app_state_manager().get(config_name)
-        config: ShapeShiftConfig = ConfigMapper.to_core(api_cfg) if api_cfg else ShapeShiftConfig.resolve(cfg=config_name)
+        config: ShapeShiftConfig = ConfigMapper.to_core(api_cfg) if api_cfg else ShapeShiftConfig.from_source(source=config_name)
 
         # Get entity and foreign key config
         if entity_name not in config.tables:

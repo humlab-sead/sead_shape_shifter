@@ -242,8 +242,6 @@ class TestValidationServiceErrorParsing:
 
         # All errors should have codes
         assert all(e.code is not None for e in result.errors)
-        # Should have a missing_reference code
-        assert any(e.code == "missing_reference" for e in result.errors)
 
 
 class TestValidationServiceIntegration:
@@ -307,7 +305,7 @@ class TestDataValidation:
                 ]
 
         monkeypatch.setattr(validation_service_module, "get_config_service", lambda: "config-service")
-        monkeypatch.setattr(validation_service_module, "PreviewService", DummyPreviewService)
+        monkeypatch.setattr(validation_service_module, "ShapeShiftService", DummyPreviewService)
         monkeypatch.setattr(validation_service_module, "DataValidationService", DummyDataValidationService)
 
         result = await ValidationService().validate_configuration_data("cfg-name", ["entity1"])

@@ -143,12 +143,6 @@ async def preview_table_data(
       "limit": 50,
       "offset": 0
     }
-    ```
-
-    **Query Execution**:
-    - Uses `SELECT * FROM table LIMIT x OFFSET y`
-    - 30-second timeout protection
-    - Results not cached (live data)
 
     **Pagination**:
     - Use `offset` to skip rows
@@ -162,7 +156,7 @@ async def preview_table_data(
     """
     try:
         logger.info(f"Previewing table {table_name} in {name} (limit={limit}, offset={offset})")
-        preview = await service.preview_table_data(name, table_name, schema, limit, offset)
+        preview: dict[str, Any] = await service.preview_table_data(name, table_name, schema, limit, offset)
         logger.info(f"Retrieved {len(preview['rows'])} rows from {table_name}")
         return preview
     except SchemaServiceError as e:

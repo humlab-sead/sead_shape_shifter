@@ -1,8 +1,9 @@
 """Pydantic models for configuration."""
 
+from datetime import datetime, timezone
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 
 class ConfigMetadata(BaseModel):
@@ -16,6 +17,14 @@ class ConfigMetadata(BaseModel):
     created_at: float = Field(default=0, description="Creation timestamp (Unix timestamp)")
     modified_at: float = Field(default=0, description="Last modification timestamp (Unix timestamp)")
     is_valid: bool = Field(default=True, description="Whether configuration is valid")
+    default_entity: str | None = Field(default=None, description="Default source entity name")
+
+    @field_serializer("created_at", "modified_at")
+    def serialize_timestamp(self, value: float) -> str | None:
+        """Convert Unix timestamp to ISO 8601 string for API responses."""
+        if value <= 0:
+            return None
+        return datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
 
 
 class Configuration(BaseModel):
@@ -44,3 +53,8 @@ class Configuration(BaseModel):
     def entity_names(self) -> list[str]:
         """Get list of entity names."""
         return list(self.entities.keys())  # pylint: disable=no-member
+
+    @property
+    def filename(self) -> str | None:
+        """Get configuration filename from metadata."""
+        return self.metadata.file_path if self.metadata else None  # pylint: disable=no-member

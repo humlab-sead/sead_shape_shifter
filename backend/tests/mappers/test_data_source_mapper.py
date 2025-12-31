@@ -129,13 +129,6 @@ def test_missing_required_field():
         DataSourceMapper.to_core_config(api_config)
 
 
-def test_unknown_driver():
-    """Test error when driver is unknown."""
-    # Can't test unknown driver as Pydantic validator rejects it
-    # Instead test that mapper rejects a driver that passes Pydantic
-    # but doesn't have a schema (this shouldn't happen in practice)
-
-
 @pytest.mark.skip(reason="We don't allow password in options for the time being")
 def test_password_extraction():
     """Test that password SecretStr is properly extracted."""

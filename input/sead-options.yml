@@ -1,4 +1,4 @@
-driver: postgres
+driver: postgresql
 options:
   host: ${SEAD_HOST}
   port: ${SEAD_PORT}

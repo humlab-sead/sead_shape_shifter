@@ -6,7 +6,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.core.config import settings
-from backend.app.core.state_manager import get_app_state_manager
+from backend.app.core.state_manager import ApplicationStateManager, get_app_state_manager
 from backend.app.mappers.config_mapper import ConfigMapper
 from backend.app.models.config import ConfigMetadata, Configuration
 from backend.app.models.entity import Entity
@@ -37,13 +37,22 @@ class ConfigConflictError(ConfigurationServiceError):
     """Raised when optimistic lock fails due to concurrent modification."""
 
 
+class ConfigurationYamlSpecification:
+    """Specification for configuration files."""
+
+    def is_satisfied_by(self, data: dict[str, Any]) -> bool:
+        return "entities" in (data or {})
+
+
 class ConfigurationService:
     """Service for managing configuration files and entities."""
 
-    def __init__(self) -> None:
+    def __init__(self, configurations_dir: Path | None = None, state: ApplicationStateManager | None = None) -> None:
         """Initialize configuration service."""
         self.yaml_service: YamlService = get_yaml_service()
-        self.configurations_dir: Path = settings.CONFIGURATIONS_DIR
+        self.configurations_dir: Path = configurations_dir or settings.CONFIGURATIONS_DIR
+        self.specification = ConfigurationYamlSpecification()
+        self.state: ApplicationStateManager = state or get_app_state_manager()
 
     def list_configurations(self) -> list[ConfigMetadata]:
         """
@@ -60,11 +69,10 @@ class ConfigurationService:
 
         for yaml_file in self.configurations_dir.glob("*.yml"):
             try:
-                data = self.yaml_service.load(yaml_file)
+                data: dict[str, Any] = self.yaml_service.load(yaml_file)
 
-                # Only include files that have 'entities' key (configuration files)
-                if "entities" not in data:
-                    logger.debug(f"Skipping {yaml_file.name} - missing 'entities' key")
+                if not self.specification.is_satisfied_by(data):
+                    logger.debug(f"Skipping {yaml_file.name} - does not satisfy configuration specification")
                     continue
 
                 entity_count = len(data.get("entities", {}))
@@ -75,15 +83,14 @@ class ConfigurationService:
                     entity_count=entity_count,
                     created_at=yaml_file.stat().st_ctime,
                     modified_at=yaml_file.stat().st_mtime,
-                    is_valid=True,  # Basic check - more validation available via validation service
+                    is_valid=True,
                 )
                 configs.append(metadata)
 
             except Exception as e:  # pylint: disable=broad-except
                 logger.warning(f"Failed to load configuration {yaml_file}: {e}")
-                # Skip invalid configs - don't include them in the list
 
-        logger.debug(f"Found {len(configs)} configuration(s)")
+        logger.debug(f"Found {len(configs)} configuration(s) satisfying specification")
         return configs
 
     def load_configuration(self, name: str) -> Configuration:
@@ -103,34 +110,29 @@ class ConfigurationService:
             ConfigurationNotFoundError: If configuration not found
             InvalidConfigurationError: If configuration is invalid
         """
-        # Check if this is the active configuration
-
-        active_config: Configuration | None = get_app_state_manager().get(name)
+        # Check application state if this is the active configuration
+        active_config: Configuration | None = self.state.get(name)
         if active_config:
             logger.debug(f"Loading active configuration '{name}' from ApplicationState")
             return active_config
 
-        # Load from file
-        file_path: Path = self.configurations_dir / (f"{name}.yml" if not name.endswith(".yml") else name)
-
-        if not file_path.exists():
+        filename: Path = self.configurations_dir / (f"{name.rstrip('.yml')}.yml")
+        if not filename.exists():
             raise ConfigurationNotFoundError(f"Configuration not found: {name}")
 
         try:
-            data: dict[str, Any] = self.yaml_service.load(file_path)
+            data: dict[str, Any] = self.yaml_service.load(filename)
 
-            # Validate that 'entities' key exists (required for configuration files)
-            if "entities" not in data:
+            if not self.specification.is_satisfied_by(data):
                 raise InvalidConfigurationError(f"Invalid configuration file '{name}': missing required 'entities' key")
 
-            # Convert to Configuration model via mapper
             config: Configuration = ConfigMapper.to_api_config(data, name)
 
             assert config.metadata is not None  # For mypy
 
-            config.metadata.file_path = str(file_path)
-            config.metadata.created_at = file_path.stat().st_ctime
-            config.metadata.modified_at = file_path.stat().st_mtime
+            config.metadata.file_path = str(filename)
+            config.metadata.created_at = filename.stat().st_ctime
+            config.metadata.modified_at = filename.stat().st_mtime
             config.metadata.entity_count = len(config.entities or {})
             config.metadata.is_valid = True
 
@@ -162,26 +164,24 @@ class ConfigurationService:
         if not config.metadata or not config.metadata.name:
             raise InvalidConfigurationError("Configuration must have metadata with name")
 
-        file_path: Path = self.configurations_dir / f"{config.metadata.name}.yml"
+        file_path: Path = self.configurations_dir / f"{config.metadata.name.rstrip(".yml")}.yml"
 
         try:
             # Convert to core dict for saving (sparse structure)
-            cfg_dict = ConfigMapper.to_core_dict(config)
+            cfg_dict: dict[str, Any] = ConfigMapper.to_core_dict(config)
 
             logger.debug(
                 f"Saving configuration '{config.metadata.name}' with {len(config.entities)} entities: {list(config.entities.keys())}"
             )
 
-            # Save with backup
             self.yaml_service.save(cfg_dict, file_path, create_backup=create_backup)
 
-            # Update metadata
             config.metadata.modified_at = file_path.stat().st_mtime
             config.metadata.entity_count = len(config.entities)
 
             logger.info(f"Saved configuration '{config.metadata.name}'")
 
-            get_app_state_manager().update(config)
+            self.state.update(config)
 
             return config
 
@@ -210,8 +210,7 @@ class ConfigurationService:
         if file_path.exists():
             raise ConfigConflictError(f"Configuration '{name}' already exists")
 
-        # Create metadata with required fields
-        metadata = ConfigMetadata(
+        metadata: ConfigMetadata = ConfigMetadata(
             name=name,
             description=f"Configuration for {name}",
             version="1.0.0",
@@ -222,10 +221,8 @@ class ConfigurationService:
             is_valid=True,
         )
 
-        # Create configuration with all three required sections
-        config = Configuration(entities=entities or {}, options={}, metadata=metadata)
+        config: Configuration = Configuration(entities=entities or {}, options={}, metadata=metadata)
 
-        # Save to file
         return self.save_configuration(config, create_backup=False)
 
     def delete_configuration(self, name: str) -> None:
@@ -244,7 +241,6 @@ class ConfigurationService:
             raise ConfigurationNotFoundError(f"Configuration not found: {name}")
 
         try:
-            # Create backup before deleting
             self.yaml_service.create_backup(file_path)
             file_path.unlink()
             logger.info(f"Deleted configuration '{name}'")
@@ -252,6 +248,71 @@ class ConfigurationService:
         except Exception as e:
             logger.error(f"Failed to delete configuration '{name}': {e}")
             raise ConfigurationServiceError(f"Failed to delete configuration: {e}") from e
+
+    def update_metadata(
+        self,
+        name: str,
+        new_name: str | None = None,
+        description: str | None = None,
+        version: str | None = None,
+        default_entity: str | None = None,
+    ) -> Configuration:
+        """
+        Update configuration metadata.
+
+        Args:
+            name: Current configuration name
+            new_name: New configuration name (optional)
+            description: Configuration description (optional)
+            version: Configuration version (optional)
+            default_entity: Default entity name (optional)
+
+        Returns:
+            Updated configuration
+
+        Raises:
+            ConfigurationNotFoundError: If configuration not found
+            ConfigConflictError: If new name conflicts with existing configuration
+        """
+        # Load current configuration
+        config: Configuration = self.load_configuration(name)
+
+        if not config.metadata:
+            raise InvalidConfigurationError(f"Configuration '{name}' has no metadata")
+
+        # Handle rename if requested
+        old_file_path: Path = self.configurations_dir / f"{name}.yml"
+        new_file_path: Path | None = None
+
+        if new_name and new_name != name:
+            new_file_path = self.configurations_dir / f"{new_name}.yml"
+            if new_file_path.exists():
+                raise ConfigConflictError(f"Configuration '{new_name}' already exists")
+
+        # Update metadata fields (only if provided)
+        if new_name:
+            config.metadata.name = new_name
+        if description is not None:
+            config.metadata.description = description
+        if version is not None:
+            config.metadata.version = version
+        if default_entity is not None:
+            config.metadata.default_entity = default_entity
+
+        # Save configuration
+        saved_config: Configuration = self.save_configuration(config, create_backup=True)
+
+        # Rename file if needed
+        if new_file_path and new_name != name:
+            old_file_path.rename(new_file_path)
+            if saved_config.metadata:
+                saved_config.metadata.file_path = str(new_file_path)
+            logger.info(f"Renamed configuration from '{name}' to '{new_name}'")
+
+            # Update application state with new name by activating the renamed config
+            self.state.activate(saved_config, new_name)
+
+        return saved_config
 
     def add_entity(self, config: Configuration, entity_name: str, entity: Entity) -> Configuration:
         """
@@ -271,7 +332,6 @@ class ConfigurationService:
         if entity_name in config.entities:
             raise EntityAlreadyExistsError(f"Entity '{entity_name}' already exists")
 
-        # Add entity (Pydantic model will be serialized to dict)
         config.entities[entity_name] = entity.model_dump(exclude_none=True, mode="json")
 
         logger.debug(f"Added entity '{entity_name}'")
@@ -295,7 +355,6 @@ class ConfigurationService:
         if entity_name not in config.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
-        # Update entity
         config.entities[entity_name] = entity.model_dump(exclude_none=True, mode="json")
 
         logger.debug(f"Updated entity '{entity_name}'")
@@ -451,7 +510,7 @@ class ConfigurationService:
 
         config: Configuration = self.load_configuration(name)
 
-        get_app_state_manager().activate(config)
+        self.state.activate(config)
 
         return config
 
@@ -463,7 +522,7 @@ class ConfigurationService:
             Configuration name or None if no configuration is active
         """
 
-        return get_app_state_manager().get_active_metadata()
+        return self.state.get_active_metadata()
 
     def save_with_version_check(
         self,
@@ -487,7 +546,7 @@ class ConfigurationService:
             InvalidConfigurationError: If save fails
         """
 
-        current_version: str = get_app_state_manager().get_active_metadata().version or expected_version
+        current_version: str = self.state.get_active_metadata().version or expected_version
         if expected_version != current_version:
             raise ConfigConflictError(
                 f"Configuration was modified by another user. "
