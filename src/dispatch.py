@@ -28,8 +28,8 @@ class IDispatcher(Protocol):
 class Dispatcher(IDispatcher):
     """Base class for data dispatchers."""
 
-    def __init__(self, cfg: ShapeShiftConfig) -> None:
-        self.cfg: ShapeShiftConfig = cfg
+    def __init__(self, cfg: ShapeShiftConfig | dict[str, Any]) -> None:
+        self.cfg: ShapeShiftConfig = cfg if isinstance(cfg, ShapeShiftConfig) else ShapeShiftConfig(cfg=cfg)
 
 
 @Dispatchers.register(key="csv")
