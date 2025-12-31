@@ -40,7 +40,7 @@ class TestRunService:
             TestRunResult with PENDING status
         """
         run_id: str = str(uuid.uuid4())
-        started_at: datetime = datetime.utcnow()
+        started_at: datetime = datetime.now()
 
         # Initialize result with PENDING status
         result: TestRunResult = TestRunResult(
@@ -146,7 +146,7 @@ class TestRunService:
 
         finally:
             # Calculate total time
-            completed_at = datetime.utcnow()
+            completed_at = datetime.now()
             result.completed_at = completed_at
             result.total_time_ms = int((completed_at - started_at).total_seconds() * 1000)
 
@@ -271,7 +271,7 @@ class TestRunService:
         progress_percentage: float = (entities_completed / entities_total * 100) if entities_total > 0 else 0
 
         elapsed_time_ms: int = (
-            int((datetime.utcnow() - result.started_at).total_seconds() * 1000)
+            int((datetime.now() - result.started_at).total_seconds() * 1000)
             if result.status == TestRunStatus.RUNNING
             else result.total_time_ms
         )
