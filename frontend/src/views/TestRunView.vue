@@ -109,9 +109,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import TestRunConfig from '@/components/TestRun/TestRunConfig.vue'
-import TestRunProgress from '@/components/TestRun/TestRunProgress.vue'
-import TestRunResults from '@/components/TestRun/TestRunResults.vue'
+import TestRunConfig from '@/components/testrun/TestRunConfig.vue'
+import TestRunProgress from '@/components/testrun/TestRunProgress.vue'
+import TestRunResults from '@/components/testrun/TestRunResults.vue'
 import testRunApi from '@/api/testRunApi'
 import { projectsApi } from '@/api/projects'
 import type { TestRunOptions, TestRunResult } from '@/types/testRun'
