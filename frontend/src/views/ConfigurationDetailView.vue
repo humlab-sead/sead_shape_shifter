@@ -131,7 +131,7 @@
 
           <!-- Data Sources Tab -->
           <v-window-item value="data-sources">
-            <configuration-data-sources :project-name="projectName" @updated="handleDataSourcesUpdated" />
+            <project-data-sources :project-name="projectName" @updated="handleDataSourcesUpdated" />
           </v-window-item>
 
           <!-- Validation Tab -->
@@ -228,7 +228,7 @@ import { useSession } from '@/composables/useSession'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
 import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
-import ConfigurationDataSources from '@/components/ConfigurationDataSources.vue'
+import ProjectDataSources from '@/components/ProjectDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
 import DependencyGraph from '@/components/dependencies/DependencyGraph.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
