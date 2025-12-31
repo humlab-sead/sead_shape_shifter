@@ -149,6 +149,11 @@ frontend-install:
 	@echo "Installing frontend dependencies..."
 	@cd frontend && pnpm install
 
+.PHONY: frontend-lint
+frontend-lint:
+	@echo "Linting frontend code..."
+	@cd frontend && pnpm lint
+
 .PHONY: frontend-run
 frontend-run:
 	@echo "Starting frontend dev server on http://localhost:$(FRONTEND_PORT)"

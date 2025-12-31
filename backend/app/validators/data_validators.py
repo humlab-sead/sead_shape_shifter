@@ -4,9 +4,9 @@ import asyncio
 from typing import Any
 
 import pandas as pd
-from backend.app.models.project import Project
 from loguru import logger
 
+from backend.app.models.project import Project
 from backend.app.models.validation import (
     ValidationCategory,
     ValidationError,
