@@ -7,7 +7,7 @@ from loguru import logger
 
 from backend.app.models.join_test import JoinTestResult
 from backend.app.models.shapeshift import PreviewResult
-from backend.app.services.config_service import ConfigurationService
+from backend.app.services.project_service import ProjectService
 from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.services.validate_fk_service import ValidateForeignKeyService
 from backend.app.utils.error_handlers import handle_endpoint_errors
@@ -16,16 +16,16 @@ from backend.app.utils.exceptions import BadRequestError, NotFoundError
 router = APIRouter()
 
 
-def get_config_service() -> ConfigurationService:
+def get_project_service() -> ProjectService:
     """Dependency to get config service instance."""
-    return ConfigurationService()
+    return ProjectService()
 
 
 def get_preview_service(
-    config_service: ConfigurationService = Depends(get_config_service),
+    project_service: ProjectService = Depends(get_project_service),
 ) -> ShapeShiftService:
     """Dependency to get preview service instance."""
-    return ShapeShiftService(config_service=config_service)
+    return ShapeShiftService(project_service=project_service)
 
 
 def get_validate_fk_service(
@@ -36,7 +36,7 @@ def get_validate_fk_service(
 
 
 @router.post(
-    "/configurations/{config_name}/entities/{entity_name}/preview",
+    "/projects/{project_name}/entities/{entity_name}/preview",
     response_model=PreviewResult,
     summary="Preview entity data",
     description="Get a preview of entity data with all transformations applied",
@@ -48,7 +48,7 @@ def get_validate_fk_service(
 )
 @handle_endpoint_errors
 async def preview_entity(
-    config_name: str = Path(..., description="Name of the configuration"),
+    project_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity to preview"),
     limit: Optional[int] = Query(50, ge=1, le=10000, description="Maximum number of rows to return. Use null for all rows."),
     preview_service: ShapeShiftService = Depends(get_preview_service),
@@ -61,11 +61,11 @@ async def preview_entity(
     - Applies all configured transformations (filters, unnest, foreign keys)
     - Returns a limited number of rows with metadata
     - Caches results for 5 minutes
-    
+
     Set limit=null to retrieve all rows (use with caution for large datasets).
     """
     try:
-        result = await preview_service.preview_entity(config_name, entity_name, limit)
+        result = await preview_service.preview_entity(project_name, entity_name, limit)
         return result
     except ValueError as e:
         logger.warning(f"Preview request failed: {e}")
@@ -73,7 +73,7 @@ async def preview_entity(
 
 
 @router.post(
-    "/configurations/{config_name}/entities/{entity_name}/sample",
+    "/projects/{project_name}/entities/{entity_name}/sample",
     response_model=PreviewResult,
     summary="Get entity data sample",
     description="Get a larger sample of entity data for validation or testing",
@@ -85,7 +85,7 @@ async def preview_entity(
 )
 @handle_endpoint_errors
 async def get_entity_sample(
-    config_name: str = Path(..., description="Name of the configuration"),
+    project_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of rows (default 100)"),
     preview_service: ShapeShiftService = Depends(get_preview_service),
@@ -99,7 +99,7 @@ async def get_entity_sample(
     - Statistical analysis
     """
     try:
-        result = await preview_service.get_entity_sample(config_name, entity_name, limit)
+        result = await preview_service.get_entity_sample(project_name, entity_name, limit)
         return result
     except ValueError as e:
         logger.warning(f"Sample request failed: {e}")
@@ -107,7 +107,7 @@ async def get_entity_sample(
 
 
 @router.delete(
-    "/configurations/{config_name}/preview-cache",
+    "/projects/{project_name}/preview-cache",
     summary="Invalidate preview cache",
     description="Clear cached preview data for a configuration",
     responses={
@@ -116,7 +116,7 @@ async def get_entity_sample(
 )
 @handle_endpoint_errors
 async def invalidate_preview_cache(
-    config_name: str = Path(..., description="Name of the configuration"),
+    project_name: str = Path(..., description="Name of the configuration"),
     entity_name: Optional[str] = Query(None, description="Optional entity name to clear specific cache"),
     preview_service: ShapeShiftService = Depends(get_preview_service),
 ) -> dict:
@@ -128,15 +128,15 @@ async def invalidate_preview_cache(
     - Changing data source data
     - Updating transformations
     """
-    preview_service.invalidate_cache(config_name, entity_name)
-    message = f"Cache cleared for {config_name}"
+    preview_service.invalidate_cache(project_name, entity_name)
+    message = f"Cache cleared for {project_name}"
     if entity_name:
         message += f":{entity_name}"
-    return {"message": message, "config_name": config_name, "entity_name": entity_name}
+    return {"message": message, "project_name": project_name, "entity_name": entity_name}
 
 
 @router.post(
-    "/configurations/{config_name}/entities/{entity_name}/foreign-keys/{fk_index}/test",
+    "/projects/{project_name}/entities/{entity_name}/foreign-keys/{fk_index}/test",
     response_model=JoinTestResult,
     summary="Test foreign key join",
     description="Test a foreign key relationship to validate the join",
@@ -148,7 +148,7 @@ async def invalidate_preview_cache(
 )
 @handle_endpoint_errors
 async def test_foreign_key_join(
-    config_name: str = Path(..., description="Name of the configuration"),
+    project_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity with the foreign key"),
     fk_index: int = Path(..., description="Index of the foreign key to test", ge=0),
     sample_size: int = Query(100, description="Number of rows to test", ge=10, le=1000),
@@ -172,7 +172,7 @@ async def test_foreign_key_join(
     """
     try:
         result = await validate_fk_service.test_foreign_key(
-            config_name=config_name, entity_name=entity_name, foreign_key_index=fk_index, sample_size=sample_size
+            project_name=project_name, entity_name=entity_name, foreign_key_index=fk_index, sample_size=sample_size
         )
         return result
     except ValueError as e:

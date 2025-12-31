@@ -74,7 +74,7 @@ class TestSchemaIntrospectionService:
     @pytest.fixture
     def service(self, mock_config, settings: Settings) -> SchemaIntrospectionService:
         """Create service with mock config."""
-        return SchemaIntrospectionService(settings.CONFIGURATIONS_DIR)
+        return SchemaIntrospectionService(settings.PROJECTS_DIR)
 
     @pytest.fixture
     def postgres_config(self):

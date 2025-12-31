@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 
 from loguru import logger
 
-from backend.app.models.config import ConfigMetadata, Configuration
+from backend.app.models.project import Project, ProjectMetadata
 
 
 @dataclass
@@ -19,7 +19,7 @@ class ConfigSession:
     """Represents an active editing session for a configuration file."""
 
     session_id: UUID
-    config_name: str
+    project_name: str
     user_id: str | None  # Future: actual user identification
     loaded_at: datetime
     last_accessed: datetime
@@ -44,12 +44,12 @@ class ApplicationState:
         self.config_dir: Path = config_dir
 
         # Active configurations (editing state)
-        self._active_configs: dict[str, Configuration] = {}
-        self._active_config_name: str | None = None
+        self._active_projects: dict[str, Project] = {}
+        self._active_project_name: str | None = None
 
         # Session management
         self._sessions: dict[UUID, ConfigSession] = {}
-        self._sessions_by_config: dict[str, set[UUID]] = {}
+        self._sessions_by_project: dict[str, set[UUID]] = {}
         self._session_lock = asyncio.Lock()
 
         # Cache invalidation tracking
@@ -74,22 +74,22 @@ class ApplicationState:
                 pass
         logger.info("Application state manager stopped")
 
-    async def create_session(self, config_name: str, user_id: str | None = None) -> UUID:
+    async def create_session(self, project_name: str, user_id: str | None = None) -> UUID:
         """Create a new editing session for a config file."""
         async with self._session_lock:
             session_id: UUID = uuid4()
             session = ConfigSession(
                 session_id=session_id,
-                config_name=config_name,
+                project_name=project_name,
                 user_id=user_id,
                 loaded_at=datetime.now(),
                 last_accessed=datetime.now(),
             )
 
             self._sessions[session_id] = session
-            self._sessions_by_config.setdefault(config_name, set()).add(session_id)
+            self._sessions_by_project.setdefault(project_name, set()).add(session_id)
 
-            logger.info(f"Created session {session_id} for config '{config_name}'")
+            logger.info(f"Created session {session_id} for project '{project_name}'")
             return session_id
 
     async def get_session(self, session_id: UUID) -> ConfigSession | None:
@@ -100,54 +100,54 @@ class ApplicationState:
                 return session
             return None
 
-    async def get_active_sessions(self, config_name: str) -> list[ConfigSession]:
+    async def get_active_sessions(self, project_name: str) -> list[ConfigSession]:
         """Get all active sessions for a config file."""
         async with self._session_lock:
-            session_ids = self._sessions_by_config.get(config_name, set())
+            session_ids = self._sessions_by_project.get(project_name, set())
             return [self._sessions[sid] for sid in session_ids if sid in self._sessions]
 
     async def release_session(self, session_id: UUID) -> None:
         """Release a session and clear config if no other sessions."""
         async with self._session_lock:
             if session := self._sessions.pop(session_id, None):
-                config_name: str = session.config_name
+                project_name: str = session.project_name
 
                 # Remove from config index
-                if config_name in self._sessions_by_config:
-                    self._sessions_by_config[config_name].discard(session_id)
+                if project_name in self._sessions_by_project:
+                    self._sessions_by_project[project_name].discard(session_id)
 
                     # Clear config from memory if no active sessions
-                    if not self._sessions_by_config[config_name]:
-                        del self._sessions_by_config[config_name]
-                        self._active_configs.pop(config_name, None)
-                        self._config_versions.pop(config_name, None)
-                        self._config_dirty.pop(config_name, None)
-                        logger.info(f"Cleared config '{config_name}' from memory (no active sessions)")
+                    if not self._sessions_by_project[project_name]:
+                        del self._sessions_by_project[project_name]
+                        self._active_projects.pop(project_name, None)
+                        self._config_versions.pop(project_name, None)
+                        self._config_dirty.pop(project_name, None)
+                        logger.info(f"Cleared project '{project_name}' from memory (no active sessions)")
 
                 logger.info(f"Released session {session_id}")
 
-    def get_active_configuration(self) -> Configuration | None:
+    def get_active_project(self) -> Project | None:
         """Get the currently active configuration being edited."""
-        if self._active_config_name:
-            return self._active_configs.get(self._active_config_name)
+        if self._active_project_name:
+            return self._active_projects.get(self._active_project_name)
         return None
 
-    def get_configuration(self, name: str) -> Configuration | None:
+    def get_project(self, name: str) -> Project | None:
         """Get a specific configuration from active editing sessions."""
-        return self._active_configs.get(name)
+        return self._active_projects.get(name)
 
-    def set_active_configuration(self, config: Configuration) -> None:
+    def set_active_project(self, config: Project) -> None:
         """
         Set/update the active configuration.
 
         Args:
-            config: Configuration to set as active
+            config: Project to set as active
         """
         assert config.metadata, "Configuration metadata missing"
 
         name: str = config.metadata.name
-        self._active_configs[name] = config
-        self._active_config_name = name
+        self._active_projects[name] = config
+        self._active_project_name = name
         self._config_versions[name] = self._config_versions.get(name, 0) + 1
         self._config_dirty[name] = True
         logger.debug(f"Set active configuration: {name} (version {self._config_versions[name]})")
@@ -216,26 +216,26 @@ class ApplicationStateManager:
         app_state: ApplicationState = get_app_state()
         return app_state
 
-    def get(self, name: str) -> Configuration | None:
+    def get(self, name: str) -> Project | None:
         """Load active configuration from ApplicationState if available."""
         with contextlib.suppress(RuntimeError):
             if not get_app_state():
                 return None
-            config: Configuration | None = get_app_state().get_configuration(name)
+            config: Project | None = get_app_state().get_project(name)
             if config:
                 logger.debug(f"Loading active configuration '{name}' from ApplicationState")
                 return config
         return None
 
-    def get_active(self) -> Configuration | None:
+    def get_active(self) -> Project | None:
         with contextlib.suppress(RuntimeError):
 
             if get_app_state():
-                return get_app_state().get_active_configuration()
+                return get_app_state().get_active_project()
 
         return None
 
-    def update(self, config: Configuration) -> None:
+    def update(self, config: Project) -> None:
         """Update active configuration in ApplicationState if initialized."""
         with contextlib.suppress(RuntimeError):
 
@@ -247,31 +247,31 @@ class ApplicationStateManager:
 
             app_state: ApplicationState = get_app_state()
 
-            if app_state.get_configuration(config.metadata.name):
-                app_state.set_active_configuration(config)
+            if app_state.get_project(config.metadata.name):
+                app_state.set_active_project(config)
                 app_state.mark_saved(config.metadata.name)
                 logger.debug(f"Updated ApplicationState for '{config.metadata.name}'")
 
-    def activate(self, config: Configuration, name: str | None = None) -> None:
+    def activate(self, config: Project, name: str | None = None) -> None:
         """Set active configuration in ApplicationState if initialized."""
         name = name or (config.metadata.name if config.metadata else None)
         if not name:
             raise ValueError("Configuration name is required to activate configuration.")
         with contextlib.suppress(RuntimeError):
             app_state: ApplicationState = get_app_state()
-            app_state.set_active_configuration(config)
+            app_state.set_active_project(config)
             app_state.mark_saved(name)  # Freshly loaded is not dirty
             logger.info(f"Activated configuration '{name}' for editing")
 
-    def get_active_metadata(self) -> ConfigMetadata:
+    def get_active_metadata(self) -> ProjectMetadata:
         with contextlib.suppress(RuntimeError):
 
-            active_config: Configuration | None = self.get_active()
+            active_config: Project | None = self.get_active()
 
             if active_config and active_config.metadata:
                 return active_config.metadata
 
-        return ConfigMetadata(
+        return ProjectMetadata(
             name="", description="", created_at=0, modified_at=0, entity_count=0, version=None, file_path=None, is_valid=True
         )
 

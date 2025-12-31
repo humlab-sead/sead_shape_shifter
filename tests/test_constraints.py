@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from src.constraints import ForeignKeyConstraintValidator, ForeignKeyConstraintViolation, Validators
-from src.model import ForeignKeyConfig, ShapeShiftConfig
+from src.model import ForeignKeyConfig, ShapeShiftProject
 
 
 def build_fk(*, local_entity: str = "orders", remote_entity: str = "customers", constraints: dict | None = None) -> ForeignKeyConfig:
@@ -24,7 +24,7 @@ def build_fk(*, local_entity: str = "orders", remote_entity: str = "customers", 
             remote_entity: {"columns": ["id"]},
         }
     }
-    return ShapeShiftConfig(cfg=cfg).get_table(local_entity).foreign_keys[0]
+    return ShapeShiftProject(cfg=cfg).get_table(local_entity).foreign_keys[0]
 
 
 def test_validator_registry_lookup():

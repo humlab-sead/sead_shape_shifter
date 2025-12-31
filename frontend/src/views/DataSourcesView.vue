@@ -290,7 +290,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
-import { useConfigurationStore } from '@/stores/configuration'
+import { useProjectStore } from '@/stores/project'
 import {
   getDriverDisplayName,
   getDriverIcon,

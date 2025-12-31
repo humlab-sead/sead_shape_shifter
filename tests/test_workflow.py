@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 
-from src.model import ShapeShiftConfig
+from src.model import ShapeShiftProject
 from src.survey2excel import validate_entity_shapes, workflow
 from src.utility import load_shape_file
 
@@ -16,7 +16,7 @@ def test_workflow_using_survey_report_to_csv():
     translate: bool = False
 
     output_path: str = "tmp/arbodat/"
-    config: ShapeShiftConfig = ShapeShiftConfig.from_file(
+    config: ShapeShiftProject = ShapeShiftProject.from_file(
         config_file,
         env_prefix="SEAD_NORMALIZER",
         env_file=".env",
@@ -63,7 +63,7 @@ def test_workflow_using_survey_report_to_csv():
 def test_access_database_csv_workflow():
 
     config_file: str = "./input/arbodat-database.yml"
-    config: ShapeShiftConfig = ShapeShiftConfig.from_file(
+    config: ShapeShiftProject = ShapeShiftProject.from_file(
         config_file,
         env_prefix="SEAD_NORMALIZER",
         env_file=".env",

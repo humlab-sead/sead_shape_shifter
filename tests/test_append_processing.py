@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pandas as pd
 import pytest
 
-from src.model import ShapeShiftConfig
+from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from tests.decorators import with_test_config
 
@@ -47,7 +47,7 @@ def config_with_append():
             },
         }
     }
-    return ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
+    return ShapeShiftProject(cfg=cfg, filename="test-config.yml")
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def config_with_source_append():
             },
         }
     }
-    return ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
+    return ShapeShiftProject(cfg=cfg, filename="test-config.yml")
 
 
 @pytest.fixture
@@ -98,7 +98,7 @@ def config_with_distinct_mode():
             },
         }
     }
-    return ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
+    return ShapeShiftProject(cfg=cfg, filename="test-config.yml")
 
 
 class TestAppendProcessingBasic:
@@ -159,7 +159,7 @@ class TestAppendProcessingSQL:
     async def test_append_sql_query(self, sample_survey_data, test_provider):  # pylint: disable=unused-argument
         """Test appending data from SQL query."""
 
-        config_with_sql_append = ShapeShiftConfig(
+        config_with_sql_append = ShapeShiftProject(
             cfg={
                 "entities": {
                     "survey": {
@@ -209,8 +209,8 @@ class TestAppendProcessingMultiple:
     """Tests for multiple append configurations."""
 
     @pytest.fixture
-    def survey_only_config(self) -> ShapeShiftConfig:
-        return ShapeShiftConfig(
+    def survey_only_config(self) -> ShapeShiftProject:
+        return ShapeShiftProject(
             cfg={
                 "entities": {
                     "survey": {"depends_on": []},
@@ -244,7 +244,7 @@ class TestAppendProcessingMultiple:
             }
         }
 
-        config = ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
+        config = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
         table_store: dict[str, pd.DataFrame] = {"survey": sample_survey_data}
         normalizer = ShapeShifter(config=config, default_entity="survey", table_store=table_store)
 
@@ -288,7 +288,7 @@ class TestAppendProcessingEdgeCases:
             }
         }
 
-        config = ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
+        config = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
         empty_data = pd.DataFrame(columns=["site_name", "latitude"])
         table_store = {"default": empty_data}
         normalizer = ShapeShifter(config=config, table_store=table_store, default_entity="default")
@@ -329,7 +329,7 @@ class TestAppendProcessingEdgeCases:
             }
         }
 
-        config = ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
+        config = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
         table_store = {"survey": sample_survey_data}
         normalizer = ShapeShifter(default_entity="survey", config=config, table_store=table_store)
 

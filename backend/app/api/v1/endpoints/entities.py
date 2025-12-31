@@ -6,10 +6,10 @@ from fastapi import APIRouter, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from backend.app.models.config import Configuration
-from backend.app.services.config_service import (
-    ConfigurationService,
-    get_config_service,
+from backend.app.models.project import Project
+from backend.app.services.project_service import (
+    ProjectService,
+    get_project_service,
 )
 from backend.app.utils.error_handlers import handle_endpoint_errors
 
@@ -40,100 +40,100 @@ class EntityResponse(BaseModel):
 
 
 # Endpoints
-@router.get("/configurations/{config_name}/entities", response_model=list[EntityResponse])
+@router.get("/projects/{project_name}/entities", response_model=list[EntityResponse])
 @handle_endpoint_errors
-async def list_entities(config_name: str) -> list[EntityResponse]:
+async def list_entities(project_name: str) -> list[EntityResponse]:
     """
     List all entities in configuration.
 
     Args:
-        config_name: Configuration name
+        project_name: Project name
 
     Returns:
         List of entities with their data
     """
-    config_service: ConfigurationService = get_config_service()
-    config: Configuration = config_service.load_configuration(config_name)
+    project_service: ProjectService = get_project_service()
+    config: Project = project_service.load_project(project_name)
     entities = [EntityResponse(name=name, entity_data=data) for name, data in config.entities.items()]
-    logger.debug(f"Listed {len(entities)} entities in '{config_name}'")
+    logger.debug(f"Listed {len(entities)} entities in '{project_name}'")
     return entities
 
 
-@router.get("/configurations/{config_name}/entities/{entity_name}", response_model=EntityResponse)
+@router.get("/projects/{project_name}/entities/{entity_name}", response_model=EntityResponse)
 @handle_endpoint_errors
-async def get_entity(config_name: str, entity_name: str) -> EntityResponse:
+async def get_entity(project_name: str, entity_name: str) -> EntityResponse:
     """
     Get specific entity from configuration.
 
     Args:
-        config_name: Configuration name
+        project_name: Project name
         entity_name: Entity name
 
     Returns:
         Entity data
     """
-    config_service: ConfigurationService = get_config_service()
-    entity_data: dict[str, Any] = config_service.get_entity_by_name(config_name, entity_name)
-    logger.info(f"Retrieved entity '{entity_name}' from '{config_name}'")
+    project_service: ProjectService = get_project_service()
+    entity_data: dict[str, Any] = project_service.get_entity_by_name(project_name, entity_name)
+    logger.info(f"Retrieved entity '{entity_name}' from '{project_name}'")
     return EntityResponse(name=entity_name, entity_data=entity_data)
 
 
 @router.post(
-    "/configurations/{config_name}/entities",
+    "/projects/{project_name}/entities",
     response_model=EntityResponse,
     status_code=status.HTTP_201_CREATED,
 )
 @handle_endpoint_errors
-async def create_entity(config_name: str, request: EntityCreateRequest) -> EntityResponse:
+async def create_entity(project_name: str, request: EntityCreateRequest) -> EntityResponse:
     """
     Add new entity to configuration.
 
     Args:
-        config_name: Configuration name
+        project_name: Project name
         request: Entity creation request
 
     Returns:
         Created entity data
     """
-    config_service: ConfigurationService = get_config_service()
-    config_service.add_entity_by_name(config_name, request.name, request.entity_data)
-    logger.info(f"Added entity '{request.name}' to '{config_name}'")
+    project_service: ProjectService = get_project_service()
+    project_service.add_entity_by_name(project_name, request.name, request.entity_data)
+    logger.info(f"Added entity '{request.name}' to '{project_name}'")
     return EntityResponse(name=request.name, entity_data=request.entity_data)
 
 
-@router.put("/configurations/{config_name}/entities/{entity_name}", response_model=EntityResponse)
+@router.put("/projects/{project_name}/entities/{entity_name}", response_model=EntityResponse)
 @handle_endpoint_errors
-async def update_entity(config_name: str, entity_name: str, request: EntityUpdateRequest) -> EntityResponse:
+async def update_entity(project_name: str, entity_name: str, request: EntityUpdateRequest) -> EntityResponse:
     """
     Update existing entity in configuration.
 
     Args:
-        config_name: Configuration name
+        project_name: Project name
         entity_name: Entity name
         request: Entity update request
 
     Returns:
         Updated entity data
     """
-    config_service: ConfigurationService = get_config_service()
-    config_service.update_entity_by_name(config_name, entity_name, request.entity_data)
-    logger.info(f"Updated entity '{entity_name}' in '{config_name}'")
+    project_service: ProjectService = get_project_service()
+    project_service.update_entity_by_name(project_name, entity_name, request.entity_data)
+    logger.info(f"Updated entity '{entity_name}' in '{project_name}'")
     return EntityResponse(name=entity_name, entity_data=request.entity_data)
 
 
 @router.delete(
-    "/configurations/{config_name}/entities/{entity_name}",
+    "/projects/{project_name}/entities/{entity_name}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 @handle_endpoint_errors
-async def delete_entity(config_name: str, entity_name: str) -> None:
+async def delete_entity(project_name: str, entity_name: str) -> None:
     """
     Delete entity from configuration.
 
     Args:
-        config_name: Configuration name
+        project_name: Project name
         entity_name: Entity name
     """
-    config_service: ConfigurationService = get_config_service()
-    config_service.delete_entity_by_name(config_name, entity_name)
-    logger.info(f"Deleted entity '{entity_name}' from '{config_name}'")
+    project_service: ProjectService = get_project_service()
+    project_service.delete_entity_by_name(project_name, entity_name)
+    logger.info(f"Deleted entity '{entity_name}' from '{project_name}'")

@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from src.link import link_entity, link_foreign_key
-from src.model import ForeignKeyConfig, ShapeShiftConfig
+from src.model import ForeignKeyConfig, ShapeShiftProject
 
 # pylint: disable=redefined-outer-name
 
@@ -75,7 +75,7 @@ def test_link_foreign_key_renames_and_drops_remote_id(fk_config: ForeignKeyConfi
 
 def test_link_entity_returns_deferred_when_specification_defers(monkeypatch: pytest.MonkeyPatch):
     """link_entity should return True and skip linking when specification marks deferred."""
-    config = ShapeShiftConfig(
+    config = ShapeShiftProject(
         cfg={
             "entities": {
                 "local": {

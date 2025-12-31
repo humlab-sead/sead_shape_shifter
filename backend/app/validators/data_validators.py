@@ -11,7 +11,7 @@ from backend.app.models.validation import (
     ValidationError,
     ValidationPriority,
 )
-from backend.app.services.config_service import ConfigurationService
+from backend.app.services.project_service import ProjectService
 from backend.app.services.shapeshift_service import ShapeShiftService
 
 
@@ -22,12 +22,12 @@ class ColumnExistsValidator:
         """Initialize validator with preview service for data sampling."""
         self.preview_service = preview_service
 
-    async def validate(self, config_name: str, entity_name: str, entity_config: dict[str, Any]) -> list[ValidationError]:
+    async def validate(self, project_name: str, entity_name: str, entity_config: dict[str, Any]) -> list[ValidationError]:
         """
         Check that all configured columns exist in actual data.
 
         Args:
-            config_name: Configuration name
+            project_name: Configuration name
             entity_name: Entity name
             entity_config: Entity configuration dict
 
@@ -43,7 +43,7 @@ class ColumnExistsValidator:
 
         try:
             # Get sample data
-            preview_result = await self.preview_service.preview_entity(config_name=config_name, entity_name=entity_name, limit=10)
+            preview_result = await self.preview_service.preview_entity(project_name=project_name, entity_name=entity_name, limit=10)
 
             if not preview_result.rows:
                 # Can't validate without data - not necessarily an error
@@ -100,12 +100,12 @@ class NaturalKeyUniquenessValidator:
         """Initialize validator with preview service for data sampling."""
         self.preview_service = preview_service
 
-    async def validate(self, config_name: str, entity_name: str, entity_config: dict[str, Any]) -> list[ValidationError]:
+    async def validate(self, project_name: str, entity_name: str, entity_config: dict[str, Any]) -> list[ValidationError]:
         """
         Check that natural keys are unique in sample data.
 
         Args:
-            config_name: Configuration name
+            project_name: Configuration name
             entity_name: Entity name
             entity_config: Entity configuration dict
 
@@ -121,7 +121,7 @@ class NaturalKeyUniquenessValidator:
 
         try:
             # Get larger sample for better uniqueness check
-            preview_result = await self.preview_service.preview_entity(config_name=config_name, entity_name=entity_name, limit=1000)
+            preview_result = await self.preview_service.preview_entity(project_name=project_name, entity_name=entity_name, limit=1000)
 
             if not preview_result.rows or len(preview_result.rows) < 2:
                 # Need at least 2 rows to check uniqueness
@@ -189,12 +189,12 @@ class NonEmptyResultValidator:
         """Initialize validator with preview service for data sampling."""
         self.preview_service = preview_service
 
-    async def validate(self, config_name: str, entity_name: str, entity_config: dict[str, Any]) -> list[ValidationError]:
+    async def validate(self, project_name: str, entity_name: str, entity_config: dict[str, Any]) -> list[ValidationError]:
         """
         Check that entity returns at least one row of data.
 
         Args:
-            config_name: Configuration name
+            project_name: Configuration name
             entity_name: Entity name
             entity_config: Entity configuration dict
 
@@ -211,7 +211,7 @@ class NonEmptyResultValidator:
 
         try:
             # Try to get at least 1 row
-            preview_result = await self.preview_service.preview_entity(config_name=config_name, entity_name=entity_name, limit=1)
+            preview_result = await self.preview_service.preview_entity(project_name=project_name, entity_name=entity_name, limit=1)
 
             if not preview_result.rows or len(preview_result.rows) == 0:
                 errors.append(
@@ -259,7 +259,7 @@ class ForeignKeyDataValidator:
     - Match percentage meets threshold
     """
 
-    async def validate(self, config_name: str, entity_name: str, entity_config: Any) -> list[ValidationError]:
+    async def validate(self, project_name: str, entity_name: str, entity_config: Any) -> list[ValidationError]:
         """Validate foreign key data integrity."""
 
         errors = []
@@ -267,12 +267,12 @@ class ForeignKeyDataValidator:
         if not entity_config.foreign_keys:
             return errors
 
-        config_service = ConfigurationService()
-        preview_service = ShapeShiftService(config_service)
+        project_service = ProjectService()
+        preview_service = ShapeShiftService(project_service)
 
         try:
             # Load sample data for this entity
-            local_result = await preview_service.preview_entity(config_name, entity_name, limit=1000)
+            local_result = await preview_service.preview_entity(project_name, entity_name, limit=1000)
             if not local_result.rows:
                 # Empty result, NonEmptyResultValidator will handle this
                 return errors
@@ -302,7 +302,7 @@ class ForeignKeyDataValidator:
 
                 # Load remote entity data
                 try:
-                    remote_result = await preview_service.preview_entity(config_name, remote_entity, limit=1000)
+                    remote_result = await preview_service.preview_entity(project_name, remote_entity, limit=1000)
                     if not remote_result.rows:
                         errors.append(
                             ValidationError(
@@ -396,7 +396,7 @@ class DataTypeCompatibilityValidator:
     - Warns about type mismatches that may cause issues
     """
 
-    async def validate(self, config_name: str, entity_name: str, entity_config: Any) -> list[ValidationError]:
+    async def validate(self, project_name: str, entity_name: str, entity_config: Any) -> list[ValidationError]:
         """Validate foreign key column type compatibility."""
 
         errors = []
@@ -404,12 +404,12 @@ class DataTypeCompatibilityValidator:
         if not entity_config.foreign_keys:
             return errors
 
-        config_service = ConfigurationService()
-        preview_service = ShapeShiftService(config_service)
+        project_service = ProjectService()
+        preview_service = ShapeShiftService(project_service)
 
         try:
             # Load sample data for this entity
-            local_result = await preview_service.preview_entity(config_name, entity_name, limit=100)
+            local_result = await preview_service.preview_entity(project_name, entity_name, limit=100)
             if not local_result.rows:
                 return errors
 
@@ -426,7 +426,7 @@ class DataTypeCompatibilityValidator:
 
                 # Load remote entity data
                 try:
-                    remote_result = await preview_service.preview_entity(config_name, remote_entity, limit=100)
+                    remote_result = await preview_service.preview_entity(project_name, remote_entity, limit=100)
                     if not remote_result.rows:
                         continue  # ForeignKeyDataValidator will catch this
 
@@ -505,12 +505,12 @@ class DataValidationService:
             DataTypeCompatibilityValidator(),
         ]
 
-    async def validate_entity(self, config_name: str, entity_name: str, entity_config: dict[str, Any]) -> list[ValidationError]:
+    async def validate_entity(self, project_name: str, entity_name: str, entity_config: dict[str, Any]) -> list[ValidationError]:
         """
         Run all data validators on an entity.
 
         Args:
-            config_name: Configuration name
+            project_name: Configuration name
             entity_name: Entity name
             entity_config: Entity configuration dict
 
@@ -521,7 +521,7 @@ class DataValidationService:
 
         # Run all validators concurrently
         results = await asyncio.gather(
-            *[validator.validate(config_name, entity_name, entity_config) for validator in self.validators],
+            *[validator.validate(project_name, entity_name, entity_config) for validator in self.validators],
             return_exceptions=True,
         )
 
@@ -544,26 +544,26 @@ class DataValidationService:
 
         return all_errors
 
-    async def validate_configuration(self, config_name: str, entity_names: list[str] | None = None) -> list[ValidationError]:
+    async def validate_configuration(self, project_name: str, entity_names: list[str] | None = None) -> list[ValidationError]:
         """
         Run data validators on multiple entities.
 
         Args:
-            config_name: Configuration name
+            project_name: Configuration name
             entity_names: Optional list of entity names to validate (None = all)
 
         Returns:
             List of all validation errors found
         """
 
-        config_service = ConfigurationService()
-        config = config_service.load_configuration(config_name)
+        project_service = ProjectService()
+        config = project_service.load_project(project_name)
 
         if not config:
             return [
                 ValidationError(
                     severity="error",
-                    message=f"Configuration '{config_name}' not found",
+                    message=f"Configuration '{project_name}' not found",
                     code="CONFIG_NOT_FOUND",
                     category=ValidationCategory.STRUCTURAL,
                     priority=ValidationPriority.CRITICAL,
@@ -576,7 +576,7 @@ class DataValidationService:
         # Run validators on each entity concurrently
         results = await asyncio.gather(
             *[
-                self.validate_entity(config_name, entity_name, config.entities[entity_name])
+                self.validate_entity(project_name, entity_name, config.entities[entity_name])
                 for entity_name in entities_to_validate
                 if entity_name in config.entities
             ],

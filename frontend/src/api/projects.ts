@@ -3,18 +3,18 @@
  */
 
 import type {
-  Configuration,
+  Project,
   ConfigMetadata,
   ValidationResult,
 } from '@/types'
 import { apiRequest } from './client'
 
-export interface ConfigurationCreateRequest {
+export interface ProjectCreateRequest {
   name: string
   entities?: Record<string, unknown>
 }
 
-export interface ConfigurationUpdateRequest {
+export interface ProjectUpdateRequest {
   entities: Record<string, unknown>
   options: Record<string, unknown>
 }
@@ -37,7 +37,7 @@ export interface MetadataUpdateRequest {
 }
 
 /**
- * Configuration API service
+ * Project API service
  */
 export const configurationsApi = {
   /**
@@ -53,8 +53,8 @@ export const configurationsApi = {
   /**
    * Get specific configuration
    */
-  get: async (name: string): Promise<Configuration> => {
-    return apiRequest<Configuration>({
+  get: async (name: string): Promise<Project> => {
+    return apiRequest<Project>({
       method: 'GET',
       url: `/configurations/${name}`,
     })
@@ -63,8 +63,8 @@ export const configurationsApi = {
   /**
    * Create new configuration
    */
-  create: async (data: ConfigurationCreateRequest): Promise<Configuration> => {
-    return apiRequest<Configuration>({
+  create: async (data: ProjectCreateRequest): Promise<Project> => {
+    return apiRequest<Project>({
       method: 'POST',
       url: '/configurations',
       data,
@@ -76,9 +76,9 @@ export const configurationsApi = {
    */
   update: async (
     name: string,
-    data: ConfigurationUpdateRequest
-  ): Promise<Configuration> => {
-    return apiRequest<Configuration>({
+    data: ProjectUpdateRequest
+  ): Promise<Project> => {
+    return apiRequest<Project>({
       method: 'PUT',
       url: `/configurations/${name}`,
       data,
@@ -91,8 +91,8 @@ export const configurationsApi = {
   updateMetadata: async (
     name: string,
     data: MetadataUpdateRequest
-  ): Promise<Configuration> => {
-    return apiRequest<Configuration>({
+  ): Promise<Project> => {
+    return apiRequest<Project>({
       method: 'PATCH',
       url: `/configurations/${name}/metadata`,
       data,
@@ -135,8 +135,8 @@ export const configurationsApi = {
   restore: async (
     name: string,
     data: RestoreBackupRequest
-  ): Promise<Configuration> => {
-    return apiRequest<Configuration>({
+  ): Promise<Project> => {
+    return apiRequest<Project>({
       method: 'POST',
       url: `/configurations/${name}/restore`,
       data,
@@ -156,8 +156,8 @@ export const configurationsApi = {
   /**
    * Activate (load) a configuration
    */
-  activate: async (name: string): Promise<Configuration> => {
-    return apiRequest<Configuration>({
+  activate: async (name: string): Promise<Project> => {
+    return apiRequest<Project>({
       method: 'POST',
       url: `/configurations/${name}/activate`,
     })
@@ -180,8 +180,8 @@ export const configurationsApi = {
     name: string,
     sourceName: string,
     sourceFilename: string
-  ): Promise<Configuration> => {
-    return apiRequest<Configuration>({
+  ): Promise<Project> => {
+    return apiRequest<Project>({
       method: 'POST',
       url: `/configurations/${name}/data-sources`,
       data: {
@@ -197,8 +197,8 @@ export const configurationsApi = {
   disconnectDataSource: async (
     name: string,
     sourceName: string
-  ): Promise<Configuration> => {
-    return apiRequest<Configuration>({
+  ): Promise<Project> => {
+    return apiRequest<Project>({
       method: 'DELETE',
       url: `/configurations/${name}/data-sources/${sourceName}`,
     })

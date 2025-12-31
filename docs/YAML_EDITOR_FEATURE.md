@@ -2,7 +2,7 @@
 
 ## Overview
 
-The YAML Editor feature provides a dual-mode editing experience for entity configuration, similar to VS Code's settings editor. Users can seamlessly switch between a visual form editor and a raw YAML code editor.
+The YAML Editor feature provides a dual-mode editing experience for entity, similar to VS Code's settings editor. Users can seamlessly switch between a visual form editor and a raw YAML code editor.
 
 ## Feature Highlights
 
@@ -252,7 +252,7 @@ watch(
 2. Dialog opens with **Form tab** active
 3. User fills in form fields (Entity Name, Type, etc.)
 4. User clicks **YAML tab** to see generated YAML
-5. YAML editor shows converted entity configuration
+5. YAML editor shows converted entity
 6. User can edit YAML directly or switch back to Form
 7. Click **Save** to persist changes
 
@@ -269,7 +269,7 @@ watch(
 
 ### Workflow 3: Copy-Paste from Documentation
 
-1. User finds entity configuration example in docs
+1. User finds entity example in docs
 2. Opens entity editor and switches to **YAML tab**
 3. Copies YAML from documentation
 4. Pastes into YAML editor
@@ -448,7 +448,7 @@ describe('EntityFormDialog YAML Integration', () => {
 
 **Backend Validation Endpoint:**
 ```typescript
-POST /api/v1/configurations/{name}/entities/validate-yaml
+POST /api/v1/projects/{name}/entities/validate-yaml
 {
   "yaml": "entity_name:\n  type: data\n  ..."
 }
@@ -486,7 +486,7 @@ Response:
 - [User Guide](./USER_GUIDE.md) - General entity editing workflows
 - [UI Architecture](./UI_ARCHITECTURE.md) - Frontend architecture details
 - [Entity State Management](./ENTITY_STATE_MANAGEMENT.md) - State management patterns
-- [Configuration Guide](./CONFIGURATION_GUIDE.md) - YAML configuration reference
+- [Project Guide](./CONFIGURATION_GUIDE.md) - YAML configuration reference
 
 ## Support
 

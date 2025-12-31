@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.core.config import settings
 from backend.app.main import app
-from backend.app.services import config_service, dependency_service, validation_service, yaml_service
+from backend.app.services import dependency_service, project_service, validation_service, yaml_service
 
 client = TestClient(app)
 
@@ -16,14 +16,14 @@ client = TestClient(app)
 def reset_services():
     """Reset service singletons between tests."""
 
-    config_service._config_service = None
+    project_service._project_service = None
     dependency_service._dependency_service = None
     validation_service._validation_service = None
     yaml_service._yaml_service = None
 
     yield
 
-    config_service._config_service = None
+    project_service._project_service = None
     dependency_service._dependency_service = None
     validation_service._validation_service = None
     yaml_service._yaml_service = None
@@ -41,16 +41,16 @@ class TestEntityValidation:
     def test_validate_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test validating specific entity."""
 
-        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create config
         client.post(
-            "/api/v1/configurations",
-            json={"name": "test_config", "entities": {"sample": sample_entity_data}},
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"sample": sample_entity_data}},
         )
 
         # Validate entity
-        response = client.post("/api/v1/configurations/test_config/entities/sample/validate")
+        response = client.post("/api/v1/projects/test_project/entities/sample/validate")
         assert response.status_code == 200
         data = response.json()
         assert "is_valid" in data
@@ -60,16 +60,16 @@ class TestEntityValidation:
     def test_validate_nonexistent_entity(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test validating non-existent entity."""
 
-        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create config
         client.post(
-            "/api/v1/configurations",
-            json={"name": "test_config", "entities": {"sample": sample_entity_data}},
+            "/api/v1/projects",
+            json={"name": "test_project", "entities": {"sample": sample_entity_data}},
         )
 
         # Validate non-existent entity - returns validation result with no entity-specific errors
-        response = client.post("/api/v1/configurations/test_config/entities/nonexistent/validate")
+        response = client.post("/api/v1/projects/test_project/entities/nonexistent/validate")
         assert response.status_code == 200
         data = response.json()
         # Since the entity doesn't exist, there are no errors specific to it
@@ -79,10 +79,10 @@ class TestEntityValidation:
     def test_validate_entity_nonexistent_config(self, tmp_path, monkeypatch, reset_services):
         """Test validating entity in non-existent configuration."""
 
-        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Validate entity in non-existent config
-        response = client.post("/api/v1/configurations/nonexistent/entities/sample/validate")
+        response = client.post("/api/v1/projects/nonexistent/entities/sample/validate")
         assert response.status_code == 404
 
 
@@ -92,17 +92,17 @@ class TestDependencies:
     def test_get_dependencies_simple(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test getting dependency graph with simple dependencies."""
 
-        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create config with dependencies
         entities = {
             "base": sample_entity_data,
             "derived": {**sample_entity_data, "source": "base"},
         }
-        client.post("/api/v1/configurations", json={"name": "test_config", "entities": entities})
+        client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
 
         # Get dependencies
-        response = client.get("/api/v1/configurations/test_config/dependencies")
+        response = client.get("/api/v1/projects/test_project/dependencies")
         assert response.status_code == 200
         data = response.json()
         assert "nodes" in data
@@ -115,14 +115,14 @@ class TestDependencies:
     def test_get_dependencies_no_deps(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test getting dependency graph with no dependencies."""
 
-        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create config without dependencies
         entities = {"entity1": sample_entity_data, "entity2": sample_entity_data}
-        client.post("/api/v1/configurations", json={"name": "test_config", "entities": entities})
+        client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
 
         # Get dependencies
-        response = client.get("/api/v1/configurations/test_config/dependencies")
+        response = client.get("/api/v1/projects/test_project/dependencies")
         assert response.status_code == 200
         data = response.json()
         assert len(data["nodes"]) == 2
@@ -132,17 +132,17 @@ class TestDependencies:
     def test_get_dependencies_with_cycles(self, tmp_path, monkeypatch, reset_services):
         """Test getting dependency graph with circular dependencies."""
 
-        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create config with circular dependencies
         entities = {
             "entity1": {"type": "data", "keys": ["id"], "source": "entity2"},
             "entity2": {"type": "data", "keys": ["id"], "source": "entity1"},
         }
-        client.post("/api/v1/configurations", json={"name": "test_config", "entities": entities})
+        client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
 
         # Get dependencies
-        response = client.get("/api/v1/configurations/test_config/dependencies")
+        response = client.get("/api/v1/projects/test_project/dependencies")
         assert response.status_code == 200
         data = response.json()
         assert data["has_cycles"] is True
@@ -151,10 +151,10 @@ class TestDependencies:
     def test_get_dependencies_nonexistent_config(self, tmp_path, monkeypatch, reset_services):
         """Test getting dependencies for non-existent configuration."""
 
-        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Get dependencies for non-existent config
-        response = client.get("/api/v1/configurations/nonexistent/dependencies")
+        response = client.get("/api/v1/projects/nonexistent/dependencies")
         assert response.status_code == 404
 
 
@@ -164,17 +164,17 @@ class TestCircularDependencyCheck:
     def test_check_no_cycles(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test checking for circular dependencies when none exist."""
 
-        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create config without cycles
         entities = {
             "base": sample_entity_data,
             "derived": {**sample_entity_data, "source": "base"},
         }
-        client.post("/api/v1/configurations", json={"name": "test_config", "entities": entities})
+        client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
 
         # Check dependencies
-        response = client.post("/api/v1/configurations/test_config/dependencies/check")
+        response = client.post("/api/v1/projects/test_project/dependencies/check")
         assert response.status_code == 200
         data = response.json()
         assert data["has_cycles"] is False
@@ -184,17 +184,17 @@ class TestCircularDependencyCheck:
     def test_check_with_cycles(self, tmp_path, monkeypatch, reset_services):
         """Test checking for circular dependencies when they exist."""
 
-        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create config with circular dependencies
         entities = {
             "entity1": {"type": "data", "keys": ["id"], "source": "entity2"},
             "entity2": {"type": "data", "keys": ["id"], "source": "entity1"},
         }
-        client.post("/api/v1/configurations", json={"name": "test_config", "entities": entities})
+        client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
 
         # Check dependencies
-        response = client.post("/api/v1/configurations/test_config/dependencies/check")
+        response = client.post("/api/v1/projects/test_project/dependencies/check")
         assert response.status_code == 200
         data = response.json()
         assert data["has_cycles"] is True
@@ -204,8 +204,8 @@ class TestCircularDependencyCheck:
     def test_check_dependencies_nonexistent_config(self, tmp_path, monkeypatch, reset_services):
         """Test checking dependencies for non-existent configuration."""
 
-        monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Check dependencies for non-existent config
-        response = client.post("/api/v1/configurations/nonexistent/dependencies/check")
+        response = client.post("/api/v1/projects/nonexistent/dependencies/check")
         assert response.status_code == 404

@@ -23,7 +23,7 @@ def mock_config():
 @pytest.fixture
 def service(settings: "Settings") -> DataSourceService:
     """Create service with mock config."""
-    return DataSourceService(settings.CONFIGURATIONS_DIR)
+    return DataSourceService(settings.PROJECTS_DIR)
 
 
 class TestEnvironmentVariableResolution:
@@ -167,7 +167,7 @@ class TestEnvironmentVariableResolution:
         os.environ["DS_HOST"] = "db.example.com"
         os.environ["DS_DB"] = "production"
 
-        service = DataSourceService(settings.CONFIGURATIONS_DIR)
+        service = DataSourceService(settings.PROJECTS_DIR)
 
         try:
             ds_cfg: DataSourceConfig = DataSourceConfig(

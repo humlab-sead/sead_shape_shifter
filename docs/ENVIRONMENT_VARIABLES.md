@@ -6,7 +6,7 @@ The Shape Shifter data source system now supports automatic resolution of enviro
 
 ## How It Works
 
-### In Configuration Files (Core System)
+### In Project Files (Core System)
 
 When loading configurations through the core system (e.g., `arbodat-database.yml`), environment variables are automatically resolved by the `src.configuration` framework.
 

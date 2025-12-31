@@ -9,13 +9,13 @@ The frontend now supports multi-user configuration editing with session manageme
 ### 1. Types (`frontend/src/types/session.ts`)
 ```typescript
 export interface SessionCreateRequest {
-  config_name: string
+  project_name: string
   user_id?: string | null
 }
 
 export interface SessionResponse {
   session_id: string
-  config_name: string
+  project_name: string
   user_id: string | null
   loaded_at: string
   last_accessed: string
@@ -30,7 +30,7 @@ export interface SessionResponse {
 import { sessionsApi } from '@/api/sessions'
 
 // Create session
-const session = await sessionsApi.create({ config_name: 'my_config' })
+const session = await sessionsApi.create({ project_name: 'my_config' })
 
 // Get current session
 const current = await sessionsApi.getCurrent()
@@ -49,7 +49,7 @@ import { useSessionStore } from '@/stores/session'
 const sessionStore = useSessionStore()
 
 // Create session
-await sessionStore.createSession({ config_name: 'my_config' })
+await sessionStore.createSession({ project_name: 'my_config' })
 
 // Access state
 sessionStore.hasActiveSession // boolean
@@ -104,15 +104,15 @@ onUnmounted(() => {
 })
 ```
 
-### 5. Updated Configuration Store
+### 5. Updated Project Store
 The configuration store now integrates with sessions:
 ```typescript
-import { useConfigurationStore } from '@/stores/configuration'
+import { useProjectStore } from '@/stores/configuration'
 
-const configStore = useConfigurationStore()
+const configStore = useProjectStore()
 
 // Save (session-aware)
-await configStore.saveConfiguration()
+await configStore.saveProject()
 // Automatically includes version if session active
 // Increments session version on success
 // Throws 409 error on conflict
@@ -156,11 +156,11 @@ Complete example showing:
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { useSession } from '@/composables'
-import { useConfigurationStore } from '@/stores'
+import { useProjectStore } from '@/stores'
 
 const props = defineProps<{ configName: string }>()
 
-const configStore = useConfigurationStore()
+const configStore = useProjectStore()
 const {
   hasActiveSession,
   isModified,
@@ -176,7 +176,7 @@ onMounted(async () => {
   await startSession(props.configName)
   
   // Load config
-  await configStore.selectConfiguration(props.configName)
+  await configStore.selectProject(props.configName)
   
   // Watch for changes
   watchConfigChanges()
@@ -259,7 +259,7 @@ router.beforeRouteLeave((to, from, next) => {
 ### 1. Optimistic Concurrency Control
 ```typescript
 // Version is automatically included in save requests
-await configStore.saveConfiguration()
+await configStore.saveProject()
 
 // On conflict (409 error):
 // - Error message shown
@@ -285,7 +285,7 @@ if (concurrentEditWarning.value) {
 ```typescript
 // Create → Load → Edit → Save → Close
 await startSession('my_config')           // 1. Create
-await configStore.selectConfiguration()   // 2. Load
+await configStore.selectProject()   // 2. Load
 configStore.markAsChanged()               // 3. Edit
 await saveWithVersionCheck()              // 4. Save
 await endSession()                        // 5. Close
@@ -304,9 +304,9 @@ onUnmounted(() => {
 
 ## API Changes
 
-### Updated Configuration Store Methods
+### Updated Project Store Methods
 
-**`saveConfiguration()`**
+**`saveProject()`**
 - Now session-aware
 - Includes `version` in request if session active
 - Increments session version on success
@@ -316,7 +316,7 @@ onUnmounted(() => {
 - Marks both config and session as modified
 - Triggers auto-save prompts
 
-### New API Client Configuration
+### New API Client Project
 
 **Cookie Support Enabled**
 ```typescript
@@ -364,7 +364,7 @@ try {
 describe('SessionStore', () => {
   it('creates session and stores state', async () => {
     const store = useSessionStore()
-    await store.createSession({ config_name: 'test' })
+    await store.createSession({ project_name: 'test' })
     expect(store.hasActiveSession).toBe(true)
   })
 
@@ -430,14 +430,14 @@ it('creates session, edits, and saves', async () => {
 **Before:**
 ```vue
 <script setup lang="ts">
-const configStore = useConfigurationStore()
+const configStore = useProjectStore()
 
 onMounted(async () => {
-  await configStore.selectConfiguration('my_config')
+  await configStore.selectProject('my_config')
 })
 
 async function save() {
-  await configStore.updateConfiguration('my_config', {...})
+  await configStore.updateProject('my_config', {...})
 }
 </script>
 ```
@@ -445,12 +445,12 @@ async function save() {
 **After:**
 ```vue
 <script setup lang="ts">
-const configStore = useConfigurationStore()
+const configStore = useProjectStore()
 const { startSession, endSession, saveWithVersionCheck } = useSession()
 
 onMounted(async () => {
   await startSession('my_config')
-  await configStore.selectConfiguration('my_config')
+  await configStore.selectProject('my_config')
 })
 
 onUnmounted(async () => {
@@ -490,14 +490,14 @@ Frontend should:
 ### WebSocket Real-Time Updates
 ```typescript
 // Notify when other users save
-socket.on('config:updated', ({ config_name, version, user }) => {
-  if (sessionStore.configName === config_name) {
+socket.on('config:updated', ({ project_name, version, user }) => {
+  if (sessionStore.configName === project_name) {
     // Show notification
     notify(`${user} saved changes (v${version})`)
     
     // Optional: auto-reload
     if (!sessionStore.isModified) {
-      configStore.selectConfiguration(config_name)
+      configStore.selectProject(project_name)
     }
   }
 })

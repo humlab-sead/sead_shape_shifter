@@ -6,15 +6,15 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
-from src.model import ShapeShiftConfig
+from src.model import ShapeShiftProject
 from src.normalizer import ProcessState, ShapeShifter
 
 # pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
-def survey_only_config() -> ShapeShiftConfig:
-    return ShapeShiftConfig(
+def survey_only_config() -> ShapeShiftProject:
+    return ShapeShiftProject(
         cfg={
             "entities": {
                 "survey": {"depends_on": []},
@@ -24,8 +24,8 @@ def survey_only_config() -> ShapeShiftConfig:
 
 
 @pytest.fixture
-def survey_and_site_config() -> ShapeShiftConfig:
-    return ShapeShiftConfig(
+def survey_and_site_config() -> ShapeShiftProject:
+    return ShapeShiftProject(
         cfg={
             "entities": {
                 "survey": {"depends_on": []},
@@ -49,7 +49,7 @@ class TestProcessState:
 
     def test_initialization(self):
         """Test ProcessState initialization."""
-        config = ShapeShiftConfig(
+        config = ShapeShiftProject(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -67,7 +67,7 @@ class TestProcessState:
 
     def test_get_next_entity_no_dependencies(self):
         """Test getting next entity when no dependencies exist."""
-        config = ShapeShiftConfig(
+        config = ShapeShiftProject(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -89,7 +89,7 @@ class TestProcessState:
 
     def test_get_next_entity_with_dependencies(self):
         """Test getting next entity respecting dependencies."""
-        config = ShapeShiftConfig(
+        config = ShapeShiftProject(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -111,7 +111,7 @@ class TestProcessState:
         next_entity = state.get_next_entity_to_process()
         assert next_entity == "sample"
 
-    def test_get_next_entity_all_processed(self, survey_only_config: ShapeShiftConfig):
+    def test_get_next_entity_all_processed(self, survey_only_config: ShapeShiftProject):
         """Test getting next entity when all are processed."""
 
         state = ProcessState(config=survey_only_config, table_store={"survey": Mock()})
@@ -122,7 +122,7 @@ class TestProcessState:
 
     def test_get_required_entities_collects_dependencies(self):
         """Test collecting all dependencies for a target entity."""
-        cfg = ShapeShiftConfig(
+        cfg = ShapeShiftProject(
             cfg={
                 "entities": {
                     "survey": {"depends_on": []},
@@ -138,7 +138,7 @@ class TestProcessState:
 
     def test_get_unmet_dependencies(self):
         """Test getting unmet dependencies for an entity."""
-        config = ShapeShiftConfig(
+        config = ShapeShiftProject(
             cfg={"entities": {"site": {"depends_on": []}, "sample": {"depends_on": ["site", "taxa"]}, "taxa": {"depends_on": []}}},
         )
 
@@ -154,7 +154,7 @@ class TestProcessState:
 
     def test_discard(self):
         """Test discarding (marking as processed) an entity."""
-        config = ShapeShiftConfig(
+        config = ShapeShiftProject(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -173,7 +173,7 @@ class TestProcessState:
 
     def test_get_all_unmet_dependencies(self):
         """Test getting all unmet dependencies."""
-        config = ShapeShiftConfig(
+        config = ShapeShiftProject(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -195,7 +195,7 @@ class TestProcessState:
 
     def test_processed_entities_property(self):
         """Test the processed_entities property."""
-        config = ShapeShiftConfig(
+        config = ShapeShiftProject(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -216,7 +216,7 @@ class TestProcessState:
 
     def test_get_next_entity_with_unresolvable_dependencies(self):
         """Circular dependencies should yield no next entity."""
-        config = ShapeShiftConfig(
+        config = ShapeShiftProject(
             cfg={
                 "entities": {
                     "a": {"depends_on": ["b"]},
@@ -238,7 +238,7 @@ class TestProcessState:
 class TestShapeShifter:
     """Tests for ShapeShifter class."""
 
-    def test_initialization(self, survey_only_config: ShapeShiftConfig):
+    def test_initialization(self, survey_only_config: ShapeShiftProject):
         """Test ShapeShifter initialization."""
         df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
@@ -247,10 +247,10 @@ class TestShapeShifter:
 
         assert "survey" in normalizer.table_store
         pd.testing.assert_frame_equal(normalizer.table_store["survey"], df)
-        assert isinstance(normalizer.config, ShapeShiftConfig)
+        assert isinstance(normalizer.config, ShapeShiftProject)
         assert isinstance(normalizer.state, ProcessState)
 
-    def test_survey_property(self, survey_only_config: ShapeShiftConfig):
+    def test_survey_property(self, survey_only_config: ShapeShiftProject):
         """Test the survey property."""
         df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
@@ -263,7 +263,7 @@ class TestShapeShifter:
         """Test resolving source from survey DataFrame."""
         survey_df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
 
-        config = ShapeShiftConfig(
+        config = ShapeShiftProject(
             cfg={
                 "entities": {
                     "site": {"depends_on": []},
@@ -290,7 +290,7 @@ class TestShapeShifter:
         df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_name": ["A", "B"]})
 
-        cfg: ShapeShiftConfig = ShapeShiftConfig(
+        cfg: ShapeShiftProject = ShapeShiftProject(
             cfg={
                 "entities": {
                     "survey": {"depends_on": []},
@@ -311,7 +311,7 @@ class TestShapeShifter:
         pd.testing.assert_frame_equal(result, site_df)
 
     @pytest.mark.asyncio
-    async def test_resolve_source_not_found(self, survey_only_config: ShapeShiftConfig):
+    async def test_resolve_source_not_found(self, survey_only_config: ShapeShiftProject):
         """Test resolving source that doesn't exist."""
         df = pd.DataFrame({"col1": [1, 2]})
 
@@ -326,7 +326,7 @@ class TestShapeShifter:
             await normalizer.resolve_source(table_cfg)
 
     @pytest.mark.asyncio
-    async def test_resolve_source_fixed_data(self, survey_only_config: ShapeShiftConfig):
+    async def test_resolve_source_fixed_data(self, survey_only_config: ShapeShiftProject):
         """Test resolving fixed data source."""
         df = pd.DataFrame({"col1": [1, 2]})
 
@@ -350,7 +350,7 @@ class TestShapeShifter:
             mock_loader.load.assert_called_once_with(entity_name="test_entity", table_cfg=table_cfg)
 
     @pytest.mark.asyncio
-    async def test_resolve_source_sql_data(self, survey_only_config: ShapeShiftConfig):
+    async def test_resolve_source_sql_data(self, survey_only_config: ShapeShiftProject):
         """Test resolving SQL data source."""
         df = pd.DataFrame({"col1": [1, 2]})
 
@@ -372,7 +372,7 @@ class TestShapeShifter:
             pd.testing.assert_frame_equal(result, sql_df)
             mock_loader.load.assert_called_once_with(entity_name="test_sql_entity", table_cfg=table_cfg)
 
-    def test_register(self, survey_only_config: ShapeShiftConfig):
+    def test_register(self, survey_only_config: ShapeShiftProject):
         """Test registering a DataFrame."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(config=survey_only_config, default_entity="survey", table_store={"survey": df})
@@ -384,7 +384,7 @@ class TestShapeShifter:
         pd.testing.assert_frame_equal(normalizer.table_store["site"], new_df)
         pd.testing.assert_frame_equal(result, new_df)
 
-    def test_translate(self, survey_and_site_config: ShapeShiftConfig):
+    def test_translate(self, survey_and_site_config: ShapeShiftProject):
         """Test translating column names."""
         df = pd.DataFrame({"Ort": ["Berlin"], "Datum": ["2020-01-01"]})
         normalizer = ShapeShifter(config=survey_and_site_config, default_entity="survey")
@@ -408,7 +408,7 @@ class TestShapeShifter:
             assert list(normalizer.table_store["survey"].columns) == ["location", "date"]
             assert list(normalizer.table_store["site"].columns) == ["location"]
 
-    def test_drop_foreign_key_columns(self, survey_and_site_config: ShapeShiftConfig):
+    def test_drop_foreign_key_columns(self, survey_and_site_config: ShapeShiftProject):
         """Test dropping foreign key columns."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(config=survey_and_site_config, default_entity="survey")
@@ -429,7 +429,7 @@ class TestShapeShifter:
                 mock_table_cfg.drop_fk_columns.assert_called_once()
                 assert "location_id" not in normalizer.table_store["site"].columns
 
-    def test_add_system_id_columns(self, survey_and_site_config: ShapeShiftConfig):
+    def test_add_system_id_columns(self, survey_and_site_config: ShapeShiftProject):
         """Test adding system_id columns."""
         df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
@@ -448,7 +448,7 @@ class TestShapeShifter:
                 mock_table_cfg.add_system_id_column.assert_called_once()
                 assert "system_id" in normalizer.table_store["site"].columns
 
-    def test_move_keys_to_front(self, survey_and_site_config: ShapeShiftConfig):
+    def test_move_keys_to_front(self, survey_and_site_config: ShapeShiftProject):
         """Test moving key columns to front."""
         survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"name": ["A", "B"], "site_id": [1, 2], "location": ["X", "Y"]})
@@ -466,7 +466,7 @@ class TestShapeShifter:
                 # Verify site_id is first column
                 assert normalizer.table_store["site"].columns[0] == "site_id"
 
-    def test_unnest_entity(self, survey_and_site_config: ShapeShiftConfig):
+    def test_unnest_entity(self, survey_and_site_config: ShapeShiftProject):
         """Test unnesting a single entity."""
         survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_id": [1], "Ort": ["Berlin"], "Kreis": ["Mitte"]})
@@ -486,7 +486,7 @@ class TestShapeShifter:
                 pd.testing.assert_frame_equal(result, unnested_df)
                 assert len(normalizer.table_store["site"]) == 2
 
-    def test_unnest_entity_no_unnest_config(self, survey_only_config: ShapeShiftConfig):
+    def test_unnest_entity_no_unnest_config(self, survey_only_config: ShapeShiftProject):
         """Test unnesting when no unnest configuration exists."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(config=survey_only_config, default_entity="survey")
@@ -504,7 +504,7 @@ class TestShapeShifter:
             # Should return unchanged
             pd.testing.assert_frame_equal(result, site_df)
 
-    def test_store_xlsx(self, survey_only_config: ShapeShiftConfig):
+    def test_store_xlsx(self, survey_only_config: ShapeShiftProject):
         """Test storing data as XLSX."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(config=survey_only_config, default_entity="survey")
@@ -520,7 +520,7 @@ class TestShapeShifter:
             mock_dispatcher_cls.assert_called_once_with(survey_only_config)
             mock_dispatcher.dispatch.assert_called_once_with(target="output.xlsx", data=normalizer.table_store)
 
-    def test_store_csv(self, survey_only_config: ShapeShiftConfig):
+    def test_store_csv(self, survey_only_config: ShapeShiftProject):
         """Test storing data as CSV."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(config=survey_only_config, default_entity="survey")
@@ -536,7 +536,7 @@ class TestShapeShifter:
             mock_dispatcher_cls.assert_called_once_with(survey_only_config)
             mock_dispatcher.dispatch.assert_called_once_with(target="output_dir", data=normalizer.table_store)
 
-    def test_store_unsupported_mode(self, survey_only_config: ShapeShiftConfig):
+    def test_store_unsupported_mode(self, survey_only_config: ShapeShiftProject):
         """Test storing with unsupported mode."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(config=survey_only_config, default_entity="survey")
@@ -548,7 +548,7 @@ class TestShapeShifter:
 
     def test_initialize_process_state_for_target_entities(self):
         """Targeted initialization should include dependencies for requested entities."""
-        cfg = ShapeShiftConfig(
+        cfg = ShapeShiftProject(
             cfg={
                 "entities": {
                     "survey": {"depends_on": []},
@@ -565,7 +565,7 @@ class TestShapeShifter:
     @pytest.mark.asyncio
     async def test_normalize_raises_for_invalid_columns(self):
         """Normalize should fail fast when columns contain non-strings."""
-        cfg = ShapeShiftConfig(
+        cfg = ShapeShiftProject(
             cfg={
                 "entities": {
                     "bad": {
@@ -588,7 +588,7 @@ class TestShapeShifter:
         site_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
         sample_df = pd.DataFrame({"sample_id": [1, 2], "type": ["X", "Y"]})
         table_store: dict[str, pd.DataFrame] = {"survey": survey_df, "site": site_df, "sample": sample_df}
-        config = ShapeShiftConfig(
+        config = ShapeShiftProject(
             cfg={
                 "entities": {
                     "survey": {"depends_on": []},
@@ -609,7 +609,7 @@ class TestShapeShifter:
             assert set(entity_names) == {"survey", "site", "sample"}
 
     @pytest.mark.asyncio
-    async def test_normalize_with_circular_dependency(self, survey_only_config: ShapeShiftConfig):
+    async def test_normalize_with_circular_dependency(self, survey_only_config: ShapeShiftProject):
         """Test that normalize raises error for circular dependencies."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(config=survey_only_config, default_entity="survey")
@@ -630,7 +630,7 @@ class TestShapeShifter:
             with pytest.raises(ValueError, match="Circular or unresolved dependencies"):
                 await normalizer.normalize()
 
-    def test_unnest_all(self, survey_only_config: ShapeShiftConfig):
+    def test_unnest_all(self, survey_only_config: ShapeShiftProject):
         """Test unnesting all entities."""
         df = pd.DataFrame({"col1": [1, 2]})
         normalizer = ShapeShifter(config=survey_only_config, default_entity="survey")
@@ -649,7 +649,7 @@ class TestShapeShifter:
             # Should be called for all entities including survey
             assert mock_unnest.call_count == 3
 
-    def test_map_to_remote_links_only_configured_entities(self, survey_and_site_config: ShapeShiftConfig):
+    def test_map_to_remote_links_only_configured_entities(self, survey_and_site_config: ShapeShiftProject):
         """map_to_remote should link only entities present in link config."""
         table_store = {
             "survey": pd.DataFrame({"id": [1]}),
@@ -672,7 +672,7 @@ class TestShapeShifter:
         assert "remote_id" in normalizer.table_store["site"].columns
         pd.testing.assert_frame_equal(normalizer.table_store["other"], table_store["other"])
 
-    def test_log_shapes_writes_tsv(self, tmp_path: Path, survey_only_config: ShapeShiftConfig):
+    def test_log_shapes_writes_tsv(self, tmp_path: Path, survey_only_config: ShapeShiftProject):
         """log_shapes should write table shapes TSV next to target."""
         normalizer = ShapeShifter(config=survey_only_config, default_entity="survey")
         normalizer.table_store = {

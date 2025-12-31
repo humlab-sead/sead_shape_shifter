@@ -266,7 +266,7 @@ const handleStartTest = async () => {
     }
 
     const result = await testRunApi.startTestRun({
-      config_name: configName.value,
+      project_name: configName.value,
       options: testOptions,
     })
 

@@ -1,15 +1,15 @@
-# Frontend Manual Testing Guide - Shape Shifter Configuration Editor
+# Frontend Manual Testing Guide - Shape Shifter Project Editor
 
 ## Overview
 
-This guide provides comprehensive step-by-step manual testing procedures for the Shape Shifter Configuration Editor frontend application. Use this guide to ensure all UI features work correctly across different browsers and scenarios.
+This guide provides comprehensive step-by-step manual testing procedures for the Shape Shifter Project Editor frontend application. Use this guide to ensure all UI features work correctly across different browsers and scenarios.
 
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
 - [Core Application Testing](#core-application-testing)
-- [Configuration Editor Testing](#configuration-editor-testing)
+- [Project Editor Testing](#configuration-editor-testing)
 - [Entity Editor Testing](#entity-editor-testing)
 - [Validation Testing](#validation-testing)
 - [Data Source Testing](#data-source-testing)
@@ -82,7 +82,7 @@ Before starting tests, verify:
 
 **Test: Navigate Between Pages**
 
-1. Click "Configurations" in sidebar
+1. Click "Projects" in sidebar
 2. Click "Data Sources" in sidebar
 3. Click "Settings" in sidebar
 4. Use browser back/forward buttons
@@ -134,24 +134,24 @@ Before starting tests, verify:
 
 ---
 
-## Configuration Editor Testing
+## Project Editor Testing
 
-### Configuration List View
+### Project List View
 
-**Test: Load Configuration List**
+**Test: Load Project List**
 
-1. Navigate to "Configurations"
+1. Navigate to "Projects"
 2. Wait for list to load
 
 **Expected Results:**
 
-- [ ] Configuration cards displayed
+- [ ] Project cards displayed
 - [ ] Each card shows: name, description, entity count
 - [ ] Cards are clickable
 - [ ] Loading skeleton appears before data loads
 - [ ] Empty state shown if no configurations
 
-**Test: Search Configurations**
+**Test: Search Projects**
 
 1. Enter search term in search box
 2. Clear search
@@ -164,11 +164,11 @@ Before starting tests, verify:
 - [ ] Clearing search restores full list
 - [ ] "No results" message for no matches
 
-### Create New Configuration
+### Create New Project
 
-**Test: Configuration Creation**
+**Test: Project Creation**
 
-1. Click "Create New Configuration" button
+1. Click "Create New Project" button
 2. Enter configuration name: `test_config_manual`
 3. Enter description (optional)
 4. Click "Create"
@@ -182,9 +182,9 @@ Before starting tests, verify:
 - [ ] Redirected to configuration editor
 - [ ] New config appears in list
 
-### Edit Configuration
+### Edit Project
 
-**Test: Open Existing Configuration**
+**Test: Open Existing Project**
 
 1. Click on configuration card
 2. Wait for editor to load
@@ -213,7 +213,7 @@ Before starting tests, verify:
 - [ ] Auto-save triggers after 2 seconds of inactivity
 - [ ] Save button state reflects save status
 
-### Save Configuration
+### Save Project
 
 **Test: Manual Save**
 
@@ -242,9 +242,9 @@ Before starting tests, verify:
 - [ ] Validation panel shows errors
 - [ ] User can fix and re-save
 
-### Delete Configuration
+### Delete Project
 
-**Test: Delete Configuration**
+**Test: Delete Project**
 
 1. Open configuration
 2. Click "Delete" button
@@ -410,7 +410,7 @@ Before starting tests, verify:
 
 ### Entity Editor - Advanced Tab
 
-**Test: Filters Configuration**
+**Test: Filters Project**
 
 1. Switch to "Advanced" tab
 2. Expand "Filters" panel
@@ -431,7 +431,7 @@ Before starting tests, verify:
 - [ ] Multiple filters supported
 - [ ] Saves to YAML under `filters`
 
-**Test: Unnest Configuration**
+**Test: Unnest Project**
 
 1. Toggle "Enable Unnest" switch
 2. Fill in unnest fields:
@@ -615,7 +615,7 @@ Before starting tests, verify:
 
 ## Validation Testing
 
-### Full Configuration Validation
+### Full Project Validation
 
 **Test: Validate All**
 
@@ -833,7 +833,7 @@ For each browser, verify:
 - [ ] Navigation works
 - [ ] Theme toggle works
 
-**Configuration Editor:**
+**Project Editor:**
 - [ ] YAML editor displays correctly
 - [ ] Syntax highlighting works
 - [ ] Can edit and save
@@ -1322,7 +1322,7 @@ console.table(performance.getEntriesByType('measure'));
 | Category | Tests Passed | Tests Failed | Notes |
 |----------|--------------|--------------|-------|
 | Core Application | 5/5 | 0 | All passed |
-| Configuration Editor | 8/10 | 2 | Save occasionally slow |
+| Project Editor | 8/10 | 2 | Save occasionally slow |
 | Entity Editor | 15/15 | 0 | All passed |
 | Validation | 6/7 | 1 | Cache not invalidating |
 | Cross-Browser | 4/4 | 0 | All browsers tested |
@@ -1331,7 +1331,7 @@ console.table(performance.getEntriesByType('measure'));
 
 ### Detailed Results
 
-#### Configuration Editor - Save Performance
+#### Project Editor - Save Performance
 
 **Issue**: Save button occasionally takes > 2 seconds
 
@@ -1495,7 +1495,7 @@ Comprehensive test before release:
 
 ### Test Data Locations
 
-- **Configurations**: `/home/roger/source/sead_shape_shifter/input/`
+- **Projects**: `/home/roger/source/sead_shape_shifter/input/`
 - **Test Database**: `/home/roger/source/sead_shape_shifter/input/test_query_tester.db`
 - **Backups**: `/home/roger/source/sead_shape_shifter/backups/`
 

@@ -1,4 +1,4 @@
-# Shape Shifter Configuration Editor - Developer Guide
+# Shape Shifter Project Editor - Developer Guide
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@
 
 ### Project Overview
 
-Shape Shifter Configuration Editor is a full-stack web application for managing data transformation configurations. The system uses:
+Shape Shifter Project Editor is a full-stack web application for managing data transformation configurations. The system uses:
 - **Backend:** FastAPI (Python 3.11+)
 - **Frontend:** Vue3 + TypeScript
 - **Testing:** pytest + Vitest
@@ -38,7 +38,7 @@ This guide is for developers who are:
 
 - [UI Architecture](UI_ARCHITECTURE.md) - Detailed architecture
 - [User Guide](USER_GUIDE.md) - End-user documentation
-- [Configuration Guide](CONFIGURATION_GUIDE.md) - YAML syntax
+- [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures
 
 ---
@@ -326,25 +326,25 @@ class ValidationService:
     
     async def validate_configuration(
         self,
-        config_name: str,
+        project_name: str,
         validation_type: ValidationType
     ) -> ValidationResult:
         """Validate configuration with caching."""
         # Check cache
-        cache_key = self._make_cache_key(config_name, validation_type)
+        cache_key = self._make_cache_key(project_name, validation_type)
         cached = self.cache_service.get(cache_key)
         if cached:
             return cached
         
         # Load configuration (API entity with raw ${ENV_VARS})
-        config = await self.yaml_service.load_configuration(config_name)
+        config = await self.yaml_service.load_project(project_name)
         
         # Run validation
         issues = await self._run_validation(config, validation_type)
         
         # Cache results
         result = ValidationResult(
-            config_name=config_name,
+            project_name=project_name,
             validation_type=validation_type,
             issues=issues,
             timestamp=datetime.now()
@@ -367,7 +367,7 @@ Mappers handle conversion between API and Core layers and **resolve environment 
 ```python
 # app/mappers/data_source_mapper.py
 class DataSourceMapper:
-    """Maps between API and Core data source configurations.
+    """Maps between API and Core data sources.
     
     IMPORTANT: Environment variable resolution happens here,
     at the boundary between API and Core layers.
@@ -419,12 +419,12 @@ class YAMLService:
     def __init__(self, config_dir: Path):
         self.config_dir = config_dir
     
-    async def load_configuration(self, name: str) -> dict:
+    async def load_project(self, name: str) -> dict:
         """Load configuration from file."""
         path = self.config_dir / f"{name}.yml"
         
         if not path.exists():
-            raise ConfigurationNotFoundError(name)
+            raise ProjectNotFoundError(name)
         
         try:
             with open(path, 'r') as f:
@@ -432,7 +432,7 @@ class YAMLService:
         except yaml.YAMLError as e:
             raise ValidationError(f"Invalid YAML: {e}")
     
-    def save_configuration(self, name: str, data: dict) -> None:
+    def save_project(self, name: str, data: dict) -> None:
         """Save configuration to file."""
         path = self.config_dir / f"{name}.yml"
         
@@ -477,7 +477,7 @@ async def validate_configuration(
 ):
     """Validate configuration endpoint."""
     return await service.validate_configuration(
-        request.config_name,
+        request.project_name,
         request.validation_type
     )
 ```
@@ -515,7 +515,7 @@ class StructuralValidator(ValidationStrategy):
             issues.append(ValidationIssue(
                 code="MISSING_ENTITIES",
                 severity="error",
-                message="Configuration missing 'entities' section"
+                message="Project missing 'entities' section"
             ))
         
         # More structural checks...
@@ -610,19 +610,19 @@ class CacheService:
 class ValidationService:
     def _make_cache_key(
         self,
-        config_name: str,
+        project_name: str,
         validation_type: ValidationType
     ) -> str:
         """Generate cache key."""
-        return f"validation:{config_name}:{validation_type.value}"
+        return f"validation:{project_name}:{validation_type.value}"
     
     async def validate_configuration(
         self,
-        config_name: str,
+        project_name: str,
         validation_type: ValidationType
     ) -> ValidationResult:
         """Validate with caching."""
-        cache_key = self._make_cache_key(config_name, validation_type)
+        cache_key = self._make_cache_key(project_name, validation_type)
         
         # Try cache
         cached = self.cache_service.get(cache_key)
@@ -631,7 +631,7 @@ class ValidationService:
             return cached
         
         # Run validation
-        result = await self._run_validation(config_name, validation_type)
+        result = await self._run_validation(project_name, validation_type)
         
         # Cache result
         self.cache_service.set(cache_key, result)
@@ -644,7 +644,7 @@ class ValidationService:
 
 ```python
 # On configuration update
-@router.put("/configurations/{name}")
+@router.put("/projects/{name}")
 async def update_configuration(
     name: str,
     config: dict,
@@ -652,12 +652,12 @@ async def update_configuration(
 ):
     """Update configuration and invalidate cache."""
     # Save configuration
-    yaml_service.save_configuration(name, config)
+    yaml_service.save_project(name, config)
     
     # Invalidate all caches for this config
     cache.invalidate(f"validation:{name}:")
     
-    return {"message": "Configuration updated"}
+    return {"message": "Project updated"}
 ```
 
 ### Error Handling
@@ -674,12 +674,12 @@ class BaseAPIException(Exception):
         self.status_code = status_code
         super().__init__(self.message)
 
-class ConfigurationNotFoundError(BaseAPIException):
-    """Configuration file not found."""
+class ProjectNotFoundError(BaseAPIException):
+    """Project file not found."""
     
-    def __init__(self, config_name: str):
+    def __init__(self, project_name: str):
         super().__init__(
-            f"Configuration '{config_name}' not found",
+            f"Project '{project_name}' not found",
             status_code=404
         )
 
@@ -749,7 +749,7 @@ frontend/src/
 ├── api/                        # API client layer (axios + per-resource modules)
 ├── components/                 # Vue components (layout, panels, shared UI)
 │   ├── common/                 # Reusable pieces (YamlEditor/Monaco wrapper, alerts, skeletons)
-│   ├── configurations/
+│   ├── projects/
 │   ├── validation/
 │   └── ...
 ├── composables/                # Reusable composition functions (loading/error guards, etc.)
@@ -820,7 +820,7 @@ from backend.app.services.validation_service import ValidationService
 def mock_yaml_service():
     """Mock YAML service."""
     service = Mock()
-    service.load_configuration = AsyncMock()
+    service.load_project = AsyncMock()
     return service
 
 @pytest.fixture
@@ -843,7 +843,7 @@ async def test_validate_configuration_success(
 ):
     """Test successful validation."""
     # Arrange
-    mock_yaml_service.load_configuration.return_value = {
+    mock_yaml_service.load_project.return_value = {
         "entities": {
             "test_entity": {
                 "columns": ["id", "name"],
@@ -859,16 +859,16 @@ async def test_validate_configuration_success(
     )
     
     # Assert
-    assert result.config_name == "test_config"
+    assert result.project_name == "test_config"
     assert isinstance(result.issues, list)
-    mock_yaml_service.load_configuration.assert_called_once_with("test_config")
+    mock_yaml_service.load_project.assert_called_once_with("test_config")
 
 @pytest.mark.asyncio
 async def test_validate_uses_cache(validation_service, mock_cache_service):
     """Test that validation uses cache."""
     # Arrange
     cached_result = ValidationResult(
-        config_name="test",
+        project_name="test",
         issues=[],
         cache_hit=True
     )
@@ -897,7 +897,7 @@ async def test_validate_endpoint():
         response = await client.post(
             "/api/v1/validate",
             json={
-                "config_name": "test_config",
+                "project_name": "test_config",
                 "validation_type": "all"
             }
         )
@@ -905,7 +905,7 @@ async def test_validate_endpoint():
     assert response.status_code == 200
     data = response.json()
     
-    assert "config_name" in data
+    assert "project_name" in data
     assert "issues" in data
     assert "summary" in data
     assert isinstance(data["issues"], list)
@@ -917,7 +917,7 @@ async def test_validate_nonexistent_config():
         response = await client.post(
             "/api/v1/validate",
             json={
-                "config_name": "nonexistent",
+                "project_name": "nonexistent",
                 "validation_type": "all"
             }
         )
@@ -1056,12 +1056,12 @@ npx vitest run --coverage
 ### RESTful Endpoints
 
 ```
-# Configurations
-GET    /api/v1/configurations           # List all
-GET    /api/v1/configurations/{name}    # Get one
-POST   /api/v1/configurations           # Create
-PUT    /api/v1/configurations/{name}    # Update
-DELETE /api/v1/configurations/{name}    # Delete
+# Projects
+GET    /api/v1/projects           # List all
+GET    /api/v1/projects/{name}    # Get one
+POST   /api/v1/projects           # Create
+PUT    /api/v1/projects/{name}    # Update
+DELETE /api/v1/projects/{name}    # Delete
 
 # Validation
 POST   /api/v1/validate                 # Validate
@@ -1089,7 +1089,7 @@ from datetime import datetime
 
 class MyFeatureRequest(BaseModel):
     """Request model."""
-    config_name: str
+    project_name: str
     param1: str
     param2: int = 10
 
@@ -1113,7 +1113,7 @@ class MyFeatureService:
     async def process(self, request: MyFeatureRequest) -> MyFeatureResponse:
         """Process feature request."""
         # Business logic here
-        config = await self.yaml_service.load_configuration(request.config_name)
+        config = await self.yaml_service.load_project(request.project_name)
         
         # Do something...
         result = {"key": "value"}
@@ -1173,7 +1173,7 @@ async def test_my_feature_process():
     service = MyFeatureService(mock_yaml_service)
     
     request = MyFeatureRequest(
-        config_name="test",
+        project_name="test",
         param1="value",
         param2=20
     )
@@ -1211,18 +1211,18 @@ def get_entities(config):
     return config.get("entities", {})
 
 # Good - Docstrings
-def create_backup(config_name: str) -> Path:
+def create_backup(project_name: str) -> Path:
     """
     Create timestamped backup of configuration.
     
     Args:
-        config_name: Name of configuration to backup
+        project_name: Name of configuration to backup
         
     Returns:
         Path to backup file
         
     Raises:
-        ConfigurationNotFoundError: If config doesn't exist
+        ProjectNotFoundError: If config doesn't exist
     """
     pass
 ```
@@ -1264,15 +1264,15 @@ defineProps(['issues']);
 ```python
 # Good - Specific exceptions
 try:
-    config = await yaml_service.load_configuration(name)
+    config = await yaml_service.load_project(name)
 except FileNotFoundError:
-    raise ConfigurationNotFoundError(name)
+    raise ProjectNotFoundError(name)
 except yaml.YAMLError as e:
     raise ValidationError(f"Invalid YAML: {e}")
 
 # Bad - Catch all
 try:
-    config = await yaml_service.load_configuration(name)
+    config = await yaml_service.load_project(name)
 except Exception as e:
     raise Exception(f"Error: {e}")
 ```
@@ -1307,14 +1307,14 @@ def test_validation_returns_issues():
     result = await service.validate("test", "all")
     assert isinstance(result.issues, list)
 
-def test_validation_includes_config_name():
+def test_validation_includes_project_name():
     result = await service.validate("test", "all")
-    assert result.config_name == "test"
+    assert result.project_name == "test"
 
 # Bad - Multiple unrelated assertions
 def test_validation():
     result = await service.validate("test", "all")
-    assert result.config_name == "test"
+    assert result.project_name == "test"
     assert len(result.issues) > 0
     assert result.cache_hit is False
     assert result.timestamp is not None
@@ -1515,7 +1515,7 @@ This project uses **[Conventional Commits](https://www.conventionalcommits.org/)
 - `core`: Core processing pipeline
 - `backend`: Backend API
 - `frontend`: Frontend application
-- `config`: Configuration handling
+- `config`: Project handling
 - `validation`: Validation services
 - `cache`: Caching functionality
 - `loaders`: Data loaders
@@ -1570,13 +1570,13 @@ Use the body for detailed explanations:
 ```bash
 git commit -m "feat(cache): implement hash-based invalidation
 
-Add xxhash-based entity configuration hashing to detect changes
+Add xxhash-based entity hashing to detect changes
 beyond version numbers. Implements 3-tier validation:
 1. TTL check (300s)
 2. Config version comparison  
 3. Entity hash validation
 
-This prevents serving stale cached data when entity configuration
+This prevents serving stale cached data when entity
 changes without version bump.
 
 Closes #123"
@@ -1629,11 +1629,11 @@ For complete details, see the **Conventional Commit Messages** section in [TODO.
 - [UI Architecture](UI_ARCHITECTURE.md) - Detailed architecture
 - [User Guide](USER_GUIDE.md) - End-user documentation
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures
-- [Configuration Guide](CONFIGURATION_GUIDE.md) - YAML syntax
+- [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax
 - [API Reference](API_REFERENCE.md) - API documentation
 
 ---
 
 **Document Version**: 1.1  
 **Last Updated**: December 30, 2025  
-**For**: Shape Shifter Configuration Editor v0.1.0
+**For**: Shape Shifter Project Editor v0.1.0

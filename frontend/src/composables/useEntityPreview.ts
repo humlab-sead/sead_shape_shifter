@@ -52,7 +52,7 @@ export function useEntityPreview() {
 
     try {
       const response = await axios.post<PreviewResult>(
-        `/api/v1/configurations/${configName}/entities/${entityName}/preview`,
+        `/api/v1/projects/${configName}/entities/${entityName}/preview`,
         {},
         { params: { limit } }
       )
@@ -98,7 +98,7 @@ export function useEntityPreview() {
 
     try {
       const response = await axios.post<PreviewResult>(
-        `/api/v1/configurations/${configName}/entities/${entityName}/sample`,
+        `/api/v1/projects/${configName}/entities/${entityName}/sample`,
         {},
         { params: { limit } }
       )
@@ -125,7 +125,7 @@ export function useEntityPreview() {
     try {
       const params = entityName ? { entity_name: entityName } : {}
       await axios.delete(
-        `/api/v1/configurations/${configName}/preview-cache`,
+        `/api/v1/projects/${configName}/preview-cache`,
         { params }
       )
       return true

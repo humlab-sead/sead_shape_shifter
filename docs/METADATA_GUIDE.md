@@ -1,14 +1,14 @@
-# Example Configuration with Metadata
+# Example Project with Metadata
 
 This example demonstrates the new metadata section in Shape Shifter configuration files.
 
-## Configuration Structure
+## Project Structure
 
 ```yaml
 # Top-level metadata section (optional but recommended)
 metadata:
-  name: "My Data Configuration"
-  description: "Configuration for importing my data into the target system"
+  name: "My Data Project"
+  description: "Project for importing my data into the target system"
   version: "1.0.0"
 
 # Entity definitions
@@ -50,11 +50,11 @@ options:
 
 ## Backward Compatibility
 
-The metadata section is entirely optional. Configurations without metadata will work as before, with the configuration name derived from the filename.
+The metadata section is entirely optional. Projects without metadata will work as before, with the configuration name derived from the filename.
 
 ## Examples
 
-### Minimal Configuration (No Metadata)
+### Minimal Project (No Metadata)
 ```yaml
 entities:
   sample:
@@ -78,7 +78,7 @@ entities:
 
 ## API Integration
 
-When loaded via the API, the metadata is available through the `Configuration.metadata` property:
+When loaded via the API, the metadata is available through the `Project.metadata` property:
 
 ```python
 from backend.app.mappers.config_mapper import ConfigMapper
@@ -88,22 +88,22 @@ cfg_dict = load_yaml("my_config.yml")
 api_config = ConfigMapper.to_api_config(cfg_dict, "my-config")
 
 # Access metadata
-print(api_config.metadata.name)         # "My Data Configuration"
-print(api_config.metadata.description)  # "Configuration for importing..."
+print(api_config.metadata.name)         # "My Data Project"
+print(api_config.metadata.description)  # "Project for importing..."
 print(api_config.metadata.version)      # "1.0.0"
 ```
 
 ## Core Model Integration
 
-In the core ShapeShiftConfig, metadata is accessible via the `metadata` property:
+In the core ShapeShiftProject, metadata is accessible via the `metadata` property:
 
 ```python
-from src.model import ShapeShiftConfig
+from src.model import ShapeShiftProject
 
-config = ShapeShiftConfig.from_file("my_config.yml")
+config = ShapeShiftProject.from_file("my_config.yml")
 
 # Access metadata
-print(config.metadata.name)         # "My Data Configuration"
-print(config.metadata.description)  # "Configuration for importing..."
+print(config.metadata.name)         # "My Data Project"
+print(config.metadata.description)  # "Project for importing..."
 print(config.metadata.version)      # "1.0.0"
 ```

@@ -19,7 +19,7 @@ export const useSessionStore = defineStore('session', () => {
 
   const sessionId = computed(() => currentSession.value?.session_id || null)
 
-  const configName = computed(() => currentSession.value?.config_name || null)
+  const configName = computed(() => currentSession.value?.project_name || null)
 
   const version = computed(() => currentSession.value?.version || 1)
 
@@ -117,7 +117,7 @@ export const useSessionStore = defineStore('session', () => {
 
     try {
       activeSessions.value = await sessionsApi.listActive(
-        currentSession.value.config_name
+        currentSession.value.project_name
       )
 
       // Update concurrent sessions count

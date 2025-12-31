@@ -224,5 +224,5 @@ reference_formatted:
 ## See Also
 
 - [Reconciliation Setup Guide](RECONCILIATION_SETUP_GUIDE.md)
-- [Configuration Guide](CONFIGURATION_GUIDE.md)
+- [Project Guide](CONFIGURATION_GUIDE.md)
 - [Entity Preview Documentation](SYSTEM_DOCUMENTATION.md#entity-preview)

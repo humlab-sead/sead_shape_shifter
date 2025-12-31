@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from backend.app.models.config import Configuration
+from backend.app.models.project import Project
 from backend.app.models.test_run import OutputFormat, TestRunOptions, TestRunStatus
 from backend.app.services.test_run_service import TestRunService
 
@@ -12,15 +12,15 @@ from backend.app.services.test_run_service import TestRunService
 
 
 @pytest.fixture
-def config_service() -> MagicMock:
+def project_service() -> MagicMock:
     """Mock configuration service."""
     return MagicMock()
 
 
 @pytest.mark.asyncio
-async def test_execute_test_run_success_fixed_entity(config_service: MagicMock) -> None:
+async def test_execute_test_run_success_fixed_entity(project_service: MagicMock) -> None:
     """Run completes with fixed entity values and preview rows."""
-    config_service.load_configuration.return_value = Configuration(
+    project_service.load_project.return_value = Project(
         entities={
             "users": {
                 "name": "users",
@@ -31,7 +31,7 @@ async def test_execute_test_run_success_fixed_entity(config_service: MagicMock) 
         }
     )
 
-    service = TestRunService(config_service=config_service)
+    service = TestRunService(project_service=project_service)
     options = TestRunOptions(output_format=OutputFormat.PREVIEW, **{})
     result = service.init_test_run("test_cfg", options)
 
@@ -47,15 +47,15 @@ async def test_execute_test_run_success_fixed_entity(config_service: MagicMock) 
 
 
 @pytest.mark.asyncio
-async def test_execute_test_run_invalid_entity_fails(config_service: MagicMock) -> None:
+async def test_execute_test_run_invalid_entity_fails(project_service: MagicMock) -> None:
     """Invalid entity selection marks run as failed."""
-    config_service.load_configuration.return_value = Configuration(
+    project_service.load_project.return_value = Project(
         entities={
             "orders": {"name": "orders", "type": "fixed", "columns": ["id"], "values": [[1]]},
         }
     )
 
-    service = TestRunService(config_service=config_service)
+    service = TestRunService(project_service=project_service)
     options = TestRunOptions(entities=["orders", "missing"], **{})
     result = service.init_test_run("test_cfg", options)
 
@@ -69,9 +69,9 @@ async def test_execute_test_run_invalid_entity_fails(config_service: MagicMock) 
 
 
 @pytest.mark.asyncio
-async def test_process_entity_adds_validation_issue(config_service: MagicMock) -> None:
+async def test_process_entity_adds_validation_issue(project_service: MagicMock) -> None:
     """Foreign key validation creates a validation issue when remote entity missing."""
-    service = TestRunService(config_service=config_service)
+    service = TestRunService(project_service=project_service)
     options = TestRunOptions(validate_foreign_keys=True, **{})
     entity_config = {
         "type": "fixed",

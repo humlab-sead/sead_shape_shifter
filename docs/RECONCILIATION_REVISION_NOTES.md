@@ -75,7 +75,7 @@ for property_id, source_column in entity_spec.property_mappings.items():
 
 **Rationale**: Separates primary query text (keys) from contextual properties. Properties use service-defined IDs for proper matching.
 
-## Configuration Format
+## Project Format
 
 ### New YAML Structure
 
@@ -152,7 +152,7 @@ From SEAD reconciliation service manifest (`/reconcile`):
 
 ## Migration Guide
 
-### Updating Existing Configurations
+### Updating Existing Projects
 
 **Old Format:**
 ```yaml

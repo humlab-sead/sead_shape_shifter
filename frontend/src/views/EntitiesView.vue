@@ -5,7 +5,7 @@
         <h1 class="text-h4 mb-4">Entity Management</h1>
         
         <!-- No Configuration Loaded -->
-        <v-card v-if="!configurationStore.currentConfigName" variant="outlined" class="mb-4">
+        <v-card v-if="!configurationStore.currentProjectName" variant="outlined" class="mb-4">
           <v-card-text class="text-center py-8">
             <v-icon icon="mdi-file-question" size="64" color="grey" class="mb-4" />
             <h2 class="text-h6 mb-2">No Configuration Loaded</h2>
@@ -27,7 +27,7 @@
           <v-card variant="outlined" class="mb-4">
             <v-card-title>
               <v-icon icon="mdi-file-document" class="mr-2" />
-              {{ configurationStore.currentConfigName }}
+              {{ configurationStore.currentProjectName }}
             </v-card-title>
             <v-card-subtitle>
               {{ entityCount }} {{ entityCount === 1 ? 'entity' : 'entities' }}
@@ -35,8 +35,8 @@
           </v-card>
 
           <entity-list-card
-            v-if="configurationStore.currentConfigName"
-            :config-name="configurationStore.currentConfigName"
+            v-if="configurationStore.currentProjectName"
+            :config-name="configurationStore.currentProjectName"
             @entity-updated="handleEntityUpdated"
           />
         </div>
@@ -47,12 +47,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useConfigurationStore } from '@/stores/configuration'
+import { useProjectStore } from '@/stores/project'
 import { useEntities } from '@/composables/useEntities'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 
-const configurationStore = useConfigurationStore()
-const configName = computed(() => configurationStore.currentConfigName || '')
+const configurationStore = useProjectStore()
+const configName = computed(() => configurationStore.currentProjectName || '')
 
 const { entityCount } = useEntities({
   configName: configName.value,

@@ -6,7 +6,7 @@ and interactions with external systems.
 
 Service Classes:
     - AutoFixService: Automated configuration fix suggestions and application
-    - ConfigurationService: Configuration file management (CRUD operations)
+    - ProjectService: Configuration file management (CRUD operations)
     - DataSourceService: Global data source file management
     - DependencyService: Entity dependency analysis and topological sorting
     - ShapeShiftService: Configuration change preview generation
@@ -20,11 +20,11 @@ Service Classes:
 
 Exception Classes:
     Configuration Service:
-        - ConfigurationServiceError: Base exception for configuration operations
-        - ConfigurationNotFoundError: Configuration file not found
+        - ProjectServiceError: Base exception for configuration operations
+        - ProjectNotFoundError: Configuration file not found
         - EntityNotFoundError: Entity not found in configuration
         - EntityAlreadyExistsError: Entity already exists in configuration
-        - InvalidConfigurationError: Invalid configuration structure
+        - InvalidProjectError: Invalid configuration structure
 
     Dependency Service:
         - DependencyServiceError: Base exception for dependency operations
@@ -53,16 +53,6 @@ Data Classes:
 # Auto-fix service
 from backend.app.services.auto_fix_service import AutoFixService
 
-# Configuration service
-from backend.app.services.config_service import (
-    ConfigurationNotFoundError,
-    ConfigurationService,
-    ConfigurationServiceError,
-    EntityAlreadyExistsError,
-    EntityNotFoundError,
-    InvalidConfigurationError,
-)
-
 # Data source service
 from backend.app.services.data_source_service import DataSourceService
 
@@ -73,6 +63,16 @@ from backend.app.services.dependency_service import (
     DependencyNode,
     DependencyService,
     DependencyServiceError,
+)
+
+# Configuration service
+from backend.app.services.project_service import (
+    EntityAlreadyExistsError,
+    EntityNotFoundError,
+    InvalidProjectError,
+    ProjectNotFoundError,
+    ProjectService,
+    ProjectServiceError,
 )
 
 # Query service
@@ -115,7 +115,7 @@ from backend.app.services.yaml_service import (
 __all__ = [
     # Services
     "AutoFixService",
-    "ConfigurationService",
+    "ProjectService",
     "DataSourceService",
     "DependencyService",
     "ShapeShiftService",
@@ -127,11 +127,11 @@ __all__ = [
     "ValidationService",
     "YamlService",
     # Configuration exceptions
-    "ConfigurationServiceError",
-    "ConfigurationNotFoundError",
+    "ProjectServiceError",
+    "ProjectNotFoundError",
     "EntityNotFoundError",
     "EntityAlreadyExistsError",
-    "InvalidConfigurationError",
+    "InvalidProjectError",
     # Dependency exceptions and classes
     "DependencyServiceError",
     "CircularDependencyError",

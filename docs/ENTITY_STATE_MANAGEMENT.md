@@ -13,30 +13,30 @@ Entity state during editing in Shape Shifter follows a **three-layer architectur
 - [entities.py](../backend/app/api/v1/endpoints/entities.py) - FastAPI endpoints
 
 **3. Persistence Layer**
-- [config_service.py](../backend/app/services/config_service.py) - File system operations
+- [project_service.py](../backend/app/services/project_service.py) - File system operations
 - YAML configuration files on disk
 
 ---
 
 ## State Flow During Entity Editing
 
-### 1. **Loading Entities** (Configuration → Frontend)
+### 1. **Loading Entities** (Project → Frontend)
 
 ```
-YAML File → ConfigService.load_configuration() 
-         → API GET /configurations/{name}/entities 
+YAML File → ConfigService.load_project() 
+         → API GET /projects/{name}/entities 
          → entityStore.fetchEntities() 
          → entities.value (reactive state)
 ```
 
-**Backend** ([config_service.py](../backend/app/services/config_service.py)):
+**Backend** ([project_service.py](../backend/app/services/project_service.py)):
 ```python
-def load_configuration(self, config_name: str) -> Config:
-    config_path = self.get_config_path(config_name)
+def load_project(self, project_name: str) -> Config:
+    config_path = self.get_config_path(project_name)
     with open(config_path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     return Config(
-        name=config_name,
+        name=project_name,
         entities=data.get("entities", {}),
         options=data.get("options", {}),
         metadata=metadata,
@@ -81,23 +81,23 @@ The edited state is **held in memory only** - no automatic saves occur.
 ```
 User clicks "Save" 
   → entityStore.updateEntity() 
-  → API PUT /configurations/{name}/entities/{entity_name}
-  → config_service.update_entity_by_name()
+  → API PUT /projects/{name}/entities/{entity_name}
+  → project_service.update_entity_by_name()
   → YAML file updated on disk
   → Updated entity returned
   → Store state synchronized
 ```
 
-**Backend Persistence** ([config_service.py](../backend/app/services/config_service.py)):
+**Backend Persistence** ([project_service.py](../backend/app/services/project_service.py)):
 ```python
-def update_entity_by_name(self, config_name: str, entity_name: str, entity_data: dict):
-    config = self.load_configuration(config_name)  # 1. Load current state
+def update_entity_by_name(self, project_name: str, entity_name: str, entity_data: dict):
+    config = self.load_project(project_name)  # 1. Load current state
     
     if entity_name not in config.entities:
         raise EntityNotFoundError(f"Entity '{entity_name}' not found")
     
     config.entities[entity_name] = entity_data      # 2. Update in-memory
-    self.save_configuration(config)                 # 3. Write to YAML
+    self.save_project(config)                 # 3. Write to YAML
     logger.info(f"Updated entity '{entity_name}'")
 ```
 
@@ -209,9 +209,9 @@ await validationStore.validateEntity(config, name)
 
 ## Error Handling
 
-**Backend Errors** ([config_service.py](../backend/app/services/config_service.py)):
+**Backend Errors** ([project_service.py](../backend/app/services/project_service.py)):
 ```python
-class ConfigurationNotFoundError(Exception): pass
+class ProjectNotFoundError(Exception): pass
 class EntityNotFoundError(Exception): pass
 class EntityAlreadyExistsError(Exception): pass
 ```
@@ -313,7 +313,7 @@ async function saveEntity() {
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ 1. User loads configuration                                  │
-│    GET /configurations/{name}/entities                       │
+│    GET /projects/{name}/entities                       │
 │    └─→ entities.value populated                             │
 └─────────────────────────────────────────────────────────────┘
                           ↓
@@ -332,7 +332,7 @@ async function saveEntity() {
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ 4. User clicks "Save"                                        │
-│    PUT /configurations/{name}/entities/{entity_name}         │
+│    PUT /projects/{name}/entities/{entity_name}         │
 │    Backend: load → modify → save YAML                       │
 │    Frontend: sync store with response                        │
 │    hasUnsavedChanges.value = false                          │
@@ -340,7 +340,7 @@ async function saveEntity() {
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ 5. Optional: Trigger validation                             │
-│    POST /configurations/{name}/validate                      │
+│    POST /projects/{name}/validate                      │
 │    Display validation results                                │
 └─────────────────────────────────────────────────────────────┘
 ```

@@ -94,7 +94,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { useConfigurationStore } from '@/stores/configuration'
+import { useProjectStore } from '@/stores/project'
 import { storeToRefs } from 'pinia'
 import type { MetadataUpdateRequest } from '@/api/configurations'
 
@@ -102,7 +102,7 @@ const props = defineProps<{
   configName: string
 }>()
 
-const configStore = useConfigurationStore()
+const configStore = useProjectStore()
 const { selectedConfig, loading } = storeToRefs(configStore)
 
 const formRef = ref()

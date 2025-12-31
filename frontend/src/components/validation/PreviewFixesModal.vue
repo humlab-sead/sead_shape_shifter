@@ -182,7 +182,7 @@ interface FixChange {
 }
 
 interface FixPreview {
-  config_name: string
+  project_name: string
   fixable_count: number
   total_suggestions: number
   changes: FixChange[]

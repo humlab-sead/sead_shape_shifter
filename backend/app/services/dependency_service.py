@@ -4,8 +4,8 @@ from typing import Any
 
 from loguru import logger
 
-from backend.app.models.config import Configuration
-from src.model import ShapeShiftConfig
+from backend.app.models.project import Project
+from src.model import ShapeShiftProject
 
 
 class DependencyServiceError(Exception):
@@ -48,17 +48,17 @@ class DependencyGraph(dict):
 class DependencyService:
     """Service for analyzing entity dependencies."""
 
-    def analyze_dependencies(self, config: Configuration) -> DependencyGraph:
+    def analyze_dependencies(self, config: Project) -> DependencyGraph:
         """
         Analyze dependencies in configuration.
 
         Args:
-            config: Configuration to analyze
+            config: Project to analyze
 
         Returns:
             Dependency graph with nodes, edges, and cycle information
         """
-        tables_cfg = ShapeShiftConfig(cfg={"entities": config.entities, "options": config.options}, filename=config.filename or "")
+        tables_cfg = ShapeShiftProject(cfg={"entities": config.entities, "options": config.options}, filename=config.filename or "")
 
         dependency_map: dict[str, list[str]] = {
             entity_name: list(tables_cfg.get_table(entity_name).depends_on or []) for entity_name in config.entities
@@ -89,12 +89,12 @@ class DependencyService:
             topological_order=topological_order,
         )
 
-    def check_circular_dependencies(self, config: Configuration) -> dict[str, Any]:
+    def check_circular_dependencies(self, config: Project) -> dict[str, Any]:
         """
         Check for circular dependencies in configuration.
 
         Args:
-            config: Configuration to check
+            config: Project to check
 
         Returns:
             Dictionary with has_cycles flag and list of cycles

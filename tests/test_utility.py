@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig, UnnestConfig
+from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig, UnnestConfig
 from src.utility import dotget, dotset, env2dict, normalize_text, recursive_filter_dict, replace_env_vars
 
 
@@ -263,17 +263,17 @@ class TestTableConfig:
         assert len(usage_cols) == 3
 
 
-class TestShapeShiftConfig:
-    """Tests for ShapeShiftConfig class."""
+class TestShapeShiftProject:
+    """Tests for ShapeShiftProject class."""
 
     def test_shape_shift_config_with_provided_config(self):
-        """Test ShapeShiftConfig with provided configuration."""
+        """Test ShapeShiftProject with provided configuration."""
         entities = {
             "site": {"surrogate_id": "site_id", "columns": ["site_name"]},
             "location": {"surrogate_id": "location_id", "columns": ["location_name"]},
         }
 
-        config = ShapeShiftConfig(cfg={"entities": entities})
+        config = ShapeShiftProject(cfg={"entities": entities})
 
         assert len(config.tables) == 2
         assert "site" in config.tables
@@ -284,7 +284,7 @@ class TestShapeShiftConfig:
         """Test getting a specific table configuration."""
         entities = {"site": {"surrogate_id": "site_id", "columns": ["site_name"]}}
 
-        config = ShapeShiftConfig(cfg={"entities": entities})
+        config = ShapeShiftProject(cfg={"entities": entities})
         site_table: TableConfig = config.get_table("site")
 
         assert site_table.entity_name == "site"
@@ -294,17 +294,17 @@ class TestShapeShiftConfig:
         """Test that getting nonexistent table raises KeyError."""
         entities = {"site": {"surrogate_id": "site_id"}}
 
-        config = ShapeShiftConfig(cfg={"entities": entities})
+        config = ShapeShiftProject(cfg={"entities": entities})
 
         with pytest.raises(KeyError):
             config.get_table("nonexistent")
 
     def test_empty_config(self):
-        """Test ShapeShiftConfig with empty configuration."""
-        # Note: ShapeShiftConfig uses 'or' logic, so empty dict will try to load from ConfigValue
+        """Test ShapeShiftProject with empty configuration."""
+        # Note: ShapeShiftProject uses 'or' logic, so empty dict will try to load from ConfigValue
         # We need to provide a dict with at least one entity or use None to avoid the config loader
         entities = {"dummy": {"surrogate_id": "id"}}
-        config = ShapeShiftConfig(cfg={"entities": entities})
+        config = ShapeShiftProject(cfg={"entities": entities})
 
         assert len(config.tables) == 1
         assert "dummy" in config.tables
@@ -313,7 +313,7 @@ class TestShapeShiftConfig:
         """Test has_table method."""
         entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
 
-        config = ShapeShiftConfig(cfg={"entities": entities})
+        config = ShapeShiftProject(cfg={"entities": entities})
 
         assert config.has_table("site") is True
         assert config.has_table("location") is True
@@ -327,7 +327,7 @@ class TestShapeShiftConfig:
             "region": {"surrogate_id": "region_id"},
         }
 
-        config = ShapeShiftConfig(cfg={"entities": entities})
+        config = ShapeShiftProject(cfg={"entities": entities})
         names: list[str] = config.table_names
 
         assert len(names) == 3
@@ -349,7 +349,7 @@ class TestShapeShiftConfig:
             "natural_region": {"surrogate_id": "natural_region_id", "columns": ["NaturE", "NaturrEinh"], "drop_duplicates": True},
         }
 
-        config = ShapeShiftConfig(cfg={"entities": entities})
+        config = ShapeShiftProject(cfg={"entities": entities})
 
         site_table: TableConfig = config.get_table("site")
         assert site_table.keys == {"ProjektNr", "Fustel"}
@@ -397,7 +397,7 @@ class TestIntegration:
             },
         }
 
-        config = ShapeShiftConfig(cfg={"entities": entities})
+        config = ShapeShiftProject(cfg={"entities": entities})
 
         # Test location table
         location: TableConfig = config.get_table("location")

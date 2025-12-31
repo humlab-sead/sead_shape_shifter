@@ -73,7 +73,7 @@ class TestColumnExistsValidator:
         validator = ColumnExistsValidator(mock_preview_service)
 
         # Execute
-        errors = await validator.validate("test_config", "test_entity", config)
+        errors = await validator.validate("test_project", "test_entity", config)
 
         # Assert
         assert len(errors) == 0
@@ -88,7 +88,7 @@ class TestColumnExistsValidator:
         validator = ColumnExistsValidator(mock_preview_service)
 
         # Execute
-        errors = await validator.validate("test_config", "test_entity", config)
+        errors = await validator.validate("test_project", "test_entity", config)
 
         # Assert
         assert len(errors) == 2  # One error per missing column
@@ -110,7 +110,7 @@ class TestColumnExistsValidator:
         validator = ColumnExistsValidator(mock_preview_service)
 
         # Execute
-        errors = await validator.validate("test_config", "test_entity", config)
+        errors = await validator.validate("test_project", "test_entity", config)
 
         # Assert - should not error on empty data
         assert len(errors) == 0
@@ -135,7 +135,7 @@ class TestNaturalKeyUniquenessValidator:
         validator = NaturalKeyUniquenessValidator(mock_preview_service)
 
         # Execute
-        errors = await validator.validate("test_config", "test_entity", config)
+        errors = await validator.validate("test_project", "test_entity", config)
 
         # Assert
         assert len(errors) == 0
@@ -156,7 +156,7 @@ class TestNaturalKeyUniquenessValidator:
         validator = NaturalKeyUniquenessValidator(mock_preview_service)
 
         # Execute
-        errors = await validator.validate("test_config", "test_entity", config)
+        errors = await validator.validate("test_project", "test_entity", config)
 
         # Assert
         assert len(errors) == 1
@@ -183,7 +183,7 @@ class TestNaturalKeyUniquenessValidator:
         validator = NaturalKeyUniquenessValidator(mock_preview_service)
 
         # Execute
-        errors = await validator.validate("test_config", "test_entity", config)
+        errors = await validator.validate("test_project", "test_entity", config)
 
         # Assert - should be unique since combination is unique
         assert len(errors) == 0
@@ -202,7 +202,7 @@ class TestNonEmptyResultValidator:
         validator = NonEmptyResultValidator(mock_preview_service)
 
         # Execute
-        errors = await validator.validate("test_config", "test_entity", config)
+        errors = await validator.validate("test_project", "test_entity", config)
 
         # Assert
         assert len(errors) == 0
@@ -217,7 +217,7 @@ class TestNonEmptyResultValidator:
         validator = NonEmptyResultValidator(mock_preview_service)
 
         # Execute
-        errors = await validator.validate("test_config", "test_entity", config)
+        errors = await validator.validate("test_project", "test_entity", config)
 
         # Assert
         assert len(errors) == 1
@@ -243,7 +243,7 @@ class TestForeignKeyDataValidator:
         # Mock preview service and config service
         with (
             patch("backend.app.validators.data_validators.ShapeShiftService") as mock_preview_class,
-            patch("backend.app.services.config_service.ConfigurationService"),
+            patch("backend.app.services.project_service.ProjectService"),
             patch("src.configuration.provider.ConfigStore.config_global"),
         ):
             mock_service = Mock()
@@ -258,7 +258,7 @@ class TestForeignKeyDataValidator:
             )
 
             # Execute
-            errors = await validator.validate("test_config", "test_entity", config)
+            errors = await validator.validate("test_project", "test_entity", config)
 
             # Assert
             assert len(errors) == 0
@@ -273,7 +273,7 @@ class TestForeignKeyDataValidator:
 
         with (
             patch("backend.app.validators.data_validators.ShapeShiftService") as mock_preview_class,
-            patch("backend.app.services.config_service.ConfigurationService"),
+            patch("backend.app.services.project_service.ProjectService"),
             patch("src.configuration.provider.ConfigStore.config_global"),
         ):
             # Mock preview service
@@ -289,7 +289,7 @@ class TestForeignKeyDataValidator:
             )
 
             # Execute
-            errors = await validator.validate("test_config", "test_entity", config)
+            errors = await validator.validate("test_project", "test_entity", config)
 
             # Assert
             assert len(errors) == 1
@@ -324,7 +324,7 @@ class TestDataTypeCompatibilityValidator:
             )
 
             # Execute
-            errors = await validator.validate("test_config", "test_entity", config)
+            errors = await validator.validate("test_project", "test_entity", config)
 
             # Assert - integer types are compatible
             assert len(errors) == 0
@@ -350,7 +350,7 @@ class TestDataTypeCompatibilityValidator:
             )
 
             # Execute
-            errors = await validator.validate("test_config", "test_entity", config)
+            errors = await validator.validate("test_project", "test_entity", config)
 
             # Assert - should warn about type mismatch (string vs int are compatible in pandas)
             # Actually pandas treats them as compatible, so this may not error
@@ -369,15 +369,15 @@ class TestDataValidationService:
 
         service = DataValidationService(mock_preview_service)
 
-        with patch("backend.app.validators.data_validators.ConfigurationService") as mock_config_svc:
+        with patch("backend.app.validators.data_validators.ProjectService") as mock_config_svc:
             mock_config = Mock()
             mock_config.entities = {
                 "entity1": Mock(columns=["id"], keys=["id"], foreign_keys=[]),
                 "entity2": Mock(columns=["name"], keys=["name"], foreign_keys=[]),
             }
-            mock_config_svc.return_value.load_configuration.return_value = mock_config
+            mock_config_svc.return_value.load_project.return_value = mock_config
 
-            _ = await service.validate_configuration("test_config")
+            _ = await service.validate_configuration("test_project")
 
             # Assert - called validator for each entity
             assert mock_preview_service.preview_entity.call_count >= 2
@@ -390,16 +390,16 @@ class TestDataValidationService:
 
         service = DataValidationService(mock_preview_service)
 
-        with patch("backend.app.validators.data_validators.ConfigurationService") as mock_config_svc:
+        with patch("backend.app.validators.data_validators.ProjectService") as mock_config_svc:
             mock_config = Mock()
             mock_config.entities = {
                 "entity1": Mock(columns=["id"], keys=["id"], foreign_keys=[]),
                 "entity2": Mock(columns=["name"], keys=["name"], foreign_keys=[]),
             }
-            mock_config_svc.return_value.load_configuration.return_value = mock_config
+            mock_config_svc.return_value.load_project.return_value = mock_config
 
             # Execute - only validate entity1
-            _ = await service.validate_configuration("test_config", ["entity1"])
+            _ = await service.validate_configuration("test_project", ["entity1"])
 
             # Assert - only called once for entity1
             assert mock_preview_service.preview_entity.call_count >= 1

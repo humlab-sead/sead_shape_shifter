@@ -21,7 +21,7 @@ export function useEntities(options: UseEntitiesOptions) {
   // Computed state from store
   const entities = computed(() => store.sortedEntities)
   const selectedEntity = computed(() => store.selectedEntity)
-  const currentConfigName = computed(() => store.currentConfigName)
+  const currentProjectName = computed(() => store.currentProjectName)
   const loading = computed(() => store.loading)
   const error = computed(() => store.error)
   const hasUnsavedChanges = computed(() => store.hasUnsavedChanges)
@@ -119,7 +119,7 @@ export function useEntities(options: UseEntitiesOptions) {
     // State
     entities,
     selectedEntity,
-    currentConfigName,
+    currentProjectName,
     loading,
     error,
     hasUnsavedChanges,
