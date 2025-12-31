@@ -15,7 +15,7 @@ project_root: Path = find_parent_with(Path(__file__), "pyproject.toml")
 
 
 @pytest.mark.asyncio
-async def test_postgresql_connection(self, settings: Settings):
+async def test_postgresql_connection(settings: Settings):
 
     dotenv.load_dotenv(project_root / "input/.env")
 
