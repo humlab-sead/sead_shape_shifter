@@ -7,10 +7,8 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from src.configuration import MockConfigProvider
 from src.dispatch import CSVDispatcher, DatabaseDispatcher, Dispatcher, Dispatchers, DispatchRegistry, ExcelDispatcher
 from src.utility import Registry
-from tests.decorators import with_test_config
 
 # pylint: disable=unused-argument
 
