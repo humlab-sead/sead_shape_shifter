@@ -207,7 +207,8 @@ class SubsetService:
         if replacements:
             for col, replacement_map in replacements.items():
                 if col in result.columns:
-                    result[col] = result[col].replace(replacement_map)
+                    # Explicitly specify replacement dict (avoids FutureWarning)
+                    result[col] = result[col].replace(to_replace=replacement_map)
 
         return result
 
