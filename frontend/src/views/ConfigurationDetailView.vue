@@ -222,7 +222,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useDebounceFn } from '@vueuse/core'
 import { useProjects, useEntities, useValidation } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
@@ -353,12 +352,6 @@ async function handleValidate() {
     console.error('Validation failed:', err)
   }
 }
-
-// Debounced validation to prevent excessive API calls (500ms delay)
-// Usage: Replace direct handleValidate() calls with debouncedValidate()
-// in scenarios with rapid changes (e.g., auto-save, real-time editing)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const debouncedValidate = useDebounceFn(handleValidate, 500)
 
 async function handleDataValidate(project?: any) {
   try {
