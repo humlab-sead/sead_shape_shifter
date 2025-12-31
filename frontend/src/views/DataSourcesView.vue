@@ -316,7 +316,9 @@ function getFilePath(dataSource: DataSourceConfig): string | undefined {
   if (dataSource.file_path) return dataSource.file_path
 
   // Check options.filename (for Access databases)
-  if (dataSource.options?.filename) return dataSource.options.filename
+  if (dataSource.options?.filename && typeof dataSource.options.filename === 'string') {
+    return dataSource.options.filename
+  }
 
   return undefined
 }

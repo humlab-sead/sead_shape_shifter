@@ -111,7 +111,7 @@
               <v-row dense class="mt-1">
                 <v-col cols="12">
                   <ForeignKeyTester
-                    :config-name="projectName"
+                    :project-name="projectName"
                     :entity-name="entityName"
                     :foreign-key="fk"
                     :foreign-key-index="index"

@@ -86,7 +86,7 @@
 
         <!-- Reconciliation Grid -->
         <reconciliation-grid
-          v-if="selectedEntity && entitySpec && previewData.length > 0"
+          v-if="selectedEntity && entitySpec && previewData.length"
           :entity-spec="entitySpec"
           :preview-data="previewData"
           :loading="loading"
@@ -96,7 +96,7 @@
 
         <!-- Empty State - No Data -->
         <v-card
-          v-else-if="selectedEntity && entitySpec && previewData.length === 0"
+          v-else-if="selectedEntity && entitySpec && !previewData.length"
           variant="outlined"
           class="pa-8 text-center"
         >
@@ -139,7 +139,7 @@ const props = defineProps<Props>()
 
 // Store
 const reconciliationStore = useReconciliationStore()
-const { config, loading, error, reconcilableEntities, hasConfig, previewData } = storeToRefs(reconciliationStore)
+const { config, loading, reconcilableEntities, hasConfig, previewData } = storeToRefs(reconciliationStore)
 
 // Local state
 const selectedEntity = ref<string | null>(null)
@@ -184,7 +184,7 @@ async function handleUpdateMapping(row: ReconciliationPreviewRow, seadId: number
 
 async function handleSaveChanges() {
   try {
-    await reconciliationStore.saveConfig(props.projectName)
+    await reconciliationStore.saveReconciliationConfig(props.projectName)
     resultMessage.value = 'Changes saved successfully'
     resultColor.value = 'success'
     showResultSnackbar.value = true
@@ -198,11 +198,11 @@ async function handleSaveChanges() {
 // Load project on mount
 onMounted(async () => {
   try {
-    await reconciliationStore.loadProject(props.projectName)
+    await reconciliationStore.loadReconciliationConfig(props.projectName)
 
     // Auto-select first entity if available
     if (reconcilableEntities.value.length > 0) {
-      selectedEntity.value = reconcilableEntities.value[0]
+      selectedEntity.value = reconcilableEntities.value[0] ?? null
     }
   } catch (e) {
     console.error('Failed to load reconciliation config:', e)
@@ -215,7 +215,7 @@ watch(
   async (newConfigName) => {
     if (newConfigName) {
       selectedEntity.value = null
-      await reconciliationStore.loadProject(newConfigName)
+      await reconciliationStore.loadReconciliationConfig(newConfigName)
     }
   }
 )

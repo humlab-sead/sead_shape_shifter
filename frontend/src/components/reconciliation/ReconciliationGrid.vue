@@ -60,8 +60,8 @@
               :class="{ 'bg-blue-lighten-5': selectedCandidate === candidate }"
             >
               <template v-slot:prepend>
-                <v-avatar :color="getConfidenceColor(candidate.score * 100)" size="32">
-                  {{ Math.round(candidate.score * 100) }}
+                <v-avatar :color="getConfidenceColor((candidate.score ?? 0) * 100)" size="32">
+                  {{ Math.round((candidate.score ?? 0) * 100) }}
                 </v-avatar>
               </template>
               <v-list-item-title>
@@ -116,7 +116,6 @@ const emit = defineEmits<{
 }>()
 
 // Grid reference
-const gridRef = ref<typeof AgGridVue>()
 const gridApi = ref<GridApi>()
 const hasChanges = ref(false)
 const saving = ref(false)
@@ -292,7 +291,7 @@ function onCellValueChanged(event: CellValueChangedEvent) {
     emit('update:mapping', row, seadId, row.notes)
     hasChanges.value = true
   } else if (field === 'notes') {
-    emit('update:mapping', row, row.sead_id, event.newValue)
+    emit('update:mapping', row, row.sead_id ?? null, event.newValue)
     hasChanges.value = true
   }
 }
@@ -316,7 +315,7 @@ function acceptCandidate() {
   const seadId = extractIdFromUri(selectedCandidate.value.id)
   if (seadId) {
     selectedRow.value.sead_id = seadId
-    selectedRow.value.confidence = selectedCandidate.value.score * 100
+    selectedRow.value.confidence = (selectedCandidate.value.score ?? 0) * 100
 
     emit('update:mapping', selectedRow.value, seadId, selectedRow.value.notes)
     hasChanges.value = true
@@ -331,7 +330,7 @@ function acceptCandidate() {
 // Extract ID from URI
 function extractIdFromUri(uri: string): number | null {
   const match = uri.match(/\/(\d+)$/)
-  return match ? parseInt(match[1]) : null
+  return match?.[1] ? parseInt(match[1]) : null
 }
 
 // Get row display text

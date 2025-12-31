@@ -246,7 +246,6 @@ const {
   hasUnsavedChanges,
   backups,
   select,
-  update,
   clearError,
   fetchBackups,
   restore,
