@@ -172,8 +172,9 @@ class ShapeShifter:
                 )
                 dfs.append(sub_data)
 
-            # Concatenate all dataframes
-            data: pd.DataFrame = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+            # Concatenate all dataframes (filter out empty DataFrames to avoid FutureWarning)
+            non_empty_dfs = [df for df in dfs if not df.empty]
+            data: pd.DataFrame = pd.concat(non_empty_dfs, ignore_index=True) if non_empty_dfs else pd.DataFrame()
 
             if table_cfg.filters:
                 data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store)
