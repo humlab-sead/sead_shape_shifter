@@ -1,6 +1,6 @@
 /**
- * Composable for configuration management
- * Wraps the configuration store with convenient methods and auto-fetching
+ * Composable for project management
+ * Wraps the project store with convenient methods and auto-fetching
  */
 
 import { computed, onMounted, ref } from 'vue'
@@ -34,7 +34,7 @@ export function useProjects(options: UseProjectsOptions = {}) {
       await store.fetchProjects()
       initialized.value = true
     } catch (err) {
-      console.error('Failed to fetch configurations:', err)
+      console.error('Failed to fetch projects:', err)
       throw err
     }
   }
@@ -43,7 +43,7 @@ export function useProjects(options: UseProjectsOptions = {}) {
     try {
       return await store.selectProject(name)
     } catch (err) {
-      console.error(`Failed to select configuration "${name}":`, err)
+      console.error(`Failed to select project "${name}":`, err)
       throw err
     }
   }
@@ -133,8 +133,8 @@ export function useProjects(options: UseProjectsOptions = {}) {
 
   return {
     // State
-    configurations: projects,
-    selectedConfig: selectedProject,
+    projects,
+    selectedProject,
     validationResult,
     backups,
     loading,

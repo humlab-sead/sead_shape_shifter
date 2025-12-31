@@ -8,13 +8,13 @@ import { useEntityStore } from '@/stores'
 import type { EntityCreateRequest, EntityUpdateRequest } from '@/api/entities'
 
 export interface UseEntitiesOptions {
-  configName: string
+  projectName: string
   autoFetch?: boolean
   entityName?: string
 }
 
 export function useEntities(options: UseEntitiesOptions) {
-  const { configName, autoFetch = true, entityName } = options
+  const { projectName, autoFetch = true, entityName } = options
   const store = useEntityStore()
   const initialized = ref(false)
 
@@ -35,17 +35,17 @@ export function useEntities(options: UseEntitiesOptions) {
   // Actions
   async function fetch() {
     try {
-      await store.fetchEntities(configName)
+      await store.fetchEntities(projectName)
       initialized.value = true
     } catch (err) {
-      console.error(`Failed to fetch entities for "${configName}":`, err)
+      console.error(`Failed to fetch entities for "${projectName}":`, err)
       throw err
     }
   }
 
   async function select(name: string) {
     try {
-      return await store.selectEntity(configName, name)
+      return await store.selectEntity(projectName, name)
     } catch (err) {
       console.error(`Failed to select entity "${name}":`, err)
       throw err
@@ -54,7 +54,7 @@ export function useEntities(options: UseEntitiesOptions) {
 
   async function create(data: EntityCreateRequest) {
     try {
-      return await store.createEntity(configName, data)
+      return await store.createEntity(projectName, data)
     } catch (err) {
       console.error('Failed to create entity:', err)
       throw err
@@ -63,7 +63,7 @@ export function useEntities(options: UseEntitiesOptions) {
 
   async function update(name: string, data: EntityUpdateRequest) {
     try {
-      return await store.updateEntity(configName, name, data)
+      return await store.updateEntity(projectName, name, data)
     } catch (err) {
       console.error(`Failed to update entity "${name}":`, err)
       throw err
@@ -72,7 +72,7 @@ export function useEntities(options: UseEntitiesOptions) {
 
   async function remove(name: string) {
     try {
-      await store.deleteEntity(configName, name)
+      await store.deleteEntity(projectName, name)
     } catch (err) {
       console.error(`Failed to delete entity "${name}":`, err)
       throw err
@@ -104,9 +104,9 @@ export function useEntities(options: UseEntitiesOptions) {
     }
   })
 
-  // Watch for configName changes
+  // Watch for projectName changes
   watch(
-    () => configName,
+    () => projectName,
     async (newConfigName, oldConfigName) => {
       if (newConfigName !== oldConfigName && newConfigName) {
         initialized.value = false

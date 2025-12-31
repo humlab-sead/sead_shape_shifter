@@ -8,13 +8,13 @@ import { useValidationStore } from '@/stores'
 import type { GraphNode, GraphEdge } from '@/types'
 
 export interface UseDependenciesOptions {
-  configName?: string
+  projectName?: string
   autoFetch?: boolean
   checkCycles?: boolean
 }
 
 export function useDependencies(options: UseDependenciesOptions = {}) {
-  const { configName, autoFetch = false, checkCycles = false } = options
+  const { projectName, autoFetch = false, checkCycles = false } = options
   const store = useValidationStore()
   const lastFetchedConfig = ref<string | null>(null)
 
@@ -118,7 +118,7 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
 
   // Helper: Check if graph is stale
   const isStale = computed(() => {
-    return configName ? lastFetchedConfig.value !== configName : false
+    return projectName ? lastFetchedConfig.value !== projectName : false
   })
 
   // Statistics
@@ -131,18 +131,18 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
   }))
 
   // Auto-fetch on mount if enabled
-  if (autoFetch && configName) {
-    fetch(configName)
+  if (autoFetch && projectName) {
+    fetch(projectName)
   }
 
   // Auto-check cycles if enabled
-  if (checkCycles && configName) {
-    checkCircularDependencies(configName)
+  if (checkCycles && projectName) {
+    checkCircularDependencies(projectName)
   }
 
   // Watch for config changes
   watch(
-    () => configName,
+    () => projectName,
     async (newName, oldName) => {
       if (newName && newName !== oldName) {
         if (autoFetch) {

@@ -9,7 +9,7 @@
           <v-card-text class="text-center py-8">
             <v-icon icon="mdi-file-question" size="64" color="grey" class="mb-4" />
             <h2 class="text-h6 mb-2">No Project Loaded</h2>
-            <p class="text-grey mb-4">To manage entities, you need to load a configuration file first.</p>
+            <p class="text-grey mb-4">To manage entities, you need to load a project file first.</p>
             <v-btn color="primary" prepend-icon="mdi-folder-open" to="/configurations"> Browse Configurations </v-btn>
           </v-card-text>
         </v-card>
@@ -42,10 +42,10 @@ import { useEntities } from '@/composables/useEntities'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 
 const configurationStore = useProjectStore()
-const configName = computed(() => configurationStore.currentProjectName || '')
+const projectName = computed(() => configurationStore.currentProjectName || '')
 
 const { entityCount } = useEntities({
-  configName: configName.value,
+  projectName: projectName.value,
   autoFetch: false, // EntityListCard handles fetching
 })
 

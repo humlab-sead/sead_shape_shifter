@@ -303,7 +303,7 @@
                 <foreign-key-editor
                   v-model="formData.foreign_keys"
                   :available-entities="availableSourceEntities"
-                  :config-name="configName"
+                  :project-name="projectName"
                   :entity-name="formData.name"
                   :is-entity-saved="mode === 'edit'"
                 />
@@ -317,7 +317,7 @@
                 <v-alert type="info" variant="tonal" density="compact" class="mb-4">
                   <div class="text-caption">
                     <v-icon icon="mdi-information" size="small" class="mr-1" />
-                    Edit the entity configuration in YAML format. Changes will be synced with the form editor.
+                    Edit the entity in YAML format. Changes will be synced with the form editor.
                   </div>
                 </v-alert>
 
@@ -525,7 +525,7 @@ const FixedValuesGrid = defineAsyncComponent(() => import('./FixedValuesGrid.vue
 
 interface Props {
   modelValue: boolean
-  configName: string
+  projectName: string
   entity?: EntityResponse | null
   mode: 'create' | 'edit'
 }
@@ -539,7 +539,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const { entities, create, update } = useEntities({
-  configName: props.configName,
+  projectName: props.projectName,
   autoFetch: false,
 })
 
@@ -644,7 +644,7 @@ const canPreview = computed(() => {
   return props.mode === 'edit' && formData.value.name
 })
 
-// Ag-grid configuration for preview
+// Ag-grid project for preview
 const previewColumnDefs = computed<ColDef[]>(() => {
   if (!livePreviewData.value?.columns) return []
 
@@ -687,7 +687,7 @@ async function refreshPreview() {
   if (!canPreview.value) return
 
   previewError.value = null
-  await previewEntity(props.configName, formData.value.name, 100)
+  await previewEntity(props.projectName, formData.value.name, 100)
 
   if (livePreviewError.value) {
     previewError.value = livePreviewError.value
@@ -707,7 +707,7 @@ watch(
   formData,
   () => {
     if (autoRefreshEnabled.value && splitView.value && canPreview.value) {
-      debouncedPreviewEntity(props.configName, formData.value.name, 100)
+      debouncedPreviewEntity(props.projectName, formData.value.name, 100)
     }
   },
   { deep: true }

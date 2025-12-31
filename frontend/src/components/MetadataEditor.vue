@@ -26,7 +26,7 @@
         <v-textarea
           v-model="formData.description"
           label="Description"
-          hint="Optional description of this configuration"
+          hint="Optional description of this project"
           persistent-hint
           variant="outlined"
           density="comfortable"
@@ -93,11 +93,11 @@ import { storeToRefs } from 'pinia'
 import type { MetadataUpdateRequest } from '@/api/projects'
 
 const props = defineProps<{
-  configName: string
+  projectName: string
 }>()
 
-const configStore = useProjectStore()
-const { selectedProject, loading } = storeToRefs(configStore)
+const projectStore = useProjectStore()
+const { selectedProject, loading } = storeToRefs(projectStore)
 
 const formRef = ref()
 const saving = ref(false)
@@ -151,7 +151,7 @@ function loadMetadata() {
   if (selectedProject.value?.metadata) {
     const metadata = selectedProject.value.metadata
     formData.value = {
-      name: metadata.name || props.configName,
+      name: metadata.name || props.projectName,
       description: metadata.description || null,
       version: metadata.version || null,
       default_entity: metadata.default_entity || null,
@@ -179,7 +179,7 @@ async function handleSave() {
       default_entity: formData.value.default_entity,
     }
 
-    await configStore.updateMetadata(props.configName, updateData)
+    await projectStore.updateMetadata(props.projectName, updateData)
 
     // Update initial values after successful save
     initialValues.value = { ...formData.value }
@@ -205,7 +205,7 @@ function handleReset() {
   successMessage.value = null
 }
 
-// Watch for config changes
+// Watch for project changes
 watch(
   () => selectedProject.value,
   () => {

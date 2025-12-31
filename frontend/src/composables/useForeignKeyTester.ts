@@ -50,7 +50,7 @@ export function useForeignKeyTester() {
    * Test a foreign key join
    */
   const testForeignKey = async (
-    configName: string,
+    projectName: string,
     entityName: string,
     fkIndex: number,
     sampleSize: number = 100
@@ -61,7 +61,7 @@ export function useForeignKeyTester() {
 
     try {
       const response = await apiClient.post<JoinTestResult>(
-        `/configurations/${encodeURIComponent(configName)}/entities/${encodeURIComponent(entityName)}/foreign-keys/${fkIndex}/test`,
+        `/projects/${encodeURIComponent(projectName)}/entities/${encodeURIComponent(entityName)}/foreign-keys/${fkIndex}/test`,
         null,
         {
           params: { sample_size: sampleSize },

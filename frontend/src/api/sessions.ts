@@ -6,7 +6,7 @@ import { apiClient } from './client'
 import type { SessionCreateRequest, SessionResponse } from '@/types/session'
 
 /**
- * Create a new editing session for a configuration file.
+ * Create a new editing session for a project file.
  */
 export async function createSession(request: SessionCreateRequest): Promise<SessionResponse> {
   const response = await apiClient.post<SessionResponse>('/sessions', request)
@@ -29,10 +29,10 @@ export async function closeSession(): Promise<void> {
 }
 
 /**
- * List all active sessions for a configuration file.
+ * List all active sessions for a project file.
  */
-export async function listActiveSessions(configName: string): Promise<SessionResponse[]> {
-  const response = await apiClient.get<SessionResponse[]>(`/sessions/${configName}/active`)
+export async function listActiveSessions(projectName: string): Promise<SessionResponse[]> {
+  const response = await apiClient.get<SessionResponse[]>(`/sessions/${projectName}/active`)
   return response.data
 }
 

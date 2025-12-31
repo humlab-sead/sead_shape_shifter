@@ -11,29 +11,30 @@ import type {
   ReconciliationPreviewRow,
 } from '@/types/reconciliation'
 import { apiClient } from '@/api/client'
+import { load } from 'js-yaml'
 
 export const useReconciliationStore = defineStore('reconciliation', () => {
   // State
-  const config = ref<ReconciliationConfig | null>(null)
+  const reconciliationConfig = ref<ReconciliationConfig | null>(null)
   const previewData = ref<Record<string, ReconciliationPreviewRow[]>>({})
   const loading = ref(false)
   const error = ref<string | null>(null)
 
   // Getters
   const reconcilableEntities = computed(() => {
-    if (!config.value) return []
-    return Object.keys(config.value.entities)
+    if (!reconciliationConfig.value) return []
+    return Object.keys(reconciliationConfig.value.entities)
   })
 
-  const hasConfig = computed(() => config.value !== null)
+  const hasConfig = computed(() => reconciliationConfig.value !== null)
 
   // Actions
-  async function loadConfig(configName: string) {
+  async function loadProject(projectName: string) {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.get(`/configurations/${configName}/reconciliation`)
-      config.value = response.data
+      const response = await apiClient.get(`/projects/${projectName}/reconciliation`)
+      reconciliationConfig.value = response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to load reconciliation config'
       console.error('Failed to load reconciliation config:', e)
@@ -43,16 +44,16 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function saveConfig(configName: string) {
-    if (!config.value) {
+  async function saveConfig(projectName: string) {
+    if (!reconciliationConfig.value) {
       throw new Error('No config to save')
     }
 
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.put(`/configurations/${configName}/reconciliation`, config.value)
-      config.value = response.data
+      const response = await apiClient.put(`/projects/${projectName}/reconciliation`, reconciliationConfig.value)
+      reconciliationConfig.value = response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to save reconciliation config'
       console.error('Failed to save reconciliation config:', e)
@@ -63,7 +64,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   }
 
   async function autoReconcile(
-    configName: string,
+    projectName: string,
     entityName: string,
     threshold: number = 0.95
   ): Promise<AutoReconcileResult> {
@@ -71,13 +72,13 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     error.value = null
     try {
       const response = await apiClient.post(
-        `/configurations/${configName}/reconciliation/${entityName}/auto-reconcile`,
+        `/projects/${projectName}/reconciliation/${entityName}/auto-reconcile`,
         null,
         { params: { threshold } }
       )
 
       // Reload config to get updated mappings
-      await loadConfig(configName)
+      await loadProject(projectName)
 
       return response.data
     } catch (e: any) {
@@ -90,7 +91,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   }
 
   async function updateMapping(
-    configName: string,
+    projectName: string,
     entityName: string,
     sourceValues: any[],
     seadId: number | null,
@@ -99,12 +100,12 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.post(`/configurations/${configName}/reconciliation/${entityName}/mapping`, {
+      const response = await apiClient.post(`/projects/${projectName}/reconciliation/${entityName}/mapping`, {
         source_values: sourceValues,
         sead_id: seadId,
         notes,
       })
-      config.value = response.data
+      reconciliationConfig.value = response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to update mapping'
       console.error('Failed to update mapping:', e)
@@ -114,14 +115,14 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function deleteMapping(configName: string, entityName: string, sourceValues: any[]) {
+  async function deleteMapping(projectName: string, entityName: string, sourceValues: any[]) {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.delete(`/configurations/${configName}/reconciliation/${entityName}/mapping`, {
+      const response = await apiClient.delete(`/projects/${projectName}/reconciliation/${entityName}/mapping`, {
         params: { source_values: JSON.stringify(sourceValues) },
       })
-      config.value = response.data
+      reconciliationConfig.value = response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to delete mapping'
       console.error('Failed to delete mapping:', e)
@@ -132,7 +133,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   }
 
   async function suggestEntities(
-    configName: string,
+    projectName: string,
     entityName: string,
     query: string
   ): Promise<ReconciliationCandidate[]> {
@@ -141,7 +142,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
 
     try {
-      const response = await apiClient.get(`/configurations/${configName}/reconciliation/${entityName}/suggest`, {
+      const response = await apiClient.get(`/projects/${projectName}/reconciliation/${entityName}/suggest`, {
         params: { query },
       })
       return response.data
@@ -157,7 +158,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   }
 
   function $reset() {
-    config.value = null
+    reconciliationConfig.value = null
     previewData.value = {}
     loading.value = false
     error.value = null
@@ -165,7 +166,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
 
   return {
     // State
-    config,
+    reconciliationConfig,
     previewData,
     loading,
     error,
@@ -175,7 +176,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     hasConfig,
 
     // Actions
-    loadConfig,
+    loadProject,
     saveConfig,
     autoReconcile,
     updateMapping,

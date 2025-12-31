@@ -56,7 +56,7 @@
     <v-card v-else variant="outlined" class="text-center py-12">
       <v-icon icon="mdi-graph-outline" size="64" color="grey" />
       <h3 class="text-h6 mt-4 mb-2">No Graph Data</h3>
-      <p class="text-grey mb-4">No dependency data available for this configuration</p>
+      <p class="text-grey mb-4">No dependency data available for this project</p>
     </v-card>
 
     <!-- Entity Details Drawer -->
@@ -136,7 +136,7 @@ interface LayoutNode extends GraphNode {
 
 // Props
 const props = defineProps<{
-  configName: string
+  projectName: string
 }>()
 
 // Emits
@@ -158,7 +158,7 @@ const {
   isInCycle,
   clearError,
 } = useDependencies({
-  configName: props.configName,
+  projectName: props.projectName,
   autoFetch: true,
 })
 
@@ -173,7 +173,7 @@ const selectedNode = ref<GraphNode | null>(null)
 // Methods
 async function handleRefresh() {
   clearError()
-  await fetch(props.configName)
+  await fetch(props.projectName)
 }
 
 function handleEditEntity(entityName: string) {
@@ -358,7 +358,7 @@ function renderGraph() {
 
 // Watch for config changes
 watch(
-  () => props.configName,
+  () => props.projectName,
   async (newConfig) => {
     if (newConfig) {
       await fetch(newConfig)

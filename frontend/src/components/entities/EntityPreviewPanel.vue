@@ -102,7 +102,7 @@ import { useEntityPreview } from '@/composables/useEntityPreview'
 import EntityDataPreview from './EntityDataPreview.vue'
 
 interface Props {
-  configName: string
+  projectName: string
   entityName: string
   autoLoad?: boolean
   autoRefresh?: boolean
@@ -142,7 +142,7 @@ let refreshTimeout: ReturnType<typeof setTimeout> | null = null
 
 // Watch for entity changes with debouncing
 watch(
-  () => ({ name: props.entityName, config: props.configName }),
+  () => ({ name: props.entityName, config: props.projectName }),
   (newVal, oldVal) => {
     // Clear existing timeout
     if (refreshTimeout) {
@@ -192,7 +192,7 @@ async function loadPreview() {
   if (!props.entityName) return
 
   clearError()
-  const result = await previewEntity(props.configName, props.entityName, localLimit.value)
+  const result = await previewEntity(props.projectName, props.entityName, localLimit.value)
 
   if (result) {
     // Auto-expand panel on successful load
@@ -205,7 +205,7 @@ async function refreshPreview() {
 }
 
 async function clearCache() {
-  const success = await invalidateCache(props.configName, props.entityName)
+  const success = await invalidateCache(props.projectName, props.entityName)
   if (success) {
     // Reload preview after cache clear
     await loadPreview()

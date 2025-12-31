@@ -11,7 +11,7 @@
 6. **`docs/FRONTEND_SESSION_MANAGEMENT.md`** - Full documentation
 
 ### Files Updated
-1. **`frontend/src/stores/configuration.ts`** - Added session-aware saving
+1. **`frontend/src/stores/project.ts`** - Added session-aware saving
 2. **`frontend/src/api/client.ts`** - Enabled cookie support
 3. **`frontend/src/api/index.ts`** - Exported sessions API
 4. **`frontend/src/types/index.ts`** - Exported session types

@@ -12,7 +12,7 @@
         <v-text-field
           v-model="searchQuery"
           prepend-inner-icon="mdi-magnify"
-          label="Search configurations"
+          label="Search projects"
           variant="outlined"
           density="compact"
           clearable
@@ -38,7 +38,7 @@
     <v-row v-if="loading" class="mt-4">
       <v-col cols="12" class="text-center py-12">
         <v-progress-circular indeterminate color="primary" size="64" />
-        <p class="mt-4 text-grey">Loading configurations...</p>
+        <p class="mt-4 text-grey">Loading projects...</p>
       </v-col>
     </v-row>
 
@@ -56,8 +56,8 @@
       <v-col cols="12">
         <v-card variant="outlined" class="text-center py-12">
           <v-icon icon="mdi-file-document-outline" size="64" color="grey" />
-          <h3 class="text-h6 mt-4 mb-2">No Configurations Yet</h3>
-          <p class="text-grey mb-4">Create your first configuration to get started</p>
+          <h3 class="text-h6 mt-4 mb-2">No Projects Yet</h3>
+          <p class="text-grey mb-4">Create your first project to get started</p>
           <v-btn color="primary" prepend-icon="mdi-plus" @click="showCreateDialog = true"> Create Project </v-btn>
         </v-card>
       </v-col>
@@ -65,37 +65,37 @@
 
     <!-- Project List -->
     <v-row v-else class="mt-4">
-      <v-col v-for="config in filteredConfigurations" :key="config.name" cols="12" md="6" lg="4">
-        <v-card variant="outlined" hover :ripple="false" @click="handleSelectConfig(config.name)">
+      <v-col v-for="project in filteredProjects" :key="project.name" cols="12" md="6" lg="4">
+        <v-card variant="outlined" hover :ripple="false" @click="handleSelectProject(project.name)">
           <v-card-title class="d-flex align-center">
             <v-icon icon="mdi-file-document" class="mr-2" />
-            <span class="text-truncate">{{ config.name }}</span>
+            <span class="text-truncate">{{ project.name }}</span>
           </v-card-title>
 
           <v-card-text>
             <div class="d-flex align-center mb-2">
               <v-icon icon="mdi-cube-outline" size="small" class="mr-2" />
               <span class="text-body-2">
-                {{ config.entity_count }}
-                {{ config.entity_count === 1 ? 'entity' : 'entities' }}
+                {{ project.entity_count }}
+                {{ project.entity_count === 1 ? 'entity' : 'entities' }}
               </span>
             </div>
 
-            <div v-if="config.modified_at" class="d-flex align-center">
+            <div v-if="project.modified_at" class="d-flex align-center">
               <v-icon icon="mdi-clock-outline" size="small" class="mr-2" />
-              <span class="text-body-2 text-grey"> Modified {{ formatDate(config.modified_at) }} </span>
+              <span class="text-body-2 text-grey"> Modified {{ formatDate(project.modified_at) }} </span>
             </div>
           </v-card-text>
 
           <v-card-actions>
-            <v-btn variant="text" size="small" prepend-icon="mdi-pencil" @click.stop="handleSelectConfig(config.name)">
+            <v-btn variant="text" size="small" prepend-icon="mdi-pencil" @click.stop="handleSelectProject(project.name)">
               Edit
             </v-btn>
             <v-btn
               variant="text"
               size="small"
               prepend-icon="mdi-check-circle-outline"
-              @click.stop="handleValidate(config.name)"
+              @click.stop="handleValidate(project.name)"
             >
               Validate
             </v-btn>
@@ -105,7 +105,7 @@
               size="small"
               color="error"
               icon="mdi-delete"
-              @click.stop="handleDeleteClick(config)"
+              @click.stop="handleDeleteClick(project)"
             />
           </v-card-actions>
         </v-card>
@@ -113,13 +113,13 @@
     </v-row>
 
     <!-- Create Dialog -->
-    <create-configuration-dialog v-model="showCreateDialog" @created="handleConfigCreated" />
+    <create-configuration-dialog v-model="showCreateDialog" @created="handleProjectCreated" />
 
     <!-- Delete Confirmation Dialog -->
     <delete-confirmation-dialog
       v-model="showDeleteDialog"
-      :item-name="configToDelete?.name"
-      item-type="configuration"
+      :item-name="projectToDelete?.name"
+      item-type="project"
       @confirm="handleDeleteConfirm"
     />
 
@@ -138,7 +138,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useConfigurations } from '@/composables'
+import { useProjects } from '@/composables'
 import type { ProjectMetadata } from '@/types'
 import CreateConfigurationDialog from '@/components/configurations/CreateConfigurationDialog.vue'
 import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDialog.vue'
@@ -146,7 +146,7 @@ import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDial
 const router = useRouter()
 
 // Composables
-const { configurations, loading, error, isEmpty, select, remove, validate, fetch, clearError } = useConfigurations({
+const { projects, loading, error, isEmpty, select, remove, validate, fetch, clearError } = useProjects({
   autoFetch: true,
 })
 
@@ -155,7 +155,7 @@ const searchQuery = ref('')
 const sortBy = ref('name')
 const showCreateDialog = ref(false)
 const showDeleteDialog = ref(false)
-const configToDelete = ref<ProjectMetadata | null>(null)
+const projectToDelete = ref<ProjectMetadata | null>(null)
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
 
@@ -169,13 +169,13 @@ const sortOptions = [
 ]
 
 // Computed
-const filteredConfigurations = computed(() => {
-  let filtered = configurations.value
+const filteredProjects = computed(() => {
+  let filtered = projects.value
 
   // Filter by search query
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter((config) => config.name.toLowerCase().includes(query))
+    filtered = filtered.filter((project) => project.name.toLowerCase().includes(query))
   }
 
   // Sort
@@ -223,12 +223,12 @@ function formatDate(dateString: string | null | undefined): string {
   return date.toLocaleDateString()
 }
 
-async function handleSelectConfig(name: string) {
+async function handleSelectProject(name: string) {
   try {
     await select(name)
-    router.push({ name: 'config-detail', params: { name } })
+    router.push({ name: 'project-detail', params: { name } })
   } catch (err) {
-    console.error('Failed to select configuration:', err)
+    console.error('Failed to select project:', err)
   }
 }
 
@@ -238,32 +238,32 @@ async function handleValidate(name: string) {
     successMessage.value = `Project "${name}" validated successfully`
     showSuccessSnackbar.value = true
   } catch (err) {
-    console.error('Failed to validate configuration:', err)
+    console.error('Failed to validate project:', err)
   }
 }
 
-function handleDeleteClick(config: ProjectMetadata) {
-  configToDelete.value = config
+function handleDeleteClick(project: ProjectMetadata) {
+  projectToDelete.value = project
   showDeleteDialog.value = true
 }
 
 async function handleDeleteConfirm() {
-  if (!configToDelete.value) return
+  if (!projectToDelete.value) return
 
   try {
-    await remove(configToDelete.value.name)
-    successMessage.value = `Project "${configToDelete.value.name}" deleted`
+    await remove(projectToDelete.value.name)
+    successMessage.value = `Project "${projectToDelete.value.name}" deleted`
     showSuccessSnackbar.value = true
-    configToDelete.value = null
+    projectToDelete.value = null
   } catch (err) {
-    console.error('Failed to delete configuration:', err)
+    console.error('Failed to delete project:', err)
   }
 }
 
-function handleConfigCreated(name: string) {
+function handleProjectCreated(name: string) {
   successMessage.value = `Project "${name}" created`
   showSuccessSnackbar.value = true
-  router.push({ name: 'config-detail', params: { name } })
+  router.push({ name: 'project-detail', params: { name } })
 }
 
 async function handleRefresh() {

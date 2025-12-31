@@ -70,11 +70,11 @@ export function useDataValidation() {
   })
 
   /**
-   * Run data validation on configuration
+   * Run data validation on project
    */
-  async function validateData(configName: string, entityNames?: string[]): Promise<ValidationResult | null> {
+  async function validateData(projectName: string, entityNames?: string[]): Promise<ValidationResult | null> {
     // Check cache first
-    const cacheKey = `${configName}:${entityNames?.join(',') || 'all'}`
+    const cacheKey = `${projectName}:${entityNames?.join(',') || 'all'}`
     const cached = validationCache.get(cacheKey)
 
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -89,7 +89,7 @@ export function useDataValidation() {
     try {
       const params = entityNames && entityNames.length > 0 ? { entity_names: entityNames.join(',') } : {}
 
-      const response = await apiClient.post<ValidationResult>(`/configurations/${configName}/validate/data`, null, {
+      const response = await apiClient.post<ValidationResult>(`/projects/${projectName}/validate/data`, null, {
         params,
       })
 
@@ -123,12 +123,12 @@ export function useDataValidation() {
   /**
    * Preview fixes for validation errors
    */
-  async function previewFixes(configName: string, errors: ValidationError[]): Promise<any> {
+  async function previewFixes(projectName: string, errors: ValidationError[]): Promise<any> {
     loading.value = true
     error.value = null
 
     try {
-      const response = await apiClient.post(`/configurations/${configName}/fixes/preview`, errors)
+      const response = await apiClient.post(`/projects/${projectName}/fixes/preview`, errors)
 
       return response.data
     } catch (err) {
@@ -144,12 +144,12 @@ export function useDataValidation() {
   /**
    * Apply fixes for validation errors
    */
-  async function applyFixes(configName: string, errors: ValidationError[]): Promise<any> {
+  async function applyFixes(projectName: string, errors: ValidationError[]): Promise<any> {
     loading.value = true
     error.value = null
 
     try {
-      const response = await apiClient.post(`/configurations/${configName}/fixes/apply`, errors)
+      const response = await apiClient.post(`/projects/${projectName}/fixes/apply`, errors)
 
       return response.data
     } catch (err) {

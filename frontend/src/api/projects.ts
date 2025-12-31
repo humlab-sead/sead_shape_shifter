@@ -1,5 +1,5 @@
 /**
- * API service for configuration management
+ * API service for project management
  */
 
 import type { Project, ProjectMetadata, ValidationResult } from '@/types'
@@ -68,7 +68,7 @@ export const projectsApi = {
   },
 
   /**
-   * Update configuration
+   * Update project
    */
   update: async (name: string, data: ProjectUpdateRequest): Promise<Project> => {
     return apiRequest<Project>({
@@ -79,7 +79,7 @@ export const projectsApi = {
   },
 
   /**
-   * Update configuration metadata
+   * Update project metadata
    */
   updateMetadata: async (name: string, data: MetadataUpdateRequest): Promise<Project> => {
     return apiRequest<Project>({
@@ -90,7 +90,7 @@ export const projectsApi = {
   },
 
   /**
-   * Delete configuration
+   * Delete project
    */
   delete: async (name: string): Promise<void> => {
     return apiRequest<void>({
@@ -110,7 +110,7 @@ export const projectsApi = {
   },
 
   /**
-   * List backups for configuration
+   * List backups for project
    */
   listBackups: async (name: string): Promise<BackupInfo[]> => {
     return apiRequest<BackupInfo[]>({
