@@ -89,7 +89,7 @@ export const useValidationStore = defineStore('validation', () => {
   })
 
   // Actions
-  async function validateConfiguration(projectName: string) {
+  async function validateProject(projectName: string) {
     loading.value = true
     error.value = null
     try {
@@ -207,7 +207,7 @@ export const useValidationStore = defineStore('validation', () => {
     topologicalOrder,
     isValid,
     // Actions
-    validateConfiguration,
+    validateProject,
     validateEntity,
     fetchDependencies,
     checkCircularDependencies,

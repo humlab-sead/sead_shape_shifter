@@ -5,12 +5,12 @@
         <h1 class="text-h4 mb-4">Entity Management</h1>
 
         <!-- No Project Loaded -->
-        <v-card v-if="!configurationStore.currentProjectName" variant="outlined" class="mb-4">
+        <v-card v-if="!projectStore.currentProjectName" variant="outlined" class="mb-4">
           <v-card-text class="text-center py-8">
             <v-icon icon="mdi-file-question" size="64" color="grey" class="mb-4" />
             <h2 class="text-h6 mb-2">No Project Loaded</h2>
             <p class="text-grey mb-4">To manage entities, you need to load a project file first.</p>
-            <v-btn color="primary" prepend-icon="mdi-folder-open" to="/configurations"> Browse Configurations </v-btn>
+            <v-btn color="primary" prepend-icon="mdi-folder-open" to="/projects"> Browse Projects </v-btn>
           </v-card-text>
         </v-card>
 
@@ -19,14 +19,14 @@
           <v-card variant="outlined" class="mb-4">
             <v-card-title>
               <v-icon icon="mdi-file-document" class="mr-2" />
-              {{ configurationStore.currentProjectName }}
+              {{ projectStore.currentProjectName }}
             </v-card-title>
             <v-card-subtitle> {{ entityCount }} {{ entityCount === 1 ? 'entity' : 'entities' }} </v-card-subtitle>
           </v-card>
 
           <entity-list-card
-            v-if="configurationStore.currentProjectName"
-            :config-name="configurationStore.currentProjectName"
+            v-if="projectStore.currentProjectName"
+            :project-name="projectStore.currentProjectName"
             @entity-updated="handleEntityUpdated"
           />
         </div>
@@ -41,8 +41,8 @@ import { useProjectStore } from '@/stores/project'
 import { useEntities } from '@/composables/useEntities'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 
-const configurationStore = useProjectStore()
-const projectName = computed(() => configurationStore.currentProjectName || '')
+const projectStore = useProjectStore()
+const projectName = computed(() => projectStore.currentProjectName || '')
 
 const { entityCount } = useEntities({
   projectName: projectName.value,

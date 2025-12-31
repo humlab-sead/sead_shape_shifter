@@ -6,8 +6,8 @@
           <h1 class="text-h4">Dependency Graph</h1>
           <div class="d-flex gap-2">
             <v-select
-              v-model="selectedConfig"
-              :items="configOptions"
+              v-model="selectedProject"
+              :items="projectOptions"
               label="Project"
               variant="outlined"
               density="compact"
@@ -159,15 +159,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { useConfigurations, useDependencies } from '@/composables'
+import { useProjects, useDependencies } from '@/composables'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
 import type { GraphNode } from '@/types'
 
 const router = useRouter()
 
 // Composables
-const { configurations } = useConfigurations({ autoFetch: true })
-const selectedConfig = ref<string | null>(null)
+const { projects } = useProjects({ autoFetch: true })
+const selectedProject = ref<string | null>(null)
 
 const {
   graphData,
@@ -182,7 +182,7 @@ const {
   isInCycle,
   clearError,
 } = useDependencies({
-  projectName: selectedConfig.value ?? undefined,
+  projectName: selectedProject.value ?? undefined,
   autoFetch: false,
 })
 
@@ -195,8 +195,8 @@ const showDetailsDrawer = ref(false)
 const selectedNode = ref<GraphNode | null>(null)
 
 // Computed
-const configOptions = computed(() => {
-  return configurations.value.map((c) => ({
+const projectOptions = computed(() => {
+  return projects.value.map((c) => ({
     title: c.name,
     value: c.name,
   }))
@@ -204,17 +204,17 @@ const configOptions = computed(() => {
 
 // Methods
 async function handleRefresh() {
-  if (selectedConfig.value) {
+  if (selectedProject.value) {
     clearError()
-    await fetch(selectedConfig.value)
+    await fetch(selectedProject.value)
   }
 }
 
 function handleEditEntity(entityName: string) {
-  if (selectedConfig.value) {
+  if (selectedProject.value) {
     router.push({
       name: 'project-detail',
-      params: { name: selectedConfig.value },
+      params: { name: selectedProject.value },
       query: { entity: entityName },
     })
   }
@@ -389,10 +389,10 @@ function renderGraph() {
   container.appendChild(svg)
 }
 
-// Watch for config changes
-watch(selectedConfig, async (newConfig) => {
-  if (newConfig) {
-    await fetch(newConfig)
+// Watch for project changes
+watch(selectedProject, async (newProject) => {
+  if (newProject) {
+    await fetch(newProject)
   }
 })
 
@@ -409,8 +409,8 @@ watch([layoutType, showLabels, highlightCycles], () => {
 
 // Select first config on mount
 onMounted(() => {
-  if (configurations.value.length > 0 && !selectedConfig.value) {
-    selectedConfig.value = configurations.value[0]?.name || null
+  if (projects.value.length > 0 && !selectedProject.value) {
+    selectedProject.value = projects.value[0]?.name || null
   }
 })
 </script>

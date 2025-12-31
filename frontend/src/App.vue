@@ -61,7 +61,7 @@
 
       <v-toolbar-title>
         <span class="font-weight-bold">SEAD Shape Shifter</span>
-        <span v-if="currentConfig" class="ml-2 text-caption"> / {{ currentConfig }} </span>
+        <span v-if="currentProject" class="ml-2 text-caption"> / {{ currentProject }} </span>
       </v-toolbar-title>
 
       <v-spacer />
@@ -208,7 +208,7 @@ const showCommandPalette = ref(false)
 const showHelpDialog = ref(false)
 const commandSearch = ref('')
 
-const currentConfig = computed(() => route.params.name as string | undefined)
+const currentProject = computed(() => route.params.name as string | undefined)
 
 interface Breadcrumb {
   title: string

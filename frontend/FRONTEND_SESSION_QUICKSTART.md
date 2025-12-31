@@ -24,9 +24,9 @@
 ```vue
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import { useSession, useConfigurationStore } from '@/composables'
+import { useSession, useProjectStore } from '@/composables'
 
-const configStore = useConfigurationStore()
+const projectStore = useProjectStore()
 const { 
   startSession, 
   endSession, 

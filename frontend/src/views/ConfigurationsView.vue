@@ -2,7 +2,7 @@
   <v-container fluid class="pa-6">
     <v-row>
       <v-col>
-        <h1 class="text-h4 mb-6">Configurations</h1>
+        <h1 class="text-h4 mb-6">Projects</h1>
       </v-col>
     </v-row>
 
@@ -44,7 +44,7 @@
 
     <!-- Error State -->
     <v-alert v-else-if="error" type="error" variant="tonal" class="mt-4">
-      <v-alert-title>Error Loading Configurations</v-alert-title>
+      <v-alert-title>Error Loading Projects</v-alert-title>
       {{ error }}
       <template #append>
         <v-btn variant="text" @click="handleRefresh">Retry</v-btn>

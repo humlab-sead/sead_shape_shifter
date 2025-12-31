@@ -29,7 +29,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   const hasConfig = computed(() => reconciliationConfig.value !== null)
 
   // Actions
-  async function loadProject(projectName: string) {
+  async function loadReconciliationConfig(projectName: string) {
     loading.value = true
     error.value = null
     try {
@@ -44,7 +44,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function saveConfig(projectName: string) {
+  async function saveReconciliationConfig(projectName: string) {
     if (!reconciliationConfig.value) {
       throw new Error('No config to save')
     }
@@ -78,7 +78,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
       )
 
       // Reload config to get updated mappings
-      await loadProject(projectName)
+      await loadReconciliationConfig(projectName)
 
       return response.data
     } catch (e: any) {
@@ -176,8 +176,8 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     hasConfig,
 
     // Actions
-    loadProject,
-    saveConfig,
+    loadReconciliationConfig,
+    saveReconciliationConfig,
     autoReconcile,
     updateMapping,
     deleteMapping,
