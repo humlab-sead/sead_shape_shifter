@@ -106,7 +106,7 @@
     <!-- Entity Form Dialog -->
     <entity-form-dialog
       v-model="showFormDialog"
-      :config-name="projectName"
+      :project-name="projectName"
       :entity="selectedEntity"
       :mode="dialogMode"
       @saved="handleEntitySaved"

@@ -108,7 +108,7 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   /**
-   * Refresh list of active sessions for current config.
+   * Refresh list of active sessions for current project.
    */
   async function refreshActiveSessions(): Promise<void> {
     if (!currentSession.value) return

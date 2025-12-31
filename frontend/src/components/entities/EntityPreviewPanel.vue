@@ -142,7 +142,7 @@ let refreshTimeout: ReturnType<typeof setTimeout> | null = null
 
 // Watch for entity changes with debouncing
 watch(
-  () => ({ name: props.entityName, config: props.projectName }),
+  () => ({ name: props.entityName, projectName: props.projectName }),
   (newVal, oldVal) => {
     // Clear existing timeout
     if (refreshTimeout) {
@@ -161,7 +161,7 @@ watch(
       props.autoRefresh &&
       newVal.name &&
       oldVal &&
-      (newVal.name !== oldVal.name || newVal.config !== oldVal.config)
+      (newVal.name !== oldVal.name || newVal.projectName !== oldVal.projectName)
     ) {
       // Debounce preview refresh by 1 second
       refreshTimeout = setTimeout(() => {

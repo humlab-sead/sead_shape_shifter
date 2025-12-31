@@ -425,7 +425,7 @@ watch([layoutType, showLabels, highlightCycles], () => {
   renderGraph()
 })
 
-// Select first config on mount
+// Select first project on mount
 onMounted(() => {
   if (projects.value.length > 0 && !selectedProject.value) {
     selectedProject.value = projects.value[0]?.name || null
