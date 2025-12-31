@@ -132,8 +132,8 @@ const rules = {
 
 // Computed
 const availableEntities = computed(() => {
-  if (!selectedConfig.value?.entities) return []
-  return Object.keys(selectedConfig.value.entities)
+  if (!selectedProject.value?.entities) return []
+  return Object.keys(selectedProject.value.entities)
 })
 
 const hasChanges = computed(() => {
@@ -148,8 +148,8 @@ const hasChanges = computed(() => {
 
 // Methods
 function loadMetadata() {
-  if (selectedConfig.value?.metadata) {
-    const metadata = selectedConfig.value.metadata
+  if (selectedProject.value?.metadata) {
+    const metadata = selectedProject.value.metadata
     formData.value = {
       name: metadata.name || props.configName,
       description: metadata.description || null,
@@ -207,7 +207,7 @@ function handleReset() {
 
 // Watch for config changes
 watch(
-  () => selectedConfig.value,
+  () => selectedProject.value,
   () => {
     loadMetadata()
   },

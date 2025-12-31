@@ -377,32 +377,35 @@ const buildWhereClause = (): string => {
           return `${column} ${c.operator}`
 
         case 'IN':
-        case 'NOT IN':
+        case 'NOT IN': {
           // Parse comma-separated values
           const values = c.value
             .split(',')
             .map((v) => escapeLiteral(v.trim()))
             .join(', ')
           return `${column} ${c.operator} (${values})`
+        }
 
-        case 'BETWEEN':
+        case 'BETWEEN': {
           // Expect format: "value1 AND value2"
           const parts = c.value.split(/\s+AND\s+/i)
           if (parts.length === 2 && parts[0] && parts[1]) {
             return `${column} BETWEEN ${escapeLiteral(parts[0].trim())} AND ${escapeLiteral(parts[1].trim())}`
           }
           return `${column} = ${escapeLiteral(c.value)}`
+        }
 
         case 'LIKE':
         case 'NOT LIKE':
           return `${column} ${c.operator} ${escapeLiteral(c.value)}`
 
-        default:
+        default: {
           // Numeric operators: =, !=, <, <=, >, >=
           // Check if value looks like a number
           const isNumeric = /^-?\d+\.?\d*$/.test(c.value.trim())
           const formattedValue = isNumeric ? c.value.trim() : escapeLiteral(c.value)
           return `${column} ${c.operator} ${formattedValue}`
+        }
       }
     })
 
