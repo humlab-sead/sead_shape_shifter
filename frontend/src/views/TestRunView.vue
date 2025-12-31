@@ -24,7 +24,7 @@
         </v-col>
       </v-row>
 
-      <!-- Config Info and Status -->
+      <!-- Project Info and Status -->
       <v-row v-if="projectName" class="mb-4">
         <v-col>
           <v-alert type="info" variant="tonal">
@@ -96,7 +96,7 @@
       </template>
 
       <!-- Loading -->
-      <v-row v-if="isLoadingConfig">
+      <v-row v-if="isLoadingProject">
         <v-col class="text-center">
           <v-progress-circular indeterminate size="64" />
           <p class="mt-4">Loading project...</p>
@@ -125,7 +125,7 @@ const selectedEntities = ref<string[]>([])
 const availableEntities = ref<string[]>([])
 const testResult = ref<TestRunResult | null>(null)
 const isRunning = ref(false)
-const isLoadingConfig = ref(true)
+const isLoadingProject = ref(true)
 const error = ref<string | null>(null)
 const pollInterval = ref<number | null>(null)
 const currentRunId = ref<string | null>(null)
@@ -134,12 +134,12 @@ const currentRunId = ref<string | null>(null)
 onMounted(async () => {
   if (!projectName.value) {
     error.value = 'No project name provided'
-    isLoadingConfig.value = false
+    isLoadingProject.value = false
     return
   }
 
   try {
-    isLoadingConfig.value = true
+    isLoadingProject.value = true
     const project = await projectsApi.get(projectName.value)
     availableEntities.value = Object.keys(project.entities || {})
     error.value = null
@@ -147,7 +147,7 @@ onMounted(async () => {
     console.error('Failed to load project:', err)
     error.value = `Failed to load project: ${err instanceof Error ? err.message : String(err)}`
   } finally {
-    isLoadingConfig.value = false
+    isLoadingProject.value = false
   }
 })
 

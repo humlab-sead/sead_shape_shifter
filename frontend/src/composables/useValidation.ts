@@ -15,7 +15,7 @@ export interface UseValidationOptions {
 export function useValidation(options: UseValidationOptions = {}) {
   const { projectName, autoValidate = false, validateOnChange = false } = options
   const store = useValidationStore()
-  const lastValidatedConfig = ref<string | null>(null)
+  const lastValidatedProject = ref<string | null>(null)
 
   // Computed state from store
   const validationResult = computed(() => store.validationResult)
@@ -38,8 +38,8 @@ export function useValidation(options: UseValidationOptions = {}) {
   // Actions
   async function validate(name: string) {
     try {
-      const result = await store.validateConfiguration(name)
-      lastValidatedConfig.value = name
+      const result = await store.validateProject(name)
+      lastValidatedProject.value = name
       return result
     } catch (err) {
       console.error(`Failed to validate project "${name}":`, err)
@@ -70,7 +70,7 @@ export function useValidation(options: UseValidationOptions = {}) {
 
   function clearValidation() {
     store.clearValidation()
-    lastValidatedConfig.value = null
+    lastValidatedProject.value = null
   }
 
   function clearError() {
@@ -88,7 +88,7 @@ export function useValidation(options: UseValidationOptions = {}) {
 
   // Helper: Check if validation is stale
   const isStale = computed(() => {
-    return projectName ? lastValidatedConfig.value !== projectName : false
+    return projectName ? lastValidatedProject.value !== projectName : false
   })
 
   // Auto-validate if enabled
@@ -112,7 +112,7 @@ export function useValidation(options: UseValidationOptions = {}) {
     entityValidationResults,
     loading,
     error,
-    lastValidatedConfig,
+    lastValidatedConfig: lastValidatedProject,
     // Computed
     hasErrors,
     hasWarnings,

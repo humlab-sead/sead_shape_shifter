@@ -107,8 +107,8 @@ export function useEntities(options: UseEntitiesOptions) {
   // Watch for projectName changes
   watch(
     () => projectName,
-    async (newConfigName, oldConfigName) => {
-      if (newConfigName !== oldConfigName && newConfigName) {
+    async (newProjectName, oldProjectName) => {
+      if (newProjectName !== oldProjectName && newProjectName) {
         initialized.value = false
         await fetch()
       }

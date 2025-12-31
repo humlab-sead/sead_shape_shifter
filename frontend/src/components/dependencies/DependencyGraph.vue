@@ -359,9 +359,9 @@ function renderGraph() {
 // Watch for config changes
 watch(
   () => props.projectName,
-  async (newConfig) => {
-    if (newConfig) {
-      await fetch(newConfig)
+  async (newProject) => {
+    if (newProject) {
+      await fetch(newProject)
     }
   }
 )

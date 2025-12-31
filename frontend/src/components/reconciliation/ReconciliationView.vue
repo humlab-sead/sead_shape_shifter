@@ -195,10 +195,10 @@ async function handleSaveChanges() {
   }
 }
 
-// Load config on mount
+// Load project on mount
 onMounted(async () => {
   try {
-    await reconciliationStore.loadConfig(props.projectName)
+    await reconciliationStore.loadProject(props.projectName)
 
     // Auto-select first entity if available
     if (reconcilableEntities.value.length > 0) {
@@ -215,7 +215,7 @@ watch(
   async (newConfigName) => {
     if (newConfigName) {
       selectedEntity.value = null
-      await reconciliationStore.loadConfig(newConfigName)
+      await reconciliationStore.loadProject(newConfigName)
     }
   }
 )

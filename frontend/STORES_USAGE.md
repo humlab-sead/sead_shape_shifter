@@ -170,7 +170,7 @@ Manages validation results and dependency graph analysis.
 - `isValid` - Overall validity
 
 **Actions:**
-- `validateConfiguration(projectName)` - Validate entire project
+- `validateProject(projectName)` - Validate entire project
 - `validateEntity(projectName, entityName)` - Validate single entity
 - `fetchDependencies(projectName)` - Get dependency graph
 - `checkCircularDependencies(projectName)` - Check for cycles
@@ -189,7 +189,7 @@ import { useValidationStore } from '@/stores'
 const validationStore = useValidationStore()
 
 // Validate project
-await validationStore.validateConfiguration('my-config')
+await validationStore.validateProject('my-config')
 console.log(`Valid: ${validationStore.isValid}`)
 console.log(`Errors: ${validationStore.errorCount}`)
 console.log(`Warnings: ${validationStore.warningCount}`)
@@ -242,10 +242,10 @@ api.validation.getDependencies(projectName)
 All stores are exported from `stores/index.ts`:
 
 ```typescript
-import { useConfigurationStore, useEntityStore, useValidationStore } from '@/stores'
+import { useProjectStore, useEntityStore, useValidationStore } from '@/stores'
 
 // Use in components
-const configStore = useConfigurationStore()
+const projectStore = useProjectStore()
 const entityStore = useEntityStore()
 const validationStore = useValidationStore()
 ```
@@ -253,8 +253,8 @@ const validationStore = useValidationStore()
 ## Next Steps (Sprint 4.3)
 
 Create Vue composables that wrap these stores for use in components:
-- `useConfigurations` - Auto-fetch projects
-- `useEntities` - Auto-fetch entities for selected config
+- `useProjects` - Auto-fetch projects
+- `useEntities` - Auto-fetch entities for selected project
 - `useValidation` - Reactive validation on changes
 - `useDependencies` - Dependency graph visualization data
 

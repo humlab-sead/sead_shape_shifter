@@ -336,7 +336,7 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  async function getConfigurationDataSources(name: string) {
+  async function getProjectDataSources(name: string) {
     try {
       return await api.projects.getDataSources(name)
     } catch (err) {
@@ -412,7 +412,7 @@ export const useProjectStore = defineStore('project', () => {
     restoreBackup,
     getActiveProject,
     activateProject,
-    getProjectDataSources: getConfigurationDataSources,
+    getProjectDataSources,
     connectDataSource,
     disconnectDataSource,
     saveProject,
