@@ -4,7 +4,7 @@
 
 **Shape Shifter** is a mono-repo with three components:
 1. **Core** (`src/`) - Declarative data transformation engine (Python)
-2. **Backend** (`backend/app/`) - FastAPI REST API for configuration editing
+2. **Backend** (`backend/app/`) - FastAPI REST API for project editing
 3. **Frontend** (`frontend/`) - Vue 3 + Vuetify web editor
 
 All Python code shares a **unified virtual environment** at root `.venv/`.
@@ -45,7 +45,7 @@ Key mappers:
 - **Monaco Editor** integration for YAML editing
 
 Key stores:
-- `configuration.ts` - Config file CRUD operations
+- `project.ts` - Project file CRUD operations
 - `validation.ts` - Validation state and entity-level results
 - `entity.ts` - Entity selection and editing state
 - `data-source.ts` - Database connection management
@@ -78,7 +78,7 @@ uv run pytest backend/tests -v  # Backend tests only
 PYTHONPATH=.:backend uv run pytest backend/tests -v  # If import issues
 ```
 
-### Linting
+### Linting & Testing
 ```bash
 make lint                 # Full lint (tidy + pylint + check-imports)
 make tidy                 # Format with black + isort
