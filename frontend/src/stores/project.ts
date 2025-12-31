@@ -2,18 +2,18 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
 import { useSessionStore } from '@/stores/session'
-import type { Configuration, ConfigMetadata, ValidationResult } from '@/types'
+import type { Project, ConfigMetadata, ValidationResult } from '@/types'
 import type {
   ConfigurationCreateRequest,
   ConfigurationUpdateRequest,
   BackupInfo,
   MetadataUpdateRequest,
-} from '@/api/configurations'
+} from '@/api/projects'
 
-export const useConfigurationStore = defineStore('configuration', () => {
+export const useProjectStore = defineStore('project', () => {
   // State
-  const configurations = ref<ConfigMetadata[]>([])
-  const selectedConfig = ref<Configuration | null>(null)
+  const projects = ref<ConfigMetadata[]>([])
+  const selectedProject = ref<Project | null>(null)
   const validationResult = ref<ValidationResult | null>(null)
   const backups = ref<BackupInfo[]>([])
   const loading = ref(false)
@@ -21,16 +21,16 @@ export const useConfigurationStore = defineStore('configuration', () => {
   const hasUnsavedChanges = ref(false)
 
   // Getters
-  const currentConfigName = computed(() => {
-    return selectedConfig.value?.metadata?.name || null
+  const currentProjectName = computed(() => {
+    return selectedProject.value?.metadata?.name || null
   })
 
-  const sortedConfigurations = computed(() => {
-    return [...configurations.value].sort((a, b) => a.name.localeCompare(b.name))
+  const sortedProjects = computed(() => {
+    return [...projects.value].sort((a, b) => a.name.localeCompare(b.name))
   })
 
-  const configByName = computed(() => {
-    return (name: string) => configurations.value.find((c) => c.name === name)
+  const projectByName = computed(() => {
+    return (name: string) => projects.value.find((c) => c.name === name)
   })
 
   const hasErrors = computed(() => {
@@ -42,26 +42,26 @@ export const useConfigurationStore = defineStore('configuration', () => {
   })
 
   // Actions
-  async function fetchConfigurations() {
+  async function fetchProjects() {
     loading.value = true
     error.value = null
     try {
-      configurations.value = await api.configurations.list()
+      projects.value = await api.projects.list()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch configurations'
+      error.value = err instanceof Error ? err.message : 'Failed to fetch projects'
       throw err
     } finally {
       loading.value = false
     }
   }
 
-  async function selectConfiguration(name: string) {
+  async function selectProject(name: string) {
     loading.value = true
     error.value = null
     try {
-      selectedConfig.value = await api.configurations.get(name)
+      selectedProject.value = await api.projects.get(name)
       hasUnsavedChanges.value = false
-      return selectedConfig.value
+      return selectedProject.value
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load configuration'
       throw err
@@ -70,12 +70,12 @@ export const useConfigurationStore = defineStore('configuration', () => {
     }
   }
 
-  async function createConfiguration(data: ConfigurationCreateRequest) {
+  async function createProject(data: ProjectCreateRequest) {
     loading.value = true
     error.value = null
     try {
-      const config = await api.configurations.create(data)
-      configurations.value.push({
+      const config = await api.projects.create(data)
+      projects.value.push({
         name: config.metadata?.name ?? data.name,
         entity_count: Object.keys(config.entities || {}).length,
         file_path: config.metadata?.file_path,
@@ -83,7 +83,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
         modified_at: config.metadata?.modified_at,
         is_valid: config.metadata?.is_valid,
       })
-      selectedConfig.value = config
+      selectedProject.value = config
       hasUnsavedChanges.value = false
       return config
     } catch (err) {
@@ -94,16 +94,16 @@ export const useConfigurationStore = defineStore('configuration', () => {
     }
   }
 
-  async function updateConfiguration(name: string, data: ConfigurationUpdateRequest) {
+  async function updateProject(name: string, data: ProjectUpdateRequest) {
     loading.value = true
     error.value = null
     try {
-      const config = await api.configurations.update(name, data)
+      const config = await api.projects.update(name, data)
       
       // Update metadata in list
-      const index = configurations.value.findIndex((c) => c.name === name)
+      const index = projects.value.findIndex((c) => c.name === name)
       if (index !== -1) {
-        configurations.value[index] = {
+        projects.value[index] = {
           name: config.metadata?.name ?? name,
           entity_count: Object.keys(config.entities || {}).length,
           file_path: config.metadata?.file_path,
@@ -113,7 +113,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
         }
       }
       
-      selectedConfig.value = config
+      selectedProject.value = config
       hasUnsavedChanges.value = false
       return config
     } catch (err) {
@@ -128,15 +128,15 @@ export const useConfigurationStore = defineStore('configuration', () => {
     loading.value = true
     error.value = null
     try {
-      const config = await api.configurations.updateMetadata(name, data)
+      const config = await api.projects.updateMetadata(name, data)
       
       // Update metadata in list
       const oldName = name
       const newName = config.metadata?.name ?? name
-      const index = configurations.value.findIndex((c) => c.name === oldName)
+      const index = projects.value.findIndex((c) => c.name === oldName)
       
       if (index !== -1 && config.metadata) {
-        configurations.value[index] = {
+        projects.value[index] = {
           name: config.metadata.name,
           description: config.metadata.description,
           version: config.metadata.version,
@@ -149,7 +149,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
         }
       }
       
-      selectedConfig.value = config
+      selectedProject.value = config
       hasUnsavedChanges.value = false
       
       return config
@@ -161,14 +161,14 @@ export const useConfigurationStore = defineStore('configuration', () => {
     }
   }
 
-  async function deleteConfiguration(name: string) {
+  async function deleteProject(name: string) {
     loading.value = true
     error.value = null
     try {
-      await api.configurations.delete(name)
-      configurations.value = configurations.value.filter((c) => c.name !== name)
-      if (selectedConfig.value?.metadata?.name === name) {
-        selectedConfig.value = null
+      await api.projects.delete(name)
+      projects.value = projects.value.filter((c) => c.name !== name)
+      if (selectedProject.value?.metadata?.name === name) {
+        selectedProject.value = null
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete configuration'
@@ -178,11 +178,11 @@ export const useConfigurationStore = defineStore('configuration', () => {
     }
   }
 
-  async function validateConfiguration(name: string) {
+  async function validateProject(name: string) {
     loading.value = true
     error.value = null
     try {
-      validationResult.value = await api.configurations.validate(name)
+      validationResult.value = await api.projects.validate(name)
       return validationResult.value
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to validate configuration'
@@ -196,7 +196,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
     loading.value = true
     error.value = null
     try {
-      backups.value = await api.configurations.listBackups(name)
+      backups.value = await api.projects.listBackups(name)
       return backups.value
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch backups'
@@ -210,13 +210,13 @@ export const useConfigurationStore = defineStore('configuration', () => {
     loading.value = true
     error.value = null
     try {
-      const config = await api.configurations.restore(name, { backup_path: backupPath })
-      selectedConfig.value = config
+      const config = await api.projects.restore(name, { backup_path: backupPath })
+      selectedProject.value = config
       
       // Update in list if exists
-      const index = configurations.value.findIndex((c) => c.name === name)
+      const index = projects.value.findIndex((c) => c.name === name)
       if (index !== -1 && config.metadata) {
-        configurations.value[index] = {
+        projects.value[index] = {
           name: config.metadata.name,
           entity_count: config.metadata.entity_count,
           file_path: config.metadata.file_path,
@@ -249,18 +249,18 @@ export const useConfigurationStore = defineStore('configuration', () => {
   /**
    * Save current configuration (session-aware).
    */
-  async function saveConfiguration() {
-    if (!selectedConfig.value?.metadata?.name) {
+  async function saveProject() {
+    if (!selectedProject.value?.metadata?.name) {
       throw new Error('No configuration selected')
     }
 
     const sessionStore = useSessionStore()
-    const name = selectedConfig.value.metadata.name
+    const name = selectedProject.value.metadata.name
 
     // Build update request
-    const updateData: ConfigurationUpdateRequest = {
-      entities: selectedConfig.value.entities,
-      options: selectedConfig.value.options || {},
+    const updateData: ProjectUpdateRequest = {
+      entities: selectedProject.value.entities,
+      options: selectedProject.value.options || {},
     }
 
     // Include version if session active (optimistic locking)
@@ -272,12 +272,12 @@ export const useConfigurationStore = defineStore('configuration', () => {
     error.value = null
 
     try {
-      const config = await api.configurations.update(name, updateData)
+      const config = await api.projects.update(name, updateData)
       
       // Update metadata in list
-      const index = configurations.value.findIndex((c) => c.name === name)
+      const index = projects.value.findIndex((c) => c.name === name)
       if (index !== -1 && config.metadata) {
-        configurations.value[index] = {
+        projects.value[index] = {
           name: config.metadata.name,
           entity_count: config.metadata.entity_count,
           file_path: config.metadata.file_path,
@@ -287,7 +287,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
         }
       }
       
-      selectedConfig.value = config
+      selectedProject.value = config
       hasUnsavedChanges.value = false
 
       // Increment session version on successful save
@@ -299,7 +299,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
     } catch (err: any) {
       // Handle version conflict (409)
       if (err?.response?.status === 409) {
-        error.value = 'Configuration was modified by another user. Please reload and merge changes.'
+        error.value = 'Project was modified by another user. Please reload and merge changes.'
       } else {
         error.value = err instanceof Error ? err.message : 'Failed to save configuration'
       }
@@ -317,9 +317,9 @@ export const useConfigurationStore = defineStore('configuration', () => {
     validationResult.value = null
   }
 
-  async function getActiveConfiguration() {
+  async function getActiveProject() {
     try {
-      const result = await api.configurations.getActive()
+      const result = await api.projects.getActive()
       return result.name
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to get active configuration'
@@ -327,12 +327,12 @@ export const useConfigurationStore = defineStore('configuration', () => {
     }
   }
 
-  async function activateConfiguration(name: string) {
+  async function activateProject(name: string) {
     loading.value = true
     error.value = null
     try {
-      const config = await api.configurations.activate(name)
-      selectedConfig.value = config
+      const config = await api.projects.activate(name)
+      selectedProject.value = config
       return config
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to activate configuration'
@@ -344,7 +344,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
 
   async function getConfigurationDataSources(name: string) {
     try {
-      return await api.configurations.getDataSources(name)
+      return await api.projects.getDataSources(name)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to get data sources'
       throw err
@@ -355,8 +355,8 @@ export const useConfigurationStore = defineStore('configuration', () => {
     loading.value = true
     error.value = null
     try {
-      const config = await api.configurations.connectDataSource(name, sourceName, sourceFilename)
-      selectedConfig.value = config
+      const config = await api.projects.connectDataSource(name, sourceName, sourceFilename)
+      selectedProject.value = config
       return config
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to connect data source'
@@ -370,8 +370,8 @@ export const useConfigurationStore = defineStore('configuration', () => {
     loading.value = true
     error.value = null
     try {
-      const config = await api.configurations.disconnectDataSource(name, sourceName)
-      selectedConfig.value = config
+      const config = await api.projects.disconnectDataSource(name, sourceName)
+      selectedProject.value = config
       return config
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to disconnect data source'
@@ -382,8 +382,8 @@ export const useConfigurationStore = defineStore('configuration', () => {
   }
 
   function reset() {
-    configurations.value = []
-    selectedConfig.value = null
+    projects.value = []
+    selectedProject.value = null
     validationResult.value = null
     backups.value = []
     loading.value = false
@@ -393,35 +393,35 @@ export const useConfigurationStore = defineStore('configuration', () => {
 
   return {
     // State
-    configurations,
-    selectedConfig,
+    projects,
+    selectedProject,
     validationResult,
     backups,
     loading,
     error,
     hasUnsavedChanges,
     // Getters
-    currentConfigName,
-    sortedConfigurations,
-    configByName,
+    currentProjectName,
+    sortedProjects,
+    projectByName,
     hasErrors,
     hasWarnings,
     // Actions
-    fetchConfigurations,
-    selectConfiguration,
-    createConfiguration,
-    updateConfiguration,
+    fetchProjects,
+    selectProject,
+    createProject,
+    updateProject,
     updateMetadata,
-    deleteConfiguration,
-    validateConfiguration,
+    deleteProject,
+    validateProject,
     fetchBackups,
     restoreBackup,
-    getActiveConfiguration,
-    activateConfiguration,
+    getActiveProject,
+    activateProject,
     getConfigurationDataSources,
     connectDataSource,
     disconnectDataSource,
-    saveConfiguration,
+    saveProject,
     markAsChanged,
     clearError,
     clearValidation,

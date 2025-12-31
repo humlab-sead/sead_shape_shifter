@@ -7,7 +7,7 @@ export const useEntityStore = defineStore('entity', () => {
   // State
   const entities = ref<EntityResponse[]>([])
   const selectedEntity = ref<EntityResponse | null>(null)
-  const currentConfigName = ref<string | null>(null)
+  const currentProjectName = ref<string | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const hasUnsavedChanges = ref(false)
@@ -57,7 +57,7 @@ export const useEntityStore = defineStore('entity', () => {
   async function fetchEntities(configName: string) {
     loading.value = true
     error.value = null
-    currentConfigName.value = configName
+    currentProjectName.value = configName
     try {
       entities.value = await api.entities.list(configName)
     } catch (err) {
@@ -155,7 +155,7 @@ export const useEntityStore = defineStore('entity', () => {
   function reset() {
     entities.value = []
     selectedEntity.value = null
-    currentConfigName.value = null
+    currentProjectName.value = null
     loading.value = false
     error.value = null
     hasUnsavedChanges.value = false
@@ -165,7 +165,7 @@ export const useEntityStore = defineStore('entity', () => {
     // State
     entities,
     selectedEntity,
-    currentConfigName,
+    currentProjectName,
     loading,
     error,
     hasUnsavedChanges,

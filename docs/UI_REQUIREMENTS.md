@@ -1,8 +1,8 @@
-# Configuration Editor UI - Requirements Specification
+# Project Editor UI - Requirements Specification
 
 ## 1. Executive Summary
 
-This document defines the functional and non-functional requirements for the Shape Shifter Configuration Editor, a web-based UI that enables users to create and manage data transformation configurations without directly editing YAML files.
+This document defines the functional and non-functional requirements for the Shape Shifter Project Editor, a web-based UI that enables users to create and manage data transformation configurations without directly editing YAML files.
 
 **Target Users**: Data managers, domain specialists, and developers working with data transformation pipelines  
 **Goal**: Enable users to configure complex data transformations through an intuitive visual interface  
@@ -14,7 +14,7 @@ This document defines the functional and non-functional requirements for the Sha
 
 ### 2.1 Purpose
 
-The Configuration Editor provides a user-friendly interface for managing entity configurations in the Shape Shifter data transformation framework. It bridges the gap between complex YAML configuration files and user needs, offering:
+The Project Editor provides a user-friendly interface for managing entitys in the Shape Shifter data transformation framework. It bridges the gap between complex YAML configuration files and user needs, offering:
 
 - Visual entity relationship management
 - Real-time configuration validation
@@ -22,9 +22,9 @@ The Configuration Editor provides a user-friendly interface for managing entity 
 - Data-aware features (schema introspection, preview)
 - Form-based editing to prevent syntax errors
 
-### 2.2 Configuration Structure
+### 2.2 Project Structure
 
-Configurations define data transformation pipelines with:
+Projects define data transformation pipelines with:
 
 ```yaml
 entities:
@@ -90,7 +90,7 @@ mappings:                            # Remote entity mappings
 **Pain Points**:
 - Manual column listing is tedious
 - Need to switch between tools for testing
-- Configuration errors only discovered at runtime
+- Project errors only discovered at runtime
 - Difficult to maintain complex configurations
 
 ### 3.3 Developer/Integrator
@@ -113,9 +113,9 @@ mappings:                            # Remote entity mappings
 
 ## 4. Functional Requirements
 
-### 4.1 Configuration Management
+### 4.1 Project Management
 
-#### FR-1: Load Configuration
+#### FR-1: Load Project
 **Priority**: Must Have  
 **Description**: Load existing YAML configuration files for editing
 
@@ -125,7 +125,7 @@ mappings:                            # Remote entity mappings
 - Handle malformed YAML with clear error messages
 - Support large configurations (100+ entities)
 
-#### FR-2: Save Configuration  
+#### FR-2: Save Project  
 **Priority**: Must Have  
 **Description**: Save modified configuration to YAML file
 
@@ -135,7 +135,7 @@ mappings:                            # Remote entity mappings
 - Atomic write operations (no partial saves)
 - Provide save confirmation feedback
 
-#### FR-3: Create New Configuration
+#### FR-3: Create New Project
 **Priority**: Must Have  
 **Description**: Create new configuration from scratch or template
 
@@ -145,7 +145,7 @@ mappings:                            # Remote entity mappings
 - Pre-populate with sensible defaults
 - Validate new configuration structure
 
-#### FR-4: Configuration Versioning
+#### FR-4: Project Versioning
 **Priority**: Should Have  
 **Description**: Track configuration changes over time
 
@@ -335,7 +335,7 @@ mappings:                            # Remote entity mappings
 **Acceptance Criteria**:
 - List available tables in database
 - Display column names and types
-- Suggest entity configurations based on schema
+- Suggest entitys based on schema
 - Auto-populate column lists
 
 #### FR-22: Data Preview
@@ -589,7 +589,7 @@ mappings:                            # Remote entity mappings
 ### 6.3 Overall Success Criteria
 
 - ✅ Non-technical users can create configurations independently
-- ✅ Configuration errors reduced by 80%+
+- ✅ Project errors reduced by 80%+
 - ✅ Time to create new configuration reduced by 60%+
 - ✅ User satisfaction score > 4/5
 - ✅ Zero data loss incidents
@@ -609,7 +609,7 @@ mappings:                            # Remote entity mappings
 
 - Users have basic understanding of data transformation concepts
 - Data sources are accessible from server
-- Configurations fit in browser memory (< 10MB)
+- Projects fit in browser memory (< 10MB)
 - Network connectivity for API calls
 
 ### 7.3 Out of Scope

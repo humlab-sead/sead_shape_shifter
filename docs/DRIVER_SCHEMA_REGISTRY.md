@@ -180,11 +180,11 @@ for field in schema.fields:
 ### Breaking Changes
 None - fully backward compatible.
 
-### Configuration Files
+### Project Files
 Existing YAML configuration files work without changes. The mapper handles both old and new formats.
 
 ### Frontend
-The updated `DataSourceFormDialog` uses the schema but still works with existing data source configurations.
+The updated `DataSourceFormDialog` uses the schema but still works with existing data sources.
 
 ## Future Enhancements
 

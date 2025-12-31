@@ -5,7 +5,7 @@ from typing import Any
 from loguru import logger
 
 from backend.app.models.validation import ValidationError, ValidationResult
-from backend.app.services.config_service import ConfigurationService, get_config_service
+from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.validators.data_validators import DataValidationService
 from src.specifications import CompositeConfigSpecification, SpecificationIssue
@@ -34,25 +34,25 @@ class ValidationService:
 
         self.validator = CompositeConfigSpecification()
 
-    async def validate_configuration_data(self, config_name: str, entity_names: list[str] | None = None) -> ValidationResult:
+    async def validate_configuration_data(self, project_name: str, entity_names: list[str] | None = None) -> ValidationResult:
         """
         Run data-aware validation on configuration.
 
         Args:
-            config_name: Configuration name
+            project_name: Configuration name
             entity_names: Optional list of entity names to validate (None = all)
 
         Returns:
             ValidationResult with data validation errors and warnings
         """
 
-        logger.debug(f"Running data validation for configuration: {config_name}")
+        logger.debug(f"Running data validation for configuration: {project_name}")
 
-        config_service: ConfigurationService = get_config_service()
-        shapeshift_service: ShapeShiftService = ShapeShiftService(config_service)
+        project_service: ProjectService = get_project_service()
+        shapeshift_service: ShapeShiftService = ShapeShiftService(project_service)
         data_validator: DataValidationService = DataValidationService(shapeshift_service)
 
-        errors_list: list[ValidationError] = await data_validator.validate_configuration(config_name, entity_names)
+        errors_list: list[ValidationError] = await data_validator.validate_configuration(project_name, entity_names)
 
         errors: list[ValidationError] = [e for e in errors_list if e.severity == "error"]
         warnings: list[ValidationError] = [e for e in errors_list if e.severity == "warning"]

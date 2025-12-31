@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains comprehensive documentation for the Shape Shifter data transformation framework and its Configuration Editor UI.
+This directory contains comprehensive documentation for the Shape Shifter data transformation framework and its Project Editor UI.
 
 ## Main Documentation
 
@@ -46,14 +46,14 @@ These are the primary system documentation files:
   - Security considerations
   - Deployment architecture
 
-### Configuration
+### Project
 
 - **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** (2,500+ lines) **★ COMPREHENSIVE CONSOLIDATED GUIDE**
   - Complete YAML configuration reference
   - Entity definitions and all properties
   - **Foreign Key Constraints** - Complete validation system with cardinality, match requirements, data quality constraints
-  - **Append Configuration** - Union/concatenation of multiple data sources (SQL, fixed, data)
-  - **Configuration Validation** - 9 validation specifications with detailed error reporting
+  - **Append Project** - Union/concatenation of multiple data sources (SQL, fixed, data)
+  - **Project Validation** - 9 validation specifications with detailed error reporting
   - Data sources and transformations
   - Unnest operations (wide to long format)
   - Special syntax (@value, @include, @load)
@@ -93,7 +93,7 @@ These are the primary system documentation files:
 ### Core Framework Features
 
 - **[VALIDATION_IMPROVEMENTS.md](VALIDATION_IMPROVEMENTS.md)** (242 lines)
-  - Configuration validation specifications  
+  - Project validation specifications  
   - SQL data validation
   - Entity existence checks
   - Circular dependency detection
@@ -156,7 +156,7 @@ Previously consolidated source documents are available in the [archive/](archive
 
 **Test Shape Shifter:**
 - Testing procedures: [TESTING_GUIDE.md](TESTING_GUIDE.md)
-- Configuration validation: [CONFIGURATION_GUIDE.md - Configuration Validation section](CONFIGURATION_GUIDE.md#configuration-validation)
+- Project validation: [CONFIGURATION_GUIDE.md - Project Validation section](CONFIGURATION_GUIDE.md#configuration-validation)
 
 **Understand Requirements:**
 - Feature requirements: [UI_REQUIREMENTS.md](UI_REQUIREMENTS.md)
@@ -164,10 +164,10 @@ Previously consolidated source documents are available in the [archive/](archive
 
 **Configure Relationships:**
 - Foreign keys & constraints: [CONFIGURATION_GUIDE.md - Foreign Key Constraints section](CONFIGURATION_GUIDE.md#foreign-key-constraints)
-- Union/concatenation: [CONFIGURATION_GUIDE.md - Append Configuration section](CONFIGURATION_GUIDE.md#append-configuration-unionconcatenation)
+- Union/concatenation: [CONFIGURATION_GUIDE.md - Append Project section](CONFIGURATION_GUIDE.md#append-configuration-unionconcatenation)
 
-**Validate Configurations:**
-- Comprehensive validation guide: [CONFIGURATION_GUIDE.md - Configuration Validation section](CONFIGURATION_GUIDE.md#configuration-validation)
+**Validate Projects:**
+- Comprehensive validation guide: [CONFIGURATION_GUIDE.md - Project Validation section](CONFIGURATION_GUIDE.md#configuration-validation)
 - Validation improvements: [VALIDATION_IMPROVEMENTS.md](VALIDATION_IMPROVEMENTS.md)
 
 ## Documentation Standards

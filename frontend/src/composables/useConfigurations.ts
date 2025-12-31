@@ -4,8 +4,8 @@
  */
 
 import { computed, onMounted, ref } from 'vue'
-import { useConfigurationStore } from '@/stores'
-import type { ConfigurationCreateRequest, ConfigurationUpdateRequest } from '@/api/configurations'
+import { useProjectStore } from '@/stores'
+import type { ProjectCreateRequest, ConfigurationUpdateRequest } from '@/api/configurations'
 
 export interface UseConfigurationsOptions {
   autoFetch?: boolean
@@ -14,7 +14,7 @@ export interface UseConfigurationsOptions {
 
 export function useConfigurations(options: UseConfigurationsOptions = {}) {
   const { autoFetch = true, configName } = options
-  const store = useConfigurationStore()
+  const store = useProjectStore()
   const initialized = ref(false)
 
   // Computed state from store
@@ -48,7 +48,7 @@ export function useConfigurations(options: UseConfigurationsOptions = {}) {
     }
   }
 
-  async function create(data: ConfigurationCreateRequest) {
+  async function create(data: ProjectCreateRequest) {
     try {
       return await store.createConfiguration(data)
     } catch (err) {
@@ -57,7 +57,7 @@ export function useConfigurations(options: UseConfigurationsOptions = {}) {
     }
   }
 
-  async function update(name: string, data: ConfigurationUpdateRequest) {
+  async function update(name: string, data: ProjectUpdateRequest) {
     try {
       return await store.updateConfiguration(name, data)
     } catch (err) {

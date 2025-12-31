@@ -132,9 +132,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSession } from '@/composables'
-import { useConfigurationStore } from '@/stores'
+import { useProjectStore } from '@/stores'
 
-const configStore = useConfigurationStore()
+const configStore = useProjectStore()
 const {
   hasActiveSession,
   configName,

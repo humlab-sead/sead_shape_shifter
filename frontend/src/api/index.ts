@@ -3,14 +3,14 @@
  */
 
 export * from './client'
-export * from './configurations'
+export * from './projects'
 export * from './entities'
 export * from './validation'
 export * from './data-sources'
 export * from './sessions'
 
 // Convenience re-export of all API services
-import { configurationsApi } from './configurations'
+import { configurationsApi } from './projects'
 import { entitiesApi } from './entities'
 import { validationApi } from './validation'
 import { dataSourcesApi } from './data-sources'

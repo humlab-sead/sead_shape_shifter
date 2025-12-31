@@ -49,7 +49,7 @@ export interface EntityTestResult {
 
 export interface TestRunResult {
   run_id: string;
-  config_name: string;
+  project_name: string;
   status: TestRunStatus;
   started_at: string;
   completed_at: string | null;
@@ -80,7 +80,7 @@ export interface TestProgress {
 }
 
 export interface TestRunRequest {
-  config_name: string;
+  project_name: string;
   options: Partial<TestRunOptions>;
 }
 

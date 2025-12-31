@@ -185,7 +185,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useConfigurationStore } from '@/stores/configuration'
+import { useProjectStore } from '@/stores/project'
 import { useDataSourceStore } from '@/stores/data-source'
 
 const props = defineProps<{
@@ -196,7 +196,7 @@ const emit = defineEmits<{
   updated: []
 }>()
 
-const configurationStore = useConfigurationStore()
+const configurationStore = useProjectStore()
 const dataSourceStore = useDataSourceStore()
 
 // State

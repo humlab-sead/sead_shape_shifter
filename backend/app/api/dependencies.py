@@ -21,7 +21,7 @@ def get_data_source_service() -> Generator[services.DataSourceService, None, Non
     Creates service for managing global data source files.
     Used as FastAPI dependency for data source endpoints.
     """
-    service = services.DataSourceService(settings.CONFIGURATIONS_DIR)
+    service = services.DataSourceService(settings.PROJECTS_DIR)
     try:
         yield service
     finally:
@@ -36,7 +36,7 @@ def get_schema_service() -> Generator[services.SchemaIntrospectionService, None,
     Creates service with current configuration.
     Used as FastAPI dependency for schema introspection endpoints.
     """
-    service = services.SchemaIntrospectionService(settings.CONFIGURATIONS_DIR)
+    service = services.SchemaIntrospectionService(settings.PROJECTS_DIR)
     try:
         yield service
     finally:

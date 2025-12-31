@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide explains how to access the Shape Shifter Configuration Editor remotely using GitHub's VS Code Remote Tunnels feature.
+This guide explains how to access the Shape Shifter Project Editor remotely using GitHub's VS Code Remote Tunnels feature.
 
 ## Prerequisites
 

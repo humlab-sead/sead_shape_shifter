@@ -17,7 +17,7 @@ def test_health_check():
     assert "version" in data
     assert "environment" in data
     assert "timestamp" in data
-    assert "configurations_dir" in data
+    assert "projects_dir" in data
     assert "backups_dir" in data
 
 

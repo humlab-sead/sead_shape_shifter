@@ -245,7 +245,7 @@ class TestDebugSeadTables:
         assert health_response.status_code == 200
 
         # Step 2: List configurations to verify data source exists
-        config_response = real_client.get("/api/v1/configurations")
+        config_response = real_client.get("/api/v1/projects")
         print(f"2. Configurations: {config_response.status_code}")
 
         if config_response.status_code == 200:

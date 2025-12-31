@@ -9,16 +9,16 @@ Refactored backend architecture to eliminate ConfigStore confusion and implement
 ### 1. ApplicationState Refactoring ([backend/app/core/state_manager.py](backend/app/core/state_manager.py))
 
 **Before:** Used `ConfigStore` singleton for both editing and execution
-**After:** Simple `dict[str, Configuration]` for editing sessions
+**After:** Simple `dict[str, Project]` for editing sessions
 
 **Key Changes:**
 - Removed `ConfigStore` dependency
-- Added `_active_configs: dict[str, Configuration]` for editing state
+- Added `_active_configs: dict[str, Project]` for editing state
 - Added `_config_versions: dict[str, int]` for cache invalidation
 - Added `_config_dirty: dict[str, bool]` for unsaved change tracking
 - New methods:
   - `get_active_configuration()` - Get current editing session
-  - `get_configuration(name)` - Get specific config from active sessions
+  - `get_project(name)` - Get specific config from active sessions
   - `set_active_configuration(config)` - Update editing state + increment version
   - `mark_saved(name)` - Clear dirty flag after save
   - `is_dirty(name)` - Check for unsaved changes (prevents reconciliation)
@@ -28,21 +28,21 @@ Refactored backend architecture to eliminate ConfigStore confusion and implement
 
 **New bidirectional mapper between API and Core representations:**
 
-- `to_api_config(cfg_dict, name)` - Core dict → API `Configuration`
-- `to_core_dict(api_config)` - API `Configuration` → Core dict
+- `to_api_config(cfg_dict, name)` - Core dict → API `Project`
+- `to_core_dict(api_config)` - API `Project` → Core dict
 - `_dict_to_api_entity()` - Entity conversion (sparse structure)
 - `_api_entity_to_dict()` - Entity conversion (sparse structure)
 
 **Key Feature:** Preserves sparse YAML structure - only includes non-None/non-empty fields
 
-### 3. ConfigurationService Updates ([backend/app/services/config_service.py](backend/app/services/config_service.py))
+### 3. ProjectService Updates ([backend/app/services/project_service.py](backend/app/services/project_service.py))
 
-**`load_configuration(name)`:**
+**`load_project(name)`:**
 - Checks `ApplicationState` first for active configs (editing session)
 - Falls back to disk if not active
 - Uses `ConfigMapper.to_api_config()` for conversion
 
-**`save_configuration(config)`:**
+**`save_project(config)`:**
 - Converts via `ConfigMapper.to_core_dict()` (sparse structure)
 - Auto-updates `ApplicationState` if config is active
 - Marks as saved (clear dirty flag)
@@ -50,26 +50,26 @@ Refactored backend architecture to eliminate ConfigStore confusion and implement
 **`activate_configuration(name)`:**
 - Loads config into `ApplicationState` as active editing session
 - No more `ConfigStore` usage
-- Returns API `Configuration`
+- Returns API `Project`
 
 **`save_with_version_check()`:**
 - Uses `ApplicationState.get_version()` for optimistic locking
 - Simplified signature (no manual version passing)
 
-### 4. ShapeShiftService with ShapeShiftConfig Caching ([backend/app/services/shapeshift_service.py](backend/app/services/shapeshift_service.py))
+### 4. ShapeShiftService with ShapeShiftProject Caching ([backend/app/services/shapeshift_service.py](backend/app/services/shapeshift_service.py))
 
 **New Caching Strategy:**
-- `_shapeshift_cache: dict[str, ShapeShiftConfig]` - Cached core configs
+- `_shapeshift_cache: dict[str, ShapeShiftProject]` - Cached core configs
 - `_shapeshift_versions: dict[str, int]` - Version tracking per config
 
-**`_get_shapeshift_config(config_name)`:**
+**`_get_shapeshift_config(project_name)`:**
 - Checks `ApplicationState` version vs cached version
-- Cache hit → Returns cached `ShapeShiftConfig` (fast!)
-- Cache miss/stale → Converts from API `Configuration` via `ConfigMapper`
+- Cache hit → Returns cached `ShapeShiftProject` (fast!)
+- Cache miss/stale → Converts from API `Project` via `ConfigMapper`
 - Fallback → Loads from disk if not in active session
 
 **Performance Benefit:**
-- REPL editing: Only converts changed entity, reuses cached `ShapeShiftConfig`
+- REPL editing: Only converts changed entity, reuses cached `ShapeShiftProject`
 - Version-based invalidation ensures fresh data after edits
 
 ### 5. Reconciliation Router ([backend/app/api/v1/api.py](backend/app/api/v1/api.py))
@@ -93,15 +93,15 @@ Refactored backend architecture to eliminate ConfigStore confusion and implement
    ↓
 6. Version check → Cache VALID → Fast preview
    ↓
-7. User saves → save_configuration()
+7. User saves → save_project()
    ↓
 8. Writes to disk → Updates ApplicationState → mark_saved() → dirty=false
 ```
 
 ### Preview Performance
 ```
-Configuration edit:
-├─ First preview: Convert full config → Cache ShapeShiftConfig
+Project edit:
+├─ First preview: Convert full config → Cache ShapeShiftProject
 ├─ Entity edit: version++ 
 ├─ Second preview: Version mismatch → Re-convert (cheap)
 └─ Third preview (same entity): Version match → Cache hit (instant)
@@ -110,9 +110,9 @@ Configuration edit:
 ### Reconciliation Guard
 ```
 Start reconciliation:
-├─ Check app_state.is_dirty(config_name)
+├─ Check app_state.is_dirty(project_name)
 ├─ If dirty → Error: "Save changes first"
-├─ If clean → Load fresh ShapeShiftConfig from disk (read-only)
+├─ If clean → Load fresh ShapeShiftProject from disk (read-only)
 └─ Proceed with reconciliation workflow
 ```
 
@@ -120,11 +120,11 @@ Start reconciliation:
 
 1. **Semantic Clarity:**
    - `ApplicationState` = Editing sessions (API models)
-   - `ShapeShiftConfig` = Execution (Core models)
+   - `ShapeShiftProject` = Execution (Core models)
    - No more `Config`/`ConfigStore` confusion
 
 2. **Performance:**
-   - ShapeShiftConfig caching with version tracking
+   - ShapeShiftProject caching with version tracking
    - REPL: Fast previews after initial load
    - Only re-converts on actual changes
 
@@ -142,19 +142,19 @@ Start reconciliation:
 
 **Breaking Changes:**
 - `ConfigStore` no longer used in backend services
-- Preview/Query/Reconciliation services now use `ApplicationState` → `ShapeShiftConfig`
-- Removed `ConfigFactory` dependency from ConfigurationService
+- Preview/Query/Reconciliation services now use `ApplicationState` → `ShapeShiftProject`
+- Removed `ConfigFactory` dependency from ProjectService
 
 **Backward Compatibility:**
 - YAML structure unchanged (sparse format preserved)
 - API endpoints unchanged
-- Configuration model schema unchanged
+- Project model schema unchanged
 
 ## Testing
 
 **Updated Tests Required:**
 - `test_config_service.py` - ApplicationState integration
-- `test_preview_service.py` - ShapeShiftConfig caching
+- `test_preview_service.py` - ShapeShiftProject caching
 - `test_state_manager.py` - New methods
 
 **New Tests:**
@@ -169,7 +169,7 @@ Start reconciliation:
    - Guard: Prevent reconciliation if config dirty
 
 2. **Entity-Level Incremental Updates:**
-   - Optimize ShapeShiftConfig updates for single entity
+   - Optimize ShapeShiftProject updates for single entity
    - Avoid full config re-conversion in REPL
 
 3. **Session Management:**

@@ -73,7 +73,7 @@ Added split-pane layout with live preview to the Entity Form Dialog, providing a
 
 ### Auto-Refresh
 1. Enable "Auto-refresh" checkbox in preview header
-2. Edit entity configuration (change columns, filters, etc.)
+2. Edit entity (change columns, filters, etc.)
 3. Preview automatically updates 1 second after last change
 4. Disable auto-refresh for manual control
 

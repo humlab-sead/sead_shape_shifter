@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from loguru import logger
 
-from backend.app.models.config import Configuration
+from backend.app.models.project import Project
 from backend.app.models.test_run import (
     EntityTestResult,
     OutputFormat,
@@ -17,23 +17,23 @@ from backend.app.models.test_run import (
     TestRunStatus,
     ValidationIssue,
 )
-from backend.app.services.config_service import ConfigurationService
+from backend.app.services.project_service import ProjectService
 
 
 class TestRunService:
     """Service for running configuration tests."""
 
-    def __init__(self, config_service: ConfigurationService):
-        self.config_service: ConfigurationService = config_service
+    def __init__(self, project_service: ProjectService):
+        self.project_service: ProjectService = project_service
         self._active_runs: dict[str, TestRunResult] = {}
         self._cancel_flags: dict[str, bool] = {}
 
-    def init_test_run(self, config_name: str, options: TestRunOptions) -> TestRunResult:
+    def init_test_run(self, project_name: str, options: TestRunOptions) -> TestRunResult:
         """
         Initialize a test run (returns immediately with PENDING status).
 
         Args:
-            config_name: Name of the configuration to test
+            project_name: Name of the configuration to test
             options: Test run options
 
         Returns:
@@ -45,7 +45,7 @@ class TestRunService:
         # Initialize result with PENDING status
         result: TestRunResult = TestRunResult(
             run_id=run_id,
-            config_name=config_name,
+            project_name=project_name,
             status=TestRunStatus.PENDING,
             started_at=started_at,
             total_time_ms=0,
@@ -81,9 +81,9 @@ class TestRunService:
             logger.info("[BACKGROUND] Status updated, stored back to active_runs")
 
             # Load configuration
-            config: Configuration = self.config_service.load_configuration(result.config_name)
+            config: Project = self.project_service.load_project(result.project_name)
             if not config:
-                raise ValueError(f"Configuration '{result.config_name}' not found")
+                raise ValueError(f"Configuration '{result.project_name}' not found")
 
             # Get entities from configuration
             entities_data: dict[str, dict[str, Any]] = config.entities

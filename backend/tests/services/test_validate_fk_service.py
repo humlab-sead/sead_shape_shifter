@@ -7,7 +7,7 @@ import pytest
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import validate_fk_service
 from backend.app.services.validate_fk_service import ValidateForeignKeyService
-from src.model import ShapeShiftConfig
+from src.model import ShapeShiftProject
 
 # pylint: disable=redefined-outer-name
 
@@ -29,8 +29,8 @@ def preview_service() -> AsyncMock:
     return service
 
 
-def build_config(cardinality: str | None = "one_to_one") -> ShapeShiftConfig:
-    """Create a ShapeShiftConfig with a single foreign key relationship."""
+def build_config(cardinality: str | None = "one_to_one") -> ShapeShiftProject:
+    """Create a ShapeShiftProject with a single foreign key relationship."""
     constraints = {"cardinality": cardinality} if cardinality else {}
     cfg: dict = {
         "metadata": {"name": "fk_test"},
@@ -58,12 +58,12 @@ def build_config(cardinality: str | None = "one_to_one") -> ShapeShiftConfig:
             },
         },
     }
-    return ShapeShiftConfig(cfg=cfg, filename="test-config.yml")
+    return ShapeShiftProject(cfg=cfg, filename="test-config.yml")
 
 
-def patch_config_resolution(monkeypatch: pytest.MonkeyPatch, config: ShapeShiftConfig) -> None:
-    """Force ShapeShiftConfig.from_source to return provided config."""
-    monkeypatch.setattr(validate_fk_service.ShapeShiftConfig, "from_source", staticmethod(lambda source: config))
+def patch_config_resolution(monkeypatch: pytest.MonkeyPatch, config: ShapeShiftProject) -> None:
+    """Force ShapeShiftProject.from_source to return provided config."""
+    monkeypatch.setattr(validate_fk_service.ShapeShiftProject, "from_source", staticmethod(lambda source: config))
 
 
 @pytest.mark.asyncio

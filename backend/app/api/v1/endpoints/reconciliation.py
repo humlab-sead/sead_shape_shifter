@@ -30,38 +30,38 @@ async def get_reconciliation_service() -> ReconciliationService:
 
     recon_client = ReconciliationClient(base_url=service_url)
 
-    return ReconciliationService(config_dir=Path(settings.CONFIGURATIONS_DIR), reconciliation_client=recon_client)
+    return ReconciliationService(config_dir=Path(settings.PROJECTS_DIR), reconciliation_client=recon_client)
 
 
-@router.get("/configurations/{config_name}/reconciliation")
+@router.get("/projects/{project_name}/reconciliation")
 @handle_endpoint_errors
 async def get_reconciliation_config(
-    config_name: str, service: ReconciliationService = Depends(get_reconciliation_service)
+    project_name: str, service: ReconciliationService = Depends(get_reconciliation_service)
 ) -> ReconciliationConfig:
     """
     Get reconciliation configuration for a configuration.
 
     Returns the reconciliation spec including entity mappings and settings.
     """
-    return service.load_reconciliation_config(config_name)
+    return service.load_reconciliation_config(project_name)
 
 
-@router.put("/configurations/{config_name}/reconciliation")
+@router.put("/projects/{project_name}/reconciliation")
 @handle_endpoint_errors
 async def update_reconciliation_config(
-    config_name: str,
+    project_name: str,
     recon_config: ReconciliationConfig,
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> ReconciliationConfig:
     """Update entire reconciliation configuration."""
-    service.save_reconciliation_config(config_name, recon_config)
+    service.save_reconciliation_config(project_name, recon_config)
     return recon_config
 
 
-@router.post("/configurations/{config_name}/reconciliation/{entity_name}/auto-reconcile")
+@router.post("/projects/{project_name}/reconciliation/{entity_name}/auto-reconcile")
 @handle_endpoint_errors
 async def auto_reconcile_entity(
-    config_name: str,
+    project_name: str,
     entity_name: str,
     threshold: float = Query(0.95, ge=0.0, le=1.0),
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -70,7 +70,7 @@ async def auto_reconcile_entity(
     Automatically reconcile entity using OpenRefine service.
 
     Args:
-        config_name: Configuration name
+        project_name: Configuration name
         entity_name: Entity to reconcile
         threshold: Auto-accept threshold (default 0.95 = 95%)
 
@@ -78,7 +78,7 @@ async def auto_reconcile_entity(
         AutoReconcileResult with counts and candidates
     """
     # Load reconciliation config
-    recon_config: ReconciliationConfig = service.load_reconciliation_config(config_name)
+    recon_config: ReconciliationConfig = service.load_reconciliation_config(project_name)
 
     if entity_name not in recon_config.entities:
         raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
@@ -89,12 +89,14 @@ async def auto_reconcile_entity(
     if threshold != entity_spec.auto_accept_threshold:
         entity_spec.auto_accept_threshold = threshold
 
-    if get_app_state_manager().is_dirty(config_name):
-        raise BadRequestError(f"Configuration '{config_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
+    if get_app_state_manager().is_dirty(project_name):
+        raise BadRequestError(
+            f"Configuration '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation."
+        )
 
     logger.info(f"Starting auto-reconciliation for {entity_name} with threshold {threshold}")
     result: AutoReconcileResult = await service.auto_reconcile_entity(
-        config_name=config_name,
+        project_name=project_name,
         entity_name=entity_name,
         entity_spec=entity_spec,
     )
@@ -102,10 +104,10 @@ async def auto_reconcile_entity(
     return result
 
 
-@router.get("/configurations/{config_name}/reconciliation/{entity_name}/suggest")
+@router.get("/projects/{project_name}/reconciliation/{entity_name}/suggest")
 @handle_endpoint_errors
 async def suggest_entities(
-    config_name: str,
+    project_name: str,
     entity_name: str,
     query: str = Query(..., min_length=2),
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -114,7 +116,7 @@ async def suggest_entities(
     Get entity suggestions for autocomplete.
 
     Args:
-        config_name: Configuration name
+        project_name: Configuration name
         entity_name: Entity type
         query: Search query (minimum 2 characters)
 
@@ -122,7 +124,7 @@ async def suggest_entities(
         list of matching candidates with scores
     """
     # Get entity spec to resolve service type
-    recon_config: ReconciliationConfig = service.load_reconciliation_config(config_name)
+    recon_config: ReconciliationConfig = service.load_reconciliation_config(project_name)
 
     if entity_name not in recon_config.entities:
         raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
@@ -140,10 +142,10 @@ async def suggest_entities(
     return candidates
 
 
-@router.post("/configurations/{config_name}/reconciliation/{entity_name}/mapping")
+@router.post("/projects/{project_name}/reconciliation/{entity_name}/mapping")
 @handle_endpoint_errors
 async def update_mapping(
-    config_name: str,
+    project_name: str,
     entity_name: str,
     source_values: list[Any],
     sead_id: int | None = None,
@@ -154,7 +156,7 @@ async def update_mapping(
     Update or remove a single mapping entry.
 
     Args:
-        config_name: Configuration name
+        project_name: Configuration name
         entity_name: Entity name
         source_values: Source key values
         sead_id: SEAD entity ID (null to remove mapping)
@@ -164,7 +166,7 @@ async def update_mapping(
         Updated reconciliation configuration
     """
     return service.update_mapping(
-        config_name=config_name,
+        project_name=project_name,
         entity_name=entity_name,
         source_values=source_values,
         sead_id=sead_id,
@@ -172,10 +174,10 @@ async def update_mapping(
     )
 
 
-@router.delete("/configurations/{config_name}/reconciliation/{entity_name}/mapping")
+@router.delete("/projects/{project_name}/reconciliation/{entity_name}/mapping")
 @handle_endpoint_errors
 async def delete_mapping(
-    config_name: str,
+    project_name: str,
     entity_name: str,
     source_values: list[Any] = Query(...),
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -184,7 +186,7 @@ async def delete_mapping(
     Delete a mapping entry.
 
     Args:
-        config_name: Configuration name
+        project_name: Configuration name
         entity_name: Entity name
         source_values: Source key values to delete
 
@@ -192,7 +194,7 @@ async def delete_mapping(
         Updated reconciliation configuration
     """
     return service.update_mapping(
-        config_name=config_name,
+        project_name=project_name,
         entity_name=entity_name,
         source_values=source_values,
         sead_id=None,  # None = delete

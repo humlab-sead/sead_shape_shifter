@@ -1,13 +1,13 @@
-"""Tests for ConfigMapper."""
+"""Tests for ProjectMapper."""
 
 from pathlib import Path
 
 import pytest
 
-from backend.app.mappers.config_mapper import ConfigMapper
-from backend.app.models.config import ConfigMetadata, Configuration
+from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.entity import AppendConfig, Entity, FilterConfig, ForeignKeyConfig, ForeignKeyConstraints, UnnestConfig
-from src.model import ShapeShiftConfig
+from backend.app.models.project import Project, ProjectMetadata
+from src.model import ShapeShiftProject
 
 # pylint: disable=no-member
 
@@ -17,7 +17,7 @@ def create_valid_config_dict(entities: dict, options: dict | None = None, metada
     return {
         "metadata": metadata
         or {
-            "name": "Test Configuration",
+            "name": "Test Project",
             "description": "Test configuration description",
             "version": "1.0.0",
         },
@@ -26,7 +26,7 @@ def create_valid_config_dict(entities: dict, options: dict | None = None, metada
     }
 
 
-class TestConfigMapperToApiConfig:
+class TestProjectMapperToApiConfig:
     """Tests for to_api_config method."""
 
     def test_minimal_config(self):
@@ -41,18 +41,18 @@ class TestConfigMapperToApiConfig:
             }
         }
 
-        result: Configuration = ConfigMapper.to_api_config(core_dict, "test_config")
+        result: Project = ProjectMapper.to_api_config(core_dict, "test_project")
 
-        assert isinstance(result, Configuration)
+        assert isinstance(result, Project)
         assert result.metadata is not None
-        assert result.metadata.name == "test_config"
+        assert result.metadata.name == "test_project"
         assert result.metadata.entity_count == 1
         assert "sample" in result.entities
         assert result.entities["sample"]["type"] == "data"
         assert result.entities["sample"]["keys"] == ["id"]
         assert result.entities["sample"]["columns"] == ["name", "value"]
 
-    def test_config_with_options(self):
+    def test_project_with_options(self):
         """Test converting config with options."""
         core_dict = {
             "entities": {
@@ -61,7 +61,7 @@ class TestConfigMapperToApiConfig:
             "options": {"some_option": "value", "another_option": 123},
         }
 
-        result = ConfigMapper.to_api_config(core_dict, "test_config")
+        result = ProjectMapper.to_api_config(core_dict, "test_project")
 
         assert result.options == {"some_option": "value", "another_option": 123}
 
@@ -69,9 +69,9 @@ class TestConfigMapperToApiConfig:
         """Test converting config with no entities."""
         core_dict = {"entities": {}}
 
-        result: Configuration = ConfigMapper.to_api_config(core_dict, "test_config")
+        result: Project = ProjectMapper.to_api_config(core_dict, "test_project")
 
-        assert isinstance(result, Configuration)
+        assert isinstance(result, Project)
         assert result.metadata is not None
 
         assert result.metadata.entity_count == 0
@@ -99,7 +99,7 @@ class TestConfigMapperToApiConfig:
             }
         }
 
-        result = ConfigMapper.to_api_config(core_dict, "test_config")
+        result = ProjectMapper.to_api_config(core_dict, "test_project")
         entity = result.entities["sample"]
 
         assert entity["type"] == "data"
@@ -131,7 +131,7 @@ class TestConfigMapperToApiConfig:
             }
         }
 
-        result = ConfigMapper.to_api_config(core_dict, "test_config")
+        result = ProjectMapper.to_api_config(core_dict, "test_project")
         entity = result.entities["sample"]
 
         assert "foreign_keys" in entity
@@ -142,14 +142,14 @@ class TestConfigMapperToApiConfig:
         assert entity["foreign_keys"][1]["entity"] in ["sites", "methods"]
 
 
-class TestConfigMapperToCoreDict:
+class TestProjectMapperToCoreDict:
     """Tests for to_core_dict method."""
 
     def test_minimal_config(self):
         """Test converting minimal API config to core dict."""
-        api_config = Configuration(
-            metadata=ConfigMetadata(
-                name="test_config",
+        api_config = Project(
+            metadata=ProjectMetadata(
+                name="test_project",
                 file_path="/path/to/file.yml",
                 entity_count=1,
                 created_at=1234567890,
@@ -166,42 +166,42 @@ class TestConfigMapperToCoreDict:
             options={},
         )
 
-        result = ConfigMapper.to_core_dict(api_config)
+        result = ProjectMapper.to_core_dict(api_config)
 
         assert "metadata" in result
-        assert result["metadata"]["name"] == "test_config"
+        assert result["metadata"]["name"] == "test_project"
         assert "sample" in result["entities"]
         assert result["entities"]["sample"]["type"] == "data"
 
-    def test_config_with_options(self):
+    def test_project_with_options(self):
         """Test converting config with options."""
-        api_config = Configuration(
-            metadata=ConfigMetadata(name="test", entity_count=0),
+        api_config = Project(
+            metadata=ProjectMetadata(name="test", entity_count=0),
             entities={},
             options={"option1": "value1", "option2": 42},
         )
 
-        result = ConfigMapper.to_core_dict(api_config)
+        result = ProjectMapper.to_core_dict(api_config)
 
         assert result["options"] == {"option1": "value1", "option2": 42}
 
-    def test_config_without_options(self):
+    def test_project_without_options(self):
         """Test config without options doesn't include options key."""
-        api_config = Configuration(
-            metadata=ConfigMetadata(name="test", entity_count=0),
+        api_config = Project(
+            metadata=ProjectMetadata(name="test", entity_count=0),
             entities={},
             options={},
         )
 
-        result = ConfigMapper.to_core_dict(api_config)
+        result = ProjectMapper.to_core_dict(api_config)
 
         # Empty options should not be included
         assert "options" not in result or result["options"] == {}
 
     def test_entities_as_dicts(self):
         """Test that dict entities are passed through correctly."""
-        api_config = Configuration(
-            metadata=ConfigMetadata(name="test", entity_count=1),
+        api_config = Project(
+            metadata=ProjectMetadata(name="test", entity_count=1),
             entities={
                 "sample": {
                     "type": "data",
@@ -213,7 +213,7 @@ class TestConfigMapperToCoreDict:
             options={},
         )
 
-        result = ConfigMapper.to_core_dict(api_config)
+        result = ProjectMapper.to_core_dict(api_config)
 
         assert result["entities"]["sample"]["type"] == "data"
         assert result["entities"]["sample"]["keys"] == ["id"]
@@ -231,7 +231,7 @@ class TestDictToApiEntity:
             "keys": ["id"],
         }
 
-        result = ConfigMapper._dict_to_api_entity("sample", entity_dict)
+        result = ProjectMapper._dict_to_api_entity("sample", entity_dict)
 
         assert result["name"] == "sample"
         assert result["type"] == "data"
@@ -241,7 +241,7 @@ class TestDictToApiEntity:
         """Test type is only included if explicitly set."""
         entity_dict = {"keys": ["id"]}
 
-        result = ConfigMapper._dict_to_api_entity("sample", entity_dict)
+        result = ProjectMapper._dict_to_api_entity("sample", entity_dict)
 
         # Type should not be added if not in original
         assert "type" not in result
@@ -256,7 +256,7 @@ class TestDictToApiEntity:
             "columns": ["name"],
         }
 
-        result = ConfigMapper._dict_to_api_entity("sample", entity_dict)
+        result = ProjectMapper._dict_to_api_entity("sample", entity_dict)
 
         # None values should now be preserved for fields like source
         assert "source" in result
@@ -273,7 +273,7 @@ class TestDictToApiEntity:
             },
         }
 
-        result = ConfigMapper._dict_to_api_entity("sample", entity_dict)
+        result = ProjectMapper._dict_to_api_entity("sample", entity_dict)
 
         assert "foreign_keys" in result
         assert len(result["foreign_keys"]) == 1
@@ -289,7 +289,7 @@ class TestDictToApiEntity:
             "foreign_keys": {"sample_fk": {"entity": "targets", "key": ["target_id"]}},
         }
 
-        result = ConfigMapper._dict_to_api_entity("sample", entity_dict)
+        result = ProjectMapper._dict_to_api_entity("sample", entity_dict)
 
         assert "foreign_keys" in result
         foreign_key = result["foreign_keys"][0]
@@ -315,7 +315,7 @@ class TestDictToApiEntity:
             "check_column_names": True,
         }
 
-        result = ConfigMapper._dict_to_api_entity("test", entity_dict)
+        result = ProjectMapper._dict_to_api_entity("test", entity_dict)
 
         for key in entity_dict:
             assert key in result or key == "type"  # type is always included
@@ -333,7 +333,7 @@ class TestApiEntityToDict:
             "columns": ["name"],
         }
 
-        result = ConfigMapper._api_entity_to_dict(entity_dict)
+        result = ProjectMapper._api_entity_to_dict(entity_dict)
 
         # Should be a copy (not same object) since we remove 'name'
         assert result is not entity_dict
@@ -346,7 +346,7 @@ class TestApiEntityToDict:
             "keys": ["id"],
         }
 
-        result = ConfigMapper._api_entity_to_dict(entity_dict)
+        result = ProjectMapper._api_entity_to_dict(entity_dict)
 
         assert result["type"] == "data"
         assert result["keys"] == ["id"]
@@ -374,7 +374,7 @@ class TestApiEntityToDict:
             check_column_names=True,
         )
 
-        result = ConfigMapper._api_entity_to_dict(entity)
+        result = ProjectMapper._api_entity_to_dict(entity)
 
         assert "name" not in result
         assert isinstance(result["foreign_keys"][0], dict)
@@ -397,7 +397,7 @@ class TestApiEntityToDict:
             check_column_names=False,
         )
 
-        result = ConfigMapper._api_entity_to_dict(entity)
+        result = ProjectMapper._api_entity_to_dict(entity)
 
         assert result["drop_duplicates"] is True
         assert result["drop_empty_rows"] == ["col1"]
@@ -409,8 +409,8 @@ class TestRoundTripConversion:
 
     def test_simple_config_round_trip(self):
         """Test simple config survives round-trip."""
-        original_config = Configuration(
-            metadata=ConfigMetadata(name="test", entity_count=1),
+        original_config = Project(
+            metadata=ProjectMetadata(name="test", entity_count=1),
             entities={
                 "sample": {
                     "type": "data",
@@ -423,11 +423,11 @@ class TestRoundTripConversion:
         assert original_config.metadata is not None
 
         # API -> Core
-        core_dict = ConfigMapper.to_core_dict(original_config)
+        core_dict = ProjectMapper.to_core_dict(original_config)
 
         # Core -> API
-        restored_config = ConfigMapper.to_api_config(core_dict, "test")
-        assert isinstance(restored_config, Configuration)
+        restored_config = ProjectMapper.to_api_config(core_dict, "test")
+        assert isinstance(restored_config, Project)
         assert restored_config.metadata is not None
 
         assert restored_config.metadata.name == original_config.metadata.name
@@ -442,21 +442,21 @@ class TestEdgeCases:
 
     def test_missing_metadata_raises_assertion(self):
         """Test that missing metadata raises AssertionError."""
-        api_config = Configuration(
+        api_config = Project(
             metadata=None,
             entities={},
             options={},
         )
 
         with pytest.raises(AssertionError):
-            ConfigMapper.to_core_dict(api_config)
+            ProjectMapper.to_core_dict(api_config)
 
     def test_empty_config(self):
         """Test empty configuration."""
         core_dict = {"entities": {}}
 
-        result = ConfigMapper.to_api_config(core_dict, "empty")
-        assert isinstance(result, Configuration)
+        result = ProjectMapper.to_api_config(core_dict, "empty")
+        assert isinstance(result, Project)
         assert result.metadata is not None
 
         assert result.metadata.entity_count == 0
@@ -471,7 +471,7 @@ class TestEdgeCases:
             "depends_on": [],
         }
 
-        result = ConfigMapper._dict_to_api_entity("test", entity_dict)
+        result = ProjectMapper._dict_to_api_entity("test", entity_dict)
 
         # Empty lists should still be included
         assert result["keys"] == []
@@ -486,7 +486,7 @@ class TestEdgeCases:
             "extra_columns": {},
         }
 
-        result = ConfigMapper._dict_to_api_entity("test", entity_dict)
+        result = ProjectMapper._dict_to_api_entity("test", entity_dict)
 
         assert result["extra_columns"] == {}
 
@@ -503,7 +503,7 @@ class TestEdgeCases:
             ],
         }
 
-        result = ConfigMapper._dict_to_api_entity("fixed_entity", entity_dict)
+        result = ProjectMapper._dict_to_api_entity("fixed_entity", entity_dict)
 
         assert result["type"] == "fixed"
         assert result["values"] == [["row1", "value1"], ["row2", "value2"], ["row3", "value3"]]
@@ -511,8 +511,8 @@ class TestEdgeCases:
 
     def test_fixed_entity_round_trip_with_values(self):
         """Test round-trip conversion preserves values for fixed entities."""
-        original_config = Configuration(
-            metadata=ConfigMetadata(name="test", entity_count=1),
+        original_config = Project(
+            metadata=ProjectMetadata(name="test", entity_count=1),
             entities={
                 "contact_type": {
                     "type": "fixed",
@@ -528,7 +528,7 @@ class TestEdgeCases:
         )
 
         # API -> Core
-        core_dict = ConfigMapper.to_core_dict(original_config)
+        core_dict = ProjectMapper.to_core_dict(original_config)
         assert "values" in core_dict["entities"]["contact_type"]
         assert core_dict["entities"]["contact_type"]["values"] == [
             ["Archaeologist", "Responsible for archaeological material"],
@@ -536,44 +536,44 @@ class TestEdgeCases:
         ]
 
         # Core -> API
-        restored_config = ConfigMapper.to_api_config(core_dict, "test")
+        restored_config = ProjectMapper.to_api_config(core_dict, "test")
         assert restored_config.entities["contact_type"]["values"] == original_config.entities["contact_type"]["values"]
 
 
-class TestConfigMapperIntegration:
+class TestProjectMapperIntegration:
     """Integration tests using real configuration files."""
 
     def test_arbodat_config_round_trip(self):
         """Test round-trip conversion with real arbodat-database.yml configuration.
 
         This test verifies that:
-        1. A real ShapeShiftConfig can be loaded from file
-        2. It can be converted to API Configuration format
-        3. The API Configuration can be converted back to core dict format
+        1. A real ShapeShiftProject can be loaded from file
+        2. It can be converted to API Project format
+        3. The API Project can be converted back to core dict format
         4. The result matches the original configuration
         """
         # Load real configuration file
         config_path = Path(__file__).parent.parent / "test_data" / "configurations" / "arbodat-database.yml"
         assert config_path.exists(), f"Test config file not found: {config_path}"
 
-        # Load as ShapeShiftConfig (core model)
-        original_shape_config = ShapeShiftConfig.from_file(str(config_path))
+        # Load as ShapeShiftProject (core model)
+        original_shape_config = ShapeShiftProject.from_file(str(config_path))
         original_cfg_dict = original_shape_config.cfg
 
         # Get config name from file
-        config_name = config_path.stem
+        project_name = config_path.stem
 
-        # Convert to API Configuration
-        api_config = ConfigMapper.to_api_config(original_cfg_dict, config_name)
+        # Convert to API Project
+        api_config = ProjectMapper.to_api_config(original_cfg_dict, project_name)
 
         # Verify API config has expected structure
-        assert isinstance(api_config, Configuration)
+        assert isinstance(api_config, Project)
         assert api_config.metadata is not None
         # Name comes from metadata section in YAML, not filename
         assert api_config.metadata.entity_count == len(original_cfg_dict.get("entities", {}))
 
         # Convert back to core dict
-        restored_cfg_dict = ConfigMapper.to_core_dict(api_config)
+        restored_cfg_dict = ProjectMapper.to_core_dict(api_config)
 
         # Compare entity count
         original_entities = original_cfg_dict.get("entities", {})
@@ -644,12 +644,12 @@ class TestConfigMapperIntegration:
     def test_arbodat_config_entity_details(self):
         """Test detailed entity conversion for complex arbodat entities."""
         config_path = Path(__file__).parent.parent / "test_data" / "configurations" / "arbodat-database.yml"
-        original_shape_config = ShapeShiftConfig.from_file(str(config_path))
+        original_shape_config = ShapeShiftProject.from_file(str(config_path))
         original_cfg_dict = original_shape_config.cfg
 
         # Convert to API and back
-        api_config = ConfigMapper.to_api_config(original_cfg_dict, "arbodat-database")
-        restored_cfg_dict = ConfigMapper.to_core_dict(api_config)
+        api_config = ProjectMapper.to_api_config(original_cfg_dict, "arbodat-database")
+        restored_cfg_dict = ProjectMapper.to_core_dict(api_config)
 
         # Test specific complex entities
 
@@ -707,11 +707,11 @@ class TestConfigMapperIntegration:
     def test_arbodat_config_metadata_preservation(self):
         """Test that metadata fields are correctly set during conversion."""
         config_path: Path = Path(__file__).parent.parent / "test_data" / "configurations" / "arbodat-database.yml"
-        original_shape_config: ShapeShiftConfig = ShapeShiftConfig.from_file(str(config_path))
+        original_shape_config: ShapeShiftProject = ShapeShiftProject.from_file(str(config_path))
         original_cfg_dict = original_shape_config.cfg
 
-        config_name = "arbodat-database"
-        api_config: Configuration = ConfigMapper.to_api_config(original_cfg_dict, config_name)
+        project_name = "arbodat-database"
+        api_config: Project = ProjectMapper.to_api_config(original_cfg_dict, project_name)
 
         original_metadata = original_cfg_dict["metadata"] if "metadata" in original_cfg_dict else {}
 
@@ -726,7 +726,7 @@ class TestConfigMapperIntegration:
         assert api_config.metadata.is_valid is True
 
         # Convert back and check metadata fields are in core dict
-        restored_cfg_dict = ConfigMapper.to_core_dict(api_config)
+        restored_cfg_dict = ProjectMapper.to_core_dict(api_config)
 
         assert "metadata" in restored_cfg_dict
 

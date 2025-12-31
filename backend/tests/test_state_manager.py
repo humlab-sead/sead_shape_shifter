@@ -15,7 +15,7 @@ from backend.app.core.state_manager import (
     get_app_state,
     init_app_state,
 )
-from backend.app.models.config import ConfigMetadata, Configuration
+from backend.app.models.project import Project, ProjectMetadata
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -33,10 +33,10 @@ def app_state(config_dir: Path) -> ApplicationState:
 
 
 @pytest.fixture
-def sample_config() -> Configuration:
+def sample_config() -> Project:
     """Create a sample configuration."""
-    return Configuration(
-        metadata=ConfigMetadata(name="test-config", entity_count=0),
+    return Project(
+        metadata=ProjectMetadata(name="test-config", entity_count=0),
         entities={},
         options={},
     )
@@ -64,14 +64,14 @@ class TestConfigSession:
 
         session = ConfigSession(
             session_id=session_id,
-            config_name="test-config",
+            project_name="test-config",
             user_id="user123",
             loaded_at=now,
             last_accessed=now,
         )
 
         assert session.session_id == session_id
-        assert session.config_name == "test-config"
+        assert session.project_name == "test-config"
         assert session.user_id == "user123"
         assert session.loaded_at == now
         assert session.last_accessed == now
@@ -84,7 +84,7 @@ class TestConfigSession:
         now: datetime = datetime.now()
         session = ConfigSession(
             session_id=UUID("12345678-1234-5678-1234-567812345678"),
-            config_name="test-config",
+            project_name="test-config",
             user_id=None,
             loaded_at=now,
             last_accessed=now - timedelta(minutes=5),
@@ -104,10 +104,10 @@ class TestApplicationState:
         state = ApplicationState(config_dir)
 
         assert state.config_dir == config_dir
-        assert not state._active_configs
-        assert state._active_config_name is None
+        assert not state._active_projects
+        assert state._active_project_name is None
         assert not state._sessions
-        assert not state._sessions_by_config
+        assert not state._sessions_by_project
         assert not state._config_versions
         assert not state._config_dirty
         assert state._cleanup_task is None
@@ -131,10 +131,10 @@ class TestApplicationState:
         assert session_id in app_state._sessions
 
         session = app_state._sessions[session_id]
-        assert session.config_name == "test-config"
+        assert session.project_name == "test-config"
         assert session.user_id == "user123"
-        assert "test-config" in app_state._sessions_by_config
-        assert session_id in app_state._sessions_by_config["test-config"]
+        assert "test-config" in app_state._sessions_by_project
+        assert session_id in app_state._sessions_by_project["test-config"]
 
     @pytest.mark.asyncio
     async def test_get_session(self, app_state: ApplicationState):
@@ -175,81 +175,81 @@ class TestApplicationState:
         assert session_id3 not in session_ids
 
     @pytest.mark.asyncio
-    async def test_release_session(self, app_state: ApplicationState, sample_config: Configuration):
+    async def test_release_session(self, app_state: ApplicationState, sample_config: Project):
         """Test releasing a session."""
         session_id = await app_state.create_session("test-config")
-        app_state.set_active_configuration(sample_config)
+        app_state.set_active_project(sample_config)
 
         await app_state.release_session(session_id)
 
         assert session_id not in app_state._sessions
-        assert "test-config" not in app_state._sessions_by_config
-        assert "test-config" not in app_state._active_configs
+        assert "test-config" not in app_state._sessions_by_project
+        assert "test-config" not in app_state._active_projects
         assert "test-config" not in app_state._config_versions
         assert "test-config" not in app_state._config_dirty
 
     @pytest.mark.asyncio
-    async def test_release_session_keeps_config_if_other_sessions(self, app_state: ApplicationState, sample_config: Configuration):
+    async def test_release_session_keeps_config_if_other_sessions(self, app_state: ApplicationState, sample_config: Project):
         """Test that config is kept when other sessions exist."""
         session_id1 = await app_state.create_session("test-config")
         session_id2 = await app_state.create_session("test-config")
-        app_state.set_active_configuration(sample_config)
+        app_state.set_active_project(sample_config)
 
         await app_state.release_session(session_id1)
 
         # Config should still be in memory
-        assert "test-config" in app_state._active_configs
+        assert "test-config" in app_state._active_projects
         assert session_id2 in app_state._sessions
-        assert "test-config" in app_state._sessions_by_config
+        assert "test-config" in app_state._sessions_by_project
 
-    def test_get_active_configuration(self, app_state: ApplicationState, sample_config: Configuration):
+    def test_get_active_projecturation(self, app_state: ApplicationState, sample_config: Project):
         """Test getting the active configuration."""
         # No active config initially
-        assert app_state.get_active_configuration() is None
+        assert app_state.get_active_project() is None
 
         # Set active config
-        app_state.set_active_configuration(sample_config)
+        app_state.set_active_project(sample_config)
 
         # Should return the active config
-        active = app_state.get_active_configuration()
+        active = app_state.get_active_project()
         assert active is not None
         assert active.metadata is not None
         assert active.metadata.name == "test-config"
 
-    def test_get_configuration(self, app_state: ApplicationState, sample_config: Configuration):
+    def test_get_configuration(self, app_state: ApplicationState, sample_config: Project):
         """Test getting a specific configuration."""
-        app_state.set_active_configuration(sample_config)
+        app_state.set_active_project(sample_config)
 
-        config = app_state.get_configuration("test-config")
+        config = app_state.get_project("test-config")
         assert config is not None
         assert config.metadata is not None
         assert config.metadata.name == "test-config"
 
         # Non-existent config
-        assert app_state.get_configuration("non-existent") is None
+        assert app_state.get_project("non-existent") is None
 
-    def test_set_active_configuration(self, app_state: ApplicationState, sample_config: Configuration):
+    def test_set_active_projecturation(self, app_state: ApplicationState, sample_config: Project):
         """Test setting the active configuration."""
-        app_state.set_active_configuration(sample_config)
+        app_state.set_active_project(sample_config)
 
-        assert app_state._active_config_name == "test-config"
-        assert "test-config" in app_state._active_configs
+        assert app_state._active_project_name == "test-config"
+        assert "test-config" in app_state._active_projects
         assert app_state._config_versions["test-config"] == 1
         assert app_state._config_dirty["test-config"] is True
 
-    def test_set_active_configuration_increments_version(self, app_state: ApplicationState, sample_config: Configuration):
+    def test_set_active_projecturation_increments_version(self, app_state: ApplicationState, sample_config: Project):
         """Test that setting active config increments version."""
-        app_state.set_active_configuration(sample_config)
+        app_state.set_active_project(sample_config)
         initial_version = app_state._config_versions["test-config"]
 
         # Update again
-        app_state.set_active_configuration(sample_config)
+        app_state.set_active_project(sample_config)
 
         assert app_state._config_versions["test-config"] == initial_version + 1
 
-    def test_mark_saved(self, app_state: ApplicationState, sample_config: Configuration):
+    def test_mark_saved(self, app_state: ApplicationState, sample_config: Project):
         """Test marking a configuration as saved."""
-        app_state.set_active_configuration(sample_config)
+        app_state.set_active_project(sample_config)
         assert app_state._config_dirty["test-config"] is True
 
         app_state.mark_saved("test-config")
@@ -261,30 +261,30 @@ class TestApplicationState:
         # Should not raise an error
         app_state.mark_saved("non-existent")
 
-    def test_is_dirty(self, app_state: ApplicationState, sample_config: Configuration):
+    def test_is_dirty(self, app_state: ApplicationState, sample_config: Project):
         """Test checking if configuration is dirty."""
         # Not dirty initially
         assert app_state.is_dirty("test-config") is False
 
         # Set active - becomes dirty
-        app_state.set_active_configuration(sample_config)
+        app_state.set_active_project(sample_config)
         assert app_state.is_dirty("test-config") is True
 
         # Mark saved - no longer dirty
         app_state.mark_saved("test-config")
         assert app_state.is_dirty("test-config") is False
 
-    def test_get_version(self, app_state: ApplicationState, sample_config: Configuration):
+    def test_get_version(self, app_state: ApplicationState, sample_config: Project):
         """Test getting configuration version."""
         # No version initially
         assert app_state.get_version("test-config") == 0
 
         # Set active - version 1
-        app_state.set_active_configuration(sample_config)
+        app_state.set_active_project(sample_config)
         assert app_state.get_version("test-config") == 1
 
         # Update again - version 2
-        app_state.set_active_configuration(sample_config)
+        app_state.set_active_project(sample_config)
         assert app_state.get_version("test-config") == 2
 
     @pytest.mark.asyncio
@@ -391,7 +391,7 @@ class TestConcurrency:
         await asyncio.gather(*tasks)
 
         assert len(app_state._sessions) == 0
-        assert "test-config" not in app_state._sessions_by_config
+        assert "test-config" not in app_state._sessions_by_project
 
 
 class TestEdgeCases:
@@ -407,44 +407,44 @@ class TestEdgeCases:
 
     def test_multiple_configs_active(self, app_state: ApplicationState):
         """Test having multiple configurations active simultaneously."""
-        config1 = Configuration(
-            metadata=ConfigMetadata(name="config1", entity_count=0),
+        config1 = Project(
+            metadata=ProjectMetadata(name="config1", entity_count=0),
             entities={},
             options={},
         )
-        config2 = Configuration(
-            metadata=ConfigMetadata(name="config2", entity_count=0),
+        config2 = Project(
+            metadata=ProjectMetadata(name="config2", entity_count=0),
             entities={},
             options={},
         )
 
-        app_state.set_active_configuration(config1)
-        app_state.set_active_configuration(config2)
+        app_state.set_active_project(config1)
+        app_state.set_active_project(config2)
 
         # Both should be in active configs
-        assert "config1" in app_state._active_configs
-        assert "config2" in app_state._active_configs
+        assert "config1" in app_state._active_projects
+        assert "config2" in app_state._active_projects
 
         # But only config2 is the "active" one
-        assert app_state._active_config_name == "config2"
+        assert app_state._active_project_name == "config2"
 
     def test_version_tracking_independent_configs(self, app_state: ApplicationState):
         """Test that version tracking is independent per config."""
-        config1 = Configuration(
-            metadata=ConfigMetadata(name="config1", entity_count=0),
+        config1 = Project(
+            metadata=ProjectMetadata(name="config1", entity_count=0),
             entities={},
             options={},
         )
-        config2 = Configuration(
-            metadata=ConfigMetadata(name="config2", entity_count=0),
+        config2 = Project(
+            metadata=ProjectMetadata(name="config2", entity_count=0),
             entities={},
             options={},
         )
 
-        app_state.set_active_configuration(config1)
-        app_state.set_active_configuration(config1)  # Version 2
+        app_state.set_active_project(config1)
+        app_state.set_active_project(config1)  # Version 2
 
-        app_state.set_active_configuration(config2)  # Version 1 for config2
+        app_state.set_active_project(config2)  # Version 1 for config2
 
         assert app_state.get_version("config1") == 2
         assert app_state.get_version("config2") == 1
@@ -453,49 +453,49 @@ class TestEdgeCases:
 class TestApplicationStateManagerHelpers:
     """Test ApplicationStateManager convenience methods."""
 
-    def test_get_and_get_active(self, config_dir: Path, sample_config: Configuration, reset_singletons):
+    def test_get_and_get_active(self, config_dir: Path, sample_config: Project, reset_singletons):
         """Test manager returns active configs when singleton is initialized."""
         sm._app_state = ApplicationState(config_dir)
         manager = sm.get_app_state_manager()
         assert sm._app_state is not None
 
-        sm._app_state.set_active_configuration(sample_config)
+        sm._app_state.set_active_project(sample_config)
         sm._app_state.mark_saved(sample_config.metadata.name)  # type: ignore[union-attr]
 
         assert manager.get("test-config") is sample_config
         assert manager.get_active() is sample_config
 
-    def test_update_only_applies_when_config_known(self, config_dir: Path, sample_config: Configuration, reset_singletons):
+    def test_update_only_applies_when_config_known(self, config_dir: Path, sample_config: Project, reset_singletons):
         """Test update refreshes existing config but ignores unknown ones."""
         sm._app_state = ApplicationState(config_dir)
         manager = sm.get_app_state_manager()
 
         manager.update(sample_config)
-        assert sm._app_state.get_configuration("test-config") is None  # type: ignore[union-attr]
+        assert sm._app_state.get_project("test-config") is None  # type: ignore[union-attr]
 
-        sm._app_state.set_active_configuration(sample_config)  # type: ignore[union-attr]
-        updated_config = Configuration(
-            metadata=ConfigMetadata(name="test-config", entity_count=0),
+        sm._app_state.set_active_project(sample_config)  # type: ignore[union-attr]
+        updated_config = Project(
+            metadata=ProjectMetadata(name="test-config", entity_count=0),
             entities={"updated": {"type": "data", "keys": ["id"]}},
             options={"flag": True},
         )
 
         manager.update(updated_config)
 
-        assert sm._app_state.get_configuration("test-config") is updated_config  # type: ignore[union-attr]
+        assert sm._app_state.get_project("test-config") is updated_config  # type: ignore[union-attr]
         assert sm._app_state.get_version("test-config") == 2  # type: ignore[union-attr]
         assert sm._app_state.is_dirty("test-config") is False  # type: ignore[union-attr]
         expected_entities = {"updated": {"type": "data", "keys": ["id"]}}
-        assert sm._app_state._active_configs["test-config"].entities == expected_entities  # type: ignore[attr-defined]
+        assert sm._app_state._active_projects["test-config"].entities == expected_entities  # type: ignore[attr-defined]
 
-    def test_activate_and_metadata(self, config_dir: Path, sample_config: Configuration, reset_singletons):
+    def test_activate_and_metadata(self, config_dir: Path, sample_config: Project, reset_singletons):
         """Test activate sets active config and returns metadata."""
         sm._app_state = ApplicationState(config_dir)
         manager = sm.get_app_state_manager()
 
         manager.activate(sample_config)
 
-        assert sm._app_state.get_active_configuration() is sample_config  # type: ignore[union-attr]
+        assert sm._app_state.get_active_project() is sample_config  # type: ignore[union-attr]
         assert sm._app_state.is_dirty("test-config") is False  # type: ignore[union-attr]
         active_metadata = manager.get_active_metadata()
         assert active_metadata.name == "test-config"
@@ -504,7 +504,7 @@ class TestApplicationStateManagerHelpers:
     def test_activate_without_name_raises(self, reset_singletons):
         """Test activate raises when no name available."""
         manager = sm.get_app_state_manager()
-        nameless_config = Configuration(metadata=None, entities={}, options={})
+        nameless_config = Project(metadata=None, entities={}, options={})
 
         with pytest.raises(ValueError):
             manager.activate(nameless_config)

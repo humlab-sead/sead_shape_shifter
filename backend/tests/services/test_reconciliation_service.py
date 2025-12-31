@@ -48,8 +48,8 @@ from backend.app.utils.exceptions import BadRequestError, NotFoundError
 def mock_config_service():
     """Mock configuration service."""
     service = MagicMock()
-    service.load_configuration.return_value = MagicMock(
-        metadata=MagicMock(name="test_config"),
+    service.load_project.return_value = MagicMock(
+        metadata=MagicMock(name="test_project"),
         entities={
             "site": {
                 "name": "site",
@@ -157,7 +157,7 @@ class TestTargetEntityReconciliationSourceResolver:
     @pytest.mark.asyncio
     async def test_resolve_uses_entity_preview(self, mock_config_service, sample_entity_spec):
         """Test resolve uses preview data from target entity."""
-        resolver = TargetEntityReconciliationSourceResolver("test_config", mock_config_service)
+        resolver = TargetEntityReconciliationSourceResolver("test_project", mock_config_service)
 
         preview_data = [
             {"site_code": "SITE001", "site_name": "Test Site 1"},
@@ -176,7 +176,7 @@ class TestTargetEntityReconciliationSourceResolver:
             result = await resolver.resolve("site", sample_entity_spec)
 
             assert result == preview_data
-            mock_preview.assert_called_once_with("test_config", "site", limit=1000)
+            mock_preview.assert_called_once_with("test_project", "site", limit=1000)
 
 
 class TestAnotherEntityReconciliationSourceResolver:
@@ -185,7 +185,7 @@ class TestAnotherEntityReconciliationSourceResolver:
     @pytest.mark.asyncio
     async def test_resolve_uses_source_entity_preview(self, mock_config_service):
         """Test resolve uses preview data from source entity."""
-        resolver = AnotherEntityReconciliationSourceResolver("test_config", mock_config_service)
+        resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_config_service)
 
         # Entity spec with source pointing to another entity
         entity_spec = EntityReconciliationSpec(
@@ -206,12 +206,12 @@ class TestAnotherEntityReconciliationSourceResolver:
             result = await resolver.resolve("sample", entity_spec)
 
             assert result == source_data
-            mock_preview.assert_called_once_with("test_config", "site", limit=1000)
+            mock_preview.assert_called_once_with("test_project", "site", limit=1000)
 
     @pytest.mark.asyncio
     async def test_resolve_raises_for_missing_source_entity(self, mock_config_service):
         """Test resolve raises if source entity not found."""
-        resolver = AnotherEntityReconciliationSourceResolver("test_config", mock_config_service)
+        resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_config_service)
 
         entity_spec = EntityReconciliationSpec(
             source="nonexistent",
@@ -232,9 +232,9 @@ class TestSqlQueryReconciliationSourceResolver:
     async def test_resolve_executes_custom_query(self, mock_config_service):
         """Test resolve attempts to execute custom SQL query (verifies code path)."""
         # This test is simplified to verify the code path without deep mocking
-        # Full integration would require a real ShapeShiftConfig with data sources
+        # Full integration would require a real ShapeShiftProject with data sources
 
-        mock_config_service.load_configuration.return_value.options = {
+        mock_config_service.load_project.return_value.options = {
             "data_sources": {
                 "test_db": {
                     "driver": "postgresql",
@@ -252,7 +252,7 @@ class TestSqlQueryReconciliationSourceResolver:
             review_threshold=0.70,
         )
 
-        resolver = SqlQueryReconciliationSourceResolver("test_config", mock_config_service)
+        resolver = SqlQueryReconciliationSourceResolver("test_project", mock_config_service)
 
         # This will fail at TableConfig creation, but that's OK - we're just verifying
         # that the SQL query path is taken and data source validation happens
@@ -262,7 +262,7 @@ class TestSqlQueryReconciliationSourceResolver:
     @pytest.mark.asyncio
     async def test_resolve_raises_for_missing_data_source(self, mock_config_service):
         """Test resolve raises if data source not found."""
-        resolver = SqlQueryReconciliationSourceResolver("test_config", mock_config_service)
+        resolver = SqlQueryReconciliationSourceResolver("test_project", mock_config_service)
 
         entity_spec = EntityReconciliationSpec(
             source=ReconciliationSource(type="sql", data_source="nonexistent_db", query="SELECT * FROM test"),
@@ -396,7 +396,7 @@ class TestReconciliationService:
             mock_resolver.resolve.return_value = [{"key": "value"}]
             mock_resolver_cls.return_value = mock_resolver
 
-            result = await reconciliation_service.get_resolved_source_data("test_config", "site", sample_entity_spec)
+            result = await reconciliation_service.get_resolved_source_data("test_project", "site", sample_entity_spec)
 
             assert result == [{"key": "value"}]
             mock_resolver.resolve.assert_called_once_with("site", sample_entity_spec)
@@ -424,7 +424,7 @@ class TestReconciliationService:
         """Test auto_reconcile_entity returns empty result when service_type is None."""
         sample_entity_spec.remote.service_type = None
 
-        result = await reconciliation_service.auto_reconcile_entity("test_config", "site", sample_entity_spec)
+        result = await reconciliation_service.auto_reconcile_entity("test_project", "site", sample_entity_spec)
 
         assert result.auto_accepted == 0
         assert result.total == 0
@@ -436,7 +436,7 @@ class TestReconciliationService:
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
             mock_source.return_value = [{"site_code": None}]  # Will be skipped
 
-            result = await reconciliation_service.auto_reconcile_entity("test_config", "site", sample_entity_spec)
+            result = await reconciliation_service.auto_reconcile_entity("test_project", "site", sample_entity_spec)
 
             assert result.total == 0
             assert not mock_recon_client.reconcile_batch.called

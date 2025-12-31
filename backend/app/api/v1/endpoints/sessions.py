@@ -16,7 +16,7 @@ router = APIRouter(prefix="/sessions")
 class SessionCreateRequest(BaseModel):
     """Request to create a new session."""
 
-    config_name: str
+    project_name: str
     user_id: str | None = None
 
 
@@ -24,7 +24,7 @@ class SessionResponse(BaseModel):
     """Session information."""
 
     session_id: UUID
-    config_name: str
+    project_name: str
     user_id: str | None
     loaded_at: str
     last_accessed: str
@@ -50,22 +50,22 @@ async def create_session(
     """
 
     # Verify config file exists
-    config_path: Path = app_state.config_dir / f"{request.config_name}.yml"
+    config_path: Path = app_state.config_dir / f"{request.project_name}.yml"
     if not config_path.exists():
-        raise HTTPException(404, f"Configuration '{request.config_name}' not found")
+        raise HTTPException(404, f"Configuration '{request.project_name}' not found")
 
     # Create session
-    session_id: UUID = await app_state.create_session(request.config_name, request.user_id)
+    session_id: UUID = await app_state.create_session(request.project_name, request.user_id)
     session: ConfigSession | None = await app_state.get_session(session_id)
 
     if not session:
         raise HTTPException(500, "Failed to create session")
 
     # Load config into store (lazy loading)
-    app_state.get_configuration(request.config_name)
+    app_state.get_project(request.project_name)
 
     # Get concurrent session count
-    active_sessions = await app_state.get_active_sessions(request.config_name)
+    active_sessions = await app_state.get_active_sessions(request.project_name)
 
     # Set session cookie
     response.set_cookie(
@@ -78,7 +78,7 @@ async def create_session(
 
     return SessionResponse(
         session_id=session.session_id,
-        config_name=session.config_name,
+        project_name=session.project_name,
         user_id=session.user_id,
         loaded_at=session.loaded_at.isoformat(),
         last_accessed=session.last_accessed.isoformat(),
@@ -94,11 +94,11 @@ async def get_current_session_info(
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
 ) -> SessionResponse:
     """Get information about current session."""
-    active_sessions = await app_state.get_active_sessions(session.config_name)
+    active_sessions = await app_state.get_active_sessions(session.project_name)
 
     return SessionResponse(
         session_id=session.session_id,
-        config_name=session.config_name,
+        project_name=session.project_name,
         user_id=session.user_id,
         loaded_at=session.loaded_at.isoformat(),
         last_accessed=session.last_accessed.isoformat(),
@@ -122,9 +122,9 @@ async def close_session(
     await app_state.release_session(session.session_id)
 
 
-@router.get("/{config_name}/active", response_model=list[SessionResponse])
+@router.get("/{project_name}/active", response_model=list[SessionResponse])
 async def list_active_sessions(
-    config_name: str,
+    project_name: str,
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
 ) -> list[SessionResponse]:
     """
@@ -132,12 +132,12 @@ async def list_active_sessions(
 
     Useful for detecting concurrent editing and coordinating between users.
     """
-    sessions = await app_state.get_active_sessions(config_name)
+    sessions = await app_state.get_active_sessions(project_name)
 
     return [
         SessionResponse(
             session_id=s.session_id,
-            config_name=s.config_name,
+            project_name=s.project_name,
             user_id=s.user_id,
             loaded_at=s.loaded_at.isoformat(),
             last_accessed=s.last_accessed.isoformat(),

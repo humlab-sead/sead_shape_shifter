@@ -53,11 +53,11 @@ GET    /api/v1/sessions/{name}/active - List active sessions for config
 
 **New Methods:**
 ```python
-load_config(config_name: str) -> ConfigLike
-get_config(config_name: str) -> ConfigLike  
-is_loaded(config_name: str) -> bool
-unload_config(config_name: str) -> None
-reload_config(config_name: str) -> ConfigLike
+load_config(project_name: str) -> ConfigLike
+get_config(project_name: str) -> ConfigLike  
+is_loaded(project_name: str) -> bool
+unload_config(project_name: str) -> None
+reload_config(project_name: str) -> ConfigLike
 ```
 
 **Breaking Changes:**
@@ -78,27 +78,27 @@ ConfigStore.get_instance().configure_context(source=config_file)
 **After:**
 ```python
 # Initialize empty state, load on-demand
-app_state = init_app_state(settings.CONFIGURATIONS_DIR)
+app_state = init_app_state(settings.PROJECTS_DIR)
 await app_state.start()  # Starts background cleanup task
 ```
 
-### 6. Optimistic Concurrency Control (`backend/app/services/config_service.py`)
+### 6. Optimistic Concurrency Control (`backend/app/services/project_service.py`)
 **UPDATED** - Added version checking for conflict detection.
 
 **New Exception:**
 ```python
-class ConfigConflictError(ConfigurationServiceError):
+class ConfigConflictError(ProjectServiceError):
     """Raised when optimistic lock fails."""
 ```
 
 **New Method:**
 ```python
 save_with_version_check(
-    config: Configuration,
+    config: Project,
     expected_version: int,
     current_version: int,
     create_backup: bool = True
-) -> Configuration
+) -> Project
 ```
 
 ### 7. API Router Registration (`backend/app/api/v1/api.py`)
@@ -136,30 +136,30 @@ save_with_version_check(
 ### Old Flow (No Sessions)
 ```typescript
 // Load config directly
-const config = await api.get('/api/v1/configurations/my_config')
+const config = await api.get('/api/v1/projects/my_config')
 
 // Edit...
 
 // Save (potential silent overwrite)
-await api.put('/api/v1/configurations/my_config', { config })
+await api.put('/api/v1/projects/my_config', { config })
 ```
 
 ### New Flow (With Sessions)
 ```typescript
 // 1. Create session
 const session = await api.post('/api/v1/sessions', { 
-  config_name: 'my_config' 
+  project_name: 'my_config' 
 })
 // Session ID stored in cookie automatically
 
 // 2. Load config (session attached via cookie)
-const config = await api.get('/api/v1/configurations/my_config')
+const config = await api.get('/api/v1/projects/my_config')
 
 // 3. Edit...
 
 // 4. Save with version check
 try {
-  await api.put('/api/v1/configurations/my_config', {
+  await api.put('/api/v1/projects/my_config', {
     config: updatedConfig,
     version: session.version  // Optimistic lock
   })
@@ -179,7 +179,7 @@ await api.delete('/api/v1/sessions/current')
 ### WebSocket Pub/Sub (Recommended)
 ```python
 # Notify other sessions when config changes
-await app_state.notify_sessions(config_name, {
+await app_state.notify_sessions(project_name, {
   "type": "config_updated",
   "version": new_version,
   "modified_by": session.user_id
@@ -202,7 +202,7 @@ session.lock_holder = session_id
 ```sql
 CREATE TABLE config_audit (
   id SERIAL PRIMARY KEY,
-  config_name TEXT,
+  project_name TEXT,
   session_id UUID,
   user_id TEXT,
   action TEXT,  -- 'load', 'save', 'close'
@@ -233,7 +233,7 @@ CREATE TABLE config_audit (
 
 ### Environment Variables
 No new environment variables required. Uses existing:
-- `CONFIGURATIONS_DIR` - Directory for config files
+- `PROJECTS_DIR` - Directory for config files
 
 ### Breaking Changes
 **None** - All changes are additive and backward compatible.
@@ -267,7 +267,7 @@ Not required - all state is in-memory (process-local).
 - `backend/app/api/dependencies.py` (+56 lines)
 - `backend/app/main.py` (-15 lines, simplified)
 - `backend/app/api/v1/api.py` (+2 lines)
-- `backend/app/services/config_service.py` (+38 lines)
+- `backend/app/services/project_service.py` (+38 lines)
 - `src/configuration/provider.py` (+77 lines, refactored)
 
 **Total:** ~+483 lines, -15 lines = **+468 net lines**

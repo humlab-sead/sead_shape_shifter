@@ -2,7 +2,7 @@
 
 ## Overview
 
-The ShapeShift service now implements a **3-tier cache validation strategy** to ensure cached DataFrames are automatically invalidated when entity configurations change:
+The ShapeShift service now implements a **3-tier cache validation strategy** to ensure cached DataFrames are automatically invalidated when entitys change:
 
 1. **TTL (Time-To-Live)** - Expire after 300 seconds (5 minutes) by default
 2. **Config Version** - Invalidate when configuration file is edited (tracked by ApplicationState)
@@ -16,19 +16,19 @@ The ShapeShift service now implements a **3-tier cache validation strategy** to 
 @dataclass
 class CacheMetadata:
     timestamp: float           # For TTL validation
-    config_name: str          # Configuration name
+    project_name: str          # Project name
     entity_name: str          # Entity name
     config_version: int       # ApplicationState version
-    entity_hash: str          # xxhash of entity configuration
+    entity_hash: str          # xxhash of entity
 ```
 
 ### Hash Computation
 
-Entity hashes are computed using **xxhash** (fast, high-quality hashing) on the sorted entity configuration dictionary:
+Entity hashes are computed using **xxhash** (fast, high-quality hashing) on the sorted entity dictionary:
 
 ```python
 def _compute_entity_hash(self, entity_config: TableConfig) -> str:
-    """Compute hash of entity configuration using xxhash."""
+    """Compute hash of entity using xxhash."""
     config_str = str(sorted(entity_config.data.items()))
     return xxhash.xxh64(config_str.encode()).hexdigest()
 ```
@@ -48,7 +48,7 @@ This detects changes to:
 
 ```python
 cache.get_dataframe(
-    config_name="my_config",
+    project_name="my_config",
     entity_name="sample",
     config_version=5,          # From ApplicationState
     entity_config=entity_cfg   # For hash validation
@@ -73,7 +73,7 @@ cache.get_dataframe(
 
 ```python
 cache.set_dataframe(
-    config_name="my_config",
+    project_name="my_config",
     entity_name="sample",
     dataframe=df,
     config_version=5,
@@ -90,7 +90,7 @@ Computes and stores entity hash automatically.
 ```python
 # Check cache with hash validation
 cached_target = self.cache.get_dataframe(
-    config_name, 
+    project_name, 
     entity_name, 
     config_version,
     entity_config  # Enables hash validation
@@ -107,7 +107,7 @@ else:
     entity_configs = {name: shapeshift_config.get_table(name) 
                       for name in table_store.keys()}
     self.cache.set_table_store(
-        config_name, table_store, entity_name, 
+        project_name, table_store, entity_name, 
         config_version, entity_configs
     )
 ```
@@ -117,7 +117,7 @@ else:
 ```python
 # Gather dependencies with hash validation
 cached_deps = self.cache.get_dependencies(
-    config_name,
+    project_name,
     entity_config,
     config_version,
     shapeshift_config  # Enables dependency hash validation

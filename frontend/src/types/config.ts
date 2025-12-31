@@ -16,31 +16,31 @@ export interface ConfigMetadata {
   default_entity?: string | null
 }
 
-export interface Configuration {
+export interface Project {
   entities: Record<string, Entity>
   options?: Record<string, any>
   metadata?: ConfigMetadata | null
 }
 
 // Helper types for API operations
-export interface ConfigurationListItem {
+export interface ProjectListItem {
   name: string
   entity_count: number
   modified_at?: string | null
   is_valid?: boolean
 }
 
-export interface ConfigurationCreateRequest {
+export interface ProjectCreateRequest {
   name: string
   entities?: Record<string, Entity>
   options?: Record<string, any>
 }
 
-export interface ConfigurationLoadRequest {
+export interface ProjectLoadRequest {
   file_path: string
 }
 
-export interface ConfigurationSaveRequest {
+export interface ProjectSaveRequest {
   file_path?: string
   create_backup?: boolean
 }

@@ -5,12 +5,12 @@
 import { computed, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSessionStore } from '@/stores/session'
-import { useConfigurationStore } from '@/stores/configuration'
+import { useProjectStore } from '@/stores/project'
 import type { SessionCreateRequest } from '@/types/session'
 
 export function useSession() {
   const sessionStore = useSessionStore()
-  const configStore = useConfigurationStore()
+  const configStore = useProjectStore()
 
   const {
     currentSession,
@@ -31,7 +31,7 @@ export function useSession() {
    */
   async function startSession(configName: string, userId?: string) {
     const request: SessionCreateRequest = {
-      config_name: configName,
+      project_name: configName,
       user_id: userId,
     }
 

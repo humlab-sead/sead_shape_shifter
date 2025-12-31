@@ -1,14 +1,14 @@
-# Configuration Guide - Shape Shifter
+# Project Guide - Shape Shifter
 
 ## Overview
 
 This comprehensive guide describes the YAML configuration format used by the Shape Shifter data transformation framework. Shape Shifter is a general-purpose system for harmonizing input data from diverse sources (spreadsheets, databases, fixed values) into a target schema through declarative configuration.
 
 This guide consolidates all configuration documentation including:
-- **Entity Configuration**: Structure, properties, and relationship definitions
+- **Entity Project**: Structure, properties, and relationship definitions
 - **Foreign Key Constraints**: Comprehensive validation and data quality enforcement  
-- **Append Configuration**: Union/concatenation of multiple data sources
-- **Configuration Validation**: Specification-based validation system with 9 validators
+- **Append Project**: Union/concatenation of multiple data sources
+- **Project Validation**: Specification-based validation system with 9 validators
 - **Complete Examples**: Real-world configuration patterns and best practices
 
 ## Architecture
@@ -25,12 +25,12 @@ The normalization system follows a multi-phase pipeline:
 
 - **ProcessState**: Handles topological sorting and dependency resolution
 - **ShapeShifter**: Orchestrates the normalization pipeline
-- **ShapeShiftConfig**: Configuration model for all entities and their relationships
+- **ShapeShiftProject**: Project model for all entities and their relationships
 - **SubsetService**: Extracts data subsets with column selection and transformations
 
 ---
 
-## Configuration File Structure
+## Project File Structure
 
 A configuration file consists of three main sections:
 
@@ -48,7 +48,7 @@ mappings:          # Remote entity mappings (optional)
 
 ---
 
-## Entity Configuration
+## Entity Project
 
 Each entity represents a table/dataset to be extracted and processed. Entities are processed in dependency order using topological sorting.
 
@@ -382,11 +382,11 @@ entities:
 - **Type**: `list[ForeignKeyConfig]`
 - **Required**: No
 - **Description**: List of foreign key relationships to establish. Each foreign key links this entity to another entity.
-- **See**: Foreign Key Configuration section below
+- **See**: Foreign Key Project section below
 
 ---
 
-### Foreign Key Configuration
+### Foreign Key Project
 
 Foreign keys establish relationships between entities by linking local keys to remote keys.
 
@@ -593,7 +593,7 @@ Constraints are optional but highly recommended for production configurations. T
 - **Documentation**: Make relationship expectations explicit
 - **Safe changes**: Enable gradual constraint adoption without breaking existing configs
 
-#### Constraint Configuration Structure
+#### Constraint Project Structure
 
 ```yaml
 foreign_keys:
@@ -1059,7 +1059,7 @@ Constraints add minimal overhead:
 
 ---
 
-### Unnest Configuration
+### Unnest Project
 
 Unnesting transforms wide-format data to long-format using pandas' `melt` operation. This is useful for normalizing attribute-value pairs.
 
@@ -1121,7 +1121,7 @@ unnest:
 | 2       | 150    | 250    | 75     |
 ```
 
-**Configuration:**
+**Project:**
 ```yaml
 unnest:
   id_vars: ["site_id"]
@@ -1148,7 +1148,7 @@ unnest:
 
 The `options` section contains global configuration for translations and data sources.
 
-### Translation Configuration
+### Translation Project
 
 ```yaml
 options:
@@ -1169,7 +1169,7 @@ options:
     delimiter: "\t"
 ```
 
-### Data Sources Configuration
+### Data Sources Project
 
 ```yaml
 options:
@@ -1279,7 +1279,7 @@ translation: "@load: options.translations"
 
 ---
 
-## Append Configuration (Union/Concatenation)
+## Append Project (Union/Concatenation)
 
 The `append` feature allows combining data from multiple sources (fixed tables, SQL queries, other entities) into a single entity through row concatenation. This is useful for:
 - Augmenting data tables with additional rows from different sources
@@ -1289,13 +1289,13 @@ The `append` feature allows combining data from multiple sources (fixed tables, 
 
 ### Overview
 
-The `append` property is added to entity configurations and specifies a list of additional data sources to concatenate with the primary entity data. Each append source can have its own configuration for data extraction, column selection, and data quality operations.
+The `append` property is added to entitys and specifies a list of additional data sources to concatenate with the primary entity data. Each append source can have its own configuration for data extraction, column selection, and data quality operations.
 
 ### Basic Append Structure
 
 ```yaml
 entity_name:
-  # Primary entity configuration
+  # Primary entity
   type: data | sql | fixed
   columns: [...]
   # ... other properties ...
@@ -1674,7 +1674,7 @@ measurement:
 
 Append sources are processed in the following order:
 
-1. **Extract Primary**: Load data for the primary entity configuration
+1. **Extract Primary**: Load data for the primary entity
 2. **Extract Append Sources**: Load each append source sequentially
 3. **Apply Inherited Properties**: Apply inherited `replacements`, `filters` to each source
 4. **Concatenate**: Combine all dataframes using pandas concat (vertical stack)
@@ -1941,7 +1941,7 @@ The system processes entities in dependency order using topological sorting:
 
 ---
 
-## Configuration Validation
+## Project Validation
 
 The Shape Shifter configuration system includes comprehensive validation using the **Specification Pattern**. Validation catches configuration errors early, before processing begins, providing clear error messages and warnings to help troubleshoot issues.
 
@@ -1957,7 +1957,7 @@ python validate_config.py path/to/config.yml
 
 **Output Example:**
 ```
-Configuration Validation Results:
+Project Validation Results:
 =================================
 
 ✓ EntityExistsSpecification: All referenced entities exist
@@ -1976,11 +1976,11 @@ Validation failed with 2 errors and 1 warnings.
 Validate configurations in code:
 
 ```python
-from src.model import ShapeShiftConfig
+from src.model import ShapeShiftProject
 from src.specifications import CompositeConfigSpecification
 
 # Load configuration
-config = ShapeShiftConfig.from_file("config.yml")
+config = ShapeShiftProject.from_file("config.yml")
 
 # Validate
 validator = CompositeConfigSpecification()
@@ -1988,7 +1988,7 @@ is_valid = validator.is_satisfied_by(config)
 
 # Check results
 if is_valid:
-    print("Configuration is valid")
+    print("Project is valid")
 else:
     for error in validator.errors:
         print(f"ERROR: {error}")
@@ -2181,7 +2181,7 @@ WARNING: Entity 'sample': Surrogate ID 'sample_id' conflicts with column name 's
 
 **Note**: Naming warnings are non-fatal but indicate potential issues.
 
-#### 9. AppendConfigurationSpecification
+#### 9. AppendProjectSpecification
 
 **Purpose**: Validates append/union configurations are well-formed.
 
@@ -2209,7 +2209,7 @@ ERROR: Append source in entity 'sample' (type: data) references non-existent ent
 
 ### Error vs. Warning
 
-**Errors**: Configuration issues that will cause processing to fail
+**Errors**: Project issues that will cause processing to fail
 - **Action**: Must be fixed before running normalization
 - **Examples**: Missing required fields, non-existent references, circular dependencies
 
@@ -2236,7 +2236,7 @@ You can add custom validation specifications by:
 from src.specifications import ConfigSpecification
 
 class MyCustomSpecification(ConfigSpecification):
-    def is_satisfied_by(self, config: ShapeShiftConfig) -> bool:
+    def is_satisfied_by(self, config: ShapeShiftProject) -> bool:
         # Your validation logic
         for entity_name, entity in config.entities.items():
             if self._has_issue(entity):
@@ -2276,7 +2276,7 @@ Validation is integrated at several points:
 
 1. **CLI Validation Tool** (`validate_config.py`): Standalone validation before processing
 2. **Normalizer Initialization**: Automatic validation when creating normalizer instance
-3. **Configuration Loading**: Optional validation during `ShapeShiftConfig.from_yaml()`
+3. **Project Loading**: Optional validation during `ShapeShiftProject.from_yaml()`
 4. **Test Suite**: Validation tests ensure specifications work correctly
 
 This comprehensive validation system helps catch configuration errors early, provides clear diagnostics, and makes the configuration format more robust and user-friendly.
@@ -2315,7 +2315,7 @@ This comprehensive validation system helps catch configuration errors early, pro
 - **Use drop_empty_rows** to clean sparse data
 - **Add validation constraints** to foreign keys
 
-### 6. Configuration Maintainability
+### 6. Project Maintainability
 
 - **Use `@value:` references** to avoid duplication
 - **Split large configs** using `@include:`
@@ -2334,7 +2334,7 @@ This comprehensive validation system helps catch configuration errors early, pro
 
 Filters provide post-load data filtering capabilities. They are applied after data extraction but before foreign key linking and other transformations.
 
-### Filter Configuration
+### Filter Project
 
 Filters are configured in the `filters` property of an entity as a list of filter definitions:
 
@@ -2453,8 +2453,8 @@ class MyFilter:
 This guide consolidates the following previously separate documents:
 - **constraint_examples.py**: Constraint usage examples (now in Foreign Key Constraints section)
 - **FOREIGN_KEY_CONSTRAINTS.md**: Constraint documentation (now in Foreign Key Constraints section)
-- **UNION_CONFIGURATION_OPTIONS.md**: Append/union configuration (now in Append Configuration section)
-- **config_validation.md**: Validation specifications (now in Configuration Validation section)
+- **UNION_CONFIGURATION_OPTIONS.md**: Append/union configuration (now in Append Project section)
+- **config_validation.md**: Validation specifications (now in Project Validation section)
 
 **Additional Resources:**
 - **[USER_GUIDE.md](USER_GUIDE.md)**: Complete user guide for Shape Shifter
@@ -2464,7 +2464,7 @@ This guide consolidates the following previously separate documents:
 
 ---
 
-## Appendix: Configuration Schema Summary
+## Appendix: Project Schema Summary
 
 ```yaml
 # Root Structure

@@ -1,4 +1,4 @@
-"""Pydantic models for configuration."""
+"""Pydantic models for project."""
 
 from datetime import datetime, timezone
 from typing import Any
@@ -6,17 +6,17 @@ from typing import Any
 from pydantic import BaseModel, Field, field_serializer
 
 
-class ConfigMetadata(BaseModel):
-    """Metadata about a configuration."""
+class ProjectMetadata(BaseModel):
+    """Metadata about a project."""
 
-    name: str = Field(..., description="Configuration name")
-    description: str | None = Field(default=None, description="Configuration description")
-    version: str | None = Field(default=None, description="Configuration version")
+    name: str = Field(..., description="Project name")
+    description: str | None = Field(default=None, description="Project description")
+    version: str | None = Field(default=None, description="Project version")
     file_path: str | None = Field(default=None, description="File path if loaded from file")
     entity_count: int = Field(..., description="Number of entities")
     created_at: float = Field(default=0, description="Creation timestamp (Unix timestamp)")
     modified_at: float = Field(default=0, description="Last modification timestamp (Unix timestamp)")
-    is_valid: bool = Field(default=True, description="Whether configuration is valid")
+    is_valid: bool = Field(default=True, description="Whether project is valid")
     default_entity: str | None = Field(default=None, description="Default source entity name")
 
     @field_serializer("created_at", "modified_at")
@@ -27,12 +27,12 @@ class ConfigMetadata(BaseModel):
         return datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
 
 
-class Configuration(BaseModel):
-    """Complete configuration containing all entities."""
+class Project(BaseModel):
+    """Complete project containing all entities."""
 
-    entities: dict[str, dict[str, Any]] = Field(default_factory=dict, description="Map of entity name to entity config (raw dicts)")
+    entities: dict[str, dict[str, Any]] = Field(default_factory=dict, description="Map of entity name to entity (raw dicts)")
     options: dict[str, Any] = Field(default_factory=dict, description="Global options")
-    metadata: ConfigMetadata | None = Field(default=None, description="Configuration metadata")
+    metadata: ProjectMetadata | None = Field(default=None, description="Project metadata")
 
     def get_entity(self, name: str) -> dict[str, Any] | None:
         """Get entity by name."""
@@ -56,5 +56,5 @@ class Configuration(BaseModel):
 
     @property
     def filename(self) -> str | None:
-        """Get configuration filename from metadata."""
+        """Get project filename from metadata."""
         return self.metadata.file_path if self.metadata else None  # pylint: disable=no-member

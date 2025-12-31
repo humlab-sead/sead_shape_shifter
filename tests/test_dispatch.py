@@ -10,7 +10,8 @@ import pytest
 from src.dispatch import CSVDispatcher, DatabaseDispatcher, Dispatcher, Dispatchers, DispatchRegistry, ExcelDispatcher
 from src.utility import Registry
 
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,redefined-outer-name
+
 
 @pytest.fixture
 def cfg() -> dict[str, Any]:
@@ -30,6 +31,7 @@ def cfg() -> dict[str, Any]:
             }
         },
     }
+
 
 class TestDispatchRegistry:
     """Tests for DispatchRegistry class."""
@@ -106,7 +108,7 @@ class TestDispatcherProtocol:
 class TestCSVDispatcher:
     """Tests for CSVDispatcher class."""
 
-    def test_csv_dispatcher_instantiation(self, cfg ):
+    def test_csv_dispatcher_instantiation(self, cfg):
         """Test creating a CSVDispatcher instance."""
         dispatcher = CSVDispatcher(cfg=cfg)
         assert dispatcher is not None
@@ -318,7 +320,7 @@ class TestDatabaseDispatcher:
                 }
             },
         }
-    
+
     def test_database_dispatcher_instantiation(self, cfg: dict[str, Any]):
         """Test creating a DatabaseDispatcher instance."""
         dispatcher = DatabaseDispatcher(cfg=cfg)
@@ -326,7 +328,7 @@ class TestDatabaseDispatcher:
 
     @patch("src.dispatch.create_engine")
     @patch("src.dispatch.create_db_uri")
-    def test_database_dispatcher_gets_config(self, mock_create_uri, mock_create_engine,  cfg: dict[str, Any]):
+    def test_database_dispatcher_gets_config(self, mock_create_uri, mock_create_engine, cfg: dict[str, Any]):
         """Test that DatabaseDispatcher calls create_db_uri."""
         dispatcher = DatabaseDispatcher(cfg=cfg)
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}

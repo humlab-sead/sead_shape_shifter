@@ -78,7 +78,7 @@ class TestRunResult(BaseModel):
     """Complete test run result."""
 
     run_id: str = Field(..., description="Unique test run ID")
-    config_name: str = Field(..., description="Configuration name")
+    project_name: str = Field(..., description="Configuration name")
     status: TestRunStatus = Field(..., description="Overall status")
     started_at: datetime = Field(..., description="Test run start time")
     completed_at: Optional[datetime] = Field(None, description="Test run completion time")
@@ -98,5 +98,5 @@ class TestRunResult(BaseModel):
 class TestRunRequest(BaseModel):
     """Request to start a test run."""
 
-    config_name: str = Field(..., description="Configuration name to test")
+    project_name: str = Field(..., description="Configuration name to test")
     options: TestRunOptions = Field(default_factory=TestRunOptions, description="Test run options")  # type: ignore

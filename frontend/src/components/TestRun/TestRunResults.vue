@@ -6,7 +6,7 @@
     <v-card variant="tonal" class="mb-4">
       <v-card-text>
         <div class="d-flex flex-wrap ga-4">
-          <div><strong>Config:</strong> {{ result.config_name }}</div>
+          <div><strong>Config:</strong> {{ result.project_name }}</div>
           <div><strong>Total Time:</strong> {{ formatTime(result.total_time_ms) }}</div>
           <div><strong>Entities:</strong> {{ result.entities_total }}</div>
         </div>

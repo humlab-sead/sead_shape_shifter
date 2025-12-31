@@ -1,13 +1,13 @@
-"""Mapper between core ShapeShiftConfig and API Configuration models.
+"""Mapper between core ShapeShiftProject and API Project models.
 
 This mapper uses Pydantic's schema introspection (model_dump/model_fields) as the
 single source of truth, eliminating hardcoded field lists. The Entity Pydantic model
 defines all valid fields - adding new fields to Entity automatically updates the mapper.
 
 Architecture:
-- YAML files are the source of truth for configuration structure
-- Core (ShapeShiftConfig) is a thin dict wrapper over YAML structure
-- API (Configuration/Entity) uses Pydantic models for validation
+- YAML files are the source of truth for project structure
+- Core (ShapeShiftProject) is a thin dict wrapper over YAML structure
+- API (Project/Entity) uses Pydantic models for validation
 - This mapper bridges the two layers, preserving sparse YAML structure
 
 No hardcoded field lists - all field handling is derived from Pydantic schemas.
@@ -18,24 +18,24 @@ from typing import Any
 from loguru import logger
 
 from backend.app.models import (
-    ConfigMetadata,
-    Configuration,
     Entity,
+    Project,
+    ProjectMetadata,
 )
-from src.model import ShapeShiftConfig
+from src.model import ShapeShiftProject
 
 
-class ConfigMapper:
-    """Bidirectional mapper between core and API configuration models."""
+class ProjectMapper:
+    """Bidirectional mapper between core and API project models."""
 
     @staticmethod
-    def to_api_config(cfg_dict: dict[str, Any], name: str, filename: str | None = None) -> Configuration:
+    def to_api_config(cfg_dict: dict[str, Any], name: str, filename: str | None = None) -> Project:
         """
-        Convert core config dict to API Configuration.
+        Convert core config dict to API Project.
 
         Args:
-            cfg_dict: Core configuration dictionary (ShapeShiftConfig.cfg format)
-            name: Configuration name
+            cfg_dict: Core configuration dictionary (ShapeShiftProject.cfg format)
+            name: Project name
 
         Returns:
             API configuration model with sparse structure
@@ -44,7 +44,7 @@ class ConfigMapper:
 
         # Extract metadata from YAML metadata section or use defaults
         metadata_dict: dict[str, Any] = cfg_dict.get("metadata", {})
-        metadata: ConfigMetadata = ConfigMetadata(
+        metadata: ProjectMetadata = ProjectMetadata(
             name=metadata_dict.get("name", name),
             description=metadata_dict.get("description", ""),
             version=metadata_dict.get("version", "1.0.0"),
@@ -59,27 +59,27 @@ class ConfigMapper:
         # Map entities (preserve sparse structure)
         entities: dict[str, dict[str, Any]] = {}
         for entity_name, entity_dict in cfg_dict.get("entities", {}).items():
-            entities[entity_name] = ConfigMapper._dict_to_api_entity(entity_name, entity_dict)
+            entities[entity_name] = ProjectMapper._dict_to_api_entity(entity_name, entity_dict)
 
         # Map options (preserve as-is)
         options = cfg_dict.get("options", {})
 
-        return Configuration(
+        return Project(
             metadata=metadata,
             entities=entities,
             options=options,
         )
 
     @staticmethod
-    def to_core_dict(api_config: Configuration) -> dict[str, Any]:
+    def to_core_dict(api_config: Project) -> dict[str, Any]:
         """
-        Convert API Configuration to core config dict.
+        Convert API Project to core config dict.
 
         Args:
             api_config: API configuration model
 
         Returns:
-            Core configuration dictionary (for ShapeShiftConfig)
+            Core configuration dictionary (for ShapeShiftProject)
         """
         assert api_config.metadata is not None
         logger.debug(f"Converting API config to core dict: {api_config.metadata.name}")
@@ -97,14 +97,14 @@ class ConfigMapper:
 
         # Map entities (preserve sparse structure)
         for entity_name, api_entity in api_config.entities.items():
-            cfg_dict["entities"][entity_name] = ConfigMapper._api_entity_to_dict(api_entity)
+            cfg_dict["entities"][entity_name] = ProjectMapper._api_entity_to_dict(api_entity)
 
         return cfg_dict
 
     @staticmethod
-    def to_core(api_config: Configuration) -> ShapeShiftConfig:
-        cfg_dict: dict[str, Any] = ConfigMapper.to_core_dict(api_config=api_config)
-        shapeshift = ShapeShiftConfig(cfg=cfg_dict, filename=api_config.filename or "")
+    def to_core(api_config: Project) -> ShapeShiftProject:
+        cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_config=api_config)
+        shapeshift = ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
         return shapeshift
 
     @staticmethod
@@ -140,7 +140,7 @@ class ConfigMapper:
                 # Preserve all other fields as-is (both Entity fields and custom fields)
                 api_dict[field] = value
 
-        # Return dict directly since Configuration.entities expects dict[str, dict[str, Any]]
+        # Return dict directly since Project.entities expects dict[str, dict[str, Any]]
         return api_dict
 
     @staticmethod

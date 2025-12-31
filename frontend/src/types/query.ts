@@ -1,5 +1,5 @@
 /**
- * Query execution types for the Shape Shifter Configuration Editor.
+ * Query execution types for the Shape Shifter Project Editor.
  */
 
 export interface QueryResult {

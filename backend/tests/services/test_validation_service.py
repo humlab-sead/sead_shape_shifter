@@ -289,22 +289,22 @@ class TestDataValidation:
         captured: dict[str, object] = {}
 
         class DummyPreviewService:
-            def __init__(self, config_service: object) -> None:
-                captured["config_service"] = config_service
+            def __init__(self, project_service: object) -> None:
+                captured["project_service"] = project_service
 
         class DummyDataValidationService:
             def __init__(self, preview_service: object) -> None:
                 captured["preview_service"] = preview_service
 
-            async def validate_configuration(self, config_name: str, entity_names: list[str] | None):
-                captured["args"] = (config_name, entity_names)
+            async def validate_configuration(self, project_name: str, entity_names: list[str] | None):
+                captured["args"] = (project_name, entity_names)
                 return [
                     ValidationError(severity="error", entity="a", field=None, message="err", code="E1"),
                     ValidationError(severity="warning", entity="b", field=None, message="warn", code="W1"),
                     ValidationError(severity="info", entity="c", field=None, message="info", code="I1"),
                 ]
 
-        monkeypatch.setattr(validation_service_module, "get_config_service", lambda: "config-service")
+        monkeypatch.setattr(validation_service_module, "get_project_service", lambda: "config-service")
         monkeypatch.setattr(validation_service_module, "ShapeShiftService", DummyPreviewService)
         monkeypatch.setattr(validation_service_module, "DataValidationService", DummyDataValidationService)
 
@@ -315,7 +315,7 @@ class TestDataValidation:
         assert result.warning_count == 1
         assert len(result.info) == 1
         assert captured["args"] == ("cfg-name", ["entity1"])
-        assert captured["config_service"] == "config-service"
+        assert captured["project_service"] == "config-service"
         assert isinstance(captured["preview_service"], DummyPreviewService)
 
     def test_get_validation_service_singleton(self, reset_validation_singleton):

@@ -31,8 +31,8 @@ options:
 
 HOW TO FIX:
 -----------
-1. Ensure @include directives are processed BEFORE the config is converted to ShapeShiftConfig
-2. Check the configuration loading code (likely in backend/app/services/config_service.py
+1. Ensure @include directives are processed BEFORE the config is converted to ShapeShiftProject
+2. Check the configuration loading code (likely in backend/app/services/project_service.py
    or backend/app/mappers/config_mapper.py) to ensure includes are resolved
 3. Add validation to detect unresolved @include directives (see test_detect_unresolved_includes_in_config)
 4. The configuration provider/loader should handle @include processing, not the consumers
@@ -52,7 +52,7 @@ import pytest
 from ruamel.yaml.scalarstring import DoubleQuotedScalarString, ScalarString
 
 from backend.app.services.shapeshift_service import ShapeShiftService
-from src.model import DataSourceConfig, ShapeShiftConfig
+from src.model import DataSourceConfig, ShapeShiftProject
 
 
 class TestShapeShiftServiceIncludeBug:
@@ -60,15 +60,15 @@ class TestShapeShiftServiceIncludeBug:
 
     @pytest.fixture
     def mock_config_service(self) -> MagicMock:
-        """Create mock ConfigurationService."""
+        """Create mock ProjectService."""
         service = MagicMock()
-        service.load_configuration = MagicMock()
+        service.load_project = MagicMock()
         return service
 
     @pytest.fixture
     def service(self, mock_config_service: MagicMock) -> ShapeShiftService:
         """Create ShapeShiftService instance."""
-        return ShapeShiftService(config_service=mock_config_service)
+        return ShapeShiftService(project_service=mock_config_service)
 
     @pytest.mark.asyncio
     async def test_preview_entity_with_unresolved_include_directive(self):
@@ -101,7 +101,7 @@ class TestShapeShiftServiceIncludeBug:
         }
 
         # Mock the config cache to return this buggy config
-        mock_shapeshift_config = ShapeShiftConfig(cfg=config_dict, filename="test-config.yml")
+        mock_shapeshift_config = ShapeShiftProject(cfg=config_dict, filename="test-config.yml")
 
         # Now let's directly test that getting the data source fails
         with pytest.raises(AttributeError, match="'DoubleQuotedScalarString' object has no attribute 'get'"):
@@ -127,7 +127,7 @@ class TestShapeShiftServiceIncludeBug:
     @pytest.mark.asyncio
     async def test_shapeshift_config_with_unresolved_include(self):
         """
-        Test ShapeShiftConfig.get_data_source with unresolved @include.
+        Test ShapeShiftProject.get_data_source with unresolved @include.
 
         This shows where the error propagates through the config system.
         """
@@ -145,7 +145,7 @@ class TestShapeShiftServiceIncludeBug:
             "options": {"data_sources": {"test_source": unresolved_include}},
         }
 
-        config = ShapeShiftConfig(cfg=config_dict, filename="test-config.yml")
+        config = ShapeShiftProject(cfg=config_dict, filename="test-config.yml")
 
         # Attempting to get the data source will fail
         with pytest.raises(AttributeError, match="'DoubleQuotedScalarString' object has no attribute 'get'"):
@@ -185,7 +185,7 @@ class TestShapeShiftServiceIncludeBug:
             },
         }
 
-        mock_shapeshift_config = ShapeShiftConfig(cfg=config_dict, filename="test-config.yml")
+        mock_shapeshift_config = ShapeShiftProject(cfg=config_dict, filename="test-config.yml")
 
         # Mock the ShapeShifter to return test data
         mock_normalizer = MagicMock()
@@ -199,7 +199,7 @@ class TestShapeShiftServiceIncludeBug:
             patch("backend.app.services.shapeshift_service.ShapeShifter", return_value=mock_normalizer),
         ):
             # This should work without errors
-            result = await service.preview_entity("test_config", "feature", limit=10)
+            result = await service.preview_entity("test_project", "feature", limit=10)
 
             assert result.entity_name == "feature"
             assert result.total_rows_in_preview == 2
