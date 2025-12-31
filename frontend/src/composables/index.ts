@@ -2,8 +2,8 @@
  * Centralized composables exports
  */
 
-export { useProjects } from './useConfigurations'
-export type { UseProjectsOptions } from './useConfigurations'
+export { useProjects } from './useProjects'
+export type { UseProjectsOptions } from './useProjects'
 
 export { useEntities } from './useEntities'
 export type { UseEntitiesOptions } from './useEntities'
