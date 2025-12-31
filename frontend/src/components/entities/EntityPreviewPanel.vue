@@ -24,10 +24,12 @@
           <v-select
             v-model="localLimit"
             :items="limitOptions"
+            item-title="title"
+            item-value="value"
             label="Rows to preview"
             density="compact"
             variant="outlined"
-            style="max-width: 200px"
+            style="max-width: 220px"
             hide-details
             @update:model-value="handleLimitChange"
           />
@@ -96,6 +98,22 @@
           </v-menu>
         </div>
 
+        <!-- Warning for "All rows" selection -->
+        <v-alert
+          v-if="localLimit === null"
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="mb-4"
+        >
+          <div class="d-flex align-center">
+            <v-icon icon="mdi-alert" class="mr-2" />
+            <div>
+              <strong>All rows selected:</strong> Loading the entire dataset may take longer and consume more memory for large entities.
+            </div>
+          </div>
+        </v-alert>
+
         <!-- Preview component -->
         <entity-data-preview
           :preview-data="previewData"
@@ -155,8 +173,18 @@ const {
 
 // Local state
 const panel = ref<string | undefined>(props.autoLoad ? 'preview' : undefined)
-const localLimit = ref(50)
-const limitOptions = [10, 25, 50, 100, 200, 500]
+const localLimit = ref<number | null>(50)
+const limitOptions = [
+  { title: '10 rows', value: 10 },
+  { title: '25 rows', value: 25 },
+  { title: '50 rows', value: 50 },
+  { title: '100 rows', value: 100 },
+  { title: '200 rows', value: 200 },
+  { title: '500 rows', value: 500 },
+  { title: '1,000 rows', value: 1000 },
+  { title: '5,000 rows', value: 5000 },
+  { title: 'All rows', value: null },
+]
 
 // Debounced auto-refresh
 let refreshTimeout: ReturnType<typeof setTimeout> | null = null

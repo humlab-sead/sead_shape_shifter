@@ -25,7 +25,7 @@ class ShapeShiftService:
         self.config_cache = ShapeShiftConfigCache(config_service)
         self.settings: Settings = settings
 
-    async def preview_entity(self, config_name: str, entity_name: str, limit: int = 50) -> PreviewResult:
+    async def preview_entity(self, config_name: str, entity_name: str, limit: int | None = 50) -> PreviewResult:
         """
         Preview entity data with all transformations applied.
 
@@ -34,7 +34,7 @@ class ShapeShiftService:
         Args:
             config_name: Name of the configuration file
             entity_name: Name of the entity to preview
-            limit: Maximum number of rows to return (default 50)
+            limit: Maximum number of rows to return (default 50). Use None for all rows.
 
         Returns:
             PreviewResult with data and metadata
@@ -157,14 +157,22 @@ class PreviewResultBuilder:
         entity_name: str,
         entity_cfg: TableConfig,
         table_store: dict[str, pd.DataFrame],
-        limit: int,
+        limit: int | None,
         cache_hit: bool,
     ) -> PreviewResult:
-        """Build PreviewResult from table_store with limit applied."""
+        """Build PreviewResult from table_store with limit applied.
+        
+        Args:
+            entity_name: Name of the entity
+            entity_cfg: Entity configuration
+            table_store: Dictionary of DataFrames
+            limit: Maximum rows to return, or None for all rows
+            cache_hit: Whether result came from cache
+        """
         if entity_name not in table_store:
             raise RuntimeError(f"Entity {entity_name} not found in table_store")
 
-        preview_df: pd.DataFrame = table_store[entity_name].head(limit)
+        preview_df: pd.DataFrame = table_store[entity_name].head(limit) if limit is not None else table_store[entity_name]
 
         key_columns: set[str] = entity_cfg.get_key_columns()
 
