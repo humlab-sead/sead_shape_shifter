@@ -16,7 +16,7 @@ export interface UseDependenciesOptions {
 export function useDependencies(options: UseDependenciesOptions = {}) {
   const { projectName, autoFetch = false, checkCycles = false } = options
   const store = useValidationStore()
-  const lastFetchedConfig = ref<string | null>(null)
+  const lastFetchedProject = ref<string | null>(null)
 
   // Computed state from store
   const dependencyGraph = computed(() => store.dependencyGraph)
@@ -34,7 +34,7 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
   async function fetch(name: string) {
     try {
       const result = await store.fetchDependencies(name)
-      lastFetchedConfig.value = name
+      lastFetchedProject.value = name
       return result
     } catch (err) {
       console.error(`Failed to fetch dependencies for "${name}":`, err)
@@ -53,7 +53,7 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
 
   function clearDependencies() {
     store.clearDependencies()
-    lastFetchedConfig.value = null
+    lastFetchedProject.value = null
   }
 
   function clearError() {
@@ -118,7 +118,7 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
 
   // Helper: Check if graph is stale
   const isStale = computed(() => {
-    return projectName ? lastFetchedConfig.value !== projectName : false
+    return projectName ? lastFetchedProject.value !== projectName : false
   })
 
   // Statistics
@@ -140,7 +140,7 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
     checkCircularDependencies(projectName)
   }
 
-  // Watch for config changes
+  // Watch for project changes
   watch(
     () => projectName,
     async (newName, oldName) => {
@@ -161,7 +161,7 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
     circularDependencyCheck,
     loading,
     error,
-    lastFetchedConfig,
+    lastFetchedProject,
     // Computed
     hasCircularDependencies,
     cycles,

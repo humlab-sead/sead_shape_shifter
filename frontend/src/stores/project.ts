@@ -69,18 +69,18 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
-      const config = await api.projects.create(data)
+      const project = await api.projects.create(data)
       projects.value.push({
-        name: config.metadata?.name ?? data.name,
-        entity_count: Object.keys(config.entities || {}).length,
-        file_path: config.metadata?.file_path,
-        created_at: config.metadata?.created_at,
-        modified_at: config.metadata?.modified_at,
-        is_valid: config.metadata?.is_valid,
+        name: project.metadata?.name ?? data.name,
+        entity_count: Object.keys(project.entities || {}).length,
+        file_path: project.metadata?.file_path,
+        created_at: project.metadata?.created_at,
+        modified_at: project.metadata?.modified_at,
+        is_valid: project.metadata?.is_valid,
       })
-      selectedProject.value = config
+      selectedProject.value = project
       hasUnsavedChanges.value = false
-      return config
+      return project
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create project'
       throw err
@@ -93,24 +93,24 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
-      const config = await api.projects.update(name, data)
+      const project = await api.projects.update(name, data)
 
       // Update metadata in list
       const index = projects.value.findIndex((c) => c.name === name)
       if (index !== -1) {
         projects.value[index] = {
-          name: config.metadata?.name ?? name,
-          entity_count: Object.keys(config.entities || {}).length,
-          file_path: config.metadata?.file_path,
-          created_at: config.metadata?.created_at,
-          modified_at: config.metadata?.modified_at,
-          is_valid: config.metadata?.is_valid,
+          name: project.metadata?.name ?? name,
+          entity_count: Object.keys(project.entities || {}).length,
+          file_path: project.metadata?.file_path,
+          created_at: project.metadata?.created_at,
+          modified_at: project.metadata?.modified_at,
+          is_valid: project.metadata?.is_valid,
         }
       }
 
-      selectedProject.value = config
+      selectedProject.value = project
       hasUnsavedChanges.value = false
-      return config
+      return project
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update project'
       throw err
@@ -123,30 +123,30 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
-      const config = await api.projects.updateMetadata(name, data)
+      const project = await api.projects.updateMetadata(name, data)
 
       // Update metadata in list
       const oldName = name
       const index = projects.value.findIndex((c) => c.name === oldName)
 
-      if (index !== -1 && config.metadata) {
+      if (index !== -1 && project.metadata) {
         projects.value[index] = {
-          name: config.metadata.name,
-          description: config.metadata.description,
-          version: config.metadata.version,
-          entity_count: config.metadata.entity_count,
-          file_path: config.metadata.file_path,
-          created_at: config.metadata.created_at,
-          modified_at: config.metadata.modified_at,
-          is_valid: config.metadata.is_valid,
-          default_entity: config.metadata.default_entity,
+          name: project.metadata.name,
+          description: project.metadata.description,
+          version: project.metadata.version,
+          entity_count: project.metadata.entity_count,
+          file_path: project.metadata.file_path,
+          created_at: project.metadata.created_at,
+          modified_at: project.metadata.modified_at,
+          is_valid: project.metadata.is_valid,
+          default_entity: project.metadata.default_entity,
         }
       }
 
-      selectedProject.value = config
+      selectedProject.value = project
       hasUnsavedChanges.value = false
 
-      return config
+      return project
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update metadata'
       throw err
@@ -204,24 +204,24 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
-      const config = await api.projects.restore(name, { backup_path: backupPath })
-      selectedProject.value = config
+      const project = await api.projects.restore(name, { backup_path: backupPath })
+      selectedProject.value = project
 
       // Update in list if exists
       const index = projects.value.findIndex((c) => c.name === name)
-      if (index !== -1 && config.metadata) {
+      if (index !== -1 && project.metadata) {
         projects.value[index] = {
-          name: config.metadata.name,
-          entity_count: config.metadata.entity_count,
-          file_path: config.metadata.file_path,
-          created_at: config.metadata.created_at,
-          modified_at: config.metadata.modified_at,
-          is_valid: config.metadata.is_valid,
+          name: project.metadata.name,
+          entity_count: project.metadata.entity_count,
+          file_path: project.metadata.file_path,
+          created_at: project.metadata.created_at,
+          modified_at: project.metadata.modified_at,
+          is_valid: project.metadata.is_valid,
         }
       }
 
       hasUnsavedChanges.value = false
-      return config
+      return project
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to restore backup'
       throw err
@@ -266,22 +266,22 @@ export const useProjectStore = defineStore('project', () => {
     error.value = null
 
     try {
-      const config = await api.projects.update(name, updateData)
+      const project = await api.projects.update(name, updateData)
 
       // Update metadata in list
       const index = projects.value.findIndex((c) => c.name === name)
-      if (index !== -1 && config.metadata) {
+      if (index !== -1 && project.metadata) {
         projects.value[index] = {
-          name: config.metadata.name,
-          entity_count: config.metadata.entity_count,
-          file_path: config.metadata.file_path,
-          created_at: config.metadata.created_at,
-          modified_at: config.metadata.modified_at,
-          is_valid: config.metadata.is_valid,
+          name: project.metadata.name,
+          entity_count: project.metadata.entity_count,
+          file_path: project.metadata.file_path,
+          created_at: project.metadata.created_at,
+          modified_at: project.metadata.modified_at,
+          is_valid: project.metadata.is_valid,
         }
       }
 
-      selectedProject.value = config
+      selectedProject.value = project
       hasUnsavedChanges.value = false
 
       // Increment session version on successful save
@@ -289,7 +289,7 @@ export const useProjectStore = defineStore('project', () => {
         sessionStore.incrementVersion()
       }
 
-      return config
+      return project
     } catch (err: any) {
       // Handle version conflict (409)
       if (err?.response?.status === 409) {
@@ -325,9 +325,9 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
-      const config = await api.projects.activate(name)
-      selectedProject.value = config
-      return config
+      const project = await api.projects.activate(name)
+      selectedProject.value = project
+      return project
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to activate project'
       throw err
@@ -349,9 +349,9 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
-      const config = await api.projects.connectDataSource(name, sourceName, sourceFilename)
-      selectedProject.value = config
-      return config
+      const project = await api.projects.connectDataSource(name, sourceName, sourceFilename)
+      selectedProject.value = project
+      return project
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to connect data source'
       throw err
@@ -364,9 +364,9 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
-      const config = await api.projects.disconnectDataSource(name, sourceName)
-      selectedProject.value = config
-      return config
+      const project = await api.projects.disconnectDataSource(name, sourceName)
+      selectedProject.value = project
+      return project
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to disconnect data source'
       throw err

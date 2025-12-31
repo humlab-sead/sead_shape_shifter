@@ -356,7 +356,7 @@ function renderGraph() {
   container.appendChild(svg)
 }
 
-// Watch for config changes
+// Watch for project changes
 watch(
   () => props.projectName,
   async (newProject) => {

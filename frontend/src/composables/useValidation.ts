@@ -112,7 +112,7 @@ export function useValidation(options: UseValidationOptions = {}) {
     entityValidationResults,
     loading,
     error,
-    lastValidatedConfig: lastValidatedProject,
+    lastValidatedProject,
     // Computed
     hasErrors,
     hasWarnings,

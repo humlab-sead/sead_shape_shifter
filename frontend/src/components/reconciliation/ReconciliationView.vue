@@ -216,13 +216,13 @@ onMounted(async () => {
   }
 })
 
-// Watch for config changes
+// Watch for project changes
 watch(
   () => props.projectName,
-  async (newConfigName) => {
-    if (newConfigName) {
+  async (newProjectName) => {
+    if (newProjectName) {
       selectedEntity.value = null
-      await reconciliationStore.loadReconciliationConfig(newConfigName)
+      await reconciliationStore.loadReconciliationConfig(newProjectName)
     }
   }
 )

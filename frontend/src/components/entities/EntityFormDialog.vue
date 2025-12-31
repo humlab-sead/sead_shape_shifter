@@ -746,7 +746,7 @@ const dialogModel = computed({
 const entityTypeOptions = [
   { title: 'Data', value: 'data', subtitle: 'Load from CSV or other data source' },
   { title: 'SQL', value: 'sql', subtitle: 'Execute SQL query' },
-  { title: 'Fixed', value: 'fixed', subtitle: 'Fixed values defined in config' },
+  { title: 'Fixed', value: 'fixed', subtitle: 'Fixed values defined in entity' },
 ]
 
 const availableSourceEntities = computed(() => {
