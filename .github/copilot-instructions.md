@@ -309,7 +309,7 @@ git commit -m "feat(cache): implement hash-based cache invalidation
 Add xxhash-based entity hashing to detect changes
 beyond version numbers. Implements 3-tier validation:
 1. TTL check (300s)
-2. Config version comparison
+2. Project version comparison
 3. Entity hash validation
 
 This prevents serving stale cached data when entity
@@ -501,8 +501,8 @@ export const useExampleStore = defineStore('example', () => {
 - **Implementation**: All loaders (PostgreSQL, SQLite, MS Access, CSV, Excel) have embedded schemas
 
 ### Cache System (shapeshift_service.py)
-- **3-tier validation**: TTL (300s) → Config version → Entity hash (xxhash)
-- **CacheMetadata**: Tracks timestamp, project_name, entity_name, config_version, entity_hash
+- **3-tier validation**: TTL (300s) → Project version → Entity hash (xxhash)
+- **CacheMetadata**: Tracks timestamp, project_name, entity_name, project_version, entity_hash
 - **Hash-based invalidation**: Detects entity changes via xxhash.xxh64
 - **Smart dependencies**: Validates cached dependency hashes before reuse
 

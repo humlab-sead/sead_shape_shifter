@@ -15,8 +15,8 @@ from backend.app.models.project import Project, ProjectMetadata
 
 
 @dataclass
-class ConfigSession:
-    """Represents an active editing session for a configuration file."""
+class ProjectSession:
+    """Represents an active editing session for a project."""
 
     session_id: UUID
     project_name: str
@@ -36,19 +36,19 @@ class ApplicationState:
     """
     Application-level singleton state (lifespan scope).
 
-    Manages active editing sessions with Configuration objects (API model).
+    Manages active editing sessions with Project objects (API model).
     This replaces ConfigStore usage for editing state management.
     """
 
-    def __init__(self, config_dir: Path):
-        self.projects_dir: Path = config_dir
+    def __init__(self, projects_dir: Path):
+        self.projects_dir: Path = projects_dir
 
-        # Active configurations (editing state)
+        # Active projects (editing state)
         self._active_projects: dict[str, Project] = {}
         self._active_project_name: str | None = None
 
         # Session management
-        self._sessions: dict[UUID, ConfigSession] = {}
+        self._sessions: dict[UUID, ProjectSession] = {}
         self._sessions_by_project: dict[str, set[UUID]] = {}
         self._session_lock = asyncio.Lock()
 
@@ -78,7 +78,7 @@ class ApplicationState:
         """Create a new editing session for a project file."""
         async with self._session_lock:
             session_id: UUID = uuid4()
-            session = ConfigSession(
+            session = ProjectSession(
                 session_id=session_id,
                 project_name=project_name,
                 user_id=user_id,
@@ -92,7 +92,7 @@ class ApplicationState:
             logger.info(f"Created session {session_id} for project '{project_name}'")
             return session_id
 
-    async def get_session(self, session_id: UUID) -> ConfigSession | None:
+    async def get_session(self, session_id: UUID) -> ProjectSession | None:
         """Retrieve and touch a session."""
         async with self._session_lock:
             if session := self._sessions.get(session_id):
@@ -100,7 +100,7 @@ class ApplicationState:
                 return session
             return None
 
-    async def get_active_sessions(self, project_name: str) -> list[ConfigSession]:
+    async def get_active_sessions(self, project_name: str) -> list[ProjectSession]:
         """Get all active sessions for a project file."""
         async with self._session_lock:
             session_ids = self._sessions_by_project.get(project_name, set())
@@ -127,13 +127,13 @@ class ApplicationState:
                 logger.info(f"Released session {session_id}")
 
     def get_active_project(self) -> Project | None:
-        """Get the currently active configuration being edited."""
+        """Get the currently active project being edited."""
         if self._active_project_name:
             return self._active_projects.get(self._active_project_name)
         return None
 
     def get_project(self, name: str) -> Project | None:
-        """Get a specific configuration from active editing sessions."""
+        """Get a specific project from active editing sessions."""
         return self._active_projects.get(name)
 
     def set_active_project(self, project: Project) -> None:

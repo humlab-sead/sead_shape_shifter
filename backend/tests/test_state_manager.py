@@ -11,7 +11,7 @@ import backend.app.core.state_manager as sm
 from backend.app.core.state_manager import (
     ApplicationState,
     ApplicationStateManager,
-    ConfigSession,
+    ProjectSession,
     get_app_state,
     init_app_state,
 )
@@ -21,22 +21,22 @@ from backend.app.models.project import Project, ProjectMetadata
 
 
 @pytest.fixture
-def config_dir(tmp_path: Path) -> Path:
+def project_dir(tmp_path: Path) -> Path:
     """Create a temporary configuration directory."""
     return tmp_path / "configs"
 
 
 @pytest.fixture
-def app_state(config_dir: Path) -> ApplicationState:
+def app_state(project_dir: Path) -> ApplicationState:
     """Create an ApplicationState instance."""
-    return ApplicationState(config_dir)
+    return ApplicationState(project_dir)
 
 
 @pytest.fixture
 def sample_config() -> Project:
     """Create a sample configuration."""
     return Project(
-        metadata=ProjectMetadata(name="test-config", entity_count=0),
+        metadata=ProjectMetadata(name="test-project", entity_count=0),
         entities={},
         options={},
     )
@@ -54,7 +54,7 @@ def reset_singletons():
     sm._app_state_manager = original_manager
 
 
-class TestConfigSession:
+class TestProjectSession:
     """Test ConfigSession dataclass."""
 
     def test_create_session(self):
@@ -62,16 +62,16 @@ class TestConfigSession:
         session_id = UUID("12345678-1234-5678-1234-567812345678")
         now: datetime = datetime.now()
 
-        session = ConfigSession(
+        session = ProjectSession(
             session_id=session_id,
-            project_name="test-config",
+            project_name="test-project",
             user_id="user123",
             loaded_at=now,
             last_accessed=now,
         )
 
         assert session.session_id == session_id
-        assert session.project_name == "test-config"
+        assert session.project_name == "test-project"
         assert session.user_id == "user123"
         assert session.loaded_at == now
         assert session.last_accessed == now
@@ -82,9 +82,9 @@ class TestConfigSession:
     def test_touch_updates_last_accessed(self):
         """Test that touch() updates last_accessed timestamp."""
         now: datetime = datetime.now()
-        session = ConfigSession(
+        session = ProjectSession(
             session_id=UUID("12345678-1234-5678-1234-567812345678"),
-            project_name="test-config",
+            project_name="test-project",
             user_id=None,
             loaded_at=now,
             last_accessed=now - timedelta(minutes=5),
@@ -99,11 +99,11 @@ class TestConfigSession:
 class TestApplicationState:
     """Test ApplicationState class."""
 
-    def test_initialization(self, config_dir: Path):
+    def test_initialization(self, project_dir: Path):
         """Test ApplicationState initialization."""
-        state = ApplicationState(config_dir)
+        state = ApplicationState(project_dir)
 
-        assert state.projects_dir == config_dir
+        assert state.projects_dir == project_dir
         assert not state._active_projects
         assert state._active_project_name is None
         assert not state._sessions
@@ -125,21 +125,21 @@ class TestApplicationState:
     @pytest.mark.asyncio
     async def test_create_session(self, app_state: ApplicationState):
         """Test creating a new session."""
-        session_id = await app_state.create_session("test-config", "user123")
+        session_id = await app_state.create_session("test-project", "user123")
 
         assert isinstance(session_id, UUID)
         assert session_id in app_state._sessions
 
         session = app_state._sessions[session_id]
-        assert session.project_name == "test-config"
+        assert session.project_name == "test-project"
         assert session.user_id == "user123"
-        assert "test-config" in app_state._sessions_by_project
-        assert session_id in app_state._sessions_by_project["test-config"]
+        assert "test-project" in app_state._sessions_by_project
+        assert session_id in app_state._sessions_by_project["test-project"]
 
     @pytest.mark.asyncio
     async def test_get_session(self, app_state: ApplicationState):
         """Test retrieving a session."""
-        session_id = await app_state.create_session("test-config")
+        session_id = await app_state.create_session("test-project")
         original_access_time = app_state._sessions[session_id].last_accessed
 
         # Small delay to ensure timestamp difference
@@ -177,30 +177,30 @@ class TestApplicationState:
     @pytest.mark.asyncio
     async def test_release_session(self, app_state: ApplicationState, sample_config: Project):
         """Test releasing a session."""
-        session_id = await app_state.create_session("test-config")
+        session_id: UUID = await app_state.create_session("test-project")
         app_state.set_active_project(sample_config)
 
         await app_state.release_session(session_id)
 
         assert session_id not in app_state._sessions
-        assert "test-config" not in app_state._sessions_by_project
-        assert "test-config" not in app_state._active_projects
-        assert "test-config" not in app_state._project_versions
-        assert "test-config" not in app_state._project_dirty
+        assert "test-project" not in app_state._sessions_by_project
+        assert "test-project" not in app_state._active_projects
+        assert "test-project" not in app_state._project_versions
+        assert "test-project" not in app_state._project_dirty
 
     @pytest.mark.asyncio
     async def test_release_session_keeps_config_if_other_sessions(self, app_state: ApplicationState, sample_config: Project):
         """Test that config is kept when other sessions exist."""
-        session_id1 = await app_state.create_session("test-config")
-        session_id2 = await app_state.create_session("test-config")
+        session_id1 = await app_state.create_session("test-project")
+        session_id2 = await app_state.create_session("test-project")
         app_state.set_active_project(sample_config)
 
         await app_state.release_session(session_id1)
 
-        # Config should still be in memory
-        assert "test-config" in app_state._active_projects
+        # Project should still be in memory
+        assert "test-project" in app_state._active_projects
         assert session_id2 in app_state._sessions
-        assert "test-config" in app_state._sessions_by_project
+        assert "test-project" in app_state._sessions_by_project
 
     def test_get_active_projecturation(self, app_state: ApplicationState, sample_config: Project):
         """Test getting the active configuration."""
@@ -214,16 +214,16 @@ class TestApplicationState:
         active = app_state.get_active_project()
         assert active is not None
         assert active.metadata is not None
-        assert active.metadata.name == "test-config"
+        assert active.metadata.name == "test-project"
 
     def test_get_configuration(self, app_state: ApplicationState, sample_config: Project):
         """Test getting a specific configuration."""
         app_state.set_active_project(sample_config)
 
-        config = app_state.get_project("test-config")
+        config = app_state.get_project("test-project")
         assert config is not None
         assert config.metadata is not None
-        assert config.metadata.name == "test-config"
+        assert config.metadata.name == "test-project"
 
         # Non-existent config
         assert app_state.get_project("non-existent") is None
@@ -232,29 +232,29 @@ class TestApplicationState:
         """Test setting the active configuration."""
         app_state.set_active_project(sample_config)
 
-        assert app_state._active_project_name == "test-config"
-        assert "test-config" in app_state._active_projects
-        assert app_state._project_versions["test-config"] == 1
-        assert app_state._project_dirty["test-config"] is True
+        assert app_state._active_project_name == "test-project"
+        assert "test-project" in app_state._active_projects
+        assert app_state._project_versions["test-project"] == 1
+        assert app_state._project_dirty["test-project"] is True
 
     def test_set_active_projecturation_increments_version(self, app_state: ApplicationState, sample_config: Project):
         """Test that setting active config increments version."""
         app_state.set_active_project(sample_config)
-        initial_version = app_state._project_versions["test-config"]
+        initial_version = app_state._project_versions["test-project"]
 
         # Update again
         app_state.set_active_project(sample_config)
 
-        assert app_state._project_versions["test-config"] == initial_version + 1
+        assert app_state._project_versions["test-project"] == initial_version + 1
 
     def test_mark_saved(self, app_state: ApplicationState, sample_config: Project):
         """Test marking a configuration as saved."""
         app_state.set_active_project(sample_config)
-        assert app_state._project_dirty["test-config"] is True
+        assert app_state._project_dirty["test-project"] is True
 
-        app_state.mark_saved("test-config")
+        app_state.mark_saved("test-project")
 
-        assert app_state._project_dirty["test-config"] is False
+        assert app_state._project_dirty["test-project"] is False
 
     def test_mark_saved_nonexistent(self, app_state: ApplicationState):
         """Test marking a non-existent configuration as saved."""
@@ -264,34 +264,34 @@ class TestApplicationState:
     def test_is_dirty(self, app_state: ApplicationState, sample_config: Project):
         """Test checking if configuration is dirty."""
         # Not dirty initially
-        assert app_state.is_dirty("test-config") is False
+        assert app_state.is_dirty("test-project") is False
 
         # Set active - becomes dirty
         app_state.set_active_project(sample_config)
-        assert app_state.is_dirty("test-config") is True
+        assert app_state.is_dirty("test-project") is True
 
         # Mark saved - no longer dirty
-        app_state.mark_saved("test-config")
-        assert app_state.is_dirty("test-config") is False
+        app_state.mark_saved("test-project")
+        assert app_state.is_dirty("test-project") is False
 
     def test_get_version(self, app_state: ApplicationState, sample_config: Project):
         """Test getting configuration version."""
         # No version initially
-        assert app_state.get_version("test-config") == 0
+        assert app_state.get_version("test-project") == 0
 
         # Set active - version 1
         app_state.set_active_project(sample_config)
-        assert app_state.get_version("test-config") == 1
+        assert app_state.get_version("test-project") == 1
 
         # Update again - version 2
         app_state.set_active_project(sample_config)
-        assert app_state.get_version("test-config") == 2
+        assert app_state.get_version("test-project") == 2
 
     @pytest.mark.asyncio
     async def test_cleanup_stale_sessions(self, app_state: ApplicationState):
         """Test cleanup of stale sessions."""
         # Create a session
-        session_id = await app_state.create_session("test-config")
+        session_id = await app_state.create_session("test-project")
 
         # Manually set last_accessed to be old
         app_state._sessions[session_id].last_accessed = datetime.now() - timedelta(hours=1)
@@ -324,23 +324,23 @@ class TestApplicationState:
 class TestSingletonFunctions:
     """Test singleton pattern functions."""
 
-    def test_init_app_state(self, config_dir: Path):
+    def test_init_app_state(self, project_dir: Path):
         """Test initializing global app state."""
         # Import the module-level variable
 
         # Reset to None first
         sm._app_state = None
 
-        state: ApplicationState = init_app_state(config_dir)
+        state: ApplicationState = init_app_state(project_dir)
 
         assert isinstance(state, ApplicationState)
-        assert state.projects_dir == config_dir
+        assert state.projects_dir == project_dir
         assert sm._app_state is state
 
-    def test_get_app_state_when_initialized(self, config_dir: Path):
+    def test_get_app_state_when_initialized(self, project_dir: Path):
         """Test getting app state when initialized."""
 
-        sm._app_state = ApplicationState(config_dir)
+        sm._app_state = ApplicationState(project_dir)
 
         state: ApplicationState = get_app_state()
 
@@ -385,13 +385,13 @@ class TestConcurrency:
     @pytest.mark.asyncio
     async def test_concurrent_session_release(self, app_state: ApplicationState):
         """Test releasing sessions concurrently."""
-        session_ids = [await app_state.create_session("test-config") for _ in range(5)]
+        session_ids = [await app_state.create_session("test-project") for _ in range(5)]
 
         tasks = [app_state.release_session(sid) for sid in session_ids]
         await asyncio.gather(*tasks)
 
         assert len(app_state._sessions) == 0
-        assert "test-config" not in app_state._sessions_by_project
+        assert "test-project" not in app_state._sessions_by_project
 
 
 class TestEdgeCases:
@@ -453,52 +453,52 @@ class TestEdgeCases:
 class TestApplicationStateManagerHelpers:
     """Test ApplicationStateManager convenience methods."""
 
-    def test_get_and_get_active(self, config_dir: Path, sample_config: Project, reset_singletons):
+    def test_get_and_get_active(self, project_dir: Path, sample_config: Project, reset_singletons):
         """Test manager returns active configs when singleton is initialized."""
-        sm._app_state = ApplicationState(config_dir)
+        sm._app_state = ApplicationState(project_dir)
         manager = sm.get_app_state_manager()
         assert sm._app_state is not None
 
         sm._app_state.set_active_project(sample_config)
         sm._app_state.mark_saved(sample_config.metadata.name)  # type: ignore[union-attr]
 
-        assert manager.get("test-config") is sample_config
+        assert manager.get("test-project") is sample_config
         assert manager.get_active() is sample_config
 
-    def test_update_only_applies_when_config_known(self, config_dir: Path, sample_config: Project, reset_singletons):
+    def test_update_only_applies_when_config_known(self, project_dir: Path, sample_config: Project, reset_singletons):
         """Test update refreshes existing config but ignores unknown ones."""
-        sm._app_state = ApplicationState(config_dir)
+        sm._app_state = ApplicationState(project_dir)
         manager = sm.get_app_state_manager()
 
         manager.update(sample_config)
-        assert sm._app_state.get_project("test-config") is None  # type: ignore[union-attr]
+        assert sm._app_state.get_project("test-project") is None  # type: ignore[union-attr]
 
         sm._app_state.set_active_project(sample_config)  # type: ignore[union-attr]
         updated_config = Project(
-            metadata=ProjectMetadata(name="test-config", entity_count=0),
+            metadata=ProjectMetadata(name="test-project", entity_count=0),
             entities={"updated": {"type": "data", "keys": ["id"]}},
             options={"flag": True},
         )
 
         manager.update(updated_config)
 
-        assert sm._app_state.get_project("test-config") is updated_config  # type: ignore[union-attr]
-        assert sm._app_state.get_version("test-config") == 2  # type: ignore[union-attr]
-        assert sm._app_state.is_dirty("test-config") is False  # type: ignore[union-attr]
+        assert sm._app_state.get_project("test-project") is updated_config  # type: ignore[union-attr]
+        assert sm._app_state.get_version("test-project") == 2  # type: ignore[union-attr]
+        assert sm._app_state.is_dirty("test-project") is False  # type: ignore[union-attr]
         expected_entities = {"updated": {"type": "data", "keys": ["id"]}}
-        assert sm._app_state._active_projects["test-config"].entities == expected_entities  # type: ignore[attr-defined]
+        assert sm._app_state._active_projects["test-project"].entities == expected_entities  # type: ignore[attr-defined]
 
-    def test_activate_and_metadata(self, config_dir: Path, sample_config: Project, reset_singletons):
+    def test_activate_and_metadata(self, project_dir: Path, sample_config: Project, reset_singletons):
         """Test activate sets active config and returns metadata."""
-        sm._app_state = ApplicationState(config_dir)
+        sm._app_state = ApplicationState(project_dir)
         manager = sm.get_app_state_manager()
 
         manager.activate(sample_config)
 
         assert sm._app_state.get_active_project() is sample_config  # type: ignore[union-attr]
-        assert sm._app_state.is_dirty("test-config") is False  # type: ignore[union-attr]
+        assert sm._app_state.is_dirty("test-project") is False  # type: ignore[union-attr]
         active_metadata = manager.get_active_metadata()
-        assert active_metadata.name == "test-config"
+        assert active_metadata.name == "test-project"
         assert active_metadata.entity_count == 0
 
     def test_activate_without_name_raises(self, reset_singletons):

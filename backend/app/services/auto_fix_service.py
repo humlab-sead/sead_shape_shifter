@@ -184,8 +184,8 @@ class AutoFixService:
             Result of applying fixes
         """
         try:
-            config: Project = self.project_service.load_project(project_name)
-            if not config:
+            project: Project = self.project_service.load_project(project_name)
+            if not project:
                 return FixResult(success=False, fixes_applied=0, errors=[f"Configuration '{project_name}' not found"])
 
             # Create backup before applying fixes
@@ -203,7 +203,7 @@ class AutoFixService:
                     continue
                 for action in suggestion.actions:
                     try:
-                        self._apply_action(config, action)
+                        self._apply_action(project, action)
                         fixes_applied += 1
                     except Exception as e:  # pylint: disable=broad-except
                         logger.error(f"Failed to apply fix: {e}")
@@ -211,17 +211,17 @@ class AutoFixService:
 
             if not errors:
                 # Save updated project
-                # Config is already a dict, no need to call model_dump
-                config_dict = config if isinstance(config, dict) else config.model_dump(exclude_none=True, by_alias=True)
+                # Project is already a dict, no need to call model_dump
+                project_dict = project if isinstance(project, dict) else project.model_dump(exclude_none=True, by_alias=True)
 
-                self.project_service.save_project(config, create_backup=True)
+                self.project_service.save_project(project, create_backup=True)
 
                 return FixResult(
                     success=True,
                     fixes_applied=fixes_applied,
                     warnings=warnings,
                     backup_path=str(backup_path),
-                    updated_config=config_dict,
+                    updated_config=project_dict,
                 )
             # Rollback on error
             self._rollback(project_name, backup_path)
@@ -234,15 +234,15 @@ class AutoFixService:
     def _create_backup(self, project_name: str) -> Path:
         """Create backup of project before applying fixes."""
 
-        config_dir = settings.PROJECTS_DIR
-        config_path = config_dir / f"{project_name}.yml"
+        project_dir = settings.PROJECTS_DIR
+        project_path = project_dir / f"{project_name}.yml"
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_dir = config_dir / "backups"
+        backup_dir = project_dir / "backups"
         backup_dir.mkdir(exist_ok=True)
 
         backup_path = backup_dir / f"{project_name}.backup.{timestamp}.yml"
-        shutil.copy2(config_path, backup_path)
+        shutil.copy2(project_path, backup_path)
 
         logger.info(f"Created backup at {backup_path}")
         return backup_path
@@ -250,27 +250,27 @@ class AutoFixService:
     def _rollback(self, project_name: str, backup_path: Path):
         """Rollback project to backup."""
 
-        config_dir = settings.PROJECTS_DIR
-        config_path = config_dir / f"{project_name}.yml"
+        project_dir = settings.PROJECTS_DIR
+        project_path = project_dir / f"{project_name}.yml"
 
-        shutil.copy2(backup_path, config_path)
+        shutil.copy2(backup_path, project_path)
         logger.info(f"Rolled back project from {backup_path}")
 
-    def _apply_action(self, config: Any, action: FixAction):
+    def _apply_action(self, project: Any, action: FixAction):
         """Apply a single fix action to project."""
         if action.type == FixActionType.REMOVE_COLUMN:
-            self._remove_column(config, action)
+            self._remove_column(project, action)
         elif action.type == FixActionType.ADD_COLUMN:
-            self._add_column(config, action)
+            self._add_column(project, action)
         elif action.type == FixActionType.UPDATE_REFERENCE:
-            self._update_reference(config, action)
+            self._update_reference(project, action)
         else:
             raise ValueError(f"Unsupported action type: {action.type}")
 
-    def _remove_column(self, config: Any, action: FixAction):
+    def _remove_column(self, project: Any, action: FixAction):
         """Remove a column from entity project."""
-        # Handle both dict and object config
-        entities = config.get("entities") if isinstance(config, dict) else config.entities
+        # Handle both dict and object project
+        entities = project.get("entities") if isinstance(project, dict) else project.entities
         if not entities:
             return
 
@@ -286,10 +286,10 @@ class AutoFixService:
         columns.remove(action.old_value)
         logger.info(f"Removed column '{action.old_value}' from entity '{action.entity}'")
 
-    def _add_column(self, config: Any, action: FixAction):
+    def _add_column(self, project: Any, action: FixAction):
         """Add a column to entity project."""
         # Handle both dict and object config
-        entities = config.get("entities") if isinstance(config, dict) else config.entities
+        entities = project.get("entities") if isinstance(project, dict) else project.entities
         if not entities:
             return
 

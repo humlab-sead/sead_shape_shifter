@@ -331,7 +331,7 @@ No critical issues reported. See GitHub Issues for minor enhancements.
 | Validation (first) | < 500ms | ~200ms ✅ |
 | Validation (cached) | < 50ms | ~5ms ✅ |
 | Page Load | < 2s | ~1.2s ✅ |
-| Config Save | < 200ms | ~100ms ✅ |
+| Project Save | < 200ms | ~100ms ✅ |
 | Auto-Fix Apply | < 500ms | ~150ms ✅ |
 
 ### User Experience Metrics

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
 from backend.app.api.dependencies import require_session
-from backend.app.core.state_manager import ApplicationState, ConfigSession, get_app_state
+from backend.app.core.state_manager import ApplicationState, ProjectSession, get_app_state
 
 router = APIRouter(prefix="/sessions")
 
@@ -56,7 +56,7 @@ async def create_session(
 
     # Create session
     session_id: UUID = await app_state.create_session(request.project_name, request.user_id)
-    session: ConfigSession | None = await app_state.get_session(session_id)
+    session: ProjectSession | None = await app_state.get_session(session_id)
 
     if not session:
         raise HTTPException(500, "Failed to create session")
@@ -90,7 +90,7 @@ async def create_session(
 
 @router.get("/current", response_model=SessionResponse)
 async def get_current_session_info(
-    session: Annotated[ConfigSession, Depends(require_session)],
+    session: Annotated[ProjectSession, Depends(require_session)],
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
 ) -> SessionResponse:
     """Get information about current session."""
@@ -110,7 +110,7 @@ async def get_current_session_info(
 
 @router.delete("/current", status_code=204)
 async def close_session(
-    session: Annotated[ConfigSession, Depends(require_session)],
+    session: Annotated[ProjectSession, Depends(require_session)],
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
 ) -> None:
     """
