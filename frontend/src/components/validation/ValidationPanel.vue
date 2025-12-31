@@ -294,11 +294,6 @@ const performanceErrors = computed(() => {
   return performanceIssues.value.filter((msg) => msg.severity === 'error')
 })
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const totalIssues = computed(() => {
-  return errorCount.value + warningCount.value
-})
-
 const autoFixableIssues = computed(() => {
   return allMessages.value.filter((msg) => msg.auto_fixable === true)
 })
