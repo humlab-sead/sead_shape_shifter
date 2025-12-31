@@ -12,22 +12,13 @@ These are the primary system documentation files:
 
 - **[USER_GUIDE.md](USER_GUIDE.md)** (7,500+ lines)
   - Getting started with Shape Shifter
-  - Working with configurations
+  - Working with projects
   - Managing entities and relationships
   - Dual-mode entity editing (Form and YAML)
   - Validation workflows
   - Auto-fix features
   - Performance optimization
   - Tips, troubleshooting, and FAQ
-
-- **[YAML_EDITOR_FEATURE.md](YAML_EDITOR_FEATURE.md)** (600+ lines) **★ NEW FEATURE**
-  - Dual-mode editing (Form ↔ YAML)
-  - Monaco Editor integration
-  - Real-time YAML validation
-  - Bidirectional synchronization
-  - User workflows and best practices
-  - Implementation details
-  - Testing procedures
 
 ### System Requirements & Architecture
 
@@ -92,50 +83,42 @@ These are the primary system documentation files:
 
 ### Core Framework Features
 
-- **[VALIDATION_IMPROVEMENTS.md](VALIDATION_IMPROVEMENTS.md)** (242 lines)
-  - Project validation specifications  
-  - SQL data validation
-  - Entity existence checks
-  - Circular dependency detection
-  - Validation error reporting
-  - **Note**: See [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) for comprehensive constraint and validation documentation
+- **[METADATA_GUIDE.md](METADATA_GUIDE.md)** 
+  - Project metadata specifications  
+  - Entity metadata management
+  - Version tracking
+  - Validation status
+  - Best practices
+  
+### Reconciliation Features
 
-### Advanced Features
+- **[RECONCILIATION_SETUP_GUIDE.md](RECONCILIATION_SETUP_GUIDE.md)**
+  - Entity reconciliation setup
+  - Source configuration
+  - Mapping and matching strategies
+  - API integration
 
-- **[YAML_EDITOR_FEATURE.md](YAML_EDITOR_FEATURE.md)** (600+ lines) **★ NEW**
-  - Dual-mode entity editor (Form/YAML)
-  - Monaco Editor integration with syntax highlighting
-  - Real-time validation and error reporting
-  - Bidirectional sync between Form and YAML
-  - User workflows for beginners and advanced users
-  - Component architecture and implementation
-  - Testing strategies
+### Environment
 
-- **[ENTITY_STATE_MANAGEMENT.md](ENTITY_STATE_MANAGEMENT.md)** (800+ lines)
-  - Entity state architecture
-  - Three-layer state management (Pinia → API → YAML files)
-  - State synchronization patterns
-  - Component interactions
-  - Best practices and troubleshooting
+- **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)**
+  - Environment variable configuration
+  - Data source setup
+  - Security best practices
 
-- **[BACKEND_INTEGRATION.md](BACKEND_INTEGRATION.md)** (321 lines)
-  - Backend architecture overview
-  - Package dependency structure
-  - Model adapters and REST API integration
-  - Installation procedures
-  - Development vs production setup
+## Archived Documentation
 
-## Project Documentation
+Historical implementation notes and feature-specific documentation have been moved to [archive/](archive/) including:
+- Entity state management implementations
+- Server state refactoring notes  
+- Schema refactoring details
+- Hash-based cache invalidation
+- Driver schema registry
+- Split pane implementations
+- YAML editor feature specs
+- Frontend session management
+- Reconciliation revision notes
 
-Development-related documentation organized by phase:
-
-### Phase 1
-
-See [phase1/README.md](phase1/README.md) for Phase 1 planning documents.
-
-### Phase 2
-
-See [phase2/README.md](phase2/README.md) for Phase 2 development sprints and implementation details.
+These are preserved for reference but may contain outdated information.
 
 ## Archived Documentation
 
@@ -156,7 +139,7 @@ Previously consolidated source documents are available in the [archive/](archive
 
 **Test Shape Shifter:**
 - Testing procedures: [TESTING_GUIDE.md](TESTING_GUIDE.md)
-- Project validation: [CONFIGURATION_GUIDE.md - Project Validation section](CONFIGURATION_GUIDE.md#configuration-validation)
+- Project validation: [CONFIGURATION_GUIDE.md - Project Validation section](CONFIGURATION_GUIDE.md#project-validation)
 
 **Understand Requirements:**
 - Feature requirements: [UI_REQUIREMENTS.md](UI_REQUIREMENTS.md)
@@ -164,11 +147,10 @@ Previously consolidated source documents are available in the [archive/](archive
 
 **Configure Relationships:**
 - Foreign keys & constraints: [CONFIGURATION_GUIDE.md - Foreign Key Constraints section](CONFIGURATION_GUIDE.md#foreign-key-constraints)
-- Union/concatenation: [CONFIGURATION_GUIDE.md - Append Project section](CONFIGURATION_GUIDE.md#append-configuration-unionconcatenation)
+- Union/concatenation: [CONFIGURATION_GUIDE.md - Append Project section](CONFIGURATION_GUIDE.md#append-project-unionconcatenation)
 
 **Validate Projects:**
-- Comprehensive validation guide: [CONFIGURATION_GUIDE.md - Project Validation section](CONFIGURATION_GUIDE.md#configuration-validation)
-- Validation improvements: [VALIDATION_IMPROVEMENTS.md](VALIDATION_IMPROVEMENTS.md)
+- Comprehensive validation guide: [CONFIGURATION_GUIDE.md - Project Validation section](CONFIGURATION_GUIDE.md#project-validation)
 
 ## Documentation Standards
 
@@ -194,6 +176,12 @@ When updating documentation:
 
 ## Version History
 
+- **v0.2.0** (2025-12-31): Configuration → Project refactoring
+  - Renamed "configuration" to "project" throughout
+  - Archived implementation-specific documentation
+  - Updated API endpoints and class names
+  - Consolidated active documentation
+  
 - **v0.1.0** (2025-12-14): Initial consolidated documentation
   - Created 6 main system documentation files
   - Consolidated 10+ source documents
@@ -209,5 +197,5 @@ For questions or issues:
 
 ---
 
-**Last Updated**: December 14, 2025  
-**Documentation Version**: 1.0
+**Last Updated**: December 31, 2025  
+**Documentation Version**: 2.0
