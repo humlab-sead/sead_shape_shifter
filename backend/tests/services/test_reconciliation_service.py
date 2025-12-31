@@ -1,21 +1,4 @@
-"""Tests for ReconciliationService.
-
-Comprehensive test suite covering:
-1. ReconciliationSourceResolver - Factory pattern for source resolution
-2. TargetEntityReconciliationSourceResolver - Uses entity preview data
-3. AnotherEntityReconciliationSourceResolver - Uses another entity's data
-4. SqlQueryReconciliationSourceResolver - Executes custom SQL queries
-5. ReconciliationQueryService - Builds OpenRefine queries from source data
-6. ReconciliationService - Main service for reconciliation workflows
-
-Test coverage includes:
-- Source resolver selection logic
-- Preview data fetching from different sources
-- Query building with property mappings
-- Auto-reconciliation with score thresholds
-- Manual mapping CRUD operations
-- YAML config file I/O
-"""
+"""Tests for ReconciliationService."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
