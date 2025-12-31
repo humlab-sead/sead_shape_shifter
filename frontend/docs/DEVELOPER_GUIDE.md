@@ -214,7 +214,7 @@ src/components/
 │   ├── LoadingSkeleton.vue
 │   └── ErrorAlert.vue
 ├── configurations/      # Configuration-specific
-│   ├── CreateConfigurationDialog.vue
+│   ├── CreateProjectDialog.vue
 │   └── DeleteConfirmationDialog.vue
 ├── entities/           # Entity management
 │   ├── EntityListCard.vue

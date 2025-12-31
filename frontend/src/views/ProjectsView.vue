@@ -113,7 +113,7 @@
     </v-row>
 
     <!-- Create Dialog -->
-    <create-configuration-dialog v-model="showCreateDialog" @created="handleProjectCreated" />
+    <create-project-dialog v-model="showCreateDialog" @created="handleProjectCreated" />
 
     <!-- Delete Confirmation Dialog -->
     <delete-confirmation-dialog
@@ -140,7 +140,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjects } from '@/composables'
 import type { ProjectMetadata } from '@/types'
-import CreateConfigurationDialog from '@/components/configurations/CreateProjectDialog.vue'
+import CreateProjectDialog from '@/components/projects/CreateProjectDialog.vue'
 import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDialog.vue'
 
 const router = useRouter()
