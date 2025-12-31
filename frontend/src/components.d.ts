@@ -10,7 +10,7 @@ declare module 'vue' {
     AdvancedEntityConfig: typeof import('./components/entities/AdvancedEntityConfig.vue')['default']
     CircularDependencyAlert: typeof import('./components/dependencies/CircularDependencyAlert.vue')['default']
     ConfigurationDataSources: typeof import('./components/ConfigurationDataSources.vue')['default']
-    CreateConfigurationDialog: typeof import('./components/projects/CreateConfigurationDialog.vue')['default']
+    CreateProjectDialog: typeof import('./components/projects/CreateProjectDialog.vue')['default']
     DataPreviewTable: typeof import('./components/DataPreviewTable.vue')['default']
     DataSourceFormDialog: typeof import('./components/DataSourceFormDialog.vue')['default']
     DataValidationConfig: typeof import('./components/validation/DataValidationConfig.vue')['default']
