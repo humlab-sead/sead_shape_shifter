@@ -157,11 +157,11 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useExecuteStore } from '@/stores/execute'
 import { useDataSourceStore } from '@/stores/data-source'
-import { useProjectStore } from '@/stores/project'
 import type { DispatcherMetadata } from '@/api/execute'
 
 interface Props {
   modelValue: boolean
+  projectName?: string
 }
 
 interface Emits {
@@ -174,11 +174,9 @@ const emit = defineEmits<Emits>()
 
 const executeStore = useExecuteStore()
 const dataSourceStore = useDataSourceStore()
-const projectStore = useProjectStore()
 
 const { dispatchers, loading, error, lastResult } = storeToRefs(executeStore)
 const { dataSources } = storeToRefs(dataSourceStore)
-const { activeProject } = storeToRefs(projectStore)
 
 // Form state
 const formRef = ref()
@@ -198,7 +196,7 @@ const dialogModel = computed({
   set: (value: boolean) => emit('update:modelValue', value),
 })
 
-const projectName = computed(() => activeProject.value?.name || '')
+const projectName = computed(() => props.projectName || '')
 
 const selectedTargetType = computed(() => {
   if (!selectedDispatcher.value) return null

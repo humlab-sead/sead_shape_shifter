@@ -219,7 +219,7 @@ class ShapeShifter:
 
     def store(self, target: str, mode: str) -> Self:
         """Write to specified target based on the specified mode."""
-        dispatcher_cls: Dispatcher = Dispatchers.get(mode)
+        dispatcher_cls: type[Dispatcher] = Dispatchers.get(mode)
         if dispatcher_cls:
             dispatcher = dispatcher_cls(self.project)  # type: ignore
             dispatcher.dispatch(target=target, data=self.table_store)

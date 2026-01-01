@@ -122,6 +122,7 @@
     <!-- Execute Dialog -->
     <execute-dialog
       v-model="showExecuteDialog"
+      :project-name="projectName"
       @executed="handleExecuted"
     />
 
