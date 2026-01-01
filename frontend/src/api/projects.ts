@@ -183,4 +183,23 @@ export const projectsApi = {
       url: `/projects/${name}/data-sources/${sourceName}`,
     })
   },
-}
+  /**
+   * Get raw YAML content
+   */
+  getRawYaml: async (name: string): Promise<{ yaml_content: string }> => {
+    return apiRequest<{ yaml_content: string }>({
+      method: 'GET',
+      url: `/projects/${name}/raw-yaml`,
+    })
+  },
+
+  /**
+   * Update project with raw YAML content
+   */
+  updateRawYaml: async (name: string, yamlContent: string): Promise<Project> => {
+    return apiRequest<Project>({
+      method: 'PUT',
+      url: `/projects/${name}/raw-yaml`,
+      data: { yaml_content: yamlContent },
+    })
+  },}

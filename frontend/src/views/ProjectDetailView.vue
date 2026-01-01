@@ -111,6 +111,10 @@
             <v-icon icon="mdi-information-outline" class="mr-2" />
             Metadata
           </v-tab>
+          <v-tab value="yaml">
+            <v-icon icon="mdi-code-braces" class="mr-2" />
+            YAML
+          </v-tab>
         </v-tabs>
 
         <v-window v-model="activeTab" class="mt-4">
@@ -299,6 +303,65 @@
           <v-window-item value="metadata">
             <metadata-editor :project-name="projectName" />
           </v-window-item>
+
+          <!-- YAML Tab -->
+          <v-window-item value="yaml">
+            <v-card variant="outlined">
+              <v-card-title class="d-flex align-center justify-space-between">
+                <div>
+                  <v-icon icon="mdi-code-braces" class="mr-2" />
+                  Edit Project YAML
+                </div>
+                <div class="d-flex gap-2">
+                  <v-btn
+                    variant="outlined"
+                    prepend-icon="mdi-refresh"
+                    size="small"
+                    :loading="yamlLoading"
+                    @click="handleLoadYaml"
+                  >
+                    Reload
+                  </v-btn>
+                  <v-btn
+                    color="primary"
+                    prepend-icon="mdi-content-save"
+                    size="small"
+                    :loading="yamlSaving"
+                    :disabled="!yamlHasChanges"
+                    @click="handleSaveYaml"
+                  >
+                    Save YAML
+                  </v-btn>
+                </div>
+              </v-card-title>
+              <v-card-text>
+                <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+                  <div class="text-caption">
+                    <strong>Direct YAML editing:</strong> Edit the complete project YAML file. Changes are saved to
+                    the file immediately. A backup is created automatically before saving.
+                  </div>
+                </v-alert>
+
+                <v-alert v-if="yamlError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="yamlError = null">
+                  {{ yamlError }}
+                </v-alert>
+
+                <yaml-editor
+                  v-if="rawYamlContent !== null"
+                  v-model="rawYamlContent"
+                  height="600px"
+                  :readonly="false"
+                  :validate-on-change="true"
+                  @change="handleYamlChange"
+                />
+
+                <div v-else class="text-center py-12">
+                  <v-progress-circular indeterminate color="primary" />
+                  <p class="mt-4 text-grey">Loading YAML content...</p>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-window-item>
         </v-window>
       </v-col>
     </v-row>
@@ -381,6 +444,7 @@ import SessionIndicator from '@/components/SessionIndicator.vue'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
+import YamlEditor from '@/components/common/YamlEditor.vue'
 
 const route = useRoute()
 const theme = useTheme()
@@ -467,6 +531,14 @@ const showLabels = ref(true)
 const highlightCycles = ref(true)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
+
+// YAML editing state
+const rawYamlContent = ref<string | null>(null)
+const originalYamlContent = ref<string | null>(null)
+const yamlLoading = ref(false)
+const yamlSaving = ref(false)
+const yamlError = ref<string | null>(null)
+const yamlHasChanges = ref(false)
 
 // Computed
 const mergedValidationResult = computed(() => {
@@ -699,6 +771,54 @@ function handleExportPNG() {
   }
 }
 
+async function handleLoadYaml() {
+  if (!projectName.value) return
+
+  yamlLoading.value = true
+  yamlError.value = null
+  try {
+    const response = await api.projects.getRawYaml(projectName.value)
+    rawYamlContent.value = response.yaml_content
+    originalYamlContent.value = response.yaml_content
+    yamlHasChanges.value = false
+  } catch (err) {
+    yamlError.value = err instanceof Error ? err.message : 'Failed to load YAML content'
+    console.error('Failed to load raw YAML:', err)
+  } finally {
+    yamlLoading.value = false
+  }
+}
+
+function handleYamlChange(content: string) {
+  yamlHasChanges.value = content !== originalYamlContent.value
+}
+
+async function handleSaveYaml() {
+  if (!projectName.value || !rawYamlContent.value) return
+
+  yamlSaving.value = true
+  yamlError.value = null
+  try {
+    const updated = await api.projects.updateRawYaml(projectName.value, rawYamlContent.value)
+    originalYamlContent.value = rawYamlContent.value
+    yamlHasChanges.value = false
+    
+    // Update selected project
+    selectedProject.value = updated
+    
+    successMessage.value = 'YAML saved successfully'
+    showSuccessSnackbar.value = true
+    
+    // Optionally re-validate
+    await handleValidate()
+  } catch (err) {
+    yamlError.value = err instanceof Error ? err.message : 'Failed to save YAML'
+    console.error('Failed to save raw YAML:', err)
+  } finally {
+    yamlSaving.value = false
+  }
+}
+
 async function handleDataSourcesUpdated() {
   // Reload project after data source changes
   await handleRefresh()
@@ -739,6 +859,13 @@ watch(
     }
   }
 )
+
+// Watch for tab changes to load YAML when YAML tab is activated
+watch(activeTab, async (newTab) => {
+  if (newTab === 'yaml' && rawYamlContent.value === null) {
+    await handleLoadYaml()
+  }
+})
 </script>
 
 <style scoped>
