@@ -102,12 +102,8 @@ describe('schema utilities', () => {
     })
 
     it('should return checkbox icon for boolean type', () => {
-      expect(getColumnIcon(createMockColumn({ data_type: 'BOOL' }))).toBe(
-        'mdi-checkbox-marked-outline'
-      )
-      expect(getColumnIcon(createMockColumn({ data_type: 'BOOLEAN' }))).toBe(
-        'mdi-checkbox-marked-outline'
-      )
+      expect(getColumnIcon(createMockColumn({ data_type: 'BOOL' }))).toBe('mdi-checkbox-marked-outline')
+      expect(getColumnIcon(createMockColumn({ data_type: 'BOOLEAN' }))).toBe('mdi-checkbox-marked-outline')
     })
 
     it('should return json icon for JSON types', () => {
@@ -125,18 +121,14 @@ describe('schema utilities', () => {
     })
 
     it('should return database icon for unknown types', () => {
-      expect(getColumnIcon(createMockColumn({ data_type: 'CUSTOM_TYPE' }))).toBe(
-        'mdi-database-outline'
-      )
+      expect(getColumnIcon(createMockColumn({ data_type: 'CUSTOM_TYPE' }))).toBe('mdi-database-outline')
       expect(getColumnIcon(createMockColumn({ data_type: 'BLOB' }))).toBe('mdi-database-outline')
     })
 
     it('should be case-insensitive', () => {
       expect(getColumnIcon(createMockColumn({ data_type: 'varchar' }))).toBe('mdi-format-text')
       expect(getColumnIcon(createMockColumn({ data_type: 'INTEGER' }))).toBe('mdi-numeric')
-      expect(getColumnIcon(createMockColumn({ data_type: 'Boolean' }))).toBe(
-        'mdi-checkbox-marked-outline'
-      )
+      expect(getColumnIcon(createMockColumn({ data_type: 'Boolean' }))).toBe('mdi-checkbox-marked-outline')
     })
   })
 

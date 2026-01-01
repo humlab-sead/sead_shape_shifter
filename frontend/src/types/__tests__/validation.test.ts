@@ -55,10 +55,7 @@ describe('validation utilities', () => {
 
     it('should only count errors, not warnings', () => {
       const errors = [createMockError()]
-      const warnings = [
-        createMockError({ severity: 'warning' }),
-        createMockError({ severity: 'warning' }),
-      ]
+      const warnings = [createMockError({ severity: 'warning' }), createMockError({ severity: 'warning' })]
       const result = createMockResult(errors, warnings)
       expect(getErrorCount(result)).toBe(1)
     })
@@ -71,10 +68,7 @@ describe('validation utilities', () => {
     })
 
     it('should return correct count for result with warnings', () => {
-      const warnings = [
-        createMockError({ severity: 'warning' }),
-        createMockError({ severity: 'warning' }),
-      ]
+      const warnings = [createMockError({ severity: 'warning' }), createMockError({ severity: 'warning' })]
       const result = createMockResult([], warnings)
       expect(getWarningCount(result)).toBe(2)
     })
@@ -107,10 +101,7 @@ describe('validation utilities', () => {
     it('should not count info messages', () => {
       const errors = [createMockError()]
       const warnings = [createMockError({ severity: 'warning' })]
-      const info = [
-        createMockError({ severity: 'info' }),
-        createMockError({ severity: 'info' }),
-      ]
+      const info = [createMockError({ severity: 'info' }), createMockError({ severity: 'info' })]
       const result = createMockResult(errors, warnings, info)
       expect(getTotalIssues(result)).toBe(2)
     })
@@ -270,9 +261,7 @@ describe('validation utilities', () => {
         createMockError({ severity: 'error', message: 'Error 1' }),
         createMockError({ severity: 'error', message: 'Error 2' }),
       ]
-      const warnings = [
-        createMockError({ severity: 'warning', message: 'Warning 1' }),
-      ]
+      const warnings = [createMockError({ severity: 'warning', message: 'Warning 1' })]
       const info = [createMockError({ severity: 'info', message: 'Info 1' })]
       const result = createMockResult(errors, warnings, info)
       const grouped = groupBySeverity(result)
@@ -313,10 +302,7 @@ describe('validation utilities', () => {
     })
 
     it('should handle result with only warnings', () => {
-      const warnings = [
-        createMockError({ severity: 'warning' }),
-        createMockError({ severity: 'warning' }),
-      ]
+      const warnings = [createMockError({ severity: 'warning' }), createMockError({ severity: 'warning' })]
       const result = createMockResult([], warnings)
       const grouped = groupBySeverity(result)
 
