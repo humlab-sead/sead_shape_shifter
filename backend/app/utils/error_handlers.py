@@ -7,15 +7,15 @@ from typing import Any, Callable, TypeVar
 from fastapi import HTTPException
 from loguru import logger
 
-from backend.app.services.config_service import (
-    ConfigConflictError,
-    ConfigurationNotFoundError,
-    ConfigurationServiceError,
+from backend.app.services.dependency_service import DependencyServiceError
+from backend.app.services.project_service import (
     EntityAlreadyExistsError,
     EntityNotFoundError,
-    InvalidConfigurationError,
+    InvalidProjectError,
+    ProjectConflictError,
+    ProjectNotFoundError,
+    ProjectServiceError,
 )
-from backend.app.services.dependency_service import DependencyServiceError
 from backend.app.services.query_service import QueryExecutionError, QuerySecurityError
 from backend.app.services.schema_service import SchemaServiceError
 from backend.app.services.yaml_service import YamlServiceError
@@ -29,9 +29,9 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
     Decorator to handle common endpoint errors and convert them to HTTPException.
 
     Maps service-level exceptions to appropriate HTTP status codes:
-    - 404: NotFoundError, ConfigurationNotFoundError, EntityNotFoundError
-    - 400: BadRequestError, InvalidConfigurationError, QuerySecurityError
-    - 409: ConflictError, EntityAlreadyExistsError, ConfigConflictError
+    - 404: NotFoundError, ProjectNotFoundError, EntityNotFoundError
+    - 400: BadRequestError, InvalidProjectError, QuerySecurityError
+    - 409: ConflictError, EntityAlreadyExistsError, ProjectConflictError
     - 500: All other exceptions
 
     Args:
@@ -50,17 +50,17 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
             return await func(*args, **kwargs)
 
         # Handle 404 Not Found errors
-        except (NotFoundError, ConfigurationNotFoundError, EntityNotFoundError) as e:
+        except (NotFoundError, ProjectNotFoundError, EntityNotFoundError) as e:
             logger.debug(f"Resource not found in {func.__name__}: {e}")
             raise HTTPException(status_code=404, detail=str(e)) from e
 
         # Handle 400 Bad Request errors
-        except (BadRequestError, InvalidConfigurationError, QuerySecurityError) as e:
+        except (BadRequestError, InvalidProjectError, QuerySecurityError) as e:
             logger.warning(f"Bad request in {func.__name__}: {e}")
             raise HTTPException(status_code=400, detail=str(e)) from e
 
         # Handle 409 Conflict errors
-        except (EntityAlreadyExistsError, ConfigConflictError) as e:
+        except (EntityAlreadyExistsError, ProjectConflictError) as e:
             logger.warning(f"Conflict in {func.__name__}: {e}")
             raise HTTPException(status_code=409, detail=str(e)) from e
 
@@ -71,7 +71,7 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
 
         # Handle service-level errors (generic 500)
         except (
-            ConfigurationServiceError,
+            ProjectServiceError,
             YamlServiceError,
             QueryExecutionError,
             SchemaServiceError,

@@ -2,8 +2,8 @@
  * Centralized composables exports
  */
 
-export { useConfigurations } from './useConfigurations'
-export type { UseConfigurationsOptions } from './useConfigurations'
+export { useProjects } from './useProjects'
+export type { UseProjectsOptions } from './useProjects'
 
 export { useEntities } from './useEntities'
 export type { UseEntitiesOptions } from './useEntities'
@@ -13,6 +13,9 @@ export type { UseValidationOptions } from './useValidation'
 
 export { useDependencies } from './useDependencies'
 export type { UseDependenciesOptions } from './useDependencies'
+
+export { useCytoscape } from './useCytoscape'
+export type { UseCytoscapeOptions } from './useCytoscape'
 
 export { useSuggestions } from './useSuggestions'
 export type {
@@ -26,11 +29,6 @@ export { useEntityPreview } from './useEntityPreview'
 export type { PreviewResult, ColumnInfo } from './useEntityPreview'
 
 export { useForeignKeyTester } from './useForeignKeyTester'
-export type {
-  JoinStatistics,
-  CardinalityInfo,
-  UnmatchedRow,
-  JoinTestResult
-} from './useForeignKeyTester'
+export type { JoinStatistics, CardinalityInfo, UnmatchedRow, JoinTestResult } from './useForeignKeyTester'
 
 export { useSession } from './useSession'

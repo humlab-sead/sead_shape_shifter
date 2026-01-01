@@ -1,6 +1,6 @@
-# SEAD Shape Shifter Configuration Editor - Frontend
+# SEAD Shape Shifter Project Editor - Frontend
 
-Vue 3 + TypeScript + Vuetify frontend for editing Shape Shifter YAML configurations.
+Vue 3 + TypeScript + Vuetify frontend for editing Shape Shifter YAML projects.
 
 ## Technology Stack
 
@@ -67,17 +67,17 @@ frontend/
 │   │   ├── config/            # (Sprint 8)
 │   │   └── validation/        # (Sprint 8)
 │   ├── composables/            # Reusable composition functions (Sprint 4.3)
-│   │   ├── useConfiguration.ts
+│   │   ├── useProject.ts
 │   │   ├── useEntityEditor.ts
 │   │   ├── useValidation.ts
 │   │   └── useDependencyGraph.ts
 │   ├── stores/                 # Pinia stores (Sprint 4.2)
-│   │   ├── config.ts          # Configuration state
+│   │   ├── project.ts          # Project state
 │   │   ├── validation.ts      # Validation state
 │   │   └── ui.ts              # UI state
 │   ├── types/                  # TypeScript type definitions (Sprint 1.3)
 │   │   ├── entity.ts
-│   │   ├── config.ts
+│   │   ├── project.ts
 │   │   └── validation.ts
 │   ├── views/                  # Page components
 │   │   ├── HomeView.vue       # ✅ Landing page
@@ -123,7 +123,7 @@ import axios from 'axios'
 const response = await axios.get('/api/v1/health')
 ```
 
-Configuration in `vite.config.ts`:
+Project in `vite.config.ts`:
 ```typescript
 server: {
   proxy: {
@@ -174,22 +174,3 @@ pnpm format
 # Type check
 vue-tsc --noEmit
 ```
-
-## Next Steps (Sprint 1.3)
-
-- [ ] Create TypeScript types matching backend Pydantic models
-- [ ] Set up type definitions for entities, configs, validation
-- [ ] Ensure type compatibility between frontend and backend
-
-## Sprint Status
-
-- ✅ **Sprint 1.1**: Backend Scaffolding (COMPLETE)
-- ✅ **Sprint 1.2**: Frontend Setup (COMPLETE)
-  - Vue 3 + TypeScript + Vite
-  - Vuetify 3 with Material Design
-  - Vue Router with routes
-  - Pinia ready for stores
-  - API proxy to backend
-  - Home page with backend health check
-  - All placeholder views created
-- ⏳ **Sprint 1.3**: Pydantic Models & Types (NEXT)

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This comprehensive guide covers all testing strategies, procedures, and best practices for the Shape Shifter data transformation framework and its Configuration Editor UI.
+This comprehensive guide covers all testing strategies, procedures, and best practices for the Shape Shifter data transformation framework and its Project Editor UI.
 
 ## Table of Contents
 
@@ -216,7 +216,7 @@ def config_provider(tmp_path):
 ### Key Test Files
 
 - `tests/test_constraints.py` - Foreign key constraint validation
-- `tests/test_specifications.py` - Configuration validation
+- `tests/test_specifications.py` - Project validation
 - `tests/test_append_processing.py` - Append configuration tests
 - `tests/test_normalizer.py` - Entity processing tests
 - `tests/test_unnest.py` - Wide-to-long transformation tests
@@ -602,7 +602,7 @@ For detailed step-by-step testing procedures, browser compatibility testing, and
 
 #### Metrics to Monitor
 
-1. **Configuration Loading**: < 1 second
+1. **Project Loading**: < 1 second
 2. **Validation Execution**: < 5 seconds
 3. **Entity Processing**: < 10 seconds per entity
 4. **API Response Time**: < 500ms (excluding data processing)
@@ -1059,7 +1059,7 @@ cd frontend
 npm install
 ```
 
-#### Configuration File Not Found
+#### Project File Not Found
 
 ```bash
 # Set environment variable

@@ -30,7 +30,7 @@ class TestValidationServiceBasic:
     def test_validate_empty_configuration(self, validation_service):
         """Test validating empty configuration."""
         config = {}
-        result = validation_service.validate_configuration(config)
+        result = validation_service.validate_project(config)
 
         assert result.is_valid is False
         assert result.error_count > 0
@@ -39,12 +39,12 @@ class TestValidationServiceBasic:
     def test_validate_valid_configuration(self, validation_service):
         """Test validating valid configuration."""
         config = {"entities": {"sample": {"type": "data", "keys": ["sample_id"], "columns": ["name", "value"]}}}
-        result = validation_service.validate_configuration(config)
+        result = validation_service.validate_project(config)
 
         assert result.is_valid is True
         assert result.error_count == 0
 
-    def test_validate_configuration_with_foreign_key(self, validation_service):
+    def test_validate_project_with_foreign_key(self, validation_service):
         """Test validating configuration with foreign keys."""
         config = {
             "entities": {
@@ -64,7 +64,7 @@ class TestValidationServiceBasic:
                 },
             }
         }
-        result = validation_service.validate_configuration(config)
+        result = validation_service.validate_project(config)
 
         assert result.is_valid is True
         assert result.error_count == 0
@@ -91,7 +91,7 @@ class TestValidationServiceErrors:
                 }
             }
         }
-        result = validation_service.validate_configuration(config)
+        result = validation_service.validate_project(config)
 
         assert result.is_valid is False
         assert result.error_count > 0
@@ -108,7 +108,7 @@ class TestValidationServiceErrors:
                 "entity_b": {"type": "data", "keys": ["id"], "depends_on": ["entity_a"]},
             }
         }
-        result = validation_service.validate_configuration(config)
+        result = validation_service.validate_project(config)
 
         assert result.is_valid is False
         assert result.error_count > 0
@@ -124,7 +124,7 @@ class TestValidationServiceErrors:
                 }
             }
         }
-        result = validation_service.validate_configuration(config)
+        result = validation_service.validate_project(config)
 
         assert result.is_valid is False
         assert result.error_count > 0
@@ -149,7 +149,7 @@ class TestValidationServiceErrors:
                 },
             }
         }
-        result = validation_service.validate_configuration(config)
+        result = validation_service.validate_project(config)
 
         assert result.is_valid is False
         assert result.error_count > 0
@@ -221,7 +221,7 @@ class TestValidationServiceErrorParsing:
             }
         }
 
-        result = validation_service.validate_configuration(config)
+        result = validation_service.validate_project(config)
 
         # Check that entity was extracted correctly
         assert any(e.entity == "sample" for e in result.errors)
@@ -238,7 +238,7 @@ class TestValidationServiceErrorParsing:
             }
         }
 
-        result = validation_service.validate_configuration(config)
+        result = validation_service.validate_project(config)
 
         # All errors should have codes
         assert all(e.code is not None for e in result.errors)
@@ -274,7 +274,7 @@ class TestValidationServiceIntegration:
             "options": {"verbose": True},
         }
 
-        result = validation_service.validate_configuration(config)
+        result = validation_service.validate_project(config)
 
         assert result.is_valid is True
         assert result.error_count == 0
@@ -284,38 +284,38 @@ class TestDataValidation:
     """Tests for data-aware validation that depends on preview and data validators."""
 
     @pytest.mark.asyncio
-    async def test_validate_configuration_data_groups_by_severity(self, monkeypatch: pytest.MonkeyPatch, reset_validation_singleton):
+    async def test_validate_project_data_groups_by_severity(self, monkeypatch: pytest.MonkeyPatch, reset_validation_singleton):
         """Test data validation groups issues by severity and wires dependencies."""
         captured: dict[str, object] = {}
 
         class DummyPreviewService:
-            def __init__(self, config_service: object) -> None:
-                captured["config_service"] = config_service
+            def __init__(self, project_service: object) -> None:
+                captured["project_service"] = project_service
 
         class DummyDataValidationService:
             def __init__(self, preview_service: object) -> None:
                 captured["preview_service"] = preview_service
 
-            async def validate_configuration(self, config_name: str, entity_names: list[str] | None):
-                captured["args"] = (config_name, entity_names)
+            async def validate_project(self, project_name: str, entity_names: list[str] | None):
+                captured["args"] = (project_name, entity_names)
                 return [
                     ValidationError(severity="error", entity="a", field=None, message="err", code="E1"),
                     ValidationError(severity="warning", entity="b", field=None, message="warn", code="W1"),
                     ValidationError(severity="info", entity="c", field=None, message="info", code="I1"),
                 ]
 
-        monkeypatch.setattr(validation_service_module, "get_config_service", lambda: "config-service")
+        monkeypatch.setattr(validation_service_module, "get_project_service", lambda: "config-service")
         monkeypatch.setattr(validation_service_module, "ShapeShiftService", DummyPreviewService)
         monkeypatch.setattr(validation_service_module, "DataValidationService", DummyDataValidationService)
 
-        result = await ValidationService().validate_configuration_data("cfg-name", ["entity1"])
+        result = await ValidationService().validate_project_data("cfg-name", ["entity1"])
 
         assert result.is_valid is False
         assert result.error_count == 1
         assert result.warning_count == 1
         assert len(result.info) == 1
         assert captured["args"] == ("cfg-name", ["entity1"])
-        assert captured["config_service"] == "config-service"
+        assert captured["project_service"] == "config-service"
         assert isinstance(captured["preview_service"], DummyPreviewService)
 
     def test_get_validation_service_singleton(self, reset_validation_singleton):

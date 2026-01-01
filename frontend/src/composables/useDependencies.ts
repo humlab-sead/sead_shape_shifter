@@ -8,15 +8,15 @@ import { useValidationStore } from '@/stores'
 import type { GraphNode, GraphEdge } from '@/types'
 
 export interface UseDependenciesOptions {
-  configName?: string
+  projectName?: string
   autoFetch?: boolean
   checkCycles?: boolean
 }
 
 export function useDependencies(options: UseDependenciesOptions = {}) {
-  const { configName, autoFetch = false, checkCycles = false } = options
+  const { projectName, autoFetch = false, checkCycles = false } = options
   const store = useValidationStore()
-  const lastFetchedConfig = ref<string | null>(null)
+  const lastFetchedProject = ref<string | null>(null)
 
   // Computed state from store
   const dependencyGraph = computed(() => store.dependencyGraph)
@@ -34,7 +34,7 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
   async function fetch(name: string) {
     try {
       const result = await store.fetchDependencies(name)
-      lastFetchedConfig.value = name
+      lastFetchedProject.value = name
       return result
     } catch (err) {
       console.error(`Failed to fetch dependencies for "${name}":`, err)
@@ -53,7 +53,7 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
 
   function clearDependencies() {
     store.clearDependencies()
-    lastFetchedConfig.value = null
+    lastFetchedProject.value = null
   }
 
   function clearError() {
@@ -103,11 +103,7 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
 
   // Helper: Get dependents (reverse dependencies)
   const getDependentsOf = (name: string) => {
-    return (
-      dependencyGraph.value?.nodes
-        .filter((n) => n.depends_on.includes(name))
-        .map((n) => n.name) ?? []
-    )
+    return dependencyGraph.value?.nodes.filter((n) => n.depends_on.includes(name)).map((n) => n.name) ?? []
   }
 
   // Helper: Check if node is in a cycle
@@ -122,7 +118,7 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
 
   // Helper: Check if graph is stale
   const isStale = computed(() => {
-    return configName ? lastFetchedConfig.value !== configName : false
+    return projectName ? lastFetchedProject.value !== projectName : false
   })
 
   // Statistics
@@ -135,18 +131,18 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
   }))
 
   // Auto-fetch on mount if enabled
-  if (autoFetch && configName) {
-    fetch(configName)
+  if (autoFetch && projectName) {
+    fetch(projectName)
   }
 
   // Auto-check cycles if enabled
-  if (checkCycles && configName) {
-    checkCircularDependencies(configName)
+  if (checkCycles && projectName) {
+    checkCircularDependencies(projectName)
   }
 
-  // Watch for config changes
+  // Watch for project changes
   watch(
-    () => configName,
+    () => projectName,
     async (newName, oldName) => {
       if (newName && newName !== oldName) {
         if (autoFetch) {
@@ -165,7 +161,7 @@ export function useDependencies(options: UseDependenciesOptions = {}) {
     circularDependencyCheck,
     loading,
     error,
-    lastFetchedConfig,
+    lastFetchedProject,
     // Computed
     hasCircularDependencies,
     cycles,

@@ -5,19 +5,19 @@ from typing import Any
 from fastapi import APIRouter
 from loguru import logger
 
-from backend.app.models.config import Configuration
 from backend.app.models.fix import FixResult, FixSuggestion
+from backend.app.models.project import Project
 from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.auto_fix_service import AutoFixService
-from backend.app.services.config_service import ConfigurationService, get_config_service
 from backend.app.services.dependency_service import DependencyGraph, DependencyService, get_dependency_service
+from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
 
 router = APIRouter()
 
 
-@router.post("/configurations/{name}/validate/data", response_model=ValidationResult)
+@router.post("/projects/{name}/validate/data", response_model=ValidationResult)
 @handle_endpoint_errors
 async def validate_configuration_data(name: str, entity_names: list[str] | None = None) -> ValidationResult:
     """
@@ -38,7 +38,7 @@ async def validate_configuration_data(name: str, entity_names: list[str] | None 
     """
     validation_service = get_validation_service()
     # Run data validation
-    result = await validation_service.validate_configuration_data(name, entity_names)
+    result = await validation_service.validate_project_data(name, entity_names)
 
     logger.info(
         f"Data validation for '{name}' completed: " f"valid={result.is_valid}, errors={result.error_count}, warnings={result.warning_count}"
@@ -46,7 +46,7 @@ async def validate_configuration_data(name: str, entity_names: list[str] | None 
     return result
 
 
-@router.post("/configurations/{name}/entities/{entity_name}/validate", response_model=ValidationResult)
+@router.post("/projects/{name}/entities/{entity_name}/validate", response_model=ValidationResult)
 @handle_endpoint_errors
 async def validate_entity(name: str, entity_name: str) -> ValidationResult:
     """
@@ -59,11 +59,11 @@ async def validate_entity(name: str, entity_name: str) -> ValidationResult:
     Returns:
         Validation result with entity-specific errors and warnings
     """
-    config_service: ConfigurationService = get_config_service()
+    project_service: ProjectService = get_project_service()
     validation_service: ValidationService = get_validation_service()
 
     # Load configuration
-    config: Configuration = config_service.load_configuration(name)
+    config: Project = project_service.load_project(name)
 
     # Validate specific entity
     result: ValidationResult = validation_service.validate_entity(config, entity_name)
@@ -72,7 +72,7 @@ async def validate_entity(name: str, entity_name: str) -> ValidationResult:
     return result
 
 
-@router.get("/configurations/{name}/dependencies")
+@router.get("/projects/{name}/dependencies")
 @handle_endpoint_errors
 async def get_dependencies(name: str) -> dict[str, Any]:
     """
@@ -89,11 +89,11 @@ async def get_dependencies(name: str) -> dict[str, Any]:
     Returns:
         Dependency graph with nodes, edges, cycles, and topological order
     """
-    config_service: ConfigurationService = get_config_service()
+    project_service: ProjectService = get_project_service()
     dependency_service: DependencyService = get_dependency_service()
 
     # Load configuration
-    config: Configuration = config_service.load_configuration(name)
+    config: Project = project_service.load_project(name)
 
     # Analyze dependencies
     graph: DependencyGraph = dependency_service.analyze_dependencies(config)
@@ -102,7 +102,7 @@ async def get_dependencies(name: str) -> dict[str, Any]:
     return dict(graph)
 
 
-@router.post("/configurations/{name}/dependencies/check")
+@router.post("/projects/{name}/dependencies/check")
 @handle_endpoint_errors
 async def check_dependencies(name: str) -> dict[str, Any]:
     """
@@ -114,11 +114,11 @@ async def check_dependencies(name: str) -> dict[str, Any]:
     Returns:
         Dictionary with has_cycles flag, list of cycles, and cycle count
     """
-    config_service: ConfigurationService = get_config_service()
+    project_service: ProjectService = get_project_service()
     dependency_service: DependencyService = get_dependency_service()
 
     # Load configuration
-    config: Configuration = config_service.load_configuration(name)
+    config: Project = project_service.load_project(name)
 
     # Check for circular dependencies
     result = dependency_service.check_circular_dependencies(config)
@@ -127,7 +127,7 @@ async def check_dependencies(name: str) -> dict[str, Any]:
     return result
 
 
-@router.post("/configurations/{name}/fixes/preview")
+@router.post("/projects/{name}/fixes/preview")
 @handle_endpoint_errors
 async def preview_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]:
     """
@@ -141,8 +141,8 @@ async def preview_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, An
         Preview of fixes that would be applied
     """
 
-    config_service: ConfigurationService = get_config_service()
-    auto_fix_service = AutoFixService(config_service)
+    project_service: ProjectService = get_project_service()
+    auto_fix_service = AutoFixService(project_service)
 
     # Convert dicts to ValidationError objects
     validation_errors: list[ValidationError] = [ValidationError(**error) for error in errors]
@@ -156,7 +156,7 @@ async def preview_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, An
     return preview
 
 
-@router.post("/configurations/{name}/fixes/apply")
+@router.post("/projects/{name}/fixes/apply")
 @handle_endpoint_errors
 async def apply_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]:
     """
@@ -176,8 +176,8 @@ async def apply_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]
         Result of applying fixes including backup path
     """
 
-    config_service: ConfigurationService = get_config_service()
-    auto_fix_service = AutoFixService(config_service)
+    project_service: ProjectService = get_project_service()
+    auto_fix_service = AutoFixService(project_service)
 
     # Convert dicts to ValidationError objects
     validation_errors: list[ValidationError] = [ValidationError(**error) for error in errors]

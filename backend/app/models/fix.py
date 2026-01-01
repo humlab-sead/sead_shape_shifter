@@ -22,7 +22,7 @@ class FixActionType(str, Enum):
 
 
 class FixAction(BaseModel):
-    """A single fix action to apply to configuration."""
+    """A single fix action to apply to project."""
 
     type: FixActionType
     entity: str

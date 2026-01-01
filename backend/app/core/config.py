@@ -18,7 +18,7 @@ class Settings(BaseSettings):
         env_prefix="SHAPE_SHIFTER_",
     )
     PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
-    PROJECT_NAME: str = "Shape Shifter Configuration Editor"
+    PROJECT_NAME: str = "Shape Shifter Project Editor"
     VERSION: str = "9.9.9"
     ENVIRONMENT: Literal["development", "production", "test"] = "development"
     API_V1_PREFIX: str = "/api/v1"
@@ -40,17 +40,17 @@ class Settings(BaseSettings):
     )
 
     # File paths
-    CONFIGURATIONS_DIR: Path = Path("./configurations")
+    PROJECTS_DIR: Path = Path("./projects")
     BACKUPS_DIR: Path = Path("./backups")
 
     # Validation
     MAX_ENTITIES_PER_CONFIG: int = 1000
-    MAX_CONFIG_FILE_SIZE_MB: int = 10
+    MAX_PROJECT_FILE_SIZE_MB: int = 10
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Ensure directories exist
-        self.CONFIGURATIONS_DIR.mkdir(exist_ok=True)
+        self.PROJECTS_DIR.mkdir(exist_ok=True)
         self.BACKUPS_DIR.mkdir(exist_ok=True)
 
     @property
@@ -64,9 +64,9 @@ class Settings(BaseSettings):
         return str(self.model_config.get("env_file", ""))
 
     @property
-    def configurations_dir(self) -> Path:
+    def projects_dir(self) -> Path:
         """Get configurations directory path."""
-        return self.CONFIGURATIONS_DIR
+        return self.PROJECTS_DIR
 
     @property
     def project_root(self) -> Path:

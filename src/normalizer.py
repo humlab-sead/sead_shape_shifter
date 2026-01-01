@@ -16,15 +16,15 @@ from src.filter import apply_filters
 from src.link import link_entity
 from src.loaders import DataLoader
 from src.mapping import LinkToRemoteService
-from src.model import ShapeShiftConfig, TableConfig
+from src.model import ShapeShiftProject, TableConfig
 from src.unnest import unnest
 
 
 class ProcessState:
     """Helper class to track processing state of entities during normalization."""
 
-    def __init__(self, config: ShapeShiftConfig, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
-        self.config: ShapeShiftConfig = config
+    def __init__(self, config: ShapeShiftProject, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
+        self.config: ShapeShiftProject = config
         self.table_store: dict[str, pd.DataFrame] = table_store
         self.target_entities: set[str] = target_entities if target_entities else set(config.tables.keys())
 
@@ -87,18 +87,18 @@ class ShapeShifter:
 
     def __init__(
         self,
-        config: ShapeShiftConfig | str,
+        project: ShapeShiftProject | str,
         default_entity: str | None = None,
         table_store: dict[str, pd.DataFrame] | None = None,
         target_entities: set[str] | None = None,
     ) -> None:
 
-        if not config or not isinstance(config, (ShapeShiftConfig, str)):
+        if not project or not isinstance(project, (ShapeShiftProject, str)):
             raise ValueError("A valid configuration must be provided")
 
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
-        self.config: ShapeShiftConfig = ShapeShiftConfig.from_source(config)
+        self.config: ShapeShiftProject = ShapeShiftProject.from_source(project)
         self.state: ProcessState = self._initialize_process_state(target_entities)
 
     def _initialize_process_state(self, target_entities: set[str] | None = None) -> ProcessState:
@@ -172,8 +172,9 @@ class ShapeShifter:
                 )
                 dfs.append(sub_data)
 
-            # Concatenate all dataframes
-            data: pd.DataFrame = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+            # Concatenate all dataframes (filter out empty DataFrames to avoid FutureWarning)
+            non_empty_dfs = [df for df in dfs if not df.empty]
+            data: pd.DataFrame = pd.concat(non_empty_dfs, ignore_index=True) if non_empty_dfs else pd.DataFrame()
 
             if table_cfg.filters:
                 data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store)

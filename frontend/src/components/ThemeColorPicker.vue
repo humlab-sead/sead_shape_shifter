@@ -1,24 +1,14 @@
 <template>
   <v-card>
     <v-card-title>Custom Theme Colors</v-card-title>
-    <v-card-subtitle>
-      Customize individual colors for the current theme
-    </v-card-subtitle>
+    <v-card-subtitle> Customize individual colors for the current theme </v-card-subtitle>
 
     <v-card-text>
       <v-row>
-        <v-col
-          v-for="colorKey in colorKeys"
-          :key="colorKey"
-          cols="12"
-          sm="6"
-          md="4"
-        >
+        <v-col v-for="colorKey in colorKeys" :key="colorKey" cols="12" sm="6" md="4">
           <div class="color-picker-item">
             <div class="d-flex align-center mb-2">
-              <v-icon :color="getColorValue(colorKey)" class="mr-2">
-                mdi-circle
-              </v-icon>
+              <v-icon :color="getColorValue(colorKey)" class="mr-2"> mdi-circle </v-icon>
               <span class="text-capitalize font-weight-medium">
                 {{ colorKey }}
               </span>
@@ -41,13 +31,7 @@
                 />
               </template>
               <template #append>
-                <v-btn
-                  v-if="isCustomized(colorKey)"
-                  icon
-                  size="x-small"
-                  variant="text"
-                  @click="resetColor(colorKey)"
-                >
+                <v-btn v-if="isCustomized(colorKey)" icon size="x-small" variant="text" @click="resetColor(colorKey)">
                   <v-icon size="small">mdi-restore</v-icon>
                   <v-tooltip activator="parent">Reset to default</v-tooltip>
                 </v-btn>
@@ -72,21 +56,9 @@
 
         <v-spacer />
 
-        <v-btn
-          variant="outlined"
-          prepend-icon="mdi-download"
-          @click="handleExport"
-        >
-          Export
-        </v-btn>
+        <v-btn variant="outlined" prepend-icon="mdi-download" @click="handleExport"> Export </v-btn>
 
-        <v-btn
-          variant="outlined"
-          prepend-icon="mdi-upload"
-          @click="handleImport"
-        >
-          Import
-        </v-btn>
+        <v-btn variant="outlined" prepend-icon="mdi-upload" @click="handleImport"> Import </v-btn>
       </div>
     </v-card-text>
   </v-card>
@@ -99,15 +71,7 @@ import type { CustomThemeColors } from '@/composables/useTheme'
 
 const theme = useTheme()
 
-const colorKeys: (keyof CustomThemeColors)[] = [
-  'primary',
-  'secondary',
-  'accent',
-  'error',
-  'info',
-  'success',
-  'warning',
-]
+const colorKeys: (keyof CustomThemeColors)[] = ['primary', 'secondary', 'accent', 'error', 'info', 'success', 'warning']
 
 const localColors = ref<CustomThemeColors>({ ...theme.customColors.value })
 

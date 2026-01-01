@@ -1,10 +1,10 @@
-# Shape Shifter Configuration Editor - User Guide
+# Shape Shifter Project Editor - User Guide
 
 ## Table of Contents
 
 1. [Introduction](#1-introduction)
 2. [Getting Started](#2-getting-started)
-3. [Working with Configurations](#3-working-with-configurations)
+3. [Working with Projects](#3-working-with-configurations)
 4. [Managing Entities](#4-managing-entities)
 5. [Validation](#5-validation)
 6. [Auto-Fix Features](#6-auto-fix-features)
@@ -19,18 +19,18 @@
 
 ### What is Shape Shifter?
 
-Shape Shifter is a declarative data transformation framework that uses YAML configurations to harmonize diverse data sources into target schemas. The Configuration Editor provides a visual interface for creating and managing these transformation configurations.
+Shape Shifter is a declarative data transformation framework that uses YAML configurations to harmonize diverse data sources into target schemas. The Project Editor provides a visual interface for creating and managing these transformation configurations.
 
 ### Who Should Use This Guide?
 
 This guide is for:
-- **Domain Data Managers** - Managing entity configurations
+- **Domain Data Managers** - Managing entitys
 - **Data Engineers** - Creating complex transformations
 - **Developers** - Integrating transformations into workflows
 
 ### Key Features
 
-- **Visual Configuration Editor** - Monaco Editor for YAML editing
+- **Visual Project Editor** - Monaco Editor for YAML editing
 - **Entity Tree Navigation** - Browse entities and dependencies
 - **Real-Time Validation** - Immediate feedback on errors
 - **Auto-Fix Capabilities** - Intelligent error resolution
@@ -74,7 +74,7 @@ This guide is for:
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  Configuration Editor                      [Save] [Validate]│
+│  Project Editor                      [Save] [Validate]│
 ├─────────────┬────────────────────────┬────────────────────┤
 │             │                        │                    │
 │  Entity     │   Monaco Editor        │  Validation        │
@@ -96,10 +96,10 @@ This guide is for:
 
 ### First Steps
 
-1. **Open a Configuration**
-   - Click "Open Configuration" in the toolbar
+1. **Open a Project**
+   - Click "Open Project" in the toolbar
    - Select from available configurations
-   - Configuration loads into editor
+   - Project loads into editor
 
 2. **Explore the Entity Tree**
    - Left panel shows all entities
@@ -113,23 +113,23 @@ This guide is for:
 
 ---
 
-## 3. Working with Configurations
+## 3. Working with Projects
 
-### Opening Configurations
+### Opening Projects
 
-**Method 1: Configuration Selector**
+**Method 1: Project Selector**
 1. Click dropdown in toolbar
 2. Select configuration name
-3. Configuration loads automatically
+3. Project loads automatically
 
 **Method 2: Recent Files**
 1. Recently opened configs appear at top
 2. Click to reopen instantly
 3. Access last 5 configurations quickly
 
-### Creating New Configurations
+### Creating New Projects
 
-1. Click "New Configuration"
+1. Click "New Project"
 2. Enter configuration name
 3. Choose template (optional):
    - Empty configuration
@@ -170,7 +170,7 @@ The Monaco Editor provides:
 - `Ctrl/Cmd + D` - Duplicate line
 - `Alt + Up/Down` - Move line up/down
 
-### Saving Configurations
+### Saving Projects
 
 **Manual Save:**
 1. Make your changes
@@ -188,12 +188,12 @@ The Monaco Editor provides:
 - "Saved" badge = all changes saved
 - Timestamp shows last save time
 
-### Configuration Backups
+### Project Backups
 
 Every save creates a timestamped backup:
 
 **Location:** `/backups/`  
-**Format:** `config_name.backup.YYYYMMDD_HHMMSS.yml`  
+**Format:** `project_name.backup.YYYYMMDD_HHMMSS.yml`  
 **Example:** `arbodat.backup.20251214_143022.yml`
 
 **To Restore from Backup:**
@@ -540,7 +540,7 @@ Results are cached for 5 minutes:
 - Different configuration
 - First validation
 - Cache expired (>5 min)
-- Configuration changed
+- Project changed
 
 **Benefits:**
 - 97% faster repeat validations
@@ -588,7 +588,7 @@ Auto-fix analyzes validation errors and provides:
 
 #### Missing Columns
 
-**Problem:** Configuration references non-existent columns
+**Problem:** Project references non-existent columns
 
 **Example Error:**
 ```
@@ -686,7 +686,7 @@ Preview shows:
 #### Validation After Fix
 
 After applying:
-1. Configuration automatically revalidated
+1. Project automatically revalidated
 2. New results show if issue resolved
 3. Remaining issues displayed
 4. Additional fixes can be applied
@@ -755,7 +755,7 @@ Click "Validate" → Return cached (5ms) → 40x faster!
 
 ❌ **Cache Cleared When:**
 - 5 minutes elapsed
-- Configuration modified
+- Project modified
 - Page refreshed
 - Different config opened
 
@@ -829,7 +829,7 @@ Smoothly animates success messages for clear feedback.
 - GPU-accelerated
 
 **When You'll See It:**
-- Configuration saved
+- Project saved
 - Auto-fix applied
 - Entity created
 - Settings updated
@@ -923,7 +923,7 @@ Wait 500ms
 - Reduce mouse usage
 - More efficient editing
 
-### Configuration Best Practices
+### Project Best Practices
 
 **Entity Design:**
 - ✅ Use descriptive entity names
@@ -1009,7 +1009,7 @@ Wait 500ms
 
 ### Common Issues
 
-#### Editor Won't Load Configuration
+#### Editor Won't Load Project
 
 **Symptoms:** Blank editor or error message
 
@@ -1069,7 +1069,7 @@ Wait 500ms
 #### Slow Editor Response
 
 **Causes:**
-- Large configuration files (> 10MB)
+- Large project files (> 10MB)
 - Too many entities (> 100)
 - Complex dependency trees
 - Low system resources
@@ -1113,7 +1113,7 @@ Wait 500ms
 
 ### Error Messages
 
-#### "Configuration not found"
+#### "Project not found"
 
 **Cause:** Config file doesn't exist or not in config directory
 
@@ -1153,7 +1153,7 @@ Wait 500ms
 
 **Documentation:**
 1. This user guide
-2. Configuration reference
+2. Project reference
 3. API documentation
 4. Developer guide
 
@@ -1269,7 +1269,7 @@ A: In `/backups/` directory with timestamp in filename.
 
 - [UI Requirements](UI_REQUIREMENTS.md) - Feature specifications
 - [UI Architecture](UI_ARCHITECTURE.md) - Technical architecture
-- [Configuration Guide](CONFIGURATION_GUIDE.md) - YAML syntax guide
+- [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax guide
 - [Developer Guide](DEVELOPER_GUIDE.md) - Development information
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures
 
@@ -1277,4 +1277,4 @@ A: In `/backups/` directory with timestamp in filename.
 
 **Document Version**: 1.0  
 **Last Updated**: December 14, 2025  
-**For**: Shape Shifter Configuration Editor v0.1.0
+**For**: Shape Shifter Project Editor v0.1.0

@@ -5,27 +5,27 @@ import time
 import pandas as pd
 
 from backend.app.core.state_manager import get_app_state_manager
-from backend.app.mappers.config_mapper import ConfigMapper
-from backend.app.models import CardinalityInfo, Configuration, JoinStatistics, JoinTestResult, PreviewResult, UnmatchedRow
+from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.models import CardinalityInfo, JoinStatistics, JoinTestResult, PreviewResult, Project, UnmatchedRow
 from backend.app.services.shapeshift_service import ShapeShiftService
-from src.model import ForeignKeyConfig, ShapeShiftConfig, TableConfig
+from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 
 
 class ValidateForeignKeyService:
-    """Service for previewing entity data with ShapeShiftConfig caching."""
+    """Service for previewing entity data with ShapeShiftProject caching."""
 
     def __init__(self, preview_service: ShapeShiftService):
         """Initialize preview service."""
         self.preview_service: ShapeShiftService = preview_service
 
     async def test_foreign_key(
-        self, config_name: str, entity_name: str, foreign_key_index: int, sample_size: int = 100
+        self, project_name: str, entity_name: str, foreign_key_index: int, sample_size: int = 100
     ) -> "JoinTestResult":
         """
         Test a foreign key join to validate the relationship.
 
         Args:
-            config_name: Name of the configuration
+            project_name: Name of the project
             entity_name: Name of the entity with the foreign key
             foreign_key_index: Index of the foreign key in the entity's foreign_keys list
             sample_size: Number of rows to test (default 100)
@@ -36,38 +36,38 @@ class ValidateForeignKeyService:
 
         start_time: float = time.time()
 
-        # Load config - try ApplicationState first (production), fall back to ShapeShiftConfig.from_source (tests)
-        api_cfg: Configuration | None = get_app_state_manager().get(config_name)
-        config: ShapeShiftConfig = ConfigMapper.to_core(api_cfg) if api_cfg else ShapeShiftConfig.from_source(source=config_name)
+        # Load project - try ApplicationState first (production), fall back to ShapeShiftProject.from_source (tests)
+        api_cfg: Project | None = get_app_state_manager().get(project_name)
+        project: ShapeShiftProject = ProjectMapper.to_core(api_cfg) if api_cfg else ShapeShiftProject.from_source(source=project_name)
 
-        # Get entity and foreign key config
-        if entity_name not in config.tables:
+        # Get entity and foreign key project
+        if entity_name not in project.tables:
             raise ValueError(f"Entity '{entity_name}' not found")
 
-        entity_config: TableConfig = config.tables[entity_name]
+        entity_cfg: TableConfig = project.tables[entity_name]
 
-        if not entity_config.foreign_keys or foreign_key_index >= len(entity_config.foreign_keys):
+        if not entity_cfg.foreign_keys or foreign_key_index >= len(entity_cfg.foreign_keys):
             raise ValueError(f"Foreign key index {foreign_key_index} out of range")
 
-        fk_config: ForeignKeyConfig = entity_config.foreign_keys[foreign_key_index]
-        remote_entity_name: str = fk_config.remote_entity
+        fk_cfg: ForeignKeyConfig = entity_cfg.foreign_keys[foreign_key_index]
+        remote_entity_name: str = fk_cfg.remote_entity
 
-        if remote_entity_name not in config.tables:
+        if remote_entity_name not in project.tables:
             raise ValueError(f"Remote entity '{remote_entity_name}' not found")
 
-        # remote_entity_config = config.tables[remote_entity_name]
+        # remote_entity_cfg = project.tables[remote_entity_name]
 
         # Load sample data for both entities
-        local_preview: PreviewResult = await self.preview_service.preview_entity(config_name, entity_name, limit=sample_size)
-        remote_preview: PreviewResult = await self.preview_service.preview_entity(config_name, remote_entity_name, limit=1000)
+        local_preview: PreviewResult = await self.preview_service.preview_entity(project_name, entity_name, limit=sample_size)
+        remote_preview: PreviewResult = await self.preview_service.preview_entity(project_name, remote_entity_name, limit=1000)
 
         local_df = pd.DataFrame(local_preview.rows)
         remote_df = pd.DataFrame(remote_preview.rows)
 
         # Perform join analysis
-        local_keys: list[str] = fk_config.local_keys
-        remote_keys: list[str] = fk_config.remote_keys
-        join_type = fk_config.how or "left"
+        local_keys: list[str] = fk_cfg.local_keys
+        remote_keys: list[str] = fk_cfg.remote_keys
+        join_type = fk_cfg.how or "left"
 
         # Check if keys exist in dataframes
         missing_local: list[str] = [k for k in local_keys if k not in local_df.columns]
@@ -119,9 +119,9 @@ class ValidateForeignKeyService:
 
         # Get expected cardinality from constraints
         expected_cardinality: str = "many_to_one"  # default
-        if fk_config.constraints:
-            if hasattr(fk_config.constraints, "cardinality"):
-                expected_cardinality = fk_config.constraints.cardinality or "many_to_one"
+        if fk_cfg.constraints:
+            if hasattr(fk_cfg.constraints, "cardinality"):
+                expected_cardinality = fk_cfg.constraints.cardinality or "many_to_one"
 
         cardinality_matches = expected_cardinality == actual_cardinality
 

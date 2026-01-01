@@ -46,53 +46,55 @@
       </v-text-field>
 
       <!-- Delete Button -->
-      <v-btn
-        icon="mdi-delete"
-        variant="text"
-        color="error"
-        size="small"
-        @click="$emit('delete')"
-      />
+      <v-btn icon="mdi-delete" variant="text" color="error" size="small" @click="$emit('delete')" />
     </v-card-text>
   </v-card>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { reactive, watch } from 'vue'
 
 export interface QueryConditionData {
-  column: string;
-  operator: string;
-  value: string;
+  column: string
+  operator: string
+  value: string
 }
 
 interface Props {
-  modelValue: QueryConditionData;
-  availableColumns: string[];
+  modelValue: QueryConditionData
+  availableColumns: string[]
 }
 
-const props = defineProps<Props>();
+const props = defineProps<Props>()
 const emit = defineEmits<{
-  'update:modelValue': [value: QueryConditionData];
-  'delete': [];
-}>();
+  'update:modelValue': [value: QueryConditionData]
+  delete: []
+}>()
 
 // Local reactive copy for two-way binding
 const condition = reactive<QueryConditionData>({
   column: props.modelValue.column,
   operator: props.modelValue.operator,
   value: props.modelValue.value,
-});
+})
 
 // Watch for changes and emit updates
-watch(condition, (newVal) => {
-  emit('update:modelValue', { ...newVal });
-}, { deep: true });
+watch(
+  condition,
+  (newVal) => {
+    emit('update:modelValue', { ...newVal })
+  },
+  { deep: true }
+)
 
 // Watch for prop changes (external updates)
-watch(() => props.modelValue, (newVal) => {
-  Object.assign(condition, newVal);
-}, { deep: true });
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    Object.assign(condition, newVal)
+  },
+  { deep: true }
+)
 
 // Operator options
 const operators = [
@@ -109,12 +111,12 @@ const operators = [
   { label: 'IS NULL', value: 'IS NULL' },
   { label: 'IS NOT NULL', value: 'IS NOT NULL' },
   { label: 'BETWEEN', value: 'BETWEEN' },
-];
+]
 
 // Check if operator doesn't need a value
 const isNullOperator = (operator: string): boolean => {
-  return operator === 'IS NULL' || operator === 'IS NOT NULL';
-};
+  return operator === 'IS NULL' || operator === 'IS NOT NULL'
+}
 </script>
 
 <style scoped>

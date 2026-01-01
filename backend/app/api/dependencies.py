@@ -11,7 +11,7 @@ from fastapi import Cookie, Depends, Header, HTTPException
 
 from backend.app import services
 from backend.app.core.config import settings
-from backend.app.core.state_manager import ApplicationState, ConfigSession, get_app_state
+from backend.app.core.state_manager import ApplicationState, ProjectSession, get_app_state
 
 
 def get_data_source_service() -> Generator[services.DataSourceService, None, None]:
@@ -21,7 +21,7 @@ def get_data_source_service() -> Generator[services.DataSourceService, None, Non
     Creates service for managing global data source files.
     Used as FastAPI dependency for data source endpoints.
     """
-    service = services.DataSourceService(settings.CONFIGURATIONS_DIR)
+    service = services.DataSourceService(settings.PROJECTS_DIR)
     try:
         yield service
     finally:
@@ -36,7 +36,7 @@ def get_schema_service() -> Generator[services.SchemaIntrospectionService, None,
     Creates service with current configuration.
     Used as FastAPI dependency for schema introspection endpoints.
     """
-    service = services.SchemaIntrospectionService(settings.CONFIGURATIONS_DIR)
+    service = services.SchemaIntrospectionService(settings.PROJECTS_DIR)
     try:
         yield service
     finally:
@@ -66,10 +66,10 @@ async def get_session_id(
 async def get_current_session(
     session_id: Annotated[UUID | None, Depends(get_session_id)],
     app_state: Annotated[ApplicationState, Depends(get_app_state)],
-) -> ConfigSession | None:
+) -> ProjectSession | None:
     """Get current editing session (optional)."""
     if session_id:
-        session: ConfigSession | None = await app_state.get_session(session_id)
+        session: ProjectSession | None = await app_state.get_session(session_id)
         if not session:
             raise HTTPException(404, f"Session {session_id} not found or expired")
         return session
@@ -77,8 +77,8 @@ async def get_current_session(
 
 
 async def require_session(
-    session: Annotated[ConfigSession | None, Depends(get_current_session)],
-) -> ConfigSession:
+    session: Annotated[ProjectSession | None, Depends(get_current_session)],
+) -> ProjectSession:
     """Require an active session."""
     if not session:
         raise HTTPException(401, "No active session. Call POST /api/v1/sessions first.")

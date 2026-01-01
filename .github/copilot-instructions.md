@@ -4,7 +4,7 @@
 
 **Shape Shifter** is a mono-repo with three components:
 1. **Core** (`src/`) - Declarative data transformation engine (Python)
-2. **Backend** (`backend/app/`) - FastAPI REST API for configuration editing
+2. **Backend** (`backend/app/`) - FastAPI REST API for project editing
 3. **Frontend** (`frontend/`) - Vue 3 + Vuetify web editor
 
 All Python code shares a **unified virtual environment** at root `.venv/`.
@@ -45,7 +45,7 @@ Key mappers:
 - **Monaco Editor** integration for YAML editing
 
 Key stores:
-- `configuration.ts` - Config file CRUD operations
+- `project.ts` - Project file CRUD operations
 - `validation.ts` - Validation state and entity-level results
 - `entity.ts` - Entity selection and editing state
 - `data-source.ts` - Database connection management
@@ -78,7 +78,7 @@ uv run pytest backend/tests -v  # Backend tests only
 PYTHONPATH=.:backend uv run pytest backend/tests -v  # If import issues
 ```
 
-### Linting
+### Linting & Testing
 ```bash
 make lint                 # Full lint (tidy + pylint + check-imports)
 make tidy                 # Format with black + isort
@@ -135,7 +135,7 @@ class PostgresSqlLoader(DataLoader):
 ### Backend Imports
 Backend imports from core using absolute paths:
 ```python
-from src.model import ShapeShiftConfig  # Core models
+from src.model import ShapeShiftProject  # Core models
 from src.configuration.provider import ConfigStore  # Config singleton
 from backend.app.services.validation_service import ValidationService  # Backend
 ```
@@ -174,7 +174,7 @@ client = TestClient(app)
 response = client.get("/api/v1/health")
 
 # Backend service tests - mock state via instance attribute
-service = ConfigurationService()
+service = ProjectService()
 mock_state = MagicMock()
 service.state = mock_state  # Correct pattern
 # NOT: patch('src.configuration.provider.get_application_state')
@@ -251,7 +251,7 @@ Use scopes to indicate which part of the codebase is affected:
 - `core`: Core processing pipeline (`src/`)
 - `backend`: Backend API (`backend/app/`)
 - `frontend`: Frontend application (`frontend/`)
-- `config`: Configuration handling
+- `config`: Project handling
 - `validation`: Validation services
 - `cache`: Caching functionality
 - `loaders`: Data loaders (SQL, CSV, fixed)
@@ -306,13 +306,13 @@ For more complex changes, use the body to explain what and why:
 ```bash
 git commit -m "feat(cache): implement hash-based cache invalidation
 
-Add xxhash-based entity configuration hashing to detect changes
+Add xxhash-based entity hashing to detect changes
 beyond version numbers. Implements 3-tier validation:
 1. TTL check (300s)
-2. Config version comparison
+2. Project version comparison
 3. Entity hash validation
 
-This prevents serving stale cached data when entity configuration
+This prevents serving stale cached data when entity
 changes without version bump.
 
 Closes #123"
@@ -431,7 +431,7 @@ Reason: causes performance degradation in production."
 2. Register: `@Validators.register(key="name", stage="pre-merge|post-merge")`
 3. Add tests in `tests/test_constraints.py`
 
-### Adding Configuration Validation
+### Adding Project Validation
 1. Create class in `src/specifications.py` inheriting `ConfigSpecification`
 2. Implement `is_satisfied_by()` returning bool
 3. Add to `CompositeConfigSpecification.__init__()` list
@@ -485,8 +485,8 @@ export const useExampleStore = defineStore('example', () => {
 ## Key Files
 - `src/model.py` - Core configuration Pydantic models
 - `src/constraints.py` - Foreign key constraint validators
-- `src/specifications.py` - Configuration validation rules
-- `src/configuration/config.py` - Configuration loading and resolution (immutable operations)
+- `src/specifications.py` - Project validation rules
+- `src/configuration/config.py` - Project loading and resolution (immutable operations)
 - `backend/app/main.py` - FastAPI application entry point
 - `backend/app/services/validation_service.py` - Multi-type validation
 - `backend/app/services/shapeshift_service.py` - Entity preview with 3-tier cache
@@ -501,9 +501,9 @@ export const useExampleStore = defineStore('example', () => {
 - **Implementation**: All loaders (PostgreSQL, SQLite, MS Access, CSV, Excel) have embedded schemas
 
 ### Cache System (shapeshift_service.py)
-- **3-tier validation**: TTL (300s) → Config version → Entity hash (xxhash)
-- **CacheMetadata**: Tracks timestamp, config_name, entity_name, config_version, entity_hash
-- **Hash-based invalidation**: Detects entity configuration changes via xxhash.xxh64
+- **3-tier validation**: TTL (300s) → Project version → Entity hash (xxhash)
+- **CacheMetadata**: Tracks timestamp, project_name, entity_name, project_version, entity_hash
+- **Hash-based invalidation**: Detects entity changes via xxhash.xxh64
 - **Smart dependencies**: Validates cached dependency hashes before reuse
 
 ### Code Quality Patterns

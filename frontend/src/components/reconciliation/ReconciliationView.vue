@@ -26,12 +26,8 @@
             >
               <template #no-data>
                 <v-list-item>
-                  <v-list-item-title class="text-grey">
-                    No entities configured for reconciliation
-                  </v-list-item-title>
-                  <v-list-item-subtitle>
-                    Add reconciliation specs to your configuration YAML
-                  </v-list-item-subtitle>
+                  <v-list-item-title class="text-grey"> No entities configured for reconciliation </v-list-item-title>
+                  <v-list-item-subtitle> Add reconciliation specs to your project YAML </v-list-item-subtitle>
                 </v-list-item>
               </template>
             </v-select>
@@ -55,14 +51,18 @@
           <v-alert-title>Reconciliation Specification</v-alert-title>
           <div class="mt-2">
             <div v-if="entitySpec.source">
-              <strong>Source:</strong> 
+              <strong>Source:</strong>
               <span v-if="typeof entitySpec.source === 'string'">{{ entitySpec.source }}</span>
               <span v-else>Custom query ({{ entitySpec.source.data_source }})</span>
             </div>
             <div><strong>Keys:</strong> {{ entitySpec.keys.join(', ') }}</div>
             <div v-if="Object.keys(entitySpec.property_mappings).length > 0">
-              <strong>Properties:</strong> 
-              {{ Object.entries(entitySpec.property_mappings).map(([k,v]) => `${k}→${v}`).join(', ') }}
+              <strong>Properties:</strong>
+              {{
+                Object.entries(entitySpec.property_mappings)
+                  .map(([k, v]) => `${k}→${v}`)
+                  .join(', ')
+              }}
             </div>
             <div v-if="entitySpec.remote.service_type">
               <strong>Service Type:</strong> {{ entitySpec.remote.service_type }}
@@ -86,40 +86,36 @@
 
         <!-- Reconciliation Grid -->
         <reconciliation-grid
-          v-if="selectedEntity && entitySpec && previewData.length > 0"
+          v-if="selectedEntity && entitySpec && entityPreviewData.length"
           :entity-spec="entitySpec"
-          :preview-data="previewData"
+          :preview-data="entityPreviewData"
           :loading="loading"
           @update:mapping="handleUpdateMapping"
           @save="handleSaveChanges"
         />
 
         <!-- Empty State - No Data -->
-        <v-card v-else-if="selectedEntity && entitySpec && previewData.length === 0" variant="outlined" class="pa-8 text-center">
+        <v-card
+          v-else-if="selectedEntity && entitySpec && !entityPreviewData.length"
+          variant="outlined"
+          class="pa-8 text-center"
+        >
           <v-icon icon="mdi-database-off-outline" size="64" color="grey" />
           <h3 class="text-h6 mt-4 mb-2">No Preview Data</h3>
-          <p class="text-grey">
-            Run auto-reconcile to fetch and process entity data
-          </p>
+          <p class="text-grey">Run auto-reconcile to fetch and process entity data</p>
         </v-card>
 
         <!-- Empty State - No Selection -->
         <v-card v-else-if="!selectedEntity" variant="outlined" class="pa-8 text-center">
           <v-icon icon="mdi-information-outline" size="64" color="grey" />
           <h3 class="text-h6 mt-4 mb-2">No Entity Selected</h3>
-          <p class="text-grey mb-4">
-            Select an entity above to begin reconciliation
-          </p>
+          <p class="text-grey mb-4">Select an entity above to begin reconciliation</p>
         </v-card>
       </v-card-text>
     </v-card>
 
     <!-- Result Snackbar -->
-    <v-snackbar
-      v-model="showResultSnackbar"
-      :color="resultColor"
-      timeout="5000"
-    >
+    <v-snackbar v-model="showResultSnackbar" :color="resultColor" timeout="5000">
       {{ resultMessage }}
       <template #actions>
         <v-btn variant="text" @click="showResultSnackbar = false">Close</v-btn>
@@ -136,15 +132,14 @@ import ReconciliationGrid from './ReconciliationGrid.vue'
 import type { ReconciliationPreviewRow } from '@/types'
 
 interface Props {
-  configName: string
+  projectName: string
 }
 
 const props = defineProps<Props>()
 
 // Store
 const reconciliationStore = useReconciliationStore()
-const { config, loading, error, reconcilableEntities, hasConfig, previewData } =
-  storeToRefs(reconciliationStore)
+const { reconciliationConfig, loading, reconcilableEntities, hasConfig, previewData } = storeToRefs(reconciliationStore)
 
 // Local state
 const selectedEntity = ref<string | null>(null)
@@ -154,8 +149,13 @@ const resultColor = ref('success')
 
 // Computed
 const entitySpec = computed(() => {
-  if (!selectedEntity.value || !config.value) return null
-  return config.value.entities[selectedEntity.value] || null
+  if (!selectedEntity.value || !reconciliationConfig.value) return null
+  return reconciliationConfig.value.entities[selectedEntity.value] || null
+})
+
+const entityPreviewData = computed(() => {
+  if (!selectedEntity.value) return []
+  return previewData.value[selectedEntity.value] || []
 })
 
 // Methods
@@ -163,10 +163,7 @@ async function handleAutoReconcile() {
   if (!selectedEntity.value) return
 
   try {
-    const result = await reconciliationStore.autoReconcile(
-      props.configName,
-      selectedEntity.value
-    )
+    const result = await reconciliationStore.autoReconcile(props.projectName, selectedEntity.value)
 
     resultMessage.value = `Auto-reconciliation complete: ${result.auto_accepted} auto-matched, ${result.needs_review} need review, ${result.unmatched} unmatched`
     resultColor.value = 'success'
@@ -179,16 +176,12 @@ async function handleAutoReconcile() {
 }
 
 async function handleUpdateMapping(row: ReconciliationPreviewRow, seadId: number | null, notes?: string) {
-  if (!selectedEntity.value) return
+  if (!selectedEntity.value || !entitySpec.value) return
 
   try {
-    await reconciliationStore.updateMapping(
-      props.configName,
-      selectedEntity.value,
-      row,
-      seadId,
-      notes
-    )
+    // Extract source values from row based on entity keys
+    const sourceValues = entitySpec.value.keys.map((key) => row[key])
+    await reconciliationStore.updateMapping(props.projectName, selectedEntity.value, sourceValues, seadId, notes)
   } catch (e: any) {
     resultMessage.value = `Failed to update mapping: ${e.message}`
     resultColor.value = 'error'
@@ -198,7 +191,7 @@ async function handleUpdateMapping(row: ReconciliationPreviewRow, seadId: number
 
 async function handleSaveChanges() {
   try {
-    await reconciliationStore.saveConfig(props.configName)
+    await reconciliationStore.saveReconciliationConfig(props.projectName)
     resultMessage.value = 'Changes saved successfully'
     resultColor.value = 'success'
     showResultSnackbar.value = true
@@ -209,27 +202,27 @@ async function handleSaveChanges() {
   }
 }
 
-// Load config on mount
+// Load project on mount
 onMounted(async () => {
   try {
-    await reconciliationStore.loadConfig(props.configName)
+    await reconciliationStore.loadReconciliationConfig(props.projectName)
 
     // Auto-select first entity if available
     if (reconcilableEntities.value.length > 0) {
-      selectedEntity.value = reconcilableEntities.value[0]
+      selectedEntity.value = reconcilableEntities.value[0] ?? null
     }
   } catch (e) {
     console.error('Failed to load reconciliation config:', e)
   }
 })
 
-// Watch for config changes
+// Watch for project changes
 watch(
-  () => props.configName,
-  async (newConfigName) => {
-    if (newConfigName) {
+  () => props.projectName,
+  async (newProjectName) => {
+    if (newProjectName) {
       selectedEntity.value = null
-      await reconciliationStore.loadConfig(newConfigName)
+      await reconciliationStore.loadReconciliationConfig(newProjectName)
     }
   }
 )

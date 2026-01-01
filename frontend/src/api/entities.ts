@@ -23,38 +23,32 @@ export interface EntityUpdateRequest {
  */
 export const entitiesApi = {
   /**
-   * List all entities in a configuration
+   * List all entities in a Project
    */
-  list: async (configName: string): Promise<EntityResponse[]> => {
+  list: async (projectName: string): Promise<EntityResponse[]> => {
     return apiRequest<EntityResponse[]>({
       method: 'GET',
-      url: `/configurations/${configName}/entities`,
+      url: `/projects/${projectName}/entities`,
     })
   },
 
   /**
    * Get specific entity
    */
-  get: async (
-    configName: string,
-    entityName: string
-  ): Promise<EntityResponse> => {
+  get: async (projectName: string, entityName: string): Promise<EntityResponse> => {
     return apiRequest<EntityResponse>({
       method: 'GET',
-      url: `/configurations/${configName}/entities/${entityName}`,
+      url: `/projects/${projectName}/entities/${entityName}`,
     })
   },
 
   /**
    * Create new entity
    */
-  create: async (
-    configName: string,
-    data: EntityCreateRequest
-  ): Promise<EntityResponse> => {
+  create: async (projectName: string, data: EntityCreateRequest): Promise<EntityResponse> => {
     return apiRequest<EntityResponse>({
       method: 'POST',
-      url: `/configurations/${configName}/entities`,
+      url: `/projects/${projectName}/entities`,
       data,
     })
   },
@@ -62,14 +56,10 @@ export const entitiesApi = {
   /**
    * Update entity
    */
-  update: async (
-    configName: string,
-    entityName: string,
-    data: EntityUpdateRequest
-  ): Promise<EntityResponse> => {
+  update: async (projectName: string, entityName: string, data: EntityUpdateRequest): Promise<EntityResponse> => {
     return apiRequest<EntityResponse>({
       method: 'PUT',
-      url: `/configurations/${configName}/entities/${entityName}`,
+      url: `/projects/${projectName}/entities/${entityName}`,
       data,
     })
   },
@@ -77,10 +67,10 @@ export const entitiesApi = {
   /**
    * Delete entity
    */
-  delete: async (configName: string, entityName: string): Promise<void> => {
+  delete: async (projectName: string, entityName: string): Promise<void> => {
     return apiRequest<void>({
       method: 'DELETE',
-      url: `/configurations/${configName}/entities/${entityName}`,
+      url: `/projects/${projectName}/entities/${entityName}`,
     })
   },
 }

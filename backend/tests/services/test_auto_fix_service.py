@@ -19,8 +19,8 @@ from backend.app.services.auto_fix_service import AutoFixService
 def mock_config_service():
     """Create a mock configuration service."""
     service = Mock()
-    service.load_configuration = Mock()
-    service.save_configuration = Mock()  # sync, not async
+    service.load_project = Mock()
+    service.save_project = Mock()  # sync, not async
     return service
 
 
@@ -134,7 +134,7 @@ class TestAutoFixService:
     async def test_preview_fixes(self, mock_config_service, sample_config):
         """Test previewing fixes without applying."""
         # Setup
-        mock_config_service.load_configuration.return_value = sample_config
+        mock_config_service.load_project.return_value = sample_config
         service = AutoFixService(mock_config_service)
 
         suggestions = [
@@ -158,10 +158,10 @@ class TestAutoFixService:
         ]
 
         # Execute
-        preview = await service.preview_fixes("test_config", suggestions)
+        preview = await service.preview_fixes("test_project", suggestions)
 
         # Assert
-        assert preview["config_name"] == "test_config"
+        assert preview["project_name"] == "test_project"
         assert preview["fixable_count"] == 1
         assert preview["total_suggestions"] == 1
         assert len(preview["changes"]) == 1
@@ -175,7 +175,7 @@ class TestAutoFixService:
     async def test_apply_fixes_success(self, mock_config_service, sample_config):
         """Test successfully applying fixes."""
         # Setup
-        mock_config_service.load_configuration.return_value = sample_config.copy()
+        mock_config_service.load_project.return_value = sample_config.copy()
         service = AutoFixService(mock_config_service)
 
         suggestions = [
@@ -203,20 +203,20 @@ class TestAutoFixService:
             mock_backup.return_value = Path("/tmp/backup.yml")
 
             # Execute
-            result = await service.apply_fixes("test_config", suggestions)
+            result = await service.apply_fixes("test_project", suggestions)
 
             # Assert
             assert result.success is True
             assert result.fixes_applied == 1
             assert len(result.errors) == 0
             assert result.backup_path is not None
-            assert mock_config_service.save_configuration.called
+            assert mock_config_service.save_project.called
 
     @pytest.mark.asyncio
     async def test_apply_fixes_with_rollback_on_error(self, mock_config_service, sample_config):
         """Test rollback when fix application fails."""
         # Setup
-        mock_config_service.load_configuration.return_value = sample_config.copy()
+        mock_config_service.load_project.return_value = sample_config.copy()
         service = AutoFixService(mock_config_service)
 
         suggestions = [
@@ -243,14 +243,14 @@ class TestAutoFixService:
         with (
             patch.object(service, "_create_backup") as mock_backup,
             patch.object(service, "_rollback") as _,
-            patch.object(service.config_service, "save_configuration") as mock_save,
+            patch.object(service.project_service, "save_project") as mock_save,
         ):
 
             mock_backup.return_value = Path("/tmp/backup.yml")
             mock_save.side_effect = Exception("Save failed")
 
             # Execute
-            result = await service.apply_fixes("test_config", suggestions)
+            result = await service.apply_fixes("test_project", suggestions)
 
             # Assert - save failed so success should be False
             # Note: rollback is NOT called when save fails - only when apply_action fails
@@ -262,7 +262,7 @@ class TestAutoFixService:
     def test_create_backup(self, mock_config_service, sample_config):
         """Test backup file creation."""
         # Setup
-        mock_config_service.load_configuration.return_value = sample_config
+        mock_config_service.load_project.return_value = sample_config
         service = AutoFixService(mock_config_service)
 
         # Mock file operations
@@ -271,11 +271,11 @@ class TestAutoFixService:
             mock_exists.return_value = True
 
             # Execute
-            backup_path = service._create_backup("test_config")
+            backup_path = service._create_backup("test_project")
 
             # Assert
             assert backup_path is not None
-            assert "test_config" in str(backup_path)
+            assert "test_project" in str(backup_path)
             assert ".backup." in str(backup_path)
             assert mock_copy.called
 
@@ -283,13 +283,13 @@ class TestAutoFixService:
         """Test configuration rollback from backup."""
         # Setup
         service = AutoFixService(mock_config_service)
-        backup_path = Path("/tmp/test_config.backup.20240101_120000.yml")
+        backup_path = Path("/tmp/test_project.backup.20240101_120000.yml")
 
         # Mock file operations
         with patch("shutil.copy2") as mock_copy:
 
             # Execute
-            service._rollback("test_config", backup_path)
+            service._rollback("test_project", backup_path)
 
             # Assert
             assert mock_copy.called
@@ -339,7 +339,7 @@ class TestAutoFixService:
     def test_skip_non_auto_fixable_suggestions(self, mock_config_service, sample_config):
         """Test that non-auto-fixable suggestions are skipped during apply."""
         # Setup
-        mock_config_service.load_configuration.return_value = sample_config.copy()
+        mock_config_service.load_project.return_value = sample_config.copy()
         service = AutoFixService(mock_config_service)
 
         suggestions = [
@@ -357,7 +357,7 @@ class TestAutoFixService:
         with patch.object(service, "_create_backup") as mock_backup:
             mock_backup.return_value = Path("/tmp/backup.yml")
 
-            result = asyncio.run(service.apply_fixes("test_config", suggestions))
+            result = asyncio.run(service.apply_fixes("test_project", suggestions))
 
             # Assert
             assert result.success is True
@@ -405,7 +405,7 @@ class TestFixActionIntegration:
     def test_fix_workflow_end_to_end(self, mock_config_service, sample_config):
         """Test complete fix workflow from error to applied fix."""
         # Setup
-        mock_config_service.load_configuration.return_value = sample_config.copy()
+        mock_config_service.load_project.return_value = sample_config.copy()
         service = AutoFixService(mock_config_service)
 
         # Create error

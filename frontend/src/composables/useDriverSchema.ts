@@ -1,8 +1,8 @@
 /**
  * Composable for managing driver schemas
- * 
+ *
  * Provides access to data source driver metadata including:
- * - Configuration field definitions
+ * - Field definitions
  * - Validation rules
  * - Display information
  */
@@ -60,8 +60,8 @@ export function useDriverSchema() {
    */
   function getRequiredFields(driver: string): string[] {
     return getFieldsForDriver(driver)
-      .filter(f => f.required)
-      .map(f => f.name)
+      .filter((f) => f.required)
+      .map((f) => f.name)
   }
 
   /**
@@ -69,15 +69,15 @@ export function useDriverSchema() {
    */
   function getOptionalFields(driver: string): string[] {
     return getFieldsForDriver(driver)
-      .filter(f => !f.required)
-      .map(f => f.name)
+      .filter((f) => !f.required)
+      .map((f) => f.name)
   }
 
   /**
    * Get field by name for a driver
    */
   function getField(driver: string, fieldName: string): FieldMetadata | undefined {
-    return getFieldsForDriver(driver).find(f => f.name === fieldName)
+    return getFieldsForDriver(driver).find((f) => f.name === fieldName)
   }
 
   /**
@@ -94,26 +94,22 @@ export function useDriverSchema() {
   function getDefaultFormValues(driver: string): Record<string, any> {
     const fields = getFieldsForDriver(driver)
     const defaults: Record<string, any> = {}
-    
-    fields.forEach(field => {
+
+    fields.forEach((field) => {
       if (field.default !== undefined && field.default !== null) {
         defaults[field.name] = field.default
       }
     })
-    
+
     return defaults
   }
 
   /**
    * Validate a field value
    */
-  function validateField(
-    driver: string,
-    fieldName: string,
-    value: any
-  ): { valid: boolean; error?: string } {
+  function validateField(driver: string, fieldName: string, value: any): { valid: boolean; error?: string } {
     const field = getField(driver, fieldName)
-    
+
     if (!field) {
       return { valid: false, error: `Unknown field: ${fieldName}` }
     }
@@ -137,7 +133,7 @@ export function useDriverSchema() {
             return { valid: false, error: `Must be at most ${field.max_value}` }
           }
           break
-        
+
         case 'file_path':
           if (typeof value !== 'string' || value.trim().length === 0) {
             return { valid: false, error: 'Must be a valid file path' }
@@ -153,7 +149,7 @@ export function useDriverSchema() {
    * Get list of all available drivers
    */
   const availableDrivers = computed(() => {
-    return Object.keys(schemas.value).map(driver => ({
+    return Object.keys(schemas.value).map((driver) => ({
       value: driver,
       title: schemas.value[driver]?.display_name,
       description: schemas.value[driver]?.description,
@@ -166,8 +162,8 @@ export function useDriverSchema() {
    */
   function getDriversByCategory(category: 'database' | 'file') {
     return Object.values(schemas.value)
-      .filter(schema => schema.category === category)
-      .map(schema => ({
+      .filter((schema) => schema.category === category)
+      .map((schema) => ({
         value: schema.driver,
         title: schema.display_name,
         description: schema.description,

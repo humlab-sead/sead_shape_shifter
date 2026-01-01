@@ -66,9 +66,7 @@ export const apiClient = createApiClient()
 /**
  * Generic API request wrapper with type safety
  */
-export const apiRequest = async <T>(
-  config: AxiosRequestConfig
-): Promise<T> => {
+export const apiRequest = async <T>(config: AxiosRequestConfig): Promise<T> => {
   const response: AxiosResponse<T> = await apiClient.request(config)
   return response.data
 }

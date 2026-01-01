@@ -426,13 +426,13 @@ async def auto_reconcile_entity(self, ...) -> AutoReconcileResult:  # async
 
 **Example**:
 ```python
-async def preview_fixes(self, config_name: str, suggestions: list[FixSuggestion]) -> dict[str, Any]:
+async def preview_fixes(self, project_name: str, suggestions: list[FixSuggestion]) -> dict[str, Any]:
 ```
 
 **Recommendation**: Use TypedDict or Pydantic model:
 ```python
 class FixPreview(BaseModel):
-    config_name: str
+    project_name: str
     fixable_count: int
     total_suggestions: int
     changes: list[dict]

@@ -3,33 +3,33 @@
 import pytest
 
 from backend.app.core.config import settings
-from backend.app.models.config import Configuration
 from backend.app.models.entity import Entity
-from backend.app.services.config_service import (
-    ConfigurationNotFoundError,
-    ConfigurationService,
-    ConfigurationServiceError,
+from backend.app.models.project import Project
+from backend.app.services.project_service import (
     EntityAlreadyExistsError,
     EntityNotFoundError,
-    InvalidConfigurationError,
+    InvalidProjectError,
+    ProjectNotFoundError,
+    ProjectService,
+    ProjectServiceError,
 )
 
 # pylint: disable=redefined-outer-name, unused-argument
 
 
 @pytest.fixture
-def config_service(tmp_path, monkeypatch):
-    """Create ConfigurationService with temporary directory."""
+def project_service(tmp_path, monkeypatch):
+    """Create ProjectService with temporary directory."""
 
     # Override settings to use temp directory
-    monkeypatch.setattr(settings, "CONFIGURATIONS_DIR", tmp_path)
-    return ConfigurationService()
+    monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+    return ProjectService()
 
 
 @pytest.fixture
 def sample_config_file(tmp_path):
     """Create a sample configuration file."""
-    config_path = tmp_path / "test_config.yml"
+    config_path = tmp_path / "test_project.yml"
     content = """
 entities:
   sample:
@@ -49,44 +49,44 @@ options:
     return config_path
 
 
-class TestConfigurationServiceList:
+class TestProjectServiceList:
     """Tests for listing configurations."""
 
-    def test_list_configurations_empty(self, config_service, tmp_path):
+    def test_list_configurations_empty(self, project_service, tmp_path):
         """Test listing when no configurations exist."""
-        configs = config_service.list_configurations()
+        configs = project_service.list_projects()
         assert configs == []
 
-    def test_list_configurations(self, config_service, sample_config_file):
+    def test_list_configurations(self, project_service, sample_config_file):
         """Test listing configurations."""
-        configs = config_service.list_configurations()
+        configs = project_service.list_projects()
         assert len(configs) == 1
-        assert configs[0].name == "test_config"
+        assert configs[0].name == "test_project"
         assert configs[0].entity_count == 2
         assert configs[0].is_valid is True
 
 
-class TestConfigurationServiceLoad:
+class TestProjectServiceLoad:
     """Tests for loading configurations."""
 
-    def test_load_configuration(self, config_service, sample_config_file):
+    def test_load_configuration(self, project_service, sample_config_file):
         """Test loading valid configuration."""
-        config = config_service.load_configuration("test_config")
+        config = project_service.load_project("test_project")
 
-        assert config.metadata.name == "test_config"
+        assert config.metadata.name == "test_project"
         assert len(config.entities) == 2
         assert "sample" in config.entities
         assert "site" in config.entities
         assert config.options["verbose"] is True
 
-    def test_load_nonexistent_configuration(self, config_service):
+    def test_load_nonexistent_configuration(self, project_service):
         """Test loading non-existent configuration raises error."""
-        with pytest.raises(ConfigurationNotFoundError):
-            config_service.load_configuration("nonexistent")
+        with pytest.raises(ProjectNotFoundError):
+            project_service.load_project("nonexistent")
 
-    def test_load_configuration_metadata(self, config_service, sample_config_file):
+    def test_load_configuration_metadata(self, project_service, sample_config_file):
         """Test that metadata is populated correctly."""
-        config = config_service.load_configuration("test_config")
+        config = project_service.load_project("test_project")
 
         assert config.metadata.entity_count == 2
         assert config.metadata.created_at > 0
@@ -94,157 +94,157 @@ class TestConfigurationServiceLoad:
         assert config.metadata.is_valid is True
 
 
-class TestConfigurationServiceSave:
+class TestProjectServiceSave:
     """Tests for saving configurations."""
 
-    def test_save_configuration(self, config_service, sample_config_file):
+    def test_save_configuration(self, project_service, sample_config_file):
         """Test saving configuration."""
-        config = config_service.load_configuration("test_config")
+        config = project_service.load_project("test_project")
         config.entities["new_entity"] = {"type": "data", "keys": ["id"]}
 
-        updated = config_service.save_configuration(config)
+        updated = project_service.save_project(config)
 
         assert updated.metadata.entity_count == 3
 
         # Reload and verify
-        reloaded = config_service.load_configuration("test_config")
+        reloaded = project_service.load_project("test_project")
         assert "new_entity" in reloaded.entities
 
-    def test_save_without_metadata_raises_error(self, config_service):
+    def test_save_without_metadata_raises_error(self, project_service):
         """Test saving configuration without metadata raises error."""
 
-        config = Configuration(entities={}, options={})
+        config = Project(entities={}, options={})
 
-        with pytest.raises(InvalidConfigurationError, match="must have metadata"):
-            config_service.save_configuration(config)
+        with pytest.raises(InvalidProjectError, match="must have metadata"):
+            project_service.save_project(config)
 
 
-class TestConfigurationServiceCreate:
+class TestProjectServiceCreate:
     """Tests for creating configurations."""
 
-    def test_create_configuration(self, config_service, tmp_path):
+    def test_create_configuration(self, project_service, tmp_path):
         """Test creating new configuration."""
-        config = config_service.create_configuration("new_config")
+        config = project_service.create_project("new_config")
 
         assert config.metadata.name == "new_config"
         assert len(config.entities) == 0
         assert (tmp_path / "new_config.yml").exists()
 
-    def test_create_configuration_with_entities(self, config_service):
+    def test_create_configuration_with_entities(self, project_service):
         """Test creating configuration with initial entities."""
         entities = {"sample": {"type": "data", "keys": ["id"]}}
-        config = config_service.create_configuration("new_config", entities)
+        config = project_service.create_project("new_config", entities)
 
         assert len(config.entities) == 1
         assert "sample" in config.entities
 
-    def test_create_duplicate_configuration_raises_error(self, config_service, sample_config_file):
+    def test_create_duplicate_configuration_raises_error(self, project_service, sample_config_file):
         """Test creating duplicate configuration raises error."""
-        with pytest.raises(ConfigurationServiceError, match="already exists"):
-            config_service.create_configuration("test_config")
+        with pytest.raises(ProjectServiceError, match="already exists"):
+            project_service.create_project("test_project")
 
 
-class TestConfigurationServiceDelete:
+class TestProjectServiceDelete:
     """Tests for deleting configurations."""
 
-    def test_delete_configuration(self, config_service, sample_config_file, tmp_path):
+    def test_delete_configuration(self, project_service, sample_config_file, tmp_path):
         """Test deleting configuration."""
-        config_service.delete_configuration("test_config")
-        assert not (tmp_path / "test_config.yml").exists()
+        project_service.delete_project("test_project")
+        assert not (tmp_path / "test_project.yml").exists()
 
-    def test_delete_nonexistent_raises_error(self, config_service):
+    def test_delete_nonexistent_raises_error(self, project_service):
         """Test deleting non-existent configuration raises error."""
-        with pytest.raises(ConfigurationNotFoundError):
-            config_service.delete_configuration("nonexistent")
+        with pytest.raises(ProjectNotFoundError):
+            project_service.delete_project("nonexistent")
 
 
-class TestConfigurationServiceEntity:
+class TestProjectServiceEntity:
     """Tests for entity operations."""
 
-    def test_add_entity(self, config_service, sample_config_file):
+    def test_add_entity(self, project_service, sample_config_file):
         """Test adding entity to configuration."""
-        config = config_service.load_configuration("test_config")
+        config = project_service.load_project("test_project")
 
         entity = Entity(name="new_entity", surrogate_id="new_entity_id", keys=["id"])
-        updated = config_service.add_entity(config, "new_entity", entity)
+        updated = project_service.add_entity(config, "new_entity", entity)
 
         assert "new_entity" in updated.entities
         assert updated.entities["new_entity"]["surrogate_id"] == "new_entity_id"
 
-    def test_add_duplicate_entity_raises_error(self, config_service, sample_config_file):
+    def test_add_duplicate_entity_raises_error(self, project_service, sample_config_file):
         """Test adding duplicate entity raises error."""
-        config = config_service.load_configuration("test_config")
+        config = project_service.load_project("test_project")
         entity = Entity(name="sample", surrogate_id="sample_id", keys=["id"])
 
         with pytest.raises(EntityAlreadyExistsError):
-            config_service.add_entity(config, "sample", entity)
+            project_service.add_entity(config, "sample", entity)
 
-    def test_update_entity(self, config_service, sample_config_file):
+    def test_update_entity(self, project_service, sample_config_file):
         """Test updating entity."""
-        config = config_service.load_configuration("test_config")
+        config = project_service.load_project("test_project")
 
         entity = Entity(name="sample", surrogate_id="sample_id", keys=["id"], columns=["new_column"])
-        updated = config_service.update_entity(config, "sample", entity)
+        updated = project_service.update_entity(config, "sample", entity)
 
         assert updated.entities["sample"]["columns"] == ["new_column"]
 
-    def test_update_nonexistent_entity_raises_error(self, config_service, sample_config_file):
+    def test_update_nonexistent_entity_raises_error(self, project_service, sample_config_file):
         """Test updating non-existent entity raises error."""
-        config = config_service.load_configuration("test_config")
+        config = project_service.load_project("test_project")
         entity = Entity(name="nonexistent", surrogate_id="nonexistent_id", keys=["id"])
 
         with pytest.raises(EntityNotFoundError):
-            config_service.update_entity(config, "nonexistent", entity)
+            project_service.update_entity(config, "nonexistent", entity)
 
-    def test_delete_entity(self, config_service, sample_config_file):
+    def test_delete_entity(self, project_service, sample_config_file):
         """Test deleting entity."""
-        config = config_service.load_configuration("test_config")
-        updated = config_service.delete_entity(config, "sample")
+        config = project_service.load_project("test_project")
+        updated = project_service.delete_entity(config, "sample")
 
         assert "sample" not in updated.entities
         assert len(updated.entities) == 1
 
-    def test_delete_nonexistent_entity_raises_error(self, config_service, sample_config_file):
+    def test_delete_nonexistent_entity_raises_error(self, project_service, sample_config_file):
         """Test deleting non-existent entity raises error."""
-        config = config_service.load_configuration("test_config")
+        config = project_service.load_project("test_project")
 
         with pytest.raises(EntityNotFoundError):
-            config_service.delete_entity(config, "nonexistent")
+            project_service.delete_entity(config, "nonexistent")
 
-    def test_get_entity(self, config_service, sample_config_file):
+    def test_get_entity(self, project_service, sample_config_file):
         """Test getting entity."""
-        config = config_service.load_configuration("test_config")
-        entity = config_service.get_entity(config, "sample")
+        config = project_service.load_project("test_project")
+        entity = project_service.get_entity(config, "sample")
 
         assert entity["type"] == "data"
         assert entity["keys"] == ["sample_id"]
 
-    def test_get_nonexistent_entity_raises_error(self, config_service, sample_config_file):
+    def test_get_nonexistent_entity_raises_error(self, project_service, sample_config_file):
         """Test getting non-existent entity raises error."""
-        config = config_service.load_configuration("test_config")
+        config = project_service.load_project("test_project")
 
         with pytest.raises(EntityNotFoundError):
-            config_service.get_entity(config, "nonexistent")
+            project_service.get_entity(config, "nonexistent")
 
 
-class TestConfigurationServiceRoundtrip:
+class TestProjectServiceRoundtrip:
     """Tests for load-modify-save roundtrip."""
 
-    def test_roundtrip(self, config_service, sample_config_file):
+    def test_roundtrip(self, project_service, sample_config_file):
         """Test load-modify-save-reload cycle."""
         # Load
-        config = config_service.load_configuration("test_config")
+        config = project_service.load_project("test_project")
         original_entity_count = len(config.entities)
 
         # Modify
         entity = Entity(name="new_entity", surrogate_id="new_entity_id", keys=["id"])
-        config = config_service.add_entity(config, "new_entity", entity)
+        config = project_service.add_entity(config, "new_entity", entity)
 
         # Save
-        config_service.save_configuration(config)
+        project_service.save_project(config)
 
         # Reload
-        reloaded = config_service.load_configuration("test_config")
+        reloaded = project_service.load_project("test_project")
 
         assert len(reloaded.entities) == original_entity_count + 1
         assert "new_entity" in reloaded.entities

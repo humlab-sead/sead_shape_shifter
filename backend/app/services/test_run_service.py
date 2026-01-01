@@ -1,4 +1,4 @@
-"""Service for running configuration tests with sample data."""
+"""Service for running project tests with sample data."""
 
 import time
 import uuid
@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from loguru import logger
 
-from backend.app.models.config import Configuration
+from backend.app.models.project import Project
 from backend.app.models.test_run import (
     EntityTestResult,
     OutputFormat,
@@ -17,35 +17,35 @@ from backend.app.models.test_run import (
     TestRunStatus,
     ValidationIssue,
 )
-from backend.app.services.config_service import ConfigurationService
+from backend.app.services.project_service import ProjectService
 
 
 class TestRunService:
-    """Service for running configuration tests."""
+    """Service for running project tests."""
 
-    def __init__(self, config_service: ConfigurationService):
-        self.config_service: ConfigurationService = config_service
+    def __init__(self, project_service: ProjectService):
+        self.project_service: ProjectService = project_service
         self._active_runs: dict[str, TestRunResult] = {}
         self._cancel_flags: dict[str, bool] = {}
 
-    def init_test_run(self, config_name: str, options: TestRunOptions) -> TestRunResult:
+    def init_test_run(self, project_name: str, options: TestRunOptions) -> TestRunResult:
         """
         Initialize a test run (returns immediately with PENDING status).
 
         Args:
-            config_name: Name of the configuration to test
+            project_name: Name of the project to test
             options: Test run options
 
         Returns:
             TestRunResult with PENDING status
         """
         run_id: str = str(uuid.uuid4())
-        started_at: datetime = datetime.utcnow()
+        started_at: datetime = datetime.now()
 
         # Initialize result with PENDING status
         result: TestRunResult = TestRunResult(
             run_id=run_id,
-            config_name=config_name,
+            project_name=project_name,
             status=TestRunStatus.PENDING,
             started_at=started_at,
             total_time_ms=0,
@@ -80,13 +80,13 @@ class TestRunService:
             self._active_runs[run_id] = result
             logger.info("[BACKGROUND] Status updated, stored back to active_runs")
 
-            # Load configuration
-            config: Configuration = self.config_service.load_configuration(result.config_name)
-            if not config:
-                raise ValueError(f"Configuration '{result.config_name}' not found")
+            # Load project
+            project: Project = self.project_service.load_project(result.project_name)
+            if not project:
+                raise ValueError(f"Project '{result.project_name}' not found")
 
-            # Get entities from configuration
-            entities_data: dict[str, dict[str, Any]] = config.entities
+            # Get entities from project
+            entities_data: dict[str, dict[str, Any]] = project.entities
 
             # Determine entities to process
             if result.options.entities:
@@ -146,7 +146,7 @@ class TestRunService:
 
         finally:
             # Calculate total time
-            completed_at = datetime.utcnow()
+            completed_at = datetime.now()
             result.completed_at = completed_at
             result.total_time_ms = int((completed_at - started_at).total_seconds() * 1000)
 
@@ -176,7 +176,7 @@ class TestRunService:
 
         Args:
             entity_name: Name of entity to process
-            entity_config: Entity configuration dict
+            entity_config: Entity project dict
             options: Test run options
 
         Returns:
@@ -198,7 +198,7 @@ class TestRunService:
             # Get entity type
             entity_type = entity_config.get("type", "data")
 
-            # For now, just analyze configuration
+            # For now, just analyze project
             # Full implementation would actually run the transformation pipeline
 
             if entity_type == "fixed":
@@ -237,7 +237,7 @@ class TestRunService:
                         entity_name=entity_name,
                         severity="error",
                         message="Foreign key missing remote entity name",
-                        suggestion="Add 'entity' field to foreign key configuration",
+                        suggestion="Add 'entity' field to foreign key project",
                         location=None,
                     )
                     result.validation_issues.append(issue)  # pylint: disable=no-member
@@ -271,7 +271,7 @@ class TestRunService:
         progress_percentage: float = (entities_completed / entities_total * 100) if entities_total > 0 else 0
 
         elapsed_time_ms: int = (
-            int((datetime.utcnow() - result.started_at).total_seconds() * 1000)
+            int((datetime.now() - result.started_at).total_seconds() * 1000)
             if result.status == TestRunStatus.RUNNING
             else result.total_time_ms
         )

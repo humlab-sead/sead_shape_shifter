@@ -272,8 +272,8 @@ This release marks the completion of Phase 2 of the Shape Shifter Configuration 
 3. Fixed dict/object config handling in `_remove_column`
 4. Fixed dict/object config handling in `_add_column`
 5. Fixed dict/object config handling in `_update_reference`
-6. Changed `yaml_service.config_dir` → `settings.CONFIGURATIONS_DIR`
-7. Fixed `mock_config_service.save_configuration` from `AsyncMock` to `Mock`
+6. Changed `yaml_service.config_dir` → `settings.PROJECTS_DIR`
+7. Fixed `mock_config_service.save_project` from `AsyncMock` to `Mock`
 8. Updated test assertions to match implementation
 9. Fixed `FixAction` parameters for column operations
 10. Updated multiple_actions test error message format
@@ -331,7 +331,7 @@ No critical issues reported. See GitHub Issues for minor enhancements.
 | Validation (first) | < 500ms | ~200ms ✅ |
 | Validation (cached) | < 50ms | ~5ms ✅ |
 | Page Load | < 2s | ~1.2s ✅ |
-| Config Save | < 200ms | ~100ms ✅ |
+| Project Save | < 200ms | ~100ms ✅ |
 | Auto-Fix Apply | < 500ms | ~150ms ✅ |
 
 ### User Experience Metrics

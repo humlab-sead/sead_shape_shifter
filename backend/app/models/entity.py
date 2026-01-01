@@ -1,4 +1,4 @@
-"""Pydantic models for entity configuration."""
+"""Pydantic models for an entity."""
 
 from typing import Any, Literal
 

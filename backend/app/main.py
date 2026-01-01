@@ -20,8 +20,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
     logger.info(f"Environment: {settings.ENVIRONMENT}")
 
     # Initialize application state (NO default config loading)
-    logger.info(f"Configuration directory: {settings.CONFIGURATIONS_DIR}")
-    app_state: ApplicationState = init_app_state(settings.CONFIGURATIONS_DIR)
+    logger.info(f"Configuration directory: {settings.PROJECTS_DIR}")
+    app_state: ApplicationState = init_app_state(settings.PROJECTS_DIR)
     await app_state.start()
 
     logger.info("Application ready - configurations loaded on-demand via sessions")

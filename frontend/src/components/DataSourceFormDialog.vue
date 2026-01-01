@@ -1,5 +1,10 @@
 <template>
-  <v-dialog :model-value="modelValue" max-width="700" persistent @update:model-value="$emit('update:modelValue', $event)">
+  <v-dialog
+    :model-value="modelValue"
+    max-width="700"
+    persistent
+    @update:model-value="$emit('update:modelValue', $event)"
+  >
     <v-card>
       <v-card-title class="text-h5">
         {{ isEditing ? 'Edit Data Source' : 'New Data Source' }}
@@ -118,13 +123,7 @@
       <v-card-actions>
         <v-spacer />
         <v-btn variant="text" @click="handleCancel">Cancel</v-btn>
-        <v-btn
-          color="primary"
-          variant="flat"
-          :loading="saving"
-          :disabled="!formValid"
-          @click="handleSave"
-        >
+        <v-btn color="primary" variant="flat" :loading="saving" :disabled="!formValid" @click="handleSave">
           {{ isEditing ? 'Update' : 'Create' }}
         </v-btn>
       </v-card-actions>
@@ -150,13 +149,7 @@ const emit = defineEmits<{
 }>()
 
 const dataSourceStore = useDataSourceStore()
-const {
-  availableDrivers,
-  getSchema,
-  getDefaultFormValues,
-  loading: schemaLoading,
-  loadSchemas,
-} = useDriverSchema()
+const { availableDrivers, getSchema, getDefaultFormValues, loading: schemaLoading, loadSchemas } = useDriverSchema()
 
 // State
 const formRef = ref()
@@ -177,7 +170,7 @@ const errorMessage = ref<string | null>(null)
 
 // Computed
 const isEditing = computed(() => !!props.dataSource)
-const currentSchema = computed(() => form.value.driver ? getSchema(form.value.driver) : null)
+const currentSchema = computed(() => (form.value.driver ? getSchema(form.value.driver) : null))
 
 // Validation rules
 const rules = {
@@ -242,7 +235,7 @@ async function handleSave() {
 
     for (const field of schema.fields) {
       const value = form.value.options[field.name]
-      
+
       // Skip empty passwords when editing (keep existing)
       if (field.type === 'password' && isEditing.value && !value) {
         continue
@@ -255,7 +248,7 @@ async function handleSave() {
 
       // Assign to top-level or options
       if (topLevelFields.includes(field.name)) {
-        (config as any)[field.name] = value
+        ;(config as any)[field.name] = value
       } else {
         options[field.name] = value
       }
@@ -301,10 +294,10 @@ function loadDataSource(dataSource: DataSourceConfig) {
   form.value.name = dataSource.name
   form.value.driver = dataSource.driver
   form.value.description = dataSource.description || ''
-  
+
   // Load all fields into options
   const options: Record<string, any> = {}
-  
+
   // Load top-level fields
   if (dataSource.host) options.host = dataSource.host
   if (dataSource.port) options.port = dataSource.port
@@ -313,12 +306,12 @@ function loadDataSource(dataSource: DataSourceConfig) {
   if (dataSource.username) options.username = dataSource.username
   if (dataSource.filename) options.filename = dataSource.filename
   if (dataSource.file_path) options.filename = dataSource.file_path // Handle alias
-  
+
   // Load options object
   if (dataSource.options) {
     Object.assign(options, dataSource.options)
   }
-  
+
   form.value.options = options
 }
 

@@ -2,10 +2,6 @@
 
 from tkinter import E
 
-from backend.app.models.config import (
-    ConfigMetadata,
-    Configuration,
-)
 from backend.app.models.data_source import (
     ColumnMetadata,
     DataSourceConfig,
@@ -45,6 +41,10 @@ from backend.app.models.join_test import (
     JoinTestRequest,
     JoinTestResult,
     UnmatchedRow,
+)
+from backend.app.models.project import (
+    Project,
+    ProjectMetadata,
 )
 from backend.app.models.query import (
     QueryExecution,

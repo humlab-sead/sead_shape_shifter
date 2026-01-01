@@ -11,13 +11,14 @@
 - Run `make install` for full setup; use `uv pip install -e ".[api]"` for Core+API or `uv pip install -e .` for Core only.
 - Start local services with `make backend-run` (FastAPI on :8012) and `make frontend-run` (Vue on :5173).
 - Execute tests with `make test` for full coverage, `uv run pytest tests -v` for Core, or `uv run pytest backend/tests -v` (add `PYTHONPATH=.:backend` if imports fail).
-- Enforce formatting and linting with `make lint`; run `make tidy` (Black + isort) before committing.
+- Test frontend with `make frontend-test` or get coverage with `make frontend-coverage`.
+- Enforce formatting and linting with `make lint` (backend) and `make frontend-lint` (frontend); run `make tidy` (Black + isort) before committing.
 
 ## Critical Patterns & Constraints
 - Register extensible validators/loaders/filters through the registry pattern (`@Validators.register(...)`).
 - Await every async data loader in `src/loaders/`; check backend service signatures before mixing sync/async logic.
 - Decorate async tests with `@pytest.mark.asyncio` (Core) and use FastAPI `TestClient` for backend routes.
-- Import backend usages of Core with absolute paths only (e.g., `from src.model import ShapeShiftConfig`).
+- Import backend usages of Core with absolute paths only (e.g., `from src.model import ShapeShiftProject`).
 - **Environment variable resolution**: Happens ONLY in mapper layer (`backend/app/mappers/`). API entities stay raw (`${VAR}`), core entities are always resolved. Never call `resolve_config_env_vars()` in services.
 
 ## Code Conventions
@@ -28,11 +29,11 @@
 ## Common Implementation Tasks
 - **Backend endpoint**: add router (`backend/app/api/v1/endpoints/`), define Pydantic models (`backend/app/models/`), implement service (`backend/app/services/`), and register in `backend/app/api/v1/api.py`.
 - **Constraint validator**: create class in `src/constraints.py`, decorate with `@Validators.register(key=..., stage=...)`, and add tests in `tests/test_constraints.py`.
-- **Configuration validation**: subclass `ConfigSpecification` in `src/specifications.py`, implement `is_satisfied_by()`, and include it inside `CompositeConfigSpecification.__init__()`.
+- **Project validation**: subclass `ProjectSpecification` in `src/specifications.py`, implement `is_satisfied_by()`, and include it inside `CompositeProjectSpecification.__init__()`.
 
 ## Frontend Practices
 - Always use `<script setup lang="ts">`, composables over mixins, and `defineProps<T>()` / `defineEmits<T>()` for typing.
-- Derive store refs with `storeToRefs()` and manage state in Pinia stores under `frontend/src/stores/` (e.g., configuration, validation, entity, data-source stores).
+- Derive store refs with `storeToRefs()` and manage state in Pinia stores under `frontend/src/stores/` (e.g., project, validation, entity, data-source stores).
 - Implement API interactions through `frontend/src/api/` with Axios interceptors; call endpoints under `/api/v1` using `apiClient` and `VITE_API_BASE_URL` (default `http://localhost:8012`).
 - Follow the documented Pinia pattern (loading/error refs with guarded async calls) and enforce strict null checks, preferring `type` for unions and `interface` for objects.
 

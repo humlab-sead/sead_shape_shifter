@@ -79,7 +79,7 @@ backend/
 │   │   └── validation.py       # (Coming in Sprint 1.3)
 │   ├── services/
 │   │   ├── yaml_service.py     # (Coming in Sprint 2.1)
-│   │   ├── config_service.py   # (Coming in Sprint 2.2)
+│   │   ├── project_service.py   # (Coming in Sprint 2.2)
 │   │   ├── validation_service.py  # (Coming in Sprint 2.3)
 │   │   └── dependency_service.py  # (Coming in Sprint 3.3)
 │   └── integrations/
@@ -132,7 +132,7 @@ cp .env.example .env
 Key settings:
 - `ENVIRONMENT`: `development` | `production` | `test`
 - `ALLOWED_ORIGINS`: Frontend URLs for CORS
-- `CONFIGURATIONS_DIR`: Where YAML files are stored (default: `../input`)
+- `PROJECTS_DIR`: Where YAML files are stored (default: `../input`)
 - `BACKUPS_DIR`: Where backups are stored (default: `../backups`)
 
 ## Testing
@@ -153,7 +153,7 @@ uv run pytest tests/api/v1/test_health.py -v
 The backend directly imports and uses existing Shape Shifter components:
 
 ```python
-from src.model import ShapeShiftConfig, EntityConfig
+from src.model import ShapeShiftProject, EntityConfig
 from src.specifications import CompositeConfigSpecification
 from src.normalizer import ShapeShifter
 ```

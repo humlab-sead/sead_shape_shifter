@@ -520,13 +520,13 @@ class Metadata:
         return self.data.get("default_entity")  # e.g. "survey"
 
 
-class ShapeShiftConfig:
-    """Configuration for database tables. Read-Only. Wraps overall configuration."""
+class ShapeShiftProject:
+    """Project configuration for database tables. Read-Only. Wraps overall project configuration."""
 
     def __init__(self, *, cfg: dict[str, dict[str, Any]], filename: str | None = None) -> None:
 
         if "entities" not in cfg or not isinstance(cfg["entities"], dict):
-            raise ValueError("Invalid configuration: 'entities' section is missing or not a dictionary.")
+            raise ValueError("Invalid project configuration: 'entities' section is missing or not a dictionary.")
 
         self.cfg: dict[str, dict[str, Any]] = cfg
         self.filename: str = filename or "in-memory-config.yml"
@@ -584,13 +584,13 @@ class ShapeShiftConfig:
 
         return None
 
-    def clone(self) -> "ShapeShiftConfig":
-        """Create a deep copy of the ShapeShiftConfig."""
-        return ShapeShiftConfig(cfg=copy.deepcopy(self.cfg), filename=self.filename)
+    def clone(self) -> "ShapeShiftProject":
+        """Create a deep copy of the ShapeShiftProject."""
+        return ShapeShiftProject(cfg=copy.deepcopy(self.cfg), filename=self.filename)
 
-    def resolve(self, **context) -> "ShapeShiftConfig":
-        """Resolve and return a new ShapeShiftConfig instance."""
-        return ShapeShiftConfig(
+    def resolve(self, **context) -> "ShapeShiftProject":
+        """Resolve and return a new ShapeShiftProject instance."""
+        return ShapeShiftProject(
             cfg=Config.resolve_references(
                 self.cfg,
                 env_filename=dotget(context, "env_filename, env_file"),
@@ -631,8 +631,8 @@ class ShapeShiftConfig:
         return table
 
     @staticmethod
-    def from_file(filename: str, env_file: str = ".env", env_prefix: str = "SEAD_NORMALIZER") -> "ShapeShiftConfig":
-        """Load ShapeShiftConfig from a YAML configuration file."""
+    def from_file(filename: str, env_file: str = ".env", env_prefix: str = "SEAD_NORMALIZER") -> "ShapeShiftProject":
+        """Load ShapeShiftProject from a YAML project file."""
 
         cfg: ConfigLike = ConfigFactory().load(
             source=filename,
@@ -641,39 +641,39 @@ class ShapeShiftConfig:
             env_prefix=env_prefix,
         )
 
-        return ShapeShiftConfig(cfg=cfg.data, filename=filename)
+        return ShapeShiftProject(cfg=cfg.data, filename=filename)
 
     @staticmethod
-    def from_source(source: "ShapeShiftConfig | str | None") -> "ShapeShiftConfig":
-        """Resolve and return the ShapeShiftConfig for the given config name."""
+    def from_source(source: "ShapeShiftProject | str | None") -> "ShapeShiftProject":
+        """Resolve and return the ShapeShiftProject for the given project name."""
 
-        if isinstance(source, ShapeShiftConfig):
+        if isinstance(source, ShapeShiftProject):
             return source
 
         if isinstance(source, str):
             if is_config_path(source, raise_if_missing=False):
-                return ShapeShiftConfig.from_file(source)
+                return ShapeShiftProject.from_file(source)
 
-        raise ValueError("ShapeShiftConfig source must be a ShapeShiftConfig instance or a valid config file path")
-        # return ShapeShiftConfig.from_context(source)
+        raise ValueError("ShapeShiftProject source must be a ShapeShiftProject instance or a valid project file path")
+        # return ShapeShiftProject.from_context(source)
 
     # @staticmethod
-    # def from_context(source: str | None) -> "ShapeShiftConfig":
-    #     """Resolve and return the ShapeShiftConfig for the given context name."""
+    # def from_context(source: str | None) -> "ShapeShiftProject":
+    #     """Resolve and return the ShapeShiftProject for the given context name."""
 
     #     context: str = source or "default"
 
-    #     logger.warning(f"[deprecation warning] Resolving ShapeShiftConfig from global context '{context}'")
+    #     logger.warning(f"[deprecation warning] Resolving ShapeShiftProject from global context '{context}'")
 
     #     provider: ConfigProvider = get_config_provider()
 
     #     if not provider.is_configured(context):
-    #         raise ValueError(f"Failed to resolve ShapeShiftConfig for context '{context}'")
+    #         raise ValueError(f"Failed to resolve ShapeShiftProject for context '{context}'")
 
     #     if context == "default":
     #         logger.warning("Using configuration from default context")
 
-    #     config = ShapeShiftConfig(cfg=provider.get_config(context).data)
+    #     config = ShapeShiftProject(cfg=provider.get_config(context).data)
 
     #     return config
 

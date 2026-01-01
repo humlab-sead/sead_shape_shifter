@@ -214,7 +214,7 @@ src/components/
 │   ├── LoadingSkeleton.vue
 │   └── ErrorAlert.vue
 ├── configurations/      # Configuration-specific
-│   ├── CreateConfigurationDialog.vue
+│   ├── CreateProjectDialog.vue
 │   └── DeleteConfirmationDialog.vue
 ├── entities/           # Entity management
 │   ├── EntityListCard.vue
@@ -353,12 +353,12 @@ export function useFeature(options: UseFeatureOptions = {}) {
 
 ### Existing Composables
 
-#### useConfigurations
+#### useProjects
 
 ```typescript
 const {
-  configurations,
-  currentConfiguration,
+  projects,
+  currentProject,
   loading,
   error,
   hasUnsavedChanges,
@@ -369,7 +369,7 @@ const {
   validate,
   getBackups,
   restoreBackup,
-} = useConfigurations({ autoFetch: true })
+} = useProjects({ autoFetch: true })
 ```
 
 #### useEntities

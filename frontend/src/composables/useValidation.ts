@@ -7,15 +7,15 @@ import { computed, watch, ref } from 'vue'
 import { useValidationStore } from '@/stores'
 
 export interface UseValidationOptions {
-  configName?: string
+  projectName?: string
   autoValidate?: boolean
   validateOnChange?: boolean
 }
 
 export function useValidation(options: UseValidationOptions = {}) {
-  const { configName, autoValidate = false, validateOnChange = false } = options
+  const { projectName, autoValidate = false, validateOnChange = false } = options
   const store = useValidationStore()
-  const lastValidatedConfig = ref<string | null>(null)
+  const lastValidatedProject = ref<string | null>(null)
 
   // Computed state from store
   const validationResult = computed(() => store.validationResult)
@@ -38,11 +38,11 @@ export function useValidation(options: UseValidationOptions = {}) {
   // Actions
   async function validate(name: string) {
     try {
-      const result = await store.validateConfiguration(name)
-      lastValidatedConfig.value = name
+      const result = await store.validateProject(name)
+      lastValidatedProject.value = name
       return result
     } catch (err) {
-      console.error(`Failed to validate configuration "${name}":`, err)
+      console.error(`Failed to validate project "${name}":`, err)
       throw err
     }
   }
@@ -70,7 +70,7 @@ export function useValidation(options: UseValidationOptions = {}) {
 
   function clearValidation() {
     store.clearValidation()
-    lastValidatedConfig.value = null
+    lastValidatedProject.value = null
   }
 
   function clearError() {
@@ -88,17 +88,17 @@ export function useValidation(options: UseValidationOptions = {}) {
 
   // Helper: Check if validation is stale
   const isStale = computed(() => {
-    return configName ? lastValidatedConfig.value !== configName : false
+    return projectName ? lastValidatedProject.value !== projectName : false
   })
 
   // Auto-validate if enabled
-  if (autoValidate && configName) {
-    validate(configName)
+  if (autoValidate && projectName) {
+    validate(projectName)
   }
 
-  // Watch for config changes and re-validate if enabled
+  // Watch for project changes and re-validate if enabled
   watch(
-    () => configName,
+    () => projectName,
     async (newName, oldName) => {
       if (validateOnChange && newName && newName !== oldName) {
         await validate(newName)
@@ -112,7 +112,7 @@ export function useValidation(options: UseValidationOptions = {}) {
     entityValidationResults,
     loading,
     error,
-    lastValidatedConfig,
+    lastValidatedProject,
     // Computed
     hasErrors,
     hasWarnings,

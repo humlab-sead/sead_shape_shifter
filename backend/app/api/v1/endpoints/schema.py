@@ -254,7 +254,7 @@ async def import_entity_from_table(
     service: SchemaIntrospectionService = Depends(get_schema_service),
 ):
     """
-    Generate entity configuration from a database table.
+    Generate an entity configuration from a database table.
 
     **Path Parameters**:
     - `name`: Data source identifier

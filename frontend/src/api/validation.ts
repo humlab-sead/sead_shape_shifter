@@ -12,35 +12,30 @@ export const validationApi = {
   /**
    * Validate specific entity
    */
-  validateEntity: async (
-    configName: string,
-    entityName: string
-  ): Promise<ValidationResult> => {
+  validateEntity: async (projectName: string, entityName: string): Promise<ValidationResult> => {
     return apiRequest<ValidationResult>({
       method: 'POST',
-      url: `/configurations/${configName}/entities/${entityName}/validate`,
+      url: `/projects/${projectName}/entities/${entityName}/validate`,
     })
   },
 
   /**
-   * Get dependency graph for configuration
+   * Get dependency graph for project
    */
-  getDependencies: async (configName: string): Promise<DependencyGraph> => {
+  getDependencies: async (projectName: string): Promise<DependencyGraph> => {
     return apiRequest<DependencyGraph>({
       method: 'GET',
-      url: `/configurations/${configName}/dependencies`,
+      url: `/projects/${projectName}/dependencies`,
     })
   },
 
   /**
    * Check for circular dependencies
    */
-  checkCircularDependencies: async (
-    configName: string
-  ): Promise<CircularDependencyCheck> => {
+  checkCircularDependencies: async (projectName: string): Promise<CircularDependencyCheck> => {
     return apiRequest<CircularDependencyCheck>({
       method: 'POST',
-      url: `/configurations/${configName}/dependencies/check`,
+      url: `/projects/${projectName}/dependencies/check`,
     })
   },
 }

@@ -1,5 +1,5 @@
 /**
- * Driver schema types for data source configuration
+ * Driver schema types for data source
  */
 
 export type FieldType = 'string' | 'integer' | 'boolean' | 'password' | 'file_path'

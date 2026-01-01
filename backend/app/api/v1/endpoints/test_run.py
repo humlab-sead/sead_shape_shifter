@@ -10,7 +10,7 @@ from backend.app.models.test_run import (
     TestRunRequest,
     TestRunResult,
 )
-from backend.app.services.config_service import ConfigurationService
+from backend.app.services.project_service import ProjectService
 from backend.app.services.test_run_service import TestRunService
 
 router = APIRouter()
@@ -19,18 +19,18 @@ router = APIRouter()
 _test_run_service_instance: Optional[TestRunService] = None  # pylint: disable=invalid-name
 
 
-def get_config_service() -> ConfigurationService:
+def get_project_service() -> ProjectService:
     """Dependency to get config service instance."""
-    return ConfigurationService()
+    return ProjectService()
 
 
 def get_test_run_service(
-    config_service: ConfigurationService = Depends(get_config_service),
+    project_service: ProjectService = Depends(get_project_service),
 ) -> TestRunService:
     """Dependency to get test run service instance (singleton)."""
     global _test_run_service_instance  # pylint: disable=global-statement
     if _test_run_service_instance is None:
-        _test_run_service_instance = TestRunService(config_service)
+        _test_run_service_instance = TestRunService(project_service)
     return _test_run_service_instance
 
 
@@ -64,7 +64,7 @@ async def start_test_run(
     """
     try:
         # Initialize test run and return immediately
-        result = test_run_service.init_test_run(config_name=request.config_name, options=request.options)
+        result = test_run_service.init_test_run(project_name=request.project_name, options=request.options)
 
         # Schedule actual execution in background
         background_tasks.add_task(test_run_service.execute_test_run, result.run_id)

@@ -3,7 +3,7 @@
     <v-card-title class="d-flex align-center justify-space-between">
       <span>Validation Results</span>
       <div class="d-flex gap-2">
-        <v-tooltip text="Check configuration structure and references" location="bottom">
+        <v-tooltip text="Check project structure and references" location="bottom">
           <template v-slot:activator="{ props }">
             <v-btn
               v-bind="props"
@@ -34,7 +34,7 @@
     </v-card-title>
 
     <v-card-text>
-      <!-- Data Validation Configuration -->
+      <!-- Data Validation Project -->
       <data-validation-config
         v-if="showDataConfig"
         :available-entities="availableEntities"
@@ -47,24 +47,12 @@
       <div v-if="!validationResult" class="text-center py-8">
         <v-icon icon="mdi-help-circle-outline" size="64" color="grey" />
         <p class="text-h6 mt-4 mb-2">Not Validated</p>
-        <p class="text-grey mb-4">
-          Run validation to check for configuration errors and warnings
-        </p>
+        <p class="text-grey mb-4">Run validation to check for project errors and warnings</p>
         <div class="d-flex gap-2 justify-center">
-          <v-btn
-            color="primary"
-            prepend-icon="mdi-check-circle-outline"
-            :loading="loading"
-            @click="emit('validate')"
-          >
+          <v-btn color="primary" prepend-icon="mdi-check-circle-outline" :loading="loading" @click="emit('validate')">
             Structural Validation
           </v-btn>
-          <v-btn
-            color="info"
-            variant="outlined"
-            prepend-icon="mdi-cog"
-            @click="showDataConfig = !showDataConfig"
-          >
+          <v-btn color="info" variant="outlined" prepend-icon="mdi-cog" @click="showDataConfig = !showDataConfig">
             Configure Data Validation
           </v-btn>
         </div>
@@ -78,7 +66,7 @@
         />
         <div class="text-center">
           <v-progress-circular indeterminate color="primary" size="32" />
-          <p class="mt-2 text-grey">Validating configuration...</p>
+          <p class="mt-2 text-grey">Validating project...</p>
         </div>
       </div>
 
@@ -102,8 +90,8 @@
               <div>
                 <p class="text-h6 mb-1">{{ summaryTitle }}</p>
                 <p class="text-body-2">
-                  {{ errorCount }} {{ errorCount === 1 ? 'error' : 'errors' }},
-                  {{ warningCount }} {{ warningCount === 1 ? 'warning' : 'warnings' }}
+                  {{ errorCount }} {{ errorCount === 1 ? 'error' : 'errors' }}, {{ warningCount }}
+                  {{ warningCount === 1 ? 'warning' : 'warnings' }}
                 </p>
               </div>
             </div>
@@ -114,41 +102,19 @@
         <v-tabs v-model="activeTab" bg-color="transparent" class="mb-4">
           <v-tab value="all">
             All Issues
-            <v-badge
-              v-if="errorCount + warningCount > 0"
-              :content="errorCount + warningCount"
-              inline
-              class="ml-2"
-            />
+            <v-badge v-if="errorCount + warningCount > 0" :content="errorCount + warningCount" inline class="ml-2" />
           </v-tab>
           <v-tab value="errors">
             Errors
-            <v-badge
-              v-if="errorCount > 0"
-              :content="errorCount"
-              color="error"
-              inline
-              class="ml-2"
-            />
+            <v-badge v-if="errorCount > 0" :content="errorCount" color="error" inline class="ml-2" />
           </v-tab>
           <v-tab value="warnings">
             Warnings
-            <v-badge
-              v-if="warningCount > 0"
-              :content="warningCount"
-              color="warning"
-              inline
-              class="ml-2"
-            />
+            <v-badge v-if="warningCount > 0" :content="warningCount" color="warning" inline class="ml-2" />
           </v-tab>
           <v-tab value="by-category">
             By Category
-            <v-badge
-              v-if="errorCount + warningCount > 0"
-              :content="errorCount + warningCount"
-              inline
-              class="ml-2"
-            />
+            <v-badge v-if="errorCount + warningCount > 0" :content="errorCount + warningCount" inline class="ml-2" />
           </v-tab>
         </v-tabs>
 
@@ -158,34 +124,25 @@
           <v-window-item value="all">
             <validation-message-list
               :messages="allMessages"
-              :empty-message="'No validation issues found. Configuration looks good!'"
+              :empty-message="'No validation issues found. Project looks good!'"
             />
           </v-window-item>
 
           <!-- Errors Only -->
           <v-window-item value="errors">
-            <validation-message-list
-              :messages="errors"
-              :empty-message="'No errors found'"
-            />
+            <validation-message-list :messages="errors" :empty-message="'No errors found'" />
           </v-window-item>
 
           <!-- Warnings Only -->
           <v-window-item value="warnings">
-            <validation-message-list
-              :messages="warnings"
-              :empty-message="'No warnings found'"
-            />
+            <validation-message-list :messages="warnings" :empty-message="'No warnings found'" />
           </v-window-item>
 
           <!-- By Category -->
           <v-window-item value="by-category">
             <v-expansion-panels variant="accordion">
               <!-- Structural Issues -->
-              <v-expansion-panel
-                v-if="structuralIssues.length > 0"
-                value="structural"
-              >
+              <v-expansion-panel v-if="structuralIssues.length > 0" value="structural">
                 <v-expansion-panel-title>
                   <div class="d-flex align-center">
                     <v-icon icon="mdi-file-tree-outline" class="mr-2" />
@@ -193,12 +150,7 @@
                     <v-chip size="small" class="ml-2">
                       {{ structuralIssues.length }}
                     </v-chip>
-                    <v-chip
-                      v-if="structuralErrors.length > 0"
-                      size="small"
-                      color="error"
-                      class="ml-2"
-                    >
+                    <v-chip v-if="structuralErrors.length > 0" size="small" color="error" class="ml-2">
                       {{ structuralErrors.length }} errors
                     </v-chip>
                   </div>
@@ -209,10 +161,7 @@
               </v-expansion-panel>
 
               <!-- Data Issues -->
-              <v-expansion-panel
-                v-if="dataIssues.length > 0"
-                value="data"
-              >
+              <v-expansion-panel v-if="dataIssues.length > 0" value="data">
                 <v-expansion-panel-title>
                   <div class="d-flex align-center">
                     <v-icon icon="mdi-database-alert" class="mr-2" />
@@ -220,12 +169,7 @@
                     <v-chip size="small" class="ml-2">
                       {{ dataIssues.length }}
                     </v-chip>
-                    <v-chip
-                      v-if="dataErrors.length > 0"
-                      size="small"
-                      color="error"
-                      class="ml-2"
-                    >
+                    <v-chip v-if="dataErrors.length > 0" size="small" color="error" class="ml-2">
                       {{ dataErrors.length }} errors
                     </v-chip>
                   </div>
@@ -236,10 +180,7 @@
               </v-expansion-panel>
 
               <!-- Performance Issues -->
-              <v-expansion-panel
-                v-if="performanceIssues.length > 0"
-                value="performance"
-              >
+              <v-expansion-panel v-if="performanceIssues.length > 0" value="performance">
                 <v-expansion-panel-title>
                   <div class="d-flex align-center">
                     <v-icon icon="mdi-speedometer" class="mr-2" />
@@ -247,12 +188,7 @@
                     <v-chip size="small" class="ml-2">
                       {{ performanceIssues.length }}
                     </v-chip>
-                    <v-chip
-                      v-if="performanceErrors.length > 0"
-                      size="small"
-                      color="error"
-                      class="ml-2"
-                    >
+                    <v-chip v-if="performanceErrors.length > 0" size="small" color="error" class="ml-2">
                       {{ performanceErrors.length }} errors
                     </v-chip>
                   </div>
@@ -277,7 +213,7 @@ import ValidationSuggestion from './ValidationSuggestion.vue'
 import DataValidationConfig from './DataValidationConfig.vue'
 
 interface Props {
-  configName: string
+  projectName: string
   validationResult: ValidationResult | null
   loading: boolean
   dataValidationLoading?: boolean
@@ -335,36 +271,31 @@ const summaryTitle = computed(() => {
 const result = computed(() => props.validationResult)
 
 const structuralIssues = computed(() => {
-  return allMessages.value.filter(msg => msg.category === 'structural' || !msg.category)
+  return allMessages.value.filter((msg) => msg.category === 'structural' || !msg.category)
 })
 
 const dataIssues = computed(() => {
-  return allMessages.value.filter(msg => msg.category === 'data')
+  return allMessages.value.filter((msg) => msg.category === 'data')
 })
 
 const performanceIssues = computed(() => {
-  return allMessages.value.filter(msg => msg.category === 'performance')
+  return allMessages.value.filter((msg) => msg.category === 'performance')
 })
 
 const structuralErrors = computed(() => {
-  return structuralIssues.value.filter(msg => msg.severity === 'error')
+  return structuralIssues.value.filter((msg) => msg.severity === 'error')
 })
 
 const dataErrors = computed(() => {
-  return dataIssues.value.filter(msg => msg.severity === 'error')
+  return dataIssues.value.filter((msg) => msg.severity === 'error')
 })
 
 const performanceErrors = computed(() => {
-  return performanceIssues.value.filter(msg => msg.severity === 'error')
-})
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _totalIssues = computed(() => {
-  return errorCount.value + warningCount.value
+  return performanceIssues.value.filter((msg) => msg.severity === 'error')
 })
 
 const autoFixableIssues = computed(() => {
-  return allMessages.value.filter(msg => msg.auto_fixable === true)
+  return allMessages.value.filter((msg) => msg.auto_fixable === true)
 })
 
 // Methods

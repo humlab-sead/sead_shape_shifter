@@ -3,11 +3,11 @@
 import pytest
 from fastapi import HTTPException
 
-from backend.app.services.config_service import (
-    ConfigConflictError,
-    ConfigurationNotFoundError,
+from backend.app.services.project_service import (
     EntityAlreadyExistsError,
     EntityNotFoundError,
+    ProjectConflictError,
+    ProjectNotFoundError,
 )
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
@@ -42,12 +42,12 @@ class TestErrorHandlerDecorator:
         assert exc_info.value.detail == "Resource not found"
 
     @pytest.mark.asyncio
-    async def test_configuration_not_found_returns_404(self):
-        """Test ConfigurationNotFoundError is converted to 404."""
+    async def test_projecturation_not_found_returns_404(self):
+        """Test ProjectNotFoundError is converted to 404."""
 
         @handle_endpoint_errors
         async def config_not_found_endpoint():
-            raise ConfigurationNotFoundError("Configuration 'test' not found")
+            raise ProjectNotFoundError("Configuration 'test' not found")
 
         with pytest.raises(HTTPException) as exc_info:
             await config_not_found_endpoint()
@@ -98,12 +98,12 @@ class TestErrorHandlerDecorator:
         assert "Entity 'sample' already exists" in exc_info.value.detail
 
     @pytest.mark.asyncio
-    async def test_config_conflict_returns_409(self):
-        """Test ConfigConflictError is converted to 409."""
+    async def test_project_conflict_returns_409(self):
+        """Test ProjectConflictError is converted to 409."""
 
         @handle_endpoint_errors
         async def config_conflict_endpoint():
-            raise ConfigConflictError("Configuration was modified by another user")
+            raise ProjectConflictError("Configuration was modified by another user")
 
         with pytest.raises(HTTPException) as exc_info:
             await config_conflict_endpoint()

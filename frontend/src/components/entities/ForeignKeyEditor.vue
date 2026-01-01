@@ -2,25 +2,14 @@
   <v-card class="fk-editor-compact">
     <v-card-title class="d-flex align-center justify-space-between py-2">
       <span class="text-body-2">Foreign Keys</span>
-      <v-btn
-        variant="text"
-        size="x-small"
-        prepend-icon="mdi-plus"
-        @click="handleAddForeignKey"
-      >
-        Add
-      </v-btn>
+      <v-btn variant="text" size="x-small" prepend-icon="mdi-plus" @click="handleAddForeignKey"> Add </v-btn>
     </v-card-title>
 
     <v-divider />
 
     <v-card-text class="pa-2">
       <v-list v-if="foreignKeys.length > 0">
-        <v-list-item
-          v-for="(fk, index) in foreignKeys"
-          :key="index"
-          class="px-0"
-        >
+        <v-list-item v-for="(fk, index) in foreignKeys" :key="index" class="px-0">
           <v-card variant="outlined" class="mb-2">
             <v-card-text class="pa-2">
               <div class="d-flex align-center justify-space-between mb-1">
@@ -88,9 +77,7 @@
                 <v-col cols="12" md="8">
                   <v-expansion-panels variant="accordion" density="compact">
                     <v-expansion-panel>
-                      <v-expansion-panel-title class="py-1 text-caption">
-                        Constraints
-                      </v-expansion-panel-title>
+                      <v-expansion-panel-title class="py-1 text-caption"> Constraints </v-expansion-panel-title>
                       <v-expansion-panel-text class="pt-1">
                         <v-select
                           v-model="fk.constraints!.cardinality"
@@ -124,7 +111,7 @@
               <v-row dense class="mt-1">
                 <v-col cols="12">
                   <ForeignKeyTester
-                    :config-name="configName"
+                    :project-name="projectName"
                     :entity-name="entityName"
                     :foreign-key="fk"
                     :foreign-key-index="index"
@@ -145,14 +132,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import type { ForeignKeyConfig } from '@/types'
 import ForeignKeyTester from './ForeignKeyTester.vue'
 
 interface Props {
   modelValue: ForeignKeyConfig[]
   availableEntities?: string[]
-  configName: string
+  projectName: string
   entityName: string
   isEntitySaved?: boolean
 }

@@ -6,9 +6,7 @@
           <v-icon size="large" class="mr-3">mdi-database-search</v-icon>
           <div>
             <h1 class="text-h4">SQL Query Tester</h1>
-            <p class="text-subtitle-1 text-grey">
-              Test SQL queries against your data sources
-            </p>
+            <p class="text-subtitle-1 text-grey">Test SQL queries against your data sources</p>
           </div>
         </div>
       </v-col>
@@ -76,9 +74,7 @@
                   <h3 class="text-h6 mb-2">Keyboard Shortcuts</h3>
                   <v-list density="compact">
                     <v-list-item>
-                      <v-list-item-title>
-                        <kbd>Ctrl</kbd> + <kbd>Enter</kbd> (⌘ + Enter on Mac)
-                      </v-list-item-title>
+                      <v-list-item-title> <kbd>Ctrl</kbd> + <kbd>Enter</kbd> (⌘ + Enter on Mac) </v-list-item-title>
                       <v-list-item-subtitle>Execute query</v-list-item-subtitle>
                     </v-list-item>
                   </v-list>
@@ -89,21 +85,15 @@
                   <v-list density="compact">
                     <v-list-item>
                       <v-list-item-title>Only SELECT queries allowed</v-list-item-title>
-                      <v-list-item-subtitle>
-                        INSERT, UPDATE, DELETE, DROP are blocked for safety
-                      </v-list-item-subtitle>
+                      <v-list-item-subtitle> INSERT, UPDATE, DELETE, DROP are blocked for safety </v-list-item-subtitle>
                     </v-list-item>
                     <v-list-item>
                       <v-list-item-title>Results limited to 10,000 rows</v-list-item-title>
-                      <v-list-item-subtitle>
-                        Prevents excessive memory usage
-                      </v-list-item-subtitle>
+                      <v-list-item-subtitle> Prevents excessive memory usage </v-list-item-subtitle>
                     </v-list-item>
                     <v-list-item>
                       <v-list-item-title>30 second timeout</v-list-item-title>
-                      <v-list-item-subtitle>
-                        Queries exceeding this will be cancelled
-                      </v-list-item-subtitle>
+                      <v-list-item-subtitle> Queries exceeding this will be cancelled </v-list-item-subtitle>
                     </v-list-item>
                   </v-list>
                 </v-col>
@@ -133,67 +123,58 @@
     </v-row>
 
     <!-- Snackbar for notifications -->
-    <v-snackbar
-      v-model="snackbar.show"
-      :color="snackbar.color"
-      :timeout="3000"
-    >
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
       <template #actions>
-        <v-btn
-          variant="text"
-          @click="snackbar.show = false"
-        >
-          Close
-        </v-btn>
+        <v-btn variant="text" @click="snackbar.show = false"> Close </v-btn>
       </template>
     </v-snackbar>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRoute } from 'vue-router';
-import QueryEditor from '@/components/query/QueryEditor.vue';
-import QueryBuilder from '@/components/query/QueryBuilder.vue';
-import QueryResults from '@/components/query/QueryResults.vue';
-import type { QueryResult } from '@/types/query';
+import { ref } from 'vue'
+import { useRoute } from 'vue-router'
+import QueryEditor from '@/components/query/QueryEditor.vue'
+import QueryBuilder from '@/components/query/QueryBuilder.vue'
+import QueryResults from '@/components/query/QueryResults.vue'
+import type { QueryResult } from '@/types/query'
 
-const route = useRoute();
+const route = useRoute()
 
 // State
-const activeTab = ref<'editor' | 'builder'>('editor');
-const queryResult = ref<QueryResult | null>(null);
-const showResults = ref(false);
-const editorKey = ref(0); // For forcing re-render
+const activeTab = ref<'editor' | 'builder'>('editor')
+const queryResult = ref<QueryResult | null>(null)
+const showResults = ref(false)
+const editorKey = ref(0) // For forcing re-render
 const snackbar = ref({
   show: false,
   message: '',
-  color: 'success'
-});
+  color: 'success',
+})
 
 // Initial values from route params
-const initialQuery = ref((route.query.query as string) || '');
-const initialDataSource = ref((route.query.dataSource as string) || '');
+const initialQuery = ref((route.query.query as string) || '')
+const initialDataSource = ref((route.query.dataSource as string) || '')
 
 // Example queries
 const exampleQueries = [
   {
     title: 'Select all rows',
     description: 'Retrieve all columns from a table',
-    query: 'SELECT * FROM table_name LIMIT 100'
+    query: 'SELECT * FROM table_name LIMIT 100',
   },
   {
     title: 'Filter with WHERE',
     description: 'Select rows matching a condition',
-    query: 'SELECT * FROM table_name WHERE column_name = value'
+    query: 'SELECT * FROM table_name WHERE column_name = value',
   },
   {
     title: 'Join tables',
     description: 'Combine data from multiple tables',
     query: `SELECT t1.*, t2.column
 FROM table1 t1
-JOIN table2 t2 ON t1.id = t2.foreign_id`
+JOIN table2 t2 ON t1.id = t2.foreign_id`,
   },
   {
     title: 'Aggregate with GROUP BY',
@@ -201,7 +182,7 @@ JOIN table2 t2 ON t1.id = t2.foreign_id`
     query: `SELECT category, COUNT(*) as count
 FROM table_name
 GROUP BY category
-ORDER BY count DESC`
+ORDER BY count DESC`,
   },
   {
     title: 'Date filtering',
@@ -209,51 +190,51 @@ ORDER BY count DESC`
     query: `SELECT *
 FROM table_name
 WHERE created_at >= '2024-01-01'
-  AND created_at < '2024-02-01'`
-  }
-];
+  AND created_at < '2024-02-01'`,
+  },
+]
 
 // Methods
 function handleQueryResult(result: QueryResult) {
-  queryResult.value = result;
-  showResults.value = true;
+  queryResult.value = result
+  showResults.value = true
   snackbar.value = {
     show: true,
     message: `Query executed successfully: ${result.row_count} rows returned`,
-    color: 'success'
-  };
+    color: 'success',
+  }
 }
 
 function handleQueryError(error: string) {
   snackbar.value = {
     show: true,
     message: error,
-    color: 'error'
-  };
+    color: 'error',
+  }
 }
 
 function handleUseQuery(sql: string, dataSource: string) {
   // Switch to editor tab and populate with generated SQL
-  activeTab.value = 'editor';
-  initialQuery.value = sql;
-  initialDataSource.value = dataSource;
-  editorKey.value++; // Force re-render
-  
+  activeTab.value = 'editor'
+  initialQuery.value = sql
+  initialDataSource.value = dataSource
+  editorKey.value++ // Force re-render
+
   // Scroll to top
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+
   // Show success message
   snackbar.value = {
     show: true,
     message: 'SQL query loaded into editor. Click "Execute Query" to run it.',
-    color: 'success'
-  };
+    color: 'success',
+  }
 }
 
 function loadExample(query: string) {
-  initialQuery.value = query;
-  editorKey.value++; // Force re-render
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  initialQuery.value = query
+  editorKey.value++ // Force re-render
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 </script>
 

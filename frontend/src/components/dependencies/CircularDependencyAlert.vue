@@ -1,11 +1,5 @@
 <template>
-  <v-alert
-    type="warning"
-    variant="tonal"
-    prominent
-    border="start"
-    closable
-  >
+  <v-alert type="warning" variant="tonal" prominent border="start" closable>
     <v-alert-title class="d-flex align-center">
       <v-icon icon="mdi-alert-circle" class="mr-2" />
       Circular Dependencies Detected
@@ -25,35 +19,18 @@
         <v-expansion-panel-text>
           <div class="d-flex align-center flex-wrap">
             <template v-for="(entity, entityIndex) in cycle" :key="entity">
-              <v-chip
-                color="warning"
-                variant="outlined"
-                size="small"
-                prepend-icon="mdi-cube"
-              >
+              <v-chip color="warning" variant="outlined" size="small" prepend-icon="mdi-cube">
                 {{ entity }}
               </v-chip>
-              <v-icon
-                v-if="entityIndex < cycle.length - 1"
-                icon="mdi-arrow-right"
-                size="small"
-                class="mx-2"
-              />
-              <v-icon
-                v-else
-                icon="mdi-refresh"
-                size="small"
-                class="mx-2"
-                color="warning"
-              />
+              <v-icon v-if="entityIndex < cycle.length - 1" icon="mdi-arrow-right" size="small" class="mx-2" />
+              <v-icon v-else icon="mdi-refresh" size="small" class="mx-2" color="warning" />
             </template>
           </div>
 
           <v-divider class="my-3" />
 
           <p class="text-caption text-grey">
-            These entities depend on each other in a circular manner, which prevents
-            topological ordering.
+            These entities depend on each other in a circular manner, which prevents topological ordering.
           </p>
         </v-expansion-panel-text>
       </v-expansion-panel>
