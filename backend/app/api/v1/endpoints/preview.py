@@ -50,7 +50,7 @@ def get_validate_fk_service(
 async def preview_entity(
     project_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity to preview"),
-    limit: Optional[int] = Query(50, ge=1, le=10000, description="Maximum number of rows to return. Use null for all rows."),
+    limit: Optional[int] = Query(None, ge=1, le=10000, description="Maximum number of rows to return. None for all rows."),
     preview_service: ShapeShiftService = Depends(get_preview_service),
 ) -> PreviewResult:
     """
@@ -63,6 +63,7 @@ async def preview_entity(
     - Caches results for 5 minutes
 
     Set limit=null to retrieve all rows (use with caution for large datasets).
+    If no limit is specified in the request, defaults to 50 rows.
     """
     try:
         result = await preview_service.preview_entity(project_name, entity_name, limit)
