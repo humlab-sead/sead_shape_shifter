@@ -51,10 +51,16 @@ export function useEntityPreview() {
     error.value = null
 
     try {
+      // Build params - only include limit if not null
+      const params: Record<string, number> = {}
+      if (limit !== null) {
+        params.limit = limit
+      }
+
       const response = await axios.post<PreviewResult>(
         `/api/v1/projects/${projectName}/entities/${entityName}/preview`,
         {},
-        { params: { limit } }
+        { params }
       )
 
       previewData.value = response.data
