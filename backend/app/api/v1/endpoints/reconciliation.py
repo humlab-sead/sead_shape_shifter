@@ -90,9 +90,7 @@ async def auto_reconcile_entity(
         entity_spec.auto_accept_threshold = threshold
 
     if get_app_state_manager().is_dirty(project_name):
-        raise BadRequestError(
-            f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation."
-        )
+        raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
 
     logger.info(f"Starting auto-reconciliation for {entity_name} with threshold {threshold}")
     result: AutoReconcileResult = await service.auto_reconcile_entity(

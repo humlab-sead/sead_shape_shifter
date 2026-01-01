@@ -19,11 +19,12 @@ from src.workflow import workflow
 # pylint: disable=no-value-for-parameter
 
 
-
 @click.command()
 @click.argument("target")
 @click.option("--default-entity", "-de", type=str, help="Default entity name to use as source when none is specified.", default=None)
-@click.option("--project", "-p", "project_filename",  type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to project file.")
+@click.option(
+    "--project", "-p", "project_filename", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to project file."
+)
 @click.option("--env-file", "-e", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to environment variables file.")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output.", default=False)
 @click.option("--translate", "-t", is_flag=True, help="Enable translation.", default=False)

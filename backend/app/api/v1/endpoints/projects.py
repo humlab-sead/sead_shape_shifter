@@ -1,5 +1,6 @@
 """API endpoints for project management."""
 
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
@@ -434,13 +435,10 @@ async def get_project_raw_yaml(name: str) -> dict[str, str]:
     Returns:
         Dictionary containing yaml_content
     """
-    yaml_service: YamlService = get_yaml_service()
     project_service: ProjectService = get_project_service()
 
-    # Get project to verify it exists
     project_service.load_project(name)
 
-    # Read raw YAML file
     project_path = settings.PROJECTS_DIR / f"{name}.yml"
     if not project_path.exists():
         raise NotFoundError(f"Project file not found: {name}.yml")
@@ -478,7 +476,6 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
 
     # Parse and validate structure
     try:
-        from io import StringIO
         parsed_yaml = yaml_service.yaml.load(StringIO(request.yaml_content))
     except Exception as e:
         raise BadRequestError(f"Failed to parse YAML: {str(e)}") from e

@@ -2,7 +2,14 @@
   <v-card variant="outlined">
     <v-card-title class="d-flex align-center justify-space-between">
       <span>Entities</span>
-      <v-btn color="primary" size="small" prepend-icon="mdi-plus" @click="showCreateDialog = true"> Add Entity </v-btn>
+      <div class="d-flex gap-2">
+        <v-btn color="success" size="small" prepend-icon="mdi-play-circle" @click="showExecuteDialog = true">
+          Execute
+        </v-btn>
+        <v-btn color="primary" size="small" prepend-icon="mdi-plus" @click="showCreateDialog = true">
+          Add Entity
+        </v-btn>
+      </div>
     </v-card-title>
 
     <v-card-text>
@@ -112,6 +119,12 @@
       @saved="handleEntitySaved"
     />
 
+    <!-- Execute Dialog -->
+    <execute-dialog
+      v-model="showExecuteDialog"
+      @executed="handleExecuted"
+    />
+
     <!-- Delete Confirmation -->
     <delete-confirmation-dialog
       v-model="showDeleteDialog"
@@ -132,6 +145,7 @@ import { ref, computed } from 'vue'
 import { useEntities } from '@/composables'
 import type { EntityResponse } from '@/api/entities'
 import EntityFormDialog from './EntityFormDialog.vue'
+import ExecuteDialog from '@/components/execute/ExecuteDialog.vue'
 import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDialog.vue'
 
 interface Props {
@@ -155,6 +169,7 @@ const searchQuery = ref('')
 const filterType = ref<string | null>(null)
 const showFormDialog = ref(false)
 const showCreateDialog = ref(false)
+const showExecuteDialog = ref(false)
 const showDeleteDialog = ref(false)
 const selectedEntity = ref<EntityResponse | null>(null)
 const entityToDelete = ref<EntityResponse | null>(null)
@@ -237,6 +252,11 @@ function handleEntitySaved() {
   successMessage.value = dialogMode.value === 'create' ? 'Entity created' : 'Entity updated'
   showSuccessSnackbar.value = true
   emit('entity-updated')
+}
+
+function handleExecuted(result: any) {
+  successMessage.value = `Workflow executed successfully: ${result.message}`
+  showSuccessSnackbar.value = true
 }
 
 // Watch for create dialog trigger

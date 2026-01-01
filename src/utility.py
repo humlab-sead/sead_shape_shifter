@@ -324,7 +324,7 @@ class Registry(Generic[T]):
                 fn_or_class = fn_or_class()
             else:
                 setattr(fn_or_class, "_registry_key", keys[0])
-                setattr(fn_or_class, "_registry_opts", {k:v for k,v in args.items() if k != "key"})
+                setattr(fn_or_class, "_registry_opts", {k: v for k, v in args.items() if k != "key"})
 
                 fn_or_class = _ensure_key_property(fn_or_class)
 

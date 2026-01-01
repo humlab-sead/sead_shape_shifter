@@ -16,6 +16,7 @@ class DispatchRegistry(Registry[type["Dispatcher"]]):
 
     items: dict[str, type["Dispatcher"]] = {}
 
+
 Dispatchers: DispatchRegistry = DispatchRegistry()  # pylint: disable=invalid-name
 
 
@@ -33,11 +34,11 @@ class Dispatcher(IDispatcher):
     @property
     def target_type(self) -> str | None:
         return getattr(self, "_registry_opts", {}).get("target_type", "unknown")
-    
+
     @property
     def description(self) -> str | None:
         return getattr(self, "_registry_opts", {}).get("description", "")
-    
+
 
 @Dispatchers.register(key="csv", target_type="folder", description="Dispatch data as CSV files to a folder")
 class CsvDispatcher(Dispatcher):
