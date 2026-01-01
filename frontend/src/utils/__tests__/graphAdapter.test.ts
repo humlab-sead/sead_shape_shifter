@@ -42,7 +42,7 @@ describe('graphAdapter', () => {
 
       // Check node structure
       expect(elements[0]).toHaveProperty('data')
-      expect(elements[0].data).toMatchObject({
+      expect(elements[0]?.data).toMatchObject({
         id: 'entity1',
         label: 'entity1',
         depth: 0,
@@ -71,16 +71,16 @@ describe('graphAdapter', () => {
       expect(elements).toHaveLength(5) // 3 nodes + 2 edges
 
       // Nodes come first
-      expect(elements[0].data.id).toBe('entity1')
-      expect(elements[1].data.id).toBe('entity2')
-      expect(elements[2].data.id).toBe('entity3')
+      expect(elements[0]?.data.id).toBe('entity1')
+      expect(elements[1]?.data.id).toBe('entity2')
+      expect(elements[2]?.data.id).toBe('entity3')
 
       // Edges come after
-      expect(elements[3].data).toMatchObject({
+      expect(elements[3]?.data).toMatchObject({
         source: 'entity1',
         target: 'entity2',
       })
-      expect(elements[4].data).toMatchObject({
+      expect(elements[4]?.data).toMatchObject({
         source: 'entity2',
         target: 'entity3',
       })
@@ -96,7 +96,7 @@ describe('graphAdapter', () => {
       }
 
       const elements = toCytoscapeElements(graph, { showLabels: false })
-      expect(elements[0].classes).toContain('hide-label')
+      expect(elements[0]?.classes).toContain('hide-label')
     })
 
     it('should show labels when showLabels is true', () => {
@@ -109,7 +109,7 @@ describe('graphAdapter', () => {
       }
 
       const elements = toCytoscapeElements(graph, { showLabels: true })
-      expect(elements[0].classes).not.toContain('hide-label')
+      expect(elements[0]?.classes).not.toContain('hide-label')
     })
 
     it('should highlight cycle nodes when highlightCycles is true', () => {
@@ -133,8 +133,8 @@ describe('graphAdapter', () => {
       })
 
       // Both nodes should be marked as in-cycle
-      expect(elements[0].classes).toContain('in-cycle')
-      expect(elements[1].classes).toContain('in-cycle')
+      expect(elements[0]?.classes).toContain('in-cycle')
+      expect(elements[1]?.classes).toContain('in-cycle')
     })
 
     it('should not highlight cycle nodes when highlightCycles is false', () => {
@@ -158,8 +158,8 @@ describe('graphAdapter', () => {
       })
 
       // Nodes should not be marked as in-cycle
-      expect(elements[0].classes).not.toContain('in-cycle')
-      expect(elements[1].classes).not.toContain('in-cycle')
+      expect(elements[0]?.classes).not.toContain('in-cycle')
+      expect(elements[1]?.classes).not.toContain('in-cycle')
     })
 
     it('should highlight cycle edges when highlightCycles is true', () => {
@@ -184,8 +184,8 @@ describe('graphAdapter', () => {
 
       // Both edges should be marked as cycle-edge
       const edges = elements.filter((e) => e.data.source !== undefined)
-      expect(edges[0].classes).toContain('cycle-edge')
-      expect(edges[1].classes).toContain('cycle-edge')
+      expect(edges[0]?.classes).toContain('cycle-edge')
+      expect(edges[1]?.classes).toContain('cycle-edge')
     })
 
     it('should handle complex cycles', () => {
@@ -238,9 +238,9 @@ describe('graphAdapter', () => {
 
       const elements = toCytoscapeElements(graph)
 
-      expect(elements[0].data.dependencies).toBe(0)
-      expect(elements[1].data.dependencies).toBe(1)
-      expect(elements[2].data.dependencies).toBe(2)
+      expect(elements[0]?.data.dependencies).toBe(0)
+      expect(elements[1]?.data.dependencies).toBe(1)
+      expect(elements[2]?.data.dependencies).toBe(2)
     })
 
     it('should create unique edge IDs', () => {
@@ -262,8 +262,8 @@ describe('graphAdapter', () => {
       const edges = elements.filter((e) => e.data.source !== undefined)
 
       // Should have unique IDs
-      expect(edges[0].data.id).toBe('edge-entity1-entity2-0')
-      expect(edges[1].data.id).toBe('edge-entity1-entity2-1')
+      expect(edges[0]?.data.id).toBe('edge-entity1-entity2-0')
+      expect(edges[1]?.data.id).toBe('edge-entity1-entity2-1')
     })
   })
 

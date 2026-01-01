@@ -99,7 +99,7 @@ describe('validationApi', () => {
 
       expect(result.is_valid).toBe(true)
       expect(result.warnings).toHaveLength(1)
-      expect(result.warnings[0].suggestion).toBe('Use new_field instead')
+      expect(result.warnings[0]?.suggestion).toBe('Use new_field instead')
     })
 
     it('should handle entity with special characters in name', async () => {
@@ -145,8 +145,8 @@ describe('validationApi', () => {
 
       const result = await validationApi.validateEntity('test-project', 'test-entity')
 
-      expect(result.errors[0].auto_fixable).toBe(true)
-      expect(result.errors[0].suggestion).toBeDefined()
+      expect(result.errors[0]?.auto_fixable).toBe(true)
+      expect(result.errors[0]?.suggestion).toBeDefined()
     })
   })
 

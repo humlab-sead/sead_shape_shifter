@@ -125,8 +125,8 @@ describe('validation utilities', () => {
       const entity1Errors = getErrorsForEntity(result, 'entity1')
 
       expect(entity1Errors).toHaveLength(2)
-      expect(entity1Errors[0].message).toBe('Error 1')
-      expect(entity1Errors[1].message).toBe('Error 3')
+      expect(entity1Errors[0]?.message).toBe('Error 1')
+      expect(entity1Errors[1]?.message).toBe('Error 3')
     })
 
     it('should handle errors with null entity', () => {
@@ -161,8 +161,8 @@ describe('validation utilities', () => {
       const entity1Warnings = getWarningsForEntity(result, 'entity1')
 
       expect(entity1Warnings).toHaveLength(2)
-      expect(entity1Warnings[0].message).toBe('Warning 1')
-      expect(entity1Warnings[1].message).toBe('Warning 3')
+      expect(entity1Warnings[0]?.message).toBe('Warning 1')
+      expect(entity1Warnings[1]?.message).toBe('Warning 3')
     })
 
     it('should handle warnings with null entity', () => {
