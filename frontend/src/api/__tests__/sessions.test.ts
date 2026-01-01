@@ -28,11 +28,12 @@ describe('sessions API', () => {
       const mockResponse: SessionResponse = {
         session_id: 'session-123',
         project_name: 'test-project',
+        user_id: null,
+        loaded_at: '2024-01-01T00:00:00Z',
+        last_accessed: '2024-01-01T00:00:00Z',
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: '2024-01-01T00:00:00Z',
-        last_modified: '2024-01-01T00:00:00Z',
       }
 
       mockApiClient.post.mockResolvedValue({ data: mockResponse })
@@ -63,11 +64,12 @@ describe('sessions API', () => {
       const mockResponse: SessionResponse = {
         session_id: 'session-456',
         project_name: 'my-project',
+        user_id: null,
+        loaded_at: '2024-01-01T00:00:00Z',
+        last_accessed: '2024-01-01T00:00:00Z',
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: '2024-01-01T00:00:00Z',
-        last_modified: '2024-01-01T00:00:00Z',
       }
 
       mockApiClient.post.mockResolvedValue({ data: mockResponse })
@@ -83,11 +85,12 @@ describe('sessions API', () => {
       const mockResponse: SessionResponse = {
         session_id: 'session-123',
         project_name: 'test-project',
+        user_id: null,
+        loaded_at: '2024-01-01T00:00:00Z',
+        last_accessed: '2024-01-01T01:00:00Z',
         version: 2,
         modified: true,
         concurrent_sessions: 1,
-        created_at: '2024-01-01T00:00:00Z',
-        last_modified: '2024-01-01T01:00:00Z',
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockResponse })
@@ -121,11 +124,12 @@ describe('sessions API', () => {
       const mockResponse: SessionResponse = {
         session_id: 'session-123',
         project_name: 'test-project',
+        user_id: null,
+        loaded_at: '2024-01-01T00:00:00Z',
+        last_accessed: '2024-01-01T02:00:00Z',
         version: 5,
         modified: false,
         concurrent_sessions: 2,
-        created_at: '2024-01-01T00:00:00Z',
-        last_modified: '2024-01-01T02:00:00Z',
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockResponse })
@@ -191,20 +195,22 @@ describe('sessions API', () => {
         {
           session_id: 'session-123',
           project_name: 'test-project',
+          user_id: null,
+          loaded_at: '2024-01-01T00:00:00Z',
+          last_accessed: '2024-01-01T00:00:00Z',
           version: 1,
           modified: false,
           concurrent_sessions: 2,
-          created_at: '2024-01-01T00:00:00Z',
-          last_modified: '2024-01-01T00:00:00Z',
         },
         {
           session_id: 'session-456',
           project_name: 'test-project',
+          user_id: null,
+          loaded_at: '2024-01-01T00:05:00Z',
+          last_accessed: '2024-01-01T00:10:00Z',
           version: 1,
           modified: true,
           concurrent_sessions: 2,
-          created_at: '2024-01-01T00:05:00Z',
-          last_modified: '2024-01-01T00:10:00Z',
         },
       ]
 
@@ -274,11 +280,12 @@ describe('sessions API', () => {
       const mockResponse: SessionResponse = {
         session_id: 'session-123',
         project_name: 'test-project',
+        user_id: null,
+        loaded_at: '2024-01-01T00:00:00Z',
+        last_accessed: '2024-01-01T00:00:00Z',
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: '2024-01-01T00:00:00Z',
-        last_modified: '2024-01-01T00:00:00Z',
       }
 
       mockApiClient.post.mockResolvedValue({ data: mockResponse })
@@ -295,29 +302,32 @@ describe('sessions API', () => {
         {
           session_id: 'session-1',
           project_name: 'test-project',
+          user_id: null,
+          loaded_at: '2024-01-01T00:00:00Z',
+          last_accessed: '2024-01-01T00:00:00Z',
           version: 1,
           modified: false,
           concurrent_sessions: 3,
-          created_at: '2024-01-01T00:00:00Z',
-          last_modified: '2024-01-01T00:00:00Z',
         },
         {
           session_id: 'session-2',
           project_name: 'test-project',
+          user_id: null,
+          loaded_at: '2024-01-01T00:01:00Z',
+          last_accessed: '2024-01-01T00:05:00Z',
           version: 1,
           modified: true,
           concurrent_sessions: 3,
-          created_at: '2024-01-01T00:01:00Z',
-          last_modified: '2024-01-01T00:05:00Z',
         },
         {
           session_id: 'session-3',
           project_name: 'test-project',
+          user_id: null,
+          loaded_at: '2024-01-01T00:02:00Z',
+          last_accessed: '2024-01-01T00:06:00Z',
           version: 2,
           modified: false,
           concurrent_sessions: 3,
-          created_at: '2024-01-01T00:02:00Z',
-          last_modified: '2024-01-01T00:06:00Z',
         },
       ]
 
@@ -333,11 +343,12 @@ describe('sessions API', () => {
       const mockSession: SessionResponse = {
         session_id: 'session-123',
         project_name: 'test-project',
+        user_id: null,
+        loaded_at: '2024-01-01T00:00:00Z',
+        last_accessed: '2024-01-01T00:10:00Z',
         version: 5,
         modified: false,
         concurrent_sessions: 2,
-        created_at: '2024-01-01T00:00:00Z',
-        last_modified: '2024-01-01T00:10:00Z',
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockSession })
@@ -432,11 +443,12 @@ describe('sessions API', () => {
       const mockResponse: any = {
         session_id: 'session-123',
         project_name: 'test-project',
+        user_id: null,
+        loaded_at: '2024-01-01T00:00:00Z',
+        last_accessed: '2024-01-01T00:00:00Z',
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: '2024-01-01T00:00:00Z',
-        last_modified: '2024-01-01T00:00:00Z',
         extra_field: 'should be ignored',
       }
 

@@ -71,12 +71,13 @@ describe('schemaApi', () => {
   describe('getTableSchema', () => {
     it('should get table schema', async () => {
       const mockSchema: TableSchema = {
-        name: 'users',
+        table_name: 'users',
         columns: [
-          { name: 'id', type: 'integer', nullable: false },
-          { name: 'email', type: 'varchar', nullable: false },
-          { name: 'name', type: 'varchar', nullable: true },
+          { name: 'id', data_type: 'integer', nullable: false, is_primary_key: true },
+          { name: 'email', data_type: 'varchar', nullable: false, is_primary_key: false },
+          { name: 'name', data_type: 'varchar', nullable: true, is_primary_key: false },
         ],
+        primary_keys: ['id'],
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockSchema })
@@ -92,8 +93,9 @@ describe('schemaApi', () => {
 
     it('should get table schema with schema filter', async () => {
       const mockSchema: TableSchema = {
-        name: 'table1',
-        columns: [{ name: 'id', type: 'integer', nullable: false }],
+        table_name: 'table1',
+        columns: [{ name: 'id', data_type: 'integer', nullable: false, is_primary_key: true }],
+        primary_keys: ['id'],
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockSchema })
@@ -108,8 +110,9 @@ describe('schemaApi', () => {
 
     it('should handle URL encoding for table names', async () => {
       const mockSchema: TableSchema = {
-        name: 'my table',
+        table_name: 'my table',
         columns: [],
+        primary_keys: [],
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockSchema })
@@ -124,7 +127,7 @@ describe('schemaApi', () => {
 
     it('should handle special characters in names', async () => {
       mockApiClient.get.mockResolvedValue({
-        data: { name: 'test', columns: [] },
+        data: { table_name: 'test', columns: [], primary_keys: [] },
       })
 
       await schemaApi.getTableSchema('db/with/slashes', 'table&with&ampersands')
@@ -151,10 +154,12 @@ describe('schemaApi', () => {
       const mockPreview: PreviewData = {
         columns: ['id', 'name', 'email'],
         rows: [
-          [1, 'Alice', 'alice@example.com'],
-          [2, 'Bob', 'bob@example.com'],
+          { id: 1, name: 'Alice', email: 'alice@example.com' },
+          { id: 2, name: 'Bob', email: 'bob@example.com' },
         ],
         total_rows: 2,
+        limit: 2,
+        offset: 0,
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockPreview })
@@ -171,8 +176,10 @@ describe('schemaApi', () => {
     it('should preview with limit parameter', async () => {
       const mockPreview: PreviewData = {
         columns: ['id'],
-        rows: [[1]],
+        rows: [{ id: 1 }],
         total_rows: 1,
+        limit: 1,
+        offset: 0,
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockPreview })
@@ -188,8 +195,10 @@ describe('schemaApi', () => {
     it('should preview with offset parameter', async () => {
       const mockPreview: PreviewData = {
         columns: ['id'],
-        rows: [[11]],
+        rows: [{ id: 11 }],
         total_rows: 1,
+        limit: 1,
+        offset: 10,
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockPreview })
@@ -205,8 +214,10 @@ describe('schemaApi', () => {
     it('should preview with all parameters', async () => {
       const mockPreview: PreviewData = {
         columns: ['id'],
-        rows: [[1]],
+        rows: [{ id: 1 }],
         total_rows: 1,
+        limit: 10,
+        offset: 5,
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockPreview })
@@ -231,7 +242,7 @@ describe('schemaApi', () => {
 
     it('should handle URL encoding in preview', async () => {
       mockApiClient.get.mockResolvedValue({
-        data: { columns: [], rows: [], total_rows: 0 },
+        data: { columns: [], rows: [], total_rows: 0, limit: 0, offset: 0 },
       })
 
       await schemaApi.previewTableData('my database', 'my table')
@@ -296,9 +307,9 @@ describe('schemaApi', () => {
   describe('getTypeMappings', () => {
     it('should get type mappings for a table', async () => {
       const mockMappings: Record<string, TypeMapping> = {
-        id: { source_type: 'integer', target_type: 'int', nullable: false },
-        email: { source_type: 'varchar', target_type: 'string', nullable: false },
-        age: { source_type: 'integer', target_type: 'int', nullable: true },
+        id: { sql_type: 'integer', suggested_type: 'integer', confidence: 1, reason: 'direct match', alternatives: [] },
+        email: { sql_type: 'varchar', suggested_type: 'string', confidence: 1, reason: 'direct match', alternatives: [] },
+        age: { sql_type: 'integer', suggested_type: 'integer', confidence: 0.9, reason: 'direct match', alternatives: [] },
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockMappings })
@@ -314,7 +325,7 @@ describe('schemaApi', () => {
 
     it('should get type mappings with schema filter', async () => {
       const mockMappings: Record<string, TypeMapping> = {
-        id: { source_type: 'integer', target_type: 'int', nullable: false },
+        id: { sql_type: 'integer', suggested_type: 'integer', confidence: 1, reason: 'direct match', alternatives: [] },
       }
 
       mockApiClient.get.mockResolvedValue({ data: mockMappings })
@@ -360,7 +371,7 @@ describe('schemaApi', () => {
   describe('edge cases', () => {
     it('should handle empty table name', async () => {
       mockApiClient.get.mockResolvedValue({
-        data: { name: '', columns: [] },
+        data: { table_name: '', columns: [], primary_keys: [] },
       })
 
       await schemaApi.getTableSchema('my-database', '')
@@ -395,7 +406,7 @@ describe('schemaApi', () => {
 
     it('should handle undefined params gracefully', async () => {
       mockApiClient.get.mockResolvedValue({
-        data: { columns: [], rows: [], total_rows: 0 },
+        data: { columns: [], rows: [], total_rows: 0, limit: 0, offset: 0 },
       })
 
       await schemaApi.previewTableData('db', 'table', undefined)
