@@ -27,7 +27,7 @@ const baseStyles: StylesheetCSS[] = [
       'text-valign': 'bottom',
       'text-halign': 'center',
       'text-margin-y': 8,
-      'font-size': '12px',
+      'font-size': '20px',
       'font-family': 'Roboto, sans-serif',
       color: '#333',
       'overlay-padding': 6,

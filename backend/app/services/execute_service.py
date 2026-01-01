@@ -68,8 +68,19 @@ class ExecuteService:
         is_satisfied: bool | None = None
 
         try:
+            # Load API project for metadata
             project: Project = self.project_service.load_project(project_name)
-            core_project: ShapeShiftProject = ProjectMapper.to_core(project)
+
+            # Load core project using ShapeShiftProject.from_file() to properly resolve @include directives
+            if not project.filename:
+                raise ValueError(f"Project '{project_name}' has no filename")
+
+            core_project: ShapeShiftProject = ShapeShiftProject.from_file(
+                filename=project.filename,
+                env_file=".env",  # Config provider handles env file loading
+                env_prefix="SEAD_NORMALIZER",
+            )
+
             if request.run_validation:
                 is_satisfied = await self._validate_project(core_project)
                 if not is_satisfied:
