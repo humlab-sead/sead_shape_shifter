@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useEntities } from '../useEntities'
 import { useEntityStore } from '@/stores'
-import type { EntityConfig, EntityCreateRequest, EntityUpdateRequest } from '@/api/entities'
+import type { EntityResponse, EntityCreateRequest, EntityUpdateRequest } from '@/api/entities'
 
 // Mock console methods
 const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -55,14 +55,16 @@ describe('useEntities', () => {
       const store = useEntityStore()
       const { entities } = useEntities({ projectName: 'test-project', autoFetch: false })
 
-      const mockEntities: EntityConfig[] = [
+      const mockEntities: EntityResponse[] = [
         {
           name: 'entity1',
-          source: { type: 'table', table: 'table1' },
+          entity_data: { type: 'table', table: 'table1' },
         },
       ]
 
-      store.$patch({ entities: mockEntities })
+      store.$patch((state) => {
+        state.entities = mockEntities
+      })
 
       expect(entities.value).toEqual(mockEntities)
     })
@@ -71,12 +73,14 @@ describe('useEntities', () => {
       const store = useEntityStore()
       const { selectedEntity } = useEntities({ projectName: 'test-project', autoFetch: false })
 
-      const mockEntity: EntityConfig = {
+      const mockEntity: EntityResponse = {
         name: 'selected',
-        source: { type: 'table', table: 'table1' },
+        entity_data: { type: 'table', table: 'table1' },
       }
 
-      store.$patch({ selectedEntity: mockEntity })
+      store.$patch((state) => {
+        state.selectedEntity = mockEntity
+      })
 
       expect(selectedEntity.value).toEqual(mockEntity)
     })
@@ -127,7 +131,7 @@ describe('useEntities', () => {
       const { entitiesByType } = useEntities({ projectName: 'test-project', autoFetch: false })
 
       const mockEntitiesByType = {
-        table: [{ name: 'entity1', source: { type: 'table', table: 'table1' } }],
+        table: [{ name: 'entity1', entity_data: { type: 'table', table: 'table1' } }],
       }
 
       vi.spyOn(store, 'entitiesByType', 'get').mockReturnValue(mockEntitiesByType)
@@ -139,11 +143,13 @@ describe('useEntities', () => {
       const store = useEntityStore()
       const { entityCount } = useEntities({ projectName: 'test-project', autoFetch: false })
 
-      store.$patch({
-        entities: [
-          { name: 'entity1', source: { type: 'table', table: 'table1' } },
-          { name: 'entity2', source: { type: 'table', table: 'table2' } },
-        ],
+      const mockEntities: EntityResponse[] = [
+        { name: 'entity1', entity_data: { type: 'table', table: 'table1' } },
+        { name: 'entity2', entity_data: { type: 'table', table: 'table2' } },
+      ]
+
+      store.$patch((state) => {
+        state.entities = mockEntities
       })
 
       expect(entityCount.value).toBe(2)
@@ -153,7 +159,7 @@ describe('useEntities', () => {
       const store = useEntityStore()
       const { rootEntities } = useEntities({ projectName: 'test-project', autoFetch: false })
 
-      const mockRootEntities = [{ name: 'root', source: { type: 'table', table: 'table1' } }]
+      const mockRootEntities = [{ name: 'root', entity_data: { type: 'table', table: 'table1' } }]
 
       vi.spyOn(store, 'rootEntities', 'get').mockReturnValue(mockRootEntities)
 
@@ -196,9 +202,9 @@ describe('useEntities', () => {
   describe('select action', () => {
     it('should select an entity', async () => {
       const store = useEntityStore()
-      const mockEntity: EntityConfig = {
+      const mockEntity: EntityResponse = {
         name: 'selected',
-        source: { type: 'table', table: 'table1' },
+        entity_data: { type: 'table', table: 'table1' },
       }
 
       vi.spyOn(store, 'selectEntity').mockResolvedValue(mockEntity)
@@ -226,11 +232,11 @@ describe('useEntities', () => {
       const store = useEntityStore()
       const createRequest: EntityCreateRequest = {
         name: 'new-entity',
-        source: { type: 'table', table: 'new_table' },
+        entity_data: { type: 'table', table: 'new_table' },
       }
-      const mockEntity: EntityConfig = {
+      const mockEntity: EntityResponse = {
         name: 'new-entity',
-        source: { type: 'table', table: 'new_table' },
+        entity_data: { type: 'table', table: 'new_table' },
       }
 
       vi.spyOn(store, 'createEntity').mockResolvedValue(mockEntity)
@@ -250,7 +256,7 @@ describe('useEntities', () => {
       const { create } = useEntities({ projectName: 'test-project', autoFetch: false })
       const createRequest: EntityCreateRequest = {
         name: 'invalid',
-        source: { type: 'table', table: 'invalid_table' },
+        entity_data: { type: 'table', table: 'invalid_table' },
       }
 
       await expect(create(createRequest)).rejects.toThrow('Create failed')
@@ -261,11 +267,11 @@ describe('useEntities', () => {
     it('should update an entity', async () => {
       const store = useEntityStore()
       const updateRequest: EntityUpdateRequest = {
-        source: { type: 'table', table: 'updated_table' },
+        entity_data: { type: 'table', table: 'updated_table' },
       }
-      const mockEntity: EntityConfig = {
+      const mockEntity: EntityResponse = {
         name: 'test-entity',
-        source: { type: 'table', table: 'updated_table' },
+        entity_data: { type: 'table', table: 'updated_table' },
       }
 
       vi.spyOn(store, 'updateEntity').mockResolvedValue(mockEntity)
@@ -283,7 +289,7 @@ describe('useEntities', () => {
       vi.spyOn(store, 'updateEntity').mockRejectedValue(error)
 
       const { update } = useEntities({ projectName: 'test-project', autoFetch: false })
-      const updateRequest: EntityUpdateRequest = { source: { type: 'table', table: 'new' } }
+      const updateRequest: EntityUpdateRequest = { entity_data: { type: 'table', table: 'new' } }
 
       await expect(update('test-entity', updateRequest)).rejects.toThrow('Update failed')
     })
@@ -314,12 +320,14 @@ describe('useEntities', () => {
   describe('helper methods', () => {
     it('should get entity by name', () => {
       const store = useEntityStore()
-      const mockEntity: EntityConfig = {
+      const mockEntity: EntityResponse = {
         name: 'test-entity',
-        source: { type: 'table', table: 'table1' },
+        entity_data: { type: 'table', table: 'table1' },
       }
 
-      store.$patch({ entities: [mockEntity] })
+      store.$patch((state) => {
+        state.entities = [mockEntity]
+      })
 
       const { entityByName } = useEntities({ projectName: 'test-project', autoFetch: false })
       const result = entityByName('test-entity')

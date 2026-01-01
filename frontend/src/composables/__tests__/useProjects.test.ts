@@ -3,7 +3,8 @@ import { setActivePinia, createPinia } from 'pinia'
 import { nextTick } from 'vue'
 import { useProjects } from '../useProjects'
 import { useProjectStore } from '@/stores'
-import type { ProjectInfo, ProjectCreateRequest, ProjectUpdateRequest } from '@/api/projects'
+import type { Project, ProjectMetadata } from '@/types'
+import type { ProjectCreateRequest, ProjectUpdateRequest } from '@/api/projects'
 
 // Mock console methods
 const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -54,13 +55,14 @@ describe('useProjects', () => {
       const store = useProjectStore()
       const { projects } = useProjects({ autoFetch: false })
 
-      const mockProjects: ProjectInfo[] = [
+      const mockProjects: ProjectMetadata[] = [
         {
           name: 'project1',
           description: 'Test project 1',
-          version: 1,
+          version: '1',
+          entity_count: 0,
           created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
+          modified_at: '2024-01-01T00:00:00Z',
         },
       ]
 
@@ -73,12 +75,16 @@ describe('useProjects', () => {
       const store = useProjectStore()
       const { selectedProject } = useProjects({ autoFetch: false })
 
-      const mockProject: ProjectInfo = {
-        name: 'selected',
-        description: 'Selected project',
-        version: 1,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
+      const mockProject: Project = {
+        entities: {},
+        metadata: {
+          name: 'selected',
+          description: 'Selected project',
+          version: '1',
+          entity_count: 0,
+          created_at: '2024-01-01T00:00:00Z',
+          modified_at: '2024-01-01T00:00:00Z',
+        },
       }
 
       store.$patch({ selectedProject: mockProject })
@@ -182,12 +188,16 @@ describe('useProjects', () => {
   describe('select action', () => {
     it('should select a project', async () => {
       const store = useProjectStore()
-      const mockProject: ProjectInfo = {
-        name: 'selected',
-        description: 'Selected project',
-        version: 1,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
+      const mockProject: Project = {
+        entities: {},
+        metadata: {
+          name: 'selected',
+          description: 'Selected project',
+          version: '1',
+          entity_count: 0,
+          created_at: '2024-01-01T00:00:00Z',
+          modified_at: '2024-01-01T00:00:00Z',
+        },
       }
 
       vi.spyOn(store, 'selectProject').mockResolvedValue(mockProject)
@@ -215,14 +225,17 @@ describe('useProjects', () => {
       const store = useProjectStore()
       const createRequest: ProjectCreateRequest = {
         name: 'new-project',
-        description: 'New test project',
       }
-      const mockProject: ProjectInfo = {
-        name: 'new-project',
-        description: 'New test project',
-        version: 1,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
+      const mockProject: Project = {
+        entities: {},
+        metadata: {
+          name: 'new-project',
+          description: 'New test project',
+          version: '1',
+          entity_count: 0,
+          created_at: '2024-01-01T00:00:00Z',
+          modified_at: '2024-01-01T00:00:00Z',
+        },
       }
 
       vi.spyOn(store, 'createProject').mockResolvedValue(mockProject)
@@ -242,7 +255,6 @@ describe('useProjects', () => {
       const { create } = useProjects({ autoFetch: false })
       const createRequest: ProjectCreateRequest = {
         name: 'invalid',
-        description: 'Invalid project',
       }
 
       await expect(create(createRequest)).rejects.toThrow('Create failed')
@@ -253,14 +265,19 @@ describe('useProjects', () => {
     it('should update a project', async () => {
       const store = useProjectStore()
       const updateRequest: ProjectUpdateRequest = {
-        description: 'Updated description',
+        entities: {},
+        options: { description: 'Updated description' },
       }
-      const mockProject: ProjectInfo = {
-        name: 'test-project',
-        description: 'Updated description',
-        version: 2,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-02T00:00:00Z',
+      const mockProject: Project = {
+        entities: {},
+        metadata: {
+          name: 'test-project',
+          description: 'Updated description',
+          version: '2',
+          entity_count: 0,
+          created_at: '2024-01-01T00:00:00Z',
+          modified_at: '2024-01-02T00:00:00Z',
+        },
       }
 
       vi.spyOn(store, 'updateProject').mockResolvedValue(mockProject)
@@ -278,7 +295,7 @@ describe('useProjects', () => {
       vi.spyOn(store, 'updateProject').mockRejectedValue(error)
 
       const { update } = useProjects({ autoFetch: false })
-      const updateRequest: ProjectUpdateRequest = { description: 'New desc' }
+      const updateRequest: ProjectUpdateRequest = { entities: {}, options: { description: 'New desc' } }
 
       await expect(update('test-project', updateRequest)).rejects.toThrow('Update failed')
     })
@@ -311,9 +328,11 @@ describe('useProjects', () => {
       const store = useProjectStore()
       const mockResult = {
         is_valid: true,
-        has_errors: false,
-        has_warnings: false,
-        messages: [],
+        errors: [],
+        warnings: [],
+        info: [],
+        error_count: 0,
+        warning_count: 0,
       }
 
       vi.spyOn(store, 'validateProject').mockResolvedValue(mockResult)
@@ -339,12 +358,13 @@ describe('useProjects', () => {
   describe('helper methods', () => {
     it('should get project by name', () => {
       const store = useProjectStore()
-      const mockProject: ProjectInfo = {
+      const mockProject: ProjectMetadata = {
         name: 'test-project',
         description: 'Test',
-        version: 1,
+        version: '1',
+        entity_count: 0,
         created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
+        modified_at: '2024-01-01T00:00:00Z',
       }
 
       store.$patch({ projects: [mockProject] })
@@ -361,8 +381,9 @@ describe('useProjects', () => {
       const store = useProjectStore()
       const mockBackups = [
         {
-          filename: 'project.backup.20240101.yml',
-          created_at: '2024-01-01T00:00:00Z',
+          file_name: 'project.backup.20240101.yml',
+          file_path: '/tmp/project.backup.20240101.yml',
+          created_at: 1704067200,
         },
       ]
 
@@ -377,12 +398,16 @@ describe('useProjects', () => {
 
     it('should restore from backup', async () => {
       const store = useProjectStore()
-      const mockProject: ProjectInfo = {
-        name: 'test-project',
-        description: 'Restored',
-        version: 1,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
+      const mockProject: Project = {
+        entities: {},
+        metadata: {
+          name: 'test-project',
+          description: 'Restored',
+          version: '1',
+          entity_count: 0,
+          created_at: '2024-01-01T00:00:00Z',
+          modified_at: '2024-01-01T00:00:00Z',
+        },
       }
 
       vi.spyOn(store, 'restoreBackup').mockResolvedValue(mockProject)
@@ -427,16 +452,18 @@ describe('useProjects', () => {
           {
             name: 'project1',
             description: 'Test 1',
-            version: 1,
+            version: '1',
+            entity_count: 0,
             created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
+            modified_at: '2024-01-01T00:00:00Z',
           },
           {
             name: 'project2',
             description: 'Test 2',
-            version: 1,
+            version: '1',
+            entity_count: 0,
             created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
+            modified_at: '2024-01-01T00:00:00Z',
           },
         ],
       })
