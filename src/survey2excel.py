@@ -17,22 +17,22 @@ import click
 from loguru import logger
 
 from src.extract import extract_translation_map
-from src.model import ShapeShiftConfig
+from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
-from src.specifications import CompositeConfigSpecification
+from src.specifications import CompositeProjectSpecification
 from src.utility import load_shape_file, setup_logging
 
 # pylint: disable=no-value-for-parameter
 
 
-def resolve_config(config: ShapeShiftConfig | str) -> ShapeShiftConfig:
+def resolve_config(config: ShapeShiftProject | str) -> ShapeShiftProject:
     if isinstance(config, str):
-        return ShapeShiftConfig.from_file(config)
+        return ShapeShiftProject.from_file(config)
     return config
 
 
 async def workflow(
-    config: ShapeShiftConfig,
+    config: ShapeShiftProject,
     target: str,
     translate: bool,
     mode: str,
@@ -41,7 +41,7 @@ async def workflow(
     default_entity: str | None = None,
 ) -> None:
 
-    shapeshifter: ShapeShifter = ShapeShifter(config=config, default_entity=default_entity)
+    shapeshifter: ShapeShifter = ShapeShifter(project=config, default_entity=default_entity)
 
     if validate_configuration(config) and validate_then_exit:
         return
@@ -67,8 +67,8 @@ async def workflow(
     #         click.echo(f"  - {name}: {len(table)} rows")
 
 
-def validate_configuration(config: ShapeShiftConfig) -> bool:
-    specification = CompositeConfigSpecification()
+def validate_configuration(config: ShapeShiftProject) -> bool:
+    specification = CompositeProjectSpecification()
     errors = specification.is_satisfied_by(config.cfg)
     if errors:
         for error in specification.errors:
@@ -116,7 +116,7 @@ def main(
     if not config_file or not Path(config_file).exists():
         raise FileNotFoundError(f"Configuration file not found: {config_file or 'undefined'}")
 
-    config: ShapeShiftConfig = ShapeShiftConfig.from_file(config_file, env_file=env_file, env_prefix="SEAD_NORMALIZER")
+    config: ShapeShiftProject = ShapeShiftProject.from_file(config_file, env_file=env_file, env_prefix="SEAD_NORMALIZER")
 
     # Configure logging AFTER setup_config_store to override its logging configuration
     setup_logging(verbose=verbose, log_file=log_file)

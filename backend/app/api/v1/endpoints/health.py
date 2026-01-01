@@ -17,7 +17,7 @@ class HealthResponse(BaseModel):
     version: str
     environment: str
     timestamp: datetime
-    configurations_dir: str
+    projects_dir: str
     backups_dir: str
 
 
@@ -33,6 +33,6 @@ async def health_check() -> HealthResponse:
         version=settings.VERSION,
         environment=settings.ENVIRONMENT,
         timestamp=datetime.now(UTC),
-        configurations_dir=str(settings.CONFIGURATIONS_DIR),
+        projects_dir=str(settings.PROJECTS_DIR),
         backups_dir=str(settings.BACKUPS_DIR),
     )

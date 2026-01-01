@@ -1,47 +1,27 @@
 <template>
   <v-app>
-    <v-navigation-drawer
-      v-model="drawer"
-      app
-      :rail="rail"
-      @click="rail = false"
-    >
-      <v-list-item
-        :title="rail ? '' : 'SEAD Shape Shifter'"
-        :subtitle="rail ? '' : 'Configuration Editor'"
-        nav
-      >
+    <v-navigation-drawer v-model="drawer" app :rail="rail" @click="rail = false">
+      <v-list-item :title="rail ? '' : 'SEAD Shape Shifter'" :subtitle="rail ? '' : 'Project Editor'" nav>
         <!-- <template #prepend>
           <v-avatar size="40" class="mr-2">
             <v-img :src="logo" alt="SEAD Logo" />
           </v-avatar>
         </template> -->
         <template #append>
-          <v-btn
-            v-if="!rail"
-            icon="mdi-chevron-left"
-            variant="text"
-            size="small"
-            @click.stop="rail = true"
-          />
+          <v-btn v-if="!rail" icon="mdi-chevron-left" variant="text" size="small" @click.stop="rail = true" />
         </template>
       </v-list-item>
 
       <v-divider />
 
       <v-list density="compact" nav>
-        <v-list-item
-          prepend-icon="mdi-home"
-          title="Home"
-          value="home"
-          :to="{ name: 'home' }"
-        />
-        
+        <v-list-item prepend-icon="mdi-home" title="Home" value="home" :to="{ name: 'home' }" />
+
         <v-list-item
           prepend-icon="mdi-file-document-multiple"
-          title="Configurations"
-          value="configurations"
-          :to="{ name: 'configurations' }"
+          title="Projects"
+          value="projects"
+          :to="{ name: 'projects' }"
         />
 
         <v-list-item
@@ -69,31 +49,19 @@
       <template #append>
         <v-divider />
         <v-list density="compact" nav>
-          <v-list-item
-            prepend-icon="mdi-cog"
-            title="Settings"
-            value="settings"
-            :to="{ name: 'settings' }"
-          />
-          
-          <v-list-item
-            prepend-icon="mdi-help-circle"
-            title="Help"
-            value="help"
-            @click="showHelpDialog = true"
-          />
+          <v-list-item prepend-icon="mdi-cog" title="Settings" value="settings" :to="{ name: 'settings' }" />
+
+          <v-list-item prepend-icon="mdi-help-circle" title="Help" value="help" @click="showHelpDialog = true" />
         </v-list>
       </template>
     </v-navigation-drawer>
 
     <v-app-bar app color="primary" density="compact">
       <v-app-bar-nav-icon @click="drawer = !drawer" />
-      
+
       <v-toolbar-title>
         <span class="font-weight-bold">SEAD Shape Shifter</span>
-        <span v-if="currentConfig" class="ml-2 text-caption">
-          / {{ currentConfig }}
-        </span>
+        <span v-if="currentProject" class="ml-2 text-caption"> / {{ currentProject }} </span>
       </v-toolbar-title>
 
       <v-spacer />
@@ -108,25 +76,17 @@
         </v-tooltip>
       </v-btn>
 
-      <v-btn
-        icon="mdi-magnify"
-        variant="text"
-        @click="showCommandPalette = true"
-      />
+      <v-btn icon="mdi-magnify" variant="text" @click="showCommandPalette = true" />
 
       <v-menu>
         <template #activator="{ props }">
-          <v-btn
-            icon="mdi-dots-vertical"
-            variant="text"
-            v-bind="props"
-          />
+          <v-btn icon="mdi-dots-vertical" variant="text" v-bind="props" />
         </template>
         <v-list>
-          <v-list-item @click="handleNewConfiguration">
+          <v-list-item @click="handleNewProject">
             <v-list-item-title>
               <v-icon icon="mdi-plus" class="mr-2" />
-              New Configuration
+              New Project
             </v-list-item-title>
           </v-list-item>
           <v-list-item @click="handleRefresh">
@@ -140,11 +100,7 @@
     </v-app-bar>
 
     <v-main>
-      <v-breadcrumbs
-        v-if="breadcrumbs.length > 0"
-        :items="breadcrumbs"
-        class="px-4 py-2"
-      >
+      <v-breadcrumbs v-if="breadcrumbs.length > 0" :items="breadcrumbs" class="px-4 py-2">
         <template #divider>
           <v-icon icon="mdi-chevron-right" />
         </template>
@@ -171,11 +127,7 @@
             hide-details
           />
           <v-list class="mt-2">
-            <v-list-item
-              v-for="cmd in filteredCommands"
-              :key="cmd.id"
-              @click="executeCommand(cmd)"
-            >
+            <v-list-item v-for="cmd in filteredCommands" :key="cmd.id" @click="executeCommand(cmd)">
               <template #prepend>
                 <v-icon :icon="cmd.icon" />
               </template>
@@ -243,7 +195,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
 import { useSettings } from '@/composables/useSettings'
-import logo from '@/assets/images/SEAD-logo-with-subtext.png'
+// import logo from '@/assets/images/SEAD-logo-with-subtext.png'
 
 const router = useRouter()
 const route = useRoute()
@@ -256,7 +208,7 @@ const showCommandPalette = ref(false)
 const showHelpDialog = ref(false)
 const commandSearch = ref('')
 
-const currentConfig = computed(() => route.params.name as string | undefined)
+const currentProject = computed(() => route.params.name as string | undefined)
 
 interface Breadcrumb {
   title: string
@@ -266,15 +218,15 @@ interface Breadcrumb {
 
 const breadcrumbs = computed<Breadcrumb[]>(() => {
   const crumbs: Breadcrumb[] = []
-  
+
   if (route.name === 'home') return []
 
   crumbs.push({ title: 'Home', href: '/' })
 
-  if (route.name === 'configurations') {
-    crumbs.push({ title: 'Configurations', disabled: true })
-  } else if (route.name === 'config-detail' && route.params.name) {
-    crumbs.push({ title: 'Configurations', href: '/configurations' })
+  if (route.name === 'projects') {
+    crumbs.push({ title: 'Projects', disabled: true })
+  } else if (route.name === 'project-detail' && route.params.name) {
+    crumbs.push({ title: 'Projects', href: '/projects' })
     crumbs.push({ title: String(route.params.name), disabled: true })
   } else if (route.name === 'graph') {
     crumbs.push({ title: 'Dependency Graph', disabled: true })
@@ -306,11 +258,11 @@ const commands = ref<Command[]>([
     action: () => router.push('/'),
   },
   {
-    id: 'goto-configs',
-    title: 'Go to Configurations',
+    id: 'goto-projects',
+    title: 'Go to Projects',
     icon: 'mdi-file-document-multiple',
     shortcut: 'Ctrl+Shift+C',
-    action: () => router.push('/configurations'),
+    action: () => router.push('/projects'),
   },
   {
     id: 'goto-graph',
@@ -324,9 +276,7 @@ const commands = ref<Command[]>([
 const filteredCommands = computed(() => {
   if (!commandSearch.value) return commands.value
   const search = commandSearch.value.toLowerCase()
-  return commands.value.filter((cmd) =>
-    cmd.title.toLowerCase().includes(search)
-  )
+  return commands.value.filter((cmd) => cmd.title.toLowerCase().includes(search))
 })
 
 function executeCommand(cmd: Command) {
@@ -341,8 +291,8 @@ const snackbar = ref({
   color: 'success' as 'success' | 'error' | 'info',
 })
 
-function handleNewConfiguration() {
-  router.push('/configurations')
+function handleNewProject() {
+  router.push('/projects')
 }
 
 function handleRefresh() {
@@ -354,22 +304,22 @@ function handleKeydown(event: KeyboardEvent) {
     event.preventDefault()
     showCommandPalette.value = !showCommandPalette.value
   }
-  
+
   if (event.ctrlKey && event.key === 'h') {
     event.preventDefault()
     router.push('/')
   }
-  
+
   if (event.ctrlKey && event.key === 'g') {
     event.preventDefault()
     router.push('/graph')
   }
-  
+
   if (event.ctrlKey && event.shiftKey && event.key === 'C') {
     event.preventDefault()
-    router.push('/configurations')
+    router.push('/projects')
   }
-  
+
   if (event.key === 'Escape') {
     showCommandPalette.value = false
     showHelpDialog.value = false
@@ -391,11 +341,14 @@ onUnmounted(() => {
 })
 
 // Watch for rail navigation setting changes
-watch(() => settings.railNavigation.value, (newVal) => {
-  if (window.innerWidth > 1280) {
-    rail.value = newVal
+watch(
+  () => settings.railNavigation.value,
+  (newVal) => {
+    if (window.innerWidth > 1280) {
+      rail.value = newVal
+    }
   }
-})
+)
 </script>
 
 <style scoped>

@@ -7,7 +7,7 @@ from openpyxl.styles import PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 from sqlalchemy import create_engine
 
-from src.model import ShapeShiftConfig, TableConfig
+from src.model import ShapeShiftProject, TableConfig
 from src.utility import Registry, create_db_uri, dotget
 
 
@@ -28,8 +28,8 @@ class IDispatcher(Protocol):
 class Dispatcher(IDispatcher):
     """Base class for data dispatchers."""
 
-    def __init__(self, cfg: ShapeShiftConfig | dict[str, Any]) -> None:
-        self.cfg: ShapeShiftConfig = cfg if isinstance(cfg, ShapeShiftConfig) else ShapeShiftConfig(cfg=cfg)
+    def __init__(self, cfg: ShapeShiftProject | dict[str, Any]) -> None:
+        self.cfg: ShapeShiftProject = cfg if isinstance(cfg, ShapeShiftProject) else ShapeShiftProject(cfg=cfg)
 
 
 @Dispatchers.register(key="csv")

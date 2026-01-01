@@ -2,17 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
 import schemaApi from '@/api/schema'
-import type {
-  DataSourceConfig,
-  DataSourceTestResult,
-  DataSourceStatus,
-} from '@/types/data-source'
-import type {
-  TableMetadata,
-  TableSchema,
-  PreviewData,
-  PreviewTableDataParams,
-} from '@/types/schema'
+import type { DataSourceConfig, DataSourceTestResult, DataSourceStatus } from '@/types/data-source'
+import type { TableMetadata, TableSchema, PreviewData, PreviewTableDataParams } from '@/types/schema'
 
 export const useDataSourceStore = defineStore('dataSource', () => {
   // State
@@ -119,7 +110,7 @@ export const useDataSourceStore = defineStore('dataSource', () => {
     error.value = null
     try {
       const updated = await api.dataSources.update(name, config)
-      
+
       // Update in list
       const index = dataSources.value.findIndex((ds) => ds.name === name)
       if (index !== -1) {
@@ -131,12 +122,12 @@ export const useDataSourceStore = defineStore('dataSource', () => {
           dataSources.value[index] = updated
         }
       }
-      
+
       // Update selected if it's the current one
       if (selectedDataSource.value?.name === name) {
         selectedDataSource.value = updated
       }
-      
+
       return updated
     } catch (e) {
       error.value = e instanceof Error ? e.message : `Failed to update data source '${name}'`
@@ -151,16 +142,16 @@ export const useDataSourceStore = defineStore('dataSource', () => {
     error.value = null
     try {
       await api.dataSources.delete(name)
-      
+
       // Remove from list
       const index = dataSources.value.findIndex((ds) => ds.name === name)
       if (index !== -1) {
         dataSources.value.splice(index, 1)
       }
-      
+
       // Clear test result
       testResults.value.delete(name)
-      
+
       // Clear selected if it's the deleted one
       if (selectedDataSource.value?.name === name) {
         selectedDataSource.value = null
@@ -230,18 +221,12 @@ export const useDataSourceStore = defineStore('dataSource', () => {
     }
   }
 
-  async function fetchTableSchema(
-    dataSourceName: string,
-    tableName: string,
-    schema?: string
-  ) {
+  async function fetchTableSchema(dataSourceName: string, tableName: string, schema?: string) {
     schemaLoading.value = true
     schemaError.value = null
     try {
       const result = await schemaApi.getTableSchema(dataSourceName, tableName, { schema })
-      const key = schema
-        ? `${dataSourceName}:${schema}:${tableName}`
-        : `${dataSourceName}:${tableName}`
+      const key = schema ? `${dataSourceName}:${schema}:${tableName}` : `${dataSourceName}:${tableName}`
       tableSchemas.value.set(key, result)
       return result
     } catch (e) {
@@ -312,9 +297,7 @@ export const useDataSourceStore = defineStore('dataSource', () => {
 
   const getTableSchema = computed(() => {
     return (dataSourceName: string, tableName: string, schema?: string) => {
-      const key = schema
-        ? `${dataSourceName}:${schema}:${tableName}`
-        : `${dataSourceName}:${tableName}`
+      const key = schema ? `${dataSourceName}:${schema}:${tableName}` : `${dataSourceName}:${tableName}`
       return tableSchemas.value.get(key)
     }
   })

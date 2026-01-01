@@ -1,5 +1,5 @@
 /**
- * Session management store for multi-user configuration editing.
+ * Session management store for multi-user project editing.
  */
 
 import { defineStore } from 'pinia'
@@ -19,7 +19,7 @@ export const useSessionStore = defineStore('session', () => {
 
   const sessionId = computed(() => currentSession.value?.session_id || null)
 
-  const configName = computed(() => currentSession.value?.config_name || null)
+  const projectName = computed(() => currentSession.value?.project_name || null)
 
   const version = computed(() => currentSession.value?.version || 1)
 
@@ -31,9 +31,7 @@ export const useSessionStore = defineStore('session', () => {
 
   const otherActiveSessions = computed(() => {
     if (!currentSession.value) return []
-    return activeSessions.value.filter(
-      (s) => s.session_id !== currentSession.value?.session_id
-    )
+    return activeSessions.value.filter((s) => s.session_id !== currentSession.value?.session_id)
   })
 
   // Actions
@@ -48,7 +46,7 @@ export const useSessionStore = defineStore('session', () => {
     try {
       const session = await sessionsApi.create(request)
       currentSession.value = session
-      
+
       // Load active sessions to detect concurrent editing
       await refreshActiveSessions()
 
@@ -110,15 +108,13 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   /**
-   * Refresh list of active sessions for current config.
+   * Refresh list of active sessions for current project.
    */
   async function refreshActiveSessions(): Promise<void> {
     if (!currentSession.value) return
 
     try {
-      activeSessions.value = await sessionsApi.listActive(
-        currentSession.value.config_name
-      )
+      activeSessions.value = await sessionsApi.listActive(currentSession.value.project_name)
 
       // Update concurrent sessions count
       if (currentSession.value) {
@@ -196,7 +192,7 @@ export const useSessionStore = defineStore('session', () => {
     // Getters
     hasActiveSession,
     sessionId,
-    configName,
+    projectName: projectName,
     version,
     isModified,
     hasConcurrentEdits,

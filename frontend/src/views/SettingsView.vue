@@ -3,9 +3,7 @@
     <v-row>
       <v-col cols="12">
         <h1 class="text-h4 mb-2">Settings</h1>
-        <p class="text-subtitle-1 text-medium-emphasis">
-          Customize your Shape Shifter experience
-        </p>
+        <p class="text-subtitle-1 text-medium-emphasis">Customize your Shape Shifter experience</p>
       </v-col>
     </v-row>
 
@@ -14,19 +12,11 @@
       <v-col cols="12" lg="8">
         <v-card>
           <v-card-title>Theme</v-card-title>
-          <v-card-subtitle>
-            Choose a theme preset or customize your own colors
-          </v-card-subtitle>
+          <v-card-subtitle> Choose a theme preset or customize your own colors </v-card-subtitle>
 
           <v-card-text>
             <v-row>
-              <v-col
-                v-for="preset in theme.presets"
-                :key="preset.name"
-                cols="12"
-                sm="6"
-                md="4"
-              >
+              <v-col v-for="preset in theme.presets" :key="preset.name" cols="12" sm="6" md="4">
                 <v-card
                   :variant="theme.currentThemeName.value === preset.name ? 'tonal' : 'outlined'"
                   :color="theme.currentThemeName.value === preset.name ? 'primary' : undefined"
@@ -44,7 +34,7 @@
                     <div class="text-caption text-medium-emphasis">
                       {{ preset.description }}
                     </div>
-                    
+
                     <!-- Current theme indicator -->
                     <v-chip
                       v-if="theme.currentThemeName.value === preset.name"
@@ -83,12 +73,7 @@
 
               <v-spacer />
 
-              <v-chip
-                v-if="theme.hasCustomColors.value"
-                color="info"
-                variant="tonal"
-                prepend-icon="mdi-palette"
-              >
+              <v-chip v-if="theme.hasCustomColors.value" color="info" variant="tonal" prepend-icon="mdi-palette">
                 Custom colors applied
               </v-chip>
             </div>
@@ -101,13 +86,7 @@
         <v-card>
           <v-card-title>
             Preview
-            <v-chip
-              v-if="appSettings.compactMode.value"
-              size="small"
-              color="info"
-              variant="tonal"
-              class="ml-2"
-            >
+            <v-chip v-if="appSettings.compactMode.value" size="small" color="info" variant="tonal" class="ml-2">
               Compact
             </v-chip>
           </v-card-title>
@@ -131,9 +110,7 @@
               <!-- Component preview -->
               <div class="components-preview">
                 <v-btn color="primary" size="small" class="mb-2">Primary Button</v-btn>
-                <v-btn color="secondary" size="small" variant="outlined" class="mb-2">
-                  Secondary Button
-                </v-btn>
+                <v-btn color="secondary" size="small" variant="outlined" class="mb-2"> Secondary Button </v-btn>
                 <v-text-field
                   model-value="Text input"
                   density="comfortable"
@@ -141,15 +118,9 @@
                   hide-details
                   class="mb-2"
                 />
-                <v-alert type="info" variant="tonal" density="compact" class="mb-2">
-                  Info message
-                </v-alert>
-                <v-alert type="success" variant="tonal" density="compact" class="mb-2">
-                  Success message
-                </v-alert>
-                <v-alert type="warning" variant="tonal" density="compact">
-                  Warning message
-                </v-alert>
+                <v-alert type="info" variant="tonal" density="compact" class="mb-2"> Info message </v-alert>
+                <v-alert type="success" variant="tonal" density="compact" class="mb-2"> Success message </v-alert>
+                <v-alert type="warning" variant="tonal" density="compact"> Warning message </v-alert>
               </div>
             </div>
           </v-card-text>
@@ -169,9 +140,7 @@
       <v-col cols="12" md="6">
         <v-card>
           <v-card-title>Interface</v-card-title>
-          <v-card-subtitle>
-            Customize the interface density and behavior
-          </v-card-subtitle>
+          <v-card-subtitle> Customize the interface density and behavior </v-card-subtitle>
           <v-card-text>
             <v-switch
               v-model="appSettings.compactMode.value"
@@ -226,12 +195,7 @@
             <v-divider class="my-4" />
 
             <div class="d-flex gap-2">
-              <v-btn
-                variant="outlined"
-                size="small"
-                prepend-icon="mdi-restore"
-                @click="handleResetSettings"
-              >
+              <v-btn variant="outlined" size="small" prepend-icon="mdi-restore" @click="handleResetSettings">
                 Reset Interface Settings
               </v-btn>
             </div>
@@ -245,7 +209,7 @@
           <v-card-text>
             <div class="d-flex align-center mb-2">
               <v-icon icon="mdi-information" class="mr-2" />
-              <span class="text-body-2">SEAD Shape Shifter Configuration Editor</span>
+              <span class="text-body-2">SEAD Shape Shifter Project Editor</span>
             </div>
             <div class="d-flex align-center mb-2">
               <v-icon icon="mdi-tag" class="mr-2" />
@@ -253,11 +217,7 @@
             </div>
             <div class="d-flex align-center">
               <v-icon icon="mdi-github" class="mr-2" />
-              <a
-                href="https://github.com/humlab-sead/sead_shape_shifter"
-                target="_blank"
-                class="text-body-2"
-              >
+              <a href="https://github.com/humlab-sead/sead_shape_shifter" target="_blank" class="text-body-2">
                 GitHub Repository
               </a>
             </div>
@@ -285,9 +245,7 @@
     <v-dialog v-model="showResetSettingsDialog" max-width="400">
       <v-card>
         <v-card-title>Reset Interface Settings</v-card-title>
-        <v-card-text>
-          Are you sure you want to reset all interface settings to defaults?
-        </v-card-text>
+        <v-card-text> Are you sure you want to reset all interface settings to defaults? </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="showResetSettingsDialog = false">Cancel</v-btn>

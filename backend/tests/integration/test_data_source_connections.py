@@ -37,7 +37,7 @@ async def test_postgresql_connection(settings: Settings):
         **{},
     )
 
-    service = DataSourceService(settings.CONFIGURATIONS_DIR)
+    service = DataSourceService(settings.PROJECTS_DIR)
 
     result = await service.test_connection(pg_config)
 
@@ -64,7 +64,7 @@ async def test_access_connection(settings: Settings) -> None:
         name="test_access", driver="ucanaccess", filename=str(mdb_file), options={"ucanaccess_dir": "lib/ucanaccess"}, **{}  # type: ignore
     )
 
-    service = DataSourceService(settings.CONFIGURATIONS_DIR)
+    service = DataSourceService(settings.PROJECTS_DIR)
 
     result = await service.test_connection(access_config)
     assert result.success, f"Connection failed: {result.message}"
@@ -73,7 +73,7 @@ async def test_access_connection(settings: Settings) -> None:
 async def test_existing_data_sources(settings: Settings):
     """Test connections to existing configured data sources."""
 
-    service = DataSourceService(settings.CONFIGURATIONS_DIR)
+    service = DataSourceService(settings.PROJECTS_DIR)
 
     data_sources: list[DataSourceConfig] = service.list_data_sources()
 

@@ -1,11 +1,11 @@
-"""Service for analyzing entity dependencies in configurations."""
+"""Service for analyzing entity dependencies in projects."""
 
 from typing import Any
 
 from loguru import logger
 
-from backend.app.models.config import Configuration
-from src.model import ShapeShiftConfig
+from backend.app.models.project import Project
+from src.model import ShapeShiftProject
 
 
 class DependencyServiceError(Exception):
@@ -48,20 +48,22 @@ class DependencyGraph(dict):
 class DependencyService:
     """Service for analyzing entity dependencies."""
 
-    def analyze_dependencies(self, config: Configuration) -> DependencyGraph:
+    def analyze_dependencies(self, api_project: Project) -> DependencyGraph:
         """
-        Analyze dependencies in configuration.
+        Analyze dependencies in project.
 
         Args:
-            config: Configuration to analyze
+            api_project: Project to analyze
 
         Returns:
             Dependency graph with nodes, edges, and cycle information
         """
-        tables_cfg = ShapeShiftConfig(cfg={"entities": config.entities, "options": config.options}, filename=config.filename or "")
+        project = ShapeShiftProject(
+            cfg={"entities": api_project.entities, "options": api_project.options}, filename=api_project.filename or ""
+        )
 
         dependency_map: dict[str, list[str]] = {
-            entity_name: list(tables_cfg.get_table(entity_name).depends_on or []) for entity_name in config.entities
+            entity_name: list(project.get_table(entity_name).depends_on or []) for entity_name in api_project.entities
         }
 
         # Detect cycles
@@ -89,17 +91,17 @@ class DependencyService:
             topological_order=topological_order,
         )
 
-    def check_circular_dependencies(self, config: Configuration) -> dict[str, Any]:
+    def check_circular_dependencies(self, project: Project) -> dict[str, Any]:
         """
-        Check for circular dependencies in configuration.
+        Check for circular dependencies in project.
 
         Args:
-            config: Configuration to check
+            config: Project to check
 
         Returns:
             Dictionary with has_cycles flag and list of cycles
         """
-        graph = self.analyze_dependencies(config)
+        graph = self.analyze_dependencies(project)
 
         return {
             "has_cycles": graph["has_cycles"],

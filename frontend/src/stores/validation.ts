@@ -1,12 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
-import type {
-  ValidationResult,
-  ValidationError,
-  DependencyGraph,
-  CircularDependencyCheck,
-} from '@/types'
+import type { ValidationResult, ValidationError, DependencyGraph, CircularDependencyCheck } from '@/types'
 
 export const useValidationStore = defineStore('validation', () => {
   // State
@@ -94,25 +89,25 @@ export const useValidationStore = defineStore('validation', () => {
   })
 
   // Actions
-  async function validateConfiguration(configName: string) {
+  async function validateProject(projectName: string) {
     loading.value = true
     error.value = null
     try {
-      validationResult.value = await api.configurations.validate(configName)
+      validationResult.value = await api.projects.validate(projectName)
       return validationResult.value
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to validate configuration'
+      error.value = err instanceof Error ? err.message : 'Failed to validate project'
       throw err
     } finally {
       loading.value = false
     }
   }
 
-  async function validateEntity(configName: string, entityName: string) {
+  async function validateEntity(projectName: string, entityName: string) {
     loading.value = true
     error.value = null
     try {
-      const result = await api.validation.validateEntity(configName, entityName)
+      const result = await api.validation.validateEntity(projectName, entityName)
       entityValidationResults.value.set(entityName, result)
       return result
     } catch (err) {
@@ -123,11 +118,11 @@ export const useValidationStore = defineStore('validation', () => {
     }
   }
 
-  async function fetchDependencies(configName: string) {
+  async function fetchDependencies(projectName: string) {
     loading.value = true
     error.value = null
     try {
-      dependencyGraph.value = await api.validation.getDependencies(configName)
+      dependencyGraph.value = await api.validation.getDependencies(projectName)
       return dependencyGraph.value
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch dependencies'
@@ -137,15 +132,14 @@ export const useValidationStore = defineStore('validation', () => {
     }
   }
 
-  async function checkCircularDependencies(configName: string) {
+  async function checkCircularDependencies(projectName: string) {
     loading.value = true
     error.value = null
     try {
-      circularDependencyCheck.value = await api.validation.checkCircularDependencies(configName)
+      circularDependencyCheck.value = await api.validation.checkCircularDependencies(projectName)
       return circularDependencyCheck.value
     } catch (err) {
-      error.value =
-        err instanceof Error ? err.message : 'Failed to check circular dependencies'
+      error.value = err instanceof Error ? err.message : 'Failed to check circular dependencies'
       throw err
     } finally {
       loading.value = false
@@ -213,7 +207,7 @@ export const useValidationStore = defineStore('validation', () => {
     topologicalOrder,
     isValid,
     // Actions
-    validateConfiguration,
+    validateProject,
     validateEntity,
     fetchDependencies,
     checkCircularDependencies,

@@ -81,7 +81,7 @@ async def test_debug_postgresql_connection(settings: Settings):
 
     # Test connection
     print(f"\n--- Testing Connection ---")
-    service = api_services.DataSourceService(settings.CONFIGURATIONS_DIR)
+    service = api_services.DataSourceService(settings.PROJECTS_DIR)
     result: api.DataSourceTestResult = await service.test_connection(ds_config)
 
     print(f"Success: {result.success}")
@@ -133,7 +133,7 @@ async def test_debug_access_connection(settings: Settings):
 
     # Test connection
     print(f"\n--- Testing Connection ---")
-    service = api_services.DataSourceService(settings.CONFIGURATIONS_DIR)
+    service = api_services.DataSourceService(settings.PROJECTS_DIR)
     result: api.DataSourceTestResult = await service.test_connection(ds_cfg)
 
     print(f"Success: {result.success}")
@@ -148,7 +148,7 @@ async def test_debug_access_connection(settings: Settings):
 @pytest.mark.asyncio
 async def test_debug_existing_data_sources(settings: Settings):
     """Test all existing configured data sources."""
-    service = api_services.DataSourceService(settings.CONFIGURATIONS_DIR)
+    service = api_services.DataSourceService(settings.PROJECTS_DIR)
     data_sources = service.list_data_sources()
 
     print(f"\n--- Configured Data Sources ---")
@@ -210,7 +210,7 @@ async def test_debug_postgresql_with_env_vars(settings: Settings):
         print()
 
         # Test connection - env vars should be resolved automatically
-        service = api_services.DataSourceService(settings.CONFIGURATIONS_DIR)
+        service = api_services.DataSourceService(settings.PROJECTS_DIR)
         result = await service.test_connection(config)
 
         print("After resolution (env vars replaced):")

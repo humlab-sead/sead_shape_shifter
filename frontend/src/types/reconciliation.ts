@@ -9,7 +9,7 @@ export interface ReconciliationSource {
 }
 
 export interface ReconciliationRemote {
-  service_type?: string | null  // e.g., 'site', 'taxon' - must match service defaultTypes
+  service_type?: string | null // e.g., 'site', 'taxon' - must match service defaultTypes
 }
 
 export interface ReconciliationMapping {
@@ -22,9 +22,9 @@ export interface ReconciliationMapping {
 }
 
 export interface EntityReconciliationSpec {
-  source?: string | ReconciliationSource | null  // Entity name, custom query, or null for default
-  keys: string[]  // Primary key fields for building query string
-  property_mappings: Record<string, string>  // property_id -> source_column
+  source?: string | ReconciliationSource | null // Entity name, custom query, or null for default
+  keys: string[] // Primary key fields for building query string
+  property_mappings: Record<string, string> // property_id -> source_column
   remote: ReconciliationRemote
   auto_accept_threshold: number
   review_threshold: number

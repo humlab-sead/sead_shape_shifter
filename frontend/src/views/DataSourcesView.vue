@@ -4,7 +4,7 @@
       <v-col>
         <h1 class="text-h4 mb-2">Global Data Sources</h1>
         <p class="text-body-2 text-grey">
-          Manage global data source files. These can be connected to configurations via @include references.
+          Manage global data source files. These can be connected to project via @include references.
         </p>
       </v-col>
     </v-row>
@@ -12,15 +12,9 @@
     <!-- Info Banner -->
     <v-row class="mt-2">
       <v-col>
-        <v-alert
-          type="info"
-          variant="tonal"
-          density="compact"
-          border="start"
-        >
-          <strong>Shared Data Sources</strong> - Data sources are stored as separate YAML files
-          and can be connected to multiple configurations. To connect a data source to a
-          configuration, go to the configuration's "Data Sources" tab.
+        <v-alert type="info" variant="tonal" density="compact" border="start">
+          <strong>Shared Data Sources</strong> - Data sources are stored as separate YAML files and can be connected to
+          multiple projects. To connect a data source to a project, go to the project's "Data Sources" tab.
         </v-alert>
       </v-col>
     </v-row>
@@ -49,13 +43,7 @@
         />
       </v-col>
       <v-col cols="12" md="3" class="text-right">
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-plus"
-          @click="handleCreate"
-        >
-          New Data Source
-        </v-btn>
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="handleCreate"> New Data Source </v-btn>
       </v-col>
     </v-row>
 
@@ -82,39 +70,21 @@
         <v-card variant="outlined" class="text-center py-12">
           <v-icon icon="mdi-database-off-outline" size="64" color="grey" />
           <h3 class="text-h6 mt-4 mb-2">No Data Sources Configured</h3>
-          <p class="text-grey mb-4">
-            Add a database or file connection to start working with data
-          </p>
-          <v-btn
-            color="primary"
-            prepend-icon="mdi-plus"
-            @click="handleCreate"
-          >
-            Add Data Source
-          </v-btn>
+          <p class="text-grey mb-4">Add a database or file connection to start working with data</p>
+          <v-btn color="primary" prepend-icon="mdi-plus" @click="handleCreate"> Add Data Source </v-btn>
         </v-card>
       </v-col>
     </v-row>
 
     <!-- Data Source Cards -->
     <v-row v-else class="mt-4">
-      <v-col
-        v-for="dataSource in filteredDataSources"
-        :key="dataSource.name"
-        cols="12"
-        md="6"
-        lg="4"
-      >
+      <v-col v-for="dataSource in filteredDataSources" :key="dataSource.name" cols="12" md="6" lg="4">
         <v-card variant="outlined" class="h-100" hover>
           <v-card-title class="d-flex align-center">
             <v-icon :icon="getDriverIcon(dataSource.driver)" class="mr-2" />
             {{ dataSource.name }}
             <v-spacer />
-            <v-chip
-              :color="getDriverColor(dataSource.driver)"
-              size="small"
-              label
-            >
+            <v-chip :color="getDriverColor(dataSource.driver)" size="small" label>
               {{ getDriverDisplayName(dataSource.driver) }}
             </v-chip>
           </v-card-title>
@@ -127,14 +97,14 @@
                 <span class="text-grey">Host:</span>
                 <span class="ml-1 font-weight-medium">{{ dataSource.host }}</span>
               </div>
-              
+
               <!-- Port -->
               <div v-if="dataSource.port" class="d-flex align-center mb-1">
                 <v-icon icon="mdi-ethernet" size="small" class="mr-2" />
                 <span class="text-grey">Port:</span>
                 <span class="ml-1 font-weight-medium">{{ dataSource.port }}</span>
               </div>
-              
+
               <!-- Database -->
               <div v-if="dataSource.database || dataSource.dbname" class="d-flex align-center mb-1">
                 <v-icon icon="mdi-database" size="small" class="mr-2" />
@@ -143,14 +113,14 @@
                   {{ dataSource.database || dataSource.dbname }}
                 </span>
               </div>
-              
+
               <!-- Username -->
               <div v-if="dataSource.username" class="d-flex align-center mb-1">
                 <v-icon icon="mdi-account" size="small" class="mr-2" />
                 <span class="text-grey">User:</span>
                 <span class="ml-1 font-weight-medium">{{ dataSource.username }}</span>
               </div>
-              
+
               <!-- Filename (top-level or from options) -->
               <div v-if="getFilePath(dataSource)" class="d-flex align-center mb-1">
                 <v-icon icon="mdi-file" size="small" class="mr-2" />
@@ -159,7 +129,7 @@
                   {{ getFilePath(dataSource) }}
                 </span>
               </div>
-              
+
               <!-- Connection String -->
               <div v-if="dataSource.connection_string" class="d-flex align-center mb-1">
                 <v-icon icon="mdi-link" size="small" class="mr-2" />
@@ -168,14 +138,12 @@
                   {{ maskConnectionString(dataSource.connection_string) }}
                 </span>
               </div>
-              
+
               <!-- Driver-specific options -->
               <div v-if="hasDriverOptions(dataSource)" class="d-flex align-center mb-1">
                 <v-icon icon="mdi-cog" size="small" class="mr-2" />
                 <span class="text-grey">Options:</span>
-                <span class="ml-1 font-weight-medium">
-                  {{ getDriverOptionsCount(dataSource) }} configured
-                </span>
+                <span class="ml-1 font-weight-medium"> {{ getDriverOptionsCount(dataSource) }} configured </span>
               </div>
             </div>
 
@@ -192,11 +160,7 @@
               >
                 <div class="d-flex align-center">
                   <v-icon
-                    :icon="
-                      getTestResult(dataSource.name)?.success
-                        ? 'mdi-check-circle'
-                        : 'mdi-alert-circle'
-                    "
+                    :icon="getTestResult(dataSource.name)?.success ? 'mdi-check-circle' : 'mdi-alert-circle'"
                     size="small"
                     class="mr-2"
                   />
@@ -223,14 +187,7 @@
             >
               Test
             </v-btn>
-            <v-btn
-              size="small"
-              variant="text"
-              prepend-icon="mdi-pencil"
-              @click="handleEdit(dataSource)"
-            >
-              Edit
-            </v-btn>
+            <v-btn size="small" variant="text" prepend-icon="mdi-pencil" @click="handleEdit(dataSource)"> Edit </v-btn>
             <v-spacer />
             <v-btn
               size="small"
@@ -245,11 +202,7 @@
     </v-row>
 
     <!-- Create/Edit Dialog -->
-    <DataSourceFormDialog
-      v-model="showFormDialog"
-      :data-source="editingDataSource"
-      @save="handleSave"
-    />
+    <DataSourceFormDialog v-model="showFormDialog" :data-source="editingDataSource" @save="handleSave" />
 
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="showDeleteDialog" max-width="500">
@@ -258,29 +211,17 @@
         <v-card-text>
           <p>
             Are you sure you want to delete data source
-            <strong>{{ deletingDataSource?.name }}</strong>?
+            <strong>{{ deletingDataSource?.name }}</strong
+            >?
           </p>
-          <v-alert
-            v-if="deleteError"
-            type="error"
-            density="compact"
-            variant="tonal"
-            class="mt-3"
-          >
+          <v-alert v-if="deleteError" type="error" density="compact" variant="tonal" class="mt-3">
             {{ deleteError }}
           </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="showDeleteDialog = false">Cancel</v-btn>
-          <v-btn
-            color="error"
-            variant="flat"
-            :loading="deleting"
-            @click="handleDelete"
-          >
-            Delete
-          </v-btn>
+          <v-btn color="error" variant="flat" :loading="deleting" @click="handleDelete"> Delete </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -290,13 +231,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
-import { useConfigurationStore } from '@/stores/configuration'
-import {
-  getDriverDisplayName,
-  getDriverIcon,
-  isDatabaseSource,
-  type DataSourceConfig,
-} from '@/types/data-source'
+import { getDriverDisplayName, getDriverIcon, type DataSourceConfig } from '@/types/data-source'
 import DataSourceFormDialog from '@/components/DataSourceFormDialog.vue'
 
 const dataSourceStore = useDataSourceStore()
@@ -378,10 +313,12 @@ function getFilePath(dataSource: DataSourceConfig): string | undefined {
   // Check top-level filename or file_path
   if (dataSource.filename) return dataSource.filename
   if (dataSource.file_path) return dataSource.file_path
-  
+
   // Check options.filename (for Access databases)
-  if (dataSource.options?.filename) return dataSource.options.filename
-  
+  if (dataSource.options?.filename && typeof dataSource.options.filename === 'string') {
+    return dataSource.options.filename
+  }
+
   return undefined
 }
 
@@ -391,17 +328,13 @@ function maskConnectionString(connStr: string): string {
 }
 
 function hasDriverOptions(dataSource: DataSourceConfig): boolean {
-  return (
-    dataSource.options !== null &&
-    dataSource.options !== undefined &&
-    Object.keys(dataSource.options).length > 0
-  )
+  return dataSource.options !== null && dataSource.options !== undefined && Object.keys(dataSource.options).length > 0
 }
 
 function getDriverOptionsCount(dataSource: DataSourceConfig): number {
   if (!dataSource.options) return 0
   // Exclude filename from count as it's displayed separately
-  const keys = Object.keys(dataSource.options).filter(k => k !== 'filename')
+  const keys = Object.keys(dataSource.options).filter((k) => k !== 'filename')
   return keys.length
 }
 

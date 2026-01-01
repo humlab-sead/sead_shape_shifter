@@ -9,7 +9,7 @@ The reconciliation feature helps you map source entity values (e.g., "Oak", "Bir
 ## Prerequisites
 
 1. **OpenRefine Reconciliation Service** - You must have a reconciliation service running (default: `http://localhost:8000`)
-2. **Configuration File** - A Shape Shifter configuration file must exist
+2. **Project File** - A Shape Shifter configuration file must exist
 3. **Entity Preview Data** - The entity you want to reconcile must have preview data available
 
 ## Setup Steps
@@ -23,7 +23,7 @@ Ensure your OpenRefine reconciliation service is running:
 # The service should be accessible at http://localhost:8000 (or configure a different URL)
 ```
 
-### 2. Create Reconciliation Configuration
+### 2. Create Reconciliation Project
 
 Create a YAML file named `{configuration-name}-reconciliation.yml` in the `input/` directory alongside your main configuration file.
 
@@ -112,7 +112,7 @@ entities:
     mapping: []
 ```
 
-### 3. Include Reconciliation in Main Configuration
+### 3. Include Reconciliation in Main Project
 
 Add an `@include` directive to your main configuration file to reference the reconciliation configuration:
 
@@ -133,9 +133,9 @@ reconciliation:
   @include: "arbodat-reconciliation.yml"
 ```
 
-### 4. Configuration Reference
+### 4. Project Reference
 
-#### Service Configuration
+#### Service Project
 
 ```yaml
 service_url: "http://localhost:8000"  # Required: Reconciliation service base URL
@@ -349,7 +349,7 @@ For items with no candidates or very low confidence:
 4. **Manual research**: Look up correct SEAD ID in database
 5. **Create new entities**: If entity doesn't exist in SEAD, coordinate with admins
 
-## Configuration Examples
+## Project Examples
 
 ### Simple Reconciliation (Using Entity Preview)
 
@@ -522,7 +522,7 @@ entities:
 - Verify backend API is running (port 8012)
 - Check browser console for API errors
 
-## Advanced Configuration
+## Advanced Project
 
 ### Property Mapping Reference
 
@@ -581,7 +581,7 @@ reconciliation:
 ### Auto-Reconcile Endpoint
 
 ```
-POST /api/v1/configurations/{config_name}/reconciliation/{entity_name}/auto-reconcile
+POST /api/v1/projects/{project_name}/reconciliation/{entity_name}/auto-reconcile
 ```
 
 Fetches entity data, queries reconciliation service, and auto-accepts high-confidence matches.
@@ -589,7 +589,7 @@ Fetches entity data, queries reconciliation service, and auto-accepts high-confi
 ### Update Mapping Endpoint
 
 ```
-POST /api/v1/configurations/{config_name}/reconciliation/{entity_name}/mapping
+POST /api/v1/projects/{project_name}/reconciliation/{entity_name}/mapping
 ```
 
 Manually create or update a mapping for specific source values.
@@ -597,7 +597,7 @@ Manually create or update a mapping for specific source values.
 ### Suggest Entities Endpoint
 
 ```
-GET /api/v1/configurations/{config_name}/reconciliation/{entity_name}/suggest?prefix={prefix}
+GET /api/v1/projects/{project_name}/reconciliation/{entity_name}/suggest?prefix={prefix}
 ```
 
 Autocomplete suggestions for SEAD entity names.
@@ -605,6 +605,6 @@ Autocomplete suggestions for SEAD entity names.
 ## See Also
 
 - [OpenRefine Reconciliation API Specification](https://reconciliation-api.github.io/specs/latest/)
-- [Configuration Guide](CONFIGURATION_GUIDE.md)
+- [Project Guide](CONFIGURATION_GUIDE.md)
 - [Backend API Documentation](BACKEND_API.md)
 - [Development Guide](DEVELOPMENT_GUIDE.md)

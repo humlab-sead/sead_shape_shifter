@@ -60,9 +60,7 @@ export function groupByEntity(errors: ValidationError[]): Map<string, Validation
   return grouped
 }
 
-export function groupBySeverity(
-  result: ValidationResult
-): Record<ValidationSeverity, ValidationError[]> {
+export function groupBySeverity(result: ValidationResult): Record<ValidationSeverity, ValidationError[]> {
   return {
     error: result.errors,
     warning: result.warnings,

@@ -4,13 +4,7 @@
       <v-icon icon="mdi-file-tree" class="mr-2" />
       Tables
       <v-spacer />
-      <v-btn
-        icon="mdi-refresh"
-        size="small"
-        variant="text"
-        :loading="loading"
-        @click="refreshTables"
-      />
+      <v-btn icon="mdi-refresh" size="small" variant="text" :loading="loading" @click="refreshTables" />
     </v-card-title>
 
     <v-card-text>
@@ -80,21 +74,11 @@
       </div>
 
       <!-- Empty State -->
-      <v-alert
-        v-else-if="!selectedDataSourceName"
-        type="info"
-        variant="tonal"
-        density="compact"
-      >
+      <v-alert v-else-if="!selectedDataSourceName" type="info" variant="tonal" density="compact">
         Select a data source to browse tables
       </v-alert>
 
-      <v-alert
-        v-else-if="filteredTables.length === 0 && !loading"
-        type="info"
-        variant="tonal"
-        density="compact"
-      >
+      <v-alert v-else-if="filteredTables.length === 0 && !loading" type="info" variant="tonal" density="compact">
         No tables found
       </v-alert>
 
@@ -113,11 +97,7 @@
           </template>
 
           <template #append>
-            <v-chip
-              v-if="table.row_count !== null && table.row_count !== undefined"
-              size="x-small"
-              variant="tonal"
-            >
+            <v-chip v-if="table.row_count !== null && table.row_count !== undefined" size="x-small" variant="tonal">
               {{ formatRowCount(table.row_count) }}
             </v-chip>
           </template>
@@ -187,9 +167,9 @@ const filteredTables = computed(() => {
   if (!searchQuery.value) return tables.value
 
   const query = searchQuery.value.toLowerCase()
-  return tables.value.filter((table) =>
-    table.name.toLowerCase().includes(query) ||
-    (table.comment && table.comment.toLowerCase().includes(query))
+  return tables.value.filter(
+    (table) =>
+      table.name.toLowerCase().includes(query) || (table.comment && table.comment.toLowerCase().includes(query))
   )
 })
 
@@ -213,7 +193,8 @@ async function loadTables() {
 function refreshTables() {
   if (selectedDataSourceName.value) {
     // Invalidate cache and reload
-    dataSourceStore.invalidateSchemaCache(selectedDataSourceName.value)
+    dataSourceStore
+      .invalidateSchemaCache(selectedDataSourceName.value)
       .then(() => loadTables())
       .catch((e) => {
         error.value = e instanceof Error ? e.message : 'Failed to refresh tables'
@@ -229,15 +210,15 @@ function selectTable(table: TableMetadata) {
 
 function formatTableSubtitle(table: TableMetadata): string {
   const parts: string[] = []
-  
+
   if (table.schema_name && table.schema_name !== 'public') {
     parts.push(table.schema_name)
   }
-  
+
   if (table.comment) {
     parts.push(table.comment)
   }
-  
+
   return parts.join(' • ')
 }
 

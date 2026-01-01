@@ -7,7 +7,7 @@ export const useEntityStore = defineStore('entity', () => {
   // State
   const entities = ref<EntityResponse[]>([])
   const selectedEntity = ref<EntityResponse | null>(null)
-  const currentConfigName = ref<string | null>(null)
+  const currentProjectName = ref<string | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const hasUnsavedChanges = ref(false)
@@ -54,12 +54,12 @@ export const useEntityStore = defineStore('entity', () => {
   })
 
   // Actions
-  async function fetchEntities(configName: string) {
+  async function fetchEntities(projectName: string) {
     loading.value = true
     error.value = null
-    currentConfigName.value = configName
+    currentProjectName.value = projectName
     try {
-      entities.value = await api.entities.list(configName)
+      entities.value = await api.entities.list(projectName)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch entities'
       throw err
@@ -68,11 +68,11 @@ export const useEntityStore = defineStore('entity', () => {
     }
   }
 
-  async function selectEntity(configName: string, entityName: string) {
+  async function selectEntity(projectName: string, entityName: string) {
     loading.value = true
     error.value = null
     try {
-      selectedEntity.value = await api.entities.get(configName, entityName)
+      selectedEntity.value = await api.entities.get(projectName, entityName)
       hasUnsavedChanges.value = false
       return selectedEntity.value
     } catch (err) {
@@ -83,11 +83,11 @@ export const useEntityStore = defineStore('entity', () => {
     }
   }
 
-  async function createEntity(configName: string, data: EntityCreateRequest) {
+  async function createEntity(projectName: string, data: EntityCreateRequest) {
     loading.value = true
     error.value = null
     try {
-      const entity = await api.entities.create(configName, data)
+      const entity = await api.entities.create(projectName, data)
       entities.value.push(entity)
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
@@ -100,22 +100,18 @@ export const useEntityStore = defineStore('entity', () => {
     }
   }
 
-  async function updateEntity(
-    configName: string,
-    entityName: string,
-    data: EntityUpdateRequest
-  ) {
+  async function updateEntity(projectName: string, entityName: string, data: EntityUpdateRequest) {
     loading.value = true
     error.value = null
     try {
-      const entity = await api.entities.update(configName, entityName, data)
-      
+      const entity = await api.entities.update(projectName, entityName, data)
+
       // Update entity in list
       const index = entities.value.findIndex((e: EntityResponse) => e.name === entityName)
       if (index !== -1) {
         entities.value[index] = entity
       }
-      
+
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
       return entity
@@ -127,11 +123,11 @@ export const useEntityStore = defineStore('entity', () => {
     }
   }
 
-  async function deleteEntity(configName: string, entityName: string) {
+  async function deleteEntity(projectName: string, entityName: string) {
     loading.value = true
     error.value = null
     try {
-      await api.entities.delete(configName, entityName)
+      await api.entities.delete(projectName, entityName)
       entities.value = entities.value.filter((e: EntityResponse) => e.name !== entityName)
       if (selectedEntity.value?.name === entityName) {
         selectedEntity.value = null
@@ -155,7 +151,7 @@ export const useEntityStore = defineStore('entity', () => {
   function reset() {
     entities.value = []
     selectedEntity.value = null
-    currentConfigName.value = null
+    currentProjectName.value = null
     loading.value = false
     error.value = null
     hasUnsavedChanges.value = false
@@ -165,7 +161,7 @@ export const useEntityStore = defineStore('entity', () => {
     // State
     entities,
     selectedEntity,
-    currentConfigName,
+    currentProjectName,
     loading,
     error,
     hasUnsavedChanges,

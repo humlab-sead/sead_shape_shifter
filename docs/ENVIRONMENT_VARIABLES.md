@@ -6,7 +6,7 @@ The Shape Shifter data source system now supports automatic resolution of enviro
 
 ## How It Works
 
-### In Configuration Files (Core System)
+### In Project Files (Core System)
 
 When loading configurations through the core system (e.g., `arbodat-database.yml`), environment variables are automatically resolved by the `src.configuration` framework.
 
@@ -79,7 +79,7 @@ For PostgreSQL connections, the recommended approach is to use `.pgpass` file fo
 
 ### Benefits
 
-- **Security**: Passwords never appear in configuration files or environment variables
+- **Security**: Passwords never appear in project files or environment variables
 - **Convenience**: No need to pass passwords in connection strings
 - **Standard**: `.pgpass` is the PostgreSQL-recommended approach
 - **Multi-environment**: Different passwords for different databases in one file

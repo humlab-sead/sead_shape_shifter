@@ -12,9 +12,7 @@
         <v-form @submit.prevent="handleRun">
           <!-- Entity Selection -->
           <div class="mb-4">
-            <v-label class="text-body-2 font-weight-medium mb-2">
-              Validate Specific Entities (optional)
-            </v-label>
+            <v-label class="text-body-2 font-weight-medium mb-2"> Validate Specific Entities (optional) </v-label>
             <v-combobox
               v-model="selectedEntities"
               :items="availableEntities"
@@ -27,28 +25,15 @@
               persistent-hint
             >
               <template #chip="{ item, props: chipProps }">
-                <v-chip
-                  v-bind="chipProps"
-                  prepend-icon="mdi-cube"
-                  :text="item.title"
-                />
+                <v-chip v-bind="chipProps" prepend-icon="mdi-cube" :text="item.title" />
               </template>
             </v-combobox>
           </div>
 
           <!-- Sample Size -->
           <div class="mb-4">
-            <v-label class="text-body-2 font-weight-medium mb-2">
-              Sample Size
-            </v-label>
-            <v-slider
-              v-model="sampleSize"
-              :min="10"
-              :max="10000"
-              :step="10"
-              thumb-label="always"
-              color="info"
-            >
+            <v-label class="text-body-2 font-weight-medium mb-2"> Sample Size </v-label>
+            <v-slider v-model="sampleSize" :min="10" :max="10000" :step="10" thumb-label="always" color="info">
               <template #append>
                 <v-text-field
                   v-model.number="sampleSize"
@@ -62,16 +47,12 @@
                 />
               </template>
             </v-slider>
-            <p class="text-caption text-grey mt-1">
-              Number of rows to sample for validation (default: 1000)
-            </p>
+            <p class="text-caption text-grey mt-1">Number of rows to sample for validation (default: 1000)</p>
           </div>
 
           <!-- Validator Selection -->
           <div class="mb-4">
-            <v-label class="text-body-2 font-weight-medium mb-2">
-              Validators to Run
-            </v-label>
+            <v-label class="text-body-2 font-weight-medium mb-2"> Validators to Run </v-label>
             <v-checkbox
               v-model="enabledValidators"
               label="Column Exists"
@@ -82,9 +63,7 @@
               <template #label>
                 <div>
                   <div class="font-weight-medium">Column Exists</div>
-                  <div class="text-caption text-grey">
-                    Check if configured columns exist in the data
-                  </div>
+                  <div class="text-caption text-grey">Check if configured columns exist in the data</div>
                 </div>
               </template>
             </v-checkbox>
@@ -99,9 +78,7 @@
               <template #label>
                 <div>
                   <div class="font-weight-medium">Natural Key Uniqueness</div>
-                  <div class="text-caption text-grey">
-                    Check for duplicate natural keys in the data
-                  </div>
+                  <div class="text-caption text-grey">Check for duplicate natural keys in the data</div>
                 </div>
               </template>
             </v-checkbox>
@@ -116,9 +93,7 @@
               <template #label>
                 <div>
                   <div class="font-weight-medium">Non-Empty Result</div>
-                  <div class="text-caption text-grey">
-                    Warn when entities return no data
-                  </div>
+                  <div class="text-caption text-grey">Warn when entities return no data</div>
                 </div>
               </template>
             </v-checkbox>
@@ -134,9 +109,7 @@
               <template #label>
                 <div>
                   <div class="font-weight-medium">Foreign Key Data</div>
-                  <div class="text-caption text-grey">
-                    Validate foreign key relationships in data (coming soon)
-                  </div>
+                  <div class="text-caption text-grey">Validate foreign key relationships in data (coming soon)</div>
                 </div>
               </template>
             </v-checkbox>
@@ -144,20 +117,8 @@
 
           <!-- Actions -->
           <div class="d-flex justify-end gap-2">
-            <v-btn
-              variant="outlined"
-              prepend-icon="mdi-refresh"
-              @click="handleReset"
-            >
-              Reset to Defaults
-            </v-btn>
-            <v-btn
-              type="submit"
-              color="info"
-              variant="flat"
-              prepend-icon="mdi-play"
-              :loading="loading"
-            >
+            <v-btn variant="outlined" prepend-icon="mdi-refresh" @click="handleReset"> Reset to Defaults </v-btn>
+            <v-btn type="submit" color="info" variant="flat" prepend-icon="mdi-play" :loading="loading">
               Run Validation
             </v-btn>
           </div>
@@ -196,21 +157,13 @@ const emit = defineEmits<Emits>()
 const panel = ref<string | undefined>('config')
 const selectedEntities = ref<string[]>([])
 const sampleSize = ref(1000)
-const enabledValidators = ref([
-  'column_exists',
-  'natural_key_uniqueness',
-  'non_empty_result',
-])
+const enabledValidators = ref(['column_exists', 'natural_key_uniqueness', 'non_empty_result'])
 
 // Methods
 function handleReset() {
   selectedEntities.value = []
   sampleSize.value = 1000
-  enabledValidators.value = [
-    'column_exists',
-    'natural_key_uniqueness',
-    'non_empty_result',
-  ]
+  enabledValidators.value = ['column_exists', 'natural_key_uniqueness', 'non_empty_result']
 }
 
 function handleRun() {

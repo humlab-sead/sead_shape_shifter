@@ -2,14 +2,7 @@
   <v-card variant="outlined">
     <v-card-title class="d-flex align-center justify-space-between">
       <span>Entities</span>
-      <v-btn
-        color="primary"
-        size="small"
-        prepend-icon="mdi-plus"
-        @click="showCreateDialog = true"
-      >
-        Add Entity
-      </v-btn>
+      <v-btn color="primary" size="small" prepend-icon="mdi-plus" @click="showCreateDialog = true"> Add Entity </v-btn>
     </v-card-title>
 
     <v-card-text>
@@ -97,12 +90,7 @@
           </v-list-item-title>
 
           <template #append>
-            <v-btn
-              icon="mdi-pencil"
-              variant="text"
-              size="x-small"
-              @click.stop="handleEditEntity(entity)"
-            />
+            <v-btn icon="mdi-pencil" variant="text" size="x-small" @click.stop="handleEditEntity(entity)" />
             <v-btn
               icon="mdi-delete"
               variant="text"
@@ -118,7 +106,7 @@
     <!-- Entity Form Dialog -->
     <entity-form-dialog
       v-model="showFormDialog"
-      :config-name="configName"
+      :project-name="projectName"
       :entity="selectedEntity"
       :mode="dialogMode"
       @saved="handleEntitySaved"
@@ -147,7 +135,7 @@ import EntityFormDialog from './EntityFormDialog.vue'
 import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDialog.vue'
 
 interface Props {
-  configName: string
+  projectName: string
 }
 
 interface Emits {
@@ -157,13 +145,8 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const {
-  entities,
-  loading,
-  error,
-  remove,
-} = useEntities({
-  configName: props.configName,
+const { entities, loading, error, remove } = useEntities({
+  projectName: props.projectName,
   autoFetch: true,
 })
 
@@ -183,7 +166,7 @@ const successMessage = ref('')
 const entityTypes = computed(() => {
   const types = new Set<string>()
   entities.value.forEach((e) => {
-    types.add(e.entity_data.type as string || 'unknown')
+    types.add((e.entity_data.type as string) || 'unknown')
   })
   return Array.from(types).map((type) => ({ title: type, value: type }))
 })

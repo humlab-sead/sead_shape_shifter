@@ -1,6 +1,6 @@
 <template>
   <v-card variant="outlined">
-    <v-card-title>Configuration Metadata</v-card-title>
+    <v-card-title>Project Metadata</v-card-title>
     <v-divider />
 
     <!-- Loading State -->
@@ -14,8 +14,8 @@
       <v-form ref="formRef" @submit.prevent="handleSave">
         <v-text-field
           v-model="formData.name"
-          label="Configuration Name"
-          hint="Name of this configuration"
+          label="Project Name"
+          hint="Name of this project"
           persistent-hint
           variant="outlined"
           density="comfortable"
@@ -26,7 +26,7 @@
         <v-textarea
           v-model="formData.description"
           label="Description"
-          hint="Optional description of this configuration"
+          hint="Optional description of this project"
           persistent-hint
           variant="outlined"
           density="comfortable"
@@ -79,13 +79,7 @@
           >
             Save Metadata
           </v-btn>
-          <v-btn
-            variant="outlined"
-            :disabled="!hasChanges"
-            @click="handleReset"
-          >
-            Reset
-          </v-btn>
+          <v-btn variant="outlined" :disabled="!hasChanges" @click="handleReset"> Reset </v-btn>
         </div>
       </v-form>
     </v-card-text>
@@ -94,16 +88,16 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { useConfigurationStore } from '@/stores/configuration'
+import { useProjectStore } from '@/stores/project'
 import { storeToRefs } from 'pinia'
-import type { MetadataUpdateRequest } from '@/api/configurations'
+import type { MetadataUpdateRequest } from '@/api/projects'
 
 const props = defineProps<{
-  configName: string
+  projectName: string
 }>()
 
-const configStore = useConfigurationStore()
-const { selectedConfig, loading } = storeToRefs(configStore)
+const projectStore = useProjectStore()
+const { selectedProject, loading } = storeToRefs(projectStore)
 
 const formRef = ref()
 const saving = ref(false)
@@ -138,8 +132,8 @@ const rules = {
 
 // Computed
 const availableEntities = computed(() => {
-  if (!selectedConfig.value?.entities) return []
-  return Object.keys(selectedConfig.value.entities)
+  if (!selectedProject.value?.entities) return []
+  return Object.keys(selectedProject.value.entities)
 })
 
 const hasChanges = computed(() => {
@@ -154,10 +148,10 @@ const hasChanges = computed(() => {
 
 // Methods
 function loadMetadata() {
-  if (selectedConfig.value?.metadata) {
-    const metadata = selectedConfig.value.metadata
+  if (selectedProject.value?.metadata) {
+    const metadata = selectedProject.value.metadata
     formData.value = {
-      name: metadata.name || props.configName,
+      name: metadata.name || props.projectName,
       description: metadata.description || null,
       version: metadata.version || null,
       default_entity: metadata.default_entity || null,
@@ -185,13 +179,13 @@ async function handleSave() {
       default_entity: formData.value.default_entity,
     }
 
-    await configStore.updateMetadata(props.configName, updateData)
-    
+    await projectStore.updateMetadata(props.projectName, updateData)
+
     // Update initial values after successful save
     initialValues.value = { ...formData.value }
-    
+
     successMessage.value = 'Metadata updated successfully'
-    
+
     // Clear success message after 3 seconds
     setTimeout(() => {
       successMessage.value = null
@@ -211,10 +205,14 @@ function handleReset() {
   successMessage.value = null
 }
 
-// Watch for config changes
-watch(() => selectedConfig.value, () => {
-  loadMetadata()
-}, { immediate: true })
+// Watch for project changes
+watch(
+  () => selectedProject.value,
+  () => {
+    loadMetadata()
+  },
+  { immediate: true }
+)
 
 onMounted(() => {
   loadMetadata()

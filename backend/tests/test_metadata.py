@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from backend.app.mappers.config_mapper import ConfigMapper
-from backend.app.models.config import ConfigMetadata, Configuration
-from src.model import Metadata, ShapeShiftConfig
+from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.models.project import Project, ProjectMetadata
+from src.model import Metadata, ShapeShiftProject
 
 # pylint: disable=no-member
 
@@ -15,50 +15,50 @@ class TestMetadataHandling:
     """Tests for metadata section in configuration files."""
 
     def test_api_metadata_has_description_and_version(self):
-        """Test that ConfigMetadata has description and version fields."""
-        metadata = ConfigMetadata(
-            name="Test Config",
+        """Test that ProjectMetadata has description and version fields."""
+        metadata = ProjectMetadata(
+            name="Test Project",
             description="A test configuration",
             version="1.2.3",
             entity_count=5,
         )
 
-        assert metadata.name == "Test Config"
+        assert metadata.name == "Test Project"
         assert metadata.description == "A test configuration"
         assert metadata.version == "1.2.3"
         assert metadata.entity_count == 5
 
     def test_metadata_optional_fields(self):
         """Test that description and version are optional."""
-        metadata = ConfigMetadata(
-            name="Minimal Config",
+        metadata = ProjectMetadata(
+            name="Minimal Project",
             entity_count=0,
         )
 
-        assert metadata.name == "Minimal Config"
+        assert metadata.name == "Minimal Project"
         assert metadata.description is None
         assert metadata.version is None
 
     def test_core_metadata_class(self):
-        """Test that ShapeShiftConfig has Metadata class."""
+        """Test that ShapeShiftProject has Metadata class."""
 
         metadata_data = {
-            "name": "Core Config",
+            "name": "Core Project",
             "description": "Core test",
             "version": "2.0.0",
         }
 
         metadata = Metadata(metadata_data)
 
-        assert metadata.name == "Core Config"
+        assert metadata.name == "Core Project"
         assert metadata.description == "Core test"
         assert metadata.version == "2.0.0"
 
     def test_core_config_metadata_property(self):
-        """Test that ShapeShiftConfig has metadata property."""
+        """Test that ShapeShiftProject has metadata property."""
         cfg_dict = {
             "metadata": {
-                "name": "Test Config",
+                "name": "Test Project",
                 "description": "Testing metadata",
                 "version": "1.0.0",
             },
@@ -70,9 +70,9 @@ class TestMetadataHandling:
             },
         }
 
-        config = ShapeShiftConfig(cfg=cfg_dict, filename="test-config.yml")
+        config = ShapeShiftProject(cfg=cfg_dict, filename="test-config.yml")
 
-        assert config.metadata.name == "Test Config"
+        assert config.metadata.name == "Test Project"
         assert config.metadata.description == "Testing metadata"
         assert config.metadata.version == "1.0.0"
 
@@ -95,7 +95,7 @@ class TestMetadataHandling:
         }
 
         # Core -> API
-        api_config = ConfigMapper.to_api_config(core_dict, "mapper-test")
+        api_config = ProjectMapper.to_api_config(core_dict, "mapper-test")
 
         assert api_config.metadata is not None
         assert api_config.metadata.name == "Mapper Test"
@@ -103,7 +103,7 @@ class TestMetadataHandling:
         assert api_config.metadata.version == "3.1.4"
 
         # API -> Core
-        restored_dict = ConfigMapper.to_core_dict(api_config)
+        restored_dict = ProjectMapper.to_core_dict(api_config)
 
         assert "metadata" in restored_dict
         assert restored_dict["metadata"]["name"] == "Mapper Test"
@@ -120,7 +120,7 @@ class TestMetadataHandling:
             "entities": {},
         }
 
-        api_config: Configuration = ConfigMapper.to_api_config(core_dict, "filename-name")
+        api_config: Project = ProjectMapper.to_api_config(core_dict, "filename-name")
 
         assert api_config.metadata is not None
         assert api_config.metadata.name == "Official Name"
@@ -134,7 +134,7 @@ class TestMetadataHandling:
             "entities": {},
         }
 
-        api_config: Configuration = ConfigMapper.to_api_config(core_dict, "fallback-name")
+        api_config: Project = ProjectMapper.to_api_config(core_dict, "fallback-name")
 
         assert api_config.metadata is not None
         assert api_config.metadata.name == "fallback-name"
@@ -145,7 +145,7 @@ class TestMetadataHandling:
         if not config_path.exists():
             pytest.skip("Test config file not found")
 
-        config: ShapeShiftConfig = ShapeShiftConfig.from_file(str(config_path))
+        config: ShapeShiftProject = ShapeShiftProject.from_file(str(config_path))
 
         # Check metadata from YAML
         assert config.metadata.name == "ArboDat Database Configuration"

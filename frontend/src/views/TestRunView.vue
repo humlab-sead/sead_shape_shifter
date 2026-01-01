@@ -5,14 +5,9 @@
       <v-row class="mb-4">
         <v-col>
           <div class="d-flex justify-space-between align-center">
-            <h1 class="text-h4">Configuration Test Run</h1>
+            <h1 class="text-h4">Project Test Run</h1>
             <div class="d-flex ga-2">
-              <v-btn
-                variant="outlined"
-                prepend-icon="mdi-refresh"
-                @click="handleReset"
-                :disabled="isRunning"
-              >
+              <v-btn variant="outlined" prepend-icon="mdi-refresh" @click="handleReset" :disabled="isRunning">
                 Reset
               </v-btn>
               <v-btn
@@ -20,7 +15,7 @@
                 prepend-icon="mdi-play"
                 @click="handleStartTest"
                 :loading="isRunning"
-                :disabled="isRunning || !configName"
+                :disabled="isRunning || !projectName"
               >
                 Run Test
               </v-btn>
@@ -29,14 +24,12 @@
         </v-col>
       </v-row>
 
-      <!-- Config Info and Status -->
-      <v-row v-if="configName" class="mb-4">
+      <!-- Project Info and Status -->
+      <v-row v-if="projectName" class="mb-4">
         <v-col>
           <v-alert type="info" variant="tonal">
             <div class="d-flex justify-space-between align-center">
-              <div>
-                <strong>Configuration:</strong> {{ configName }}
-              </div>
+              <div><strong>Project:</strong> {{ projectName }}</div>
               <v-chip
                 v-if="testResult"
                 :color="getStatusColor(testResult.status)"
@@ -44,13 +37,7 @@
                 variant="flat"
               >
                 {{ testResult.status.toUpperCase() }}
-                <v-progress-circular
-                  v-if="isPolling"
-                  indeterminate
-                  size="16"
-                  width="2"
-                  class="ml-2"
-                />
+                <v-progress-circular v-if="isPolling" indeterminate size="16" width="2" class="ml-2" />
               </v-chip>
             </div>
           </v-alert>
@@ -60,12 +47,7 @@
       <!-- Error Alert -->
       <v-row v-if="error" class="mb-4">
         <v-col>
-          <v-alert
-            type="error"
-            variant="tonal"
-            closable
-            @click:close="error = null"
-          >
+          <v-alert type="error" variant="tonal" closable @click:close="error = null">
             <strong>Error:</strong> {{ error }}
           </v-alert>
         </v-col>
@@ -73,12 +55,12 @@
 
       <v-divider class="my-4" />
 
-      <!-- Test Configuration (before run) -->
+      <!-- Test Project (before run) -->
       <v-row v-if="!testResult">
         <v-col>
           <v-card>
             <v-card-text>
-              <TestRunConfig
+              <TestRunProject
                 v-model:options="options"
                 v-model:selected-entities="selectedEntities"
                 :entities="availableEntities"
@@ -114,10 +96,10 @@
       </template>
 
       <!-- Loading -->
-      <v-row v-if="isLoadingConfig">
+      <v-row v-if="isLoadingProject">
         <v-col class="text-center">
           <v-progress-circular indeterminate size="64" />
-          <p class="mt-4">Loading configuration...</p>
+          <p class="mt-4">Loading project...</p>
         </v-col>
       </v-row>
     </v-container>
@@ -127,45 +109,45 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import TestRunConfig from '@/components/TestRun/TestRunConfig.vue'
-import TestRunProgress from '@/components/TestRun/TestRunProgress.vue'
-import TestRunResults from '@/components/TestRun/TestRunResults.vue'
+import TestRunProject from '@/components/testrun/TestRunProject.vue'
+import TestRunProgress from '@/components/testrun/TestRunProgress.vue'
+import TestRunResults from '@/components/testrun/TestRunResults.vue'
 import testRunApi from '@/api/testRunApi'
-import { configurationsApi } from '@/api/configurations'
+import { projectsApi } from '@/api/projects'
 import type { TestRunOptions, TestRunResult } from '@/types/testRun'
 import { DEFAULT_TEST_RUN_OPTIONS } from '@/types/testRun'
 
 const route = useRoute()
 
-const configName = ref<string>(route.params.name as string)
+const projectName = ref<string>(route.params.name as string)
 const options = ref<Partial<TestRunOptions>>({ ...DEFAULT_TEST_RUN_OPTIONS })
 const selectedEntities = ref<string[]>([])
 const availableEntities = ref<string[]>([])
 const testResult = ref<TestRunResult | null>(null)
 const isRunning = ref(false)
-const isLoadingConfig = ref(true)
+const isLoadingProject = ref(true)
 const error = ref<string | null>(null)
 const pollInterval = ref<number | null>(null)
 const currentRunId = ref<string | null>(null)
 
-// Load configuration and available entities
+// Load project and available entities
 onMounted(async () => {
-  if (!configName.value) {
-    error.value = 'No configuration name provided'
-    isLoadingConfig.value = false
+  if (!projectName.value) {
+    error.value = 'No project name provided'
+    isLoadingProject.value = false
     return
   }
 
   try {
-    isLoadingConfig.value = true
-    const config = await configurationsApi.get(configName.value)
-    availableEntities.value = Object.keys(config.entities || {})
+    isLoadingProject.value = true
+    const project = await projectsApi.get(projectName.value)
+    availableEntities.value = Object.keys(project.entities || {})
     error.value = null
   } catch (err) {
-    console.error('Failed to load configuration:', err)
-    error.value = `Failed to load configuration: ${err instanceof Error ? err.message : String(err)}`
+    console.error('Failed to load project:', err)
+    error.value = `Failed to load project: ${err instanceof Error ? err.message : String(err)}`
   } finally {
-    isLoadingConfig.value = false
+    isLoadingProject.value = false
   }
 })
 
@@ -247,8 +229,8 @@ const startPolling = () => {
 }
 
 const handleStartTest = async () => {
-  if (!configName.value) {
-    error.value = 'No configuration selected'
+  if (!projectName.value) {
+    error.value = 'No project selected'
     return
   }
 
@@ -266,7 +248,7 @@ const handleStartTest = async () => {
     }
 
     const result = await testRunApi.startTestRun({
-      config_name: configName.value,
+      project_name: projectName.value,
       options: testOptions,
     })
 

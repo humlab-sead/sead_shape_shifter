@@ -11,11 +11,7 @@
       </v-expansion-panel-title>
       <v-expansion-panel-text>
         <v-list>
-          <v-list-item
-            v-for="(filter, index) in filters"
-            :key="index"
-            class="px-0 mb-2"
-          >
+          <v-list-item v-for="(filter, index) in filters" :key="index" class="px-0 mb-2">
             <v-card variant="outlined">
               <v-card-text>
                 <div class="d-flex align-center justify-space-between mb-2">
@@ -47,12 +43,7 @@
                     />
                   </v-col>
                   <v-col cols="12" md="4">
-                    <v-text-field
-                      v-model="filter.column"
-                      label="Column"
-                      variant="outlined"
-                      density="compact"
-                    />
+                    <v-text-field v-model="filter.column" label="Column" variant="outlined" density="compact" />
                   </v-col>
                   <v-col cols="12" md="4">
                     <v-text-field
@@ -68,13 +59,7 @@
           </v-list-item>
         </v-list>
 
-        <v-btn
-          variant="outlined"
-          prepend-icon="mdi-plus"
-          size="small"
-          block
-          @click="handleAddFilter"
-        >
+        <v-btn variant="outlined" prepend-icon="mdi-plus" size="small" block @click="handleAddFilter">
           Add Filter
         </v-btn>
       </v-expansion-panel-text>
@@ -84,19 +69,11 @@
     <v-expansion-panel>
       <v-expansion-panel-title>
         <v-icon icon="mdi-table-pivot" class="mr-2" />
-        Unnest Configuration
-        <v-chip v-if="unnest" size="small" color="success" class="ml-2">
-          Enabled
-        </v-chip>
+        Unnest
+        <v-chip v-if="unnest" size="small" color="success" class="ml-2"> Enabled </v-chip>
       </v-expansion-panel-title>
       <v-expansion-panel-text>
-        <v-switch
-          v-model="unnestEnabled"
-          label="Enable Unnest"
-          density="compact"
-          hide-details
-          class="mb-4"
-        />
+        <v-switch v-model="unnestEnabled" label="Enable Unnest" density="compact" hide-details class="mb-4" />
 
         <template v-if="unnestEnabled">
           <v-combobox
@@ -156,11 +133,7 @@
       </v-expansion-panel-title>
       <v-expansion-panel-text>
         <v-list>
-          <v-list-item
-            v-for="(item, index) in append"
-            :key="index"
-            class="px-0 mb-2"
-          >
+          <v-list-item v-for="(item, index) in append" :key="index" class="px-0 mb-2">
             <v-card variant="outlined">
               <v-card-text>
                 <div class="d-flex align-center justify-space-between mb-2">
@@ -199,25 +172,14 @@
                     density="compact"
                     class="mb-2"
                   />
-                  <v-textarea
-                    v-model="item.query"
-                    label="SQL Query"
-                    variant="outlined"
-                    rows="4"
-                  />
+                  <v-textarea v-model="item.query" label="SQL Query" variant="outlined" rows="4" />
                 </template>
               </v-card-text>
             </v-card>
           </v-list-item>
         </v-list>
 
-        <v-btn
-          variant="outlined"
-          prepend-icon="mdi-plus"
-          size="small"
-          block
-          @click="handleAddAppend"
-        >
+        <v-btn variant="outlined" prepend-icon="mdi-plus" size="small" block @click="handleAddAppend">
           Add Append
         </v-btn>
       </v-expansion-panel-text>
@@ -234,11 +196,7 @@
       </v-expansion-panel-title>
       <v-expansion-panel-text>
         <v-list>
-          <v-list-item
-            v-for="(item, index) in extraColumns"
-            :key="index"
-            class="px-0 mb-2"
-          >
+          <v-list-item v-for="(item, index) in extraColumns" :key="index" class="px-0 mb-2">
             <v-card variant="outlined">
               <v-card-text>
                 <v-row dense>
@@ -276,13 +234,7 @@
           </v-list-item>
         </v-list>
 
-        <v-btn
-          variant="outlined"
-          prepend-icon="mdi-plus"
-          size="small"
-          block
-          @click="handleAddExtraColumn"
-        >
+        <v-btn variant="outlined" prepend-icon="mdi-plus" size="small" block @click="handleAddExtraColumn">
           Add Extra Column
         </v-btn>
       </v-expansion-panel-text>
@@ -361,9 +313,7 @@ const extraColumns = ref<ExtraColumnConfig[]>(
     : []
 )
 
-const filterTypes = [
-  { title: 'Exists In', value: 'exists_in' },
-]
+const filterTypes = [{ title: 'Exists In', value: 'exists_in' }]
 
 const appendTypes = [
   { title: 'Fixed Values', value: 'fixed' },
@@ -373,13 +323,12 @@ const appendTypes = [
 // Computed
 const configValue = computed(() => {
   // Convert extra_columns array back to object
-  const extraColumnsObj = extraColumns.value.length > 0
-    ? Object.fromEntries(
-        extraColumns.value
-          .filter(item => item.column)
-          .map(item => [item.column, item.source || null])
-      )
-    : undefined
+  const extraColumnsObj =
+    extraColumns.value.length > 0
+      ? Object.fromEntries(
+          extraColumns.value.filter((item) => item.column).map((item) => [item.column, item.source || null])
+        )
+      : undefined
 
   return {
     filters: filters.value.length > 0 ? filters.value : undefined,

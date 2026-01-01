@@ -1,8 +1,8 @@
-# Configuration Editor - Software Architecture
+# Project Editor - Software Architecture
 
 ## 1. Executive Summary
 
-This document defines the software architecture for the Shape Shifter Configuration Editor, a web-based application for managing data transformation configurations. The architecture supports a phased rollout from basic entity management to advanced data-aware features with intelligent suggestions.
+This document defines the software architecture for the Shape Shifter Project Editor, a web-based application for managing data transformation configurations. The architecture supports a phased rollout from basic entity management to advanced data-aware features with intelligent suggestions.
 
 **Architecture Goals**:
 - Leverage existing Python transformation engine
@@ -37,7 +37,7 @@ This document defines the software architecture for the Shape Shifter Configurat
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │                FastAPI Application                     │ │
 │  │  ┌──────────────┐  ┌───────────────┐  ┌────────────┐   │ │
-│  │  │ Configuration│  │  Validation   │  │  Auto-Fix  │   │ │
+│  │  │ Project│  │  Validation   │  │  Auto-Fix  │   │ │
 │  │  │   Service    │  │   Service     │  │  Service   │   │ │
 │  │  └──────────────┘  └───────────────┘  └────────────┘   │ │
 │  └────────────────────────────────────────────────────────┘ │
@@ -53,7 +53,7 @@ This document defines the software architecture for the Shape Shifter Configurat
 ┌──────────────────────────┴──────────────────────────────────┐
 │                      File System                            │
 │  ┌───────────────┐  ┌───────────────┐  ┌─────────────────┐  │
-│  │ Configuration │  │   Backups     │  │      Logs       │  │
+│  │ Project │  │   Backups     │  │      Logs       │  │
 │  │   (YAML)      │  │   (YAML)      │  │  (Application)  │  │
 │  └───────────────┘  └───────────────┘  └─────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
@@ -106,7 +106,7 @@ This document defines the software architecture for the Shape Shifter Configurat
 | **API Protocol** | REST/JSON | Client-server communication |
 | **API Documentation** | OpenAPI/Swagger | Auto-generated API docs |
 | **CORS** | FastAPI middleware | Cross-origin requests |
-| **File Format** | YAML | Configuration storage |
+| **File Format** | YAML | Project storage |
 
 ---
 
@@ -141,19 +141,19 @@ frontend/
 
 ```typescript
 // Main layout with panels
-<ConfigurationEditor>
+<ProjectEditor>
   <EntityTreePanel />      // Left: entity navigation
   <MonacoEditor />         // Center: YAML editor
   <ValidationPanel />      // Right: validation results
   <PropertiesPanel />      // Right: entity properties
-</ConfigurationEditor>
+</ProjectEditor>
 ```
 
 #### Component Hierarchy
 
 ```
 App
-├── ConfigurationEditor (main container)
+├── ProjectEditor (main container)
 │   ├── Header
 │   │   ├── ConfigSelector
 │   │   ├── SaveButton
@@ -327,7 +327,7 @@ watch(activeTab, (newTab, oldTab) => {
 #### Server State
 
 - Fetch via `frontend/src/api` modules (axios client with interceptors).
-- Wrap calls in composables (e.g., `useConfigurations`, `useValidation`) that expose `loading`, `error`, `data`, and `refresh`.
+- Wrap calls in composables (e.g., `useProjects`, `useValidation`) that expose `loading`, `error`, `data`, and `refresh`.
 - Cache per-configuration responses in Pinia or composable-level refs; invalidate after save/auto-fix actions.
 
 ```typescript
@@ -362,7 +362,7 @@ export function useValidation() {
 // frontend/src/stores/configurationStore.ts
 import { defineStore } from 'pinia';
 
-export const useConfigurationStore = defineStore('configuration', {
+export const useProjectStore = defineStore('configuration', {
   state: () => ({
     currentConfig: null as string | null,
     selectedEntity: null as string | null,
@@ -426,7 +426,7 @@ export function useValidationSummary() {
     loading,
     errorCount,
     warningCount,
-    refresh: store.validateConfiguration,
+    refresh: store.validateProject,
   };
 }
 ```
@@ -439,14 +439,14 @@ export function useValidationSummary() {
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue';
 
-const ConfigurationEditor = defineAsyncComponent(() =>
-  import('@/components/configurations/ConfigurationEditor.vue')
+const ProjectEditor = defineAsyncComponent(() =>
+  import('@/components/projects/ProjectEditor.vue')
 );
 </script>
 
 <template>
   <Suspense>
-    <ConfigurationEditor />
+    <ProjectEditor />
     <template #fallback>
       <LoadingSkeleton />
     </template>
@@ -526,7 +526,7 @@ backend/
 ```python
 # Translates between API and Core layers, resolving env vars
 class DataSourceMapper:
-    """Maps between API and Core data source configurations.
+    """Maps between API and Core data sources.
     
     Environment variable resolution happens at this layer boundary.
     """
@@ -569,7 +569,7 @@ class ValidationService:
     
     async def validate_configuration(
         self,
-        config_name: str,
+        project_name: str,
         validation_type: ValidationType
     ) -> ValidationResult:
         # Business logic here
@@ -591,7 +591,7 @@ async def validate_configuration(
     service: ValidationService = Depends(get_validation_service)
 ):
     return await service.validate_configuration(
-        request.config_name,
+        request.project_name,
         request.validation_type
     )
 ```
@@ -665,8 +665,8 @@ class CacheService:
 #### Cache Keys
 
 ```python
-def make_cache_key(config_name: str, type: str) -> str:
-    return f"validation:{config_name}:{type}"
+def make_cache_key(project_name: str, type: str) -> str:
+    return f"validation:{project_name}:{type}"
 ```
 
 **Examples**:
@@ -683,10 +683,10 @@ class BaseAPIException(Exception):
         self.message = message
         self.status_code = status_code
 
-class ConfigurationNotFoundError(BaseAPIException):
-    def __init__(self, config_name: str):
+class ProjectNotFoundError(BaseAPIException):
+    def __init__(self, project_name: str):
         super().__init__(
-            f"Configuration '{config_name}' not found",
+            f"Project '{project_name}' not found",
             status_code=404
         )
 
@@ -710,12 +710,12 @@ async def api_exception_handler(request: Request, exc: BaseAPIException):
 ### 6.1 RESTful Endpoints
 
 ```
-# Configurations
-GET    /api/v1/configurations           # List all configs
-GET    /api/v1/configurations/{name}    # Get specific config
-POST   /api/v1/configurations           # Create config
-PUT    /api/v1/configurations/{name}    # Update config
-DELETE /api/v1/configurations/{name}    # Delete config
+# Projects
+GET    /api/v1/projects           # List all configs
+GET    /api/v1/projects/{name}    # Get specific config
+POST   /api/v1/projects           # Create config
+PUT    /api/v1/projects/{name}    # Update config
+DELETE /api/v1/projects/{name}    # Delete config
 
 # Validation
 POST   /api/v1/validate                 # Validate config
@@ -737,13 +737,13 @@ GET    /api/v1/test-runs/{id}/results   # Get test results
 ```python
 # Request
 class ValidationRequest(BaseModel):
-    config_name: str
+    project_name: str
     validation_type: ValidationType = ValidationType.ALL
     entity_name: Optional[str] = None
 
 # Response
 class ValidationResponse(BaseModel):
-    config_name: str
+    project_name: str
     validation_type: ValidationType
     timestamp: datetime
     issues: list[ValidationIssue]
@@ -755,10 +755,10 @@ class ValidationResponse(BaseModel):
 
 ```json
 {
-  "error": "Configuration 'invalid' not found",
-  "type": "ConfigurationNotFoundError",
+  "error": "Project 'invalid' not found",
+  "type": "ProjectNotFoundError",
   "timestamp": "2025-12-14T10:30:00Z",
-  "path": "/api/v1/configurations/invalid",
+  "path": "/api/v1/projects/invalid",
   "method": "GET"
 }
 ```
@@ -767,14 +767,14 @@ class ValidationResponse(BaseModel):
 
 ## 7. Data Flow
 
-### 7.1 Configuration Load Flow
+### 7.1 Project Load Flow
 
 ```
 User clicks "Open Config"
   ↓
-Frontend: Send GET /api/v1/configurations/{name}
+Frontend: Send GET /api/v1/projects/{name}
   ↓
-Backend: YAMLService.load_configuration()
+Backend: YAMLService.load_project()
   ↓
 Backend: Parse YAML, validate structure
   ↓
@@ -850,7 +850,7 @@ Frontend: Invalidate validation cache
 - File path validation (prevent traversal)
 - Content type validation
 
-### 8.2 CORS Configuration
+### 8.2 CORS Project
 
 ```python
 app.add_middleware(
@@ -929,7 +929,7 @@ docker-compose up -d
 - [User Guide](USER_GUIDE.md) - User documentation
 - [Developer Guide](DEVELOPER_GUIDE.md) - Development guide
 - [Testing Guide](TESTING_GUIDE.md) - Testing documentation
-- [Configuration Guide](CONFIGURATION_GUIDE.md) - Config syntax
+- [Project Guide](CONFIGURATION_GUIDE.md) - Config syntax
 
 ---
 
