@@ -27,7 +27,6 @@
           <v-icon icon="mdi-code-braces" class="mr-1" size="small" />
           YAML
         </v-tab>
-        <v-tab value="preview" :disabled="mode === 'create' || !formData.name">Preview</v-tab>
       </v-tabs>
 
       <v-card-text class="pa-0" :class="{ 'split-container': splitView }">
@@ -335,78 +334,6 @@
                 <v-alert v-if="yamlError" type="error" density="compact" variant="tonal" class="mt-2">
                   {{ yamlError }}
                 </v-alert>
-              </v-window-item>
-
-              <v-window-item value="preview">
-                <div class="preview-tab-content">
-                  <div class="d-flex align-center justify-space-between pa-3">
-                    <div class="d-flex align-center gap-2">
-                      <v-btn
-                        size="small"
-                        color="primary"
-                        variant="flat"
-                        @click="refreshPreview"
-                        :loading="previewLoading"
-                        :disabled="!canPreview"
-                      >
-                        <v-icon start size="small">mdi-refresh</v-icon>
-                        Refresh
-                      </v-btn>
-
-                      <v-chip v-if="livePreviewData" size="small" color="primary" variant="tonal">
-                        {{ livePreviewData.total_rows_in_preview || 0 }} rows
-                      </v-chip>
-
-                      <v-chip v-if="livePreviewLastRefresh" size="small" variant="text">
-                        <v-icon start size="x-small">mdi-clock-outline</v-icon>
-                        {{ formatRefreshTime(livePreviewLastRefresh) }}
-                      </v-chip>
-                    </div>
-                  </div>
-
-                  <v-alert
-                    v-if="previewError"
-                    type="error"
-                    density="compact"
-                    closable
-                    class="mx-3 mb-3"
-                    @click:close="previewError = null"
-                  >
-                    {{ previewError }}
-                  </v-alert>
-
-                  <v-alert v-if="!canPreview" type="info" density="compact" class="mx-3 mb-3">
-                    Entity must be saved before preview is available
-                  </v-alert>
-
-                  <v-progress-linear v-if="previewLoading" indeterminate color="primary" />
-
-                  <div v-if="livePreviewData && !previewLoading" class="preview-table-container" style="height: 500px">
-                    <ag-grid-vue
-                      class="ag-theme-alpine preview-ag-grid"
-                      :style="{ height: '100%', width: '100%' }"
-                      :columnDefs="previewColumnDefs"
-                      :rowData="previewRowData"
-                      :defaultColDef="previewDefaultColDef"
-                      :animateRows="true"
-                      :suppressCellFocus="true"
-                      :headerHeight="32"
-                      :rowHeight="28"
-                    />
-                  </div>
-
-                  <div
-                    v-else-if="!previewLoading && !livePreviewData"
-                    class="d-flex align-center justify-center pa-8 text-disabled"
-                    style="height: 400px"
-                  >
-                    <div class="text-center">
-                      <v-icon size="64" color="disabled">mdi-table-off</v-icon>
-                      <div class="mt-2">No preview data</div>
-                      <div class="text-caption">Click Refresh to load preview</div>
-                    </div>
-                  </div>
-                </div>
               </v-window-item>
             </v-window>
           </div>
