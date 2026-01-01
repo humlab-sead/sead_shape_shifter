@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { nextTick } from 'vue'
 import { useDependencies } from '../useDependencies'
 import { useValidationStore } from '@/stores'
-import type { DependencyGraph, DependencyNode } from '@/types'
+import type { DependencyGraph } from '@/types'
 
 // Mock console methods
 const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
