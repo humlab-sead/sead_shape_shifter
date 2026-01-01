@@ -119,3 +119,4 @@ output*.xlsx
 **/*.mdb
 backups
 .vite
+coverage
