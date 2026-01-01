@@ -153,11 +153,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useExecuteStore } from '@/stores/execute'
 import { useDataSourceStore } from '@/stores/data-source'
-import type { DispatcherMetadata } from '@/api/execute'
 
 interface Props {
   modelValue: boolean
@@ -317,7 +316,7 @@ watch(() => props.modelValue, async (isOpen) => {
 // Auto-select first dispatcher if only one available
 watch(dispatchers, (newDispatchers) => {
   if (newDispatchers.length === 1 && !selectedDispatcher.value) {
-    selectedDispatcher.value = newDispatchers[0].key
+    selectedDispatcher.value = newDispatchers[0]?.key || ''
   }
 })
 </script>
