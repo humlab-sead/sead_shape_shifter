@@ -38,4 +38,4 @@
  - [] TODO: #57 Add capability to set number of rows (including all) from preview
  - [] TODO: #75 Add capability to select number of rows from preview.
  - [] TODO: #77 Change graph visualization to use Cytoscape.js instead of basic SVG.
-  
+ - [] TODO: #80 [Frontend/Backend] Edit entire project YAML file in dual-mode editor (Form/YAML).
