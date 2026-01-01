@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import validate_fk_service
 from backend.app.services.validate_fk_service import ValidateForeignKeyService
@@ -62,8 +63,20 @@ def build_config(cardinality: str | None = "one_to_one") -> ShapeShiftProject:
 
 
 def patch_config_resolution(monkeypatch: pytest.MonkeyPatch, config: ShapeShiftProject) -> None:
-    """Force ShapeShiftProject.from_source to return provided config."""
-    monkeypatch.setattr(validate_fk_service.ShapeShiftProject, "from_source", staticmethod(lambda source: config))
+    """Mock ProjectService.load_project to return API config from the ShapeShiftProject."""
+    # Convert ShapeShiftProject to API Project model
+    api_project = ProjectMapper.to_api_config(config.cfg, config.metadata.name)
+    
+    # Mock ProjectService.load_project to return this config
+    mock_project_service = MagicMock()
+    mock_project_service.load_project.return_value = api_project
+    
+    # Patch the ProjectService constructor to return our mock
+    monkeypatch.setattr(
+        validate_fk_service.ProjectService,
+        "__init__",
+        lambda self, projects_dir=None: setattr(self, "load_project", mock_project_service.load_project) or None
+    )
 
 
 @pytest.mark.asyncio
