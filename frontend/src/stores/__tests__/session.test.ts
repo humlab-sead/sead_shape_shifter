@@ -60,8 +60,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       const request: SessionCreateRequest = {
@@ -89,8 +90,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       let loadingDuringCall = false
@@ -140,8 +142,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       const otherSession: SessionInfo = {
@@ -150,8 +153,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 2,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       mockSessionsApi.create.mockResolvedValue(mockSession)
@@ -173,8 +177,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       const updatedSession: SessionInfo = {
@@ -212,8 +217,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({ currentSession: initialSession })
@@ -240,8 +246,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({ currentSession: initialSession })
@@ -266,8 +273,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({
@@ -303,8 +311,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({ currentSession: mockSession })
@@ -329,8 +338,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({ currentSession: mockSession })
@@ -353,8 +363,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       const otherSession: SessionInfo = {
@@ -363,8 +374,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 2,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({ currentSession: mockSession })
@@ -392,8 +404,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({ currentSession: mockSession })
@@ -421,8 +434,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({ currentSession: mockSession })
@@ -449,8 +463,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: true,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({ currentSession: mockSession })
@@ -480,8 +495,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({ currentSession: mockSession })
@@ -510,8 +526,9 @@ describe('useSessionStore', () => {
           version: 1,
           modified: false,
           concurrent_sessions: 1,
-          created_at: new Date().toISOString(),
-          last_modified: new Date().toISOString(),
+          user_id: null,
+          loaded_at: new Date().toISOString(),
+          last_accessed: new Date().toISOString(),
         },
       })
 
@@ -530,8 +547,9 @@ describe('useSessionStore', () => {
           version: 1,
           modified: false,
           concurrent_sessions: 2,
-          created_at: new Date().toISOString(),
-          last_modified: new Date().toISOString(),
+          user_id: null,
+          loaded_at: new Date().toISOString(),
+          last_accessed: new Date().toISOString(),
         },
       })
 
@@ -546,8 +564,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 2,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       const otherSession: SessionInfo = {
@@ -556,8 +575,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 2,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({
@@ -578,8 +598,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({ currentSession: mockSession })
@@ -623,8 +644,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({ currentSession: mockSession })
@@ -654,8 +676,9 @@ describe('useSessionStore', () => {
         version: 1,
         modified: false,
         concurrent_sessions: 1,
-        created_at: new Date().toISOString(),
-        last_modified: new Date().toISOString(),
+        user_id: null,
+        loaded_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
       }
 
       store.$patch({

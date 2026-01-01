@@ -62,12 +62,10 @@ describe('useDataSourceStore', () => {
 
       expect(store.dataSourceCount).toBe(0)
 
-      store.$patch({
-        dataSources: [
-          { name: 'ds1', driver: 'postgresql', config: {} },
-          { name: 'ds2', driver: 'csv', config: {} },
-        ] as DataSourceConfig[],
-      })
+      store.dataSources = [
+        { name: 'ds1', driver: 'postgresql' },
+        { name: 'ds2', driver: 'csv' },
+      ] as DataSourceConfig[]
 
       expect(store.dataSourceCount).toBe(2)
     })
@@ -75,23 +73,21 @@ describe('useDataSourceStore', () => {
     it('should sort data sources alphabetically', () => {
       const store = useDataSourceStore()
 
-      store.$patch({
-        dataSources: [
-          { name: 'zebra', driver: 'postgresql', config: {} },
-          { name: 'alpha', driver: 'csv', config: {} },
-          { name: 'beta', driver: 'sqlite', config: {} },
-        ] as DataSourceConfig[],
-      })
+      store.dataSources = [
+        { name: 'zebra', driver: 'postgresql' },
+        { name: 'alpha', driver: 'csv' },
+        { name: 'beta', driver: 'sqlite' },
+      ] as DataSourceConfig[]
 
       expect(store.sortedDataSources.map((ds) => ds.name)).toEqual(['alpha', 'beta', 'zebra'])
     })
 
     it('should find data source by name', () => {
       const store = useDataSourceStore()
-      const ds1: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: {} }
-      const ds2: DataSourceConfig = { name: 'ds2', driver: 'csv', config: {} }
+      const ds1: DataSourceConfig = { name: 'ds1', driver: 'postgresql' }
+      const ds2: DataSourceConfig = { name: 'ds2', driver: 'csv' }
 
-      store.$patch({ dataSources: [ds1, ds2] })
+      store.dataSources = [ds1, ds2]
 
       expect(store.dataSourceByName('ds1')).toEqual(ds1)
       expect(store.dataSourceByName('ds2')).toEqual(ds2)
@@ -101,31 +97,27 @@ describe('useDataSourceStore', () => {
     it('should group data sources by type', () => {
       const store = useDataSourceStore()
 
-      store.$patch({
-        dataSources: [
-          { name: 'pg1', driver: 'postgresql', config: {} },
-          { name: 'pg2', driver: 'postgresql', config: {} },
-          { name: 'csv1', driver: 'csv', config: {} },
-        ] as DataSourceConfig[],
-      })
+      store.dataSources = [
+        { name: 'pg1', driver: 'postgresql' },
+        { name: 'pg2', driver: 'postgresql' },
+        { name: 'csv1', driver: 'csv' },
+      ] as DataSourceConfig[]
 
       const grouped = store.dataSourcesByType
 
-      expect(grouped['postgresql'].length).toBe(2)
-      expect(grouped['csv'].length).toBe(1)
+      expect(grouped['postgresql']?.length).toBe(2)
+      expect(grouped['csv']?.length).toBe(1)
     })
 
     it('should filter database sources', () => {
       const store = useDataSourceStore()
 
-      store.$patch({
-        dataSources: [
-          { name: 'pg', driver: 'postgresql', config: {} },
-          { name: 'sqlite', driver: 'sqlite', config: {} },
-          { name: 'csv', driver: 'csv', config: {} },
-          { name: 'access', driver: 'access', config: {} },
-        ] as DataSourceConfig[],
-      })
+      store.dataSources = [
+        { name: 'pg', driver: 'postgresql' },
+        { name: 'sqlite', driver: 'sqlite' },
+        { name: 'csv', driver: 'csv' },
+        { name: 'access', driver: 'access' },
+      ] as DataSourceConfig[]
 
       expect(store.databaseSources.length).toBe(3)
       expect(store.databaseSources.map((ds) => ds.driver)).toEqual(['postgresql', 'sqlite', 'access'])
@@ -134,13 +126,11 @@ describe('useDataSourceStore', () => {
     it('should filter file sources', () => {
       const store = useDataSourceStore()
 
-      store.$patch({
-        dataSources: [
-          { name: 'pg', driver: 'postgresql', config: {} },
-          { name: 'csv1', driver: 'csv', config: {} },
-          { name: 'csv2', driver: 'csv', config: {} },
-        ] as DataSourceConfig[],
-      })
+      store.dataSources = [
+        { name: 'pg', driver: 'postgresql' },
+        { name: 'csv1', driver: 'csv' },
+        { name: 'csv2', driver: 'csv' },
+      ] as DataSourceConfig[]
 
       expect(store.fileSources.length).toBe(2)
       expect(store.fileSources.map((ds) => ds.driver)).toEqual(['csv', 'csv'])
@@ -151,6 +141,7 @@ describe('useDataSourceStore', () => {
       const testResult: DataSourceTestResult = {
         success: true,
         message: 'Connection successful',
+        connection_time_ms: 0,
       }
 
       store.testResults.set('ds1', testResult)
@@ -184,8 +175,9 @@ describe('useDataSourceStore', () => {
     it('should get table schema', () => {
       const store = useDataSourceStore()
       const schema: TableSchema = {
-        name: 'table1',
-        columns: [{ name: 'id', type: 'integer', nullable: false }],
+        table_name: 'table1',
+        columns: [{ name: 'id', data_type: 'integer', nullable: false, is_primary_key: false }],
+        primary_keys: [],
       }
 
       store.tableSchemas.set('ds1:table1', schema)
@@ -199,8 +191,8 @@ describe('useDataSourceStore', () => {
     it('should fetch data sources successfully', async () => {
       const store = useDataSourceStore()
       const mockDataSources: DataSourceConfig[] = [
-        { name: 'ds1', driver: 'postgresql', config: {} },
-        { name: 'ds2', driver: 'csv', config: {} },
+        { name: 'ds1', driver: 'postgresql' },
+        { name: 'ds2', driver: 'csv' },
       ]
 
       mockApi.list.mockResolvedValue(mockDataSources)
@@ -231,7 +223,6 @@ describe('useDataSourceStore', () => {
       const mockDataSource: DataSourceConfig = {
         name: 'ds1',
         driver: 'postgresql',
-        config: {},
       }
 
       mockApi.get.mockResolvedValue(mockDataSource)
@@ -245,10 +236,10 @@ describe('useDataSourceStore', () => {
 
     it('should update data source in list if exists', async () => {
       const store = useDataSourceStore()
-      const existing: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: { host: 'old' } }
-      const updated: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: { host: 'new' } }
+      const existing: DataSourceConfig = { name: 'ds1', driver: 'postgresql', host: 'old' }
+      const updated: DataSourceConfig = { name: 'ds1', driver: 'postgresql', host: 'new' }
 
-      store.$patch({ dataSources: [existing] })
+      store.dataSources = [existing]
 
       mockApi.get.mockResolvedValue(updated)
 
@@ -275,7 +266,6 @@ describe('useDataSourceStore', () => {
       const newDataSource: DataSourceConfig = {
         name: 'new-ds',
         driver: 'postgresql',
-        config: {},
       }
 
       mockApi.create.mockResolvedValue(newDataSource)
@@ -292,7 +282,6 @@ describe('useDataSourceStore', () => {
       const newDataSource: DataSourceConfig = {
         name: 'new-ds',
         driver: 'postgresql',
-        config: {},
       }
       const error = new Error('Creation failed')
 
@@ -308,10 +297,10 @@ describe('useDataSourceStore', () => {
   describe('updateDataSource', () => {
     it('should update a data source', async () => {
       const store = useDataSourceStore()
-      const existing: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: {} }
-      const updated: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: { host: 'new' } }
+      const existing: DataSourceConfig = { name: 'ds1', driver: 'postgresql' }
+      const updated: DataSourceConfig = { name: 'ds1', driver: 'postgresql', host: 'new' }
 
-      store.$patch({ dataSources: [existing] })
+      store.dataSources = [existing]
 
       mockApi.update.mockResolvedValue(updated)
 
@@ -324,10 +313,10 @@ describe('useDataSourceStore', () => {
 
     it('should handle rename (replace entry)', async () => {
       const store = useDataSourceStore()
-      const existing: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: {} }
-      const renamed: DataSourceConfig = { name: 'ds2', driver: 'postgresql', config: {} }
+      const existing: DataSourceConfig = { name: 'ds1', driver: 'postgresql' }
+      const renamed: DataSourceConfig = { name: 'ds2', driver: 'postgresql' }
 
-      store.$patch({ dataSources: [existing] })
+      store.dataSources = [existing]
 
       mockApi.update.mockResolvedValue(renamed)
 
@@ -339,13 +328,11 @@ describe('useDataSourceStore', () => {
 
     it('should update selected data source if it matches', async () => {
       const store = useDataSourceStore()
-      const existing: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: {} }
-      const updated: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: { host: 'new' } }
+      const existing: DataSourceConfig = { name: 'ds1', driver: 'postgresql' }
+      const updated: DataSourceConfig = { name: 'ds1', driver: 'postgresql', host: 'new' }
 
-      store.$patch({
-        dataSources: [existing],
-        selectedDataSource: existing,
-      })
+      store.dataSources = [existing]
+      store.selectedDataSource = existing
 
       mockApi.update.mockResolvedValue(updated)
 
@@ -356,10 +343,10 @@ describe('useDataSourceStore', () => {
 
     it('should handle update errors', async () => {
       const store = useDataSourceStore()
-      const existing: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: {} }
+      const existing: DataSourceConfig = { name: 'ds1', driver: 'postgresql' }
       const error = new Error('Update failed')
 
-      store.$patch({ dataSources: [existing] })
+      store.dataSources = [existing]
 
       mockApi.update.mockRejectedValue(error)
 
@@ -372,10 +359,10 @@ describe('useDataSourceStore', () => {
   describe('deleteDataSource', () => {
     it('should delete a data source', async () => {
       const store = useDataSourceStore()
-      const ds1: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: {} }
-      const ds2: DataSourceConfig = { name: 'ds2', driver: 'csv', config: {} }
+      const ds1: DataSourceConfig = { name: 'ds1', driver: 'postgresql' }
+      const ds2: DataSourceConfig = { name: 'ds2', driver: 'csv' }
 
-      store.$patch({ dataSources: [ds1, ds2] })
+      store.dataSources = [ds1, ds2]
 
       mockApi.delete.mockResolvedValue(undefined)
 
@@ -387,10 +374,10 @@ describe('useDataSourceStore', () => {
 
     it('should clear test result on delete', async () => {
       const store = useDataSourceStore()
-      const ds: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: {} }
+      const ds: DataSourceConfig = { name: 'ds1', driver: 'postgresql' }
 
-      store.$patch({ dataSources: [ds] })
-      store.testResults.set('ds1', { success: true, message: 'OK' })
+      store.dataSources = [ds]
+      store.testResults.set('ds1', { success: true, message: 'OK', connection_time_ms: 0 })
 
       mockApi.delete.mockResolvedValue(undefined)
 
@@ -401,12 +388,10 @@ describe('useDataSourceStore', () => {
 
     it('should clear selected data source if deleted', async () => {
       const store = useDataSourceStore()
-      const ds: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: {} }
+      const ds: DataSourceConfig = { name: 'ds1', driver: 'postgresql' }
 
-      store.$patch({
-        dataSources: [ds],
-        selectedDataSource: ds,
-      })
+      store.dataSources = [ds]
+      store.selectedDataSource = ds
 
       mockApi.delete.mockResolvedValue(undefined)
 
@@ -433,6 +418,7 @@ describe('useDataSourceStore', () => {
       const testResult: DataSourceTestResult = {
         success: true,
         message: 'Connection successful',
+        connection_time_ms: 0,
       }
 
       mockApi.testConnection.mockResolvedValue(testResult)
@@ -460,8 +446,10 @@ describe('useDataSourceStore', () => {
     it('should get data source status', async () => {
       const store = useDataSourceStore()
       const status: DataSourceStatus = {
-        connected: true,
-        last_check: new Date().toISOString(),
+        name: 'ds1',
+        is_connected: true,
+        last_test_result: null,
+        in_use_by_entities: [],
       }
 
       mockApi.getStatus.mockResolvedValue(status)
@@ -487,7 +475,7 @@ describe('useDataSourceStore', () => {
   describe('selectDataSource', () => {
     it('should select a data source', () => {
       const store = useDataSourceStore()
-      const ds: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: {} }
+      const ds: DataSourceConfig = { name: 'ds1', driver: 'postgresql' }
 
       store.selectDataSource(ds)
 
@@ -496,9 +484,9 @@ describe('useDataSourceStore', () => {
 
     it('should clear selection', () => {
       const store = useDataSourceStore()
-      const ds: DataSourceConfig = { name: 'ds1', driver: 'postgresql', config: {} }
+      const ds: DataSourceConfig = { name: 'ds1', driver: 'postgresql' }
 
-      store.$patch({ selectedDataSource: ds })
+      store.selectedDataSource = ds
 
       store.selectDataSource(null)
 
@@ -522,7 +510,7 @@ describe('useDataSourceStore', () => {
     it('should clear test result for a data source', () => {
       const store = useDataSourceStore()
 
-      store.testResults.set('ds1', { success: true, message: 'OK' })
+      store.testResults.set('ds1', { success: true, message: 'OK', connection_time_ms: 0 })
 
       store.clearTestResult('ds1')
 
@@ -577,11 +565,12 @@ describe('useDataSourceStore', () => {
     it('should fetch table schema', async () => {
       const store = useDataSourceStore()
       const schema: TableSchema = {
-        name: 'table1',
+        table_name: 'table1',
         columns: [
-          { name: 'id', type: 'integer', nullable: false },
-          { name: 'name', type: 'varchar', nullable: true },
+          { name: 'id', data_type: 'integer', nullable: false, is_primary_key: false },
+          { name: 'name', data_type: 'varchar', nullable: true, is_primary_key: false },
         ],
+        primary_keys: [],
       }
 
       mockSchemaApi.getTableSchema.mockResolvedValue(schema)
@@ -596,8 +585,9 @@ describe('useDataSourceStore', () => {
     it('should fetch table schema with schema filter', async () => {
       const store = useDataSourceStore()
       const schema: TableSchema = {
-        name: 'table1',
-        columns: [{ name: 'id', type: 'integer', nullable: false }],
+        table_name: 'table1',
+        columns: [{ name: 'id', data_type: 'integer', nullable: false, is_primary_key: false }],
+        primary_keys: [],
       }
 
       mockSchemaApi.getTableSchema.mockResolvedValue(schema)
@@ -626,10 +616,12 @@ describe('useDataSourceStore', () => {
       const previewData: PreviewData = {
         columns: ['id', 'name'],
         rows: [
-          [1, 'Alice'],
-          [2, 'Bob'],
+          { id: 1, name: 'Alice' },
+          { id: 2, name: 'Bob' },
         ],
         total_rows: 2,
+        limit: 2,
+        offset: 0,
       }
 
       mockSchemaApi.previewTableData.mockResolvedValue(previewData)
@@ -644,8 +636,10 @@ describe('useDataSourceStore', () => {
       const store = useDataSourceStore()
       const previewData: PreviewData = {
         columns: ['id'],
-        rows: [[1]],
+        rows: [{ id: 1 }],
         total_rows: 1,
+        limit: 10,
+        offset: 5,
       }
 
       mockSchemaApi.previewTableData.mockResolvedValue(previewData)
@@ -678,12 +672,14 @@ describe('useDataSourceStore', () => {
       store.tables.set('ds1', [{ name: 'table1', row_count: 100 }])
       store.tables.set('ds2', [{ name: 'table2', row_count: 200 }])
       store.tableSchemas.set('ds1:table1', {
-        name: 'table1',
-        columns: [{ name: 'id', type: 'integer', nullable: false }],
+        table_name: 'table1',
+        columns: [{ name: 'id', data_type: 'integer', nullable: false, is_primary_key: false }],
+        primary_keys: [],
       })
       store.tableSchemas.set('ds2:table2', {
-        name: 'table2',
-        columns: [{ name: 'id', type: 'integer', nullable: false }],
+        table_name: 'table2',
+        columns: [{ name: 'id', data_type: 'integer', nullable: false, is_primary_key: false }],
+        primary_keys: [],
       })
 
       mockSchemaApi.invalidateCache.mockResolvedValue(undefined)
@@ -702,8 +698,9 @@ describe('useDataSourceStore', () => {
 
       store.tables.set('ds1:public', [{ name: 'table1', row_count: 100 }])
       store.tableSchemas.set('ds1:public:table1', {
-        name: 'table1',
-        columns: [{ name: 'id', type: 'integer', nullable: false }],
+        table_name: 'table1',
+        columns: [{ name: 'id', data_type: 'integer', nullable: false, is_primary_key: false }],
+        primary_keys: [],
       })
 
       mockSchemaApi.invalidateCache.mockResolvedValue(undefined)
