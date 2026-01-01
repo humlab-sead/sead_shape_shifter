@@ -6,10 +6,10 @@ and interactions with external systems.
 
 Service Classes:
     - AutoFixService: Automated configuration fix suggestions and application
-    - ProjectService: Configuration file management (CRUD operations)
+    - ProjectService: Project file management (CRUD operations)
     - DataSourceService: Global data source file management
     - DependencyService: Entity dependency analysis and topological sorting
-    - ShapeShiftService: Configuration change preview generation
+    - ShapeShiftService: Project change preview generation
     - QueryService: SQL query execution against configured data sources
     - SchemaIntrospectionService: Database schema introspection
     - SuggestionService: Entity and configuration suggestions
@@ -19,9 +19,9 @@ Service Classes:
     - YamlService: YAML file reading and writing with error handling
 
 Exception Classes:
-    Configuration Service:
+    Project Service:
         - ProjectServiceError: Base exception for configuration operations
-        - ProjectNotFoundError: Configuration file not found
+        - ProjectNotFoundError: Project file not found
         - EntityNotFoundError: Entity not found in configuration
         - EntityAlreadyExistsError: Entity already exists in configuration
         - InvalidProjectError: Invalid configuration structure
@@ -126,7 +126,7 @@ __all__ = [
     "TypeMappingService",
     "ValidationService",
     "YamlService",
-    # Configuration exceptions
+    # Project exceptions
     "ProjectServiceError",
     "ProjectNotFoundError",
     "EntityNotFoundError",
