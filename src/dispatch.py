@@ -11,11 +11,10 @@ from src.model import ShapeShiftProject, TableConfig
 from src.utility import Registry, create_db_uri, dotget
 
 
-class DispatchRegistry(Registry):
+class DispatchRegistry(Registry[type["Dispatcher"]]):
     """Registry for data store implementations."""
 
-    items: dict = {}
-
+    items: dict[str, type["Dispatcher"]] = {}
 
 Dispatchers: DispatchRegistry = DispatchRegistry()  # pylint: disable=invalid-name
 
@@ -31,8 +30,16 @@ class Dispatcher(IDispatcher):
     def __init__(self, cfg: ShapeShiftProject | dict[str, Any]) -> None:
         self.cfg: ShapeShiftProject = cfg if isinstance(cfg, ShapeShiftProject) else ShapeShiftProject(cfg=cfg)
 
+    @property
+    def target_type(self) -> str | None:
+        return getattr(self, "_registry_opts", {}).get("target_type", "unknown")
+    
+    @property
+    def description(self) -> str | None:
+        return getattr(self, "_registry_opts", {}).get("description", "")
+    
 
-@Dispatchers.register(key="csv")
+@Dispatchers.register(key="csv", target_type="folder", description="Dispatch data as CSV files to a folder")
 class CsvDispatcher(Dispatcher):
     """Dispatcher for CSV data."""
 
@@ -43,7 +50,7 @@ class CsvDispatcher(Dispatcher):
             table.to_csv(output_dir / f"{entity_name}.csv", index=False)
 
 
-@Dispatchers.register(key="zipcsv")
+@Dispatchers.register(key="zipcsv", target_type="file", description="Dispatch data as CSV files inside a ZIP archive")
 class ZipCsvDispatcher(CsvDispatcher):
     """Dispatcher for CSV data."""
 
@@ -54,7 +61,7 @@ class ZipCsvDispatcher(CsvDispatcher):
             table.to_csv(output_dir / f"{entity_name}.csv", index=False)
 
 
-@Dispatchers.register(key="xlsx")
+@Dispatchers.register(key="xlsx", target_type="file", description="Dispatch data as Excel file")
 class ExcelDispatcher(Dispatcher):
     """Dispatcher for Excel data."""
 
@@ -64,7 +71,7 @@ class ExcelDispatcher(Dispatcher):
                 table.to_excel(writer, sheet_name=entity_name, index=False)
 
 
-@Dispatchers.register(key="openpyxl")
+@Dispatchers.register(key="openpyxl", target_type="file", description="Dispatch data as Excel file using openpyxl")
 class OpenpyxlExcelDispatcher(Dispatcher):
     """Dispatcher for Excel data using openpyxl."""
 
@@ -146,7 +153,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
         return name.translate(str.maketrans({c: "_" for c in r":\/?*[]"})).strip()[:31] or "Sheet"
 
 
-@Dispatchers.register(key="db")
+@Dispatchers.register(key="db", target_type="database", description="Dispatch data to a database")
 class DatabaseDispatcher(Dispatcher):
     """Dispatcher for Database data."""
 

@@ -58,6 +58,30 @@ class TestDispatchRegistry:
         assert Dispatchers.is_registered("xlsx")
         assert Dispatchers.is_registered("db")
 
+    def test_dispatchers_has_target_type_property(self, cfg):
+        """Test that Dispatchers has the expected target types registered."""
+        for dispatcher_cls in Dispatchers.items.values():
+            dispatcher: Dispatcher = dispatcher_cls(cfg=cfg)
+            assert hasattr(dispatcher, "target_type")
+            value: str | None = dispatcher.target_type
+            assert isinstance(value, (str, type(None)))
+            assert value in {"folder", "file", "database"}
+
+    def test_dispatchers_has_description_property(self, cfg):
+        """Test that Dispatchers has the expected target types registered."""
+        for dispatcher_cls in Dispatchers.items.values():
+            dispatcher: Dispatcher = dispatcher_cls(cfg=cfg)
+            assert hasattr(dispatcher, "description")
+            value: str | None = dispatcher.description
+            assert isinstance(value, (str, type(None)))
+
+
+    def test_dispatchers_registered_types(self):
+        """Test that Dispatchers has correct types registered."""
+        assert Dispatchers.items["csv"] is CsvDispatcher
+        assert Dispatchers.items["xlsx"] is ExcelDispatcher
+        assert Dispatchers.items["db"] is DatabaseDispatcher
+
     def test_dispatchers_get_csv(self):
         """Test getting CSV dispatcher from registry."""
         dispatcher = Dispatchers.get("csv")

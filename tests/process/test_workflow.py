@@ -33,7 +33,7 @@ def test_workflow_using_survey_report_to_csv():
             project=config,
             target=output_path,
             translate=translate,
-            mode="csv",
+            target_type="csv",
             drop_foreign_keys=False,
         )
     )
@@ -84,7 +84,7 @@ def test_access_database_csv_workflow():
             project=config,
             target=output_path,
             translate=translate,
-            mode="csv",
+            target_type="csv",
             drop_foreign_keys=False,
         )
     )
