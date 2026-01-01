@@ -37,4 +37,5 @@
  - [] TODO: Add capability to duplicate an existing configuration.
  - [] TODO: #57 Add capability to set number of rows (including all) from preview
  - [] TODO: #75 Add capability to select number of rows from preview.
+ - [] TODO: #77 Change graph visualization to use Cytoscape.js instead of basic SVG.
   
