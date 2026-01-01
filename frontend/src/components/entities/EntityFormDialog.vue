@@ -1,6 +1,6 @@
 <template>
-  <v-dialog v-model="dialogModel" :max-width="splitView ? '95vw' : '900'" persistent scrollable>
-    <v-card>
+  <v-dialog v-model="dialogModel" :max-width="splitView ? '95vw' : '900'" :height="splitView ? '90vh' : '800'" persistent scrollable>
+    <v-card style="height: 100%">
       <v-toolbar color="primary" density="compact">
         <v-toolbar-title>
           <v-icon :icon="mode === 'create' ? 'mdi-plus-circle' : 'mdi-pencil'" class="mr-2" />
@@ -22,17 +22,20 @@
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="basic">Basic</v-tab>
         <v-tab value="relationships" :disabled="mode === 'create'">Foreign Keys</v-tab>
-        <v-tab value="advanced" :disabled="mode === 'create'">Advanced</v-tab>
+        <v-tab value="filters" :disabled="mode === 'create'">Filters</v-tab>
+        <v-tab value="unnest" :disabled="mode === 'create'">Unnest</v-tab>
+        <v-tab value="append" :disabled="mode === 'create'">Append</v-tab>
+        <v-tab value="extra_columns" :disabled="mode === 'create'">Extra Columns</v-tab>
         <v-tab value="yaml" :disabled="mode === 'create'">
           <v-icon icon="mdi-code-braces" class="mr-1" size="small" />
           YAML
         </v-tab>
       </v-tabs>
 
-      <v-card-text class="pa-0" :class="{ 'split-container': splitView }">
+      <v-card-text class="pa-0 dialog-content" :class="{ 'split-container': splitView }">
         <div :class="splitView ? 'split-layout' : ''">
           <!-- Left: Entity Form -->
-          <div :class="splitView ? 'form-panel' : 'pt-6 px-4'">
+          <div :class="splitView ? 'form-panel' : 'pt-6 px-4 form-content'">
             <v-window v-model="activeTab">
               <v-window-item value="basic">
                 <v-form ref="formRef" v-model="formValid" class="compact-form">
@@ -311,8 +314,20 @@
                 />
               </v-window-item>
 
-              <v-window-item value="advanced">
-                <advanced-entity-config v-model="formData.advanced" :available-entities="availableSourceEntities" />
+              <v-window-item value="filters">
+                <filters-editor v-model="formData.advanced.filters" :available-entities="availableSourceEntities" />
+              </v-window-item>
+
+              <v-window-item value="unnest">
+                <unnest-editor v-model="formData.advanced.unnest" />
+              </v-window-item>
+
+              <v-window-item value="append">
+                <append-editor v-model="formData.advanced.append" />
+              </v-window-item>
+
+              <v-window-item value="extra_columns">
+                <extra-columns-editor v-model="formData.advanced.extra_columns" />
               </v-window-item>
 
               <v-window-item value="yaml">
@@ -456,7 +471,10 @@ import type { ColDef } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 import ForeignKeyEditor from './ForeignKeyEditor.vue'
-import AdvancedEntityConfig from './AdvancedEntityConfig.vue'
+import FiltersEditor from './FiltersEditor.vue'
+import UnnestEditor from './UnnestEditor.vue'
+import AppendEditor from './AppendEditor.vue'
+import ExtraColumnsEditor from './ExtraColumnsEditor.vue'
 import SuggestionsPanel from './SuggestionsPanel.vue'
 // import EntityPreviewPanel from './EntityPreviewPanel.vue'
 import YamlEditor from '../common/YamlEditor.vue'
@@ -1160,6 +1178,17 @@ function handleRejectDependency(dep: DependencySuggestion) {
 </script>
 
 <style scoped>
+/* Dialog content height management */
+.dialog-content {
+  min-height: 600px;
+  max-height: calc(90vh - 120px);
+  overflow-y: auto;
+}
+
+.form-content {
+  min-height: 600px;
+}
+
 /* Split-pane layout */
 .split-container {
   height: calc(100vh - 180px);
