@@ -30,7 +30,7 @@ def test_workflow_using_survey_report_to_csv():
 
     _ = asyncio.run(
         workflow(
-            config=config,
+            project=config,
             target=output_path,
             translate=translate,
             mode="csv",
@@ -81,7 +81,7 @@ def test_access_database_csv_workflow():
 
     _ = asyncio.run(
         workflow(
-            config=config,
+            project=config,
             target=output_path,
             translate=translate,
             mode="csv",

@@ -70,7 +70,7 @@ async def auto_reconcile_entity(
     Automatically reconcile entity using OpenRefine service.
 
     Args:
-        project_name: Configuration name
+        project_name: Project name
         entity_name: Entity to reconcile
         threshold: Auto-accept threshold (default 0.95 = 95%)
 
@@ -91,7 +91,7 @@ async def auto_reconcile_entity(
 
     if get_app_state_manager().is_dirty(project_name):
         raise BadRequestError(
-            f"Configuration '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation."
+            f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation."
         )
 
     logger.info(f"Starting auto-reconciliation for {entity_name} with threshold {threshold}")
@@ -116,7 +116,7 @@ async def suggest_entities(
     Get entity suggestions for autocomplete.
 
     Args:
-        project_name: Configuration name
+        project_name: Project name
         entity_name: Entity type
         query: Search query (minimum 2 characters)
 
@@ -156,7 +156,7 @@ async def update_mapping(
     Update or remove a single mapping entry.
 
     Args:
-        project_name: Configuration name
+        project_name: Project name
         entity_name: Entity name
         source_values: Source key values
         sead_id: SEAD entity ID (null to remove mapping)
@@ -186,7 +186,7 @@ async def delete_mapping(
     Delete a mapping entry.
 
     Args:
-        project_name: Configuration name
+        project_name: Project name
         entity_name: Entity name
         source_values: Source key values to delete
 
