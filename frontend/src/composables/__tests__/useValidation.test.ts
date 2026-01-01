@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { nextTick } from 'vue'
 import { useValidation } from '../useValidation'
 import { useValidationStore } from '@/stores'
-import type { ValidationResult, EntityValidationResult } from '@/types'
+import type { ValidationResult } from '@/types'
 
 // Mock console methods
 const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -54,9 +53,11 @@ describe('useValidation', () => {
 
       const mockResult: ValidationResult = {
         is_valid: true,
-        has_errors: false,
-        has_warnings: false,
-        messages: [],
+        errors: [],
+        warnings: [],
+        info: [],
+        error_count: 0,
+        warning_count: 0,
       }
 
       store.$patch({ validationResult: mockResult })
@@ -68,16 +69,23 @@ describe('useValidation', () => {
       const store = useValidationStore()
       const { entityValidationResults } = useValidation()
 
-      const mockResults: Record<string, EntityValidationResult> = {
-        entity1: {
-          entity_name: 'entity1',
-          is_valid: true,
-          errors: [],
-          warnings: [],
-        },
-      }
+      const mockResults = new Map<string, ValidationResult>([
+        [
+          'entity1',
+          {
+            is_valid: true,
+            errors: [],
+            warnings: [],
+            info: [],
+            error_count: 0,
+            warning_count: 0,
+          },
+        ],
+      ])
 
-      store.$patch({ entityValidationResults: mockResults })
+      store.$patch((state) => {
+        state.entityValidationResults = mockResults
+      })
 
       expect(entityValidationResults.value).toEqual(mockResults)
     })
@@ -149,9 +157,11 @@ describe('useValidation', () => {
       store.$patch({
         validationResult: {
           is_valid: true,
-          has_errors: false,
-          has_warnings: false,
-          messages: [],
+          errors: [],
+          warnings: [],
+          info: [],
+          error_count: 0,
+          warning_count: 0,
         },
       })
 
@@ -164,9 +174,11 @@ describe('useValidation', () => {
       const store = useValidationStore()
       const mockResult: ValidationResult = {
         is_valid: true,
-        has_errors: false,
-        has_warnings: false,
-        messages: [],
+        errors: [],
+        warnings: [],
+        info: [],
+        error_count: 0,
+        warning_count: 0,
       }
 
       vi.spyOn(store, 'validateProject').mockResolvedValue(mockResult)
@@ -194,11 +206,13 @@ describe('useValidation', () => {
   describe('validateEntity action', () => {
     it('should validate a specific entity', async () => {
       const store = useValidationStore()
-      const mockResult: EntityValidationResult = {
-        entity_name: 'test-entity',
+      const mockResult: ValidationResult = {
         is_valid: true,
         errors: [],
         warnings: [],
+        info: [],
+        error_count: 0,
+        warning_count: 0,
       }
 
       vi.spyOn(store, 'validateEntity').mockResolvedValue(mockResult)
@@ -225,11 +239,13 @@ describe('useValidation', () => {
   describe('helper methods', () => {
     it('should get entity validation result', () => {
       const store = useValidationStore()
-      const mockResult: EntityValidationResult = {
-        entity_name: 'entity1',
+      const mockResult: ValidationResult = {
         is_valid: true,
         errors: [],
         warnings: [],
+        info: [],
+        error_count: 0,
+        warning_count: 0,
       }
 
       vi.spyOn(store, 'getEntityValidation').mockReturnValue(mockResult)
@@ -270,9 +286,11 @@ describe('useValidation', () => {
       vi.spyOn(store, 'clearValidation')
       vi.spyOn(store, 'validateProject').mockResolvedValue({
         is_valid: true,
-        has_errors: false,
-        has_warnings: false,
-        messages: [],
+        errors: [],
+        warnings: [],
+        info: [],
+        error_count: 0,
+        warning_count: 0,
       })
 
       const { clearValidation, lastValidatedProject, validate } = useValidation()
@@ -324,9 +342,11 @@ describe('useValidation', () => {
       const store = useValidationStore()
       vi.spyOn(store, 'validateProject').mockResolvedValue({
         is_valid: true,
-        has_errors: false,
-        has_warnings: false,
-        messages: [],
+        errors: [],
+        warnings: [],
+        info: [],
+        error_count: 0,
+        warning_count: 0,
       })
 
       const { isStale, validate } = useValidation({ projectName: 'project1' })
@@ -341,9 +361,11 @@ describe('useValidation', () => {
       const store = useValidationStore()
       vi.spyOn(store, 'validateProject').mockResolvedValue({
         is_valid: true,
-        has_errors: false,
-        has_warnings: false,
-        messages: [],
+        errors: [],
+        warnings: [],
+        info: [],
+        error_count: 0,
+        warning_count: 0,
       })
 
       const { isStale, validate } = useValidation({ projectName: 'project2' })

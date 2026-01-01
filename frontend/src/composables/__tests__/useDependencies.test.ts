@@ -80,6 +80,7 @@ describe('useDependencies', () => {
       const mockCheck = {
         has_cycles: true,
         cycles: [['entity1', 'entity2', 'entity1']],
+        cycle_count: 1,
       }
 
       store.$patch({ circularDependencyCheck: mockCheck })
@@ -225,6 +226,7 @@ describe('useDependencies', () => {
       const mockCheck = {
         has_cycles: true,
         cycles: [['entity1', 'entity2', 'entity1']],
+        cycle_count: 1,
       }
 
       vi.spyOn(store, 'checkCircularDependencies').mockResolvedValue(mockCheck)
