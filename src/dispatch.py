@@ -33,7 +33,18 @@ class Dispatcher(IDispatcher):
 
 
 @Dispatchers.register(key="csv")
-class CSVDispatcher(Dispatcher):
+class CsvDispatcher(Dispatcher):
+    """Dispatcher for CSV data."""
+
+    def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
+        output_dir = Path(target)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        for entity_name, table in data.items():
+            table.to_csv(output_dir / f"{entity_name}.csv", index=False)
+
+
+@Dispatchers.register(key="zipcsv")
+class ZipCsvDispatcher(CsvDispatcher):
     """Dispatcher for CSV data."""
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:

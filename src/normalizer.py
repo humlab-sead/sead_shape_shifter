@@ -98,25 +98,25 @@ class ShapeShifter:
 
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
-        self.config: ShapeShiftProject = ShapeShiftProject.from_source(project)
+        self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
         self.state: ProcessState = self._initialize_process_state(target_entities)
 
     def _initialize_process_state(self, target_entities: set[str] | None = None) -> ProcessState:
         """Initialize the processing state based on target entities."""
         if target_entities:
-            state = ProcessState(config=self.config, table_store=self.table_store, target_entities=set())
+            state = ProcessState(config=self.project, table_store=self.table_store, target_entities=set())
             all_required: set[str] = set()
             for entity in target_entities:
                 all_required.update(state.get_required_entities(entity))
-            state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, target_entities=all_required)
+            state: ProcessState = ProcessState(config=self.project, table_store=self.table_store, target_entities=all_required)
         else:
-            state = ProcessState(config=self.config, table_store=self.table_store, target_entities=None)
+            state = ProcessState(config=self.project, table_store=self.table_store, target_entities=None)
         return state
 
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
 
-        loader: DataLoader | None = self.config.resolve_loader(table_cfg=table_cfg)
+        loader: DataLoader | None = self.project.resolve_loader(table_cfg=table_cfg)
         if loader:
             logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
@@ -143,7 +143,7 @@ class ShapeShifter:
                 self.state.log_unmet_dependencies()
                 raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
 
-            table_cfg: TableConfig = self.config.get_table(entity)
+            table_cfg: TableConfig = self.project.get_table(entity)
 
             logger.debug(f"{entity}[normalizing]: Normalizing entity...")
 
@@ -188,11 +188,11 @@ class ShapeShifter:
 
             self.register(entity, data)
 
-            link_entity(entity_name=entity, config=self.config, table_store=self.table_store)
+            link_entity(entity_name=entity, config=self.project, table_store=self.table_store)
 
             if table_cfg.unnest:
                 self.unnest_entity(entity=entity)
-                link_entity(entity_name=entity, config=self.config, table_store=self.table_store)
+                link_entity(entity_name=entity, config=self.project, table_store=self.table_store)
 
             if delay_drop_duplicates and table_cfg.drop_duplicates:
                 self.table_store[entity] = drop_duplicate_rows(
@@ -214,14 +214,14 @@ class ShapeShifter:
     def link(self) -> Self:
         """Link entities based on foreign key configuration."""
         for entity_name in self.state.processed_entities:
-            link_entity(entity_name=entity_name, config=self.config, table_store=self.table_store)
+            link_entity(entity_name=entity_name, config=self.project, table_store=self.table_store)
         return self
 
     def store(self, target: str, mode: str) -> Self:
         """Write to specified target based on the specified mode."""
         dispatcher_cls: Dispatcher = Dispatchers.get(mode)
         if dispatcher_cls:
-            dispatcher = dispatcher_cls(self.config)  # type: ignore
+            dispatcher = dispatcher_cls(self.project)  # type: ignore
             dispatcher.dispatch(target=target, data=self.table_store)
         else:
             raise ValueError(f"Unsupported dispatch mode: {mode}")
@@ -235,7 +235,7 @@ class ShapeShifter:
 
     def unnest_entity(self, *, entity: str) -> pd.DataFrame:
         try:
-            table_cfg: TableConfig = self.config.get_table(entity)
+            table_cfg: TableConfig = self.project.get_table(entity)
             if table_cfg.unnest:
                 self.table_store[entity] = unnest(entity=entity, table=self.table_store[entity], table_cfg=table_cfg)
         except Exception as e:  # ldtype: ignore ; pylint: disable=broad-except
@@ -250,27 +250,27 @@ class ShapeShifter:
     def drop_foreign_key_columns(self) -> Self:
         """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
         for entity_name in self.table_store.keys():
-            if entity_name not in self.config.table_names:
+            if entity_name not in self.project.table_names:
                 continue
-            table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
+            table_cfg: TableConfig = self.project.get_table(entity_name=entity_name)
             self.table_store[entity_name] = table_cfg.drop_fk_columns(table=self.table_store[entity_name])
         return self
 
     def add_system_id_columns(self) -> Self:
         """Add "system_id" with same value as surrogate_id. Set surrogate_id to None."""
         for entity_name in self.table_store.keys():
-            if entity_name not in self.config.table_names:
+            if entity_name not in self.project.table_names:
                 continue
-            table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
+            table_cfg: TableConfig = self.project.get_table(entity_name=entity_name)
             self.table_store[entity_name] = table_cfg.add_system_id_column(table=self.table_store[entity_name])
         return self
 
     def move_keys_to_front(self) -> Self:
         """Reorder columns in this order: primary key, foreign key column, extra columns, other columns."""
         for entity_name in self.table_store.keys():
-            if entity_name not in self.config.table_names:
+            if entity_name not in self.project.table_names:
                 continue
-            self.table_store[entity_name] = self.config.reorder_columns(entity_name, self.table_store[entity_name])
+            self.table_store[entity_name] = self.project.reorder_columns(entity_name, self.table_store[entity_name])
         return self
 
     def map_to_remote(self, link_cfgs: dict[str, dict[str, Any]]) -> Self:

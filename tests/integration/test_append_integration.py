@@ -109,8 +109,8 @@ class TestAppendIntegration:
         normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
-        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
+        normalizer.project = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
+        normalizer.state = ProcessState(config=normalizer.project, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
         await normalizer.normalize()
@@ -162,8 +162,8 @@ class TestAppendIntegration:
         normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
-        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
+        normalizer.project = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
+        normalizer.state = ProcessState(config=normalizer.project, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
         await normalizer.normalize()
@@ -214,8 +214,8 @@ class TestAppendIntegration:
         normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
-        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
+        normalizer.project = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
+        normalizer.state = ProcessState(config=normalizer.project, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
         await normalizer.normalize()
@@ -274,8 +274,8 @@ class TestAppendIntegration:
         normalizer = ShapeShifter.__new__(ShapeShifter)
         normalizer.default_entity = "survey"
         normalizer.table_store = {"survey": survey_df}
-        normalizer.config = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
-        normalizer.state = ProcessState(config=normalizer.config, table_store=normalizer.table_store, target_entities=None)
+        normalizer.project = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
+        normalizer.state = ProcessState(config=normalizer.project, table_store=normalizer.table_store, target_entities=None)
 
         # Run normalization
         await normalizer.normalize()

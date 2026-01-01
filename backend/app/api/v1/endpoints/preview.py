@@ -42,7 +42,7 @@ def get_validate_fk_service(
     description="Get a preview of entity data with all transformations applied",
     responses={
         200: {"description": "Preview data retrieved successfully"},
-        404: {"description": "Configuration or entity not found"},
+        404: {"description": "Project or entity not found"},
         500: {"description": "Preview generation failed"},
     },
 )
@@ -80,7 +80,7 @@ async def preview_entity(
     description="Get a larger sample of entity data for validation or testing",
     responses={
         200: {"description": "Sample data retrieved successfully"},
-        404: {"description": "Configuration or entity not found"},
+        404: {"description": "Project or entity not found"},
         500: {"description": "Sample generation failed"},
     },
 )
@@ -143,7 +143,7 @@ async def invalidate_preview_cache(
     description="Test a foreign key relationship to validate the join",
     responses={
         200: {"description": "Join test completed successfully"},
-        404: {"description": "Configuration, entity, or foreign key not found"},
+        404: {"description": "Project, entity, or foreign key not found"},
         400: {"description": "Invalid request parameters"},
     },
 )
