@@ -26,7 +26,7 @@
  - [] TODO: Add capability to generate a default reconciliation YAML based on service manifest received from calling services /reconcile endpoint.
  - [] TODO: Change so that only entities avaliable for service reconciliation are displayed  
  - [] TODO: #56 Add capability to export preview
-  - [] TODO: #72 Add capability to run full normalization from frontend, and save output to selected dispatch target.
+ - [] TODO: #72 Add capability to run full normalization from frontend, and save output to selected dispatch target.
  - [] TODO: #68 Add a "finally" step.
  - [] TODO: #66 Introduce a "transformations" section.
  - [] TODO: #69 Add "parent" property to entity definitions.
@@ -39,3 +39,4 @@
  - [] TODO: #75 Add capability to select number of rows from preview.
  - [x] TODO: #77 Change graph visualization to use Cytoscape.js instead of basic SVG.
  - [x] TODO: #80 [Frontend/Backend] Edit entire project YAML file in dual-mode editor (Form/YAML).
+ - [ ] TODO: Publish frontend files via the backend (FastAPI) server for easier deployment.

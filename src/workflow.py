@@ -50,7 +50,7 @@ async def workflow(
     project: str | ShapeShiftProject,
     target: str,
     translate: bool,
-    mode: str,
+    target_type: str,
     drop_foreign_keys: bool,
     validate_then_exit: bool = False,
     default_entity: str | None = None,
@@ -76,7 +76,7 @@ async def workflow(
     shapeshifter.add_system_id_columns()
     shapeshifter.move_keys_to_front()
     shapeshifter.map_to_remote(project.mappings)
-    shapeshifter.store(target=target, mode=mode)
+    shapeshifter.store(target=target, mode=target_type)
     shapeshifter.log_shapes(target=target)
 
     # if verbose:

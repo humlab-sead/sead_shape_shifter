@@ -60,7 +60,7 @@ def main(
             default_entity=default_entity,
             target=target,
             translate=translate,
-            mode=mode,
+            target_type=mode,
             drop_foreign_keys=drop_foreign_keys,
             validate_then_exit=validate_then_exit,
             env_file=env_file,
