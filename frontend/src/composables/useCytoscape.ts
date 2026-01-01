@@ -36,7 +36,12 @@ export interface UseCytoscapeOptions {
   /**
    * Whether to show node labels
    */
-  showLabels?: Ref<boolean>
+  showNodeLabels?: Ref<boolean>
+
+  /**
+   * Whether to show edge labels
+   */
+  showEdgeLabels?: Ref<boolean>
 
   /**
    * Whether to highlight cycle nodes/edges
@@ -69,7 +74,8 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     container,
     graphData,
     layoutType = ref('hierarchical'),
-    showLabels = ref(true),
+    showNodeLabels = ref(true),
+    showEdgeLabels = ref(true),
     highlightCycles = ref(false),
     cycles = ref([]),
     isDark = ref(false),
@@ -127,7 +133,8 @@ export function useCytoscape(options: UseCytoscapeOptions) {
 
     const elements = toCytoscapeElements(graphData.value, {
       cycles: cycles.value,
-      showLabels: showLabels.value,
+      showNodeLabels: showNodeLabels.value,
+      showEdgeLabels: showEdgeLabels.value,
       highlightCycles: highlightCycles.value,
     })
 
@@ -284,14 +291,22 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     applyLayout(true)
   })
 
-  // Watch for label visibility changes
-  watch(showLabels, () => {
+  // Watch for node label visibility changes
+  watch(showNodeLabels, () => {
     updateElements()
+    applyLayout(false) // Re-apply layout without animation
+  })
+
+  // Watch for edge label visibility changes
+  watch(showEdgeLabels, () => {
+    updateElements()
+    applyLayout(false) // Re-apply layout without animation
   })
 
   // Watch for cycle highlighting changes
   watch(highlightCycles, () => {
     updateElements()
+    applyLayout(false) // Re-apply layout without animation
   })
 
   // Watch for theme changes

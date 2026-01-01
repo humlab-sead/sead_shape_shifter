@@ -37,7 +37,8 @@
 
             <v-divider vertical />
 
-            <v-switch v-model="showLabels" label="Show Labels" density="compact" hide-details />
+            <v-switch v-model="showNodeLabels" label="Show Node Labels" density="compact" hide-details />
+            <v-switch v-model="showEdgeLabels" label="Show Edge Labels" density="compact" hide-details />
 
             <v-switch
               v-model="highlightCycles"
@@ -197,7 +198,8 @@ const { dependencyGraph, loading, error, hasCircularDependencies, cycles, statis
 // Local state
 const graphContainer = ref<HTMLElement | null>(null)
 const layoutType = ref<'hierarchical' | 'force'>('hierarchical')
-const showLabels = ref(true)
+const showNodeLabels = ref(true)
+const showEdgeLabels = ref(true)
 const highlightCycles = ref(true)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
@@ -222,7 +224,8 @@ const { fit, zoomIn, zoomOut, reset, exportPNG } = useCytoscape({
   container: graphContainer,
   graphData: dependencyGraph,
   layoutType,
-  showLabels,
+  showNodeLabels,
+  showEdgeLabels,
   highlightCycles,
   cycles,
   isDark,

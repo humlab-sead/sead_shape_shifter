@@ -42,6 +42,14 @@ const baseStyles: StylesheetCSS[] = [
     },
   },
 
+  // Hide edge labels
+  {
+    selector: 'edge.hide-label',
+    css: {
+      label: '',
+    },
+  },
+
   // Edge styles
   {
     selector: 'edge',
@@ -52,6 +60,14 @@ const baseStyles: StylesheetCSS[] = [
       'target-arrow-shape': 'triangle',
       'curve-style': 'bezier',
       'arrow-scale': 1.2,
+      label: 'data(label)',
+      'font-size': '10px',
+      'text-rotation': 'autorotate',
+      'text-margin-y': -10,
+      'text-background-color': '#fff',
+      'text-background-opacity': 0.8,
+      'text-background-padding': '2px',
+      color: '#666',
     },
   },
 
@@ -177,6 +193,8 @@ const darkThemeStyles: StylesheetCSS[] = [
     css: {
       'line-color': '#666',
       'target-arrow-color': '#666',
+      color: '#aaa',
+      'text-background-color': '#121212',
     },
   },
 ]
