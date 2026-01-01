@@ -121,7 +121,153 @@
 
           <!-- Dependencies Tab -->
           <v-window-item value="dependencies">
-            <dependency-graph :project-name="projectName" @edit-entity="handleEditEntity" />
+            <!-- Circular Dependencies Alert -->
+            <circular-dependency-alert v-if="hasCircularDependencies" :cycles="cycles" class="mb-4" />
+
+            <!-- Graph Controls -->
+            <v-card variant="outlined" class="mb-4">
+              <v-card-text class="d-flex align-center gap-4">
+                <v-btn-toggle v-model="layoutType" mandatory density="compact">
+                  <v-btn value="hierarchical" prepend-icon="mdi-file-tree"> Hierarchical </v-btn>
+                  <v-btn value="force" prepend-icon="mdi-vector-arrange-above"> Force-Directed </v-btn>
+                </v-btn-toggle>
+
+                <v-divider vertical />
+
+                <v-switch v-model="showLabels" label="Show Labels" density="compact" hide-details />
+
+                <v-switch
+                  v-model="highlightCycles"
+                  label="Highlight Cycles"
+                  density="compact"
+                  hide-details
+                  :disabled="!hasCircularDependencies"
+                />
+
+                <v-spacer />
+
+                <v-chip prepend-icon="mdi-cube-outline"> {{ depStatistics.nodeCount }} nodes </v-chip>
+                <v-chip prepend-icon="mdi-arrow-right"> {{ depStatistics.edgeCount }} edges </v-chip>
+              </v-card-text>
+            </v-card>
+
+            <!-- Loading State -->
+            <v-card v-if="dependenciesLoading" variant="outlined" class="text-center py-12">
+              <v-progress-circular indeterminate color="primary" size="64" />
+              <p class="mt-4 text-grey">Loading dependency graph...</p>
+            </v-card>
+
+            <!-- Error State -->
+            <v-alert v-else-if="dependenciesError" type="error" variant="tonal">
+              <v-alert-title>Error Loading Graph</v-alert-title>
+              {{ dependenciesError }}
+              <template #append>
+                <v-btn variant="text" @click="handleRefreshDependencies">Retry</v-btn>
+              </template>
+            </v-alert>
+
+            <!-- Graph Container -->
+            <v-card v-else-if="dependencyGraph" variant="outlined">
+              <v-card-text class="pa-0">
+                <div ref="graphContainer" class="graph-container" />
+              </v-card-text>
+              <v-card-actions class="justify-end">
+                <v-btn variant="text" prepend-icon="mdi-fit-to-screen" size="small" @click="handleFit"> Fit </v-btn>
+                <v-btn variant="text" prepend-icon="mdi-magnify-plus" size="small" @click="handleZoomIn">
+                  Zoom In
+                </v-btn>
+                <v-btn variant="text" prepend-icon="mdi-magnify-minus" size="small" @click="handleZoomOut">
+                  Zoom Out
+                </v-btn>
+                <v-btn variant="text" prepend-icon="mdi-refresh" size="small" @click="handleResetView">
+                  Reset View
+                </v-btn>
+                <v-divider vertical class="mx-2" />
+                <v-btn variant="text" prepend-icon="mdi-download" size="small" @click="handleExportPNG">
+                  Export PNG
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+
+            <!-- Empty State -->
+            <v-card v-else variant="outlined" class="text-center py-12">
+              <v-icon icon="mdi-graph-outline" size="64" color="grey" />
+              <h3 class="text-h6 mt-4 mb-2">No Graph Data</h3>
+              <p class="text-grey mb-4">No dependency data available for this project</p>
+            </v-card>
+
+            <!-- Entity Details Drawer -->
+            <v-navigation-drawer v-model="showDetailsDrawer" location="right" temporary width="400">
+              <template v-if="selectedNode">
+                <v-toolbar color="primary">
+                  <v-toolbar-title>{{ selectedNode }}</v-toolbar-title>
+                  <v-btn icon="mdi-close" @click="showDetailsDrawer = false" />
+                </v-toolbar>
+
+                <v-list>
+                  <v-list-item>
+                    <v-list-item-title>Entity Name</v-list-item-title>
+                    <v-list-item-subtitle>{{ selectedNodeInfo?.id }}</v-list-item-subtitle>
+                  </v-list-item>
+
+                  <v-list-item>
+                    <v-list-item-title>Depth</v-list-item-title>
+                    <v-list-item-subtitle>{{ selectedNodeInfo?.depth ?? 'N/A' }}</v-list-item-subtitle>
+                  </v-list-item>
+
+                  <v-list-item>
+                    <v-list-item-title>Topological Order</v-list-item-title>
+                    <v-list-item-subtitle>
+                      {{ selectedNodeInfo?.topologicalOrder ?? 'N/A' }}
+                    </v-list-item-subtitle>
+                  </v-list-item>
+
+                  <v-list-item>
+                    <v-list-item-title>Dependencies</v-list-item-title>
+                    <v-list-item-subtitle>
+                      <v-chip
+                        v-for="dep in selectedNodeInfo?.dependencies ?? []"
+                        :key="dep"
+                        size="small"
+                        class="mr-1 mt-1"
+                      >
+                        {{ dep }}
+                      </v-chip>
+                      <span v-if="(selectedNodeInfo?.dependencies ?? []).length === 0">None</span>
+                    </v-list-item-subtitle>
+                  </v-list-item>
+
+                  <v-list-item>
+                    <v-list-item-title>Dependents</v-list-item-title>
+                    <v-list-item-subtitle>
+                      <v-chip
+                        v-for="dependent in selectedNodeInfo?.dependents ?? []"
+                        :key="dependent"
+                        size="small"
+                        class="mr-1 mt-1"
+                      >
+                        {{ dependent }}
+                      </v-chip>
+                      <span v-if="(selectedNodeInfo?.dependents ?? []).length === 0">None</span>
+                    </v-list-item-subtitle>
+                  </v-list-item>
+
+                  <v-list-item v-if="isInCycle(selectedNode)">
+                    <v-alert type="warning" variant="tonal" density="compact">
+                      This entity is part of a circular dependency
+                    </v-alert>
+                  </v-list-item>
+                </v-list>
+
+                <v-divider />
+
+                <v-card-actions>
+                  <v-btn variant="text" prepend-icon="mdi-pencil" block @click="handleEditEntity(selectedNode)">
+                    Edit Entity
+                  </v-btn>
+                </v-card-actions>
+              </template>
+            </v-navigation-drawer>
           </v-window-item>
 
           <!-- Reconciliation Tab -->
@@ -222,19 +368,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useProjects, useEntities, useValidation } from '@/composables'
+import { useTheme } from 'vuetify'
+import { useProjects, useEntities, useValidation, useDependencies, useCytoscape } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
+import { getNodeInfo } from '@/utils/graphAdapter'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
 import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 import ProjectDataSources from '@/components/ProjectDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
-import DependencyGraph from '@/components/dependencies/DependencyGraph.vue'
+import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
 
 const route = useRoute()
+const theme = useTheme()
 const projectName = computed(() => route.params.name as string)
 
 // Composables
@@ -258,6 +407,22 @@ const { entityCount, entities } = useEntities({
 
 const entityNames = computed(() => {
   return entities.value?.map((e) => e.name) ?? []
+})
+
+// Dependencies management
+const {
+  dependencyGraph,
+  loading: dependenciesLoading,
+  error: dependenciesError,
+  hasCircularDependencies,
+  cycles,
+  statistics: depStatistics,
+  fetch: fetchDependencies,
+  isInCycle,
+  clearError: clearDependenciesError,
+} = useDependencies({
+  projectName: projectName.value,
+  autoFetch: true,
 })
 
 // Session management
@@ -294,6 +459,14 @@ const showPreviewModal = ref(false)
 const fixPreview = ref<any>(null)
 const fixPreviewLoading = ref(false)
 const fixPreviewError = ref<string | null>(null)
+
+// Graph state
+const graphContainer = ref<HTMLElement | null>(null)
+const layoutType = ref<'hierarchical' | 'force'>('hierarchical')
+const showLabels = ref(true)
+const highlightCycles = ref(true)
+const showDetailsDrawer = ref(false)
+const selectedNode = ref<string | null>(null)
 
 // Computed
 const mergedValidationResult = computed(() => {
@@ -336,6 +509,32 @@ const validationChipText = computed(() => {
   if (hasErrors.value) return `${errorCount.value} errors`
   if (hasWarnings.value) return `${warningCount.value} warnings`
   return 'Valid'
+})
+
+const isDark = computed(() => theme.global.current.value.dark)
+
+const selectedNodeInfo = computed(() => {
+  if (!selectedNode.value) return null
+  return getNodeInfo(selectedNode.value, dependencyGraph.value)
+})
+
+// Cytoscape integration
+const { fit, zoomIn, zoomOut, reset, exportPNG } = useCytoscape({
+  container: graphContainer,
+  graphData: dependencyGraph,
+  layoutType,
+  showLabels,
+  highlightCycles,
+  cycles,
+  isDark,
+  onNodeClick: (nodeId: string) => {
+    selectedNode.value = nodeId
+    showDetailsDrawer.value = true
+  },
+  onBackgroundClick: () => {
+    selectedNode.value = null
+    showDetailsDrawer.value = false
+  },
 })
 
 // Methods
@@ -459,11 +658,45 @@ function handleEntityUpdated() {
 }
 
 function handleEditEntity(entityName: string) {
-  // Switch to entities tab and trigger entity edit
+  // Switch to entities tab and close drawer
   activeTab.value = 'entities'
+  showDetailsDrawer.value = false
   // The entity list will need to handle the actual editing
   // We could potentially pass the entity name via a ref or event bus
   console.log('Edit entity requested:', entityName)
+}
+
+async function handleRefreshDependencies() {
+  clearDependenciesError()
+  if (projectName.value) {
+    await fetchDependencies(projectName.value)
+  }
+}
+
+function handleFit() {
+  fit()
+}
+
+function handleZoomIn() {
+  zoomIn()
+}
+
+function handleZoomOut() {
+  zoomOut()
+}
+
+function handleResetView() {
+  reset()
+}
+
+function handleExportPNG() {
+  const png = exportPNG()
+  if (png) {
+    const link = document.createElement('a')
+    link.download = `dependency-graph-${projectName.value}.png`
+    link.href = png
+    link.click()
+  }
 }
 
 async function handleDataSourcesUpdated() {
@@ -511,5 +744,17 @@ watch(
 <style scoped>
 .gap-2 {
   gap: 0.5rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+.graph-container {
+  width: 100%;
+  height: 600px;
+  min-height: 600px;
+  position: relative;
+  background: transparent;
 }
 </style>
