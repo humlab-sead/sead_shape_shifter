@@ -3,7 +3,6 @@
 
 ### Bugs
 
- - [x] FIXME: #71 File modification date is always 1970-01-21 when listing projects
  - [] FIXME: When opening YAML view in entity editor, an empty entity is displayed
  - [] FIXME: Saving a configuration stores the YAML in a file with a new filename
  - [] FIXME: Right preview pane doesn't clear values between entities
@@ -27,8 +26,7 @@
  - [] TODO: Add capability to generate a default reconciliation YAML based on service manifest received from calling services /reconcile endpoint.
  - [] TODO: Change so that only entities avaliable for service reconciliation are displayed  
  - [] TODO: #56 Add capability to export preview
- - [] TODO: #57 Add capability to set number of rows (including all) from preview
- - [] TODO: #72 Add capability to run full normalization from frontend, and save output to selected dispatch target.
+  - [] TODO: #72 Add capability to run full normalization from frontend, and save output to selected dispatch target.
  - [] TODO: #68 Add a "finally" step.
  - [] TODO: #66 Introduce a "transformations" section.
  - [] TODO: #69 Add "parent" property to entity definitions.
@@ -37,5 +35,6 @@
  - [x] TODO: #70 Add capability to load data from Excel files.
  - [] TODO: #74 Rename "Configuration" to "Project" throughout the application.
  - [] TODO: Add capability to duplicate an existing configuration.
+ - [] TODO: #57 Add capability to set number of rows (including all) from preview
  - [] TODO: #75 Add capability to select number of rows from preview.
   
