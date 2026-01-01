@@ -5,7 +5,7 @@ import shutil
 import pytest
 
 from src.model import ShapeShiftProject
-from src.survey2excel import validate_entity_shapes, workflow
+from src.workflow import validate_entity_shapes, workflow
 from src.utility import load_shape_file
 
 

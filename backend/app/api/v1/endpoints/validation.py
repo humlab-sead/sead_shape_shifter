@@ -66,7 +66,7 @@ async def validate_entity(name: str, entity_name: str) -> ValidationResult:
     result: ValidationResult = validation_service.validate_entity(project, entity_name)
 
     logger.info(f"Validated entity '{entity_name}' in project '{name}': " f"valid={result.is_valid}, errors={result.error_count}")
-    
+
     return result
 
 

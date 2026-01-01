@@ -8,7 +8,6 @@ Usage:
 
 """
 
-import asyncio
 import os
 import sys
 from pathlib import Path
@@ -20,7 +19,7 @@ from src.extract import extract_translation_map
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications import CompositeProjectSpecification
-from src.utility import load_shape_file, setup_logging
+from src.utility import load_shape_file
 
 # pylint: disable=no-value-for-parameter
 
@@ -31,15 +30,15 @@ def resolve_config(project: ShapeShiftProject | str, env_file: str | None = None
 
         if not Path(project).exists():
             raise FileNotFoundError(f"Project file not found: {project}")
-        
+
         if not env_file:
             raise FileNotFoundError("Environment file not specified")
-        
+
         if not Path(env_file).exists():
             raise FileNotFoundError(f"Environment file not found: {env_file}")
-        
+
         project = ShapeShiftProject.from_file(project, env_file=env_file, env_prefix="SEAD_NORMALIZER")
-    
+
     if not isinstance(project, ShapeShiftProject):
         raise ValueError("Invalid project configuration")
 
@@ -61,7 +60,7 @@ async def workflow(
 
     if validate_project(project) and validate_then_exit:
         return
-    
+
     shapeshifter: ShapeShifter = ShapeShifter(project=project, default_entity=default_entity)
 
     await shapeshifter.normalize()
@@ -113,4 +112,3 @@ def validate_entity_shapes(target: str, mode: str, regression_file: str | None):
         click.secho("✗ Regression check failed: Entities with different shapes:", fg="red")
 
         print("\n".join(f" {z[0]:>30}: expected {str(z[1]):<15} found {str(z[2]):<20}" for z in entities_with_different_shapes))
-

@@ -66,16 +66,16 @@ def patch_config_resolution(monkeypatch: pytest.MonkeyPatch, config: ShapeShiftP
     """Mock ProjectService.load_project to return API config from the ShapeShiftProject."""
     # Convert ShapeShiftProject to API Project model
     api_project = ProjectMapper.to_api_config(config.cfg, config.metadata.name)
-    
+
     # Mock ProjectService.load_project to return this config
     mock_project_service = MagicMock()
     mock_project_service.load_project.return_value = api_project
-    
+
     # Patch the ProjectService constructor to return our mock
     monkeypatch.setattr(
         validate_fk_service.ProjectService,
         "__init__",
-        lambda self, projects_dir=None: setattr(self, "load_project", mock_project_service.load_project) or None
+        lambda self, projects_dir=None: setattr(self, "load_project", mock_project_service.load_project) or None,
     )
 
 

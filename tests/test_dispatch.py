@@ -75,7 +75,6 @@ class TestDispatchRegistry:
             value: str | None = dispatcher.description
             assert isinstance(value, (str, type(None)))
 
-
     def test_dispatchers_registered_types(self):
         """Test that Dispatchers has correct types registered."""
         assert Dispatchers.items["csv"] is CsvDispatcher

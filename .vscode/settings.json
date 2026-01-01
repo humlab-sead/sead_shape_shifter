@@ -36,8 +36,9 @@
     "python.analysis.autoImportCompletions": true,
     "python.analysis.diagnosticMode": "workspace",
     "python.analysis.disableTaggedHints": true,
+    "python.analysis.importFormat": "absolute",
     "python.analysis.extraPaths": [
-        "backend",
+        ".",
         "src",
         "tests"
     ],
@@ -47,6 +48,7 @@
         ".venv"
     ],
     "python.analysis.include": [
+        ".",
         "src",
         "backend",
         "tests"
