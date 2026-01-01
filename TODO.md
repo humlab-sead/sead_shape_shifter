@@ -9,8 +9,8 @@
  - [] FIXME: Keys is a mandatory field, but many entities has no value in Keys
  - [] FIXME:
  - [] FIXME:
- - [] FIXME:
-
+ - [] FIXME: #81 Opening entity editor from dependency graph fails.
+ When selecting a node in the dependency graph, a window appears from the right side. When clicking "Edit Entity", the system open "Project editor" (lists entities), but doesn't open entity editor.
 ### Tech debts:
 
  - [x] FIXME: Improve test coverage (+85%)

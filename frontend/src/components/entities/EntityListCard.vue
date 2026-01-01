@@ -142,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useEntities } from '@/composables'
 import type { EntityResponse } from '@/api/entities'
 import EntityFormDialog from './EntityFormDialog.vue'
@@ -151,6 +151,7 @@ import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDial
 
 interface Props {
   projectName: string
+  entityToEdit?: string | null
 }
 
 interface Emits {
@@ -164,6 +165,19 @@ const { entities, loading, error, remove } = useEntities({
   projectName: props.projectName,
   autoFetch: true,
 })
+
+// Watch for external edit requests
+watch(
+  () => props.entityToEdit,
+  (entityName) => {
+    if (entityName) {
+      const entity = entities.value?.find((e) => e.name === entityName)
+      if (entity) {
+        handleEditEntity(entity)
+      }
+    }
+  }
+)
 
 // Local state
 const searchQuery = ref('')

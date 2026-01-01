@@ -120,7 +120,7 @@
         <v-window v-model="activeTab" class="mt-4">
           <!-- Entities Tab -->
           <v-window-item value="entities">
-            <entity-list-card :project-name="projectName" @entity-updated="handleEntityUpdated" />
+            <entity-list-card :project-name="projectName" :entity-to-edit="entityToEdit" @entity-updated="handleEntityUpdated" />
           </v-window-item>
 
           <!-- Dependencies Tab -->
@@ -430,7 +430,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
 import { api } from '@/api'
 import { useProjects, useEntities, useValidation, useDependencies, useCytoscape } from '@/composables'
@@ -448,6 +448,7 @@ import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
 
 const route = useRoute()
+const router = useRouter()
 const theme = useTheme()
 const projectName = computed(() => route.params.name as string)
 
@@ -524,6 +525,7 @@ const showPreviewModal = ref(false)
 const fixPreview = ref<any>(null)
 const fixPreviewLoading = ref(false)
 const fixPreviewError = ref<string | null>(null)
+const entityToEdit = ref<string | null>(null)
 
 // Graph state
 const graphContainer = ref<HTMLElement | null>(null)
@@ -731,12 +733,10 @@ function handleEntityUpdated() {
 }
 
 function handleEditEntity(entityName: string) {
-  // Switch to entities tab and close drawer
+  // Switch to entities tab and trigger entity editor
   activeTab.value = 'entities'
   showDetailsDrawer.value = false
-  // The entity list will need to handle the actual editing
-  // We could potentially pass the entity name via a ref or event bus
-  console.log('Edit entity requested:', entityName)
+  entityToEdit.value = entityName
 }
 
 async function handleRefreshDependencies() {
@@ -867,6 +867,20 @@ watch(activeTab, async (newTab) => {
     await handleLoadYaml()
   }
 })
+
+// Watch for entity query parameter (from dependency graph deep links)
+watch(
+  () => route.query.entity,
+  (entityName) => {
+    if (entityName && typeof entityName === 'string') {
+      activeTab.value = 'entities'
+      entityToEdit.value = entityName
+      // Clear query param after triggering
+      router.replace({ query: { ...route.query, entity: undefined } })
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
