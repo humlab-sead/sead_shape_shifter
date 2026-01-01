@@ -472,10 +472,16 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
     project_service: ProjectService = get_project_service()
 
     # Validate YAML syntax
+    is_valid, error_msg = yaml_service.validate_yaml(request.yaml_content)
+    if not is_valid:
+        raise BadRequestError(f"Invalid YAML syntax: {error_msg}")
+
+    # Parse and validate structure
     try:
-        parsed_yaml = yaml_service.parse_yaml(request.yaml_content)
+        from io import StringIO
+        parsed_yaml = yaml_service.yaml.load(StringIO(request.yaml_content))
     except Exception as e:
-        raise BadRequestError(f"Invalid YAML syntax: {str(e)}") from e
+        raise BadRequestError(f"Failed to parse YAML: {str(e)}") from e
 
     # Ensure it's a valid project structure
     if not isinstance(parsed_yaml, dict):
@@ -487,7 +493,7 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
         raise NotFoundError(f"Project file not found: {name}.yml")
 
     # Create backup before update
-    project_service.create_backup(name)
+    yaml_service.create_backup(project_path)
 
     # Write new content
     project_path.write_text(request.yaml_content, encoding="utf-8")

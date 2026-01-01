@@ -432,6 +432,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTheme } from 'vuetify'
+import { api } from '@/api'
 import { useProjects, useEntities, useValidation, useDependencies, useCytoscape } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
