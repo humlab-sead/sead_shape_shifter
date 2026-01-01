@@ -416,6 +416,19 @@
             <div class="preview-header">
               <div class="d-flex align-center justify-space-between pa-2">
                 <div class="d-flex align-center gap-2">
+                  <v-select
+                    v-model="previewLimit"
+                    :items="previewLimitOptions"
+                    item-title="title"
+                    item-value="value"
+                    label="Rows"
+                    density="compact"
+                    variant="outlined"
+                    style="max-width: 150px"
+                    hide-details
+                    @update:model-value="refreshPreview"
+                  />
+
                   <v-btn
                     size="small"
                     variant="tonal"
@@ -551,6 +564,7 @@ const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions(
 // Split-pane and preview state
 const splitView = ref(false)
 const autoRefreshEnabled = ref(false)
+const previewLimit = ref<number | null>(100)
 
 // Live preview composable (separate from the preview tab)
 const {
@@ -561,6 +575,17 @@ const {
   previewEntity,
   debouncedPreviewEntity,
 } = useEntityPreview()
+
+const previewLimitOptions = [
+  { title: '10 rows', value: 10 },
+  { title: '25 rows', value: 25 },
+  { title: '50 rows', value: 50 },
+  { title: '100 rows', value: 100 },
+  { title: '200 rows', value: 200 },
+  { title: '500 rows', value: 500 },
+  { title: '1,000 rows', value: 1000 },
+  { title: 'All rows', value: null },
+]
 
 const previewError = ref<string | null>(null)
 
@@ -690,7 +715,7 @@ async function refreshPreview() {
   if (!canPreview.value) return
 
   previewError.value = null
-  await previewEntity(props.projectName, formData.value.name, 100)
+  await previewEntity(props.projectName, formData.value.name, previewLimit.value)
 
   if (livePreviewError.value) {
     previewError.value = livePreviewError.value
