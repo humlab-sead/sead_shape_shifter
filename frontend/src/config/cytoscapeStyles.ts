@@ -3,21 +3,21 @@
  * Integrates with Vuetify theme for consistent styling
  */
 
-import type { Stylesheet } from 'cytoscape'
+import type { StylesheetCSS } from 'cytoscape'
 
 export interface CytoscapeStyleConfig {
-  light: Stylesheet[]
-  dark: Stylesheet[]
+  light: StylesheetCSS[]
+  dark: StylesheetCSS[]
 }
 
 /**
  * Base styles that work for both light and dark themes
  */
-const baseStyles: Stylesheet[] = [
+const baseStyles: StylesheetCSS[] = [
   // Node styles
   {
     selector: 'node',
-    style: {
+    css: {
       width: 40,
       height: 40,
       'background-color': '#1976d2', // Vuetify primary blue
@@ -37,7 +37,7 @@ const baseStyles: Stylesheet[] = [
   // Hide labels when showLabels is false
   {
     selector: 'node.hide-label',
-    style: {
+    css: {
       label: '',
     },
   },
@@ -45,7 +45,7 @@ const baseStyles: Stylesheet[] = [
   // Edge styles
   {
     selector: 'edge',
-    style: {
+    css: {
       width: 2,
       'line-color': '#999',
       'target-arrow-color': '#999',
@@ -58,7 +58,7 @@ const baseStyles: Stylesheet[] = [
   // Cycle highlighting - nodes
   {
     selector: 'node.in-cycle',
-    style: {
+    css: {
       'background-color': '#ef5350', // Red for cycles
       'border-color': '#c62828',
       'border-width': 3,
@@ -68,7 +68,7 @@ const baseStyles: Stylesheet[] = [
   // Cycle highlighting - edges
   {
     selector: 'edge.cycle-edge',
-    style: {
+    css: {
       'line-color': '#ef5350',
       'target-arrow-color': '#ef5350',
       width: 3,
@@ -78,7 +78,7 @@ const baseStyles: Stylesheet[] = [
   // Hover states
   {
     selector: 'node:active',
-    style: {
+    css: {
       'overlay-opacity': 0.2,
     },
   },
@@ -86,7 +86,7 @@ const baseStyles: Stylesheet[] = [
   // Selected node
   {
     selector: 'node:selected',
-    style: {
+    css: {
       'border-width': 4,
       'border-color': '#FFA726', // Orange highlight
       'background-color': '#FF9800',
@@ -96,7 +96,7 @@ const baseStyles: Stylesheet[] = [
   // Selected edge
   {
     selector: 'edge:selected',
-    style: {
+    css: {
       width: 4,
       'line-color': '#FFA726',
       'target-arrow-color': '#FFA726',
@@ -106,7 +106,7 @@ const baseStyles: Stylesheet[] = [
   // Node types - data source
   {
     selector: 'node[type="data"]',
-    style: {
+    css: {
       shape: 'ellipse',
     },
   },
@@ -114,7 +114,7 @@ const baseStyles: Stylesheet[] = [
   // Node types - SQL source
   {
     selector: 'node[type="sql"]',
-    style: {
+    css: {
       shape: 'round-rectangle',
     },
   },
@@ -122,7 +122,7 @@ const baseStyles: Stylesheet[] = [
   // Node types - fixed values
   {
     selector: 'node[type="fixed"]',
-    style: {
+    css: {
       shape: 'diamond',
     },
   },
@@ -130,7 +130,7 @@ const baseStyles: Stylesheet[] = [
   // Status indicators
   {
     selector: 'node[status="error"]',
-    style: {
+    css: {
       'border-color': '#ef5350',
       'border-width': 3,
     },
@@ -138,7 +138,7 @@ const baseStyles: Stylesheet[] = [
 
   {
     selector: 'node[status="warning"]',
-    style: {
+    css: {
       'border-color': '#FFA726',
       'border-width': 3,
     },
@@ -148,10 +148,10 @@ const baseStyles: Stylesheet[] = [
 /**
  * Light theme specific styles
  */
-const lightThemeStyles: Stylesheet[] = [
+const lightThemeStyles: StylesheetCSS[] = [
   {
     selector: 'node',
-    style: {
+    css: {
       color: '#333',
       'text-outline-color': '#fff',
       'text-outline-width': 1,
@@ -162,10 +162,10 @@ const lightThemeStyles: Stylesheet[] = [
 /**
  * Dark theme specific styles
  */
-const darkThemeStyles: Stylesheet[] = [
+const darkThemeStyles: StylesheetCSS[] = [
   {
     selector: 'node',
-    style: {
+    css: {
       color: '#fff',
       'text-outline-color': '#121212',
       'text-outline-width': 1,
@@ -174,7 +174,7 @@ const darkThemeStyles: Stylesheet[] = [
   },
   {
     selector: 'edge',
-    style: {
+    css: {
       'line-color': '#666',
       'target-arrow-color': '#666',
     },
@@ -184,7 +184,7 @@ const darkThemeStyles: Stylesheet[] = [
 /**
  * Get styles for the current theme
  */
-export function getCytoscapeStyles(isDark: boolean = false): Stylesheet[] {
+export function getCytoscapeStyles(isDark: boolean = false): StylesheetCSS[] {
   return [...baseStyles, ...(isDark ? darkThemeStyles : lightThemeStyles)]
 }
 

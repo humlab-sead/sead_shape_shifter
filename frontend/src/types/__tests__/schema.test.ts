@@ -19,9 +19,8 @@ describe('schema utilities', () => {
     data_type: 'VARCHAR',
     nullable: true,
     is_primary_key: false,
-    is_foreign_key: false,
     max_length: null,
-    default_value: null,
+    default: null,
     ...overrides,
   })
 

@@ -74,7 +74,7 @@
     </v-alert>
 
     <!-- Graph Container -->
-    <v-row v-else-if="graphData">
+    <v-row v-else-if="dependencyGraph">
       <v-col cols="12">
         <v-card variant="outlined">
           <v-card-text class="pa-0">
@@ -115,8 +115,13 @@
 
         <v-list>
           <v-list-item>
-            <v-list-item-title>Type</v-list-item-title>
-            <v-list-item-subtitle>{{ selectedNodeInfo?.data?.type || 'Unknown' }}</v-list-item-subtitle>
+            <v-list-item-title>Entity Name</v-list-item-title>
+            <v-list-item-subtitle>{{ selectedNodeInfo?.id }}</v-list-item-subtitle>
+          </v-list-item>
+
+          <v-list-item>
+            <v-list-item-title>Depth</v-list-item-title>
+            <v-list-item-subtitle>{{ selectedNodeInfo?.depth ?? 'N/A' }}</v-list-item-subtitle>
           </v-list-item>
 
           <v-list-item>
@@ -183,7 +188,7 @@ const theme = useTheme()
 const { projects } = useProjects({ autoFetch: true })
 const selectedProject = ref<string | null>(null)
 
-const { graphData, loading, error, hasCircularDependencies, cycles, statistics, fetch, isInCycle, clearError } =
+const { dependencyGraph, loading, error, hasCircularDependencies, cycles, statistics, fetch, isInCycle, clearError } =
   useDependencies({
     projectName: selectedProject.value ?? undefined,
     autoFetch: false,
@@ -209,13 +214,13 @@ const isDark = computed(() => theme.global.current.value.dark)
 
 const selectedNodeInfo = computed(() => {
   if (!selectedNode.value) return null
-  return getNodeInfo(selectedNode.value, graphData.value)
+  return getNodeInfo(selectedNode.value, dependencyGraph.value)
 })
 
 // Cytoscape integration
 const { fit, zoomIn, zoomOut, reset, exportPNG } = useCytoscape({
   container: graphContainer,
-  graphData,
+  graphData: dependencyGraph,
   layoutType,
   showLabels,
   highlightCycles,

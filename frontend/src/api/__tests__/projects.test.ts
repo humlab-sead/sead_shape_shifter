@@ -5,8 +5,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { projectsApi } from '../projects'
 import type {
+  // @ts-ignore
   Project,
+  // @ts-ignore
   ProjectMetadata,
+  // @ts-ignore
   ValidationResult,
   ProjectCreateRequest,
   ProjectUpdateRequest,
