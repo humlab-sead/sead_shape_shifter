@@ -9,10 +9,10 @@
 
     <v-row>
       <!-- Theme Presets -->
-      <v-col cols="12" lg="8">
+      <v-col cols="12">
         <v-card>
           <v-card-title>Theme</v-card-title>
-          <v-card-subtitle> Choose a theme preset or customize your own colors </v-card-subtitle>
+          <v-card-subtitle> Choose a theme preset </v-card-subtitle>
 
           <v-card-text>
             <v-row>
@@ -63,75 +63,16 @@
               </v-btn>
 
               <v-btn
-                v-if="theme.currentThemeName.value !== 'light' || theme.hasCustomColors.value"
+                v-if="theme.currentThemeName.value !== 'light'"
                 variant="outlined"
                 prepend-icon="mdi-restore"
                 @click="handleResetToDefault"
               >
                 Reset to Default
               </v-btn>
-
-              <v-spacer />
-
-              <v-chip v-if="theme.hasCustomColors.value" color="info" variant="tonal" prepend-icon="mdi-palette">
-                Custom colors applied
-              </v-chip>
             </div>
           </v-card-text>
         </v-card>
-      </v-col>
-
-      <!-- Theme Preview -->
-      <v-col cols="12" lg="4">
-        <v-card>
-          <v-card-title>
-            Preview
-            <v-chip v-if="appSettings.compactMode.value" size="small" color="info" variant="tonal" class="ml-2">
-              Compact
-            </v-chip>
-          </v-card-title>
-          <v-card-text>
-            <div class="preview-container">
-              <!-- Color swatches -->
-              <div class="color-swatches mb-4">
-                <div
-                  v-for="colorKey in ['primary', 'secondary', 'accent', 'success', 'warning', 'error']"
-                  :key="colorKey"
-                  class="color-swatch-item mb-2"
-                >
-                  <div
-                    class="color-swatch"
-                    :style="{ backgroundColor: theme.vuetifyTheme.current.value.colors[colorKey] }"
-                  />
-                  <span class="text-caption text-capitalize">{{ colorKey }}</span>
-                </div>
-              </div>
-
-              <!-- Component preview -->
-              <div class="components-preview">
-                <v-btn color="primary" size="small" class="mb-2">Primary Button</v-btn>
-                <v-btn color="secondary" size="small" variant="outlined" class="mb-2"> Secondary Button </v-btn>
-                <v-text-field
-                  model-value="Text input"
-                  density="comfortable"
-                  variant="outlined"
-                  hide-details
-                  class="mb-2"
-                />
-                <v-alert type="info" variant="tonal" density="compact" class="mb-2"> Info message </v-alert>
-                <v-alert type="success" variant="tonal" density="compact" class="mb-2"> Success message </v-alert>
-                <v-alert type="warning" variant="tonal" density="compact"> Warning message </v-alert>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Custom Colors Section -->
-    <v-row>
-      <v-col cols="12">
-        <ThemeColorPicker />
       </v-col>
     </v-row>
 
@@ -260,7 +201,6 @@
 import { ref } from 'vue'
 import { useTheme } from '@/composables/useTheme'
 import { useSettings } from '@/composables/useSettings'
-import ThemeColorPicker from '@/components/ThemeColorPicker.vue'
 
 const theme = useTheme()
 const appSettings = useSettings()
@@ -301,33 +241,5 @@ function confirmResetSettings() {
 .theme-preset-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.preview-container {
-  padding: 16px;
-}
-
-.color-swatches {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.color-swatch-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.color-swatch {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  border: 2px solid rgba(0, 0, 0, 0.12);
-}
-
-.components-preview {
-  display: flex;
-  flex-direction: column;
 }
 </style>
