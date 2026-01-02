@@ -14,16 +14,18 @@
  - [] FIXME: Create project: No description field in create dialog
  - [] FIXME: New prodject's name is displayed as "test_config_manua", missing last character, correct inside project's metadata
  - [x] FIXME: #83 Project editor: No Edit YAML visible (not implemented)
- - [] FIXME: #84 FK Editor: "RUN TEST" reports ShapeShiftProject source must be a ShapeShiftProject instance or a valid project file path
- - [] FIXME: #82 In FK editor, constraints cannot be added/changed.
- - [] FIXME: #85 In entity editor, data source should be a dropdown, not free text
- - [] FIXME:
+ - [x] FIXME: #84 FK Editor: "RUN TEST" reports ShapeShiftProject source must be a ShapeShiftProject instance or a valid project file path
+ - [x] FIXME: #82 In FK editor, constraints cannot be added/changed.
+ - [x] FIXME: #85 In entity editor, data source should be a dropdown, not free text
+ - [x] FIXME: #87 In dependency graph viewer, it should be possible to enable/disable node and edge labels seperately from each other.
+ - [ ] FIXME: #90 In dependency graph viewer, edge label background should be transparent.
+
 ### Tech debts:
 
  - [x] FIXME: Improve test coverage (+85%)
- - [ ] FIXME: #59 [Frontend] Create frontend (manual) testing guide 
- - [ ] FIXME: Add automatic import of all data loaders (__init__.py)
- - [ ] FIXME: Test Faker or mimesis for data generation in normalization tests
+ - [x] FIXME: #59 [Frontend] Create frontend (manual) testing guide 
+ - [ ] FIXME: #88 Add automatic import of all data loaders (__init__.py)
+ - [ ] FIXME: #89 Test Faker or mimesis for data generation in normalization tests
 
 ### New features
 
@@ -33,17 +35,17 @@
  - [] TODO: Add capability to generate a default reconciliation YAML based on service manifest received from calling services /reconcile endpoint.
  - [] TODO: Change so that only entities avaliable for service reconciliation are displayed  
  - [] TODO: #56 Add capability to export preview
- - [] TODO: #72 Add capability to run full normalization from frontend, and save output to selected dispatch target.
+ - [x] TODO: #72 Add capability to run full normalization from frontend, and save output to selected dispatch target.
  - [] TODO: #68 Add a "finally" step.
  - [] TODO: #66 Introduce a "transformations" section.
  - [] TODO: #69 Add "parent" property to entity definitions.
  - [] TODO: #67 Introduce support for string concatenation in "extra_columns".
  - [x] TODO: #65 Add the capability to edit a configuration's metadata section.
  - [x] TODO: #70 Add capability to load data from Excel files.
- - [] TODO: #74 Rename "Configuration" to "Project" throughout the application.
+ - [x] TODO: #74 Rename "Configuration" to "Project" throughout the application.
  - [] TODO: Add capability to duplicate an existing configuration.
- - [] TODO: #57 Add capability to set number of rows (including all) from preview
- - [] TODO: #75 Add capability to select number of rows from preview.
+ - [x] TODO: #57 Add capability to set number of rows (including all) from preview
+ - [x] TODO: #75 Add capability to select number of rows from preview.
  - [x] TODO: #77 Change graph visualization to use Cytoscape.js instead of basic SVG.
  - [x] TODO: #80 [Frontend/Backend] Edit entire project YAML file in dual-mode editor (Form/YAML).
  - [ ] TODO: Publish frontend files via the backend (FastAPI) server for easier deployment.
