@@ -215,12 +215,18 @@ def resolve_references(data: dict) -> dict:
 - Surrogate IDs: Must end with `_id` (e.g., `sample_type_id`)
 - API endpoints: `/api/v1/{resource}` (plural nouns)
 
-## Git Commit Conventions
+## Conventional Commit Messages
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) with **semantic-release** for automated versioning. AI agents making commits must follow this format:
+When committing changes to this repository, use the [Conventional Commits](https://www.conventionalcommits.org/) format to maintain a clear and parseable git history. This project uses **semantic-release** to automatically generate version numbers, changelogs, and releases based on commit messages.
+
+### Format
 
 ```
 <type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
 ```
 
 ### Types
@@ -255,22 +261,77 @@ Use scopes to indicate which part of the codebase is affected:
 - `tests`: Test-specific changes
 - `deps`: Dependency updates
 
-### Breaking Changes
-Add `!` after type/scope or `BREAKING CHANGE:` in footer → **MAJOR** release (2.0.0):
-```bash
-feat(api)!: change response format for validation errors
-```
-
 ### Examples
+
 ```bash
-feat(cache): implement hash-based cache invalidation
-fix(validation): prevent null pointer in entity resolution
-refactor(core): simplify dependency resolution logic
-docs(README): update installation instructions
-test(loaders): add comprehensive UCanAccessSqlLoader tests
+# Feature additions (MINOR release)
+git commit -m "feat(cache): implement 3-tier cache validation with hash-based invalidation"
+git commit -m "feat(frontend): add entity preview with auto-refresh"
+git commit -m "feat(loaders): add UCanAccess support for MS Access databases"
+
+# Bug fixes (PATCH release)
+git commit -m "fix(backend): correct mock pattern in service tests"
+git commit -m "fix(validation): prevent mutation in resolve_references"
+git commit -m "fix(frontend): resolve dark mode text color in preview grid"
+
+# Documentation (PATCH release if scope is README)
+git commit -m "docs: update copilot-instructions with recent improvements"
+git commit -m "docs(README): add installation instructions for UCanAccess"
+git commit -m "docs(api): add examples for reconciliation endpoints"
+
+# Tests (no release)
+git commit -m "test(loaders): add comprehensive UCanAccessSqlLoader tests"
+git commit -m "test(cache): add hash-based invalidation test cases"
+
+# Refactoring (PATCH release)
+git commit -m "refactor(config): use deep copy to prevent mutations"
+git commit -m "refactor(services): extract validation logic to separate service"
+
+# Performance (PATCH release)
+git commit -m "perf(cache): use xxhash for faster entity hashing"
+
+# Chores (no release)
+git commit -m "chore: update dependencies to latest versions"
+git commit -m "chore(deps): bump pydantic from 2.0.0 to 2.5.0"
+
+# Build/CI (no release)
+git commit -m "build: add support for Python 3.13"
+git commit -m "ci: add automated test coverage reporting"
 ```
 
-**Rules**: Use imperative mood, lowercase description, no trailing period, keep under 72 chars.
+### Multi-line Commits
+
+For more complex changes, use the body to explain what and why:
+
+```bash
+git commit -m "feat(cache): implement hash-based cache invalidation
+
+Add xxhash-based entity hashing to detect changes
+beyond version numbers. Implements 3-tier validation:
+1. TTL check (300s)
+2. Project version comparison
+3. Entity hash validation
+
+This prevents serving stale cached data when entity
+changes without version bump.
+
+Closes #123"
+```
+
+### Breaking Changes
+
+Indicate breaking changes with a `!` after the type/scope or in the footer. This triggers a **MAJOR** release:
+
+```bash
+# Breaking change with ! notation (MAJOR release)
+git commit -m "feat(api)!: change response format for validation errors"
+
+# Or in footer (MAJOR release)
+git commit -m "feat(api): change response format
+
+BREAKING CHANGE: validation error responses now return array of errors
+instead of single error object. Update API clients to handle new format."
+```
 
 ### Release Automation
 
@@ -284,6 +345,30 @@ This project uses **semantic-release** configured in `.releaserc.json`:
 
 **Important**: Only commits on the `main` branch trigger releases.
 
+### Commit Message Validation
+
+The project uses **pre-commit hooks** for code quality:
+- Ruff for linting and formatting
+- Import consistency checking
+
+To enable commit message validation, you can optionally install commitlint:
+
+```bash
+# Install commitizen for interactive commits
+pip install commitizen
+
+# Use cz for guided commits
+cz commit
+
+# Or install commitlint (requires Node.js)
+npm install -g @commitlint/cli @commitlint/config-conventional
+
+# Create commitlint config
+echo "module.exports = {extends: ['@commitlint/config-conventional']}" > commitlint.config.js
+
+# Add to .pre-commit-config.yaml
+```
+
 ### Tips
 
 - **Keep the subject line under 72 characters**
@@ -292,8 +377,38 @@ This project uses **semantic-release** configured in `.releaserc.json`:
 - **Don't end** the description with a period
 - **Reference issues/PRs** in the footer when applicable (e.g., `Closes #123`, `Fixes #456`)
 - **Use the body** to explain **what** and **why**, not **how**
+- **Add co-authors** when pairing: `Co-authored-by: Name <email@example.com>`
 - **Use `[skip ci]`** in commit message to skip CI builds when appropriate
 - **Check release impact**: `feat` = minor, `fix`/`refactor`/`style` = patch, breaking = major
+
+### Common Mistakes to Avoid
+
+❌ **Bad**:
+```bash
+git commit -m "Fixed bug"  # No type
+git commit -m "feat: Added new feature."  # Capitalized and period
+git commit -m "update docs"  # No type
+git commit -m "WIP"  # Not descriptive
+```
+
+✅ **Good**:
+```bash
+git commit -m "fix(validation): prevent null pointer in entity resolution"
+git commit -m "feat(api): add batch validation endpoint"
+git commit -m "docs(README): update installation instructions"
+git commit -m "refactor(core): simplify dependency resolution logic"
+```
+
+### Reverting Commits
+
+When reverting a commit, use the `revert` type and reference the original commit:
+
+```bash
+git commit -m "revert: feat(cache): implement hash-based invalidation
+
+This reverts commit abc123def456.
+Reason: causes performance degradation in production."
+```
 
 ## Common Tasks
 
