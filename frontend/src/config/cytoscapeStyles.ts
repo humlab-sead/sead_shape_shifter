@@ -42,14 +42,6 @@ const baseStyles: StylesheetCSS[] = [
     },
   },
 
-  // Hide edge labels
-  {
-    selector: 'edge.hide-label',
-    css: {
-      label: '',
-    },
-  },
-
   // Edge styles
   {
     selector: 'edge',
@@ -68,6 +60,14 @@ const baseStyles: StylesheetCSS[] = [
       'text-background-opacity': 0.8,
       'text-background-padding': '2px',
       color: '#666',
+    },
+  },
+
+  // Hide edge labels (must come after edge styles to override)
+  {
+    selector: 'edge.hide-label',
+    css: {
+      label: '',
     },
   },
 
