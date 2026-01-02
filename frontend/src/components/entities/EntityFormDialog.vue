@@ -93,18 +93,19 @@
                         </v-autocomplete>
 
                         <!-- Data Source (only for 'sql' type) -->
-                        <v-text-field
+                          <v-autocomplete
                           v-if="formData.type === 'sql'"
                           v-model="formData.data_source"
+                            :items="availableDataSources"
                           label="Data Source *"
                           :rules="formData.type === 'sql' ? requiredRule : []"
                           variant="outlined"
-                          density="comfortable"
+                            clearable
                         >
                           <template #message>
                             <span class="text-caption">Name of the data source connection</span>
                           </template>
-                        </v-text-field>
+                          </v-autocomplete>
                       </v-col>
                     </v-row>
                   </div>
@@ -463,6 +464,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useEntities, useSuggestions, useEntityPreview } from '@/composables'
+import { useProjectStore } from '@/stores'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
 import * as yaml from 'js-yaml'
@@ -505,6 +507,8 @@ const { entities, create, update } = useEntities({
 })
 
 const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions()
+
+const projectStore = useProjectStore()
 
 // Split-pane and preview state
 const splitView = ref(false)
@@ -716,6 +720,15 @@ const entityTypeOptions = [
 
 const availableSourceEntities = computed(() => {
   return entities.value.filter((e) => e.name !== formData.value.name).map((e) => e.name)
+})
+
+const availableDataSources = computed(() => {
+  // Get data source names from project's options.data_sources (e.g., "arbodat_data", "sead")
+  const dataSources = projectStore.selectedProject?.options?.data_sources
+  if (dataSources && typeof dataSources === 'object') {
+    return Object.keys(dataSources)
+  }
+  return []
 })
 
 // Validation rules
