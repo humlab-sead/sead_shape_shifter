@@ -49,3 +49,4 @@
  - [x] TODO: #77 Change graph visualization to use Cytoscape.js instead of basic SVG.
  - [x] TODO: #80 [Frontend/Backend] Edit entire project YAML file in dual-mode editor (Form/YAML).
  - [ ] TODO: Publish frontend files via the backend (FastAPI) server for easier deployment.
+ - [ ] TODO: #92 Add status endpoint (backend) and indicator (UX) for reconciliation service health check.
