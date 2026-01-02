@@ -1,3 +1,4 @@
+from genericpath import isfile
 import importlib
 import os
 import pkgutil
@@ -261,14 +262,16 @@ def configure_logging(opts: dict[str, Any] | None = None, default_level: str = "
         logger.configure(handlers=opts["handlers"])
 
 
-def import_sub_modules(module_folder: str) -> Any:
+def import_sub_modules(module_name: str, module_folder: str) -> Any:
     __all__ = []
-    # current_dir: str = os.path.dirname(__file__)
+    sub_modules: list[str] = [ f.name[:-3] for f in os.scandir(module_folder) if f.is_file() and f.name.endswith(".py") and not f.name.startswith("__")]
+    logger.info(f"Importing sub-modules for {module_name}: {', '.join(sub_modules)}")
+
     for filename in os.listdir(module_folder):
         if filename.endswith(".py") and filename != "__init__.py":
-            module_name: str = filename[:-3]
-            __all__.append(module_name)
-            importlib.import_module(f".{module_name}", package=__name__)
+            submodule_name: str = filename[:-3]
+            __all__.append(submodule_name)
+            importlib.import_module(f"{module_name}.{submodule_name}")
 
 
 def _ensure_key_property(cls):
@@ -344,8 +347,8 @@ class Registry(Generic[T]):
     def registered_class_hook(cls, fn_or_class: Any, **args) -> Any:  # pylint: disable=unused-argument
         return fn_or_class
 
-    def scan(self, package_name: str) -> Self:
-        import_sub_modules(package_name)
+    def scan(self, module_name, module_folder: str) -> Self:
+        import_sub_modules(module_name, module_folder)
         return self
 
 
