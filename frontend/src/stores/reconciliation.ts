@@ -166,6 +166,16 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     error.value = null
   }
 
+  async function checkServiceHealth() {
+    try {
+      const response = await apiClient.get('/reconciliation/health')
+      return response.data
+    } catch (e: any) {
+      console.error('Failed to check reconciliation service health:', e)
+      throw e
+    }
+  }
+
   function $reset() {
     reconciliationConfig.value = null
     previewData.value = {}
@@ -191,6 +201,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     updateMapping,
     deleteMapping,
     suggestEntities,
+    checkServiceHealth,
     clearError,
     $reset,
   }

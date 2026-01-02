@@ -33,6 +33,20 @@ async def get_reconciliation_service() -> ReconciliationService:
     return ReconciliationService(config_dir=Path(settings.PROJECTS_DIR), reconciliation_client=recon_client)
 
 
+@router.get("/reconciliation/health")
+@handle_endpoint_errors
+async def check_reconciliation_service_health(
+    service: ReconciliationService = Depends(get_reconciliation_service)
+) -> dict:
+    """
+    Check if the reconciliation service is available.
+
+    Returns:
+        Status information about the reconciliation service
+    """
+    return await service.recon_client.check_health()
+
+
 @router.get("/projects/{project_name}/reconciliation")
 @handle_endpoint_errors
 async def get_reconciliation_config(

@@ -4,9 +4,21 @@
       <v-card-title>
         <div class="d-flex align-center justify-space-between">
           <span>Entity Reconciliation</span>
-          <v-chip v-if="reconcilableEntities.length > 0" size="small" variant="tonal">
-            {{ reconcilableEntities.length }} entities configured
-          </v-chip>
+          <div class="d-flex align-center gap-2">
+            <!-- Service Status Indicator -->
+            <v-chip
+              v-if="serviceStatus"
+              :color="serviceStatus.status === 'online' ? 'success' : 'error'"
+              size="small"
+              variant="flat"
+              :prepend-icon="serviceStatus.status === 'online' ? 'mdi-check-circle' : 'mdi-alert-circle'"
+            >
+              Service {{ serviceStatus.status === 'online' ? 'Online' : 'Offline' }}
+            </v-chip>
+            <v-chip v-if="reconcilableEntities.length > 0" size="small" variant="tonal">
+              {{ reconcilableEntities.length }} entities configured
+            </v-chip>
+          </div>
         </div>
       </v-card-title>
 
@@ -146,6 +158,7 @@ const selectedEntity = ref<string | null>(null)
 const showResultSnackbar = ref(false)
 const resultMessage = ref('')
 const resultColor = ref('success')
+const serviceStatus = ref<{ status: string; service_name?: string; error?: string } | null>(null)
 
 // Computed
 const entitySpec = computed(() => {
@@ -202,10 +215,25 @@ async function handleSaveChanges() {
   }
 }
 
+async function checkServiceHealth() {
+  try {
+    const response = await reconciliationStore.checkServiceHealth()
+    serviceStatus.value = response
+  } catch (e: any) {
+    console.error('Failed to check service health:', e)
+    serviceStatus.value = { status: 'offline', error: e.message }
+  }
+}
+
 // Load project on mount
 onMounted(async () => {
   try {
     console.log('[ReconciliationView] Mounted with project:', props.projectName)
+    
+    // Check service health
+    await checkServiceHealth()
+    
+    // Load config
     await reconciliationStore.loadReconciliationConfig(props.projectName)
 
     // Auto-select first entity if available

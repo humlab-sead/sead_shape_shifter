@@ -98,6 +98,36 @@ class ReconciliationClient:
 
         return results
 
+    async def check_health(self) -> dict[str, Any]:
+        """
+        Check if reconciliation service is available.
+
+        Returns:
+            dict with status and service metadata
+
+        Raises:
+            httpx.HTTPError: If service is unreachable
+        """
+        try:
+            client: httpx.AsyncClient = await self._get_client()
+            response: httpx.Response = await client.get(f"{self.base_url}/reconcile")
+            response.raise_for_status()
+            
+            # OpenRefine returns service metadata on GET
+            data = response.json()
+            return {
+                "status": "online",
+                "service_name": data.get("name", "Unknown"),
+                "service_url": self.base_url
+            }
+        except Exception as e:
+            logger.warning(f"Reconciliation service health check failed: {e}")
+            return {
+                "status": "offline",
+                "service_url": self.base_url,
+                "error": str(e)
+            }
+
     async def suggest_entities(self, prefix: str, entity_type: str | None = None, limit: int = 10) -> list[ReconciliationCandidate]:
         """
         Get entity suggestions for autocomplete.
