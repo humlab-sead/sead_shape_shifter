@@ -111,6 +111,13 @@ backend-run:
 	@echo "Starting backend server on http://localhost:$(BACKEND_PORT)"
 	@PYTHONPATH=. uvicorn backend.app.main:app \
 		--log-level debug \
+		--host 0.0.0.0 --port $(BACKEND_PORT)
+
+.PHONY: backend-run-with-hmr
+backend-run-with-hmr:
+	@echo "Starting backend server on http://localhost:$(BACKEND_PORT)"
+	@PYTHONPATH=. uvicorn backend.app.main:app \
+		--log-level debug \
 		--reload \
 		--reload-delay 2 \
 		--reload-include '*.py' \

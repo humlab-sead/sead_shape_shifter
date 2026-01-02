@@ -247,7 +247,7 @@ class TestShapeShifter:
 
         assert "survey" in normalizer.table_store
         pd.testing.assert_frame_equal(normalizer.table_store["survey"], df)
-        assert isinstance(normalizer.config, ShapeShiftProject)
+        assert isinstance(normalizer.project, ShapeShiftProject)
         assert isinstance(normalizer.state, ProcessState)
 
     def test_survey_property(self, survey_only_config: ShapeShiftProject):
@@ -343,7 +343,7 @@ class TestShapeShifter:
         mock_loader = Mock()
         mock_loader.load = AsyncMock(return_value=fixed_df)
 
-        with patch.object(normalizer.config, "resolve_loader", return_value=mock_loader):
+        with patch.object(normalizer.project, "resolve_loader", return_value=mock_loader):
             result = await normalizer.resolve_source(table_cfg)
 
             pd.testing.assert_frame_equal(result, fixed_df)
@@ -366,7 +366,7 @@ class TestShapeShifter:
         mock_loader = Mock()
         mock_loader.load = AsyncMock(return_value=sql_df)
 
-        with patch.object(normalizer.config, "resolve_loader", return_value=mock_loader):
+        with patch.object(normalizer.project, "resolve_loader", return_value=mock_loader):
             result: pd.DataFrame = await normalizer.resolve_source(table_cfg=table_cfg)
 
             pd.testing.assert_frame_equal(result, sql_df)
@@ -422,8 +422,8 @@ class TestShapeShifter:
         mock_table_cfg = Mock()
         mock_table_cfg.drop_fk_columns = Mock(return_value=pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]}))
 
-        with patch.object(normalizer.config, "table_names", ["site"]):
-            with patch.object(normalizer.config, "get_table", return_value=mock_table_cfg):
+        with patch.object(normalizer.project, "table_names", ["site"]):
+            with patch.object(normalizer.project, "get_table", return_value=mock_table_cfg):
                 normalizer.drop_foreign_key_columns()
 
                 mock_table_cfg.drop_fk_columns.assert_called_once()
@@ -441,8 +441,8 @@ class TestShapeShifter:
         modified_df = pd.DataFrame({"system_id": [1, 2], "name": ["A", "B"]})
         mock_table_cfg.add_system_id_column = Mock(return_value=modified_df)
 
-        with patch.object(normalizer.config, "table_names", ["site"]):
-            with patch.object(normalizer.config, "get_table", return_value=mock_table_cfg):
+        with patch.object(normalizer.project, "table_names", ["site"]):
+            with patch.object(normalizer.project, "get_table", return_value=mock_table_cfg):
                 normalizer.add_system_id_columns()
 
                 mock_table_cfg.add_system_id_column.assert_called_once()
@@ -459,8 +459,8 @@ class TestShapeShifter:
         # Mock config to reorder columns
         reordered_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"], "location": ["X", "Y"]})
 
-        with patch.object(normalizer.config, "table_names", ["site"]):
-            with patch.object(normalizer.config, "reorder_columns", return_value=reordered_df):
+        with patch.object(normalizer.project, "table_names", ["site"]):
+            with patch.object(normalizer.project, "reorder_columns", return_value=reordered_df):
                 normalizer.move_keys_to_front()
 
                 # Verify site_id is first column
@@ -479,7 +479,7 @@ class TestShapeShifter:
 
         unnested_df = pd.DataFrame({"site_id": [1, 1], "location_type": ["Ort", "Kreis"], "location_name": ["Berlin", "Mitte"]})
 
-        with patch.object(normalizer.config, "get_table", return_value=mock_table_cfg):
+        with patch.object(normalizer.project, "get_table", return_value=mock_table_cfg):
             with patch("src.normalizer.unnest", return_value=unnested_df):
                 result = normalizer.unnest_entity(entity="site")
 
@@ -498,7 +498,7 @@ class TestShapeShifter:
         mock_table_cfg = Mock()
         mock_table_cfg.unnest = None
 
-        with patch.object(normalizer.config, "get_table", return_value=mock_table_cfg):
+        with patch.object(normalizer.project, "get_table", return_value=mock_table_cfg):
             result = normalizer.unnest_entity(entity="site")
 
             # Should return unchanged
@@ -615,7 +615,7 @@ class TestShapeShifter:
         normalizer = ShapeShifter(project=survey_only_config, default_entity="survey")
         normalizer.table_store = {"survey": df}
 
-        normalizer.config.table_names = ["site", "sample"]
+        normalizer.project.table_names = ["site", "sample"]
 
         # Create circular dependency
         def mock_get_table(entity_name):
@@ -626,7 +626,7 @@ class TestShapeShifter:
                 mock_cfg.depends_on = {"site"}
             return mock_cfg
 
-        with patch.object(normalizer.config, "get_table", side_effect=mock_get_table):
+        with patch.object(normalizer.project, "get_table", side_effect=mock_get_table):
             with pytest.raises(ValueError, match="Circular or unresolved dependencies"):
                 await normalizer.normalize()
 

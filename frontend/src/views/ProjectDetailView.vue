@@ -111,12 +111,16 @@
             <v-icon icon="mdi-information-outline" class="mr-2" />
             Metadata
           </v-tab>
+          <v-tab value="yaml">
+            <v-icon icon="mdi-code-braces" class="mr-2" />
+            YAML
+          </v-tab>
         </v-tabs>
 
         <v-window v-model="activeTab" class="mt-4">
           <!-- Entities Tab -->
           <v-window-item value="entities">
-            <entity-list-card :project-name="projectName" @entity-updated="handleEntityUpdated" />
+            <entity-list-card :project-name="projectName" :entity-to-edit="entityToEdit" @entity-updated="handleEntityUpdated" />
           </v-window-item>
 
           <!-- Dependencies Tab -->
@@ -134,7 +138,8 @@
 
                 <v-divider vertical />
 
-                <v-switch v-model="showLabels" label="Show Labels" density="compact" hide-details />
+                <v-switch v-model="showNodeLabels" label="Show Node Labels" density="compact" hide-details />
+                <v-switch v-model="showEdgeLabels" label="Show Edge Labels" density="compact" hide-details />
 
                 <v-switch
                   v-model="highlightCycles"
@@ -299,6 +304,65 @@
           <v-window-item value="metadata">
             <metadata-editor :project-name="projectName" />
           </v-window-item>
+
+          <!-- YAML Tab -->
+          <v-window-item value="yaml">
+            <v-card variant="outlined">
+              <v-card-title class="d-flex align-center justify-space-between">
+                <div>
+                  <v-icon icon="mdi-code-braces" class="mr-2" />
+                  Edit Project YAML
+                </div>
+                <div class="d-flex gap-2">
+                  <v-btn
+                    variant="outlined"
+                    prepend-icon="mdi-refresh"
+                    size="small"
+                    :loading="yamlLoading"
+                    @click="handleLoadYaml"
+                  >
+                    Reload
+                  </v-btn>
+                  <v-btn
+                    color="primary"
+                    prepend-icon="mdi-content-save"
+                    size="small"
+                    :loading="yamlSaving"
+                    :disabled="!yamlHasChanges"
+                    @click="handleSaveYaml"
+                  >
+                    Save YAML
+                  </v-btn>
+                </div>
+              </v-card-title>
+              <v-card-text>
+                <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+                  <div class="text-caption">
+                    <strong>Direct YAML editing:</strong> Edit the complete project YAML file. Changes are saved to
+                    the file immediately. A backup is created automatically before saving.
+                  </div>
+                </v-alert>
+
+                <v-alert v-if="yamlError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="yamlError = null">
+                  {{ yamlError }}
+                </v-alert>
+
+                <yaml-editor
+                  v-if="rawYamlContent !== null"
+                  v-model="rawYamlContent"
+                  height="600px"
+                  :readonly="false"
+                  :validate-on-change="true"
+                  @change="handleYamlChange"
+                />
+
+                <div v-else class="text-center py-12">
+                  <v-progress-circular indeterminate color="primary" />
+                  <p class="mt-4 text-grey">Loading YAML content...</p>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-window-item>
         </v-window>
       </v-col>
     </v-row>
@@ -367,8 +431,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
+import { api } from '@/api'
 import { useProjects, useEntities, useValidation, useDependencies, useCytoscape } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
@@ -381,8 +446,10 @@ import SessionIndicator from '@/components/SessionIndicator.vue'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
+import YamlEditor from '@/components/common/YamlEditor.vue'
 
 const route = useRoute()
+const router = useRouter()
 const theme = useTheme()
 const projectName = computed(() => route.params.name as string)
 
@@ -459,14 +526,24 @@ const showPreviewModal = ref(false)
 const fixPreview = ref<any>(null)
 const fixPreviewLoading = ref(false)
 const fixPreviewError = ref<string | null>(null)
+const entityToEdit = ref<string | null>(null)
 
 // Graph state
 const graphContainer = ref<HTMLElement | null>(null)
 const layoutType = ref<'hierarchical' | 'force'>('hierarchical')
-const showLabels = ref(true)
+const showNodeLabels = ref(true)
+const showEdgeLabels = ref(true)
 const highlightCycles = ref(true)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
+
+// YAML editing state
+const rawYamlContent = ref<string | null>(null)
+const originalYamlContent = ref<string | null>(null)
+const yamlLoading = ref(false)
+const yamlSaving = ref(false)
+const yamlError = ref<string | null>(null)
+const yamlHasChanges = ref(false)
 
 // Computed
 const mergedValidationResult = computed(() => {
@@ -523,7 +600,8 @@ const { fit, zoomIn, zoomOut, reset, exportPNG } = useCytoscape({
   container: graphContainer,
   graphData: dependencyGraph,
   layoutType,
-  showLabels,
+  showNodeLabels,
+  showEdgeLabels,
   highlightCycles,
   cycles,
   isDark,
@@ -658,12 +736,10 @@ function handleEntityUpdated() {
 }
 
 function handleEditEntity(entityName: string) {
-  // Switch to entities tab and close drawer
+  // Switch to entities tab and trigger entity editor
   activeTab.value = 'entities'
   showDetailsDrawer.value = false
-  // The entity list will need to handle the actual editing
-  // We could potentially pass the entity name via a ref or event bus
-  console.log('Edit entity requested:', entityName)
+  entityToEdit.value = entityName
 }
 
 async function handleRefreshDependencies() {
@@ -696,6 +772,54 @@ function handleExportPNG() {
     link.download = `dependency-graph-${projectName.value}.png`
     link.href = png
     link.click()
+  }
+}
+
+async function handleLoadYaml() {
+  if (!projectName.value) return
+
+  yamlLoading.value = true
+  yamlError.value = null
+  try {
+    const response = await api.projects.getRawYaml(projectName.value)
+    rawYamlContent.value = response.yaml_content
+    originalYamlContent.value = response.yaml_content
+    yamlHasChanges.value = false
+  } catch (err) {
+    yamlError.value = err instanceof Error ? err.message : 'Failed to load YAML content'
+    console.error('Failed to load raw YAML:', err)
+  } finally {
+    yamlLoading.value = false
+  }
+}
+
+function handleYamlChange(content: string) {
+  yamlHasChanges.value = content !== originalYamlContent.value
+}
+
+async function handleSaveYaml() {
+  if (!projectName.value || !rawYamlContent.value) return
+
+  yamlSaving.value = true
+  yamlError.value = null
+  try {
+    const updated = await api.projects.updateRawYaml(projectName.value, rawYamlContent.value)
+    originalYamlContent.value = rawYamlContent.value
+    yamlHasChanges.value = false
+    
+    // Update selected project
+    selectedProject.value = updated
+    
+    successMessage.value = 'YAML saved successfully'
+    showSuccessSnackbar.value = true
+    
+    // Optionally re-validate
+    await handleValidate()
+  } catch (err) {
+    yamlError.value = err instanceof Error ? err.message : 'Failed to save YAML'
+    console.error('Failed to save raw YAML:', err)
+  } finally {
+    yamlSaving.value = false
   }
 }
 
@@ -738,6 +862,27 @@ watch(
       await fetchBackups(newName)
     }
   }
+)
+
+// Watch for tab changes to load YAML when YAML tab is activated
+watch(activeTab, async (newTab) => {
+  if (newTab === 'yaml' && rawYamlContent.value === null) {
+    await handleLoadYaml()
+  }
+})
+
+// Watch for entity query parameter (from dependency graph deep links)
+watch(
+  () => route.query.entity,
+  (entityName) => {
+    if (entityName && typeof entityName === 'string') {
+      activeTab.value = 'entities'
+      entityToEdit.value = entityName
+      // Clear query param after triggering
+      router.replace({ query: { ...route.query, entity: undefined } })
+    }
+  },
+  { immediate: true }
 )
 </script>
 

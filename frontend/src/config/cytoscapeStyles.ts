@@ -27,7 +27,7 @@ const baseStyles: StylesheetCSS[] = [
       'text-valign': 'bottom',
       'text-halign': 'center',
       'text-margin-y': 8,
-      'font-size': '12px',
+      'font-size': '20px',
       'font-family': 'Roboto, sans-serif',
       color: '#333',
       'overlay-padding': 6,
@@ -52,6 +52,20 @@ const baseStyles: StylesheetCSS[] = [
       'target-arrow-shape': 'triangle',
       'curve-style': 'bezier',
       'arrow-scale': 1.2,
+      label: 'data(label)',
+      'font-size': '10px',
+      'text-rotation': 'autorotate',
+      'text-margin-y': -10,
+      'text-background-opacity': 0,
+      color: '#666',
+    },
+  },
+
+  // Hide edge labels (must come after edge styles to override)
+  {
+    selector: 'edge.hide-label',
+    css: {
+      label: '',
     },
   },
 
@@ -177,6 +191,8 @@ const darkThemeStyles: StylesheetCSS[] = [
     css: {
       'line-color': '#666',
       'target-arrow-color': '#666',
+      color: '#aaa',
+      'text-background-color': '#121212',
     },
   },
 ]

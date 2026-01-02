@@ -5,7 +5,7 @@ import shutil
 import pytest
 
 from src.model import ShapeShiftProject
-from src.survey2excel import validate_entity_shapes, workflow
+from src.workflow import validate_entity_shapes, workflow
 from src.utility import load_shape_file
 
 
@@ -30,10 +30,10 @@ def test_workflow_using_survey_report_to_csv():
 
     _ = asyncio.run(
         workflow(
-            config=config,
+            project=config,
             target=output_path,
             translate=translate,
-            mode="csv",
+            target_type="csv",
             drop_foreign_keys=False,
         )
     )
@@ -81,10 +81,10 @@ def test_access_database_csv_workflow():
 
     _ = asyncio.run(
         workflow(
-            config=config,
+            project=config,
             target=output_path,
             translate=translate,
-            mode="csv",
+            target_type="csv",
             drop_foreign_keys=False,
         )
     )

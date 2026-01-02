@@ -14,7 +14,12 @@ export interface GraphAdapterOptions {
   /**
    * Whether to show node labels
    */
-  showLabels?: boolean
+  showNodeLabels?: boolean
+
+  /**
+   * Whether to show edge labels
+   */
+  showEdgeLabels?: boolean
 
   /**
    * Whether to highlight cycle nodes and edges
@@ -53,13 +58,13 @@ export function toCytoscapeElements(
 ): ElementDefinition[] {
   if (!graph) return []
 
-  const { cycles = [], showLabels = true, highlightCycles = false } = options
+  const { cycles = [], showNodeLabels = true, showEdgeLabels = true, highlightCycles = false } = options
 
   // Convert nodes
   const nodes: ElementDefinition[] = graph.nodes.map((node) => {
     const classes: string[] = []
 
-    if (!showLabels) {
+    if (!showNodeLabels) {
       classes.push('hide-label')
     }
 
@@ -80,18 +85,23 @@ export function toCytoscapeElements(
   })
 
   // Convert edges
-  const edges: ElementDefinition[] = graph.edges.map(([source, target], index) => {
+  const edges: ElementDefinition[] = graph.edges.map((edge, index) => {
     const classes: string[] = []
 
-    if (highlightCycles && isEdgeInCycle(source, target, cycles)) {
+    if (!showEdgeLabels) {
+      classes.push('hide-label')
+    }
+
+    if (highlightCycles && isEdgeInCycle(edge.source, edge.target, cycles)) {
       classes.push('cycle-edge')
     }
 
     return {
       data: {
-        id: `edge-${source}-${target}-${index}`,
-        source,
-        target,
+        id: `edge-${edge.source}-${edge.target}-${index}`,
+        source: edge.source,
+        target: edge.target,
+        label: edge.label || '',
       },
       classes,
     }

@@ -8,121 +8,75 @@
     <v-divider />
 
     <v-card-text class="pa-2">
-      <v-list v-if="foreignKeys.length > 0">
-        <v-list-item v-for="(fk, index) in foreignKeys" :key="index" class="px-0">
-          <v-card variant="outlined" class="mb-2">
-            <v-card-text class="pa-2">
-              <div class="d-flex align-center justify-space-between mb-1">
-                <v-autocomplete
-                  v-model="fk.entity"
-                  :items="availableEntities"
-                  label="Target Entity"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  prepend-inner-icon="mdi-link-variant"
-                  class="flex-grow-1 mr-2"
-                />
-                <v-btn
-                  icon="mdi-delete"
-                  variant="text"
-                  size="x-small"
-                  color="error"
-                  @click="handleRemoveForeignKey(index)"
-                />
-              </div>
+      <v-expansion-panels v-if="foreignKeys.length > 0" variant="accordion" density="compact">
+        <v-expansion-panel v-for="(fk, index) in foreignKeys" :key="index">
+          <v-expansion-panel-title class="py-2">
+            <div class="d-flex align-center justify-space-between flex-grow-1">
+              <span class="text-caption">
+                {{ getForeignKeyLabel(fk) }}
+              </span>
+              <v-btn icon="mdi-delete" variant="text" size="x-small" color="error"
+                @click.stop="handleRemoveForeignKey(index)" />
+            </div>
+          </v-expansion-panel-title>
 
-              <v-row dense>
-                <v-col cols="12" md="5">
-                  <v-combobox
-                    v-model="fk.local_keys"
-                    label="Local Keys"
-                    chips
-                    multiple
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                  />
-                </v-col>
+          <v-expansion-panel-text class="pt-2">
+            <v-row class="mb-2">
+              <v-col cols="12" md="5">
+                <v-autocomplete v-model="fk.entity" :items="availableEntities" label="Target Entity" variant="outlined"
+                  density="compact" hide-details prepend-inner-icon="mdi-link-variant" />
+              </v-col>
 
-                <v-col cols="12" md="2" class="d-flex align-center justify-center">
-                  <v-icon icon="mdi-arrow-right" size="small" />
-                </v-col>
+              <v-col cols="12" md="2">
+                <v-select v-model="fk.how" :items="joinTypes" label="Join Type" variant="outlined" density="compact"
+                  hide-details />
+              </v-col>
 
-                <v-col cols="12" md="5">
-                  <v-combobox
-                    v-model="fk.remote_keys"
-                    label="Remote Keys"
-                    chips
-                    multiple
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                  />
-                </v-col>
-              </v-row>
+              <v-col cols="12" md="5" v-if="fk.constraints">
+                <v-expansion-panels variant="accordion" density="compact">
+                  <v-expansion-panel>
+                    <v-expansion-panel-title class="py-1 text-caption"> Constraints </v-expansion-panel-title>
+                    <v-expansion-panel-text class="pt-1">
+                      <v-select v-model="fk.constraints.cardinality" :items="cardinalityTypes" label="Cardinality"
+                        variant="outlined" density="compact" class="mb-1" />
 
-              <v-row dense class="mt-1">
-                <v-col cols="12" md="4">
-                  <v-select
-                    v-model="fk.how"
-                    :items="joinTypes"
-                    label="Join Type"
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                  />
-                </v-col>
+                      <v-checkbox v-model="fk.constraints.require_unique_left" label="Require Unique Left"
+                        density="compact" hide-details />
 
-                <v-col cols="12" md="8">
-                  <v-expansion-panels variant="accordion" density="compact">
-                    <v-expansion-panel>
-                      <v-expansion-panel-title class="py-1 text-caption"> Constraints </v-expansion-panel-title>
-                      <v-expansion-panel-text class="pt-1">
-                        <v-select
-                          v-model="fk.constraints!.cardinality"
-                          :items="cardinalityTypes"
-                          label="Cardinality"
-                          variant="outlined"
-                          density="compact"
-                          class="mb-1"
-                        />
+                      <v-checkbox v-model="fk.constraints.allow_null_keys" label="Allow Null Keys" density="compact"
+                        hide-details />
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+                </v-expansion-panels>
+              </v-col>
+            </v-row>
 
-                        <v-checkbox
-                          v-model="fk.constraints!.require_unique_left"
-                          label="Require Unique Left"
-                          density="compact"
-                          hide-details
-                        />
+            <v-row dense class="mb-2">
+              <v-col cols="12" md="5">
+                <v-combobox v-model="fk.local_keys" label="Local Keys" chips multiple variant="outlined"
+                  density="compact" hide-details />
+              </v-col>
 
-                        <v-checkbox
-                          v-model="fk.constraints!.allow_null_keys"
-                          label="Allow Null Keys"
-                          density="compact"
-                          hide-details
-                        />
-                      </v-expansion-panel-text>
-                    </v-expansion-panel>
-                  </v-expansion-panels>
-                </v-col>
-              </v-row>
+              <v-col cols="12" md="2" class="d-flex align-center justify-center">
+                <v-icon icon="mdi-arrow-right" size="small" />
+              </v-col>
 
-              <!-- Test Join Button -->
-              <v-row dense class="mt-1">
-                <v-col cols="12">
-                  <ForeignKeyTester
-                    :project-name="projectName"
-                    :entity-name="entityName"
-                    :foreign-key="fk"
-                    :foreign-key-index="index"
-                    :disabled="!isEntitySaved"
-                  />
-                </v-col>
-              </v-row>
-            </v-card-text>
-          </v-card>
-        </v-list-item>
-      </v-list>
+              <v-col cols="12" md="5">
+                <v-combobox v-model="fk.remote_keys" label="Remote Keys" chips multiple variant="outlined"
+                  density="compact" hide-details />
+              </v-col>
+            </v-row>
+
+            <!-- Test Join Button -->
+            <v-row dense>
+              <v-col cols="12">
+                <ForeignKeyTester :project-name="projectName" :entity-name="entityName" :foreign-key="fk"
+                  :foreign-key-index="index" :disabled="!isEntitySaved" />
+              </v-col>
+            </v-row>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
 
       <v-alert v-else type="info" variant="tonal" density="compact">
         No foreign keys defined. Click "Add" to create a relationship.
@@ -169,6 +123,18 @@ const cardinalityTypes = [
   { title: 'Many to One', value: 'many_to_one' },
 ]
 
+function getForeignKeyLabel(fk: ForeignKeyConfig): string {
+  const entity = fk.entity || 'Unnamed Entity'
+  const localKeys = Array.isArray(fk.local_keys) && fk.local_keys.length > 0
+    ? fk.local_keys.join(', ')
+    : '?'
+  const remoteKeys = Array.isArray(fk.remote_keys) && fk.remote_keys.length > 0
+    ? fk.remote_keys.join(', ')
+    : '?'
+
+  return `${entity}: ${localKeys} → ${remoteKeys}`
+}
+
 function handleAddForeignKey() {
   foreignKeys.value.push({
     entity: '',
@@ -179,8 +145,8 @@ function handleAddForeignKey() {
       cardinality: 'many_to_one',
       require_unique_left: false,
       allow_null_keys: false,
-    } as any,
-  } as ForeignKeyConfig)
+    },
+  })
 }
 
 function handleRemoveForeignKey(index: number) {
@@ -196,11 +162,21 @@ watch(
   { deep: true }
 )
 
-// Sync with prop changes
+// Sync with prop changes (only when not editing)
 watch(
   () => props.modelValue,
   (newValue) => {
-    foreignKeys.value = [...newValue]
+    // Deep comparison to avoid overwriting user edits
+    if (JSON.stringify(foreignKeys.value) !== JSON.stringify(newValue)) {
+      foreignKeys.value = newValue.map((fk) => ({
+        ...fk,
+        constraints: fk.constraints || {
+          cardinality: 'many_to_one',
+          require_unique_left: false,
+          allow_null_keys: false,
+        },
+      }))
+    }
   }
 )
 </script>

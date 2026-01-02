@@ -440,23 +440,38 @@ class DataTypeCompatibilityValidator:
 
                     # Compare data types
                     for local_key, remote_key in zip(fk.local_keys, fk.remote_keys):
-                        local_dtype = local_df[local_key].dtype
-                        remote_dtype = remote_df[remote_key].dtype
+                        try:
+                            local_series = local_df[local_key]
+                            remote_series = remote_df[remote_key]
+                            
+                            # Ensure we have Series objects, not DataFrames
+                            if isinstance(local_series, pd.DataFrame):
+                                logger.debug(f"Local key '{local_key}' returned DataFrame instead of Series")
+                                continue
+                            if isinstance(remote_series, pd.DataFrame):
+                                logger.debug(f"Remote key '{remote_key}' returned DataFrame instead of Series")
+                                continue
+                            
+                            local_dtype = local_series.dtype
+                            remote_dtype = remote_series.dtype
 
-                        # Check for type compatibility
-                        if not self._types_compatible(local_dtype, remote_dtype):
-                            errors.append(
-                                ValidationError(
-                                    severity="warning",
-                                    entity=entity_name,
-                                    field=f"foreign_keys[{fk_index}]",
-                                    message=f"Type mismatch: local column '{local_key}' ({local_dtype}) may not be compatible with remote column '{remote_key}' ({remote_dtype}) in '{remote_entity}'",
-                                    code="FK_TYPE_MISMATCH",
-                                    category=ValidationCategory.DATA,
-                                    priority=ValidationPriority.MEDIUM,
-                                    suggestion="Consider converting column types or checking data extraction queries",
+                            # Check for type compatibility
+                            if not self._types_compatible(local_dtype, remote_dtype):
+                                errors.append(
+                                    ValidationError(
+                                        severity="warning",
+                                        entity=entity_name,
+                                        field=f"foreign_keys[{fk_index}]",
+                                        message=f"Type mismatch: local column '{local_key}' ({local_dtype}) may not be compatible with remote column '{remote_key}' ({remote_dtype}) in '{remote_entity}'",
+                                        code="FK_TYPE_MISMATCH",
+                                        category=ValidationCategory.DATA,
+                                        priority=ValidationPriority.MEDIUM,
+                                        suggestion="Consider converting column types or checking data extraction queries",
+                                    )
                                 )
-                            )
+                        except (KeyError, AttributeError) as e:
+                            logger.debug(f"Could not check dtype for keys '{local_key}'/'{remote_key}': {e}")
+                            continue
 
                 except Exception as e:
                     logger.debug(f"Could not check types for foreign key to '{remote_entity}': {e}")

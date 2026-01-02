@@ -1,6 +1,6 @@
 <template>
-  <v-dialog v-model="dialogModel" :max-width="splitView ? '95vw' : '900'" persistent scrollable>
-    <v-card>
+  <v-dialog v-model="dialogModel" :max-width="splitView ? '95vw' : '900'" :height="splitView ? '90vh' : '800'" persistent scrollable>
+    <v-card style="height: 100%">
       <v-toolbar color="primary" density="compact">
         <v-toolbar-title>
           <v-icon :icon="mode === 'create' ? 'mdi-plus-circle' : 'mdi-pencil'" class="mr-2" />
@@ -22,284 +22,296 @@
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="basic">Basic</v-tab>
         <v-tab value="relationships" :disabled="mode === 'create'">Foreign Keys</v-tab>
-        <v-tab value="advanced" :disabled="mode === 'create'">Advanced</v-tab>
+        <v-tab value="filters" :disabled="mode === 'create'">Filters</v-tab>
+        <v-tab value="unnest" :disabled="mode === 'create'">Unnest</v-tab>
+        <v-tab value="append" :disabled="mode === 'create'">Append</v-tab>
+        <v-tab value="extra_columns" :disabled="mode === 'create'">Extra Columns</v-tab>
         <v-tab value="yaml" :disabled="mode === 'create'">
           <v-icon icon="mdi-code-braces" class="mr-1" size="small" />
           YAML
         </v-tab>
-        <v-tab value="preview" :disabled="mode === 'create' || !formData.name">Preview</v-tab>
       </v-tabs>
 
-      <v-card-text class="pa-0" :class="{ 'split-container': splitView }">
+      <v-card-text class="pa-0 dialog-content" :class="{ 'split-container': splitView }">
         <div :class="splitView ? 'split-layout' : ''">
           <!-- Left: Entity Form -->
-          <div :class="splitView ? 'form-panel' : 'pt-6 px-4'">
+          <div :class="splitView ? 'form-panel' : 'pt-6 px-4 form-content'">
             <v-window v-model="activeTab">
               <v-window-item value="basic">
-                <v-form ref="formRef" v-model="formValid" class="compact-form">
-                  <!-- Entity Name, Type, and Source/Data Source on same row -->
-                  <div class="form-row">
-                    <v-row no-gutters>
-                      <v-col cols="4" class="pr-2">
-                        <v-text-field
-                          v-model="formData.name"
-                          label="Entity Name *"
-                          :rules="nameRules"
-                          variant="outlined"
-                          density="comfortable"
-                          :disabled="mode === 'edit'"
-                          required
-                        >
-                          <template #message>
-                            <span class="text-caption">Unique identifier for this entity</span>
-                          </template>
-                        </v-text-field>
-                      </v-col>
+                <v-defaults-provider
+                  :defaults="{
+                    VTextField:   { density: 'compact', variant: 'outlined',  },
+                    VSelect:      { density: 'compact', variant: 'outlined',  },
+                    VAutocomplete:{ density: 'compact', variant: 'outlined',  },
+                    VCombobox:    { density: 'compact', variant: 'outlined',  },
+                    VCheckbox:    { density: 'compact', hideDetails: true },
+                  }"
+                >
+                  <v-form ref="formRef" v-model="formValid" class="compact-form">
+                    <!-- Entity Name, Type, and Source/Data Source on same row -->
+                    <div class="form-row">
+                      <v-row no-gutters>
+                        <v-col cols="4" class="pr-2">
+                          <v-text-field
+                            v-model="formData.name"
+                            label="Entity Name *"
+                            :rules="nameRules"
+                            variant="outlined"
+                            :disabled="mode === 'edit'"
+                            required
+                          >
+                            <template #message>
+                              <span class="text-caption">Unique identifier for this entity</span>
+                            </template>
+                          </v-text-field>
+                        </v-col>
 
-                      <v-col cols="4" class="px-1">
-                        <!-- Entity Type -->
-                        <v-select
-                          v-model="formData.type"
-                          :items="entityTypeOptions"
-                          label="Type *"
-                          :rules="requiredRule"
-                          variant="outlined"
-                          density="comfortable"
-                          required
-                        >
-                          <template #message>
-                            <span class="text-caption">How this entity gets its data</span>
-                          </template>
-                        </v-select>
-                      </v-col>
+                        <v-col cols="4" class="px-1">
+                          <!-- Entity Type -->
+                          <v-select
+                            v-model="formData.type"
+                            :items="entityTypeOptions"
+                            label="Type *"
+                            :rules="requiredRule"
+                            variant="outlined"
+                            required
+                            hide-details="auto"
+                          >
+                            <template #append-inner>
+                              <v-tooltip location="top" text="How this entity gets its data">
+                                <template #activator="{ props }">
+                                  <v-icon
+                                    v-bind="props"
+                                    icon="mdi-help-circle-outline"
+                                    size="small"
+                                    class="text-medium-emphasis"
+                                    tabindex="0"
+                                  />
+                                </template>
+                              </v-tooltip>
+                            </template>
+                          </v-select>
+                        </v-col>
 
-                      <v-col cols="4" class="pl-2">
-                        <!-- Source Entity (only for 'data' type) -->
-                        <v-autocomplete
-                          v-if="formData.type === 'data'"
-                          v-model="formData.source"
-                          :items="availableSourceEntities"
-                          label="Source Entity"
-                          variant="outlined"
-                          density="comfortable"
-                          clearable
-                          persistent-placeholder
-                        >
-                          <template #message>
-                            <span class="text-caption">Parent entity to derive this entity from</span>
-                          </template>
-                        </v-autocomplete>
+                        <v-col cols="4" class="pl-2">
+                          <!-- Source Entity (only for 'data' type) -->
+                          <v-autocomplete
+                            v-if="formData.type === 'data'"
+                            v-model="formData.source"
+                            :items="availableSourceEntities"
+                            label="Source Entity"
+                            variant="outlined"
+                            clearable
+                            persistent-placeholder
+                          >
+                            <template #message>
+                              <span class="text-caption">Parent entity to derive this entity from</span>
+                            </template>
+                          </v-autocomplete>
 
-                        <!-- Data Source (only for 'sql' type) -->
-                        <v-text-field
-                          v-if="formData.type === 'sql'"
-                          v-model="formData.data_source"
-                          label="Data Source *"
-                          :rules="formData.type === 'sql' ? requiredRule : []"
-                          variant="outlined"
-                          density="comfortable"
-                        >
-                          <template #message>
-                            <span class="text-caption">Name of the data source connection</span>
-                          </template>
-                        </v-text-field>
-                      </v-col>
-                    </v-row>
-                  </div>
+                          <!-- Data Source (only for 'sql' type) -->
+                          <v-autocomplete
+                            v-if="formData.type === 'sql'"
+                            v-model="formData.data_source"
+                            :items="availableDataSources"
+                            label="Data Source *"
+                            :rules="formData.type === 'sql' ? requiredRule : []"
+                            variant="outlined"
+                            clearable
+                          >
+                            <template #message>
+                              <span class="text-caption">Name of the data source connection</span>
+                            </template>
+                          </v-autocomplete>
+                        </v-col>
+                      </v-row>
+                    </div>
 
-                  <!-- Surrogate ID and Keys on same row -->
-                  <div class="form-row">
-                    <v-row no-gutters>
-                      <v-col cols="4" class="pr-2">
-                        <!-- Surrogate ID -->
-                        <v-text-field
-                          v-model="formData.surrogate_id"
-                          label="Surrogate ID"
-                          variant="outlined"
-                          density="comfortable"
-                          placeholder="e.g., sample_id"
-                        >
-                          <template #message>
-                            <span class="text-caption">Generated integer ID field name</span>
-                          </template>
-                        </v-text-field>
-                      </v-col>
+                    <!-- Surrogate ID and Keys on same row -->
+                    <div class="form-row">
+                      <v-row no-gutters>
+                        <v-col cols="4" class="pr-2">
+                          <!-- Surrogate ID -->
+                          <v-text-field
+                            v-model="formData.surrogate_id"
+                            label="Surrogate ID"
+                            variant="outlined"
+                            placeholder="e.g., sample_id"
+                          >
+                            <template #message>
+                              <span class="text-caption">Generated integer ID field name</span>
+                            </template>
+                          </v-text-field>
+                        </v-col>
 
-                      <v-col cols="8" class="pl-2">
-                        <!-- Keys -->
-                        <v-combobox
-                          v-model="formData.keys"
-                          label="Keys *"
-                          :rules="requiredRule"
-                          variant="outlined"
-                          density="comfortable"
-                          multiple
-                          chips
-                          closable-chips
-                          required
-                          persistent-placeholder
-                        >
-                          <template #message>
-                            <span class="text-caption">Natural key columns that uniquely identify records</span>
-                          </template>
-                        </v-combobox>
-                      </v-col>
-                    </v-row>
-                  </div>
+                        <v-col cols="8" class="pl-2">
+                          <!-- Keys -->
+                          <v-combobox
+                            v-model="formData.keys"
+                            label="Keys *"
+                            :rules="requiredRule"
+                            variant="outlined"
+                            multiple
+                            chips
+                            closable-chips
+                            required
+                            persistent-placeholder
+                          >
+                            <template #message>
+                              <span class="text-caption">Natural key columns that uniquely identify records</span>
+                            </template>
+                          </v-combobox>
+                        </v-col>
+                      </v-row>
+                    </div>
 
-                  <!-- Columns (for data/fixed types) -->
-                  <div class="form-row" v-if="formData.type === 'data' || formData.type === 'fixed'">
-                    <v-combobox
-                      v-model="formData.columns"
-                      label="Columns"
-                      variant="outlined"
-                      density="comfortable"
-                      multiple
-                      chips
-                      closable-chips
-                      persistent-placeholder
-                    >
-                      <template #message>
-                        <span class="text-caption">Column names to extract or create</span>
-                      </template>
-                    </v-combobox>
-                  </div>
+                    <!-- Columns (for data/fixed types) -->
+                    <div class="form-row" v-if="formData.type === 'data' || formData.type === 'fixed'">
+                      <v-combobox
+                        v-model="formData.columns"
+                        label="Columns"
+                        variant="outlined"
+                        multiple
+                        chips
+                        closable-chips
+                        persistent-placeholder
+                      >
+                        <template #message>
+                          <span class="text-caption">Column names to extract or create</span>
+                        </template>
+                      </v-combobox>
+                    </div>
 
-                  <!-- Fixed Values Grid (only for fixed type) -->
-                  <div class="form-row" v-show="formData.type === 'fixed' && allColumns.length > 0">
-                    <FixedValuesGrid
-                      v-if="formData.type === 'fixed' && allColumns.length > 0"
-                      v-model="formData.values"
-                      :columns="allColumns"
-                      height="400px"
-                    />
-                  </div>
+                    <!-- Fixed Values Grid (only for fixed type) -->
+                    <div class="form-row" v-show="formData.type === 'fixed' && allColumns.length > 0">
+                      <FixedValuesGrid
+                        v-if="formData.type === 'fixed' && allColumns.length > 0"
+                        v-model="formData.values"
+                        :columns="allColumns"
+                        height="400px"
+                      />
+                    </div>
 
-                  <!-- Depends On -->
-                  <div class="form-row">
-                    <v-combobox
-                      v-model="formData.depends_on"
-                      label="Depends On"
-                      :items="availableSourceEntities"
-                      variant="outlined"
-                      density="comfortable"
-                      multiple
-                      chips
-                      closable-chips
-                      persistent-placeholder
-                    >
-                      <template #message>
-                        <span class="text-caption">Entities that must be processed before this entity</span>
-                      </template>
-                    </v-combobox>
-                  </div>
+                    <!-- Depends On -->
+                    <div class="form-row">
+                      <v-combobox
+                        v-model="formData.depends_on"
+                        label="Depends On"
+                        :items="availableSourceEntities"
+                        variant="outlined"
+                        multiple
+                        chips
+                        closable-chips
+                        persistent-placeholder
+                      >
+                        <template #message>
+                          <span class="text-caption">Entities that must be processed before this entity</span>
+                        </template>
+                      </v-combobox>
+                    </div>
 
-                  <!-- Drop Duplicates and Drop Empty Rows on same row -->
-                  <div class="form-row">
-                    <v-row no-gutters>
-                      <!-- Drop Duplicates -->
-                      <v-col cols="6" class="pr-2">
-                        <v-checkbox
-                          v-model="formData.drop_duplicates.enabled"
-                          label="Drop Duplicates"
-                          density="comfortable"
-                          hide-details
-                          class="mb-2"
-                        >
-                        </v-checkbox>
-                        <v-combobox
-                          v-model="formData.drop_duplicates.columns"
-                          label="Deduplication Columns"
-                          variant="outlined"
-                          density="comfortable"
-                          multiple
-                          chips
-                          closable-chips
-                          persistent-placeholder
-                          :disabled="!formData.drop_duplicates.enabled"
-                        >
-                          <template #message>
-                            <span class="text-caption">Columns to use for deduplication (empty = all columns)</span>
-                          </template>
-                        </v-combobox>
-                      </v-col>
+                    <!-- Drop Duplicates and Drop Empty Rows on same row -->
+                    <div class="form-row">
+                      <v-row no-gutters>
+                        <!-- Drop Duplicates -->
+                        <v-col cols="6" class="pr-2">
+                          <v-checkbox
+                            v-model="formData.drop_duplicates.enabled"
+                            label="Drop Duplicates"
+                            hide-details
+                            class="mb-2"
+                          >
+                          </v-checkbox>
+                          <v-combobox
+                            v-model="formData.drop_duplicates.columns"
+                            label="Deduplication Columns"
+                            variant="outlined"
+                            multiple
+                            chips
+                            closable-chips
+                            persistent-placeholder
+                            :disabled="!formData.drop_duplicates.enabled"
+                          >
+                            <template #message>
+                              <span class="text-caption">Columns to use for deduplication (empty = all columns)</span>
+                            </template>
+                          </v-combobox>
+                        </v-col>
 
-                      <!-- Drop Empty Rows -->
-                      <v-col cols="6" class="pl-2">
-                        <v-checkbox
-                          v-model="formData.drop_empty_rows.enabled"
-                          label="Drop Empty Rows"
-                          density="comfortable"
-                          hide-details
-                          class="mb-2"
-                        >
-                        </v-checkbox>
-                        <v-combobox
-                          v-model="formData.drop_empty_rows.columns"
-                          label="Columns to Check for Empty Values"
-                          variant="outlined"
-                          density="comfortable"
-                          multiple
-                          chips
-                          closable-chips
-                          persistent-placeholder
-                          :disabled="!formData.drop_empty_rows.enabled"
-                        >
-                          <template #message>
-                            <span class="text-caption">Columns to check for empty values (empty = all columns)</span>
-                          </template>
-                        </v-combobox>
-                      </v-col>
-                    </v-row>
-                  </div>
+                        <!-- Drop Empty Rows -->
+                        <v-col cols="6" class="pl-2">
+                          <v-checkbox
+                            v-model="formData.drop_empty_rows.enabled"
+                            label="Drop Empty Rows"
+                            hide-details
+                            class="mb-2"
+                          >
+                          </v-checkbox>
+                          <v-combobox
+                            v-model="formData.drop_empty_rows.columns"
+                            label="Columns to Check for Empty Values"
+                            variant="outlined"
+                            multiple
+                            chips
+                            closable-chips
+                            persistent-placeholder
+                            :disabled="!formData.drop_empty_rows.enabled"
+                          >
+                            <template #message>
+                              <span class="text-caption">Columns to check for empty values (empty = all columns)</span>
+                            </template>
+                          </v-combobox>
+                        </v-col>
+                      </v-row>
+                    </div>
 
-                  <!-- Check Functional Dependency -->
-                  <div class="form-row">
-                    <v-row no-gutters>
-                      <v-col cols="6" class="pr-2">
-                        <!-- Empty space on left -->
-                      </v-col>
-                      <v-col cols="6" class="pl-2">
-                        <v-checkbox
-                          v-model="formData.check_functional_dependency"
-                          label="Check Functional Dependency"
-                          density="comfortable"
-                          hide-details
-                          :disabled="!formData.drop_empty_rows.enabled"
-                        >
-                        </v-checkbox>
-                      </v-col>
-                    </v-row>
-                  </div>
+                    <!-- Check Functional Dependency -->
+                    <div class="form-row">
+                      <v-row no-gutters>
+                        <v-col cols="6" class="pr-2">
+                          <!-- Empty space on left -->
+                        </v-col>
+                        <v-col cols="6" class="pl-2">
+                          <v-checkbox
+                            v-model="formData.check_functional_dependency"
+                            label="Check Functional Dependency"
+                            hide-details
+                            :disabled="!formData.drop_empty_rows.enabled"
+                          >
+                          </v-checkbox>
+                        </v-col>
+                      </v-row>
+                    </div>
 
-                  <!-- Smart Suggestions Panel -->
-                  <div class="form-row" v-if="showSuggestions || suggestionsLoading">
-                    <v-progress-linear v-if="suggestionsLoading" indeterminate color="primary" class="mb-2" />
+                    <!-- Smart Suggestions Panel -->
+                    <div class="form-row" v-if="showSuggestions || suggestionsLoading">
+                      <v-progress-linear v-if="suggestionsLoading" indeterminate color="primary" class="mb-2" />
 
-                    <SuggestionsPanel
-                      v-if="suggestions && !suggestionsLoading"
-                      :suggestions="suggestions"
-                      @accept-foreign-key="handleAcceptForeignKey"
-                      @reject-foreign-key="handleRejectForeignKey"
-                      @accept-dependency="handleAcceptDependency"
-                      @reject-dependency="handleRejectDependency"
-                    />
-                  </div>
+                      <SuggestionsPanel
+                        v-if="suggestions && !suggestionsLoading"
+                        :suggestions="suggestions"
+                        @accept-foreign-key="handleAcceptForeignKey"
+                        @reject-foreign-key="handleRejectForeignKey"
+                        @accept-dependency="handleAcceptDependency"
+                        @reject-dependency="handleRejectDependency"
+                      />
+                    </div>
 
-                  <!-- SQL Query (for sql type) -->
-                  <div class="form-row" v-if="formData.type === 'sql'">
-                    <SqlEditor
-                      v-model="formData.query"
-                      height="250px"
-                      help-text="SQL query to execute against the selected data source"
-                      :error="formValid === false && !formData.query ? 'SQL query is required' : ''"
-                    />
-                  </div>
+                    <!-- SQL Query (for sql type) -->
+                    <div class="form-row" v-if="formData.type === 'sql'">
+                      <SqlEditor
+                        v-model="formData.query"
+                        height="250px"
+                        help-text="SQL query to execute against the selected data source"
+                        :error="formValid === false && !formData.query ? 'SQL query is required' : ''"
+                      />
+                    </div>
 
-                  <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
-                    {{ error }}
-                  </v-alert>
-                </v-form>
+                    <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
+                      {{ error }}
+                    </v-alert>
+                  </v-form>
+                </v-defaults-provider>
               </v-window-item>
 
               <v-window-item value="relationships">
@@ -312,8 +324,20 @@
                 />
               </v-window-item>
 
-              <v-window-item value="advanced">
-                <advanced-entity-config v-model="formData.advanced" :available-entities="availableSourceEntities" />
+              <v-window-item value="filters">
+                <filters-editor v-model="formData.advanced.filters" :available-entities="availableSourceEntities" />
+              </v-window-item>
+
+              <v-window-item value="unnest">
+                <unnest-editor v-model="formData.advanced.unnest" />
+              </v-window-item>
+
+              <v-window-item value="append">
+                <append-editor v-model="formData.advanced.append" />
+              </v-window-item>
+
+              <v-window-item value="extra_columns">
+                <extra-columns-editor v-model="formData.advanced.extra_columns" />
               </v-window-item>
 
               <v-window-item value="yaml">
@@ -336,78 +360,6 @@
                   {{ yamlError }}
                 </v-alert>
               </v-window-item>
-
-              <v-window-item value="preview">
-                <div class="preview-tab-content">
-                  <div class="d-flex align-center justify-space-between pa-3">
-                    <div class="d-flex align-center gap-2">
-                      <v-btn
-                        size="small"
-                        color="primary"
-                        variant="flat"
-                        @click="refreshPreview"
-                        :loading="previewLoading"
-                        :disabled="!canPreview"
-                      >
-                        <v-icon start size="small">mdi-refresh</v-icon>
-                        Refresh
-                      </v-btn>
-
-                      <v-chip v-if="livePreviewData" size="small" color="primary" variant="tonal">
-                        {{ livePreviewData.total_rows_in_preview || 0 }} rows
-                      </v-chip>
-
-                      <v-chip v-if="livePreviewLastRefresh" size="small" variant="text">
-                        <v-icon start size="x-small">mdi-clock-outline</v-icon>
-                        {{ formatRefreshTime(livePreviewLastRefresh) }}
-                      </v-chip>
-                    </div>
-                  </div>
-
-                  <v-alert
-                    v-if="previewError"
-                    type="error"
-                    density="compact"
-                    closable
-                    class="mx-3 mb-3"
-                    @click:close="previewError = null"
-                  >
-                    {{ previewError }}
-                  </v-alert>
-
-                  <v-alert v-if="!canPreview" type="info" density="compact" class="mx-3 mb-3">
-                    Entity must be saved before preview is available
-                  </v-alert>
-
-                  <v-progress-linear v-if="previewLoading" indeterminate color="primary" />
-
-                  <div v-if="livePreviewData && !previewLoading" class="preview-table-container" style="height: 500px">
-                    <ag-grid-vue
-                      class="ag-theme-alpine preview-ag-grid"
-                      :style="{ height: '100%', width: '100%' }"
-                      :columnDefs="previewColumnDefs"
-                      :rowData="previewRowData"
-                      :defaultColDef="previewDefaultColDef"
-                      :animateRows="true"
-                      :suppressCellFocus="true"
-                      :headerHeight="32"
-                      :rowHeight="28"
-                    />
-                  </div>
-
-                  <div
-                    v-else-if="!previewLoading && !livePreviewData"
-                    class="d-flex align-center justify-center pa-8 text-disabled"
-                    style="height: 400px"
-                  >
-                    <div class="text-center">
-                      <v-icon size="64" color="disabled">mdi-table-off</v-icon>
-                      <div class="mt-2">No preview data</div>
-                      <div class="text-caption">Click Refresh to load preview</div>
-                    </div>
-                  </div>
-                </div>
-              </v-window-item>
             </v-window>
           </div>
 
@@ -416,6 +368,19 @@
             <div class="preview-header">
               <div class="d-flex align-center justify-space-between pa-2">
                 <div class="d-flex align-center gap-2">
+                  <v-select
+                    v-model="previewLimit"
+                    :items="previewLimitOptions"
+                    item-title="title"
+                    item-value="value"
+                    label="Rows"
+                    density="compact"
+                    variant="outlined"
+                    style="max-width: 150px"
+                    hide-details
+                    @update:model-value="refreshPreview"
+                  />
+
                   <v-btn
                     size="small"
                     variant="tonal"
@@ -508,6 +473,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useEntities, useSuggestions, useEntityPreview } from '@/composables'
+import { useProjectStore } from '@/stores'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
 import * as yaml from 'js-yaml'
@@ -516,7 +482,10 @@ import type { ColDef } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 import ForeignKeyEditor from './ForeignKeyEditor.vue'
-import AdvancedEntityConfig from './AdvancedEntityConfig.vue'
+import FiltersEditor from './FiltersEditor.vue'
+import UnnestEditor from './UnnestEditor.vue'
+import AppendEditor from './AppendEditor.vue'
+import ExtraColumnsEditor from './ExtraColumnsEditor.vue'
 import SuggestionsPanel from './SuggestionsPanel.vue'
 // import EntityPreviewPanel from './EntityPreviewPanel.vue'
 import YamlEditor from '../common/YamlEditor.vue'
@@ -548,9 +517,12 @@ const { entities, create, update } = useEntities({
 
 const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions()
 
+const projectStore = useProjectStore()
+
 // Split-pane and preview state
 const splitView = ref(false)
 const autoRefreshEnabled = ref(false)
+const previewLimit = ref<number | null>(100)
 
 // Live preview composable (separate from the preview tab)
 const {
@@ -561,6 +533,17 @@ const {
   previewEntity,
   debouncedPreviewEntity,
 } = useEntityPreview()
+
+const previewLimitOptions = [
+  { title: '10 rows', value: 10 },
+  { title: '25 rows', value: 25 },
+  { title: '50 rows', value: 50 },
+  { title: '100 rows', value: 100 },
+  { title: '200 rows', value: 200 },
+  { title: '500 rows', value: 500 },
+  { title: '1,000 rows', value: 1000 },
+  { title: 'All rows', value: null },
+]
 
 const previewError = ref<string | null>(null)
 
@@ -690,7 +673,7 @@ async function refreshPreview() {
   if (!canPreview.value) return
 
   previewError.value = null
-  await previewEntity(props.projectName, formData.value.name, 100)
+  await previewEntity(props.projectName, formData.value.name, previewLimit.value)
 
   if (livePreviewError.value) {
     previewError.value = livePreviewError.value
@@ -746,6 +729,15 @@ const entityTypeOptions = [
 
 const availableSourceEntities = computed(() => {
   return entities.value.filter((e) => e.name !== formData.value.name).map((e) => e.name)
+})
+
+const availableDataSources = computed(() => {
+  // Get data source names from project's options.data_sources (e.g., "arbodat_data", "sead")
+  const dataSources = projectStore.selectedProject?.options?.data_sources
+  if (dataSources && typeof dataSources === 'object') {
+    return Object.keys(dataSources)
+  }
+  return []
 })
 
 // Validation rules
@@ -1208,6 +1200,17 @@ function handleRejectDependency(dep: DependencySuggestion) {
 </script>
 
 <style scoped>
+/* Dialog content height management */
+.dialog-content {
+  min-height: 600px;
+  max-height: calc(90vh - 120px);
+  overflow-y: auto;
+}
+
+.form-content {
+  min-height: 600px;
+}
+
 /* Split-pane layout */
 .split-container {
   height: calc(100vh - 180px);
@@ -1223,7 +1226,7 @@ function handleRejectDependency(dep: DependencySuggestion) {
 .form-panel {
   flex: 0 0 50%;
   overflow-y: auto;
-  padding: 24px;
+  padding: 14px;
   border-right: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
@@ -1355,6 +1358,8 @@ function handleRejectDependency(dep: DependencySuggestion) {
 }
 
 :deep(.v-chip) {
+  min-height: 10px;
+  height: 18px;
   font-size: 11px;
 }
 

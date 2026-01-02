@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     # Validation
     MAX_ENTITIES_PER_CONFIG: int = 1000
     MAX_PROJECT_FILE_SIZE_MB: int = 10
+    RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

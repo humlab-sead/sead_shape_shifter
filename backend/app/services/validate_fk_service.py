@@ -7,6 +7,7 @@ import pandas as pd
 from backend.app.core.state_manager import get_app_state_manager
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models import CardinalityInfo, JoinStatistics, JoinTestResult, PreviewResult, Project, UnmatchedRow
+from backend.app.services.project_service import ProjectService
 from backend.app.services.shapeshift_service import ShapeShiftService
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 
@@ -14,9 +15,10 @@ from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 class ValidateForeignKeyService:
     """Service for previewing entity data with ShapeShiftProject caching."""
 
-    def __init__(self, preview_service: ShapeShiftService):
+    def __init__(self, preview_service: ShapeShiftService, project_service: ProjectService | None = None):
         """Initialize preview service."""
         self.preview_service: ShapeShiftService = preview_service
+        self.project_service: ProjectService = project_service or ProjectService()
 
     async def test_foreign_key(
         self, project_name: str, entity_name: str, foreign_key_index: int, sample_size: int = 100
@@ -36,9 +38,12 @@ class ValidateForeignKeyService:
 
         start_time: float = time.time()
 
-        # Load project - try ApplicationState first (production), fall back to ShapeShiftProject.from_source (tests)
+        # Load project - try ApplicationState first (production), fall back to ProjectService
         api_cfg: Project | None = get_app_state_manager().get(project_name)
-        project: ShapeShiftProject = ProjectMapper.to_core(api_cfg) if api_cfg else ShapeShiftProject.from_source(source=project_name)
+        if not api_cfg:
+            api_cfg = self.project_service.load_project(project_name)
+
+        project: ShapeShiftProject = ProjectMapper.to_core(api_cfg)
 
         # Get entity and foreign key project
         if entity_name not in project.tables:
