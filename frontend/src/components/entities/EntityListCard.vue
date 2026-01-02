@@ -275,7 +275,6 @@ function handleExecuted(result: any) {
 }
 
 // Watch for create dialog trigger
-import { watch } from 'vue'
 watch(showCreateDialog, (newValue) => {
   if (newValue) {
     selectedEntity.value = null
