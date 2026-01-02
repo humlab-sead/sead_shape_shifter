@@ -23,7 +23,12 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   // Getters
   const reconcilableEntities = computed(() => {
     if (!reconciliationConfig.value) return []
-    return Object.keys(reconciliationConfig.value.entities)
+    return Object.keys(reconciliationConfig.value.entities).filter(
+      (entityName) => {
+        const entity = reconciliationConfig.value!.entities[entityName]
+        return entity?.remote?.service_type != null
+      }
+    )
   })
 
   const hasConfig = computed(() => reconciliationConfig.value !== null)
@@ -33,11 +38,15 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loading.value = true
     error.value = null
     try {
+      console.log(`[Reconciliation Store] Loading config for project: ${projectName}`)
       const response = await apiClient.get(`/projects/${projectName}/reconciliation`)
+      console.log('[Reconciliation Store] Config loaded:', response.data)
       reconciliationConfig.value = response.data
+      console.log('[Reconciliation Store] Reconcilable entities:', reconcilableEntities.value)
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to load reconciliation config'
-      console.error('Failed to load reconciliation config:', e)
+      console.error('[Reconciliation Store] Failed to load reconciliation config:', e)
+      console.error('[Reconciliation Store] Error details:', e.response)
       throw e
     } finally {
       loading.value = false

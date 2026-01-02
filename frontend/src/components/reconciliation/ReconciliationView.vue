@@ -205,14 +205,20 @@ async function handleSaveChanges() {
 // Load project on mount
 onMounted(async () => {
   try {
+    console.log('[ReconciliationView] Mounted with project:', props.projectName)
     await reconciliationStore.loadReconciliationConfig(props.projectName)
 
     // Auto-select first entity if available
     if (reconcilableEntities.value.length > 0) {
       selectedEntity.value = reconcilableEntities.value[0] ?? null
+    } else {
+      console.warn('[ReconciliationView] No reconcilable entities found')
     }
-  } catch (e) {
-    console.error('Failed to load reconciliation config:', e)
+  } catch (e: any) {
+    console.error('[ReconciliationView] Failed to load reconciliation config:', e)
+    resultMessage.value = `Failed to load reconciliation config: ${e.message || e.response?.data?.detail || 'Unknown error'}`
+    resultColor.value = 'error'
+    showResultSnackbar.value = true
   }
 })
 

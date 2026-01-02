@@ -23,9 +23,11 @@ from backend.app.services.reconciliation_service import (
     TargetEntityReconciliationSourceResolver,
 )
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
+from backend.tests.test_reconciliation_client import RECONCILIATION_SERVICE_URL
 
 # pylint: disable=redefined-outer-name,unused-argument,protected-access
 
+RECONCILIATION_SERVICE_URL = "http://localhost:8000"
 
 @pytest.fixture
 def mock_config_service():
@@ -93,7 +95,7 @@ def sample_entity_spec():
 def sample_recon_config(sample_entity_spec):
     """Create sample ReconciliationConfig."""
     return ReconciliationConfig(
-        service_url="http://localhost:8000",
+        service_url=RECONCILIATION_SERVICE_URL,
         entities={"site": sample_entity_spec},
     )
 
@@ -344,7 +346,7 @@ class TestReconciliationService:
         """Test load creates empty config if file doesn't exist."""
         config = reconciliation_service.load_reconciliation_config("nonexistent")
 
-        assert config.service_url == "http://localhost:8000"
+        assert config.service_url == RECONCILIATION_SERVICE_URL
         assert config.entities == {}
 
     def test_load_reconciliation_config_reads_yaml(self, reconciliation_service, tmp_path, sample_recon_config):
@@ -450,7 +452,7 @@ class TestReconciliationService:
 
             # Create empty config file
             config_file = tmp_path / "test-reconciliation.yml"
-            config_file.write_text(yaml.dump({"service_url": "http://localhost:8000", "entities": {}}))
+            config_file.write_text(yaml.dump({"service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
 
             result = await reconciliation_service.auto_reconcile_entity("test", "site", sample_entity_spec, max_candidates=3)
 
@@ -482,7 +484,7 @@ class TestReconciliationService:
             reconciliation_service.recon_client.reconcile_batch.return_value = {"q0": candidates}
 
             config_file = tmp_path / "test-reconciliation.yml"
-            config_file.write_text(yaml.dump({"service_url": "http://localhost:8000", "entities": {}}))
+            config_file.write_text(yaml.dump({"service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
 
             result = await reconciliation_service.auto_reconcile_entity("test", "site", sample_entity_spec)
 
@@ -506,7 +508,7 @@ class TestReconciliationService:
             reconciliation_service.recon_client.reconcile_batch.return_value = {"q0": candidates}
 
             config_file = tmp_path / "test-reconciliation.yml"
-            config_file.write_text(yaml.dump({"service_url": "http://localhost:8000", "entities": {}}))
+            config_file.write_text(yaml.dump({"service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
 
             result = await reconciliation_service.auto_reconcile_entity("test", "site", sample_entity_spec)
 
@@ -524,7 +526,7 @@ class TestReconciliationService:
             reconciliation_service.recon_client.reconcile_batch.return_value = {"q0": []}
 
             config_file = tmp_path / "test-reconciliation.yml"
-            config_file.write_text(yaml.dump({"service_url": "http://localhost:8000", "entities": {}}))
+            config_file.write_text(yaml.dump({"service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
 
             result = await reconciliation_service.auto_reconcile_entity("test", "site", sample_entity_spec)
 
@@ -600,7 +602,7 @@ class TestReconciliationService:
     def test_update_mapping_raises_for_missing_entity(self, reconciliation_service, tmp_path):
         """Test update_mapping raises if entity not in config."""
         config_file = tmp_path / "test-reconciliation.yml"
-        config_file.write_text(yaml.dump({"service_url": "http://localhost:8000", "entities": {}}))
+        config_file.write_text(yaml.dump({"service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
 
         with pytest.raises(NotFoundError, match="Entity 'nonexistent' not in reconciliation config"):
             reconciliation_service.update_mapping("test", "nonexistent", source_values=["KEY"], sead_id=123)
