@@ -80,7 +80,7 @@
                       <v-expansion-panel-title class="py-1 text-caption"> Constraints </v-expansion-panel-title>
                       <v-expansion-panel-text class="pt-1">
                         <v-select
-                          v-model="fk.constraints!.cardinality"
+                          v-model="fk.constraints.cardinality"
                           :items="cardinalityTypes"
                           label="Cardinality"
                           variant="outlined"
@@ -89,14 +89,14 @@
                         />
 
                         <v-checkbox
-                          v-model="fk.constraints!.require_unique_left"
+                          v-model="fk.constraints.require_unique_left"
                           label="Require Unique Left"
                           density="compact"
                           hide-details
                         />
 
                         <v-checkbox
-                          v-model="fk.constraints!.allow_null_keys"
+                          v-model="fk.constraints.allow_null_keys"
                           label="Allow Null Keys"
                           density="compact"
                           hide-details
@@ -179,8 +179,8 @@ function handleAddForeignKey() {
       cardinality: 'many_to_one',
       require_unique_left: false,
       allow_null_keys: false,
-    } as any,
-  } as ForeignKeyConfig)
+    },
+  })
 }
 
 function handleRemoveForeignKey(index: number) {
@@ -196,11 +196,21 @@ watch(
   { deep: true }
 )
 
-// Sync with prop changes
+// Sync with prop changes (only when not editing)
 watch(
   () => props.modelValue,
   (newValue) => {
-    foreignKeys.value = [...newValue]
+    // Deep comparison to avoid overwriting user edits
+    if (JSON.stringify(foreignKeys.value) !== JSON.stringify(newValue)) {
+      foreignKeys.value = newValue.map((fk) => ({
+        ...fk,
+        constraints: fk.constraints || {
+          cardinality: 'many_to_one',
+          require_unique_left: false,
+          allow_null_keys: false,
+        },
+      }))
+    }
   }
 )
 </script>
