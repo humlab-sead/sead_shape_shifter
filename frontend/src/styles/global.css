@@ -71,8 +71,9 @@
 }
 
 .compact-mode .v-chip {
-  height: 24px !important;
-  font-size: 0.8125rem !important;
+  min-height: 18px;
+  height: 18px;
+  font-size: 11px;
 }
 
 .compact-mode .v-breadcrumbs {
