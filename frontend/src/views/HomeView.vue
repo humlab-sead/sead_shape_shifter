@@ -3,9 +3,16 @@
     <v-row>
       <v-col cols="12">
         <div class="text-center mb-8">
-          <v-icon icon="mdi-shape" size="80" color="primary" class="mb-4" />
+          <!-- <v-icon icon="mdi-shape" size="80" color="primary" class="mb-4" /> -->
           <h1 class="text-h3 mb-2">SEAD Shape Shifter</h1>
           <p class="text-h6 text-grey">Project Editor</p>
+        <!-- <div class="d-flex justify-center mb-8">
+          <v-img
+            src="src/assets/images/SEAD-logo-with-subtext.png"
+            alt="SEAD Logo"
+            max-width="50%"
+          />
+        </div> -->
         </div>
 
         <v-list>
@@ -18,7 +25,7 @@
         <v-divider class="my-4" />
 
         <v-row>
-          <v-col cols="12" md="6">
+          <v-col cols="12" md="3">
             <v-card variant="outlined">
               <v-card-title>Backend Status</v-card-title>
               <v-card-text>
@@ -36,7 +43,7 @@
             </v-card>
           </v-col>
           <v-col cols="12" md="6">
-            <v-card variant="outlined">
+            <!-- <v-card variant="outlined">
               <v-card-title>Quick Start</v-card-title>
               <v-card-text>
                 <div class="mt-2">
@@ -46,7 +53,14 @@
                   <div><strong>4.</strong> Save the project</div>
                 </div>
               </v-card-text>
-            </v-card>
+            </v-card> -->
+          <!-- <div class="d-flex mb-8">
+          <v-img
+            src="src/assets/images/SEAD-logo-with-subtext.png"
+            alt="SEAD Logo"
+            max-width="25%"
+          />
+        </div> -->
           </v-col>
         </v-row>
       </v-col>
@@ -97,4 +111,13 @@ onMounted(async () => {
     console.error('Failed to check backend health:', error)
   }
 })
+
 </script>
+<style scoped>
+/* .logga {
+  background: url('src/assets/images/SEAD-logo-with-subtext.png')  no-repeat center center fixed !important;;
+  background-size: cover;
+  width: 100%;
+  height: 100vh;
+} */
+</style>
