@@ -7,10 +7,17 @@
  - [] FIXME: Saving a configuration stores the YAML in a file with a new filename
  - [] FIXME: Right preview pane doesn't clear values between entities
  - [] FIXME: Keys is a mandatory field, but many entities has no value in Keys
+ - [x] FIXME: #81 Opening entity editor from dependency graph fails.
+ - [] FIXME: Active route only highlighted in navigation breadcrumbs for "Projects"
+ - [] FIXME: Entity count: description not shown for project cards in "Projects"
+ - [] FIXME: Search projects:  Fails: "No results" message for no matches
+ - [] FIXME: Create project: No description field in create dialog
+ - [] FIXME: New prodject's name is displayed as "test_config_manua", missing last character, correct inside project's metadata
+ - [x] FIXME: #83 Project editor: No Edit YAML visible (not implemented)
+ - [] FIXME: #84 FK Editor: "RUN TEST" reports ShapeShiftProject source must be a ShapeShiftProject instance or a valid project file path
+ - [] FIXME: #82 In FK editor, constraints cannot be added/changed.
+ - [] FIXME: #85 In entity editor, data source should be a dropdown, not free text
  - [] FIXME:
- - [] FIXME:
- - [] FIXME: #81 Opening entity editor from dependency graph fails.
- When selecting a node in the dependency graph, a window appears from the right side. When clicking "Edit Entity", the system open "Project editor" (lists entities), but doesn't open entity editor.
 ### Tech debts:
 
  - [x] FIXME: Improve test coverage (+85%)
