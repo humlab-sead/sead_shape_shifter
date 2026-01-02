@@ -15,6 +15,7 @@ from backend.app.core.state_manager import ApplicationState, init_app_state
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-argument, redefined-outer-name
     """Application lifespan events."""
+    logger.info("")
     logger.info("Starting Shape Shifter Project Editor API")
     logger.info(f"Version: {settings.VERSION}")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
