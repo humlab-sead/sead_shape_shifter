@@ -42,7 +42,7 @@ def get_test_run_service(
     responses={
         200: {"description": "Test run started successfully (returns immediately with PENDING status)"},
         400: {"description": "Invalid request parameters"},
-        404: {"description": "Configuration not found"},
+        404: {"description": "Project not found"},
     },
 )
 async def start_test_run(

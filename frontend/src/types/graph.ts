@@ -31,9 +31,17 @@ export interface DependencyNode {
   depth: number
 }
 
+export interface DependencyEdge {
+  source: string
+  target: string
+  local_keys?: string[]
+  remote_keys?: string[]
+  label?: string
+}
+
 export interface DependencyGraph {
   nodes: DependencyNode[]
-  edges: [string, string][]
+  edges: DependencyEdge[]
   has_cycles: boolean
   cycles: string[][]
   topological_order: string[] | null

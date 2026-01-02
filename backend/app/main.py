@@ -15,12 +15,12 @@ from backend.app.core.state_manager import ApplicationState, init_app_state
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-argument, redefined-outer-name
     """Application lifespan events."""
-    logger.info("Starting Shape Shifter Configuration Editor API")
+    logger.info("Starting Shape Shifter Project Editor API")
     logger.info(f"Version: {settings.VERSION}")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
 
     # Initialize application state (NO default config loading)
-    logger.info(f"Configuration directory: {settings.PROJECTS_DIR}")
+    logger.info(f"Project directory: {settings.PROJECTS_DIR}")
     app_state: ApplicationState = init_app_state(settings.PROJECTS_DIR)
     await app_state.start()
 
@@ -30,13 +30,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
 
     # Cleanup
     await app_state.stop()
-    logger.info("Shutting down Shape Shifter Configuration Editor API")
+    logger.info("Shutting down Shape Shifter Project Editor API")
 
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="REST API for editing Shape Shifter YAML configurations",
+    description="REST API for editing Shape Shifter YAML projects",
     openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
     docs_url=f"{settings.API_V1_PREFIX}/docs",
     redoc_url=f"{settings.API_V1_PREFIX}/redoc",
@@ -65,7 +65,7 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 async def root() -> dict[str, str]:
     """Root endpoint - redirect to docs."""
     return {
-        "message": "Shape Shifter Configuration Editor API",
+        "message": "Shape Shifter Project Editor API",
         "version": settings.VERSION,
         "docs": f"{settings.API_V1_PREFIX}/docs",
     }

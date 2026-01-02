@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from src.dispatch import CSVDispatcher, DatabaseDispatcher, Dispatcher, Dispatchers, DispatchRegistry, ExcelDispatcher
+from src.dispatch import CsvDispatcher, DatabaseDispatcher, Dispatcher, Dispatchers, DispatchRegistry, ExcelDispatcher
 from src.utility import Registry
 
 # pylint: disable=unused-argument,redefined-outer-name
@@ -58,10 +58,33 @@ class TestDispatchRegistry:
         assert Dispatchers.is_registered("xlsx")
         assert Dispatchers.is_registered("db")
 
+    def test_dispatchers_has_target_type_property(self, cfg):
+        """Test that Dispatchers has the expected target types registered."""
+        for dispatcher_cls in Dispatchers.items.values():
+            dispatcher: Dispatcher = dispatcher_cls(cfg=cfg)
+            assert hasattr(dispatcher, "target_type")
+            value: str | None = dispatcher.target_type
+            assert isinstance(value, (str, type(None)))
+            assert value in {"folder", "file", "database"}
+
+    def test_dispatchers_has_description_property(self, cfg):
+        """Test that Dispatchers has the expected target types registered."""
+        for dispatcher_cls in Dispatchers.items.values():
+            dispatcher: Dispatcher = dispatcher_cls(cfg=cfg)
+            assert hasattr(dispatcher, "description")
+            value: str | None = dispatcher.description
+            assert isinstance(value, (str, type(None)))
+
+    def test_dispatchers_registered_types(self):
+        """Test that Dispatchers has correct types registered."""
+        assert Dispatchers.items["csv"] is CsvDispatcher
+        assert Dispatchers.items["xlsx"] is ExcelDispatcher
+        assert Dispatchers.items["db"] is DatabaseDispatcher
+
     def test_dispatchers_get_csv(self):
         """Test getting CSV dispatcher from registry."""
         dispatcher = Dispatchers.get("csv")
-        assert dispatcher is CSVDispatcher
+        assert dispatcher is CsvDispatcher
 
     def test_dispatchers_get_xlsx(self):
         """Test getting Excel dispatcher from registry."""
@@ -88,7 +111,7 @@ class TestDispatcherProtocol:
 
     def test_csv_dispatcher_implements_protocol(self, cfg):
         """Test that CSVDispatcher implements Dispatcher protocol."""
-        dispatcher = CSVDispatcher(cfg=cfg)
+        dispatcher = CsvDispatcher(cfg=cfg)
         assert hasattr(dispatcher, "dispatch")
         assert callable(dispatcher.dispatch)
 
@@ -110,12 +133,12 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_instantiation(self, cfg):
         """Test creating a CSVDispatcher instance."""
-        dispatcher = CSVDispatcher(cfg=cfg)
+        dispatcher = CsvDispatcher(cfg=cfg)
         assert dispatcher is not None
 
     def test_csv_dispatcher_creates_directory(self, tmp_path: Path, cfg: dict[str, Any]):
         """Test that CSVDispatcher creates the output directory."""
-        dispatcher = CSVDispatcher(cfg=cfg)
+        dispatcher = CsvDispatcher(cfg=cfg)
         output_dir = tmp_path / "csv_output"
         data = {"table1": pd.DataFrame({"col1": [1, 2], "col2": ["a", "b"]})}
 
@@ -126,7 +149,7 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_creates_csv_files(self, tmp_path: Path, cfg: dict[str, Any]):
         """Test that CSVDispatcher creates CSV files for each table."""
-        dispatcher = CSVDispatcher(cfg=cfg)
+        dispatcher = CsvDispatcher(cfg=cfg)
         output_dir = tmp_path / "csv_output"
         data = {
             "table1": pd.DataFrame({"col1": [1, 2], "col2": ["a", "b"]}),
@@ -140,7 +163,7 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_file_contents(self, tmp_path: Path, cfg: dict[str, Any]):
         """Test that CSV files contain correct data."""
-        dispatcher = CSVDispatcher(cfg=cfg)
+        dispatcher = CsvDispatcher(cfg=cfg)
         output_dir = tmp_path / "csv_output"
         df = pd.DataFrame({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
         data = {"test_table": df}
@@ -152,7 +175,7 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_no_index_in_output(self, tmp_path: Path, cfg: dict[str, Any]):
         """Test that CSV files are written without index."""
-        dispatcher = CSVDispatcher(cfg=cfg)
+        dispatcher = CsvDispatcher(cfg=cfg)
         output_dir = tmp_path / "csv_output"
         data = {"table1": pd.DataFrame({"col1": [1, 2]})}
 
@@ -166,7 +189,7 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_empty_dataframe(self, tmp_path: Path, cfg: dict[str, Any]):
         """Test dispatching empty DataFrame."""
-        dispatcher = CSVDispatcher(cfg=cfg)
+        dispatcher = CsvDispatcher(cfg=cfg)
         output_dir = tmp_path / "csv_output"
         data = {"empty_table": pd.DataFrame()}
 
@@ -176,7 +199,7 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_multiple_tables(self, tmp_path: Path, cfg: dict[str, Any]):
         """Test dispatching multiple tables."""
-        dispatcher = CSVDispatcher(cfg=cfg)
+        dispatcher = CsvDispatcher(cfg=cfg)
         output_dir = tmp_path / "csv_output"
         data = {
             "table1": pd.DataFrame({"a": [1, 2]}),
@@ -190,7 +213,7 @@ class TestCSVDispatcher:
 
     def test_csv_dispatcher_overwrites_existing_directory(self, tmp_path: Path, cfg: dict[str, Any]):
         """Test that dispatcher works with existing directory."""
-        dispatcher = CSVDispatcher(cfg=cfg)
+        dispatcher = CsvDispatcher(cfg=cfg)
         output_dir = tmp_path / "csv_output"
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -496,7 +519,7 @@ class TestIntegration:
 
     def test_csv_dispatcher_round_trip(self, tmp_path: Path, cfg: dict[str, Any]):
         """Test writing and reading CSV data maintains integrity."""
-        dispatcher = CSVDispatcher(cfg=cfg)
+        dispatcher = CsvDispatcher(cfg=cfg)
         output_dir = tmp_path / "csv_output"
 
         original_df = pd.DataFrame(
@@ -546,13 +569,13 @@ class TestIntegration:
         xlsx_dispatcher = xlsx_dispatcher_cls(cfg=cfg)
         db_dispatcher = db_dispatcher_cls(cfg=cfg)
 
-        assert isinstance(csv_dispatcher, CSVDispatcher)
+        assert isinstance(csv_dispatcher, CsvDispatcher)
         assert isinstance(xlsx_dispatcher, ExcelDispatcher)
         assert isinstance(db_dispatcher, DatabaseDispatcher)
 
     def test_multiple_tables_csv(self, tmp_path: Path, cfg: dict[str, Any]):
         """Test dispatching multiple related tables to CSV."""
-        dispatcher = CSVDispatcher(cfg=cfg)
+        dispatcher = CsvDispatcher(cfg=cfg)
         output_dir = tmp_path / "csv_output"
 
         data = {

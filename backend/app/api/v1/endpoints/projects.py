@@ -1,5 +1,6 @@
 """API endpoints for project management."""
 
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +46,12 @@ class BackupInfo(BaseModel):
     file_name: str = Field(..., description="Backup file name")
     file_path: str = Field(..., description="Full backup file path")
     created_at: float = Field(..., description="Creation timestamp")
+
+
+class RawYamlUpdateRequest(BaseModel):
+    """Request to update project with raw YAML."""
+
+    yaml_content: str = Field(..., description="Raw YAML content")
 
 
 class RestoreBackupRequest(BaseModel):
@@ -414,3 +421,83 @@ async def disconnect_data_source_from_project(name: str, source_name: str) -> Pr
     logger.info(f"Disconnected data source '{source_name}' from project '{name}'")
 
     return updated_config
+
+
+@router.get("/projects/{name}/raw-yaml", response_model=dict[str, str])
+@handle_endpoint_errors
+async def get_project_raw_yaml(name: str) -> dict[str, str]:
+    """
+    Get project as raw YAML string.
+
+    Args:
+        name: Project name
+
+    Returns:
+        Dictionary containing yaml_content
+    """
+    project_service: ProjectService = get_project_service()
+
+    project_service.load_project(name)
+
+    project_path = settings.PROJECTS_DIR / f"{name}.yml"
+    if not project_path.exists():
+        raise NotFoundError(f"Project file not found: {name}.yml")
+
+    yaml_content = project_path.read_text(encoding="utf-8")
+
+    logger.info(f"Retrieved raw YAML for project '{name}'")
+
+    return {"yaml_content": yaml_content}
+
+
+@router.put("/projects/{name}/raw-yaml", response_model=Project)
+@handle_endpoint_errors
+async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> Project:
+    """
+    Update project with raw YAML content.
+
+    This endpoint accepts raw YAML and saves it directly to the project file.
+    It performs validation after save.
+
+    Args:
+        name: Project name
+        request: Raw YAML content
+
+    Returns:
+        Updated project
+    """
+    yaml_service: YamlService = get_yaml_service()
+    project_service: ProjectService = get_project_service()
+
+    # Validate YAML syntax
+    is_valid, error_msg = yaml_service.validate_yaml(request.yaml_content)
+    if not is_valid:
+        raise BadRequestError(f"Invalid YAML syntax: {error_msg}")
+
+    # Parse and validate structure
+    try:
+        parsed_yaml = yaml_service.yaml.load(StringIO(request.yaml_content))
+    except Exception as e:
+        raise BadRequestError(f"Failed to parse YAML: {str(e)}") from e
+
+    # Ensure it's a valid project structure
+    if not isinstance(parsed_yaml, dict):
+        raise BadRequestError("YAML must be a dictionary")
+
+    # Write to file
+    project_path = settings.PROJECTS_DIR / f"{name}.yml"
+    if not project_path.exists():
+        raise NotFoundError(f"Project file not found: {name}.yml")
+
+    # Create backup before update
+    yaml_service.create_backup(project_path)
+
+    # Write new content
+    project_path.write_text(request.yaml_content, encoding="utf-8")
+
+    # Load and return updated project
+    updated_project = project_service.load_project(name)
+
+    logger.info(f"Updated project '{name}' from raw YAML")
+
+    return updated_project

@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from backend.app.api.v1.endpoints import (
     data_sources,
     entities,
+    execute,
     health,
     preview,
     projects,
@@ -32,3 +33,4 @@ api_router.include_router(suggestions.router, tags=["suggestions"])
 api_router.include_router(preview.router, tags=["preview"])
 api_router.include_router(test_run.router, tags=["test-run"])
 api_router.include_router(reconciliation.router, tags=["reconciliation"])
+api_router.include_router(execute.router, tags=["execute"])

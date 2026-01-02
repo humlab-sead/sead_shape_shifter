@@ -19,25 +19,24 @@ router = APIRouter()
 
 @router.post("/projects/{name}/validate/data", response_model=ValidationResult)
 @handle_endpoint_errors
-async def validate_configuration_data(name: str, entity_names: list[str] | None = None) -> ValidationResult:
+async def validate_project_data(name: str, entity_names: list[str] | None = None) -> ValidationResult:
     """
-    Run data-aware validation on configuration.
+    Run data-aware validation on project.
 
-    This validates actual data (not just configuration structure):
+    This validates actual data (not just project structure):
     - Checks configured columns exist in data
     - Verifies natural keys are unique
     - Confirms entities return data
     - Validates foreign key data integrity
 
     Args:
-        name: Configuration name
+        name: Project name
         entity_names: Optional list of entity names to validate (None = all entities)
 
     Returns:
         Validation result with data-specific errors and warnings
     """
     validation_service = get_validation_service()
-    # Run data validation
     result = await validation_service.validate_project_data(name, entity_names)
 
     logger.info(
@@ -50,25 +49,24 @@ async def validate_configuration_data(name: str, entity_names: list[str] | None 
 @handle_endpoint_errors
 async def validate_entity(name: str, entity_name: str) -> ValidationResult:
     """
-    Validate specific entity within a configuration (structural validation only).
+    Validate specific entity within a project (structural validation only).
 
     Args:
-        name: Configuration name
+        name: Project name
         entity_name: Entity name to validate
 
     Returns:
         Validation result with entity-specific errors and warnings
     """
+
     project_service: ProjectService = get_project_service()
     validation_service: ValidationService = get_validation_service()
 
-    # Load configuration
-    config: Project = project_service.load_project(name)
+    project: Project = project_service.load_project(name)
+    result: ValidationResult = validation_service.validate_entity(project, entity_name)
 
-    # Validate specific entity
-    result: ValidationResult = validation_service.validate_entity(config, entity_name)
+    logger.info(f"Validated entity '{entity_name}' in project '{name}': " f"valid={result.is_valid}, errors={result.error_count}")
 
-    logger.info(f"Validated entity '{entity_name}' in configuration '{name}': " f"valid={result.is_valid}, errors={result.error_count}")
     return result
 
 
@@ -84,7 +82,7 @@ async def get_dependencies(name: str) -> dict[str, Any]:
     - Foreign key relationships
 
     Args:
-        name: Configuration name
+        name: Project name
 
     Returns:
         Dependency graph with nodes, edges, cycles, and topological order
@@ -92,13 +90,10 @@ async def get_dependencies(name: str) -> dict[str, Any]:
     project_service: ProjectService = get_project_service()
     dependency_service: DependencyService = get_dependency_service()
 
-    # Load configuration
-    config: Project = project_service.load_project(name)
-
-    # Analyze dependencies
-    graph: DependencyGraph = dependency_service.analyze_dependencies(config)
-
+    project: Project = project_service.load_project(name)
+    graph: DependencyGraph = dependency_service.analyze_dependencies(project)
     logger.debug(f"Retrieved dependency graph for '{name}': " f"{len(graph['nodes'])} nodes, {len(graph['edges'])} edges")
+
     return dict(graph)
 
 
@@ -106,10 +101,10 @@ async def get_dependencies(name: str) -> dict[str, Any]:
 @handle_endpoint_errors
 async def check_dependencies(name: str) -> dict[str, Any]:
     """
-    Check for circular dependencies in configuration.
+    Check for circular dependencies in project.
 
     Args:
-        name: Configuration name
+        name: Project name
 
     Returns:
         Dictionary with has_cycles flag, list of cycles, and cycle count
@@ -117,13 +112,11 @@ async def check_dependencies(name: str) -> dict[str, Any]:
     project_service: ProjectService = get_project_service()
     dependency_service: DependencyService = get_dependency_service()
 
-    # Load configuration
-    config: Project = project_service.load_project(name)
-
-    # Check for circular dependencies
-    result = dependency_service.check_circular_dependencies(config)
+    project: Project = project_service.load_project(name)
+    result = dependency_service.check_circular_dependencies(project)
 
     logger.info(f"Checked circular dependencies for '{name}': " f"has_cycles={result['has_cycles']}, cycles={result['cycle_count']}")
+
     return result
 
 
@@ -134,7 +127,7 @@ async def preview_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, An
     Preview automatic fixes for validation errors.
 
     Args:
-        name: Configuration name
+        name: Project name
         errors: List of validation errors to generate fixes for
 
     Returns:
@@ -144,13 +137,8 @@ async def preview_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, An
     project_service: ProjectService = get_project_service()
     auto_fix_service = AutoFixService(project_service)
 
-    # Convert dicts to ValidationError objects
     validation_errors: list[ValidationError] = [ValidationError(**error) for error in errors]
-
-    # Generate fix suggestions
     suggestions: list[FixSuggestion] = auto_fix_service.generate_fix_suggestions(validation_errors)
-
-    # Preview fixes
     preview: dict[str, Any] = await auto_fix_service.preview_fixes(name, suggestions)
 
     return preview
@@ -160,16 +148,16 @@ async def preview_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, An
 @handle_endpoint_errors
 async def apply_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]:
     """
-    Apply automatic fixes to configuration.
+    Apply automatic fixes to project.
 
     This will:
-    1. Create a backup of the configuration
+    1. Create a backup of the project
     2. Apply suggested fixes
-    3. Save the updated configuration
+    3. Save the updated project
     4. Return the result
 
     Args:
-        name: Configuration name
+        name: Project name
         errors: List of validation errors to fix
 
     Returns:
@@ -179,13 +167,8 @@ async def apply_fixes(name: str, errors: list[dict[str, Any]]) -> dict[str, Any]
     project_service: ProjectService = get_project_service()
     auto_fix_service = AutoFixService(project_service)
 
-    # Convert dicts to ValidationError objects
     validation_errors: list[ValidationError] = [ValidationError(**error) for error in errors]
-
-    # Generate fix suggestions
     suggestions: list[FixSuggestion] = auto_fix_service.generate_fix_suggestions(validation_errors)
-
-    # Apply fixes
     result: FixResult = await auto_fix_service.apply_fixes(name, suggestions)
 
     if result.success:

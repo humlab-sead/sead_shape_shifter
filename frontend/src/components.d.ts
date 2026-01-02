@@ -8,6 +8,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AdvancedEntityConfig: typeof import('./components/entities/AdvancedEntityConfig.vue')['default']
+    AppendEditor: typeof import('./components/entities/AppendEditor.vue')['default']
     CircularDependencyAlert: typeof import('./components/dependencies/CircularDependencyAlert.vue')['default']
     CreateProjectDialog: typeof import('./components/projects/CreateProjectDialog.vue')['default']
     DataPreviewTable: typeof import('./components/DataPreviewTable.vue')['default']
@@ -21,6 +22,9 @@ declare module 'vue' {
     EntityPreviewPanel: typeof import('./components/entities/EntityPreviewPanel.vue')['default']
     EntityResultsList: typeof import('./components/testrun/EntityResultsList.vue')['default']
     ErrorAlert: typeof import('./components/common/ErrorAlert.vue')['default']
+    ExecuteDialog: typeof import('./components/execute/ExecuteDialog.vue')['default']
+    ExtraColumnsEditor: typeof import('./components/entities/ExtraColumnsEditor.vue')['default']
+    FiltersEditor: typeof import('./components/entities/FiltersEditor.vue')['default']
     FixedValuesGrid: typeof import('./components/entities/FixedValuesGrid.vue')['default']
     ForeignKeyEditor: typeof import('./components/entities/ForeignKeyEditor.vue')['default']
     ForeignKeyTester: typeof import('./components/entities/ForeignKeyTester.vue')['default']
@@ -46,6 +50,7 @@ declare module 'vue' {
     TestRunProject: typeof import('./components/testrun/TestRunProject.vue')['default']
     TestRunResults: typeof import('./components/testrun/TestRunResults.vue')['default']
     ThemeColorPicker: typeof import('./components/ThemeColorPicker.vue')['default']
+    UnnestEditor: typeof import('./components/entities/UnnestEditor.vue')['default']
     ValidationMessageList: typeof import('./components/validation/ValidationMessageList.vue')['default']
     ValidationPanel: typeof import('./components/validation/ValidationPanel.vue')['default']
     ValidationSuggestion: typeof import('./components/validation/ValidationSuggestion.vue')['default']

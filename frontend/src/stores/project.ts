@@ -54,7 +54,8 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     error.value = null
     try {
-      selectedProject.value = await api.projects.get(name)
+      // Activate project in backend (loads into ApplicationState)
+      selectedProject.value = await api.projects.activate(name)
       hasUnsavedChanges.value = false
       return selectedProject.value
     } catch (err) {

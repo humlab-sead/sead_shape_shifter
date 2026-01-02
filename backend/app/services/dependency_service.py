@@ -30,7 +30,7 @@ class DependencyGraph(dict):
     def __init__(
         self,
         nodes: list[DependencyNode],
-        edges: list[tuple[str, str]],
+        edges: list[dict[str, Any]],
         has_cycles: bool,
         cycles: list[list[str]],
         topological_order: list[str] | None,
@@ -79,7 +79,35 @@ class DependencyService:
         nodes: list[DependencyNode] = [
             DependencyNode(name=name, depends_on=deps, depth=depths.get(name, 0)) for name, deps in dependency_map.items()
         ]
-        edges: list[tuple[str, str]] = [(entity, dep) for entity, deps in dependency_map.items() for dep in deps]
+        
+        # Build edges with foreign key information
+        edges: list[dict[str, Any]] = []
+        for entity_name in api_project.entities:
+            entity_config = api_project.entities[entity_name]
+            foreign_keys = entity_config.get('foreign_keys') or []
+            
+            for fk in foreign_keys:
+                target_entity = fk.get('entity')
+                if target_entity:
+                    local_keys = fk.get('local_keys', [])
+                    remote_keys = fk.get('remote_keys', [])
+                    
+                    # Format keys for display
+                    if isinstance(local_keys, list) and isinstance(remote_keys, list):
+                        keys_label = ' → '.join([
+                            ', '.join(local_keys) if local_keys else '',
+                            ', '.join(remote_keys) if remote_keys else ''
+                        ])
+                    else:
+                        keys_label = f"{local_keys} → {remote_keys}"
+                    
+                    edges.append({
+                        'source': entity_name,
+                        'target': target_entity,
+                        'local_keys': local_keys,
+                        'remote_keys': remote_keys,
+                        'label': keys_label
+                    })
 
         logger.debug(f"Analyzed dependencies: {len(nodes)} nodes, {len(edges)} edges, " f"cycles: {has_cycles}")
 

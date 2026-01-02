@@ -32,8 +32,8 @@
             <strong>{{ foreignKey.entity }}</strong>
           </div>
           <div class="text-caption mt-1">
-            Keys: {{ foreignKey.local_keys.join(', ') }} →
-            {{ foreignKey.remote_keys.join(', ') }}
+            Keys: {{ Array.isArray(foreignKey.local_keys) ? foreignKey.local_keys.join(', ') : foreignKey.local_keys }} →
+            {{ Array.isArray(foreignKey.remote_keys) ? foreignKey.remote_keys.join(', ') : foreignKey.remote_keys }}
           </div>
           <div class="text-caption">Type: {{ foreignKey.how || 'left' }}</div>
         </v-alert>
