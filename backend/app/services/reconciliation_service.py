@@ -28,7 +28,7 @@ from backend.app.services import ProjectService, ShapeShiftService
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.loaders import DataLoader, DataLoaders
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
-
+from backend.app.core.config import settings
 
 class ReconciliationSourceResolver(abc.ABC):
 
@@ -224,7 +224,7 @@ class ReconciliationService:
 
         if not recon_config_filename.exists():
             logger.info(f"No reconciliation config found for '{project_name}', creating empty config")
-            return ReconciliationConfig(service_url="http://localhost:8000", entities={})
+            return ReconciliationConfig(service_url=settings.reconciliation_service_url, entities={})
 
         logger.debug(f"Loading reconciliation config from {recon_config_filename}")
         with open(recon_config_filename, "r", encoding="utf-8") as f:
