@@ -18,9 +18,11 @@ import pytest
 
 from backend.app.clients.reconciliation_client import ReconciliationClient, ReconciliationQuery
 from backend.app.models.reconciliation import ReconciliationCandidate
+from utility import R
 
 # pylint: disable=redefined-outer-name
 
+RECONCILIATION_SERVICE_URL = "http://localhost:8000"
 
 class TestReconciliationQuery:
     """Tests for ReconciliationQuery class."""
@@ -78,28 +80,28 @@ class TestReconciliationClient:
 
     def test_client_initialization(self):
         """Test client initialization with base URL."""
-        client = ReconciliationClient(base_url="http://localhost:8000/reconcile")
+        client = ReconciliationClient(base_url=f"{RECONCILIATION_SERVICE_URL}/reconcile")
 
-        assert client.base_url == "http://localhost:8000/reconcile"
+        assert client.base_url == f"{RECONCILIATION_SERVICE_URL}/reconcile"
         assert client.timeout == 30.0
         assert client._client is None
 
     def test_client_initialization_strips_trailing_slash(self):
         """Test that trailing slash is stripped from base URL."""
-        client = ReconciliationClient(base_url="http://localhost:8000/reconcile/")
+        client = ReconciliationClient(base_url=f"{RECONCILIATION_SERVICE_URL}/reconcile/")
 
-        assert client.base_url == "http://localhost:8000/reconcile"
+        assert client.base_url == f"{RECONCILIATION_SERVICE_URL}/reconcile"
 
     def test_client_custom_timeout(self):
         """Test client with custom timeout."""
-        client = ReconciliationClient(base_url="http://localhost:8000", timeout=60.0)
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL, timeout=60.0)
 
         assert client.timeout == 60.0
 
     @pytest.mark.asyncio
     async def test_get_client_creates_client(self):
         """Test that _get_client creates HTTP client."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         http_client = await client._get_client()
 
@@ -113,7 +115,7 @@ class TestReconciliationClient:
     @pytest.mark.asyncio
     async def test_get_client_reuses_existing(self):
         """Test that _get_client reuses existing client."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         http_client1 = await client._get_client()
         http_client2 = await client._get_client()
@@ -126,7 +128,7 @@ class TestReconciliationClient:
     @pytest.mark.asyncio
     async def test_close_cleans_up_client(self):
         """Test that close properly cleans up HTTP client."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         # Create client
         await client._get_client()
@@ -139,7 +141,7 @@ class TestReconciliationClient:
     @pytest.mark.asyncio
     async def test_close_when_no_client(self):
         """Test that close works when no client exists."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         # Should not raise
         await client.close()
@@ -152,7 +154,7 @@ class TestReconciliationClientBatchReconcile:
     @pytest.mark.asyncio
     async def test_reconcile_batch_basic(self):
         """Test basic batch reconciliation."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         queries = {
             "q0": ReconciliationQuery(query="SITE001", entity_type="Site", limit=3),
@@ -199,7 +201,7 @@ class TestReconciliationClientBatchReconcile:
     @pytest.mark.asyncio
     async def test_reconcile_batch_empty_results(self):
         """Test batch reconciliation with no matches."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         queries = {"q0": ReconciliationQuery(query="UNKNOWN", entity_type="Site")}
 
@@ -222,7 +224,7 @@ class TestReconciliationClientBatchReconcile:
     @pytest.mark.asyncio
     async def test_reconcile_batch_http_error(self):
         """Test batch reconciliation handles HTTP errors."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         queries = {"q0": ReconciliationQuery(query="Test", entity_type="Site")}
 
@@ -242,7 +244,7 @@ class TestReconciliationClientBatchReconcile:
     @pytest.mark.asyncio
     async def test_reconcile_batch_calls_correct_endpoint(self):
         """Test that reconcile_batch calls the correct API endpoint."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         queries = {"q0": ReconciliationQuery(query="Test", entity_type="Site")}
         mock_response = {"q0": {"result": []}}
@@ -259,14 +261,14 @@ class TestReconciliationClientBatchReconcile:
             # Verify correct endpoint was called
             mock_http_client.post.assert_called_once()
             call_args = mock_http_client.post.call_args
-            assert call_args[0][0] == "http://localhost:8000/reconcile"
+            assert call_args[0][0] == f"{RECONCILIATION_SERVICE_URL}/reconcile"
 
         await client.close()
 
     @pytest.mark.asyncio
     async def test_reconcile_batch_with_properties(self):
         """Test batch reconciliation with property filters."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         queries = {"q0": ReconciliationQuery(query="Site Name", entity_type="Site", properties=[{"pid": "latitude", "v": 60.0}])}
 
@@ -293,7 +295,7 @@ class TestReconciliationClientSuggestEntities:
     @pytest.mark.asyncio
     async def test_suggest_entities_basic(self):
         """Test basic entity suggestion."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         mock_response = {
             "result": [
@@ -321,7 +323,7 @@ class TestReconciliationClientSuggestEntities:
     @pytest.mark.asyncio
     async def test_suggest_entities_with_type_filter(self):
         """Test entity suggestion with type filter."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         mock_response = {"result": [{"id": "site_1", "name": "Test Site", "score": 95.0, "match": False}]}
 
@@ -345,7 +347,7 @@ class TestReconciliationClientSuggestEntities:
     @pytest.mark.asyncio
     async def test_suggest_entities_limit_enforcement(self):
         """Test that suggestion limit is enforced."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         # Return more results than limit
         mock_response = {"result": [{"id": f"site_{i}", "name": f"Site {i}", "score": 90.0 - i, "match": False} for i in range(20)]}
@@ -364,7 +366,7 @@ class TestReconciliationClientSuggestEntities:
     @pytest.mark.asyncio
     async def test_suggest_entities_empty_results(self):
         """Test entity suggestion with no matches."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         mock_response = {"result": []}
 
@@ -384,7 +386,7 @@ class TestReconciliationClientSuggestEntities:
     @pytest.mark.asyncio
     async def test_suggest_entities_http_error(self):
         """Test entity suggestion handles HTTP errors."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         mock_http_client = AsyncMock()
         mock_response = MagicMock()
@@ -406,7 +408,7 @@ class TestReconciliationClientEntityPreview:
     @pytest.mark.asyncio
     async def test_get_entity_preview_basic(self):
         """Test getting entity preview."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         mock_response = {"id": "site_123", "html": "<div>Site preview content</div>"}
 
@@ -428,7 +430,7 @@ class TestReconciliationClientEntityPreview:
     @pytest.mark.asyncio
     async def test_get_entity_preview_calls_correct_endpoint(self):
         """Test that get_entity_preview calls correct endpoint."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         mock_response = {"id": "site_1", "html": "<div>Preview</div>"}
 
@@ -444,7 +446,7 @@ class TestReconciliationClientEntityPreview:
             # Verify correct endpoint
             mock_http_client.get.assert_called_once()
             call_args = mock_http_client.get.call_args
-            assert call_args[0][0] == "http://localhost:8000/flyout/entity"
+            assert call_args[0][0] == f"{RECONCILIATION_SERVICE_URL}/flyout/entity"
             assert call_args[1]["params"]["id"] == "site_1"
 
         await client.close()
@@ -452,7 +454,7 @@ class TestReconciliationClientEntityPreview:
     @pytest.mark.asyncio
     async def test_get_entity_preview_http_error(self):
         """Test entity preview handles HTTP errors."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         mock_http_client = AsyncMock()
         mock_response = MagicMock()
@@ -474,7 +476,7 @@ class TestReconciliationClientServiceManifest:
     @pytest.mark.asyncio
     async def test_get_service_manifest_basic(self):
         """Test getting service manifest."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         mock_response = {
             "name": "SEAD Reconciliation Service",
@@ -504,7 +506,7 @@ class TestReconciliationClientServiceManifest:
     @pytest.mark.asyncio
     async def test_get_service_manifest_calls_correct_endpoint(self):
         """Test that get_service_manifest calls correct endpoint."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         mock_response = {"name": "Test Service"}
 
@@ -520,14 +522,14 @@ class TestReconciliationClientServiceManifest:
             # Verify correct endpoint
             mock_http_client.get.assert_called_once()
             call_args = mock_http_client.get.call_args
-            assert call_args[0][0] == "http://localhost:8000/reconcile"
+            assert call_args[0][0] == f"{RECONCILIATION_SERVICE_URL}/reconcile"
 
         await client.close()
 
     @pytest.mark.asyncio
     async def test_get_service_manifest_http_error(self):
         """Test service manifest handles HTTP errors."""
-        client = ReconciliationClient(base_url="http://localhost:8000")
+        client = ReconciliationClient(base_url=RECONCILIATION_SERVICE_URL)
 
         mock_http_client = AsyncMock()
         mock_response = MagicMock()
