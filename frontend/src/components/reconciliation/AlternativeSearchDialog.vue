@@ -139,6 +139,7 @@ watch(() => props.modelValue, (newValue) => {
 
 // Dialog visibility change
 function onDialogChange(value: boolean) {
+  console.log('[AlternativeSearchDialog] Dialog visibility changed to:', value)
   emit('update:modelValue', value)
 }
 
@@ -201,15 +202,21 @@ function extractIdFromUri(uri: string): number | string {
 
 // Accept selected suggestion
 function accept() {
+  console.log('[AlternativeSearchDialog] Accept clicked, selectedSuggestion:', selectedSuggestion.value)
   if (selectedSuggestion.value) {
     emit('accept', selectedSuggestion.value)
     dialogVisible.value = false
+    console.log('[AlternativeSearchDialog] Dialog closed, emitting update:modelValue(false)')
+    emit('update:modelValue', false)
   }
 }
 
 // Cancel
 function cancel() {
+  console.log('[AlternativeSearchDialog] Cancel clicked')
   dialogVisible.value = false
+  console.log('[AlternativeSearchDialog] Dialog closed, emitting update:modelValue(false)')
+  emit('update:modelValue', false)
 }
 </script>
 
