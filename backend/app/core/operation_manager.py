@@ -184,8 +184,7 @@ class OperationManager:
                 progress.completed_at = datetime.now()
 
         logger.debug(
-            f"Operation {operation_id}: {progress.current}/{progress.total} "
-            f"({progress.progress_percent:.1f}%) - {progress.message}"
+            f"Operation {operation_id}: {progress.current}/{progress.total} " f"({progress.progress_percent:.1f}%) - {progress.message}"
         )
 
     def complete_operation(self, operation_id: str, message: str = "Completed successfully") -> None:

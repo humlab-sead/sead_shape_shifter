@@ -39,9 +39,7 @@ async def get_reconciliation_service() -> ReconciliationService:
 
 @router.get("/reconciliation/health")
 @handle_endpoint_errors
-async def check_reconciliation_service_health(
-    service: ReconciliationService = Depends(get_reconciliation_service)
-) -> dict:
+async def check_reconciliation_service_health(service: ReconciliationService = Depends(get_reconciliation_service)) -> dict:
     """
     Check if the reconciliation service is available.
 

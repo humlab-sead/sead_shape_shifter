@@ -89,23 +89,23 @@ class ReconciliationClient:
         try:
             client: httpx.AsyncClient = await self._get_client()
             logger.debug(f"[RECON] Client obtained, making POST request...")
-            
+
             endpoint_url = f"{self.base_url}/reconcile"
             logger.debug(f"[RECON] POST {endpoint_url}")
-            
+
             response: httpx.Response = await client.post(endpoint_url, data={"queries": queries_json})
-            
+
             logger.debug(f"[RECON] Response body: {response.text}")
-            
+
             logger.debug(f"[RECON] Response received: status={response.status_code}")
             logger.debug(f"[RECON] Response headers: {dict(response.headers)}")
-            
+
             response.raise_for_status()
             logger.debug(f"[RECON] Response status OK")
         except httpx.ConnectError as e:
             logger.error(f"[RECON] Connection failed to {self.base_url}: {type(e).__name__}: {e}")
             logger.error(f"[RECON] Connection error details: {e.__class__.__module__}.{e.__class__.__name__}")
-            if hasattr(e, '__cause__') and e.__cause__:
+            if hasattr(e, "__cause__") and e.__cause__:
                 logger.error(f"[RECON] Underlying cause: {type(e.__cause__).__name__}: {e.__cause__}")
             raise
         except httpx.TimeoutException as e:
@@ -122,7 +122,7 @@ class ReconciliationClient:
         # Parse response
         logger.debug(f"[RECON] Parsing response data...")
         results: dict[str, list[ReconciliationCandidate]] = {}
-        
+
         try:
             response_data: dict[str, Any] = response.json()
             logger.debug(f"[RECON] Response parsed successfully, {len(response_data)} query results")
@@ -137,8 +137,9 @@ class ReconciliationClient:
                 candidates.append(ReconciliationCandidate(**candidate_data))
             results[qid] = candidates
 
-        logger.info(f"[RECON] Batch reconciliation completed: {len(results)} queries, " 
-                   f"{sum(len(c) for c in results.values())} total candidates")
+        logger.info(
+            f"[RECON] Batch reconciliation completed: {len(results)} queries, " f"{sum(len(c) for c in results.values())} total candidates"
+        )
 
         return results
 
@@ -156,44 +157,28 @@ class ReconciliationClient:
         try:
             client: httpx.AsyncClient = await self._get_client()
             logger.debug(f"[RECON] Sending GET request to health endpoint...")
-            
+
             response: httpx.Response = await client.get(f"{self.base_url}/reconcile")
             logger.debug(f"[RECON] Health check response: status={response.status_code}")
-            
+
             response.raise_for_status()
-            
+
             # OpenRefine returns service metadata on GET
             data = response.json()
             logger.info(f"[RECON] Service is ONLINE: {data.get('name', 'Unknown')}")
-            return {
-                "status": "online",
-                "service_name": data.get("name", "Unknown"),
-                "service_url": self.base_url
-            }
+            return {"status": "online", "service_name": data.get("name", "Unknown"), "service_url": self.base_url}
         except httpx.ConnectError as e:
             logger.error(f"[RECON] Health check - Connection failed: {type(e).__name__}: {e}")
-            if hasattr(e, '__cause__') and e.__cause__:
+            if hasattr(e, "__cause__") and e.__cause__:
                 logger.error(f"[RECON] Health check - Underlying cause: {type(e.__cause__).__name__}: {e.__cause__}")
-            return {
-                "status": "offline",
-                "service_url": self.base_url,
-                "error": f"Connection failed: {e}"
-            }
+            return {"status": "offline", "service_url": self.base_url, "error": f"Connection failed: {e}"}
         except httpx.TimeoutException as e:
             logger.error(f"[RECON] Health check - Timeout after {self.timeout}s: {e}")
-            return {
-                "status": "offline",
-                "service_url": self.base_url,
-                "error": f"Timeout: {e}"
-            }
+            return {"status": "offline", "service_url": self.base_url, "error": f"Timeout: {e}"}
         except Exception as e:
             logger.error(f"[RECON] Health check - Unexpected error: {type(e).__name__}: {e}")
             logger.exception("[RECON] Health check - Full traceback:")
-            return {
-                "status": "offline",
-                "service_url": self.base_url,
-                "error": str(e)
-            }
+            return {"status": "offline", "service_url": self.base_url, "error": str(e)}
 
     async def suggest_entities(self, prefix: str, entity_type: str | None = None, limit: int = 10) -> list[ReconciliationCandidate]:
         """

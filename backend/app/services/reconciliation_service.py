@@ -13,6 +13,7 @@ from backend.app.clients.reconciliation_client import (
     ReconciliationClient,
     ReconciliationQuery,
 )
+from backend.app.core.config import settings
 from backend.app.core.operation_manager import OperationStatus, operation_manager
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models import (
@@ -29,7 +30,7 @@ from backend.app.services import ProjectService, ShapeShiftService
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.loaders import DataLoader, DataLoaders
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
-from backend.app.core.config import settings
+
 
 class ReconciliationSourceResolver(abc.ABC):
 
@@ -434,7 +435,7 @@ class ReconciliationService:
         # For progress tracking, we'll process in smaller batches
         batch_size = 50
         all_results: dict[str, list[ReconciliationCandidate]] = {}
-        
+
         # Convert dict to list of items for batching
         queries_items = list(query_data.queries.items())
         total_queries = len(queries_items)
@@ -448,7 +449,7 @@ class ReconciliationService:
             # Create batch dict
             batch_items = queries_items[i : i + batch_size]
             batch_dict = dict(batch_items)
-            
+
             batch_results = await self.recon_client.reconcile_batch(batch_dict)
             all_results.update(batch_results)
 
