@@ -218,3 +218,32 @@ async def delete_mapping(
         source_values=source_values,
         sead_id=None,  # None = delete
     )
+
+
+@router.post("/projects/{project_name}/reconciliation/{entity_name}/mark-unmatched")
+@handle_endpoint_errors
+async def mark_as_unmatched(
+    project_name: str,
+    entity_name: str,
+    source_values: list[Any],
+    notes: str | None = None,
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> ReconciliationConfig:
+    """
+    Mark an entity as "will not match" - local-only entity with no SEAD mapping.
+
+    Args:
+        project_name: Project name
+        entity_name: Entity name
+        source_values: Source key values
+        notes: Optional reason/notes for why it won't match
+
+    Returns:
+        Updated reconciliation configuration
+    """
+    return service.mark_as_unmatched(
+        project_name=project_name,
+        entity_name=entity_name,
+        source_values=source_values,
+        notes=notes,
+    )

@@ -489,3 +489,60 @@ class ReconciliationService:
 
         self.save_reconciliation_config(project_name, recon_config)
         return recon_config
+
+    def mark_as_unmatched(
+        self,
+        project_name: str,
+        entity_name: str,
+        source_values: list[Any],
+        notes: str | None = None,
+    ) -> ReconciliationConfig:
+        """
+        Mark an entity as "will not match" - local-only with no SEAD mapping.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            source_values: Source key values
+            notes: Optional reason for marking as unmatched
+
+        Returns:
+            Updated reconciliation configuration
+        """
+        from datetime import datetime, timezone
+
+        recon_config: ReconciliationConfig = self.load_reconciliation_config(project_name)
+
+        if entity_name not in recon_config.entities:
+            raise NotFoundError(f"Entity '{entity_name}' not in reconciliation config")
+
+        entity_spec = recon_config.entities[entity_name]
+
+        # Find existing mapping
+        existing_idx = None
+        for idx, mapping in enumerate(entity_spec.mapping):
+            if mapping.source_values == source_values:
+                existing_idx = idx
+                break
+
+        # Create unmatched mapping
+        new_mapping = ReconciliationMapping(
+            source_values=source_values,
+            sead_id=None,  # No SEAD match
+            will_not_match=True,  # Mark as local-only
+            confidence=None,  # Not applicable
+            notes=notes or "Marked as local-only (will not match)",
+            created_by="user",
+            created_at=None,
+            last_modified=datetime.now(timezone.utc).isoformat(),
+        )
+
+        if existing_idx is not None:
+            entity_spec.mapping[existing_idx] = new_mapping
+            logger.info(f"Updated mapping to unmatched: {source_values}")
+        else:
+            entity_spec.mapping.append(new_mapping)
+            logger.info(f"Marked as unmatched: {source_values}")
+
+        self.save_reconciliation_config(project_name, recon_config)
+        return recon_config

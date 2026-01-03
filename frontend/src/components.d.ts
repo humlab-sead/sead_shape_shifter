@@ -31,6 +31,7 @@ declare module 'vue' {
     LoadingSkeleton: typeof import('./components/common/LoadingSkeleton.vue')['default']
     MetadataEditor: typeof import('./components/MetadataEditor.vue')['default']
     PreviewFixesModal: typeof import('./components/validation/PreviewFixesModal.vue')['default']
+    PreviewMatchedDataDialog: typeof import('./components/reconciliation/PreviewMatchedDataDialog.vue')['default']
     ProjectDataSources: typeof import('./components/ProjectDataSources.vue')['default']
     QueryBuilder: typeof import('./components/query/QueryBuilder.vue')['default']
     QueryCondition: typeof import('./components/query/QueryCondition.vue')['default']
