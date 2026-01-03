@@ -95,20 +95,22 @@
     </v-toolbar>
 
     <!-- AG Grid -->
-    <ag-grid-vue
-      ref="gridRef"
-      class="ag-theme-material reconciliation-ag-grid"
-      :columnDefs="columnDefs"
-      :rowData="filteredRowData"
-      :defaultColDef="defaultColDef"
-      :getRowStyle="getRowStyle"
-      :rowSelection="'multiple'"
-      :suppressRowClickSelection="true"
-      @grid-ready="onGridReady"
-      @cell-value-changed="onCellValueChanged"
-      @selection-changed="onSelectionChanged"
-      :domLayout="'autoHeight'"
-    />
+    <div @click="handleGridClick">
+      <ag-grid-vue
+        ref="gridRef"
+        class="ag-theme-material reconciliation-ag-grid"
+        :columnDefs="columnDefs"
+        :rowData="filteredRowData"
+        :defaultColDef="defaultColDef"
+        :getRowStyle="getRowStyle"
+        :rowSelection="'multiple'"
+        :suppressRowClickSelection="true"
+        @grid-ready="onGridReady"
+        @cell-value-changed="onCellValueChanged"
+        @selection-changed="onSelectionChanged"
+        :domLayout="'autoHeight'"
+      />
+    </div>
 
     <!-- Candidate Review Dialog -->
     <v-dialog v-model="candidateDialog" max-width="700">
@@ -348,6 +350,11 @@ const markingUnmatched = ref(false)
 const selectedRow = ref<ReconciliationPreviewRow | null>(null)
 const selectedCandidate = ref<ReconciliationCandidate | null>(null)
 
+// Debug: Watch alternativeSearchDialog changes
+watch(alternativeSearchDialog, (newValue, oldValue) => {
+  console.log('[ReconciliationGrid] alternativeSearchDialog changed from', oldValue, 'to', newValue)
+})
+
 // Bulk actions
 const selectedRows = ref<ReconciliationPreviewRow[]>([])
 const bulkAcceptDialog = ref(false)
@@ -468,18 +475,6 @@ const columnDefs = computed<ColDef[]>(() => {
       </button>`)
 
       return buttons.join(' ')
-    },
-    onCellClicked: (params: any) => {
-      const target = (params.event?.target as HTMLElement)
-      const action = target.closest('button')?.getAttribute('data-action')
-
-      if (action === 'review' && params.value && params.value.length > 0) {
-        showCandidates(params.data)
-      } else if (action === 'search') {
-        openAlternativeSearch(params.data)
-      } else if (action === 'unmatched') {
-        openUnmatchedDialog(params.data)
-      }
     },
   })
 
@@ -678,10 +673,44 @@ function getRowDisplayText(row: ReconciliationPreviewRow): string {
   return keyValues
 }
 
+// Handle clicks on action buttons in the grid
+function handleGridClick(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  
+  // Find the button that was clicked
+  const button = target.closest('button[data-action]') as HTMLButtonElement
+  if (!button) return
+  
+  const action = button.getAttribute('data-action')
+  const rowIndex = button.getAttribute('data-row-index')
+  
+  console.log('[ReconciliationGrid] Button clicked - action:', action, 'rowIndex:', rowIndex)
+  
+  if (rowIndex === null) return
+  
+  const row = filteredRowData.value[parseInt(rowIndex)]
+  if (!row) {
+    console.warn('[ReconciliationGrid] No row found at index:', rowIndex)
+    return
+  }
+  
+  console.log('[ReconciliationGrid] Row data:', row)
+  
+  if (action === 'review' && row.candidates && row.candidates.length > 0) {
+    showCandidates(row)
+  } else if (action === 'search') {
+    openAlternativeSearch(row)
+  } else if (action === 'unmatched') {
+    openUnmatchedDialog(row)
+  }
+}
+
 // Open alternative search dialog
 function openAlternativeSearch(row: ReconciliationPreviewRow) {
+  console.log('[ReconciliationGrid] Opening alternative search for row:', row)
   selectedRow.value = row
   alternativeSearchDialog.value = true
+  console.log('[ReconciliationGrid] Dialog state:', alternativeSearchDialog.value)
 }
 
 // Handle alternative match acceptance
