@@ -83,7 +83,8 @@ class Settings(BaseSettings):
     def reconciliation_service_url(self) -> str:
         """Get reconciliation service URL."""
         return self.RECONCILIATION_SERVICE_URL
-    
+
+
 @lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
