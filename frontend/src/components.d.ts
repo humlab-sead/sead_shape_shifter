@@ -8,6 +8,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AdvancedEntityConfig: typeof import('./components/entities/AdvancedEntityConfig.vue')['default']
+    AlternativeSearchDialog: typeof import('./components/reconciliation/AlternativeSearchDialog.vue')['default']
     AppendEditor: typeof import('./components/entities/AppendEditor.vue')['default']
     CircularDependencyAlert: typeof import('./components/dependencies/CircularDependencyAlert.vue')['default']
     CreateProjectDialog: typeof import('./components/projects/CreateProjectDialog.vue')['default']
@@ -38,6 +39,7 @@ declare module 'vue' {
     QueryEditor: typeof import('./components/query/QueryEditor.vue')['default']
     QueryResults: typeof import('./components/query/QueryResults.vue')['default']
     ReconciliationGrid: typeof import('./components/reconciliation/ReconciliationGrid.vue')['default']
+    ReconciliationStatsCard: typeof import('./components/reconciliation/ReconciliationStatsCard.vue')['default']
     ReconciliationView: typeof import('./components/reconciliation/ReconciliationView.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

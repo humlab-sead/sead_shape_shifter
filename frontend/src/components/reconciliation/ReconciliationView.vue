@@ -125,6 +125,14 @@
         </div>
 
         <!-- Reconciliation Grid -->
+        <reconciliation-stats-card
+          v-if="selectedEntity && entitySpec && entityPreviewData.length"
+          :preview-data="entityPreviewData"
+          :entity-spec="entitySpec"
+          @refresh="handleAutoReconcile"
+          class="mb-4"
+        />
+
         <reconciliation-grid
           v-if="selectedEntity && entitySpec && entityPreviewData.length"
           :entity-spec="entitySpec"
@@ -171,6 +179,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { storeToRefs } from 'pinia'
 import ReconciliationGrid from './ReconciliationGrid.vue'
+import ReconciliationStatsCard from './ReconciliationStatsCard.vue'
 import type { ReconciliationPreviewRow } from '@/types'
 
 interface Props {

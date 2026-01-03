@@ -606,3 +606,55 @@ class TestReconciliationService:
 
         with pytest.raises(NotFoundError, match="Entity 'nonexistent' not in reconciliation config"):
             reconciliation_service.update_mapping("test", "nonexistent", source_values=["KEY"], sead_id=123)
+
+    def test_mark_as_unmatched(self, reconciliation_service, tmp_path, sample_recon_config):
+        """Test mark_as_unmatched creates mapping with will_not_match=True."""
+        config_file = tmp_path / "test-reconciliation.yml"
+        with open(config_file, "w", encoding="utf-8") as f:
+            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+
+        updated = reconciliation_service.mark_as_unmatched(
+            "test",
+            "site",
+            source_values=["LOCAL_SITE"],
+            notes="Local identifier only",
+        )
+
+        assert len(updated.entities["site"].mapping) == 1
+        mapping = updated.entities["site"].mapping[0]
+        assert mapping.source_values == ["LOCAL_SITE"]
+        assert mapping.sead_id is None
+        assert mapping.will_not_match is True
+        assert mapping.notes == "Local identifier only"
+        assert mapping.confidence is None
+        assert mapping.last_modified is not None
+
+    def test_mark_as_unmatched_updates_existing(self, reconciliation_service, tmp_path, sample_recon_config):
+        """Test mark_as_unmatched can convert existing mapping to unmatched."""
+        # Add existing matched mapping
+        existing_mapping = ReconciliationMapping(
+            source_values=["SITE001"],
+            sead_id=100,
+            confidence=0.8,
+            notes="Was matched",
+            created_by="system",
+            created_at="2024-01-01T00:00:00Z",
+        )
+        sample_recon_config.entities["site"].mapping = [existing_mapping]
+
+        config_file = tmp_path / "test-reconciliation.yml"
+        with open(config_file, "w", encoding="utf-8") as f:
+            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+
+        updated = reconciliation_service.mark_as_unmatched(
+            "test",
+            "site",
+            source_values=["SITE001"],
+            notes="Changed to local-only",
+        )
+
+        assert len(updated.entities["site"].mapping) == 1
+        mapping = updated.entities["site"].mapping[0]
+        assert mapping.sead_id is None
+        assert mapping.will_not_match is True
+        assert mapping.notes == "Changed to local-only"
