@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any
 
 import pandas as pd
@@ -207,8 +208,14 @@ class SubsetService:
         if replacements:
             for col, replacement_map in replacements.items():
                 if col in result.columns:
-                    # Explicitly specify replacement dict (avoids FutureWarning)
-                    result[col] = result[col].replace(to_replace=replacement_map)
+                    # `Series.replace(to_replace=<scalar/list>)` previously defaulted to `method="pad"` when `value` was omitted,
+                    # but that behavior is deprecated. Support both:
+                    # - Mapping: explicit old->new replacements
+                    # - Scalar/list: treat as "values to blank out", then forward-fill (legacy pad behavior)
+                    if isinstance(replacement_map, Mapping):
+                        result[col] = result[col].replace(to_replace=replacement_map)
+                    else:
+                        result[col] = result[col].replace(to_replace=replacement_map, value=pd.NA).ffill()
 
         return result
 
