@@ -13,9 +13,15 @@ entities:
     remote:
       service_type: site
       columns: []
-    auto_accept_threshold: 0.95
-    review_threshold: 0.7
-    mapping: []
+    auto_accept_threshold: 0.5
+    review_threshold: 0.4
+    mapping:
+    - source_values:
+      - Göteborg 342
+      sead_id: 4420
+      confidence: 0.6923
+      notes: 'Auto-matched: Goteborg'
+      created_by: system
   taxon:
     source: taxon_with_hierarchy
     keys:
