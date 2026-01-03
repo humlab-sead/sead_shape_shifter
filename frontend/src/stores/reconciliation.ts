@@ -75,7 +75,8 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   async function autoReconcile(
     projectName: string,
     entityName: string,
-    threshold: number = 0.95
+    threshold: number = 0.95,
+    reviewThreshold?: number
   ): Promise<AutoReconcileResult> {
     loading.value = true
     error.value = null
@@ -83,7 +84,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
       const response = await apiClient.post(
         `/projects/${projectName}/reconciliation/${entityName}/auto-reconcile`,
         null,
-        { params: { threshold } }
+        { params: { threshold, review_threshold: reviewThreshold } }
       )
 
       // Reload config to get updated mappings
