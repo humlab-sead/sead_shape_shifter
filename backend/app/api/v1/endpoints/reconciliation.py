@@ -78,6 +78,7 @@ async def auto_reconcile_entity(
     project_name: str,
     entity_name: str,
     threshold: float = Query(0.95, ge=0.0, le=1.0),
+    review_threshold: float | None = Query(None, ge=0.0, le=1.0),
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> AutoReconcileResult:
     """
@@ -87,6 +88,7 @@ async def auto_reconcile_entity(
         project_name: Project name
         entity_name: Entity to reconcile
         threshold: Auto-accept threshold (default 0.95 = 95%)
+        review_threshold: Review threshold (default uses entity spec value)
 
     Returns:
         AutoReconcileResult with counts and candidates
@@ -102,6 +104,11 @@ async def auto_reconcile_entity(
     # Update threshold if provided
     if threshold != entity_spec.auto_accept_threshold:
         entity_spec.auto_accept_threshold = threshold
+    if review_threshold is not None and review_threshold != entity_spec.review_threshold:
+        entity_spec.review_threshold = review_threshold
+
+    # Persist updated thresholds even if reconciliation is blocked/fails.
+    service.save_reconciliation_config(project_name, recon_config)
 
     if get_app_state_manager().is_dirty(project_name):
         raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
