@@ -99,6 +99,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
+import { apiClient } from '@/api/client'
 import type { ReconciliationCandidate } from '@/types'
 
 interface Props {
@@ -155,18 +156,13 @@ async function searchAlternatives() {
   searched.value = false
 
   try {
-    // Call the reconciliation suggest endpoint
-    const response = await fetch(
-      `/api/v1/projects/${props.projectName}/reconciliation/${props.entityName}/suggest?` +
-        new URLSearchParams({ prefix: searchTerm.value })
+    // Call the reconciliation suggest endpoint using apiClient
+    const response = await apiClient.get(
+      `/projects/${props.projectName}/reconciliation/${props.entityName}/suggest`,
+      { params: { prefix: searchTerm.value } }
     )
 
-    if (!response.ok) {
-      throw new Error('Search failed')
-    }
-
-    const data = await response.json()
-    suggestions.value = data.candidates || []
+    suggestions.value = response.data.candidates || []
     searched.value = true
   } catch (error) {
     console.error('Alternative search failed:', error)
