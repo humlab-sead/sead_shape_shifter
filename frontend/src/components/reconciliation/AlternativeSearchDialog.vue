@@ -159,10 +159,10 @@ async function searchAlternatives() {
     // Call the reconciliation suggest endpoint using apiClient
     const response = await apiClient.get(
       `/projects/${props.projectName}/reconciliation/${props.entityName}/suggest`,
-      { params: { prefix: searchTerm.value } }
+      { params: { query: searchTerm.value } }
     )
 
-    suggestions.value = response.data.candidates || []
+    suggestions.value = response.data.candidates || response.data || []
     searched.value = true
   } catch (error) {
     console.error('Alternative search failed:', error)
