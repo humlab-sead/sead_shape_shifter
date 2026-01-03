@@ -139,6 +139,11 @@ backend-test:
 	@echo "Running backend tests..."
 	@uv run pytest backend/tests -v
 
+.PHONY: reconcile
+reconcile:
+	@echo "Running auto-reconciliation CLI..."
+	@PYTHONPATH=.:backend uv run python scripts/auto_reconcile.py $(ARGS)
+
 ################################################################################
 # Project Editor UI
 ################################################################################
