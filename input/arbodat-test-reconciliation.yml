@@ -1,167 +1,115 @@
-# Example SEAD Reconciliation Configuration
-# This file demonstrates reconciliation setup for common entity types
-
-# Base URL of the OpenRefine reconciliation service
-service_url: "http://localhost:8000"
-
-# Entity-specific reconciliation specifications
+service_url: http://localhost:8000
 entities:
-  
-  # Example: Site reconciliation with geographic properties
   site:
-    # Optional: specify data source for reconciliation
-    # - null/empty/same as entity name: use entity preview data (default)
-    # - another entity name: use that entity's preview data
-    # - dict with data_source/type/query: execute custom query
-    source: null  # Use site entity preview data
-    
-    keys:
-      - site_name  # Primary identifier
-    
-    property_mappings:
-      # Map SEAD service property IDs to source column names
-      latitude: site_latitude       # Geographic coordinates
-      longitude: site_longitude
-      country: country_name         # Location context
-      national_id: national_site_id # Official identifier
-      place_name: locality          # Additional location info
-    
-    remote:
-      service_type: "site"  # Must match service defaultTypes
-    
-    auto_accept_threshold: 0.95  # Auto-accept ≥95% confidence
-    review_threshold: 0.70       # Review 70-95% confidence
-    
-    mapping: []  # Auto-populated during reconciliation
-
-  # Example: Taxon reconciliation using another entity's data
-  taxon:
-    # Use enriched taxon data from a temporary/helper entity
-    source: "taxon_with_hierarchy"  # Entity with additional taxonomic fields
-    
-    keys:
-      - species_name  # Primary species identifier
-    
-    property_mappings:
-      genus: genus_col           # Taxonomic hierarchy
-      family: family_col
-      scientific_name: binomial  # Full scientific name
-    
-    remote:
-      service_type: "taxon"
-    
-    auto_accept_threshold: 0.90
-    review_threshold: 0.65
-    
-    mapping: []
-
-  # Example: Using custom SQL query for reconciliation data
-  site_with_coordinates:
-    source:
-      data_source: "arbodat_data"  # Data source name from main config
-      type: sql
-      query: |
-        SELECT 
-          Fustel AS site_name,
-          EVNr AS national_site_identifier,
-          rWert AS latitude,
-          hWert AS longitude,
-          Ort AS locality
-        FROM Projekte
-        WHERE rWert IS NOT NULL AND hWert IS NOT NULL
-    
     keys:
       - site_name
-    
+    columns: []
+    property_mappings:
+      latitude: site_latitude
+      longitude: site_longitude
+      country: country_name
+      national_id: national_site_id
+      place_name: locality
+    remote:
+      service_type: site
+      columns: []
+    auto_accept_threshold: 0.95
+    review_threshold: 0.7
+    mapping: []
+  taxon:
+    source: taxon_with_hierarchy
+    keys:
+      - species_name
+    columns: []
+    property_mappings:
+      genus: genus_col
+      family: family_col
+      scientific_name: binomial
+    remote:
+      service_type: taxon
+      columns: []
+    auto_accept_threshold: 0.9
+    review_threshold: 0.65
+    mapping: []
+  site_with_coordinates:
+    source:
+      data_source: arbodat_data
+      type: sql
+      query: "SELECT \n  Fustel AS site_name,\n  EVNr AS national_site_identifier,\n\
+        \  rWert AS latitude,\n  hWert AS longitude,\n  Ort AS locality\nFROM Projekte\n\
+        WHERE rWert IS NOT NULL AND hWert IS NOT NULL\n"
+    keys:
+      - site_name
+    columns: []
     property_mappings:
       latitude: latitude
       longitude: longitude
       national_id: national_site_identifier
       place_name: locality
-    
     remote:
-      service_type: "site"
-    
+      service_type: site
+      columns: []
     auto_accept_threshold: 0.95
-    review_threshold: 0.70
-    
+    review_threshold: 0.7
     mapping: []
-
-  # Example: Bibliographic reference with structured identifiers
   bibliographic_reference:
     keys:
-      - citation  # Full citation text
-    
+      - citation
+    columns: []
     property_mappings:
-      doi: doi_column           # Digital Object Identifier
+      doi: doi_column
       title: ref_title
       year: publication_year
       authors: author_names
       isbn: isbn_number
-    
     remote:
-      service_type: "bibliographic_reference"
-    
-    auto_accept_threshold: 0.98  # Strict matching for references
+      service_type: bibliographic_reference
+      columns: []
+    auto_accept_threshold: 0.98
     review_threshold: 0.85
-    
     mapping: []
-
-  # Example: Location/place reconciliation
   location:
     keys:
       - place_name
-    
+    columns: []
     property_mappings:
-      place_name: location_name  # Alternative spellings
-    
+      place_name: location_name
     remote:
-      service_type: "location"
-    
+      service_type: location
+      columns: []
     auto_accept_threshold: 0.92
     review_threshold: 0.75
-    
     mapping: []
-
-  # Example: Country reconciliation (simple, no properties needed)
   country:
     keys:
       - country_name
-    
-    property_mappings: {}  # No additional properties
-    
+    columns: []
+    property_mappings: {}
     remote:
-      service_type: "country"
-    
-    auto_accept_threshold: 0.98  # High threshold for country names
-    review_threshold: 0.90
-    
+      service_type: country
+      columns: []
+    auto_accept_threshold: 0.98
+    review_threshold: 0.9
     mapping: []
-
-  # Example: Method with abbreviation
   method:
     keys:
       - method_name
-    
+    columns: []
     property_mappings:
-      method_abbreviation: abbrev  # Method abbreviation
-    
+      method_abbreviation: abbrev
     remote:
-      service_type: "method"
-    
+      service_type: method
+      columns: []
     auto_accept_threshold: 0.95
     review_threshold: 0.75
-    
     mapping: []
-
-  # Example: Entity with reconciliation disabled
   sample:
     keys:
       - sample_name
-    
+    columns: []
     property_mappings: {}
-    
     remote:
-      service_type: null  # Reconciliation disabled - no service type
-    
+      columns: []
+    auto_accept_threshold: 0.95
+    review_threshold: 0.7
     mapping: []
