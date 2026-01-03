@@ -190,41 +190,16 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
 
   async function loadPreviewData(projectName: string, entityName: string) {
     try {
-      const response = await apiClient.post(`/projects/${projectName}/entities/${entityName}/preview`)
+      console.log(`[Reconciliation Store] Loading preview data for ${entityName}`)
+      const response = await apiClient.get(`/projects/${projectName}/reconciliation/${entityName}/preview`)
       
-      // Transform preview result to ReconciliationPreviewRow format
-      const previewResult = response.data
-      const entityConfig = reconciliationConfig.value?.entities[entityName]
-      
-      if (!previewResult.data || !entityConfig) {
-        previewData.value[entityName] = []
-        return
-      }
-
-      // Merge preview data with reconciliation mappings
-      const rows: ReconciliationPreviewRow[] = previewResult.data.map((row: any) => {
-        // Find matching mapping based on key values
-        const keyValues = entityConfig.keys.map(key => row[key])
-        const mapping = entityConfig.mapping.find(m => 
-          JSON.stringify(m.source_values) === JSON.stringify(keyValues)
-        )
-
-        return {
-          ...row,
-          sead_id: mapping?.sead_id ?? null,
-          confidence: mapping?.confidence ?? null,
-          notes: mapping?.notes ?? '',
-          will_not_match: mapping?.will_not_match ?? false,
-        } as ReconciliationPreviewRow
-      })
-
-      previewData.value[entityName] = rows
-      console.log(`[Reconciliation Store] Loaded ${rows.length} preview rows for ${entityName}`)
+      // Response is already enriched with reconciliation data
+      previewData.value[entityName] = response.data
+      console.log(`[Reconciliation Store] Loaded ${response.data.length} preview rows for ${entityName}`)
     } catch (e: any) {
-      error.value = e.response?.data?.detail || 'Failed to load preview data'
-      console.error('Failed to load preview data:', e)
+      console.error('[Reconciliation Store] Failed to load preview data:', e)
       previewData.value[entityName] = []
-      throw e
+      // Don't throw - allow UI to show empty state
     }
   }
 

@@ -255,6 +255,54 @@ class ReconciliationService:
                 allow_unicode=True,
             )
 
+    async def get_reconciliation_preview(self, project_name: str, entity_name: str) -> list[dict]:
+        """
+        Get preview data for entity with reconciliation mappings applied.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+
+        Returns:
+            List of rows with source data + reconciliation status (sead_id, confidence, etc.)
+        """
+        # Load reconciliation config
+        recon_config: ReconciliationConfig = self.load_reconciliation_config(project_name)
+
+        if entity_name not in recon_config.entities:
+            raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
+
+        entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
+
+        # Get source data
+        source_data: list[dict] = await self.get_resolved_source_data(project_name, entity_name, entity_spec)
+
+        # Enrich with reconciliation mappings
+        enriched_data: list[dict] = []
+        for row in source_data:
+            # Extract key values from row
+            key_values = tuple(row.get(k) for k in entity_spec.keys)
+
+            # Find matching mapping
+            mapping: ReconciliationMapping | None = None
+            for m in entity_spec.mapping:
+                if tuple(m.source_values) == key_values:
+                    mapping = m
+                    break
+
+            # Enrich row with mapping data
+            enriched_row = {
+                **row,
+                "sead_id": mapping.sead_id if mapping else None,
+                "confidence": mapping.confidence if mapping else None,
+                "notes": mapping.notes if mapping else "",
+                "will_not_match": mapping.will_not_match if mapping and hasattr(mapping, "will_not_match") else False,
+            }
+            enriched_data.append(enriched_row)
+
+        logger.info(f"Retrieved {len(enriched_data)} preview rows for entity '{entity_name}'")
+        return enriched_data
+
     async def get_resolved_source_data(self, project_name: str, entity_name: str, entity_spec: EntityReconciliationSpec) -> list[dict]:
         """
         Resolve source data based on source in entity.
