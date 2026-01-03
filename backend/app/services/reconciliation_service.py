@@ -386,23 +386,29 @@ class ReconciliationService:
         # For progress tracking, we'll process in smaller batches
         batch_size = 50
         all_results: dict[str, list[ReconciliationCandidate]] = {}
-        queries_list = list(query_data.queries)
+        
+        # Convert dict to list of items for batching
+        queries_items = list(query_data.queries.items())
+        total_queries = len(queries_items)
 
-        for i in range(0, len(queries_list), batch_size):
+        for i in range(0, total_queries, batch_size):
             # Check for cancellation
             if operation_id and operation_manager.is_cancelled(operation_id):
                 logger.warning(f"Reconciliation cancelled for {entity_name}")
                 return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
 
-            batch = queries_list[i : i + batch_size]
-            batch_results = await self.recon_client.reconcile_batch(batch)
+            # Create batch dict
+            batch_items = queries_items[i : i + batch_size]
+            batch_dict = dict(batch_items)
+            
+            batch_results = await self.recon_client.reconcile_batch(batch_dict)
             all_results.update(batch_results)
 
             # Update progress
             if operation_id:
-                processed = min(i + batch_size, len(queries_list))
+                processed = min(i + batch_size, total_queries)
                 operation_manager.update_progress(
-                    operation_id, current=processed, message=f"Processed {processed}/{len(queries_list)} queries..."
+                    operation_id, current=processed, message=f"Processed {processed}/{total_queries} queries..."
                 )
 
         results = all_results
