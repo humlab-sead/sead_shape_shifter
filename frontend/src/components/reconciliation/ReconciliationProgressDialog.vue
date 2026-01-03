@@ -150,9 +150,9 @@ function startProgressTracking(operationId: string) {
   isOpen.value = true
   progress.value = null
 
-  // Create SSE connection
-  const streamUrl = `/api/v1/operations/${operationId}/stream`
-  eventSource = new EventSource(apiClient.defaults.baseURL + streamUrl)
+  // Create SSE connection (apiClient.defaults.baseURL already includes /api/v1)
+  const streamUrl = `${apiClient.defaults.baseURL}/operations/${operationId}/stream`
+  eventSource = new EventSource(streamUrl)
 
   eventSource.onmessage = (event) => {
     try {
