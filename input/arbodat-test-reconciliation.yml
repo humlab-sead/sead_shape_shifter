@@ -21,6 +21,7 @@ entities:
       sead_id: 4420
       confidence: 0.6923
       notes: 'Auto-matched: Goteborg'
+      will_not_match: false
       created_by: system
   taxon:
     source: taxon_with_hierarchy
