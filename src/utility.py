@@ -1,10 +1,10 @@
-from genericpath import isfile
 import importlib
 import os
 import pkgutil
 import sys
 import unicodedata
 from datetime import datetime
+from genericpath import isfile
 from pathlib import Path
 from typing import Any, Callable, Generic, Literal, Self, TypeVar
 
@@ -264,7 +264,9 @@ def configure_logging(opts: dict[str, Any] | None = None, default_level: str = "
 
 def import_sub_modules(module_name: str, module_folder: str) -> Any:
     __all__ = []
-    sub_modules: list[str] = [ f.name[:-3] for f in os.scandir(module_folder) if f.is_file() and f.name.endswith(".py") and not f.name.startswith("__")]
+    sub_modules: list[str] = [
+        f.name[:-3] for f in os.scandir(module_folder) if f.is_file() and f.name.endswith(".py") and not f.name.startswith("__")
+    ]
     logger.info(f"Importing sub-modules for {module_name}: {', '.join(sub_modules)}")
 
     for filename in os.listdir(module_folder):
