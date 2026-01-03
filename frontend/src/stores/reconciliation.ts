@@ -82,7 +82,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     error.value = null
     try {
       const response = await apiClient.post(
-        `/projects/${projectName}/reconciliation/${entityName}/auto-reconcile`,
+        `/projects/${projectName}/reconciliation/${entityName}/auto-reconcile-sync`,
         null,
         { params: { threshold, review_threshold: reviewThreshold } }
       )
@@ -94,6 +94,31 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Auto-reconciliation failed'
       console.error('Auto-reconciliation failed:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function autoReconcileAsync(
+    projectName: string,
+    entityName: string,
+    threshold: number = 0.95,
+    reviewThreshold?: number
+  ): Promise<{ operation_id: string; message: string }> {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await apiClient.post(
+        `/projects/${projectName}/reconciliation/${entityName}/auto-reconcile`,
+        null,
+        { params: { threshold, review_threshold: reviewThreshold } }
+      )
+
+      return response.data
+    } catch (e: any) {
+      error.value = e.response?.data?.detail || 'Failed to start reconciliation'
+      console.error('Failed to start reconciliation:', e)
       throw e
     } finally {
       loading.value = false
@@ -199,6 +224,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loadReconciliationConfig,
     saveReconciliationConfig,
     autoReconcile,
+    autoReconcileAsync,
     updateMapping,
     deleteMapping,
     suggestEntities,

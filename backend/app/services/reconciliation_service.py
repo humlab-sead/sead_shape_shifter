@@ -13,6 +13,7 @@ from backend.app.clients.reconciliation_client import (
     ReconciliationClient,
     ReconciliationQuery,
 )
+from backend.app.core.operation_manager import OperationStatus, operation_manager
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models import (
     AutoReconcileResult,
@@ -292,7 +293,12 @@ class ReconciliationService:
         raise BadRequestError(f"Cannot extract numeric ID from URI: {uri}")
 
     async def auto_reconcile_entity(
-        self, project_name: str, entity_name: str, entity_spec: EntityReconciliationSpec, max_candidates: int = 3
+        self,
+        project_name: str,
+        entity_name: str,
+        entity_spec: EntityReconciliationSpec,
+        max_candidates: int = 3,
+        operation_id: str | None = None,
     ) -> AutoReconcileResult:
         """
         Perform automatic reconciliation for an entity.
@@ -304,6 +310,7 @@ class ReconciliationService:
             entity_name: Entity to reconcile
             entity_spec: Reconciliation specification
             max_candidates: Max candidates per query
+            operation_id: Optional operation ID for progress tracking
 
         Returns:
             AutoReconcileResult with counts and candidates
@@ -339,8 +346,18 @@ class ReconciliationService:
 
         logger.info(f"Auto-reconciling entity '{entity_name}'")
 
+        # Update progress: Starting
+        if operation_id:
+            operation_manager.update_progress(
+                operation_id, status=OperationStatus.RUNNING, message=f"Loading source data for {entity_name}..."
+            )
+
         source_data: list[dict] = await self.get_resolved_source_data(project_name, entity_name, entity_spec)
         logger.info(f"Using {len(source_data)} rows for reconciliation")
+
+        # Update progress: Building queries
+        if operation_id:
+            operation_manager.update_progress(operation_id, message=f"Building {len(source_data)} reconciliation queries...")
 
         query_data: ReconciliationQueryService.QueryBuildResult = self.query_builder.create(
             entity_spec, max_candidates, source_data, service_type
@@ -350,11 +367,49 @@ class ReconciliationService:
             if thresholds_updated:
                 self.save_reconciliation_config(project_name, recon_config)
             logger.warning("No valid queries to reconcile")
+            if operation_id:
+                operation_manager.complete_operation(operation_id, "No valid queries to reconcile")
             return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
 
-        # Execute batch reconciliation
+        # Update progress: Total queries
+        if operation_id:
+            operation_manager.update_progress(
+                operation_id,
+                total=len(query_data.queries),
+                current=0,
+                message=f"Reconciling {len(query_data.queries)} queries...",
+            )
+
+        # Execute batch reconciliation with progress tracking
         logger.debug(f"Executing batch reconciliation for {len(query_data.queries)} queries")
-        results = await self.recon_client.reconcile_batch(query_data.queries)
+
+        # For progress tracking, we'll process in smaller batches
+        batch_size = 50
+        all_results: dict[str, list[ReconciliationCandidate]] = {}
+        queries_list = list(query_data.queries)
+
+        for i in range(0, len(queries_list), batch_size):
+            # Check for cancellation
+            if operation_id and operation_manager.is_cancelled(operation_id):
+                logger.warning(f"Reconciliation cancelled for {entity_name}")
+                return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
+
+            batch = queries_list[i : i + batch_size]
+            batch_results = await self.recon_client.reconcile_batch(batch)
+            all_results.update(batch_results)
+
+            # Update progress
+            if operation_id:
+                processed = min(i + batch_size, len(queries_list))
+                operation_manager.update_progress(
+                    operation_id, current=processed, message=f"Processed {processed}/{len(queries_list)} queries..."
+                )
+
+        results = all_results
+
+        # Update progress: Processing results
+        if operation_id:
+            operation_manager.update_progress(operation_id, message="Processing reconciliation results...")
 
         # Map back to source keys
         candidate_map: dict[str, list[ReconciliationCandidate]] = {}
@@ -371,6 +426,12 @@ class ReconciliationService:
         self.save_reconciliation_config(project_name, recon_config)
 
         logger.info(f"Auto-reconciliation complete: {auto_accepted} auto-accepted, " f"{needs_review} need review, {unmatched} unmatched")
+
+        # Complete operation
+        if operation_id:
+            operation_manager.complete_operation(
+                operation_id, f"Complete: {auto_accepted} auto-accepted, {needs_review} need review, {unmatched} unmatched"
+            )
 
         return AutoReconcileResult(
             auto_accepted=auto_accepted,
