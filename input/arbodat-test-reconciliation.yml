@@ -2,7 +2,7 @@ service_url: http://localhost:8000
 entities:
   site:
     keys:
-      - site_name
+    - site_name
     columns: []
     property_mappings:
       latitude: site_latitude
@@ -19,7 +19,7 @@ entities:
   taxon:
     source: taxon_with_hierarchy
     keys:
-      - species_name
+    - species_name
     columns: []
     property_mappings:
       genus: genus_col
@@ -39,7 +39,7 @@ entities:
         \  rWert AS latitude,\n  hWert AS longitude,\n  Ort AS locality\nFROM Projekte\n\
         WHERE rWert IS NOT NULL AND hWert IS NOT NULL\n"
     keys:
-      - site_name
+    - site_name
     columns: []
     property_mappings:
       latitude: latitude
@@ -54,7 +54,7 @@ entities:
     mapping: []
   bibliographic_reference:
     keys:
-      - citation
+    - citation
     columns: []
     property_mappings:
       doi: doi_column
@@ -70,7 +70,7 @@ entities:
     mapping: []
   location:
     keys:
-      - place_name
+    - place_name
     columns: []
     property_mappings:
       place_name: location_name
@@ -82,7 +82,7 @@ entities:
     mapping: []
   country:
     keys:
-      - country_name
+    - country_name
     columns: []
     property_mappings: {}
     remote:
@@ -93,7 +93,7 @@ entities:
     mapping: []
   method:
     keys:
-      - method_name
+    - method_name
     columns: []
     property_mappings:
       method_abbreviation: abbrev
@@ -105,7 +105,7 @@ entities:
     mapping: []
   sample:
     keys:
-      - sample_name
+    - sample_name
     columns: []
     property_mappings: {}
     remote:
