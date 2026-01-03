@@ -46,25 +46,43 @@
           </v-col>
 
           <v-col cols="12" md="6" class="d-flex align-center gap-2">
-            <v-slider
-              v-if="entitySpec"
-              v-model="autoAcceptThreshold"
-              :min="50"
-              :max="100"
-              :step="1"
-              thumb-label="always"
-              color="primary"
-              prepend-icon="mdi-target"
-              class="flex-grow-1"
-            >
-              <template #prepend>
-                <v-icon icon="mdi-target" />
-              </template>
-              <template #append>
-                <v-chip size="small" variant="tonal">{{ autoAcceptThreshold }}%</v-chip>
-              </template>
-              <template #label> Auto-accept Threshold </template>
-            </v-slider>
+            <div v-if="entitySpec" class="flex-grow-1 d-flex flex-column">
+              <v-slider
+                v-model="autoAcceptThreshold"
+                :min="50"
+                :max="100"
+                :step="1"
+                thumb-label="always"
+                color="primary"
+                prepend-icon="mdi-target"
+              >
+                <template #prepend>
+                  <v-icon icon="mdi-target" />
+                </template>
+                <template #append>
+                  <v-chip size="small" variant="tonal">{{ autoAcceptThreshold }}%</v-chip>
+                </template>
+                <template #label> Auto-accept Threshold </template>
+              </v-slider>
+
+              <v-slider
+                v-model="reviewThreshold"
+                :min="0"
+                :max="100"
+                :step="1"
+                thumb-label="always"
+                color="warning"
+                prepend-icon="mdi-eye"
+              >
+                <template #prepend>
+                  <v-icon icon="mdi-eye" />
+                </template>
+                <template #append>
+                  <v-chip size="small" variant="tonal">{{ reviewThreshold }}%</v-chip>
+                </template>
+                <template #label> Review Threshold </template>
+              </v-slider>
+            </div>
           </v-col>
         </v-row>
 
@@ -166,6 +184,7 @@ const { reconciliationConfig, loading, reconcilableEntities, hasConfig, previewD
 // Local state
 const selectedEntity = ref<string | null>(null)
 const autoAcceptThreshold = ref<number>(95) // User-adjustable threshold (percentage)
+const reviewThreshold = ref<number>(70) // User-adjustable threshold (percentage)
 const showResultSnackbar = ref(false)
 const resultMessage = ref('')
 const resultColor = ref('success')
@@ -189,7 +208,8 @@ async function handleAutoReconcile() {
   try {
     // Convert percentage to decimal (e.g., 95 -> 0.95)
     const thresholdDecimal = autoAcceptThreshold.value / 100
-    const result = await reconciliationStore.autoReconcile(props.projectName, selectedEntity.value, thresholdDecimal)
+    const reviewThresholdDecimal = reviewThreshold.value / 100
+    const result = await reconciliationStore.autoReconcile(props.projectName, selectedEntity.value, thresholdDecimal, reviewThresholdDecimal)
 
     resultMessage.value = `Auto-reconciliation complete: ${result.auto_accepted} auto-matched, ${result.needs_review} need review, ${result.unmatched} unmatched`
     resultColor.value = 'success'
@@ -282,9 +302,23 @@ watch(
       // Sync slider with entity spec threshold when entity changes (convert decimal to percentage)
       autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
     }
+    if (newEntity && entitySpec.value && entitySpec.value.review_threshold != null) {
+      reviewThreshold.value = Math.round(entitySpec.value.review_threshold * 100)
+    }
   },
   { immediate: true }
 )
+
+// Keep in-memory config in sync with slider values so saving config persists thresholds.
+watch(autoAcceptThreshold, (value) => {
+  if (!entitySpec.value) return
+  entitySpec.value.auto_accept_threshold = value / 100
+})
+
+watch(reviewThreshold, (value) => {
+  if (!entitySpec.value) return
+  entitySpec.value.review_threshold = value / 100
+})
 </script>
 
 <style scoped>
