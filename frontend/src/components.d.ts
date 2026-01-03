@@ -39,6 +39,7 @@ declare module 'vue' {
     QueryEditor: typeof import('./components/query/QueryEditor.vue')['default']
     QueryResults: typeof import('./components/query/QueryResults.vue')['default']
     ReconciliationGrid: typeof import('./components/reconciliation/ReconciliationGrid.vue')['default']
+    ReconciliationProgressDialog: typeof import('./components/reconciliation/ReconciliationProgressDialog.vue')['default']
     ReconciliationStatsCard: typeof import('./components/reconciliation/ReconciliationStatsCard.vue')['default']
     ReconciliationView: typeof import('./components/reconciliation/ReconciliationView.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

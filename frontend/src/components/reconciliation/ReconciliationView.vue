@@ -171,6 +171,13 @@
         <v-btn variant="text" @click="showResultSnackbar = false">Close</v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Progress Dialog -->
+    <reconciliation-progress-dialog
+      :operation-id="currentOperationId"
+      @close="handleProgressClose"
+      @complete="handleProgressComplete"
+    />
   </div>
 </template>
 
@@ -180,6 +187,7 @@ import { useReconciliationStore } from '@/stores/reconciliation'
 import { storeToRefs } from 'pinia'
 import ReconciliationGrid from './ReconciliationGrid.vue'
 import ReconciliationStatsCard from './ReconciliationStatsCard.vue'
+import ReconciliationProgressDialog from './ReconciliationProgressDialog.vue'
 import type { ReconciliationPreviewRow } from '@/types'
 
 interface Props {
@@ -200,6 +208,7 @@ const showResultSnackbar = ref(false)
 const resultMessage = ref('')
 const resultColor = ref('success')
 const serviceStatus = ref<{ status: string; service_name?: string; error?: string } | null>(null)
+const currentOperationId = ref<string | null>(null)
 
 // Computed
 const entitySpec = computed(() => {
@@ -220,16 +229,37 @@ async function handleAutoReconcile() {
     // Convert percentage to decimal (e.g., 95 -> 0.95)
     const thresholdDecimal = autoAcceptThreshold.value / 100
     const reviewThresholdDecimal = reviewThreshold.value / 100
-    const result = await reconciliationStore.autoReconcile(props.projectName, selectedEntity.value, thresholdDecimal, reviewThresholdDecimal)
-
-    resultMessage.value = `Auto-reconciliation complete: ${result.auto_accepted} auto-matched, ${result.needs_review} need review, ${result.unmatched} unmatched`
-    resultColor.value = 'success'
-    showResultSnackbar.value = true
+    
+    // Start async reconciliation with progress tracking
+    const response = await reconciliationStore.autoReconcileAsync(
+      props.projectName,
+      selectedEntity.value,
+      thresholdDecimal,
+      reviewThresholdDecimal
+    )
+    
+    // Set operation ID to trigger progress dialog
+    currentOperationId.value = response.operation_id
   } catch (e: any) {
-    resultMessage.value = `Auto-reconciliation failed: ${e.message}`
+    resultMessage.value = `Failed to start reconciliation: ${e.message}`
     resultColor.value = 'error'
     showResultSnackbar.value = true
   }
+}
+
+function handleProgressClose() {
+  currentOperationId.value = null
+  // Reload data to show updated results
+  if (selectedEntity.value) {
+    reconciliationStore.loadReconciliationConfig(props.projectName)
+  }
+}
+
+function handleProgressComplete(_metadata: any) {
+  // Operation completed successfully
+  resultMessage.value = 'Auto-reconciliation completed successfully'
+  resultColor.value = 'success'
+  showResultSnackbar.value = true
 }
 
 async function handleUpdateMapping(row: ReconciliationPreviewRow, seadId: number | null, notes?: string) {

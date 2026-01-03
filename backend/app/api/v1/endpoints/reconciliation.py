@@ -1,13 +1,17 @@
 """API endpoints for entity reconciliation."""
 
+import asyncio
+import json
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from loguru import logger
 
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
+from backend.app.core.operation_manager import operation_manager
 from backend.app.core.state_manager import get_app_state_manager
 from backend.app.models.reconciliation import (
     AutoReconcileResult,
@@ -80,9 +84,172 @@ async def auto_reconcile_entity(
     threshold: float = Query(0.95, ge=0.0, le=1.0),
     review_threshold: float | None = Query(None, ge=0.0, le=1.0),
     service: ReconciliationService = Depends(get_reconciliation_service),
+) -> dict[str, str]:
+    """
+    Start automatic reconciliation for an entity (async with progress tracking).
+
+    Returns an operation_id that can be used to track progress via SSE.
+
+    Args:
+        project_name: Project name
+        entity_name: Entity to reconcile
+        threshold: Auto-accept threshold (default 0.95 = 95%)
+        review_threshold: Review threshold (default uses entity spec value)
+
+    Returns:
+        Dictionary with operation_id for tracking progress
+    """
+    # Load reconciliation config
+    recon_config: ReconciliationConfig = service.load_reconciliation_config(project_name)
+
+    if entity_name not in recon_config.entities:
+        raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
+
+    entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
+
+    # Update threshold if provided
+    if threshold != entity_spec.auto_accept_threshold:
+        entity_spec.auto_accept_threshold = threshold
+    if review_threshold is not None and review_threshold != entity_spec.review_threshold:
+        entity_spec.review_threshold = review_threshold
+
+    # Persist updated thresholds even if reconciliation is blocked/fails.
+    service.save_reconciliation_config(project_name, recon_config)
+
+    if get_app_state_manager().is_dirty(project_name):
+        raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
+
+    # Create operation for progress tracking
+    operation_id = operation_manager.create_operation(
+        operation_type="auto_reconcile",
+        total=0,  # Will be updated once we know query count
+        message=f"Starting reconciliation for {entity_name}...",
+        metadata={"project": project_name, "entity": entity_name, "threshold": threshold},
+    )
+
+    # Start reconciliation in background task
+    async def run_reconciliation():
+        try:
+            await service.auto_reconcile_entity(
+                project_name=project_name,
+                entity_name=entity_name,
+                entity_spec=entity_spec,
+                operation_id=operation_id,
+            )
+        except Exception as e:
+            logger.error(f"Reconciliation failed: {e}")
+            operation_manager.fail_operation(operation_id, str(e))
+
+    # Run in background
+    asyncio.create_task(run_reconciliation())
+
+    logger.info(f"Started auto-reconciliation operation {operation_id} for {entity_name}")
+    return {"operation_id": operation_id, "message": f"Reconciliation started for {entity_name}"}
+
+
+@router.get("/operations/{operation_id}/progress")
+async def get_operation_progress(operation_id: str) -> dict[str, Any]:
+    """
+    Get current progress for an operation.
+
+    Args:
+        operation_id: Operation ID
+
+    Returns:
+        Progress information
+    """
+    progress = operation_manager.get_progress(operation_id)
+    if not progress:
+        raise NotFoundError(f"Operation {operation_id} not found")
+
+    return progress.to_dict()
+
+
+@router.get("/operations/{operation_id}/stream")
+async def stream_operation_progress(operation_id: str) -> StreamingResponse:
+    """
+    Stream real-time progress updates via Server-Sent Events (SSE).
+
+    Args:
+        operation_id: Operation ID
+
+    Returns:
+        SSE stream of progress updates
+    """
+    progress = operation_manager.get_progress(operation_id)
+    if not progress:
+        raise NotFoundError(f"Operation {operation_id} not found")
+
+    async def event_generator():
+        """Generate SSE events for operation progress."""
+        try:
+            while True:
+                progress = operation_manager.get_progress(operation_id)
+                if not progress:
+                    break
+
+                # Send progress update as SSE event
+                data = json.dumps(progress.to_dict())
+                yield f"data: {data}\n\n"
+
+                # Check if operation is complete
+                if progress.status in ("completed", "failed", "cancelled"):
+                    break
+
+                # Wait before next update
+                await asyncio.sleep(0.5)
+
+        except asyncio.CancelledError:
+            logger.debug(f"SSE stream cancelled for operation {operation_id}")
+        finally:
+            # Cleanup operation after stream ends
+            operation_manager.cleanup_operation(operation_id)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
+    )
+
+
+@router.post("/operations/{operation_id}/cancel")
+@handle_endpoint_errors
+async def cancel_operation(operation_id: str) -> dict[str, str]:
+    """
+    Cancel a running operation.
+
+    Args:
+        operation_id: Operation ID to cancel
+
+    Returns:
+        Cancellation status
+    """
+    success = operation_manager.cancel_operation(operation_id)
+    if not success:
+        raise NotFoundError(f"Operation {operation_id} not found")
+
+    return {"operation_id": operation_id, "status": "cancelled", "message": "Cancellation requested"}
+
+
+# Keep the original endpoint for backward compatibility (synchronous version)
+@router.post("/projects/{project_name}/reconciliation/{entity_name}/auto-reconcile-sync")
+@handle_endpoint_errors
+async def auto_reconcile_entity_sync(
+    project_name: str,
+    entity_name: str,
+    threshold: float = Query(0.95, ge=0.0, le=1.0),
+    review_threshold: float | None = Query(None, ge=0.0, le=1.0),
+    service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> AutoReconcileResult:
     """
-    Automatically reconcile entity using OpenRefine service.
+    Automatically reconcile entity (synchronous - blocks until complete).
+
+    This is the original endpoint kept for backward compatibility.
+    For progress tracking, use POST /auto-reconcile instead.
 
     Args:
         project_name: Project name
@@ -118,6 +285,7 @@ async def auto_reconcile_entity(
         project_name=project_name,
         entity_name=entity_name,
         entity_spec=entity_spec,
+        operation_id=None,  # No progress tracking for sync version
     )
 
     return result
