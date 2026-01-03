@@ -55,9 +55,10 @@ export interface AutoReconcileResult {
 
 export interface ReconciliationPreviewRow {
   [key: string]: any // Dynamic keys and columns
-  sead_id?: number
-  confidence?: number
+  sead_id?: number | null
+  confidence?: number | null
   notes?: string
   candidates?: ReconciliationCandidate[]
   match_status?: 'auto-matched' | 'needs-review' | 'unmatched'
+  will_not_match?: boolean
 }
