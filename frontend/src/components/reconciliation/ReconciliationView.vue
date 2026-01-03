@@ -130,6 +130,8 @@
           :entity-spec="entitySpec"
           :preview-data="entityPreviewData"
           :loading="loading"
+          :project-name="projectName"
+          :entity-name="selectedEntity"
           @update:mapping="handleUpdateMapping"
           @save="handleSaveChanges"
         />
