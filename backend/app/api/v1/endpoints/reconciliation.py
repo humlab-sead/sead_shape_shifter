@@ -76,6 +76,21 @@ async def update_reconciliation_config(
     return recon_config
 
 
+@router.get("/projects/{project_name}/reconciliation/{entity_name}/preview")
+@handle_endpoint_errors
+async def get_reconciliation_preview(
+    project_name: str,
+    entity_name: str,
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> list[dict[str, Any]]:
+    """
+    Get preview data for an entity with reconciliation mappings applied.
+
+    Returns source data enriched with reconciliation status (sead_id, confidence, etc.)
+    """
+    return await service.get_reconciliation_preview(project_name, entity_name)
+
+
 @router.post("/projects/{project_name}/reconciliation/{entity_name}/auto-reconcile")
 @handle_endpoint_errors
 async def auto_reconcile_entity(

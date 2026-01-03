@@ -343,16 +343,19 @@ watch(
 watch(
   selectedEntity,
   async (newEntity) => {
-    if (newEntity && entitySpec.value && entitySpec.value.auto_accept_threshold) {
-      // Sync slider with entity spec threshold when entity changes (convert decimal to percentage)
-      autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
-    }
-    if (newEntity && entitySpec.value && entitySpec.value.review_threshold != null) {
-      reviewThreshold.value = Math.round(entitySpec.value.review_threshold * 100)
-    }
+    if (!newEntity) return
     
-    // Load preview data when entity is selected
-    if (newEntity) {
+    // Wait for entitySpec to be available
+    if (entitySpec.value) {
+      if (entitySpec.value.auto_accept_threshold) {
+        // Sync slider with entity spec threshold when entity changes (convert decimal to percentage)
+        autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
+      }
+      if (entitySpec.value.review_threshold != null) {
+        reviewThreshold.value = Math.round(entitySpec.value.review_threshold * 100)
+      }
+      
+      // Load preview data when entity is selected
       try {
         await reconciliationStore.loadPreviewData(props.projectName, newEntity)
       } catch (e: any) {
