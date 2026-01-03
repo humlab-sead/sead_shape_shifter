@@ -46,15 +46,25 @@
           </v-col>
 
           <v-col cols="12" md="6" class="d-flex align-center gap-2">
-            <v-text-field
+            <v-slider
               v-if="entitySpec"
-              :model-value="`Auto-accept: ${Math.round(entitySpec.auto_accept_threshold * 100)}%`"
-              label="Threshold"
-              variant="outlined"
-              density="comfortable"
-              readonly
-              prepend-inner-icon="mdi-target"
-            />
+              v-model="autoAcceptThreshold"
+              :min="50"
+              :max="100"
+              :step="1"
+              thumb-label="always"
+              color="primary"
+              prepend-icon="mdi-target"
+              class="flex-grow-1"
+            >
+              <template #prepend>
+                <v-icon icon="mdi-target" />
+              </template>
+              <template #append>
+                <v-chip size="small" variant="tonal">{{ autoAcceptThreshold }}%</v-chip>
+              </template>
+              <template #label> Auto-accept Threshold </template>
+            </v-slider>
           </v-col>
         </v-row>
 
@@ -155,6 +165,7 @@ const { reconciliationConfig, loading, reconcilableEntities, hasConfig, previewD
 
 // Local state
 const selectedEntity = ref<string | null>(null)
+const autoAcceptThreshold = ref<number>(95) // User-adjustable threshold (percentage)
 const showResultSnackbar = ref(false)
 const resultMessage = ref('')
 const resultColor = ref('success')
@@ -176,7 +187,9 @@ async function handleAutoReconcile() {
   if (!selectedEntity.value) return
 
   try {
-    const result = await reconciliationStore.autoReconcile(props.projectName, selectedEntity.value)
+    // Convert percentage to decimal (e.g., 95 -> 0.95)
+    const thresholdDecimal = autoAcceptThreshold.value / 100
+    const result = await reconciliationStore.autoReconcile(props.projectName, selectedEntity.value, thresholdDecimal)
 
     resultMessage.value = `Auto-reconciliation complete: ${result.auto_accepted} auto-matched, ${result.needs_review} need review, ${result.unmatched} unmatched`
     resultColor.value = 'success'
@@ -229,10 +242,10 @@ async function checkServiceHealth() {
 onMounted(async () => {
   try {
     console.log('[ReconciliationView] Mounted with project:', props.projectName)
-    
+
     // Check service health
     await checkServiceHealth()
-    
+
     // Load config
     await reconciliationStore.loadReconciliationConfig(props.projectName)
 
@@ -259,6 +272,18 @@ watch(
       await reconciliationStore.loadReconciliationConfig(newProjectName)
     }
   }
+)
+
+// Watch for entity changes and sync threshold (only when entity changes, not on config reload)
+watch(
+  selectedEntity,
+  (newEntity) => {
+    if (newEntity && entitySpec.value && entitySpec.value.auto_accept_threshold) {
+      // Sync slider with entity spec threshold when entity changes (convert decimal to percentage)
+      autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
+    }
+  },
+  { immediate: true }
 )
 </script>
 
