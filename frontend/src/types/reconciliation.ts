@@ -19,6 +19,7 @@ export interface ReconciliationMapping {
   notes?: string
   created_at?: string
   created_by?: string
+  will_not_match?: boolean
 }
 
 export interface EntityReconciliationSpec {
