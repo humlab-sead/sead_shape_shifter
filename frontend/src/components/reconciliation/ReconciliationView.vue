@@ -251,7 +251,11 @@ function handleProgressClose() {
   currentOperationId.value = null
   // Reload data to show updated results
   if (selectedEntity.value) {
-    reconciliationStore.loadReconciliationConfig(props.projectName)
+    reconciliationStore.loadReconciliationConfig(props.projectName).then(() => {
+      if (selectedEntity.value) {
+        reconciliationStore.loadPreviewData(props.projectName, selectedEntity.value)
+      }
+    })
   }
 }
 
@@ -338,13 +342,23 @@ watch(
 // Watch for entity changes and sync threshold (only when entity changes, not on config reload)
 watch(
   selectedEntity,
-  (newEntity) => {
+  async (newEntity) => {
     if (newEntity && entitySpec.value && entitySpec.value.auto_accept_threshold) {
       // Sync slider with entity spec threshold when entity changes (convert decimal to percentage)
       autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
     }
     if (newEntity && entitySpec.value && entitySpec.value.review_threshold != null) {
       reviewThreshold.value = Math.round(entitySpec.value.review_threshold * 100)
+    }
+    
+    // Load preview data when entity is selected
+    if (newEntity) {
+      try {
+        await reconciliationStore.loadPreviewData(props.projectName, newEntity)
+      } catch (e: any) {
+        console.error('[ReconciliationView] Failed to load preview data:', e)
+        // Don't show error to user, just log it - they can run auto-reconcile to get data
+      }
     }
   },
   { immediate: true }
