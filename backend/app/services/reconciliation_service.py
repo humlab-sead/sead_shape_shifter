@@ -311,9 +311,29 @@ class ReconciliationService:
         Raises:
             ValueError: If project has unsaved changes
         """
+        # Load existing config and ensure thresholds from caller are honored.
+        recon_config: ReconciliationConfig = self.load_reconciliation_config(project_name)
+
+        thresholds_updated: bool = False
+        existing_spec: EntityReconciliationSpec | None = recon_config.entities.get(entity_name)
+        if existing_spec is None:
+            recon_config.entities[entity_name] = entity_spec
+            existing_spec = entity_spec
+            thresholds_updated = True
+        else:
+            if existing_spec.auto_accept_threshold != entity_spec.auto_accept_threshold:
+                existing_spec.auto_accept_threshold = entity_spec.auto_accept_threshold
+                thresholds_updated = True
+            if existing_spec.review_threshold != entity_spec.review_threshold:
+                existing_spec.review_threshold = entity_spec.review_threshold
+                thresholds_updated = True
+
+        entity_spec = existing_spec
 
         service_type: str | None = entity_spec.remote.service_type
         if not service_type:
+            if thresholds_updated:
+                self.save_reconciliation_config(project_name, recon_config)
             logger.info(f"Reconciliation disabled for entity '{entity_name}' (no service_type configured)")
             return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
 
@@ -327,6 +347,8 @@ class ReconciliationService:
         )
 
         if not query_data.queries:
+            if thresholds_updated:
+                self.save_reconciliation_config(project_name, recon_config)
             logger.warning("No valid queries to reconcile")
             return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
 
@@ -342,18 +364,10 @@ class ReconciliationService:
             key_str = "|".join(str(v) if v is not None else "" for v in source_key)
             candidate_map[key_str] = candidates
 
-        # Load existing config
-        recon_config: ReconciliationConfig = self.load_reconciliation_config(project_name)
-        if entity_name not in recon_config.entities:
-            recon_config.entities[entity_name] = entity_spec
-
-        # Update entity spec reference
-        entity_spec = recon_config.entities[entity_name]
-
         # Auto-accept high confidence matches
         auto_accepted, needs_review, unmatched = self.auto_accept_candidates(entity_spec, candidate_map)
 
-        # Save updated config
+        # Save updated config (mappings and/or updated thresholds)
         self.save_reconciliation_config(project_name, recon_config)
 
         logger.info(f"Auto-reconciliation complete: {auto_accepted} auto-accepted, " f"{needs_review} need review, {unmatched} unmatched")
