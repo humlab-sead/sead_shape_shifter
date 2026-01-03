@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
-from backend.app.models.reconciliation import AutoReconcileResult
+from backend.app.models.reconciliation import AutoReconcileResult, EntityReconciliationSpec, ReconciliationConfig
 from backend.app.services.reconciliation_service import ReconciliationService
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 
@@ -36,6 +36,7 @@ async def run_reconciliation(
     project_name: str,
     entity_name: str,
     threshold: float,
+    review_threshold: float,
     service_url: str,
     max_candidates: int,
     project_dir: Path | None = None,
@@ -49,7 +50,6 @@ async def run_reconciliation(
     service = ReconciliationService(config_dir=project_dir, reconciliation_client=recon_client)
 
     try:
-        # Check service health
         health = await recon_client.check_health()
         if health.get("status") != "online":
             logger.error(f"Reconciliation service is offline: {health.get('error')}")
@@ -59,22 +59,24 @@ async def run_reconciliation(
 
         # Load reconciliation config
         logger.info(f"Loading reconciliation config for project: {project_name}")
-        recon_config = service.load_reconciliation_config(project_name)
+        recon_config: ReconciliationConfig = service.load_reconciliation_config(project_name)
 
         if entity_name not in recon_config.entities:
             raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
 
-        entity_spec = recon_config.entities[entity_name]
+        entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
 
-        # Update threshold if different
         if threshold != entity_spec.auto_accept_threshold:
-            logger.info(f"Updating auto-accept threshold from {entity_spec.auto_accept_threshold} to {threshold}")
             entity_spec.auto_accept_threshold = threshold
+
+        if review_threshold != entity_spec.review_threshold:
+            entity_spec.review_threshold = review_threshold
 
         # Run auto-reconciliation
         logger.info(f"Starting auto-reconciliation for entity: {entity_name}")
-        logger.info(f"Auto-accept threshold: {threshold}")
-        logger.info(f"Max candidates per query: {max_candidates}")
+        logger.info(f" Auto-accept threshold: {threshold}")
+        logger.info(f" Review threshold: {review_threshold}")
+        logger.info(f" Max candidates per query: {max_candidates}")
 
         result = await service.auto_reconcile_entity(
             project_name=project_name,
@@ -132,15 +134,23 @@ def print_results(result: AutoReconcileResult, verbose: bool) -> None:
 @click.argument("project_name")
 @click.argument("entity_name")
 @click.option("--threshold", "-t", type=float, default=0.95, help="Auto-accept threshold (0.0-1.0). Default: 0.95", show_default=True)
+@click.option("--review-threshold", "-r", type=float, default=0.70, help="Review threshold (0.0-1.0). Default: 0.70", show_default=True)
 @click.option("--max-candidates", "-m", type=int, default=3, help="Maximum candidates per query. Default: 3", show_default=True)
 @click.option("--service-url", "-s", type=str, default=None, help="Reconciliation service URL. Default: from settings")
-@click.option("--project-dir", "-p", type=click.Path(exists=True, file_okay=False, dir_okay=True), default=None, help="Project directory. Default: Settings.PROJECTS_DIR")
+@click.option(
+    "--project-dir",
+    "-p",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    default=None,
+    help="Project directory. Default: Settings.PROJECTS_DIR",
+)
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging (DEBUG level)")
 def main(
     project_dir: Path | None,
     project_name: str,
     entity_name: str,
     threshold: float,
+    review_threshold: float,
     max_candidates: int,
     service_url: str | None,
     verbose: bool,
@@ -190,6 +200,7 @@ def main(
                 project_name=project_name,
                 entity_name=entity_name,
                 threshold=threshold,
+                review_threshold=review_threshold,
                 service_url=service_url,
                 max_candidates=max_candidates,
             )
@@ -229,6 +240,6 @@ if __name__ == "__main__":
     from click.testing import CliRunner
 
     runner = CliRunner()
-    result: Result = runner.invoke(main, ["arbodat-test", "--threshold", "0.50", "site"])
+    result: Result = runner.invoke(main, ["arbodat-test", "--threshold", "0.50", "--review-threshold", "0.40", "site"])
 
     # main()
