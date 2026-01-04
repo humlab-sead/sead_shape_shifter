@@ -50,6 +50,25 @@
 
             <v-spacer />
 
+            <v-chip size="small" variant="tonal">
+              <template #prepend>
+                <span class="legend-dot legend-data" />
+              </template>
+              Data
+            </v-chip>
+            <v-chip size="small" variant="tonal">
+              <template #prepend>
+                <span class="legend-dot legend-sql" />
+              </template>
+              SQL
+            </v-chip>
+            <v-chip size="small" variant="tonal">
+              <template #prepend>
+                <span class="legend-dot legend-fixed" />
+              </template>
+              Fixed
+            </v-chip>
+
             <v-chip prepend-icon="mdi-cube-outline"> {{ statistics.nodeCount }} nodes </v-chip>
             <v-chip prepend-icon="mdi-arrow-right"> {{ statistics.edgeCount }} edges </v-chip>
           </v-card-text>
@@ -313,5 +332,23 @@ onMounted(() => {
 
 .gap-4 {
   gap: 1rem;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.legend-data {
+  background-color: #1976d2;
+}
+
+.legend-sql {
+  background-color: #2e7d32;
+}
+
+.legend-fixed {
+  background-color: #6a1b9a;
 }
 </style>

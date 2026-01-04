@@ -76,6 +76,7 @@ export function toCytoscapeElements(
       data: {
         id: node.name,
         label: node.name,
+        type: node.type,
         depth: node.depth,
         dependencies: node.depends_on.length,
         dependsOn: node.depends_on,
