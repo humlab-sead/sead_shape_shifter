@@ -27,8 +27,6 @@ from backend.tests.test_reconciliation_client import RECONCILIATION_SERVICE_URL
 
 # pylint: disable=redefined-outer-name,unused-argument,protected-access
 
-RECONCILIATION_SERVICE_URL = "http://localhost:8000"
-
 
 @pytest.fixture
 def mock_config_service():

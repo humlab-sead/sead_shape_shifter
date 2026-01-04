@@ -220,7 +220,7 @@ class NonEmptyResultValidator:
                         severity="warning",
                         entity=entity_name,
                         field="query" if entity_type == "sql" else "source",
-                        message=f"Entity returns no data (0 rows)",
+                        message="Entity returns no data (0 rows)",
                         code="EMPTY_RESULT",
                         suggestion="Check your SQL query or data source. "
                         "Entity should return at least one row. "
@@ -359,7 +359,8 @@ class ForeignKeyDataValidator:
                                     severity=severity,  # type: ignore
                                     entity=entity_name,
                                     field=f"foreign_keys[{fk_index}]",
-                                    message=f"Foreign key to '{remote_entity}': {len(unmatched)} values ({100 - match_percentage:.1f}%) not found in remote entity. Sample: {sample_unmatched}",
+                                    message=f"Foreign key to '{remote_entity}': {len(unmatched)} values ({100 - match_percentage:.1f}%) "
+                                                f"not found in remote entity. Sample: {sample_unmatched}",
                                     code="FK_DATA_INTEGRITY",
                                     category=ValidationCategory.DATA,
                                     priority=priority,
@@ -462,7 +463,8 @@ class DataTypeCompatibilityValidator:
                                         severity="warning",
                                         entity=entity_name,
                                         field=f"foreign_keys[{fk_index}]",
-                                        message=f"Type mismatch: local column '{local_key}' ({local_dtype}) may not be compatible with remote column '{remote_key}' ({remote_dtype}) in '{remote_entity}'",
+                                        message=f"Type mismatch: local column '{local_key}' ({local_dtype}) may not be compatible "
+                                                f"with remote column '{remote_key}' ({remote_dtype}) in '{remote_entity}'",
                                         code="FK_TYPE_MISMATCH",
                                         category=ValidationCategory.DATA,
                                         priority=ValidationPriority.MEDIUM,

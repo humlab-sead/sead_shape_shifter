@@ -471,7 +471,6 @@ async def list_specifications(
     Returns:
         List of specification items with metadata
     """
-    from backend.app.models.reconciliation import SpecificationListItem
 
     return service.list_specifications(project_name)
 
@@ -496,7 +495,6 @@ async def create_specification(
     Raises:
         BadRequestError: If specification already exists or entity doesn't exist
     """
-    from backend.app.models.reconciliation import SpecificationCreateRequest
 
     return service.create_specification(
         project_name=project_name,
@@ -532,7 +530,6 @@ async def update_specification(
     Raises:
         NotFoundError: If specification doesn't exist
     """
-    from backend.app.models.reconciliation import SpecificationUpdateRequest
 
     return service.update_specification(
         project_name=project_name,

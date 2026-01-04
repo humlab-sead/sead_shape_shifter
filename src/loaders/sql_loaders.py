@@ -270,7 +270,7 @@ class SqliteLoader(SqlLoader):
         """Get detailed schema for MS Access table."""
         # Get columns using information schema
         columns_query = f"""
-            SELECT 
+            SELECT
                 COLUMN_NAME,
                 DATA_TYPE,
                 IS_NULLABLE,
@@ -423,7 +423,7 @@ class PostgresSqlLoader(SqlLoader):
         schema: str = kwargs.get("schema", "public")
 
         query: str = f"""
-            select 
+            select
                 table_name,
                 table_schema as schema,
                 obj_description((quote_ident(table_schema) || '.' || quote_ident(table_name))::regclass) as comment

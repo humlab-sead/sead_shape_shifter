@@ -65,7 +65,7 @@ async def test_debug_postgresql_connection(settings: Settings):
         **{},
     )
 
-    print(f"\n--- PostgreSQL Config ---")
+    print("\n--- PostgreSQL Config ---")
     print(f"Config: {ds_config.model_dump(exclude={'password'})}")
 
     schema: DriverSchema | None = DriverSchemaRegistry.get("postgresql")
@@ -73,14 +73,14 @@ async def test_debug_postgresql_connection(settings: Settings):
     print(f"\nDriver Schema: {schema.display_name}")
     print(f"Fields: {[f.name for f in schema.fields]}")
 
-    print(f"\n--- Testing Mapper ---")
+    print("\n--- Testing Mapper ---")
     core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_config)
     print(f"Core Config Name: {core_config.name}")
     print(f"Core Config Driver: {core_config.data_source_cfg.get('driver')}")
     print(f"Core Config Keys: {list(core_config.data_source_cfg.get('options', {}).keys())}")
 
     # Test connection
-    print(f"\n--- Testing Connection ---")
+    print("\n--- Testing Connection ---")
     service = api_services.DataSourceService(settings.PROJECTS_DIR)
     result: api.DataSourceTestResult = await service.test_connection(ds_config)
 
@@ -104,7 +104,7 @@ async def test_debug_access_connection(settings: Settings):
         pytest.skip("No .mdb files found in input/ directory")
 
     mdb_file: Path = mdb_files[0]
-    print(f"\n--- Using Access Database ---")
+    print("\n--- Using Access Database ---")
     print(f"File: {mdb_file}")
     print(f"Exists: {mdb_file.exists()}")
     print(f"Size: {mdb_file.stat().st_size if mdb_file.exists() else 'N/A'} bytes")
@@ -114,7 +114,7 @@ async def test_debug_access_connection(settings: Settings):
         name="debug_access", driver="ucanaccess", filename=str(mdb_file), options={"ucanaccess_dir": "lib/ucanaccess"}, **{}  # type: ignore
     )
 
-    print(f"\n--- Access Config ---")
+    print("\n--- Access Config ---")
     print(f"Config: {ds_cfg.model_dump()}")
 
     # Check schema
@@ -125,14 +125,14 @@ async def test_debug_access_connection(settings: Settings):
     print(f"Fields: {[f.name for f in schema.fields]}")
 
     # Test mapper
-    print(f"\n--- Testing Mapper ---")
+    print("\n--- Testing Mapper ---")
     core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_cfg)
     print(f"Core Config Name: {core_config.name}")
     print(f"Core Config Driver: {core_config.data_source_cfg.get('driver')}")
     print(f"Core Config Keys: {list(core_config.data_source_cfg.get('options', {}).keys())}")
 
     # Test connection
-    print(f"\n--- Testing Connection ---")
+    print("\n--- Testing Connection ---")
     service = api_services.DataSourceService(settings.PROJECTS_DIR)
     result: api.DataSourceTestResult = await service.test_connection(ds_cfg)
 
@@ -151,7 +151,7 @@ async def test_debug_existing_data_sources(settings: Settings):
     service = api_services.DataSourceService(settings.PROJECTS_DIR)
     data_sources = service.list_data_sources()
 
-    print(f"\n--- Configured Data Sources ---")
+    print("\n--- Configured Data Sources ---")
     print(f"Found {len(data_sources)} data sources")
 
     for ds in data_sources:

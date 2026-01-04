@@ -465,7 +465,7 @@ class TestQueryService:
             mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
-            mock_loader.inject_limit = MagicMock(side_effect=lambda q, l: f"{q} LIMIT {l}")
+            mock_loader.inject_limit = MagicMock(side_effect=lambda q, w: f"{q} LIMIT {w}")
             await service.execute_query(data_source_name="test_source", query=query, limit=100)
 
             # Verify loader was called with modified query
@@ -487,7 +487,7 @@ class TestQueryService:
             mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
-            mock_loader.inject_limit = MagicMock(side_effect=lambda q, l: q)
+            mock_loader.inject_limit = MagicMock(side_effect=lambda q, w: q)
             await service.execute_query(data_source_name="test_source", query=query, limit=100)
 
             call_args = mock_loader.read_sql.call_args
