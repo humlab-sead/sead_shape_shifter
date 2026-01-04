@@ -10,43 +10,48 @@
         <v-form ref="form" v-model="valid">
           <!-- Entity and Target Field Selection (only for new) -->
           <template v-if="isNew">
-            <v-autocomplete
-              v-model="formData.entity_name"
-              :items="availableEntities"
-              label="Entity *"
-              variant="outlined"
-              density="comfortable"
-              :rules="[required]"
-              prepend-inner-icon="mdi-table"
-              @update:model-value="onEntityChange"
-            >
-              <template #no-data>
-                <v-list-item>
-                  <v-list-item-title class="text-grey">No entities available</v-list-item-title>
-                </v-list-item>
-              </template>
-            </v-autocomplete>
+            <v-row>
+              <v-col cols="6">
+                <v-autocomplete
+                  v-model="formData.entity_name"
+                  :items="availableEntities"
+                  label="Entity *"
+                  variant="outlined"
+                  density="comfortable"
+                  :rules="[required]"
+                  prepend-inner-icon="mdi-table"
+                  @update:model-value="onEntityChange"
+                >
+                  <template #no-data>
+                    <v-list-item>
+                      <v-list-item-title class="text-grey">No entities available</v-list-item-title>
+                    </v-list-item>
+                  </template>
+                </v-autocomplete>
+              </v-col>
 
-            <v-autocomplete
-              v-model="formData.target_field"
-              :items="availableFields"
-              label="Target Field *"
-              variant="outlined"
-              density="comfortable"
-              :rules="[required, uniqueTargetField]"
-              :loading="loadingFields"
-              :disabled="!formData.entity_name"
-              prepend-inner-icon="mdi-target"
-              class="mt-4"
-            >
-              <template #no-data>
-                <v-list-item>
-                  <v-list-item-title class="text-grey">
-                    {{ formData.entity_name ? 'No fields available' : 'Select an entity first' }}
-                  </v-list-item-title>
-                </v-list-item>
-              </template>
-            </v-autocomplete>
+              <v-col cols="6">
+                <v-autocomplete
+                  v-model="formData.target_field"
+                  :items="availableFields"
+                  label="Target Field *"
+                  variant="outlined"
+                  density="comfortable"
+                  :rules="[required, uniqueTargetField]"
+                  :loading="loadingFields"
+                  :disabled="!formData.entity_name"
+                  prepend-inner-icon="mdi-target"
+                >
+                  <template #no-data>
+                    <v-list-item>
+                      <v-list-item-title class="text-grey">
+                        {{ formData.entity_name ? 'No fields available' : 'Select an entity first' }}
+                      </v-list-item-title>
+                    </v-list-item>
+                  </template>
+                </v-autocomplete>
+              </v-col>
+            </v-row>
           </template>
 
           <!-- Read-only for existing -->
@@ -123,36 +128,6 @@
               </v-list-item>
             </template>
           </v-autocomplete>
-
-          <v-row>
-            <v-col cols="4">
-              <v-text-field
-                v-model="formData.spec.remote.data_source"
-                label="Data Source"
-                variant="outlined"
-                density="comfortable"
-                hint="e.g., 'sead'"
-              />
-            </v-col>
-            <v-col cols="4">
-              <v-text-field
-                v-model="formData.spec.remote.entity"
-                label="Remote Entity"
-                variant="outlined"
-                density="comfortable"
-                hint="e.g., 'tbl_sites'"
-              />
-            </v-col>
-            <v-col cols="4">
-              <v-text-field
-                v-model="formData.spec.remote.key"
-                label="Remote Key Column"
-                variant="outlined"
-                density="comfortable"
-                hint="e.g., 'site_id'"
-              />
-            </v-col>
-          </v-row>
 
           <v-divider class="my-6" />
 

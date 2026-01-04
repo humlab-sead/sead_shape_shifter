@@ -16,9 +16,6 @@ class ReconciliationSource(BaseModel):
 class ReconciliationRemote(BaseModel):
     """Remote SEAD entity specification for reconciliation."""
 
-    data_source: str | None = Field(None, description="Data source name (e.g., 'sead')")
-    entity: str | None = Field(None, description="Remote table name (e.g., 'tbl_sites')")
-    key: str | None = Field(None, description="Remote key column (e.g., 'site_id')")
     service_type: str | None = Field(
         None, description="Reconciliation service entity type (e.g., 'Site', 'Taxon'). If None, reconciliation is disabled."
     )
