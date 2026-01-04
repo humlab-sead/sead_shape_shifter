@@ -452,7 +452,7 @@ watch(
   (newEntity) => {
     if (newEntity && entityTargets.value.length > 0) {
       // Auto-select the first target
-      selectedTarget.value = entityTargets.value[0]
+      selectedTarget.value = entityTargets.value[0] || null
     } else {
       selectedTarget.value = null
     }
