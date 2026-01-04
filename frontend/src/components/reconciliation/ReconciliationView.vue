@@ -223,12 +223,13 @@
 
               <!-- Reconciliation Grid -->
               <reconciliation-grid
-                v-if="selectedEntity && entitySpec && entityPreviewData.length"
+                v-if="selectedEntity && selectedTarget && entitySpec && entityPreviewData.length"
                 :entity-spec="entitySpec"
                 :preview-data="entityPreviewData"
                 :loading="loading"
                 :project-name="projectName"
                 :entity-name="selectedEntity"
+                :target-field="selectedTarget"
                 @update:mapping="handleUpdateMapping"
                 @save="handleSaveChanges"
               />
@@ -253,12 +254,13 @@
 
               <!-- Review Grid (same as reconcile for now) -->
               <reconciliation-grid
-                v-if="selectedEntity && entitySpec && entityPreviewData.length"
+                v-if="selectedEntity && selectedTarget && entitySpec && entityPreviewData.length"
                 :entity-spec="entitySpec"
                 :preview-data="entityPreviewData"
                 :loading="loading"
                 :project-name="projectName"
                 :entity-name="selectedEntity"
+                :target-field="selectedTarget"
                 @update:mapping="handleUpdateMapping"
                 @save="handleSaveChanges"
               />
