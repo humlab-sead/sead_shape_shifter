@@ -74,17 +74,12 @@ def reconciliation_service(tmp_path, mock_recon_client):
 
 @pytest.fixture
 def sample_entity_spec():
-    """Create sample EntityReconciliationSpec."""
+    """Create sample EntityReconciliationSpec (v2 format)."""
     return EntityReconciliationSpec(
         source=None,
-        keys=["site_code"],
-        columns=["site_name"],
         property_mappings={"latitude": "latitude", "longitude": "longitude"},
         remote=ReconciliationRemote(
-            data_source="sead",
-            entity="tbl_sites",
-            key="site_id",
-            service_type="Site",
+            service_type="site",
         ),
         auto_accept_threshold=0.95,
         review_threshold=0.70,
@@ -94,10 +89,11 @@ def sample_entity_spec():
 
 @pytest.fixture
 def sample_recon_config(sample_entity_spec):
-    """Create sample ReconciliationConfig."""
+    """Create sample ReconciliationConfig (v2 format)."""
     return ReconciliationConfig(
+        version="2.0",
         service_url=RECONCILIATION_SERVICE_URL,
-        entities={"site": sample_entity_spec},
+        entities={"site": {"site_code": sample_entity_spec}},  # Nested: entity -> target -> spec
     )
 
 
@@ -176,8 +172,7 @@ class TestAnotherEntityReconciliationSourceResolver:
         # Entity spec with source pointing to another entity
         entity_spec = EntityReconciliationSpec(
             source="site",
-            keys=["sample_code"],
-            remote=ReconciliationRemote(data_source="sead", entity="tbl_samples", key="sample_id", service_type="Sample"),
+            remote=ReconciliationRemote(service_type="sample"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -201,8 +196,7 @@ class TestAnotherEntityReconciliationSourceResolver:
 
         entity_spec = EntityReconciliationSpec(
             source="nonexistent",
-            keys=["key"],
-            remote=ReconciliationRemote(data_source="sead", entity="tbl_test", key="id", service_type="Test"),
+            remote=ReconciliationRemote(service_type="test"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -232,8 +226,7 @@ class TestSqlQueryReconciliationSourceResolver:
 
         entity_spec = EntityReconciliationSpec(
             source=ReconciliationSource(type="sql", data_source="test_db", query="SELECT * FROM custom_view"),
-            keys=["key"],
-            remote=ReconciliationRemote(data_source="sead", entity="tbl_test", key="id", service_type="Test"),
+            remote=ReconciliationRemote(service_type="test"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -252,8 +245,7 @@ class TestSqlQueryReconciliationSourceResolver:
 
         entity_spec = EntityReconciliationSpec(
             source=ReconciliationSource(type="sql", data_source="nonexistent_db", query="SELECT * FROM test"),
-            keys=["key"],
-            remote=ReconciliationRemote(data_source="sead", entity="tbl_test", key="id", service_type="Test"),
+            remote=ReconciliationRemote(service_type="test"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -274,7 +266,9 @@ class TestReconciliationQueryService:
             {"site_code": "SITE002", "site_name": "Another Site", "latitude": 61.0, "longitude": 16.0},
         ]
 
-        result = service.create(sample_entity_spec, max_candidates=3, source_data=source_data, service_type="Site")
+        result = service.create(
+            sample_entity_spec, target_field="site_code", max_candidates=3, source_data=source_data, service_type="site"
+        )
 
         assert len(result.queries) == 2
         assert len(result.key_mapping) == 2
@@ -282,18 +276,18 @@ class TestReconciliationQueryService:
         # Check first query
         q0 = result.queries["q0"]
         assert q0.query == "SITE001"
-        assert q0.type == "Site"
+        assert q0.type == "site"
         assert q0.limit == 3
         assert len(q0.properties) == 2
         assert {"pid": "latitude", "v": "60.0"} in q0.properties
         assert {"pid": "longitude", "v": "15.0"} in q0.properties
 
-        # Check key mapping
-        assert result.key_mapping["q0"] == ("SITE001",)
-        assert result.key_mapping["q1"] == ("SITE002",)
+        # Check key mapping (single value, not tuple)
+        assert result.key_mapping["q0"] == "SITE001"
+        assert result.key_mapping["q1"] == "SITE002"
 
     def test_create_skips_rows_with_all_none_keys(self, sample_entity_spec):
-        """Test create skips rows where all keys are None."""
+        """Test create skips rows where target field is None."""
         service = ReconciliationQueryService()
 
         source_data = [
@@ -301,11 +295,12 @@ class TestReconciliationQueryService:
             {"site_code": "SITE001", "site_name": "Valid"},
         ]
 
-        result = service.create(sample_entity_spec, max_candidates=3, source_data=source_data, service_type="Site")
+        result = service.create(
+            sample_entity_spec, target_field="site_code", max_candidates=3, source_data=source_data, service_type="site"
+        )
 
         assert len(result.queries) == 1
-        assert "q0" not in result.queries  # First row skipped
-        assert "q1" in result.queries  # Second row becomes q1
+        assert "q0" in result.queries  # First row with None is skipped, second becomes q0
 
     def test_create_skips_empty_query_strings(self, sample_entity_spec):
         """Test create skips rows with empty query strings."""
@@ -316,7 +311,9 @@ class TestReconciliationQueryService:
             {"site_code": "SITE001", "site_name": "Valid"},
         ]
 
-        result = service.create(sample_entity_spec, max_candidates=3, source_data=source_data, service_type="Site")
+        result = service.create(
+            sample_entity_spec, target_field="site_code", max_candidates=3, source_data=source_data, service_type="site"
+        )
 
         assert len(result.queries) == 1
 
@@ -328,7 +325,9 @@ class TestReconciliationQueryService:
             {"site_code": "SITE001", "latitude": 60.0, "longitude": None},
         ]
 
-        result = service.create(sample_entity_spec, max_candidates=3, source_data=source_data, service_type="Site")
+        result = service.create(
+            sample_entity_spec, target_field="site_code", max_candidates=3, source_data=source_data, service_type="site"
+        )
 
         q0 = result.queries["q0"]
         assert len(q0.properties) == 1
