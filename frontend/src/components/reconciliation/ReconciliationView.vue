@@ -192,10 +192,24 @@
           <!-- Reconcile Tab -->
           <v-window-item value="reconcile">
             <div class="py-4">
-              <h3 class="text-h6 mb-4">
-                <v-icon start>mdi-auto-fix</v-icon>
-                Auto-Reconciliation
-              </h3>
+              <div class="d-flex justify-space-between align-center mb-4">
+                <h3 class="text-h6">
+                  <v-icon start>mdi-auto-fix</v-icon>
+                  Auto-Reconciliation
+                </h3>
+                
+                <!-- Auto-Reconcile Button -->
+                <v-btn
+                  v-if="selectedEntity && entitySpec"
+                  variant="tonal"
+                  color="primary"
+                  prepend-icon="mdi-auto-fix"
+                  :loading="loading"
+                  @click="handleAutoReconcile"
+                >
+                  Run Auto-Reconcile
+                </v-btn>
+              </div>
 
               <!-- Reconciliation Grid -->
               <reconciliation-grid
