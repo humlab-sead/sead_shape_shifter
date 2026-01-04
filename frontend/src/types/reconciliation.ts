@@ -10,6 +10,9 @@ export interface ReconciliationSource {
 
 export interface ReconciliationRemote {
   service_type?: string | null // e.g., 'site', 'taxon' - must match service defaultTypes
+  data_source?: string | null // Remote data source name
+  entity?: string | null // Remote entity/table name
+  key?: string | null // Remote key column name
 }
 
 export interface ReconciliationMapping {
@@ -62,4 +65,32 @@ export interface ReconciliationPreviewRow {
   candidates?: ReconciliationCandidate[]
   match_status?: 'auto-matched' | 'needs-review' | 'unmatched'
   will_not_match?: boolean
+}
+
+// Specification management types
+
+export interface SpecificationListItem {
+  entity_name: string
+  target_field: string
+  source?: string | ReconciliationSource | null
+  property_mappings: Record<string, string>
+  remote: ReconciliationRemote
+  auto_accept_threshold: number
+  review_threshold: number
+  mapping_count: number
+  property_mapping_count: number
+}
+
+export interface SpecificationCreateRequest {
+  entity_name: string
+  target_field: string
+  spec: EntityReconciliationSpec
+}
+
+export interface SpecificationUpdateRequest {
+  source?: string | ReconciliationSource | null
+  property_mappings: Record<string, string>
+  remote: ReconciliationRemote
+  auto_accept_threshold: number
+  review_threshold: number
 }

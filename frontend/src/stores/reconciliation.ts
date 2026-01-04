@@ -9,8 +9,12 @@ import type {
   ReconciliationCandidate,
   AutoReconcileResult,
   ReconciliationPreviewRow,
+  SpecificationListItem,
+  SpecificationCreateRequest,
+  SpecificationUpdateRequest,
 } from '@/types/reconciliation'
 import { apiClient } from '@/api/client'
+import { reconciliationSpecApi } from '@/api/reconciliation'
 // import { load } from 'js-yaml'
 
 export const useReconciliationStore = defineStore('reconciliation', () => {
@@ -20,6 +24,12 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const selectedTarget = ref<string | null>(null) // Currently selected target field
+  
+  // Specification management state
+  const specifications = ref<SpecificationListItem[]>([])
+  const selectedSpec = ref<SpecificationListItem | null>(null)
+  const loadingSpecs = ref(false)
+  const specsError = ref<string | null>(null)
 
   // Getters
   const reconcilableEntities = computed(() => {
@@ -241,7 +251,134 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loading.value = false
     error.value = null
     selectedTarget.value = null
+    specifications.value = []
+    selectedSpec.value = null
+    loadingSpecs.value = false
+    specsError.value = null
   }
+
+  // Specification management actions
+
+  async function loadSpecifications(projectName: string) {
+    loadingSpecs.value = true
+    specsError.value = null
+    try {
+      specifications.value = await reconciliationSpecApi.listSpecifications(projectName)
+    } catch (e: any) {
+      specsError.value = e.response?.data?.detail || 'Failed to load specifications'
+      console.error('Failed to load specifications:', e)
+      throw e
+    } finally {
+      loadingSpecs.value = false
+    }
+  }
+
+  async function createSpecification(
+    projectName: string,
+    request: SpecificationCreateRequest
+  ) {
+    loadingSpecs.value = true
+    specsError.value = null
+    try {
+      const updatedConfig = await reconciliationSpecApi.createSpecification(
+        projectName,
+        request
+      )
+      reconciliationConfig.value = updatedConfig
+      // Reload specifications list
+      await loadSpecifications(projectName)
+    } catch (e: any) {
+      specsError.value = e.response?.data?.detail || 'Failed to create specification'
+      console.error('Failed to create specification:', e)
+      throw e
+    } finally {
+      loadingSpecs.value = false
+    }
+  }
+
+  async function updateSpecification(
+    projectName: string,
+    entityName: string,
+    targetField: string,
+    request: SpecificationUpdateRequest
+  ) {
+    loadingSpecs.value = true
+    specsError.value = null
+    try {
+      const updatedConfig = await reconciliationSpecApi.updateSpecification(
+        projectName,
+        entityName,
+        targetField,
+        request
+      )
+      reconciliationConfig.value = updatedConfig
+      // Reload specifications list
+      await loadSpecifications(projectName)
+    } catch (e: any) {
+      specsError.value = e.response?.data?.detail || 'Failed to update specification'
+      console.error('Failed to update specification:', e)
+      throw e
+    } finally {
+      loadingSpecs.value = false
+    }
+  }
+
+  async function deleteSpecification(
+    projectName: string,
+    entityName: string,
+    targetField: string,
+    force: boolean = false
+  ) {
+    loadingSpecs.value = true
+    specsError.value = null
+    try {
+      const updatedConfig = await reconciliationSpecApi.deleteSpecification(
+        projectName,
+        entityName,
+        targetField,
+        force
+      )
+      reconciliationConfig.value = updatedConfig
+      // Reload specifications list
+      await loadSpecifications(projectName)
+      // Clear selected spec if it was deleted
+      if (
+        selectedSpec.value?.entity_name === entityName &&
+        selectedSpec.value?.target_field === targetField
+      ) {
+        selectedSpec.value = null
+      }
+    } catch (e: any) {
+      specsError.value = e.response?.data?.detail || 'Failed to delete specification'
+      console.error('Failed to delete specification:', e)
+      throw e
+    } finally {
+      loadingSpecs.value = false
+    }
+  }
+
+  async function getAvailableFields(projectName: string, entityName: string): Promise<string[]> {
+    try {
+      return await reconciliationSpecApi.getAvailableFields(projectName, entityName)
+    } catch (e: any) {
+      console.error('Failed to get available fields:', e)
+      throw e
+    }
+  }
+
+  async function getMappingCount(
+    projectName: string,
+    entityName: string,
+    targetField: string
+  ): Promise<number> {
+    try {
+      return await reconciliationSpecApi.getMappingCount(projectName, entityName, targetField)
+    } catch (e: any) {
+      console.error('Failed to get mapping count:', e)
+      throw e
+    }
+  }
+
 
   return {
     // State
@@ -250,6 +387,10 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loading,
     error,
     selectedTarget,
+    specifications,
+    selectedSpec,
+    loadingSpecs,
+    specsError,
 
     // Getters
     reconcilableEntities,
@@ -268,5 +409,13 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     checkServiceHealth,
     clearError,
     $reset,
+    
+    // Specification management actions
+    loadSpecifications,
+    createSpecification,
+    updateSpecification,
+    deleteSpecification,
+    getAvailableFields,
+    getMappingCount,
   }
 })

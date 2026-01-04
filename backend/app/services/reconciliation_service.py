@@ -24,7 +24,9 @@ from backend.app.models import (
     ReconciliationCandidate,
     ReconciliationConfig,
     ReconciliationMapping,
+    ReconciliationRemote,
     ReconciliationSource,
+    SpecificationListItem,
 )
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import ProjectService, ShapeShiftService
@@ -701,3 +703,249 @@ class ReconciliationService:
 
         self.save_reconciliation_config(project_name, recon_config)
         return recon_config
+
+    # Specification management methods
+
+    def list_specifications(self, project_name: str) -> list["SpecificationListItem"]:
+        """
+        List all reconciliation specifications for a project (flattened view).
+
+        Args:
+            project_name: Project name
+
+        Returns:
+            List of flattened specification items
+        """
+        recon_config = self.load_reconciliation_config(project_name)
+        specifications = []
+
+        for entity_name, target_specs in recon_config.entities.items():
+            for target_field, spec in target_specs.items():
+                specifications.append(
+                    SpecificationListItem(
+                        entity_name=entity_name,
+                        target_field=target_field,
+                        source=spec.source,
+                        property_mappings=spec.property_mappings,
+                        remote=spec.remote,
+                        auto_accept_threshold=spec.auto_accept_threshold,
+                        review_threshold=spec.review_threshold,
+                        mapping_count=len(spec.mapping),
+                        property_mapping_count=len(spec.property_mappings),
+                    )
+                )
+
+        return specifications
+
+    def create_specification(
+        self,
+        project_name: str,
+        entity_name: str,
+        target_field: str,
+        spec: EntityReconciliationSpec,
+    ) -> ReconciliationConfig:
+        """
+        Create a new reconciliation specification.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name (must exist in project)
+            target_field: Target field name
+            spec: Reconciliation specification
+
+        Returns:
+            Updated reconciliation configuration
+
+        Raises:
+            BadRequestError: If specification already exists or entity doesn't exist
+        """
+        # Verify entity exists in project
+        project = self.project_service.load_project(project_name)
+        core_config = ProjectMapper.to_core(project)
+        if entity_name not in core_config.tables:
+            raise NotFoundError(f"Entity '{entity_name}' not found in project '{project_name}'")
+
+        # Load existing config
+        recon_config = self.load_reconciliation_config(project_name)
+
+        # Check if specification already exists
+        if entity_name in recon_config.entities and target_field in recon_config.entities[entity_name]:
+            raise BadRequestError(
+                f"Specification for entity '{entity_name}' and target field '{target_field}' already exists"
+            )
+
+        # Ensure mapping is empty for new specification
+        spec.mapping = []
+
+        # Add specification
+        if entity_name not in recon_config.entities:
+            recon_config.entities[entity_name] = {}
+
+        recon_config.entities[entity_name][target_field] = spec
+
+        # Save and return
+        self.save_reconciliation_config(project_name, recon_config)
+        logger.info(f"Created specification for {entity_name}.{target_field}")
+        return recon_config
+
+    def update_specification(
+        self,
+        project_name: str,
+        entity_name: str,
+        target_field: str,
+        source: str | ReconciliationSource | None,
+        property_mappings: dict[str, str],
+        remote: "ReconciliationRemote",
+        auto_accept_threshold: float,
+        review_threshold: float,
+    ) -> ReconciliationConfig:
+        """
+        Update an existing reconciliation specification.
+
+        Note: Preserves existing mapping, entity name, and target field.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            target_field: Target field name
+            source: Data source specification
+            property_mappings: Property mappings
+            remote: Remote entity configuration
+            auto_accept_threshold: Auto-accept threshold
+            review_threshold: Review threshold
+
+        Returns:
+            Updated reconciliation configuration
+
+        Raises:
+            NotFoundError: If specification doesn't exist
+        """
+        recon_config = self.load_reconciliation_config(project_name)
+
+        # Check if specification exists
+        if entity_name not in recon_config.entities or target_field not in recon_config.entities[entity_name]:
+            raise NotFoundError(
+                f"Specification for entity '{entity_name}' and target field '{target_field}' not found"
+            )
+
+        # Get existing spec to preserve mapping
+        existing_spec = recon_config.entities[entity_name][target_field]
+
+        # Update fields (preserve mapping)
+        existing_spec.source = source
+        existing_spec.property_mappings = property_mappings
+        existing_spec.remote = remote
+        existing_spec.auto_accept_threshold = auto_accept_threshold
+        existing_spec.review_threshold = review_threshold
+
+        # Save and return
+        self.save_reconciliation_config(project_name, recon_config)
+        logger.info(f"Updated specification for {entity_name}.{target_field}")
+        return recon_config
+
+    def delete_specification(
+        self,
+        project_name: str,
+        entity_name: str,
+        target_field: str,
+        force: bool = False,
+    ) -> ReconciliationConfig:
+        """
+        Delete a reconciliation specification.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            target_field: Target field name
+            force: If False, raises error if specification has mappings
+
+        Returns:
+            Updated reconciliation configuration
+
+        Raises:
+            NotFoundError: If specification doesn't exist
+            BadRequestError: If specification has mappings and force=False
+        """
+        recon_config = self.load_reconciliation_config(project_name)
+
+        # Check if specification exists
+        if entity_name not in recon_config.entities or target_field not in recon_config.entities[entity_name]:
+            raise NotFoundError(
+                f"Specification for entity '{entity_name}' and target field '{target_field}' not found"
+            )
+
+        # Check for existing mappings
+        spec = recon_config.entities[entity_name][target_field]
+        if spec.mapping and not force:
+            raise BadRequestError(
+                f"Cannot delete specification with {len(spec.mapping)} existing mappings. "
+                "Use force=True to delete anyway."
+            )
+
+        # Delete specification
+        del recon_config.entities[entity_name][target_field]
+
+        # Clean up empty entity dict
+        if not recon_config.entities[entity_name]:
+            del recon_config.entities[entity_name]
+
+        # Save and return
+        self.save_reconciliation_config(project_name, recon_config)
+        logger.info(
+            f"Deleted specification for {entity_name}.{target_field} "
+            f"({len(spec.mapping)} mappings {'forcefully removed' if force else 'removed'})"
+        )
+        return recon_config
+
+    async def get_available_target_fields(self, project_name: str, entity_name: str) -> list[str]:
+        """
+        Get available target fields for an entity (from preview schema).
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+
+        Returns:
+            List of column names from entity preview
+
+        Raises:
+            NotFoundError: If entity doesn't exist
+        """
+        preview_service = ShapeShiftService(self.project_service)
+
+        try:
+            preview_result: PreviewResult = await preview_service.preview_entity(project_name, entity_name, limit=1)
+
+            if not preview_result.rows:
+                return []
+
+            # Extract column names from first row
+            return list(preview_result.rows[0].keys()) if preview_result.rows else []
+
+        except Exception as e:
+            logger.error(f"Failed to get fields for entity '{entity_name}': {e}")
+            raise NotFoundError(f"Entity '{entity_name}' not found or failed to load") from e
+
+    def get_mapping_count(self, project_name: str, entity_name: str, target_field: str) -> int:
+        """
+        Get the number of mappings for a specification.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            target_field: Target field name
+
+        Returns:
+            Number of mappings
+
+        Raises:
+            NotFoundError: If specification doesn't exist
+        """
+        recon_config = self.load_reconciliation_config(project_name)
+
+        if entity_name not in recon_config.entities or target_field not in recon_config.entities[entity_name]:
+            raise NotFoundError(
+                f"Specification for entity '{entity_name}' and target field '{target_field}' not found"
+            )
+
+        return len(recon_config.entities[entity_name][target_field].mapping)

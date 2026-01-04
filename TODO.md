@@ -47,8 +47,8 @@
  - [x] TODO: #92 Add status endpoint (backend) and indicator (UX) for reconciliation service health check.
  - [x] TODO: #94 Add reconciliation CLI script
  - [ ] TODO: #95 Display data lineage/source information in dependency graph
- - [ ] TODO: Enable entity to have multiple reconciliation specifications.
- - [ ] TODO: Add capability to edit a project's reconciliation specifications.
+ - [ ] TODO: #98 Enable entity to have multiple reconciliation specifications.
+ - [ ] TODO: #99 Add capability to edit a project's reconciliation specifications.
 
 We need to change the format of the reconciliation file, since the entity's name is currently the key to a single reconciliation specification. We need to allow an entity to have several specifications targeting other columns.
 The "keys" in the current specification format is effectively the reconciliation target column. Currently I see no use case for having several keys in a single specification, so we will change the format to have a single "target-field" instead of "keys", and thus allow several specifications per entity. Furthermore, I see no use for the "columns" field so we can remove that field.
@@ -69,24 +69,31 @@ entities:
           ...specification without "keys" fiield...
 ```
 
-Next use case is to fully implement is the capability to edit a projects specification i.e the entity section in the "xyz-reconciliation.yml" file. Currently we can edit the  "auto_accept_threshold" and "review_threshold", but we need to be able to edit the other values as well. This capabilities belongs to the "Setup/Configuration" section of the reconciliation view.
+Next use case is to fully implement is the capability to edit a projects reconciliation specification. Currently we can edit the  "auto_accept_threshold" and "review_threshold" on an entity specification, but we need to be able to edit the other values as well.This capabilities belongs to the "Setup/Configuration" section of the reconciliation view. 
 
-First change required to implement this feature:
+I can see that we need to be able to add/delete entity specifications, and for each specification we need to be able to edit all fields except the "entity" and "mapping" sections. The "entity" is selected when adding a new specification.
 
-
-The second change Add edit
 I can see the following requirements:
-- We should be able to add/delete entity specification.
-- Deleting an entityspecification with mappings must be confirmed. 
+- We should be able to see all combined entity specifications for the entire project.
+- Each row in the list represents a single entity specification (i.e., an entity + target-field combination).
+- We should be able to select an entity specification to edit its values.
+- When adding a new entity specification, we should be able to select the entity and the target-field.
+- When adding a new entity specification, the target-field options should be determined by the entity's available fields.
+- When adding a new entity specification, we should not be able to select an entity + target-field combination that already exists in another specification.
+- When editing an existing entity specification, we should not be able to change the entity or target-field.
+- When editing an existing entity specification, we should be able to edit all other fields except "entity" and "mapping".
+- When saving an entity specification, the values should be validated according to the reconciliation service API specification.
+- When saving an entity specification, the updated project reconciliation YAML should be persisted to disk.
+- The list of entity specifications should indicate the reconciliation status (e.g., as per the persisted status in the YAML file).
+- The name of an entity specification must be an existing entity in the project.
+- User can add, delete, update and save the recon specifications.
+- When deleting an entity specification, a confirmation dialog should be shown (warning if it has mappings!).
 - The remote types that can be assigned to a specification should be determined by calls to the reconciliation service API.
 - For an existing specification, if the remote type no longer an  exists in the reconciliation service, then the specification should be flagged (no longer possible to run auto-reconcile).
 - The "mapping" section in an entity specification should be "passthrough" in the CRUD operations  since it is handled by the subsequent reconciliation workflow 
 - The avaliable properties in the "property" mappings section should be detemined by call to the reconciliation service. 
-- Since the properties are shown in input fields, we no longer need the specification detaljs section. 
-I can see this this use case:
-- System populates a all configured entity specifications
-- System indicates in the list the reconciliation status (e.g. the persisted status found i9n the YAML file).
-- The name of an entity specification must be an existing entity in the project.
-- User can add, delete, update and save the recon specifications
+- Since the properties are shown in input fields, we no longer need the specification details section.
 
-- user selects an entity 
+This change will achieve the capability to fully manage a project's reconciliation specifications from the frontend UX. The reconciliation workflow will be geared towards a project focused approach rather than individual entity specifications.
+
+Please do an review of this proposed change and provide feedback if you see any issues with this approach, and create an implementation plan for this change.

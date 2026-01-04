@@ -58,7 +58,9 @@ from backend.app.models.reconciliation import (
     ReconciliationCandidate,
     ReconciliationConfig,
     ReconciliationMapping,
+    ReconciliationRemote,
     ReconciliationSource,
+    SpecificationListItem,
 )
 from backend.app.models.shapeshift import (
     ColumnInfo,
