@@ -120,7 +120,8 @@ class ForeignKeyConfig:
 
             if len(self.local_keys) != len(self.remote_keys):
                 raise ValueError(
-                    f"Foreign key configuration mismatch for entity '{self.local_entity}': number of local keys ({len(self.local_keys)}) does not match number of remote keys ({len(self.remote_keys)})"
+                    f"Foreign key configuration mismatch for entity '{self.local_entity}': number"
+                      f" of local keys ({len(self.local_keys)}) does not match number of remote keys ({len(self.remote_keys)})"
                 )
 
     @property
@@ -195,7 +196,8 @@ class ForeignKeyConfig:
         missing_columns: list[str] = [col for col in columns if col not in df.columns]
         if missing_columns:
             logger.warning(
-                f"{self.local_entity}[linking]: Skipping extra link columns for entity '{self.local_entity}' to '{self.remote_entity}': missing remote columns {missing_columns} in remote table"
+                f"{self.local_entity}[linking]: Skipping extra link columns for entity "
+                f"'{self.local_entity}' to '{self.remote_entity}': missing remote columns {missing_columns} in remote table"
             )
             columns = [col for col in columns if col in df.columns]
         return columns

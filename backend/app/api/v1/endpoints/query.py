@@ -23,10 +23,10 @@ def get_query_service(data_source_service: DataSourceService = Depends(get_data_
     summary="Execute SQL query",
     description="""
     Execute a SQL query against a data source.
-    
-    Only SELECT queries are allowed. Destructive operations (INSERT, UPDATE, DELETE, 
+
+    Only SELECT queries are allowed. Destructive operations (INSERT, UPDATE, DELETE,
     DROP, etc.) are blocked for safety.
-    
+
     Results are automatically limited to prevent excessive memory usage.
     """,
     responses={
@@ -86,12 +86,12 @@ async def execute_query(
     summary="Validate SQL query",
     description="""
     Validate a SQL query without executing it.
-    
+
     Checks for:
     - Syntax errors
     - Security violations (destructive operations)
     - Potential issues (missing WHERE clause, etc.)
-    
+
     Returns validation result with errors and warnings.
     """,
     responses={

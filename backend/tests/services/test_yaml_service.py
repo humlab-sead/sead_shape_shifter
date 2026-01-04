@@ -30,7 +30,7 @@ entities:
     type: data
     keys: [id]
     columns: [name, value]
-  
+
   # Another entity
   site:
     type: data

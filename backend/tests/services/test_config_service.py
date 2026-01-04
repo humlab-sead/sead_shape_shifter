@@ -36,7 +36,7 @@ entities:
     type: data
     keys: [sample_id]
     columns: [name, value]
-  
+
   site:
     type: data
     keys: [site_id]
