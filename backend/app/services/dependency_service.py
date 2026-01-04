@@ -24,6 +24,32 @@ class DependencyNode(dict):
         super().__init__(name=name, depends_on=depends_on, depth=depth, type=entity_type)
 
 
+class SourceNode(dict):
+    """Source node representation (data sources, tables, files)."""
+
+    def __init__(
+        self,
+        name: str,
+        source_type: str,
+        node_type: str = "datasource",
+        metadata: dict[str, Any] | None = None,
+    ):
+        """Initialize source node.
+
+        Args:
+            name: Unique identifier for the source
+            source_type: Type of source (e.g., "postgresql", "csv", "file")
+            node_type: Node category ("datasource", "table", "file")
+            metadata: Additional metadata (datasource, table name, etc.)
+        """
+        super().__init__(
+            name=name,
+            source_type=source_type,
+            type=node_type,
+            metadata=metadata or {},
+        )
+
+
 class DependencyGraph(dict):
     """Dependency graph representation."""
 
@@ -34,6 +60,8 @@ class DependencyGraph(dict):
         has_cycles: bool,
         cycles: list[list[str]],
         topological_order: list[str] | None,
+        source_nodes: list[SourceNode] | None = None,
+        source_edges: list[dict[str, Any]] | None = None,
     ):
         """Initialize dependency graph."""
         super().__init__(
@@ -42,6 +70,8 @@ class DependencyGraph(dict):
             has_cycles=has_cycles,
             cycles=cycles,
             topological_order=topological_order,
+            source_nodes=source_nodes or [],
+            source_edges=source_edges or [],
         )
 
 
@@ -115,12 +145,17 @@ class DependencyService:
 
         logger.debug(f"Analyzed dependencies: {len(nodes)} nodes, {len(edges)} edges, " f"cycles: {has_cycles}")
 
+        # Extract source nodes and edges
+        source_nodes, source_edges = self._extract_source_nodes(api_project)
+
         return DependencyGraph(
             nodes=nodes,
             edges=edges,
             has_cycles=has_cycles,
             cycles=cycles,
             topological_order=topological_order,
+            source_nodes=source_nodes,
+            source_edges=source_edges,
         )
 
     def check_circular_dependencies(self, project: Project) -> dict[str, Any]:
@@ -241,6 +276,149 @@ class DependencyService:
                     depths[node] = 1
 
         return depths
+
+    def _extract_source_nodes(self, api_project: Project) -> tuple[list[SourceNode], list[dict[str, Any]]]:
+        """
+        Extract source nodes and edges from project entities.
+
+        Args:
+            api_project: Project to extract sources from
+
+        Returns:
+            Tuple of (source_nodes, source_edges)
+        """
+        source_nodes: list[SourceNode] = []
+        source_edges: list[dict[str, Any]] = []
+        seen_sources: set[str] = set()
+
+        for entity_name, entity_config in api_project.entities.items():
+            entity_type = entity_config.get("type")
+
+            if entity_type == "fixed":
+                # Fixed entities have no source
+                continue
+
+            elif entity_type == "data":
+                # Data entities - add data source node
+                source_name = entity_config.get("source")
+                if source_name and source_name not in seen_sources:
+                    source_node_id = f"source:{source_name}"
+                    source_nodes.append(
+                        SourceNode(
+                            name=source_node_id,
+                            source_type="file",
+                            node_type="datasource",
+                            metadata={"source": source_name},
+                        )
+                    )
+                    seen_sources.add(source_name)
+
+                # Add edge from source to entity
+                if source_name:
+                    source_edges.append(
+                        {
+                            "source": f"source:{source_name}",
+                            "target": entity_name,
+                            "label": "provides",
+                        }
+                    )
+
+            elif entity_type == "sql":
+                # SQL entities - add data source and tables
+                datasource = entity_config.get("data_source")
+                sql_query = entity_config.get("query")
+
+                # Add data source node
+                if datasource and datasource not in seen_sources:
+                    source_node_id = f"source:{datasource}"
+                    source_nodes.append(
+                        SourceNode(
+                            name=source_node_id,
+                            source_type="database",
+                            node_type="datasource",
+                            metadata={"datasource": datasource},
+                        )
+                    )
+                    seen_sources.add(datasource)
+
+                # Extract and add table nodes
+                if sql_query and datasource:
+                    tables = self._extract_tables_from_sql(sql_query)
+                    for table in tables:
+                        table_node_id = f"table:{datasource}:{table}"
+                        # Only add if not already added
+                        if not any(node["name"] == table_node_id for node in source_nodes):
+                            source_nodes.append(
+                                SourceNode(
+                                    name=table_node_id,
+                                    source_type="database_table",
+                                    node_type="table",
+                                    metadata={"datasource": datasource, "table": table},
+                                )
+                            )
+
+                            # Edge: datasource -> table
+                            source_edges.append(
+                                {
+                                    "source": f"source:{datasource}",
+                                    "target": table_node_id,
+                                    "label": "contains",
+                                }
+                            )
+
+                        # Edge: table -> entity
+                        source_edges.append(
+                            {
+                                "source": table_node_id,
+                                "target": entity_name,
+                                "label": "used_in",
+                            }
+                        )
+
+        return source_nodes, source_edges
+
+    def _extract_tables_from_sql(self, sql_query: str) -> list[str]:
+        """
+        Extract table names from SQL query using regex.
+
+        Args:
+            sql_query: SQL query string
+
+        Returns:
+            List of table names found in query
+
+        Note:
+            This is a basic implementation using regex patterns.
+            For complex queries, consider using sqlparse library.
+        """
+        import re
+
+        if not sql_query:
+            return []
+
+        # Remove comments and normalize whitespace
+        sql = re.sub(r"--[^\n]*", "", sql_query)  # Remove -- comments
+        sql = re.sub(r"/\*.*?\*/", "", sql, flags=re.DOTALL)  # Remove /* */ comments
+        sql = re.sub(r"\s+", " ", sql).strip()  # Normalize whitespace
+
+        tables: set[str] = set()
+
+        # Pattern 1: FROM table_name or FROM schema.table_name
+        # This handles: FROM table, FROM schema.table, FROM [schema.table]
+        from_pattern = r"\bFROM\s+(?:\[)?(?:\w+\.)?(\w+)(?:\])?(?:\s+(?:AS\s+)?\w+)?(?:\s|,|$|INNER|LEFT|RIGHT|JOIN)"
+        for match in re.finditer(from_pattern, sql, re.IGNORECASE):
+            table = match.group(1)
+            if table.upper() not in ("SELECT", "WHERE", "AND", "OR"):
+                tables.add(table)
+
+        # Pattern 2: JOIN table_name or JOIN schema.table_name
+        # This handles: JOIN table, INNER JOIN table, LEFT JOIN table, etc.
+        join_pattern = r"(?:INNER|LEFT|RIGHT|FULL|OUTER|CROSS)?\s*JOIN\s+(?:\[)?(?:\w+\.)?(\w+)(?:\])?(?:\s+(?:AS\s+)?\w+)?(?:\s|ON|$)"
+        for match in re.finditer(join_pattern, sql, re.IGNORECASE):
+            table = match.group(1)
+            tables.add(table)
+
+        return sorted(list(tables))
 
 
 # Singleton instance

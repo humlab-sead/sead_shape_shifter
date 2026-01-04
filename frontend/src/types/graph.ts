@@ -46,6 +46,15 @@ export interface DependencyGraph {
   has_cycles: boolean
   cycles: string[][]
   topological_order: string[] | null
+  source_nodes?: SourceNode[]
+  source_edges?: DependencyEdge[]
+}
+
+export interface SourceNode {
+  name: string
+  source_type: string
+  type: 'datasource' | 'table' | 'file'
+  metadata?: Record<string, any>
 }
 
 export interface CircularDependencyCheck {

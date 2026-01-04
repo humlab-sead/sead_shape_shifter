@@ -31,6 +31,7 @@ declare module 'vue' {
     ForeignKeyTester: typeof import('./components/entities/ForeignKeyTester.vue')['default']
     LoadingSkeleton: typeof import('./components/common/LoadingSkeleton.vue')['default']
     MetadataEditor: typeof import('./components/MetadataEditor.vue')['default']
+    NodeLegend: typeof import('./components/dependencies/NodeLegend.vue')['default']
     PreviewFixesModal: typeof import('./components/validation/PreviewFixesModal.vue')['default']
     PreviewMatchedDataDialog: typeof import('./components/reconciliation/PreviewMatchedDataDialog.vue')['default']
     ProjectDataSources: typeof import('./components/ProjectDataSources.vue')['default']
