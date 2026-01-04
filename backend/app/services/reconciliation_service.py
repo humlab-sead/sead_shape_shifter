@@ -770,9 +770,7 @@ class ReconciliationService:
 
         # Check if specification already exists
         if entity_name in recon_config.entities and target_field in recon_config.entities[entity_name]:
-            raise BadRequestError(
-                f"Specification for entity '{entity_name}' and target field '{target_field}' already exists"
-            )
+            raise BadRequestError(f"Specification for entity '{entity_name}' and target field '{target_field}' already exists")
 
         # Ensure mapping is empty for new specification
         spec.mapping = []
@@ -824,9 +822,7 @@ class ReconciliationService:
 
         # Check if specification exists
         if entity_name not in recon_config.entities or target_field not in recon_config.entities[entity_name]:
-            raise NotFoundError(
-                f"Specification for entity '{entity_name}' and target field '{target_field}' not found"
-            )
+            raise NotFoundError(f"Specification for entity '{entity_name}' and target field '{target_field}' not found")
 
         # Get existing spec to preserve mapping
         existing_spec = recon_config.entities[entity_name][target_field]
@@ -870,16 +866,13 @@ class ReconciliationService:
 
         # Check if specification exists
         if entity_name not in recon_config.entities or target_field not in recon_config.entities[entity_name]:
-            raise NotFoundError(
-                f"Specification for entity '{entity_name}' and target field '{target_field}' not found"
-            )
+            raise NotFoundError(f"Specification for entity '{entity_name}' and target field '{target_field}' not found")
 
         # Check for existing mappings
         spec = recon_config.entities[entity_name][target_field]
         if spec.mapping and not force:
             raise BadRequestError(
-                f"Cannot delete specification with {len(spec.mapping)} existing mappings. "
-                "Use force=True to delete anyway."
+                f"Cannot delete specification with {len(spec.mapping)} existing mappings. " "Use force=True to delete anyway."
             )
 
         # Delete specification
@@ -944,8 +937,6 @@ class ReconciliationService:
         recon_config = self.load_reconciliation_config(project_name)
 
         if entity_name not in recon_config.entities or target_field not in recon_config.entities[entity_name]:
-            raise NotFoundError(
-                f"Specification for entity '{entity_name}' and target field '{target_field}' not found"
-            )
+            raise NotFoundError(f"Specification for entity '{entity_name}' and target field '{target_field}' not found")
 
         return len(recon_config.entities[entity_name][target_field].mapping)
