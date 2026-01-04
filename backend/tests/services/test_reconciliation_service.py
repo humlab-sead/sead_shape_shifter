@@ -1,6 +1,5 @@
 """Tests for ReconciliationService."""
 
-from calendar import c
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -77,7 +76,7 @@ def sample_entity_spec():
     return EntityReconciliationSpec(
         source=None,
         property_mappings={"latitude": "latitude", "longitude": "longitude"},
-        remote=ReconciliationRemote(service_type="site", data_source="sead", entity="site", key="site_id"),
+        remote=ReconciliationRemote(service_type="site"),
         auto_accept_threshold=0.95,
         review_threshold=0.70,
         mapping=[],
@@ -169,7 +168,7 @@ class TestAnotherEntityReconciliationSourceResolver:
         # Entity spec with source pointing to another entity
         entity_spec = EntityReconciliationSpec(
             source="site",
-            remote=ReconciliationRemote(service_type="sample", data_source="sead", entity="sample", key="sample_id"),
+            remote=ReconciliationRemote(service_type="sample"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -193,7 +192,7 @@ class TestAnotherEntityReconciliationSourceResolver:
 
         entity_spec = EntityReconciliationSpec(
             source="nonexistent",
-            remote=ReconciliationRemote(service_type="test", data_source="sead", entity="sample", key="sample_id"),
+            remote=ReconciliationRemote(service_type="test"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -223,7 +222,7 @@ class TestSqlQueryReconciliationSourceResolver:
 
         entity_spec = EntityReconciliationSpec(
             source=ReconciliationSource(type="sql", data_source="test_db", query="SELECT * FROM custom_view"),
-            remote=ReconciliationRemote(service_type="test", data_source="sead", entity="sample", key="sample_id"),
+            remote=ReconciliationRemote(service_type="test"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -242,7 +241,7 @@ class TestSqlQueryReconciliationSourceResolver:
 
         entity_spec = EntityReconciliationSpec(
             source=ReconciliationSource(type="sql", data_source="nonexistent_db", query="SELECT * FROM test"),
-            remote=ReconciliationRemote(service_type="test", data_source="sead", entity="sample", key="sample_id"),
+            remote=ReconciliationRemote(service_type="test"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -800,7 +799,7 @@ class TestSpecificationManagement:
                     "site_name": EntityReconciliationSpec(
                         source="another_entity",
                         property_mappings={},
-                        remote=ReconciliationRemote(service_type="taxon", data_source="sead", entity="tbl_taxa", key="taxon_id"),
+                        remote=ReconciliationRemote(service_type="taxon"),
                         auto_accept_threshold=0.85,
                         review_threshold=0.60,
                         mapping=[
@@ -831,7 +830,7 @@ class TestSpecificationManagement:
                     "sample_type": EntityReconciliationSpec(
                         source=None,
                         property_mappings={"name": "type_name"},
-                        remote=ReconciliationRemote(service_type="location", data_source="sead", entity="tbl_locations", key="location_id"),
+                        remote=ReconciliationRemote(service_type="location"),
                         auto_accept_threshold=0.90,
                         review_threshold=0.75,
                         mapping=[],
@@ -890,7 +889,7 @@ class TestSpecificationManagement:
         new_spec = EntityReconciliationSpec(
             source=None,
             property_mappings={"lat": "latitude"},
-            remote=ReconciliationRemote(service_type="location", data_source="sead", entity="location", key="location_id"),
+            remote=ReconciliationRemote(service_type="location"),
             auto_accept_threshold=0.90,
             review_threshold=0.75,
             mapping=[],
@@ -925,7 +924,7 @@ class TestSpecificationManagement:
         new_spec = EntityReconciliationSpec(
             source=None,
             property_mappings={},
-            remote=ReconciliationRemote(service_type="site", data_source="sead", entity="site", key="site_id"),
+            remote=ReconciliationRemote(service_type="site"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
             mapping=[],
@@ -959,7 +958,7 @@ class TestSpecificationManagement:
         new_spec = EntityReconciliationSpec(
             source=None,
             property_mappings={},
-            remote=ReconciliationRemote(service_type="site", data_source="sead", entity="site", key="site_id"),
+            remote=ReconciliationRemote(service_type="site"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
             mapping=[],
@@ -995,7 +994,7 @@ class TestSpecificationManagement:
             target_field="site_code",
             source="another_entity",
             property_mappings={"lat": "latitude"},
-            remote=ReconciliationRemote(service_type="site", data_source="sead", entity="tbl_sites", key="site_id"),
+            remote=ReconciliationRemote(service_type="site"),
             auto_accept_threshold=0.80,
             review_threshold=0.60,
         )
@@ -1022,7 +1021,7 @@ class TestSpecificationManagement:
                 target_field="nonexistent_field",
                 source=None,
                 property_mappings={},
-                remote=ReconciliationRemote(service_type="site", data_source="sead", entity="tbl_sites", key="site_id"),
+                remote=ReconciliationRemote(service_type="site"),
                 auto_accept_threshold=0.90,
                 review_threshold=0.70,
             )
