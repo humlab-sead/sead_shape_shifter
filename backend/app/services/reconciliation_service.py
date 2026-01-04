@@ -230,7 +230,7 @@ class ReconciliationService:
 
         if not recon_config_filename.exists():
             logger.info(f"No reconciliation config found for '{project_name}', creating empty config")
-            return ReconciliationConfig(service_url=settings.reconciliation_service_url, entities={})
+            return ReconciliationConfig(service_url=settings.reconciliation_service_url, entities={}, version="2.0")
 
         logger.debug(f"Loading reconciliation config from {recon_config_filename}")
         with open(recon_config_filename, "r", encoding="utf-8") as f:
@@ -558,6 +558,8 @@ class ReconciliationService:
                         notes=f"Auto-matched: {best_match.name}",
                         created_by="system",
                         created_at=None,
+                        last_modified=datetime.now(timezone.utc).isoformat(),
+                        will_not_match=False,
                     )
                     entity_spec.mapping.append(mapping)
                     auto_accepted += 1
@@ -625,6 +627,8 @@ class ReconciliationService:
                 notes=notes,
                 created_by="user",
                 created_at=None,
+                last_modified=datetime.now(timezone.utc).isoformat(),
+                will_not_match=False,
             )
 
             if existing_idx is not None:
