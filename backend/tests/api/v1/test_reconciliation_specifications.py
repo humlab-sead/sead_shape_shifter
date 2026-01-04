@@ -25,7 +25,6 @@ client = TestClient(app)
 def reset_services():
     """Reset service singletons between tests."""
     project_service._project_service = None
-    reconciliation_service._reconciliation_service = None
     validation_service._validation_service = None
     yaml_service._yaml_service = None
 
@@ -33,7 +32,6 @@ def reset_services():
 
     # Clear again after test
     project_service._project_service = None
-    reconciliation_service._reconciliation_service = None
     validation_service._validation_service = None
     yaml_service._yaml_service = None
 
@@ -84,12 +82,12 @@ def sample_recon_config(tmp_path):
                 "site_name": EntityReconciliationSpec(
                     source="another_entity",
                     property_mappings={},
-                    remote=ReconciliationRemote(service_type="taxon"),
+                    remote=ReconciliationRemote(service_type="taxon", data_source="sead", entity="taxa", key="taxon_id"),
                     auto_accept_threshold=0.85,
                     review_threshold=0.60,
                     mapping=[
-                        ReconciliationMapping(source_value="test1", sead_id=1),
-                        ReconciliationMapping(source_value="test2", sead_id=2),
+                        ReconciliationMapping(source_value="test1", sead_id=1, confidence=0.98, notes="Auto-matched", **{}),
+                        ReconciliationMapping(source_value="test2", sead_id=2, confidence=0.85, notes="Auto-matched", **{}),
                     ],
                 ),
             }
@@ -110,7 +108,7 @@ class TestListSpecifications:
         """Test listing specifications successfully."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.get("/api/v1/reconcile/specifications?project_name=test_project")
+        response = client.get("/api/v1/projects/test_project/reconciliation/specifications")
 
         assert response.status_code == 200
         specs = response.json()
@@ -138,7 +136,7 @@ class TestListSpecifications:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)
 
-        response = client.get("/api/v1/reconcile/specifications?project_name=test_project")
+        response = client.get("/api/v1/projects/test_project/reconciliation/specifications")
 
         assert response.status_code == 200
         assert response.json() == []
@@ -147,9 +145,11 @@ class TestListSpecifications:
         """Test listing when no reconciliation config exists."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.get("/api/v1/reconcile/specifications?project_name=test_project")
+        response = client.get("/api/v1/projects/test_project/reconciliation/specifications")
 
-        assert response.status_code == 404
+        # Service auto-creates empty config when none exists
+        assert response.status_code == 200
+        assert response.json() == []
 
 
 class TestCreateSpecification:
@@ -178,7 +178,7 @@ class TestCreateSpecification:
             },
         }
 
-        response = client.post("/api/v1/reconcile/specifications?project_name=test_project", json=payload)
+        response = client.post("/api/v1/projects/test_project/reconciliation/specifications", json=payload)
 
         assert response.status_code == 201
         config = response.json()
@@ -207,7 +207,7 @@ class TestCreateSpecification:
             },
         }
 
-        response = client.post("/api/v1/reconcile/specifications?project_name=test_project", json=payload)
+        response = client.post("/api/v1/projects/test_project/reconciliation/specifications", json=payload)
 
         assert response.status_code == 400
         assert "already exists" in response.json()["detail"]
@@ -236,7 +236,7 @@ class TestCreateSpecification:
             },
         }
 
-        response = client.post("/api/v1/reconcile/specifications?project_name=test_project", json=payload)
+        response = client.post("/api/v1/projects/test_project/reconciliation/specifications", json=payload)
 
         assert response.status_code == 400
         assert "does not exist" in response.json()["detail"]
@@ -257,7 +257,7 @@ class TestUpdateSpecification:
             "review_threshold": 0.60,
         }
 
-        response = client.put("/api/v1/reconcile/specifications/site/site_code?project_name=test_project", json=payload)
+        response = client.put("/api/v1/projects/test_project/reconciliation/specifications/site/site_code", json=payload)
 
         assert response.status_code == 200
         config = response.json()
@@ -279,7 +279,7 @@ class TestUpdateSpecification:
             "review_threshold": 0.75,
         }
 
-        response = client.put("/api/v1/reconcile/specifications/site/site_name?project_name=test_project", json=payload)
+        response = client.put("/api/v1/projects/test_project/reconciliation/specifications/site/site_name", json=payload)
 
         assert response.status_code == 200
         spec = response.json()["entities"]["site"]["site_name"]
@@ -298,7 +298,7 @@ class TestUpdateSpecification:
             "review_threshold": 0.70,
         }
 
-        response = client.put("/api/v1/reconcile/specifications/site/nonexistent?project_name=test_project", json=payload)
+        response = client.put("/api/v1/projects/test_project/reconciliation/specifications/site/nonexistent", json=payload)
 
         assert response.status_code == 404
 
@@ -310,7 +310,7 @@ class TestDeleteSpecification:
         """Test deleting specification without mappings."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.delete("/api/v1/reconcile/specifications/site/site_code?project_name=test_project")
+        response = client.delete("/api/v1/projects/test_project/reconciliation/specifications/site/site_code")
 
         assert response.status_code == 200
         config = response.json()
@@ -322,7 +322,7 @@ class TestDeleteSpecification:
         """Test deleting specification with mappings fails without force."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.delete("/api/v1/reconcile/specifications/site/site_name?project_name=test_project")
+        response = client.delete("/api/v1/projects/test_project/reconciliation/specifications/site/site_name")
 
         assert response.status_code == 400
         assert "2 existing mappings" in response.json()["detail"]
@@ -331,7 +331,7 @@ class TestDeleteSpecification:
         """Test force deleting specification with mappings succeeds."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.delete("/api/v1/reconcile/specifications/site/site_name?project_name=test_project&force=true")
+        response = client.delete("/api/v1/projects/test_project/reconciliation/specifications/site/site_name?force=true")
 
         assert response.status_code == 200
         config = response.json()
@@ -341,7 +341,7 @@ class TestDeleteSpecification:
         """Test deleting non-existent specification fails."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.delete("/api/v1/reconcile/specifications/site/nonexistent?project_name=test_project")
+        response = client.delete("/api/v1/projects/test_project/reconciliation/specifications/site/nonexistent")
 
         assert response.status_code == 404
 
@@ -369,7 +369,7 @@ class TestGetAvailableFields:
         mock_service_instance.preview_entity = AsyncMock(return_value=mock_preview_result)
         mock_shapeshift.return_value = mock_service_instance
 
-        response = client.get("/api/v1/reconcile/available-fields/site?project_name=test_project")
+        response = client.get("/api/v1/projects/test_project/reconciliation/available-fields/site")
 
         assert response.status_code == 200
         fields = response.json()
@@ -383,7 +383,7 @@ class TestGetMappingCount:
         """Test getting mapping count."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.get("/api/v1/reconcile/specifications/site/site_name/mapping-count?project_name=test_project")
+        response = client.get("/api/v1/projects/test_project/reconciliation/specifications/site/site_name/mapping-count")
 
         assert response.status_code == 200
         result = response.json()
@@ -393,7 +393,7 @@ class TestGetMappingCount:
         """Test getting mapping count when no mappings exist."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.get("/api/v1/reconcile/specifications/site/site_code/mapping-count?project_name=test_project")
+        response = client.get("/api/v1/projects/test_project/reconciliation/specifications/site/site_code/mapping-count")
 
         assert response.status_code == 200
         result = response.json()
@@ -403,6 +403,6 @@ class TestGetMappingCount:
         """Test getting mapping count for non-existent specification."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        response = client.get("/api/v1/reconcile/specifications/site/nonexistent/mapping-count?project_name=test_project")
+        response = client.get("/api/v1/projects/test_project/reconciliation/specifications/site/nonexistent/mapping-count")
 
         assert response.status_code == 404

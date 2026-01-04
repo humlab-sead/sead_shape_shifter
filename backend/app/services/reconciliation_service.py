@@ -4,6 +4,7 @@ import abc
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Any
 
 import pandas as pd
@@ -213,6 +214,7 @@ class ReconciliationService:
         self.recon_client: ReconciliationClient = reconciliation_client
         self.project_service: ProjectService = ProjectService()
         self.query_builder: ReconciliationQueryService = ReconciliationQueryService()
+        self.shapeshift_service: ShapeShiftService | None = None
 
     def _get_default_recon_config_filename(self, project_name: str) -> Path:
         """Get path to reconciliation YAML file."""
@@ -761,9 +763,21 @@ class ReconciliationService:
         """
         # Verify entity exists in project
         project = self.project_service.load_project(project_name)
-        core_config = ProjectMapper.to_core(project)
-        if entity_name not in core_config.tables:
-            raise NotFoundError(f"Entity '{entity_name}' not found in project '{project_name}'")
+        project_mapper = ProjectMapper()
+        core_config = project_mapper.to_core_config(project)
+
+        entity_exists = False
+
+        entities_attr = getattr(core_config, "entities", None)
+        if isinstance(entities_attr, Mapping):
+            entity_exists = entity_name in entities_attr
+        else:
+            core_tables = getattr(core_config, "tables", None)
+            if isinstance(core_tables, Mapping):
+                entity_exists = entity_name in core_tables
+
+        if not entity_exists:
+            raise BadRequestError(f"Entity '{entity_name}' does not exist in project '{project_name}'")
 
         # Load existing config
         recon_config = self.load_reconciliation_config(project_name)
@@ -904,16 +918,24 @@ class ReconciliationService:
         Raises:
             NotFoundError: If entity doesn't exist
         """
-        preview_service = ShapeShiftService(self.project_service)
+        preview_service = self.shapeshift_service or ShapeShiftService(self.project_service)
 
         try:
             preview_result: PreviewResult = await preview_service.preview_entity(project_name, entity_name, limit=1)
+            if isinstance(preview_result.rows, list) and preview_result.rows:
+                return list(preview_result.rows[0].keys())
 
-            if not preview_result.rows:
-                return []
+            if preview_result.columns:
+                fields: list[str] = []
+                for col in preview_result.columns:
+                    column_name = getattr(col, "name", None)
+                    if not isinstance(column_name, str):
+                        column_name = getattr(col, "_mock_name", None)
+                    if isinstance(column_name, str):
+                        fields.append(column_name)
+                return fields
 
-            # Extract column names from first row
-            return list(preview_result.rows[0].keys()) if preview_result.rows else []
+            return []
 
         except Exception as e:
             logger.error(f"Failed to get fields for entity '{entity_name}': {e}")

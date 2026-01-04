@@ -459,7 +459,7 @@ async def mark_as_unmatched(
 async def list_specifications(
     project_name: str,
     service: ReconciliationService = Depends(get_reconciliation_service),
-) -> list["SpecificationListItem"]:
+) -> list[SpecificationListItem]:
     """
     List all reconciliation specifications for a project.
 
@@ -475,7 +475,7 @@ async def list_specifications(
     return service.list_specifications(project_name)
 
 
-@router.post("/projects/{project_name}/reconciliation/specifications")
+@router.post("/projects/{project_name}/reconciliation/specifications", status_code=201)
 @handle_endpoint_errors
 async def create_specification(
     project_name: str,
