@@ -29,6 +29,7 @@ export interface DependencyNode {
   name: string
   depends_on: string[]
   depth: number
+  type?: 'data' | 'sql' | 'fixed'
 }
 
 export interface DependencyEdge {
