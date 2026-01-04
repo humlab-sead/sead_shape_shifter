@@ -97,3 +97,14 @@ I can see the following requirements:
 This change will achieve the capability to fully manage a project's reconciliation specifications from the frontend UX. The reconciliation workflow will be geared towards a project focused approach rather than individual entity specifications.
 
 Please do an review of this proposed change and provide feedback if you see any issues with this approach, and create an implementation plan for this change.
+
+
+I need to clarify the requirements. The reconciliation workflow doesn't need to know which target database, table and column the mapping belongs to. We are asking the OpenRefine service "Hey, I have a site named Uppsala, please give me it's ID.", and the service returns ID 1234. What we need to do then is to store this mapping (when accepted) between "Uppsala" and "1234". One of the final steps in the full shapeshifting workflow is to assign the mapped value "1234" to all rows having "site_name" equal to Uppsala entities in the (normalized/shapeshifted) "site" data (which is a Pandas DataFrame). This is done by LinkToRemoteService in link_to_remote. The dispatch will then store this information in the target format CSV or Excel. We do need to have enough information in the entity reconciliation specification to do this mapping.
+So we need to store the following information in the entity reconciliation specification:
+- The entity name (e.g. "site")
+- The target field (e.g. "site_name") which is the label we asked the ID for
+- The property fields that we can enrich our reconciliation queries with (e.g. "country", "region", etc)
+The field in the entity's output data that we will store the reconciled ID in will **always** be the field named by the "surrogate_id" key in the entity specification. That is a mandatory field in the project's entity specifications. This field is the "public ID field" of the entity. In the output data, after reconciliation, we will have a value in that field for all mapped items. The other items are considered new items. N.B. within the output dataset, a "system_id" is maintained as the project scoped primary key. 
+
+So the mapping in essence is "Uppsala" (from target field "site_name")  -> "1234" (to surrogate_id field "site_id"). The other property fields are only used to improve the quality of the reconciliation queries.
+Thus, we do not need to store the target database, table and column in the entity reconciliation specification. The "surrogate_id" field in the entity specification is sufficient to determine where to store the reconciled IDs.

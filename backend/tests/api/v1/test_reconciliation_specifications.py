@@ -74,7 +74,7 @@ def sample_recon_config(tmp_path):
                 "site_code": EntityReconciliationSpec(
                     source=None,
                     property_mappings={"latitude": "latitude", "longitude": "longitude"},
-                    remote=ReconciliationRemote(service_type="site", data_source="sead", entity="tbl_sites", key="site_id"),
+                    remote=ReconciliationRemote(service_type="site"),
                     auto_accept_threshold=0.95,
                     review_threshold=0.70,
                     mapping=[],
@@ -82,7 +82,7 @@ def sample_recon_config(tmp_path):
                 "site_name": EntityReconciliationSpec(
                     source="another_entity",
                     property_mappings={},
-                    remote=ReconciliationRemote(service_type="taxon", data_source="sead", entity="taxa", key="taxon_id"),
+                    remote=ReconciliationRemote(service_type="taxon"),
                     auto_accept_threshold=0.85,
                     review_threshold=0.60,
                     mapping=[
@@ -171,7 +171,7 @@ class TestCreateSpecification:
             "spec": {
                 "source": None,
                 "property_mappings": {"name": "type_name"},
-                "remote": {"service_type": "location", "data_source": "sead", "entity": "tbl_locations", "key": "location_id"},
+                "remote": {"service_type": "location"},
                 "auto_accept_threshold": 0.90,
                 "review_threshold": 0.75,
                 "mapping": [],
@@ -252,7 +252,7 @@ class TestUpdateSpecification:
         payload = {
             "source": "other_source",
             "property_mappings": {"new_prop": "new_col"},
-            "remote": {"service_type": "taxon", "data_source": "sead"},
+            "remote": {"service_type": "taxon"},
             "auto_accept_threshold": 0.80,
             "review_threshold": 0.60,
         }

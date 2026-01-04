@@ -24,13 +24,13 @@
 
       <!-- Tabs -->
       <v-tabs v-model="activeTab" bg-color="transparent" color="primary" grow>
-        <v-tab value="setup" :disabled="!hasConfig">
-          <v-icon start>mdi-cog</v-icon>
-          Setup
-        </v-tab>
         <v-tab value="configuration">
           <v-icon start>mdi-file-document-edit</v-icon>
           Configuration
+        </v-tab>
+        <v-tab value="setup" :disabled="!hasConfig">
+          <v-icon start>mdi-cog</v-icon>
+          Setup
         </v-tab>
         <v-tab value="reconcile" :disabled="!selectedEntity">
           <v-icon start>mdi-auto-fix</v-icon>
@@ -322,7 +322,7 @@ const reconciliationStore = useReconciliationStore()
 const { reconciliationConfig, loading, reconcilableEntities, hasConfig, previewData, getEntityTargets } = storeToRefs(reconciliationStore)
 
 // Local state
-const activeTab = ref<string>('setup') // Tab state: setup, reconcile, review
+const activeTab = ref<string>('configuration') // Tab state: configuration, setup, reconcile, review
 const selectedEntity = ref<string | null>(null)
 const selectedTarget = ref<string | null>(null) // Selected target field
 const autoAcceptThreshold = ref<number>(95) // User-adjustable threshold (percentage)

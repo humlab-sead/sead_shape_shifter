@@ -10,9 +10,7 @@ export interface ReconciliationSource {
 
 export interface ReconciliationRemote {
   service_type?: string | null // e.g., 'site', 'taxon' - must match service defaultTypes
-  data_source?: string | null // Remote data source name
-  entity?: string | null // Remote entity/table name
-  key?: string | null // Remote key column name
+  columns?: string[] // Additional columns for display/matching
 }
 
 export interface ReconciliationMapping {
