@@ -55,7 +55,7 @@ const baseStyles: StylesheetCSS[] = [
   {
     selector: 'node[type="sql"]',
     css: {
-      shape: 'round-rectangle',
+      shape: 'ellipse',
       'background-color': '#2E7D32',
     },
   },
@@ -64,7 +64,7 @@ const baseStyles: StylesheetCSS[] = [
   {
     selector: 'node[type="fixed"]',
     css: {
-      shape: 'diamond',
+      shape: 'ellipse',
       'background-color': '#6A1B9A',
     },
   },

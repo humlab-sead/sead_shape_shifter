@@ -15,7 +15,6 @@
         <v-text-field
           v-model="formData.name"
           label="Project Name"
-          hint="Name of this project"
           persistent-hint
           variant="outlined"
           density="comfortable"
@@ -26,7 +25,6 @@
         <v-textarea
           v-model="formData.description"
           label="Description"
-          hint="Optional description of this project"
           persistent-hint
           variant="outlined"
           density="comfortable"
@@ -37,7 +35,6 @@
         <v-text-field
           v-model="formData.version"
           label="Version"
-          hint="Version number in x.y.z format (e.g., 1.0.0)"
           persistent-hint
           variant="outlined"
           density="comfortable"
@@ -49,7 +46,6 @@
           v-model="formData.default_entity"
           :items="availableEntities"
           label="Default Entity"
-          hint="Optional default entity to use for operations"
           persistent-hint
           variant="outlined"
           density="comfortable"
