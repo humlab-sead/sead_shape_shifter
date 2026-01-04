@@ -152,6 +152,13 @@
                   :disabled="!hasCircularDependencies"
                 />
 
+                <v-switch
+                  v-model="showSourceNodes"
+                  label="Show Source Nodes"
+                  density="compact"
+                  hide-details
+                />
+
                 <v-spacer />
 
                 <v-chip prepend-icon="mdi-cube-outline"> {{ depStatistics.nodeCount }} nodes </v-chip>
@@ -546,6 +553,7 @@ const layoutType = ref<'hierarchical' | 'force'>('hierarchical')
 const showNodeLabels = ref(true)
 const showEdgeLabels = ref(true)
 const highlightCycles = ref(true)
+const showSourceNodes = ref(false)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
 
@@ -615,6 +623,7 @@ const { fit, zoomIn, zoomOut, reset, exportPNG } = useCytoscape({
   showNodeLabels,
   showEdgeLabels,
   highlightCycles,
+  showSourceNodes,
   cycles,
   isDark,
   onNodeClick: (nodeId: string) => {

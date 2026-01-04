@@ -49,6 +49,11 @@ export interface UseCytoscapeOptions {
   highlightCycles?: Ref<boolean>
 
   /**
+   * Whether to show source nodes
+   */
+  showSourceNodes?: Ref<boolean>
+
+  /**
    * Cycles to highlight
    */
   cycles?: Ref<string[][]>
@@ -77,6 +82,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     showNodeLabels = ref(true),
     showEdgeLabels = ref(true),
     highlightCycles = ref(false),
+    showSourceNodes = ref(false),
     cycles = ref([]),
     isDark = ref(false),
     onNodeClick,
@@ -100,7 +106,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
         style: getCytoscapeStyles(isDark.value),
         minZoom: 0.3,
         maxZoom: 3,
-        wheelSensitivity: 0.2,
+        wheelSensitivity: 0.3,
         boxSelectionEnabled: false,
         autounselectify: false,
       })
@@ -136,6 +142,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
       showNodeLabels: showNodeLabels.value,
       showEdgeLabels: showEdgeLabels.value,
       highlightCycles: highlightCycles.value,
+      showSourceNodes: showSourceNodes.value,
     })
 
     cy.value.elements().remove()
@@ -305,6 +312,12 @@ export function useCytoscape(options: UseCytoscapeOptions) {
 
   // Watch for cycle highlighting changes
   watch(highlightCycles, () => {
+    updateElements()
+    applyLayout(false) // Re-apply layout without animation
+  })
+
+  // Watch for source node visibility changes
+  watch(showSourceNodes, () => {
     updateElements()
     applyLayout(false) // Re-apply layout without animation
   })

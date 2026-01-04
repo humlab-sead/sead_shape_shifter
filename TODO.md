@@ -46,3 +46,5 @@
  - [ ] TODO: Publish frontend files via the backend (FastAPI) server for easier deployment.
  - [x] TODO: #92 Add status endpoint (backend) and indicator (UX) for reconciliation service health check.
  - [x] TODO: #94 Add reconciliation CLI script
+ - [ ] TODO: #95 Display data lineage/source information in dependency graph
+

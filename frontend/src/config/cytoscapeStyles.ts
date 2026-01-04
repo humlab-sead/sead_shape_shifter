@@ -86,6 +86,51 @@ const baseStyles: StylesheetCSS[] = [
     },
   },
 
+  // Source node base styles
+  {
+    selector: 'node.source-node',
+    css: {
+      'background-opacity': 0.85,
+      'border-style': 'dashed',
+      'border-width': 2,
+      'border-color': '#999',
+      'font-size': '18px',
+    },
+  },
+
+  // Datasource nodes - database cylinder shape
+  {
+    selector: 'node.source-datasource',
+    css: {
+      shape: 'barrel',
+      'background-color': '#00796B', // Teal
+      width: 40,
+      height: 40,
+    },
+  },
+
+  // Table nodes - rectangles
+  {
+    selector: 'node.source-table',
+    css: {
+      shape: 'rectangle',
+      'background-color': '#0097A7', // Cyan
+      width: 35,
+      height: 35,
+    },
+  },
+
+  // File source nodes
+  {
+    selector: 'node.source-file',
+    css: {
+      shape: 'round-rectangle',
+      'background-color': '#5E35B1', // Deep purple
+      width: 38,
+      height: 38,
+    },
+  },
+
   // Edge styles
   {
     selector: 'edge',
@@ -110,6 +155,19 @@ const baseStyles: StylesheetCSS[] = [
     selector: 'edge.hide-label',
     css: {
       label: '',
+    },
+  },
+
+  // Source edges - visually distinct from entity edges
+  {
+    selector: 'edge.source-edge',
+    css: {
+      'line-style': 'dotted',
+      'line-color': '#00796B',
+      'target-arrow-color': '#00796B',
+      width: 1.5,
+      opacity: 0.7,
+      'arrow-scale': 1,
     },
   },
 

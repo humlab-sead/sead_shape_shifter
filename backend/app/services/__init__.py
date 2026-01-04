@@ -63,6 +63,7 @@ from backend.app.services.dependency_service import (
     DependencyNode,
     DependencyService,
     DependencyServiceError,
+    SourceNode,
 )
 
 # Configuration service
@@ -137,6 +138,7 @@ __all__ = [
     "CircularDependencyError",
     "DependencyNode",
     "DependencyGraph",
+    "SourceNode",
     # Query exceptions
     "QueryExecutionError",
     "QuerySecurityError",
