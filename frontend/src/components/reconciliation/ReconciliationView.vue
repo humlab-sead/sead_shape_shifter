@@ -73,6 +73,24 @@
                       </v-list-item>
                     </template>
                   </v-select>
+
+                  <!-- Target Field Selection (only shown when entity is selected) -->
+                  <v-select
+                    v-if="selectedEntity && entityTargets.length > 0"
+                    v-model="selectedTarget"
+                    :items="entityTargets"
+                    label="Select Target Field"
+                    variant="outlined"
+                    density="comfortable"
+                    class="mt-4"
+                    prepend-inner-icon="mdi-target"
+                  >
+                    <template #no-data>
+                      <v-list-item>
+                        <v-list-item-title class="text-grey"> No targets configured </v-list-item-title>
+                      </v-list-item>
+                    </template>
+                  </v-select>
                 </v-card-text>
               </v-card>
 
@@ -131,14 +149,6 @@
                         <span v-if="typeof entitySpec.source === 'string'">{{ entitySpec.source }}</span>
                         <span v-else>Custom query ({{ entitySpec.source.data_source }})</span>
                       </v-list-item-subtitle>
-                    </v-list-item>
-
-                    <v-list-item>
-                      <template #prepend>
-                        <v-icon>mdi-key</v-icon>
-                      </template>
-                      <v-list-item-title>Keys</v-list-item-title>
-                      <v-list-item-subtitle>{{ entitySpec.keys.join(', ') }}</v-list-item-subtitle>
                     </v-list-item>
 
                     <v-list-item v-if="Object.keys(entitySpec.property_mappings).length > 0">
@@ -291,11 +301,12 @@ const props = defineProps<Props>()
 
 // Store
 const reconciliationStore = useReconciliationStore()
-const { reconciliationConfig, loading, reconcilableEntities, hasConfig, previewData } = storeToRefs(reconciliationStore)
+const { reconciliationConfig, loading, reconcilableEntities, hasConfig, previewData, getEntityTargets } = storeToRefs(reconciliationStore)
 
 // Local state
 const activeTab = ref<string>('setup') // Tab state: setup, reconcile, review
 const selectedEntity = ref<string | null>(null)
+const selectedTarget = ref<string | null>(null) // Selected target field
 const autoAcceptThreshold = ref<number>(95) // User-adjustable threshold (percentage)
 const reviewThreshold = ref<number>(70) // Review threshold (percentage)
 const showResultSnackbar = ref(false)
@@ -304,9 +315,16 @@ const resultColor = ref('success')
 const serviceStatus = ref<{ status: string; service_name?: string; error?: string } | null>(null)
 
 // Computed
+const entityTargets = computed(() => {
+  if (!selectedEntity.value) return []
+  return getEntityTargets.value(selectedEntity.value)
+})
+
 const entitySpec = computed(() => {
-  if (!selectedEntity.value || !reconciliationConfig.value) return null
-  return reconciliationConfig.value.entities[selectedEntity.value] || null
+  if (!selectedEntity.value || !selectedTarget.value || !reconciliationConfig.value) return null
+  const entityConfigs = reconciliationConfig.value.entities[selectedEntity.value]
+  if (!entityConfigs) return null
+  return entityConfigs[selectedTarget.value] || null
 })
 
 const entityPreviewData = computed(() => {
@@ -316,15 +334,20 @@ const entityPreviewData = computed(() => {
 
 // Methods
 async function handleAutoReconcile() {
-  if (!selectedEntity.value) return
+  if (!selectedEntity.value || !selectedTarget.value) return
 
   try {
     // Convert percentage to decimal (e.g., 95 -> 0.95)
     const thresholdDecimal = autoAcceptThreshold.value / 100
-    const result = await reconciliationStore.autoReconcile(props.projectName, selectedEntity.value, thresholdDecimal)
+    const result = await reconciliationStore.autoReconcile(
+      props.projectName,
+      selectedEntity.value,
+      selectedTarget.value,
+      thresholdDecimal
+    )
 
     // Reload preview data to show updated results
-    await reconciliationStore.loadPreviewData(props.projectName, selectedEntity.value)
+    await reconciliationStore.loadPreviewData(props.projectName, selectedEntity.value, selectedTarget.value)
 
     resultMessage.value = `Auto-reconciliation complete: ${result.auto_accepted} auto-matched, ${result.needs_review} need review, ${result.unmatched} unmatched`
     resultColor.value = 'success'
@@ -342,12 +365,19 @@ async function handleAutoReconcile() {
 }
 
 async function handleUpdateMapping(row: ReconciliationPreviewRow, seadId: number | null, notes?: string) {
-  if (!selectedEntity.value || !entitySpec.value) return
+  if (!selectedEntity.value || !selectedTarget.value || !entitySpec.value) return
 
   try {
-    // Extract source values from row based on entity keys
-    const sourceValues = entitySpec.value.keys.map((key) => row[key])
-    await reconciliationStore.updateMapping(props.projectName, selectedEntity.value, sourceValues, seadId, notes)
+    // Extract the source value for the target field
+    const sourceValue = row[selectedTarget.value]
+    await reconciliationStore.updateMapping(
+      props.projectName,
+      selectedEntity.value,
+      selectedTarget.value,
+      sourceValue,
+      seadId,
+      notes
+    )
   } catch (e: any) {
     resultMessage.value = `Failed to update mapping: ${e.message}`
     resultColor.value = 'error'
@@ -414,19 +444,33 @@ watch(
   }
 )
 
-// Watch for entity changes and load preview data
+// Watch for entity changes and auto-select first target
 watch(
   selectedEntity,
-  async (newEntity) => {
-    if (newEntity && entitySpec.value) {
-      // Sync slider with entity spec threshold when entity changes (convert decimal to percentage)
+  (newEntity) => {
+    if (newEntity && entityTargets.value.length > 0) {
+      // Auto-select the first target
+      selectedTarget.value = entityTargets.value[0]
+    } else {
+      selectedTarget.value = null
+    }
+  },
+  { immediate: true }
+)
+
+// Watch for target changes and load preview data
+watch(
+  [selectedEntity, selectedTarget],
+  async ([newEntity, newTarget]) => {
+    if (newEntity && newTarget && entitySpec.value) {
+      // Sync slider with entity spec threshold when target changes (convert decimal to percentage)
       if (entitySpec.value.auto_accept_threshold) {
         autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
       }
       
-      // Load preview data for the selected entity
+      // Load preview data for the selected entity and target
       try {
-        await reconciliationStore.loadPreviewData(props.projectName, newEntity)
+        await reconciliationStore.loadPreviewData(props.projectName, newEntity, newTarget)
         
         // If we have preview data, switch to reconcile tab
         if (entityPreviewData.value.length > 0) {
