@@ -2,6 +2,7 @@
 
 import abc
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -657,7 +658,6 @@ class ReconciliationService:
         Returns:
             Updated reconciliation configuration
         """
-        from datetime import datetime, timezone
 
         recon_config: ReconciliationConfig = self.load_reconciliation_config(project_name)
 

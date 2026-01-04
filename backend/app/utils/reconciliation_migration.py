@@ -29,7 +29,7 @@ def migrate_mapping_v1_to_v2(old_mapping: dict[str, Any]) -> dict[str, Any]:
     return new_mapping
 
 
-def migrate_spec_v1_to_v2(old_spec: dict[str, Any], target_field: str) -> dict[str, Any]:
+def migrate_spec_v1_to_v2(old_spec: dict[str, Any]) -> dict[str, Any]:
     """
     Migrate a single entity reconciliation spec from v1 to v2 format.
 
@@ -109,7 +109,7 @@ def migrate_config_v1_to_v2(old_config: dict[str, Any]) -> dict[str, Any]:
             )
 
         # Migrate the spec
-        migrated_spec = migrate_spec_v1_to_v2(old_spec, target_field)
+        migrated_spec = migrate_spec_v1_to_v2(old_spec)
 
         # Create nested structure: entity -> target_field -> spec
         new_config["entities"][entity_name] = {target_field: migrated_spec}

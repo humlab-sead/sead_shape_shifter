@@ -11,6 +11,8 @@ Tests cover:
 - Error handling for HTTP failures
 """
 
+import socket
+import subprocess
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -803,8 +805,6 @@ class TestReconciliationClientIntegration:
 
         This test provides detailed output for debugging connection problems.
         """
-        import socket
-        import subprocess
 
         print("\n=== Connection Diagnostics ===")
 
@@ -816,7 +816,7 @@ class TestReconciliationClientIntegration:
         print(f"\n0. Docker Port Mapping Check:")
         try:
             result = subprocess.run(
-                ["docker", "ps", "--format", "{{.ID}}|{{.Image}}|{{.Ports}}"], capture_output=True, text=True, timeout=5
+                ["docker", "ps", "--format", "{{.ID}}|{{.Image}}|{{.Ports}}"], capture_output=True, text=True, timeout=5, check=True
             )
 
             if result.returncode == 0:
@@ -858,7 +858,7 @@ class TestReconciliationClientIntegration:
 
         except FileNotFoundError:
             print(f"   ⚠ Docker CLI not available, skipping container check")
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             print(f"   ⚠ Could not check Docker containers: {e}")
 
         # Test 1: DNS Resolution
@@ -894,7 +894,7 @@ class TestReconciliationClientIntegration:
         except socket.timeout:
             print(f"   ✗ Connection timeout after {timeout}s")
             pytest.skip("Connection timeout")
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             print(f"   ✗ Connection error: {e}")
             pytest.skip(f"Connection error: {e}")
         finally:
@@ -914,7 +914,7 @@ class TestReconciliationClientIntegration:
                     print(f"   ✗ Service is OFFLINE")
                     print(f"   Error: {health.get('error', 'Unknown')}")
 
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 print(f"   ✗ Health check failed: {type(e).__name__}: {e}")
             finally:
                 await client.close()
