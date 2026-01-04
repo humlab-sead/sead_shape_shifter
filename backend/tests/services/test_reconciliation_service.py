@@ -1,5 +1,6 @@
 """Tests for ReconciliationService."""
 
+from calendar import c
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -799,12 +800,12 @@ class TestSpecificationManagement:
                     "site_name": EntityReconciliationSpec(
                         source="another_entity",
                         property_mappings={},
-                        remote=ReconciliationRemote(service_type="taxon"),
+                        remote=ReconciliationRemote(service_type="taxon", data_source="sead", entity="tbl_taxa", key="taxon_id"),
                         auto_accept_threshold=0.85,
                         review_threshold=0.60,
                         mapping=[
-                            ReconciliationMapping(source_value="test", sead_id=1),
-                            ReconciliationMapping(source_value="test2", sead_id=2),
+                            ReconciliationMapping(source_value="test", sead_id=1, confidence=0.9, notes="Existing mapping", created_by="user", created_at="2024-01-01T00:00:00Z", will_not_match=False, last_modified="2024-01-02T00:00:00Z"),
+                            ReconciliationMapping(source_value="test2", sead_id=2, confidence=0.8, notes="Another mapping", created_by="user", created_at="2024-01-03T00:00:00Z", will_not_match=False, last_modified="2024-01-04T00:00:00Z"),
                         ],
                     ),
                 },
@@ -812,7 +813,7 @@ class TestSpecificationManagement:
                     "sample_type": EntityReconciliationSpec(
                         source=None,
                         property_mappings={"name": "type_name"},
-                        remote=ReconciliationRemote(service_type="location"),
+                        remote=ReconciliationRemote(service_type="location", data_source="sead", entity="tbl_locations", key="location_id"),
                         auto_accept_threshold=0.90,
                         review_threshold=0.75,
                         mapping=[],
@@ -871,7 +872,7 @@ class TestSpecificationManagement:
         new_spec = EntityReconciliationSpec(
             source=None,
             property_mappings={"lat": "latitude"},
-            remote=ReconciliationRemote(service_type="location"),
+            remote=ReconciliationRemote(service_type="location", data_source="sead", entity="location", key="location_id"),
             auto_accept_threshold=0.90,
             review_threshold=0.75,
             mapping=[],
@@ -1011,7 +1012,7 @@ class TestSpecificationManagement:
 
     def test_delete_specification_with_mappings_no_force(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test deleting specification with mappings raises error without force."""
-        sample_recon_config.entities["site"]["site_code"].mapping = [ReconciliationMapping(source_value="SITE001", sead_id=100)]
+        sample_recon_config.entities["site"]["site_code"].mapping = [ReconciliationMapping(source_value="SITE001", sead_id=100, confidence=0.95, notes="Existing mapping", created_by="user", created_at="2024-01-01T00:00:00Z", will_not_match=False, last_modified="2024-01-02T00:00:00Z")]
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
@@ -1023,8 +1024,8 @@ class TestSpecificationManagement:
     def test_delete_specification_with_mappings_force(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test force deleting specification with mappings succeeds."""
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            ReconciliationMapping(source_value="SITE001", sead_id=100),
-            ReconciliationMapping(source_value="SITE002", sead_id=101),
+            ReconciliationMapping(source_value="SITE001", sead_id=100, confidence=0.95, notes="Existing mapping", created_by="user", created_at="2024-01-01T00:00:00Z", will_not_match=False, last_modified="2024-01-02T00:00:00Z"),
+            ReconciliationMapping(source_value="SITE002", sead_id=101, confidence=0.90, notes="Another mapping", created_by="user", created_at="2024-01-03T00:00:00Z", will_not_match=False, last_modified="2024-01-04T00:00:00Z"),
         ]
 
         config_file = tmp_path / "test-reconciliation.yml"
@@ -1082,9 +1083,9 @@ class TestSpecificationManagement:
     def test_get_mapping_count_success(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test getting mapping count."""
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            ReconciliationMapping(source_value="SITE001", sead_id=100),
-            ReconciliationMapping(source_value="SITE002", sead_id=101),
-            ReconciliationMapping(source_value="SITE003", sead_id=None),
+            ReconciliationMapping(source_value="SITE001", sead_id=100, confidence=0.99, notes="Test note", will_not_match=False, created_by="user1", created_at="2024-01-01T00:00:00Z", last_modified="2024-01-02T00:00:00Z"),
+            ReconciliationMapping(source_value="SITE002", sead_id=101, confidence=0.95, notes="Test note 2", will_not_match=False, created_by="user2", created_at="2024-01-03T00:00:00Z", last_modified="2024-01-04T00:00:00Z"),
+            ReconciliationMapping(source_value="SITE003", sead_id=None,confidence=None, notes="Local only", will_not_match=True, created_by="user3", created_at="2024-01-05T00:00:00Z", last_modified="2024-01-06T00:00:00Z"),
         ]
 
         config_file = tmp_path / "test-reconciliation.yml"

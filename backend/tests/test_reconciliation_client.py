@@ -718,7 +718,7 @@ class TestReconciliationClientIntegration:
         print("\n=== Testing Batch Reconciliation ===")
 
         # Simple test query
-        queries = {"q0": ReconciliationQuery(query="Test Site", entity_type="Site", limit=3)}
+        queries = {"q0": ReconciliationQuery(query="Test Site", entity_type="site", limit=3)}
 
         print(f"\nQuery: '{queries['q0'].query}'")
         print(f"Type: {queries['q0'].type}")
