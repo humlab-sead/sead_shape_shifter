@@ -28,6 +28,7 @@ from backend.app.models import (
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import ProjectService, ShapeShiftService
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
+from backend.app.utils.reconciliation_migration import detect_format_version, migrate_config_v1_to_v2
 from src.loaders import DataLoader, DataLoaders
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
 
@@ -214,13 +215,13 @@ class ReconciliationService:
 
     def load_reconciliation_config(self, project_name: str, recon_config_filename: Path | None = None) -> ReconciliationConfig:
         """
-        Load reconciliation from YAML file.
+        Load reconciliation from YAML file with automatic v1 to v2 migration.
 
         Args:
             project_name: Project name
 
         Returns:
-            Reconciliation configuration
+            Reconciliation configuration (v2 format)
         """
         recon_config_filename = recon_config_filename or self._get_default_recon_config_filename(project_name)
 
@@ -231,6 +232,18 @@ class ReconciliationService:
         logger.debug(f"Loading reconciliation config from {recon_config_filename}")
         with open(recon_config_filename, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
+
+        # Detect format version and auto-migrate if needed
+        version = detect_format_version(data)
+        if version == "1.0":
+            logger.warning(f"Detected v1 format for '{project_name}', auto-migrating to v2")
+            data = migrate_config_v1_to_v2(data)
+            
+            # Save migrated version
+            logger.info(f"Saving auto-migrated v2 config for '{project_name}'")
+            config = ReconciliationConfig(**data)
+            self.save_reconciliation_config(project_name, config, recon_config_filename)
+            return config
 
         return ReconciliationConfig(**data)
 
