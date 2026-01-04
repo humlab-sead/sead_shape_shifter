@@ -803,12 +803,12 @@ async function handleSaveYaml() {
   yamlSaving.value = true
   yamlError.value = null
   try {
-    const updated = await api.projects.updateRawYaml(projectName.value, rawYamlContent.value)
+    await api.projects.updateRawYaml(projectName.value, rawYamlContent.value)
     originalYamlContent.value = rawYamlContent.value
     yamlHasChanges.value = false
     
-    // Update selected project
-    selectedProject.value = updated
+    // Refresh project to update selected project
+    await handleRefresh()
     
     successMessage.value = 'YAML saved successfully'
     showSuccessSnackbar.value = true
