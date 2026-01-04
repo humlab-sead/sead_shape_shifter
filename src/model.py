@@ -121,7 +121,7 @@ class ForeignKeyConfig:
             if len(self.local_keys) != len(self.remote_keys):
                 raise ValueError(
                     f"Foreign key configuration mismatch for entity '{self.local_entity}': number"
-                      f" of local keys ({len(self.local_keys)}) does not match number of remote keys ({len(self.remote_keys)})"
+                    f" of local keys ({len(self.local_keys)}) does not match number of remote keys ({len(self.remote_keys)})"
                 )
 
     @property

@@ -2,9 +2,9 @@
 
 import abc
 import re
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
-from collections.abc import Mapping
 from typing import Any
 
 import pandas as pd

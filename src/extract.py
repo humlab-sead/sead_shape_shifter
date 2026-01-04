@@ -56,7 +56,7 @@ def drop_duplicate_rows(
         missing_requested_columns = set(columns).difference(data.columns)
         logger.info(
             f"{entity_name}[drop_duplicate_rows]: Unable to drop_duplicates because some columns "
-                f"are missing from DataFrame: {missing_requested_columns}"
+            f"are missing from DataFrame: {missing_requested_columns}"
         )
         return data
 
@@ -64,7 +64,7 @@ def drop_duplicate_rows(
     if not columns:
         logger.warning(
             f"{entity_name}[drop_duplicate_rows]: No valid columns specified for drop_duplicates after "
-                f"filtering missing columns. No duplicates will be dropped."
+            f"filtering missing columns. No duplicates will be dropped."
         )
         return data
     if fd_check:
