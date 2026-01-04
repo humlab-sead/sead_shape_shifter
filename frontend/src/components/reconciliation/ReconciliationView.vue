@@ -28,6 +28,10 @@
           <v-icon start>mdi-cog</v-icon>
           Setup
         </v-tab>
+        <v-tab value="configuration">
+          <v-icon start>mdi-file-document-edit</v-icon>
+          Configuration
+        </v-tab>
         <v-tab value="reconcile" :disabled="!selectedEntity">
           <v-icon start>mdi-auto-fix</v-icon>
           Reconcile
@@ -199,6 +203,17 @@
             </div>
           </v-window-item>
 
+          <!-- Configuration Tab -->
+          <v-window-item value="configuration">
+            <div class="py-4">
+              <h3 class="text-h6 mb-4">
+                <v-icon start>mdi-file-document-edit</v-icon>
+                Reconciliation Specifications
+              </h3>
+              <specifications-list :project-name="projectName" />
+            </div>
+          </v-window-item>
+
           <!-- Reconcile Tab -->
           <v-window-item value="reconcile">
             <div class="py-4">
@@ -293,6 +308,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { storeToRefs } from 'pinia'
 import ReconciliationGrid from './ReconciliationGrid.vue'
+import SpecificationsList from './SpecificationsList.vue'
 import type { ReconciliationPreviewRow } from '@/types'
 
 interface Props {
