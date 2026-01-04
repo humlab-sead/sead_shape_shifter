@@ -26,9 +26,9 @@ class ReconciliationRemote(BaseModel):
 
 
 class ReconciliationMapping(BaseModel):
-    """Single reconciliation mapping entry linking source keys to SEAD ID."""
+    """Single reconciliation mapping entry linking source value to SEAD ID."""
 
-    source_values: list[Any] = Field(..., description="Source key values")
+    source_value: Any = Field(..., description="Source field value")
     sead_id: int | None = Field(None, description="SEAD entity ID (None if unmatched)")
     confidence: float | None = Field(None, ge=0.0, le=1.0, description="Mapping confidence (0-1)")
     notes: str | None = Field(None, description="Manual notes or auto-match info")
@@ -39,13 +39,11 @@ class ReconciliationMapping(BaseModel):
 
 
 class EntityReconciliationSpec(BaseModel):
-    """Reconciliation specification for a single entity type."""
+    """Reconciliation specification for a single target field."""
 
     source: str | ReconciliationSource | None = Field(
         None, description="Data source: None (entity preview), entity name (string), or custom query (ReconciliationSource)"
     )
-    keys: list[str] = Field(..., description="Local key fields for matching")
-    columns: list[str] = Field(default_factory=list, description="Additional columns for context/matching")
     property_mappings: dict[str, str] = Field(
         default_factory=dict,
         description="Service property ID -> source column name mapping (e.g., {'latitude': 'lat', 'longitude': 'lon'})",
@@ -69,8 +67,11 @@ class EntityReconciliationSpec(BaseModel):
 class ReconciliationConfig(BaseModel):
     """Complete reconciliation configuration for all entities."""
 
+    version: str = Field("2.0", description="Reconciliation format version")
     service_url: str = Field(..., description="Base URL of OpenRefine reconciliation service")
-    entities: dict[str, EntityReconciliationSpec] = Field(default_factory=dict, description="Entity name -> reconciliation spec")
+    entities: dict[str, dict[str, EntityReconciliationSpec]] = Field(
+        default_factory=dict, description="Entity name -> target field -> reconciliation spec"
+    )
 
 
 # OpenRefine API response models

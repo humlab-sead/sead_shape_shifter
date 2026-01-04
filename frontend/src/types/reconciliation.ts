@@ -13,7 +13,7 @@ export interface ReconciliationRemote {
 }
 
 export interface ReconciliationMapping {
-  source_values: any[]
+  source_value: any // Single value instead of array
   sead_id: number
   confidence?: number
   notes?: string
@@ -24,7 +24,6 @@ export interface ReconciliationMapping {
 
 export interface EntityReconciliationSpec {
   source?: string | ReconciliationSource | null // Entity name, custom query, or null for default
-  keys: string[] // Primary key fields for building query string
   property_mappings: Record<string, string> // property_id -> source_column
   remote: ReconciliationRemote
   auto_accept_threshold: number
@@ -33,8 +32,9 @@ export interface EntityReconciliationSpec {
 }
 
 export interface ReconciliationConfig {
+  version: string // Format version (e.g., "2.0")
   service_url: string
-  entities: Record<string, EntityReconciliationSpec>
+  entities: Record<string, Record<string, EntityReconciliationSpec>> // entity_name -> target_field -> spec
 }
 
 export interface ReconciliationCandidate {

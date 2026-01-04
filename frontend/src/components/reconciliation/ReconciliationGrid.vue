@@ -321,6 +321,7 @@ interface Props {
   loading?: boolean
   projectName: string
   entityName: string
+  targetField: string // Target field being reconciled
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -392,14 +393,13 @@ const columnDefs = computed<ColDef[]>(() => {
     filter: false,
   })
 
-  // Key columns (read-only, pinned left)
-  props.entitySpec.keys.forEach((key) => {
-    cols.push({
-      field: key,
-      headerName: key.replace(/_/g, ' ').toUpperCase(),
-      pinned: 'left',
-      width: 150,
-    })
+  // Target field column (pinned left)
+  cols.push({
+    field: props.targetField,
+    headerName: `${props.targetField.replace(/_/g, ' ').toUpperCase()} (Target)`,
+    pinned: 'left',
+    width: 200,
+    cellClass: 'font-weight-bold',
   })
 
   // Property-mapped columns (read-only)
@@ -665,12 +665,9 @@ function extractIdFromUri(uri: string): number | null {
 function getRowDisplayText(row: ReconciliationPreviewRow): string {
   if (!props.entitySpec) return ''
 
-  const keyValues = props.entitySpec.keys
-    .map((key) => row[key])
-    .filter((val) => val != null)
-    .join(' | ')
-
-  return keyValues
+  // Use the target field value as the display text
+  const targetValue = row[props.targetField]
+  return targetValue != null ? String(targetValue) : ''
 }
 
 // Handle clicks on action buttons in the grid
@@ -744,19 +741,19 @@ async function confirmMarkUnmatched() {
   markingUnmatched.value = true
 
   try {
-    // Build source_values from keys
-    const sourceValues = props.entitySpec?.keys.map((key) => selectedRow.value![key]) || []
+    // Build source_value from target field
+    const sourceValue = selectedRow.value![props.targetField]
 
     // Call API to mark as unmatched
     const response = await fetch(
-      `/api/v1/projects/${props.projectName}/reconciliation/${props.entityName}/mark-unmatched`,
+      `/api/v1/projects/${props.projectName}/reconciliation/${props.entityName}/${props.targetField}/mark-unmatched`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          source_values: sourceValues,
+          source_value: sourceValue,
           notes: unmatchedNotes.value || 'Marked as local-only (will not match)',
         }),
       }
