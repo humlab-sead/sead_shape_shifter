@@ -1,5 +1,6 @@
 """Service for analyzing entity dependencies in projects."""
 
+import re
 from typing import Any
 
 from loguru import logger
@@ -298,7 +299,7 @@ class DependencyService:
                 # Fixed entities have no source
                 continue
 
-            elif entity_type == "data":
+            if entity_type == "data":
                 # Data entities - add data source node
                 source_name = entity_config.get("source")
                 if source_name and source_name not in seen_sources:
@@ -391,7 +392,6 @@ class DependencyService:
             This is a basic implementation using regex patterns.
             For complex queries, consider using sqlparse library.
         """
-        import re
 
         if not sql_query:
             return []

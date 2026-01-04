@@ -102,7 +102,7 @@ class OperationManager:
 
     def __init__(self):
         """Initialize operation manager."""
-        if self._initialized:
+        if getattr(self, "_initialized", False):
             return
 
         self._operations: dict[str, OperationProgress] = {}

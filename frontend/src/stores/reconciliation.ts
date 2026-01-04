@@ -19,16 +19,30 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   const previewData = ref<Record<string, ReconciliationPreviewRow[]>>({})
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const selectedTarget = ref<string | null>(null) // Currently selected target field
 
   // Getters
   const reconcilableEntities = computed(() => {
     if (!reconciliationConfig.value) return []
     return Object.keys(reconciliationConfig.value.entities).filter(
       (entityName) => {
-        const entity = reconciliationConfig.value!.entities[entityName]
-        return entity?.remote?.service_type != null
+        const targetFields = reconciliationConfig.value!.entities[entityName]
+        // Entity is reconcilable if it has at least one target with a service_type
+        return Object.values(targetFields).some(
+          (spec) => spec?.remote?.service_type != null
+        )
       }
     )
+  })
+
+  // Get available targets for a specific entity
+  const getEntityTargets = computed(() => {
+    return (entityName: string): string[] => {
+      if (!reconciliationConfig.value || !reconciliationConfig.value.entities[entityName]) {
+        return []
+      }
+      return Object.keys(reconciliationConfig.value.entities[entityName])
+    }
   })
 
   const hasConfig = computed(() => reconciliationConfig.value !== null)
@@ -75,6 +89,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   async function autoReconcile(
     projectName: string,
     entityName: string,
+    targetField: string,
     threshold: number = 0.95,
     reviewThreshold?: number
   ): Promise<AutoReconcileResult> {
@@ -82,7 +97,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     error.value = null
     try {
       const response = await apiClient.post(
-        `/projects/${projectName}/reconciliation/${entityName}/auto-reconcile-sync`,
+        `/projects/${projectName}/reconciliation/${entityName}/${targetField}/auto-reconcile-sync`,
         null,
         { params: { threshold, review_threshold: reviewThreshold } }
       )
@@ -103,6 +118,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   async function autoReconcileAsync(
     projectName: string,
     entityName: string,
+    targetField: string,
     threshold: number = 0.95,
     reviewThreshold?: number
   ): Promise<{ operation_id: string; message: string }> {
@@ -110,7 +126,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     error.value = null
     try {
       const response = await apiClient.post(
-        `/projects/${projectName}/reconciliation/${entityName}/auto-reconcile`,
+        `/projects/${projectName}/reconciliation/${entityName}/${targetField}/auto-reconcile`,
         null,
         { params: { threshold, review_threshold: reviewThreshold } }
       )
@@ -128,15 +144,16 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   async function updateMapping(
     projectName: string,
     entityName: string,
-    sourceValues: any[],
+    targetField: string,
+    sourceValue: any,
     seadId: number | null,
     notes?: string
   ) {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.post(`/projects/${projectName}/reconciliation/${entityName}/mapping`, {
-        source_values: sourceValues,
+      const response = await apiClient.post(`/projects/${projectName}/reconciliation/${entityName}/${targetField}/mapping`, {
+        source_value: sourceValue,
         sead_id: seadId,
         notes,
       })
@@ -150,12 +167,12 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function deleteMapping(projectName: string, entityName: string, sourceValues: any[]) {
+  async function deleteMapping(projectName: string, entityName: string, targetField: string, sourceValue: any) {
     loading.value = true
     error.value = null
     try {
-      const response = await apiClient.delete(`/projects/${projectName}/reconciliation/${entityName}/mapping`, {
-        params: { source_values: JSON.stringify(sourceValues) },
+      const response = await apiClient.delete(`/projects/${projectName}/reconciliation/${entityName}/${targetField}/mapping`, {
+        params: { source_value: JSON.stringify(sourceValue) },
       })
       reconciliationConfig.value = response.data
     } catch (e: any) {
@@ -170,6 +187,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   async function suggestEntities(
     projectName: string,
     entityName: string,
+    targetField: string,
     query: string
   ): Promise<ReconciliationCandidate[]> {
     if (query.length < 2) {
@@ -177,7 +195,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
 
     try {
-      const response = await apiClient.get(`/projects/${projectName}/reconciliation/${entityName}/suggest`, {
+      const response = await apiClient.get(`/projects/${projectName}/reconciliation/${entityName}/${targetField}/suggest`, {
         params: { query },
       })
       return response.data
@@ -188,14 +206,14 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function loadPreviewData(projectName: string, entityName: string) {
+  async function loadPreviewData(projectName: string, entityName: string, targetField: string) {
     try {
-      console.log(`[Reconciliation Store] Loading preview data for ${entityName}`)
-      const response = await apiClient.get(`/projects/${projectName}/reconciliation/${entityName}/preview`)
+      console.log(`[Reconciliation Store] Loading preview data for ${entityName}.${targetField}`)
+      const response = await apiClient.get(`/projects/${projectName}/reconciliation/${entityName}/${targetField}/preview`)
       
       // Response is already enriched with reconciliation data
       previewData.value[entityName] = response.data
-      console.log(`[Reconciliation Store] Loaded ${response.data.length} preview rows for ${entityName}`)
+      console.log(`[Reconciliation Store] Loaded ${response.data.length} preview rows for ${entityName}.${targetField}`)
     } catch (e: any) {
       console.error('[Reconciliation Store] Failed to load preview data:', e)
       previewData.value[entityName] = []
@@ -222,6 +240,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     previewData.value = {}
     loading.value = false
     error.value = null
+    selectedTarget.value = null
   }
 
   return {
@@ -230,9 +249,11 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     previewData,
     loading,
     error,
+    selectedTarget,
 
     // Getters
     reconcilableEntities,
+    getEntityTargets,
     hasConfig,
 
     // Actions
