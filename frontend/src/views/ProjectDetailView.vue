@@ -43,6 +43,9 @@
             >
               Validate
             </v-btn>
+            <v-btn variant="outlined" prepend-icon="mdi-play-circle" color="success" @click="showExecuteDialog = true">
+              Execute
+            </v-btn>
             <v-btn variant="outlined" prepend-icon="mdi-history" @click="showBackupsDialog = true"> Backups </v-btn>
             <v-btn color="primary" prepend-icon="mdi-content-save" :disabled="!hasUnsavedChanges" @click="handleSave">
               Save Changes
@@ -417,6 +420,13 @@
       @cancel="handleCancelPreview"
     />
 
+    <!-- Execute Dialog -->
+    <execute-dialog
+      v-model="showExecuteDialog"
+      :project-name="projectName"
+      @executed="handleExecuted"
+    />
+
     <!-- Success Snackbar with Animation -->
     <v-scale-transition>
       <v-snackbar v-if="showSuccessSnackbar" v-model="showSuccessSnackbar" color="success" timeout="3000">
@@ -447,6 +457,7 @@ import CircularDependencyAlert from '@/components/dependencies/CircularDependenc
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
+import ExecuteDialog from '@/components/execute/ExecuteDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -520,6 +531,7 @@ const {
 // Local state
 const activeTab = ref('entities')
 const showBackupsDialog = ref(false)
+const showExecuteDialog = ref(false)
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
 const showPreviewModal = ref(false)
@@ -695,6 +707,11 @@ function handleCancelPreview() {
   showPreviewModal.value = false
   fixPreview.value = null
   fixPreviewError.value = null
+}
+
+function handleExecuted(result: any) {
+  successMessage.value = `Workflow executed successfully: ${result.message}`
+  showSuccessSnackbar.value = true
 }
 
 async function handleSave() {
