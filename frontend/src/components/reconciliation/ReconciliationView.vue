@@ -22,119 +22,233 @@
         </div>
       </v-card-title>
 
+      <!-- Tabs -->
+      <v-tabs v-model="activeTab" bg-color="transparent" color="primary" grow>
+        <v-tab value="setup" :disabled="!hasConfig">
+          <v-icon start>mdi-cog</v-icon>
+          Setup
+        </v-tab>
+        <v-tab value="reconcile" :disabled="!selectedEntity">
+          <v-icon start>mdi-auto-fix</v-icon>
+          Reconcile
+        </v-tab>
+        <v-tab value="review" :disabled="!selectedEntity || !entityPreviewData.length">
+          <v-icon start>mdi-pencil</v-icon>
+          Review
+        </v-tab>
+      </v-tabs>
+
+      <v-divider />
+
       <v-card-text>
-        <!-- Entity Selection -->
-        <v-row>
-          <v-col cols="12" md="6">
-            <v-select
-              v-model="selectedEntity"
-              :items="reconcilableEntities"
-              label="Select Entity to Reconcile"
-              variant="outlined"
-              density="comfortable"
-              :loading="loading"
-              :disabled="!hasConfig || reconcilableEntities.length === 0"
-              prepend-inner-icon="mdi-table"
-            >
-              <template #no-data>
-                <v-list-item>
-                  <v-list-item-title class="text-grey"> No entities configured for reconciliation </v-list-item-title>
-                  <v-list-item-subtitle> Add reconciliation specs to your project YAML </v-list-item-subtitle>
-                </v-list-item>
-              </template>
-            </v-select>
-          </v-col>
+        <v-window v-model="activeTab">
+          <!-- Setup Tab -->
+          <v-window-item value="setup">
+            <div class="py-4">
+              <h3 class="text-h6 mb-4">
+                <v-icon start>mdi-cog</v-icon>
+                Configuration
+              </h3>
 
-          <v-col cols="12" md="6" class="d-flex align-center gap-2">
-            <v-slider
-              v-if="entitySpec"
-              v-model="autoAcceptThreshold"
-              :min="50"
-              :max="100"
-              :step="1"
-              thumb-label="always"
-              color="primary"
-              prepend-icon="mdi-target"
-              class="flex-grow-1"
-            >
-              <template #prepend>
-                <v-icon icon="mdi-target" />
-              </template>
-              <template #append>
-                <v-chip size="small" variant="tonal">{{ autoAcceptThreshold }}%</v-chip>
-              </template>
-              <template #label> Auto-accept Threshold </template>
-            </v-slider>
-          </v-col>
-        </v-row>
+              <!-- Entity Selection -->
+              <v-card variant="outlined" class="mb-4">
+                <v-card-title class="text-subtitle-1">Entity Selection</v-card-title>
+                <v-card-text>
+                  <v-select
+                    v-model="selectedEntity"
+                    :items="reconcilableEntities"
+                    label="Select Entity to Reconcile"
+                    variant="outlined"
+                    density="comfortable"
+                    :loading="loading"
+                    :disabled="!hasConfig || reconcilableEntities.length === 0"
+                    prepend-inner-icon="mdi-table"
+                  >
+                    <template #no-data>
+                      <v-list-item>
+                        <v-list-item-title class="text-grey">
+                          No entities configured for reconciliation
+                        </v-list-item-title>
+                        <v-list-item-subtitle> Add reconciliation specs to your project YAML </v-list-item-subtitle>
+                      </v-list-item>
+                    </template>
+                  </v-select>
+                </v-card-text>
+              </v-card>
 
-        <!-- Entity Spec Details -->
-        <v-alert v-if="entitySpec" type="info" variant="tonal" class="mb-4">
-          <v-alert-title>Reconciliation Specification</v-alert-title>
-          <div class="mt-2">
-            <div v-if="entitySpec.source">
-              <strong>Source:</strong>
-              <span v-if="typeof entitySpec.source === 'string'">{{ entitySpec.source }}</span>
-              <span v-else>Custom query ({{ entitySpec.source.data_source }})</span>
+              <!-- Thresholds -->
+              <v-card v-if="entitySpec" variant="outlined" class="mb-4">
+                <v-card-title class="text-subtitle-1">Match Thresholds</v-card-title>
+                <v-card-text>
+                  <v-slider
+                    v-model="autoAcceptThreshold"
+                    :min="50"
+                    :max="100"
+                    :step="1"
+                    thumb-label="always"
+                    color="primary"
+                    class="mb-4"
+                  >
+                    <template #prepend>
+                      <v-icon icon="mdi-target" />
+                    </template>
+                    <template #append>
+                      <v-chip size="small" variant="tonal">{{ autoAcceptThreshold }}%</v-chip>
+                    </template>
+                    <template #label> Auto-accept Threshold </template>
+                  </v-slider>
+
+                  <v-slider
+                    v-model="reviewThreshold"
+                    :min="0"
+                    :max="100"
+                    :step="1"
+                    thumb-label="always"
+                    color="warning"
+                  >
+                    <template #prepend>
+                      <v-icon icon="mdi-eye" />
+                    </template>
+                    <template #append>
+                      <v-chip size="small" variant="tonal">{{ reviewThreshold }}%</v-chip>
+                    </template>
+                    <template #label> Review Threshold </template>
+                  </v-slider>
+                </v-card-text>
+              </v-card>
+
+              <!-- Entity Spec Details -->
+              <v-card v-if="entitySpec" variant="outlined">
+                <v-card-title class="text-subtitle-1">Specification Details</v-card-title>
+                <v-card-text>
+                  <v-list density="compact">
+                    <v-list-item v-if="entitySpec.source">
+                      <template #prepend>
+                        <v-icon>mdi-database</v-icon>
+                      </template>
+                      <v-list-item-title>Source</v-list-item-title>
+                      <v-list-item-subtitle>
+                        <span v-if="typeof entitySpec.source === 'string'">{{ entitySpec.source }}</span>
+                        <span v-else>Custom query ({{ entitySpec.source.data_source }})</span>
+                      </v-list-item-subtitle>
+                    </v-list-item>
+
+                    <v-list-item>
+                      <template #prepend>
+                        <v-icon>mdi-key</v-icon>
+                      </template>
+                      <v-list-item-title>Keys</v-list-item-title>
+                      <v-list-item-subtitle>{{ entitySpec.keys.join(', ') }}</v-list-item-subtitle>
+                    </v-list-item>
+
+                    <v-list-item v-if="Object.keys(entitySpec.property_mappings).length > 0">
+                      <template #prepend>
+                        <v-icon>mdi-swap-horizontal</v-icon>
+                      </template>
+                      <v-list-item-title>Properties</v-list-item-title>
+                      <v-list-item-subtitle>
+                        {{
+                          Object.entries(entitySpec.property_mappings)
+                            .map(([k, v]) => `${k}→${v}`)
+                            .join(', ')
+                        }}
+                      </v-list-item-subtitle>
+                    </v-list-item>
+
+                    <v-list-item v-if="entitySpec.remote.service_type">
+                      <template #prepend>
+                        <v-icon>mdi-web</v-icon>
+                      </template>
+                      <v-list-item-title>Service Type</v-list-item-title>
+                      <v-list-item-subtitle>{{ entitySpec.remote.service_type }}</v-list-item-subtitle>
+                    </v-list-item>
+
+                    <v-list-item>
+                      <template #prepend>
+                        <v-icon>mdi-link-variant</v-icon>
+                      </template>
+                      <v-list-item-title>Mappings</v-list-item-title>
+                      <v-list-item-subtitle>{{ entitySpec.mapping.length }} defined</v-list-item-subtitle>
+                    </v-list-item>
+                  </v-list>
+                </v-card-text>
+              </v-card>
+
+              <!-- Action Buttons -->
+              <div v-if="selectedEntity && entitySpec" class="d-flex justify-end gap-2 mt-4">
+                <v-btn
+                  variant="tonal"
+                  color="primary"
+                  prepend-icon="mdi-auto-fix"
+                  :loading="loading"
+                  @click="handleAutoReconcile"
+                >
+                  Start Auto-Reconcile
+                </v-btn>
+              </div>
             </div>
-            <div><strong>Keys:</strong> {{ entitySpec.keys.join(', ') }}</div>
-            <div v-if="Object.keys(entitySpec.property_mappings).length > 0">
-              <strong>Properties:</strong>
-              {{
-                Object.entries(entitySpec.property_mappings)
-                  .map(([k, v]) => `${k}→${v}`)
-                  .join(', ')
-              }}
+          </v-window-item>
+
+          <!-- Reconcile Tab -->
+          <v-window-item value="reconcile">
+            <div class="py-4">
+              <h3 class="text-h6 mb-4">
+                <v-icon start>mdi-auto-fix</v-icon>
+                Auto-Reconciliation
+              </h3>
+
+              <!-- Reconciliation Grid -->
+              <reconciliation-grid
+                v-if="selectedEntity && entitySpec && entityPreviewData.length"
+                :entity-spec="entitySpec"
+                :preview-data="entityPreviewData"
+                :loading="loading"
+                :project-name="projectName"
+                :entity-name="selectedEntity"
+                @update:mapping="handleUpdateMapping"
+                @save="handleSaveChanges"
+              />
+
+              <!-- Empty State - No Data -->
+              <v-card v-else variant="outlined" class="pa-8 text-center">
+                <v-icon icon="mdi-database-off-outline" size="64" color="grey" />
+                <h3 class="text-h6 mt-4 mb-2">No Preview Data</h3>
+                <p class="text-grey">Run auto-reconcile from the Setup tab to fetch and process entity data</p>
+                <v-btn class="mt-4" variant="tonal" @click="activeTab = 'setup'"> Go to Setup </v-btn>
+              </v-card>
             </div>
-            <div v-if="entitySpec.remote.service_type">
-              <strong>Service Type:</strong> {{ entitySpec.remote.service_type }}
+          </v-window-item>
+
+          <!-- Review Tab -->
+          <v-window-item value="review">
+            <div class="py-4">
+              <h3 class="text-h6 mb-4">
+                <v-icon start>mdi-pencil</v-icon>
+                Manual Review
+              </h3>
+
+              <!-- Review Grid (same as reconcile for now) -->
+              <reconciliation-grid
+                v-if="selectedEntity && entitySpec && entityPreviewData.length"
+                :entity-spec="entitySpec"
+                :preview-data="entityPreviewData"
+                :loading="loading"
+                :project-name="projectName"
+                :entity-name="selectedEntity"
+                @update:mapping="handleUpdateMapping"
+                @save="handleSaveChanges"
+              />
+
+              <!-- Empty State -->
+              <v-card v-else variant="outlined" class="pa-8 text-center">
+                <v-icon icon="mdi-information-outline" size="64" color="grey" />
+                <h3 class="text-h6 mt-4 mb-2">No Data to Review</h3>
+                <p class="text-grey">Complete auto-reconciliation first to review results</p>
+                <v-btn class="mt-4" variant="tonal" @click="activeTab = 'setup'"> Go to Setup </v-btn>
+              </v-card>
             </div>
-            <div><strong>Mappings:</strong> {{ entitySpec.mapping.length }} defined</div>
-          </div>
-        </v-alert>
-
-        <!-- Auto-Reconcile Button -->
-        <div v-if="selectedEntity && entitySpec" class="d-flex justify-end mb-4">
-          <v-btn
-            variant="tonal"
-            color="primary"
-            prepend-icon="mdi-auto-fix"
-            :loading="loading"
-            @click="handleAutoReconcile"
-          >
-            Auto-Reconcile
-          </v-btn>
-        </div>
-
-        <!-- Reconciliation Grid -->
-        <reconciliation-grid
-          v-if="selectedEntity && entitySpec && entityPreviewData.length"
-          :entity-spec="entitySpec"
-          :preview-data="entityPreviewData"
-          :loading="loading"
-          :project-name="projectName"
-          :entity-name="selectedEntity"
-          @update:mapping="handleUpdateMapping"
-          @save="handleSaveChanges"
-        />
-
-        <!-- Empty State - No Data -->
-        <v-card
-          v-else-if="selectedEntity && entitySpec && !entityPreviewData.length"
-          variant="outlined"
-          class="pa-8 text-center"
-        >
-          <v-icon icon="mdi-database-off-outline" size="64" color="grey" />
-          <h3 class="text-h6 mt-4 mb-2">No Preview Data</h3>
-          <p class="text-grey">Run auto-reconcile to fetch and process entity data</p>
-        </v-card>
-
-        <!-- Empty State - No Selection -->
-        <v-card v-else-if="!selectedEntity" variant="outlined" class="pa-8 text-center">
-          <v-icon icon="mdi-information-outline" size="64" color="grey" />
-          <h3 class="text-h6 mt-4 mb-2">No Entity Selected</h3>
-          <p class="text-grey mb-4">Select an entity above to begin reconciliation</p>
-        </v-card>
+          </v-window-item>
+        </v-window>
       </v-card-text>
     </v-card>
 
@@ -166,8 +280,10 @@ const reconciliationStore = useReconciliationStore()
 const { reconciliationConfig, loading, reconcilableEntities, hasConfig, previewData } = storeToRefs(reconciliationStore)
 
 // Local state
+const activeTab = ref<string>('setup') // Tab state: setup, reconcile, review
 const selectedEntity = ref<string | null>(null)
 const autoAcceptThreshold = ref<number>(95) // User-adjustable threshold (percentage)
+const reviewThreshold = ref<number>(70) // Review threshold (percentage)
 const showResultSnackbar = ref(false)
 const resultMessage = ref('')
 const resultColor = ref('success')
@@ -193,9 +309,17 @@ async function handleAutoReconcile() {
     const thresholdDecimal = autoAcceptThreshold.value / 100
     const result = await reconciliationStore.autoReconcile(props.projectName, selectedEntity.value, thresholdDecimal)
 
+    // Reload preview data to show updated results
+    await reconciliationStore.loadPreviewData(props.projectName, selectedEntity.value)
+
     resultMessage.value = `Auto-reconciliation complete: ${result.auto_accepted} auto-matched, ${result.needs_review} need review, ${result.unmatched} unmatched`
     resultColor.value = 'success'
     showResultSnackbar.value = true
+    
+    // Switch to reconcile tab to show results
+    if (entityPreviewData.value.length > 0) {
+      activeTab.value = 'reconcile'
+    }
   } catch (e: any) {
     resultMessage.value = `Auto-reconciliation failed: ${e.message}`
     resultColor.value = 'error'
@@ -276,13 +400,30 @@ watch(
   }
 )
 
-// Watch for entity changes and sync threshold (only when entity changes, not on config reload)
+// Watch for entity changes and load preview data
 watch(
   selectedEntity,
-  (newEntity) => {
-    if (newEntity && entitySpec.value && entitySpec.value.auto_accept_threshold) {
+  async (newEntity) => {
+    if (newEntity && entitySpec.value) {
       // Sync slider with entity spec threshold when entity changes (convert decimal to percentage)
-      autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
+      if (entitySpec.value.auto_accept_threshold) {
+        autoAcceptThreshold.value = Math.round(entitySpec.value.auto_accept_threshold * 100)
+      }
+      
+      // Load preview data for the selected entity
+      try {
+        await reconciliationStore.loadPreviewData(props.projectName, newEntity)
+        
+        // If we have preview data, switch to reconcile tab
+        if (entityPreviewData.value.length > 0) {
+          activeTab.value = 'reconcile'
+        }
+      } catch (e: any) {
+        console.error('[ReconciliationView] Failed to load preview data:', e)
+        resultMessage.value = `Failed to load preview data: ${e.message}`
+        resultColor.value = 'error'
+        showResultSnackbar.value = true
+      }
     }
   },
   { immediate: true }
