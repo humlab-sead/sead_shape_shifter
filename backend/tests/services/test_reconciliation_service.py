@@ -804,8 +804,26 @@ class TestSpecificationManagement:
                         auto_accept_threshold=0.85,
                         review_threshold=0.60,
                         mapping=[
-                            ReconciliationMapping(source_value="test", sead_id=1, confidence=0.9, notes="Existing mapping", created_by="user", created_at="2024-01-01T00:00:00Z", will_not_match=False, last_modified="2024-01-02T00:00:00Z"),
-                            ReconciliationMapping(source_value="test2", sead_id=2, confidence=0.8, notes="Another mapping", created_by="user", created_at="2024-01-03T00:00:00Z", will_not_match=False, last_modified="2024-01-04T00:00:00Z"),
+                            ReconciliationMapping(
+                                source_value="test",
+                                sead_id=1,
+                                confidence=0.9,
+                                notes="Existing mapping",
+                                created_by="user",
+                                created_at="2024-01-01T00:00:00Z",
+                                will_not_match=False,
+                                last_modified="2024-01-02T00:00:00Z",
+                            ),
+                            ReconciliationMapping(
+                                source_value="test2",
+                                sead_id=2,
+                                confidence=0.8,
+                                notes="Another mapping",
+                                created_by="user",
+                                created_at="2024-01-03T00:00:00Z",
+                                will_not_match=False,
+                                last_modified="2024-01-04T00:00:00Z",
+                            ),
                         ],
                     ),
                 },
@@ -907,7 +925,7 @@ class TestSpecificationManagement:
         new_spec = EntityReconciliationSpec(
             source=None,
             property_mappings={},
-            remote=ReconciliationRemote(service_type="site"),
+            remote=ReconciliationRemote(service_type="site", data_source="sead", entity="site", key="site_id"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
             mapping=[],
@@ -941,7 +959,7 @@ class TestSpecificationManagement:
         new_spec = EntityReconciliationSpec(
             source=None,
             property_mappings={},
-            remote=ReconciliationRemote(service_type="site"),
+            remote=ReconciliationRemote(service_type="site", data_source="sead", entity="site", key="site_id"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
             mapping=[],
@@ -954,7 +972,16 @@ class TestSpecificationManagement:
         """Test updating specification preserves mapping."""
         # Add mapping to original spec
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            ReconciliationMapping(source_value="SITE001", sead_id=100, confidence=0.95)
+            ReconciliationMapping(
+                source_value="SITE001",
+                sead_id=100,
+                confidence=0.95,
+                notes="Existing mapping",
+                created_by="user",
+                created_at="2024-01-01T00:00:00Z",
+                will_not_match=False,
+                last_modified="2024-01-02T00:00:00Z",
+            )
         ]
 
         config_file = tmp_path / "test-reconciliation.yml"
@@ -968,7 +995,7 @@ class TestSpecificationManagement:
             target_field="site_code",
             source="another_entity",
             property_mappings={"lat": "latitude"},
-            remote=ReconciliationRemote(service_type="site", data_source="sead"),
+            remote=ReconciliationRemote(service_type="site", data_source="sead", entity="tbl_sites", key="site_id"),
             auto_accept_threshold=0.80,
             review_threshold=0.60,
         )
@@ -995,7 +1022,7 @@ class TestSpecificationManagement:
                 target_field="nonexistent_field",
                 source=None,
                 property_mappings={},
-                remote=ReconciliationRemote(service_type="site"),
+                remote=ReconciliationRemote(service_type="site", data_source="sead", entity="tbl_sites", key="site_id"),
                 auto_accept_threshold=0.90,
                 review_threshold=0.70,
             )
@@ -1012,7 +1039,18 @@ class TestSpecificationManagement:
 
     def test_delete_specification_with_mappings_no_force(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test deleting specification with mappings raises error without force."""
-        sample_recon_config.entities["site"]["site_code"].mapping = [ReconciliationMapping(source_value="SITE001", sead_id=100, confidence=0.95, notes="Existing mapping", created_by="user", created_at="2024-01-01T00:00:00Z", will_not_match=False, last_modified="2024-01-02T00:00:00Z")]
+        sample_recon_config.entities["site"]["site_code"].mapping = [
+            ReconciliationMapping(
+                source_value="SITE001",
+                sead_id=100,
+                confidence=0.95,
+                notes="Existing mapping",
+                created_by="user",
+                created_at="2024-01-01T00:00:00Z",
+                will_not_match=False,
+                last_modified="2024-01-02T00:00:00Z",
+            )
+        ]
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
@@ -1024,8 +1062,26 @@ class TestSpecificationManagement:
     def test_delete_specification_with_mappings_force(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test force deleting specification with mappings succeeds."""
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            ReconciliationMapping(source_value="SITE001", sead_id=100, confidence=0.95, notes="Existing mapping", created_by="user", created_at="2024-01-01T00:00:00Z", will_not_match=False, last_modified="2024-01-02T00:00:00Z"),
-            ReconciliationMapping(source_value="SITE002", sead_id=101, confidence=0.90, notes="Another mapping", created_by="user", created_at="2024-01-03T00:00:00Z", will_not_match=False, last_modified="2024-01-04T00:00:00Z"),
+            ReconciliationMapping(
+                source_value="SITE001",
+                sead_id=100,
+                confidence=0.95,
+                notes="Existing mapping",
+                created_by="user",
+                created_at="2024-01-01T00:00:00Z",
+                will_not_match=False,
+                last_modified="2024-01-02T00:00:00Z",
+            ),
+            ReconciliationMapping(
+                source_value="SITE002",
+                sead_id=101,
+                confidence=0.90,
+                notes="Another mapping",
+                created_by="user",
+                created_at="2024-01-03T00:00:00Z",
+                will_not_match=False,
+                last_modified="2024-01-04T00:00:00Z",
+            ),
         ]
 
         config_file = tmp_path / "test-reconciliation.yml"
@@ -1083,9 +1139,36 @@ class TestSpecificationManagement:
     def test_get_mapping_count_success(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test getting mapping count."""
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            ReconciliationMapping(source_value="SITE001", sead_id=100, confidence=0.99, notes="Test note", will_not_match=False, created_by="user1", created_at="2024-01-01T00:00:00Z", last_modified="2024-01-02T00:00:00Z"),
-            ReconciliationMapping(source_value="SITE002", sead_id=101, confidence=0.95, notes="Test note 2", will_not_match=False, created_by="user2", created_at="2024-01-03T00:00:00Z", last_modified="2024-01-04T00:00:00Z"),
-            ReconciliationMapping(source_value="SITE003", sead_id=None,confidence=None, notes="Local only", will_not_match=True, created_by="user3", created_at="2024-01-05T00:00:00Z", last_modified="2024-01-06T00:00:00Z"),
+            ReconciliationMapping(
+                source_value="SITE001",
+                sead_id=100,
+                confidence=0.99,
+                notes="Test note",
+                will_not_match=False,
+                created_by="user1",
+                created_at="2024-01-01T00:00:00Z",
+                last_modified="2024-01-02T00:00:00Z",
+            ),
+            ReconciliationMapping(
+                source_value="SITE002",
+                sead_id=101,
+                confidence=0.95,
+                notes="Test note 2",
+                will_not_match=False,
+                created_by="user2",
+                created_at="2024-01-03T00:00:00Z",
+                last_modified="2024-01-04T00:00:00Z",
+            ),
+            ReconciliationMapping(
+                source_value="SITE003",
+                sead_id=None,
+                confidence=None,
+                notes="Local only",
+                will_not_match=True,
+                created_by="user3",
+                created_at="2024-01-05T00:00:00Z",
+                last_modified="2024-01-06T00:00:00Z",
+            ),
         ]
 
         config_file = tmp_path / "test-reconciliation.yml"
