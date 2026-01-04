@@ -13,12 +13,7 @@
  - [] FIXME: Search projects:  Fails: "No results" message for no matches
  - [] FIXME: Create project: No description field in create dialog
  - [] FIXME: New prodject's name is displayed as "test_config_manua", missing last character, correct inside project's metadata
- - [x] FIXME: #83 Project editor: No Edit YAML visible (not implemented)
- - [x] FIXME: #84 FK Editor: "RUN TEST" reports ShapeShiftProject source must be a ShapeShiftProject instance or a valid project file path
- - [x] FIXME: #82 In FK editor, constraints cannot be added/changed.
- - [x] FIXME: #85 In entity editor, data source should be a dropdown, not free text
- - [x] FIXME: #87 In dependency graph viewer, it should be possible to enable/disable node and edge labels seperately from each other.
- - [ ] FIXME: #90 In dependency graph viewer, edge label background should be transparent.
+ - [ ] FIXME: #93 Auto-accept threshold in recon view is disabled.
 
 ### Tech debts:
 
@@ -49,3 +44,7 @@
  - [x] TODO: #77 Change graph visualization to use Cytoscape.js instead of basic SVG.
  - [x] TODO: #80 [Frontend/Backend] Edit entire project YAML file in dual-mode editor (Form/YAML).
  - [ ] TODO: Publish frontend files via the backend (FastAPI) server for easier deployment.
+ - [x] TODO: #92 Add status endpoint (backend) and indicator (UX) for reconciliation service health check.
+ - [x] TODO: #94 Add reconciliation CLI script
+ - [ ] TODO: #95 Display data lineage/source information in dependency graph
+

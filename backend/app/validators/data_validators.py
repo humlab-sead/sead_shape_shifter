@@ -443,7 +443,7 @@ class DataTypeCompatibilityValidator:
                         try:
                             local_series = local_df[local_key]
                             remote_series = remote_df[remote_key]
-                            
+
                             # Ensure we have Series objects, not DataFrames
                             if isinstance(local_series, pd.DataFrame):
                                 logger.debug(f"Local key '{local_key}' returned DataFrame instead of Series")
@@ -451,7 +451,7 @@ class DataTypeCompatibilityValidator:
                             if isinstance(remote_series, pd.DataFrame):
                                 logger.debug(f"Remote key '{remote_key}' returned DataFrame instead of Series")
                                 continue
-                            
+
                             local_dtype = local_series.dtype
                             remote_dtype = remote_series.dtype
 

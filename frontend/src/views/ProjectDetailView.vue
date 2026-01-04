@@ -43,6 +43,9 @@
             >
               Validate
             </v-btn>
+            <v-btn variant="outlined" prepend-icon="mdi-play-circle" color="success" @click="showExecuteDialog = true">
+              Execute
+            </v-btn>
             <v-btn variant="outlined" prepend-icon="mdi-history" @click="showBackupsDialog = true"> Backups </v-btn>
             <v-btn color="primary" prepend-icon="mdi-content-save" :disabled="!hasUnsavedChanges" @click="handleSave">
               Save Changes
@@ -147,6 +150,13 @@
                   density="compact"
                   hide-details
                   :disabled="!hasCircularDependencies"
+                />
+
+                <v-switch
+                  v-model="showSourceNodes"
+                  label="Show Source Nodes"
+                  density="compact"
+                  hide-details
                 />
 
                 <v-spacer />
@@ -417,6 +427,13 @@
       @cancel="handleCancelPreview"
     />
 
+    <!-- Execute Dialog -->
+    <execute-dialog
+      v-model="showExecuteDialog"
+      :project-name="projectName"
+      @executed="handleExecuted"
+    />
+
     <!-- Success Snackbar with Animation -->
     <v-scale-transition>
       <v-snackbar v-if="showSuccessSnackbar" v-model="showSuccessSnackbar" color="success" timeout="3000">
@@ -447,6 +464,7 @@ import CircularDependencyAlert from '@/components/dependencies/CircularDependenc
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
+import ExecuteDialog from '@/components/execute/ExecuteDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -520,6 +538,7 @@ const {
 // Local state
 const activeTab = ref('entities')
 const showBackupsDialog = ref(false)
+const showExecuteDialog = ref(false)
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
 const showPreviewModal = ref(false)
@@ -534,6 +553,7 @@ const layoutType = ref<'hierarchical' | 'force'>('hierarchical')
 const showNodeLabels = ref(true)
 const showEdgeLabels = ref(true)
 const highlightCycles = ref(true)
+const showSourceNodes = ref(false)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
 
@@ -603,6 +623,7 @@ const { fit, zoomIn, zoomOut, reset, exportPNG } = useCytoscape({
   showNodeLabels,
   showEdgeLabels,
   highlightCycles,
+  showSourceNodes,
   cycles,
   isDark,
   onNodeClick: (nodeId: string) => {
@@ -695,6 +716,11 @@ function handleCancelPreview() {
   showPreviewModal.value = false
   fixPreview.value = null
   fixPreviewError.value = null
+}
+
+function handleExecuted(result: any) {
+  successMessage.value = `Workflow executed successfully: ${result.message}`
+  showSuccessSnackbar.value = true
 }
 
 async function handleSave() {
@@ -803,12 +829,12 @@ async function handleSaveYaml() {
   yamlSaving.value = true
   yamlError.value = null
   try {
-    const updated = await api.projects.updateRawYaml(projectName.value, rawYamlContent.value)
+    await api.projects.updateRawYaml(projectName.value, rawYamlContent.value)
     originalYamlContent.value = rawYamlContent.value
     yamlHasChanges.value = false
     
-    // Update selected project
-    selectedProject.value = updated
+    // Refresh project to update selected project
+    await handleRefresh()
     
     successMessage.value = 'YAML saved successfully'
     showSuccessSnackbar.value = true

@@ -79,6 +79,11 @@ class Settings(BaseSettings):
         """Get environment options."""
         return {"env_file": self.env_file, "env_prefix": self.env_prefix}
 
+    @property
+    def reconciliation_service_url(self) -> str:
+        """Get reconciliation service URL."""
+        return self.RECONCILIATION_SERVICE_URL
+
 
 @lru_cache
 def get_settings() -> Settings:

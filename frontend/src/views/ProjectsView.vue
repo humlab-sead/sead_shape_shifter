@@ -66,7 +66,7 @@
     <!-- Project List -->
     <v-row v-else class="mt-4">
       <v-col v-for="project in filteredProjects" :key="project.name" cols="12" md="6" lg="4">
-        <v-card variant="outlined" hover :ripple="false" @click="handleSelectProject(project.name)">
+        <v-card variant="plain" hover :ripple="false" @click="handleSelectProject(project.name)">
           <v-card-title class="d-flex align-center">
             <v-icon icon="mdi-file-document" class="mr-2" />
             <span class="text-truncate">{{ project.name }}</span>

@@ -13,6 +13,8 @@ from backend.app.clients.reconciliation_client import (
     ReconciliationClient,
     ReconciliationQuery,
 )
+from backend.app.core.config import settings
+from backend.app.core.operation_manager import OperationStatus, operation_manager
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models import (
     AutoReconcileResult,
@@ -224,7 +226,7 @@ class ReconciliationService:
 
         if not recon_config_filename.exists():
             logger.info(f"No reconciliation config found for '{project_name}', creating empty config")
-            return ReconciliationConfig(service_url="http://localhost:8000", entities={})
+            return ReconciliationConfig(service_url=settings.reconciliation_service_url, entities={})
 
         logger.debug(f"Loading reconciliation config from {recon_config_filename}")
         with open(recon_config_filename, "r", encoding="utf-8") as f:
@@ -253,6 +255,54 @@ class ReconciliationService:
                 sort_keys=False,
                 allow_unicode=True,
             )
+
+    async def get_reconciliation_preview(self, project_name: str, entity_name: str) -> list[dict]:
+        """
+        Get preview data for entity with reconciliation mappings applied.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+
+        Returns:
+            List of rows with source data + reconciliation status (sead_id, confidence, etc.)
+        """
+        # Load reconciliation config
+        recon_config: ReconciliationConfig = self.load_reconciliation_config(project_name)
+
+        if entity_name not in recon_config.entities:
+            raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
+
+        entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
+
+        # Get source data
+        source_data: list[dict] = await self.get_resolved_source_data(project_name, entity_name, entity_spec)
+
+        # Enrich with reconciliation mappings
+        enriched_data: list[dict] = []
+        for row in source_data:
+            # Extract key values from row
+            key_values = tuple(row.get(k) for k in entity_spec.keys)
+
+            # Find matching mapping
+            mapping: ReconciliationMapping | None = None
+            for m in entity_spec.mapping:
+                if tuple(m.source_values) == key_values:
+                    mapping = m
+                    break
+
+            # Enrich row with mapping data
+            enriched_row = {
+                **row,
+                "sead_id": mapping.sead_id if mapping else None,
+                "confidence": mapping.confidence if mapping else None,
+                "notes": mapping.notes if mapping else "",
+                "will_not_match": mapping.will_not_match if mapping and hasattr(mapping, "will_not_match") else False,
+            }
+            enriched_data.append(enriched_row)
+
+        logger.info(f"Retrieved {len(enriched_data)} preview rows for entity '{entity_name}'")
+        return enriched_data
 
     async def get_resolved_source_data(self, project_name: str, entity_name: str, entity_spec: EntityReconciliationSpec) -> list[dict]:
         """
@@ -292,7 +342,12 @@ class ReconciliationService:
         raise BadRequestError(f"Cannot extract numeric ID from URI: {uri}")
 
     async def auto_reconcile_entity(
-        self, project_name: str, entity_name: str, entity_spec: EntityReconciliationSpec, max_candidates: int = 3
+        self,
+        project_name: str,
+        entity_name: str,
+        entity_spec: EntityReconciliationSpec,
+        max_candidates: int = 3,
+        operation_id: str | None = None,
     ) -> AutoReconcileResult:
         """
         Perform automatic reconciliation for an entity.
@@ -304,6 +359,7 @@ class ReconciliationService:
             entity_name: Entity to reconcile
             entity_spec: Reconciliation specification
             max_candidates: Max candidates per query
+            operation_id: Optional operation ID for progress tracking
 
         Returns:
             AutoReconcileResult with counts and candidates
@@ -311,28 +367,104 @@ class ReconciliationService:
         Raises:
             ValueError: If project has unsaved changes
         """
+        # Load existing config and ensure thresholds from caller are honored.
+        recon_config: ReconciliationConfig = self.load_reconciliation_config(project_name)
+
+        thresholds_updated: bool = False
+        existing_spec: EntityReconciliationSpec | None = recon_config.entities.get(entity_name)
+        if existing_spec is None:
+            recon_config.entities[entity_name] = entity_spec
+            existing_spec = entity_spec
+            thresholds_updated = True
+        else:
+            if existing_spec.auto_accept_threshold != entity_spec.auto_accept_threshold:
+                existing_spec.auto_accept_threshold = entity_spec.auto_accept_threshold
+                thresholds_updated = True
+            if existing_spec.review_threshold != entity_spec.review_threshold:
+                existing_spec.review_threshold = entity_spec.review_threshold
+                thresholds_updated = True
+
+        entity_spec = existing_spec
 
         service_type: str | None = entity_spec.remote.service_type
         if not service_type:
+            if thresholds_updated:
+                self.save_reconciliation_config(project_name, recon_config)
             logger.info(f"Reconciliation disabled for entity '{entity_name}' (no service_type configured)")
             return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
 
         logger.info(f"Auto-reconciling entity '{entity_name}'")
 
+        # Update progress: Starting
+        if operation_id:
+            operation_manager.update_progress(
+                operation_id, status=OperationStatus.RUNNING, message=f"Loading source data for {entity_name}..."
+            )
+
         source_data: list[dict] = await self.get_resolved_source_data(project_name, entity_name, entity_spec)
         logger.info(f"Using {len(source_data)} rows for reconciliation")
+
+        # Update progress: Building queries
+        if operation_id:
+            operation_manager.update_progress(operation_id, message=f"Building {len(source_data)} reconciliation queries...")
 
         query_data: ReconciliationQueryService.QueryBuildResult = self.query_builder.create(
             entity_spec, max_candidates, source_data, service_type
         )
 
         if not query_data.queries:
+            if thresholds_updated:
+                self.save_reconciliation_config(project_name, recon_config)
             logger.warning("No valid queries to reconcile")
+            if operation_id:
+                operation_manager.complete_operation(operation_id, "No valid queries to reconcile")
             return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
 
-        # Execute batch reconciliation
+        # Update progress: Total queries
+        if operation_id:
+            operation_manager.update_progress(
+                operation_id,
+                total=len(query_data.queries),
+                current=0,
+                message=f"Reconciling {len(query_data.queries)} queries...",
+            )
+
+        # Execute batch reconciliation with progress tracking
         logger.debug(f"Executing batch reconciliation for {len(query_data.queries)} queries")
-        results = await self.recon_client.reconcile_batch(query_data.queries)
+
+        # For progress tracking, we'll process in smaller batches
+        batch_size = 50
+        all_results: dict[str, list[ReconciliationCandidate]] = {}
+
+        # Convert dict to list of items for batching
+        queries_items = list(query_data.queries.items())
+        total_queries = len(queries_items)
+
+        for i in range(0, total_queries, batch_size):
+            # Check for cancellation
+            if operation_id and operation_manager.is_cancelled(operation_id):
+                logger.warning(f"Reconciliation cancelled for {entity_name}")
+                return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
+
+            # Create batch dict
+            batch_items = queries_items[i : i + batch_size]
+            batch_dict = dict(batch_items)
+
+            batch_results = await self.recon_client.reconcile_batch(batch_dict)
+            all_results.update(batch_results)
+
+            # Update progress
+            if operation_id:
+                processed = min(i + batch_size, total_queries)
+                operation_manager.update_progress(
+                    operation_id, current=processed, message=f"Processed {processed}/{total_queries} queries..."
+                )
+
+        results = all_results
+
+        # Update progress: Processing results
+        if operation_id:
+            operation_manager.update_progress(operation_id, message="Processing reconciliation results...")
 
         # Map back to source keys
         candidate_map: dict[str, list[ReconciliationCandidate]] = {}
@@ -342,21 +474,19 @@ class ReconciliationService:
             key_str = "|".join(str(v) if v is not None else "" for v in source_key)
             candidate_map[key_str] = candidates
 
-        # Load existing config
-        recon_config: ReconciliationConfig = self.load_reconciliation_config(project_name)
-        if entity_name not in recon_config.entities:
-            recon_config.entities[entity_name] = entity_spec
-
-        # Update entity spec reference
-        entity_spec = recon_config.entities[entity_name]
-
         # Auto-accept high confidence matches
         auto_accepted, needs_review, unmatched = self.auto_accept_candidates(entity_spec, candidate_map)
 
-        # Save updated config
+        # Save updated config (mappings and/or updated thresholds)
         self.save_reconciliation_config(project_name, recon_config)
 
         logger.info(f"Auto-reconciliation complete: {auto_accepted} auto-accepted, " f"{needs_review} need review, {unmatched} unmatched")
+
+        # Complete operation
+        if operation_id:
+            operation_manager.complete_operation(
+                operation_id, f"Complete: {auto_accepted} auto-accepted, {needs_review} need review, {unmatched} unmatched"
+            )
 
         return AutoReconcileResult(
             auto_accepted=auto_accepted,
@@ -472,6 +602,63 @@ class ReconciliationService:
             else:
                 entity_spec.mapping.append(new_mapping)
                 logger.info(f"Added new mapping: {source_values} -> {sead_id}")
+
+        self.save_reconciliation_config(project_name, recon_config)
+        return recon_config
+
+    def mark_as_unmatched(
+        self,
+        project_name: str,
+        entity_name: str,
+        source_values: list[Any],
+        notes: str | None = None,
+    ) -> ReconciliationConfig:
+        """
+        Mark an entity as "will not match" - local-only with no SEAD mapping.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            source_values: Source key values
+            notes: Optional reason for marking as unmatched
+
+        Returns:
+            Updated reconciliation configuration
+        """
+        from datetime import datetime, timezone
+
+        recon_config: ReconciliationConfig = self.load_reconciliation_config(project_name)
+
+        if entity_name not in recon_config.entities:
+            raise NotFoundError(f"Entity '{entity_name}' not in reconciliation config")
+
+        entity_spec = recon_config.entities[entity_name]
+
+        # Find existing mapping
+        existing_idx = None
+        for idx, mapping in enumerate(entity_spec.mapping):
+            if mapping.source_values == source_values:
+                existing_idx = idx
+                break
+
+        # Create unmatched mapping
+        new_mapping = ReconciliationMapping(
+            source_values=source_values,
+            sead_id=None,  # No SEAD match
+            will_not_match=True,  # Mark as local-only
+            confidence=None,  # Not applicable
+            notes=notes or "Marked as local-only (will not match)",
+            created_by="user",
+            created_at=None,
+            last_modified=datetime.now(timezone.utc).isoformat(),
+        )
+
+        if existing_idx is not None:
+            entity_spec.mapping[existing_idx] = new_mapping
+            logger.info(f"Updated mapping to unmatched: {source_values}")
+        else:
+            entity_spec.mapping.append(new_mapping)
+            logger.info(f"Marked as unmatched: {source_values}")
 
         self.save_reconciliation_config(project_name, recon_config)
         return recon_config

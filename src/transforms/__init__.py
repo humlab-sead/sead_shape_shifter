@@ -1,5 +1,5 @@
 import abc
-
+from pathlib import Path
 import pandas as pd
 
 from src.utility import Registry
@@ -21,4 +21,4 @@ class TransformerRegistry(Registry):
     items: dict[str, type["Transformer"]] = {}
 
 
-Transformers: TransformerRegistry = TransformerRegistry().scan(__name__)  # pylint: disable=invalid-name
+Transformers: TransformerRegistry = TransformerRegistry().scan(__name__, Path(__file__).parent)  # pylint: disable=invalid-name

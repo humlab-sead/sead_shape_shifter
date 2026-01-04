@@ -5,8 +5,8 @@ import shutil
 import pytest
 
 from src.model import ShapeShiftProject
-from src.workflow import validate_entity_shapes, workflow
 from src.utility import load_shape_file
+from src.workflow import validate_entity_shapes, workflow
 
 
 @pytest.mark.skip(reason="Pending deprecation, will be replaced with database tests")
