@@ -156,17 +156,13 @@ class TestCreateSpecification:
     """Tests for POST /api/v1/reconcile/specifications endpoint."""
 
     @patch("backend.app.services.reconciliation_service.ProjectMapper")
-    def test_create_specification_success(
-        self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config
-    ):
+    def test_create_specification_success(self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
         """Test creating new specification."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Mock entity validation
         mock_mapper_instance = MagicMock()
-        mock_mapper_instance.to_core_config.return_value = MagicMock(
-            entities={"site": MagicMock(), "sample": MagicMock()}
-        )
+        mock_mapper_instance.to_core_config.return_value = MagicMock(entities={"site": MagicMock(), "sample": MagicMock()})
         mock_mapper.return_value = mock_mapper_instance
 
         payload = {
@@ -190,9 +186,7 @@ class TestCreateSpecification:
         assert "sample_type" in config["entities"]["sample"]
 
     @patch("backend.app.services.reconciliation_service.ProjectMapper")
-    def test_create_specification_duplicate(
-        self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config
-    ):
+    def test_create_specification_duplicate(self, mock_mapper, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
         """Test creating duplicate specification fails."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -273,9 +267,7 @@ class TestUpdateSpecification:
         assert spec["source"] == "other_source"
         assert spec["property_mappings"] == {"new_prop": "new_col"}
 
-    def test_update_specification_preserves_mapping(
-        self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config
-    ):
+    def test_update_specification_preserves_mapping(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
         """Test that updating preserves existing mappings."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -326,9 +318,7 @@ class TestDeleteSpecification:
         assert "site_code" not in config["entities"]["site"]
         assert "site_name" in config["entities"]["site"]
 
-    def test_delete_specification_with_mappings_no_force(
-        self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config
-    ):
+    def test_delete_specification_with_mappings_no_force(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
         """Test deleting specification with mappings fails without force."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -337,9 +327,7 @@ class TestDeleteSpecification:
         assert response.status_code == 400
         assert "2 existing mappings" in response.json()["detail"]
 
-    def test_delete_specification_with_mappings_force(
-        self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config
-    ):
+    def test_delete_specification_with_mappings_force(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
         """Test force deleting specification with mappings succeeds."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 

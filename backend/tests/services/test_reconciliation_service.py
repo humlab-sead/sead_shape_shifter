@@ -861,9 +861,7 @@ class TestSpecificationManagement:
 
         # Mock entity validation
         mock_mapper_instance = MagicMock()
-        mock_mapper_instance.to_core_config.return_value = MagicMock(
-            entities={"site": MagicMock(), "sample": MagicMock()}
-        )
+        mock_mapper_instance.to_core_config.return_value = MagicMock(entities={"site": MagicMock(), "sample": MagicMock()})
         mock_mapper.return_value = mock_mapper_instance
 
         # Save initial config
@@ -1015,9 +1013,7 @@ class TestSpecificationManagement:
 
     def test_delete_specification_with_mappings_no_force(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test deleting specification with mappings raises error without force."""
-        sample_recon_config.entities["site"]["site_code"].mapping = [
-            ReconciliationMapping(source_value="SITE001", sead_id=100)
-        ]
+        sample_recon_config.entities["site"]["site_code"].mapping = [ReconciliationMapping(source_value="SITE001", sead_id=100)]
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
@@ -1061,9 +1057,7 @@ class TestSpecificationManagement:
         # Entity should be removed entirely
         assert "site" not in updated_config.entities
 
-    async def test_get_available_target_fields_success(
-        self, reconciliation_service, tmp_path, sample_recon_config
-    ):
+    async def test_get_available_target_fields_success(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test getting available target fields from preview."""
         # Mock preview result
         mock_preview_result = MagicMock()
