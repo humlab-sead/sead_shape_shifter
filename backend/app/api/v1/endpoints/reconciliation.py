@@ -74,11 +74,12 @@ async def update_reconciliation_config(
     return recon_config
 
 
-@router.get("/projects/{project_name}/reconciliation/{entity_name}/preview")
+@router.get("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/preview")
 @handle_endpoint_errors
 async def get_reconciliation_preview(
     project_name: str,
     entity_name: str,
+    target_field: str,
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> list[dict[str, Any]]:
     """
@@ -86,14 +87,15 @@ async def get_reconciliation_preview(
 
     Returns source data enriched with reconciliation status (sead_id, confidence, etc.)
     """
-    return await service.get_reconciliation_preview(project_name, entity_name)
+    return await service.get_reconciliation_preview(project_name, entity_name, target_field)
 
 
-@router.post("/projects/{project_name}/reconciliation/{entity_name}/auto-reconcile")
+@router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/auto-reconcile")
 @handle_endpoint_errors
 async def auto_reconcile_entity(
     project_name: str,
     entity_name: str,
+    target_field: str,
     threshold: float = Query(0.95, ge=0.0, le=1.0),
     review_threshold: float | None = Query(None, ge=0.0, le=1.0),
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -106,6 +108,7 @@ async def auto_reconcile_entity(
     Args:
         project_name: Project name
         entity_name: Entity to reconcile
+        target_field: Target field to reconcile
         threshold: Auto-accept threshold (default 0.95 = 95%)
         review_threshold: Review threshold (default uses entity spec value)
 
@@ -115,10 +118,10 @@ async def auto_reconcile_entity(
     # Load reconciliation config
     recon_config: ReconciliationConfig = service.load_reconciliation_config(project_name)
 
-    if entity_name not in recon_config.entities:
-        raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
+    if entity_name not in recon_config.entities or target_field not in recon_config.entities[entity_name]:
+        raise NotFoundError(f"No reconciliation spec for entity '{entity_name}' target '{target_field}'")
 
-    entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
+    entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name][target_field]
 
     # Update threshold if provided
     if threshold != entity_spec.auto_accept_threshold:
@@ -146,6 +149,7 @@ async def auto_reconcile_entity(
             await service.auto_reconcile_entity(
                 project_name=project_name,
                 entity_name=entity_name,
+                target_field=target_field,
                 entity_spec=entity_spec,
                 operation_id=operation_id,
             )
@@ -249,11 +253,12 @@ async def cancel_operation(operation_id: str) -> dict[str, str]:
 
 
 # Keep the original endpoint for backward compatibility (synchronous version)
-@router.post("/projects/{project_name}/reconciliation/{entity_name}/auto-reconcile-sync")
+@router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/auto-reconcile-sync")
 @handle_endpoint_errors
 async def auto_reconcile_entity_sync(
     project_name: str,
     entity_name: str,
+    target_field: str,
     threshold: float = Query(0.95, ge=0.0, le=1.0),
     review_threshold: float | None = Query(None, ge=0.0, le=1.0),
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -267,6 +272,7 @@ async def auto_reconcile_entity_sync(
     Args:
         project_name: Project name
         entity_name: Entity to reconcile
+        target_field: Target field to reconcile
         threshold: Auto-accept threshold (default 0.95 = 95%)
         review_threshold: Review threshold (default uses entity spec value)
 
@@ -276,10 +282,10 @@ async def auto_reconcile_entity_sync(
     # Load reconciliation config
     recon_config: ReconciliationConfig = service.load_reconciliation_config(project_name)
 
-    if entity_name not in recon_config.entities:
-        raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
+    if entity_name not in recon_config.entities or target_field not in recon_config.entities[entity_name]:
+        raise NotFoundError(f"No reconciliation spec for entity '{entity_name}' target '{target_field}'")
 
-    entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
+    entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name][target_field]
 
     # Update threshold if provided
     if threshold != entity_spec.auto_accept_threshold:
@@ -293,10 +299,11 @@ async def auto_reconcile_entity_sync(
     if get_app_state_manager().is_dirty(project_name):
         raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
 
-    logger.info(f"Starting auto-reconciliation for {entity_name} with threshold {threshold}")
+    logger.info(f"Starting auto-reconciliation for {entity_name}.{target_field} with threshold {threshold}")
     result: AutoReconcileResult = await service.auto_reconcile_entity(
         project_name=project_name,
         entity_name=entity_name,
+        target_field=target_field,
         entity_spec=entity_spec,
         operation_id=None,  # No progress tracking for sync version
     )
@@ -304,11 +311,12 @@ async def auto_reconcile_entity_sync(
     return result
 
 
-@router.get("/projects/{project_name}/reconciliation/{entity_name}/suggest")
+@router.get("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/suggest")
 @handle_endpoint_errors
 async def suggest_entities(
     project_name: str,
     entity_name: str,
+    target_field: str,
     query: str = Query(..., min_length=2),
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> list[ReconciliationCandidate]:
@@ -318,6 +326,7 @@ async def suggest_entities(
     Args:
         project_name: Project name
         entity_name: Entity type
+        target_field: Target field to reconcile
         query: Search query (minimum 2 characters)
 
     Returns:
@@ -326,10 +335,10 @@ async def suggest_entities(
     # Get entity spec to resolve service type
     recon_config: ReconciliationConfig = service.load_reconciliation_config(project_name)
 
-    if entity_name not in recon_config.entities:
-        raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
+    if entity_name not in recon_config.entities or target_field not in recon_config.entities[entity_name]:
+        raise NotFoundError(f"No reconciliation spec for entity '{entity_name}' target '{target_field}'")
 
-    entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name]
+    entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name][target_field]
 
     # Get service type from entity spec
     if not entity_spec.remote.service_type:
@@ -342,12 +351,13 @@ async def suggest_entities(
     return candidates
 
 
-@router.post("/projects/{project_name}/reconciliation/{entity_name}/mapping")
+@router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mapping")
 @handle_endpoint_errors
 async def update_mapping(
     project_name: str,
     entity_name: str,
-    source_values: list[Any],
+    target_field: str,
+    source_value: Any,
     sead_id: int | None = None,
     notes: str | None = None,
     service: ReconciliationService = Depends(get_reconciliation_service),
@@ -358,7 +368,8 @@ async def update_mapping(
     Args:
         project_name: Project name
         entity_name: Entity name
-        source_values: Source key values
+        target_field: Target field to reconcile
+        source_value: Source value (single value, not list)
         sead_id: SEAD entity ID (null to remove mapping)
         notes: Optional notes
 
@@ -368,18 +379,20 @@ async def update_mapping(
     return service.update_mapping(
         project_name=project_name,
         entity_name=entity_name,
-        source_values=source_values,
+        target_field=target_field,
+        source_value=source_value,
         sead_id=sead_id,
         notes=notes,
     )
 
 
-@router.delete("/projects/{project_name}/reconciliation/{entity_name}/mapping")
+@router.delete("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mapping")
 @handle_endpoint_errors
 async def delete_mapping(
     project_name: str,
     entity_name: str,
-    source_values: list[Any] = Query(...),
+    target_field: str,
+    source_value: Any = Query(...),
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> ReconciliationConfig:
     """
@@ -388,7 +401,8 @@ async def delete_mapping(
     Args:
         project_name: Project name
         entity_name: Entity name
-        source_values: Source key values to delete
+        target_field: Target field to reconcile
+        source_value: Source value to delete (single value, not list)
 
     Returns:
         Updated reconciliation configuration
@@ -396,17 +410,19 @@ async def delete_mapping(
     return service.update_mapping(
         project_name=project_name,
         entity_name=entity_name,
-        source_values=source_values,
+        target_field=target_field,
+        source_value=source_value,
         sead_id=None,  # None = delete
     )
 
 
-@router.post("/projects/{project_name}/reconciliation/{entity_name}/mark-unmatched")
+@router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mark-unmatched")
 @handle_endpoint_errors
 async def mark_as_unmatched(
     project_name: str,
     entity_name: str,
-    source_values: list[Any],
+    target_field: str,
+    source_value: Any,
     notes: str | None = None,
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> ReconciliationConfig:
@@ -416,7 +432,8 @@ async def mark_as_unmatched(
     Args:
         project_name: Project name
         entity_name: Entity name
-        source_values: Source key values
+        target_field: Target field to reconcile
+        source_value: Source value (single value, not list)
         notes: Optional reason/notes for why it won't match
 
     Returns:
@@ -425,6 +442,7 @@ async def mark_as_unmatched(
     return service.mark_as_unmatched(
         project_name=project_name,
         entity_name=entity_name,
-        source_values=source_values,
+        target_field=target_field,
+        source_value=source_value,
         notes=notes,
     )
