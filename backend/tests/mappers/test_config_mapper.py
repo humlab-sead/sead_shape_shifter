@@ -592,7 +592,7 @@ class TestProjectMapperIntegration:
             """Recursively find differences between two objects."""
             differences = []
 
-            if not type(obj1) is type(obj2):
+            if type(obj1) is not type(obj2):
                 differences.append(f"{path}: type mismatch ({type(obj1).__name__} vs {type(obj2).__name__})")
                 return differences
 
