@@ -25,6 +25,11 @@ export interface GraphAdapterOptions {
    * Whether to highlight cycle nodes and edges
    */
   highlightCycles?: boolean
+
+  /**
+   * Whether to show source nodes (data sources, tables)
+   */
+  showSourceNodes?: boolean
 }
 
 /**
@@ -50,6 +55,14 @@ function isNodeInCycle(nodeId: string, cycles: string[][]): boolean {
 }
 
 /**
+ * Extract label from source node name (e.g., "source:my_db" -> "my_db")
+ */
+function extractSourceLabel(name: string): string {
+  const parts = name.split(':')
+  return parts[parts.length - 1] || name
+}
+
+/**
  * Convert backend DependencyGraph to Cytoscape ElementDefinition array
  */
 export function toCytoscapeElements(
@@ -58,9 +71,9 @@ export function toCytoscapeElements(
 ): ElementDefinition[] {
   if (!graph) return []
 
-  const { cycles = [], showNodeLabels = true, showEdgeLabels = true, highlightCycles = false } = options
+  const { cycles = [], showNodeLabels = true, showEdgeLabels = true, highlightCycles = false, showSourceNodes = false } = options
 
-  // Convert nodes
+  // Convert entity nodes
   const nodes: ElementDefinition[] = graph.nodes.map((node) => {
     const classes: string[] = []
 
@@ -76,13 +89,38 @@ export function toCytoscapeElements(
       data: {
         id: node.name,
         label: node.name,
+        type: node.type,
         depth: node.depth,
         dependencies: node.depends_on.length,
         dependsOn: node.depends_on,
+        nodeCategory: 'entity',
       },
       classes,
     }
   })
+
+  // Convert source nodes (conditionally)
+  const sourceNodes: ElementDefinition[] = showSourceNodes && graph.source_nodes
+    ? graph.source_nodes.map((sourceNode) => {
+        const classes = ['source-node', `source-${sourceNode.type}`]
+
+        if (!showNodeLabels) {
+          classes.push('hide-label')
+        }
+
+        return {
+          data: {
+            id: sourceNode.name,
+            label: extractSourceLabel(sourceNode.name),
+            nodeCategory: 'source',
+            sourceType: sourceNode.type,
+            sourceCategory: sourceNode.source_type,
+            metadata: sourceNode.metadata,
+          },
+          classes,
+        }
+      })
+    : []
 
   // Convert edges
   const edges: ElementDefinition[] = graph.edges.map((edge, index) => {
@@ -107,7 +145,28 @@ export function toCytoscapeElements(
     }
   })
 
-  return [...nodes, ...edges]
+  // Convert source edges (conditionally)
+  const sourceEdges: ElementDefinition[] = showSourceNodes && graph.source_edges
+    ? graph.source_edges.map((edge, index) => {
+        const classes = ['source-edge']
+
+        if (!showEdgeLabels) {
+          classes.push('hide-label')
+        }
+
+        return {
+          data: {
+            id: `source-edge-${edge.source}-${edge.target}-${index}`,
+            source: edge.source,
+            target: edge.target,
+            label: edge.label || '',
+          },
+          classes,
+        }
+      })
+    : []
+
+  return [...nodes, ...sourceNodes, ...edges, ...sourceEdges]
 }
 
 /**

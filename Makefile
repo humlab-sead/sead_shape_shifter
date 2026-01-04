@@ -109,7 +109,7 @@ backend-kill:
 .PHONY: backend-run
 backend-run:
 	@echo "Starting backend server on http://localhost:$(BACKEND_PORT)"
-	@PYTHONPATH=. uvicorn backend.app.main:app \
+	@PYTHONPATH=. uv run uvicorn backend.app.main:app \
 		--log-level debug \
 		--host 0.0.0.0 --port $(BACKEND_PORT)
 
@@ -138,6 +138,11 @@ backend-run-with-hmr:
 backend-test:
 	@echo "Running backend tests..."
 	@uv run pytest backend/tests -v
+
+.PHONY: reconcile
+reconcile:
+	@echo "Running auto-reconciliation CLI..."
+	@PYTHONPATH=.:backend uv run python scripts/auto_reconcile.py $(ARGS)
 
 ################################################################################
 # Project Editor UI

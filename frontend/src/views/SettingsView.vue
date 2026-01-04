@@ -16,9 +16,9 @@
 
           <v-card-text>
             <v-row>
-              <v-col v-for="preset in theme.presets" :key="preset.name" cols="12" sm="6" md="4">
+              <v-col v-for="preset in theme.presets" :key="preset.name" cols="12" sm="6" md="2">
                 <v-card
-                  :variant="theme.currentThemeName.value === preset.name ? 'tonal' : 'outlined'"
+                  :variant="theme.currentThemeName.value === preset.name ? 'tonal' : 'plain'"
                   :color="theme.currentThemeName.value === preset.name ? 'primary' : undefined"
                   class="theme-preset-card"
                   @click="selectTheme(preset.name)"
@@ -90,14 +90,14 @@
               hide-details
               class="mb-3"
             >
-              <template #append>
+              <!-- <template #append>
                 <v-tooltip location="top">
                   <template #activator="{ props }">
                     <v-icon icon="mdi-information-outline" size="small" v-bind="props" />
                   </template>
                   Reduces spacing and component sizes throughout the interface
                 </v-tooltip>
-              </template>
+              </template> -->
             </v-switch>
 
             <v-switch
@@ -107,14 +107,14 @@
               hide-details
               class="mb-3"
             >
-              <template #append>
+              <!-- <template #append>
                 <v-tooltip location="top">
                   <template #activator="{ props }">
                     <v-icon icon="mdi-information-outline" size="small" v-bind="props" />
                   </template>
                   Enable smooth transitions and animations
                 </v-tooltip>
-              </template>
+              </template> -->
             </v-switch>
 
             <v-switch
@@ -123,14 +123,14 @@
               color="primary"
               hide-details
             >
-              <template #append>
+              <!-- <template #append>
                 <v-tooltip location="top">
                   <template #activator="{ props }">
                     <v-icon icon="mdi-information-outline" size="small" v-bind="props" />
                   </template>
                   Automatically collapse navigation drawer to icons only
                 </v-tooltip>
-              </template>
+              </template> -->
             </v-switch>
 
             <v-divider class="my-4" />

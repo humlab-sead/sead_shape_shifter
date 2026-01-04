@@ -16,9 +16,9 @@ class ReconciliationSource(BaseModel):
 class ReconciliationRemote(BaseModel):
     """Remote SEAD entity specification for reconciliation."""
 
-    data_source: str = Field(..., description="Data source name (e.g., 'sead')")
-    entity: str = Field(..., description="Remote table name (e.g., 'tbl_sites')")
-    key: str = Field(..., description="Remote key column (e.g., 'site_id')")
+    data_source: str | None = Field(None, description="Data source name (e.g., 'sead')")
+    entity: str | None = Field(None, description="Remote table name (e.g., 'tbl_sites')")
+    key: str | None = Field(None, description="Remote key column (e.g., 'site_id')")
     service_type: str | None = Field(
         None, description="Reconciliation service entity type (e.g., 'Site', 'Taxon'). If None, reconciliation is disabled."
     )
@@ -29,11 +29,13 @@ class ReconciliationMapping(BaseModel):
     """Single reconciliation mapping entry linking source keys to SEAD ID."""
 
     source_values: list[Any] = Field(..., description="Source key values")
-    sead_id: int = Field(..., description="SEAD entity ID")
+    sead_id: int | None = Field(None, description="SEAD entity ID (None if unmatched)")
     confidence: float | None = Field(None, ge=0.0, le=1.0, description="Mapping confidence (0-1)")
     notes: str | None = Field(None, description="Manual notes or auto-match info")
+    will_not_match: bool = Field(False, description="User marked as will not match (local-only identifier)")
     created_at: str | None = Field(None, description="ISO timestamp")
     created_by: str | None = Field(None, description="User who created mapping")
+    last_modified: str | None = Field(None, description="Last modification timestamp")
 
 
 class EntityReconciliationSpec(BaseModel):

@@ -42,6 +42,95 @@ const baseStyles: StylesheetCSS[] = [
     },
   },
 
+  // Node types - data source
+  {
+    selector: 'node[type="data"]',
+    css: {
+      shape: 'ellipse',
+      'background-color': '#1976d2',
+    },
+  },
+
+  // Node types - SQL source
+  {
+    selector: 'node[type="sql"]',
+    css: {
+      shape: 'ellipse',
+      'background-color': '#2E7D32',
+    },
+  },
+
+  // Node types - fixed values
+  {
+    selector: 'node[type="fixed"]',
+    css: {
+      shape: 'ellipse',
+      'background-color': '#6A1B9A',
+    },
+  },
+
+  // Status indicators
+  {
+    selector: 'node[status="error"]',
+    css: {
+      'border-color': '#ef5350',
+      'border-width': 3,
+    },
+  },
+
+  {
+    selector: 'node[status="warning"]',
+    css: {
+      'border-color': '#FFA726',
+      'border-width': 3,
+    },
+  },
+
+  // Source node base styles
+  {
+    selector: 'node.source-node',
+    css: {
+      'background-opacity': 0.85,
+      'border-style': 'dashed',
+      'border-width': 2,
+      'border-color': '#999',
+      'font-size': '18px',
+    },
+  },
+
+  // Datasource nodes - database cylinder shape
+  {
+    selector: 'node.source-datasource',
+    css: {
+      shape: 'barrel',
+      'background-color': '#00796B', // Teal
+      width: 40,
+      height: 40,
+    },
+  },
+
+  // Table nodes - rectangles
+  {
+    selector: 'node.source-table',
+    css: {
+      shape: 'rectangle',
+      'background-color': '#0097A7', // Cyan
+      width: 35,
+      height: 35,
+    },
+  },
+
+  // File source nodes
+  {
+    selector: 'node.source-file',
+    css: {
+      shape: 'round-rectangle',
+      'background-color': '#5E35B1', // Deep purple
+      width: 38,
+      height: 38,
+    },
+  },
+
   // Edge styles
   {
     selector: 'edge',
@@ -69,7 +158,20 @@ const baseStyles: StylesheetCSS[] = [
     },
   },
 
-  // Cycle highlighting - nodes
+  // Source edges - visually distinct from entity edges
+  {
+    selector: 'edge.source-edge',
+    css: {
+      'line-style': 'dotted',
+      'line-color': '#00796B',
+      'target-arrow-color': '#00796B',
+      width: 1.5,
+      opacity: 0.7,
+      'arrow-scale': 1,
+    },
+  },
+
+  // Cycle highlighting - nodes (must come after node type styles)
   {
     selector: 'node.in-cycle',
     css: {
@@ -79,7 +181,7 @@ const baseStyles: StylesheetCSS[] = [
     },
   },
 
-  // Cycle highlighting - edges
+  // Cycle highlighting - edges (must come after base edge styles)
   {
     selector: 'edge.cycle-edge',
     css: {
@@ -97,7 +199,7 @@ const baseStyles: StylesheetCSS[] = [
     },
   },
 
-  // Selected node
+  // Selected node (must come after node type and cycle styles)
   {
     selector: 'node:selected',
     css: {
@@ -107,54 +209,13 @@ const baseStyles: StylesheetCSS[] = [
     },
   },
 
-  // Selected edge
+  // Selected edge (must come after base and cycle edge styles)
   {
     selector: 'edge:selected',
     css: {
       width: 4,
       'line-color': '#FFA726',
       'target-arrow-color': '#FFA726',
-    },
-  },
-
-  // Node types - data source
-  {
-    selector: 'node[type="data"]',
-    css: {
-      shape: 'ellipse',
-    },
-  },
-
-  // Node types - SQL source
-  {
-    selector: 'node[type="sql"]',
-    css: {
-      shape: 'round-rectangle',
-    },
-  },
-
-  // Node types - fixed values
-  {
-    selector: 'node[type="fixed"]',
-    css: {
-      shape: 'diamond',
-    },
-  },
-
-  // Status indicators
-  {
-    selector: 'node[status="error"]',
-    css: {
-      'border-color': '#ef5350',
-      'border-width': 3,
-    },
-  },
-
-  {
-    selector: 'node[status="warning"]',
-    css: {
-      'border-color': '#FFA726',
-      'border-width': 3,
     },
   },
 ]

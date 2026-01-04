@@ -23,7 +23,12 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   // Getters
   const reconcilableEntities = computed(() => {
     if (!reconciliationConfig.value) return []
-    return Object.keys(reconciliationConfig.value.entities)
+    return Object.keys(reconciliationConfig.value.entities).filter(
+      (entityName) => {
+        const entity = reconciliationConfig.value!.entities[entityName]
+        return entity?.remote?.service_type != null
+      }
+    )
   })
 
   const hasConfig = computed(() => reconciliationConfig.value !== null)
@@ -33,11 +38,15 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loading.value = true
     error.value = null
     try {
+      console.log(`[Reconciliation Store] Loading config for project: ${projectName}`)
       const response = await apiClient.get(`/projects/${projectName}/reconciliation`)
+      console.log('[Reconciliation Store] Config loaded:', response.data)
       reconciliationConfig.value = response.data
+      console.log('[Reconciliation Store] Reconcilable entities:', reconcilableEntities.value)
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to load reconciliation config'
-      console.error('Failed to load reconciliation config:', e)
+      console.error('[Reconciliation Store] Failed to load reconciliation config:', e)
+      console.error('[Reconciliation Store] Error details:', e.response)
       throw e
     } finally {
       loading.value = false
@@ -66,15 +75,16 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   async function autoReconcile(
     projectName: string,
     entityName: string,
-    threshold: number = 0.95
+    threshold: number = 0.95,
+    reviewThreshold?: number
   ): Promise<AutoReconcileResult> {
     loading.value = true
     error.value = null
     try {
       const response = await apiClient.post(
-        `/projects/${projectName}/reconciliation/${entityName}/auto-reconcile`,
+        `/projects/${projectName}/reconciliation/${entityName}/auto-reconcile-sync`,
         null,
-        { params: { threshold } }
+        { params: { threshold, review_threshold: reviewThreshold } }
       )
 
       // Reload config to get updated mappings
@@ -84,6 +94,31 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Auto-reconciliation failed'
       console.error('Auto-reconciliation failed:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function autoReconcileAsync(
+    projectName: string,
+    entityName: string,
+    threshold: number = 0.95,
+    reviewThreshold?: number
+  ): Promise<{ operation_id: string; message: string }> {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await apiClient.post(
+        `/projects/${projectName}/reconciliation/${entityName}/auto-reconcile`,
+        null,
+        { params: { threshold, review_threshold: reviewThreshold } }
+      )
+
+      return response.data
+    } catch (e: any) {
+      error.value = e.response?.data?.detail || 'Failed to start reconciliation'
+      console.error('Failed to start reconciliation:', e)
       throw e
     } finally {
       loading.value = false
@@ -153,8 +188,33 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
+  async function loadPreviewData(projectName: string, entityName: string) {
+    try {
+      console.log(`[Reconciliation Store] Loading preview data for ${entityName}`)
+      const response = await apiClient.get(`/projects/${projectName}/reconciliation/${entityName}/preview`)
+      
+      // Response is already enriched with reconciliation data
+      previewData.value[entityName] = response.data
+      console.log(`[Reconciliation Store] Loaded ${response.data.length} preview rows for ${entityName}`)
+    } catch (e: any) {
+      console.error('[Reconciliation Store] Failed to load preview data:', e)
+      previewData.value[entityName] = []
+      // Don't throw - allow UI to show empty state
+    }
+  }
+
   function clearError() {
     error.value = null
+  }
+
+  async function checkServiceHealth() {
+    try {
+      const response = await apiClient.get('/reconciliation/health')
+      return response.data
+    } catch (e: any) {
+      console.error('Failed to check reconciliation service health:', e)
+      throw e
+    }
   }
 
   function $reset() {
@@ -179,9 +239,12 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     loadReconciliationConfig,
     saveReconciliationConfig,
     autoReconcile,
+    autoReconcileAsync,
     updateMapping,
     deleteMapping,
     suggestEntities,
+    loadPreviewData,
+    checkServiceHealth,
     clearError,
     $reset,
   }
