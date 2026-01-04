@@ -132,7 +132,14 @@ class ReconciliationQueryService:
             self.queries: dict[str, ReconciliationQuery] = queries
             self.key_mapping: dict[str, tuple[Any, ...]] = key_mapping
 
-    def create(self, target_field: str, entity_spec: EntityReconciliationSpec, max_candidates: int, source_data: list[dict[str, Any]], service_type: str):
+    def create(
+        self,
+        target_field: str,
+        entity_spec: EntityReconciliationSpec,
+        max_candidates: int,
+        source_data: list[dict[str, Any]],
+        service_type: str,
+    ):
         """Build reconciliation queries from source data based on entity spec.
 
         Args:
@@ -233,7 +240,7 @@ class ReconciliationService:
         if version == "1.0":
             logger.warning(f"Detected v1 format for '{project_name}', auto-migrating to v2")
             data = migrate_config_v1_to_v2(data)
-            
+
             # Save migrated version
             logger.info(f"Saving auto-migrated v2 config for '{project_name}'")
             config = ReconciliationConfig(**data)
@@ -281,7 +288,7 @@ class ReconciliationService:
 
         if entity_name not in recon_config.entities:
             raise NotFoundError(f"No reconciliation spec for entity '{entity_name}'")
-        
+
         if target_field not in recon_config.entities[entity_name]:
             raise NotFoundError(f"No reconciliation spec for entity '{entity_name}' with target field '{target_field}'")
 
@@ -387,7 +394,7 @@ class ReconciliationService:
         thresholds_updated: bool = False
         if entity_name not in recon_config.entities:
             recon_config.entities[entity_name] = {}
-        
+
         existing_spec: EntityReconciliationSpec | None = recon_config.entities[entity_name].get(target_field)
         if existing_spec is None:
             recon_config.entities[entity_name][target_field] = entity_spec
@@ -590,7 +597,7 @@ class ReconciliationService:
 
         if entity_name not in recon_config.entities:
             raise NotFoundError(f"Entity '{entity_name}' not in reconciliation config")
-        
+
         if target_field not in recon_config.entities[entity_name]:
             raise NotFoundError(f"Target field '{target_field}' not in reconciliation config for entity '{entity_name}'")
 
@@ -656,7 +663,7 @@ class ReconciliationService:
 
         if entity_name not in recon_config.entities:
             raise NotFoundError(f"Entity '{entity_name}' not in reconciliation config")
-        
+
         if target_field not in recon_config.entities[entity_name]:
             raise NotFoundError(f"Target field '{target_field}' not in reconciliation config for entity '{entity_name}'")
 
