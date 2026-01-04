@@ -78,9 +78,7 @@ def sample_entity_spec():
     return EntityReconciliationSpec(
         source=None,
         property_mappings={"latitude": "latitude", "longitude": "longitude"},
-        remote=ReconciliationRemote(
-            service_type="site",
-        ),
+        remote=ReconciliationRemote(service_type="site", data_source="sead", entity="site", key="site_id"),
         auto_accept_threshold=0.95,
         review_threshold=0.70,
         mapping=[],
@@ -172,7 +170,7 @@ class TestAnotherEntityReconciliationSourceResolver:
         # Entity spec with source pointing to another entity
         entity_spec = EntityReconciliationSpec(
             source="site",
-            remote=ReconciliationRemote(service_type="sample"),
+            remote=ReconciliationRemote(service_type="sample", data_source="sead", entity="sample", key="sample_id"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -196,7 +194,7 @@ class TestAnotherEntityReconciliationSourceResolver:
 
         entity_spec = EntityReconciliationSpec(
             source="nonexistent",
-            remote=ReconciliationRemote(service_type="test"),
+            remote=ReconciliationRemote(service_type="test", data_source="sead", entity="sample", key="sample_id"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -226,7 +224,7 @@ class TestSqlQueryReconciliationSourceResolver:
 
         entity_spec = EntityReconciliationSpec(
             source=ReconciliationSource(type="sql", data_source="test_db", query="SELECT * FROM custom_view"),
-            remote=ReconciliationRemote(service_type="test"),
+            remote=ReconciliationRemote(service_type="test", data_source="sead", entity="sample", key="sample_id"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -245,7 +243,7 @@ class TestSqlQueryReconciliationSourceResolver:
 
         entity_spec = EntityReconciliationSpec(
             source=ReconciliationSource(type="sql", data_source="nonexistent_db", query="SELECT * FROM test"),
-            remote=ReconciliationRemote(service_type="test"),
+            remote=ReconciliationRemote(service_type="test", data_source="sead", entity="sample", key="sample_id"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -267,7 +265,11 @@ class TestReconciliationQueryService:
         ]
 
         result = service.create(
-            sample_entity_spec, target_field="site_code", max_candidates=3, source_data=source_data, service_type="site"
+            target_field="site_code",
+            entity_spec=sample_entity_spec,
+            max_candidates=3,
+            source_data=source_data,
+            service_type="site",
         )
 
         assert len(result.queries) == 2
@@ -296,11 +298,18 @@ class TestReconciliationQueryService:
         ]
 
         result = service.create(
-            sample_entity_spec, target_field="site_code", max_candidates=3, source_data=source_data, service_type="site"
+            target_field="site_code",
+            entity_spec=sample_entity_spec,
+            max_candidates=3,
+            source_data=source_data,
+            service_type="site",
         )
 
+        # Should create only 1 query (second row), indexed as q1 (original row index)
         assert len(result.queries) == 1
-        assert "q0" in result.queries  # First row with None is skipped, second becomes q0
+        assert "q1" in result.queries
+        assert result.queries["q1"].query == "SITE001"
+        assert result.key_mapping["q1"] == "SITE001"
 
     def test_create_skips_empty_query_strings(self, sample_entity_spec):
         """Test create skips rows with empty query strings."""
@@ -312,7 +321,11 @@ class TestReconciliationQueryService:
         ]
 
         result = service.create(
-            sample_entity_spec, target_field="site_code", max_candidates=3, source_data=source_data, service_type="site"
+            target_field="site_code",
+            entity_spec=sample_entity_spec,
+            max_candidates=3,
+            source_data=source_data,
+            service_type="site",
         )
 
         assert len(result.queries) == 1
@@ -326,7 +339,11 @@ class TestReconciliationQueryService:
         ]
 
         result = service.create(
-            sample_entity_spec, target_field="site_code", max_candidates=3, source_data=source_data, service_type="site"
+            target_field="site_code",
+            entity_spec=sample_entity_spec,
+            max_candidates=3,
+            source_data=source_data,
+            service_type="site",
         )
 
         q0 = result.queries["q0"]
@@ -409,7 +426,7 @@ class TestReconciliationService:
         """Test auto_reconcile_entity returns empty result when service_type is None."""
         sample_entity_spec.remote.service_type = None
 
-        result = await reconciliation_service.auto_reconcile_entity("test_project", "site", sample_entity_spec)
+        result = await reconciliation_service.auto_reconcile_entity("test_project", "site", "site_code", sample_entity_spec)
 
         assert result.auto_accepted == 0
         assert result.total == 0
@@ -421,7 +438,7 @@ class TestReconciliationService:
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
             mock_source.return_value = [{"site_code": None}]  # Will be skipped
 
-            result = await reconciliation_service.auto_reconcile_entity("test_project", "site", sample_entity_spec)
+            result = await reconciliation_service.auto_reconcile_entity("test", "site", "site_code", sample_entity_spec)
 
             assert result.total == 0
             assert not mock_recon_client.reconcile_batch.called
@@ -450,23 +467,44 @@ class TestReconciliationService:
 
             reconciliation_service.recon_client.reconcile_batch.return_value = {"q0": candidates}
 
-            # Create empty config file
+            # Create empty config file with v2 format
             config_file = tmp_path / "test-reconciliation.yml"
-            config_file.write_text(yaml.dump({"service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
+            config = {
+                "version": "2.0",
+                "service_url": RECONCILIATION_SERVICE_URL,
+                "entities": {
+                    "site": {
+                        "site_code": {
+                            "source": None,
+                            "property_mappings": {},
+                            "remote": {
+                                "data_source": "sead",
+                                "entity": "tbl_sites",
+                                "key": "site_id",
+                                "service_type": "site",
+                            },
+                            "auto_accept_threshold": 0.95,
+                            "review_threshold": 0.7,
+                            "mapping": [],
+                        }
+                    }
+                },
+            }
+            config_file.write_text(yaml.dump(config))
 
-            result = await reconciliation_service.auto_reconcile_entity("test", "site", sample_entity_spec, max_candidates=3)
+            result = await reconciliation_service.auto_reconcile_entity("test", "site", "site_code", sample_entity_spec, max_candidates=3)
 
             assert result.auto_accepted == 1
             assert result.needs_review == 0
             assert result.unmatched == 0
             assert result.total == 1
 
-            # Check mapping was created
+            # Check mapping was created in nested structure
             loaded_config = reconciliation_service.load_reconciliation_config("test", recon_config_filename=config_file)
-            assert len(loaded_config.entities["site"].mapping) == 1
-            mapping = loaded_config.entities["site"].mapping[0]
+            assert len(loaded_config.entities["site"]["site_code"].mapping) == 1
+            mapping = loaded_config.entities["site"]["site_code"].mapping[0]
             assert mapping.sead_id == 123
-            assert mapping.source_values == ["SITE001"]
+            assert mapping.source_value == "SITE001"
 
     @pytest.mark.asyncio
     async def test_auto_reconcile_entity_marks_needs_review(self, reconciliation_service, tmp_path, sample_entity_spec):
@@ -484,9 +522,30 @@ class TestReconciliationService:
             reconciliation_service.recon_client.reconcile_batch.return_value = {"q0": candidates}
 
             config_file = tmp_path / "test-reconciliation.yml"
-            config_file.write_text(yaml.dump({"service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
+            config = {
+                "version": "2.0",
+                "service_url": RECONCILIATION_SERVICE_URL,
+                "entities": {
+                    "site": {
+                        "site_code": {
+                            "source": None,
+                            "property_mappings": {},
+                            "remote": {
+                                "data_source": "sead",
+                                "entity": "tbl_sites",
+                                "key": "site_id",
+                                "service_type": "site",
+                            },
+                            "auto_accept_threshold": 0.95,
+                            "review_threshold": 0.7,
+                            "mapping": [],
+                        }
+                    }
+                },
+            }
+            config_file.write_text(yaml.dump(config))
 
-            result = await reconciliation_service.auto_reconcile_entity("test", "site", sample_entity_spec)
+            result = await reconciliation_service.auto_reconcile_entity("test", "site", "site_code", sample_entity_spec)
 
             assert result.auto_accepted == 0
             assert result.needs_review == 1
@@ -508,9 +567,30 @@ class TestReconciliationService:
             reconciliation_service.recon_client.reconcile_batch.return_value = {"q0": candidates}
 
             config_file = tmp_path / "test-reconciliation.yml"
-            config_file.write_text(yaml.dump({"service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
+            config = {
+                "version": "2.0",
+                "service_url": RECONCILIATION_SERVICE_URL,
+                "entities": {
+                    "site": {
+                        "site_code": {
+                            "source": None,
+                            "property_mappings": {},
+                            "remote": {
+                                "data_source": "sead",
+                                "entity": "tbl_sites",
+                                "key": "site_id",
+                                "service_type": "site",
+                            },
+                            "auto_accept_threshold": 0.95,
+                            "review_threshold": 0.7,
+                            "mapping": [],
+                        }
+                    }
+                },
+            }
+            config_file.write_text(yaml.dump(config))
 
-            result = await reconciliation_service.auto_reconcile_entity("test", "site", sample_entity_spec)
+            result = await reconciliation_service.auto_reconcile_entity("test", "site", "site_code", sample_entity_spec)
 
             assert result.auto_accepted == 0
             assert result.needs_review == 0
@@ -526,9 +606,30 @@ class TestReconciliationService:
             reconciliation_service.recon_client.reconcile_batch.return_value = {"q0": []}
 
             config_file = tmp_path / "test-reconciliation.yml"
-            config_file.write_text(yaml.dump({"service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
+            config = {
+                "version": "2.0",
+                "service_url": RECONCILIATION_SERVICE_URL,
+                "entities": {
+                    "site": {
+                        "site_code": {
+                            "source": None,
+                            "property_mappings": {},
+                            "remote": {
+                                "data_source": "sead",
+                                "entity": "tbl_sites",
+                                "key": "site_id",
+                                "service_type": "site",
+                            },
+                            "auto_accept_threshold": 0.95,
+                            "review_threshold": 0.7,
+                            "mapping": [],
+                        }
+                    }
+                },
+            }
+            config_file.write_text(yaml.dump(config))
 
-            result = await reconciliation_service.auto_reconcile_entity("test", "site", sample_entity_spec)
+            result = await reconciliation_service.auto_reconcile_entity("test", "site", "site_code", sample_entity_spec)
 
             assert result.unmatched == 1
             assert result.total == 1
@@ -542,15 +643,16 @@ class TestReconciliationService:
         updated = reconciliation_service.update_mapping(
             "test",
             "site",
-            source_values=["SITE001"],
+            "site_code",
+            source_value="SITE001",
             sead_id=123,
             notes="Manual mapping",
         )
 
-        assert len(updated.entities["site"].mapping) == 1
-        mapping = updated.entities["site"].mapping[0]
+        assert len(updated.entities["site"]["site_code"].mapping) == 1
+        mapping = updated.entities["site"]["site_code"].mapping[0]
         assert mapping.sead_id == 123
-        assert mapping.source_values == ["SITE001"]
+        assert mapping.source_value == "SITE001"
         assert mapping.notes == "Manual mapping"
         assert mapping.confidence == 1.0
 
@@ -558,14 +660,16 @@ class TestReconciliationService:
         """Test update_mapping updates existing mapping."""
         # Add existing mapping
         existing_mapping = ReconciliationMapping(
-            source_values=["SITE001"],
+            source_value="SITE001",
             sead_id=100,
             confidence=0.8,
             notes="Old mapping",
             created_by="system",
             created_at="2024-01-01T00:00:00Z",
+            will_not_match=False,
+            last_modified="2024-01-02T00:00:00Z",
         )
-        sample_recon_config.entities["site"].mapping = [existing_mapping]
+        sample_recon_config.entities["site"]["site_code"].mapping = [existing_mapping]
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
@@ -574,38 +678,46 @@ class TestReconciliationService:
         updated = reconciliation_service.update_mapping(
             "test",
             "site",
-            source_values=["SITE001"],
+            "site_code",
+            source_value="SITE001",
             sead_id=200,
             notes="Updated mapping",
         )
 
-        assert len(updated.entities["site"].mapping) == 1
-        mapping = updated.entities["site"].mapping[0]
+        assert len(updated.entities["site"]["site_code"].mapping) == 1
+        mapping = updated.entities["site"]["site_code"].mapping[0]
         assert mapping.sead_id == 200
         assert mapping.notes == "Updated mapping"
 
     def test_update_mapping_removes_mapping(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test update_mapping removes mapping when sead_id is None."""
         existing_mapping = ReconciliationMapping(
-            source_values=["SITE001"], sead_id=100, confidence=0.8, notes="To remove", created_by="user", created_at="2024-01-01T00:00:00Z"
+            source_value="SITE001",
+            sead_id=100,
+            confidence=0.8,
+            notes="To remove",
+            created_by="user",
+            created_at="2024-01-01T00:00:00Z",
+            will_not_match=False,
+            last_modified="2024-01-02T00:00:00Z",
         )
-        sample_recon_config.entities["site"].mapping = [existing_mapping]
+        sample_recon_config.entities["site"]["site_code"].mapping = [existing_mapping]
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
-        updated = reconciliation_service.update_mapping("test", "site", source_values=["SITE001"], sead_id=None)
+        updated = reconciliation_service.update_mapping("test", "site", "site_code", source_value="SITE001", sead_id=None)
 
-        assert len(updated.entities["site"].mapping) == 0
+        assert len(updated.entities["site"]["site_code"].mapping) == 0
 
     def test_update_mapping_raises_for_missing_entity(self, reconciliation_service, tmp_path):
         """Test update_mapping raises if entity not in config."""
         config_file = tmp_path / "test-reconciliation.yml"
-        config_file.write_text(yaml.dump({"service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
+        config_file.write_text(yaml.dump({"version": "2.0", "service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
 
         with pytest.raises(NotFoundError, match="Entity 'nonexistent' not in reconciliation config"):
-            reconciliation_service.update_mapping("test", "nonexistent", source_values=["KEY"], sead_id=123)
+            reconciliation_service.update_mapping("test", "nonexistent", "field", source_value="KEY", sead_id=123)
 
     def test_mark_as_unmatched(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test mark_as_unmatched creates mapping with will_not_match=True."""
@@ -616,13 +728,14 @@ class TestReconciliationService:
         updated = reconciliation_service.mark_as_unmatched(
             "test",
             "site",
-            source_values=["LOCAL_SITE"],
+            "site_code",
+            source_value="LOCAL_SITE",
             notes="Local identifier only",
         )
 
-        assert len(updated.entities["site"].mapping) == 1
-        mapping = updated.entities["site"].mapping[0]
-        assert mapping.source_values == ["LOCAL_SITE"]
+        assert len(updated.entities["site"]["site_code"].mapping) == 1
+        mapping = updated.entities["site"]["site_code"].mapping[0]
+        assert mapping.source_value == "LOCAL_SITE"
         assert mapping.sead_id is None
         assert mapping.will_not_match is True
         assert mapping.notes == "Local identifier only"
@@ -633,14 +746,16 @@ class TestReconciliationService:
         """Test mark_as_unmatched can convert existing mapping to unmatched."""
         # Add existing matched mapping
         existing_mapping = ReconciliationMapping(
-            source_values=["SITE001"],
+            source_value="SITE001",
             sead_id=100,
             confidence=0.8,
             notes="Was matched",
             created_by="system",
             created_at="2024-01-01T00:00:00Z",
+            will_not_match=False,
+            last_modified="2024-01-02T00:00:00Z",
         )
-        sample_recon_config.entities["site"].mapping = [existing_mapping]
+        sample_recon_config.entities["site"]["site_code"].mapping = [existing_mapping]
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
@@ -649,12 +764,13 @@ class TestReconciliationService:
         updated = reconciliation_service.mark_as_unmatched(
             "test",
             "site",
-            source_values=["SITE001"],
+            "site_code",
+            source_value="SITE001",
             notes="Changed to local-only",
         )
 
-        assert len(updated.entities["site"].mapping) == 1
-        mapping = updated.entities["site"].mapping[0]
+        assert len(updated.entities["site"]["site_code"].mapping) == 1
+        mapping = updated.entities["site"]["site_code"].mapping[0]
         assert mapping.sead_id is None
         assert mapping.will_not_match is True
         assert mapping.notes == "Changed to local-only"
