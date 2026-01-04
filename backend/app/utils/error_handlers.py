@@ -43,7 +43,7 @@ try:
         backtrace=True,
         diagnose=True,
     )
-except Exception as e:
+except Exception as e:  # pylint: disable=broad-except
     # If logger.add fails (e.g., already added), log to stderr but continue
     print(f"Warning: Could not add error log file handler: {e}", file=sys.stderr)
 

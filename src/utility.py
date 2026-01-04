@@ -4,7 +4,6 @@ import pkgutil
 import sys
 import unicodedata
 from datetime import datetime
-from genericpath import isfile
 from pathlib import Path
 from typing import Any, Callable, Generic, Literal, Self, TypeVar
 

@@ -19,9 +19,9 @@ class CircularDependencyError(DependencyServiceError):
 class DependencyNode(dict):
     """Dependency graph node representation."""
 
-    def __init__(self, name: str, depends_on: list[str], depth: int = 0):
+    def __init__(self, name: str, depends_on: list[str], depth: int = 0, entity_type: str | None = None):
         """Initialize dependency node."""
-        super().__init__(name=name, depends_on=depends_on, depth=depth)
+        super().__init__(name=name, depends_on=depends_on, depth=depth, type=entity_type)
 
 
 class DependencyGraph(dict):
@@ -76,38 +76,42 @@ class DependencyService:
         # Calculate depths for visualization
         depths: dict[str, int] = self._calculate_depths(dependency_map, topological_order)
 
-        nodes: list[DependencyNode] = [
-            DependencyNode(name=name, depends_on=deps, depth=depths.get(name, 0)) for name, deps in dependency_map.items()
-        ]
-        
+        allowed_entity_types = {"data", "sql", "fixed"}
+        nodes: list[DependencyNode] = []
+        for name, deps in dependency_map.items():
+            entity_type = api_project.entities.get(name, {}).get("type")
+            normalized_type = entity_type if entity_type in allowed_entity_types else None
+            nodes.append(DependencyNode(name=name, depends_on=deps, depth=depths.get(name, 0), entity_type=normalized_type))
+
         # Build edges with foreign key information
         edges: list[dict[str, Any]] = []
         for entity_name in api_project.entities:
             entity_config = api_project.entities[entity_name]
-            foreign_keys = entity_config.get('foreign_keys') or []
-            
+            foreign_keys = entity_config.get("foreign_keys") or []
+
             for fk in foreign_keys:
-                target_entity = fk.get('entity')
+                target_entity = fk.get("entity")
                 if target_entity:
-                    local_keys = fk.get('local_keys', [])
-                    remote_keys = fk.get('remote_keys', [])
-                    
+                    local_keys = fk.get("local_keys", [])
+                    remote_keys = fk.get("remote_keys", [])
+
                     # Format keys for display
                     if isinstance(local_keys, list) and isinstance(remote_keys, list):
-                        keys_label = ' → '.join([
-                            ', '.join(local_keys) if local_keys else '',
-                            ', '.join(remote_keys) if remote_keys else ''
-                        ])
+                        keys_label = " → ".join(
+                            [", ".join(local_keys) if local_keys else "", ", ".join(remote_keys) if remote_keys else ""]
+                        )
                     else:
                         keys_label = f"{local_keys} → {remote_keys}"
-                    
-                    edges.append({
-                        'source': entity_name,
-                        'target': target_entity,
-                        'local_keys': local_keys,
-                        'remote_keys': remote_keys,
-                        'label': keys_label
-                    })
+
+                    edges.append(
+                        {
+                            "source": entity_name,
+                            "target": target_entity,
+                            "local_keys": local_keys,
+                            "remote_keys": remote_keys,
+                            "label": keys_label,
+                        }
+                    )
 
         logger.debug(f"Analyzed dependencies: {len(nodes)} nodes, {len(edges)} edges, " f"cycles: {has_cycles}")
 

@@ -88,7 +88,7 @@ class ReconciliationClient:
 
         try:
             client: httpx.AsyncClient = await self._get_client()
-            logger.debug(f"[RECON] Client obtained, making POST request...")
+            logger.debug("[RECON] Client obtained, making POST request...")
 
             endpoint_url = f"{self.base_url}/reconcile"
             logger.debug(f"[RECON] POST {endpoint_url}")
@@ -101,7 +101,7 @@ class ReconciliationClient:
             logger.debug(f"[RECON] Response headers: {dict(response.headers)}")
 
             response.raise_for_status()
-            logger.debug(f"[RECON] Response status OK")
+            logger.debug("[RECON] Response status OK")
         except httpx.ConnectError as e:
             logger.error(f"[RECON] Connection failed to {self.base_url}: {type(e).__name__}: {e}")
             logger.error(f"[RECON] Connection error details: {e.__class__.__module__}.{e.__class__.__name__}")
@@ -120,7 +120,7 @@ class ReconciliationClient:
             raise
 
         # Parse response
-        logger.debug(f"[RECON] Parsing response data...")
+        logger.debug("[RECON] Parsing response data...")
         results: dict[str, list[ReconciliationCandidate]] = {}
 
         try:
@@ -156,7 +156,7 @@ class ReconciliationClient:
         logger.debug(f"[RECON] Health check: {self.base_url}/reconcile")
         try:
             client: httpx.AsyncClient = await self._get_client()
-            logger.debug(f"[RECON] Sending GET request to health endpoint...")
+            logger.debug("[RECON] Sending GET request to health endpoint...")
 
             response: httpx.Response = await client.get(f"{self.base_url}/reconcile")
             logger.debug(f"[RECON] Health check response: status={response.status_code}")
@@ -175,7 +175,7 @@ class ReconciliationClient:
         except httpx.TimeoutException as e:
             logger.error(f"[RECON] Health check - Timeout after {self.timeout}s: {e}")
             return {"status": "offline", "service_url": self.base_url, "error": f"Timeout: {e}"}
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.error(f"[RECON] Health check - Unexpected error: {type(e).__name__}: {e}")
             logger.exception("[RECON] Health check - Full traceback:")
             return {"status": "offline", "service_url": self.base_url, "error": str(e)}
@@ -242,7 +242,7 @@ class ReconciliationClient:
         Returns:
             Service manifest with supported types and configuration
         """
-        logger.debug(f"[RECON] Fetching service manifest")
+        logger.debug("[RECON] Fetching service manifest")
         client: httpx.AsyncClient = await self._get_client()
         response: httpx.Response = await client.get(f"{self.base_url}/reconcile")
         logger.debug(f"[RECON] Manifest response: status={response.status_code}")

@@ -6,7 +6,6 @@ from typing import Any
 from loguru import logger
 
 from backend.app.core.state_manager import ApplicationStateManager
-from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.execute import DispatcherMetadata, ExecuteRequest, ExecuteResult
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
