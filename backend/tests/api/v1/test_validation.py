@@ -96,8 +96,14 @@ class TestDependencies:
 
         # Create config with dependencies
         entities = {
-            "base": sample_entity_data,
-            "derived": {**sample_entity_data, "source": "base"},
+            "base": {**sample_entity_data, "type": "sql", "data_source": "test_db", "table": "base_table"},
+            "derived": {
+                **sample_entity_data,
+                "type": "sql",
+                "data_source": "test_db",
+                "source": "base",
+                "foreign_keys": [{"entity": "base", "local_keys": ["base_id"], "remote_keys": ["id"]}],
+            },
         }
         client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
 
