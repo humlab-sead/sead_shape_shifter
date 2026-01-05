@@ -642,7 +642,7 @@ class TestReconciliationClientIntegration:
         try:
             health = await client.check_health()
 
-            print(f"\nHealth Check Result:")
+            print("\nHealth Check Result:")
             print(f"  Status: {health['status']}")
             print(f"  Service URL: {health['service_url']}")
 
@@ -681,7 +681,7 @@ class TestReconciliationClientIntegration:
         try:
             manifest = await client.get_service_manifest()
 
-            print(f"\nManifest Retrieved:")
+            print("\nManifest Retrieved:")
             print(f"  Service Name: {manifest.get('name', 'N/A')}")
             print(f"  Identifier Space: {manifest.get('identifierSpace', 'N/A')}")
             print(f"  Schema Space: {manifest.get('schemaSpace', 'N/A')}")
@@ -718,7 +718,7 @@ class TestReconciliationClientIntegration:
         print("\n=== Testing Batch Reconciliation ===")
 
         # Simple test query
-        queries = {"q0": ReconciliationQuery(query="Test Site", entity_type="Site", limit=3)}
+        queries = {"q0": ReconciliationQuery(query="Test Site", entity_type="site", limit=3)}
 
         print(f"\nQuery: '{queries['q0'].query}'")
         print(f"Type: {queries['q0'].type}")
@@ -727,7 +727,7 @@ class TestReconciliationClientIntegration:
         try:
             result = await client.reconcile_batch(queries)
 
-            print(f"\nReconciliation Result:")
+            print("\nReconciliation Result:")
             print(f"  Queries processed: {len(result)}")
 
             if "q0" in result:
@@ -767,7 +767,7 @@ class TestReconciliationClientIntegration:
 
         prefix = "Site"
         print(f"\nPrefix: '{prefix}'")
-        print(f"Limit: 5")
+        print("Limit: 5")
 
         try:
             suggestions = await client.suggest_entities(prefix=prefix, limit=5)
@@ -813,7 +813,7 @@ class TestReconciliationClientIntegration:
         timeout = 5.0
 
         # Test 0: Docker Port Mapping Check
-        print(f"\n0. Docker Port Mapping Check:")
+        print("\n0. Docker Port Mapping Check:")
         try:
             result = subprocess.run(
                 ["docker", "ps", "--format", "{{.ID}}|{{.Image}}|{{.Ports}}"], capture_output=True, text=True, timeout=5, check=True
@@ -840,24 +840,24 @@ class TestReconciliationClientIntegration:
                             # Check if properly mapped to host
                             if "0.0.0.0:8000->8000" in ports or f"{host}:8000->8000" in ports:
                                 found_mapping = True
-                                print(f"   ✓ Port 8000 is MAPPED to host")
+                                print("   ✓ Port 8000 is MAPPED to host")
                             elif "8000/tcp" in ports and "->" not in ports:
-                                print(f"   ✗ Port 8000 is EXPOSED but NOT MAPPED to host!")
-                                print(f"\n   PROBLEM FOUND: Container has port 8000 but it's not published to host")
-                                print(f"   Solution: Add port mapping when starting container:")
-                                print(f"     docker run -p 8000:8000 ...")
-                                print(f"   Or in docker-compose.yml:")
-                                print(f"     ports:")
-                                print(f'       - "8000:8000"')
+                                print("   ✗ Port 8000 is EXPOSED but NOT MAPPED to host!")
+                                print("\n   PROBLEM FOUND: Container has port 8000 but it's not published to host")
+                                print("   Solution: Add port mapping when starting container:")
+                                print("     docker run -p 8000:8000 ...")
+                                print("   Or in docker-compose.yml:")
+                                print("     ports:")
+                                print('       - "8000:8000"')
 
                 if not found_container:
-                    print(f"   ⚠ No containers found with port 8000 or reconciliation service")
+                    print("   ⚠ No containers found with port 8000 or reconciliation service")
                 elif not found_mapping:
-                    print(f"\n   ⚠ WARNING: Container found but port not mapped to host")
+                    print("\n   ⚠ WARNING: Container found but port not mapped to host")
                     pytest.skip("Docker port 8000 not mapped to host - see diagnostics above")
 
         except FileNotFoundError:
-            print(f"   ⚠ Docker CLI not available, skipping container check")
+            print("   ⚠ Docker CLI not available, skipping container check")
         except Exception as e:  # pylint: disable=broad-except
             print(f"   ⚠ Could not check Docker containers: {e}")
 
@@ -882,14 +882,14 @@ class TestReconciliationClientIntegration:
                 port_open = True
             else:
                 print(f"   ✗ Port {port} is CLOSED on host (error code: {result})")
-                print(f"\n   Common causes:")
-                print(f"   - Service running in Docker but port not mapped")
-                print(f"   - Service not started")
-                print(f"   - Firewall blocking connection")
-                print(f"\n   Debug commands:")
+                print("\n   Common causes:")
+                print("   - Service running in Docker but port not mapped")
+                print("   - Service not started")
+                print("   - Firewall blocking connection")
+                print("\n   Debug commands:")
                 print(f"   - Check host port: lsof -i :{port}")
-                print(f"   - Check Docker: docker ps --format '{{{{.Ports}}}}'")
-                print(f"   - Check container logs: docker logs <container_id>")
+                print("   - Check Docker: docker ps --format '{{.Ports}}'")
+                print("   - Check container logs: docker logs <container_id>")
                 pytest.skip(f"Port {port} is not reachable on host")
         except socket.timeout:
             print(f"   ✗ Connection timeout after {timeout}s")
@@ -902,16 +902,16 @@ class TestReconciliationClientIntegration:
 
         # Test 3: HTTP Health Check
         if port_open:
-            print(f"\n3. HTTP Health Check:")
+            print("\n3. HTTP Health Check:")
             client = ReconciliationClient(base_url=f"http://{host}:{port}", timeout=timeout)
             try:
                 health = await client.check_health()
 
                 if health["status"] == "online":
-                    print(f"   ✓ Service is ONLINE")
+                    print("   ✓ Service is ONLINE")
                     print(f"   ✓ Service Name: {health.get('service_name', 'Unknown')}")
                 else:
-                    print(f"   ✗ Service is OFFLINE")
+                    print("   ✗ Service is OFFLINE")
                     print(f"   Error: {health.get('error', 'Unknown')}")
 
             except Exception as e:  # pylint: disable=broad-except

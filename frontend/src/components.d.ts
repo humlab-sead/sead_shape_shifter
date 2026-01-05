@@ -48,6 +48,8 @@ declare module 'vue' {
     SchemaTreeView: typeof import('./components/SchemaTreeView.vue')['default']
     SessionIndicator: typeof import('./components/SessionIndicator.vue')['default']
     SessionManager: typeof import('./components/SessionManager.vue')['default']
+    SpecificationEditor: typeof import('./components/reconciliation/SpecificationEditor.vue')['default']
+    SpecificationsList: typeof import('./components/reconciliation/SpecificationsList.vue')['default']
     SqlEditor: typeof import('./components/common/SqlEditor.vue')['default']
     SuggestionsPanel: typeof import('./components/entities/SuggestionsPanel.vue')['default']
     TableDetailsPanel: typeof import('./components/TableDetailsPanel.vue')['default']
