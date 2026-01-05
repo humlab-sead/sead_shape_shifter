@@ -31,6 +31,13 @@ def sample_config_file(tmp_path):
     """Create a sample configuration file."""
     config_path = tmp_path / "test_project.yml"
     content = """
+
+metadata:
+  type: shapeshifter-project
+  name: test_project
+  description: A test project
+  version: 1.0.0
+
 entities:
   sample:
     type: data

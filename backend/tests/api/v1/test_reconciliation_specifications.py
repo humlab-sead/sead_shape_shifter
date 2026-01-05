@@ -40,6 +40,12 @@ def reset_services():
 def sample_project(tmp_path):
     """Create sample project configuration."""
     project_data = {
+        "metadata": {
+            "type": "shapeshifter-project", 
+            "name": "test_project",
+            "description": "A test project",
+            "version": "1.0.0",
+        },
         "entities": {
             "site": {
                 "type": "sql",

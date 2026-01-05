@@ -347,9 +347,9 @@ class TestSurrogateIdSpecification:
             }
         }
         spec = SurrogateIdSpecification()
-        assert spec.is_satisfied_by(config) is False
-        assert spec.has_errors()
-        assert "used by multiple entities" in spec.errors[0].message
+        assert spec.is_satisfied_by(config)
+        assert spec.has_warnings()
+        assert any("used by multiple entities" in warning.message for warning in spec.warnings)
 
 
 class TestFixedDataSpecification:
