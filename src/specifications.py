@@ -748,19 +748,13 @@ class CompositeProjectSpecification(ProjectSpecification):
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
         """Run all specifications and aggregate results."""
         self.clear()
-        all_valid = True
 
         for spec in self.specifications:
-            is_valid = spec.is_satisfied_by(config)
-
-            if not is_valid:
-                all_valid = False
-
-            # Aggregate errors and warnings
+            spec.is_satisfied_by(config)
             self.errors.extend(spec.errors)
             self.warnings.extend(spec.warnings)
 
-        return all_valid
+        return not self.has_errors()
 
     def get_report(self) -> str:
         """Generate a human-readable validation report."""
