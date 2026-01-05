@@ -1,5 +1,5 @@
 metadata:
-  test: shapeshifter-project
+  type: shapeshifter-project
   name: "arbodat-database"
   description: "Configuration for importing data from ArboDat database into SEAD."
   version: "1.0.0"
