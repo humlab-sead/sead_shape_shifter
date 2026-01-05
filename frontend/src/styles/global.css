@@ -213,10 +213,10 @@
 /* Reduce font-size for all v-switch controls */
 .v-switch .v-label {
   font-size: 0.6rem !important;
-  size: x-small !important;
+  size: small !important;
 }
 
 .v-switch .v-selection-control__input {
   font-size: 0.6rem !important;
-  size: x-small !important;
+  size: small !important;
 }
