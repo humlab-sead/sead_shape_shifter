@@ -494,7 +494,7 @@ class SurrogateIdSpecification(ProjectSpecification):
         # Check for duplicate surrogate IDs
         for surrogate_id, entities in surrogate_ids.items():
             if len(entities) > 1:
-                self.add_error(
+                self.add_warning(
                     f"Surrogate ID '{surrogate_id}' is used by multiple entities: {', '.join(entities)}",
                     entity="configuration",
                     surrogate_id=surrogate_id,
