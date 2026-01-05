@@ -100,32 +100,33 @@
             prepend-inner-icon="mdi-lock"
           />
 
-          <v-divider class="my-6" />
-
           <!-- Data Source Configuration -->
           <h4 class="text-subtitle-1 mb-4">
             <v-icon start size="small">mdi-database</v-icon>
             Data Source
           </h4>
 
-          <v-select
-            v-model="sourceType"
-            :items="sourceTypes"
-            label="Source Type"
-            variant="outlined"
-            density="comfortable"
-            class="mb-4"
-          />
-
-          <v-autocomplete
-            v-if="sourceType === 'Other Entity'"
-            v-model="otherEntityName"
-            :items="availableEntities.filter(e => e !== formData.entity_name)"
-            label="Source Entity"
-            variant="outlined"
-            density="comfortable"
-            class="mb-4"
-          />
+          <v-row>
+            <v-col cols="6">
+              <v-select
+                v-model="sourceType"
+                :items="sourceTypes"
+                label="Source Type"
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-autocomplete
+                v-if="sourceType === 'Other Entity'"
+                v-model="otherEntityName"
+                :items="availableEntities.filter(e => e !== formData.entity_name)"
+                label="Source Entity"
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+          </v-row>
 
           <v-textarea
             v-if="sourceType === 'SQL Query'"
@@ -136,8 +137,6 @@
             class="mb-4"
             hint="Write a custom SQL query to fetch reconciliation data"
           />
-
-          <v-divider class="my-6" />
 
           <!-- Remote Configuration -->
           <h4 class="text-subtitle-1 mb-4">
@@ -164,8 +163,6 @@
             </template>
           </v-autocomplete>
 
-          <v-divider class="my-6" />
-
           <!-- Property Mappings -->
           <h4 class="text-subtitle-1 mb-4">
             <v-icon start size="small">mdi-link-variant</v-icon>
@@ -173,7 +170,7 @@
             <v-chip size="x-small" class="ml-2">{{ Object.keys(formData.spec.property_mappings).length }}</v-chip>
           </h4>
 
-          <v-card variant="outlined" class="mb-4">
+          <v-card variant="flat" class="mb-4">
             <v-card-text v-if="availableProperties.length > 0">
               <v-row v-for="prop in availableProperties" :key="prop" dense>
                 <v-col cols="12">
@@ -200,9 +197,6 @@
             </v-card-text>
           </v-card>
 
-          <v-divider class="my-6" />
-
-          <!-- Match Thresholds -->
           <h4 class="text-subtitle-1 mb-4">
             <v-icon start size="small">mdi-tune</v-icon>
             Match Thresholds

@@ -41,7 +41,8 @@ class ProjectYamlSpecification:
     """Specification for project files."""
 
     def is_satisfied_by(self, data: dict[str, Any]) -> bool:
-        return "entities" in (data or {})
+        metadata = (data or {}).get("metadata", {})
+        return "type" in metadata
 
 
 class ProjectService:
@@ -219,6 +220,7 @@ class ProjectService:
             created_at=0,
             modified_at=0,
             is_valid=True,
+            type="shapeshifter-project",
         )
 
         project: Project = Project(entities=entities or {}, options={}, metadata=metadata)

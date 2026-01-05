@@ -49,6 +49,7 @@ class ProjectMapper:
         metadata_dict: dict[str, Any] = cfg_dict.get("metadata", {})
         metadata: ProjectMetadata = ProjectMetadata(
             name=name,  # Filename is the authoritative source
+            type=metadata_dict.get("type", "shapeshifter-project"),
             description=metadata_dict.get("description", ""),
             version=metadata_dict.get("version", "1.0.0"),
             default_entity=metadata_dict.get("default_entity"),
@@ -90,6 +91,7 @@ class ProjectMapper:
         cfg_dict: dict[str, Any] = {
             "metadata": {
                 "name": api_config.metadata.name,
+                "type": api_config.metadata.type or "shapeshifter-project",
                 "description": api_config.metadata.description,
                 "version": api_config.metadata.version,
                 "default_entity": api_config.metadata.default_entity,
