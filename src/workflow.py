@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Normalize data from various data sources into structured tables
 and write them as CSVs or sheets in a single Excel file.
@@ -49,15 +48,11 @@ async def workflow(
     translate: bool,
     target_type: str,
     drop_foreign_keys: bool,
-    validate_then_exit: bool = False,
     default_entity: str | None = None,
     env_file: str | None = None,
 ) -> None:
 
     project = resolve_config(project, env_file=env_file)
-
-    if validate_project(project) and validate_then_exit:
-        return
 
     shapeshifter: ShapeShifter = ShapeShifter(project=project, default_entity=default_entity)
 
