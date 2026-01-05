@@ -146,15 +146,15 @@
 
                         <v-col cols="8" class="pl-2">
                           <!-- Keys -->
+                          <!-- :rules="requiredRule"
+                          required -->
                           <v-combobox
                             v-model="formData.keys"
                             label="Keys *"
-                            :rules="requiredRule"
                             variant="outlined"
                             multiple
                             chips
                             closable-chips
-                            required
                             persistent-placeholder
                           >
                             <template #message>
