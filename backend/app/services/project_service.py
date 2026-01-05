@@ -145,7 +145,7 @@ class ProjectService:
             logger.error(f"Failed to load project '{name}': {e}")
             raise InvalidProjectError(f"Failed to load project '{name}': {e}") from e
 
-    def save_project(self, project: Project, create_backup: bool = True) -> Project:
+    def save_project(self, project: Project, create_backup: bool = True, original_file_path: Path | None = None) -> Project:
         """
         Save project to file.
 
@@ -154,6 +154,7 @@ class ProjectService:
         Args:
             project: Project to save
             create_backup: Whether to create backup before saving
+            original_file_path: Optional original file path to preserve filename (default: derive from metadata.name)
 
         Returns:
             Updated project with new metadata
@@ -164,7 +165,8 @@ class ProjectService:
         if not project.metadata or not project.metadata.name:
             raise InvalidProjectError("Project must have metadata with name")
 
-        file_path: Path = self.projects_dir / f"{project.metadata.name.rstrip(".yml")}.yml"
+        # Use original file path if provided, otherwise derive from metadata.name
+        file_path: Path = original_file_path or (self.projects_dir / f"{project.metadata.name.rstrip(".yml")}.yml")
 
         try:
             # Convert to core dict for saving (sparse structure)
@@ -250,7 +252,7 @@ class ProjectService:
     def update_metadata(
         self,
         name: str,
-        new_name: str | None = None,
+        new_name: str | None = None,  # pylint: disable=unused-argument
         description: str | None = None,
         version: str | None = None,
         default_entity: str | None = None,
@@ -258,9 +260,12 @@ class ProjectService:
         """
         Update project metadata.
 
+        Note: new_name parameter is ignored - use rename_project() instead.
+        The filename is the authoritative source for project name.
+
         Args:
-            name: Current project name
-            new_name: New project name (optional)
+            name: Current project name (derived from filename)
+            new_name: Ignored (use rename_project instead)
             description: Project description (optional)
             version: Project version (optional)
             default_entity: Default entity name (optional)
@@ -270,7 +275,6 @@ class ProjectService:
 
         Raises:
             ProjectNotFoundError: If project not found
-            ProjectConflictError: If new name conflicts with existing project
         """
         # Load current project
         project: Project = self.load_project(name)
@@ -278,18 +282,10 @@ class ProjectService:
         if not project.metadata:
             raise InvalidProjectError(f"Project '{name}' has no metadata")
 
-        # Handle rename if requested
-        old_file_path: Path = self.projects_dir / f"{name}.yml"
-        new_file_path: Path | None = None
+        # Determine original file path to preserve filename
+        original_file_path: Path = self.projects_dir / f"{name}.yml"
 
-        if new_name and new_name != name:
-            new_file_path = self.projects_dir / f"{new_name}.yml"
-            if new_file_path.exists():
-                raise ProjectConflictError(f"Project '{new_name}' already exists")
-
-        # Update metadata fields (only if provided)
-        if new_name:
-            project.metadata.name = new_name
+        # Update metadata fields (only if provided, ignore new_name)
         if description is not None:
             project.metadata.description = description
         if version is not None:
@@ -297,18 +293,11 @@ class ProjectService:
         if default_entity is not None:
             project.metadata.default_entity = default_entity
 
-        # Save project
-        saved_config: Project = self.save_project(project, create_backup=True)
+        # Ensure metadata.name matches filename (filename is source of truth)
+        project.metadata.name = name
 
-        # Rename file if needed
-        if new_file_path and new_name != name:
-            old_file_path.rename(new_file_path)
-            if saved_config.metadata:
-                saved_config.metadata.file_path = str(new_file_path)
-            logger.info(f"Renamed project from '{name}' to '{new_name}'")
-
-            # Update application state with new name by activating the renamed project
-            self.state.activate(saved_config, new_name)
+        # Save project using original file path to prevent duplicate files
+        saved_config: Project = self.save_project(project, create_backup=True, original_file_path=original_file_path)
 
         return saved_config
 
