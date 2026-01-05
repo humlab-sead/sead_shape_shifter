@@ -95,7 +95,7 @@ class ExecuteService:
                     )
 
             dispatcher_meta: DispatcherMetadata = next(d for d in self.get_dispatchers() if d.key == request.dispatcher_key)
-            target = self._resolve_target(request.target, dispatcher_meta.target_type)
+            target: str = self._resolve_target(request.target, dispatcher_meta.target_type)
 
             logger.info(f"Executing workflow for project '{project_name}' with dispatcher '{request.dispatcher_key}'")
 
@@ -105,7 +105,6 @@ class ExecuteService:
                 translate=request.translate,
                 target_type=request.dispatcher_key,
                 drop_foreign_keys=request.drop_foreign_keys,
-                validate_then_exit=False,
                 default_entity=request.default_entity,
                 env_file=None,  # Already resolved in project
             )
