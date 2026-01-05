@@ -9,10 +9,8 @@ Usage:
 """
 
 import os
-import sys
 from pathlib import Path
 
-import click
 from loguru import logger
 
 from src.extract import extract_translation_map
@@ -86,14 +84,14 @@ async def workflow(
 
 def validate_project(config: ShapeShiftProject) -> bool:
     specification = CompositeProjectSpecification()
-    errors = specification.is_satisfied_by(config.cfg)
-    if errors:
-        for error in specification.errors:
-            logger.error(f"Configuration error: {error}")
-        click.echo("Configuration validation failed with errors.", err=True)
-        sys.exit(1)
-    logger.info("Configuration validation passed successfully.")
-    return True
+    is_satisfied: bool = specification.is_satisfied_by(config.cfg)
+    if specification.has_errors:
+        logger.error(f"Configuration validation failed with errors:\n{specification.get_report()}")
+    elif specification.has_warnings:
+        logger.warning(f"Configuration validation completed with warnings:\n{specification.get_report()}")
+    else:
+        logger.info("Configuration validation passed successfully.")
+    return is_satisfied
 
 
 def validate_entity_shapes(target: str, mode: str, regression_file: str | None):
@@ -109,6 +107,5 @@ def validate_entity_shapes(target: str, mode: str, regression_file: str | None):
         if truth_shapes.get(entity) != new_shapes.get(entity)
     ]
     if len(entities_with_different_shapes) > 0:
-        click.secho("✗ Regression check failed: Entities with different shapes:", fg="red")
-
-        print("\n".join(f" {z[0]:>30}: expected {str(z[1]):<15} found {str(z[2]):<20}" for z in entities_with_different_shapes))
+        logger.warning("✗ Regression check failed: Entities with different shapes:")
+        logger.warning("\n".join(f" {z[0]:>30}: expected {str(z[1]):<15} found {str(z[2]):<20}" for z in entities_with_different_shapes))
