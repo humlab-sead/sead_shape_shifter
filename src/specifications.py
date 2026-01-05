@@ -141,6 +141,22 @@ class SpecificationIssue:
         self.column_name: str | None = kwargs.get("column")
         self.kwargs = kwargs
 
+    def __str__(self) -> str:
+        """Return string representation of the issue."""
+        parts = [f"[{self.severity.upper()}]"]
+        if self.entity_name:
+            parts.append(f"Entity '{self.entity_name}':")
+        parts.append(self.message)
+        if self.entity_field:
+            parts.append(f"(field: {self.entity_field})")
+        if self.column_name:
+            parts.append(f"(column: {self.column_name})")
+        return " ".join(parts)
+
+    def __repr__(self) -> str:
+        """Return representation of the issue."""
+        return self.__str__()
+
 
 class ProjectSpecification(ABC):
     """Base specification for project validation."""
@@ -188,7 +204,6 @@ class EntityExistsSpecification(ProjectSpecification):
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
         """Check if all entities referenced in foreign keys and dependencies exist."""
         self.clear()
-        valid = True
 
         entities_config = config.get("entities", {})
         if not entities_config:
@@ -204,20 +219,17 @@ class EntityExistsSpecification(ProjectSpecification):
                 remote_entity = fk.get("entity", "")
                 if not remote_entity:
                     self.add_error(f"Entity '{entity_name}': foreign key missing 'entity' field", entity=entity_name)
-                    valid = False
                 elif remote_entity not in entity_names:
                     self.add_error(
                         f"Entity '{entity_name}': references non-existent entity '{remote_entity}' in foreign key",
                         entity=entity_name,
                     )
-                    valid = False
 
             # Check depends_on references
             depends_on = entity_data.get("depends_on", []) or []
             for dep in depends_on:
                 if dep not in entity_names:
                     self.add_error(f"Entity '{entity_name}': depends on non-existent entity '{dep}'", entity=entity_name, depends_on=dep)
-                    valid = False
 
             # Check source references (for derived tables)
             source = entity_data.get("source", None)
@@ -225,9 +237,8 @@ class EntityExistsSpecification(ProjectSpecification):
                 self.add_error(
                     f"Entity '{entity_name}': references non-existent source entity '{source}'", entity=entity_name, source=source
                 )
-                valid = False
 
-        return valid
+        return not self.has_errors()
 
 
 class CircularDependencySpecification(ProjectSpecification):
@@ -284,7 +295,7 @@ class CircularDependencySpecification(ProjectSpecification):
                 if has_cycle(entity):
                     valid = False
 
-        return valid
+        return not self.has_errors()
 
 
 class RequiredFieldsSpecification(ProjectSpecification):
@@ -293,7 +304,6 @@ class RequiredFieldsSpecification(ProjectSpecification):
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
         """Check that required fields are present for each entity."""
         self.clear()
-        valid = True
 
         entities_config = config.get("entities", {})
         if not entities_config:
@@ -310,28 +320,24 @@ class RequiredFieldsSpecification(ProjectSpecification):
                         entity=entity_name,
                         column="surrogate_id",
                     )
-                    valid = False
 
                 if not entity_data.get("columns"):
                     self.add_error(
                         f"Entity '{entity_name}': fixed data table missing required 'columns'", entity=entity_name, field="columns"
                     )
-                    valid = False
 
                 if not entity_data.get("values"):
                     self.add_error(
                         f"Entity '{entity_name}': fixed data table missing required 'values'", entity=entity_name, field="values"
                     )
-                    valid = False
             else:
                 # Regular data tables require: columns (or keys)
                 if not entity_data.get("columns") and not entity_data.get("keys"):
                     self.add_error(
                         f"Entity '{entity_name}': data table must have 'columns' or 'keys'", entity=entity_name, field="columns/keys"
                     )
-                    valid = False
 
-        return valid
+        return not self.has_errors()
 
 
 class ForeignKeySpecification(ProjectSpecification):
@@ -340,7 +346,6 @@ class ForeignKeySpecification(ProjectSpecification):
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
         """Check that foreign key configurations are valid."""
         self.clear()
-        valid: bool = True
 
         entities_config = config.get("entities", {})
         if not entities_config:
@@ -355,16 +360,13 @@ class ForeignKeySpecification(ProjectSpecification):
                 # Check required fields
                 if not fk.get("entity"):
                     self.add_error(f"{fk_id}: missing required field 'entity'", entity=entity_name, foreign_key=fk_id)
-                    valid = False
                     continue
 
                 if not fk.get("local_keys"):
                     self.add_error(f"{fk_id}: missing required field 'local_keys'", entity=entity_name, foreign_key=fk_id)
-                    valid = False
 
                 if not fk.get("remote_keys"):
                     self.add_error(f"{fk_id}: missing required field 'remote_keys'", entity=entity_name, foreign_key=fk_id)
-                    valid = False
 
                 # Check that local_keys and remote_keys have same length
                 local_keys = fk.get("local_keys", []) or []
@@ -376,16 +378,14 @@ class ForeignKeySpecification(ProjectSpecification):
                         entity=entity_name,
                         foreign_key=fk_id,
                     )
-                    valid = False
 
                 # Validate extra_columns format
                 extra_columns = fk.get("extra_columns")
                 if extra_columns is not None:
                     if not isinstance(extra_columns, (str, list, dict)):
                         self.add_error(f"{fk_id}: 'extra_columns' must be string, list, or dict", entity=entity_name, foreign_key=fk_id)
-                        valid = False
 
-        return valid
+        return not self.has_errors()
 
 
 class UnnestSpecification(ProjectSpecification):
@@ -394,7 +394,6 @@ class UnnestSpecification(ProjectSpecification):
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
         """Check that unnest setups are valid."""
         self.clear()
-        valid = True
 
         entities_cfg = config.get("entities", {})
         if not entities_cfg:
@@ -411,13 +410,11 @@ class UnnestSpecification(ProjectSpecification):
                         entity=entity_name,
                         field="value_vars",
                     )
-                    valid = False
 
                 if not unnest.get("var_name"):
                     self.add_error(
                         f"Entity '{entity_name}': unnest configuration missing required 'var_name'", entity=entity_name, field="var_name"
                     )
-                    valid = False
 
                 if not unnest.get("value_name"):
                     self.add_error(
@@ -425,7 +422,6 @@ class UnnestSpecification(ProjectSpecification):
                         entity=entity_name,
                         field="value_name",
                     )
-                    valid = False
 
                 # Warn if id_vars is missing (it's optional but usually needed)
                 if not unnest.get("id_vars"):
@@ -435,7 +431,7 @@ class UnnestSpecification(ProjectSpecification):
                         field="id_vars",
                     )
 
-        return valid
+        return not self.has_errors()
 
 
 class DropDuplicatesSpecification(ProjectSpecification):
@@ -444,7 +440,6 @@ class DropDuplicatesSpecification(ProjectSpecification):
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
         """Check that drop_duplicates configurations are valid."""
         self.clear()
-        valid = True
 
         entities_config = config.get("entities", {})
         if not entities_config:
@@ -461,9 +456,8 @@ class DropDuplicatesSpecification(ProjectSpecification):
                         entity=entity_name,
                         field="drop_duplicates",
                     )
-                    valid = False
 
-        return valid
+        return not self.has_errors()
 
 
 class SurrogateIdSpecification(ProjectSpecification):
@@ -505,9 +499,8 @@ class SurrogateIdSpecification(ProjectSpecification):
                     entity="configuration",
                     surrogate_id=surrogate_id,
                 )
-                valid = False
 
-        return valid
+        return not self.has_errors()
 
 
 class SqlDataSpecification(ProjectSpecification):
@@ -572,7 +565,6 @@ class FixedDataSpecification(ProjectSpecification):
 
                 if not values:
                     self.add_error(f"Entity '{entity_name}': type 'fixed' requires 'values' field", entity=entity_name, field="values")
-                    valid = False
                     continue
 
                 # Check if it's a list of values
@@ -583,7 +575,6 @@ class FixedDataSpecification(ProjectSpecification):
                         self.add_error(
                             f"Entity '{entity_name}': type 'fixed' requires 'columns' field", entity=entity_name, field="columns"
                         )
-                        valid = False
                         continue
 
                     # Each value should be a list matching columns length
@@ -595,7 +586,6 @@ class FixedDataSpecification(ProjectSpecification):
                                     entity=entity_name,
                                     field="values",
                                 )
-                                valid = False
                         else:
                             self.add_warning(
                                 f"Entity '{entity_name}': value row {idx + 1} is not a list", entity=entity_name, field="values"
@@ -606,7 +596,7 @@ class FixedDataSpecification(ProjectSpecification):
                     self.add_warning(
                         f"Entity '{entity_name}': fixed data table has 'source' field (should be null)", entity=entity_name, field="source"
                     )
-        return valid
+        return not self.has_errors()
 
 
 class DataSourceExistsSpecification(ProjectSpecification):
@@ -634,7 +624,6 @@ class DataSourceExistsSpecification(ProjectSpecification):
                         entity=entity_name,
                         field="data_source",
                     )
-                    valid = False
 
             # Check append configurations
             append_configs = entity_data.get("append", []) or []
@@ -650,9 +639,8 @@ class DataSourceExistsSpecification(ProjectSpecification):
                             entity=entity_name,
                             field="append",
                         )
-                        valid = False
 
-        return valid
+        return not self.has_errors()
 
 
 class AppendConfigurationSpecification(ProjectSpecification):
@@ -661,7 +649,6 @@ class AppendConfigurationSpecification(ProjectSpecification):
     def is_satisfied_by(self, config: dict[str, Any]) -> bool:
         """Check that append configurations are valid."""
         self.clear()
-        valid = True
 
         entities_config = config.get("entities", {})
         if not entities_config:
@@ -682,7 +669,6 @@ class AppendConfigurationSpecification(ProjectSpecification):
                         entity=entity_name,
                         field="append_mode",
                     )
-                    valid = False
 
             # Validate each append configuration
             for idx, append_cfg in enumerate(append_configs):
@@ -694,12 +680,10 @@ class AppendConfigurationSpecification(ProjectSpecification):
                 # Must have either type or source, but not both
                 if not append_type and not append_source:
                     self.add_error(f"{append_id}: must specify either 'type' or 'source'", entity=entity_name, field="append")
-                    valid = False
                     continue
 
                 if append_type and append_source:
                     self.add_error(f"{append_id}: cannot specify both 'type' and 'source'", entity=entity_name, field="append")
-                    valid = False
                     continue
 
                 # Validate type-based append
@@ -708,18 +692,15 @@ class AppendConfigurationSpecification(ProjectSpecification):
                         self.add_error(
                             f"{append_id}: invalid type '{append_type}'. Must be 'fixed' or 'sql'", entity=entity_name, field="append"
                         )
-                        valid = False
 
                     if append_type == "fixed":
                         # Fixed type requires values
                         if not append_cfg.get("values"):
                             self.add_error(f"{append_id}: type 'fixed' requires 'values' field", entity=entity_name, field="append")
-                            valid = False
                         else:
                             values = append_cfg.get("values", [])
                             if not isinstance(values, list):
                                 self.add_error(f"{append_id}: 'values' must be a list", entity=entity_name, field="append")
-                                valid = False
                             elif len(values) == 0:
                                 self.add_warning(f"{append_id}: 'values' is empty", entity=entity_name, field="append")
 
@@ -727,14 +708,12 @@ class AppendConfigurationSpecification(ProjectSpecification):
                         # SQL type requires query
                         if not append_cfg.get("query"):
                             self.add_error(f"{append_id}: type 'sql' requires 'query' field", entity=entity_name, field="append")
-                            valid = False
 
                 # Validate source-based append
                 if append_source:
                     # Check if source entity exists
                     if append_source not in entities_config:
                         self.add_error(f"{append_id}: source entity '{append_source}' does not exist", entity=entity_name, field="append")
-                        valid = False
 
                     # Source-based append should have columns mapping
                     if not append_cfg.get("columns"):
@@ -744,7 +723,7 @@ class AppendConfigurationSpecification(ProjectSpecification):
                             field="append",
                         )
 
-        return valid
+        return not self.has_errors()
 
 
 class CompositeProjectSpecification(ProjectSpecification):
