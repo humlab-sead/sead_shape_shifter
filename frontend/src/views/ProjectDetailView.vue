@@ -161,6 +161,15 @@
 
                 <v-spacer />
 
+                <v-btn
+                  variant="outlined"
+                  prepend-icon="mdi-information-outline"
+                  size="small"
+                  @click="showLegend = !showLegend"
+                >
+                  Legend
+                </v-btn>
+
                 <v-chip prepend-icon="mdi-cube-outline"> {{ depStatistics.nodeCount }} nodes </v-chip>
                 <v-chip prepend-icon="mdi-arrow-right"> {{ depStatistics.edgeCount }} edges </v-chip>
               </v-card-text>
@@ -210,6 +219,11 @@
               <h3 class="text-h6 mt-4 mb-2">No Graph Data</h3>
               <p class="text-grey mb-4">No dependency data available for this project</p>
             </v-card>
+
+            <!-- Legend Dialog -->
+            <v-dialog v-model="showLegend" max-width="500">
+              <node-legend :show-source-nodes="showSourceNodes" @close="showLegend = false" />
+            </v-dialog>
 
             <!-- Entity Details Drawer -->
             <v-navigation-drawer v-model="showDetailsDrawer" location="right" temporary width="400">
@@ -461,6 +475,7 @@ import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 import ProjectDataSources from '@/components/ProjectDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
+import NodeLegend from '@/components/dependencies/NodeLegend.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
@@ -554,6 +569,7 @@ const showNodeLabels = ref(true)
 const showEdgeLabels = ref(true)
 const highlightCycles = ref(true)
 const showSourceNodes = ref(false)
+const showLegend = ref(false)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
 

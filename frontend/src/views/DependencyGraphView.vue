@@ -50,24 +50,14 @@
 
             <v-spacer />
 
-            <v-chip size="small" variant="tonal">
-              <template #prepend>
-                <span class="legend-dot legend-data" />
-              </template>
-              Data
-            </v-chip>
-            <v-chip size="small" variant="tonal">
-              <template #prepend>
-                <span class="legend-dot legend-sql" />
-              </template>
-              SQL
-            </v-chip>
-            <v-chip size="small" variant="tonal">
-              <template #prepend>
-                <span class="legend-dot legend-fixed" />
-              </template>
-              Fixed
-            </v-chip>
+            <v-btn
+              variant="outlined"
+              prepend-icon="mdi-information-outline"
+              size="small"
+              @click="showLegend = !showLegend"
+            >
+              Legend
+            </v-btn>
 
             <v-chip prepend-icon="mdi-cube-outline"> {{ statistics.nodeCount }} nodes </v-chip>
             <v-chip prepend-icon="mdi-arrow-right"> {{ statistics.edgeCount }} edges </v-chip>
@@ -124,6 +114,11 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Legend Dialog -->
+    <v-dialog v-model="showLegend" max-width="500">
+      <node-legend :show-source-nodes="false" @close="showLegend = false" />
+    </v-dialog>
 
     <!-- Entity Details Drawer -->
     <v-navigation-drawer v-model="showDetailsDrawer" location="right" temporary width="400">
@@ -200,6 +195,7 @@ import { useTheme } from 'vuetify'
 import { useProjects, useDependencies, useCytoscape } from '@/composables'
 import { getNodeInfo } from '@/utils/graphAdapter'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
+import NodeLegend from '@/components/dependencies/NodeLegend.vue'
 
 const router = useRouter()
 const theme = useTheme()
@@ -220,6 +216,7 @@ const layoutType = ref<'hierarchical' | 'force'>('hierarchical')
 const showNodeLabels = ref(true)
 const showEdgeLabels = ref(true)
 const highlightCycles = ref(true)
+const showLegend = ref(false)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
 
