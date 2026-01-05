@@ -33,9 +33,12 @@ class ProjectMapper:
         """
         Convert core config dict to API Project.
 
+        Note: The filename (name parameter) is the authoritative source for project name.
+        Any metadata.name in the YAML file is ignored to prevent duplicate files.
+
         Args:
             cfg_dict: Core configuration dictionary (ShapeShiftProject.cfg format)
-            name: Project name
+            name: Project name derived from filename (authoritative source)
 
         Returns:
             API configuration model with sparse structure
@@ -45,7 +48,7 @@ class ProjectMapper:
         # Extract metadata from YAML metadata section or use defaults
         metadata_dict: dict[str, Any] = cfg_dict.get("metadata", {})
         metadata: ProjectMetadata = ProjectMetadata(
-            name=metadata_dict.get("name", name),
+            name=name,  # Filename is the authoritative source
             description=metadata_dict.get("description", ""),
             version=metadata_dict.get("version", "1.0.0"),
             default_entity=metadata_dict.get("default_entity"),

@@ -187,31 +187,32 @@ class TestConfigurationsUpdate:
         assert "sample" in data["entities"]
 
     def test_update_metadata_rename(self, tmp_path, monkeypatch, reset_services, sample_config_data):
-        """Test renaming configuration via metadata update."""
+        """Test that renaming via metadata update is ignored (filename is source of truth)."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create config
         client.post("/api/v1/projects", json={"name": "old_name", "entities": sample_config_data["entities"]})
 
-        # Rename via metadata
+        # Attempt rename via metadata (should be ignored)
         metadata_update = {"name": "new_name"}
         response = client.patch("/api/v1/projects/old_name/metadata", json=metadata_update)
 
         assert response.status_code == 200
         data = response.json()
-        assert data["metadata"]["name"] == "new_name"
+        # Name should remain old_name (filename is source of truth)
+        assert data["metadata"]["name"] == "old_name"
 
-        # Verify old name no longer exists
+        # Verify old name still exists
         get_old = client.get("/api/v1/projects/old_name")
-        assert get_old.status_code == 404
+        assert get_old.status_code == 200
 
-        # Verify new name exists
+        # Verify new name was NOT created
         get_new = client.get("/api/v1/projects/new_name")
-        assert get_new.status_code == 200
+        assert get_new.status_code == 404
 
     def test_update_metadata_rename_conflict(self, tmp_path, monkeypatch, reset_services, sample_config_data):
-        """Test renaming to existing name returns conflict error."""
+        """Test that attempting to rename via metadata doesn't cause conflicts (ignored)."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
@@ -219,11 +220,15 @@ class TestConfigurationsUpdate:
         client.post("/api/v1/projects", json={"name": "config1", "entities": sample_config_data["entities"]})
         client.post("/api/v1/projects", json={"name": "config2", "entities": sample_config_data["entities"]})
 
-        # Try to rename config1 to config2
+        # Try to rename config1 to config2 (should be ignored, no conflict)
         metadata_update = {"name": "config2"}
         response = client.patch("/api/v1/projects/config1/metadata", json=metadata_update)
 
-        assert response.status_code == 409  # Conflict
+        # Should succeed (200) because rename is ignored
+        assert response.status_code == 200
+        # config1 name should remain unchanged
+        data = response.json()
+        assert data["metadata"]["name"] == "config1"
 
 
 class TestConfigurationsDelete:
