@@ -81,8 +81,9 @@ class ExecuteService:
             )
 
             if request.run_validation:
-                is_satisfied = await self._validate_project(core_project)
+                is_satisfied, validation_errors = await self._validate_project(core_project)
                 if not is_satisfied:
+                    error_details = "\n".join(validation_errors) if validation_errors else "Project configuration validation failed"
                     return ExecuteResult(
                         success=False,
                         message="Validation failed. Please fix errors before executing workflow.",
@@ -90,7 +91,7 @@ class ExecuteService:
                         dispatcher_key=request.dispatcher_key,
                         entity_count=0,
                         validation_passed=False,
-                        error_details="Project configuration validation failed",
+                        error_details=error_details,
                     )
 
             dispatcher_meta: DispatcherMetadata = next(d for d in self.get_dispatchers() if d.key == request.dispatcher_key)
@@ -124,7 +125,7 @@ class ExecuteService:
             )
 
         except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"Workflow execution failed: {e}")
+            logger.exception(f"Workflow execution failed: {e}")
             return ExecuteResult(
                 success=False,
                 message=f"Workflow execution failed: {str(e)}",
@@ -135,30 +136,33 @@ class ExecuteService:
                 error_details=str(e),
             )
 
-    async def _validate_project(self, project: ShapeShiftProject) -> bool:
+    async def _validate_project(self, project: ShapeShiftProject) -> tuple[bool, list[str]]:
         """Run project validation.
 
         Args:
             project: Project to validate
 
         Returns:
-            True if validation passed, False otherwise
+            Tuple of (validation_passed, list_of_error_messages)
         """
         try:
             specification = CompositeProjectSpecification()
-            errors: bool = specification.is_satisfied_by(project.cfg)
+            is_valid: bool = specification.is_satisfied_by(project.cfg)
 
-            if errors:
+            if not is_valid:
+                error_messages = []
                 for error in specification.errors:
-                    logger.error(f"Configuration error: {error}")
-                return False
+                    error_msg = str(error)
+                    logger.error(f"Configuration error: {error_msg}")
+                    error_messages.append(error_msg)
+                return False, error_messages
 
             logger.info("Configuration validation passed successfully")
-            return True
+            return True, []
 
         except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"Validation failed: {e}")
-            return False
+            logger.exception(f"Validation failed: {e}")
+            return False, [f"Validation exception: {str(e)}"]
 
     def _resolve_target(self, target: str, target_type: str) -> str:
         """Resolve and validate target path.

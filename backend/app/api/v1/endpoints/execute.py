@@ -66,5 +66,7 @@ async def execute_workflow(name: str, request: ExecuteRequest) -> ExecuteResult:
         logger.info(f"Workflow execution completed successfully: {result.message}")
     else:
         logger.error(f"Workflow execution failed: {result.message}")
+        if result.error_details:
+            logger.error(f"Error details: {result.error_details}")
 
     return result

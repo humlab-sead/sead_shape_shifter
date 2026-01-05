@@ -96,7 +96,14 @@ class ValidationService:
         if is_valid:
             logger.info("Configuration validation passed")
         else:
-            logger.warning(f"Configuration validation failed with {len(self.validator.errors)} error(s)")
+            error_count = len(self.validator.errors)
+            warning_count = len(self.validator.warnings)
+            parts = []
+            if error_count > 0:
+                parts.append(f"{error_count} error(s)")
+            if warning_count > 0:
+                parts.append(f"{warning_count} warning(s)")
+            logger.warning(f"Configuration validation failed with {', '.join(parts)}")
 
         return result
 

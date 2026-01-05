@@ -121,7 +121,7 @@
 
           <!-- Error Display -->
           <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
-            {{ error }}
+            <div style="white-space: pre-wrap;">{{ error }}</div>
           </v-alert>
 
           <!-- Success Display -->
@@ -265,6 +265,9 @@ async function handleSubmit() {
       setTimeout(() => {
         handleCancel()
       }, 2000)
+    } else {
+      // Set error from result when success is false
+      executeStore.error = result.error_details || result.message
     }
   } catch (err) {
     // Error is already set in store
