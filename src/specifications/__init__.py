@@ -12,5 +12,6 @@ from .specifications import (
     RequiredFieldsSpecification,
     SurrogateIdSpecification,
     UnnestSpecification,
-    
+    ForeignKeyDataSpecification
+
 )
