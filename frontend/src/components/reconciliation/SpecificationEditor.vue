@@ -363,25 +363,46 @@ function validateSpecification() {
   const project = projectStore.selectedProject
   if (!project) return
 
-  // Check if entity exists
-  if (!project.entities[formData.value.entity_name]) {
-    validationErrors.value.push(
-      `Entity '${formData.value.entity_name}' no longer exists in the project`
-    )
-    return // Can't validate further without entity
+  // Determine which entity to validate against
+  // If source is specified as string (Other Entity), use that entity's columns
+  // Otherwise use the main entity's columns
+  let entityForValidation = formData.value.entity_name
+  let entityColumns: string[] = []
+
+  if (formData.value.spec.source && typeof formData.value.spec.source === 'string') {
+    // Using "Other Entity" as source
+    entityForValidation = formData.value.spec.source
+    
+    if (!project.entities[entityForValidation]) {
+      validationErrors.value.push(
+        `Source entity '${entityForValidation}' no longer exists in the project`
+      )
+      return // Can't validate further without source entity
+    }
+    
+    const sourceEntity = project.entities[entityForValidation]
+    entityColumns = sourceEntity?.columns || []
+  } else {
+    // Using main entity as source
+    if (!project.entities[formData.value.entity_name]) {
+      validationErrors.value.push(
+        `Entity '${formData.value.entity_name}' no longer exists in the project`
+      )
+      return // Can't validate further without entity
+    }
+
+    const entity = project.entities[formData.value.entity_name]
+    entityColumns = entity?.columns || []
   }
 
-  const entity = project.entities[formData.value.entity_name]
-  const entityColumns = entity?.columns || []
-
-  // Check if target field exists
+  // Check if target field exists in the entity being validated
   if (!entityColumns.includes(formData.value.target_field)) {
     validationErrors.value.push(
-      `Target field '${formData.value.target_field}' not found in entity '${formData.value.entity_name}'`
+      `Target field '${formData.value.target_field}' not found in entity '${entityForValidation}'`
     )
   }
 
-  // Check if property mapping source columns exist
+  // Check if property mapping source columns exist in the entity being validated
   const missingColumns: string[] = []
   Object.entries(formData.value.spec.property_mappings).forEach(([prop, sourceCol]) => {
     if (sourceCol && !entityColumns.includes(sourceCol)) {
@@ -394,16 +415,6 @@ function validateSpecification() {
       `Property mappings reference missing columns: ${missingColumns.join(', ')}`
     )
   }
-
-  // Check if source entity exists (when using "Other Entity" as source)
-  if (formData.value.spec.source && typeof formData.value.spec.source === 'string') {
-    const sourceEntityName = formData.value.spec.source
-    if (!project.entities[sourceEntityName]) {
-      validationErrors.value.push(
-        `Source entity '${sourceEntityName}' no longer exists in the project`
-      )
-    }
-  }
 }
 
 function isMissingColumn(columnName: string | undefined): boolean {
@@ -412,7 +423,15 @@ function isMissingColumn(columnName: string | undefined): boolean {
   const project = projectStore.selectedProject
   if (!project) return false
 
-  const entity = project.entities[formData.value.entity_name]
+  // Check against the correct entity based on source type
+  let entityForValidation = formData.value.entity_name
+  
+  if (formData.value.spec.source && typeof formData.value.spec.source === 'string') {
+    // Using "Other Entity" as source - validate against source entity
+    entityForValidation = formData.value.spec.source
+  }
+
+  const entity = project.entities[entityForValidation]
   if (!entity) return false
 
   const entityColumns = entity.columns || []
