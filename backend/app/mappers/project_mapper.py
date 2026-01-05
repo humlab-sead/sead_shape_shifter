@@ -108,6 +108,10 @@ class ProjectMapper:
         return shapeshift
 
     @staticmethod
+    def to_core_config(api_config: Project) -> ShapeShiftProject:
+        return ProjectMapper.to_core(api_config)
+
+    @staticmethod
     def _dict_to_api_entity(entity_name: str, entity_dict: dict[str, Any]) -> dict[str, Any]:
         """
         Convert core entity dict to API entity dict.

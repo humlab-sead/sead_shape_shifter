@@ -16,9 +16,6 @@ class ReconciliationSource(BaseModel):
 class ReconciliationRemote(BaseModel):
     """Remote SEAD entity specification for reconciliation."""
 
-    data_source: str | None = Field(None, description="Data source name (e.g., 'sead')")
-    entity: str | None = Field(None, description="Remote table name (e.g., 'tbl_sites')")
-    key: str | None = Field(None, description="Remote key column (e.g., 'site_id')")
     service_type: str | None = Field(
         None, description="Reconciliation service entity type (e.g., 'Site', 'Taxon'). If None, reconciliation is disabled."
     )
@@ -109,3 +106,38 @@ class AutoReconcileResult(BaseModel):
     unmatched: int = Field(..., description="Count with no good matches")
     total: int = Field(..., description="Total entities processed")
     candidates: dict[str, list[ReconciliationCandidate]] = Field(default_factory=dict, description="Source key -> candidates mapping")
+
+
+# Specification management models
+
+
+class SpecificationListItem(BaseModel):
+    """Flattened specification for list view."""
+
+    entity_name: str = Field(..., description="Entity name")
+    target_field: str = Field(..., description="Target field name")
+    source: str | ReconciliationSource | None = Field(None, description="Data source specification")
+    property_mappings: dict[str, str] = Field(default_factory=dict, description="Property mappings")
+    remote: ReconciliationRemote = Field(..., description="Remote entity configuration")
+    auto_accept_threshold: float = Field(..., description="Auto-accept threshold")
+    review_threshold: float = Field(..., description="Review threshold")
+    mapping_count: int = Field(..., description="Number of mappings")
+    property_mapping_count: int = Field(..., description="Number of property mappings")
+
+
+class SpecificationCreateRequest(BaseModel):
+    """Request to create new specification."""
+
+    entity_name: str = Field(..., description="Entity name (must exist in project)")
+    target_field: str = Field(..., description="Target field name")
+    spec: EntityReconciliationSpec = Field(..., description="Reconciliation specification")
+
+
+class SpecificationUpdateRequest(BaseModel):
+    """Request to update specification (excludes entity/target/mapping)."""
+
+    source: str | ReconciliationSource | None = Field(None, description="Data source specification")
+    property_mappings: dict[str, str] = Field(default_factory=dict, description="Property mappings")
+    remote: ReconciliationRemote = Field(..., description="Remote entity configuration")
+    auto_accept_threshold: float = Field(0.95, ge=0.0, le=1.0, description="Auto-accept threshold")
+    review_threshold: float = Field(0.70, ge=0.0, le=1.0, description="Review threshold")

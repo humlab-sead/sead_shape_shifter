@@ -38,11 +38,11 @@ class ForeignKeyConfigSpecification:
             return True
 
         if len(fk_cfg.local_keys) == 0 or len(fk_cfg.remote_keys) == 0:
-            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local_keys and remote_keys must be specified for non-cross joins"
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local_keys and remote_keys must be specified for non-cross joins"  # noqa: E501
             return False
 
         if len(fk_cfg.local_keys) != len(fk_cfg.remote_keys):
-            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: number of local_keys ({len(fk_cfg.local_keys)}) does not match number of remote_keys ({len(fk_cfg.remote_keys)})"
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: number of local_keys ({len(fk_cfg.local_keys)}) does not match number of remote_keys ({len(fk_cfg.remote_keys)})"  # noqa: E501
             return False
 
         missing_fields = self.get_missing_fields(
@@ -51,7 +51,7 @@ class ForeignKeyConfigSpecification:
         )
 
         if missing_fields:
-            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local keys {missing_fields} not found in local entity '{fk_cfg.local_entity}'"
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local keys {missing_fields} not found in local entity '{fk_cfg.local_entity}'"  # noqa: E501
             return False
 
         missing_fields: set[str] = self.get_missing_fields(
@@ -59,7 +59,7 @@ class ForeignKeyConfigSpecification:
         )
 
         if missing_fields:
-            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: remote keys {missing_fields} not found in remote entity '{fk_cfg.remote_entity}'"
+            self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: remote keys {missing_fields} not found in remote entity '{fk_cfg.remote_entity}'"  # noqa: E501
             return False
 
         return True
@@ -90,7 +90,7 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
             if missing_fields == self.cfg.get_table(fk_cfg.local_entity).unnest_columns:
                 self.deferred = True
             else:
-                self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local keys {missing_fields} not found in local entity data '{fk_cfg.local_entity}'"
+                self.error = f"{fk_cfg.local_entity}[linking] -> {fk_cfg.remote_entity}: local keys {missing_fields} not found in local entity data '{fk_cfg.local_entity}'"  # noqa: E501
                 return False
 
         if self.get_missing_pending_fields(fk_cfg=fk_cfg):
@@ -98,7 +98,7 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
             return True
 
         if missing_fields := self.get_missing_remote_fields(fk_cfg=fk_cfg):
-            self.error = f"{fk_cfg.local_entity}[linking]: -> {fk_cfg.remote_entity}: remote keys {missing_fields} not found in remote entity data '{fk_cfg.remote_entity}'"
+            self.error = f"{fk_cfg.local_entity}[linking]: -> {fk_cfg.remote_entity}: remote keys {missing_fields} not found in remote entity data '{fk_cfg.remote_entity}'"  # noqa: E501
             return False
 
         return True
@@ -591,7 +591,7 @@ class FixedDataSpecification(ProjectSpecification):
                         if isinstance(value_row, list):
                             if len(value_row) != len(columns):
                                 self.add_error(
-                                    f"Entity '{entity_name}': value row {idx + 1} has {len(value_row)} items but {len(columns)} columns defined",
+                                    f"Entity '{entity_name}': value row {idx + 1} has {len(value_row)} items but {len(columns)} columns defined",  # noqa: E501
                                     entity=entity_name,
                                     field="values",
                                 )

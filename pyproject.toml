@@ -55,11 +55,14 @@ all = [
 where = ["."]
 include = ["src*"]
 
+
 [tool.ruff]
 # Ruff = linter + (optional) formatter
 target-version = "py313"
 line-length = 140
+output-format = "concise"
 
+[tool.ruff.lint]
 # Import checking rules
 select = [
     "E",  # pycodestyle errors
@@ -68,16 +71,23 @@ select = [
     "I",  # isort
     "TID", # flake8-tidy-imports
 ]
+exclude = [
+    "__init__.py",
+]
 
-[tool.ruff.flake8-tidy-imports]
+[tool.ruff.lint.flake8-tidy-imports]
 # Prevent relative imports beyond current package
 ban-relative-imports = "parents"
+
+[tool.ruff.lint.pep8-naming]
+classmethod-decorators = ["classmethod"]
 
 [tool.ruff.format]
 # Use Ruff's formatter (Black-compatible). Set to false if you prefer Black.
 quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
+
 
 [tool.pylint."MESSAGES CONTROL"]
 disable = [
@@ -118,10 +128,6 @@ max-args = 10
 line_length = 142
 # multi_line_output = 3
 profile = "black"
-
-# Naming tweaks (optional)
-[tool.ruff.pep8-naming]
-classmethod-decorators = ["classmethod"]
 
 # --------------------
 # mypy (type checking)

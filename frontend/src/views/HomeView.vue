@@ -26,7 +26,7 @@
 
         <v-row>
           <v-col cols="12" md="3">
-            <v-card variant="outlined">
+            <v-card variant="plain">
               <v-card-title>Backend Status</v-card-title>
               <v-card-text>
                 <v-chip

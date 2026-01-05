@@ -18,6 +18,9 @@ from backend.app.models.reconciliation import (
     EntityReconciliationSpec,
     ReconciliationCandidate,
     ReconciliationConfig,
+    SpecificationCreateRequest,
+    SpecificationListItem,
+    SpecificationUpdateRequest,
 )
 from backend.app.services.reconciliation_service import ReconciliationService
 from backend.app.utils.error_handlers import handle_endpoint_errors
@@ -446,3 +449,177 @@ async def mark_as_unmatched(
         source_value=source_value,
         notes=notes,
     )
+
+
+# Specification management endpoints
+
+
+@router.get("/projects/{project_name}/reconciliation/specifications")
+@handle_endpoint_errors
+async def list_specifications(
+    project_name: str,
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> list[SpecificationListItem]:
+    """
+    List all reconciliation specifications for a project.
+
+    Returns a flattened list where each item represents an entity + target field combination.
+
+    Args:
+        project_name: Project name
+
+    Returns:
+        List of specification items with metadata
+    """
+
+    return service.list_specifications(project_name)
+
+
+@router.post("/projects/{project_name}/reconciliation/specifications", status_code=201)
+@handle_endpoint_errors
+async def create_specification(
+    project_name: str,
+    request: "SpecificationCreateRequest",
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> ReconciliationConfig:
+    """
+    Create a new reconciliation specification.
+
+    Args:
+        project_name: Project name
+        request: Specification create request containing entity, target field, and spec
+
+    Returns:
+        Updated reconciliation configuration
+
+    Raises:
+        BadRequestError: If specification already exists or entity doesn't exist
+    """
+
+    return service.create_specification(
+        project_name=project_name,
+        entity_name=request.entity_name,
+        target_field=request.target_field,
+        spec=request.spec,
+    )
+
+
+@router.put("/projects/{project_name}/reconciliation/specifications/{entity_name}/{target_field}")
+@handle_endpoint_errors
+async def update_specification(
+    project_name: str,
+    entity_name: str,
+    target_field: str,
+    request: "SpecificationUpdateRequest",
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> ReconciliationConfig:
+    """
+    Update an existing reconciliation specification.
+
+    Note: Entity name, target field, and existing mappings are preserved.
+
+    Args:
+        project_name: Project name
+        entity_name: Entity name (from URL, cannot be changed)
+        target_field: Target field name (from URL, cannot be changed)
+        request: Specification update request with editable fields
+
+    Returns:
+        Updated reconciliation configuration
+
+    Raises:
+        NotFoundError: If specification doesn't exist
+    """
+
+    return service.update_specification(
+        project_name=project_name,
+        entity_name=entity_name,
+        target_field=target_field,
+        source=request.source,
+        property_mappings=request.property_mappings,
+        remote=request.remote,
+        auto_accept_threshold=request.auto_accept_threshold,
+        review_threshold=request.review_threshold,
+    )
+
+
+@router.delete("/projects/{project_name}/reconciliation/specifications/{entity_name}/{target_field}")
+@handle_endpoint_errors
+async def delete_specification(
+    project_name: str,
+    entity_name: str,
+    target_field: str,
+    force: bool = Query(False, description="Force delete even if mappings exist"),
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> ReconciliationConfig:
+    """
+    Delete a reconciliation specification.
+
+    Args:
+        project_name: Project name
+        entity_name: Entity name
+        target_field: Target field name
+        force: If True, delete even if specification has mappings
+
+    Returns:
+        Updated reconciliation configuration
+
+    Raises:
+        NotFoundError: If specification doesn't exist
+        BadRequestError: If specification has mappings and force=False
+    """
+    return service.delete_specification(
+        project_name=project_name,
+        entity_name=entity_name,
+        target_field=target_field,
+        force=force,
+    )
+
+
+@router.get("/projects/{project_name}/reconciliation/available-fields/{entity_name}")
+@handle_endpoint_errors
+async def get_available_target_fields(
+    project_name: str,
+    entity_name: str,
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> list[str]:
+    """
+    Get available target fields for an entity (from entity preview schema).
+
+    Args:
+        project_name: Project name
+        entity_name: Entity name
+
+    Returns:
+        List of column names available in the entity
+
+    Raises:
+        NotFoundError: If entity doesn't exist
+    """
+    return await service.get_available_target_fields(project_name, entity_name)
+
+
+@router.get("/projects/{project_name}/reconciliation/specifications/{entity_name}/{target_field}/mapping-count")
+@handle_endpoint_errors
+async def get_mapping_count(
+    project_name: str,
+    entity_name: str,
+    target_field: str,
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> dict[str, int]:
+    """
+    Get the number of mappings for a specification.
+
+    Args:
+        project_name: Project name
+        entity_name: Entity name
+        target_field: Target field name
+
+    Returns:
+        Dictionary with mapping count
+
+    Raises:
+        NotFoundError: If specification doesn't exist
+    """
+    count = service.get_mapping_count(project_name, entity_name, target_field)
+    return {"count": count}
