@@ -144,12 +144,17 @@
                 <v-col cols="12">
                   <v-text-field
                     v-model="formData.spec.property_mappings[prop]"
-                    :label="`${prop} → Source Column`"
+                    :label="prop"
                     variant="outlined"
                     density="compact"
                     clearable
-                    :hint="`Map service property '${prop}' to a source column`"
-                  />
+                    :hint="`Map property '${prop}' to a source column`"
+                    persistent-hint
+                  >
+                    <template #prepend-inner>
+                      <v-icon size="small" color="primary">mdi-arrow-left</v-icon>
+                    </template>
+                  </v-text-field>
                 </v-col>
               </v-row>
             </v-card-text>
@@ -333,9 +338,22 @@ async function onRemoteTypeChange(remoteType: string | null) {
     return
   }
 
-  // TODO: Fetch available properties from reconciliation service
-  // For now, use common properties
-  availableProperties.value = ['latitude', 'longitude', 'description', 'country', 'region']
+  // If we have existing property_mappings (editing mode), use those keys
+  const existingProps = Object.keys(formData.value.spec.property_mappings)
+  if (existingProps.length > 0) {
+    availableProperties.value = existingProps
+  } else {
+    // TODO: Fetch available properties from reconciliation service manifest
+    // For now, use type-specific defaults
+    const propertyDefaults: Record<string, string[]> = {
+      site: ['latitude', 'longitude', 'description', 'country', 'region'],
+      taxon: ['rank', 'kingdom', 'family'],
+      location: ['latitude', 'longitude', 'country'],
+      abundance: ['value', 'unit'],
+    }
+    availableProperties.value = propertyDefaults[remoteType.toLowerCase()] || []
+  }
+  
   isDirty.value = true
 }
 

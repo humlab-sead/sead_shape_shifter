@@ -95,6 +95,19 @@
           <!-- Actions Column -->
           <template #item.actions="{ item }">
             <div class="d-flex gap-1">
+              <v-tooltip text="Reconcile this entity" location="top">
+                <template #activator="{ props }">
+                  <v-btn
+                    icon="mdi-auto-fix"
+                    size="small"
+                    variant="text"
+                    color="primary"
+                    v-bind="props"
+                    @click.stop="reconcileSpec(item)"
+                  />
+                </template>
+              </v-tooltip>
+
               <v-tooltip text="Edit specification" location="top">
                 <template #activator="{ props }">
                   <v-btn
@@ -186,6 +199,10 @@ interface Props {
 
 const props = defineProps<Props>()
 
+const emit = defineEmits<{
+  reconcile: [entityName: string, targetField: string]
+}>()
+
 const reconciliationStore = useReconciliationStore()
 const { specifications, loadingSpecs, specsError } = storeToRefs(reconciliationStore)
 
@@ -223,6 +240,10 @@ function editSpecification(item: SpecificationListItem) {
   selectedSpec.value = item
   isNewSpec.value = false
   editorDialog.value = true
+}
+
+function reconcileSpec(item: SpecificationListItem) {
+  emit('reconcile', item.entity_name, item.target_field)
 }
 
 function confirmDelete(item: SpecificationListItem) {

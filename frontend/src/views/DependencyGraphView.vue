@@ -31,8 +31,8 @@
         <v-card variant="outlined" class="mb-4">
           <v-card-text class="d-flex align-center gap-4">
             <v-btn-toggle v-model="layoutType" mandatory density="compact">
-              <v-btn value="hierarchical" prepend-icon="mdi-file-tree"> Hierarchical </v-btn>
-              <v-btn value="force" prepend-icon="mdi-vector-arrange-above"> Force-Directed </v-btn>
+              <v-btn value="hierarchical" prepend-icon="mdi-file-tree" size="small"> Hierarchical </v-btn>
+              <v-btn value="force" prepend-icon="mdi-vector-arrange-above" size="small"> Force-Directed </v-btn>
             </v-btn-toggle>
 
             <v-divider vertical />
