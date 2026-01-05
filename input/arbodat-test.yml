@@ -1,5 +1,6 @@
 metadata:
-  name: "ArboDat Database Configuration"
+  test: shapeshifter-project
+  name: "arbodat-test"
   description: "Configuration for importing data from ArboDat database into SEAD."
   version: "1.0.0"
   default_entity: "survey"
