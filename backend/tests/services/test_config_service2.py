@@ -34,6 +34,7 @@ class TestProjectService:
     def mock_metadata(self) -> dict[str, Any]:
         """Create mock ProjectMetadata."""
         return {
+            "type": "shapeshifter-project", 
             "name": "test",
             "description": "Test configuration",
             "version": "1.0.0",
@@ -62,6 +63,7 @@ class TestProjectService:
     def sample_yaml_dict(self, mock_metadata: dict[str, Any]) -> dict[str, Any]:
         """Sample YAML dictionary for configuration."""
         return {
+            "metadata": mock_metadata,
             "entities": {
                 "sample": {
                     "source": "test_table",

@@ -71,7 +71,7 @@ def test_access_database_csv_workflow():
 
     translate: bool = False
 
-    output_path: str = "tmp/arbodat-database/"
+    output_path: str = "tmp/arbodat-database/apa.xlsx"
     asyncio.run(asyncio.sleep(0.1))  # type: ignore ; ensure config is fully loaded;
 
     if os.path.exists(output_path):
@@ -84,7 +84,7 @@ def test_access_database_csv_workflow():
             project=config,
             target=output_path,
             translate=translate,
-            target_type="csv",
+            target_type="xlsx",
             drop_foreign_keys=False,
         )
     )
