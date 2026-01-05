@@ -171,7 +171,7 @@ class ProjectSpecification(ABC):
         self.warnings = []
 
     @abstractmethod
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Check if the configuration satisfies this specification.
 
         Args:
@@ -201,7 +201,7 @@ class ProjectSpecification(ABC):
 class EntityExistsSpecification(ProjectSpecification):
     """Validates that all referenced entities exist in the configuration."""
 
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Check if all entities referenced in foreign keys and dependencies exist."""
         self.clear()
 
@@ -244,39 +244,29 @@ class EntityExistsSpecification(ProjectSpecification):
 class CircularDependencySpecification(ProjectSpecification):
     """Validates that there are no circular dependencies between entities."""
 
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Check for circular dependencies in the entity graph."""
         self.clear()
 
         entities_config = config.get("entities", {})
         if not entities_config:
-            return True  # EntityExistsSpecification will catch this
+            return True 
 
-        # Build dependency graph
-        dependencies: dict[str, set[str]] = {}
-        for entity_name, entity_data in entities_config.items():
-            deps = set(entity_data.get("depends_on", []) or [])
-
-            # Add source as dependency
-            source = entity_data.get("source", None)
-            if source and isinstance(source, str):
-                deps.add(source)
-
-            dependencies[entity_name] = deps
+        dependencies: dict[str, set[str]] = self.build_dependency_graph(entities_config)
 
         # Check for cycles using DFS
         visited: set[str] = set()
         rec_stack: set[str] = set()
         path: list[str] = []
 
-        def has_cycle(node: str) -> bool:
+        def check_if_has_cycle(node: str) -> bool:
             visited.add(node)
             rec_stack.add(node)
             path.append(node)
 
             for neighbor in dependencies.get(node, set()):
                 if neighbor not in visited:
-                    if has_cycle(neighbor):
+                    if check_if_has_cycle(neighbor):
                         return True
                 elif neighbor in rec_stack:
                     # Found cycle
@@ -289,19 +279,89 @@ class CircularDependencySpecification(ProjectSpecification):
             rec_stack.remove(node)
             return False
 
-        valid = True
         for entity in dependencies:
             if entity not in visited:
-                if has_cycle(entity):
-                    valid = False
+                check_if_has_cycle(entity)
 
         return not self.has_errors()
 
+    def build_dependency_graph(self, entities_config):
+        dependencies: dict[str, set[str]] = {}
+        for entity_name, entity_data in entities_config.items():
+            deps = set(entity_data.get("depends_on", []) or [])
+            source = entity_data.get("source", None)
+            if source and isinstance(source, str):
+                deps.add(source)
 
+            dependencies[entity_name] = deps
+        return dependencies
+
+
+class EntityFieldsSpecification(ProjectSpecification):
+    """Validatesfields are present for a single entity.
+    """
+       
+    def __init__(self) -> None:
+        super().__init__()
+        self.required_fields: list[str] = ["columns", "keys"]
+
+    def is_satisfied_by(self, config: dict[str, Any], *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that fields are for the entity."""
+        self.clear()
+
+        for field in ['columns', 'keys']:
+            if field not in config:
+                self.add_error(
+                    f"Entity '{entity_name}': missing required field '{field}'", entity=entity_name, field=field
+                )
+                continue
+            if not self.is_list_of_strings(config.get(field)):
+                self.add_error(
+                    f"Invalid {field} configuration for entity '{entity_name}': must be a list of strings", entity=entity_name, field=field
+                )
+        
+        return not self.has_errors()
+    
+    def is_list_of_strings(self, value: Any) -> bool:
+        """Check if the value is a list of strings."""
+        if not isinstance(value, list):
+            return False
+        return all(isinstance(item, str) for item in value)
+    
+class FixedEntityFieldsSpecification(EntityFieldsSpecification):
+
+    def is_satisfied_by(self, config: dict[str, Any], *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that fields are for the fixed entity."""
+        self.clear()
+        super().is_satisfied_by(config, entity_name=entity_name, **kwargs)
+
+        if not config.get("surrogate_id"):
+            self.add_error(
+                f"Entity '{entity_name}': fixed data table missing required 'surrogate_id'",
+                entity=entity_name,
+                column="surrogate_id",
+            )
+
+        if not config.get("values"):
+            self.add_error(
+                f"Entity '{entity_name}': fixed data table missing required 'values'", entity=entity_name, field="values"
+            )
+        return not self.has_errors()
+    
 class RequiredFieldsSpecification(ProjectSpecification):
-    """Validates that all required fields are present in all entities."""
+    """Validates that all required fields are present in all entities.
+       Rules:
+        - If 'type' data is missing it is assumed to be 'data'.
 
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    """
+ 
+    def get_required_fields_specification(self, entity_type: str) -> EntityFieldsSpecification:
+        if entity_type == "fixed":
+            return FixedEntityFieldsSpecification()
+
+        return EntityFieldsSpecification()
+    
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Check that required fields are present for each entity."""
         self.clear()
 
@@ -310,32 +370,12 @@ class RequiredFieldsSpecification(ProjectSpecification):
             return True  # EntityExistsSpecification will catch this
 
         for entity_name, entity_data in entities_config.items():
-            is_fixed = entity_data.get("type", "data") == "fixed"
 
-            if is_fixed:
-                # Fixed data tables require: surrogate_id, columns, values (or source)
-                if not entity_data.get("surrogate_id"):
-                    self.add_error(
-                        f"Entity '{entity_name}': fixed data table missing required 'surrogate_id'",
-                        entity=entity_name,
-                        column="surrogate_id",
-                    )
-
-                if not entity_data.get("columns"):
-                    self.add_error(
-                        f"Entity '{entity_name}': fixed data table missing required 'columns'", entity=entity_name, field="columns"
-                    )
-
-                if not entity_data.get("values"):
-                    self.add_error(
-                        f"Entity '{entity_name}': fixed data table missing required 'values'", entity=entity_name, field="values"
-                    )
-            else:
-                # Regular data tables require: columns (or keys)
-                if not entity_data.get("columns") and not entity_data.get("keys"):
-                    self.add_error(
-                        f"Entity '{entity_name}': data table must have 'columns' or 'keys'", entity=entity_name, field="columns/keys"
-                    )
+            entity_spec = self.get_required_fields_specification(entity_type=entity_data.get("type", "data"))
+            entity_spec.is_satisfied_by(config=entity_data)
+            
+            self.errors.extend(entity_spec.errors)
+            self.warnings.extend(entity_spec.warnings)
 
         return not self.has_errors()
 
@@ -343,7 +383,7 @@ class RequiredFieldsSpecification(ProjectSpecification):
 class ForeignKeySpecification(ProjectSpecification):
     """Validates foreign key setups."""
 
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Check that foreign key configurations are valid."""
         self.clear()
 
@@ -391,7 +431,7 @@ class ForeignKeySpecification(ProjectSpecification):
 class UnnestSpecification(ProjectSpecification):
     """Validates unnest setups."""
 
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Check that unnest setups are valid."""
         self.clear()
 
@@ -437,7 +477,7 @@ class UnnestSpecification(ProjectSpecification):
 class DropDuplicatesSpecification(ProjectSpecification):
     """Validates drop_duplicates configurations."""
 
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Check that drop_duplicates configurations are valid."""
         self.clear()
 
@@ -463,7 +503,7 @@ class DropDuplicatesSpecification(ProjectSpecification):
 class SurrogateIdSpecification(ProjectSpecification):
     """Validates surrogate ID configurations."""
 
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Check that surrogate IDs follow naming conventions and are unique."""
         self.clear()
         valid = True
@@ -506,7 +546,7 @@ class SurrogateIdSpecification(ProjectSpecification):
 class SqlDataSpecification(ProjectSpecification):
     """Validates SQL-type entity configurations."""
 
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Check that SQL data configurations are valid."""
         self.clear()
         valid = True
@@ -548,7 +588,7 @@ class SqlDataSpecification(ProjectSpecification):
 class FixedDataSpecification(ProjectSpecification):
     """Validates fixed data table configurations."""
 
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Check that fixed data configurations are valid."""
         self.clear()
         valid = True
@@ -602,7 +642,7 @@ class FixedDataSpecification(ProjectSpecification):
 class DataSourceExistsSpecification(ProjectSpecification):
     """Validates that all referenced data sources exist in options.data_sources."""
 
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Check if all referenced data sources exist."""
         self.clear()
         valid = True
@@ -646,7 +686,7 @@ class DataSourceExistsSpecification(ProjectSpecification):
 class AppendConfigurationSpecification(ProjectSpecification):
     """Validates append configuration settings."""
 
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Check that append configurations are valid."""
         self.clear()
 
@@ -745,7 +785,7 @@ class CompositeProjectSpecification(ProjectSpecification):
             AppendConfigurationSpecification(),
         ]
 
-    def is_satisfied_by(self, config: dict[str, Any]) -> bool:
+    def is_satisfied_by(self, config: dict[str, Any], **kwargs) -> bool:
         """Run all specifications and aggregate results."""
         self.clear()
 
