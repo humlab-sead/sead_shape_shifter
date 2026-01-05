@@ -301,11 +301,6 @@ watch(
       // Load preview data for the selected entity and target
       try {
         await reconciliationStore.loadPreviewData(props.projectName, newEntity, newTarget)
-        
-        // If we have preview data, switch to reconcile tab
-        if (entityPreviewData.value.length > 0) {
-          activeTab.value = 'reconcile'
-        }
       } catch (e: any) {
         console.error('[ReconciliationView] Failed to load preview data:', e)
         resultMessage.value = `Failed to load preview data: ${e.message}`
