@@ -1,18 +1,10 @@
 metadata:
+  type: shapeshifter-project
   name: arbodat-test
   description: Configuration for importing data from ArboDat database into SEAD.
   version: 1.0.0
   default_entity: survey
 entities:
-  survey:
-    source:
-    type: csv
-    options:
-      filename: "input/arbodat_mal_elena_input.csv"
-      sep: ";"
-      encoding: "utf-8"
-      quotechar: '"'
-      keep_default_na: false
 
   abundance:
     source:
@@ -307,6 +299,7 @@ entities:
   dataset_submission_type:
     source:
     type: fixed
+    surrogate_id: dataset_submission_type_id
     columns: ["system_id", "dataset_submission_type_id"]
     values:
     - [1, 4]
@@ -517,11 +510,11 @@ entities:
     extra_columns:
       arbodat_code: location_type
     values:
-    - Ort
-    - Kreis
-    - Land
-    - Staat
-    - FlurStr
+      - ["Ort"]
+      - ["Kreis"]
+      - ["Land"]
+      - ["Staat"]
+      - ["FlurStr"]
 
   master_dataset:
     surrogate_id: master_dataset_id
@@ -531,6 +524,7 @@ entities:
     depends_on: []
   method:
     type: fixed
+    surrogate_id: method_id
     arbodat_codes: ["ORG2,0", "ORG1,0", "ORG0,5", "ORG0,25", "MIN2,0", "MIN1,0", "MIN0,5", "MIN0,25"]
     columns: ["system_id", "method_id", "biblio_id", "description", "method_name", "method_abbrev_or_alt_name", "method_group_id", "arbodat_code"]
     values: [[1, null, null, "Organic remains >2.0 mm", "ORG 2,0", "ORG 2,0", null, "ORG 2,0"], [2, null, null, "Organic remains 1.0-2.0 mm", "ORG 1,0", "ORG 1,0", null, "ORG 1,0"], [3, null, null, "Organic remains 0.5-1.0 mm", "ORG 0,5", "ORG 0,5", null, "ORG 0,5"], [4, null, null, "Organic remains 0.25-0.5 mm", "ORG 0,25", "ORG 0,25", null, "ORG 0,25"], [5, null, null, "Mineral remains >2.0 mm", "MIN 2,0", "MIN 2,0", null, "MIN 2,0"], [6, null, null, "Mineral remains 1.0-2.0 mm", "MIN 1,0", "MIN 1,0", null, "MIN 1,0"], [7, null, null, "Mineral remains 0.5-1.0 mm", "MIN 0,5", "MIN 0,5", null, "MIN 0,5"], [8, null, null, "Mineral remains 0.25-0.5 mm", "MIN 0,25", "MIN 0,25", null, "MIN 0,25"], [9, 105, null, null, "Local or unknown grid", null, null, null], [10, 76, null, null, "Altitude above sea level", null, null, null]] # This data could be also loaded from "Fraktionen" table
