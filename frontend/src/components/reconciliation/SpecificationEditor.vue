@@ -7,6 +7,41 @@
       </v-card-title>
 
       <v-card-text class="pt-6">
+        <!-- Validation Errors Alert -->
+        <v-alert
+          v-if="!isNew && validationErrors.length > 0"
+          type="error"
+          variant="tonal"
+          class="mb-4"
+        >
+          <v-alert-title class="d-flex align-center">
+            <v-icon start>mdi-alert-circle</v-icon>
+            Configuration Issues Detected
+          </v-alert-title>
+          <ul class="mt-2">
+            <li v-for="(error, idx) in validationErrors" :key="idx">{{ error }}</li>
+          </ul>
+          <div class="text-caption mt-2">
+            Please fix these issues before the specification can be used.
+          </div>
+        </v-alert>
+
+        <!-- Validation Warnings Alert -->
+        <v-alert
+          v-if="!isNew && validationWarnings.length > 0"
+          type="warning"
+          variant="tonal"
+          class="mb-4"
+        >
+          <v-alert-title class="d-flex align-center">
+            <v-icon start>mdi-alert</v-icon>
+            Configuration Warnings
+          </v-alert-title>
+          <ul class="mt-2">
+            <li v-for="(warning, idx) in validationWarnings" :key="idx">{{ warning }}</li>
+          </ul>
+        </v-alert>
+
         <v-form ref="form" v-model="valid">
           <!-- Entity and Target Field Selection (only for new) -->
           <template v-if="isNew">
@@ -150,9 +185,11 @@
                     clearable
                     :hint="`Map property '${prop}' to a source column`"
                     persistent-hint
+                    :error="!isNew && isMissingColumn(formData.spec.property_mappings[prop])"
+                    :error-messages="!isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? `Column '${formData.spec.property_mappings[prop]}' not found in entity` : undefined"
                   >
                     <template #prepend-inner>
-                      <v-icon size="small" color="primary">mdi-arrow-left</v-icon>
+                      <v-icon size="small" :color="!isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? 'error' : 'primary'">mdi-arrow-left</v-icon>
                     </template>
                   </v-text-field>
                 </v-col>
@@ -276,6 +313,8 @@ const availableFields = ref<string[]>([])
 const availableRemoteTypes = ref<string[]>([])
 const availableProperties = ref<string[]>([])
 const isDirty = ref(false)
+const validationErrors = ref<string[]>([])
+const validationWarnings = ref<string[]>([])
 
 // Source type selection
 const sourceTypes = ['Entity Preview', 'Other Entity', 'SQL Query']
@@ -312,6 +351,72 @@ const uniqueTargetField = (v: string) => {
     (s) => s.entity_name === formData.value.entity_name && s.target_field === v
   )
   return !existing || 'This entity + target field combination already exists'
+}
+
+// Validation methods
+function validateSpecification() {
+  validationErrors.value = []
+  validationWarnings.value = []
+
+  if (props.isNew) return
+
+  const project = projectStore.selectedProject
+  if (!project) return
+
+  // Check if entity exists
+  if (!project.entities[formData.value.entity_name]) {
+    validationErrors.value.push(
+      `Entity '${formData.value.entity_name}' no longer exists in the project`
+    )
+    return // Can't validate further without entity
+  }
+
+  const entity = project.entities[formData.value.entity_name]
+  const entityColumns = entity?.columns || []
+
+  // Check if target field exists
+  if (!entityColumns.includes(formData.value.target_field)) {
+    validationErrors.value.push(
+      `Target field '${formData.value.target_field}' not found in entity '${formData.value.entity_name}'`
+    )
+  }
+
+  // Check if property mapping source columns exist
+  const missingColumns: string[] = []
+  Object.entries(formData.value.spec.property_mappings).forEach(([prop, sourceCol]) => {
+    if (sourceCol && !entityColumns.includes(sourceCol)) {
+      missingColumns.push(`${prop} → ${sourceCol}`)
+    }
+  })
+
+  if (missingColumns.length > 0) {
+    validationErrors.value.push(
+      `Property mappings reference missing columns: ${missingColumns.join(', ')}`
+    )
+  }
+
+  // Check if source entity exists (when using "Other Entity" as source)
+  if (formData.value.spec.source && typeof formData.value.spec.source === 'string') {
+    const sourceEntityName = formData.value.spec.source
+    if (!project.entities[sourceEntityName]) {
+      validationErrors.value.push(
+        `Source entity '${sourceEntityName}' no longer exists in the project`
+      )
+    }
+  }
+}
+
+function isMissingColumn(columnName: string | undefined): boolean {
+  if (!columnName || props.isNew) return false
+  
+  const project = projectStore.selectedProject
+  if (!project) return false
+
+  const entity = project.entities[formData.value.entity_name]
+  if (!entity) return false
+
+  const entityColumns = entity.columns || []
+  return !entityColumns.includes(columnName)
 }
 
 // Methods
@@ -360,6 +465,8 @@ async function onRemoteTypeChange(remoteType: string | null) {
 function cancel() {
   emit('update:modelValue', false)
   resetForm()
+  validationErrors.value = []
+  validationWarnings.value = []
 }
 
 async function save() {
@@ -491,6 +598,9 @@ watch(
       if (spec.remote.service_type) {
         onRemoteTypeChange(spec.remote.service_type)
       }
+
+      // Validate the loaded specification
+      validateSpecification()
     }
   },
   { immediate: true }

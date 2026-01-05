@@ -126,14 +126,13 @@ const props = defineProps<Props>()
 
 // Store
 const reconciliationStore = useReconciliationStore()
-const { reconciliationConfig, loading, reconcilableEntities, hasConfig, previewData, getEntityTargets } = storeToRefs(reconciliationStore)
+const { reconciliationConfig, loading, reconcilableEntities, previewData, getEntityTargets } = storeToRefs(reconciliationStore)
 
 // Local state
 const activeTab = ref<string>('configuration') // Tab state: configuration, reconcile
 const selectedEntity = ref<string | null>(null)
 const selectedTarget = ref<string | null>(null) // Selected target field
 const autoAcceptThreshold = ref<number>(95) // User-adjustable threshold (percentage)
-const reviewThreshold = ref<number>(70) // Review threshold (percentage)
 const showResultSnackbar = ref(false)
 const resultMessage = ref('')
 const resultColor = ref('success')
