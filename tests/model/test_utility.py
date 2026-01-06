@@ -47,58 +47,6 @@ class TestUnnestConfig:
             UnnestConfig(cfg={}, data=data)
 
 
-class TestForeignKeyConfig:
-    """Tests for ForeignKeyConfig class."""
-
-    def test_valid_foreign_key_config(self):
-        """Test creating a valid foreign key configuration."""
-        entities = {
-            "site": {"surrogate_id": "site_id", "keys": ["site_name"]},
-            "location": {"surrogate_id": "location_id", "keys": ["location_name"]},
-        }
-        fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"]}
-
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
-
-        assert fk.local_entity == "site"
-        assert fk.remote_entity == "location"
-        assert fk.local_keys == ["location_name"]
-        assert fk.remote_keys == ["location_name"]
-        assert fk.remote_surrogate_id == "location_id"
-
-    def test_missing_remote_entity(self):
-        """Test that missing remote entity raises ValueError."""
-        entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
-        fk_data: dict[str, list[str]] = {"local_keys": ["col1"], "remote_keys": ["col1"]}
-
-        with pytest.raises(ValueError, match="missing remote entity"):
-            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
-
-    def test_unknown_remote_entity(self):
-        """Test that unknown remote entity raises ValueError."""
-        entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
-        fk_data: dict[str, Any] = {"entity": "unknown_entity", "local_keys": ["col1"], "remote_keys": ["col1"]}
-
-        with pytest.raises(ValueError, match="references unknown entity"):
-            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
-
-    def test_missing_remote_keys(self):
-        """Test that missing remote_keys raises ValueError."""
-        entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
-        fk_data = {"entity": "location", "local_keys": ["col1"]}
-
-        with pytest.raises(ValueError, match="missing local and/or remote keys"):
-            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
-
-    def test_empty_remote_keys(self):
-        """Test that empty remote_keys raises ValueError."""
-        entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
-        fk_data = {"entity": "location", "local_keys": ["col1"], "remote_keys": []}
-
-        with pytest.raises(ValueError, match="missing local and/or remote keys"):
-            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
-
-
 class TestTableConfig:
     """Tests for TableConfig class."""
 

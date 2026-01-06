@@ -2,6 +2,8 @@
 
 import pytest
 
+from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.models.project import Project, ProjectMetadata
 from backend.app.models.validation import ValidationError
 from backend.app.services import validation_service as validation_service_module
 from backend.app.services.validation_service import ValidationService, get_validation_service
@@ -171,43 +173,63 @@ class TestValidationServiceEntity:
     def test_validate_single_entity(self, validation_service):
         """Test validating single entity."""
         entity_data = {"type": "data", "keys": ["sample_id"], "columns": ["name", "value"]}
-        config = {"metadata": {"type": "shapeshifter-project", "name": "test"}, "entities": {"sample": entity_data}, "options": {}}
+        project = Project(
+            metadata=ProjectMetadata(type="shapeshifter-project", name="test", entity_count=1),
+            entities={"sample": entity_data},
+            options={}
+        )
 
-        result = validation_service.validate_entity(config, "sample")
+        result = validation_service.validate_entity(project, "sample")
 
         assert result.is_valid is True
         assert result.error_count == 0
 
-    def test_validate_entity_with_errors(self, validation_service):
+    def test_validate_entity_with_errors(self, validation_service: ValidationService):
         """Test validating entity with errors."""
         entity_data = {
             "type": "data"
             # Missing required 'keys' field
         }
-        config = {"entities": {"sample": entity_data}, "options": {}}
+        project: Project = Project(
+            metadata=ProjectMetadata(type="shapeshifter-project", name="test", entity_count=1),
+            entities={"sample": entity_data},
+            options={}
+        )
 
-        result = validation_service.validate_entity(config, "sample")
+        result = validation_service.validate_entity(project, "sample")
 
         assert result.is_valid is False
         assert result.error_count > 0
 
     def test_validate_entity_filters_errors(self, validation_service):
         """Test that entity validation only returns errors for that entity."""
-        entity_data = {
-            "type": "data",
-            "keys": ["sample_id"],
-            "foreign_keys": [
-                {
-                    "entity": "nonexistent",
-                    "local_keys": ["site_id"],
-                    "remote_keys": ["site_id"],
-                    "how": "left",
-                }
-            ],
+        project_cfg = {
+            "metadata": {"type": "shapeshifter-project", "name": "test"},
+            "entities": {
+                "natural_region": {"type": "data", "keys": ["region_id"], "columns": ["name"]},
+                "site": {
+                    "type": "data",
+                    "keys": ["site_id"],
+                    "columns": ["name", "location"],
+                },
+                "sample": {
+                    "type": "data",
+                    "keys": ["sample_id"],
+                    "foreign_keys": [
+                        {
+                            "entity": "nonexistent",
+                            "local_keys": ["site_id"],
+                            "remote_keys": ["site_id"],
+                            "how": "left",
+                        }
+                    ],
+                },
+            },
+            "options": {"verbose": True},
         }
-        config = {"entities": {"sample": entity_data}, "options": {}}
+        project: Project = ProjectMapper.to_api_config(project_cfg, "test")
 
-        result = validation_service.validate_entity(config, "sample")
+        result = validation_service.validate_entity(project, "sample")
 
         # Should only contain errors related to 'sample' entity
         assert result.is_valid is False

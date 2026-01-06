@@ -165,6 +165,7 @@ class TestForeignKeyConfig:
         assert fk.remote_keys == ["location_name"]
         assert fk.remote_surrogate_id == "location_id"
 
+    @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
     def test_missing_remote_entity(self):
         """Test that missing remote entity raises ValueError."""
         entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
@@ -173,6 +174,7 @@ class TestForeignKeyConfig:
         with pytest.raises(ValueError, match="missing remote entity"):
             ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
+    @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
     def test_unknown_remote_entity(self):
         """Test that unknown remote entity raises ValueError."""
         entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
@@ -181,6 +183,7 @@ class TestForeignKeyConfig:
         with pytest.raises(ValueError, match="references unknown entity"):
             ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
+    @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
     def test_missing_remote_keys(self):
         """Test that missing remote_keys raises ValueError."""
         entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
@@ -189,6 +192,7 @@ class TestForeignKeyConfig:
         with pytest.raises(ValueError, match="missing local and/or remote keys"):
             ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
 
+    @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
     def test_empty_remote_keys(self):
         """Test that empty remote_keys raises ValueError."""
         entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
@@ -416,6 +420,7 @@ class TestForeignKeyConfig:
             fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
             assert fk.how == how
 
+    @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
     def test_mismatched_key_counts(self):
         """Test that mismatched key counts raises ValueError."""
         entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
