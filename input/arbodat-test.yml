@@ -446,15 +446,9 @@ entities:
     type: fixed
     keys: []
     surrogate_id: feature_property_type_id
-    columns:
-    - arbodat_code
-    values:
-    - - gebäud
-    - - okBefu
-    - - okErh
-    - - BestJa
-    - - FlSchn
-    - - Anmerkung
+    surrogate_names: feature_property_type
+    columns: ["arbodat_code"]
+    values: ["gebäud", "okBefu", "okErh", "BestJa", "FlSchn", "Anmerkung"]
     extra_columns:
       feature_property_type: 1
       feature_property_name: 1
