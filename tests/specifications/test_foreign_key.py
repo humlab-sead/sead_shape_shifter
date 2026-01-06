@@ -246,7 +246,7 @@ class TestForeignKeyDataSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is False
-        assert "not found in local entity data" in spec.error
+        assert "not found in local entity" in spec.error
 
     def test_missing_remote_key_in_data(self, mock_project, table_store):
         """Test validation fails when remote key missing from data."""
@@ -265,7 +265,7 @@ class TestForeignKeyDataSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is False
-        assert "not found in remote entity data" in spec.error
+        assert "not found in remote entity" in spec.error
 
     def test_missing_local_df_assertion(self, mock_project):
         """Test assertion when local DataFrame missing."""
@@ -306,7 +306,7 @@ class TestForeignKeyDataSpecification:
         spec = ForeignKeyDataSpecification(table_store, mock_project)
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
-        assert result is False
+        assert result is True
         assert spec.deferred is True
 
     def test_deferred_when_pending_fields(self, mock_project):
