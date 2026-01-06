@@ -32,59 +32,76 @@ The normalization system follows a multi-phase pipeline:
 
 ## Project File Structure
 
-A configuration file consists of three main sections:
+A configuration file consists of three main sections. The existence of value 'shapeshifter-project' in `metadata.type` identifies the file as a Shapeshifter project file.
 
 ```yaml
-entities:          # Entity definitions (required)
+metadata:          # metadata definitions (required)
+  type: 'shapeshifter-project'  #         (required)
+  ...
+
+entities:          # Entity definitions   (required)
   entity_name:
     # Entity configuration
 
 options:           # Global options (optional)
   translations:    # Column name translations
-  data_sources:    # Database connections
+  data_sources:    # named data sources associated to this project
+  mappings:        # Remote entity mappings (optional)
 
-mappings:          # Remote entity mappings (optional)
 ```
 
 ---
 
-## Entity Project
+## Metadata Section
+
+```yaml
+metadata:                             # metadata definitions (required)
+  type: 'shapeshifter-project'        # Project file tag (required)
+  name:                               # identifier (pending removal)
+  description:                        # description
+  default_entity:                     # project's default entity for `data` entities
+
+```
+
+## Entity Section
 
 Each entity represents a table/dataset to be extracted and processed. Entities are processed in dependency order using topological sorting.
 
 ### Basic Entity Structure
 
-```yaml
+```yml
 entities:
   entity_name:
     # Identity & Keys
-    surrogate_id: string              # Primary key column name
-    surrogate_name: string             # Alternative name for surrogate ID
-    keys: [string, ...]               # Natural key columns
+    surrogate_id: string                    # Locally scoped primary key
+    surrogate_name: string                  # Alternative name for surrogate ID
+    keys: [string, ...]                     # Natural (business) key columns
     
     # Data Selection
-    source: string | null             # Source entity or null for root source
-    type: "data" | "fixed" | "sql"    # Data source type
-    columns: [string, ...]            # Columns to extract
+    source: string | null                   # Data: source entity or null for default source
+    type: \"data\" | \"fixed\" | \"sql\"    # Data source type  (required)
+    columns: [string, ...]                  # Columns to extract
     
-    # Data Quality
-    drop_duplicates: bool | [string, ...] # Duplicate handling
+    # Data quality
     drop_empty_rows: bool | [string, ...] | {string: [any, ...]}  # Empty row handling
-    check_column_names: bool              # Validate column names match (SQL sources)
+    functional_dependency_check: bool       # Check functional dependency when dropping columns
+    check_column_names: bool                # Validate column names match (SQL sources)
     
     # Filtering
-    filters: [...]                        # Post-load data filters
+    filters: [...]                          # Post-load data filters
     
     # Value Transformations
-    replacements: {string: {any: any}}    # Value replacement mappings
+    replacements: {string: {any: any}}      # Value replacement mappings
     
     # Relationships
-    foreign_keys: [...]               # Foreign key definitions
-    depends_on: [string, ...]         # Dependency list
-    
+    foreign_keys: [...]                     # Foreign key definitions
+      ....
+    depends_on: [string, ...]               # Dependency list
+  
     # Transformations
-    unnest: {...}                     # Unnesting configuration
-    extra_columns: {...}              # Additional columns to add
+    unnest: {...}                           # Unnesting configuration
+    extra_columns: {...}                    # Additional columns to add
+    drop_duplicates: bool | [string, ...]   # Duplicate handling
     
     # Data Sources
     data_source: string               # Named data source (for SQL)
@@ -99,13 +116,16 @@ entities:
 
 #### `surrogate_id`
 - **Type**: `string`
-- **Required**: No (but recommended)
-- **Description**: Name of the surrogate primary key column to be generated. The system will create an integer ID starting from 1.
+- **Required**: Yes, for entities that will be reconciled
+- **Description**: Name of the surrogate primary key column to be generated. The system will create an integer ID starting from 1. This should be the same name as the primary key in the remote entity the project targets. This field is renamed to "system_id" when the final dataset is dispatched, and a new column with the same name is initalized with empty values.
 - **Example**:
   ```yaml
   surrogate_id: site_id
   ```
-
+- **Validation** 
+  - Missing `surrogate_id` should give a warning
+  - Missing `surrogate` should prevent reconciliation (warning in reconciliation editor)
+  
 #### `surrogate_name`
 - **Type**: `string`
 - **Required**: No
@@ -114,16 +134,21 @@ entities:
   ```yaml
   surrogate_name: contact_type
   ```
+- **Validation** 
+  - todo: check how this field is used
+
 
 #### `keys`
 - **Type**: `list[string]`
-- **Required**: No
-- **Description**: Natural key columns that uniquely identify rows in the source data. Used for duplicate detection and foreign key relationships.
+- **Required**: No (but recommended)
+- **Description**: Key columns that uniquely identify rows in the source data. Used for duplicate detection and foreign key relationships.
 - **Example**:
   ```yaml
   keys: ["ProjektNr", "Befu"]
   ```
-
+- **Validation** 
+ - Missing keys field should raise an error (but can be empty)
+ - If keys field is empty list, then give a warning
 ---
 
 ### Data Source Properties
@@ -140,7 +165,10 @@ entities:
   # Use root survey data (default)
   source: null
   ```
-
+- **Validation** 
+ - Should not have a value if `type` is `fixed` or `sql` (warn/ignored) 
+ - If `fixed` then value is an entity name that must exist in project
+ - If `fixed` and empty, then a `default_entity`
 #### `type`
 - **Type**: `"data" | "fixed" | "sql"`
 - **Required**: No (defaults to `"data"`)
