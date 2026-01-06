@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig, UnnestConfig
+from src.model import ShapeShiftProject, TableConfig, UnnestConfig
 from src.utility import dotget, dotset, env2dict, normalize_text, recursive_filter_dict, replace_env_vars
 
 
