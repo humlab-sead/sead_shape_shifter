@@ -186,9 +186,9 @@ class TestProjectSpecification:
         """Test entity existence check."""
         spec = ConcreteSpecification(project_cfg)
 
-        assert spec.exists("sample")
-        assert spec.exists("site")
-        assert not spec.exists("nonexistent")
+        assert spec.entity_exists("sample")
+        assert spec.entity_exists("site")
+        assert not spec.entity_exists("nonexistent")
 
     def test_check_fields_with_valid_validator(self, project_cfg):
         """Test check_fields with registered validator."""
@@ -216,7 +216,7 @@ class TestProjectSpecification:
         """Test check_fields with multiple validators."""
         spec = ConcreteSpecification(project_cfg)
 
-        spec.check_fields("sample", ["columns", "keys"], "exists/E,string_list/E")
+        spec.check_fields("sample", ["columns", "keys"], "exists/E,is_string_list/E")
         # Should run both validators
 
     def test_check_fields_with_custom_message(self, project_cfg):
@@ -317,7 +317,7 @@ class TestFieldValidatorRegistry:
         """Test that validators are registered."""
         # Check for some known validators
         assert "exists" in FIELD_VALIDATORS.items
-        assert "string_list" in FIELD_VALIDATORS.items
+        assert "is_string_list" in FIELD_VALIDATORS.items
         assert "not_empty_string" in FIELD_VALIDATORS.items
 
     def test_registry_get_validator(self):

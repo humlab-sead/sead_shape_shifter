@@ -148,9 +148,11 @@ class ShapeShifter:
             logger.debug(f"{entity}[normalizing]: Normalizing entity...")
 
             # source: pd.DataFrame = await self.resolve_source(table_cfg=table_cfg)
+            if not isinstance(table_cfg.columns, list):
+                raise ValueError(f"Invalid columns configuration for entity '{entity}': must be a list")
 
-            if not isinstance(table_cfg.columns, list) or not all(isinstance(c, str) for c in table_cfg.columns):
-                raise ValueError(f"Invalid columns configuration for entity '{entity}': {table_cfg.columns}")
+            if not all(isinstance(col, str) for col in table_cfg.columns):
+                raise ValueError(f"Invalid columns configuration for entity '{entity}': all columns must be strings")
 
             delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
 

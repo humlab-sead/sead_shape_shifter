@@ -1,5 +1,7 @@
 from typing import Any
 
+from src.utility import dotget
+
 from .base import ProjectSpecification
 from .entity import EntitySpecification
 
@@ -121,6 +123,24 @@ class EntitiesSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+class IsProjectSpecification(ProjectSpecification):
+    """Validates the project metadata section."""
+
+    def is_satisfied_by(self, **kwargs) -> bool:
+        """Validate the metadata section of the project configuration."""
+        self.clear()
+
+        metadata = self.project_cfg.get("metadata", {})
+        if not metadata:
+            self.add_error("Project metadata section is missing.", entity="metadata")
+            return False
+
+        if dotget(metadata, "type") != "shapeshifter-project":
+            self.add_error("Project metadata must include 'type' with value 'shapeshifter-project'.", entity="metadata", field="type")
+
+        return not self.has_errors()
+
+
 class CompositeProjectSpecification(ProjectSpecification):
     """Composite specification that runs multiple project-level validation specifications.
 
@@ -149,29 +169,14 @@ class CompositeProjectSpecification(ProjectSpecification):
         """Run all specifications and aggregate results."""
         self.clear()
 
+        is_project_valid: bool = IsProjectSpecification(self.project_cfg).is_satisfied_by()
+        if not is_project_valid:
+            self.add_error("Project metadata validation failed.", entity="metadata")
+            return False
+        
         for spec in self.specifications:
             spec.is_satisfied_by()
             self.errors.extend(spec.errors)
             self.warnings.extend(spec.warnings)
 
         return not self.has_errors()
-
-    def get_report(self) -> str:
-        """Generate a human-readable validation report."""
-        lines = []
-
-        if not self.has_errors() and not self.has_warnings():
-            lines.append("✓ Configuration is valid")
-            return "\n".join(lines)
-
-        if self.has_errors():
-            lines.append(f"✗ Configuration has {len(self.errors)} error(s):")
-            for idx, error in enumerate(self.errors, 1):
-                lines.append(f"  {idx}. {error}")
-
-        if self.has_warnings():
-            lines.append(f"\n⚠ Configuration has {len(self.warnings)} warning(s):")
-            for idx, warning in enumerate(self.warnings, 1):
-                lines.append(f"  {idx}. {warning}")
-
-        return "\n".join(lines)

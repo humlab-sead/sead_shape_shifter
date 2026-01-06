@@ -357,14 +357,14 @@ class TestIsExistingEntityValidator:
     @pytest.fixture
     def project_cfg(self):
         """Sample project configuration."""
-        return {"entities": {"sample": {"type": "sql"}, "site": {"type": "fixed"}}}
+        return {"entities": {"sample": {"type": "sql", "source": "site"}, "site": {"type": "fixed", "source": "does_not_exist"}}}
 
     def test_existing_entity(self, project_cfg):
         """Test that existing entity passes."""
         validator = IsExistingEntityValidator(project_cfg, severity="E")
 
         # When the field name is an entity name
-        validator.is_satisfied_by_field("test", "sample")
+        validator.is_satisfied_by_field(entity_name="sample", field="source")
 
         assert len(validator.errors) == 0
 
@@ -372,7 +372,7 @@ class TestIsExistingEntityValidator:
         """Test that non-existing entity fails."""
         validator = IsExistingEntityValidator(project_cfg, severity="E")
 
-        validator.is_satisfied_by_field("test", "nonexistent")
+        validator.is_satisfied_by_field(entity_name="site", field="source")
 
         assert len(validator.errors) == 1
         assert "must be an existing entity" in validator.errors[0].message

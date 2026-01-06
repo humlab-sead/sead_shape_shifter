@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 
-from specifications.project import CompositeProjectSpecification
+from src.specifications.project import CompositeProjectSpecification
 from src.model import ShapeShiftProject
 from src.utility import load_shape_file
 from src.workflow import validate_entity_shapes, workflow
@@ -76,8 +76,6 @@ def test_validate_project_file():
     print(specification.get_report())
 
     assert is_valid is True
-
-    assert is_valid is None  # Because mode is csv but regression_file is provided, function returns None
 
 
 def test_access_database_csv_workflow():

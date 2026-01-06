@@ -108,3 +108,6 @@ The field in the entity's output data that we will store the reconciled ID in wi
 
 So the mapping in essence is "Uppsala" (from target field "site_name")  -> "1234" (to surrogate_id field "site_id"). The other property fields are only used to improve the quality of the reconciliation queries.
 Thus, we do not need to store the target database, table and column in the entity reconciliation specification. The "surrogate_id" field in the entity specification is sufficient to determine where to store the reconciled IDs.
+
+
+Please review this list of rules that a project file must obey. The rules are implemented in specifications.py. Please suggest improvments to the rules, and identify any potential issues. Please also suggest any additional rules that should be implemented to improve the robustness of the project file validation.

@@ -3,7 +3,7 @@ from typing import Any
 
 from loguru import logger
 
-from src.utility import Registry, dotget
+from src.utility import Registry, dotexists, dotget
 
 # pylint: disable=line-too-long
 
@@ -59,9 +59,13 @@ class ProjectSpecification(ABC):
         """Get the configuration for a specific entity."""
         return dotget(self.project_cfg, f"entities.{entity_name}", {})
 
-    def exists(self, entity_name: str) -> bool:
+    def entity_exists(self, entity_name: str) -> bool:
         """Check if a specific entity exists in the configuration."""
         return dotget(self.project_cfg, f"entities.{entity_name}", None) is not None
+
+    def field_exists(self, path: str) -> bool:
+        """Check if a specific field exists in the entity configuration."""
+        return dotexists(self.project_cfg, path)
 
     @abstractmethod
     def is_satisfied_by(self, **kwargs) -> bool:
@@ -116,6 +120,26 @@ class ProjectSpecification(ABC):
             specification = FIELD_VALIDATORS.get(key.strip())(self.project_cfg, severity=severity)
             specification.is_satisfied_by(entity_name=entity_name, fields=fields, message=message, **kwargs)
             self.merge(specification)
+
+    def get_report(self) -> str:
+        """Generate a human-readable validation report."""
+        lines = []
+
+        if not self.has_errors() and not self.has_warnings():
+            lines.append("✓ Configuration is valid")
+            return "\n".join(lines)
+
+        if self.has_errors():
+            lines.append(f"✗ Configuration has {len(self.errors)} error(s):")
+            for idx, error in enumerate(self.errors, 1):
+                lines.append(f"  {idx}. {error}")
+
+        if self.has_warnings():
+            lines.append(f"\n⚠ Configuration has {len(self.warnings)} warning(s):")
+            for idx, warning in enumerate(self.warnings, 1):
+                lines.append(f"  {idx}. {warning}")
+
+        return "\n".join(lines)
 
 
 class FieldValidator(ProjectSpecification):
