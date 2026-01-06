@@ -1,17 +1,10 @@
 # type: ignore
-
-from .specifications import (
-    CompositeProjectSpecification,
-    SpecificationIssue,
-    EntityFieldsSpecification,
+from .base import ProjectSpecification, SpecificationIssue
+from .entity import EntitySpecification
+from .foreign_key import ForeignKeyConfigSpecification, ForeignKeyDataSpecification
+from .project import (
     CircularDependencySpecification,
-    EntityExistsSpecification,
-    AppendConfigurationSpecification,
-    FixedDataSpecification,
-    ForeignKeySpecification,
-    RequiredFieldsSpecification,
-    SurrogateIdSpecification,
-    UnnestSpecification,
-    ForeignKeyDataSpecification
-
+    CompositeProjectSpecification,
+    DataSourceExistsSpecification,
+    EntitiesSpecification,
 )

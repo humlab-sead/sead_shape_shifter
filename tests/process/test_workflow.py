@@ -4,6 +4,7 @@ import shutil
 
 import pytest
 
+from specifications.project import CompositeProjectSpecification
 from src.model import ShapeShiftProject
 from src.utility import load_shape_file
 from src.workflow import validate_entity_shapes, workflow
@@ -60,9 +61,28 @@ def test_workflow_using_survey_report_to_csv():
     assert len(entities_with_different_shapes) == 0, f"Entities with different shapes: {entities_with_different_shapes}"
 
 
+def test_validate_project_file():
+
+    config_file: str = "./input/arbodat-test.yml"
+    project: ShapeShiftProject = ShapeShiftProject.from_file(
+        config_file,
+        env_prefix="SEAD_NORMALIZER",
+        env_file=".env",
+    )
+
+    specification = CompositeProjectSpecification(project.cfg)
+    is_valid: bool = specification.is_satisfied_by()
+
+    print(specification.get_report())
+
+    assert is_valid is True
+
+    assert is_valid is None  # Because mode is csv but regression_file is provided, function returns None
+
+
 def test_access_database_csv_workflow():
 
-    config_file: str = "./input/arbodat-database.yml"
+    config_file: str = "./input/arbodat-test.yml"
     config: ShapeShiftProject = ShapeShiftProject.from_file(
         config_file,
         env_prefix="SEAD_NORMALIZER",
@@ -71,7 +91,7 @@ def test_access_database_csv_workflow():
 
     translate: bool = False
 
-    output_path: str = "tmp/arbodat-database/apa.xlsx"
+    output_path: str = "tmp/arbodat-test.xlsx"
     asyncio.run(asyncio.sleep(0.1))  # type: ignore ; ensure config is fully loaded;
 
     if os.path.exists(output_path):
