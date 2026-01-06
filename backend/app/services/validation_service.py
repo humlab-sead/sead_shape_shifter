@@ -4,10 +4,13 @@ from typing import Any
 
 from loguru import logger
 
+from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.models.project import Project
 from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.validators.data_validators import DataValidationService
+from src.model import ShapeShiftProject
 from src.specifications import CompositeProjectSpecification, SpecificationIssue
 
 
@@ -116,27 +119,21 @@ class ValidationService:
             code=", ".join(str(v) for k, v in issue.kwargs.items()),
         )
 
-    def validate_entity(self, config: Any, entity_name: str) -> ValidationResult:
+    def validate_entity(self, project: Project, entity_name: str) -> ValidationResult:
         """
         Validate a single entity within a project.
 
         Args:
-            config: Configuration object (will be converted to dict)
+            project: Project object
             entity_name: Name of entity to validate
 
         Returns:
             ValidationResult with errors and warnings for this entity
         """
-        # Convert Configuration to dict if needed
-        if hasattr(config, "model_dump"):
-            config_data = config.model_dump(exclude_none=True, mode="json")
-        elif isinstance(config, dict):
-            config_data = config
-        else:
-            config_data = {"entities": config.entities, "options": config.options}
 
-        # Validate full project
-        result: ValidationResult = self.validate_project(config_data)
+        core_project: ShapeShiftProject = ProjectMapper.to_core(project)
+
+        result: ValidationResult = self.validate_project(core_project.cfg)
 
         # Filter to only errors/warnings for this entity
         entity_errors: list[ValidationError] = [e for e in result.errors if e.entity == entity_name or e.entity is None]
