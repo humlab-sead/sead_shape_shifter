@@ -104,26 +104,6 @@ class ForeignKeyConfig:
         self.config: dict[str, dict[str, Any]] = cfg  # config for all tables
         self.local_entity: str = local_entity
 
-        self.validate(cfg, local_entity)
-
-    def validate(self, cfg, local_entity):
-
-        if not self.remote_entity:
-            raise ValueError(f"Invalid foreign key configuration for entity '{local_entity}': missing remote entity")
-
-        if self.remote_entity not in cfg:
-            raise ValueError(f"Foreign key references unknown entity '{self.remote_entity}' from '{local_entity}'")
-
-        if self.how != "cross":
-            if not self.local_keys or not self.remote_keys:
-                raise ValueError(f"Invalid foreign key configuration for entity '{self.local_entity}': missing local and/or remote keys")
-
-            if len(self.local_keys) != len(self.remote_keys):
-                raise ValueError(
-                    f"Foreign key configuration mismatch for entity '{self.local_entity}': number"
-                    f" of local keys ({len(self.local_keys)}) does not match number of remote keys ({len(self.remote_keys)})"
-                )
-
     @property
     def local_keys(self) -> list[str]:
         return unique(self.data.get("local_keys"))
