@@ -1,3 +1,4 @@
+from ast import Is
 from typing import Any
 
 from src.utility import dotget
@@ -168,10 +169,11 @@ class CompositeProjectSpecification(ProjectSpecification):
     def is_satisfied_by(self, **kwargs) -> bool:
         """Run all specifications and aggregate results."""
         self.clear()
+        is_project_spec = IsProjectSpecification(self.project_cfg)
+        is_project_valid: bool = is_project_spec.is_satisfied_by()
+        self.merge(is_project_spec)
 
-        is_project_valid: bool = IsProjectSpecification(self.project_cfg).is_satisfied_by()
         if not is_project_valid:
-            self.add_error("Project metadata validation failed.", entity="metadata")
             return False
 
         for spec in self.specifications:
