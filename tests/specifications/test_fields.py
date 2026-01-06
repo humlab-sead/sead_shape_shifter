@@ -21,11 +21,7 @@ class TestFieldExistsValidator:
     @pytest.fixture
     def project_cfg(self):
         """Sample project configuration."""
-        return {
-            "entities": {
-                "sample": {"columns": ["site_id"], "keys": ["sample_id"], "nested": {"deep": {"value": "exists"}}}
-            }
-        }
+        return {"entities": {"sample": {"columns": ["site_id"], "keys": ["sample_id"], "nested": {"deep": {"value": "exists"}}}}}
 
     def test_field_exists(self, project_cfg):
         """Test validation passes when field exists."""

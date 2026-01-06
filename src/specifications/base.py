@@ -92,7 +92,7 @@ class ProjectSpecification(ABC):
 
     def check_fields(self, entity_name: str, fields: list[str], keys: str, message: str | None = None, **kwargs) -> None:
         """Check fields based on the specified check type.
-        
+
         Args:
             entity_name: Name of the entity being validated
             fields: List of field names to check

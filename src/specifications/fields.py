@@ -12,7 +12,7 @@ from .base import FIELD_VALIDATORS, FieldValidator
 @FIELD_VALIDATORS.register(key="is_empty")
 class IsEmptyFieldValidator(FieldValidator):
     """Validator to check if a field is empty (None, empty string, empty list, or empty dict).
-    
+
     Fails if the field has a non-empty value.
     """
 
@@ -28,7 +28,7 @@ class IsEmptyFieldValidator(FieldValidator):
 @FIELD_VALIDATORS.register(key="exists")
 class FieldExistsValidator(FieldValidator):
     """Validator to check if a field exists in the configuration.
-    
+
     Fails if the field path is not present in the target config.
     """
 
@@ -78,7 +78,7 @@ class FieldIsNotEmptyStringValidator(FieldValidator):
 @FIELD_VALIDATORS.register(key="not_empty")
 class FieldIsNonEmptyValidator(FieldValidator):
     """Validator to check that a field has a truthy value.
-    
+
     Fails if the field is empty, None, False, 0, or any falsy value.
     Note: Despite the class name, this validates non-emptiness.
     """
@@ -98,7 +98,7 @@ class FieldIsNonEmptyValidator(FieldValidator):
 @FIELD_VALIDATORS.register(key="of_type")
 class FieldTypeValidator(FieldValidator):
     """Validator to check that a field is of a specific type.
-    
+
     Requires 'expected_types' kwarg as a tuple of acceptable types.
     Fails if the field value doesn't match any of the expected types.
     """
