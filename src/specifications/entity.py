@@ -120,7 +120,7 @@ class UnnestSpecification(ProjectSpecification):
         unnest_cfgs = self.get_entity_cfg(entity_name).get("unnest", []) or []
         if not unnest_cfgs:
             return True
-        
+
         self.check_fields(entity_name, ["unnest.value_vars", "unnest.var_name", "unnest.value_name"], "exists/E")
         self.check_fields(entity_name, ["unnest.id_vars"], "exists/W")
         self.check_fields(entity_name, ["unnest.value_vars"], "is_string_list/E")
@@ -295,9 +295,9 @@ class DependsOnSpecification(ProjectSpecification):
 
         if not entity_cfg.get("depends_on"):
             return True
-        
+
         self.check_fields(entity_name, ["depends_on"], "is_string_list/W")
-        
+
         if isinstance(entity_cfg.get("depends_on"), list):
             for dep in entity_cfg.get("depends_on", []):
                 if not self.entity_exists(dep):

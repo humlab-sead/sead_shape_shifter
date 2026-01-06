@@ -173,7 +173,7 @@ class CompositeProjectSpecification(ProjectSpecification):
         if not is_project_valid:
             self.add_error("Project metadata validation failed.", entity="metadata")
             return False
-        
+
         for spec in self.specifications:
             spec.is_satisfied_by()
             self.errors.extend(spec.errors)
