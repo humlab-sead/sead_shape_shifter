@@ -41,7 +41,7 @@ def sample_project(tmp_path):
     """Create sample project configuration."""
     project_data = {
         "metadata": {
-            "type": "shapeshifter-project", 
+            "type": "shapeshifter-project",
             "name": "test_project",
             "description": "A test project",
             "version": "1.0.0",
@@ -59,7 +59,7 @@ def sample_project(tmp_path):
                 "keys": ["sample_code"],
                 "columns": ["sample_type"],
             },
-        }
+        },
     }
 
     project_file = tmp_path / "test_project.yml"

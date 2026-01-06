@@ -731,6 +731,6 @@ class TestProjectMapperIntegration:
 
         assert "metadata" in restored_cfg_dict
 
-        assert restored_cfg_dict["metadata"]["name"] == project_name # original_metadata.get("name")
+        assert restored_cfg_dict["metadata"]["name"] == project_name  # original_metadata.get("name")
         assert restored_cfg_dict["metadata"]["description"] == original_metadata.get("description")
         assert restored_cfg_dict["metadata"]["version"] == original_metadata.get("version")

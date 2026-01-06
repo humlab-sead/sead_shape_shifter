@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from specifications.base import SpecificationIssue
 from src.specifications.project import (
     CircularDependencySpecification,
     CompositeProjectSpecification,
@@ -318,7 +319,7 @@ class TestCompositeProjectSpecification:
             "entities": {
                 "entity1": {"data_source": "missing_db"},  # Missing data source
                 "entity2": {"depends_on": ["entity1"]},
-                "entity1": {"depends_on": ["entity2"]},  # Circular dependency
+                "entity3": {"depends_on": ["entity4"]},  # Circular dependency
             }
         }
 
@@ -381,7 +382,6 @@ class TestCompositeProjectSpecification:
         spec.is_satisfied_by()
 
         # Manually add a warning for testing
-        from src.specifications.base import SpecificationIssue
 
         spec.warnings.append(SpecificationIssue(severity="warning", message="Test warning"))
 
@@ -392,7 +392,6 @@ class TestCompositeProjectSpecification:
 
     def test_get_report_with_both(self):
         """Test report generation with both errors and warnings."""
-        from src.specifications.base import SpecificationIssue
 
         project_cfg = {"entities": {}}
         spec = CompositeProjectSpecification(project_cfg)
@@ -409,7 +408,6 @@ class TestCompositeProjectSpecification:
 
     def test_multiple_errors_numbered(self):
         """Test that multiple errors are numbered in report."""
-        from src.specifications.base import SpecificationIssue
 
         project_cfg = {"entities": {}}
         spec = CompositeProjectSpecification(project_cfg)
