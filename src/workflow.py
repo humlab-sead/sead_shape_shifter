@@ -77,12 +77,18 @@ async def workflow(
     #         click.echo(f"  - {name}: {len(table)} rows")
 
 
-def validate_project(config: ShapeShiftProject) -> bool:
-    specification = CompositeProjectSpecification()
-    is_satisfied: bool = specification.is_satisfied_by(config.cfg)
-    if specification.has_errors:
+def validate_project(project: str | ShapeShiftProject) -> bool:
+    if isinstance(project, str):
+        if not Path(project).exists():
+            raise FileNotFoundError(f"Project file not found: {project}")
+
+        project = ShapeShiftProject.from_file(project, env_prefix="SEAD_NORMALIZER", env_file=".env")
+
+    specification = CompositeProjectSpecification(project.cfg)
+    is_satisfied: bool = specification.is_satisfied_by()
+    if specification.has_errors():
         logger.error(f"Configuration validation failed with errors:\n{specification.get_report()}")
-    elif specification.has_warnings:
+    elif specification.has_warnings():
         logger.warning(f"Configuration validation completed with warnings:\n{specification.get_report()}")
     else:
         logger.info("Configuration validation passed successfully.")

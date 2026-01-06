@@ -32,8 +32,6 @@ class ValidationService:
 
         # Import after path is set
 
-        self.validator = CompositeProjectSpecification()
-
     async def validate_project_data(self, project_name: str, entity_names: list[str] | None = None) -> ValidationResult:
         """
         Run data-aware validation on project.
@@ -71,7 +69,7 @@ class ValidationService:
 
         return result
 
-    def validate_project(self, config_data: dict[str, Any]) -> ValidationResult:
+    def validate_project(self, project_cfg: dict[str, Any]) -> ValidationResult:
         """
         Validate project using CompositeConfigSpecification.
 
@@ -83,21 +81,22 @@ class ValidationService:
         """
         logger.debug("Validating project")
 
-        is_valid: bool = self.validator.is_satisfied_by(config_data)
+        specification = CompositeProjectSpecification(project_cfg)
+        is_valid: bool = specification.is_satisfied_by()
 
         result = ValidationResult(
             is_valid=is_valid,
-            errors=[self._map_issue(error) for error in self.validator.errors],
-            warnings=[self._map_issue(warning) for warning in self.validator.warnings],
-            error_count=len(self.validator.errors),
-            warning_count=len(self.validator.warnings),
+            errors=[self._map_issue(error) for error in specification.errors],
+            warnings=[self._map_issue(warning) for warning in specification.warnings],
+            error_count=len(specification.errors),
+            warning_count=len(specification.warnings),
         )
 
         if is_valid:
             logger.info("Configuration validation passed")
         else:
-            error_count = len(self.validator.errors)
-            warning_count = len(self.validator.warnings)
+            error_count = len(specification.errors)
+            warning_count = len(specification.warnings)
             parts = []
             if error_count > 0:
                 parts.append(f"{error_count} error(s)")
