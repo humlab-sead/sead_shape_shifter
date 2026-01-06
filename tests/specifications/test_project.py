@@ -265,6 +265,7 @@ class TestCompositeProjectSpecification:
     def valid_project_cfg(self):
         """Valid project configuration."""
         return {
+            "metadata": {"type": "shapeshifter-project"},
             "entities": {
                 "entity1": {
                     "type": "sql",
