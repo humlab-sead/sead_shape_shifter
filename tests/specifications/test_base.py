@@ -3,7 +3,6 @@
 import pytest
 
 # Import to register validators
-import src.specifications.fields  # noqa: F401
 from src.specifications.base import (
     FIELD_VALIDATORS,
     FieldValidator,
@@ -11,6 +10,7 @@ from src.specifications.base import (
     ProjectSpecification,
     SpecificationIssue,
 )
+from src.utility import dotget
 
 
 class TestSpecificationIssue:
@@ -96,8 +96,8 @@ class TestProjectSpecification:
         spec = ConcreteSpecification(project_cfg)
 
         assert spec.project_cfg == project_cfg
-        assert spec.errors == []
-        assert spec.warnings == []
+        assert not spec.errors
+        assert not spec.warnings
 
     def test_clear(self, project_cfg):
         """Test clearing errors and warnings."""
@@ -231,7 +231,6 @@ class ConcreteFieldValidator(FieldValidator):
 
     def rule_predicate(self, target_cfg: dict, entity_name: str, field: str, **kwargs) -> bool:
         """Check if field value equals 'valid'. Returns True if valid (no error), False if invalid."""
-        from src.utility import dotget
 
         value = dotget(target_cfg, field)
         # Return False when value != 'valid' (which means rule failed, so rule_fail will be called)

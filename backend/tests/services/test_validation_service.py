@@ -66,7 +66,7 @@ class TestValidationServiceBasic:
                         }
                     ],
                 },
-            }
+            },
         }
         result = validation_service.validate_project(config)
 
@@ -85,6 +85,7 @@ class TestValidationServiceErrors:
                 "sample": {
                     "type": "data",
                     "keys": ["sample_id"],
+                    "columns": [],
                     "foreign_keys": [
                         {
                             "entity": "nonexistent",
@@ -94,7 +95,7 @@ class TestValidationServiceErrors:
                         }
                     ],
                 }
-            }
+            },
         }
         result = validation_service.validate_project(config)
 
@@ -110,9 +111,9 @@ class TestValidationServiceErrors:
         config = {
             "metadata": {"type": "shapeshifter-project", "name": "test"},
             "entities": {
-                "entity_a": {"type": "data", "keys": ["id"], "depends_on": ["entity_b"]},
-                "entity_b": {"type": "data", "keys": ["id"], "depends_on": ["entity_a"]},
-            }
+                "entity_a": {"type": "data", "columns": [], "keys": ["id"], "depends_on": ["entity_b"]},
+                "entity_b": {"type": "data", "columns": [], "keys": ["id"], "depends_on": ["entity_a"]},
+            },
         }
         result = validation_service.validate_project(config)
 
@@ -129,7 +130,7 @@ class TestValidationServiceErrors:
                     "type": "data"
                     # Missing 'keys' field
                 }
-            }
+            },
         }
         result = validation_service.validate_project(config)
 
@@ -155,7 +156,7 @@ class TestValidationServiceErrors:
                         }
                     ],
                 },
-            }
+            },
         }
         result = validation_service.validate_project(config)
 
@@ -227,7 +228,7 @@ class TestValidationServiceErrorParsing:
                     "keys": ["sample_id"],
                     "foreign_keys": [{"entity": "missing", "local_keys": ["x"], "remote_keys": ["y"]}],
                 }
-            }
+            },
         }
 
         result = validation_service.validate_project(config)
@@ -245,7 +246,7 @@ class TestValidationServiceErrorParsing:
                     "keys": ["sample_id"],
                     "foreign_keys": [{"entity": "missing", "local_keys": ["x"], "remote_keys": ["y"]}],
                 }
-            }
+            },
         }
 
         result = validation_service.validate_project(config)

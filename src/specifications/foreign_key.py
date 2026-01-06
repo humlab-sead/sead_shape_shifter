@@ -1,5 +1,3 @@
-from typing import Any
-
 import pandas as pd
 
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig

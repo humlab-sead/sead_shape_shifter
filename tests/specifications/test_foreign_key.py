@@ -31,7 +31,7 @@ class TestForeignKeyConfigSpecification:
         def get_table(entity_name):
             if entity_name == "local_entity":
                 return local_table
-            elif entity_name == "remote_entity":
+            if entity_name == "remote_entity":
                 return remote_table
             return None
 
@@ -199,7 +199,7 @@ class TestForeignKeyDataSpecification:
         def get_table(entity_name):
             if entity_name == "local_entity":
                 return local_table
-            elif entity_name == "remote_entity":
+            if entity_name == "remote_entity":
                 return remote_table
             return None
 

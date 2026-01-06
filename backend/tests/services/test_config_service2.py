@@ -34,7 +34,7 @@ class TestProjectService:
     def mock_metadata(self) -> dict[str, Any]:
         """Create mock ProjectMetadata."""
         return {
-            "type": "shapeshifter-project", 
+            "type": "shapeshifter-project",
             "name": "test",
             "description": "Test configuration",
             "version": "1.0.0",
@@ -71,7 +71,6 @@ class TestProjectService:
                 }
             },
             "options": {},
-            "metadata": mock_metadata,
         }
 
     @pytest.fixture
