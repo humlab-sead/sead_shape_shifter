@@ -145,8 +145,8 @@ class ExecuteService:
             Tuple of (validation_passed, list_of_error_messages)
         """
         try:
-            specification = CompositeProjectSpecification()
-            is_valid: bool = specification.is_satisfied_by(project.cfg)
+            specification = CompositeProjectSpecification(project.cfg)
+            is_valid: bool = specification.is_satisfied_by()
 
             if not is_valid:
                 error_messages = []
