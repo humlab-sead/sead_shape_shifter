@@ -14,8 +14,10 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
         """Check that fields are for the entity."""
         self.clear()
 
-        self.check_fields(entity_name, ["columns", "keys"], "exists/E")
-        self.check_fields(entity_name, ["columns", "keys"], "string_list/E")
+        for field in ["keys", "columns"]:
+            self.check_fields(entity_name, [field], "exists/E")
+            if self.field_exists(f"entities.{entity_name}.{field}"):
+                self.check_fields(entity_name, [field], "is_string_list/E")
 
         return not self.has_errors()
 
@@ -40,22 +42,36 @@ class FixedDataSpecification(ProjectSpecification):
         if entity_cfg.get("type") != "fixed":
             return True
 
-        self.check_fields(entity_name, ["values"], "is_not_empty/E", message="Fixed entity requires 'values' field")
-        self.check_fields(entity_name, ["columns"], "is_not_empty/E,is_string_list/E", message="Fixed entity requires 'columns' field")
+        self.check_fields(entity_name, ["values"], "not_empty/E", message="Fixed entity requires 'values' field")
+        self.check_fields(entity_name, ["columns"], "not_empty/E,is_string_list/E", message="Fixed entity requires 'columns' field")
 
         values = entity_cfg.get("values")
         columns = entity_cfg.get("columns", [])
 
         if isinstance(values, list) and isinstance(columns, list):
 
-            for idx, value_row in enumerate(values):
-                if isinstance(value_row, list):
-                    if len(value_row) != len(columns):
-                        self.add_error(
-                            f"Entity '{entity_name}': column/row length mismatch at row {idx + 1}", entity=entity_name, field="values"
-                        )
-                else:
-                    self.add_warning(f"Entity '{entity_name}': value row {idx + 1} is not a list", entity=entity_name, field="values")
+            is_primitive_list = all(not isinstance(row, (list, dict)) for row in values)
+            if is_primitive_list:
+                if len(columns) != 1:
+                    self.add_error(
+                        f"Entity '{entity_name}': 'values' appear to be a single-column list but 'columns' has length {len(columns)}",
+                        entity=entity_name,
+                        field="values",
+                    )
+                # self.add_warning(
+                #     f"Entity '{entity_name}': 'values' appear to be a single-column list; consider wrapping each value in a list",
+                #     entity=entity_name,
+                #     field="values",
+                # )
+            else:
+                for idx, value_row in enumerate(values):
+                    if isinstance(value_row, list):
+                        if len(value_row) != len(columns):
+                            self.add_error(
+                                f"Entity '{entity_name}': column/row length mismatch at row {idx + 1}", entity=entity_name, field="values"
+                            )
+                    else:
+                        self.add_warning(f"Entity '{entity_name}': value row {idx + 1} is not a list", entity=entity_name, field="values")
 
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
 
@@ -69,7 +85,6 @@ class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
         """Check that fields are for the SQL entity."""
         super().is_satisfied_by(entity_name=entity_name, **kwargs)
         self.check_fields(entity_name, ["data_source", "query"], "not_empty_string/E")
-        self.check_fields(entity_name, ["data_source", "query"], "is_empty/W")
         return not self.has_errors()
 
 
@@ -102,8 +117,13 @@ class UnnestSpecification(ProjectSpecification):
         """Check that entity's unnest setups are valid."""
         self.clear()
 
-        self.check_fields(entity_name, ["unnest.value_vars/E", "unnest.var_name/E", "unnest.value_name/E", "unnest.id_vars/W"], "exists/E")
-        self.check_fields(entity_name, ["unnest.value_vars"], "string_list/E")
+        unnest_cfgs = self.get_entity_cfg(entity_name).get("unnest", []) or []
+        if not unnest_cfgs:
+            return True
+        
+        self.check_fields(entity_name, ["unnest.value_vars", "unnest.var_name", "unnest.value_name"], "exists/E")
+        self.check_fields(entity_name, ["unnest.id_vars"], "exists/W")
+        self.check_fields(entity_name, ["unnest.value_vars"], "is_string_list/E")
         self.check_fields(entity_name, ["unnest.var_name", "unnest.value_name"], "not_empty_string/E")
 
         return not self.has_errors()
@@ -126,7 +146,7 @@ class DropDuplicatesSpecification(ProjectSpecification):
         self.check_fields(entity_name, ["drop_duplicates"], "of_type/E", expected_types=(bool, str, list))
 
         if isinstance(drop_dup, list):
-            self.check_fields(entity_name, ["drop_duplicates"], "string_list/E")
+            self.check_fields(entity_name, ["drop_duplicates"], "is_string_list/E")
         return not self.has_errors()
 
 
@@ -145,7 +165,7 @@ class ForeignKeySpecification(ProjectSpecification):
             fk_id: str = f"Entity '{entity_name}', foreign key #{idx + 1}"
 
             self.check_fields(entity_name, ["entity", "local_keys", "remote_keys"], "exists/E", target_cfg=fk, message=fk_id)
-            self.check_fields(entity_name, ["local_keys", "remote_keys"], "string_list/E", target_cfg=fk, message=fk_id)
+            self.check_fields(entity_name, ["local_keys", "remote_keys"], "is_string_list/E", target_cfg=fk, message=fk_id)
             self.same_number_of_join_keys(entity_name, fk, fk_id)
 
             if fk.get("extra_columns") is not None:
@@ -273,10 +293,10 @@ class DependsOnSpecification(ProjectSpecification):
 
         entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
 
-        self.check_fields(entity_name, ["depends_on"], "exists/W,string_list/W")
+        self.check_fields(entity_name, ["depends_on"], "exists/W,is_string_list/W")
         if isinstance(entity_cfg.get("depends_on"), list):
             for dep in entity_cfg.get("depends_on", []):
-                if not self.exists(dep):
+                if not self.entity_exists(dep):
                     self.add_error(f"Entity '{entity_name}': depends on non-existent entity '{dep}'", entity=entity_name, depends_on=dep)
 
         return not self.has_errors()

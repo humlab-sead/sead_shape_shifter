@@ -1,7 +1,7 @@
 """Specifications for validating fields in entity configurations."""
 
 from typing import Any
-
+from types import NoneType
 from src.utility import dotexists, dotget
 
 from .base import FIELD_VALIDATORS, FieldValidator
@@ -17,7 +17,7 @@ class IsEmptyFieldValidator(FieldValidator):
     """
 
     def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
-        return dotget(target_cfg, field) not in (None, "", [], {})
+        return dotget(target_cfg, field) in (None, "", [], {})
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         self.rule_handler(
@@ -43,13 +43,16 @@ class FieldExistsValidator(FieldValidator):
         )
 
 
-@FIELD_VALIDATORS.register(key="string_list")
+@FIELD_VALIDATORS.register(key="is_string_list")
 class FieldIsStringListValidator(FieldValidator):
     """Validator to check if a field's value is a list of strings."""
 
     def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
         value: list[str] | None = dotget(target_cfg, field)
-        return not isinstance(value, list) or not all(isinstance(item, str) for item in value)
+        if isinstance(value, str) and value.startswith("@value"):
+            # Special case for value references if project_cfg is unresolved
+            return True
+        return isinstance(value, list) and all(isinstance(item, str) for item in value)
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         self.rule_handler(
@@ -65,7 +68,7 @@ class FieldIsNotEmptyStringValidator(FieldValidator):
 
     def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
         value: Any = dotget(target_cfg, field)
-        return not isinstance(value, str) or not value.strip()
+        return isinstance(value, str) and bool(value.strip())
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         self.rule_handler(
@@ -85,7 +88,7 @@ class FieldIsNonEmptyValidator(FieldValidator):
 
     def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
         value: Any = dotget(target_cfg, field)
-        return not bool(value)
+        return bool(value)
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         self.rule_handler(
@@ -105,8 +108,8 @@ class FieldTypeValidator(FieldValidator):
 
     def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
         value: Any = dotget(target_cfg, field)
-        expected_types: tuple[type, ...] = kwargs.get("expected_types", ())
-        return not isinstance(value, expected_types)
+        expected_types = tuple(NoneType if t is None else t for t in kwargs.get("expected_types", ()))
+        return isinstance(value, expected_types)
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         message: str = kwargs.get("message", "")
@@ -124,7 +127,8 @@ class IsExistingEntityValidator(FieldValidator):
     """Validator to check that a field is an existing entity."""
 
     def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
-        return field in self.project_cfg.get("entities", {})
+        value = dotget(target_cfg, field) or ""
+        return value in self.project_cfg.get("entities", {})
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         self.rule_handler(
@@ -140,7 +144,7 @@ class EndsWithIdValidator(FieldValidator):
 
     def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
         value: str = dotget(target_cfg, field)
-        return not (isinstance(value, str) and value.endswith("_id"))
+        return isinstance(value, str) and value.endswith("_id")
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         self.rule_handler(
@@ -159,7 +163,7 @@ class IsOfCategoricalValuesValidator(FieldValidator):
         categories: list[str] = kwargs.get("categories", [])
         if not isinstance(value, str):
             return True
-        return value not in categories
+        return value in categories
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         self.rule_handler(

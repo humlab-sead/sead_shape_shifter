@@ -27,10 +27,10 @@ def reset_validation_singleton():
 class TestValidationServiceBasic:
     """Tests for basic validation functionality."""
 
-    def test_validate_empty_configuration(self, validation_service):
+    def test_validate_empty_configuration(self, validation_service: ValidationService):
         """Test validating empty configuration."""
         config = {}
-        result = validation_service.validate_project(config)
+        result: validation_service_module.ValidationResult = validation_service.validate_project(config)
 
         assert result.is_valid is False
         assert result.error_count > 0

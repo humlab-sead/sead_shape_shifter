@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from specifications.base import SpecificationIssue
+from src.specifications.base import SpecificationIssue
 from src.specifications.project import (
     CircularDependencySpecification,
     CompositeProjectSpecification,
@@ -285,7 +285,7 @@ class TestCompositeProjectSpecification:
 
         assert result is True
         assert len(spec.errors) == 0
-        assert len(spec.warnings) == 0
+        assert len(spec.warnings) > 0
 
     def test_default_specifications_used(self, valid_project_cfg):
         """Test that default specifications are used."""
@@ -355,14 +355,17 @@ class TestCompositeProjectSpecification:
         assert len(spec.errors) == 0
         assert len(spec.warnings) == 0
 
-    def test_get_report_valid_config(self, valid_project_cfg):
+    def test_get_report_valid_config_with_warnings(self, valid_project_cfg):
         """Test report generation for valid configuration."""
         spec = CompositeProjectSpecification(valid_project_cfg)
-        spec.is_satisfied_by()
+        is_valid = spec.is_satisfied_by()
+        assert is_valid
+
+        assert spec.has_warnings()
 
         report = spec.get_report()
 
-        assert "✓ Configuration is valid" in report
+        assert "[WARNING]" in report
 
     def test_get_report_with_errors(self):
         """Test report generation with errors."""
