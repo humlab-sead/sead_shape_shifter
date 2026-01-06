@@ -2,9 +2,18 @@
 
 from typing import Any
 
-from src.utility import dotget
+from src.utility import Registry, dotget
 
 from .base import ProjectSpecification
+
+
+class EntitySpecificationRegistry(Registry[type[ProjectSpecification]]):
+    """Registry for field validators."""
+
+    items: dict[str, type[ProjectSpecification]] = {}
+
+
+ENTITY_SPECIFICATION = EntitySpecificationRegistry()
 
 
 class EntityFieldsBaseSpecification(ProjectSpecification):
@@ -88,6 +97,7 @@ class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="entity_fields")
 class EntityFieldsSpecification(ProjectSpecification):
     """Validates that all required fields are present in all entities."""
 
@@ -110,6 +120,7 @@ class EntityFieldsSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="unnest")
 class UnnestSpecification(ProjectSpecification):
     """Validates unnest setups."""
 
@@ -129,6 +140,7 @@ class UnnestSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="drop_duplicates")
 class DropDuplicatesSpecification(ProjectSpecification):
     """Validates drop_duplicates configurations."""
 
@@ -150,6 +162,7 @@ class DropDuplicatesSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="foreign_keys")
 class ForeignKeySpecification(ProjectSpecification):
     """Validates foreign key setups."""
 
@@ -185,7 +198,7 @@ class ForeignKeySpecification(ProjectSpecification):
                     target_cfg=fk,
                     message=f"{fk_id}: 'cross' join should not specify local_keys or remote_keys",
                 )
-    
+
             self.same_number_of_join_keys(entity_name, fk, fk_id)
 
             if fk.get("extra_columns") is not None:
@@ -210,6 +223,7 @@ class ForeignKeySpecification(ProjectSpecification):
                 )
 
 
+@ENTITY_SPECIFICATION.register(key="surrogate_id")
 class SurrogateIdSpecification(ProjectSpecification):
     """Validates surrogate ID configurations."""
 
@@ -228,6 +242,7 @@ class SurrogateIdSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="append")
 class AppendSpecification(ProjectSpecification):
     """Validates append configuration settings."""
 
@@ -304,6 +319,7 @@ class AppendSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="depends_on")
 class DependsOnSpecification(ProjectSpecification):
     """Validates depends_on configurations."""
 
@@ -326,6 +342,7 @@ class DependsOnSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="entity_references_exist")
 class EntityReferencesExistSpecification(ProjectSpecification):
     """Validates that all referenced entities exist in the configuration.
     Note: The checks in this specification are most likely redundant with other specifications.
@@ -370,7 +387,8 @@ class EntitySpecification(ProjectSpecification):
     """Validates that entities are properly configured.
 
     Composite specification that runs all entity-level validations.
-    To extend with custom validators, override get_specifications().
+    To extend with custom validators, override get_specifications()
+    or add new specifications to the ENTITY_SPECIFICATION registry.
     """
 
     def get_specifications(self) -> list[ProjectSpecification]:
@@ -382,15 +400,7 @@ class EntitySpecification(ProjectSpecification):
             List of specification instances to execute
         """
         return [
-            EntityFieldsSpecification(self.project_cfg),
-            UnnestSpecification(self.project_cfg),
-            DropDuplicatesSpecification(self.project_cfg),
-            FixedDataSpecification(self.project_cfg),
-            ForeignKeySpecification(self.project_cfg),
-            SurrogateIdSpecification(self.project_cfg),
-            AppendSpecification(self.project_cfg),
-            DependsOnSpecification(self.project_cfg),
-            EntityReferencesExistSpecification(self.project_cfg),
+            spec_cls(self.project_cfg) for spec_cls in ENTITY_SPECIFICATION.items.values()
         ]
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
