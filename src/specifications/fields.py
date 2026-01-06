@@ -1,7 +1,8 @@
 """Specifications for validating fields in entity configurations."""
 
-from typing import Any
 from types import NoneType
+from typing import Any
+
 from src.utility import dotexists, dotget
 
 from .base import FIELD_VALIDATORS, FieldValidator
