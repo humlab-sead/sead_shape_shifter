@@ -266,22 +266,14 @@ class TestConfigurationsValidate:
         """Test validating valid configuration."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        
+
         # Create a fully valid configuration with all required fields
         valid_entities = {
-            "sample": {
-                "type": "data",
-                "keys": ["sample_id"],
-                "columns": ["name", "value"],
-                "depends_on": []  # Required field
-            }
+            "sample": {"type": "data", "keys": ["sample_id"], "columns": ["name", "value"], "depends_on": []}  # Required field
         }
-        
-        payload = {
-            "name": "test_project",
-            "entities": valid_entities
-        }
-        
+
+        payload = {"name": "test_project", "entities": valid_entities}
+
         # Create config
         client.post("/api/v1/projects", json=payload)
 

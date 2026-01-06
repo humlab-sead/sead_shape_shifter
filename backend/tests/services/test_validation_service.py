@@ -174,9 +174,7 @@ class TestValidationServiceEntity:
         """Test validating single entity."""
         entity_data = {"type": "data", "keys": ["sample_id"], "columns": ["name", "value"]}
         project = Project(
-            metadata=ProjectMetadata(type="shapeshifter-project", name="test", entity_count=1),
-            entities={"sample": entity_data},
-            options={}
+            metadata=ProjectMetadata(type="shapeshifter-project", name="test", entity_count=1), entities={"sample": entity_data}, options={}
         )
 
         result = validation_service.validate_entity(project, "sample")
@@ -191,9 +189,7 @@ class TestValidationServiceEntity:
             # Missing required 'keys' field
         }
         project: Project = Project(
-            metadata=ProjectMetadata(type="shapeshifter-project", name="test", entity_count=1),
-            entities={"sample": entity_data},
-            options={}
+            metadata=ProjectMetadata(type="shapeshifter-project", name="test", entity_count=1), entities={"sample": entity_data}, options={}
         )
 
         result = validation_service.validate_entity(project, "sample")

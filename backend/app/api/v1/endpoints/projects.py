@@ -221,7 +221,7 @@ async def validate_project(name: str) -> ValidationResult:
     config_data: dict[str, Any] = {
         "metadata": project.metadata.model_dump() if project.metadata else {},
         "entities": project.entities,
-        "options": project.options
+        "options": project.options,
     }
     result: ValidationResult = validation_service.validate_project(config_data)
     logger.info(f"Validated project '{name}': {'valid' if result.is_valid else 'invalid'}")

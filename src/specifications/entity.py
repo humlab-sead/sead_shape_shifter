@@ -399,9 +399,7 @@ class EntitySpecification(ProjectSpecification):
         Returns:
             List of specification instances to execute
         """
-        return [
-            spec_cls(self.project_cfg) for spec_cls in ENTITY_SPECIFICATION.items.values()
-        ]
+        return [spec_cls(self.project_cfg) for spec_cls in ENTITY_SPECIFICATION.items.values()]
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that entities are properly configured."""
