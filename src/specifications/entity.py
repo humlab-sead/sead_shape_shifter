@@ -293,7 +293,11 @@ class DependsOnSpecification(ProjectSpecification):
 
         entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
 
-        self.check_fields(entity_name, ["depends_on"], "exists/W,is_string_list/W")
+        if not entity_cfg.get("depends_on"):
+            return True
+        
+        self.check_fields(entity_name, ["depends_on"], "is_string_list/W")
+        
         if isinstance(entity_cfg.get("depends_on"), list):
             for dep in entity_cfg.get("depends_on", []):
                 if not self.entity_exists(dep):
