@@ -324,16 +324,16 @@ class EntityReferencesExistSpecification(ProjectSpecification):
 
 class EntitySpecification(ProjectSpecification):
     """Validates that entities are properly configured.
-    
+
     Composite specification that runs all entity-level validations.
     To extend with custom validators, override get_specifications().
     """
 
     def get_specifications(self) -> list[ProjectSpecification]:
         """Get the list of specifications to run for entity validation.
-        
+
         Override this method to customize or extend entity validation rules.
-        
+
         Returns:
             List of specification instances to execute
         """

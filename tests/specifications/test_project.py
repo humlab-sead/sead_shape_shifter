@@ -1,6 +1,7 @@
 """Tests for project-level specifications."""
 
 from unittest.mock import Mock
+
 import pytest
 
 from src.specifications.project import (
@@ -177,9 +178,7 @@ class TestDataSourceExistsSpecification:
     def test_multiple_append_configs(self):
         """Test validation with multiple append configurations."""
         project_cfg = {
-            "entities": {
-                "entity1": {"append": [{"type": "sql", "data_source": "db1"}, {"type": "sql", "data_source": "db2"}]}
-            },
+            "entities": {"entity1": {"append": [{"type": "sql", "data_source": "db1"}, {"type": "sql", "data_source": "db2"}]}},
             "options": {"data_sources": {"db1": {}, "db2": {}}},
         }
 

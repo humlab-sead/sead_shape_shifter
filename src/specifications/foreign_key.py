@@ -31,16 +31,14 @@ class ForeignKeyConfigSpecification:
         if fk_cfg.how == "cross":
             if fk_cfg.local_keys or fk_cfg.remote_keys:
                 self.error = (
-                    f"{fk_cfg.local_entity} -> {fk_cfg.remote_entity}: "
-                    f"'cross' join should not specify local_keys or remote_keys"
+                    f"{fk_cfg.local_entity} -> {fk_cfg.remote_entity}: " f"'cross' join should not specify local_keys or remote_keys"
                 )
                 return False
             return True
 
         if len(fk_cfg.local_keys) == 0 or len(fk_cfg.remote_keys) == 0:
             self.error = (
-                f"{fk_cfg.local_entity} -> {fk_cfg.remote_entity}: "
-                f"local_keys and remote_keys must be specified for non-cross joins"
+                f"{fk_cfg.local_entity} -> {fk_cfg.remote_entity}: " f"local_keys and remote_keys must be specified for non-cross joins"
             )
             return False
 

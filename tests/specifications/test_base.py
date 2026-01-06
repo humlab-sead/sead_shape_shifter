@@ -2,6 +2,8 @@
 
 import pytest
 
+# Import to register validators
+import src.specifications.fields  # noqa: F401
 from src.specifications.base import (
     FIELD_VALIDATORS,
     FieldValidator,
@@ -9,9 +11,6 @@ from src.specifications.base import (
     ProjectSpecification,
     SpecificationIssue,
 )
-
-# Import to register validators
-import src.specifications.fields  # noqa: F401
 
 
 class TestSpecificationIssue:
@@ -48,9 +47,7 @@ class TestSpecificationIssue:
 
     def test_string_representation_full(self):
         """Test string representation with all context."""
-        issue = SpecificationIssue(
-            severity="warning", message="Test warning", entity="sample", field="columns", column="site_id"
-        )
+        issue = SpecificationIssue(severity="warning", message="Test warning", entity="sample", field="columns", column="site_id")
         result = str(issue)
 
         assert "[WARNING]" in result

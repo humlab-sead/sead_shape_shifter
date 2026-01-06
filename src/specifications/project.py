@@ -123,7 +123,7 @@ class EntitiesSpecification(ProjectSpecification):
 
 class CompositeProjectSpecification(ProjectSpecification):
     """Composite specification that runs multiple project-level validation specifications.
-    
+
     This is the main entry point for validating entire project configurations.
     """
 
@@ -133,9 +133,9 @@ class CompositeProjectSpecification(ProjectSpecification):
 
     def get_default_specifications(self) -> list[ProjectSpecification]:
         """Get the default set of project-level specifications.
-        
+
         Override this method to customize the validation pipeline.
-        
+
         Returns:
             List of specification instances to execute
         """
