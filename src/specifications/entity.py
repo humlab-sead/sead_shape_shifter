@@ -166,6 +166,26 @@ class ForeignKeySpecification(ProjectSpecification):
 
             self.check_fields(entity_name, ["entity", "local_keys", "remote_keys"], "exists/E", target_cfg=fk, message=fk_id)
             self.check_fields(entity_name, ["local_keys", "remote_keys"], "is_string_list/E", target_cfg=fk, message=fk_id)
+
+            if fk.get("how") is not None:
+                self.check_fields(
+                    entity_name,
+                    ["how"],
+                    "is_of_categorical_values/E",
+                    categories=["inner", "left", "right", "outer", "cross"],
+                    target_cfg=fk,
+                    message=fk_id,
+                )
+
+            if fk.get("how") == "cross":
+                self.check_fields(
+                    entity_name,
+                    ["local_keys", "remote_keys"],
+                    "is_empty/E",
+                    target_cfg=fk,
+                    message=f"{fk_id}: 'cross' join should not specify local_keys or remote_keys",
+                )
+    
             self.same_number_of_join_keys(entity_name, fk, fk_id)
 
             if fk.get("extra_columns") is not None:
