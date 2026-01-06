@@ -387,6 +387,7 @@ entities:
     source:
     type: fixed
     surrogate_id: "dimension_id"
+    keys: []
     columns: ["dimension_name", "dimension_abbrev", "dimension_description", "method_group_id", "unit_id", "arbodat_code"]
     values:
     - ["X/North", "X/N", "X coordinate or Northing in intrinsic units.", 17, 5, "KoordX"]
@@ -483,16 +484,17 @@ entities:
     type: sql
     surrogate_id: location_id
     keys: []
-    columns: "@value: entities.location_type.values"
+    columns: ["Ort", "Kreis", "Land", "Staat", "FlurStr"]
     query: |
       select distinct [Ort], [Kreis], [Land], [Staat], [FlurStr] from [Projekte] ;
     extra_columns:
       default_lat_dd:
       default_long_dd:
     unnest:
-      value_vars: "@value: entities.location_type.values"
+      value_vars: "@value: entities.location.columns"
       var_name: location_type
       value_name: location_name
+      id_vars: []
     foreign_keys:
     - entity: location_type
       local_keys: ["location_type"]
@@ -762,12 +764,12 @@ entities:
     type: sql
     surrogate_id: site_location_id
     keys: []
-    columns: "@value: entities.site.keys + @value: entities.location_type.values"
+    columns: "@value: entities.site.keys + @value: entities.location.columns"
     query: |
       select distinct [Fustel], [EVNr], [Ort], [Kreis], [Land], [Staat], [FlurStr] from [Projekte] ;
     unnest:
       id_vars: "@value: entities.site.keys"
-      value_vars: "@value: entities.location_type.values"
+      value_vars: "@value: entities.location.columns"
       var_name: location_type
       value_name: location_name
     foreign_keys:
@@ -804,6 +806,7 @@ entities:
     type: fixed
     surrogate_id: site_property_type_id
     surrogate_name: site_property_type
+    keys: []
     columns: ["site_property_type", "description", "arbodat_code"]
     values:
     - ["Limes", "Location relative to the Roman Limes (for Roman Imperial period sites)", "Limes"]

@@ -48,7 +48,7 @@ class FieldIsStringListValidator(FieldValidator):
     """Validator to check if a field's value is a list of strings."""
 
     def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
-        value: list[str] | None = dotget(target_cfg, field)
+        value: str | list[str] | None = dotget(target_cfg, field)
         if isinstance(value, str) and value.startswith("@value"):
             # Special case for value references if project_cfg is unresolved
             return True
