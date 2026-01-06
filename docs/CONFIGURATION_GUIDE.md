@@ -63,6 +63,13 @@ metadata:                             # metadata definitions (required)
 
 ```
 
+**Validation Rules**:
+- **metadata section**: Required (error if missing)
+- **metadata.type**: Required, must be `"shapeshifter-project"` (error if missing or incorrect)
+- **metadata.name**: Optional string
+- **metadata.description**: Optional string  
+- **metadata.default_entity**: Optional, must reference existing entity if provided
+
 ## Entity Section
 
 Each entity represents a table/dataset to be extracted and processed. Entities are processed in dependency order using topological sorting.
@@ -116,15 +123,20 @@ entities:
 
 #### `surrogate_id`
 - **Type**: `string`
-- **Required**: Yes, for entities that will be reconciled
+- **Required**: Recommended (warning if missing)
 - **Description**: Name of the surrogate primary key column to be generated. The system will create an integer ID starting from 1. This should be the same name as the primary key in the remote entity the project targets. This field is renamed to "system_id" when the final dataset is dispatched, and a new column with the same name is initalized with empty values.
 - **Example**:
   ```yaml
   surrogate_id: site_id
   ```
-- **Validation** 
-  - Missing `surrogate_id` should give a warning
-  - Missing `surrogate` should prevent reconciliation (warning in reconciliation editor)
+- **Validation Rules**:
+  - **Existence**: Warning if missing (prevents reconciliation)
+  - **Type**: Must be `string` (error if not)
+  - **Naming Convention**: Warning if doesn't end with `_id` suffix
+  - **Uniqueness**: Each entity should have a unique surrogate_id name (suggested validation)
+- **Common Issues**:
+  - Missing `surrogate_id` prevents reconciliation in editor
+  - Not following `_id` naming convention can cause confusion
   
 #### `surrogate_name`
 - **Type**: `string`
@@ -134,21 +146,34 @@ entities:
   ```yaml
   surrogate_name: contact_type
   ```
-- **Validation** 
-  - todo: check how this field is used
+- **Validation Rules**:
+  - **Type**: Must be `string` if provided
+  - **Usage**: Currently not validated but should be documented
+- **Suggested Additional Validation**:
+  - Should not conflict with existing column names
+  - Should not be the same as `surrogate_id`
 
 
 #### `keys`
 - **Type**: `list[string]`
-- **Required**: No (but recommended)
+- **Required**: Yes (field must exist, but can be empty list)
 - **Description**: Key columns that uniquely identify rows in the source data. Used for duplicate detection and foreign key relationships.
 - **Example**:
   ```yaml
   keys: ["ProjektNr", "Befu"]
   ```
-- **Validation** 
- - Missing keys field should raise an error (but can be empty)
- - If keys field is empty list, then give a warning
+- **Validation Rules**:
+  - **Existence**: Error if field is missing
+  - **Type**: Must be `list[string]` (error if not)
+  - **Empty Keys**: Warning if empty list `[]`
+  - **String Items**: Each item must be a string (error if not)
+  - **Column Existence**: Keys should exist in `columns` or be generated fields (suggested validation)
+- **Common Issues**:
+  - Empty keys prevent proper duplicate detection
+  - Keys not matching actual columns cause linking failures
+- **Suggested Additional Validation**:
+  - Warn if keys are not unique in source data
+  - Validate that all key columns are present after data extraction
 ---
 
 ### Data Source Properties
@@ -165,10 +190,20 @@ entities:
   # Use root survey data (default)
   source: null
   ```
-- **Validation** 
- - Should not have a value if `type` is `fixed` or `sql` (warn/ignored) 
- - If `fixed` then value is an entity name that must exist in project
- - If `fixed` and empty, then a `default_entity`
+- **Validation Rules**:
+  - **Type**: Must be `string` or `null`
+  - **Context-Dependent**:
+    - **When `type: fixed`**: Should be empty/null (warning if set, value ignored)
+    - **When `type: sql`**: Should be empty/null (warning if set, value ignored)
+    - **When `type: data`**: Can reference another entity name
+  - **Entity Existence**: If string, must reference an existing entity in the project (error if not)
+  - **Circular Dependencies**: Source entity must not create circular dependency chain (error)
+- **Common Issues**:
+  - Referencing non-existent entities
+  - Creating circular dependencies through source chains
+- **Suggested Additional Validation**:
+  - Warn if source entity is processed after current entity in dependency order
+  - Validate that source entity produces compatible output columns
 #### `type`
 - **Type**: `"data" | "fixed" | "sql"`
 - **Required**: No (defaults to `"data"`)
@@ -195,22 +230,62 @@ entities:
     select id, name
     from tbl_dimensions
   ```
+- **Validation Rules**:
+  - **Type**: Must be one of `"data"`, `"fixed"`, or `"sql"` if provided
+  - **Default**: Defaults to `"data"` if omitted
+  - **Context-Dependent Requirements**:
+    - **When `type: fixed`**:
+      - `values` field is required (error if missing)
+      - `values` must be non-empty (error if empty)
+      - `columns` field is required (error if missing)
+      - `source` should be empty (warning if set)
+      - `data_source` should be empty (warning if set)
+      - `query` should be empty (warning if set)
+    - **When `type: sql`**:
+      - `data_source` is required (error if missing)
+      - `query` is required (error if missing)
+      - `data_source` must exist in `options.data_sources` (error if not)
+      - `source` should be empty (warning if set)
+      - `values` should be empty (warning if set)
+    - **When `type: data`**:
+      - Can use `source` field to reference another entity
+      - Should not have `values`, `data_source`, or `query` (warning if present)
+- **Common Issues**:
+  - Missing required fields for entity type
+  - Conflicting fields (e.g., both `values` and `query`)
+- **Suggested Additional Validation**:
+  - Validate SQL query syntax for `type: sql` entities
+  - Check that fixed values structure matches columns count
 
 #### `data_source`
 - **Type**: `string`
-- **Required**: Yes when `type: sql`
+- **Required**: Yes when `type: sql`; No for other types
 - **Description**: Name of the data source connection defined in `options.data_sources`. The data source specifies database connection parameters (host, database, credentials, driver, etc.).
-- **Validation**: The referenced data source must exist in `options.data_sources`
 - **Example**:
   ```yaml
   data_source: sead  # Must be defined in options.data_sources
   ```
+- **Validation Rules**:
+  - **Existence in Options**: Must exist in `options.data_sources` configuration (error if not)
+  - **Type**: Must be a non-empty `string`
+  - **Context-Dependent**:
+    - **When `type: sql`**: Required (error if missing)
+    - **When `type: fixed`**: Should be empty (warning if set)
+    - **When `type: data`**: Should be empty (warning if set)
+  - **Append Configurations**: Also validated for each append item with `type: sql`
+- **Common Issues**:
+  - Typos in data source name
+  - Referencing data source before it's defined in options
+  - Missing data source configuration in `options.data_sources`
+- **Suggested Additional Validation**:
+  - Test database connection during validation
+  - Warn if data source credentials are missing environment variables
+  ```
 
 #### `query`
 - **Type**: `string`
-- **Required**: Yes when `type: sql`
+- **Required**: Yes when `type: sql`; No for other types
 - **Description**: SQL query string to execute against the data source. Typically uses multi-line format with `|` or `>` for readability.
-- **Validation**: Must be non-empty when `type: sql`
 - **Example**:
   ```yaml
   type: sql
@@ -220,15 +295,57 @@ entities:
     from table_name
     where condition = true
   ```
+- **Validation Rules**:
+  - **Type**: Must be a non-empty `string`
+  - **Context-Dependent**:
+    - **When `type: sql`**: Required (error if missing)
+    - **When `type: fixed`**: Should be empty (warning if set)
+    - **When `type: data`**: Should be empty (warning if set)
+  - **Non-Empty**: Must contain actual SQL text (error if empty)
+  - **Append Configurations**: Also validated for append items with `type: sql`
+- **Common Issues**:
+  - Empty query string
+  - SQL syntax errors (not detected until execution)
+  - Query column count/names not matching entity configuration
+- **Suggested Additional Validation**:
+  - Basic SQL syntax validation
+  - Dry-run query to verify column names and count
+  - Validate query doesn't contain dangerous operations (DROP, DELETE without WHERE, etc.)
 
 #### `values`
-- **Type**: `list[list[any]]`
-- **Required**: Yes when `type: fixed`
+- **Type**: `list[list[any]]` or `list[any]` (for single-column tables)
+- **Required**: Yes when `type: fixed`; No for other types
 - **Description**: 2D array of fixed values for lookup tables. Each inner list represents a row of data.
-- **Validation**: 
-  - Required when `type: fixed`
-  - Each row must have the same number of columns as defined in `columns`
-  - Number of values per row should match the number of columns
+- **Example**:
+  ```yaml
+  # Multi-column fixed values
+  values:
+    - ["value1", "desc1", 1]
+    - ["value2", "desc2", 2]
+  
+  # Single-column fixed values (automatically wrapped)
+  values: ["value1", "value2", "value3"]
+  ```
+- **Validation Rules**:
+  - **Context-Dependent**:
+    - **When `type: fixed`**: Required (error if missing), must be non-empty (error if empty)
+    - **When `type: sql`**: Should be empty (warning if set)
+    - **When `type: data`**: Should be empty (warning if set)
+  - **Type**: Must be a `list` (error if not)
+  - **Non-Empty**: Must contain at least one value/row (error if empty)
+  - **Structure Validation**:
+    - **Multi-column**: Each row must be a list with length matching `columns` count (error if mismatch)
+    - **Single-column**: If values are primitives (not lists), `columns` must have exactly 1 item (error if not)
+  - **Consistency**: All rows should have the same number of columns (error if inconsistent)
+  - **Append Configurations**: Also validated for append items with `type: fixed`
+- **Common Issues**:
+  - Column/row count mismatch
+  - Empty values list
+  - Mixed row structures (some lists, some primitives)
+  - Missing `columns` configuration
+- **Suggested Additional Validation**:
+  - Warn if values contain duplicate rows (when keys are defined)
+  - Validate data types match expected column types
 - **Example**:
   ```yaml
   type: fixed
@@ -244,7 +361,7 @@ entities:
 
 #### `columns`
 - **Type**: `list[string] | string`
-- **Required**: No (but typically needed)
+- **Required**: Recommended (error if missing for most entity types)
 - **Description**: List of columns to extract from the source. Can also reference other entity properties using `@value:` syntax.
 - **Example**:
   ```yaml
@@ -254,6 +371,25 @@ entities:
   # Reference another entity's keys
   columns: "@value: entities.site.keys"
   ```
+- **Validation Rules**:
+  - **Existence**: Error if field is missing (for most entities)
+  - **Type**: Must be `list[string]` or a `string` (for `@value:` references) (error if not)
+  - **String Items**: Each item in list must be a string (error if not)
+  - **Context-Dependent**:
+    - **When `type: fixed`**: Required (error if missing)
+    - **When `type: sql`**: Recommended (warning if missing)
+    - **When `type: data`**: Recommended (warning if missing)
+  - **Reference Resolution**: If using `@value:` syntax, the referenced path must exist (error if not)
+  - **Fixed Values**: For `type: fixed`, column count must match values row width (error if mismatch)
+- **Common Issues**:
+  - Missing columns configuration
+  - Column names not matching source data
+  - Incorrect `@value:` reference paths
+  - Mismatch between columns and values for fixed entities
+- **Suggested Additional Validation**:
+  - Warn if columns reference non-existent source columns (for data/SQL types)
+  - Validate column name uniqueness
+  - Check for reserved column names (surrogate_id, etc.)
 
 #### `extra_columns`
 - **Type**: `dict[string, string | Any]`
@@ -268,6 +404,21 @@ entities:
     feature_type_name: "BefuTyp"
     # Create constant null column
     feature_type_description: null
+    # Create constant value column
+    dataset_type_id: 4
+  ```
+- **Validation Rules**:
+  - **Type**: Must be `dict` if provided (error if not)
+  - **Keys**: Must be valid Python identifiers / column names (suggested validation)
+  - **Values**: Can be any type (string for column reference, or literal value)
+- **Common Issues**:
+  - Duplicate column names (conflicts with existing columns)
+  - Referenced source columns don't exist
+  - Invalid column name characters
+- **Suggested Additional Validation**:
+  - Error if extra_column name conflicts with existing columns or keys
+  - Warn if referenced source column doesn't exist
+  - Validate column names follow naming conventions
     # Create constant value column
     default_status: "active"
   ```
@@ -295,6 +446,17 @@ entities:
   # Reference another entity's keys
   drop_duplicates: "@value: entities.site.keys"
   ```
+- **Validation Rules**:
+  - **Type**: Must be `bool`, `str`, or `list[string]` (error if not)
+  - **List Items**: If list, all items must be strings (error if not)
+  - **Column Existence**: If list, columns should exist in entity's columns/keys (suggested validation)
+  - **Reference Resolution**: If `@value:` string, referenced path must exist
+- **Common Issues**:
+  - Columns in list don't exist in entity
+  - Invalid `@value:` reference
+- **Suggested Additional Validation**:
+  - Warn if drop_duplicates columns don't include all key columns
+  - Validate referenced columns exist before runtime
 
 #### `drop_empty_rows`
 - **Type**: `bool | list[string] | dict[string, list[any]]`
@@ -318,6 +480,17 @@ entities:
     abundance_property_value: [null, ""]
     status: [null, "", "unknown", "N/A"]
   ```
+- **Validation Rules**:
+  - **Type**: Must be `bool`, `list[string]`, or `dict` (error if not)
+  - **List Items**: If list, all items must be strings
+  - **Dict Structure**: If dict, keys must be column names, values must be lists
+  - **Column Existence**: Columns should exist in entity's data (suggested validation)
+- **Common Issues**:
+  - Specified columns don't exist in entity
+  - Dictionary format with non-list values
+- **Suggested Additional Validation**:
+  - Warn if specified columns don't exist
+  - Validate empty value types match column data types
 
 #### `check_column_names`
 - **Type**: `bool`
@@ -332,8 +505,19 @@ entities:
     type: sql
     columns: ["contact_name", "contact_type"]
     check_column_names: false  # SQL returns different column names
-    values: |\n      sql: \n      select [BotBest], \"BotBest\" from [Befunde]
+    query: |
+      select [BotBest], "BotBest" from [Befunde]
   ```
+- **Validation Rules**:
+  - **Type**: Must be `bool` if provided
+  - **Context**: Only applies to `type: sql` entities (ignored for other types)
+  - **Default Behavior**: Defaults to `true` (strict column name matching)
+- **Common Issues**:
+  - SQL query returns different column names than configured
+  - Column order mismatch when `check_column_names: false`
+- **Suggested Additional Validation**:
+  - Warn if set to `false` for non-SQL entities
+  - Validate column count matches even when names don't
 
 #### `filters`
 - **Type**: `list[dict]`
@@ -350,6 +534,23 @@ entities:
       other_column: "PCODE"        # Column in other entity (optional, defaults to same name)
       drop_duplicates: ["PCODE"]  # Optional: drop duplicates after filtering
   ```
+- **Validation Rules**:
+  - **Type**: Must be `list` if provided
+  - **Filter Items**: Each item must be a `dict` with required fields
+  - **Filter Type**: Each filter must specify a valid `type` field
+  - **exists_in Filter Requirements**:
+    - `column`: Required, must be string referencing local column
+    - `other_entity`: Required, must reference existing entity
+    - `other_column`: Optional string (defaults to same as `column`)
+- **Common Issues**:
+  - Referenced entity doesn't exist
+  - Column doesn't exist in current or other entity
+  - Filter type not supported
+- **Suggested Additional Validation**:
+  - Validate filter type is supported
+  - Check that referenced entities exist
+  - Warn if filtering removes all rows
+  - Validate column existence before runtime
 
 #### `replacements`
 - **Type**: `dict[string, dict[any, any]]`
@@ -387,6 +588,19 @@ entities:
     replacements:
       coordinate_system: "@value: replacements.site.KoordSys"
   ```
+- **Validation Rules**:
+  - **Type**: Must be `dict` if provided
+  - **Structure**: Keys must be column names (strings), values must be dicts
+  - **Mapping**: Each replacement dict maps old values to new values
+  - **Column Existence**: Column names should exist in entity (suggested validation)
+- **Common Issues**:
+  - Replacement column doesn't exist in entity
+  - Invalid dict structure
+  - Circular replacements
+- **Suggested Additional Validation**:
+  - Warn if replacement column doesn't exist
+  - Validate replacement values match column data types
+  - Check for unmapped values (suggested warning)
 - **See**: Filters section below for detailed filter documentation
 
 ---
@@ -395,7 +609,7 @@ entities:
 
 #### `depends_on`
 - **Type**: `list[string]`
-- **Required**: Yes (can be empty list)
+- **Required**: Yes (field must exist, but can be empty list)
 - **Description**: List of entity names that must be processed before this entity. Used for topological sorting to ensure correct processing order.
 - **Example**:
   ```yaml
@@ -405,6 +619,22 @@ entities:
   # No dependencies (root entity)
   depends_on: []
   ```
+- **Validation Rules**:
+  - **Existence**: Field must exist (error if missing)
+  - **Type**: Must be `list[string]` (warning if not)
+  - **Entity Existence**: Each referenced entity must exist in project (error if not)
+  - **Circular Dependencies**: Must not create circular dependency chains (error if detected)
+  - **Source Entity**: If `source` field is set, that entity is implicitly a dependency
+  - **Foreign Key Entities**: Entities referenced in foreign_keys are implicit dependencies
+- **Common Issues**:
+  - Referencing non-existent entities
+  - Creating circular dependencies
+  - Missing implicit dependencies (source, foreign keys)
+  - Incomplete dependency list
+- **Suggested Additional Validation**:
+  - Warn if explicit dependencies don't match implicit ones
+  - Validate dependency order resolves correctly
+  - Check for redundant dependencies
 
 #### `foreign_keys`
 - **Type**: `list[ForeignKeyConfig]`
@@ -441,10 +671,22 @@ foreign_keys:
   ```yaml
   entity: site
   ```
+- **Validation Rules**:
+  - **Existence**: Required field (error if missing)
+  - **Type**: Must be a non-empty `string`
+  - **Entity Exists**: Must reference an existing entity in project (error if not)
+  - **Dependency**: Remote entity should be in `depends_on` list (suggested validation)
+- **Common Issues**:
+  - Typo in entity name
+  - Referencing entity not yet defined
+  - Missing from depends_on list
+- **Suggested Additional Validation**:
+  - Error if entity creates circular dependency
+  - Warn if remote entity doesn't have surrogate_id
 
 ##### `local_keys`
 - **Type**: `list[string] | string`
-- **Required**: Yes (except for cross joins)
+- **Required**: Yes (except for cross joins where it should be empty)
 - **Description**: Column names in the local entity to match against remote keys. Can use `@value:` to reference another entity's keys.
 - **Example**:
   ```yaml
@@ -452,15 +694,48 @@ foreign_keys:
   # Or reference another entity
   local_keys: "@value: entities.site.keys"
   ```
+- **Validation Rules**:
+  - **Existence**: Required for non-cross joins (error if missing)
+  - **Type**: Must be `list[string]` or `string` (for `@value:` reference) (error if not)
+  - **Context-Dependent**:
+    - **When `how: cross`**: Should be empty/null (error if provided)
+    - **When `how` is not cross**: Required and must be non-empty (error if missing)
+  - **Key Count**: Must have same length as `remote_keys` (error if mismatch)
+  - **Column Existence**: Each key must exist in local entity's columns, keys, or unnest_columns (error if not)
+  - **Reference Resolution**: If `@value:` string, referenced path must exist
+- **Common Issues**:
+  - Missing keys for non-cross joins
+  - Providing keys for cross joins
+  - Key count mismatch with remote_keys
+  - Referencing non-existent columns
+- **Suggested Additional Validation**:
+  - Warn if keys are not in entity's key list
+  - Validate keys exist before runtime
 
 ##### `remote_keys`
 - **Type**: `list[string] | string`
-- **Required**: Yes (except for cross joins)
+- **Required**: Yes (except for cross joins where it should be empty)
 - **Description**: Column names in the remote entity to match against local keys. Must have same length as `local_keys`.
 - **Example**:
   ```yaml
   remote_keys: ["ProjektNr"]
   ```
+- **Validation Rules**:
+  - **Existence**: Required for non-cross joins (error if missing)
+  - **Type**: Must be `list[string]` or `string` (for `@value:` reference) (error if not)
+  - **Context-Dependent**:
+    - **When `how: cross`**: Should be empty/null (error if provided)
+    - **When `how` is not cross**: Required and must be non-empty (error if missing)
+  - **Key Count**: Must have same length as `local_keys` (error if mismatch)
+  - **Column Existence**: Each key must exist in remote entity's columns (error if not)
+- **Common Issues**:
+  - Missing keys for non-cross joins
+  - Providing keys for cross joins
+  - Key count mismatch with local_keys
+  - Referencing non-existent remote columns
+- **Suggested Additional Validation**:
+  - Warn if keys are not in remote entity's key list
+  - Validate keys exist in remote entity before runtime
 
 ##### `how`
 - **Type**: `"inner" | "left" | "right" | "outer" | "cross"`
@@ -475,9 +750,20 @@ foreign_keys:
   ```yaml
   how: left
   ```
+- **Validation Rules**:
+  - **Type**: Must be one of `"inner"`, `"left"`, `"right"`, `"outer"`, `"cross"`
+  - **Default**: Defaults to `"inner"` if not specified
+  - **Cross Join Logic**: When `how: cross`, local_keys and remote_keys must be empty/null
+- **Common Issues**:
+  - Invalid join type string
+  - Using keys with cross joins
+  - Not using keys with non-cross joins
+- **Suggested Additional Validation**:
+  - Warn about data loss with inner joins
+  - Suggest constraints based on join type
 
 ##### `extra_columns`
-- **Type**: `dict[string, string]`
+- **Type**: `dict[string, string]` | `list[string]` | `string`
 - **Required**: No
 - **Description**: Additional columns to bring from the remote entity. Format is `{"local_name": "remote_column_name"}`.
 - **Example**:
@@ -486,6 +772,18 @@ foreign_keys:
     taxa_name: "Taxon"
     taxa_author: "Autor"
   ```
+- **Validation Rules**:
+  - **Type**: Must be `dict`, `list`, or `string` if provided (error if not)
+  - **Column Existence**: Referenced remote columns must exist in remote entity (suggested validation)
+  - **Name Conflicts**: Local column names should not conflict with existing columns (suggested validation)
+- **Common Issues**:
+  - Referenced remote columns don't exist
+  - Local names conflict with existing columns
+  - Invalid data structure
+- **Suggested Additional Validation**:
+  - Validate remote columns exist
+  - Warn about column name conflicts
+  - Check for duplicate column mappings
 
 ##### `drop_remote_id`
 - **Type**: `bool`
@@ -495,6 +793,15 @@ foreign_keys:
   ```yaml
   drop_remote_id: true
   ```
+- **Validation Rules**:
+  - **Type**: Must be `bool` if provided
+  - **Default**: Defaults to `false`
+- **Common Issues**:
+  - Dropping ID when it's needed later
+  - Not dropping ID when only using extra_columns
+- **Suggested Additional Validation**:
+  - Warn if dropping ID that's referenced elsewhere
+  - Suggest dropping when only extra_columns are used
 
 ##### `constraints`
 - **Type**: `ForeignKeyConstraints`
@@ -1104,40 +1411,94 @@ unnest:
 #### Unnest Properties
 
 ##### `id_vars`
-- **Type**: `list[string]`
-- **Required**: No (defaults to empty list)
+- **Type**: `list[string]` | `string` (for `@value:` reference)
+- **Required**: No (defaults to empty list, but recommended)
 - **Description**: Columns to use as identifier variables (kept unchanged)
 - **Example**:
   ```yaml
   id_vars: ["ProjektNr", "Befu"]
+  
+  # Reference another entity's keys
+  id_vars: "@value: entities.sample.keys"
   ```
+- **Validation Rules**:
+  - **Type**: Must be `list[string]` or `string` (for `@value:`) (warning if not)
+  - **Column Existence**: Columns should exist in entity (suggested validation)
+  - **Reference Resolution**: If `@value:` string, referenced path must exist
+- **Common Issues**:
+  - ID columns don't exist in source data
+  - Empty id_vars causes all rows to have same identifier
+- **Suggested Additional Validation**:
+  - Warn if id_vars is empty
+  - Validate columns exist before unnesting
 
 ##### `value_vars`
-- **Type**: `list[string]`
-- **Required**: No (defaults to all non-id columns)
+- **Type**: `list[string]` | `string` (for `@value:` reference)
+- **Required**: Yes (error if missing when unnest is configured)
 - **Description**: Columns to unpivot/melt into rows
 - **Example**:
   ```yaml
   value_vars: ["ArchAusg", "ArchBear", "BotBear", "Aut", "BotBest"]
+  
+  # Reference from another config
+  value_vars: "@value: entities.contact_type.contact_types"
   ```
+- **Validation Rules**:
+  - **Existence**: Required when unnest is configured (error if missing)
+  - **Type**: Must be `list[string]` or `string` (for `@value:`) (error if not)
+  - **Non-Empty**: Must contain at least one column (error if empty)
+  - **String Items**: Each item must be a string (error if not)
+  - **Column Existence**: Columns should exist in entity (suggested validation)
+  - **No Overlap**: Should not overlap with id_vars (suggested validation)
+- **Common Issues**:
+  - Missing value_vars
+  - Value columns don't exist in source
+  - Overlap with id_vars
+- **Suggested Additional Validation**:
+  - Validate columns exist before unnesting
+  - Warn if value_vars includes id_vars columns
 
 ##### `var_name`
 - **Type**: `string`
-- **Required**: Yes
+- **Required**: Yes (error if missing when unnest is configured)
 - **Description**: Name of the new column that will contain the original column names
 - **Example**:
   ```yaml
   var_name: contact_type
   ```
+- **Validation Rules**:
+  - **Existence**: Required when unnest is configured (error if missing)
+  - **Type**: Must be a non-empty `string` (error if not)
+  - **Name Conflict**: Should not conflict with existing column names (suggested validation)
+- **Common Issues**:
+  - Missing var_name
+  - Empty string
+  - Conflicts with existing columns
+- **Suggested Additional Validation**:
+  - Validate unique column name
+  - Follow naming conventions
 
 ##### `value_name`
 - **Type**: `string`
-- **Required**: Yes
+- **Required**: Yes (error if missing when unnest is configured)
 - **Description**: Name of the new column that will contain the values
 - **Example**:
   ```yaml
   value_name: contact_name
   ```
+- **Validation Rules**:
+  - **Existence**: Required when unnest is configured (error if missing)
+  - **Type**: Must be a non-empty `string` (error if not)
+  - **Name Conflict**: Should not conflict with existing column names including var_name (suggested validation)
+- **Common Issues**:
+  - Missing value_name
+  - Empty string
+  - Same name as var_name
+  - Conflicts with existing columns
+- **Suggested Additional Validation**:
+  - Validate unique column name
+  - Error if same as var_name
+  - Follow naming conventions
 
 #### Unnest Example
 
@@ -2535,9 +2896,255 @@ EntityConfig:
   foreign_keys?: list[ForeignKeyConfig]
   
   # Transformations
-  unnest?: UnnestConfig
+  unnest?: UnnestConfig---
 
-# FilterConfig
+## Validation Rules Summary
+
+This section provides a comprehensive overview of all validation rules implemented in the `src.specifications` module. These rules serve as requirements for the implementation.
+
+### Project-Level Validations
+
+#### IsProjectSpecification
+- **Purpose**: Validates project metadata section
+- **Rules**:
+  - Metadata section must exist (error)
+  - `metadata.type` must equal `"shapeshifter-project"` (error)
+
+#### CircularDependencySpecification  
+- **Purpose**: Detects circular dependencies in entity graph
+- **Rules**:
+  - No circular dependency chains allowed (error)
+  - Builds dependency graph from `depends_on` and `source` fields
+  - Uses DFS to detect cycles
+
+#### DataSourceExistsSpecification
+- **Purpose**: Validates data source references
+- **Rules**:
+  - Entity `data_source` must exist in `options.data_sources` (error)
+  - Append item `data_source` must exist in `options.data_sources` (error)
+
+### Entity-Level Validations
+
+#### EntityFieldsSpecification
+- **Purpose**: Validates required fields based on entity type
+- **Context-Dependent Rules**:
+  - **All entity types**:
+    - `keys` field must exist (error), must be list[string] (error)
+    - `columns` field must exist (error), must be list[string] (error)
+  - **When `type: fixed`**:
+    - `surrogate_id` must exist (error)
+    - `values` must exist (error) and be non-empty (error)
+  - **When `type: sql`**:
+    - `data_source` must exist and be non-empty string (error)
+    - `query` must exist and be non-empty string (error)
+
+#### FixedDataSpecification
+- **Purpose**: Validates fixed entity data structure
+- **Rules**:
+  - `values` must be non-empty list (error)
+  - `columns` must be non-empty list of strings (error)
+  - **Structure validation**:
+    - If single-column: `columns` length must be 1 (error)
+    - If multi-column: each row length must match `columns` length (error)
+    - All rows must be lists or all primitives (error for mixed)
+  - **Conflicting fields**:
+    - `source`, `data_source`, `query` should be empty (warning)
+
+#### UnnestSpecification
+- **Purpose**: Validates unnest configuration
+- **Rules**:
+  - `value_vars` must exist (error) and be list[string] (error)
+  - `var_name` must exist (error) and be non-empty string (error)
+  - `value_name` must exist (error) and be non-empty string (error)
+  - `id_vars` should exist (warning) and be list[string] if provided
+
+#### DropDuplicatesSpecification
+- **Purpose**: Validates drop_duplicates configuration
+- **Rules**:
+  - Must be type bool, str, or list if provided (error)
+  - If list, all items must be strings (error via is_string_list validator)
+
+#### ForeignKeySpecification
+- **Purpose**: Validates foreign key configuration
+- **Rules**:
+  - Each FK must have `entity` field (error)
+  - Each FK must have `local_keys` and `remote_keys` (error)  
+  - `local_keys` and `remote_keys` must be list[string] (error)
+  - `local_keys` and `remote_keys` must have same length (error)
+  - If `extra_columns` provided, must be str, list, or dict (error)
+
+#### SurrogateIdSpecification
+- **Purpose**: Validates surrogate ID configuration
+- **Rules**:
+  - `surrogate_id` should exist (warning)
+  - If exists, must be string type (error)
+  - Should end with `_id` (warning)
+
+#### AppendSpecification  
+- **Purpose**: Validates append configuration
+- **Rules**:
+  - `append_mode` must be 'all' or 'distinct' if provided (error)
+  - Each append item must specify either `type` OR `source` (error), not both (error)
+  - **When append `type: fixed`**:
+    - `values` must exist (error) and be list type (error)
+    - Empty values triggers warning
+  - **When append `type: sql`**:
+    - `query` must exist (error) and be string type (error)
+  - **When append `source` provided**:
+    - Must be string type (error)
+    - Must reference existing entity (error)
+    - `columns` should exist (warning)
+
+#### DependsOnSpecification
+- **Purpose**: Validates dependency declarations
+- **Rules**:
+  - `depends_on` should be list[string] (warning)
+  - Each dependency must reference existing entity (error)
+
+#### EntityReferencesExistSpecification
+- **Purpose**: Validates all entity references exist
+- **Rules**:
+  - `source` entity must exist if provided (error)
+  - Each `depends_on` entity must exist (error)
+  - Each foreign key `entity` must exist (error)
+
+### Foreign Key Runtime Validations
+
+#### ForeignKeyConfigSpecification
+- **Purpose**: Validates FK configuration is resolvable
+- **Rules**:
+  - **Cross joins**:
+    - `local_keys` and `remote_keys` must be empty (error)
+  - **Non-cross joins**:
+    - `local_keys` and `remote_keys` must be non-empty (error)
+    - Key counts must match (error)
+  - **Key existence**:
+    - Local keys must exist in local entity's columns/keys/unnest_columns (error)
+    - Remote keys must exist in remote entity's columns (error)
+
+#### ForeignKeyDataSpecification
+- **Purpose**: Validates FK keys exist in actual data
+- **Rules**:
+  - Local DataFrame must exist (assertion error)
+  - Remote DataFrame must exist (assertion error)
+  - Config validation must pass first
+  - **Missing local keys**:
+    - If all missing keys are in unnest_columns: defer validation
+    - Otherwise: error
+  - **Pending unnest fields**:
+    - If unnest_columns not yet in data: defer validation
+  - **Missing remote keys**: error
+
+### Field-Level Validators
+
+#### exists
+- **Purpose**: Field path must exist in configuration
+- **Implementation**: Uses `dotexists()` to check path
+- **Fails with**: Error if path not found
+
+#### is_empty
+- **Purpose**: Field must be empty (None, "", [], {})
+- **Implementation**: Checks value in (None, "", [], {})
+- **Fails with**: Error if non-empty value
+
+#### is_string_list
+- **Purpose**: Field must be list of strings
+- **Implementation**: isinstance(value, list) and all isinstance(item, str)
+- **Special case**: Returns True for "@value:" references
+- **Fails with**: Error if not list or contains non-string items
+
+#### not_empty_string
+- **Purpose**: Field must be non-empty string with content
+- **Implementation**: isinstance(value, str) and bool(value.strip())
+- **Fails with**: Error if not string or empty/whitespace-only
+
+#### not_empty
+- **Purpose**: Field must have truthy value
+- **Implementation**: bool(value)
+- **Fails with**: Error if falsy (None, False, 0, "", [], {})
+
+#### of_type
+- **Purpose**: Field must match one of expected types
+- **Requires**: `expected_types` kwarg as tuple
+- **Implementation**: isinstance(value, expected_types)
+- **Fails with**: Error listing expected type names
+
+#### is_existing_entity
+- **Purpose**: Field value must be existing entity name
+- **Implementation**: value in project_cfg["entities"]
+- **Fails with**: Error if entity doesn't exist
+
+#### ends_with_id
+- **Purpose**: Field must end with "_id" suffix
+- **Implementation**: isinstance(value, str) and value.endswith("_id")
+- **Fails with**: Warning if doesn't end with "_id"
+
+#### is_of_categorical_values
+- **Purpose**: Field must be one of allowed categorical values
+- **Requires**: `categories` kwarg as list
+- **Implementation**: value in categories
+- **Fails with**: Error if value not in categories
+
+### Suggested Additional Validations
+
+The following validations are recommended but not yet implemented:
+
+1. **Column Existence Validation**:
+   - Validate that columns in `keys`, `columns`, `extra_columns` exist in source data
+   - Check before runtime to catch misconfigurations early
+
+2. **Surrogate ID Uniqueness**:
+   - Ensure each entity has unique `surrogate_id` across project
+   - Prevent ID collisions in final output
+
+3. **Naming Convention Validation**:
+   - Enforce snake_case for entity names
+   - Validate column names don't contain spaces or special characters
+   - Check for SQL reserved words in column names
+
+4. **Dependency Completeness**:
+   - Warn if `depends_on` doesn't include implicit dependencies (from `source`, `foreign_keys`)
+   - Validate dependency order resolves correctly
+
+5. **Foreign Key Column Types**:
+   - Warn if local/remote key column types don't match
+   - Suggest type conversions when needed
+
+6. **Unused Entity Detection**:
+   - Warn about entities not used in dependencies or foreign keys
+   - Help identify orphaned configurations
+
+7. **SQL Query Validation**:
+   - Basic SQL syntax checking for `type: sql` entities
+   - Validate query doesn't contain dangerous operations (DROP, DELETE without WHERE)
+   - Dry-run query to verify column count and names
+
+8. **Circular Reference in @value**:
+   - Detect circular references in `@value:` directives
+   - Prevent infinite loops during config resolution
+
+9. **Replacement Coverage**:
+   - Warn if replacement column doesn't exist in entity
+   - Report unmapped values after replacements applied
+
+10. **Filter Validation**:
+    - Validate filter type is supported
+    - Check referenced entities and columns exist
+    - Warn if filter removes all rows
+
+11. **Append Compatibility**:
+    - Validate appended data has compatible column structure
+    - Warn about column type mismatches between primary and append sources
+
+12. **Unnest Column Overlap**:
+    - Error if `value_vars` contains columns from `id_vars`
+    - Prevent ambiguous unnest configurations
+
+---
+
+## Type Schema Definitions
+
+````
 FilterConfig:
   type: string
   # ... filter-specific parameters
