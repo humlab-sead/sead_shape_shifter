@@ -141,24 +141,44 @@
 
                 <v-divider vertical />
 
-                <v-switch v-model="showNodeLabels" label="Show Node Labels" density="compact" hide-details />
-                <v-switch v-model="showEdgeLabels" label="Show Edge Labels" density="compact" hide-details />
+                <v-btn
+                  size="small"
+                  :variant="showNodeLabels ? 'tonal' : 'outlined'"
+                  :color="showNodeLabels ? 'primary' : undefined"
+                  @click="showNodeLabels = !showNodeLabels"
+                  class="text-capitalize"
+                >
+                  Node Labels
+                </v-btn>
+                <v-btn
+                  size="small"
+                  :variant="showEdgeLabels ? 'tonal' : 'outlined'"
+                  :color="showEdgeLabels ? 'primary' : undefined"
+                  @click="showEdgeLabels = !showEdgeLabels"
+                  class="text-capitalize"
+                >
+                  Edge Labels
+                </v-btn>
 
-                <v-switch
-                  v-model="highlightCycles"
-                  label="Highlight Cycles"
-                  density="compact"
-                  hide-details
-                  :disabled="!hasCircularDependencies"
-                />
+                <v-btn
+                  size="small"
+                  :variant="highlightCycles ? 'tonal' : 'outlined'"
+                  :color="highlightCycles ? 'primary' : undefined"
+                  @click="highlightCycles = !highlightCycles"
+                  class="text-capitalize"
+                >
+                  Cycles
+                </v-btn>
 
-                <v-switch
-                  v-model="showSourceNodes"
-                  label="Show Source Nodes"
-                  density="compact"
-                  hide-details
-                />
-
+                <v-btn
+                  size="small"
+                  :variant="showSourceNodes ? 'tonal' : 'outlined'"
+                  :color="showSourceNodes ? 'primary' : undefined"
+                  @click="showSourceNodes = !showSourceNodes"
+                  class="text-capitalize"
+                >
+                  Source Nodes
+                </v-btn>
                 <v-spacer />
 
                 <v-btn
