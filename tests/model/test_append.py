@@ -365,7 +365,7 @@ class TestGetSubTablesConfigs:
 
         tables = list(table_cfg.get_sub_table_configs())
         assert len(tables) == 1
-        assert tables[0].data == table_cfg.data
+        assert tables[0].entity_cfg == table_cfg.entity_cfg
         assert tables[0] is table_cfg
 
     def test_base_plus_one_append(self):
@@ -384,10 +384,10 @@ class TestGetSubTablesConfigs:
         tables = list(table_cfg.get_sub_table_configs())
         assert len(tables) == 2
         assert tables[0].entity_name == "test_entity"
-        assert tables[0].data == table_cfg.data
+        assert tables[0].entity_cfg == table_cfg.entity_cfg
 
         assert tables[1].entity_name == "test_entity__append_0"
-        assert tables[1].data == {
+        assert tables[1].entity_cfg == {
             "surrogate_id": "test_id",
             "values": ["A", "B"],
             "type": "fixed",
