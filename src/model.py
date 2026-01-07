@@ -132,10 +132,6 @@ class ForeignKeyConfig:
     def constraints(self) -> ForeignKeyConstraints:
         return ForeignKeyConstraints(self.data.get("constraints"))
 
-    @cached_property
-    def remote_surrogate_id(self) -> str:
-        return self.entities_cfg[self.remote_entity].get("surrogate_id", "")
-
     def resolved_extra_columns(self) -> dict[str, str]:
         """Resolve extra columns for the foreign key configuration.
 

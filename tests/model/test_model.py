@@ -163,7 +163,6 @@ class TestForeignKeyConfig:
         assert fk.remote_entity == "location"
         assert fk.local_keys == ["location_name"]
         assert fk.remote_keys == ["location_name"]
-        assert fk.remote_surrogate_id == "location_id"
 
     @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
     def test_missing_remote_entity(self):
@@ -622,7 +621,7 @@ class TestTableConfig:
 
     def test_query_property(self):
         """Test query property returns SQL query for sql type."""
-        entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "type": "sql", "values": "sql: SELECT * FROM sites"}}
+        entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "type": "sql", "query": "SELECT * FROM sites"}}
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
 
@@ -1701,7 +1700,6 @@ class TestIntegration:
         site: TableConfig = config.get_table("site")
         assert len(site.foreign_keys) == 1
         assert site.foreign_keys[0].remote_entity == "location"
-        assert site.foreign_keys[0].remote_surrogate_id == "location_id"
         assert site.depends_on == {"location"}
 
     def test_foreign_key_with_extra_columns_workflow(self):
