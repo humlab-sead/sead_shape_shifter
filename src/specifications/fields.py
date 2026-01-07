@@ -89,11 +89,11 @@ class FieldIsNonEmptyValidator(FieldValidator):
 
     def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
         value: Any = dotget(target_cfg, field)
-        return bool(value)
+        return value
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         self.rule_handler(
-            f"Entity '{entity_name}': Field '{field}' has an unexpected truthy value. {kwargs.get('message', '')}",
+            f"Entity '{entity_name}': Field '{field}' is empty or falsy. {kwargs.get('message', '')}",
             entity=entity_name,
             column=field,
         )
@@ -107,9 +107,11 @@ class FieldTypeValidator(FieldValidator):
     Fails if the field value doesn't match any of the expected types.
     """
 
-    def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
+    def rule_predicate(
+        self, target_cfg: dict[str, Any], entity_name: str, field: str, *, expected_types: tuple[type, ...] = (), **kwargs
+    ) -> bool:
         value: Any = dotget(target_cfg, field)
-        expected_types = tuple(NoneType if t is None else t for t in kwargs.get("expected_types", ()))
+        expected_types = tuple(NoneType if t is None else t for t in expected_types)
         return isinstance(value, expected_types)
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
@@ -169,6 +171,41 @@ class IsOfCategoricalValuesValidator(FieldValidator):
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         self.rule_handler(
             f"Entity '{entity_name}': Field '{field}' should have a value in the specified categories. {kwargs.get('message', '')}",
+            entity=entity_name,
+            column=field,
+        )
+
+
+@FIELD_VALIDATORS.register(key="is_in_columns")
+class IsInColumnsValidator(FieldValidator):
+    """Validator to check that a field's value is defined in the `columns` field."""
+
+    def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
+        value: str = dotget(target_cfg, field)
+        columns: list[str] = kwargs.get("columns", [])
+        if not isinstance(columns, list) or not isinstance(value, str):
+            return True
+        return value in columns
+
+    def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
+        self.rule_handler(
+            f"Entity '{entity_name}': Field '{field}' not specified in `columns`. {kwargs.get('message', '')}",
+            entity=entity_name,
+            column=field,
+        )
+
+
+@FIELD_VALIDATORS.register(key="has_value")
+class HasValueValidator(FieldValidator):
+    """Validator to check that a field's value is equal to the expected value."""
+
+    def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, *, expected_value: Any = None, **kwargs) -> bool:
+        value: str = dotget(target_cfg, field)
+        return value == expected_value
+
+    def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
+        self.rule_handler(
+            f"Entity '{entity_name}': Field '{field}' does not have the expected value. {kwargs.get('message', '')}",
             entity=entity_name,
             column=field,
         )
