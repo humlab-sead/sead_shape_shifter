@@ -1,5 +1,5 @@
 <template>
-  <v-card variant="outlined">
+  <v-card variant="outlined" class="legend-card">
     <v-card-title class="d-flex align-center justify-space-between">
       <span>Legend</span>
       <v-btn icon="mdi-close" variant="text" size="small" @click="emit('close')" />
@@ -197,6 +197,12 @@ const emit = defineEmits<{
   width: 26px;
   height: 22px;
   border-radius: 6px 6px 3px 3px;
+}
+
+.legend-card {
+  background-color: var(--v-theme-surface);
+  color: var(--v-theme-on-surface);
+  box-shadow: var(--v-shadow-4);
 }
 
 .node-shape.small-circle {
