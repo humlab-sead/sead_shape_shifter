@@ -91,16 +91,14 @@ class ForeignKeyConstraints:
 class ForeignKeyConfig:
     """Configuration for a foreign key. Read-Only. Wraps foreign key setting from table config."""
 
-    def __init__(self, *, entities_cfg: dict[str, dict[str, Any]], local_entity: str, fk_cfg: dict[str, Any]) -> None:
+    def __init__(self, *, local_entity: str, fk_cfg: dict[str, Any]) -> None:
         """Initialize ForeignKeyConfig with configuration data.
         Args:
-            entities_cfg (dict): Full configuration dictionary.
             local_entity (str): Name of the local entity/table.
             fk_cfg (dict): Foreign key configuration data.
         Raises:
             ValueError: If required fields are missing or invalid."""
         self.data: dict[str, Any] = fk_cfg
-        self.entities_cfg: dict[str, dict[str, Any]] = entities_cfg  # config for all tables
         self.local_entity: str = local_entity
 
     @property
@@ -301,8 +299,7 @@ class TableConfig:
     @cached_property
     def foreign_keys(self) -> list[ForeignKeyConfig]:
         return [
-            ForeignKeyConfig(entities_cfg=self.entities_cfg, local_entity=self.entity_name, fk_cfg=fk_data)
-            for fk_data in self.entity_cfg.get("foreign_keys", []) or []
+            ForeignKeyConfig(local_entity=self.entity_name, fk_cfg=fk_data) for fk_data in self.entity_cfg.get("foreign_keys", []) or []
         ]
 
     @cached_property

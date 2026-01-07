@@ -35,7 +35,7 @@ def fk_config() -> ForeignKeyConfig:
         },
     }
     fk_cfg = entities_cfg["local"]["foreign_keys"][0]
-    return ForeignKeyConfig(entities_cfg=entities_cfg, local_entity="local", fk_cfg=fk_cfg)
+    return ForeignKeyConfig(local_entity="local", fk_cfg=fk_cfg)
 
 
 def test_link_foreign_key_renames_and_drops_remote_id(fk_config: ForeignKeyConfig, monkeypatch: pytest.MonkeyPatch):

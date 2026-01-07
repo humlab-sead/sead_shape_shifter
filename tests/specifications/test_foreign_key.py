@@ -42,7 +42,6 @@ class TestForeignKeyConfigSpecification:
     def test_cross_join_valid(self, mock_project):
         """Test validation passes for valid cross join."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={"entity": "remote_entity", "how": "cross"},
         )
@@ -56,7 +55,6 @@ class TestForeignKeyConfigSpecification:
     def test_cross_join_with_keys_fails(self, mock_project):
         """Test validation fails for cross join with keys."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={"entity": "remote_entity", "how": "cross", "local_keys": ["id"], "remote_keys": ["id"]},
         )
@@ -70,7 +68,6 @@ class TestForeignKeyConfigSpecification:
     def test_non_cross_join_missing_keys(self, mock_project):
         """Test validation fails when keys missing for non-cross join."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={"entity": "remote_entity", "how": "left"},
         )
@@ -84,7 +81,6 @@ class TestForeignKeyConfigSpecification:
     def test_mismatched_key_count(self, mock_project):
         """Test validation fails when key counts don't match."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={
                 "entity": "remote_entity",
@@ -103,7 +99,6 @@ class TestForeignKeyConfigSpecification:
     def test_valid_join_with_keys(self, mock_project):
         """Test validation passes for valid join with matching keys."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={"entity": "remote_entity", "how": "left", "local_keys": ["local_id"], "remote_keys": ["remote_id"]},
         )
@@ -117,7 +112,6 @@ class TestForeignKeyConfigSpecification:
     def test_missing_local_key(self, mock_project):
         """Test validation fails when local key doesn't exist."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={
                 "entity": "remote_entity",
@@ -136,7 +130,6 @@ class TestForeignKeyConfigSpecification:
     def test_missing_remote_key(self, mock_project):
         """Test validation fails when remote key doesn't exist."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={
                 "entity": "remote_entity",
@@ -155,7 +148,6 @@ class TestForeignKeyConfigSpecification:
     def test_unnest_column_in_local_keys(self, mock_project):
         """Test validation passes when local key is in unnest_columns."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={"entity": "remote_entity", "how": "left", "local_keys": ["unnest_col"], "remote_keys": ["remote_id"]},
         )
@@ -218,7 +210,6 @@ class TestForeignKeyDataSpecification:
     def test_valid_data_join(self, mock_project, table_store):
         """Test validation passes when all keys exist in data."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={"entity": "remote_entity", "how": "left", "local_keys": ["local_id"], "remote_keys": ["remote_id"]},
         )
@@ -232,7 +223,6 @@ class TestForeignKeyDataSpecification:
     def test_missing_local_key_in_data(self, mock_project, table_store):
         """Test validation fails when local key missing from data."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={
                 "entity": "remote_entity",
@@ -251,7 +241,6 @@ class TestForeignKeyDataSpecification:
     def test_missing_remote_key_in_data(self, mock_project, table_store):
         """Test validation fails when remote key missing from data."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={
                 "entity": "remote_entity",
@@ -298,7 +287,6 @@ class TestForeignKeyDataSpecification:
     def test_deferred_when_missing_unnest_column(self, mock_project, table_store):
         """Test validation is deferred when missing local key is in unnest_columns."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={"entity": "remote_entity", "how": "left", "local_keys": ["unnest_col"], "remote_keys": ["remote_id"]},
         )
@@ -318,7 +306,6 @@ class TestForeignKeyDataSpecification:
         }
 
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={"entity": "remote_entity", "how": "left", "local_keys": ["local_id"], "remote_keys": ["remote_id"]},
         )
@@ -343,7 +330,6 @@ class TestForeignKeyDataSpecification:
     def test_get_missing_local_fields(self, mock_project, table_store):
         """Test get_missing_local_fields method."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={
                 "entity": "remote_entity",
@@ -361,7 +347,6 @@ class TestForeignKeyDataSpecification:
     def test_get_missing_remote_fields(self, mock_project, table_store):
         """Test get_missing_remote_fields method."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={
                 "entity": "remote_entity",
@@ -380,7 +365,6 @@ class TestForeignKeyDataSpecification:
         """Test that config validation failures propagate to data validation."""
         # Create invalid FK config (mismatched key counts)
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "remote_entity": {}},
             local_entity="local_entity",
             fk_cfg={"entity": "remote_entity", "how": "left", "local_keys": ["local_id"], "remote_keys": ["r1", "r2"]},
         )
