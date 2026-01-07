@@ -21,7 +21,7 @@ class TestUnnestConfig:
                 "value_name": "location_name",
             }
         }
-        config = UnnestConfig(cfg={}, data=data)
+        config = UnnestConfig(data=data)
 
         assert config.id_vars == ["site_id"]
         assert config.value_vars == ["Ort", "Kreis", "Land"]
@@ -32,19 +32,19 @@ class TestUnnestConfig:
         """Test that missing unnest key raises ValueError."""
         data = {}
         with pytest.raises(ValueError, match="Invalid unnest configuration"):
-            UnnestConfig(cfg={}, data=data)
+            UnnestConfig(data=data)
 
     def test_missing_var_name(self):
         """Test that missing var_name raises ValueError."""
         data = {"unnest": {"id_vars": ["id"], "value_vars": ["col1"], "value_name": "val"}}
         with pytest.raises(ValueError, match="Invalid unnest configuration"):
-            UnnestConfig(cfg={}, data=data)
+            UnnestConfig(data=data)
 
     def test_missing_value_name(self):
         """Test that missing value_name raises ValueError."""
         data = {"unnest": {"id_vars": ["id"], "value_vars": ["col1"], "var_name": "var"}}
         with pytest.raises(ValueError, match="Invalid unnest configuration"):
-            UnnestConfig(cfg={}, data=data)
+            UnnestConfig(data=data)
 
 
 class TestTableConfig:

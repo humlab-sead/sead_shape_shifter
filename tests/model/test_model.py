@@ -99,7 +99,7 @@ class TestUnnestConfig:
                 "value_name": "location_name",
             }
         }
-        config = UnnestConfig(cfg={}, data=data)
+        config = UnnestConfig(data=data)
 
         assert config.id_vars == ["site_id"]
         assert config.value_vars == ["Ort", "Kreis", "Land"]
@@ -110,19 +110,19 @@ class TestUnnestConfig:
         """Test that missing unnest key raises ValueError."""
         data: dict[str, dict[str, list[str] | str]] = {}
         with pytest.raises(ValueError, match="Invalid unnest configuration"):
-            UnnestConfig(cfg={}, data=data)
+            UnnestConfig(data=data)
 
     def test_missing_id_vars_allowed(self):
         """Test that missing id_vars is allowed (defaults to empty list)."""
         data = {"unnest": {"value_vars": ["col1"], "var_name": "var", "value_name": "val"}}
-        config = UnnestConfig(cfg={}, data=data)
+        config = UnnestConfig(data=data)
         assert config.id_vars == []
         assert config.value_vars == ["col1"]
 
     def test_missing_value_vars_allowed(self):
         """Test that missing value_vars is allowed (defaults to empty list)."""
         data = {"unnest": {"id_vars": ["id"], "var_name": "var", "value_name": "val"}}
-        config = UnnestConfig(cfg={}, data=data)
+        config = UnnestConfig(data=data)
         assert config.id_vars == ["id"]
         assert config.value_vars == []
 
@@ -130,18 +130,18 @@ class TestUnnestConfig:
         """Test that missing var_name raises ValueError."""
         data = {"unnest": {"id_vars": ["id"], "value_vars": ["col1"], "value_name": "val"}}
         with pytest.raises(ValueError, match="Invalid unnest configuration"):
-            UnnestConfig(cfg={}, data=data)
+            UnnestConfig(data=data)
 
     def test_missing_value_name(self):
         """Test that missing value_name raises ValueError."""
         data = {"unnest": {"id_vars": ["id"], "value_vars": ["col1"], "var_name": "var"}}
         with pytest.raises(ValueError, match="Invalid unnest configuration"):
-            UnnestConfig(cfg={}, data=data)
+            UnnestConfig(data=data)
 
     def test_empty_lists_allowed(self):
         """Test that empty lists are allowed."""
         data = {"unnest": {"id_vars": [], "value_vars": ["col1"], "var_name": "var", "value_name": "val"}}
-        config = UnnestConfig(cfg={}, data=data)
+        config = UnnestConfig(data=data)
         assert config.id_vars == []
         assert config.value_vars == ["col1"]
 

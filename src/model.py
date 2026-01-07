@@ -16,9 +16,8 @@ from src.utility import dotget, unique
 class UnnestConfig:
     """Configuration for unnesting a column. Wraps unnest setting from table config."""
 
-    def __init__(self, *, cfg: dict[str, dict[str, Any]], data: dict[str, Any]) -> None:
+    def __init__(self, *, data: dict[str, Any]) -> None:
         self.data = data.get("unnest", {})
-        self.config: dict[str, dict[str, Any]] = cfg
 
         if not self.var_name or not self.value_name:
             raise ValueError(f"Invalid unnest configuration (missing var_name or value_name): {data}")
@@ -270,7 +269,7 @@ class TableConfig:
 
     @property
     def unnest(self) -> UnnestConfig | None:
-        return UnnestConfig(cfg=self.config, data=self.data) if self.data.get("unnest") else None
+        return UnnestConfig(data=self.data) if self.data.get("unnest") else None
 
     @cached_property
     def depends_on(self) -> set[str]:
