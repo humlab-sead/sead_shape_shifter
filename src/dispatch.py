@@ -104,7 +104,6 @@ class OpenpyxlExcelDispatcher(Dispatcher):
         entity_cfg: TableConfig = self.cfg.get_table(entity_name)
 
         for column in columns:
-            # FIXME: Read colors from configuration
             if column in entity_cfg.get_key_columns():
                 self.set_column_background_color(column, columns, ws, "#c1eac1")
             elif column == "system_id":
