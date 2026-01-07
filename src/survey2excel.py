@@ -9,12 +9,13 @@ Usage:
 """
 
 import asyncio
+import sys
 from pathlib import Path
 
 import click
 
 from src.utility import setup_logging
-from src.workflow import workflow
+from src.workflow import validate_project, workflow
 
 # pylint: disable=no-value-for-parameter
 
@@ -55,6 +56,11 @@ def main(
     click.echo(f"Using project file: {project_filename}")
     setup_logging(verbose=verbose, log_file=log_file)
 
+    if validate_then_exit:
+        click.echo("Validating project configuration and exiting if invalid.")
+        is_valid: bool = validate_project(project_filename)
+        sys.exit(0 if is_valid else 1)
+
     asyncio.run(
         workflow(
             project=project_filename,
@@ -63,7 +69,6 @@ def main(
             translate=translate,
             target_type=mode,
             drop_foreign_keys=drop_foreign_keys,
-            validate_then_exit=validate_then_exit,
             env_file=env_file,
         )
     )

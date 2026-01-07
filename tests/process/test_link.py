@@ -14,7 +14,7 @@ from src.model import ForeignKeyConfig, ShapeShiftProject
 @pytest.fixture
 def fk_config() -> ForeignKeyConfig:
     """Create a foreign key config linking local.remote_ref -> remote.remote_id."""
-    cfg = {
+    entities_cfg = {
         "local": {
             "columns": ["remote_code", "value"],
             "keys": ["remote_code"],
@@ -34,8 +34,8 @@ def fk_config() -> ForeignKeyConfig:
             "surrogate_id": "remote_pk",
         },
     }
-    fk_data = cfg["local"]["foreign_keys"][0]
-    return ForeignKeyConfig(cfg=cfg, local_entity="local", data=fk_data)
+    fk_cfg = entities_cfg["local"]["foreign_keys"][0]
+    return ForeignKeyConfig(local_entity="local", fk_cfg=fk_cfg)
 
 
 def test_link_foreign_key_renames_and_drops_remote_id(fk_config: ForeignKeyConfig, monkeypatch: pytest.MonkeyPatch):

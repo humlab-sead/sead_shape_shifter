@@ -135,31 +135,73 @@
             <v-card variant="outlined" class="mb-4">
               <v-card-text class="d-flex align-center gap-4">
                 <v-btn-toggle v-model="layoutType" mandatory density="compact">
-                  <v-btn value="hierarchical" prepend-icon="mdi-file-tree"> Hierarchical </v-btn>
-                  <v-btn value="force" prepend-icon="mdi-vector-arrange-above"> Force-Directed </v-btn>
+                  <v-btn 
+                    size="small"
+                    value="hierarchical" 
+                    :color="layoutType === 'hierarchical' ? 'primary' : undefined"
+                    prepend-icon="mdi-file-tree"
+                  > Hierarchical </v-btn>
+                  <v-btn 
+                    size="small"
+                    value="force"
+                    :color="layoutType === 'force' ? 'primary' : undefined"
+                    prepend-icon="mdi-vector-arrange-above"
+                  >
+                  Force-Directed
+                </v-btn>
                 </v-btn-toggle>
 
                 <v-divider vertical />
 
-                <v-switch v-model="showNodeLabels" label="Show Node Labels" density="compact" hide-details />
-                <v-switch v-model="showEdgeLabels" label="Show Edge Labels" density="compact" hide-details />
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  :color="showNodeLabels ? 'primary' : undefined"
+                  @click="showNodeLabels = !showNodeLabels"
+                  class="text-capitalize"
+                >
+                  Node Labels
+                </v-btn>
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  :color="showEdgeLabels ? 'primary' : undefined"
+                  @click="showEdgeLabels = !showEdgeLabels"
+                  class="text-capitalize"
+                >
+                  Edge Labels
+                </v-btn>
 
-                <v-switch
-                  v-model="highlightCycles"
-                  label="Highlight Cycles"
-                  density="compact"
-                  hide-details
-                  :disabled="!hasCircularDependencies"
-                />
+                <!-- <v-btn
+                  size="small"
+                  :variant="highlightCycles ? 'tonal' : 'tonal'"
+                  :color="highlightCycles ? 'primary' : undefined"
+                  @click="highlightCycles = !highlightCycles"
+                  class="text-capitalize"
+                >
+                  Cycles
+                </v-btn> -->
 
-                <v-switch
-                  v-model="showSourceNodes"
-                  label="Show Source Nodes"
-                  density="compact"
-                  hide-details
-                />
-
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  :color="showSourceNodes ? 'primary' : undefined"
+                  @click="showSourceNodes = !showSourceNodes"
+                  class="text-capitalize"
+                >
+                  Source Nodes
+                </v-btn>
                 <v-spacer />
+
+                <v-btn
+                  size="small"
+                  variant="outlined"
+                  prepend-icon="mdi-information-outline"
+                  :color="showLegend ? 'primary' : undefined"
+                  @click="showLegend = !showLegend"
+                >
+                  Legend
+                </v-btn>
 
                 <v-chip prepend-icon="mdi-cube-outline"> {{ depStatistics.nodeCount }} nodes </v-chip>
                 <v-chip prepend-icon="mdi-arrow-right"> {{ depStatistics.edgeCount }} edges </v-chip>
@@ -210,6 +252,11 @@
               <h3 class="text-h6 mt-4 mb-2">No Graph Data</h3>
               <p class="text-grey mb-4">No dependency data available for this project</p>
             </v-card>
+
+            <!-- Legend Dialog -->
+            <v-dialog v-model="showLegend" max-width="500">
+              <node-legend :show-source-nodes="showSourceNodes" @close="showLegend = false" />
+            </v-dialog>
 
             <!-- Entity Details Drawer -->
             <v-navigation-drawer v-model="showDetailsDrawer" location="right" temporary width="400">
@@ -436,12 +483,14 @@
 
     <!-- Success Snackbar with Animation -->
     <v-scale-transition>
-      <v-snackbar v-if="showSuccessSnackbar" v-model="showSuccessSnackbar" color="success" timeout="3000">
-        {{ successMessage }}
-        <template #actions>
-          <v-btn variant="text" @click="showSuccessSnackbar = false"> Close </v-btn>
-        </template>
-      </v-snackbar>
+      <template #default>
+        <v-snackbar v-if="showSuccessSnackbar" v-model="showSuccessSnackbar" color="success" timeout="3000">
+          {{ successMessage }}
+          <template #actions>
+            <v-btn variant="text" @click="showSuccessSnackbar = false"> Close </v-btn>
+          </template>
+        </v-snackbar>
+      </template>
     </v-scale-transition>
   </v-container>
 </template>
@@ -461,6 +510,7 @@ import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 import ProjectDataSources from '@/components/ProjectDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
+import NodeLegend from '@/components/dependencies/NodeLegend.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
@@ -549,11 +599,12 @@ const entityToEdit = ref<string | null>(null)
 
 // Graph state
 const graphContainer = ref<HTMLElement | null>(null)
-const layoutType = ref<'hierarchical' | 'force'>('hierarchical')
+const layoutType = ref<'hierarchical' | 'force'>('force')
 const showNodeLabels = ref(true)
 const showEdgeLabels = ref(true)
 const highlightCycles = ref(true)
 const showSourceNodes = ref(false)
+const showLegend = ref(false)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
 

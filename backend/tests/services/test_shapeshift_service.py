@@ -94,7 +94,7 @@ def sample_entity_config() -> TableConfig:
             "keys": ["id"],
         }
     }
-    return TableConfig(cfg=cfg, entity_name="test_entity")
+    return TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
 
 class TestShapeShiftCache:
@@ -193,7 +193,7 @@ class TestShapeShiftCache:
                 "columns": ["user_id", "username", "email"],
             }
         }
-        modified_entity_config = TableConfig(cfg=modified_cfg, entity_name="users")
+        modified_entity_config = TableConfig(entities_cfg=modified_cfg, entity_name="users")
 
         # Cache should be invalidated due to hash mismatch
         result = cache.get_dataframe("config1", "users", 1, modified_entity_config)
@@ -512,7 +512,7 @@ class TestShapeShiftService:
                 "depends_on": ["parent_entity"],
             }
         }
-        entity_config = TableConfig(cfg=cfg, entity_name="test_entity")
+        entity_config = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         mock_normalizer = MagicMock()
         mock_normalizer.table_store = {"test_entity": sample_dataframe, "parent_entity": sample_dataframe}

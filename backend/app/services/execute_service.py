@@ -1,7 +1,9 @@
 """Service for executing full workflow."""
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from loguru import logger
 
@@ -42,6 +44,7 @@ class ExecuteService:
                     key=key,
                     target_type=registry_opts.get("target_type", "unknown"),
                     description=registry_opts.get("description", ""),
+                    extension=registry_opts.get("extension", None),
                 )
             )
 
@@ -62,9 +65,13 @@ class ExecuteService:
             Exception: If workflow execution fails
         """
         if request.dispatcher_key not in Dispatchers.items:
-            raise ValueError(f"Invalid dispatcher key: {request.dispatcher_key}. " f"Available: {', '.join(Dispatchers.items.keys())}")
+            raise ValueError(
+                f"Invalid dispatcher key: {request.dispatcher_key}. "
+                f"Available: {', '.join(Dispatchers.items.keys())}"
+            )
 
         is_satisfied: bool | None = None
+        target_type: str = "unknown"
 
         try:
             # Load API project for metadata
@@ -80,31 +87,47 @@ class ExecuteService:
                 env_prefix="SEAD_NORMALIZER",
             )
 
+            dispatcher_meta: DispatcherMetadata = next(
+                d for d in self.get_dispatchers() if d.key == request.dispatcher_key
+            )
+            target_type = dispatcher_meta.target_type
+
             if request.run_validation:
-                is_satisfied = await self._validate_project(core_project)
+                is_satisfied, validation_errors = await self._validate_project(core_project)
                 if not is_satisfied:
+                    error_details = (
+                        "\n".join(validation_errors) if validation_errors else "Project configuration validation failed"
+                    )
                     return ExecuteResult(
                         success=False,
                         message="Validation failed. Please fix errors before executing workflow.",
                         target=request.target,
                         dispatcher_key=request.dispatcher_key,
+                        target_type=target_type,
                         entity_count=0,
                         validation_passed=False,
-                        error_details="Project configuration validation failed",
+                        error_details=error_details,
+                        download_path=None,
                     )
 
-            dispatcher_meta: DispatcherMetadata = next(d for d in self.get_dispatchers() if d.key == request.dispatcher_key)
-            target = self._resolve_target(request.target, dispatcher_meta.target_type)
+            target: str = self._resolve_target(request.target, target_type)
+            target_with_timestamp: str = self._add_timestamp_to_file_target(target, target_type)
 
-            logger.info(f"Executing workflow for project '{project_name}' with dispatcher '{request.dispatcher_key}'")
+            download_path: str | None = self._build_download_path(
+                project_name, target_with_timestamp, target_type
+            )
+
+            logger.info(
+                f"Executing workflow for project '{project_name}' with dispatcher "
+                f"'{request.dispatcher_key}' -> '{target_with_timestamp}'"
+            )
 
             await workflow(
                 project=core_project,
-                target=target,
+                target=target_with_timestamp,
                 translate=request.translate,
                 target_type=request.dispatcher_key,
                 drop_foreign_keys=request.drop_foreign_keys,
-                validate_then_exit=False,
                 default_entity=request.default_entity,
                 env_file=None,  # Already resolved in project
             )
@@ -116,49 +139,56 @@ class ExecuteService:
             return ExecuteResult(
                 success=True,
                 message=f"Successfully executed workflow with {entity_count} entities",
-                target=target,
+                target=target_with_timestamp,
                 dispatcher_key=request.dispatcher_key,
+                target_type=target_type,
                 entity_count=entity_count,
                 validation_passed=is_satisfied,
                 error_details=None,
+                download_path=download_path,
             )
 
         except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"Workflow execution failed: {e}")
+            logger.exception(f"Workflow execution failed: {e}")
             return ExecuteResult(
                 success=False,
                 message=f"Workflow execution failed: {str(e)}",
                 target=request.target,
                 dispatcher_key=request.dispatcher_key,
+                target_type=target_type,
                 entity_count=0,
                 validation_passed=is_satisfied,
                 error_details=str(e),
+                download_path=None,
             )
 
-    async def _validate_project(self, project: ShapeShiftProject) -> bool:
+    async def _validate_project(self, project: ShapeShiftProject) -> tuple[bool, list[str]]:
         """Run project validation.
 
         Args:
             project: Project to validate
 
         Returns:
-            True if validation passed, False otherwise
+            Tuple of (validation_passed, list_of_error_messages)
         """
         try:
-            specification = CompositeProjectSpecification()
-            errors: bool = specification.is_satisfied_by(project.cfg)
+            specification = CompositeProjectSpecification(project.cfg)
+            is_valid: bool = specification.is_satisfied_by()
 
-            if errors:
+            if not is_valid:
+                error_messages = []
                 for error in specification.errors:
-                    logger.error(f"Configuration error: {error}")
-                return False
+                    error_msg = str(error)
+                    logger.error(f"Configuration error: {error_msg}")
+                    error_messages.append(error_msg)
+                return False, error_messages
 
             logger.info("Configuration validation passed successfully")
-            return True
+            return True, []
 
         except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"Validation failed: {e}")
-            return False
+            logger.exception(f"Validation failed: {e}")
+            return False, [f"Validation exception: {str(e)}"]
 
     def _resolve_target(self, target: str, target_type: str) -> str:
         """Resolve and validate target path.
@@ -185,6 +215,30 @@ class ExecuteService:
             target_path.parent.mkdir(parents=True, exist_ok=True)
 
         return str(target_path)
+
+    def _build_download_path(self, project_name: str, target: str, target_type: str) -> str | None:
+        """Create API download path for file-targeted dispatches."""
+        if target_type != "file":
+            return None
+
+        encoded_target = quote(target, safe="")
+        return f"/projects/{project_name}/execute/download?target={encoded_target}"
+
+    def _add_timestamp_to_file_target(self, target: str, target_type: str) -> str:
+        """Append a timestamp to file targets to avoid overwriting existing files."""
+        if target_type != "file":
+            return target
+
+        path = Path(target)
+        suffixes = "".join(path.suffixes)
+        if suffixes:
+            base_name = path.name[: -len(suffixes)]
+        else:
+            base_name = path.name
+
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        new_name = f"{base_name}_{timestamp}{suffixes}"
+        return str(path.with_name(new_name))
 
 
 _execute_service: ExecuteService | None = None  # pylint: disable=invalid-name

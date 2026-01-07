@@ -4,10 +4,13 @@ from typing import Any
 
 from loguru import logger
 
+from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.models.project import Project
 from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.validators.data_validators import DataValidationService
+from src.model import ShapeShiftProject
 from src.specifications import CompositeProjectSpecification, SpecificationIssue
 
 
@@ -31,8 +34,6 @@ class ValidationService:
         #     sys.path.insert(0, src_path)
 
         # Import after path is set
-
-        self.validator = CompositeProjectSpecification()
 
     async def validate_project_data(self, project_name: str, entity_names: list[str] | None = None) -> ValidationResult:
         """
@@ -71,7 +72,7 @@ class ValidationService:
 
         return result
 
-    def validate_project(self, config_data: dict[str, Any]) -> ValidationResult:
+    def validate_project(self, project_cfg: dict[str, Any]) -> ValidationResult:
         """
         Validate project using CompositeConfigSpecification.
 
@@ -83,20 +84,28 @@ class ValidationService:
         """
         logger.debug("Validating project")
 
-        is_valid: bool = self.validator.is_satisfied_by(config_data)
+        specification = CompositeProjectSpecification(project_cfg)
+        is_valid: bool = specification.is_satisfied_by()
 
         result = ValidationResult(
             is_valid=is_valid,
-            errors=[self._map_issue(error) for error in self.validator.errors],
-            warnings=[self._map_issue(warning) for warning in self.validator.warnings],
-            error_count=len(self.validator.errors),
-            warning_count=len(self.validator.warnings),
+            errors=[self._map_issue(error) for error in specification.errors],
+            warnings=[self._map_issue(warning) for warning in specification.warnings],
+            error_count=len(specification.errors),
+            warning_count=len(specification.warnings),
         )
 
         if is_valid:
             logger.info("Configuration validation passed")
         else:
-            logger.warning(f"Configuration validation failed with {len(self.validator.errors)} error(s)")
+            error_count = len(specification.errors)
+            warning_count = len(specification.warnings)
+            parts = []
+            if error_count > 0:
+                parts.append(f"{error_count} error(s)")
+            if warning_count > 0:
+                parts.append(f"{warning_count} warning(s)")
+            logger.warning(f"Configuration validation failed with {', '.join(parts)}")
 
         return result
 
@@ -110,27 +119,21 @@ class ValidationService:
             code=", ".join(str(v) for k, v in issue.kwargs.items()),
         )
 
-    def validate_entity(self, config: Any, entity_name: str) -> ValidationResult:
+    def validate_entity(self, project: Project, entity_name: str) -> ValidationResult:
         """
         Validate a single entity within a project.
 
         Args:
-            config: Configuration object (will be converted to dict)
+            project: Project object
             entity_name: Name of entity to validate
 
         Returns:
             ValidationResult with errors and warnings for this entity
         """
-        # Convert Configuration to dict if needed
-        if hasattr(config, "model_dump"):
-            config_data = config.model_dump(exclude_none=True, mode="json")
-        elif isinstance(config, dict):
-            config_data = config
-        else:
-            config_data = {"entities": config.entities, "options": config.options}
 
-        # Validate full project
-        result: ValidationResult = self.validate_project(config_data)
+        core_project: ShapeShiftProject = ProjectMapper.to_core(project)
+
+        result: ValidationResult = self.validate_project(core_project.cfg)
 
         # Filter to only errors/warnings for this entity
         entity_errors: list[ValidationError] = [e for e in result.errors if e.entity == entity_name or e.entity is None]

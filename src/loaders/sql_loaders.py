@@ -199,7 +199,7 @@ class SqlLoader(DataLoader):
 
             # Create mock table config with simple test query
             test_table_cfg: TableConfig = TableConfig(
-                cfg={
+                entities_cfg={
                     "test": {
                         "surrogate_id": "test_id",
                         "type": "sql",

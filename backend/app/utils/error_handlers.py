@@ -90,7 +90,7 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
 
         # Handle custom API exceptions with status codes
         except BaseAPIException as e:
-            logger.error(f"API error in {func.__name__}: {e}")
+            logger.exception(f"API error in {func.__name__}: {e}")
             raise HTTPException(status_code=e.status_code, detail=str(e)) from e
 
         # Handle service-level errors (generic 500)
@@ -101,12 +101,12 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
             SchemaServiceError,
             DependencyServiceError,
         ) as e:
-            logger.error(f"Service error in {func.__name__}: {e}")
+            logger.exception(f"Service error in {func.__name__}: {e}")
             raise HTTPException(status_code=500, detail=str(e)) from e
 
         # Handle unexpected errors
         except Exception as e:
-            logger.error(f"Unexpected error in {func.__name__}: {e}", exc_info=True)
+            logger.exception(f"Unexpected error in {func.__name__}: {e}")
             raise HTTPException(status_code=500, detail=str(e)) from e
 
     return wrapper  # type: ignore

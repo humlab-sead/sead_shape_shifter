@@ -1,6 +1,9 @@
 """API endpoints for executing full workflow."""
 
-from fastapi import APIRouter
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import FileResponse
 from loguru import logger
 
 from backend.app.models.execute import DispatcherMetadata, ExecuteRequest, ExecuteResult
@@ -66,5 +69,26 @@ async def execute_workflow(name: str, request: ExecuteRequest) -> ExecuteResult:
         logger.info(f"Workflow execution completed successfully: {result.message}")
     else:
         logger.error(f"Workflow execution failed: {result.message}")
+        if result.error_details:
+            logger.error(f"Error details: {result.error_details}")
 
     return result
+
+
+@router.get("/projects/{name}/execute/download")
+@handle_endpoint_errors
+async def download_execution_output(name: str, target: str = Query(..., description="Absolute path to the dispatched file")) -> FileResponse:
+    """
+    Download a file produced by a successful execution.
+
+    Args:
+        name: Project name (for logging)
+        target: Absolute filesystem path to the generated file (should match ExecuteResult.target)
+    """
+    file_path = Path(target)
+    if not file_path.is_file():
+        logger.error("Requested download target not found: %s", target)
+        raise HTTPException(status_code=404, detail="Execution output file not found")
+
+    logger.info("Providing execution output download for project '%s': %s", name, target)
+    return FileResponse(path=str(file_path), filename=file_path.name)

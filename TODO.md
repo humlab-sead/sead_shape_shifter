@@ -14,6 +14,7 @@
  - [] FIXME: Create project: No description field in create dialog
  - [] FIXME: New prodject's name is displayed as "test_config_manua", missing last character, correct inside project's metadata
  - [ ] FIXME: #93 Auto-accept threshold in recon view is disabled.
+ - [ ] FIXME: #101 File dispatch to openpyxl raises an error (aRGB color)
 
 ### Tech debts:
 
@@ -49,6 +50,9 @@
  - [ ] TODO: #95 Display data lineage/source information in dependency graph
  - [ ] TODO: #98 Enable entity to have multiple reconciliation specifications.
  - [ ] TODO: #99 Add capability to edit a project's reconciliation specifications.
+ - [ ] TODO: #102 Check extension matches file type when EXECUTE workflow
+ - [ ] TODO: #103 Implement ZIP CSV to file dispatcher
+ - [ ] TODO: #104 Enable download of workflow output from frontend 
 
 We need to change the format of the reconciliation file, since the entity's name is currently the key to a single reconciliation specification. We need to allow an entity to have several specifications targeting other columns.
 The "keys" in the current specification format is effectively the reconciliation target column. Currently I see no use case for having several keys in a single specification, so we will change the format to have a single "target-field" instead of "keys", and thus allow several specifications per entity. Furthermore, I see no use for the "columns" field so we can remove that field.
@@ -108,3 +112,6 @@ The field in the entity's output data that we will store the reconciled ID in wi
 
 So the mapping in essence is "Uppsala" (from target field "site_name")  -> "1234" (to surrogate_id field "site_id"). The other property fields are only used to improve the quality of the reconciliation queries.
 Thus, we do not need to store the target database, table and column in the entity reconciliation specification. The "surrogate_id" field in the entity specification is sufficient to determine where to store the reconciled IDs.
+
+
+Please review this list of rules that a project file must obey. The rules are implemented in specifications.py. Please suggest improvments to the rules, and identify any potential issues. Please also suggest any additional rules that should be implemented to improve the robustness of the project file validation.

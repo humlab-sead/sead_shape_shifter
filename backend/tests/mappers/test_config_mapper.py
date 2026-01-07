@@ -718,7 +718,8 @@ class TestProjectMapperIntegration:
         # Check metadata
         assert api_config.metadata is not None
         # Check that metadata from YAML is preserved
-        assert api_config.metadata.name == original_metadata.get("name")
+        # Change: name comes from filename parameter
+        assert api_config.metadata.name == project_name
         assert api_config.metadata.description == original_metadata.get("description")
         assert api_config.metadata.version == original_metadata.get("version")
 
@@ -730,6 +731,6 @@ class TestProjectMapperIntegration:
 
         assert "metadata" in restored_cfg_dict
 
-        assert restored_cfg_dict["metadata"]["name"] == original_metadata.get("name")
+        assert restored_cfg_dict["metadata"]["name"] == project_name  # original_metadata.get("name")
         assert restored_cfg_dict["metadata"]["description"] == original_metadata.get("description")
         assert restored_cfg_dict["metadata"]["version"] == original_metadata.get("version")
