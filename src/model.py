@@ -92,16 +92,16 @@ class ForeignKeyConstraints:
 class ForeignKeyConfig:
     """Configuration for a foreign key. Read-Only. Wraps foreign key setting from table config."""
 
-    def __init__(self, *, cfg: dict[str, dict[str, Any]], local_entity: str, data: dict[str, Any]) -> None:
+    def __init__(self, *, entities_cfg: dict[str, dict[str, Any]], local_entity: str, fk_cfg: dict[str, Any]) -> None:
         """Initialize ForeignKeyConfig with configuration data.
         Args:
-            cfg (dict): Full configuration dictionary.
+            entities_cfg (dict): Full configuration dictionary.
             local_entity (str): Name of the local entity/table.
-            data (dict): Foreign key configuration data.
+            fk_cfg (dict): Foreign key configuration data.
         Raises:
             ValueError: If required fields are missing or invalid."""
-        self.data: dict[str, Any] = data
-        self.config: dict[str, dict[str, Any]] = cfg  # config for all tables
+        self.data: dict[str, Any] = fk_cfg
+        self.entities_cfg: dict[str, dict[str, Any]] = entities_cfg  # config for all tables
         self.local_entity: str = local_entity
 
     @property
@@ -135,7 +135,7 @@ class ForeignKeyConfig:
 
     @cached_property
     def remote_surrogate_id(self) -> str:
-        return self.config[self.remote_entity].get("surrogate_id", "")
+        return self.entities_cfg[self.remote_entity].get("surrogate_id", "")
 
     def resolved_extra_columns(self) -> dict[str, str]:
         """Resolve extra columns for the foreign key configuration.
@@ -290,7 +290,7 @@ class TableConfig:
     @cached_property
     def foreign_keys(self) -> list[ForeignKeyConfig]:
         return [
-            ForeignKeyConfig(cfg=self.config, local_entity=self.entity_name, data=fk_data)
+            ForeignKeyConfig(entities_cfg=self.config, local_entity=self.entity_name, fk_cfg=fk_data)
             for fk_data in self.data.get("foreign_keys", []) or []
         ]
 
