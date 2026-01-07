@@ -259,7 +259,6 @@ class TestForeignKeyDataSpecification:
     def test_missing_local_df_assertion(self, mock_project):
         """Test assertion when local DataFrame missing."""
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"missing_entity": {}, "remote_entity": {}},
             local_entity="missing_entity",
             fk_cfg={"entity": "remote_entity", "how": "left", "local_keys": ["id"], "remote_keys": ["id"]},
         )
@@ -274,7 +273,6 @@ class TestForeignKeyDataSpecification:
         table_store = {"local_entity": pd.DataFrame({"id": [1]})}
 
         fk_cfg = ForeignKeyConfig(
-            entities_cfg={"local_entity": {}, "missing_entity": {}},
             local_entity="local_entity",
             fk_cfg={"entity": "missing_entity", "how": "left", "local_keys": ["id"], "remote_keys": ["id"]},
         )
