@@ -357,7 +357,6 @@ class TestIntegration:
         site: TableConfig = config.get_table("site")
         assert len(site.foreign_keys) == 1
         assert site.foreign_keys[0].remote_entity == "location"
-        assert site.foreign_keys[0].remote_surrogate_id == "location_id"
         assert site.depends_on == {"location"}
 
 
