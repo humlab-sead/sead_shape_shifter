@@ -108,9 +108,10 @@ frontend/
 
 - `/` - Home page with backend status
 - `/entities` - Entity management (Sprint 5.2)
-- `/graph` - Dependency graph visualization (Sprint 7.1)
 - `/validation` - Validation report (Sprint 8.2)
 - `/settings` - Application settings (Sprint 8.3)
+
+The dependency graph no longer has its own route; it lives inside the **Dependencies** tab of `/projects/:name`, so you must select a project from `/projects` and switch to that tab to see the graph.
 
 ## API Integration
 

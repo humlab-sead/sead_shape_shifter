@@ -162,12 +162,6 @@
             </v-list-item>
             <v-list-item>
               <template #prepend>
-                <v-chip size="small">Ctrl+G</v-chip>
-              </template>
-              <v-list-item-title>Go to Graph</v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-              <template #prepend>
                 <v-chip size="small">Esc</v-chip>
               </template>
               <v-list-item-title>Close Dialog</v-list-item-title>
@@ -264,13 +258,6 @@ const commands = ref<Command[]>([
     shortcut: 'Ctrl+Shift+C',
     action: () => router.push('/projects'),
   },
-  {
-    id: 'goto-graph',
-    title: 'Go to Dependency Graph',
-    icon: 'mdi-graph-outline',
-    shortcut: 'Ctrl+G',
-    action: () => router.push('/graph'),
-  },
 ])
 
 const filteredCommands = computed(() => {
@@ -308,11 +295,6 @@ function handleKeydown(event: KeyboardEvent) {
   if (event.ctrlKey && event.key === 'h') {
     event.preventDefault()
     router.push('/')
-  }
-
-  if (event.ctrlKey && event.key === 'g') {
-    event.preventDefault()
-    router.push('/graph')
   }
 
   if (event.ctrlKey && event.shiftKey && event.key === 'C') {
