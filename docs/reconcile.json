@@ -1,0 +1,273 @@
+{
+    "name": "SEAD Entity Reconciliation",
+    "identifierSpace": "https://w3id.org/sead/id/",
+    "schemaSpace": "http://www.w3.org/2004/02/skos/core#",
+    "defaultTypes": [
+        {
+            "id": "bibliographic_reference",
+            "name": "Bibliographic References"
+        },
+        {
+            "id": "country",
+            "name": "Countries"
+        },
+        {
+            "id": "data_type",
+            "name": "Data Types"
+        },
+        {
+            "id": "dimension",
+            "name": "Dimensions"
+        },
+        {
+            "id": "feature_type",
+            "name": "Feature Types"
+        },
+        {
+            "id": "geonames",
+            "name": "GeoNames Places"
+        },
+        {
+            "id": "location",
+            "name": "Locations & Places"
+        },
+        {
+            "id": "method",
+            "name": "Methods"
+        },
+        {
+            "id": "modification_type",
+            "name": "Modification Types"
+        },
+        {
+            "id": "sampling_context",
+            "name": "Sampling Contexts"
+        },
+        {
+            "id": "site",
+            "name": "Sites"
+        },
+        {
+            "id": "administrative_region",
+            "name": "Sub-country administrative region"
+        },
+        {
+            "id": "taxon",
+            "name": "Taxa"
+        }
+    ],
+    "view": {
+        "url": "http://localhost:8000/reconcile/preview?id={{id}}"
+    },
+    "preview": {
+        "url": "http://localhost:8000/reconcile/preview?id={{id}}",
+        "width": 400,
+        "height": 300
+    },
+    "suggest": {
+        "entity": {
+            "service_url": "http://localhost:8000",
+            "service_path": "/suggest/entity",
+            "flyout_service_url": "http://localhost:8000",
+            "flyout_service_path": "/flyout/entity?id=${{id}}"
+        },
+        "type": {
+            "service_url": "http://localhost:8000",
+            "service_path": "/suggest/type"
+        },
+        "property": {
+            "service_url": "http://localhost:8000",
+            "service_path": "/suggest/property"
+        }
+    },
+    "extend": {
+        "propose_properties": {
+            "service_url": "http://localhost:8000/reconcile",
+            "service_path": "/properties"
+        },
+        "property_settings": [
+            {
+                "name": "place_name",
+                "label": "Place Name",
+                "type": "string",
+                "help_text": "Geographic place, locality, or administrative area name",
+                "entity_types": [
+                    "location",
+                    "site"
+                ]
+            },
+            {
+                "name": "doi",
+                "label": "DOI",
+                "type": "string",
+                "help_text": "Digital Object Identifier",
+                "entity_types": [
+                    "bibliographic_reference"
+                ]
+            },
+            {
+                "name": "isbn",
+                "label": "ISBN",
+                "type": "string",
+                "help_text": "International Standard Book Number",
+                "entity_types": [
+                    "bibliographic_reference"
+                ]
+            },
+            {
+                "name": "title",
+                "label": "Title",
+                "type": "string",
+                "help_text": "Title of the work",
+                "entity_types": [
+                    "bibliographic_reference"
+                ]
+            },
+            {
+                "name": "year",
+                "label": "Year",
+                "type": "string",
+                "help_text": "Publication year",
+                "entity_types": [
+                    "bibliographic_reference"
+                ]
+            },
+            {
+                "name": "authors",
+                "label": "Authors",
+                "type": "string",
+                "help_text": "Authors of the work",
+                "entity_types": [
+                    "bibliographic_reference"
+                ]
+            },
+            {
+                "name": "full_reference",
+                "label": "Full reference",
+                "type": "string",
+                "help_text": "Full bibliographic reference",
+                "entity_types": [
+                    "bibliographic_reference"
+                ]
+            },
+            {
+                "name": "bugs_reference",
+                "label": "BUGS reference",
+                "type": "string",
+                "help_text": "BugsCEP reference",
+                "entity_types": [
+                    "bibliographic_reference"
+                ]
+            },
+            {
+                "name": "dimension_abbreviation",
+                "label": "Dimension Abbreviation",
+                "type": "string",
+                "help_text": "Abbreviation for the dimension used",
+                "entity_types": [
+                    "dimension"
+                ]
+            },
+            {
+                "name": "description",
+                "label": "Description",
+                "type": "string",
+                "help_text": "Description of the modification type",
+                "entity_types": [
+                    "modification_type"
+                ]
+            },
+            {
+                "name": "method_abbreviation",
+                "label": "Method Abbreviation",
+                "type": "string",
+                "help_text": "Abbreviation for the method used",
+                "entity_types": [
+                    "method"
+                ]
+            },
+            {
+                "name": "latitude",
+                "label": "Latitude",
+                "type": "number",
+                "help_text": "Geographic latitude in decimal degrees (WGS84)",
+                "entity_types": [
+                    "site"
+                ],
+                "settings": {
+                    "min": -90.0,
+                    "max": 90.0,
+                    "precision": 6
+                }
+            },
+            {
+                "name": "longitude",
+                "label": "Longitude",
+                "type": "number",
+                "help_text": "Geographic longitude in decimal degrees (WGS84)",
+                "entity_types": [
+                    "site"
+                ],
+                "settings": {
+                    "min": -180.0,
+                    "max": 180.0,
+                    "precision": 6
+                }
+            },
+            {
+                "name": "country",
+                "label": "Country",
+                "type": "string",
+                "help_text": "Country name where the site is located",
+                "entity_types": [
+                    "site"
+                ]
+            },
+            {
+                "name": "national_id",
+                "label": "National Site ID",
+                "type": "string",
+                "help_text": "Official national site identifier or registration number",
+                "entity_types": [
+                    "site"
+                ]
+            },
+            {
+                "name": "scientific_name",
+                "label": "Scientific Name",
+                "type": "string",
+                "help_text": "Full taxonomic scientific name",
+                "entity_types": [
+                    "taxon"
+                ]
+            },
+            {
+                "name": "genus",
+                "label": "Genus",
+                "type": "string",
+                "help_text": "Taxonomic genus name",
+                "entity_types": [
+                    "taxon"
+                ]
+            },
+            {
+                "name": "species",
+                "label": "Species",
+                "type": "string",
+                "help_text": "Taxonomic species name",
+                "entity_types": [
+                    "taxon"
+                ]
+            },
+            {
+                "name": "family",
+                "label": "Family",
+                "type": "string",
+                "help_text": "Taxonomic family name",
+                "entity_types": [
+                    "taxon"
+                ]
+            }
+        ]
+    }
+}
