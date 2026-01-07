@@ -30,6 +30,14 @@ class ExecuteResult(BaseModel):
     message: str = Field(..., description="Success or error message")
     target: str = Field(..., description="Output target location")
     dispatcher_key: str = Field(..., description="Dispatcher that was used")
+    target_type: str = Field(
+        ...,
+        description="Target type for the dispatcher (file, folder, database, or unknown)",
+    )
     entity_count: int = Field(..., description="Number of entities processed")
     validation_passed: bool | None = Field(None, description="Whether validation passed (if run)")
     error_details: str | None = Field(None, description="Detailed error information if failed")
+    download_path: str | None = Field(
+        None,
+        description="Relative API path that can be used to download the generated file (file targets only)",
+    )

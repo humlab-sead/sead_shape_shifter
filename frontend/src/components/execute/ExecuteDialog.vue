@@ -130,6 +130,18 @@
             <div class="text-caption mt-1">
               Processed {{ lastResult.entity_count }} entities to {{ lastResult.target }}
             </div>
+            <v-btn
+              v-if="downloadLinkVisible && downloadUrl"
+              :href="downloadUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="tonal"
+              color="primary"
+              class="mt-2"
+            >
+              <v-icon icon="mdi-download" class="mr-2" />
+              Download result file
+            </v-btn>
           </v-alert>
         </v-form>
       </v-card-text>
@@ -154,6 +166,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { apiClient } from '@/api/client'
 import { storeToRefs } from 'pinia'
 import { useExecuteStore } from '@/stores/execute'
 import { useDataSourceStore } from '@/stores/data-source'
@@ -224,6 +237,18 @@ const canExecute = computed(() => {
   return true
 })
 
+const downloadPath = computed(() => lastResult.value?.download_path ?? null)
+
+const downloadUrl = computed(() => {
+  if (!downloadPath.value) return null
+  const baseUrl = apiClient.defaults.baseURL || ''
+  return `${baseUrl}${downloadPath.value}`
+})
+
+const downloadLinkVisible = computed(() => {
+  return !!downloadPath.value && lastResult.value?.target_type === 'file' && showSuccess.value
+})
+
 const selectedDispatcherMetadata = computed(() => {
   if (!selectedDispatcher.value) return null
   return dispatchers.value.find(d => d.key === selectedDispatcher.value) || null
@@ -288,11 +313,13 @@ async function handleSubmit() {
     if (result.success) {
       showSuccess.value = true
       emit('executed', result)
-      
-      // Close dialog after 2 seconds on success
-      setTimeout(() => {
-        handleCancel()
-      }, 2000)
+
+      if (!result.download_path) {
+        // Close dialog after 2 seconds on success when no download is available
+        setTimeout(() => {
+          handleCancel()
+        }, 2000)
+      }
     } else {
       // Set error from result when success is false
       executeStore.error = result.error_details || result.message
