@@ -59,14 +59,6 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/graph',
-    name: 'graph',
-    component: () => import('@/views/DependencyGraphView.vue'),
-    meta: {
-      title: 'Dependency Graph',
-    },
-  },
-  {
     path: '/validation',
     name: 'validation',
     component: () => import('@/views/ValidationView.vue'),

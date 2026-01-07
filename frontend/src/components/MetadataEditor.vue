@@ -15,12 +15,18 @@
         <v-text-field
           v-model="formData.name"
           label="Project Name"
+          hint="Project name is determined by the filename and cannot be edited here"
           persistent-hint
           variant="outlined"
           density="comfortable"
+          readonly
           :rules="[rules.required]"
           class="mb-4"
-        />
+        >
+          <template #prepend-inner>
+            <v-icon icon="mdi-lock-outline" size="small" />
+          </template>
+        </v-text-field>
 
         <v-textarea
           v-model="formData.description"
@@ -169,7 +175,7 @@ async function handleSave() {
   saving.value = true
   try {
     const updateData: MetadataUpdateRequest = {
-      name: formData.value.name !== initialValues.value?.name ? formData.value.name : undefined,
+      // Name is locked to filename, never send it for update
       description: formData.value.description,
       version: formData.value.version,
       default_entity: formData.value.default_entity,

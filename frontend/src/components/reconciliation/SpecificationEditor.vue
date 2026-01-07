@@ -7,6 +7,41 @@
       </v-card-title>
 
       <v-card-text class="pt-6">
+        <!-- Validation Errors Alert -->
+        <v-alert
+          v-if="!isNew && validationErrors.length > 0"
+          type="error"
+          variant="tonal"
+          class="mb-4"
+        >
+          <v-alert-title class="d-flex align-center">
+            <v-icon start>mdi-alert-circle</v-icon>
+            Configuration Issues Detected
+          </v-alert-title>
+          <ul class="mt-2">
+            <li v-for="(error, idx) in validationErrors" :key="idx">{{ error }}</li>
+          </ul>
+          <div class="text-caption mt-2">
+            Please fix these issues before the specification can be used.
+          </div>
+        </v-alert>
+
+        <!-- Validation Warnings Alert -->
+        <v-alert
+          v-if="!isNew && validationWarnings.length > 0"
+          type="warning"
+          variant="tonal"
+          class="mb-4"
+        >
+          <v-alert-title class="d-flex align-center">
+            <v-icon start>mdi-alert</v-icon>
+            Configuration Warnings
+          </v-alert-title>
+          <ul class="mt-2">
+            <li v-for="(warning, idx) in validationWarnings" :key="idx">{{ warning }}</li>
+          </ul>
+        </v-alert>
+
         <v-form ref="form" v-model="valid">
           <!-- Entity and Target Field Selection (only for new) -->
           <template v-if="isNew">
@@ -65,32 +100,33 @@
             prepend-inner-icon="mdi-lock"
           />
 
-          <v-divider class="my-6" />
-
           <!-- Data Source Configuration -->
           <h4 class="text-subtitle-1 mb-4">
             <v-icon start size="small">mdi-database</v-icon>
             Data Source
           </h4>
 
-          <v-select
-            v-model="sourceType"
-            :items="sourceTypes"
-            label="Source Type"
-            variant="outlined"
-            density="comfortable"
-            class="mb-4"
-          />
-
-          <v-autocomplete
-            v-if="sourceType === 'Other Entity'"
-            v-model="otherEntityName"
-            :items="availableEntities.filter(e => e !== formData.entity_name)"
-            label="Source Entity"
-            variant="outlined"
-            density="comfortable"
-            class="mb-4"
-          />
+          <v-row>
+            <v-col cols="6">
+              <v-select
+                v-model="sourceType"
+                :items="sourceTypes"
+                label="Source Type"
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-autocomplete
+                v-if="sourceType === 'Other Entity'"
+                v-model="otherEntityName"
+                :items="availableEntities.filter(e => e !== formData.entity_name)"
+                label="Source Entity"
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+          </v-row>
 
           <v-textarea
             v-if="sourceType === 'SQL Query'"
@@ -101,8 +137,6 @@
             class="mb-4"
             hint="Write a custom SQL query to fetch reconciliation data"
           />
-
-          <v-divider class="my-6" />
 
           <!-- Remote Configuration -->
           <h4 class="text-subtitle-1 mb-4">
@@ -129,8 +163,6 @@
             </template>
           </v-autocomplete>
 
-          <v-divider class="my-6" />
-
           <!-- Property Mappings -->
           <h4 class="text-subtitle-1 mb-4">
             <v-icon start size="small">mdi-link-variant</v-icon>
@@ -138,18 +170,25 @@
             <v-chip size="x-small" class="ml-2">{{ Object.keys(formData.spec.property_mappings).length }}</v-chip>
           </h4>
 
-          <v-card variant="outlined" class="mb-4">
+          <v-card variant="flat" class="mb-4">
             <v-card-text v-if="availableProperties.length > 0">
               <v-row v-for="prop in availableProperties" :key="prop" dense>
                 <v-col cols="12">
                   <v-text-field
                     v-model="formData.spec.property_mappings[prop]"
-                    :label="`${prop} → Source Column`"
+                    :label="prop"
                     variant="outlined"
                     density="compact"
                     clearable
-                    :hint="`Map service property '${prop}' to a source column`"
-                  />
+                    :hint="`Map property '${prop}' to a source column`"
+                    persistent-hint
+                    :error="!isNew && isMissingColumn(formData.spec.property_mappings[prop])"
+                    :error-messages="!isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? `Column '${formData.spec.property_mappings[prop]}' not found in entity` : undefined"
+                  >
+                    <template #prepend-inner>
+                      <v-icon size="small" :color="!isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? 'error' : 'primary'">mdi-arrow-left</v-icon>
+                    </template>
+                  </v-text-field>
                 </v-col>
               </v-row>
             </v-card-text>
@@ -158,9 +197,6 @@
             </v-card-text>
           </v-card>
 
-          <v-divider class="my-6" />
-
-          <!-- Match Thresholds -->
           <h4 class="text-subtitle-1 mb-4">
             <v-icon start size="small">mdi-tune</v-icon>
             Match Thresholds
@@ -271,6 +307,8 @@ const availableFields = ref<string[]>([])
 const availableRemoteTypes = ref<string[]>([])
 const availableProperties = ref<string[]>([])
 const isDirty = ref(false)
+const validationErrors = ref<string[]>([])
+const validationWarnings = ref<string[]>([])
 
 // Source type selection
 const sourceTypes = ['Entity Preview', 'Other Entity', 'SQL Query']
@@ -309,6 +347,91 @@ const uniqueTargetField = (v: string) => {
   return !existing || 'This entity + target field combination already exists'
 }
 
+// Validation methods
+function validateSpecification() {
+  validationErrors.value = []
+  validationWarnings.value = []
+
+  if (props.isNew) return
+
+  const project = projectStore.selectedProject
+  if (!project) return
+
+  // Determine which entity to validate against
+  // If source is specified as string (Other Entity), use that entity's columns
+  // Otherwise use the main entity's columns
+  let entityForValidation = formData.value.entity_name
+  let entityColumns: string[] = []
+
+  if (formData.value.spec.source && typeof formData.value.spec.source === 'string') {
+    // Using "Other Entity" as source
+    entityForValidation = formData.value.spec.source
+    
+    if (!project.entities[entityForValidation]) {
+      validationErrors.value.push(
+        `Source entity '${entityForValidation}' no longer exists in the project`
+      )
+      return // Can't validate further without source entity
+    }
+    
+    const sourceEntity = project.entities[entityForValidation]
+    entityColumns = sourceEntity?.columns || []
+  } else {
+    // Using main entity as source
+    if (!project.entities[formData.value.entity_name]) {
+      validationErrors.value.push(
+        `Entity '${formData.value.entity_name}' no longer exists in the project`
+      )
+      return // Can't validate further without entity
+    }
+
+    const entity = project.entities[formData.value.entity_name]
+    entityColumns = entity?.columns || []
+  }
+
+  // Check if target field exists in the entity being validated
+  if (!entityColumns.includes(formData.value.target_field)) {
+    validationErrors.value.push(
+      `Target field '${formData.value.target_field}' not found in entity '${entityForValidation}'`
+    )
+  }
+
+  // Check if property mapping source columns exist in the entity being validated
+  const missingColumns: string[] = []
+  Object.entries(formData.value.spec.property_mappings).forEach(([prop, sourceCol]) => {
+    if (sourceCol && !entityColumns.includes(sourceCol)) {
+      missingColumns.push(`${prop} → ${sourceCol}`)
+    }
+  })
+
+  if (missingColumns.length > 0) {
+    validationErrors.value.push(
+      `Property mappings reference missing columns: ${missingColumns.join(', ')}`
+    )
+  }
+}
+
+function isMissingColumn(columnName: string | undefined): boolean {
+  if (!columnName || props.isNew) return false
+  
+  const project = projectStore.selectedProject
+  if (!project) return false
+
+  // Check against the correct entity based on source type
+  let entityForValidation = formData.value.entity_name
+  
+  if (formData.value.spec.source && typeof formData.value.spec.source === 'string') {
+    // Using "Other Entity" as source - validate against source entity
+    entityForValidation = formData.value.spec.source
+  }
+
+  const entity = project.entities[entityForValidation]
+  if (!entity) return false
+
+  const entityColumns = entity.columns || []
+  return !entityColumns.includes(columnName)
+}
+
 // Methods
 async function onEntityChange(entityName: string) {
   if (!entityName) {
@@ -333,15 +456,30 @@ async function onRemoteTypeChange(remoteType: string | null) {
     return
   }
 
-  // TODO: Fetch available properties from reconciliation service
-  // For now, use common properties
-  availableProperties.value = ['latitude', 'longitude', 'description', 'country', 'region']
+  // If we have existing property_mappings (editing mode), use those keys
+  const existingProps = Object.keys(formData.value.spec.property_mappings)
+  if (existingProps.length > 0) {
+    availableProperties.value = existingProps
+  } else {
+    // TODO: Fetch available properties from reconciliation service manifest
+    // For now, use type-specific defaults
+    const propertyDefaults: Record<string, string[]> = {
+      site: ['latitude', 'longitude', 'description', 'country', 'region'],
+      taxon: ['rank', 'kingdom', 'family'],
+      location: ['latitude', 'longitude', 'country'],
+      abundance: ['value', 'unit'],
+    }
+    availableProperties.value = propertyDefaults[remoteType.toLowerCase()] || []
+  }
+  
   isDirty.value = true
 }
 
 function cancel() {
   emit('update:modelValue', false)
   resetForm()
+  validationErrors.value = []
+  validationWarnings.value = []
 }
 
 async function save() {
@@ -473,6 +611,9 @@ watch(
       if (spec.remote.service_type) {
         onRemoteTypeChange(spec.remote.service_type)
       }
+
+      // Validate the loaded specification
+      validateSpecification()
     }
   },
   { immediate: true }

@@ -67,7 +67,7 @@ tidy:
 	@uv run black src tests backend/app backend/tests
 
 .PHONY: lint
-lint: tidy pylint
+lint: tidy pylint ruff-check-fix
 
 .PHONY: check-imports
 check-imports:
@@ -92,8 +92,7 @@ br: backend-kill backend-run
 .PHONY: fr
 fr: frontend-kill frontend-run
 
-.PHONY: fr2
-fr2: frontend-kill frontend-build-fast frontend-run
+fr2: frontend-clear-vite-cache fr
 
 .PHONY: run-all
 run-all: backend-kill frontend-kill
@@ -159,6 +158,10 @@ ui-install: install frontend-install
 frontend-kill: 
 	@lsof -t -i ':$(FRONTEND_PORT)' | xargs -r kill -9
 	@echo "Killed all running servers."
+
+frontend-clear-vite-cache:
+	@rm -rf frontend/node_modules/.vite
+	@echo "Vite cache cleared."
 
 .PHONY: frontend-install
 frontend-install:

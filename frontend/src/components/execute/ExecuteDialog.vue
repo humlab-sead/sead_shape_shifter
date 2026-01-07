@@ -39,7 +39,7 @@
             v-if="selectedTargetType === 'file'"
             v-model="fileTarget"
             label="Output File Path"
-            :rules="[(v) => !!v || 'File path is required']"
+            :rules="filePathRules"
             variant="outlined"
             density="comfortable"
             :hint="`Default: ./output/${projectName}.${selectedDispatcher}`"
@@ -121,7 +121,7 @@
 
           <!-- Error Display -->
           <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
-            {{ error }}
+            <div style="white-space: pre-wrap;">{{ error }}</div>
           </v-alert>
 
           <!-- Success Display -->
@@ -130,6 +130,18 @@
             <div class="text-caption mt-1">
               Processed {{ lastResult.entity_count }} entities to {{ lastResult.target }}
             </div>
+            <v-btn
+              v-if="downloadLinkVisible && downloadUrl"
+              :href="downloadUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="tonal"
+              color="primary"
+              class="mt-2"
+            >
+              <v-icon icon="mdi-download" class="mr-2" />
+              Download result file
+            </v-btn>
           </v-alert>
         </v-form>
       </v-card-text>
@@ -154,6 +166,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { apiClient } from '@/api/client'
 import { storeToRefs } from 'pinia'
 import { useExecuteStore } from '@/stores/execute'
 import { useDataSourceStore } from '@/stores/data-source'
@@ -224,6 +237,46 @@ const canExecute = computed(() => {
   return true
 })
 
+const downloadPath = computed(() => lastResult.value?.download_path ?? null)
+
+const downloadUrl = computed(() => {
+  if (!downloadPath.value) return null
+  const baseUrl = apiClient.defaults.baseURL || ''
+  return `${baseUrl}${downloadPath.value}`
+})
+
+const downloadLinkVisible = computed(() => {
+  return !!downloadPath.value && lastResult.value?.target_type === 'file' && showSuccess.value
+})
+
+const selectedDispatcherMetadata = computed(() => {
+  if (!selectedDispatcher.value) return null
+  return dispatchers.value.find(d => d.key === selectedDispatcher.value) || null
+})
+
+const dispatcherExtension = computed(() => {
+  const extension = selectedDispatcherMetadata.value?.extension
+  if (!extension) return null
+  return extension.startsWith('.') ? extension : `.${extension}`
+})
+
+const filePathRules = computed(() => {
+  const rules: Array<(value: string) => boolean | string> = [
+    (value: string) => !!value || 'File path is required',
+  ]
+
+  if (dispatcherExtension.value) {
+    rules.push((value: string) => {
+      if (!value) return true
+      return value.toLowerCase().endsWith(dispatcherExtension.value?.toLowerCase() ?? '')
+        ? true
+        : `File path must end with ${dispatcherExtension.value}`
+    })
+  }
+
+  return rules
+})
+
 // Methods
 function getDispatcherIcon(targetType: string): string {
   switch (targetType) {
@@ -260,11 +313,16 @@ async function handleSubmit() {
     if (result.success) {
       showSuccess.value = true
       emit('executed', result)
-      
-      // Close dialog after 2 seconds on success
-      setTimeout(() => {
-        handleCancel()
-      }, 2000)
+
+      if (!result.download_path) {
+        // Close dialog after 2 seconds on success when no download is available
+        setTimeout(() => {
+          handleCancel()
+        }, 2000)
+      }
+    } else {
+      // Set error from result when success is false
+      executeStore.error = result.error_details || result.message
     }
   } catch (err) {
     // Error is already set in store

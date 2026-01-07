@@ -98,7 +98,7 @@ class TestMetadataHandling:
         api_config = ProjectMapper.to_api_config(core_dict, "mapper-test")
 
         assert api_config.metadata is not None
-        assert api_config.metadata.name == "Mapper Test"
+        assert api_config.metadata.name == "mapper-test"
         assert api_config.metadata.description == "Testing mapper metadata preservation"
         assert api_config.metadata.version == "3.1.4"
 
@@ -106,12 +106,12 @@ class TestMetadataHandling:
         restored_dict = ProjectMapper.to_core_dict(api_config)
 
         assert "metadata" in restored_dict
-        assert restored_dict["metadata"]["name"] == "Mapper Test"
+        assert restored_dict["metadata"]["name"] == "mapper-test"
         assert restored_dict["metadata"]["description"] == "Testing mapper metadata preservation"
         assert restored_dict["metadata"]["version"] == "3.1.4"
 
-    def test_mapper_uses_metadata_name_over_filename(self):
-        """Test that mapper prefers metadata.name over filename parameter."""
+    def test_mapper_uses_filename_over_metadata_name(self):
+        """Test that mapper prefers filename over metadata.name parameter."""
         core_dict = {
             "metadata": {
                 "name": "Official Name",
@@ -123,7 +123,7 @@ class TestMetadataHandling:
         api_config: Project = ProjectMapper.to_api_config(core_dict, "filename-name")
 
         assert api_config.metadata is not None
-        assert api_config.metadata.name == "Official Name"
+        assert api_config.metadata.name == "filename-name"
 
     def test_mapper_falls_back_to_filename_if_no_metadata_name(self):
         """Test that mapper uses filename if metadata.name is missing."""

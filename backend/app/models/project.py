@@ -10,6 +10,7 @@ class ProjectMetadata(BaseModel):
     """Metadata about a project."""
 
     name: str = Field(..., description="Project name")
+    type: str | None = Field(default="shapeshifter-project", description="Project type identifier")
     description: str | None = Field(default=None, description="Project description")
     version: str | None = Field(default=None, description="Project version")
     file_path: str | None = Field(default=None, description="File path if loaded from file")

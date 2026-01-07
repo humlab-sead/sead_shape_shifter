@@ -13,6 +13,7 @@
 - Execute tests with `make test` for full coverage, `uv run pytest tests -v` for Core, or `uv run pytest backend/tests -v` (add `PYTHONPATH=.:backend` if imports fail).
 - Test frontend with `make frontend-test` or get coverage with `make frontend-coverage`.
 - Enforce formatting and linting with `make lint` (backend) and `make frontend-lint` (frontend); run `make tidy` (Black + isort) before committing.
+- When you execute a shell command, launch shell with login:false flag.
 
 ## Critical Patterns & Constraints
 - Register extensible validators/loaders/filters through the registry pattern (`@Validators.register(...)`).

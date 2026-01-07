@@ -15,7 +15,7 @@ class TestUnnest:
         entity = "test_entity"
         table = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
         config = {"test_entity": {"columns": ["col1", "col2"]}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -26,7 +26,7 @@ class TestUnnest:
         entity = "test_entity"
         table = pd.DataFrame({"id": [1, 2], "value": [3, 4]})
         config = {"test_entity": {"columns": ["id", "value"], "unnest": {"id_vars": ["id"], "var_name": "variable", "value_name": "value"}}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -39,7 +39,7 @@ class TestUnnest:
         config = {"test_entity": {"columns": ["col1", "col2"], "unnest": {"var_name": "", "value_name": "value"}}}
 
         with pytest.raises(ValueError, match="Invalid unnest configuration"):
-            table_cfg = TableConfig(cfg=config, entity_name=entity)
+            table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
             unnest(entity, table, table_cfg)
 
     def test_unnest_raises_when_value_name_missing(self):
@@ -49,7 +49,7 @@ class TestUnnest:
         config = {"test_entity": {"columns": ["col1", "col2"], "unnest": {"var_name": "variable", "value_name": ""}}}
 
         with pytest.raises(ValueError, match="Invalid unnest configuration"):
-            table_cfg = TableConfig(cfg=config, entity_name=entity)
+            table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
             unnest(entity, table, table_cfg)
 
     def test_unnest_raises_when_id_vars_missing_from_table(self):
@@ -62,7 +62,7 @@ class TestUnnest:
                 "unnest": {"id_vars": ["missing_col"], "var_name": "variable", "value_name": "value"},
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         with pytest.raises(ValueError, match="missing `id_vars` columns"):
             unnest(entity, table, table_cfg)
@@ -77,7 +77,7 @@ class TestUnnest:
                 "unnest": {"id_vars": ["id"], "value_vars": ["col1", "missing_col"], "var_name": "variable", "value_name": "value"},
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -89,7 +89,7 @@ class TestUnnest:
         entity = "test_entity"
         table = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
         config = {"test_entity": {"columns": ["col1", "col2"], "unnest": {"var_name": "variable", "value_name": "value"}}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -107,7 +107,7 @@ class TestUnnest:
         config = {
             "test_entity": {"columns": ["id", "col1", "col2"], "unnest": {"id_vars": ["id"], "var_name": "variable", "value_name": "value"}}
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -125,7 +125,7 @@ class TestUnnest:
                 "unnest": {"id_vars": ["id"], "value_vars": ["col1", "col2"], "var_name": "variable", "value_name": "value"},
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -143,7 +143,7 @@ class TestUnnest:
                 "unnest": {"id_vars": ["id1", "id2"], "var_name": "variable", "value_name": "value"},
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -157,7 +157,7 @@ class TestUnnest:
         entity = "test_entity"
         table = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
         config = {"test_entity": {"columns": ["col1", "col2"], "unnest": {"var_name": "attribute", "value_name": "measurement"}}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -172,7 +172,7 @@ class TestUnnest:
         config = {
             "test_entity": {"columns": ["id", "col1", "col2"], "unnest": {"id_vars": ["id"], "var_name": "variable", "value_name": "value"}}
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -183,7 +183,7 @@ class TestUnnest:
         entity = "test_entity"
         table = pd.DataFrame({"col1": [], "col2": []})
         config = {"test_entity": {"columns": ["col1", "col2"], "unnest": {"var_name": "variable", "value_name": "value"}}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -196,7 +196,7 @@ class TestUnnest:
         entity = "test_entity"
         table = pd.DataFrame({"col1": [1, 2, 3]})
         config = {"test_entity": {"columns": ["col1"], "unnest": {"var_name": "variable", "value_name": "value"}}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -227,7 +227,7 @@ class TestUnnest:
                 },
             },
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -264,7 +264,7 @@ class TestUnnest:
                 },
             },
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -288,7 +288,7 @@ class TestUnnest:
                 "unnest": {"id_vars": ["id"], "value_vars": [], "var_name": "variable", "value_name": "value"},
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -306,7 +306,7 @@ class TestUnnest:
                 "unnest": {"id_vars": ["id"], "value_vars": ["num_col", "str_col"], "var_name": "variable", "value_name": "value"},
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -321,7 +321,7 @@ class TestUnnest:
         config = {
             "test_entity": {"columns": ["id", "col1", "col2"], "unnest": {"id_vars": ["id"], "var_name": "variable", "value_name": "value"}}
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 
@@ -355,7 +355,7 @@ class TestUnnest:
                 },
             },
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result = unnest(entity, table, table_cfg)
 

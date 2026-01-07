@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Normalize data from various data sources into structured tables
 and write them as CSVs or sheets in a single Excel file.
@@ -9,10 +8,8 @@ Usage:
 """
 
 import os
-import sys
 from pathlib import Path
 
-import click
 from loguru import logger
 
 from src.extract import extract_translation_map
@@ -51,15 +48,11 @@ async def workflow(
     translate: bool,
     target_type: str,
     drop_foreign_keys: bool,
-    validate_then_exit: bool = False,
     default_entity: str | None = None,
     env_file: str | None = None,
 ) -> None:
 
     project = resolve_config(project, env_file=env_file)
-
-    if validate_project(project) and validate_then_exit:
-        return
 
     shapeshifter: ShapeShifter = ShapeShifter(project=project, default_entity=default_entity)
 
@@ -84,16 +77,22 @@ async def workflow(
     #         click.echo(f"  - {name}: {len(table)} rows")
 
 
-def validate_project(config: ShapeShiftProject) -> bool:
-    specification = CompositeProjectSpecification()
-    errors = specification.is_satisfied_by(config.cfg)
-    if errors:
-        for error in specification.errors:
-            logger.error(f"Configuration error: {error}")
-        click.echo("Configuration validation failed with errors.", err=True)
-        sys.exit(1)
-    logger.info("Configuration validation passed successfully.")
-    return True
+def validate_project(project: str | ShapeShiftProject) -> bool:
+    if isinstance(project, str):
+        if not Path(project).exists():
+            raise FileNotFoundError(f"Project file not found: {project}")
+
+        project = ShapeShiftProject.from_file(project, env_prefix="SEAD_NORMALIZER", env_file=".env")
+
+    specification = CompositeProjectSpecification(project.cfg)
+    is_satisfied: bool = specification.is_satisfied_by()
+    if specification.has_errors():
+        logger.error(f"Configuration validation failed with errors:\n{specification.get_report()}")
+    elif specification.has_warnings():
+        logger.warning(f"Configuration validation completed with warnings:\n{specification.get_report()}")
+    else:
+        logger.info("Configuration validation passed successfully.")
+    return is_satisfied
 
 
 def validate_entity_shapes(target: str, mode: str, regression_file: str | None):
@@ -109,6 +108,5 @@ def validate_entity_shapes(target: str, mode: str, regression_file: str | None):
         if truth_shapes.get(entity) != new_shapes.get(entity)
     ]
     if len(entities_with_different_shapes) > 0:
-        click.secho("✗ Regression check failed: Entities with different shapes:", fg="red")
-
-        print("\n".join(f" {z[0]:>30}: expected {str(z[1]):<15} found {str(z[2]):<20}" for z in entities_with_different_shapes))
+        logger.warning("✗ Regression check failed: Entities with different shapes:")
+        logger.warning("\n".join(f" {z[0]:>30}: expected {str(z[1]):<15} found {str(z[2]):<20}" for z in entities_with_different_shapes))

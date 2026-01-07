@@ -405,7 +405,7 @@ class TestUCanAccessLoader:
         )
 
         table_cfg = TableConfig(
-            cfg={
+            entities_cfg={
                 "products": {
                     "type": "sql",
                     "query": "SELECT * FROM Products",
@@ -515,7 +515,7 @@ class TestSqlLoaderCore:
         monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
 
         table_cfg = TableConfig(
-            cfg={
+            entities_cfg={
                 "sql_entity": {
                     "type": "sql",
                     "query": "select * from t",
@@ -541,7 +541,7 @@ class TestSqlLoaderCore:
         """SqlLoader.load should raise for non-sql entities."""
         loader = DummySqlLoader(data_source=Mock())
         table_cfg = TableConfig(
-            cfg={"not_sql": {"type": "fixed", "query": "select 1", "columns": ["a"], "keys": []}},
+            entities_cfg={"not_sql": {"type": "fixed", "query": "select 1", "columns": ["a"], "keys": []}},
             entity_name="not_sql",
         )
 
@@ -620,7 +620,7 @@ class TestSqlLoaderCore:
         monkeypatch.setattr(loader, "read_sql", AsyncMock(return_value=sample_df))
 
         table_cfg = TableConfig(
-            cfg={
+            entities_cfg={
                 "sql_entity": {
                     "type": "sql",
                     "query": "select * from t",

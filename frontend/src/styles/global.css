@@ -209,3 +209,14 @@
 .compact-mode .mt-4 {
   margin-top: 12px !important;
 }
+
+/* Reduce font-size for all v-switch controls */
+.v-switch .v-label {
+  font-size: 0.6rem !important;
+  size: small !important;
+}
+
+.v-switch .v-selection-control__input {
+  font-size: 0.6rem !important;
+  size: small !important;
+}
