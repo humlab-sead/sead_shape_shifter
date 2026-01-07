@@ -1,0 +1,222 @@
+/* Global application styles */
+
+/* Compact mode adjustments */
+.compact-mode {
+  /* Reduce container padding */
+  --v-layout-padding: 12px;
+}
+
+.compact-mode .v-container {
+  padding: 12px !important;
+}
+
+.compact-mode .v-card {
+  padding: 12px !important;
+}
+
+.compact-mode .v-card-title {
+  padding: 8px 12px !important;
+  font-size: 1.1rem !important;
+}
+
+.compact-mode .v-card-subtitle {
+  padding: 4px 12px !important;
+  font-size: 0.85rem !important;
+}
+
+.compact-mode .v-card-text {
+  padding: 12px !important;
+}
+
+.compact-mode .v-card-actions {
+  padding: 8px 12px !important;
+}
+
+.compact-mode .v-toolbar {
+  height: 48px !important;
+}
+
+.compact-mode .v-app-bar {
+  height: 48px !important;
+}
+
+.compact-mode .v-list-item {
+  min-height: 36px !important;
+  padding: 2px 12px !important;
+}
+
+.compact-mode .v-list-item-title {
+  font-size: 0.8125rem !important;
+  line-height: 1.4 !important;
+}
+
+.compact-mode .v-list-item-subtitle {
+  font-size: 0.75rem !important;
+}
+
+.compact-mode .v-btn {
+  height: 32px !important;
+  min-width: 64px !important;
+  padding: 0 12px !important;
+  font-size: 0.875rem !important;
+}
+
+.compact-mode .v-btn--size-small {
+  height: 28px !important;
+  font-size: 0.8125rem !important;
+}
+
+.compact-mode .v-btn--size-large {
+  height: 40px !important;
+}
+
+.compact-mode .v-chip {
+  min-height: 18px;
+  height: 18px;
+  font-size: 11px;
+}
+
+.compact-mode .v-breadcrumbs {
+  padding: 8px 16px !important;
+}
+
+.compact-mode .v-data-table {
+  font-size: 0.875rem !important;
+}
+
+.compact-mode .v-data-table .v-data-table__td,
+.compact-mode .v-data-table .v-data-table__th {
+  padding: 8px 12px !important;
+  height: 40px !important;
+}
+
+.compact-mode .v-tabs {
+  height: 40px !important;
+}
+
+.compact-mode .v-tab {
+  min-height: 40px !important;
+  font-size: 0.875rem !important;
+}
+
+.compact-mode .v-navigation-drawer {
+  padding: 8px !important;
+}
+
+/* Disable animations when turned off */
+.no-animations *,
+.no-animations *::before,
+.no-animations *::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
+
+/* Smooth transitions for compact mode toggle */
+:root:not(.no-animations) .v-card,
+:root:not(.no-animations) .v-btn,
+:root:not(.no-animations) .v-list-item,
+:root:not(.no-animations) .v-chip {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Custom scrollbar for compact mode */
+.compact-mode ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.compact-mode ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.compact-mode ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.compact-mode ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Reduce gaps in compact mode */
+.compact-mode .v-row {
+  margin: -6px !important;
+}
+
+.compact-mode .v-col {
+  padding: 6px !important;
+}
+
+.compact-mode .gap-2 {
+  gap: 6px !important;
+}
+
+.compact-mode .gap-3 {
+  gap: 8px !important;
+}
+
+.compact-mode .gap-4 {
+  gap: 12px !important;
+}
+
+/* Compact spacing utilities */
+.compact-mode .ma-2 {
+  margin: 6px !important;
+}
+
+.compact-mode .ma-3 {
+  margin: 8px !important;
+}
+
+.compact-mode .ma-4 {
+  margin: 12px !important;
+}
+
+.compact-mode .pa-2 {
+  padding: 6px !important;
+}
+
+.compact-mode .pa-3 {
+  padding: 8px !important;
+}
+
+.compact-mode .pa-4 {
+  padding: 12px !important;
+}
+
+.compact-mode .mb-2 {
+  margin-bottom: 6px !important;
+}
+
+.compact-mode .mb-3 {
+  margin-bottom: 8px !important;
+}
+
+.compact-mode .mb-4 {
+  margin-bottom: 12px !important;
+}
+
+.compact-mode .mt-2 {
+  margin-top: 6px !important;
+}
+
+.compact-mode .mt-3 {
+  margin-top: 8px !important;
+}
+
+.compact-mode .mt-4 {
+  margin-top: 12px !important;
+}
+
+/* Reduce font-size for all v-switch controls */
+.v-switch .v-label {
+  font-size: 0.6rem !important;
+  size: small !important;
+}
+
+.v-switch .v-selection-control__input {
+  font-size: 0.6rem !important;
+  size: small !important;
+}

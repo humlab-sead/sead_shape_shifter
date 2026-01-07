@@ -1,170 +1,79 @@
 #!/usr/bin/env python3
 """
-Normalize an Arbodat "Data Survey" CSV export into several tables
-and write them as sheets in a single Excel file.
+Normalize data from various data sources into structured tables
+and write them as CSVs or sheets in a single Excel file.
 
 Usage:
-    python arbodat_normalize_to_excel.py input.csv output.xlsx
+    python shaper_shifter.py input.csv output.xlsx
 
 """
 
 import asyncio
-import os
 import sys
 from pathlib import Path
-from typing import Any, Literal
 
 import click
-from loguru import logger
 
-from src.configuration.provider import get_config_provider
-from src.configuration.resolve import ConfigValue
-from src.configuration.setup import setup_config_store
-from src.extract import extract_translation_map
-from src.normalizer import ArbodatSurveyNormalizer
-from src.specifications import CompositeConfigSpecification
-from src.utility import load_shape_file, setup_logging
+from src.utility import setup_logging
+from src.workflow import validate_project, workflow
 
 # pylint: disable=no-value-for-parameter
-
-
-async def workflow(
-    target: str,
-    translate: bool,
-    mode: Literal["xlsx", "csv", "db"],
-    drop_foreign_keys: bool,
-    validate_then_exit: bool = False,
-    default_entity: str | None = None,
-) -> None:
-
-    normalizer: ArbodatSurveyNormalizer = ArbodatSurveyNormalizer(default_entity=default_entity)
-
-    if validate_configuration() and validate_then_exit:
-        return
-
-    await normalizer.normalize()
-
-    if drop_foreign_keys:
-        normalizer.drop_foreign_key_columns()
-
-    if translate:
-        fields_metadata: list[dict[str, str]] = ConfigValue[list[dict[str, str]]]("translation").resolve() or []
-        translations_map: dict[str, str] = extract_translation_map(fields_metadata=fields_metadata)
-        normalizer.translate(translations_map=translations_map)
-
-    normalizer.add_system_id_columns()
-    normalizer.move_keys_to_front()
-
-    link_cfgs: dict[str, dict[str, Any]] = ConfigValue[dict[str, dict[str, dict[str, int]]]]("mappings").resolve() or {}
-    normalizer.map_to_remote(link_cfgs)
-
-    normalizer.store(target=target, mode=mode)
-    normalizer.log_shapes(target=target)
-
-    # if verbose:
-    #     click.echo("\nTable Summary:")
-    #     for name, table in normalizer.table_store.items():
-    #         click.echo(f"  - {name}: {len(table)} rows")
-
-
-def validate_configuration() -> bool:
-    specification = CompositeConfigSpecification()
-    errors = specification.is_satisfied_by(get_config_provider().get_config().data)
-    if errors:
-        for error in specification.errors:
-            logger.error(f"Configuration error: {error}")
-        click.echo("Configuration validation failed with errors.", err=True)
-        sys.exit(1)
-    logger.info("Configuration validation passed successfully.")
-    return True
 
 
 @click.command()
 @click.argument("target")
 @click.option("--default-entity", "-de", type=str, help="Default entity name to use as source when none is specified.", default=None)
-@click.option("--config-file", "-c", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to configuration file.")
+@click.option(
+    "--project", "-p", "project_filename", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to project file."
+)
 @click.option("--env-file", "-e", type=click.Path(exists=True, dir_okay=False, readable=True), help="Path to environment variables file.")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output.", default=False)
 @click.option("--translate", "-t", is_flag=True, help="Enable translation.", default=False)
 @click.option("--mode", "-m", type=click.Choice(["xlsx", "csv", "db"]), default="xlsx", show_default=True, help="Output file format.")
 @click.option("--drop-foreign-keys", "-d", is_flag=True, help="Drop foreign key columns after linking.", default=False)
 @click.option("--log-file", "-l", type=click.Path(), help="Path to log file (optional).")
-@click.option("--regression-file", "-r", type=click.Path(), help="Path to regression file (optional).")
+# @click.option("--regression-file", "-r", type=click.Path(), help="Path to regression file (optional).")
 @click.option("--validate-then-exit", is_flag=True, help="Validate configuration and exit if invalid.", default=False)
 def main(
     target: str,
     default_entity: str,
-    config_file: str,
+    project_filename: str,
     env_file: str,
     verbose: bool,
     translate: bool,
-    mode: Literal["xlsx", "csv", "db"],
+    mode: str,
     drop_foreign_keys: bool,
     log_file: str | None,
-    regression_file: str | None,
+    # regression_file: str | None,
     validate_then_exit: bool = False,
 ) -> None:
     """
-    Normalize an Arbodat "Data Survey" CSV export into several tables.
+    Normalize data from various data sources into structured tables.
+    Write them as CSVs or sheets in a single Excel file at TARGET location."""
+    if project_filename or not Path(project_filename or "").exists():
+        raise FileNotFoundError(f"Project file not found: {project_filename or 'undefined'}")
 
-    Reads INPUT_CSV and writes normalized data as multiple sheets to TARGET.
-
-    The input CSV should contain one row per Sample × Taxon combination, with
-    columns identifying projects, sites, features, samples, and taxa.
-    """
-    if config_file:
-        click.echo(f"Using configuration file: {config_file}")
-
-    if not config_file:
-        config_file = os.path.join(os.path.dirname(__file__), "config.yml")
-
-    if not config_file or not Path(config_file).exists():
-        raise FileNotFoundError(f"Configuration file not found: {config_file or 'undefined'}")
-
-    asyncio.run(
-        setup_config_store(
-            config_file,
-            env_prefix="SEAD_NORMALIZER",
-            env_filename=env_file or os.path.join(os.path.dirname(__file__), "input", ".env"),
-            db_opts_path="",
-        )
-    )
-
-    # Configure logging AFTER setup_config_store to override its logging configuration
+    click.echo(f"Using project file: {project_filename}")
     setup_logging(verbose=verbose, log_file=log_file)
+
+    if validate_then_exit:
+        click.echo("Validating project configuration and exiting if invalid.")
+        is_valid: bool = validate_project(project_filename)
+        sys.exit(0 if is_valid else 1)
 
     asyncio.run(
         workflow(
+            project=project_filename,
             default_entity=default_entity,
             target=target,
             translate=translate,
-            mode=mode,
+            target_type=mode,
             drop_foreign_keys=drop_foreign_keys,
-            validate_then_exit=validate_then_exit,
+            env_file=env_file,
         )
     )
 
     click.secho(f"✓ Successfully written normalized workbook to {target}", fg="green")
-
-    validate_entity_shapes(target, mode, regression_file)
-
-
-def validate_entity_shapes(target: str, mode: str, regression_file: str | None):
-    if mode != "csv" or not regression_file:
-        return
-
-    truth_shapes: dict[str, tuple[int, int]] = load_shape_file(filename=regression_file)
-    new_shapes: dict[str, tuple[int, int]] = load_shape_file(filename=os.path.join(target, "table_shapes.tsv"))
-
-    entities_with_different_shapes = [
-        (entity, truth_shapes.get(entity), new_shapes.get(entity))
-        for entity in set(truth_shapes.keys()).union(set(new_shapes.keys()))
-        if truth_shapes.get(entity) != new_shapes.get(entity)
-    ]
-    if len(entities_with_different_shapes) > 0:
-        click.secho("✗ Regression check failed: Entities with different shapes:", fg="red")
-
-        print("\n".join(f" {z[0]:>30}: expected {str(z[1]):<15} found {str(z[2]):<20}" for z in entities_with_different_shapes))
 
 
 if __name__ == "__main__":

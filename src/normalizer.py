@@ -1,32 +1,32 @@
 """
-Normalize an Arbodat "Data Survey" CSV export into several tables
-and write them as sheets in a single Excel file.
+Normalize data from various data sources into structured tables
+and write them as CSVs or sheets in a single Excel file.
 
 """
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Self
 
 import pandas as pd
 from loguru import logger
 
-from src.config_model import TableConfig, TablesConfig
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
 from src.filter import apply_filters
 from src.link import link_entity
 from src.loaders import DataLoader
 from src.mapping import LinkToRemoteService
+from src.model import ShapeShiftProject, TableConfig
 from src.unnest import unnest
 
 
 class ProcessState:
     """Helper class to track processing state of entities during normalization."""
 
-    def __init__(self, config: TablesConfig, table_store: dict[str, pd.DataFrame], default_entity: str | None = None) -> None:
-        self.config: TablesConfig = config
+    def __init__(self, config: ShapeShiftProject, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
+        self.config: ShapeShiftProject = config
         self.table_store: dict[str, pd.DataFrame] = table_store
-        self.global_dependencies: set[str] = {default_entity} if default_entity else set()
+        self.target_entities: set[str] = target_entities if target_entities else set(config.tables.keys())
 
     def get_next_entity_to_process(self) -> str | None:
         """Get the next entity that can be processed based on dependencies."""
@@ -43,10 +43,12 @@ class ProcessState:
         return None
 
     def get_unmet_dependencies(self, entity: str) -> set[str]:
-        return (self.config.get_table(entity_name=entity).depends_on | self.global_dependencies) - self.processed_entities
+        return self.config.get_table(entity_name=entity).depends_on - self.processed_entities
 
     def get_all_unmet_dependencies(self) -> dict[str, set[str]]:
-        unmet_dependencies: dict[str, set[str]] = {entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed_entities}
+        unmet_dependencies: dict[str, set[str]] = {
+            entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed_entities
+        }
         return {k: v for k, v in unmet_dependencies.items() if v}
 
     def log_unmet_dependencies(self) -> None:
@@ -56,31 +58,65 @@ class ProcessState:
     @property
     def processed_entities(self) -> set[str]:
         """Return the set of processed entities."""
-        return set(self.table_store.keys()) 
+        return set(self.table_store.keys())
 
     @property
     def unprocessed_entities(self) -> set[str]:
-        """Return the set of processed entities."""
-        return set(self.config.tables.keys()) - self.processed_entities
+        """Return the set of unprocessed target entities."""
+        return self.target_entities - self.processed_entities
 
-class ArbodatSurveyNormalizer:
+    def get_required_entities(self, entity_name: str) -> set[str]:
+        """Get all entities required to process the given entity (including the entity itself)."""
+        required_entities: set[str] = {entity_name}
+        unprocessed: list[str] = [entity_name]
+
+        while unprocessed:
+            current: str = unprocessed.pop()
+            if current not in self.config.tables:
+                continue
+            for dep in self.config.get_table(entity_name=current).depends_on:
+                if dep in required_entities:
+                    continue
+                required_entities.add(dep)
+                unprocessed.append(dep)
+
+        return required_entities
+
+
+class ShapeShifter:
 
     def __init__(
         self,
+        project: ShapeShiftProject | str,
         default_entity: str | None = None,
         table_store: dict[str, pd.DataFrame] | None = None,
-        config: TablesConfig | None = None,
+        target_entities: set[str] | None = None,
     ) -> None:
+
+        if not project or not isinstance(project, (ShapeShiftProject, str)):
+            raise ValueError("A valid configuration must be provided")
 
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
-        self.config: TablesConfig = config or TablesConfig()
-        self.state: ProcessState = ProcessState(config=self.config, table_store=self.table_store, default_entity=default_entity)
+        self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
+        self.state: ProcessState = self._initialize_process_state(target_entities)
+
+    def _initialize_process_state(self, target_entities: set[str] | None = None) -> ProcessState:
+        """Initialize the processing state based on target entities."""
+        if target_entities:
+            state = ProcessState(config=self.project, table_store=self.table_store, target_entities=set())
+            all_required: set[str] = set()
+            for entity in target_entities:
+                all_required.update(state.get_required_entities(entity))
+            state: ProcessState = ProcessState(config=self.project, table_store=self.table_store, target_entities=all_required)
+        else:
+            state = ProcessState(config=self.project, table_store=self.table_store, target_entities=None)
+        return state
 
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
 
-        loader: DataLoader | None = self.config.resolve_loader(table_cfg=table_cfg)
+        loader: DataLoader | None = self.project.resolve_loader(table_cfg=table_cfg)
         if loader:
             logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
@@ -95,7 +131,7 @@ class ArbodatSurveyNormalizer:
         self.table_store[name] = df
         return df
 
-    async def normalize(self) -> None:
+    async def normalize(self) -> Self:
         """Extract all configured entities and store them."""
         subset_service: SubsetService = SubsetService()
 
@@ -106,15 +142,17 @@ class ArbodatSurveyNormalizer:
             if entity is None:
                 self.state.log_unmet_dependencies()
                 raise ValueError(f"Circular or unresolved dependencies detected: {self.state.unprocessed_entities}")
-            
-            table_cfg: TableConfig = self.config.get_table(entity)
+
+            table_cfg: TableConfig = self.project.get_table(entity)
 
             logger.debug(f"{entity}[normalizing]: Normalizing entity...")
 
             # source: pd.DataFrame = await self.resolve_source(table_cfg=table_cfg)
+            if not isinstance(table_cfg.columns, list):
+                raise ValueError(f"Invalid columns configuration for entity '{entity}': must be a list")
 
-            if not isinstance(table_cfg.columns, list) or not all(isinstance(c, str) for c in table_cfg.columns):
-                raise ValueError(f"Invalid columns configuration for entity '{entity}': {table_cfg.columns}")
+            if not all(isinstance(col, str) for col in table_cfg.columns):
+                raise ValueError(f"Invalid columns configuration for entity '{entity}': all columns must be strings")
 
             delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
 
@@ -136,8 +174,9 @@ class ArbodatSurveyNormalizer:
                 )
                 dfs.append(sub_data)
 
-            # Concatenate all dataframes
-            data: pd.DataFrame = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+            # Concatenate all dataframes (filter out empty DataFrames to avoid FutureWarning)
+            non_empty_dfs = [df for df in dfs if not df.empty]
+            data: pd.DataFrame = pd.concat(non_empty_dfs, ignore_index=True) if non_empty_dfs else pd.DataFrame()
 
             if table_cfg.filters:
                 data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store)
@@ -151,11 +190,11 @@ class ArbodatSurveyNormalizer:
 
             self.register(entity, data)
 
-            link_entity(entity_name=entity, config=self.config, table_store=self.table_store)
+            link_entity(entity_name=entity, config=self.project, table_store=self.table_store)
 
             if table_cfg.unnest:
                 self.unnest_entity(entity=entity)
-                link_entity(entity_name=entity, config=self.config, table_store=self.table_store)
+                link_entity(entity_name=entity, config=self.project, table_store=self.table_store)
 
             if delay_drop_duplicates and table_cfg.drop_duplicates:
                 self.table_store[entity] = drop_duplicate_rows(
@@ -172,73 +211,82 @@ class ArbodatSurveyNormalizer:
                 self.table_store[entity] = add_surrogate_id(self.table_store[entity], table_cfg.surrogate_id)
 
             self.link()  # Try to resolve any pending deferred links after each entity is processed
+        return self
 
-    def link(self):
+    def link(self) -> Self:
         """Link entities based on foreign key configuration."""
         for entity_name in self.state.processed_entities:
-            link_entity(entity_name=entity_name, config=self.config, table_store=self.table_store)
+            link_entity(entity_name=entity_name, config=self.project, table_store=self.table_store)
+        return self
 
-    def store(self, target: str, mode: Literal["xlsx", "csv", "db"]) -> None:
+    def store(self, target: str, mode: str) -> Self:
         """Write to specified target based on the specified mode."""
-        dispatcher_cls: Dispatcher = Dispatchers.get(mode)
+        dispatcher_cls: type[Dispatcher] = Dispatchers.get(mode)
         if dispatcher_cls:
-            dispatcher = dispatcher_cls()  # type: ignore
+            dispatcher = dispatcher_cls(self.project)  # type: ignore
             dispatcher.dispatch(target=target, data=self.table_store)
         else:
             raise ValueError(f"Unsupported dispatch mode: {mode}")
+        return self
 
-    def unnest_all(self) -> None:
+    def unnest_all(self) -> Self:
         """Unnest dataframes based on configuration."""
         for entity in self.table_store:
             self.table_store[entity] = self.unnest_entity(entity=entity)
+        return self
 
     def unnest_entity(self, *, entity: str) -> pd.DataFrame:
         try:
-            table_cfg: TableConfig = self.config.get_table(entity)
+            table_cfg: TableConfig = self.project.get_table(entity)
             if table_cfg.unnest:
                 self.table_store[entity] = unnest(entity=entity, table=self.table_store[entity], table_cfg=table_cfg)
         except Exception as e:  # ldtype: ignore ; pylint: disable=broad-except
             logger.error(f"Error unnesting entity {entity}: {e}")
         return self.table_store[entity]
 
-    def translate(self, translations_map: dict[str, str]) -> None:
+    def translate(self, translations_map: dict[str, str]) -> Self:
         """Translate column names using translation from config."""
         self.table_store = translate(self.table_store, translations_map=translations_map)
+        return self
 
-    def drop_foreign_key_columns(self) -> None:
+    def drop_foreign_key_columns(self) -> Self:
         """Drop foreign key columns used for linking that are no longer needed after linking. Keep if in columns list."""
         for entity_name in self.table_store.keys():
-            if entity_name not in self.config.table_names:
+            if entity_name not in self.project.table_names:
                 continue
-            table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
+            table_cfg: TableConfig = self.project.get_table(entity_name=entity_name)
             self.table_store[entity_name] = table_cfg.drop_fk_columns(table=self.table_store[entity_name])
+        return self
 
-    def add_system_id_columns(self) -> None:
+    def add_system_id_columns(self) -> Self:
         """Add "system_id" with same value as surrogate_id. Set surrogate_id to None."""
         for entity_name in self.table_store.keys():
-            if entity_name not in self.config.table_names:
+            if entity_name not in self.project.table_names:
                 continue
-            table_cfg: TableConfig = self.config.get_table(entity_name=entity_name)
+            table_cfg: TableConfig = self.project.get_table(entity_name=entity_name)
             self.table_store[entity_name] = table_cfg.add_system_id_column(table=self.table_store[entity_name])
+        return self
 
-    def move_keys_to_front(self) -> None:
+    def move_keys_to_front(self) -> Self:
         """Reorder columns in this order: primary key, foreign key column, extra columns, other columns."""
         for entity_name in self.table_store.keys():
-            if entity_name not in self.config.table_names:
+            if entity_name not in self.project.table_names:
                 continue
-            self.table_store[entity_name] = self.config.reorder_columns(entity_name, self.table_store[entity_name])
+            self.table_store[entity_name] = self.project.reorder_columns(entity_name, self.table_store[entity_name])
+        return self
 
-    def map_to_remote(self, link_cfgs: dict[str, dict[str, Any]]) -> None:
-        """Map local Arbodat PK values to SEAD identities using mapping configuration."""
+    def map_to_remote(self, link_cfgs: dict[str, dict[str, Any]]) -> Self:
+        """Map local PK values to remote identities using mapping configuration."""
         if not link_cfgs:
-            return
+            return self
         service = LinkToRemoteService(remote_link_cfgs=link_cfgs)
         for entity_name in self.table_store.keys():
             if entity_name not in link_cfgs:
                 continue
             self.table_store[entity_name] = service.link_to_remote(entity_name, self.table_store[entity_name])
+        return self
 
-    def log_shapes(self, target: str) -> None:
+    def log_shapes(self, target: str) -> Self:
         """Log the shape of each table as a TSV in same folder as target."""
         try:
             folder: str = target if Path(target).is_dir() else str(Path(target).parent)
@@ -250,10 +298,12 @@ class ArbodatSurveyNormalizer:
             logger.info(f"Table shapes written to {tsv_filename}")
         except Exception as e:  # type: ignore ; pylint: disable=broad-except
             logger.error(f"Failed to write table shapes to TSV: {e}")
+        return self
 
-    def finalize(self) -> None:
+    def finalize(self) -> Self:
         """Finalize processing by performing final transformations."""
         # self.drop_foreign_key_columns()
         # self.add_system_id_columns()
         # self.move_keys_to_front()
         # drops = self.config.options.get("finally.drops")
+        return self

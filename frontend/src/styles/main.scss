@@ -1,0 +1,10 @@
+// Global styles
+@use 'vuetify/styles';
+
+body {
+  font-family: 'Roboto', sans-serif;
+}
+
+.v-application {
+  font-family: 'Roboto', sans-serif !important;
+}

@@ -4,11 +4,21 @@ import pkgutil
 import sys
 import unicodedata
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable, Generic, Literal, Self, TypeVar
 
 import pandas as pd
 import yaml
 from loguru import logger
+
+
+def find_parent_with(path: Path | str, filename: str) -> Path:
+    """Get a path relative to the project root."""
+    path = Path(path) if isinstance(path, str) else path
+    while not (path / filename).exists():
+        path = path.parent
+    project_root: Path = path
+    return project_root
 
 
 def unique(seq: list[Any] | None) -> list[Any]:
@@ -251,14 +261,18 @@ def configure_logging(opts: dict[str, Any] | None = None, default_level: str = "
         logger.configure(handlers=opts["handlers"])
 
 
-def import_sub_modules(module_folder: str) -> Any:
+def import_sub_modules(module_name: str, module_folder: str) -> Any:
     __all__ = []
-    # current_dir: str = os.path.dirname(__file__)
+    sub_modules: list[str] = [
+        f.name[:-3] for f in os.scandir(module_folder) if f.is_file() and f.name.endswith(".py") and not f.name.startswith("__")
+    ]
+    logger.info(f"Importing sub-modules for {module_name}: {', '.join(sub_modules)}")
+
     for filename in os.listdir(module_folder):
         if filename.endswith(".py") and filename != "__init__.py":
-            module_name: str = filename[:-3]
-            __all__.append(module_name)
-            importlib.import_module(f".{module_name}", package=__name__)
+            submodule_name: str = filename[:-3]
+            __all__.append(submodule_name)
+            importlib.import_module(f"{module_name}.{submodule_name}")
 
 
 def _ensure_key_property(cls):
@@ -271,15 +285,18 @@ def _ensure_key_property(cls):
     return cls
 
 
-def replace_env_vars(data: dict[str, Any] | list[Any] | str) -> dict[str, Any] | list[Any] | str:
-    """Replaces recursively values in `data` that matches `${ENV_VAR}` with os.getenv("ENV_VAR", "")"""
+R = TypeVar("R", dict[str, Any], list[Any], str)
+
+
+def replace_env_vars(data: R) -> R:
+    """Replaces recursively values in `data` that match `${ENV_VAR}` with os.getenv("ENV_VAR", "")"""
     if isinstance(data, dict):
-        return {k: replace_env_vars(v) for k, v in data.items()}
+        return {k: replace_env_vars(v) for k, v in data.items()}  # type: ignore[return-value]
     if isinstance(data, list):
-        return [replace_env_vars(i) for i in data]
+        return [replace_env_vars(i) for i in data]  # type: ignore[return-value]
     if isinstance(data, str) and data.startswith("${") and data.endswith("}"):
         env_var: str = data[2:-1]
-        return os.getenv(env_var, "")
+        return os.getenv(env_var, "")  # type: ignore[return-value]
     return data
 
 
@@ -298,18 +315,25 @@ class Registry(Generic[T]):
     @classmethod
     def register(cls, **args) -> Callable[..., Any]:
         def decorator(fn_or_class):
-            key: str = args.get("key") or fn_or_class.__name__
+            key_or_keys: str | list[str] = args.get("key") or fn_or_class.__name__
+            keys: list[str] = [key_or_keys] if isinstance(key_or_keys, str) else key_or_keys
+
+            if len(keys) == 0:
+                raise ValueError("Registry: key(s) cannot be empty")
+
+            if keys[0] in cls.items:
+                raise KeyError(f"Registry: Overriding existing registration for key '{keys[0]}'")
+
             if args.get("type") == "function":
                 fn_or_class = fn_or_class()
             else:
-                setattr(fn_or_class, "_registry_key", key)
+                setattr(fn_or_class, "_registry_key", keys[0])
+                setattr(fn_or_class, "_registry_opts", {k: v for k, v in args.items() if k != "key"})
+
                 fn_or_class = _ensure_key_property(fn_or_class)
 
-            # FIXME: #6 Validators are rgistered using the same key!
-            if key in cls.items:
-                raise KeyError(f"Registry: Overriding existing registration for key '{key}'")
-
-            cls.items[key] = fn_or_class
+            for k in keys:
+                cls.items[k] = fn_or_class
 
             fn_or_class = cls.registered_class_hook(fn_or_class, **args)
             return fn_or_class
@@ -324,8 +348,8 @@ class Registry(Generic[T]):
     def registered_class_hook(cls, fn_or_class: Any, **args) -> Any:  # pylint: disable=unused-argument
         return fn_or_class
 
-    def scan(self, package_name: str) -> Self:
-        import_sub_modules(package_name)
+    def scan(self, module_name, module_folder: str) -> Self:
+        import_sub_modules(module_name, module_folder)
         return self
 
 
