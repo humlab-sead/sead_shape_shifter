@@ -3,8 +3,8 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.config_model import ForeignKeyConfig, TableConfig, TablesConfig
 from src.constraints import ForeignKeyConstraintValidator
+from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 from src.specifications import ForeignKeyDataSpecification
 
 
@@ -33,8 +33,8 @@ def link_foreign_key(
 
     remote_select_df: pd.DataFrame = remote_df[[remote_id] + remote_extra_cols]
 
-    if fk.remote_extra_columns:
-        remote_select_df = remote_select_df.rename(columns=fk.remote_extra_columns)
+    if fk.extra_columns:
+        remote_select_df = remote_select_df.rename(columns=fk.resolved_extra_columns())
 
     opts: dict[str, Any] = _resolve_link_opts(fk, validator)
 
@@ -42,7 +42,7 @@ def link_foreign_key(
 
     validator.validate_after_merge(local_df, remote_df, linked_df)
 
-    if fk.remote_extra_columns and fk.drop_remote_id:
+    if fk.extra_columns and fk.drop_remote_id:
         linked_df = linked_df.drop(columns=[remote_id], errors="ignore")
     return linked_df
 
@@ -54,7 +54,7 @@ def _resolve_link_opts(fk: ForeignKeyConfig, validator: ForeignKeyConstraintVali
     return opts
 
 
-def link_entity(entity_name: str, config: TablesConfig, table_store: dict[str, pd.DataFrame]) -> bool:
+def link_entity(entity_name: str, config: ShapeShiftProject, table_store: dict[str, pd.DataFrame]) -> bool:
     """Link foreign keys for the specified entity in the data store."""
     table_cfg: TableConfig = config.get_table(entity_name=entity_name)
     foreign_keys: list[ForeignKeyConfig] = table_cfg.foreign_keys or []

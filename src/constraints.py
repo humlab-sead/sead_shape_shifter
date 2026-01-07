@@ -1,16 +1,15 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Literal, Self
+from typing import Any, Self
 
 import pandas as pd
 from loguru import logger
 
-from src.config_model import ForeignKeyConfig, ForeignKeyConstraints
+from src.model import ForeignKeyConfig, ForeignKeyConstraints
 from src.utility import Registry
 
 # pylint: disable=line-too-long, unnecessary-pass
 
-# FIXME: #5 Improve constraints checking
 
 class ForeignKeyConstraintViolation(Exception):
     """Raised when a foreign key constraint is violated."""
@@ -33,10 +32,13 @@ class ConstraintValidator(ABC):
         self.entity_name: str = entity_name
         self.fk: ForeignKeyConfig = fk
         self.constraints: ForeignKeyConstraints = constraints
+        self.raise_on_violation: bool = True
 
-    def raise_if_violated(self, message: str) -> None:
+    def handle_violation(self, message: str) -> None:
         """Raise a constraint violation exception with context."""
-        raise ForeignKeyConstraintViolation(f"{self.entity_name} -> {self.fk.remote_entity}: {message}")
+        if self.raise_on_violation:
+            raise ForeignKeyConstraintViolation(f"{self.entity_name} -> {self.fk.remote_entity}: {message}")
+        logger.error(f"{self.entity_name} -> {self.fk.remote_entity}: {message}")
 
     @abstractmethod
     def is_applicable(self) -> bool:
@@ -73,11 +75,12 @@ class ValidatorRegistry(Registry):
     @classmethod
     def register(cls, **kwargs) -> Any:
         """Register a validator with optional sub_key for constraint value mapping."""
+
         def decorator(fn_or_class: Any) -> Any:
             # Use class name as the unique registry key
             registry_key = fn_or_class.__name__ if hasattr(fn_or_class, "__name__") else kwargs.get("key", "unknown")
             cls.items[registry_key] = fn_or_class
-            
+
             # Build sub_key index for efficient lookup
             constraint_key = kwargs.get("key")
             sub_key = kwargs.get("sub_key")
@@ -85,14 +88,15 @@ class ValidatorRegistry(Registry):
                 if constraint_key not in cls._sub_key_index:
                     cls._sub_key_index[constraint_key] = {}
                 cls._sub_key_index[constraint_key][sub_key] = fn_or_class
-            
+
             return cls.registered_class_hook(fn_or_class, **kwargs)
+
         return decorator
 
     def get_validators_for_stage(self, stage: str) -> list[type[ConstraintValidator]]:
         """Retrieve all registered validators for a given stage."""
         return [v for v in self.items.values() if getattr(v, "stage", None) == stage]
-    
+
     def get_validator_by_constraint(self, key: str, value: Any) -> type[ConstraintValidator] | None:
         """Get a specific validator by constraint key and value (sub_key lookup)."""
         if key in self._sub_key_index and value in self._sub_key_index[key]:
@@ -115,11 +119,11 @@ class NullKeyValidator(ConstraintValidator):
     def validate(self, context: ValidationContext) -> None:
         for col in self.fk.local_keys:
             if context.local_df[col].isnull().any():
-                self.raise_if_violated(f"Null values found in local key '{col}' (allow_null_keys=False)")
+                self.handle_violation(f"Null values found in local key '{col}' (allow_null_keys=False)")
         if context.remote_df is not None:
             for col in self.fk.remote_keys:
                 if context.remote_df[col].isnull().any():
-                    self.raise_if_violated(f"Null values found in remote key '{col}' (allow_null_keys=False)")
+                    self.handle_violation(f"Null values found in remote key '{col}' (allow_null_keys=False)")
 
 
 @Validators.register(key="require_unique_left", stage="pre-merge")
@@ -132,7 +136,7 @@ class UniqueLeftKeyValidator(ConstraintValidator):
     def validate(self, context: ValidationContext) -> None:
         duplicates = context.local_df[self.fk.local_keys].duplicated().sum()
         if duplicates > 0:
-            self.raise_if_violated(f"{duplicates} duplicate left key(s) found (require_unique_left=True)")
+            self.handle_violation(f"{duplicates} duplicate left key(s) found (require_unique_left=True)")
 
 
 @Validators.register(key="require_unique_right", stage="pre-merge")
@@ -146,7 +150,7 @@ class UniqueRightKeyValidator(ConstraintValidator):
         assert context.remote_df is not None
         duplicates = context.remote_df[self.fk.remote_keys].duplicated().sum()
         if duplicates > 0:
-            self.raise_if_violated(f"{duplicates} duplicate right key(s) found (require_unique_right=True)")
+            self.handle_violation(f"{duplicates} duplicate right key(s) found (require_unique_right=True)")
 
 
 # Validators to be used AFTER merging/linking (stage = "post-merge")
@@ -164,7 +168,7 @@ class OneToOneCardinalityValidator(ConstraintValidator):
         rows_before: int = len(context.local_df)
         rows_after: int = len(context.linked_df)
         if rows_after != rows_before:
-            self.raise_if_violated(f"one_to_one cardinality violated (rows: {rows_before} -> {rows_after})")
+            self.handle_violation(f"one_to_one cardinality violated (rows: {rows_before} -> {rows_after})")
 
 
 @Validators.register(key="cardinality", sub_key="many_to_one", stage="post-merge")
@@ -179,7 +183,7 @@ class ManyToOneCardinalityValidator(ConstraintValidator):
         rows_before: int = len(context.local_df)
         rows_after: int = len(context.linked_df)
         if rows_after > rows_before:
-            self.raise_if_violated(f"many_to_one cardinality violated (rows increased: {rows_before} -> {rows_after})")
+            self.handle_violation(f"many_to_one cardinality violated (rows increased: {rows_before} -> {rows_after})")
 
 
 @Validators.register(key="cardinality", sub_key="one_to_many", stage="post-merge")
@@ -194,11 +198,10 @@ class OneToManyCardinalityValidator(ConstraintValidator):
         rows_before: int = len(context.local_df)
         rows_after: int = len(context.linked_df)
         if rows_after < rows_before:
-            self.raise_if_violated(f"one_to_many cardinality violated (rows decreased: {rows_before} -> {rows_after})")
+            self.handle_violation(f"one_to_many cardinality violated (rows decreased: {rows_before} -> {rows_after})")
 
 
 @Validators.register(key="allow_row_decrease", stage="post-merge")
-
 class AllowRowDecreaseValidator(ConstraintValidator):
     """Validates that row decrease is allowed if it occurs."""
 
@@ -210,7 +213,7 @@ class AllowRowDecreaseValidator(ConstraintValidator):
         rows_before: int = len(context.local_df)
         rows_after: int = len(context.linked_df)
         if rows_after < rows_before:
-            self.raise_if_violated(f"Row decrease not allowed (rows: {rows_before} -> {rows_after})")
+            self.handle_violation(f"Row decrease not allowed (rows: {rows_before} -> {rows_after})")
 
 
 @Validators.register(key="allow_unmatched_left", stage="post-merge-match", is_match_validator=True)
@@ -224,7 +227,7 @@ class UnmatchedLeftValidator(ConstraintValidator):
         assert context.linked_df is not None and context.merge_indicator_col is not None
         left_only: int = (context.linked_df[context.merge_indicator_col] == "left_only").sum()
         if left_only > 0:
-            self.raise_if_violated(f"{left_only} unmatched left rows (allow_unmatched_left=False)")
+            self.handle_violation(f"{left_only} unmatched left rows (allow_unmatched_left=False)")
 
 
 @Validators.register(key="allow_unmatched_right", stage="post-merge-match", is_match_validator=True)
@@ -238,7 +241,7 @@ class UnmatchedRightValidator(ConstraintValidator):
         assert context.linked_df is not None and context.merge_indicator_col is not None
         right_only: int = (context.linked_df[context.merge_indicator_col] == "right_only").sum()
         if right_only > 0:
-            self.raise_if_violated(f"{right_only} unmatched right rows (allow_unmatched_right=False)")
+            self.handle_violation(f"{right_only} unmatched right rows (allow_unmatched_right=False)")
 
 
 class ForeignKeyConstraintValidator:
@@ -301,18 +304,22 @@ class ForeignKeyConstraintValidator:
                     validator.validate(match_context)
                 else:
                     logger.warning(
-                        f"{self.entity_name} -> {self.fk.remote_entity}: Merge indicator column '{merge_indicator_col}' not found in linked DataFrame for match validation"
+                        f"{self.entity_name} -> {self.fk.remote_entity}: Merge indicator column "
+                        f"'{merge_indicator_col}' not found in linked DataFrame for match validation"
                     )
 
         if self.fk.how != "cross":
             if self.size_before_merge[0] != self.size_after_merge[0]:
                 logger.warning(
-                    f"{self.fk.local_entity}[linking]: join resulted in change in row count for '{self.fk.remote_entity}': before={self.size_before_merge[0]}, after={self.size_after_merge[0]}"
+                    f"{self.fk.local_entity}[linking]: join resulted in change in row count for "
+                    f"'{self.fk.remote_entity}': before={self.size_before_merge[0]}, after={self.size_after_merge[0]}"
                 )
 
         added_column_count: int = 1 + len(self.fk.get_valid_remote_columns(remote_df))
         if self.size_after_merge[1] != self.size_before_merge[1] + added_column_count:
             logger.warning(
-                f"{self.entity_name}[linking]: join resulted in unexpected number of columns for '{self.fk.remote_entity}': before={self.size_before_merge[1]}, after={self.size_after_merge[1]}, expected increase={added_column_count}"
+                f"{self.entity_name}[linking]: join resulted in unexpected number of columns for "
+                f"'{self.fk.remote_entity}': before={self.size_before_merge[1]}, after={self.size_after_merge[1]}, "
+                f"expected increase={added_column_count}"
             )
         return self

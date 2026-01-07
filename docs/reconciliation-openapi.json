@@ -1,0 +1,1041 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "SEAD Entity Reconciliation Service",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/whoami": {
+            "get": {
+                "summary": "Whoami",
+                "operationId": "whoami_whoami_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/is_alive": {
+            "get": {
+                "summary": "Is Alive",
+                "description": "Health check endpoint",
+                "operationId": "is_alive_is_alive_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    },
+                                    "type": "object",
+                                    "title": "Response Is Alive Is Alive Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/reconcile": {
+            "get": {
+                "summary": "Meta",
+                "description": "OpenRefine reconciliation service metadata endpoint.\n\nReturns service configuration including supported entity types and properties\nthat can be used for enhanced reconciliation matching.",
+                "operationId": "meta_reconcile_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReconServiceManifest"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Reconcile",
+                "description": "OpenRefine reconciliation endpoint for batch queries.\n\nThis endpoint receives batch reconciliation requests from OpenRefine and returns\nmatching candidates for each query. OpenRefine sends queries in a specific JSON\nformat that this endpoint processes.\n\nRequest Body Structure:\n----------------------\nThe request must contain a JSON object with a \"queries\" field that can be either:\n1. A JSON object containing query definitions\n2. A JSON string that needs to be parsed (OpenRefine sometimes does this)\n\nQueries Object Format:\n---------------------\n{\n    \"queries\": {\n        \"q0\": {\n            \"query\": \"Site name to search for\",\n            \"type\": \"Site\",\n            \"limit\": 10,\n            \"type_strict\": \"any\"\n        },\n        \"q1\": {\n            \"query\": \"Another site name\",\n            \"type\": \"Site\"\n        }\n    }\n}\n\nQuery Fields:\n-------------\n- query (required): The text string to reconcile/match against\n- type (required): Entity type to search for (e.g., \"Site\", \"Taxon\")\n- limit (optional): Maximum number of results to return (default: 10)\n- type_strict (optional): How strictly to enforce type matching (\"any\", \"all\", \"should\")\n\nExtended Query Format (with properties):\n---------------------------------------\nOpenRefine can also send additional properties for enhanced matching:\n{\n    \"q0\": {\n        \"query\": \"Uppsala\",\n        \"type\": \"Site\",\n        \"properties\": [\n            {\n                \"pid\": \"coordinates\",\n                \"v\": \"59.8586,17.6389\"\n            },\n            {\n                \"pid\": \"country\",\n                \"v\": \"Sweden\"\n            }\n        ]\n    }\n}\n\nResponse Format:\n---------------\nReturns a JSON object with results for each query ID:\n{\n    \"q0\": {\n        \"result\": [\n            {\n                \"id\": \"https://w3id.org/sead/id/site/123\",\n                \"name\": \"Uppsala Site\",\n                \"score\": 95.5,\n                \"match\": true,\n                \"type\": [{\"id\": \"Site\", \"name\": \"Site\"}],\n                \"distance_km\": 1.2\n            }\n        ]\n    },\n    \"q1\": {\n        \"result\": []\n    }\n}\n\nCandidate Fields:\n----------------\n- id: Unique identifier URI for the entity\n- name: Human-readable name/label\n- score: Matching confidence score (0-100)\n- match: Boolean indicating high-confidence match (score >= threshold)\n- type: Array of type objects with id and name\n- distance_km: Optional distance in kilometers (for geographic entities)\n\nError Responses:\n---------------\nReturns appropriate HTTP status codes with error details:\n- 400: Missing queries, invalid JSON format\n- 500: Database errors, internal server errors",
+                "operationId": "reconcile_reconcile_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReconBatchResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/reconcile/properties": {
+            "get": {
+                "summary": "Suggest Properties",
+                "description": "Property suggestion endpoint for OpenRefine.\n\nReturns available properties that can be used for enhanced reconciliation.\nOpenRefine calls this endpoint to populate property selection dropdowns.\n\nArgs:\n    query: Optional search term to filter properties\n    type: Optional entity type to filter properties (e.g., \"site\", \"taxon\")\n\nReturns:\n    JSON response with matching properties",
+                "operationId": "suggest_properties_reconcile_properties_get",
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "",
+                            "title": "Query"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "",
+                            "title": "Type"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/reconcile/preview": {
+            "get": {
+                "summary": "Preview",
+                "description": "Preview endpoint for OpenRefine reconciliation results",
+                "operationId": "preview_reconcile_preview_get",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/suggest/entity": {
+            "get": {
+                "summary": "Suggest Entity",
+                "description": "Entity autocomplete endpoint for OpenRefine Suggest API.\n\nReturns entity suggestions as the user types, enabling autocomplete\nfunctionality in OpenRefine reconciliation dialogs.\n\nArgs:\n    prefix: The text prefix to match (minimum 2 characters)\n    type: Optional entity type filter (e.g., 'site', 'location', 'taxon')\n\nReturns:\n    JSON response with suggested entities in format:\n    {\n        \"result\": [\n            {\n                \"id\": \"https://w3id.org/sead/id/site/123\",\n                \"name\": \"Site Name\",\n                \"type\": [{\"id\": \"site\", \"name\": \"site\"}],\n                \"description\": \"Additional context\",\n                \"score\": 95.5\n            }\n        ]\n    }",
+                "operationId": "suggest_entity_suggest_entity_get",
+                "parameters": [
+                    {
+                        "name": "prefix",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "",
+                            "title": "Prefix"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "",
+                            "title": "Type"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuggestEntityResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/suggest/type": {
+            "get": {
+                "summary": "Suggest Type",
+                "description": "Type autocomplete endpoint for OpenRefine Suggest API.\n\nReturns entity type suggestions filtered by prefix.\n\nArgs:\n    prefix: Optional prefix to filter types\n\nReturns:\n    JSON response with type suggestions:\n    {\n        \"result\": [\n            {\"id\": \"site\", \"name\": \"Site\"},\n            {\"id\": \"taxon\", \"name\": \"Taxon\"}\n        ]\n    }",
+                "operationId": "suggest_type_suggest_type_get",
+                "parameters": [
+                    {
+                        "name": "prefix",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "",
+                            "title": "Prefix"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuggestTypeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/suggest/property": {
+            "get": {
+                "summary": "Suggest Property",
+                "description": "Property autocomplete endpoint for OpenRefine Suggest API.\n\nReturns property suggestions filtered by prefix and optional type.\n\nArgs:\n    prefix: Optional prefix to filter properties\n    type: Optional entity type to filter properties\n\nReturns:\n    JSON response with property suggestions:\n    {\n        \"result\": [\n            {\n                \"id\": \"coordinates\",\n                \"name\": \"Coordinates\",\n                \"description\": \"Geographic coordinates\"\n            }\n        ]\n    }",
+                "operationId": "suggest_property_suggest_property_get",
+                "parameters": [
+                    {
+                        "name": "prefix",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "",
+                            "title": "Prefix"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "",
+                            "title": "Type"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuggestPropertyResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/flyout/entity": {
+            "post": {
+                "summary": "Flyout Entity",
+                "description": "Flyout/tooltip preview endpoint for OpenRefine Suggest API.\n\nReturns compact HTML preview for inline tooltip display when hovering\nover entity suggestions in OpenRefine. This enables the tooltip preview\nexperience instead of opening a new browser tab.\n\nArgs:\n    id: Entity URI to preview (e.g., 'https://w3id.org/sead/id/site/123')\n\nReturns:\n    JSON response with entity details:\n    {\n        \"id\": \"https://w3id.org/sead/id/site/123\",\n        \"html\": \"<div>...formatted HTML preview...</div>\"\n    }",
+                "operationId": "flyout_entity_flyout_entity_post",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "",
+                            "title": "Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Flyout Entity",
+                "description": "Flyout/tooltip preview endpoint for OpenRefine Suggest API.\n\nReturns compact HTML preview for inline tooltip display when hovering\nover entity suggestions in OpenRefine. This enables the tooltip preview\nexperience instead of opening a new browser tab.\n\nArgs:\n    id: Entity URI to preview (e.g., 'https://w3id.org/sead/id/site/123')\n\nReturns:\n    JSON response with entity details:\n    {\n        \"id\": \"https://w3id.org/sead/id/site/123\",\n        \"html\": \"<div>...formatted HTML preview...</div>\"\n    }",
+                "operationId": "flyout_entity_flyout_entity_get",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "",
+                            "title": "Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ExtendDescriptor": {
+                "properties": {
+                    "propose_properties": {
+                        "$ref": "#/components/schemas/ProposePropertiesDescriptor"
+                    },
+                    "property_settings": {
+                        "items": {
+                            "$ref": "#/components/schemas/PropertySetting"
+                        },
+                        "type": "array",
+                        "title": "Property Settings"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "propose_properties",
+                    "property_settings"
+                ],
+                "title": "ExtendDescriptor",
+                "description": "Data extension endpoint descriptor."
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "PreviewTemplate": {
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "maxLength": 2083,
+                        "minLength": 1,
+                        "format": "uri",
+                        "title": "Url",
+                        "description": "HTML endpoint returning a small preview"
+                    },
+                    "width": {
+                        "type": "integer",
+                        "maximum": 1920.0,
+                        "exclusiveMinimum": 0.0,
+                        "title": "Width",
+                        "default": 430
+                    },
+                    "height": {
+                        "type": "integer",
+                        "maximum": 1080.0,
+                        "exclusiveMinimum": 0.0,
+                        "title": "Height",
+                        "default": 300
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "url"
+                ],
+                "title": "PreviewTemplate",
+                "description": "Preview (iframe) settings."
+            },
+            "PropertySetting": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "label": {
+                        "type": "string",
+                        "title": "Label"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type"
+                    },
+                    "help_text": {
+                        "type": "string",
+                        "title": "Help Text"
+                    },
+                    "entity_types": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Entity Types"
+                    },
+                    "settings": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Settings"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "label",
+                    "type",
+                    "help_text",
+                    "entity_types"
+                ],
+                "title": "PropertySetting",
+                "description": "Property setting for OpenRefine."
+            },
+            "ProposePropertiesDescriptor": {
+                "properties": {
+                    "service_url": {
+                        "type": "string",
+                        "title": "Service Url"
+                    },
+                    "service_path": {
+                        "type": "string",
+                        "title": "Service Path"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "service_url",
+                    "service_path"
+                ],
+                "title": "ProposePropertiesDescriptor",
+                "description": "Propose properties endpoint descriptor."
+            },
+            "ReconBatchResponse": {
+                "additionalProperties": {
+                    "$ref": "#/components/schemas/ReconQueryResult-Output"
+                },
+                "type": "object",
+                "title": "ReconBatchResponse",
+                "description": "Batch response mirrors request keys -> {result: [...] }."
+            },
+            "ReconCandidate": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Name",
+                        "description": "Display name"
+                    },
+                    "type": {
+                        "items": {
+                            "$ref": "#/components/schemas/TypeRef"
+                        },
+                        "type": "array",
+                        "title": "Type"
+                    },
+                    "score": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 100.0,
+                                "minimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Score"
+                    },
+                    "match": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Match"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 500
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "ReconCandidate",
+                "description": "Candidate entity returned by reconciliation."
+            },
+            "ReconQueryResult-Input": {
+                "properties": {
+                    "result": {
+                        "items": {
+                            "$ref": "#/components/schemas/ReconCandidate"
+                        },
+                        "type": "array",
+                        "title": "Result"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "result"
+                ],
+                "title": "ReconQueryResult"
+            },
+            "ReconQueryResult-Output": {
+                "properties": {
+                    "result": {
+                        "items": {
+                            "$ref": "#/components/schemas/ReconCandidate"
+                        },
+                        "type": "array",
+                        "title": "Result"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "result"
+                ],
+                "title": "ReconQueryResult"
+            },
+            "ReconServiceManifest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "identifierSpace": {
+                        "type": "string",
+                        "title": "Identifierspace"
+                    },
+                    "schemaSpace": {
+                        "type": "string",
+                        "title": "Schemaspace"
+                    },
+                    "defaultTypes": {
+                        "items": {
+                            "$ref": "#/components/schemas/TypeRef"
+                        },
+                        "type": "array",
+                        "title": "Defaulttypes"
+                    },
+                    "view": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ViewTemplate"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "preview": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PreviewTemplate"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "suggest": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SuggestDescriptor"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "extend": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ExtendDescriptor"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "versions": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Versions"
+                    },
+                    "homepage": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Homepage"
+                    },
+                    "logo": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logo"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "identifierSpace",
+                    "schemaSpace"
+                ],
+                "title": "ReconServiceManifest",
+                "description": "Service manifest with proper caching hints",
+                "cache_control": "public, max-age=3600"
+            },
+            "SuggestDescriptor": {
+                "properties": {
+                    "entity": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SuggestSubservice"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "type": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SuggestSubservice"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "property": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SuggestSubservice"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "flyout": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SuggestSubservice"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "type": "object",
+                "title": "SuggestDescriptor"
+            },
+            "SuggestEntityItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "type": {
+                        "items": {
+                            "$ref": "#/components/schemas/TypeRef"
+                        },
+                        "type": "array",
+                        "title": "Type"
+                    },
+                    "score": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Score"
+                    },
+                    "match": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Match"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "SuggestEntityItem"
+            },
+            "SuggestEntityResponse": {
+                "properties": {
+                    "result": {
+                        "items": {
+                            "$ref": "#/components/schemas/SuggestEntityItem"
+                        },
+                        "type": "array",
+                        "title": "Result"
+                    }
+                },
+                "type": "object",
+                "title": "SuggestEntityResponse",
+                "example": {
+                    "result": [
+                        {
+                            "id": "https://w3id.org/sead/id/site/123",
+                            "name": "Uppsala Site",
+                            "score": 95.0,
+                            "type": [
+                                {
+                                    "id": "site",
+                                    "name": "Site"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "SuggestPropertyItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "SuggestPropertyItem"
+            },
+            "SuggestPropertyResponse": {
+                "properties": {
+                    "result": {
+                        "items": {
+                            "$ref": "#/components/schemas/SuggestPropertyItem"
+                        },
+                        "type": "array",
+                        "title": "Result"
+                    }
+                },
+                "type": "object",
+                "title": "SuggestPropertyResponse"
+            },
+            "SuggestSubservice": {
+                "properties": {
+                    "service_url": {
+                        "type": "string",
+                        "title": "Service Url"
+                    },
+                    "service_path": {
+                        "type": "string",
+                        "title": "Service Path"
+                    },
+                    "flyout_service_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Flyout Service Url"
+                    },
+                    "flyout_service_path": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Flyout Service Path"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "service_url",
+                    "service_path"
+                ],
+                "title": "SuggestSubservice",
+                "description": "Suggest endpoint descriptor. OpenRefine expects at least:\n  { \"service_url\": \"https://...\", \"service_path\": \"/suggest/entity\" }\nFor entity suggest, may also include flyout service details."
+            },
+            "SuggestTypeItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "SuggestTypeItem"
+            },
+            "SuggestTypeResponse": {
+                "properties": {
+                    "result": {
+                        "items": {
+                            "$ref": "#/components/schemas/SuggestTypeItem"
+                        },
+                        "type": "array",
+                        "title": "Result"
+                    }
+                },
+                "type": "object",
+                "title": "SuggestTypeResponse"
+            },
+            "TypeRef": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "title": "TypeRef"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            },
+            "ViewTemplate": {
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "title": "Url"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "url"
+                ],
+                "title": "ViewTemplate",
+                "description": "How OpenRefine can view a resource (usually an entity page)."
+            }
+        }
+    }
+}

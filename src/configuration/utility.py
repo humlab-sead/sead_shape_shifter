@@ -115,7 +115,7 @@ def _parse_list_expression(expr: str, full_data: dict[str, Any]) -> list[Any] | 
                     result.extend(list_value)
                 else:
                     result.append(list_value)
-            except:  # pylint: disable=bare-except
+            except:  # noqa: E722 ; pylint: disable=bare-except
                 return expr  # Parse error: return original
 
     return result if result else expr

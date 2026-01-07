@@ -1,0 +1,149 @@
+arbodat_field	documentation_group	english_column_name	description	documentation
+cf	analysis	cf_indicator	Taxa identification uncertainty indicator (cf.).	Abbreviation for Latin confer (English: compare with) (Un)Certainty of the determination: 
+SumFAnzahl	analysis	finds_count	Total number of finds.	Total number of finds.
+SumFFrag	analysis	fragment_count	Total number of fragments.	Total number of fragments.
+SumFGewicht	analysis	finds_weight	Total weight of finds (g).	Total weight of finds (g).
+SumPflR	analysis	plant_remains_count	Total number of plant remains.	Total number of plant remains.
+Zust	analysis	preservation_state	Short code for preservation condition.	State of Preservation (abbreviation
+RTyp	analysis, analysis:metadata	remain_type	Type/category of remain.	Type of Plant Remains
+geschätzt	analysis:estimate	estimated	Indicates whether values were estimated.	Estimation
+RTypGrup	analysis:metadata	remain_type_group	Higher-level grouping of remain types.	Higher-level grouping of remain types.
+Zustand	analysis:metadata	preservation_state_description	Full description of preservation condition.	State of Preservation
+ArchDat_Beschreibung	dating	archaeological_dating_description	Description of archaeological date.	Arch. Dating Description
+ChronoDat Beschreibung	dating	chronological_date_description	Description of chronological dating.	Chronological dating
+Epoche	dating	epoch	Archaeological epoch.	Archaeological epoch.
+Epochen_Beschreibung	dating	epoch_description	Description of epoch.	Archaeological epoch.
+Anmerkung	feature	comment	General comment or note.	Free text entry for all kind of information related to the feature
+Befu	feature	feature_number	Archaeological feature/context number.	Feature name
+BotBest	feature	botanical_identification	Name, in case of several authors differentiated e.g. for charcoal or seed/fruit determination, etc. 	Enter a name, in case of several authors differentiate e.g. for charcoal or seed/fruit determination, etc. 
+BestJa	feature:property	identification_yes	Indicates if identification was done.	Year of botanical determination
+FlSchn	feature:property	flotation_channel	Flotation/processing channel identifier.	Entry according to the available information.
+Gebäude	feature:property	building_identitifer	Building identifier.	The belonging to a building can be marked e.g. by adding for example H1 for “house number 1” to the feature denomination 
+GrJahrBefu	feature:property	construction_year_feature	Construction year of the feature.	Construction year of the feature
+okBefu	feature:property	feature_ok	QC indicator for feature.	Methodological classification of the feature concerned 
+okErh	feature:property	preservation_ok	QC indicator for preservation.	The preservation of the plant remains: good/medium/bad preset medium 
+BefuTyp	feature:type	feature_type	Archaeological feature type.	Feature type.
+ArchAusg	project	site_director	Name of site director and/or institution	Name of site director and/orinstitution
+ArchBear	project	archaeological_analyst	Name of scientist responsible for processing the archaeological material 	Name of scientist responsible for processing the archaeological material 
+Aut	project	report_author	Publication/manuscript/short report	Publication/manuscript/short report
+BotBear	project	botanical_analyst	Name of scientist responsible for the botanical determination (possibly several persons) 	Name of scientist responsible for the botanical determination (possibly several persons) 
+EVNr	project	site_reference_number	Archaeological site reference number.	Registrationnumber of the archaeological institution 
+PJahr	project	project_year	Project year.	Project's year
+ProjektNr	project	project_number	Internal project identification number.	Identification of the project
+EDatProb	results? sample:property?	sampling_date	Date of sampling.	Automatic entry of the last input date into the table Details
+KultGr	sample	cultural_group	Cultural group classification.	Archaeological cultural group
+Prob_üNN	sample	elevation_asl_sample	Elevation of sample above sea level.	Absolute position of the sample a.s.l., negative values are possible too
+ProbNr	sample	sample_number	Sample or probe number.	Sample name
+Höhe	sample:coordinate	elevation	Elevation in meters.	Elevation in meters.
+KoordX	sample:coordinate	coord_x	Local X coordinate.	Coordinates defining the position of the sample,  Z in case of three?dimensional measurements (depth) 
+KoordY	sample:coordinate	coord_y	Local Y coordinate.	Coordinates defining the position of the sample,  Z in case of three?dimensional measurements (depth) 
+KoordZ	sample:coordinate	coord_z	Local Z coordinate.	Coordinates defining the position of the sample,  Z in case of three?dimensional measurements (depth) 
+TiefeBis	sample:coordinate	depth_to	Depth to which the sample was taken.	Depth (cm)
+TiefeVon	sample:coordinate	depth_from	Depth from which the sample was taken.	Depth (cm)
+ArchDat	sample:dating	archaeological_dating_code	Archaeological date.	Arch. Dating
+ChronoDat	sample:dating	chronological_date	Chronological dating.	Chronological dating
+Expr1042	sample:dimension?	expression_1042	Internal processing metric.	Internal processing metric.
+MIN0,25	sample:method	mineral_0_25mm	Analysed sieving fraction 	Analysed sieving fraction 
+MIN0,5	sample:method	mineral_0_5mm	Analysed sieving fraction 	Analysed sieving fraction 
+MIN1,0	sample:method	mineral_1mm	Analysed sieving fraction 	Analysed sieving fraction 
+MIN2,0	sample:method	mineral_2mm	Analysed sieving fraction 	Analysed sieving fraction 
+ORG0,25	sample:method	organic_0_25mm	Analysed sieving fraction 	Analysed sieving fraction 
+ORG0,5	sample:method	organic_0_5mm	Analysed sieving fraction 	Analysed sieving fraction 
+ORG1,0	sample:method	organic_1mm	Analysed sieving fraction 	Analysed sieving fraction 
+ORG2,0	sample:method	organic_2mm	Analysed sieving fraction 	Analysed sieving fraction 
+AblaBdgProb	sample:property	sediment_bed_description	Sediment bedding/deposit description.	Unknown
+FustelTyp?	sample:property	site_type_uncertain	Uncertain site type.	Value of site type indicating uncertain site type
+NaturHaupteinheit	sample:property	natural_region_major	Major natural region.	Major natural region.
+NaturrEinh	sample:property	natural_region_sub_unit	Sub-unit of natural region.	Sub-unit of natural region.
+SedProb	sample:property	sediment_sample	Indicates whether the sample is sediment.	Sample if yes, subsample taken for analysis of micro?remains  
+Strat	sample:property	stratum	Stratigraphic unit or description.	Stratum
+Vorfu	sample:property	is_mass_find	Indicates of sample is a mass find.	if yes definition: concentration ? 100 pieces seeds/fruits crops per litre = mass find, interpretation as  ”Storage Find“ (= “Vorratsfund”)  
+Koordinatensystem	sample:property or void	coordinate_system	Coordinate reference system.	Coordinarte system defining Easting, Northing
+Plan	sample:property/coordinate	planum	Planum	Planum
+Quadr	sample:property/coordinate	square	Excavation square/grid square.	Sector
+Schi	sample:property/coordinate	layer	Layer identifier.	Layer
+ProbTyp	sample:type	sample_type	Type of sample.	Sample Type
+ProbTyp Beschreibung	sample:type	sample_type_description	Description of sample type.	Sample Type Description
+Easting	site:coordinate	easting	Average coordinate values for the site according to the geographic coordinate system	Average coordinate values for the site according to the geographic coordinate system
+Northing	site:coordinate	northing	Northing coordinate.	Average coordinate values for the site according to the geographic coordinate system
+FlurStr	site:location	place_or_street_name	Name of the place/street, according to the archaeological indication	Name of the place/street, according to the archaeological indication
+Kreis	site:location	administrative_district	Administrative district.	e.g. Frankfurt/Main
+Land	site:location	state	Federal state.	e.g. Hessen
+Ort	site:location	place_name	Place name.	e.g.Nieder?Eschbach, Frankfurt/Main
+Staat	site:location	country	Country.	e.g. Germany
+Limes	site:property	limes_indicator	Indicator for Roman Limes relevance.	Limes
+NaturE	site:property	natural_region	Natural region.	The classification of natural landscape units, for Hesse following PLETSCH (1990) 
+okFustel	site:property	site_ok	QC for site record.	Methodological classification of the site: preset  ? site o.k. 
+OFustelTyp	site:property:property	upper_site_type	Higher-level site type.	Site type
+OFustelTyp Beschreibung	site:property:property	upper_site_type_description	Description of upper site type.	Site type description
+TK	site:property? sample:property?	map_sheet	German topographic map sheet number.	Number of topografic map1 : 25,000
+Fundstellentyp_Beschreibung	site:type	site_type_description	Description of site type.	Description of site type
+FustelTyp	site:type	site_type	Type of site.	According to the structural data table Fundstellentyp (= site types, page 66) preset   unbek (= unknown)    
+FW	taxa:briemle_characteristics	feeding_value 	Feeding value 	Feeding Value 
+M	taxa:briemle_characteristics	mowing_tolerance 	Mowing tolerance 	Mowing Tolerance 
+TKG	taxa:briemle_characteristics	thousand_kernel_weight	Weight of 1000 seeds.	Weight of 1000 grains (2 decimal places)
+W	taxa:briemle_characteristics	grazing_tolerance	Grazing tolerance 	Grazing Tolerance 
+Dom	taxa:dominance	dominance	Dominance 	Dominance 
+Dom_u	taxa:dominance	dominance_uncertain	Dominance: ! in column before the number = value unsecure	Dominance: ! in column before the number = value unsecure
+F	taxa:ecological_behaviour	moisture_status	Moisture status.	Moisture status 
+F_s	taxa:ecological_behaviour	moisture_category	Specialised moisture category.	Enter relevant letter: w = wet/dry, Ü = indicator for flooding
+F_u	taxa:ecological_behaviour	moisture_uncertain	Moisture status(uncertain).	Moisture value, value unsecure
+K	taxa:ecological_behaviour	continentality	Continentality.	Continentality number 
+K_u	taxa:ecological_behaviour	continentality_uncertain	Continentality (uncertain).	Continentality number, value unsecure
+L	taxa:ecological_behaviour	light_number	Light number.	Light number, in case of wood young stands are taken as a basis
+L_u	taxa:ecological_behaviour	light_number_uncertain	Light number (uncertain).	Light number, value unsecure
+N	taxa:ecological_behaviour	nitrogene_number 	Nitrogene number 	Nitrogennumber 
+N_u	taxa:ecological_behaviour	nitrogene_number_uncertain	Nitrogene number, value unsecure	Nitrogene number, value unsecure
+Re	taxa:ecological_behaviour	soil_acidity	Soil acidity/pH.	Soil acidity 
+Re_u	taxa:ecological_behaviour	soil_acidity_uncertain	Soil acidity/pH (uncertain).	Reaction value, value unsecure
+S	taxa:ecological_behaviour	soil_salinity	Soil salinity	Soil salinity 
+S_u	taxa:ecological_behaviour	soil_salinity_uncertain	Soil salinity (uncertain)	Salt number, value unsecure
+SMet	taxa:ecological_behaviour	heavy_metal_tolerance	Heavy metal tolerance.	Heavy metal tolerance, Enter relevant letter:m = medium, s = strong 
+T	taxa:ecological_behaviour	temperature_number	Temperature class.	Temperature number 
+T_u	taxa:ecological_behaviour	temperature_number_uncertain	Temperature class (uncertain).	Temperature number, value unsecure
+Anm	taxa:oberdorfer_characteristics	remark	Remarks field	Remarksfield 
+ARE	taxa:oberdorfer_characteristics	aridity	Core Area of Phytogeographic Distribution	Core Area of Phytogeographic Distribution
+BLA	taxa:oberdorfer_characteristics	flowering_from_month	Flowering from month 	Flowering from month 
+BLE	taxa:oberdorfer_characteristics	flowering_to_month	Flowering to month 	Flowering to month 
+Pio	taxa:oberdorfer_characteristics	pioneer	Pioneerplant (x for yes) 	Pioneerplant (x for yes) 
+Roh	taxa:oberdorfer_characteristics	ruderal	Pioneer on immature soils(x for yes)	Pioneer on immature soils(x for yes)
+SozGrup	taxa:oberdorfer_characteristics	sociological_group_extended	Phytosociological Group following Oberdorfer(used in Hesse), numbers following Ellenberg	Phytosociological Groupfollowing Oberdorfer(used in Hesse), numbers following Ellenberg
+WT	taxa:oberdorfer_characteristics	root_zone	Root zone  	Root zone  
+WUA	taxa:oberdorfer_characteristics	height_from	Height cm/m from  (specification in case of metres only)	Height cm/m from  (specification in case of metres only)
+WUE	taxa:oberdorfer_characteristics	height_to	Height cm/m to  (specification in case of metres only)	Height cm/m to  (specification in case of metres only)
+Zeig	taxa:oberdorfer_characteristics	indicator_for	Indicator for ... 	Indicator for ... 
+Bl	taxa:persistence	lead_persistence	Leaf Persistence	Leaf Persistence
+Bl_u	taxa:persistence	leaf_persistence_uncertain	Leaf Persistence, value unsecure	Leaf Persistence, value unsecure
+Leb	taxa:persistence	life_form	Life Form	Life Form
+G	taxa:plant_sociological_behaviour	group_of_vegetation_classes	Group of Vegetation Classes(without entry until now)	Group of Vegetation Classes(without entry until now)
+G_u	taxa:plant_sociological_behaviour	group_of_vegetation_classes_uncertain	Group of Vegetation Classes: !in column before then umber= value unsecure 	Group of Vegetation Classes: !in column before thenumber= value unsecure 
+Kl	taxa:plant_sociological_behaviour	species_class	Class Characterising Species...	Class Characterising Species...
+Kl_u	taxa:plant_sociological_behaviour	species_class_uncertain	Class Characterising Species: !in column before the number = value unsecure 	Class Characterising Species: !in column before the number = value unsecure 
+O	taxa:plant_sociological_behaviour	species_order	Order Characterising Species...	Order Characterising Species...
+O_u	taxa:plant_sociological_behaviour	species_order_uncertain	Order Characterising Species: !in column before the number = value unsecure 	Order Characterising Species: !in column before the number = value unsecure 
+Soz	taxa:plant_sociological_behaviour	phytosociological_behaviour	Phytosociological Behaviour, in brackets if value differing from the Oberdorfer classification (1990)	Phytosociological Behaviour, in brackets if value differing from the Oberdorfer classification (1990)
+Soz_u	taxa:plant_sociological_behaviour	phytosociological_behaviour_uncertain	Phytosociological Behaviour: !in column before the number = value unsecure 	Phytosociological Behaviour: !in column before the number = value unsecure 
+U	taxa:plant_sociological_behaviour	sub_alliance_species	Sub?Alliance Characterising Species...	Sub?Alliance Characterising Species...
+U_u	taxa:plant_sociological_behaviour	sub_alliance_uncertain	Sub?Alliance Characterising Species: !in column before the number = value unsecure 	Sub?Alliance Characterising Species: !in column before the number = value unsecure 
+V	taxa:plant_sociological_behaviour	alliance_species	Alliance Characterising Species...	Alliance Characterising Species...
+V_u	taxa:plant_sociological_behaviour	alliance_species_uncertain	Alliance Characterising Species: !in column before the number = value unsecure 	Alliance Characterising Species: !in column before the number = value unsecure 
+Ökogruppe_u	taxa:plant_sociological_behaviour	ecological_group_uncertain	Ecological group (uncertain).	Ecological Group unsecure
+Ess	taxa:use_characteristics	edible_plant_indicator	Edible plant indicator.	Edible plant parts 
+Gar	taxa:use_characteristics	garden_plant_indicator	Garden plant indicator.	Ornamental/garden plant
+Ge	taxa:use_characteristics	medicinal_indicator	Medicinal use.	Potential crop plant: cereals
+Hü	taxa:use_characteristics	luxury_indicator	Luxury or stimulant use.	Potential crop plant: pulses
+Imp	taxa:use_characteristics	imported_indicator	Imported species indicator.	Imported plant (olive, pepperetc.)
+Kp	taxa:use_characteristics	crop_plant_indicator	Crop plant indicator.	Other potential crop plant
+Med	taxa:use_characteristics	medical_use_indicator	Medicinal use indicator.	Poison/medicinal plant/drug
+Nut	taxa:use_characteristics	useful_indicator	General usefulness.	Other economic/useful plant
+Öl	taxa:use_characteristics	oil_plant_indicator	Oil-producing plant.	Potential crop plant: oil/fibre plants
+Achtung	taxon	warning_note	Additional taxonomic information, e.g. #, cf, see page54	Additional taxonomic information, e.g. #, cf, see page54
+BNam	taxon	site_name	Name of the archaeological site.	Botanical name followingFlora Europaea (1989),for crops and garden plants: MANSFELD(1986) or for Triticum and Hordeum see overvievs p. 46ff. 
+Familie	taxon	family	Botanical family.	Taxa family
+Name D	taxon	name_de	German name of the taxon or remain.	German plant name following OBERDORFER(1990)
+Name_E	taxon	name_en	English name of the taxon or remain.	English plant name (work in progress, to be completed following CLAPHAM et al. 1989) 
+Name_F	taxon	name_fr	French name.	French plant name (work in progress, to be completed following LAMBINON 2012) 
+Name_I	taxon	name_it	Italian name.	Italian plant name (work in progress)
+PCODE	taxon	sample_code	Internal coded identifier for the sample.	Abbreviation code of the botanical plant name
+S_Od	taxon	system_order	Systematic order.	Page OBERDORFER (1990) 
+TaxAut	taxon	taxon_author	Taxonomic author.	Author following Flora Europaea
