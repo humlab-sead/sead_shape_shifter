@@ -215,7 +215,7 @@ class TableConfig:
         return self.data.get("source", None)
 
     @property
-    def values(self) -> str | None:
+    def values(self) -> str | list[Any] | None:
         return self.data.get("values", None)
 
     @property
