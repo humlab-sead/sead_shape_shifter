@@ -47,16 +47,12 @@ class FixedEntityFieldsSpecification(EntityFieldsBaseSpecification):
         table: TableConfig = self.get_entity(entity_name)
 
         if table.type != "fixed":
-            return True
+            self.add_error(f"Entity '{entity_name}' is not of type 'fixed'", entity=entity_name, field="type")
         
         self.check_fields(entity_name, ["surrogate_id"], "exists/E,not_empty/E")
         self.check_fields(entity_name, ["values"], "exists/E,not_empty/W")
         self.check_fields(entity_name, ["type"], "has_value/E", expected_value="fixed")
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
-
-        # If surrogate_name is specified, it must be in columns
-        if self.field_exists(f"entities.{entity_name}.surrogate_name"):
-            self.check_fields(entity_name, ["surrogate_name"], "is_in_columns/E")
 
         self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
 
