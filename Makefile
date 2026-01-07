@@ -67,7 +67,7 @@ tidy:
 	@uv run black src tests backend/app backend/tests
 
 .PHONY: lint
-lint: tidy pylint
+lint: tidy pylint ruff-check-fix
 
 .PHONY: check-imports
 check-imports:
