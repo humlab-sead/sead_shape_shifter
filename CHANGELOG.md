@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.0.0...v1.0.1) (2026-01-07)
+
+
+### Bug Fixes
+
+* update .gitignore to exclude additional frontend build artifacts and backup files ([24580d1](https://github.com/humlab-sead/sead_shape_shifter/commit/24580d1d030399f4aaa65ee9aa3cd7cfc77d1e10))
+
 # 1.0.0 (2026-01-07)
 
 
