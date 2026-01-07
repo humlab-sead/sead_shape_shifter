@@ -39,7 +39,7 @@
             v-if="selectedTargetType === 'file'"
             v-model="fileTarget"
             label="Output File Path"
-            :rules="[(v) => !!v || 'File path is required']"
+            :rules="filePathRules"
             variant="outlined"
             density="comfortable"
             :hint="`Default: ./output/${projectName}.${selectedDispatcher}`"
@@ -222,6 +222,34 @@ const canExecute = computed(() => {
   if (!selectedDispatcher.value) return false
   if (selectedTargetType.value === 'database' && !selectedDataSource.value) return false
   return true
+})
+
+const selectedDispatcherMetadata = computed(() => {
+  if (!selectedDispatcher.value) return null
+  return dispatchers.value.find(d => d.key === selectedDispatcher.value) || null
+})
+
+const dispatcherExtension = computed(() => {
+  const extension = selectedDispatcherMetadata.value?.extension
+  if (!extension) return null
+  return extension.startsWith('.') ? extension : `.${extension}`
+})
+
+const filePathRules = computed(() => {
+  const rules: Array<(value: string) => boolean | string> = [
+    (value: string) => !!value || 'File path is required',
+  ]
+
+  if (dispatcherExtension.value) {
+    rules.push((value: string) => {
+      if (!value) return true
+      return value.toLowerCase().endsWith(dispatcherExtension.value?.toLowerCase() ?? '')
+        ? true
+        : `File path must end with ${dispatcherExtension.value}`
+    })
+  }
+
+  return rules
 })
 
 // Methods

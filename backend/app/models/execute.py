@@ -9,6 +9,7 @@ class DispatcherMetadata(BaseModel):
     key: str = Field(..., description="Dispatcher key (registered name)")
     target_type: str = Field(..., description="Target type: 'file', 'folder', or 'database'")
     description: str = Field(..., description="Human-readable description of the dispatcher")
+    extension: str | None = Field(None, description="File extension for the dispatcher target, if applicable")
 
 
 class ExecuteRequest(BaseModel):
