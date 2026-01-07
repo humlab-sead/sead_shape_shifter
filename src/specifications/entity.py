@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from src.model import TableConfig
 from src.utility import Registry, dotget
 
 from .base import ProjectSpecification
@@ -28,61 +29,45 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
             if self.field_exists(f"entities.{entity_name}.{field}"):
                 self.check_fields(entity_name, [field], "is_string_list/E")
 
+        if self.field_exists(f"entities.{entity_name}.surrogate_name"):
+            self.check_fields(entity_name, ["surrogate_name"], "is_in_columns/E")
+
         return not self.has_errors()
 
+    def get_entity(self, entity_name: str) -> TableConfig:
+        """Get the TableConfig for the specified entity."""
+        return TableConfig(entity_name=entity_name, entities_cfg=self.project_cfg.get("entities", {}))
 
 class FixedEntityFieldsSpecification(EntityFieldsBaseSpecification):
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that fields are for the fixed entity."""
         super().is_satisfied_by(entity_name=entity_name, **kwargs)
-        self.check_fields(entity_name, ["surrogate_id", "values"], "exists/E")
-        return not self.has_errors()
 
+        table: TableConfig = self.get_entity(entity_name)
 
-class FixedDataSpecification(ProjectSpecification):
-    """Validates fixed data table configurations."""
-
-    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
-        """Check that fixed data configurations are valid."""
-        self.clear()
-        entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
-
-        if entity_cfg.get("type") != "fixed":
+        if table.type != "fixed":
             return True
-
-        self.check_fields(entity_name, ["values"], "not_empty/E", message="Fixed entity requires 'values' field")
-        self.check_fields(entity_name, ["columns"], "not_empty/E,is_string_list/E", message="Fixed entity requires 'columns' field")
-
-        values = entity_cfg.get("values")
-        columns = entity_cfg.get("columns", [])
-
-        if isinstance(values, list) and isinstance(columns, list):
-
-            is_primitive_list = all(not isinstance(row, (list, dict)) for row in values)
-            if is_primitive_list:
-                if len(columns) != 1:
-                    self.add_error(
-                        f"Entity '{entity_name}': 'values' appear to be a single-column list but 'columns' has length {len(columns)}",
-                        entity=entity_name,
-                        field="values",
-                    )
-                # self.add_warning(
-                #     f"Entity '{entity_name}': 'values' appear to be a single-column list; consider wrapping each value in a list",
-                #     entity=entity_name,
-                #     field="values",
-                # )
-            else:
-                for idx, value_row in enumerate(values):
-                    if isinstance(value_row, list):
-                        if len(value_row) != len(columns):
-                            self.add_error(
-                                f"Entity '{entity_name}': column/row length mismatch at row {idx + 1}", entity=entity_name, field="values"
-                            )
-                    else:
-                        self.add_warning(f"Entity '{entity_name}': value row {idx + 1} is not a list", entity=entity_name, field="values")
-
+        
+        self.check_fields(entity_name, ["surrogate_id"], "exists/E,not_empty/E")
+        self.check_fields(entity_name, ["values"], "exists/E,not_empty/W")
+        self.check_fields(entity_name, ["type"], "has_value/E", expected_value="fixed")
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
+
+        # If surrogate_name is specified, it must be in columns
+        if self.field_exists(f"entities.{entity_name}.surrogate_name"):
+            self.check_fields(entity_name, ["surrogate_name"], "is_in_columns/E")
+
+        self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
+
+        columns: str | list[Any] = table.safe_columns
+        values: str | list[Any] = table.safe_values
+
+        if not all(isinstance(row, list) for row in values):
+            self.add_error(f"Fixed data entity '{entity_name}' must have values as a list of lists", entity=entity_name, field="values")
+
+        if not all(len(row) == len(columns) for row in values):
+            self.add_error(f"Fixed data entity '{entity_name}' has mismatched number of columns and values", entity=entity_name, field="values")
 
         return not self.has_errors()
 
