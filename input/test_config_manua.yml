@@ -1,0 +1,7 @@
+metadata:
+  name: test_config_manual
+  description: Project for test_config_manual
+  version: 1.0.0
+  default_entity:
+entities: {}
+options: {}

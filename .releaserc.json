@@ -1,6 +1,6 @@
 {
   "branches": ["main"],
-  "repositoryUrl": "https://github.com/humlab-sead/sead_authority_service",
+  "repositoryUrl": "https://github.com/humlab-sead/sead_shape_shifter",
   "plugins": [
     [
       "@semantic-release/commit-analyzer",

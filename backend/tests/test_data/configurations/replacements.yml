@@ -1,0 +1,41 @@
+# This file contains simple value-to-value mappings for table columns.
+
+site:
+  # These mappings has been generated with ChatGPT based on existing data.
+  # You may edit them as needed.
+  KoordSys:
+    # DHDN Gauß-Krüger
+    "DHDN Gauss-Krüger Zone 2": "EPSG:31466"
+    "DHDN Gauss-Krüger Zone 3": "EPSG:31467"
+    "DHDN Gauss-Krüger Zone 4": "EPSG:31468"
+    "DHDN Gauss-Krüger Zone 5": "EPSG:31469"
+    # NTF / Lambert
+    "NTF/Lambert I": "EPSG:27571"
+    "NTF/Lambert II": "EPSG:27572"
+    "NTF/Lambert II étendu": "EPSG:27572"  # adjust if you know a more specific code
+    "NTF/Lambert III": "EPSG:27573"
+    "NTF/Lambert IV": "EPSG:27574"
+    # France – RGF93
+    "RGF93 Lambert 93": "EPSG:2154"
+    # Swiss
+    "CH1903/Swiss grid": "EPSG:21781"
+    # Austria – MGI
+    "MGI/Austria Gauss-Krüger West": "EPSG:31254"
+    "MGI/Austria Gauss-Krüger Central": "EPSG:31255"
+    "MGI/Austria Gauss-Krüger East": "EPSG:31256"
+    # Already WGS84 geographic
+    "Geografische Länge/Breite (dezimal)": "EPSG:4326" # WGS84 lon/lat
+    "ETRS 89 / UTM 29S": "EPSG:25829"
+    "ETRS 89 / UTM 29T": "EPSG:25829"
+    "ETRS 89 / UTM 30U": "EPSG:25830"
+    "ETRS 89 / UTM 30T": "EPSG:25830"
+    "ETRS 89 / UTM 30S": "EPSG:25830"
+    "ETRS 89 / UTM 31U": "EPSG:25831"
+    "ETRS 89 / UTM 31T": "EPSG:25831"
+    "ETRS 89 / UTM 32U": "EPSG:25832"
+    "ETRS 89 / UTM 32T": "EPSG:25832"
+    "ETRS 89 / UTM 33U": "EPSG:25833"
+    "ETRS 89 / UTM 33T": "EPSG:25833"
+    "ETRS 89 / UTM 34U": "EPSG:25834"
+    "ETRS 89 / UTM 34T": "EPSG:25834"
+

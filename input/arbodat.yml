@@ -1,3 +1,10 @@
+metadata:
+  type: shapeshifter-project
+  name: "ArboDat Database Configuration"
+  description: "Configuration for importing data from ArboDat database into SEAD."
+  version: "1.0.0"
+  default_entity: "survey"
+  
 entities:
   # TIPS #1: Use "@value: entities.entity_name.keys" to refer to the keys of another entity.
   # TIPS #2: Use Ctrl-Alt-2 to fold/unfold all entities (create a shortcut)

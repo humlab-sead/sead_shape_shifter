@@ -1,0 +1,18 @@
+version: "2.0"
+
+service_url: "http://localhost:8000"  # OpenRefine reconciliation service URL
+
+entities:
+  
+  site:
+    Fustel:  # Primary target field
+      property_mappings:
+        genus: genus
+      
+      remote:
+        service_type: "site"
+      
+      auto_accept_threshold: 0.95   # Auto-accept matches with ≥95% confidence
+      review_threshold: 0.70        # Flag matches 70-95% for manual review
+      
+      mapping: []  # Initial mappings (populated by auto-reconcile)

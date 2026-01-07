@@ -1,10 +1,11 @@
 [project]
 name = "shape-shifter"
 version = "1.2.0"
-description = "This is an import service for that harmonize data to SEAD schema."
+description = "Declarative data transformation framework with optional web editor API"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    # Core dependencies
     "click>=8.3.0",
     "dotenv>=0.9.9",
     "jaydebeapi>=1.2.3",
@@ -18,23 +19,50 @@ dependencies = [
     "pyproj>=3.7.2",
     "python-multipart>=0.0.20",
     "sqlalchemy>=2.0.44",
+    # Shared dependencies (used by both core and backend)
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "networkx>=3.0",
+    "ruamel.yaml>=0.18.0",
+    "uvicorn>=0.38.0",
+    "xxhash>=3.6.0",
 ]
-[dependency-groups]
+
+[project.optional-dependencies]
+# Backend API dependencies (FastAPI + related)
+api = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "sqlparse>=0.5.0",
+]
+# Development dependencies
 dev = [
     "pylint>=3.3.8",
     "ruff>=0.13.2",
     "black>=25.9.0",
-    "pytest >=8.1.1,<9",
-    "pytest-asyncio >=0.22.0,<1",
-    "httpx >=0.24.1,<1",
+    "pytest>=8.1.1,<9",
+    "pytest-asyncio>=0.22.0,<1",
+    "pytest-cov>=4.1.0,<5",
+    "httpx>=0.24.1,<1",
     "vulture>=2.14",
 ]
+# All dependencies (for full development setup)
+all = [
+    "shape-shifter[api,dev]",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
 
 [tool.ruff]
 # Ruff = linter + (optional) formatter
 target-version = "py313"
 line-length = 140
+output-format = "concise"
 
+[tool.ruff.lint]
 # Import checking rules
 select = [
     "E",  # pycodestyle errors
@@ -43,16 +71,23 @@ select = [
     "I",  # isort
     "TID", # flake8-tidy-imports
 ]
+exclude = [
+    "__init__.py",
+]
 
-[tool.ruff.flake8-tidy-imports]
+[tool.ruff.lint.flake8-tidy-imports]
 # Prevent relative imports beyond current package
 ban-relative-imports = "parents"
+
+[tool.ruff.lint.pep8-naming]
+classmethod-decorators = ["classmethod"]
 
 [tool.ruff.format]
 # Use Ruff's formatter (Black-compatible). Set to false if you prefer Black.
 quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
+
 
 [tool.pylint."MESSAGES CONTROL"]
 disable = [
@@ -74,7 +109,9 @@ disable = [
     "global-variable-not-assigned",
     "logging-fstring-interpolation",
     "too-many-function-args",
-    "too-many-locals"
+    "too-many-locals",
+    "protected-access",
+    "f-string-without-interpolation"
 ]
 
 [tool.black]
@@ -91,10 +128,6 @@ max-args = 10
 line_length = 142
 # multi_line_output = 3
 profile = "black"
-
-# Naming tweaks (optional)
-[tool.ruff.pep8-naming]
-classmethod-decorators = ["classmethod"]
 
 # --------------------
 # mypy (type checking)
@@ -123,7 +156,7 @@ warn_return_any = false
 # --------------------
 [tool.pytest.ini_options]
 addopts = "-q -ra --strict-markers"
-testpaths = ["tests"]
+testpaths = ["tests", "backend/tests"]
 python_classes = "Test*"
 python_functions = "test_*"
 asyncio_mode = "auto"
@@ -142,9 +175,21 @@ markers = [
 # --------------------
 [tool.coverage.run]
 branch = true
-source = ["src"]
+source = ["src", "backend/app"]
+omit = [
+  "backend/tests/*",
+  "tests/*",
+  "backend/app/api/v1/endpoints/*",
+  "src/configuration/*",
+  "*/__init__.py",
+  "*/venv/*",
+  "*/.venv/*"
+]
 
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
 fail_under = 85
+
+[dependency-groups]
+dev = []

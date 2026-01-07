@@ -1,0 +1,130 @@
+# Data Source Driver Schemas
+#
+# This file defines configuration schemas for all supported data source drivers.
+# Each driver specifies:
+#   - display_name: Human-readable name
+#   - description: Driver description
+#   - category: "database" or "file"
+#   - fields: List of configuration fields with metadata
+#
+# Field types: string, integer, boolean, password, file_path
+# Field attributes:
+#   - name: Field identifier (required)
+#   - type: Field data type (required)
+#   - required: Whether field is mandatory (default: false)
+#   - default: Default value
+#   - description: Human-readable description
+#   - placeholder: Example value for UI
+#   - min_value: Minimum value (for integers)
+#   - max_value: Maximum value (for integers)
+
+postgresql:
+  display_name: PostgreSQL
+  description: PostgreSQL database connection
+  category: database
+  fields:
+    - name: host
+      type: string
+      required: true
+      default: localhost
+      description: Database server hostname
+      placeholder: localhost
+
+    - name: port
+      type: integer
+      required: false
+      default: 5432
+      description: Database server port
+      placeholder: "5432"
+      min_value: 1
+      max_value: 65535
+
+    - name: database
+      type: string
+      required: true
+      description: Database name
+      placeholder: mydb
+
+    - name: username
+      type: string
+      required: true
+      description: Database user
+      placeholder: postgres
+
+    - name: password
+      type: password
+      required: false
+      description: Database password
+
+access:
+  display_name: MS Access
+  description: Microsoft Access database via UCanAccess
+  category: file
+  fields:
+    - name: filename
+      type: file_path
+      required: true
+      description: Path to .mdb or .accdb file
+      placeholder: ./input/database.mdb
+
+    - name: ucanaccess_dir
+      type: string
+      required: false
+      default: lib/ucanaccess
+      description: Path to UCanAccess library directory
+      placeholder: lib/ucanaccess
+
+# Alias for access - both refer to same schema
+ucanaccess:
+  display_name: MS Access
+  description: Microsoft Access database via UCanAccess
+  category: file
+  fields:
+    - name: filename
+      type: file_path
+      required: true
+      description: Path to .mdb or .accdb file
+      placeholder: ./input/database.mdb
+
+    - name: ucanaccess_dir
+      type: string
+      required: false
+      default: lib/ucanaccess
+      description: Path to UCanAccess library directory
+      placeholder: lib/ucanaccess
+
+sqlite:
+  display_name: SQLite
+  description: SQLite database file
+  category: file
+  fields:
+    - name: filename
+      type: file_path
+      required: true
+      description: Path to .db or .sqlite file
+      placeholder: ./data/database.db
+
+csv:
+  display_name: CSV File
+  description: Comma-separated values file
+  category: file
+  fields:
+    - name: filename
+      type: file_path
+      required: true
+      description: Path to .csv file
+      placeholder: ./data/file.csv
+
+    - name: encoding
+      type: string
+      required: false
+      default: utf-8
+      description: File encoding
+      placeholder: utf-8
+
+    - name: delimiter
+      type: string
+      required: false
+      default: ","
+      description: Field delimiter
+      placeholder: ","

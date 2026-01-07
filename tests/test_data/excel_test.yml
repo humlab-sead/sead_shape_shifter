@@ -1,0 +1,15 @@
+metadata:
+  type: shapeshifter-project
+  name: "excel_test"
+  description: "Configuration for importing data from Excel."
+  version: "1.0.0"
+  default_entity: "survey"
+  
+entities:
+
+  survey:
+    source: null
+    type: xlsx
+    options:
+      filename: "tests/test_data/excel-test.xlsx"
+      sheet: "kalle"

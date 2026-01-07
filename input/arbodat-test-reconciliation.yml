@@ -1,0 +1,106 @@
+version: '2.0'
+service_url: http://localhost:8000
+entities:
+  site:
+    site_name:
+      property_mappings:
+        latitude: site_latitude
+        longitude: site_longitude
+        country: country_name
+        national_id: national_site_id
+        place_name: locality
+      remote:
+        service_type: site
+        columns: []
+      auto_accept_threshold: 0.5
+      review_threshold: 0.4
+      mapping:
+      - source_value: Göteborg 342
+        sead_id: 4420
+        confidence: 0.6923
+        notes: 'Auto-matched: Goteborg'
+        will_not_match: false
+        created_by: system
+  taxon:
+    species_name:
+      source: taxon_with_hierarchy
+      property_mappings:
+        genus: genus_col
+        family: family_col
+        scientific_name: binomial
+      remote:
+        service_type: taxon
+        columns: []
+      auto_accept_threshold: 0.9
+      review_threshold: 0.65
+      mapping: []
+  site_with_coordinates:
+    site_name:
+      source:
+        data_source: arbodat_data
+        type: sql
+        query: "SELECT \n  Fustel AS site_name,\n  EVNr AS national_site_identifier,\n\
+          \  rWert AS latitude,\n  hWert AS longitude,\n  Ort AS locality\nFROM Projekte\n\
+          WHERE rWert IS NOT NULL AND hWert IS NOT NULL\n"
+      property_mappings:
+        latitude: latitude
+        longitude: longitude
+        national_id: national_site_identifier
+        place_name: locality
+      remote:
+        service_type: site
+        columns: []
+      auto_accept_threshold: 0.95
+      review_threshold: 0.7
+      mapping: []
+  bibliographic_reference:
+    citation:
+      property_mappings:
+        doi: doi_column
+        title: ref_title
+        year: publication_year
+        authors: author_names
+        isbn: isbn_number
+      remote:
+        service_type: bibliographic_reference
+        columns: []
+      auto_accept_threshold: 0.98
+      review_threshold: 0.85
+      mapping: []
+  location:
+    place_name:
+      property_mappings:
+        place_name: location_name
+      remote:
+        service_type: location
+        columns: []
+      auto_accept_threshold: 0.92
+      review_threshold: 0.75
+      mapping: []
+  country:
+    country_name:
+      property_mappings: {}
+      remote:
+        service_type: country
+        columns: []
+      auto_accept_threshold: 0.98
+      review_threshold: 0.9
+      mapping: []
+  method:
+    method_name:
+      property_mappings:
+        method_abbreviation: abbrev
+      remote:
+        service_type: method
+        columns: []
+      auto_accept_threshold: 0.95
+      review_threshold: 0.75
+      mapping: []
+  sample:
+    sample_name:
+      property_mappings: {}
+      remote:
+        columns: []
+      auto_accept_threshold: 0.95
+      review_threshold: 0.7
+      mapping: []
