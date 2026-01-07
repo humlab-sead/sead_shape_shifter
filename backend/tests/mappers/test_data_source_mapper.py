@@ -129,27 +129,6 @@ def test_missing_required_field():
         DataSourceMapper.to_core_config(api_config)
 
 
-@pytest.mark.skip(reason="We don't allow password in options for the time being")
-def test_password_extraction():
-    """Test that password SecretStr is properly extracted."""
-    api_config = DataSourceConfig(
-        name="test_pg",
-        driver="postgresql",  # type: ignore
-        host="localhost",
-        database="testdb",
-        username="testuser",
-        password=SecretStr("my_secret_password"),
-        **{},
-    )
-
-    core_config = DataSourceMapper.to_core_config(api_config)
-
-    options = core_config.data_source_cfg["options"]
-    # Password should be extracted as plain string
-    assert options["password"] == "my_secret_password"
-    assert isinstance(options["password"], str)
-
-
 def test_additional_options_preserved():
     """Test that additional options not in schema are preserved."""
     api_config = DataSourceConfig(
