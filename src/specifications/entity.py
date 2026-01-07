@@ -38,6 +38,7 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
         """Get the TableConfig for the specified entity."""
         return TableConfig(entity_name=entity_name, entities_cfg=self.project_cfg.get("entities", {}))
 
+
 class FixedEntityFieldsSpecification(EntityFieldsBaseSpecification):
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
@@ -48,7 +49,7 @@ class FixedEntityFieldsSpecification(EntityFieldsBaseSpecification):
 
         if table.type != "fixed":
             self.add_error(f"Entity '{entity_name}' is not of type 'fixed'", entity=entity_name, field="type")
-        
+
         self.check_fields(entity_name, ["surrogate_id"], "exists/E,not_empty/E")
         self.check_fields(entity_name, ["values"], "exists/E,not_empty/W")
         self.check_fields(entity_name, ["type"], "has_value/E", expected_value="fixed")
@@ -63,7 +64,9 @@ class FixedEntityFieldsSpecification(EntityFieldsBaseSpecification):
             self.add_error(f"Fixed data entity '{entity_name}' must have values as a list of lists", entity=entity_name, field="values")
 
         if not all(len(row) == len(columns) for row in values):
-            self.add_error(f"Fixed data entity '{entity_name}' has mismatched number of columns and values", entity=entity_name, field="values")
+            self.add_error(
+                f"Fixed data entity '{entity_name}' has mismatched number of columns and values", entity=entity_name, field="values"
+            )
 
         return not self.has_errors()
 

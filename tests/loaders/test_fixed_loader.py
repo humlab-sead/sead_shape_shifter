@@ -535,6 +535,6 @@ class TestCreateFixedTable:
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
         assert len(result) == 3
-        assert set(result.columns) == {"system_id","dimension_id", "dimension_name"}
+        assert set(result.columns) == {"system_id", "dimension_id", "dimension_name"}
         assert result["dimension_id"].tolist() == [1, 2, 3]
         assert result["dimension_name"].tolist() == ["Width", "Height", "Depth"]

@@ -73,10 +73,22 @@ class TestFixedEntityFieldsSpecification:
                 "no_columns": {"type": "fixed", "columns": None, "keys": ["id"], "surrogate_id": "entity_id", "values": [["val1"]]},
                 "not_fixed": {"type": "sql", "columns": ["col1"], "keys": ["id"], "surrogate_id": "entity_id", "values": [["val1"]]},
                 # "valid_fixed": {"type": "fixed", "columns": ["col1", "col2"], "values": [["a", "b"], ["c", "d"]]},
-                "mismatched_length": {"type": "fixed", "columns": ["col1", "col2"], "keys": [], "surrogate_id": "entity_id", "values": [["a"], ["c", "d", "e"]]},
+                "mismatched_length": {
+                    "type": "fixed",
+                    "columns": ["col1", "col2"],
+                    "keys": [],
+                    "surrogate_id": "entity_id",
+                    "values": [["a"], ["c", "d", "e"]],
+                },
                 "missing_values": {"type": "fixed", "columns": ["col1"], "keys": ["id"], "surrogate_id": "entity_id"},
-                "sql_entity": {"type": "sql", "query": "SELECT * FROM table", "surrogate_id": "entity_id", "columns": ["col1"], "keys": ["id"]},
-                "empty_fixed": {"type": "fixed", "columns": [], "keys": [], "surrogate_id": "entity_id", "values": []}
+                "sql_entity": {
+                    "type": "sql",
+                    "query": "SELECT * FROM table",
+                    "surrogate_id": "entity_id",
+                    "columns": ["col1"],
+                    "keys": ["id"],
+                },
+                "empty_fixed": {"type": "fixed", "columns": [], "keys": [], "surrogate_id": "entity_id", "values": []},
             }
         }
 
@@ -115,7 +127,6 @@ class TestFixedEntityFieldsSpecification:
 
         assert result is False
 
-
     def test_mismatched_column_row_length(self, project_cfg):
         """Test validation fails when row length doesn't match columns."""
         spec = FixedEntityFieldsSpecification(project_cfg)
@@ -135,7 +146,6 @@ class TestFixedEntityFieldsSpecification:
         assert result is False, spec.get_report()
         assert len(spec.errors) > 0, spec.get_report()
 
-
     def test_empty_values_with_no_columns_or_keys_or_values(self, project_cfg):
         """Test validation passes when both columns and values are empty."""
         spec = FixedEntityFieldsSpecification(project_cfg)
@@ -144,6 +154,7 @@ class TestFixedEntityFieldsSpecification:
 
         assert result is True, spec.get_report()
         assert len(spec.errors) == 0, spec.get_report()
+
 
 class TestSqlEntityFieldsSpecification:
     """Tests for SqlEntityFieldsSpecification."""
