@@ -194,7 +194,7 @@ entities:
     surrogate_id: contact_type_id
     surrogate_name: contact_type
     keys: ["arbodat_code"]
-    columns: ["contact_type_name", "description", "arbodat_code"]
+    columns: ["contact_type", "description", "arbodat_code"]
     type: fixed
     values:
     - ["Archaeologist", "Name of scientist responsible for processing the archaeological material", "ArchBear"]
@@ -876,6 +876,7 @@ entities:
     source:
     data_source: arbodat_data
     type: sql
+    surrogate_id: _pcodes_id
     keys: ["PCODE"]
     columns: ["PCODE"]
     query: select distinct [PCODE] from [Details] ;
