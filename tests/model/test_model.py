@@ -157,7 +157,7 @@ class TestForeignKeyConfig:
         }
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"]}
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.local_entity == "site"
         assert fk.remote_entity == "location"
@@ -172,7 +172,7 @@ class TestForeignKeyConfig:
         fk_data: dict[str, Any] = {"local_keys": ["col1"], "remote_keys": ["col1"]}
 
         with pytest.raises(ValueError, match="missing remote entity"):
-            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+            ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
     @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
     def test_unknown_remote_entity(self):
@@ -181,7 +181,7 @@ class TestForeignKeyConfig:
         fk_data: dict[str, Any] = {"entity": "unknown_entity", "local_keys": ["col1"], "remote_keys": ["col1"]}
 
         with pytest.raises(ValueError, match="references unknown entity"):
-            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+            ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
     @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
     def test_missing_remote_keys(self):
@@ -190,7 +190,7 @@ class TestForeignKeyConfig:
         fk_data: dict[str, Any] = {"entity": "location", "local_keys": ["col1"]}
 
         with pytest.raises(ValueError, match="missing local and/or remote keys"):
-            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+            ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
     @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
     def test_empty_remote_keys(self):
@@ -199,7 +199,7 @@ class TestForeignKeyConfig:
         fk_data: dict[str, Any] = {"entity": "location", "local_keys": ["col1"], "remote_keys": []}
 
         with pytest.raises(ValueError, match="missing local and/or remote keys"):
-            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+            ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
     def test_extra_columns_as_dict(self):
         """Test extra_columns as a dictionary mapping local to remote column names."""
@@ -212,7 +212,7 @@ class TestForeignKeyConfig:
             "extra_columns": extra_columns_cfg,
         }
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.resolved_extra_columns() == {v: k for k, v in extra_columns_cfg.items()}
 
@@ -226,7 +226,7 @@ class TestForeignKeyConfig:
             "extra_columns": ["col1", "col2", "col3"],
         }
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.resolved_extra_columns() == {"col1": "col1", "col2": "col2", "col3": "col3"}
 
@@ -235,7 +235,7 @@ class TestForeignKeyConfig:
         entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"], "extra_columns": "column1"}
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.resolved_extra_columns() == {"column1": "column1"}
 
@@ -244,7 +244,7 @@ class TestForeignKeyConfig:
         entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"], "extra_columns": {}}
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.resolved_extra_columns() == {}
 
@@ -253,7 +253,7 @@ class TestForeignKeyConfig:
         entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"]}
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.resolved_extra_columns() == {}
 
@@ -263,14 +263,14 @@ class TestForeignKeyConfig:
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"], "extra_columns": 123}
 
         with pytest.raises(ValueError, match="Invalid extra_columns format"):
-            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data).resolved_extra_columns()
+            ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data).resolved_extra_columns()
 
     def test_drop_remote_id_true(self):
         """Test drop_remote_id set to True."""
         entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"], "drop_remote_id": True}
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.drop_remote_id is True
 
@@ -279,7 +279,7 @@ class TestForeignKeyConfig:
         entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"], "drop_remote_id": False}
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.drop_remote_id is False
 
@@ -288,7 +288,7 @@ class TestForeignKeyConfig:
         entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"]}
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.drop_remote_id is False
 
@@ -303,7 +303,7 @@ class TestForeignKeyConfig:
             "drop_remote_id": True,
         }
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.resolved_extra_columns() == {"description": "description", "code": "code"}
         assert fk.drop_remote_id is True
@@ -313,7 +313,7 @@ class TestForeignKeyConfig:
         entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
         fk_data = {"entity": "location", "how": "cross"}
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.how == "cross"
         assert fk.remote_entity == "location"
@@ -328,7 +328,7 @@ class TestForeignKeyConfig:
             "constraints": {"cardinality": "one_to_one"},
         }
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.has_constraints is True
 
@@ -337,7 +337,7 @@ class TestForeignKeyConfig:
         entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"]}
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
         assert fk.has_constraints is False
 
@@ -351,7 +351,7 @@ class TestForeignKeyConfig:
             "extra_columns": ["latitude", "longitude"],
         }
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
         df = pd.DataFrame({"location_name": ["A", "B"], "latitude": [1.0, 2.0], "longitude": [3.0, 4.0]})
 
         valid_cols = fk.get_valid_remote_columns(df)
@@ -368,7 +368,7 @@ class TestForeignKeyConfig:
             "extra_columns": ["latitude", "longitude", "elevation"],
         }
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
         df = pd.DataFrame({"location_name": ["A", "B"], "latitude": [1.0, 2.0]})
 
         valid_cols = fk.get_valid_remote_columns(df)
@@ -381,7 +381,7 @@ class TestForeignKeyConfig:
         entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"]}
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
         table = pd.DataFrame({"site_name": ["A", "B"], "location_id": [1, 2]})
 
         assert fk.has_foreign_key_link("location_id", table) is True
@@ -396,7 +396,7 @@ class TestForeignKeyConfig:
             "extra_columns": ["latitude", "longitude"],
         }
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
         table = pd.DataFrame({"site_name": ["A", "B"], "latitude": [1.0, 2.0], "longitude": [3.0, 4.0]})
 
         assert fk.has_foreign_key_link("location_id", table) is True
@@ -406,7 +406,7 @@ class TestForeignKeyConfig:
         entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
         fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"]}
 
-        fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+        fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
         table = pd.DataFrame({"site_name": ["A", "B"], "description": ["X", "Y"]})
 
         assert fk.has_foreign_key_link("location_id", table) is False
@@ -417,7 +417,7 @@ class TestForeignKeyConfig:
 
         for how in ["left", "inner", "outer", "right"]:
             fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"], "how": how}
-            fk = ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+            fk = ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
             assert fk.how == how
 
     @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
@@ -427,7 +427,7 @@ class TestForeignKeyConfig:
         fk_data = {"entity": "location", "local_keys": ["col1", "col2"], "remote_keys": ["col1"]}
 
         with pytest.raises(ValueError, match="number of local keys.*does not match"):
-            ForeignKeyConfig(cfg=entities, local_entity="site", data=fk_data)
+            ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
 
 
 class TestTableConfig:
