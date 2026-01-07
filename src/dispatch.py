@@ -79,27 +79,44 @@ class OpenpyxlExcelDispatcher(Dispatcher):
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
         wb = Workbook()
-
-        wb.remove(wb.active)  # type: ignore ; openpyxl creates a default sheet
+        wb.remove(wb.active)  # type: ignore[attr-defined] ; openpyxl creates a default sheet
 
         for entity_name, table in data.items():
             sheet_name: str = self._safe_sheet_name(entity_name, existing=wb.sheetnames)
-
             ws = wb.create_sheet(title=sheet_name)
 
             # Write headers + rows
             for r in dataframe_to_rows(table, index=False, header=True):
                 ws.append(r)
 
-            # change background color of header row
             self.style_sheet_columns(entity_name, table, ws)
             self.auto_size_columns(ws)
 
         wb.save(target)
 
-    def style_sheet_columns(self, entity_name, table, ws):
+    @staticmethod
+    def _to_argb(color: str) -> str:
+        """
+        Convert '#RRGGBB' or 'RRGGBB' to openpyxl ARGB 'FFRRGGBB'.
+        Accepts 'AARRGGBB' as-is.
+        """
+        c = str(color).strip().lstrip("#")
+        if len(c) == 6:  # RRGGBB
+            return ("FF" + c).upper()
+        if len(c) == 8:  # AARRGGBB
+            return c.upper()
+        raise ValueError(f"Invalid color: {color!r} (expected RRGGBB or AARRGGBB)")
+
+    @classmethod
+    def _solid_fill(cls, color: str) -> PatternFill:
+        argb = cls._to_argb(color)
+        return PatternFill(start_color=argb, end_color=argb, fill_type="solid")
+
+    def style_sheet_columns(self, entity_name: str, table: pd.DataFrame, ws) -> None:
+        # Header row: bright yellow (ARGB)
+        header_fill = self._solid_fill("FFFFFF00")
         for cell in ws[1]:
-            cell.fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+            cell.fill = header_fill
 
         columns: list[str] = table.columns.to_list()
         entity_cfg: TableConfig = self.cfg.get_table(entity_name)
@@ -114,25 +131,27 @@ class OpenpyxlExcelDispatcher(Dispatcher):
             elif column.endswith("_id"):
                 self.set_column_background_color(column, columns, ws, "#d4e160")
 
-    def auto_size_columns(self, ws):
+    def set_column_background_color(self, column_name: str, columns: list[str], ws, color: str = "D3D3D3") -> None:
+        idx: int | None = self.find_column_index(column_name, columns)
+        if idx is None:
+            return
+
+        fill = self._solid_fill(color)
+
+        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=idx, max_col=idx):
+            row[0].fill = fill
+
+    def auto_size_columns(self, ws) -> None:
         for col in ws.columns:
             max_length = 0
             column = col[0].column_letter  # Get the column name
             for cell in col:
                 try:
-                    if cell.value:
+                    if cell.value is not None:
                         max_length = max(max_length, len(str(cell.value)))
                 except Exception:  # pylint: disable=broad-except
                     pass
-            adjusted_width = max_length + 2
-            ws.column_dimensions[column].width = adjusted_width
-
-    def set_column_background_color(self, column_name: str, columns: list[str], ws, color: str = "D3D3D3") -> None:
-        idx: int | None = self.find_column_index(column_name, columns)
-        if idx is None:
-            return
-        for cell in ws[2 : ws.max_row + 1]:
-            cell[idx - 1].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
+            ws.column_dimensions[column].width = max_length + 2
 
     def find_column_index(self, column_name: str, columns: list[str]) -> int | None:
         for idx, col in enumerate(columns):
