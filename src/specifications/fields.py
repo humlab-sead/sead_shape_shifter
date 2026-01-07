@@ -182,14 +182,14 @@ class IsInColumnsValidator(FieldValidator):
 
     def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
         value: str = dotget(target_cfg, field)
-        columns: list[str] = kwargs.get("columns", [])
+        columns: list[str] = target_cfg.get("columns", [])
         if not isinstance(columns, list) or not isinstance(value, str):
             return True
         return value in columns
 
     def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
         self.rule_handler(
-            f"Entity '{entity_name}': Field '{field}' not specified in `columns`. {kwargs.get('message', '')}",
+            f"Entity '{entity_name}': Field '{field}' not specified in 'columns'. {kwargs.get('message', '')}",
             entity=entity_name,
             column=field,
         )
