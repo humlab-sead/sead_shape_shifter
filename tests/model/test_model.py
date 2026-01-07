@@ -360,15 +360,6 @@ class TestForeignKeyConfig:
             fk = ForeignKeyConfig(local_entity="site", fk_cfg=fk_data)
             assert fk.how == how
 
-    @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
-    def test_mismatched_key_counts(self):
-        """Test that mismatched key counts raises ValueError."""
-        fk_data = {"entity": "location", "local_keys": ["col1", "col2"], "remote_keys": ["col1"]}
-
-        with pytest.raises(ValueError, match="number of local keys.*does not match"):
-            ForeignKeyConfig(local_entity="site", fk_cfg=fk_data)
-
-
 class TestTableConfig:
     """Tests for TableConfig class."""
 
@@ -1177,31 +1168,6 @@ class TestShapeShiftProject:
         assert resolved.has_table("site") is True
         assert resolved.get_table("site").surrogate_id == "site_id"
 
-    @pytest.mark.skip("Config context-based config loading has been deprecated.")
-    @pytest.mark.asyncio
-    async def test_resolve_uses_config_provider_for_default_context(self):
-        """ShapeShiftProject.from_source should pull from provider when no config passed."""
-
-        config = Config(data={"entities": {"site": {"surrogate_id": "site_id"}}})
-
-        class RecordingProvider(MockConfigProvider):
-            def __init__(self, config: Config) -> None:
-                super().__init__(config=config)
-                self.last_context: str | None = None
-
-            def is_configured(self, context: str | None = None) -> bool:
-                self.last_context = context
-                return super().is_configured(context)
-
-        provider = RecordingProvider(config)
-        old_provider = set_config_provider(provider)
-
-        try:
-            resolved: ShapeShiftProject = ShapeShiftProject.from_source(None)
-            assert resolved.has_table("site")
-            assert provider.last_context == "default"
-        finally:
-            set_config_provider(old_provider)
 
     @pytest.mark.asyncio
     async def test_resolve_raises_when_context_not_configured(self):
