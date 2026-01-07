@@ -164,42 +164,6 @@ class TestForeignKeyConfig:
         assert fk.local_keys == ["location_name"]
         assert fk.remote_keys == ["location_name"]
 
-    @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
-    def test_missing_remote_entity(self):
-        """Test that missing remote entity raises ValueError."""
-        entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
-        fk_data: dict[str, Any] = {"local_keys": ["col1"], "remote_keys": ["col1"]}
-
-        with pytest.raises(ValueError, match="missing remote entity"):
-            ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
-
-    @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
-    def test_unknown_remote_entity(self):
-        """Test that unknown remote entity raises ValueError."""
-        entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
-        fk_data: dict[str, Any] = {"entity": "unknown_entity", "local_keys": ["col1"], "remote_keys": ["col1"]}
-
-        with pytest.raises(ValueError, match="references unknown entity"):
-            ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
-
-    @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
-    def test_missing_remote_keys(self):
-        """Test that missing remote_keys raises ValueError."""
-        entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
-        fk_data: dict[str, Any] = {"entity": "location", "local_keys": ["col1"]}
-
-        with pytest.raises(ValueError, match="missing local and/or remote keys"):
-            ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
-
-    @pytest.mark.skip(reason="Pending deprecation since all validations moved to specifications")
-    def test_empty_remote_keys(self):
-        """Test that empty remote_keys raises ValueError."""
-        entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
-        fk_data: dict[str, Any] = {"entity": "location", "local_keys": ["col1"], "remote_keys": []}
-
-        with pytest.raises(ValueError, match="missing local and/or remote keys"):
-            ForeignKeyConfig(entities_cfg=entities, local_entity="site", fk_cfg=fk_data)
-
     def test_extra_columns_as_dict(self):
         """Test extra_columns as a dictionary mapping local to remote column names."""
         extra_columns_cfg: dict[str, str] = {"local_col1": "remote_col1", "local_col2": "remote_col2"}
