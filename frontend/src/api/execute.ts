@@ -21,9 +21,11 @@ export interface ExecuteResult {
   message: string
   target: string
   dispatcher_key: string
+  target_type: 'file' | 'folder' | 'database' | 'unknown'
   entity_count: number
   validation_passed: boolean | null
   error_details: string | null
+  download_path: string | null
 }
 
 export const executeApi = {
