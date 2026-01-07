@@ -141,9 +141,10 @@ entities:
 #### `surrogate_name`
 - **Type**: `string`
 - **Required**: No
-- **Description**: Alternative name for the surrogate ID column. Used when the surrogate ID should be named differently than the generated ID.
+- **Description**: Name of text text column associated to the surrogate ID column. This column can e.g. be used when reconciling entities by name.
 - **Example**:
   ```yaml
+  surrogate_id: contact_type_id
   surrogate_name: contact_type
   ```
 - **Validation Rules**:
@@ -152,6 +153,7 @@ entities:
 - **Suggested Additional Validation**:
   - Should not conflict with existing column names
   - Should not be the same as `surrogate_id`
+  - Must exist in `columns` if provided
 
 
 #### `keys`
