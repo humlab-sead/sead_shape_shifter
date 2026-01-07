@@ -98,37 +98,37 @@ class ForeignKeyConfig:
             fk_cfg (dict): Foreign key configuration data.
         Raises:
             ValueError: If required fields are missing or invalid."""
-        self.data: dict[str, Any] = fk_cfg
+        self.fk_cfg: dict[str, Any] = fk_cfg
         self.local_entity: str = local_entity
 
     @property
     def local_keys(self) -> list[str]:
-        return unique(self.data.get("local_keys"))
+        return unique(self.fk_cfg.get("local_keys"))
 
     @property
     def extra_columns(self) -> dict[str, Any]:
         """Get extra columns {"new-column-name" -> value } mapping from configuration."""
-        return self.data.get("extra_columns", {}) or {}
+        return self.fk_cfg.get("extra_columns", {}) or {}
 
     @property
     def drop_remote_id(self) -> bool:
-        return self.data.get("drop_remote_id", False)
+        return self.fk_cfg.get("drop_remote_id", False)
 
     @property
     def remote_entity(self) -> str:
-        return self.data.get("entity", "")
+        return self.fk_cfg.get("entity", "")
 
     @cached_property
     def remote_keys(self) -> list[str]:
-        return unique(self.data.get("remote_keys"))
+        return unique(self.fk_cfg.get("remote_keys"))
 
     @cached_property
     def how(self) -> Literal["left", "inner", "outer", "right", "cross"]:
-        return self.data.get("how", "inner")
+        return self.fk_cfg.get("how", "inner")
 
     @cached_property
     def constraints(self) -> ForeignKeyConstraints:
-        return ForeignKeyConstraints(self.data.get("constraints"))
+        return ForeignKeyConstraints(self.fk_cfg.get("constraints"))
 
     def resolved_extra_columns(self) -> dict[str, str]:
         """Resolve extra columns for the foreign key configuration.
