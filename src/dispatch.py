@@ -56,10 +56,11 @@ class ZipCsvDispatcher(CsvDispatcher):
     """Dispatcher for CSV data."""
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
-        output_dir = Path(target)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        for entity_name, table in data.items():
-            table.to_csv(output_dir / f"{entity_name}.csv", index=False)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            super().dispatch(temp_dir, data)
+            filename: Path = Path(target)
+            filename.parent.mkdir(parents=True, exist_ok=True)
+            shutil.make_archive(base_name=str(filename.with_suffix("")), format="zip", root_dir=str(temp_dir))
 
 
 @Dispatchers.register(key="xlsx", target_type="file", description="Dispatch data as Excel file")
