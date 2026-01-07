@@ -17,7 +17,7 @@ class TestAppendConfigurationParsing:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         assert table_cfg.has_append is False
         assert table_cfg.append_configs == []
@@ -40,7 +40,7 @@ class TestAppendConfigurationParsing:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         assert table_cfg.has_append is True
         assert len(table_cfg.append_configs) == 1
@@ -62,7 +62,7 @@ class TestAppendConfigurationParsing:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         assert table_cfg.has_append is True
         assert len(table_cfg.append_configs) == 3
@@ -78,7 +78,7 @@ class TestAppendConfigurationParsing:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
         assert table_cfg.append_mode == "all"
 
     def test_append_mode_distinct(self):
@@ -93,7 +93,7 @@ class TestAppendConfigurationParsing:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
         assert table_cfg.append_mode == "distinct"
 
 
@@ -118,7 +118,7 @@ class TestAppendDependencyResolution:
             },
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         assert "source_entity" in table_cfg.depends_on
 
@@ -138,7 +138,7 @@ class TestAppendDependencyResolution:
             "source2": {"columns": [], "depends_on": []},
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         assert "source1" in table_cfg.depends_on
         assert "source2" in table_cfg.depends_on
@@ -157,7 +157,7 @@ class TestAppendDependencyResolution:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         # Should only have explicit dependencies, no append-related ones
         assert len(table_cfg.depends_on) == 0
@@ -177,7 +177,7 @@ class TestAppendPropertyInheritance:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
         append_data = {"type": "fixed", "values": []}
 
         merged = table_cfg.create_append_config(append_data)
@@ -196,7 +196,7 @@ class TestAppendPropertyInheritance:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
         append_data = {"type": "fixed", "values": []}
 
         merged = table_cfg.create_append_config(append_data)
@@ -216,7 +216,7 @@ class TestAppendPropertyInheritance:
             "append_source": {"columns": [], "depends_on": []},
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
         append_data = {"source": "append_source"}
 
         merged = table_cfg.create_append_config(append_data)
@@ -233,7 +233,7 @@ class TestAppendPropertyInheritance:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
         append_data = {"type": "fixed"}
 
         merged = table_cfg.create_append_config(append_data)
@@ -250,7 +250,7 @@ class TestAppendPropertyInheritance:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
         append_data = {"columns": ["col3", "col4"]}
 
         merged = table_cfg.create_append_config(append_data)
@@ -267,7 +267,7 @@ class TestAppendPropertyInheritance:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
         values_data = [["val1"], ["val2"]]
         append_data = {"type": "fixed", "values": values_data}
 
@@ -286,7 +286,7 @@ class TestAppendPropertyInheritance:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
         append_data = {}
 
         merged = table_cfg.create_append_config(append_data)
@@ -304,7 +304,7 @@ class TestAppendPropertyInheritance:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
         append_data = {"type": "fixed"}
 
         merged = table_cfg.create_append_config(append_data)
@@ -326,7 +326,7 @@ class TestAppendEdgeCases:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         assert table_cfg.has_append is False
         assert table_cfg.append_configs == []
@@ -342,7 +342,7 @@ class TestAppendEdgeCases:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         assert table_cfg.has_append is False
         assert table_cfg.append_configs == []
@@ -361,7 +361,7 @@ class TestGetSubTablesConfigs:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         tables = list(table_cfg.get_sub_table_configs())
         assert len(tables) == 1
@@ -379,7 +379,7 @@ class TestGetSubTablesConfigs:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         tables = list(table_cfg.get_sub_table_configs())
         assert len(tables) == 2
@@ -414,7 +414,7 @@ class TestGetSubTablesConfigs:
             },
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         tables = list(table_cfg.get_sub_table_configs())
         assert len(tables) == 4
@@ -435,7 +435,7 @@ class TestGetSubTablesConfigs:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         tables = list(table_cfg.get_sub_table_configs())
         append_cfg = tables[1]
@@ -453,7 +453,7 @@ class TestGetSubTablesConfigs:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         tables = list(table_cfg.get_sub_table_configs())
         append_cfg = tables[1]
@@ -471,7 +471,7 @@ class TestGetSubTablesConfigs:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         tables = list(table_cfg.get_sub_table_configs())
         append_cfg = tables[1]
@@ -493,7 +493,7 @@ class TestGetSubTablesConfigs:
             }
         }
 
-        table_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
         tables = list(table_cfg.get_sub_table_configs())
 
