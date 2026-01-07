@@ -14,6 +14,7 @@
  - [] FIXME: Create project: No description field in create dialog
  - [] FIXME: New prodject's name is displayed as "test_config_manua", missing last character, correct inside project's metadata
  - [ ] FIXME: #93 Auto-accept threshold in recon view is disabled.
+ - [ ] FIXME: #101 File dispatch to openpyxl raises an error (aRGB color)
 
 ### Tech debts:
 
@@ -49,6 +50,8 @@
  - [ ] TODO: #95 Display data lineage/source information in dependency graph
  - [ ] TODO: #98 Enable entity to have multiple reconciliation specifications.
  - [ ] TODO: #99 Add capability to edit a project's reconciliation specifications.
+ - [ ] TODO: #102 Check extension matches file type when EXECUTE workflow
+ - [ ] TODO: #103 Implement ZIP CSV to file dispatcher
 
 We need to change the format of the reconciliation file, since the entity's name is currently the key to a single reconciliation specification. We need to allow an entity to have several specifications targeting other columns.
 The "keys" in the current specification format is effectively the reconciliation target column. Currently I see no use case for having several keys in a single specification, so we will change the format to have a single "target-field" instead of "keys", and thus allow several specifications per entity. Furthermore, I see no use for the "columns" field so we can remove that field.
