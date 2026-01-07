@@ -10,7 +10,6 @@ from src.specifications.entity import (
     EntityFieldsSpecification,
     EntityReferencesExistSpecification,
     EntitySpecification,
-    FixedDataSpecification,
     FixedEntityFieldsSpecification,
     ForeignKeySpecification,
     SqlEntityFieldsSpecification,
@@ -69,8 +68,15 @@ class TestFixedEntityFieldsSpecification:
         """Sample project configuration."""
         return {
             "entities": {
-                "valid_fixed": {"columns": ["col1"], "keys": ["id"], "surrogate_id": "entity_id", "values": [["val1"]]},
-                "missing_surrogate": {"columns": ["col1"], "keys": ["id"], "values": [["val1"]]},
+                "valid_fixed": {"type": "fixed", "columns": ["col1"], "keys": ["id"], "surrogate_id": "entity_id", "values": [["val1"]]},
+                "missing_surrogate": {"type": "fixed", "columns": ["col1"], "keys": ["id"], "values": [["val1"]]},
+                "no_columns": {"type": "fixed", "columns": None, "keys": ["id"], "surrogate_id": "entity_id", "values": [["val1"]]},
+                "not_fixed": {"type": "sql", "columns": ["col1"], "keys": ["id"], "surrogate_id": "entity_id", "values": [["val1"]]},
+                # "valid_fixed": {"type": "fixed", "columns": ["col1", "col2"], "values": [["a", "b"], ["c", "d"]]},
+                "mismatched_length": {"type": "fixed", "columns": ["col1", "col2"], "keys": [], "surrogate_id": "entity_id", "values": [["a"], ["c", "d", "e"]]},
+                "missing_values": {"type": "fixed", "columns": ["col1"], "keys": ["id"], "surrogate_id": "entity_id"},
+                "sql_entity": {"type": "sql", "query": "SELECT * FROM table", "surrogate_id": "entity_id", "columns": ["col1"], "keys": ["id"]},
+                "empty_fixed": {"type": "fixed", "columns": [], "keys": [], "surrogate_id": "entity_id", "values": []}
             }
         }
 
@@ -80,7 +86,7 @@ class TestFixedEntityFieldsSpecification:
 
         result = spec.is_satisfied_by(entity_name="valid_fixed")
 
-        assert result is True
+        assert result is True, spec.get_report()
         assert len(spec.errors) == 0
 
     def test_missing_surrogate_id(self, project_cfg):
@@ -92,58 +98,52 @@ class TestFixedEntityFieldsSpecification:
         assert result is False
         assert len(spec.errors) > 0
 
+    def test_columns_not_list(self, project_cfg):
+        """Test validation fails when columns is not a list."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
 
-class TestFixedDataSpecification:
-    """Tests for FixedDataSpecification."""
-
-    @pytest.fixture
-    def project_cfg(self):
-        """Sample project configuration."""
-        return {
-            "entities": {
-                "valid_fixed": {"type": "fixed", "columns": ["col1", "col2"], "values": [["a", "b"], ["c", "d"]]},
-                "mismatched_length": {"type": "fixed", "columns": ["col1", "col2"], "values": [["a"], ["c", "d", "e"]]},
-                "missing_values": {"type": "fixed", "columns": ["col1"]},
-                "sql_entity": {"type": "sql", "query": "SELECT * FROM table"},
-            }
-        }
-
-    def test_valid_fixed_entity(self, project_cfg):
-        """Test validation passes for valid fixed entity."""
-        spec = FixedDataSpecification(project_cfg)
-
-        result = spec.is_satisfied_by(entity_name="valid_fixed")
-
-        assert result is True
-        assert len(spec.errors) == 0
-
-    def test_mismatched_column_row_length(self, project_cfg):
-        """Test validation fails when row length doesn't match columns."""
-        spec = FixedDataSpecification(project_cfg)
-
-        result = spec.is_satisfied_by(entity_name="mismatched_length")
-
-        assert result is False
-        assert len(spec.errors) > 0
-        assert any("column/row length mismatch" in str(e) for e in spec.errors)
-
-    def test_missing_values(self, project_cfg):
-        """Test validation fails when values field missing."""
-        spec = FixedDataSpecification(project_cfg)
-
-        result = spec.is_satisfied_by(entity_name="missing_values")
+        result = spec.is_satisfied_by(entity_name="no_columns")
 
         assert result is False
         assert len(spec.errors) > 0
 
     def test_non_fixed_entity_passes(self, project_cfg):
         """Test validation passes for non-fixed entities."""
-        spec = FixedDataSpecification(project_cfg)
+        spec = FixedEntityFieldsSpecification(project_cfg)
 
-        result = spec.is_satisfied_by(entity_name="sql_entity")
+        result = spec.is_satisfied_by(entity_name="not_fixed")
 
         assert result is True
 
+
+    def test_mismatched_column_row_length(self, project_cfg):
+        """Test validation fails when row length doesn't match columns."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="mismatched_length")
+
+        assert result is False, spec.get_report()
+        assert len(spec.errors) > 0, spec.get_report()
+        assert any("mismatched" in str(e) for e in spec.errors), spec.get_report()
+
+    def test_missing_values(self, project_cfg):
+        """Test validation fails when values field missing."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="missing_values")
+
+        assert result is False, spec.get_report()
+        assert len(spec.errors) > 0, spec.get_report()
+
+
+    def test_empty_values_with_no_columns_or_keys_or_values(self, project_cfg):
+        """Test validation passes when both columns and values are empty."""
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="empty_fixed")
+
+        assert result is True, spec.get_report()
+        assert len(spec.errors) == 0, spec.get_report()
 
 class TestSqlEntityFieldsSpecification:
     """Tests for SqlEntityFieldsSpecification."""
