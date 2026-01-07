@@ -135,15 +135,27 @@
             <v-card variant="outlined" class="mb-4">
               <v-card-text class="d-flex align-center gap-4">
                 <v-btn-toggle v-model="layoutType" mandatory density="compact">
-                  <v-btn value="hierarchical" prepend-icon="mdi-file-tree"> Hierarchical </v-btn>
-                  <v-btn value="force" prepend-icon="mdi-vector-arrange-above"> Force-Directed </v-btn>
+                  <v-btn 
+                    size="small"
+                    value="hierarchical" 
+                    :color="layoutType === 'hierarchical' ? 'primary' : undefined"
+                    prepend-icon="mdi-file-tree"
+                  > Hierarchical </v-btn>
+                  <v-btn 
+                    size="small"
+                    value="force"
+                    :color="layoutType === 'force' ? 'primary' : undefined"
+                    prepend-icon="mdi-vector-arrange-above"
+                  >
+                  Force-Directed
+                </v-btn>
                 </v-btn-toggle>
 
                 <v-divider vertical />
 
                 <v-btn
                   size="small"
-                  :variant="showNodeLabels ? 'tonal' : 'outlined'"
+                  variant="tonal"
                   :color="showNodeLabels ? 'primary' : undefined"
                   @click="showNodeLabels = !showNodeLabels"
                   class="text-capitalize"
@@ -152,7 +164,7 @@
                 </v-btn>
                 <v-btn
                   size="small"
-                  :variant="showEdgeLabels ? 'tonal' : 'outlined'"
+                  variant="tonal"
                   :color="showEdgeLabels ? 'primary' : undefined"
                   @click="showEdgeLabels = !showEdgeLabels"
                   class="text-capitalize"
@@ -160,19 +172,19 @@
                   Edge Labels
                 </v-btn>
 
-                <v-btn
+                <!-- <v-btn
                   size="small"
-                  :variant="highlightCycles ? 'tonal' : 'outlined'"
+                  :variant="highlightCycles ? 'tonal' : 'tonal'"
                   :color="highlightCycles ? 'primary' : undefined"
                   @click="highlightCycles = !highlightCycles"
                   class="text-capitalize"
                 >
                   Cycles
-                </v-btn>
+                </v-btn> -->
 
                 <v-btn
                   size="small"
-                  :variant="showSourceNodes ? 'tonal' : 'outlined'"
+                  variant="tonal"
                   :color="showSourceNodes ? 'primary' : undefined"
                   @click="showSourceNodes = !showSourceNodes"
                   class="text-capitalize"
@@ -182,9 +194,10 @@
                 <v-spacer />
 
                 <v-btn
+                  size="small"
                   variant="outlined"
                   prepend-icon="mdi-information-outline"
-                  size="small"
+                  :color="showLegend ? 'primary' : undefined"
                   @click="showLegend = !showLegend"
                 >
                   Legend
@@ -470,12 +483,14 @@
 
     <!-- Success Snackbar with Animation -->
     <v-scale-transition>
-      <v-snackbar v-if="showSuccessSnackbar" v-model="showSuccessSnackbar" color="success" timeout="3000">
-        {{ successMessage }}
-        <template #actions>
-          <v-btn variant="text" @click="showSuccessSnackbar = false"> Close </v-btn>
-        </template>
-      </v-snackbar>
+      <template #default>
+        <v-snackbar v-if="showSuccessSnackbar" v-model="showSuccessSnackbar" color="success" timeout="3000">
+          {{ successMessage }}
+          <template #actions>
+            <v-btn variant="text" @click="showSuccessSnackbar = false"> Close </v-btn>
+          </template>
+        </v-snackbar>
+      </template>
     </v-scale-transition>
   </v-container>
 </template>
@@ -584,7 +599,7 @@ const entityToEdit = ref<string | null>(null)
 
 // Graph state
 const graphContainer = ref<HTMLElement | null>(null)
-const layoutType = ref<'hierarchical' | 'force'>('hierarchical')
+const layoutType = ref<'hierarchical' | 'force'>('force')
 const showNodeLabels = ref(true)
 const showEdgeLabels = ref(true)
 const highlightCycles = ref(true)
