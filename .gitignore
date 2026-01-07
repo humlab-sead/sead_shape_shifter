@@ -117,3 +117,8 @@ bin
 deprecated
 output*.xlsx
 **/*.mdb
+**/backups/*
+frontend/build/
+frontend/node_modules/
+frontend/.vite
+**/coverage
