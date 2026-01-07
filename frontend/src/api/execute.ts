@@ -4,6 +4,7 @@ export interface DispatcherMetadata {
   key: string
   target_type: 'file' | 'folder' | 'database'
   description: string
+  extension: string | null
 }
 
 export interface ExecuteRequest {

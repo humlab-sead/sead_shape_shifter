@@ -42,6 +42,7 @@ class ExecuteService:
                     key=key,
                     target_type=registry_opts.get("target_type", "unknown"),
                     description=registry_opts.get("description", ""),
+                    extension=registry_opts.get("extension", None),
                 )
             )
 

@@ -1,4 +1,7 @@
+import tempfile
+
 from pathlib import Path
+import shutil
 from typing import Any, Protocol
 
 import pandas as pd
@@ -40,7 +43,7 @@ class Dispatcher(IDispatcher):
         return getattr(self, "_registry_opts", {}).get("description", "")
 
 
-@Dispatchers.register(key="csv", target_type="folder", description="Dispatch data as CSV files to a folder")
+@Dispatchers.register(key="csv", target_type="folder", description="Dispatch data as CSV files to a folder", extension=None)
 class CsvDispatcher(Dispatcher):
     """Dispatcher for CSV data."""
 
@@ -51,7 +54,7 @@ class CsvDispatcher(Dispatcher):
             table.to_csv(output_dir / f"{entity_name}.csv", index=False)
 
 
-@Dispatchers.register(key="zipcsv", target_type="file", description="Dispatch data as CSV files inside a ZIP archive")
+@Dispatchers.register(key="zipcsv", target_type="file", description="Dispatch data as CSV files inside a ZIP archive", extension=".zip")
 class ZipCsvDispatcher(CsvDispatcher):
     """Dispatcher for CSV data."""
 
@@ -63,7 +66,7 @@ class ZipCsvDispatcher(CsvDispatcher):
             shutil.make_archive(base_name=str(filename.with_suffix("")), format="zip", root_dir=str(temp_dir))
 
 
-@Dispatchers.register(key="xlsx", target_type="file", description="Dispatch data as Excel file")
+@Dispatchers.register(key="xlsx", target_type="file", description="Dispatch data as Excel file", extension=".xlsx")
 class ExcelDispatcher(Dispatcher):
     """Dispatcher for Excel data."""
 
@@ -73,7 +76,7 @@ class ExcelDispatcher(Dispatcher):
                 table.to_excel(writer, sheet_name=entity_name, index=False)
 
 
-@Dispatchers.register(key="openpyxl", target_type="file", description="Dispatch data as Excel file using openpyxl")
+@Dispatchers.register(key="openpyxl", target_type="file", description="Dispatch data as Excel file using openpyxl", extension=".xlsx")
 class OpenpyxlExcelDispatcher(Dispatcher):
     """Dispatcher for Excel data using openpyxl."""
 
@@ -173,7 +176,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
         return name.translate(str.maketrans({c: "_" for c in r":\/?*[]"})).strip()[:31] or "Sheet"
 
 
-@Dispatchers.register(key="db", target_type="database", description="Dispatch data to a database")
+@Dispatchers.register(key="db", target_type="database", description="Dispatch data to a database", extension=None)
 class DatabaseDispatcher(Dispatcher):
     """Dispatcher for Database data."""
 
