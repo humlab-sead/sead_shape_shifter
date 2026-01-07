@@ -19,7 +19,7 @@ def test_preview_with_limit():
             "keys": ["id"],
         }
     }
-    entity_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+    entity_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
     builder = PreviewResultBuilder()
     result = builder.build(entity_name="test_entity", entity_cfg=entity_cfg, table_store=table_store, limit=10, cache_hit=False)
@@ -42,7 +42,7 @@ def test_preview_with_no_limit():
             "keys": ["id"],
         }
     }
-    entity_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+    entity_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
     builder = PreviewResultBuilder()
     result = builder.build(
@@ -67,7 +67,7 @@ def test_preview_limit_larger_than_data():
             "keys": ["id"],
         }
     }
-    entity_cfg = TableConfig(cfg=cfg, entity_name="test_entity")
+    entity_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
 
     builder = PreviewResultBuilder()
     result = builder.build(

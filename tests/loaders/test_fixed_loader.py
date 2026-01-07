@@ -48,7 +48,7 @@ class TestCreateFixedTable:
         """Test that await FixedLoader(data_source=None).load raises ValueError when entity is not fixed data."""
         entity = "test_entity"
         config = {"test_entity": {"type": "data", "columns": ["col1"]}}  # Not fixed
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         with pytest.raises(ValueError, match="is not configured as fixed data"):
             await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -58,7 +58,7 @@ class TestCreateFixedTable:
         """Test that await FixedLoader(data_source=None).load raises ValueError when no values defined."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "columns": ["col1"], "values": None}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         with pytest.raises(ValueError, match="has no values defined"):
             await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -68,7 +68,7 @@ class TestCreateFixedTable:
         """Test that await FixedLoader(data_source=None).load raises ValueError when no values defined."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "columns": ["col1"], "values": []}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         assert await FixedLoader(data_source=None).load(entity, table_cfg) is not None
 
@@ -77,7 +77,7 @@ class TestCreateFixedTable:
         """Test raises ValueError when single column config has no surrogate_name and no columns."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "values": ["val1", "val2"]}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         with pytest.raises(ValueError, match="must have a surrogate_name or one column defined"):
             await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -87,7 +87,7 @@ class TestCreateFixedTable:
         """Test create fixed table with single column using surrogate_name."""
         entity = "location_type"
         config = {"location_type": {"type": "fixed", "surrogate_name": "location_type", "values": ["Ort", "Kreis", "Land", "Staat"]}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -107,7 +107,7 @@ class TestCreateFixedTable:
                 "values": ["Ort", "Kreis", "Land"],
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -122,7 +122,7 @@ class TestCreateFixedTable:
         """Test create fixed table using single column from columns list."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "columns": ["type_name"], "values": ["Type1", "Type2", "Type3"]}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -135,7 +135,7 @@ class TestCreateFixedTable:
         """Test single column with surrogate_id but no surrogate_name uses column name."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "surrogate_id": "type_id", "columns": ["type_name"], "values": ["Type1", "Type2"]}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -155,7 +155,7 @@ class TestCreateFixedTable:
                 "values": [["KoordX", None, None], ["KoordY", None, None], ["KoordZ", 0.0, 100.0]],
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -177,7 +177,7 @@ class TestCreateFixedTable:
                 "values": [["First", "A"], ["Second", "B"], ["Third", "C"]],
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -194,7 +194,7 @@ class TestCreateFixedTable:
         """Test raises ValueError when values is not list of lists for multiple columns."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "columns": ["col1", "col2"], "values": ["val1", "val2"]}}  # Should be list of lists
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         with pytest.raises(ValueError, match="must have values as a list of lists"):
             await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -206,7 +206,7 @@ class TestCreateFixedTable:
         config = {
             "test_entity": {"type": "fixed", "columns": ["col1", "col2", "col3"], "values": [["a", "b", "c"], ["d", "e"]]}
         }  # Missing one value
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         with pytest.raises(ValueError, match="has mismatched number of columns and values"):
             await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -223,7 +223,7 @@ class TestCreateFixedTable:
                 "values": ["Limes", "FustelTyp?", "okFustel", "TK", "EVNr"],
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -246,7 +246,7 @@ class TestCreateFixedTable:
                 "values": ["Ort", "Kreis", "Land", "Staat", "FlurStr"],
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -260,7 +260,7 @@ class TestCreateFixedTable:
         """Test that empty columns list falls back to using surrogate_name."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "surrogate_name": "name", "columns": [], "values": ["A", "B", "C"]}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -273,7 +273,7 @@ class TestCreateFixedTable:
         """Test create fixed table with single value."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "surrogate_name": "value", "values": ["OnlyOne"]}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -285,7 +285,7 @@ class TestCreateFixedTable:
         """Test create fixed table with numeric values."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "surrogate_id": "id", "surrogate_name": "level", "values": [1, 2, 3, 5, 10]}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -298,7 +298,7 @@ class TestCreateFixedTable:
         """Test create fixed table with mixed type values."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "columns": ["value"], "values": [1, "two", 3.0, None]}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -319,7 +319,7 @@ class TestCreateFixedTable:
                 "values": [["A", None, 1], [None, "B", None], ["C", "D", 3]],
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -333,7 +333,7 @@ class TestCreateFixedTable:
         """Test that surrogate_id is added as a new column."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "surrogate_id": "id", "columns": ["name", "value"], "values": [["A", 1], ["B", 2]]}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -347,7 +347,7 @@ class TestCreateFixedTable:
         """Test create fixed table with large number of values."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "surrogate_id": "id", "surrogate_name": "number", "values": list(range(1, 101))}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -366,7 +366,7 @@ class TestCreateFixedTable:
                 "values": ["Normal", "With spaces", "With-dash", "With_underscore", "With.dot"],
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -379,7 +379,7 @@ class TestCreateFixedTable:
         """Test values with unicode characters."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "surrogate_name": "text", "values": ["Ö", "ä", "ü", "ß", "é"]}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -391,7 +391,7 @@ class TestCreateFixedTable:
         """Test create fixed table with boolean values."""
         entity = "test_entity"
         config = {"test_entity": {"type": "fixed", "columns": ["flag", "name"], "values": [[True, "Yes"], [False, "No"], [True, "Maybe"]]}}
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -411,7 +411,7 @@ class TestCreateFixedTable:
                 "values": [["KoordX", None, None, None, None], ["KoordY", None, None, None, None], ["KoordZ", None, None, None, None]],
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
@@ -433,7 +433,7 @@ class TestCreateFixedTable:
                 "values": [[1, "Width"], [2, "Height"], [3, "Depth"]],
             }
         }
-        table_cfg = TableConfig(cfg=config, entity_name=entity)
+        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
