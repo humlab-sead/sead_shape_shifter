@@ -1097,7 +1097,7 @@ class TestTableConfig:
         base_config = sub_configs[0]
 
         # This does a deep comparison!
-        assert base_config.data == cfg["entities"]["site"]
+        assert base_config.entity_cfg == cfg["entities"]["site"]
 
         expected_append_config = {
             "surrogate_id": "site_id",
@@ -1109,7 +1109,7 @@ class TestTableConfig:
         }
 
         sql_append_config = sub_configs[1]
-        assert sql_append_config.data == expected_append_config
+        assert sql_append_config.entity_cfg == expected_append_config
 
 
 class TestShapeShiftProject:

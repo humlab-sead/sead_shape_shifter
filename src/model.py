@@ -198,25 +198,25 @@ class TableConfig:
 
         self.config: dict[str, dict[str, Any]] = cfg
         self.entity_name: str = entity_name
-        self.data: dict[str, Any] = cfg[entity_name]
+        self.entity_cfg: dict[str, Any] = cfg[entity_name]
 
-        assert self.data, f"No configuration found for entity '{entity_name}'"
+        assert self.entity_cfg, f"No configuration found for entity '{entity_name}'"
 
     @property
     def type(self) -> Literal["fixed", "sql", "table"] | None:
-        return self.data.get("type", None)
+        return self.entity_cfg.get("type", None)
 
     @property
     def surrogate_name(self) -> str:
-        return self.data.get("surrogate_name", "")
+        return self.entity_cfg.get("surrogate_name", "")
 
     @property
     def source(self) -> str | None:
-        return self.data.get("source", None)
+        return self.entity_cfg.get("source", None)
 
     @property
     def values(self) -> str | list[Any] | None:
-        return self.data.get("values", None)
+        return self.entity_cfg.get("values", None)
 
     @property
     def safe_values(self) -> list[list[Any]]:
@@ -228,31 +228,31 @@ class TableConfig:
 
     @property
     def sql_query(self) -> str | None:
-        return self.data.get("query", None)
+        return self.entity_cfg.get("query", None)
 
     @property
     def surrogate_id(self) -> str:
-        return self.data.get("surrogate_id", "")
+        return self.entity_cfg.get("surrogate_id", "")
 
     @property
     def check_column_names(self) -> bool:
-        return self.data.get("check_column_names", True)
+        return self.entity_cfg.get("check_column_names", True)
 
     @property
     def auto_detect_columns(self) -> bool:
-        return self.data.get("auto_detect_columns", False)
+        return self.entity_cfg.get("auto_detect_columns", False)
 
     @property
     def data_source(self) -> str | None:
-        return self.data.get("data_source", None)
+        return self.entity_cfg.get("data_source", None)
 
     @property
     def keys(self) -> set[str]:
-        return set(self.data.get("keys", []) or [])
+        return set(self.entity_cfg.get("keys", []) or [])
 
     @property
     def columns(self) -> list[str]:
-        return unique(self.data.get("columns"))
+        return unique(self.entity_cfg.get("columns"))
 
     @property
     def safe_columns(self) -> list[str]:
@@ -265,11 +265,11 @@ class TableConfig:
     @columns.setter
     def columns(self, value: list[str]) -> None:
         """Set columns list. Used to update columns after auto-detection. Not persistent."""
-        self.data["columns"] = value
+        self.entity_cfg["columns"] = value
 
     @property
     def extra_columns(self) -> dict[str, Any]:
-        return self.data.get("extra_columns", {}) or {}
+        return self.entity_cfg.get("extra_columns", {}) or {}
 
     @property
     def extra_column_names(self) -> list[str]:
@@ -277,15 +277,15 @@ class TableConfig:
 
     @property
     def drop_duplicates(self) -> bool | list[str]:
-        return self.data.get("drop_duplicates") or False
+        return self.entity_cfg.get("drop_duplicates") or False
 
     @property
     def drop_empty_rows(self) -> bool | list[str] | dict[str, Any]:
-        return self.data.get("drop_empty_rows", False)
+        return self.entity_cfg.get("drop_empty_rows", False)
 
     @property
     def unnest(self) -> UnnestConfig | None:
-        return UnnestConfig(data=self.data) if self.data.get("unnest") else None
+        return UnnestConfig(data=self.entity_cfg) if self.entity_cfg.get("unnest") else None
 
     @cached_property
     def depends_on(self) -> set[str]:
@@ -296,7 +296,7 @@ class TableConfig:
                 append_sources.add(append_cfg["source"])
 
         return (
-            set(self.data.get("depends_on", []) or [])
+            set(self.entity_cfg.get("depends_on", []) or [])
             | ({self.source} if self.source else set())
             | {fk.remote_entity for fk in self.foreign_keys}
             | append_sources
@@ -306,13 +306,13 @@ class TableConfig:
     def foreign_keys(self) -> list[ForeignKeyConfig]:
         return [
             ForeignKeyConfig(entities_cfg=self.config, local_entity=self.entity_name, fk_cfg=fk_data)
-            for fk_data in self.data.get("foreign_keys", []) or []
+            for fk_data in self.entity_cfg.get("foreign_keys", []) or []
         ]
 
     @cached_property
     def append_configs(self) -> list[dict[str, Any]]:
         # Parse append configuration for union operations
-        value: list[dict[str, Any]] = self.data.get("append", []) or []
+        value: list[dict[str, Any]] = self.entity_cfg.get("append", []) or []
         if value and isinstance(value, dict):
             value = [value]
         return value
@@ -344,19 +344,19 @@ class TableConfig:
 
     @property
     def append_mode(self) -> str:
-        return self.data.get("append_mode", "all")  # "all" or "distinct"
+        return self.entity_cfg.get("append_mode", "all")  # "all" or "distinct"
 
     @property
     def replacements(self) -> dict[str, dict[Any, Any]]:
-        return self.data.get("replacements", {}) or {}
+        return self.entity_cfg.get("replacements", {}) or {}
 
     @property
     def filters(self) -> list[dict[str, Any]]:
-        return self.data.get("filters", []) or []
+        return self.entity_cfg.get("filters", []) or []
 
     @property
     def options(self) -> dict[str, Any]:
-        return self.data.get("options", {}) or {}
+        return self.entity_cfg.get("options", {}) or {}
 
     def is_unnested(self, table: pd.DataFrame) -> bool:
         """Check if the table has been unnested based on the presence of unnest columns."""
@@ -435,7 +435,7 @@ class TableConfig:
         """Create a merged configuration for an append item, inheriting parent properties."""
         merged: dict[str, Any] = {}
         non_inheritable_keys: set[str] = {"foreign_keys", "unnest", "append", "append_mode", "depends_on"}
-        all_keys: set[str] = set(self.data.keys()) | set(append_data.keys())
+        all_keys: set[str] = set(self.entity_cfg.keys()) | set(append_data.keys())
         special_conversions = {
             "keys": lambda v: list(v) if isinstance(v, set) else v,
         }
@@ -445,7 +445,7 @@ class TableConfig:
             if key in non_inheritable_keys:
                 continue
 
-            value = append_data[key] if key in append_data else self.data[key]
+            value = append_data[key] if key in append_data else self.entity_cfg[key]
 
             if key in special_conversions and value:
                 value = special_conversions[key](value)
@@ -482,7 +482,7 @@ class TableConfig:
 
     def hash(self) -> str:
         """Compute a hash of the metadata for change detection."""
-        metadata_str = str(sorted(self.data.items()))
+        metadata_str = str(sorted(self.entity_cfg.items()))
         return xxhash.xxh64(metadata_str.encode()).hexdigest()
 
 
