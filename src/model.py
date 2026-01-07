@@ -219,6 +219,14 @@ class TableConfig:
         return self.data.get("values", None)
 
     @property
+    def safe_values(self) -> list[list[Any]]:
+        """Returns values as a list of lists."""
+        values: str | list[Any] = self.values if isinstance(self.values, list) else []
+        if all(isinstance(row, list) for row in values):
+            return values
+        return [[v] for v in values]
+
+    @property
     def sql_query(self) -> str | None:
         return self.data.get("query", None)
 
@@ -245,6 +253,14 @@ class TableConfig:
     @property
     def columns(self) -> list[str]:
         return unique(self.data.get("columns"))
+
+    @property
+    def safe_columns(self) -> list[str]:
+        """Return the list of columns converting to a list if necessary."""
+        columns: str | list[Any] = self.columns or []
+        if isinstance(columns, str):
+            columns = [columns]
+        return columns
 
     @columns.setter
     def columns(self, value: list[str]) -> None:
@@ -307,9 +323,6 @@ class TableConfig:
         if self.type == "sql":
             if self.sql_query:
                 return self.sql_query
-            if self.values:
-                # This will be deprecated, prefer 'query' over 'values' for SQL data.
-                return self.values.lstrip("sql:").strip()
         return None
 
     @property
