@@ -107,13 +107,13 @@ class TestFixedEntityFieldsSpecification:
         assert result is False
         assert len(spec.errors) > 0
 
-    def test_non_fixed_entity_passes(self, project_cfg):
-        """Test validation passes for non-fixed entities."""
+    def test_non_fixed_entity_fails(self, project_cfg):
+        """Test validation fails for non-fixed entities."""
         spec = FixedEntityFieldsSpecification(project_cfg)
 
         result = spec.is_satisfied_by(entity_name="not_fixed")
 
-        assert result is True
+        assert result is False
 
 
     def test_mismatched_column_row_length(self, project_cfg):

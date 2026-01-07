@@ -50,50 +50,56 @@ class TestCreateFixedTable:
         config = {"test_entity": {"type": "data", "columns": ["col1"]}}  # Not fixed
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
-        with pytest.raises(ValueError, match="is not configured as fixed data"):
+        with pytest.raises(ValueError, match="is not of type 'fixed'"):
             await FixedLoader(data_source=None).load(entity, table_cfg)
 
     @pytest.mark.asyncio
     async def test_raises_when_no_values(self):
         """Test that await FixedLoader(data_source=None).load raises ValueError when no values defined."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "columns": ["col1"], "values": None}}
+        config = {"test_entity": {"type": "fixed", "keys": [], "surrogate_id": "entity_id", "columns": ["col1"], "values": None}}
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
-        with pytest.raises(ValueError, match="has no values defined"):
+        with pytest.raises(ValueError, match="'values' is empty or falsy"):
             await FixedLoader(data_source=None).load(entity, table_cfg)
 
     @pytest.mark.asyncio
     async def test_raises_when_zero_values(self):
         """Test that await FixedLoader(data_source=None).load raises ValueError when no values defined."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "columns": ["col1"], "values": []}}
+        config = {"test_entity": {"type": "fixed", "keys": [], "surrogate_id": "entity_id", "columns": ["col1"], "values": []}}
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         assert await FixedLoader(data_source=None).load(entity, table_cfg) is not None
 
     @pytest.mark.asyncio
-    async def test_raises_when_no_surrogate_name_and_no_columns(self):
+    async def test_raises_when_empty_columns(self):
         """Test raises ValueError when single column config has no surrogate_name and no columns."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "values": ["val1", "val2"]}}
+        config = {"test_entity": {"type": "fixed", "keys": [], "surrogate_id": "entity_id", "values": ["val1", "val2"]}}
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
-        with pytest.raises(ValueError, match="must have a surrogate_name or one column defined"):
+        with pytest.raises(ValueError, match="'columns' is required but missing"):
             await FixedLoader(data_source=None).load(entity, table_cfg)
 
     @pytest.mark.asyncio
-    async def test_single_column_with_surrogate_name(self):
+    async def test_single_column_with_surrogate_name_but_not_in_columns(self):
         """Test create fixed table with single column using surrogate_name."""
         entity = "location_type"
-        config = {"location_type": {"type": "fixed", "surrogate_name": "location_type", "values": ["Ort", "Kreis", "Land", "Staat"]}}
+        config = {
+            "location_type": {
+                "type": "fixed",
+                "keys": [],
+                "surrogate_id": "location_type_id",
+                "surrogate_name": "location_type",
+                "columns": ["xyz"],
+                "values": ["Ort", "Kreis", "Land", "Staat"],
+            }
+        }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
-        result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
-
-        assert len(result) == 4
-        assert "location_type" in result.columns
-        assert result["location_type"].tolist() == ["Ort", "Kreis", "Land", "Staat"]
+        with pytest.raises(ValueError, match=" 'surrogate_name' not specified in 'columns'"):
+            await FixedLoader(data_source=None).load(entity, table_cfg)
 
     @pytest.mark.asyncio
     async def test_single_column_with_surrogate_name_and_surrogate_id(self):
@@ -102,6 +108,8 @@ class TestCreateFixedTable:
         config = {
             "location_type": {
                 "type": "fixed",
+                "keys": [],
+                "columns": ["location_type"],
                 "surrogate_id": "location_type_id",
                 "surrogate_name": "location_type",
                 "values": ["Ort", "Kreis", "Land"],
@@ -121,7 +129,15 @@ class TestCreateFixedTable:
     async def test_single_column_from_columns_list(self):
         """Test create fixed table using single column from columns list."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "columns": ["type_name"], "values": ["Type1", "Type2", "Type3"]}}
+        config = {
+            "test_entity": {
+                "type": "fixed",
+                "keys": [],
+                "surrogate_id": "type_id",
+                "columns": ["type_name"],
+                "values": ["Type1", "Type2", "Type3"],
+            },
+        }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -134,7 +150,15 @@ class TestCreateFixedTable:
     async def test_single_column_with_surrogate_id_no_surrogate_name(self):
         """Test single column with surrogate_id but no surrogate_name uses column name."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "surrogate_id": "type_id", "columns": ["type_name"], "values": ["Type1", "Type2"]}}
+        config = {
+            "test_entity": {
+                "type": "fixed",
+                "keys": [],
+                "surrogate_id": "type_id",
+                "columns": ["type_name"],
+                "values": ["Type1", "Type2"],
+            },
+        }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -151,6 +175,8 @@ class TestCreateFixedTable:
         config = {
             "coordinate_method_dimensions": {
                 "type": "fixed",
+                "keys": [],
+                "surrogate_id": "coordinate_method_dimension_id",
                 "columns": ["coordinate_type", "limit_lower", "limit_upper"],
                 "values": [["KoordX", None, None], ["KoordY", None, None], ["KoordZ", 0.0, 100.0]],
             }
@@ -160,7 +186,7 @@ class TestCreateFixedTable:
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
         assert len(result) == 3
-        assert list(result.columns) == ["coordinate_type", "limit_lower", "limit_upper"]
+        assert set(result.columns) == {"coordinate_method_dimension_id", "coordinate_type", "limit_lower", "limit_upper"}
         assert result["coordinate_type"].tolist() == ["KoordX", "KoordY", "KoordZ"]
         assert pd.isna(result.iloc[0]["limit_lower"])
         assert result.iloc[2]["limit_lower"] == 0.0
@@ -172,6 +198,7 @@ class TestCreateFixedTable:
         config = {
             "test_entity": {
                 "type": "fixed",
+                "keys": [],
                 "surrogate_id": "id",
                 "columns": ["name", "code"],
                 "values": [["First", "A"], ["Second", "B"], ["Third", "C"]],
@@ -193,10 +220,18 @@ class TestCreateFixedTable:
     async def test_raises_when_values_not_list_of_lists_for_multiple_columns(self):
         """Test raises ValueError when values is not list of lists for multiple columns."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "columns": ["col1", "col2"], "values": ["val1", "val2"]}}  # Should be list of lists
+        config = {
+            "test_entity": {
+                "type": "fixed",
+                "keys": [],
+                "surrogate_id": "id",
+                "columns": ["col1", "col2"],
+                "values": ["val1", "val2"],
+            },
+        }  # Should be list of lists
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
-        with pytest.raises(ValueError, match="must have values as a list of lists"):
+        with pytest.raises(ValueError, match="mismatched"):
             await FixedLoader(data_source=None).load(entity, table_cfg)
 
     @pytest.mark.asyncio
@@ -204,11 +239,20 @@ class TestCreateFixedTable:
         """Test raises ValueError when row length doesn't match columns length."""
         entity = "test_entity"
         config = {
-            "test_entity": {"type": "fixed", "columns": ["col1", "col2", "col3"], "values": [["a", "b", "c"], ["d", "e"]]}
+            "test_entity": {
+                "type": "fixed",
+                "keys": [],
+                "surrogate_id": "id",
+                "columns": ["col1", "col2", "col3"],
+                "values": [
+                    ["a", "b", "c"],
+                    ["d", "e"],
+                ],
+            }
         }  # Missing one value
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
-        with pytest.raises(ValueError, match="has mismatched number of columns and values"):
+        with pytest.raises(ValueError, match="mismatched"):
             await FixedLoader(data_source=None).load(entity, table_cfg)
 
     @pytest.mark.asyncio
@@ -218,6 +262,8 @@ class TestCreateFixedTable:
         config = {
             "site_property_type": {
                 "type": "fixed",
+                "keys": [],
+                "columns": ["site_property_type"],
                 "surrogate_id": "site_property_type_id",
                 "surrogate_name": "site_property_type",
                 "values": ["Limes", "FustelTyp?", "okFustel", "TK", "EVNr"],
@@ -240,6 +286,7 @@ class TestCreateFixedTable:
         config = {
             "location_type": {
                 "type": "fixed",
+                "keys": [],
                 "surrogate_id": "location_type_id",
                 "surrogate_name": "location_type",
                 "columns": ["location_type"],
@@ -256,23 +303,19 @@ class TestCreateFixedTable:
         assert result["location_type_id"].tolist() == [1, 2, 3, 4, 5]
 
     @pytest.mark.asyncio
-    async def test_empty_columns_list_uses_surrogate_name(self):
-        """Test that empty columns list falls back to using surrogate_name."""
-        entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "surrogate_name": "name", "columns": [], "values": ["A", "B", "C"]}}
-        table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
-
-        result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
-
-        assert len(result) == 3
-        assert "name" in result.columns
-        assert result["name"].tolist() == ["A", "B", "C"]
-
-    @pytest.mark.asyncio
     async def test_single_value(self):
         """Test create fixed table with single value."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "surrogate_name": "value", "values": ["OnlyOne"]}}
+        config = {
+            "test_entity": {
+                "type": "fixed",
+                "surrogate_id": "id",
+                "surrogate_name": "value",
+                "keys": [],
+                "columns": ["value"],
+                "values": ["OnlyOne"],
+            },
+        }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -284,7 +327,16 @@ class TestCreateFixedTable:
     async def test_numeric_values(self):
         """Test create fixed table with numeric values."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "surrogate_id": "id", "surrogate_name": "level", "values": [1, 2, 3, 5, 10]}}
+        config = {
+            "test_entity": {
+                "type": "fixed",
+                "keys": [],
+                "columns": ["level"],
+                "surrogate_id": "id",
+                "surrogate_name": "level",
+                "values": [1, 2, 3, 5, 10],
+            },
+        }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -297,7 +349,15 @@ class TestCreateFixedTable:
     async def test_mixed_type_values(self):
         """Test create fixed table with mixed type values."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "columns": ["value"], "values": [1, "two", 3.0, None]}}
+        config = {
+            "test_entity": {
+                "type": "fixed",
+                "surrogate_id": "id",
+                "keys": [],
+                "columns": ["value"],
+                "values": [1, "two", 3.0, None],
+            },
+        }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -315,6 +375,8 @@ class TestCreateFixedTable:
         config = {
             "test_entity": {
                 "type": "fixed",
+                "keys": [],
+                "surrogate_id": "id",
                 "columns": ["col1", "col2", "col3"],
                 "values": [["A", None, 1], [None, "B", None], ["C", "D", 3]],
             }
@@ -332,7 +394,9 @@ class TestCreateFixedTable:
     async def test_surrogate_id_column_order(self):
         """Test that surrogate_id is added as a new column."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "surrogate_id": "id", "columns": ["name", "value"], "values": [["A", 1], ["B", 2]]}}
+        config = {
+            "test_entity": {"type": "fixed", "surrogate_id": "id", "keys": [], "columns": ["name", "value"], "values": [["A", 1], ["B", 2]]}
+        }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -346,7 +410,16 @@ class TestCreateFixedTable:
     async def test_large_value_list(self):
         """Test create fixed table with large number of values."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "surrogate_id": "id", "surrogate_name": "number", "values": list(range(1, 101))}}
+        config = {
+            "test_entity": {
+                "type": "fixed",
+                "surrogate_id": "id",
+                "surrogate_name": "number",
+                "keys": [],
+                "columns": ["number"],
+                "values": list(range(1, 101)),
+            },
+        }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -362,7 +435,10 @@ class TestCreateFixedTable:
         config = {
             "test_entity": {
                 "type": "fixed",
+                "surrogate_id": "id",
                 "surrogate_name": "text",
+                "keys": [],
+                "columns": ["text"],
                 "values": ["Normal", "With spaces", "With-dash", "With_underscore", "With.dot"],
             }
         }
@@ -378,7 +454,16 @@ class TestCreateFixedTable:
     async def test_unicode_values(self):
         """Test values with unicode characters."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "surrogate_name": "text", "values": ["Ö", "ä", "ü", "ß", "é"]}}
+        config = {
+            "test_entity": {
+                "type": "fixed",
+                "surrogate_id": "id",
+                "surrogate_name": "text",
+                "keys": [],
+                "columns": ["text"],
+                "values": ["Ö", "ä", "ü", "ß", "é"],
+            },
+        }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -390,7 +475,15 @@ class TestCreateFixedTable:
     async def test_boolean_values(self):
         """Test create fixed table with boolean values."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "fixed", "columns": ["flag", "name"], "values": [[True, "Yes"], [False, "No"], [True, "Maybe"]]}}
+        config = {
+            "test_entity": {
+                "type": "fixed",
+                "keys": [],
+                "columns": ["flag", "name"],
+                "surrogate_id": "id",
+                "values": [[True, "Yes"], [False, "No"], [True, "Maybe"]],
+            },
+        }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
@@ -407,6 +500,7 @@ class TestCreateFixedTable:
             "coordinate_method_dimensions": {
                 "type": "fixed",
                 "surrogate_id": "coordinate_method_dimension_id",
+                "keys": [],
                 "columns": ["coordinate_type", "limit_lower", "limit_upper", "dimension_id", "method_id"],
                 "values": [["KoordX", None, None, None, None], ["KoordY", None, None, None, None], ["KoordZ", None, None, None, None]],
             }
@@ -429,6 +523,9 @@ class TestCreateFixedTable:
         config = {
             "test_entity": {
                 "type": "fixed",
+                "surrogate_id": "system_id",
+                "surrogate_name": "dimension_name",
+                "keys": [],
                 "columns": ["dimension_id", "dimension_name"],
                 "values": [[1, "Width"], [2, "Height"], [3, "Depth"]],
             }
@@ -438,6 +535,6 @@ class TestCreateFixedTable:
         result: pd.DataFrame = await FixedLoader(data_source=None).load(entity, table_cfg)
 
         assert len(result) == 3
-        assert list(result.columns) == ["dimension_id", "dimension_name"]
+        assert set(result.columns) == {"system_id","dimension_id", "dimension_name"}
         assert result["dimension_id"].tolist() == [1, 2, 3]
         assert result["dimension_name"].tolist() == ["Width", "Height", "Depth"]
