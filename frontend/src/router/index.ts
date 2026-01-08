@@ -82,6 +82,14 @@ const routes: RouteRecordRaw[] = [
       title: 'Settings',
     },
   },
+  {
+    path: '/help',
+    name: 'help',
+    component: () => import('@/views/HelpView.vue'),
+    meta: {
+      title: 'Help',
+    },
+  },
 ]
 
 const router = createRouter({

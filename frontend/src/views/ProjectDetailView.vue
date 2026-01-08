@@ -34,6 +34,7 @@
           <div class="d-flex gap-2">
             <v-btn variant="outlined" prepend-icon="mdi-play-circle-outline" color="success" @click="handleTestRun">
               Test Run
+              <v-tooltip activator="parent">Preview transformation results for selected entities</v-tooltip>
             </v-btn>
             <v-btn
               variant="outlined"
@@ -42,13 +43,19 @@
               @click="handleValidate"
             >
               Validate
+              <v-tooltip activator="parent">Run validation checks on the entire project</v-tooltip>
             </v-btn>
             <v-btn variant="outlined" prepend-icon="mdi-play-circle" color="success" @click="showExecuteDialog = true">
               Execute
+              <v-tooltip activator="parent">Execute the full workflow and export data</v-tooltip>
             </v-btn>
-            <v-btn variant="outlined" prepend-icon="mdi-history" @click="showBackupsDialog = true"> Backups </v-btn>
+            <v-btn variant="outlined" prepend-icon="mdi-history" @click="showBackupsDialog = true">
+              Backups
+              <v-tooltip activator="parent">View and restore previous versions of this project</v-tooltip>
+            </v-btn>
             <v-btn color="primary" prepend-icon="mdi-content-save" :disabled="!hasUnsavedChanges" @click="handleSave">
               Save Changes
+              <v-tooltip activator="parent">Save changes to the project configuration</v-tooltip>
             </v-btn>
           </div>
         </div>
