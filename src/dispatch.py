@@ -80,6 +80,15 @@ class ExcelDispatcher(Dispatcher):
 class OpenpyxlExcelDispatcher(Dispatcher):
     """Dispatcher for Excel data using openpyxl."""
 
+    column_colors: dict[str, str] = {
+        "header": "#e7e7ef",
+        "key_column": "#ccc0da",
+        "system_id": "#dce6f1",
+        "surrogate_id": "#ebf1de",
+        "foreign_key": "#fde9d9",
+        "source_column": "#e4dfec",
+    }
+
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
         wb = Workbook()
         wb.remove(wb.active)  # type: ignore[attr-defined] ; openpyxl creates a default sheet
@@ -104,7 +113,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
         Convert '#RRGGBB' or 'RRGGBB' to openpyxl ARGB 'FFRRGGBB'.
         Accepts 'AARRGGBB' as-is.
         """
-        c = str(color).strip().lstrip("#")
+        c: str = str(color).strip().lstrip("#")
         if len(c) == 6:  # RRGGBB
             return ("FF" + c).upper()
         if len(c) == 8:  # AARRGGBB
@@ -118,7 +127,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
 
     def style_sheet_columns(self, entity_name: str, table: pd.DataFrame, ws) -> None:
         # Header row: bright yellow (ARGB)
-        header_fill = self._solid_fill("FFFFFF00")
+        header_fill = self._solid_fill(self.column_colors["header"])
         for cell in ws[1]:
             cell.fill = header_fill
 
@@ -126,14 +135,16 @@ class OpenpyxlExcelDispatcher(Dispatcher):
         entity_cfg: TableConfig = self.cfg.get_table(entity_name)
 
         for column in columns:
-            if column in entity_cfg.get_key_columns():
-                self.set_column_background_color(column, columns, ws, "#c1eac1")
+            if column in entity_cfg.keys:
+                self.set_column_background_color(column, columns, ws, self.column_colors["key_column"])
             elif column == "system_id":
-                self.set_column_background_color(column, columns, ws, "#A3A4A9")
+                self.set_column_background_color(column, columns, ws, self.column_colors["system_id"])
             elif column == entity_cfg.surrogate_id:
-                self.set_column_background_color(column, columns, ws, "#7a83e6")
-            elif column.endswith("_id"):
-                self.set_column_background_color(column, columns, ws, "#d4e160")
+                self.set_column_background_color(column, columns, ws, self.column_colors["surrogate_id"])
+            elif column in entity_cfg.fk_columns:
+                self.set_column_background_color(column, columns, ws, self.column_colors["foreign_key"])
+            elif column in entity_cfg.safe_columns:
+                self.set_column_background_color(column, columns, ws, self.column_colors["source_column"])
 
     def set_column_background_color(self, column_name: str, columns: list[str], ws, color: str = "D3D3D3") -> None:
         idx: int | None = self.find_column_index(column_name, columns)
