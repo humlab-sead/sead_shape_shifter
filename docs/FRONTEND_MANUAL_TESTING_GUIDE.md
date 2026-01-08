@@ -12,6 +12,7 @@ This guide provides comprehensive step-by-step manual testing procedures for the
 - [Project Editor Testing](#configuration-editor-testing)
 - [Entity Editor Testing](#entity-editor-testing)
 - [Validation Testing](#validation-testing)
+- [Execute Workflow Testing](#execute-workflow-testing)
 - [Data Source Testing](#data-source-testing)
 - [Cross-Browser Testing](#cross-browser-testing)
 - [Feature-Specific Testing](#feature-specific-testing)
@@ -196,7 +197,7 @@ Before starting tests, verify:
 - [ ] Syntax highlighting active
 - [ ] Line numbers visible
 - [ ] Entity list panel visible
-- [ ] Toolbar buttons enabled
+- [ ] Toolbar buttons enabled (Test Run, Validate, Execute, Backups, Save)
 
 **Test: Edit YAML Content**
 
@@ -748,6 +749,275 @@ Before starting tests, verify:
 
 ---
 
+## Execute Workflow Testing
+
+### Execute Dialog
+
+**Test: Open Execute Dialog**
+
+1. Open a configuration/project
+2. Click "Execute" button in toolbar
+3. Observe dialog
+
+**Expected Results:**
+
+- [ ] Dialog opens with "Execute Workflow" title
+- [ ] Dispatcher selection dropdown visible
+- [ ] Form fields appropriate for selected dispatcher
+- [ ] Cancel button available
+- [ ] Execute button disabled until form valid
+
+### Dispatcher Selection
+
+**Test: Select Different Dispatchers**
+
+1. Open Execute dialog
+2. Click "Output Format" dropdown
+3. Select each available dispatcher type:
+   - Excel (xlsx) - file target
+   - CSV - file target
+   - CSV in ZIP - file target
+   - Database - database target
+   - Folder dispatchers (if available)
+
+**Expected Results:**
+
+- [ ] Dispatcher list loads from backend
+- [ ] Each dispatcher shows: description, key, target_type
+- [ ] Icons displayed for each target type (file/folder/database)
+- [ ] Selecting dispatcher updates form fields
+- [ ] File dispatchers show file path input
+- [ ] Folder dispatchers show folder path input
+- [ ] Database dispatchers show data source dropdown
+
+### File Target Configuration
+
+**Test: Configure File Output**
+
+1. Select file dispatcher (e.g., "Excel Workbook (xlsx)")
+2. Observe file path field
+3. Leave empty to use default
+4. Enter custom path: `./custom/output.xlsx`
+5. Enter invalid path: `./custom/output.csv` (wrong extension)
+
+**Expected Results:**
+
+- [ ] File path field appears for file dispatchers
+- [ ] Default hint shows: `./output/{project_name}.{extension}`
+- [ ] File icon visible in field
+- [ ] Validation requires correct file extension
+- [ ] Error message shown for wrong extension
+- [ ] Empty field uses default path
+
+### Folder Target Configuration
+
+**Test: Configure Folder Output**
+
+1. Select folder dispatcher (e.g., "CSV Files (csv)")
+2. Observe folder path field
+3. Enter path: `./custom/output_folder`
+
+**Expected Results:**
+
+- [ ] Folder path field appears for folder dispatchers
+- [ ] Default hint shows: `./output/{project_name}`
+- [ ] Folder icon visible in field
+- [ ] Path validation works
+- [ ] Empty field uses default path
+
+### Database Target Configuration
+
+**Test: Configure Database Output**
+
+1. Select database dispatcher (e.g., "PostgreSQL Database")
+2. Observe data source dropdown
+3. Select target database
+
+**Expected Results:**
+
+- [ ] Data source dropdown appears
+- [ ] Lists all configured data sources
+- [ ] Validation requires selection
+- [ ] Database icon visible
+- [ ] Hint text explains purpose
+
+### Execution Options
+
+**Test: Toggle Execution Options**
+
+1. Observe execution options switches
+2. Toggle "Run validation before execution"
+3. Toggle "Apply translations"
+4. Toggle "Drop foreign key columns"
+
+**Expected Results:**
+
+- [ ] Three toggle switches visible
+- [ ] "Run validation" enabled by default
+- [ ] "Apply translations" disabled by default
+- [ ] "Drop foreign keys" disabled by default
+- [ ] Each switch has descriptive hint text
+- [ ] Switches toggle smoothly
+
+### Execute Workflow
+
+**Test: Execute to File (Success)**
+
+1. Select "Excel Workbook (xlsx)" dispatcher
+2. Leave file path empty (use default)
+3. Ensure "Run validation" is enabled
+4. Click "Execute" button
+5. Wait for completion
+
+**Expected Results:**
+
+- [ ] Execute button shows loading state
+- [ ] Loading indicator appears
+- [ ] Success alert appears on completion
+- [ ] Success message shows entity count
+- [ ] Target path displayed
+- [ ] "Download result file" button appears
+- [ ] Download link functional
+- [ ] Dialog auto-closes after 2 seconds (if download available)
+
+**Test: Download Executed File**
+
+1. After successful file execution
+2. Observe download button in success alert
+3. Click "Download result file" button
+
+**Expected Results:**
+
+- [ ] Download button visible for file targets only
+- [ ] Button has download icon
+- [ ] Clicking initiates file download
+- [ ] File downloads with correct filename
+- [ ] File contains expected data
+- [ ] Can download multiple times
+
+**Test: Execute to Database (Success)**
+
+1. Select database dispatcher
+2. Select target data source
+3. Click "Execute" button
+4. Wait for completion
+
+**Expected Results:**
+
+- [ ] Execute button shows loading state
+- [ ] Success alert appears on completion
+- [ ] Success message shows entity count
+- [ ] No download button (database target)
+- [ ] Dialog auto-closes immediately
+- [ ] Data written to database successfully
+
+**Test: Execute with Validation Errors**
+
+1. Open configuration with validation errors
+2. Open Execute dialog
+3. Keep "Run validation" enabled
+4. Click "Execute"
+
+**Expected Results:**
+
+- [ ] Execution stops if validation fails
+- [ ] Error alert appears
+- [ ] Error message explains validation failure
+- [ ] Can cancel and fix errors
+- [ ] Can disable "Run validation" to proceed anyway
+
+**Test: Execute with Backend Error**
+
+1. Select invalid configuration
+2. Click "Execute"
+3. Observe error handling
+
+**Expected Results:**
+
+- [ ] Error alert appears
+- [ ] Error message from backend displayed
+- [ ] Error details shown (if available)
+- [ ] Loading state clears
+- [ ] Can retry after fixing issue
+- [ ] Dialog remains open
+
+### Execute Dialog State Management
+
+**Test: Form Validation**
+
+1. Open Execute dialog
+2. Leave dispatcher unselected
+3. Select dispatcher but leave required fields empty
+
+**Expected Results:**
+
+- [ ] Execute button disabled when form invalid
+- [ ] Field-level validation messages shown
+- [ ] Form validates on change
+- [ ] Execute button enables when valid
+- [ ] All required fields marked
+
+**Test: Reset Form State**
+
+1. Fill in execute form
+2. Click "Cancel"
+3. Reopen Execute dialog
+
+**Expected Results:**
+
+- [ ] Form resets to defaults
+- [ ] Dispatcher cleared
+- [ ] File/folder paths reset
+- [ ] Options reset to defaults
+- [ ] No error messages shown
+- [ ] Clean state on reopen
+
+**Test: Auto-fill Default Paths**
+
+1. Open Execute dialog
+2. Select file dispatcher
+3. Observe default file path hint
+4. Select different dispatcher
+
+**Expected Results:**
+
+- [ ] Default paths include project name
+- [ ] File extension matches dispatcher
+- [ ] Paths update when switching dispatchers
+- [ ] Hints show reasonable defaults
+
+### Data Source List Loading
+
+**Test: Data Sources Auto-Load**
+
+1. Open Execute dialog (first time in session)
+2. Select database dispatcher
+3. Open data source dropdown
+
+**Expected Results:**
+
+- [ ] Data sources fetched automatically
+- [ ] Loading indicator during fetch
+- [ ] Data sources populate dropdown
+- [ ] Cached for subsequent opens
+- [ ] No duplicate fetches
+
+### Execute Result Handling
+
+**Test: Result Callback**
+
+1. Execute workflow successfully
+2. Observe parent component update
+
+**Expected Results:**
+
+- [ ] `executed` event emitted to parent
+- [ ] Result object passed to parent
+- [ ] Parent can react to execution
+- [ ] UI updates appropriately
+
+---
+
 ## Data Source Testing
 
 ### Data Sources List
@@ -838,12 +1108,20 @@ For each browser, verify:
 - [ ] Syntax highlighting works
 - [ ] Can edit and save
 - [ ] Validation runs
+- [ ] Execute dialog opens
 
 **Entity Editor:**
 - [ ] Dialog opens and closes
 - [ ] All tabs functional
 - [ ] Forms submit correctly
 - [ ] Preview loads
+
+**Execute Workflow:**
+- [ ] Dialog opens correctly
+- [ ] Dispatcher selection works
+- [ ] Can execute workflow
+- [ ] Download button functional
+- [ ] Success/error messages display
 
 **Visual Elements:**
 - [ ] Fonts render correctly
@@ -1191,14 +1469,18 @@ console.table(performance.getEntriesByType('measure'));
    - Load configuration
    - Validate
    - Preview entity
+   - Execute workflow
    - Load data source schema
+   - Download execution result
 
 **Expected Results:**
 - [ ] Health check < 50ms
 - [ ] Load config < 500ms
 - [ ] Validate < 5 seconds
 - [ ] Preview < 2 seconds
+- [ ] Execute < 15 seconds (depends on data size)
 - [ ] Schema < 500ms
+- [ ] Download initiates immediately
 
 ---
 
@@ -1325,6 +1607,7 @@ console.table(performance.getEntriesByType('measure'));
 | Project Editor | 8/10 | 2 | Save occasionally slow |
 | Entity Editor | 15/15 | 0 | All passed |
 | Validation | 6/7 | 1 | Cache not invalidating |
+| Execute Workflow | 9/9 | 0 | All passed |
 | Cross-Browser | 4/4 | 0 | All browsers tested |
 | Performance | 4/5 | 1 | Memory usage high |
 | Accessibility | 6/6 | 0 | All passed |
@@ -1372,6 +1655,8 @@ console.table(performance.getEntriesByType('measure'));
 | YAML Editor | ✅ | ✅ | ✅ | ✅ |
 | Entity Editor | ✅ | ✅ | ✅ | ✅ |
 | Validation | ✅ | ✅ | ✅ | ❌ Cache |
+| Execute Workflow | ✅ | ✅ | ✅ | ✅ |
+| Download Results | ✅ | ✅ | ✅ | ✅ |
 | Data Sources | ✅ | ✅ | ✅ | ✅ |
 | Animations | ✅ | ✅ | ✅ | ⚠️ Jank |
 
@@ -1388,6 +1673,7 @@ console.table(performance.getEntriesByType('measure'));
 | Initial Load | 1.2s | 1.5s | 1.3s | 1.8s | < 2s |
 | Config Load | 450ms | 500ms | 480ms | 600ms | < 500ms |
 | Validation | 3.2s | 3.5s | 3.3s | 4.1s | < 5s |
+| Execute Workflow | 8.5s | 9.1s | 8.7s | 10.2s | < 15s |
 | Memory (10min) | 85MB | 92MB | 87MB | 105MB | < 100MB |
 
 ### Issues Found
@@ -1425,6 +1711,7 @@ Minimal test to verify basic functionality:
 - [ ] Can edit and save YAML
 - [ ] Can run validation
 - [ ] Can open entity editor
+- [ ] Can execute workflow
 - [ ] Theme toggle works
 
 ### 15-Minute Regression Test
@@ -1443,6 +1730,8 @@ After code changes, verify core features:
 - [ ] Test foreign key join
 - [ ] Load entity preview
 - [ ] Apply auto-fix
+- [ ] Execute workflow (Excel output)
+- [ ] Download execution result
 - [ ] Switch themes
 - [ ] Test in two browsers
 
