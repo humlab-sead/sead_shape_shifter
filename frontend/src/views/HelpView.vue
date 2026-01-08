@@ -66,7 +66,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useHelp } from '@/composables/useHelp'
+import { useHelp } from '@/composables'
 
 // Quick navigation sections
 const sections = [
