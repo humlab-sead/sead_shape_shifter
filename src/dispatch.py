@@ -72,8 +72,8 @@ class ExcelDispatcher(Dispatcher):
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
         with pd.ExcelWriter(target, engine="openpyxl") as writer:
-            for entity_name, table in data.items():
-                table.to_excel(writer, sheet_name=entity_name, index=False)
+            for entity_name in sorted(data):
+                data[entity_name].to_excel(writer, sheet_name=entity_name, index=False)
 
 
 @Dispatchers.register(key="openpyxl", target_type="file", description="Dispatch data as Excel file using openpyxl", extension=".xlsx")
@@ -84,7 +84,8 @@ class OpenpyxlExcelDispatcher(Dispatcher):
         wb = Workbook()
         wb.remove(wb.active)  # type: ignore[attr-defined] ; openpyxl creates a default sheet
 
-        for entity_name, table in data.items():
+        for entity_name in sorted(data):
+            table: pd.DataFrame = data[entity_name]
             sheet_name: str = self._safe_sheet_name(entity_name, existing=wb.sheetnames)
             ws = wb.create_sheet(title=sheet_name)
 
