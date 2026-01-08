@@ -32,3 +32,5 @@ export { useForeignKeyTester } from './useForeignKeyTester'
 export type { JoinStatistics, CardinalityInfo, UnmatchedRow, JoinTestResult } from './useForeignKeyTester'
 
 export { useSession } from './useSession'
+
+export { useHelp } from './useHelp'
