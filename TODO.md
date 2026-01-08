@@ -26,6 +26,9 @@
  - [ ] TODO: #104 Enable download of workflow output from frontend 
  - [ ] TODO: #108 Add tiny DSL Expression Support in extra_columns
  - [ ] TODO: Introduce optional support for types for entity fields (e.g., string, integer, date) and support type conversions in extra_columns.
+ - [ ] TODO: #111 Add help to application integrating user guide
+ - [ ] TODO: #112 Sort dispatched Excel sheets
+ - [ ] TODO: #113 Improve Excel sheet's coloring based on entity's config
 
 # Tiny DSL Expression Support in extra_columns
 
