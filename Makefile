@@ -208,6 +208,56 @@ frontend-build:
 	@cd frontend && rm -rf node_modules/.vite dist && pnpm dev 
 
 ################################################################################
+# Docker
+################################################################################
+
+.PHONY: docker-setup
+docker-setup:
+	@echo "Setting up Docker data directory..."
+	@./docker/setup.sh
+
+.PHONY: docker-build
+docker-build:
+	@echo "Building Docker image..."
+	@./docker/build.sh
+
+.PHONY: docker-test
+docker-test:
+	@echo "Testing Docker configuration..."
+	@./docker/test.sh
+
+.PHONY: docker-up
+docker-up:
+	@echo "Starting Shape Shifter with Docker Compose..."
+	@docker compose -f docker/docker-compose.yml up -d
+	@echo "✓ Application started at http://localhost:8012"
+
+.PHONY: docker-down
+docker-down:
+	@echo "Stopping Shape Shifter containers..."
+	@docker compose -f docker/docker-compose.yml down
+
+.PHONY: docker-logs
+docker-logs:
+	@docker compose -f docker/docker-compose.yml logs -f
+
+.PHONY: docker-restart
+docker-restart:
+	@echo "Restarting Shape Shifter..."
+	@docker compose -f docker/docker-compose.yml restart
+
+.PHONY: docker-clean
+docker-clean:
+	@echo "Cleaning up Docker resources..."
+	@docker compose -f docker/docker-compose.yml down -v
+	@docker image rm shape-shifter:latest 2>/dev/null || true
+	@echo "✓ Cleanup complete"
+
+.PHONY: docker-shell
+docker-shell:
+	@docker compose -f docker/docker-compose.yml exec shape-shifter /bin/bash
+
+################################################################################
 # Other stuff
 ################################################################################
 

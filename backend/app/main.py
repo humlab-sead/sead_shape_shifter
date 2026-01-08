@@ -1,10 +1,12 @@
 """FastAPI application entry point."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 from backend.app.api.v1.api import api_router
@@ -62,11 +64,23 @@ app.add_middleware(
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 
-@app.get("/")
-async def root() -> dict[str, str]:
-    """Root endpoint - redirect to docs."""
-    return {
-        "message": "Shape Shifter Project Editor API",
-        "version": settings.VERSION,
-        "docs": f"{settings.API_V1_PREFIX}/docs",
-    }
+# Serve static frontend files (production mode)
+frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
+if frontend_dist.exists() and frontend_dist.is_dir():
+    logger.info(f"Serving frontend from: {frontend_dist}")
+    # Mount static files (JS, CSS, assets)
+    app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="assets")
+    # Serve index.html for all non-API routes (SPA routing)
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+else:
+    logger.warning(f"Frontend dist directory not found: {frontend_dist}")
+    logger.warning("Running in API-only mode. Build frontend with 'cd frontend && pnpm run build'")
+
+    @app.get("/")
+    async def root() -> dict[str, str]:
+        """Root endpoint - redirect to docs (API-only mode)."""
+        return {
+            "message": "Shape Shifter Project Editor API",
+            "version": settings.VERSION,
+            "docs": f"{settings.API_V1_PREFIX}/docs",
+        }
