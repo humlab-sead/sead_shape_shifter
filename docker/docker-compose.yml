@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  shape-shifter:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        # Build-time arguments for frontend
+        # These come from docker/data/frontend.env or can be overridden
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
+        - VITE_ENV=${VITE_ENV:-production}
+        - VITE_ENABLE_ANALYTICS=${VITE_ENABLE_ANALYTICS:-false}
+        - VITE_ENABLE_DEBUG=${VITE_ENABLE_DEBUG:-false}
+    image: shape-shifter:latest
+    container_name: shape-shifter
+    ports:
+      - "${HOST_PORT:-8012}:8012"
+    env_file:
+      # Load backend runtime environment variables
+      - ./data/backend.env
+    environment:
+      # Application settings (override .env if needed)
+      - SHAPE_SHIFTER_ENVIRONMENT=${SHAPE_SHIFTER_ENVIRONMENT:-production}
+      - SHAPE_SHIFTER_PROJECTS_DIR=${SHAPE_SHIFTER_PROJECTS_DIR:-/app/projects}
+      - SHAPE_SHIFTER_BACKUPS_DIR=${SHAPE_SHIFTER_BACKUPS_DIR:-/app/backups}
+      
+      # SEAD Database connection (from backend.env)
+      - SEAD_HOST=${SEAD_HOST}
+      - SEAD_DBNAME=${SEAD_DBNAME}
+      - SEAD_USER=${SEAD_USER}
+      - SEAD_PORT=${SEAD_PORT}
+      
+      # Shape Shifter settings (from backend.env)
+      - SHAPE_SHIFTER_PROJECT_NAME=${SHAPE_SHIFTER_PROJECT_NAME:-Shape Shifter}
+      - SHAPE_SHIFTER_VERSION=${SHAPE_SHIFTER_VERSION:-1.2.0}
+      - SHAPE_SHIFTER_API_V1_PREFIX=${SHAPE_SHIFTER_API_V1_PREFIX:-/api/v1}
+      - SHAPE_SHIFTER_MAX_ENTITIES_PER_CONFIG=${SHAPE_SHIFTER_MAX_ENTITIES_PER_CONFIG:-1000}
+      - SHAPE_SHIFTER_MAX_CONFIG_FILE_SIZE_MB=${SHAPE_SHIFTER_MAX_CONFIG_FILE_SIZE_MB:-10}
+      - SHAPE_SHIFTER_ALLOWED_ORIGINS=${SHAPE_SHIFTER_ALLOWED_ORIGINS:-*}
+      - SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL=${SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL}
+      
+    volumes:
+      # Mount local data directories from docker/data/
+      - ./data/projects:/app/projects
+      - ./data/logs:/app/logs
+      - ./data/output:/app/output
+      - ./data/backups:/app/backups
+      - ./data/tmp:/app/tmp
+      
+      # Mount .pgpass for PostgreSQL authentication (if exists)
+      - ./data/.pgpass:/root/.pgpass:ro
+      
+      # Optional: mount input directory for development
+      # - ./data/input:/app/input
+      
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8012/').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

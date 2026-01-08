@@ -96,6 +96,30 @@ A declarative YAML-based system for defining complex data transformation pipelin
 - **Multiple Output Formats**: Export to CSV, Excel, or directly to databases
 - **Extensible Architecture**: Plugin-style loaders for different data sources
 
+## Quick Start with Docker 🐳
+
+The fastest way to get Shape Shifter running is with Docker:
+
+```bash
+# Clone the repository
+git clone https://github.com/humlab-sead/sead_shape_shifter.git
+cd sead_shape_shifter
+
+# Set up configuration
+cd docker/data
+cp backend.env.example backend.env
+cp frontend.env.example frontend.env
+nano backend.env  # Edit with your database credentials
+
+# Build and start
+cd ..
+docker compose up -d
+
+# Access the application at http://localhost:8012
+```
+
+All runtime configuration and data is stored in `docker/data/`. For detailed Docker deployment instructions, see [docker/README.md](docker/README.md).
+
 ## Developer Installation
 
 ### Prerequisites
