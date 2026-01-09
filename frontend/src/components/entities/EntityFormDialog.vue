@@ -240,19 +240,25 @@
 
                         <!-- Drop Empty Rows -->
                         <v-col cols="6" class="pl-2">
-                          <v-checkbox
-                            v-model="formData.drop_empty_rows.enabled"
-                            label="Drop Empty Rows"
-                            hide-details
-                            class="mb-2"
-                          >
-                          </v-checkbox><v-checkbox
-                            v-model="formData.check_functional_dependency"
-                            label="Check Functional Dependency"
-                            hide-details
-                            :disabled="!formData.drop_empty_rows.enabled"
-                          >
-                          </v-checkbox>
+                          <v-row no-gutters class="mb-2">
+                            <v-col cols="5" class="pr-1">
+                              <v-checkbox
+                                v-model="formData.drop_empty_rows.enabled"
+                                label="Drop Empty Rows"
+                                hide-details
+                              >
+                              </v-checkbox>
+                            </v-col>
+                            <v-col cols="7" class="pl-1">
+                              <v-checkbox
+                                v-model="formData.check_functional_dependency"
+                                label="Check Functional Dependency"
+                                hide-details
+                                :disabled="!formData.drop_empty_rows.enabled"
+                              >
+                              </v-checkbox>
+                            </v-col>
+                          </v-row>
                           <v-combobox
                             v-model="formData.drop_empty_rows.columns"
                             label="Columns to Check for Empty Values"
