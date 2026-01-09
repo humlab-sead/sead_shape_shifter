@@ -53,10 +53,8 @@
                 v-if="field.type === 'string' || field.type === 'file_path'"
                 v-model="form.options[field.name]"
                 :label="formatFieldLabel(field)"
-                :hint="shouldShowHint(field) ? field.description : undefined"
                 :placeholder="field.placeholder"
                 :rules="field.required ? [rules.required] : []"
-                :persistent-hint="shouldShowHint(field)"
                 variant="outlined"
                 class="mb-2"
               />
@@ -64,21 +62,16 @@
               <!-- Integer Field -->
               <v-text-field
                 v-else-if="field.type === 'integer'"
-                v-model.number="form.options[field.name]"
+                v-model="form.options[field.name]"
                 :label="formatFieldLabel(field)"
-                :hint="shouldShowHint(field) ? field.description : undefined"
                 :placeholder="field.placeholder"
-                :rules="field.required ? [rules.required, rules.integer] : [rules.integer]"
-                type="number"
-                :min="field.min_value"
-                :max="field.max_value"
-                :persistent-hint="shouldShowHint(field)"
+                :rules="field.required ? [rules.required] : []"
                 variant="outlined"
                 class="mb-2"
               />
 
               <!-- Password Field -->
-              <v-text-field
+              <!-- <v-text-field
                 v-else-if="field.type === 'password'"
                 v-model="form.options[field.name]"
                 :label="formatFieldLabel(field)"
@@ -88,7 +81,7 @@
                 persistent-hint
                 variant="outlined"
                 class="mb-2"
-              />
+              /> -->
 
               <!-- Boolean Field -->
               <v-checkbox
@@ -103,7 +96,7 @@
           </template>
 
           <!-- Description -->
-          <v-textarea
+          <!-- <v-textarea
             v-model="form.description"
             label="Description"
             hint="Optional description of this data source"
@@ -111,7 +104,7 @@
             rows="2"
             variant="outlined"
             class="mb-2"
-          />
+          /> -->
         </v-form>
 
         <!-- Error Message -->
@@ -307,9 +300,26 @@ function loadDataSource(dataSource: DataSourceConfig) {
   if (dataSource.filename) options.filename = dataSource.filename
   if (dataSource.file_path) options.filename = dataSource.file_path // Handle alias
 
-  // Load options object
+  // Load options object and handle aliases
   if (dataSource.options) {
-    Object.assign(options, dataSource.options)
+    const schema = getSchema(dataSource.driver)
+    
+    for (const [key, value] of Object.entries(dataSource.options)) {
+      // Find the canonical field name by checking if this key is an alias
+      let canonicalName = key
+      
+      if (schema) {
+        const field = schema.fields.find(
+          (f) => f.name === key || (f.aliases && f.aliases.includes(key))
+        )
+        if (field) {
+          canonicalName = field.name
+        }
+      }
+      
+      // Set the value using the canonical field name
+      options[canonicalName] = value
+    }
   }
 
   form.value.options = options
