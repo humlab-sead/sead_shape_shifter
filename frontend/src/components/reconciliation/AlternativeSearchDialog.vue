@@ -106,6 +106,7 @@ interface Props {
   modelValue: boolean
   projectName: string
   entityName: string
+  targetField: string
   originalQuery?: string
 }
 
@@ -158,7 +159,7 @@ async function searchAlternatives() {
   try {
     // Call the reconciliation suggest endpoint using apiClient
     const response = await apiClient.get(
-      `/projects/${props.projectName}/reconciliation/${props.entityName}/suggest`,
+      `/projects/${props.projectName}/reconciliation/${props.entityName}/${props.targetField}/suggest`,
       { params: { query: searchTerm.value } }
     )
 
