@@ -5,7 +5,7 @@
         <div class="d-flex align-center justify-space-between">
           <span>Entity Reconciliation</span>
           <div class="d-flex align-center gap-2">
-            <!-- Service Status Indicator -->
+            <!-- Service Status with Entity Count -->
             <v-chip
               v-if="serviceStatus"
               :color="serviceStatus.status === 'online' ? 'success' : 'error'"
@@ -13,10 +13,12 @@
               variant="flat"
               :prepend-icon="serviceStatus.status === 'online' ? 'mdi-check-circle' : 'mdi-alert-circle'"
             >
-              Service {{ serviceStatus.status === 'online' ? 'Online' : 'Offline' }}
+              {{ serviceStatus.status === 'online' ? `Online (${availableEntityTypes} entities)` : 'Offline' }}
             </v-chip>
-            <v-chip v-if="reconcilableEntities.length > 0" size="small" variant="tonal">
-              {{ reconcilableEntities.length }} entities configured
+            
+            <!-- Configured Specifications Count -->
+            <v-chip v-if="specifications.length > 0" size="small" variant="tonal" color="primary">
+              {{ specifications.length }} {{ specifications.length === 1 ? 'specification' : 'specifications' }} configured
             </v-chip>
           </div>
         </div>
@@ -126,7 +128,7 @@ const props = defineProps<Props>()
 
 // Store
 const reconciliationStore = useReconciliationStore()
-const { reconciliationConfig, loading, reconcilableEntities, previewData, getEntityTargets } = storeToRefs(reconciliationStore)
+const { reconciliationConfig, loading, reconcilableEntities, previewData, getEntityTargets, specifications } = storeToRefs(reconciliationStore)
 
 // Local state
 const activeTab = ref<string>('configuration') // Tab state: configuration, reconcile
@@ -137,6 +139,8 @@ const showResultSnackbar = ref(false)
 const resultMessage = ref('')
 const resultColor = ref('success')
 const serviceStatus = ref<{ status: string; service_name?: string; error?: string } | null>(null)
+const serviceManifest = ref<any>(null)
+const availableEntityTypes = ref<number>(0)
 
 // Computed
 const entityTargets = computed(() => {
@@ -232,9 +236,20 @@ async function checkServiceHealth() {
   try {
     const response = await reconciliationStore.checkServiceHealth()
     serviceStatus.value = response
+    
+    // Also fetch the manifest to get available entity types
+    const manifest = await reconciliationStore.getServiceManifest()
+    serviceManifest.value = manifest
+    
+    // Extract entity types count from manifest
+    if (manifest.defaultTypes && Array.isArray(manifest.defaultTypes)) {
+      availableEntityTypes.value = manifest.defaultTypes.length
+      console.log(`[ReconciliationView] Service has ${availableEntityTypes.value} entity types available`)
+    }
   } catch (e: any) {
     console.error('Failed to check service health:', e)
     serviceStatus.value = { status: 'offline', error: e.message }
+    availableEntityTypes.value = 0
   }
 }
 
@@ -243,11 +258,12 @@ onMounted(async () => {
   try {
     console.log('[ReconciliationView] Mounted with project:', props.projectName)
 
-    // Check service health
+    // Check service health and load manifest
     await checkServiceHealth()
 
-    // Load config
+    // Load config and specifications
     await reconciliationStore.loadReconciliationConfig(props.projectName)
+    await reconciliationStore.loadSpecifications(props.projectName)
 
     // Auto-select first entity if available
     if (reconcilableEntities.value.length > 0) {

@@ -52,6 +52,18 @@ async def check_reconciliation_service_health(service: ReconciliationService = D
     return await service.recon_client.check_health()
 
 
+@router.get("/reconciliation/manifest")
+@handle_endpoint_errors
+async def get_reconciliation_service_manifest(service: ReconciliationService = Depends(get_reconciliation_service)) -> dict:
+    """
+    Get reconciliation service manifest.
+
+    Returns:
+        Full service manifest including available entity types, properties, and configuration
+    """
+    return await service.recon_client.get_service_manifest()
+
+
 @router.get("/projects/{project_name}/reconciliation")
 @handle_endpoint_errors
 async def get_reconciliation_config(

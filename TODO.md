@@ -5,6 +5,15 @@
 
  - [] FIXME: Right preview pane doesn't clear values between entities
  - [] FIXME: Active route only highlighted in navigation breadcrumbs for "Projects"
+ - [] FIXME: #114 Database and port number fields in data source view are empty
+ - [] FIXME: #115 Titles in data source view are displayed inconsistently
+ - [] FIXME: #116 Intermittent navigation error when opening project
+ - [] FIXME: #117 pening a project always creates a new session
+ - [] FIXME: #118 Legend in dependency graph has transparent background.
+ - [] FIXME: #119 Entity Editor layout needs improvements
+ - [] FIXME: #120 [Reconciliation] Wrong number of published entities.
+ - [] FIXME: [Reconciliation] Wrong entity types in recon. specification editor.
+ - [] FIXME: 
 
 ### Tech debts:
 
@@ -13,7 +22,6 @@
 ### New features
 
  - [] TODO: [Frontend/Backend] Edit data source configuration in a dual-mode editor (Form/YAML).
- - [] TODO: #21 Add UX for mapping/reconciling remote/target entities to local entities.
  - [] TODO: Add additional frontend/backend options (e.g., themes, temp directory, logging level, etc.)
  - [] TODO: Add capability to generate a default reconciliation YAML based on service manifest received from calling services /reconcile endpoint.
  - [] TODO: #68 Add a "finally" step.
@@ -26,9 +34,6 @@
  - [ ] TODO: #104 Enable download of workflow output from frontend 
  - [ ] TODO: #108 Add tiny DSL Expression Support in extra_columns
  - [ ] TODO: Introduce optional support for types for entity fields (e.g., string, integer, date) and support type conversions in extra_columns.
- - [ ] TODO: #111 Add help to application integrating user guide
- - [ ] TODO: #112 Sort dispatched Excel sheets
- - [ ] TODO: #113 Improve Excel sheet's coloring based on entity's config
 
 # Tiny DSL Expression Support in extra_columns
 
