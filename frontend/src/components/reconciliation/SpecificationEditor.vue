@@ -568,11 +568,23 @@ async function loadAvailableEntities() {
 async function loadRemoteTypes() {
   loadingRemoteTypes.value = true
   try {
-    // TODO: Fetch from reconciliation service /reconcile endpoint
-    // For now, use common types
-    availableRemoteTypes.value = ['site', 'taxon', 'location', 'abundance']
+    // Fetch from reconciliation service /reconcile endpoint
+    const manifest = await reconciliationStore.getServiceManifest()
+    
+    // Extract entity types from manifest
+    // OpenRefine manifest has defaultTypes array with {id, name} objects
+    if (manifest.defaultTypes && Array.isArray(manifest.defaultTypes)) {
+      availableRemoteTypes.value = manifest.defaultTypes.map((type: any) => type.id)
+      console.log(`[SpecificationEditor] Loaded ${availableRemoteTypes.value.length} entity types from service:`, availableRemoteTypes.value)
+    } else {
+      console.warn('[SpecificationEditor] No defaultTypes found in manifest, using fallback')
+      // Fallback to common types if manifest doesn't have them
+      availableRemoteTypes.value = ['site', 'taxon', 'location', 'abundance']
+    }
   } catch (error) {
     console.error('Failed to load remote types:', error)
+    // Fallback to common types on error
+    availableRemoteTypes.value = ['site', 'taxon', 'location', 'abundance']
   } finally {
     loadingRemoteTypes.value = false
   }
