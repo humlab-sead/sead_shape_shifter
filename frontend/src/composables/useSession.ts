@@ -28,8 +28,23 @@ export function useSession() {
 
   /**
    * Start a new editing session for a project.
+   * If a session already exists for this browser, reuse it instead of creating a new one.
    */
   async function startSession(projectName: string, userId?: string) {
+    // First check if we already have an active session for this project
+    if (hasActiveSession.value && currentSession.value?.project_name === projectName) {
+      console.debug(`Reusing existing session for project "${projectName}"`)
+      // Refresh session to update last_accessed and get latest info
+      try {
+        await sessionStore.refreshSession()
+        sessionStore.startAutoRefresh(30000)
+        return currentSession.value
+      } catch (err) {
+        // If refresh fails, session may have expired - create new one
+        console.warn('Session refresh failed, creating new session:', err)
+      }
+    }
+
     const request: SessionCreateRequest = {
       project_name: projectName,
       user_id: userId,
