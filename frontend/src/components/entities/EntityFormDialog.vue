@@ -246,6 +246,12 @@
                             hide-details
                             class="mb-2"
                           >
+                          </v-checkbox><v-checkbox
+                            v-model="formData.check_functional_dependency"
+                            label="Check Functional Dependency"
+                            hide-details
+                            :disabled="!formData.drop_empty_rows.enabled"
+                          >
                           </v-checkbox>
                           <v-combobox
                             v-model="formData.drop_empty_rows.columns"
@@ -261,24 +267,6 @@
                               <span class="text-caption">Columns to check for empty values (empty = all columns)</span>
                             </template>
                           </v-combobox>
-                        </v-col>
-                      </v-row>
-                    </div>
-
-                    <!-- Check Functional Dependency -->
-                    <div class="form-row">
-                      <v-row no-gutters>
-                        <v-col cols="6" class="pr-2">
-                          <!-- Empty space on left -->
-                        </v-col>
-                        <v-col cols="6" class="pl-2">
-                          <v-checkbox
-                            v-model="formData.check_functional_dependency"
-                            label="Check Functional Dependency"
-                            hide-details
-                            :disabled="!formData.drop_empty_rows.enabled"
-                          >
-                          </v-checkbox>
                         </v-col>
                       </v-row>
                     </div>
