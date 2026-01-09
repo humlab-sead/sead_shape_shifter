@@ -7,7 +7,6 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AdvancedEntityConfig: typeof import('./components/entities/AdvancedEntityConfig.vue')['default']
     AlternativeSearchDialog: typeof import('./components/reconciliation/AlternativeSearchDialog.vue')['default']
     AppendEditor: typeof import('./components/entities/AppendEditor.vue')['default']
     CircularDependencyAlert: typeof import('./components/dependencies/CircularDependencyAlert.vue')['default']
