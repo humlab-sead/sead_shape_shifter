@@ -186,8 +186,9 @@
             <v-card-text v-if="availableProperties.length > 0">
               <v-row v-for="prop in availableProperties" :key="prop" dense>
                 <v-col cols="12">
-                  <v-text-field
+                  <v-autocomplete
                     v-model="formData.spec.property_mappings[prop]"
+                    :items="availableFields"
                     :label="prop"
                     variant="outlined"
                     density="compact"
@@ -196,11 +197,20 @@
                     persistent-hint
                     :error="!isNew && isMissingColumn(formData.spec.property_mappings[prop])"
                     :error-messages="!isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? `Column '${formData.spec.property_mappings[prop]}' not found in entity` : undefined"
+                    :loading="loadingFields"
+                    :disabled="availableFields.length === 0"
                   >
                     <template #prepend-inner>
                       <v-icon size="small" :color="!isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? 'error' : 'primary'">mdi-arrow-left</v-icon>
                     </template>
-                  </v-text-field>
+                    <template #no-data>
+                      <v-list-item>
+                        <v-list-item-title class="text-grey">
+                          {{ formData.entity_name ? 'No columns available' : 'Select an entity first' }}
+                        </v-list-item-title>
+                      </v-list-item>
+                    </template>
+                  </v-autocomplete>
                 </v-col>
               </v-row>
             </v-card-text>
@@ -634,7 +644,7 @@ async function loadRemoteTypes() {
 // Watch for specification changes (edit mode)
 watch(
   () => props.specification,
-  (spec) => {
+  async (spec) => {
     if (spec && !props.isNew) {
       formData.value = {
         entity_name: spec.entity_name,
@@ -658,6 +668,18 @@ watch(
       } else {
         sourceType.value = 'SQL Query'
         sqlQuery.value = spec.source.query
+      }
+
+      // Load available fields for the entity
+      const entityForFields = (typeof spec.source === 'string') ? spec.source : spec.entity_name
+      try {
+        loadingFields.value = true
+        availableFields.value = await reconciliationStore.getAvailableFields(props.projectName, entityForFields)
+      } catch (error) {
+        console.error('Failed to load available fields:', error)
+        availableFields.value = []
+      } finally {
+        loadingFields.value = false
       }
 
       // Load properties for remote type
@@ -697,6 +719,36 @@ watch(activeTab, (newTab) => {
     yamlContent.value = formDataToYaml()
   }
 })
+
+// Watch for source type or other entity changes to update available fields
+watch([sourceType, otherEntityName], async ([newSourceType, newOtherEntity]) => {
+  if (!formData.value.entity_name) return
+
+  let entityForFields = formData.value.entity_name
+  
+  // Determine which entity's fields to load
+  if (newSourceType === 'Other Entity' && newOtherEntity) {
+    entityForFields = newOtherEntity
+  }
+  // For 'SQL Query' we can't pre-load fields (custom query)
+  // For 'Entity Preview' use the main entity
+
+  if (newSourceType !== 'SQL Query') {
+    try {
+      loadingFields.value = true
+      availableFields.value = await reconciliationStore.getAvailableFields(props.projectName, entityForFields)
+    } catch (error) {
+      console.error('Failed to load available fields:', error)
+      availableFields.value = []
+    } finally {
+      loadingFields.value = false
+    }
+  } else {
+    // SQL Query - no predefined fields
+    availableFields.value = []
+  }
+})
+
 
 // YAML Editor Functions
 function formDataToYaml(): string {
