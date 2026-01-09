@@ -1,10 +1,20 @@
 <template>
-  <v-dialog :model-value="modelValue" max-width="900px" persistent @update:model-value="$emit('update:modelValue', $event)">
+  <v-dialog :model-value="modelValue" max-width="900px" persistent scrollable @update:model-value="$emit('update:modelValue', $event)">
     <v-card>
-      <v-card-title class="text-h6 bg-primary">
-        <v-icon start>{{ isNew ? 'mdi-plus' : 'mdi-pencil' }}</v-icon>
-        {{ isNew ? 'Add' : 'Edit' }} Reconciliation Specification
-      </v-card-title>
+      <v-toolbar color="primary" density="compact">
+        <v-toolbar-title>
+          <v-icon :icon="isNew ? 'mdi-plus-circle' : 'mdi-pencil'" class="mr-2" />
+          {{ isNew ? 'Add' : 'Edit' }} Reconciliation Specification
+        </v-toolbar-title>
+      </v-toolbar>
+
+      <v-tabs v-model="activeTab" bg-color="primary">
+        <v-tab value="form">Form</v-tab>
+        <v-tab value="yaml" :disabled="isNew">
+          <v-icon icon="mdi-code-braces" class="mr-1" size="small" />
+          YAML
+        </v-tab>
+      </v-tabs>
 
       <v-card-text class="pt-6">
         <!-- Validation Errors Alert -->
@@ -42,7 +52,9 @@
           </ul>
         </v-alert>
 
-        <v-form ref="form" v-model="valid">
+        <v-window v-model="activeTab">
+          <v-window-item value="form">
+            <v-form ref="form" v-model="valid">
           <!-- Entity and Target Field Selection (only for new) -->
           <template v-if="isNew">
             <v-row>
@@ -246,7 +258,30 @@
               </v-slider>
             </v-col>
           </v-row>
-        </v-form>
+            </v-form>
+          </v-window-item>
+
+          <v-window-item value="yaml">
+            <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+              <div class="text-caption">
+                <v-icon icon="mdi-information" size="small" class="mr-1" />
+                Edit the reconciliation specification in YAML format. Changes will be synced with the form editor.
+              </div>
+            </v-alert>
+
+            <yaml-editor
+              v-model="yamlContent"
+              height="500px"
+              :validate-on-change="true"
+              @validate="handleYamlValidation"
+              @change="handleYamlChange"
+            />
+
+            <v-alert v-if="yamlError" type="error" density="compact" variant="tonal" class="mt-2">
+              {{ yamlError }}
+            </v-alert>
+          </v-window-item>
+        </v-window>
       </v-card-text>
 
       <v-divider />
@@ -277,6 +312,8 @@ import type {
   EntityReconciliationSpec,
   ReconciliationSource,
 } from '@/types/reconciliation'
+import * as yaml from 'js-yaml'
+import YamlEditor from '../common/YamlEditor.vue'
 
 interface Props {
   modelValue: boolean
@@ -309,6 +346,10 @@ const availableProperties = ref<string[]>([])
 const isDirty = ref(false)
 const validationErrors = ref<string[]>([])
 const validationWarnings = ref<string[]>([])
+const activeTab = ref('form')
+const yamlContent = ref('')
+const yamlError = ref<string | null>(null)
+const yamlValid = ref(true)
 
 // Source type selection
 const sourceTypes = ['Entity Preview', 'Other Entity', 'SQL Query']
@@ -649,6 +690,107 @@ watch(
 watch(formData, () => {
   isDirty.value = true
 }, { deep: true })
+
+// Watch for tab changes to sync YAML
+watch(activeTab, (newTab) => {
+  if (newTab === 'yaml' && !props.isNew) {
+    yamlContent.value = formDataToYaml()
+  }
+})
+
+// YAML Editor Functions
+function formDataToYaml(): string {
+  const specData: Record<string, any> = {}
+
+  // Build source
+  if (sourceType.value === 'Other Entity') {
+    specData.source = otherEntityName.value
+  } else if (sourceType.value === 'SQL Query') {
+    specData.source = { query: sqlQuery.value }
+  }
+  // Entity Preview = null (default)
+
+  // Add property mappings (only non-empty ones)
+  const mappings: Record<string, string> = {}
+  for (const [key, value] of Object.entries(formData.value.spec.property_mappings)) {
+    if (value) {
+      mappings[key] = value
+    }
+  }
+  if (Object.keys(mappings).length > 0) {
+    specData.property_mappings = mappings
+  }
+
+  // Add remote configuration
+  specData.remote = {
+    service_type: formData.value.spec.remote.service_type,
+  }
+
+  // Add thresholds
+  specData.auto_accept_threshold = formData.value.spec.auto_accept_threshold
+  specData.review_threshold = formData.value.spec.review_threshold
+
+  return yaml.dump(specData, { indent: 2, lineWidth: 120, noRefs: true })
+}
+
+function yamlToFormData(yamlString: string): boolean {
+  try {
+    const parsed = yaml.load(yamlString) as any
+
+    if (!parsed || typeof parsed !== 'object') {
+      yamlError.value = 'Invalid YAML: Expected an object'
+      return false
+    }
+
+    // Update source type and value
+    if (!parsed.source) {
+      sourceType.value = 'Entity Preview'
+    } else if (typeof parsed.source === 'string') {
+      sourceType.value = 'Other Entity'
+      otherEntityName.value = parsed.source
+    } else if (parsed.source && typeof parsed.source === 'object' && parsed.source.query) {
+      sourceType.value = 'SQL Query'
+      sqlQuery.value = parsed.source.query
+    }
+
+    // Update property mappings
+    if (parsed.property_mappings && typeof parsed.property_mappings === 'object') {
+      formData.value.spec.property_mappings = { ...parsed.property_mappings }
+    }
+
+    // Update remote configuration
+    if (parsed.remote && typeof parsed.remote === 'object') {
+      formData.value.spec.remote = { ...parsed.remote }
+      if (parsed.remote.service_type) {
+        onRemoteTypeChange(parsed.remote.service_type)
+      }
+    }
+
+    // Update thresholds
+    if (typeof parsed.auto_accept_threshold === 'number') {
+      formData.value.spec.auto_accept_threshold = parsed.auto_accept_threshold
+    }
+    if (typeof parsed.review_threshold === 'number') {
+      formData.value.spec.review_threshold = parsed.review_threshold
+    }
+
+    yamlError.value = null
+    return true
+  } catch (e: any) {
+    yamlError.value = `YAML parse error: ${e.message}`
+    return false
+  }
+}
+
+function handleYamlValidation(isValid: boolean) {
+  yamlValid.value = isValid
+}
+
+function handleYamlChange(newYaml: string) {
+  if (yamlValid.value) {
+    yamlToFormData(newYaml)
+  }
+}
 
 onMounted(() => {
   loadAvailableEntities()
