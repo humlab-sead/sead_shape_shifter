@@ -13,6 +13,8 @@
  - [] FIXME: #119 Entity Editor layout needs improvements
  - [x] FIXME: #120 [Reconciliation] Wrong number of published entities. (Fixed: Added service manifest endpoint and real-time entity count)
  - [x] FIXME: #122 No API call made when doing alternative search in entity reconciliation editor (Fixed: Added targetField parameter)
+ - [ ] FIXME: #124 Reconciliation editor complains when "extra_columns" entered in property field
+ - [ ] FIXME: #126 Preview fails due to duplicate column names.
 
 ### Tech debts:
 
@@ -29,14 +31,17 @@
  - [] TODO: #69 Add "parent" property to entity definitions.
  - [] TODO: #67 Introduce support for string concatenation in "extra_columns".
  - [] TODO: Add capability to duplicate an existing configuration.
- - [ ] TODO: #107 Publish frontend files via the backend (FastAPI) server for easier deployment.
- - [ ] TODO: #98 Enable entity to have multiple reconciliation specifications.
- - [ ] TODO: #104 Enable download of workflow output from frontend 
- - [ ] TODO: #108 Add tiny DSL Expression Support in extra_columns
- - [ ] TODO: Introduce optional support for types for entity fields
+ - [] TODO: #107 Publish frontend files via the backend (FastAPI) server for easier deployment.
+ - [] TODO: #98 Enable entity to have multiple reconciliation specifications.
+ - [] TODO: #104 Enable download of workflow output from frontend 
+ - [] TODO: #108 Add tiny DSL Expression Support in extra_columns
+ - [] TODO: Introduce optional support for types for entity fields
           (e.g., string, integer, date) and support type conversions in extra_columns.
  - [x] TODO: Add validation indicators for reconciliation specifications (Completed: Status column with comprehensive column type validation)
- - [ ] 
+ - [] TODO: #123 Columns mapped to properties should be constrained by (all) avaliable columns
+ - [] TODO: #125 Add capability to edit full reconciliation YAML
+ - [] TODO: 
+ - [] TODO: 
 
 
 

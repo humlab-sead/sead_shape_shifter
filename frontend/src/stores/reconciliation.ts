@@ -96,6 +96,23 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
+  async function saveReconciliationConfigRaw(projectName: string, yamlContent: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await apiClient.put(`/projects/${projectName}/reconciliation/raw`, yamlContent, {
+        headers: { 'Content-Type': 'text/plain' }
+      })
+      reconciliationConfig.value = response.data
+    } catch (e: any) {
+      error.value = e.response?.data?.detail || 'Failed to save reconciliation config'
+      console.error('Failed to save reconciliation config:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function autoReconcile(
     projectName: string,
     entityName: string,
@@ -408,6 +425,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     // Actions
     loadReconciliationConfig,
     saveReconciliationConfig,
+    saveReconciliationConfigRaw,
     autoReconcile,
     autoReconcileAsync,
     updateMapping,
