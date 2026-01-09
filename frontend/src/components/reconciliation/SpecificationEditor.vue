@@ -399,55 +399,44 @@ const uniqueTargetField = (v: string) => {
 }
 
 // Validation methods
-function validateSpecification() {
+async function validateSpecification() {
   validationErrors.value = []
   validationWarnings.value = []
 
   if (props.isNew) return
 
-  const project = projectStore.selectedProject
-  if (!project) return
-
   // Determine which entity to validate against
-  // If source is specified as string (Other Entity), use that entity's columns
-  // Otherwise use the main entity's columns
   let entityForValidation = formData.value.entity_name
-  let entityColumns: string[] = []
-
   if (formData.value.spec.source && typeof formData.value.spec.source === 'string') {
-    // Using "Other Entity" as source
     entityForValidation = formData.value.spec.source
-    
-    if (!project.entities[entityForValidation]) {
-      validationErrors.value.push(
-        `Source entity '${entityForValidation}' no longer exists in the project`
-      )
-      return // Can't validate further without source entity
-    }
-    
-    const sourceEntity = project.entities[entityForValidation]
-    entityColumns = sourceEntity?.columns || []
-  } else {
-    // Using main entity as source
-    if (!project.entities[formData.value.entity_name]) {
-      validationErrors.value.push(
-        `Entity '${formData.value.entity_name}' no longer exists in the project`
-      )
-      return // Can't validate further without entity
-    }
-
-    const entity = project.entities[formData.value.entity_name]
-    entityColumns = entity?.columns || []
   }
 
-  // Check if target field exists in the entity being validated
+  // Get actual available fields from API (includes keys, columns, extra_columns, FK joins, unnest)
+  let entityColumns: string[] = []
+  try {
+    entityColumns = await reconciliationStore.getAvailableFields(props.projectName, entityForValidation)
+  } catch (error) {
+    validationErrors.value.push(
+      `Entity '${entityForValidation}' not found or has no columns`
+    )
+    return
+  }
+
+  if (entityColumns.length === 0) {
+    validationErrors.value.push(
+      `Entity '${entityForValidation}' not found or has no columns`
+    )
+    return
+  }
+
+  // Check if target field exists
   if (!entityColumns.includes(formData.value.target_field)) {
     validationErrors.value.push(
       `Target field '${formData.value.target_field}' not found in entity '${entityForValidation}'`
     )
   }
 
-  // Check if property mapping source columns exist in the entity being validated
+  // Check if property mapping source columns exist
   const missingColumns: string[] = []
   Object.entries(formData.value.spec.property_mappings).forEach(([prop, sourceCol]) => {
     if (sourceCol && !entityColumns.includes(sourceCol)) {
@@ -465,22 +454,14 @@ function validateSpecification() {
 function isMissingColumn(columnName: string | undefined): boolean {
   if (!columnName || props.isNew) return false
   
-  const project = projectStore.selectedProject
-  if (!project) return false
-
-  // Check against the correct entity based on source type
-  let entityForValidation = formData.value.entity_name
-  
-  if (formData.value.spec.source && typeof formData.value.spec.source === 'string') {
-    // Using "Other Entity" as source - validate against source entity
-    entityForValidation = formData.value.spec.source
+  // Check against availableFields (includes keys, columns, extra_columns, FK joins, unnest)
+  // This is the same source used to populate the dropdown
+  if (availableFields.value.length === 0) {
+    // Fields not loaded yet, don't show error
+    return false
   }
 
-  const entity = project.entities[entityForValidation]
-  if (!entity) return false
-
-  const entityColumns = entity.columns || []
-  return !entityColumns.includes(columnName)
+  return !availableFields.value.includes(columnName)
 }
 
 // Methods
