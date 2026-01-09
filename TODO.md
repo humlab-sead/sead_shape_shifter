@@ -11,9 +11,8 @@
  - [] FIXME: #117 pening a project always creates a new session
  - [] FIXME: #118 Legend in dependency graph has transparent background.
  - [] FIXME: #119 Entity Editor layout needs improvements
- - [] FIXME: #120 [Reconciliation] Wrong number of published entities.
- - [] FIXME: [Reconciliation] Wrong entity types in recon. specification editor.
- - [] FIXME: 
+ - [x] FIXME: #120 [Reconciliation] Wrong number of published entities. (Fixed: Added service manifest endpoint and real-time entity count)
+ - [x] FIXME: #122 No API call made when doing alternative search in entity reconciliation editor (Fixed: Added targetField parameter)
 
 ### Tech debts:
 
@@ -21,6 +20,7 @@
 
 ### New features
 
+ - [x] TODO: #121 Add dual-mode editing of entity reconciliation specifications (Completed: YAML/Form tabs with Monaco editor)
  - [] TODO: [Frontend/Backend] Edit data source configuration in a dual-mode editor (Form/YAML).
  - [] TODO: Add additional frontend/backend options (e.g., themes, temp directory, logging level, etc.)
  - [] TODO: Add capability to generate a default reconciliation YAML based on service manifest received from calling services /reconcile endpoint.
@@ -33,7 +33,12 @@
  - [ ] TODO: #98 Enable entity to have multiple reconciliation specifications.
  - [ ] TODO: #104 Enable download of workflow output from frontend 
  - [ ] TODO: #108 Add tiny DSL Expression Support in extra_columns
- - [ ] TODO: Introduce optional support for types for entity fields (e.g., string, integer, date) and support type conversions in extra_columns.
+ - [ ] TODO: Introduce optional support for types for entity fields
+          (e.g., string, integer, date) and support type conversions in extra_columns.
+ - [x] TODO: Add validation indicators for reconciliation specifications (Completed: Status column with comprehensive column type validation)
+ - [ ] 
+
+
 
 # Tiny DSL Expression Support in extra_columns
 
