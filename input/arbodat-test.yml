@@ -1,11 +1,10 @@
 metadata:
-  type: shapeshifter-project
   name: arbodat-test
+  type: shapeshifter-project
   description: Configuration for importing data from ArboDat database into SEAD.
   version: 1.0.0
   default_entity: survey
 entities:
-
   abundance:
     source:
     data_source: arbodat_data
@@ -511,11 +510,11 @@ entities:
     extra_columns:
       arbodat_code: location_type
     values:
-      - ["Ort"]
-      - ["Kreis"]
-      - ["Land"]
-      - ["Staat"]
-      - ["FlurStr"]
+    - ["Ort"]
+    - ["Kreis"]
+    - ["Land"]
+    - ["Staat"]
+    - ["FlurStr"]
 
   master_dataset:
     surrogate_id: master_dataset_id
@@ -541,17 +540,19 @@ entities:
     query: select "method_group_id", "group_name", "description" from public.tbl_method_groups
     depends_on: []
   modification_type:
-    source:
-    data_source: arbodat_lookup
     type: sql
+    keys:
+    - Zust
     surrogate_id: modification_type_id
-    keys: ["Zust"]
-    columns: ["Zust", "Zustand", "Nummer"]
+    columns:
+    - Zust
+    - Zustand
+    - Nummer
+    data_source: arbodat_lookup
+    query: "select [Zust], [Zustand], [Nummer]\r\nfrom [Zustand];"
     extra_columns:
-      modification_type_name: "Zust"
-      modification_type_description: "Zustand"
-    query: "select [Zust], [Zustand], [Nummer] from [Zustand];"
-    depends_on: []
+      modification_type_name: Zust
+      modification_type_description: Zustand
   natural_region:
     source:
     data_source: arbodat_lookup
