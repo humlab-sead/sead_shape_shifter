@@ -187,7 +187,7 @@
               <v-row v-for="prop in availableProperties" :key="prop" dense>
                 <v-col cols="12">
                   <v-autocomplete
-                    v-model="formData.spec.property_mappings[prop]"
+                    :model-value="formData.spec.property_mappings[prop]"
                     :items="availableFields"
                     :label="prop"
                     variant="outlined"
@@ -199,6 +199,7 @@
                     :error-messages="!isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? `Column '${formData.spec.property_mappings[prop]}' not found in entity` : undefined"
                     :loading="loadingFields"
                     :disabled="availableFields.length === 0"
+                    @update:model-value="(value) => updatePropertyMapping(prop, value)"
                   >
                     <template #prepend-inner>
                       <v-icon size="small" :color="!isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? 'error' : 'primary'">mdi-arrow-left</v-icon>
@@ -405,6 +406,15 @@ async function validateSpecification() {
 
   if (props.isNew) return
 
+  // If source is a SQL query, we can't validate columns (they're defined in the query)
+  if (formData.value.spec.source && typeof formData.value.spec.source === 'object') {
+    // SQL query source - skip column validation
+    if (!formData.value.spec.remote?.service_type) {
+      validationWarnings.value.push('No remote service type configured')
+    }
+    return
+  }
+
   // Determine which entity to validate against
   let entityForValidation = formData.value.entity_name
   if (formData.value.spec.source && typeof formData.value.spec.source === 'string') {
@@ -465,6 +475,14 @@ function isMissingColumn(columnName: string | undefined): boolean {
 }
 
 // Methods
+function updatePropertyMapping(property: string, value: string | null) {
+  // Ensure reactive update by creating a new object
+  formData.value.spec.property_mappings = {
+    ...formData.value.spec.property_mappings,
+    [property]: value || ''
+  }
+}
+
 async function onEntityChange(entityName: string) {
   if (!entityName) {
     availableFields.value = []
@@ -728,6 +746,25 @@ watch([sourceType, otherEntityName], async ([newSourceType, newOtherEntity]) => 
     // SQL Query - no predefined fields
     availableFields.value = []
   }
+  
+  // Re-validate after fields change
+  if (!props.isNew) {
+    await validateSpecification()
+  }
+})
+
+// Watch for property mappings changes to re-validate
+watch(() => formData.value.spec.property_mappings, async () => {
+  if (!props.isNew && availableFields.value.length > 0) {
+    await validateSpecification()
+  }
+}, { deep: true })
+
+// Watch for remote type changes to re-validate
+watch(() => formData.value.spec.remote?.service_type, async () => {
+  if (!props.isNew) {
+    await validateSpecification()
+  }
 })
 
 
@@ -834,5 +871,19 @@ onMounted(() => {
 <style scoped>
 :deep(.v-slider) {
   margin-top: 8px;
+}
+
+/* Make hint text more subdued */
+:deep(.v-messages__message) {
+  opacity: 0.5;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+/* Make placeholder text in empty fields dimmer */
+:deep(.v-field--variant-outlined input::placeholder),
+:deep(.v-field--variant-outlined .v-select__selection-text),
+:deep(.v-autocomplete input::placeholder) {
+  opacity: 0.4;
+  color: rgb(var(--v-theme-on-surface));
 }
 </style>
