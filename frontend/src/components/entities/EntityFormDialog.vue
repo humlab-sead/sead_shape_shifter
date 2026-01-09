@@ -634,7 +634,7 @@ const previewColumnDefs = computed<ColDef[]>(() => {
     sortable: true,
     filter: true,
     resizable: true,
-    minWidth: 100,
+    minWidth: 40,
     flex: 1,
     cellClass: col.is_key ? 'key-column' : '',
     headerComponent: undefined,
@@ -652,7 +652,7 @@ const previewDefaultColDef: ColDef = {
   sortable: true,
   filter: true,
   resizable: true,
-  minWidth: 80,
+  minWidth: 40,
 }
 
 // Split-pane functions
