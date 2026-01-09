@@ -40,6 +40,58 @@
           class="elevation-0"
           hover
         >
+          <!-- Status Column -->
+          <template #item.status="{ item }">
+            <v-tooltip location="right">
+              <template #activator="{ props: tooltipProps }">
+                <v-icon
+                  v-if="getValidationStatus(item).hasErrors"
+                  v-bind="tooltipProps"
+                  color="error"
+                  size="small"
+                >
+                  mdi-alert-circle
+                </v-icon>
+                <v-icon
+                  v-else-if="getValidationStatus(item).hasWarnings"
+                  v-bind="tooltipProps"
+                  color="warning"
+                  size="small"
+                >
+                  mdi-alert
+                </v-icon>
+                <v-icon
+                  v-else
+                  v-bind="tooltipProps"
+                  color="success"
+                  size="small"
+                >
+                  mdi-check-circle
+                </v-icon>
+              </template>
+              <div v-if="getValidationStatus(item).hasErrors" class="pa-2">
+                <div class="font-weight-bold mb-2">Configuration Errors:</div>
+                <ul class="ml-4">
+                  <li v-for="(error, idx) in getValidationStatus(item).errors" :key="idx" class="text-caption">
+                    {{ error }}
+                  </li>
+                </ul>
+              </div>
+              <div v-else-if="getValidationStatus(item).hasWarnings" class="pa-2">
+                <div class="font-weight-bold mb-2">Configuration Warnings:</div>
+                <ul class="ml-4">
+                  <li v-for="(warning, idx) in getValidationStatus(item).warnings" :key="idx" class="text-caption">
+                    {{ warning }}
+                  </li>
+                </ul>
+              </div>
+              <div v-else class="pa-2">
+                <div class="font-weight-bold">Valid Configuration</div>
+                <div class="text-caption">No issues detected</div>
+              </div>
+            </v-tooltip>
+          </template>
+
           <!-- Entity Name Column -->
           <template #item.entity_name="{ item }">
             <div class="d-flex align-center">
@@ -187,9 +239,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useReconciliationStore } from '@/stores/reconciliation'
+import { useProjectStore } from '@/stores/project'
 import type { SpecificationListItem } from '@/types/reconciliation'
 import SpecificationEditor from './SpecificationEditor.vue'
 
@@ -205,6 +258,7 @@ const emit = defineEmits<{
 
 const reconciliationStore = useReconciliationStore()
 const { specifications, loadingSpecs, specsError } = storeToRefs(reconciliationStore)
+const projectStore = useProjectStore()
 
 // State
 const editorDialog = ref(false)
@@ -213,9 +267,13 @@ const selectedSpec = ref<SpecificationListItem | null>(null)
 const specToDelete = ref<SpecificationListItem | null>(null)
 const isNewSpec = ref(false)
 const deletingSpec = ref(false)
+const entityFieldsCache = ref<Record<string, string[]>>({}) // Cache for entity fields from API
+const validationCache = ref<Record<string, ValidationStatus>>({}) // Cache for validation results
+const validationLoading = ref(false)
 
 // Table headers
 const headers = [
+  { title: 'Status', key: 'status', sortable: false, width: '80' },
   { title: 'Entity', key: 'entity_name', sortable: true },
   { title: 'Target Field', key: 'target_field', sortable: true },
   { title: 'Remote Type', key: 'remote', sortable: false },
@@ -277,12 +335,142 @@ async function handleSpecSaved() {
   // List is automatically reloaded by store actions
 }
 
+// Validation
+interface ValidationStatus {
+  hasErrors: boolean
+  hasWarnings: boolean
+  errors: string[]
+  warnings: string[]
+}
+
+async function getEntityFields(entityName: string): Promise<string[]> {
+  // Return cached if available
+  if (entityFieldsCache.value[entityName]) {
+    return entityFieldsCache.value[entityName]
+  }
+
+  try {
+    // Fetch from API - this gets actual available fields including:
+    // 1. Keys
+    // 2. Columns (excluding value_vars if unnest)
+    // 3. Extra columns
+    // 4. FK join columns
+    // 5. var_name & value_name from unnest
+    const fields = await reconciliationStore.getAvailableFields(props.projectName, entityName)
+    entityFieldsCache.value[entityName] = fields
+    return fields
+  } catch (error) {
+    console.error(`Failed to fetch fields for entity '${entityName}':`, error)
+    // Fallback to empty array - will be treated as error
+    return []
+  }
+}
+
+async function validateSpecification(spec: SpecificationListItem): Promise<ValidationStatus> {
+  const status: ValidationStatus = {
+    hasErrors: false,
+    hasWarnings: false,
+    errors: [],
+    warnings: []
+  }
+
+  // Determine which entity to validate against
+  let entityForValidation = spec.entity_name
+
+  // Check if using "Other Entity" as source
+  if (spec.source && typeof spec.source === 'string') {
+    entityForValidation = spec.source
+  }
+
+  // Get actual available fields from API (includes all column types)
+  const entityColumns = await getEntityFields(entityForValidation)
+  
+  if (entityColumns.length === 0) {
+    status.hasErrors = true
+    status.errors.push(`Entity '${entityForValidation}' not found or has no columns`)
+    return status
+  }
+
+  // Check if target field exists
+  if (!entityColumns.includes(spec.target_field)) {
+    status.hasErrors = true
+    status.errors.push(`Target field '${spec.target_field}' not found in entity '${entityForValidation}'`)
+  }
+
+  // Check if property mapping source columns exist
+  const missingColumns: string[] = []
+  Object.entries(spec.property_mappings || {}).forEach(([prop, sourceCol]) => {
+    if (sourceCol && !entityColumns.includes(sourceCol)) {
+      missingColumns.push(`${prop} → ${sourceCol}`)
+    }
+  })
+
+  if (missingColumns.length > 0) {
+    status.hasErrors = true
+    status.errors.push(`Missing columns in mappings: ${missingColumns.join(', ')}`)
+  }
+
+  // Check if remote type is configured
+  if (!spec.remote?.service_type) {
+    status.hasWarnings = true
+    status.warnings.push('No remote service type configured')
+  }
+
+  return status
+}
+
+function getValidationStatus(spec: SpecificationListItem): ValidationStatus {
+  const cacheKey = `${spec.entity_name}.${spec.target_field}`
+  
+  // Return cached if available
+  if (validationCache.value[cacheKey]) {
+    return validationCache.value[cacheKey]
+  }
+
+  // Return pending status if not yet validated
+  return {
+    hasErrors: false,
+    hasWarnings: false,
+    errors: [],
+    warnings: []
+  }
+}
+
+async function validateAllSpecifications() {
+  if (!specifications.value.length) return
+  
+  validationLoading.value = true
+  
+  try {
+    // Validate all specifications in parallel
+    await Promise.all(
+      specifications.value.map(async (spec) => {
+        const cacheKey = `${spec.entity_name}.${spec.target_field}`
+        const status = await validateSpecification(spec)
+        validationCache.value[cacheKey] = status
+      })
+    )
+  } catch (error) {
+    console.error('Failed to validate specifications:', error)
+  } finally {
+    validationLoading.value = false
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   if (props.projectName) {
     await reconciliationStore.loadSpecifications(props.projectName)
+    // Validate all specifications after loading
+    await validateAllSpecifications()
   }
 })
+
+// Watch for specification changes and revalidate
+watch(specifications, async () => {
+  await validateAllSpecifications()
+}, { deep: true })
+
 </script>
 
 <style scoped>
