@@ -38,6 +38,11 @@ class IngesterRegistry(Registry[Type[Ingester]]):
 
     items: dict[str, Type[Ingester]] = {}
 
+    @classmethod
+    def get(cls, key: str) -> Type[Ingester] | None:
+        """Get ingester by key, returning None if not found (overrides Registry.get)."""
+        return cls.items.get(key)
+
     def get_metadata_list(self) -> list[IngesterMetadata]:
         """Get metadata for all registered ingesters.
         
