@@ -138,6 +138,83 @@ backend/app/ingesters/
 - **Database Connections**: Use connection context managers and handle timeouts
 - **Testing**: Provide explicit config values via `extra` dict to avoid ConfigStore dependencies
 
+## CLI Tool Usage
+
+The ingester system includes a CLI tool for command-line operations:
+
+### List Available Ingesters
+```bash
+python -m backend.app.scripts.ingest list-ingesters
+```
+
+### Validate Data Source
+```bash
+# Basic validation
+python -m backend.app.scripts.ingest validate sead /path/to/data.xlsx
+
+# With configuration file
+python -m backend.app.scripts.ingest validate sead /path/to/data.xlsx \
+  --config ingest_config.json
+
+# With ignore patterns
+python -m backend.app.scripts.ingest validate sead /path/to/data.xlsx \
+  --ignore-columns "date_updated" --ignore-columns "*_uuid"
+```
+
+### Ingest Data
+```bash
+# Basic ingestion
+python -m backend.app.scripts.ingest ingest sead /path/to/data.xlsx \
+  --submission-name "dendro_2026_01" \
+  --data-types "dendro" \
+  --database-host localhost \
+  --database-port 5432 \
+  --database-name sead_staging \
+  --database-user sead_user
+
+# With registration and explosion
+python -m backend.app.scripts.ingest ingest sead /path/to/data.xlsx \
+  --submission-name "dendro_2026_01" \
+  --data-types "dendro" \
+  --config ingest_config.json \
+  --register \
+  --explode
+
+# Full example with all options
+python -m backend.app.scripts.ingest ingest sead /path/to/data.xlsx \
+  --submission-name "ceramics_batch_001" \
+  --data-types "ceramics" \
+  --output-folder /output/ceramics \
+  --database-host db.example.com \
+  --database-port 5433 \
+  --database-name sead_prod \
+  --database-user import_user \
+  --ignore-columns "temp_*" \
+  --register \
+  --explode \
+  --verbose
+```
+
+### Configuration File Format
+Create a JSON config file (`ingest_config.json`):
+```json
+{
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "dbname": "sead_staging",
+    "user": "sead_user"
+  },
+  "ignore_columns": [
+    "date_updated",
+    "*_uuid",
+    "(*"
+  ]
+}
+```
+
+Then use with `--config ingest_config.json`. CLI options override config file values.
+
 ## Frontend Practices
 - Always use `<script setup lang="ts">`, composables over mixins, and `defineProps<T>()` / `defineEmits<T>()` for typing.
 - Derive store refs with `storeToRefs()` and manage state in Pinia stores under `frontend/src/stores/` (e.g., project, validation, entity, data-source stores).

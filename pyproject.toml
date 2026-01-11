@@ -51,6 +51,10 @@ all = [
     "shape-shifter[api,dev]",
 ]
 
+[project.scripts]
+# CLI entry points for easy command-line access
+sead-ingest = "backend.app.scripts.ingest:cli"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]

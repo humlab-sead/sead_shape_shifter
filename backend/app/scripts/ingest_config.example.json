@@ -1,0 +1,19 @@
+"""Example configuration file for data ingestion.
+
+This JSON file can be passed to the ingest CLI tool using the --config option.
+"""
+
+{
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "dbname": "sead_staging",
+    "user": "sead_user"
+  },
+  "ignore_columns": [
+    "date_updated",
+    "*_uuid",
+    "(*"
+  ],
+  "custom_option": "value"
+}
