@@ -1,7 +1,7 @@
 import asyncio
 import os
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import pytest
 

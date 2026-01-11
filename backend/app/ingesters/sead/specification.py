@@ -92,9 +92,7 @@ class SpecificationBase(abc.ABC):
         self.infos.append(f"{message}")
 
     def get_columns(self, table_name: str) -> list[Column]:
-        return [
-            column for column in self.schema[table_name].columns.values() if not self.is_ignored(column.column_name)
-        ]
+        return [column for column in self.schema[table_name].columns.values() if not self.is_ignored(column.column_name)]
 
     @abc.abstractmethod
     def is_satisfied_by(self, submission: Submission, **kwargs) -> bool: ...
@@ -405,23 +403,19 @@ class NoMissingColumnSpecification(SpecificationBase):
             """This is a lookup table with only system_id and public_id"""
             return not self.has_errors()
 
-        missing_column_names: set[str] = set(
-            x for x in meta_table.column_names(skip_nullable=True) if not self.is_ignored(x)
-        ) - set(data_column_names)
+        missing_column_names: set[str] = set(x for x in meta_table.column_names(skip_nullable=True) if not self.is_ignored(x)) - set(
+            data_column_names
+        )
 
         if len(missing_column_names) > 0:
-            self.error(
-                f"Table {table_name} has MISSING NON-NULLABLE data columns: {', '.join(sorted(missing_column_names))}"
-            )
+            self.error(f"Table {table_name} has MISSING NON-NULLABLE data columns: {', '.join(sorted(missing_column_names))}")
 
-        missing_nullable_column_names: set[str] = set(
-            x for x in meta_table.nullable_column_names() if not self.is_ignored(x)
-        ) - set(data_column_names)
+        missing_nullable_column_names: set[str] = set(x for x in meta_table.nullable_column_names() if not self.is_ignored(x)) - set(
+            data_column_names
+        )
 
         if len(missing_nullable_column_names) > 0:
-            self.info(
-                f"Table {table_name} has missing nullable columns: {', '.join(sorted(missing_nullable_column_names))}"
-            )
+            self.info(f"Table {table_name} has missing nullable columns: {', '.join(sorted(missing_nullable_column_names))}")
 
         extra_column_names = list(
             set(x for x in data_column_names if not self.is_ignored(x))

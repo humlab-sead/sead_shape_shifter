@@ -1,7 +1,6 @@
-import tempfile
-
-from pathlib import Path
 import shutil
+import tempfile
+from pathlib import Path
 from typing import Any, Protocol
 
 import pandas as pd

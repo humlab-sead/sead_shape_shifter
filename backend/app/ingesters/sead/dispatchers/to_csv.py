@@ -121,9 +121,7 @@ class CsvProcessor(IDispatcher):
 
                     if column_name not in data_row.keys():
                         if not column_spec.is_nullable and not column_name.endswith("_uuid"):
-                            logger.warning(
-                                f"Table {table_name}, (not nullable) column {column_name} not found in submission"
-                            )
+                            logger.warning(f"Table {table_name}, (not nullable) column {column_name} not found in submission")
                         continue
 
                     # Add column metadata (only once per table)
@@ -182,13 +180,9 @@ class CsvProcessor(IDispatcher):
 
         # Add referenced records that weren't in the submission
         if len(referenced_keyset) > 0:
-            logger.warning(
-                f"Warning: {table_name} has {len(referenced_keyset)} referenced keys not found in submission"
-            )
+            logger.warning(f"Warning: {table_name} has {len(referenced_keyset)} referenced keys not found in submission")
             for key in referenced_keyset:
-                self.records_data.append(
-                    {"class_name": table.java_class, "system_id": str(int(key)), "public_id": str(int(key))}
-                )
+                self.records_data.append({"class_name": table.java_class, "system_id": str(int(key)), "public_id": str(int(key))})
 
     def _process_pk_and_non_fk_value(
         self, data_row: dict, public_id: int | None, system_id: int | None, column: Column, table: Table
@@ -218,18 +212,14 @@ class CsvProcessor(IDispatcher):
             }
         )
 
-    def _process_fk_value(
-        self, data_row: dict, column: Column, schema: SeadSchema, submission: Submission, table: Table
-    ) -> None:
+    def _process_fk_value(self, data_row: dict, column: Column, schema: SeadSchema, submission: Submission, table: Table) -> None:
         """Process a foreign key column value."""
         class_name: str = column.class_name
         camel_case_column_name: str = column.camel_case_column_name
 
         fk_table_spec: Table = schema.get_table(class_name)
         if fk_table_spec is None or fk_table_spec.table_name is None:
-            logger.warning(
-                f"Table {column.table_name}, FK column {column.column_name}: unable to resolve FK class {class_name}"
-            )
+            logger.warning(f"Table {column.table_name}, FK column {column.column_name}: unable to resolve FK class {class_name}")
             return
 
         fk_system_id: int | None = _to_int_or_none(data_row.get(column.column_name))
@@ -253,9 +243,7 @@ class CsvProcessor(IDispatcher):
 
         # Look up the FK public_id from the referenced table
         fk_public_id: int | None = None
-        fk_data_table: pd.DataFrame | None = (
-            submission[fk_table_spec.table_name] if fk_table_spec.table_name in submission else None
-        )
+        fk_data_table: pd.DataFrame | None = submission[fk_table_spec.table_name] if fk_table_spec.table_name in submission else None
 
         if fk_data_table is None:
             fk_public_id = fk_system_id
@@ -326,9 +314,7 @@ class CsvProcessor(IDispatcher):
         # Write recordvalues.csv
         recordvalues_file = os.path.join(self.output_folder, f"{self.basename}_recordvalues.csv")
         with open(recordvalues_file, "w", encoding="utf-8") as f:
-            f.write(
-                "class_name\tsystem_id\tpublic_id\tcolumn_name\tcolumn_type\tfk_system_id\tfk_public_id\tcolumn_value\n"
-            )
+            f.write("class_name\tsystem_id\tpublic_id\tcolumn_name\tcolumn_type\tfk_system_id\tfk_public_id\tcolumn_value\n")
             for row in self.recordvalues_data:
                 f.write(
                     f"{row['class_name']}\t{row['system_id']}\t{row['public_id']}\t"

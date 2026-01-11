@@ -12,7 +12,7 @@ from typing import Any, Protocol, runtime_checkable
 @dataclass
 class IngesterMetadata:
     """Metadata about an ingester.
-    
+
     Attributes:
         key: Unique identifier for the ingester (e.g., 'sead')
         name: Human-readable name (e.g., 'SEAD Clearinghouse')
@@ -33,7 +33,7 @@ class IngesterMetadata:
 @dataclass
 class ValidationResult:
     """Result of ingester validation.
-    
+
     Attributes:
         is_valid: Whether validation passed
         errors: List of error messages
@@ -60,7 +60,7 @@ class ValidationResult:
 @dataclass
 class IngestionResult:
     """Result of ingestion operation.
-    
+
     Attributes:
         success: Whether ingestion succeeded
         message: Success or error message
@@ -81,10 +81,10 @@ class IngestionResult:
 @dataclass
 class IngesterConfig:
     """Configuration for an ingester instance.
-    
+
     This is the base configuration class. Specific ingesters may require
     additional configuration fields passed via the 'extra' dictionary.
-    
+
     Attributes:
         host: Database host
         port: Database port
@@ -117,7 +117,7 @@ class IngesterConfig:
 @runtime_checkable
 class Ingester(Protocol):
     """Protocol defining the standard ingester interface.
-    
+
     All ingesters must implement this protocol to be compatible with
     the Shape Shifter ingestion system.
     """
@@ -125,7 +125,7 @@ class Ingester(Protocol):
     @classmethod
     def get_metadata(cls) -> IngesterMetadata:
         """Get metadata about this ingester.
-        
+
         Returns:
             IngesterMetadata with ingester details
         """
@@ -133,7 +133,7 @@ class Ingester(Protocol):
 
     def __init__(self, config: IngesterConfig) -> None:
         """Initialize ingester with configuration.
-        
+
         Args:
             config: Ingester configuration
         """
@@ -141,14 +141,14 @@ class Ingester(Protocol):
 
     async def validate(self, excel_file: Path | str) -> ValidationResult:
         """Validate Excel file without ingesting.
-        
+
         This method should check that the Excel file conforms to the
         expected schema and contains valid data. It should not make
         any changes to the database.
-        
+
         Args:
             excel_file: Path to Excel file to validate
-            
+
         Returns:
             ValidationResult with errors, warnings, and info messages
         """
@@ -156,15 +156,15 @@ class Ingester(Protocol):
 
     async def ingest(self, excel_file: Path | str, validate_first: bool = True) -> IngestionResult:
         """Ingest Excel file into target system.
-        
+
         This method performs the actual data ingestion. If validate_first
         is True, it should run validation before ingesting and abort if
         validation fails.
-        
+
         Args:
             excel_file: Path to Excel file to ingest
             validate_first: Run validation before ingesting
-            
+
         Returns:
             IngestionResult with success status and details
         """

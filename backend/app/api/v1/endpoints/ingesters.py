@@ -3,9 +3,9 @@
 from fastapi import APIRouter, HTTPException, status
 
 from backend.app.models.ingester import (
+    IngesterMetadataResponse,
     IngestRequest,
     IngestResponse,
-    IngesterMetadataResponse,
     ValidateRequest,
     ValidateResponse,
 )
@@ -44,9 +44,7 @@ async def validate_data(key: str, request: ValidateRequest) -> ValidateResponse:
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Validation failed: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Validation failed: {str(e)}") from e
 
 
 @router.post("/{key}/ingest", response_model=IngestResponse)
@@ -66,15 +64,11 @@ async def ingest_data(key: str, request: IngestRequest) -> IngestResponse:
     try:
         result = await IngesterService.ingest(key, request)
         if not result.success:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result.message
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result.message)
         return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Ingestion failed: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Ingestion failed: {str(e)}") from e

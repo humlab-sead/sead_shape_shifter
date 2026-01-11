@@ -40,9 +40,7 @@ class ValidateRequest(BaseModel):
     )
 
     source: str = Field(..., description="Path to source file or data to validate")
-    config: dict[str, Any] = Field(
-        default_factory=dict, description="Optional configuration parameters for validation"
-    )
+    config: dict[str, Any] = Field(default_factory=dict, description="Optional configuration parameters for validation")
 
 
 class ValidateResponse(BaseModel):
@@ -89,9 +87,7 @@ class IngestRequest(BaseModel):
     )
 
     source: str = Field(..., description="Path to source file or data to ingest")
-    config: dict[str, Any] = Field(
-        default_factory=dict, description="Configuration parameters for ingestion"
-    )
+    config: dict[str, Any] = Field(default_factory=dict, description="Configuration parameters for ingestion")
     submission_name: str = Field(..., description="Name for this submission")
     data_types: str = Field(..., description="Type of data being ingested (e.g., 'dendro', 'ceramics')")
     output_folder: str = Field(default="output", description="Folder for output files")

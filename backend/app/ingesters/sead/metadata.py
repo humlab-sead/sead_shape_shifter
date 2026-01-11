@@ -194,9 +194,7 @@ class SeadSchema:
     @cached_property
     def _foreign_keys(self) -> pd.DataFrame:
         """Returns foreign key columns from SEAD columns (performance only)."""
-        return self.source_columns[self.source_columns.is_fk][
-            ["table_name", "column_name", "fk_table_name", "class_name"]
-        ]
+        return self.source_columns[self.source_columns.is_fk][["table_name", "column_name", "fk_table_name", "class_name"]]
 
     def get_tablenames_referencing(self, table_name: str) -> list[str]:
         """Returns a list of tablenames referencing the given table"""
@@ -310,18 +308,12 @@ class SchemaService:
         keys: set = set(self._load_sead_data(sql, index=[pk_name]).index)
         return keys
 
-    def _load_sead_data(
-        self, source: str | pd.DataFrame, index: list[str], sortby: list[str] | None = None
-    ) -> pd.DataFrame:
+    def _load_sead_data(self, source: str | pd.DataFrame, index: list[str], sortby: list[str] | None = None) -> pd.DataFrame:
         """Returns a dataframe of tables from SEAD with attributes."""
         index = index if isinstance(index, list) else [index]
         sortby = sortby if isinstance(sortby, list) else [sortby] if sortby else None
         data: pd.DataFrame = self._resolve_source(source)
-        data = (
-            data.set_index(index, drop=False)
-            .rename_axis([f"index_{x}" for x in index])
-            .sort_values(by=sortby if sortby else index)
-        )
+        data = data.set_index(index, drop=False).rename_axis([f"index_{x}" for x in index]).sort_values(by=sortby if sortby else index)
         return data
 
     def _resolve_source(self, source: str | pd.DataFrame) -> pd.DataFrame:
@@ -342,9 +334,7 @@ class MockSchemaService(SchemaService):
     def __init__(self, sead_tables: pd.DataFrame, sead_columns: pd.DataFrame) -> None:
         super().__init__(db_uri="")
         self._sead_tables: pd.DataFrame = self._load_sead_data(sead_tables, ["table_name"], ["table_name"])
-        self._sead_columns: pd.DataFrame = self._load_sead_data(
-            sead_columns, ["table_name", "column_name"], ["table_name", "position"]
-        )
+        self._sead_columns: pd.DataFrame = self._load_sead_data(sead_columns, ["table_name", "column_name"], ["table_name", "position"])
         self.ignore_columns = ["date_updated", "*_uuid", "(*"]
 
     def get_sead_tables(self) -> pd.DataFrame:

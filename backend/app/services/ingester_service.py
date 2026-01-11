@@ -13,9 +13,9 @@ from backend.app.ingesters.protocol import (
 )
 from backend.app.ingesters.registry import Ingesters
 from backend.app.models.ingester import (
+    IngesterMetadataResponse,
     IngestRequest,
     IngestResponse,
-    IngesterMetadataResponse,
     ValidateRequest,
     ValidateResponse,
 )

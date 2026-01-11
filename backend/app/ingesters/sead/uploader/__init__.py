@@ -20,9 +20,7 @@ class BaseUploader(abc.ABC):
 
 
 class NullUploader(BaseUploader):
-    def upload(
-        self, connection: Connection, source: str | Any, submission_id: int
-    ) -> None:  # pylint: disable=unused-argument
+    def upload(self, connection: Connection, source: str | Any, submission_id: int) -> None:  # pylint: disable=unused-argument
         raise ValueError("No uploader specified")
 
     def extract(self, connection: Connection, submission_id: int) -> None:  # pylint: disable=unused-argument
@@ -31,9 +29,7 @@ class NullUploader(BaseUploader):
 
 class UnknownUploader(BaseUploader):
 
-    def upload(
-        self, connection: Connection, source: str | Any, submission_id: int
-    ) -> None:  # pylint: disable=unused-argument
+    def upload(self, connection: Connection, source: str | Any, submission_id: int) -> None:  # pylint: disable=unused-argument
         raise ValueError("Invalid uploader specified")
 
     def extract(self, connection: Connection, submission_id: int) -> None:  # pylint: disable=unused-argument

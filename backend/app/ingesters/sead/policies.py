@@ -9,6 +9,7 @@ from loguru import logger
 from pandas._typing import Dtype
 
 from src.configuration.resolve import ConfigValue
+
 from .metadata import SchemaService, SeadSchema, Table
 from .utility import Registry, pascal_to_snake_case, snake_to_pascal_case
 
@@ -126,9 +127,7 @@ class AddIdentityMappingSystemIdToPublicIdPolicy(PolicyBase):
     """
 
     def table_names(self) -> set[str]:
-        includes: set[str] = set(ConfigValue(f"policies.{self.get_id()}.tables.include").resolve() or []) or set(
-            self.schema.keys()
-        )
+        includes: set[str] = set(ConfigValue(f"policies.{self.get_id()}.tables.include").resolve() or []) or set(self.schema.keys())
         excludes: set[str] = set(ConfigValue(f"policies.{self.get_id()}.tables.exclude").resolve() or [])
         return includes - excludes
 
@@ -153,9 +152,7 @@ class AddIdentityMappingSystemIdToPublicIdPolicy(PolicyBase):
                         .join(map(str, referenced_keys))}"
                 )
 
-            self.submission.data_tables[table_name] = pd.DataFrame(
-                {"system_id": referenced_keys, table.pk_name: list(referenced_keys)}
-            )
+            self.submission.data_tables[table_name] = pd.DataFrame({"system_id": referenced_keys, table.pk_name: list(referenced_keys)})
 
             self.log(
                 table_name,
@@ -249,9 +246,7 @@ class IfSystemIdIsMissingSetSystemIdToPublicId(PolicyBase):
                 raise ValueError(f'critical error Table {table_name} has no column named "system_id"')
 
             # Update system_id to public_id if isnan. This should be avoided though.
-            data_table.loc[np.isnan(data_table.system_id), "system_id"] = data_table.loc[
-                np.isnan(data_table.system_id), pk_name
-            ]
+            data_table.loc[np.isnan(data_table.system_id), "system_id"] = data_table.loc[np.isnan(data_table.system_id), pk_name]
             self.log(table_name, f"Updated system_id to public_id for new records in '{table_name}'")
 
 
@@ -300,11 +295,7 @@ class IfForeignKeyValueIsMissingAddIdentityMappingToForeignKeyTable(PolicyBase):
                 new_rows: pd.DataFrame = pd.DataFrame(rows_to_add)
                 data_table = self.fix_dtypes(data_table)
                 new_rows = self.fix_dtypes(new_rows)
-                data_table = (
-                    pd.DataFrame(rows_to_add)
-                    if len(data_table) == 0
-                    else pd.concat([data_table, new_rows], ignore_index=True)
-                )
+                data_table = pd.DataFrame(rows_to_add) if len(data_table) == 0 else pd.concat([data_table, new_rows], ignore_index=True)
 
             self.submission.data_tables[table_name] = data_table
 

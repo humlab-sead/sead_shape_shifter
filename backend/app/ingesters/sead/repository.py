@@ -25,25 +25,17 @@ class NullConnection:
 class SubmissionRepository:
     def __init__(self, db_options: dict[str, Any], uploader: str | BaseUploader) -> None:
         self.db_options: dict[str, Any] = db_options
-        self.uploader: BaseUploader = (
-            uploader if isinstance(uploader, BaseUploader) else (Uploaders.get(uploader) or NullUploader)()
-        )
+        self.uploader: BaseUploader = uploader if isinstance(uploader, BaseUploader) else (Uploaders.get(uploader) or NullUploader)()
         self.connection: Connection | NullConnection = NullConnection()
         self.timeout_seconds: int = 300
 
-    @log_decorator(
-        enter_message=" ---> extracting submission...", exit_message=" ---> submission extracted", level="DEBUG"
-    )
+    @log_decorator(enter_message=" ---> extracting submission...", exit_message=" ---> submission extracted", level="DEBUG")
     def extract_to_staging_tables(self, submission_id: int) -> None:
         with self as connection:
             self.uploader.extract(connection=connection, submission_id=submission_id)
 
-    @log_decorator(
-        enter_message=" ---> exploding submission...", exit_message=" ---> submission exploded", level="DEBUG"
-    )
-    def explode_to_public_tables(
-        self, submission_id: int, p_dry_run: bool = False, p_add_missing_columns: bool = False
-    ) -> None:
+    @log_decorator(enter_message=" ---> exploding submission...", exit_message=" ---> submission exploded", level="DEBUG")
+    def explode_to_public_tables(self, submission_id: int, p_dry_run: bool = False, p_add_missing_columns: bool = False) -> None:
         """Explode submission into public tables."""
         with self as connection:
             for table_name_underscored in self.get_table_names(submission_id):
@@ -72,19 +64,14 @@ class SubmissionRepository:
                 cursor.callproc("clearing_house.fn_delete_submission", (submission_id, clear_header, clear_exploded))  # type: ignore
 
     def get_id_by_name(self, name: str) -> int:
-        sql: str = (
-            "select submission_id from clearing_house.tbl_clearinghouse_submissions "
-            "where submission_name = %s limit 1;"
-        )
+        sql: str = "select submission_id from clearing_house.tbl_clearinghouse_submissions " "where submission_name = %s limit 1;"
         with self as connection:
             with connection.cursor() as cursor:
                 cursor.execute(sql, (name,))
                 submission_id: int = cursor.fetchone()[0]  # type: ignore
         return submission_id
 
-    @log_decorator(
-        enter_message=" ---> setting state to pending...", exit_message=" ---> state set to pending", level="DEBUG"
-    )
+    @log_decorator(enter_message=" ---> setting state to pending...", exit_message=" ---> state set to pending", level="DEBUG")
     def set_pending(self, submission_id: int) -> None:
         with self as connection:
             with connection.cursor() as cursor:
@@ -95,9 +82,7 @@ class SubmissionRepository:
                 """
                 cursor.execute(sql, (2, "Pending", submission_id))
 
-    @log_decorator(
-        enter_message=" ---> registering submission...", exit_message=" ---> submission registered", level="DEBUG"
-    )
+    @log_decorator(enter_message=" ---> registering submission...", exit_message=" ---> submission registered", level="DEBUG")
     def register(self, *, name: str, source_name: str, data_types: str = "") -> int:
         with self as connection:
             with connection.cursor() as cursor:

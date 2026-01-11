@@ -360,6 +360,7 @@ class TestForeignKeyConfig:
             fk = ForeignKeyConfig(local_entity="site", fk_cfg=fk_data)
             assert fk.how == how
 
+
 class TestTableConfig:
     """Tests for TableConfig class."""
 
@@ -1167,7 +1168,6 @@ class TestShapeShiftProject:
 
         assert resolved.has_table("site") is True
         assert resolved.get_table("site").surrogate_id == "site_id"
-
 
     @pytest.mark.asyncio
     async def test_resolve_raises_when_context_not_configured(self):

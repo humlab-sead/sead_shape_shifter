@@ -7,4 +7,5 @@ import pytest
 def cli_runner():
     """Provide Click CLI test runner."""
     from click.testing import CliRunner
+
     return CliRunner()
