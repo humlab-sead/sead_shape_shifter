@@ -884,24 +884,32 @@ entities:
     drop_duplicates: ["PCODE"]
     depends_on: []
   taxa:
-    source:
-    data_source: arbodat_lookup
     type: sql
+    keys:
+    - PCODE
     surrogate_id: taxon_id
-    keys: ["PCODE"]
-    columns: ["PCODE", "BNam", "Name_E", "Fam", "S_Od", "TaxAut", "Achtung"]
-    query: select distinct t.[PCODE], t.[BNam], t.[Name_E], t.[Fam], t.[S_Od], t.[TaxAut], t.[Achtung] from [ÖkoSozDaten] t ;
-    extra_columns:
-      system_id: 0
-      author_id: 0
-      genus_id: 0
-      species: "Bnam"
+    columns:
+    - PCODE
+    - BNam
+    - Name_E
+    - Fam
+    - S_Od
+    - TaxAut
+    - Achtung
+    data_source: arbodat_lookup
+    query: "select distinct t.[PCODE], t.[BNam], t.[Name_E], t.[Fam], t.[S_Od], t.[TaxAut], t.[Achtung]\r\nfrom [ÖkoSozDaten] t ;"
+    depends_on:
+    - _pcodes
     filters:
     - type: exists_in
-      column: "PCODE"
-      other_entity: "_pcodes"
-      other_column: "PCODE"
-    depends_on: ["_pcodes"]
+      column: PCODE
+      other_entity: _pcodes
+      other_column: PCODE
+    extra_columns:
+      system_id:
+      author_id:
+      genus_id:
+      species: BNam
   taxa_use_categories:
     source:
     data_source: arbodat_lookup
