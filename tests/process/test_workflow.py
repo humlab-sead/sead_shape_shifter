@@ -3,8 +3,6 @@ import os
 import shutil
 from pathlib import Path
 
-import pytest
-
 from src.model import ShapeShiftProject
 from src.specifications.project import CompositeProjectSpecification
 from src.utility import load_shape_file

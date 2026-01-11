@@ -1,6 +1,5 @@
 """Integration tests for ingester API endpoints."""
 
-import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.main import app

@@ -5,7 +5,6 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from src.configuration.config import Config
 from src.configuration.provider import MockConfigProvider, set_config_provider
 from src.loaders.base_loader import DataLoader
 from src.model import DataSourceConfig, ForeignKeyConfig, ForeignKeyConstraints, ShapeShiftProject, TableConfig, UnnestConfig

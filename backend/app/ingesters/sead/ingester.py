@@ -9,7 +9,6 @@ from pathlib import Path
 from loguru import logger
 
 from backend.app.ingesters.protocol import (
-    Ingester,
     IngesterConfig,
     IngesterMetadata,
     IngestionResult,
