@@ -40,10 +40,10 @@
  - [x] TODO: Add validation indicators for reconciliation specifications (Completed: Status column with comprehensive column type validation)
  - [] TODO: #123 Columns mapped to properties should be constrained by (all) avaliable columns
  - [] TODO: #125 Add capability to edit full reconciliation YAML
- - [] TODO: 
+ - [] TODO: #127 Add three-state toggling of L/R panes in entity ediitor.
  - [] TODO: 
 
-
+ qbj 
 
 # Tiny DSL Expression Support in extra_columns
 
@@ -97,3 +97,18 @@ Strings starting with = are treated as friendly expressions; strings starting wi
 Backend implementation: parse the string when it’s added to the DataFrame. If the value starts with expr:, strip the prefix and run it through df.assign(**{name: eval(expr, safe_globals, {"df": df})}). If it starts with =, feed it to a small compiler that replaces helper names with pandas operations (e.g., concat(a, b) → df['a'].astype(str) + df['b'].astype(str), upper(x) → df['x'].str.upper(), substr(x, start, length) → df['x'].str[start:start+length], ifnull(x, default) etc.), then evaluate the resulting pandas expression in the same safe context. Constants remain untouched.
 
 Keep helper mappings simple so non-technical users can combine columns with string functions; expose more via extending the compiler (e.g., additional helpers for dates or math).
+
+- TODO: Add "ingestion" capability to Shape Shifter workflow (e.g sead_clearinghouse_import) 
+  
+The Shape Shifter application is designed to facilitate the ingestion and processing of data submissions through a structured workflow. The end result of the workflow is the generation of CSV files or Excel files that represent the data in a format suitable for database ingestion. Currently, this system targets the SEAD relational database schema. The system that imports the data produced by Shape Shifter is the SEAD Clearinghouse Import system (sead_clearinghouse_import) which is added as a project to this workspace.
+
+I want you to analyse the sead_clearinghouse_import system, and suggest a detailed implementation plan how the sead_clearinghouse_import can be added as a final step in the Shape Shifter workflow, so that when the user clicks "Run Workflow", the data is not only processed and output as CSV/Excel files, but also automatically ingested into a SEAD database via the sead_clearinghouse_import system. It can also be an additional button "Ingest to SEAD" if that makes more sense. For simplicity, I would like to add sead_clearinghouse_import as module within the Shape Shifter backend codebase, so that the entire workflow from data ingestion to SEAD database population is handled within a single application in a mono-repo. I still want the Shape Shifter to be moduler, so I would prefer to place sead_clearinghouse_import separately e.g. in an "ingesters" subfolder with a clear interface towards the rest of the system. The functionality needed corresponds to the importer/scripts/import_excel.py script. I can imagine creating a workflow interface for ingesters that can be implemented by sead_clearinghouse_import and any future ingesters that may be added later. I also want to keep the possibility to call the workflow via a CLI script.
+
+I want you to suggest a detailed implementation plan how to achieve this, including any necessary changes to the Shape Shifter backend codebase, any new configuration options that need to be added, and any changes to the frontend that may be required. Please provide a step-by-step plan with clear tasks and milestones.
+
+Please takes this into account:
+
+Ignore any code found in "deprecated" folder
+Ignore "importer/configuration" since this is an exact copy of configuration module in Shape Shifter.
+Avoid sharing domain model between the ingesters and the Shape Shifters. The main part of the API is the Excel file produced by Shape Shifter. You can ignore CSV output format for now. The API should have a "is_satisfied/validate" method (or endpoint) that the user via UX can call to check if the ingester accepts the Excel file.
+The API could be an endpoint exposed by the backend e.g. /ingest/ingester-name" etc with a set of well defined methods. In such a case the backend need to be able to scan the system (e.g. via a Registry) for avaliable ingesters.
