@@ -31,13 +31,11 @@ Examples:
 import asyncio
 import json
 import sys
-from pathlib import Path
 from typing import Any
 
 import click
 from loguru import logger
 
-from backend.app.ingesters.protocol import IngesterConfig
 from backend.app.models.ingester import IngestRequest, ValidateRequest
 from backend.app.services.ingester_service import IngesterService
 

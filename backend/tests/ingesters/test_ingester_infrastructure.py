@@ -1,6 +1,5 @@
 """Unit tests for ingester protocol and registry."""
 
-import pytest
 
 from backend.app.ingesters import IngesterConfig, IngesterMetadata, Ingesters, SeadIngester
 from backend.app.ingesters.protocol import IngestionResult, ValidationResult
