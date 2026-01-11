@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="dialogModel" :max-width="splitView ? '95vw' : '900'" :height="splitView ? '90vh' : '800'" persistent scrollable>
+  <v-dialog v-model="dialogModel" :max-width="viewMode !== 'form' ? '95vw' : '900'" :height="viewMode !== 'form' ? '90vh' : '800'" persistent scrollable>
     <v-card style="height: 100%">
       <v-toolbar color="primary" density="compact">
         <v-toolbar-title>
@@ -8,15 +8,21 @@
         </v-toolbar-title>
         <v-spacer />
 
-        <!-- Split view toggle -->
-        <v-tooltip location="bottom">
-          <template #activator="{ props: tooltipProps }">
-            <v-btn v-bind="tooltipProps" icon variant="text" @click="toggleSplitView" :disabled="mode === 'create'">
-              <v-icon>{{ splitView ? 'mdi-arrow-collapse-horizontal' : 'mdi-arrow-expand-horizontal' }}</v-icon>
-            </v-btn>
-          </template>
-          <span>{{ splitView ? 'Collapse' : 'Expand' }} Preview Panel (Ctrl+Shift+P)</span>
-        </v-tooltip>
+        <!-- Three-state view toggle -->
+        <v-btn-toggle v-model="viewMode" mandatory density="compact" :disabled="mode === 'create'" class="mr-2">
+          <v-btn value="form" size="small">
+            <v-icon size="small">mdi-form-select</v-icon>
+            <v-tooltip activator="parent" location="bottom">Form Only</v-tooltip>
+          </v-btn>
+          <v-btn value="both" size="small">
+            <v-icon size="small">mdi-view-split-vertical</v-icon>
+            <v-tooltip activator="parent" location="bottom">Split View (Ctrl+Shift+P)</v-tooltip>
+          </v-btn>
+          <v-btn value="preview" size="small">
+            <v-icon size="small">mdi-table</v-icon>
+            <v-tooltip activator="parent" location="bottom">Preview Only</v-tooltip>
+          </v-btn>
+        </v-btn-toggle>
       </v-toolbar>
 
       <v-tabs v-model="activeTab" bg-color="primary">
@@ -32,10 +38,10 @@
         </v-tab>
       </v-tabs>
 
-      <v-card-text class="pa-0 dialog-content" :class="{ 'split-container': splitView }">
-        <div :class="splitView ? 'split-layout' : ''">
+      <v-card-text class="pa-0 dialog-content" :class="{ 'split-container': viewMode !== 'form' }">
+        <div :class="viewMode !== 'form' ? 'split-layout' : ''" :data-view-mode="viewMode">
           <!-- Left: Entity Form -->
-          <div :class="splitView ? 'form-panel' : 'pt-6 px-4 form-content'">
+          <div v-show="viewMode === 'form' || viewMode === 'both'" :class="viewMode === 'both' ? 'form-panel' : 'pt-6 px-4 form-content'">
             <v-window v-model="activeTab">
               <v-window-item value="basic">
                 <v-defaults-provider
@@ -358,7 +364,7 @@
           </div>
 
           <!-- Right: Live Preview Panel -->
-          <div v-if="splitView" class="preview-panel">
+          <div v-show="viewMode === 'both' || viewMode === 'preview'" class="preview-panel">
             <div class="preview-header">
               <div class="d-flex align-center justify-space-between pa-2">
                 <div class="d-flex align-center gap-2">
@@ -514,7 +520,8 @@ const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions(
 const projectStore = useProjectStore()
 
 // Split-pane and preview state
-const splitView = ref(false)
+type ViewMode = 'form' | 'both' | 'preview'
+const viewMode = ref<ViewMode>('form')
 const autoRefreshEnabled = ref(false)
 const previewLimit = ref<number | null>(100)
 
@@ -657,8 +664,16 @@ const previewDefaultColDef: ColDef = {
 
 // Split-pane functions
 function toggleSplitView() {
-  splitView.value = !splitView.value
-  if (splitView.value && canPreview.value) {
+  // Cycle through: form -> both -> preview -> form
+  if (viewMode.value === 'form') {
+    viewMode.value = 'both'
+  } else if (viewMode.value === 'both') {
+    viewMode.value = 'preview'
+  } else {
+    viewMode.value = 'form'
+  }
+  
+  if (viewMode.value !== 'form' && canPreview.value) {
     refreshPreview()
   }
 }
@@ -1217,6 +1232,15 @@ function handleRejectDependency(dep: DependencySuggestion) {
   overflow: hidden;
 }
 
+/* When in preview-only mode, hide form panel and make preview 100% */
+.split-layout[data-view-mode="preview"] .form-panel {
+  display: none;
+}
+
+.split-layout[data-view-mode="preview"] .preview-panel {
+  flex: 1 1 100%;
+}
+
 .form-panel {
   flex: 0 0 50%;
   overflow-y: auto;
@@ -1225,7 +1249,7 @@ function handleRejectDependency(dep: DependencySuggestion) {
 }
 
 .preview-panel {
-  flex: 0 0 50%;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
