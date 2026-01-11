@@ -44,6 +44,13 @@
           value="query-tester"
           :to="{ name: 'query-tester' }"
         />
+
+        <v-list-item
+          prepend-icon="mdi-database-import"
+          title="Data Ingestion"
+          value="ingesters"
+          :to="{ name: 'ingesters' }"
+        />
       </v-list>
 
       <template #append>
