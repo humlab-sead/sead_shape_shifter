@@ -1,10 +1,20 @@
 <template>
-  <v-dialog :model-value="modelValue" max-width="900px" persistent @update:model-value="$emit('update:modelValue', $event)">
+  <v-dialog :model-value="modelValue" max-width="900px" persistent scrollable @update:model-value="$emit('update:modelValue', $event)">
     <v-card>
-      <v-card-title class="text-h6 bg-primary">
-        <v-icon start>{{ isNew ? 'mdi-plus' : 'mdi-pencil' }}</v-icon>
-        {{ isNew ? 'Add' : 'Edit' }} Reconciliation Specification
-      </v-card-title>
+      <v-toolbar color="primary" density="compact">
+        <v-toolbar-title>
+          <v-icon :icon="isNew ? 'mdi-plus-circle' : 'mdi-pencil'" class="mr-2" />
+          {{ isNew ? 'Add' : 'Edit' }} Reconciliation Specification
+        </v-toolbar-title>
+      </v-toolbar>
+
+      <v-tabs v-model="activeTab" bg-color="primary">
+        <v-tab value="form">Form</v-tab>
+        <v-tab value="yaml" :disabled="isNew">
+          <v-icon icon="mdi-code-braces" class="mr-1" size="small" />
+          YAML
+        </v-tab>
+      </v-tabs>
 
       <v-card-text class="pt-6">
         <!-- Validation Errors Alert -->
@@ -42,7 +52,9 @@
           </ul>
         </v-alert>
 
-        <v-form ref="form" v-model="valid">
+        <v-window v-model="activeTab">
+          <v-window-item value="form">
+            <v-form ref="form" v-model="valid">
           <!-- Entity and Target Field Selection (only for new) -->
           <template v-if="isNew">
             <v-row>
@@ -174,8 +186,9 @@
             <v-card-text v-if="availableProperties.length > 0">
               <v-row v-for="prop in availableProperties" :key="prop" dense>
                 <v-col cols="12">
-                  <v-text-field
-                    v-model="formData.spec.property_mappings[prop]"
+                  <v-autocomplete
+                    :model-value="formData.spec.property_mappings[prop]"
+                    :items="availableFields"
                     :label="prop"
                     variant="outlined"
                     density="compact"
@@ -184,11 +197,21 @@
                     persistent-hint
                     :error="!isNew && isMissingColumn(formData.spec.property_mappings[prop])"
                     :error-messages="!isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? `Column '${formData.spec.property_mappings[prop]}' not found in entity` : undefined"
+                    :loading="loadingFields"
+                    :disabled="availableFields.length === 0"
+                    @update:model-value="(value) => updatePropertyMapping(prop, value)"
                   >
                     <template #prepend-inner>
                       <v-icon size="small" :color="!isNew && isMissingColumn(formData.spec.property_mappings[prop]) ? 'error' : 'primary'">mdi-arrow-left</v-icon>
                     </template>
-                  </v-text-field>
+                    <template #no-data>
+                      <v-list-item>
+                        <v-list-item-title class="text-grey">
+                          {{ formData.entity_name ? 'No columns available' : 'Select an entity first' }}
+                        </v-list-item-title>
+                      </v-list-item>
+                    </template>
+                  </v-autocomplete>
                 </v-col>
               </v-row>
             </v-card-text>
@@ -246,7 +269,30 @@
               </v-slider>
             </v-col>
           </v-row>
-        </v-form>
+            </v-form>
+          </v-window-item>
+
+          <v-window-item value="yaml">
+            <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+              <div class="text-caption">
+                <v-icon icon="mdi-information" size="small" class="mr-1" />
+                Edit the reconciliation specification in YAML format. Changes will be synced with the form editor.
+              </div>
+            </v-alert>
+
+            <yaml-editor
+              v-model="yamlContent"
+              height="500px"
+              :validate-on-change="true"
+              @validate="handleYamlValidation"
+              @change="handleYamlChange"
+            />
+
+            <v-alert v-if="yamlError" type="error" density="compact" variant="tonal" class="mt-2">
+              {{ yamlError }}
+            </v-alert>
+          </v-window-item>
+        </v-window>
       </v-card-text>
 
       <v-divider />
@@ -277,6 +323,8 @@ import type {
   EntityReconciliationSpec,
   ReconciliationSource,
 } from '@/types/reconciliation'
+import * as yaml from 'js-yaml'
+import YamlEditor from '../common/YamlEditor.vue'
 
 interface Props {
   modelValue: boolean
@@ -309,6 +357,10 @@ const availableProperties = ref<string[]>([])
 const isDirty = ref(false)
 const validationErrors = ref<string[]>([])
 const validationWarnings = ref<string[]>([])
+const activeTab = ref('form')
+const yamlContent = ref('')
+const yamlError = ref<string | null>(null)
+const yamlValid = ref(true)
 
 // Source type selection
 const sourceTypes = ['Entity Preview', 'Other Entity', 'SQL Query']
@@ -348,55 +400,53 @@ const uniqueTargetField = (v: string) => {
 }
 
 // Validation methods
-function validateSpecification() {
+async function validateSpecification() {
   validationErrors.value = []
   validationWarnings.value = []
 
   if (props.isNew) return
 
-  const project = projectStore.selectedProject
-  if (!project) return
-
-  // Determine which entity to validate against
-  // If source is specified as string (Other Entity), use that entity's columns
-  // Otherwise use the main entity's columns
-  let entityForValidation = formData.value.entity_name
-  let entityColumns: string[] = []
-
-  if (formData.value.spec.source && typeof formData.value.spec.source === 'string') {
-    // Using "Other Entity" as source
-    entityForValidation = formData.value.spec.source
-    
-    if (!project.entities[entityForValidation]) {
-      validationErrors.value.push(
-        `Source entity '${entityForValidation}' no longer exists in the project`
-      )
-      return // Can't validate further without source entity
+  // If source is a SQL query, we can't validate columns (they're defined in the query)
+  if (formData.value.spec.source && typeof formData.value.spec.source === 'object') {
+    // SQL query source - skip column validation
+    if (!formData.value.spec.remote?.service_type) {
+      validationWarnings.value.push('No remote service type configured')
     }
-    
-    const sourceEntity = project.entities[entityForValidation]
-    entityColumns = sourceEntity?.columns || []
-  } else {
-    // Using main entity as source
-    if (!project.entities[formData.value.entity_name]) {
-      validationErrors.value.push(
-        `Entity '${formData.value.entity_name}' no longer exists in the project`
-      )
-      return // Can't validate further without entity
-    }
-
-    const entity = project.entities[formData.value.entity_name]
-    entityColumns = entity?.columns || []
+    return
   }
 
-  // Check if target field exists in the entity being validated
+  // Determine which entity to validate against
+  let entityForValidation = formData.value.entity_name
+  if (formData.value.spec.source && typeof formData.value.spec.source === 'string') {
+    entityForValidation = formData.value.spec.source
+  }
+
+  // Get actual available fields from API (includes keys, columns, extra_columns, FK joins, unnest)
+  let entityColumns: string[] = []
+  try {
+    entityColumns = await reconciliationStore.getAvailableFields(props.projectName, entityForValidation)
+  } catch (error) {
+    validationErrors.value.push(
+      `Entity '${entityForValidation}' not found or has no columns`
+    )
+    return
+  }
+
+  if (entityColumns.length === 0) {
+    validationErrors.value.push(
+      `Entity '${entityForValidation}' not found or has no columns`
+    )
+    return
+  }
+
+  // Check if target field exists
   if (!entityColumns.includes(formData.value.target_field)) {
     validationErrors.value.push(
       `Target field '${formData.value.target_field}' not found in entity '${entityForValidation}'`
     )
   }
 
-  // Check if property mapping source columns exist in the entity being validated
+  // Check if property mapping source columns exist
   const missingColumns: string[] = []
   Object.entries(formData.value.spec.property_mappings).forEach(([prop, sourceCol]) => {
     if (sourceCol && !entityColumns.includes(sourceCol)) {
@@ -414,25 +464,25 @@ function validateSpecification() {
 function isMissingColumn(columnName: string | undefined): boolean {
   if (!columnName || props.isNew) return false
   
-  const project = projectStore.selectedProject
-  if (!project) return false
-
-  // Check against the correct entity based on source type
-  let entityForValidation = formData.value.entity_name
-  
-  if (formData.value.spec.source && typeof formData.value.spec.source === 'string') {
-    // Using "Other Entity" as source - validate against source entity
-    entityForValidation = formData.value.spec.source
+  // Check against availableFields (includes keys, columns, extra_columns, FK joins, unnest)
+  // This is the same source used to populate the dropdown
+  if (availableFields.value.length === 0) {
+    // Fields not loaded yet, don't show error
+    return false
   }
 
-  const entity = project.entities[entityForValidation]
-  if (!entity) return false
-
-  const entityColumns = entity.columns || []
-  return !entityColumns.includes(columnName)
+  return !availableFields.value.includes(columnName)
 }
 
 // Methods
+function updatePropertyMapping(property: string, value: string | null) {
+  // Ensure reactive update by creating a new object
+  formData.value.spec.property_mappings = {
+    ...formData.value.spec.property_mappings,
+    [property]: value || ''
+  }
+}
+
 async function onEntityChange(entityName: string) {
   if (!entityName) {
     availableFields.value = []
@@ -568,11 +618,23 @@ async function loadAvailableEntities() {
 async function loadRemoteTypes() {
   loadingRemoteTypes.value = true
   try {
-    // TODO: Fetch from reconciliation service /reconcile endpoint
-    // For now, use common types
-    availableRemoteTypes.value = ['site', 'taxon', 'location', 'abundance']
+    // Fetch from reconciliation service /reconcile endpoint
+    const manifest = await reconciliationStore.getServiceManifest()
+    
+    // Extract entity types from manifest
+    // OpenRefine manifest has defaultTypes array with {id, name} objects
+    if (manifest.defaultTypes && Array.isArray(manifest.defaultTypes)) {
+      availableRemoteTypes.value = manifest.defaultTypes.map((type: any) => type.id)
+      console.log(`[SpecificationEditor] Loaded ${availableRemoteTypes.value.length} entity types from service:`, availableRemoteTypes.value)
+    } else {
+      console.warn('[SpecificationEditor] No defaultTypes found in manifest, using fallback')
+      // Fallback to common types if manifest doesn't have them
+      availableRemoteTypes.value = ['site', 'taxon', 'location', 'abundance']
+    }
   } catch (error) {
     console.error('Failed to load remote types:', error)
+    // Fallback to common types on error
+    availableRemoteTypes.value = ['site', 'taxon', 'location', 'abundance']
   } finally {
     loadingRemoteTypes.value = false
   }
@@ -581,7 +643,7 @@ async function loadRemoteTypes() {
 // Watch for specification changes (edit mode)
 watch(
   () => props.specification,
-  (spec) => {
+  async (spec) => {
     if (spec && !props.isNew) {
       formData.value = {
         entity_name: spec.entity_name,
@@ -605,6 +667,18 @@ watch(
       } else {
         sourceType.value = 'SQL Query'
         sqlQuery.value = spec.source.query
+      }
+
+      // Load available fields for the entity
+      const entityForFields = (typeof spec.source === 'string') ? spec.source : spec.entity_name
+      try {
+        loadingFields.value = true
+        availableFields.value = await reconciliationStore.getAvailableFields(props.projectName, entityForFields)
+      } catch (error) {
+        console.error('Failed to load available fields:', error)
+        availableFields.value = []
+      } finally {
+        loadingFields.value = false
       }
 
       // Load properties for remote type
@@ -638,6 +712,156 @@ watch(formData, () => {
   isDirty.value = true
 }, { deep: true })
 
+// Watch for tab changes to sync YAML
+watch(activeTab, (newTab) => {
+  if (newTab === 'yaml' && !props.isNew) {
+    yamlContent.value = formDataToYaml()
+  }
+})
+
+// Watch for source type or other entity changes to update available fields
+watch([sourceType, otherEntityName], async ([newSourceType, newOtherEntity]) => {
+  if (!formData.value.entity_name) return
+
+  let entityForFields = formData.value.entity_name
+  
+  // Determine which entity's fields to load
+  if (newSourceType === 'Other Entity' && newOtherEntity) {
+    entityForFields = newOtherEntity
+  }
+  // For 'SQL Query' we can't pre-load fields (custom query)
+  // For 'Entity Preview' use the main entity
+
+  if (newSourceType !== 'SQL Query') {
+    try {
+      loadingFields.value = true
+      availableFields.value = await reconciliationStore.getAvailableFields(props.projectName, entityForFields)
+    } catch (error) {
+      console.error('Failed to load available fields:', error)
+      availableFields.value = []
+    } finally {
+      loadingFields.value = false
+    }
+  } else {
+    // SQL Query - no predefined fields
+    availableFields.value = []
+  }
+  
+  // Re-validate after fields change
+  if (!props.isNew) {
+    await validateSpecification()
+  }
+})
+
+// Watch for property mappings changes to re-validate
+watch(() => formData.value.spec.property_mappings, async () => {
+  if (!props.isNew && availableFields.value.length > 0) {
+    await validateSpecification()
+  }
+}, { deep: true })
+
+// Watch for remote type changes to re-validate
+watch(() => formData.value.spec.remote?.service_type, async () => {
+  if (!props.isNew) {
+    await validateSpecification()
+  }
+})
+
+
+// YAML Editor Functions
+function formDataToYaml(): string {
+  const specData: Record<string, any> = {}
+
+  // Build source
+  if (sourceType.value === 'Other Entity') {
+    specData.source = otherEntityName.value
+  } else if (sourceType.value === 'SQL Query') {
+    specData.source = { query: sqlQuery.value }
+  }
+  // Entity Preview = null (default)
+
+  // Add property mappings (only non-empty ones)
+  const mappings: Record<string, string> = {}
+  for (const [key, value] of Object.entries(formData.value.spec.property_mappings)) {
+    if (value) {
+      mappings[key] = value
+    }
+  }
+  if (Object.keys(mappings).length > 0) {
+    specData.property_mappings = mappings
+  }
+
+  // Add remote configuration
+  specData.remote = {
+    service_type: formData.value.spec.remote.service_type,
+  }
+
+  // Add thresholds
+  specData.auto_accept_threshold = formData.value.spec.auto_accept_threshold
+  specData.review_threshold = formData.value.spec.review_threshold
+
+  return yaml.dump(specData, { indent: 2, lineWidth: 120, noRefs: true })
+}
+
+function yamlToFormData(yamlString: string): boolean {
+  try {
+    const parsed = yaml.load(yamlString) as any
+
+    if (!parsed || typeof parsed !== 'object') {
+      yamlError.value = 'Invalid YAML: Expected an object'
+      return false
+    }
+
+    // Update source type and value
+    if (!parsed.source) {
+      sourceType.value = 'Entity Preview'
+    } else if (typeof parsed.source === 'string') {
+      sourceType.value = 'Other Entity'
+      otherEntityName.value = parsed.source
+    } else if (parsed.source && typeof parsed.source === 'object' && parsed.source.query) {
+      sourceType.value = 'SQL Query'
+      sqlQuery.value = parsed.source.query
+    }
+
+    // Update property mappings
+    if (parsed.property_mappings && typeof parsed.property_mappings === 'object') {
+      formData.value.spec.property_mappings = { ...parsed.property_mappings }
+    }
+
+    // Update remote configuration
+    if (parsed.remote && typeof parsed.remote === 'object') {
+      formData.value.spec.remote = { ...parsed.remote }
+      if (parsed.remote.service_type) {
+        onRemoteTypeChange(parsed.remote.service_type)
+      }
+    }
+
+    // Update thresholds
+    if (typeof parsed.auto_accept_threshold === 'number') {
+      formData.value.spec.auto_accept_threshold = parsed.auto_accept_threshold
+    }
+    if (typeof parsed.review_threshold === 'number') {
+      formData.value.spec.review_threshold = parsed.review_threshold
+    }
+
+    yamlError.value = null
+    return true
+  } catch (e: any) {
+    yamlError.value = `YAML parse error: ${e.message}`
+    return false
+  }
+}
+
+function handleYamlValidation(isValid: boolean) {
+  yamlValid.value = isValid
+}
+
+function handleYamlChange(newYaml: string) {
+  if (yamlValid.value) {
+    yamlToFormData(newYaml)
+  }
+}
+
 onMounted(() => {
   loadAvailableEntities()
   loadRemoteTypes()
@@ -647,5 +871,19 @@ onMounted(() => {
 <style scoped>
 :deep(.v-slider) {
   margin-top: 8px;
+}
+
+/* Make hint text more subdued */
+:deep(.v-messages__message) {
+  opacity: 0.5;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+/* Make placeholder text in empty fields dimmer */
+:deep(.v-field--variant-outlined input::placeholder),
+:deep(.v-field--variant-outlined .v-select__selection-text),
+:deep(.v-autocomplete input::placeholder) {
+  opacity: 0.4;
+  color: rgb(var(--v-theme-on-surface));
 }
 </style>

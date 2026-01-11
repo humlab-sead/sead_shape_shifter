@@ -165,6 +165,7 @@
       v-model="alternativeSearchDialog"
       :project-name="projectName"
       :entity-name="entityName"
+      :target-field="targetField"
       :original-query="selectedRow ? getRowDisplayText(selectedRow) : ''"
       @accept="handleAlternativeAccept"
     />
