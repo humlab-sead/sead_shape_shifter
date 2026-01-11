@@ -178,7 +178,7 @@ class SubsetService:
         columns = unique(columns)
         extra_columns = extra_columns or {}
 
-        extra_source_columns, extra_constant_columns = self._split_extra_columns(source, extra_columns)
+        extra_source_columns, extra_constant_columns = self._split_extra_columns(source, extra_columns, case_sensitive=False)
         all_requested_columns: set[str] = set(columns).union(extra_source_columns.values())
 
         self._check_if_missing_requested_columns(source, entity_name, raise_if_missing, all_requested_columns)
@@ -221,14 +221,24 @@ class SubsetService:
 
         return result
 
-    def _split_extra_columns(self, source, extra_columns) -> tuple[dict[str, str], dict[str, Any]]:
+    def _split_extra_columns(
+        self, source: pd.DataFrame, extra_columns: dict[str, Any], case_sensitive: bool = False
+    ) -> tuple[dict[str, str], dict[str, Any]]:
         """Split extra columns into those that copy existing source columns and those that are constants."""
-        extra_source_columns: dict[str, str] = {k: v for k, v in extra_columns.items() if isinstance(v, str) and v in source.columns}
-        extra_constant_columns: dict[str, Any] = {
-            new_name: value for new_name, value in extra_columns.items() if new_name not in extra_source_columns
-        }
+        source_columns: dict[str, str]
+        if not case_sensitive:
+            source_columns_lower: dict[str, str] = {col.lower(): col for col in source.columns}
+            source_columns = {
+                k: source_columns_lower[v.lower()]
+                for k, v in extra_columns.items()
+                if isinstance(v, str) and v.lower() in source_columns_lower
+            }
+        else:
+            source_columns = {k: v for k, v in extra_columns.items() if isinstance(v, str) and v in source.columns}
 
-        return extra_source_columns, extra_constant_columns
+        constant_columns: dict[str, Any] = {new_name: value for new_name, value in extra_columns.items() if new_name not in source_columns}
+
+        return source_columns, constant_columns
 
     def _check_if_missing_requested_columns(
         self, source: pd.DataFrame, entity_name: str, raise_if_missing: bool, all_requested_columns: set[str]
