@@ -100,11 +100,7 @@ def recursive_filter_dict(
         return data
 
     return {
-        key: (
-            recursive_filter_dict(value, filter_keys=filter_keys, filter_mode=filter_mode)
-            if isinstance(value, dict)
-            else value
-        )
+        key: (recursive_filter_dict(value, filter_keys=filter_keys, filter_mode=filter_mode) if isinstance(value, dict) else value)
         for key, value in data.items()
         if (key in filter_keys if filter_mode == "keep" else key not in filter_keys)
     }
@@ -204,9 +200,7 @@ def replace_env_vars(data: R) -> R:
     return data
 
 
-def log_decorator(
-    enter_message: str | None = "Entering", exit_message: str | None = "Exiting", level: int | str = "INFO"
-):
+def log_decorator(enter_message: str | None = "Entering", exit_message: str | None = "Exiting", level: int | str = "INFO"):
     """Decorator to log entry and exit of a function."""
 
     def decorator(func):
@@ -260,9 +254,7 @@ def upload_dataframe_to_postgres(df: pd.DataFrame, table_name: str, db_uri: str)
     df.to_sql(table_name, engine, schema="public", if_exists="fail", index=False)
 
 
-def load_dataframe_from_postgres(
-    sql: str, db_uri: str, index_col: str | None = None, dtype: Any = None
-) -> pd.DataFrame:
+def load_dataframe_from_postgres(sql: str, db_uri: str, index_col: str | None = None, dtype: Any = None) -> pd.DataFrame:
     """
     Loads a pandas DataFrame from a PostgreSQL database.
 
@@ -555,9 +547,7 @@ def to_lookups_sql(submission: Submission, filename: str) -> None:
                     .str.strip()
                     .str.rstrip(")")
                 )
-                attributes: list[str] = [
-                    x.strip() for x in excel_sql_columns.strip().lstrip("(").rstrip(")").split(",")
-                ]
+                attributes: list[str] = [x.strip() for x in excel_sql_columns.strip().lstrip("(").rstrip(")").split(",")]
                 non_pk_attributes = [x for x in attributes if x not in ("system_id", pk_name)]
                 data: pd.Series = submission.data_tables[table_name][excel_sql_columns]
 

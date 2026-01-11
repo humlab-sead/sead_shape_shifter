@@ -51,9 +51,7 @@ class Options:
                 else join(self.output_folder, f"{self.basename}")
             )
         default_ignore_patterns: list[str] = ConfigValue("options:ignore_columns").resolve() or []
-        self.ignore_columns: list[str] = (
-            self.ignore_columns if self.ignore_columns is not None else default_ignore_patterns
-        )
+        self.ignore_columns: list[str] = self.ignore_columns if self.ignore_columns is not None else default_ignore_patterns
 
     def db_uri(self) -> str:
         return utility.create_db_uri(**self.database)
@@ -91,9 +89,7 @@ class ImportService:
             schema=self.schema, ignore_columns=self.opts.ignore_columns, raise_errors=False
         )
 
-    @utility.log_decorator(
-        enter_message=" ---> generating target file(s)...", exit_message=" ---> target file(s) created", level="DEBUG"
-    )
+    @utility.log_decorator(enter_message=" ---> generating target file(s)...", exit_message=" ---> target file(s) created", level="DEBUG")
     def dispatch(self, submission: Submission) -> str:
         """Reads Excel files and convert content to an dispatch format."""
 

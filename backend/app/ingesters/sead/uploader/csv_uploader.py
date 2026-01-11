@@ -18,9 +18,7 @@ class CsvUploader(BaseUploader):
         self.source: str = source
         self.target_schema: str = target_schema
 
-    @log_decorator(
-        enter_message=" ---> uploading CSV submission...", exit_message=" ---> CSV submission uploaded", level="DEBUG"
-    )
+    @log_decorator(enter_message=" ---> uploading CSV submission...", exit_message=" ---> CSV submission uploaded", level="DEBUG")
     def upload(
         self,
         connection: Connection,
@@ -35,9 +33,7 @@ class CsvUploader(BaseUploader):
             filename: str = os.path.join(self.source, f"{key}.csv")
             self.csv_to_db(connection, filename, self.target_schema, table_name)
 
-    @log_decorator(
-        enter_message=" ---> extracting submission...", exit_message=" ---> submission extracted", level="DEBUG"
-    )
+    @log_decorator(enter_message=" ---> extracting submission...", exit_message=" ---> submission extracted", level="DEBUG")
     def extract(self, connection: Connection, submission_id: int) -> None:
         """Extraction not needed since these CSV files are uploaded into staging tables."""
         with connection.cursor() as cursor:

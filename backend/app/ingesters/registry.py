@@ -12,9 +12,9 @@ from src.utility import Registry
 
 class IngesterRegistry(Registry[Type[Ingester]]):
     """Registry for data ingesters.
-    
+
     Ingesters register themselves using the @Ingesters.register() decorator.
-    
+
     Example:
         @Ingesters.register(key="sead")
         class SeadIngester:
@@ -28,10 +28,10 @@ class IngesterRegistry(Registry[Type[Ingester]]):
                     supported_formats=["xlsx"],
                     requires_config=True,
                 )
-            
+
             async def validate(self, excel_file: Path | str) -> ValidationResult:
                 ...
-            
+
             async def ingest(self, excel_file: Path | str, validate_first: bool = True) -> IngestionResult:
                 ...
     """
@@ -45,7 +45,7 @@ class IngesterRegistry(Registry[Type[Ingester]]):
 
     def get_metadata_list(self) -> list[IngesterMetadata]:
         """Get metadata for all registered ingesters.
-        
+
         Returns:
             List of IngesterMetadata for all registered ingesters
         """

@@ -25,24 +25,24 @@ from backend.app.ingesters.sead.submission import Submission
 @Ingesters.register(key="sead")
 class SeadIngester:
     """Ingester for SEAD Clearinghouse database.
-    
+
     This ingester handles the complete workflow of validating and ingesting
     Excel data files into a SEAD Clearinghouse PostgreSQL database, including:
-    
+
     1. Loading and validating Excel data against SEAD schema
     2. Applying transformation policies
     3. Generating CSV files for database upload
     4. Registering submissions in the clearinghouse
     5. Uploading data to staging tables
     6. Exploding data into public schema tables
-    
+
     The ingester uses the established SEAD clearinghouse import workflow
     that has been battle-tested with real archaeological data submissions.
     """
 
     def __init__(self, config: IngesterConfig) -> None:
         """Initialize SEAD ingester with configuration.
-        
+
         Args:
             config: Ingester configuration including database connection details
         """
@@ -51,8 +51,7 @@ class SeadIngester:
         # Build database URI
         password_part = f":{self.config.password}" if self.config.password else ""
         self.db_uri = (
-            f"postgresql+psycopg://{self.config.user}{password_part}"
-            f"@{self.config.host}:{self.config.port}/{self.config.dbname}"
+            f"postgresql+psycopg://{self.config.user}{password_part}" f"@{self.config.host}:{self.config.port}/{self.config.dbname}"
         )
 
         # Initialize schema service (schema loaded lazily on first use)
@@ -65,7 +64,7 @@ class SeadIngester:
     @classmethod
     def get_metadata(cls) -> IngesterMetadata:
         """Get metadata about this ingester.
-        
+
         Returns:
             IngesterMetadata with ingester details
         """
@@ -80,7 +79,7 @@ class SeadIngester:
 
     async def _load_schema(self) -> SeadSchema:
         """Load SEAD schema from database if not already loaded.
-        
+
         Returns:
             SeadSchema instance with database metadata
         """
@@ -92,17 +91,17 @@ class SeadIngester:
 
     async def validate(self, excel_file: Path | str) -> ValidationResult:
         """Validate Excel file against SEAD schema.
-        
+
         This performs comprehensive validation including:
         - Schema compliance (correct tables and columns)
         - Data type checking
         - Foreign key validation
         - Required field validation
         - Data integrity checks
-        
+
         Args:
             excel_file: Path to Excel file to validate
-            
+
         Returns:
             ValidationResult with validation status and messages
         """
@@ -135,10 +134,7 @@ class SeadIngester:
             if is_valid:
                 logger.info(f"Validation passed with {len(specification.warnings)} warnings")
             else:
-                logger.warning(
-                    f"Validation failed with {len(specification.errors)} errors, "
-                    f"{len(specification.warnings)} warnings"
-                )
+                logger.warning(f"Validation failed with {len(specification.errors)} errors, " f"{len(specification.warnings)} warnings")
 
             return ValidationResult(
                 is_valid=is_valid,
@@ -157,24 +153,22 @@ class SeadIngester:
             )
         except Exception as e:  # pylint: disable=broad-except
             logger.exception(f"Validation failed with exception: {e}")
-            return ValidationResult(
-                is_valid=False, errors=[f"Validation error: {str(e)}"], warnings=[], infos=[]
-            )
+            return ValidationResult(is_valid=False, errors=[f"Validation error: {str(e)}"], warnings=[], infos=[])
 
     async def ingest(self, excel_file: Path | str, validate_first: bool = True) -> IngestionResult:
         """Ingest Excel file into SEAD database.
-        
+
         This performs the complete ingestion workflow:
         1. Optional validation
         2. CSV generation from Excel data
         3. Database registration
         4. Upload to staging tables
         5. Explode to public schema
-        
+
         Args:
             excel_file: Path to Excel file to ingest
             validate_first: Run validation before ingesting (recommended)
-            
+
         Returns:
             IngestionResult with success status and details
         """
@@ -234,10 +228,7 @@ class SeadIngester:
             submission_id = opts.submission_id
             tables_processed = len([t for t in schema.keys() if not schema[t].is_lookup])
 
-            logger.info(
-                f"Ingestion completed successfully: submission_id={submission_id}, "
-                f"tables_processed={tables_processed}"
-            )
+            logger.info(f"Ingestion completed successfully: submission_id={submission_id}, " f"tables_processed={tables_processed}")
 
             return IngestionResult(
                 success=True,

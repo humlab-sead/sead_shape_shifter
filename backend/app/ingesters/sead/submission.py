@@ -26,9 +26,7 @@ class Submission:
         self.schema: SeadSchema = schema
         self._table_lookup: dict[str, pd.DataFrame] = self._generate_table_lookup(data_tables, schema)
 
-    def _generate_table_lookup(
-        self, data_tables: dict[str, pd.DataFrame], schema: SeadSchema
-    ) -> dict[str, pd.DataFrame]:
+    def _generate_table_lookup(self, data_tables: dict[str, pd.DataFrame], schema: SeadSchema) -> dict[str, pd.DataFrame]:
         """Generates a lookup dictionary mapping table names and excel sheet names to data tables."""
         lookup: dict[str, pd.DataFrame] = data_tables
         for table_name, data in data_tables.items():
@@ -83,16 +81,13 @@ class Submission:
         ]
         # logger.debug(f"   {table_name} is referenced by: {','.join(fk_tables)}")
         referenced_pk_ids: list[set] = [
-            set(series.loc[~series.isnull()].tolist())
-            for series in (self.data_tables[fk_table][pk_name] for fk_table in fk_tables)
+            set(series.loc[~series.isnull()].tolist()) for series in (self.data_tables[fk_table][pk_name] for fk_table in fk_tables)
         ]
         return set(int(x) for x in functools.reduce(flatten_sets, referenced_pk_ids or [], []))
 
     @log_decorator(enter_message=" --> loading excel...", exit_message=" --> done loading excel", level="DEBUG")
     @staticmethod
-    def load(
-        *, schema: SeadSchema, service: SchemaService, source: str | pd.ExcelFile, apply_policies: bool = True
-    ) -> "Submission":
+    def load(*, schema: SeadSchema, service: SchemaService, source: str | pd.ExcelFile, apply_policies: bool = True) -> "Submission":
         """Loads the submission file into a SubmissionData object"""
 
         data_tables: dict[str, pd.DataFrame] = Submission.load_data_tables(source, schema)
