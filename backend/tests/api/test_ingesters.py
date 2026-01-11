@@ -3,6 +3,7 @@
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from backend.app.services.ingester_service import IngesterService
 
 client = TestClient(app)
 
@@ -141,7 +142,6 @@ class TestIngesterServiceIntegration:
 
     def test_service_list_ingesters(self):
         """Test that service can list ingesters."""
-        from backend.app.services.ingester_service import IngesterService
 
         ingesters = IngesterService.list_ingesters()
         assert len(ingesters) >= 1
@@ -149,7 +149,6 @@ class TestIngesterServiceIntegration:
 
     def test_service_create_config(self):
         """Test IngesterService._create_config method."""
-        from backend.app.services.ingester_service import IngesterService
 
         config_dict = {
             "database": {"host": "localhost", "port": 5432, "dbname": "test_db", "user": "test_user"},
@@ -166,5 +165,8 @@ class TestIngesterServiceIntegration:
         assert config.user == "test_user"
         assert config.submission_name == "test"
         assert config.data_types == "test_type"
+
+        assert config.extra is not None
+        
         assert config.extra["ignore_columns"] == ["col1", "col2"]
         assert config.extra["custom_param"] == "value"

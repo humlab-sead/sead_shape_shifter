@@ -205,7 +205,7 @@ class SeadIngester:
                 output_folder=self.config.output_folder,
                 database={
                     "host": self.config.host,
-                    "port": self.config.port,
+                    "port": str(self.config.port),
                     "dbname": self.config.dbname,
                     "user": self.config.user,
                 },

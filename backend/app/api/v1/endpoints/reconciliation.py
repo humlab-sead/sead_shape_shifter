@@ -5,9 +5,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+import yaml as pyyaml
 from fastapi import APIRouter, Body, Depends, Query
 from fastapi.responses import StreamingResponse
 from loguru import logger
+from pydantic import ValidationError
 
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
@@ -101,8 +103,6 @@ async def update_reconciliation_config_raw(
 
     Parses the YAML content, validates it, and saves to the project's reconciliation file.
     """
-    import yaml as pyyaml
-    from pydantic import ValidationError
 
     try:
         # Parse YAML
@@ -116,9 +116,9 @@ async def update_reconciliation_config_raw(
 
         return recon_config
     except pyyaml.YAMLError as e:
-        raise BadRequestError(f"Invalid YAML: {str(e)}")
+        raise BadRequestError(f"Invalid YAML: {str(e)}") from e
     except ValidationError as e:
-        raise BadRequestError(f"Invalid reconciliation configuration: {str(e)}")
+        raise BadRequestError(f"Invalid reconciliation configuration: {str(e)}") from e
 
 
 @router.get("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/preview")

@@ -192,7 +192,7 @@ class ColumnTypesSpecification(SpecificationBase):
     def is_satisfied_by(self, submission: Submission, *, table_name: str, **kwargs) -> bool:
         data_table: pd.DataFrame = submission.data_tables[table_name]
         if len(data_table) == 0:
-            """Cannot determine type if table is empty"""
+            # Cannot determine type if table is empty
             return not self.has_errors()
 
         for column in self.get_columns(table_name):
@@ -400,7 +400,7 @@ class NoMissingColumnSpecification(SpecificationBase):
         )
 
         if set(data_column_names) == {"system_id", meta_table.pk_name}:
-            """This is a lookup table with only system_id and public_id"""
+            # This is a lookup table with only system_id and public_id
             return not self.has_errors()
 
         missing_column_names: set[str] = set(x for x in meta_table.column_names(skip_nullable=True) if not self.is_ignored(x)) - set(

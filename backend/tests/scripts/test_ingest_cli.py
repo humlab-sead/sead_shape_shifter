@@ -17,7 +17,7 @@ class TestIngestCLI:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.runner = CliRunner()
+        self.runner = CliRunner()  # pylint: disable=attribute-defined-outside-init
 
     def test_list_ingesters(self):
         """Test listing available ingesters."""
@@ -145,7 +145,9 @@ class TestIngestCLI:
         test_file = tmp_path / "test.xlsx"
         test_file.write_text("test data")
 
-        mock_response = IngestResponse(success=False, records_processed=0, message="Ingestion failed: error")
+        mock_response = IngestResponse(
+            success=False, records_processed=0, message="Ingestion failed: error", submission_id=None, output_path=""
+        )
 
         async_mock = AsyncMock(return_value=mock_response)
 
@@ -172,7 +174,13 @@ class TestIngestCLI:
         test_file = tmp_path / "test.xlsx"
         test_file.write_text("test data")
 
-        mock_response = IngestResponse(success=True, records_processed=50, message="Success")
+        mock_response = IngestResponse(
+            success=True,
+            records_processed=50,
+            message="Success",
+            submission_id=10,
+            output_path=str(tmp_path),
+        )
 
         async_mock = AsyncMock(return_value=mock_response)
 
@@ -238,7 +246,13 @@ class TestIngestCLI:
         config_file = tmp_path / "config.json"
         config_file.write_text('{"database": {"host": "confighost", "port": 5432, "dbname": "configdb", "user": "configuser"}}')
 
-        mock_response = IngestResponse(success=True, records_processed=75, message="Success")
+        mock_response = IngestResponse(
+            success=True,
+            records_processed=75,
+            message="Success",
+            submission_id=99,
+            output_path=str(tmp_path),
+        )
 
         async_mock = AsyncMock(return_value=mock_response)
 

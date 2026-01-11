@@ -53,5 +53,5 @@ current_dir: str = os.path.dirname(__file__)
 for filename in os.listdir(current_dir):
     if filename.endswith(".py") and filename != "__init__.py":
         module_name: str = filename[:-3]
-        __all__.append(module_name)
+        __all__.append(module_name)  # type: ignore
         importlib.import_module(f".{module_name}", package=__name__)
