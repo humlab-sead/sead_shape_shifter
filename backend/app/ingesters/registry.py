@@ -39,10 +39,10 @@ class IngesterRegistry(Registry[type[Ingester]]):
     items: dict[str, type[Ingester]] = {}
 
     @classmethod
-    def get(cls, key: str) -> type[Ingester]:
+    def get(cls, key: str) -> None | type[Ingester]: # type: ignore[override]
         """Get ingester by key, returning None if not found (overrides Registry.get)."""
         if key not in cls.items:
-            raise KeyError(f"Ingester with key '{key}' not found in registry.")
+            return None
         return cls.items[key]
 
     def get_metadata_list(self) -> list[IngesterMetadata]:
