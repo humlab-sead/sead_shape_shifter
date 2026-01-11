@@ -51,6 +51,10 @@ all = [
     "shape-shifter[api,dev]",
 ]
 
+[project.scripts]
+# CLI entry points for easy command-line access
+sead-ingest = "backend.app.scripts.ingest:cli"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]
@@ -111,7 +115,8 @@ disable = [
     "too-many-function-args",
     "too-many-locals",
     "protected-access",
-    "f-string-without-interpolation"
+    "f-string-without-interpolation",
+    "unnecessary-ellipsis",
 ]
 
 [tool.black]

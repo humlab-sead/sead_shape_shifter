@@ -65,10 +65,7 @@ class ExecuteService:
             Exception: If workflow execution fails
         """
         if request.dispatcher_key not in Dispatchers.items:
-            raise ValueError(
-                f"Invalid dispatcher key: {request.dispatcher_key}. "
-                f"Available: {', '.join(Dispatchers.items.keys())}"
-            )
+            raise ValueError(f"Invalid dispatcher key: {request.dispatcher_key}. " f"Available: {', '.join(Dispatchers.items.keys())}")
 
         is_satisfied: bool | None = None
         target_type: str = "unknown"
@@ -87,17 +84,13 @@ class ExecuteService:
                 env_prefix="SEAD_NORMALIZER",
             )
 
-            dispatcher_meta: DispatcherMetadata = next(
-                d for d in self.get_dispatchers() if d.key == request.dispatcher_key
-            )
+            dispatcher_meta: DispatcherMetadata = next(d for d in self.get_dispatchers() if d.key == request.dispatcher_key)
             target_type = dispatcher_meta.target_type
 
             if request.run_validation:
                 is_satisfied, validation_errors = await self._validate_project(core_project)
                 if not is_satisfied:
-                    error_details = (
-                        "\n".join(validation_errors) if validation_errors else "Project configuration validation failed"
-                    )
+                    error_details = "\n".join(validation_errors) if validation_errors else "Project configuration validation failed"
                     return ExecuteResult(
                         success=False,
                         message="Validation failed. Please fix errors before executing workflow.",
@@ -113,9 +106,7 @@ class ExecuteService:
             target: str = self._resolve_target(request.target, target_type)
             target_with_timestamp: str = self._add_timestamp_to_file_target(target, target_type)
 
-            download_path: str | None = self._build_download_path(
-                project_name, target_with_timestamp, target_type
-            )
+            download_path: str | None = self._build_download_path(project_name, target_with_timestamp, target_type)
 
             logger.info(
                 f"Executing workflow for project '{project_name}' with dispatcher "

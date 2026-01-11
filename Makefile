@@ -57,8 +57,8 @@ black:
 pylint:
 	@uv run pylint src tests backend/app backend/tests
 
-.PHONY: ruff-check-fix
-ruff-check-fix:
+.PHONY: ruff
+ruff:
 	@uv run ruff check --fix --output-format concise src tests backend
 
 .PHONY: tidy
@@ -67,7 +67,7 @@ tidy:
 	@uv run black src tests backend/app backend/tests
 
 .PHONY: lint
-lint: tidy pylint ruff-check-fix
+lint: tidy ruff pylint
 
 .PHONY: check-imports
 check-imports:
