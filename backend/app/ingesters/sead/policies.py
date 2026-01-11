@@ -275,7 +275,7 @@ class IfForeignKeyValueIsMissingAddIdentityMappingToForeignKeyTable(PolicyBase):
                 continue
 
             if table_name not in self.submission:
-                """This case is handled by another policy"""
+                # This case is handled by another policy
                 continue
 
             data_table: pd.DataFrame = self.submission.data_tables[table_name]

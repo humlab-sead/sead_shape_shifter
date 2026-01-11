@@ -92,7 +92,7 @@ export const useIngesterStore = defineStore('ingester', () => {
   }
 
   function selectIngester(key: string) {
-    selectedIngester.value = ingesters.value.find(i => i.key === key) || null
+    selectedIngester.value = ingesters.value.find(i => i.key === key) ?? null
   }
 
   function clearValidation() {

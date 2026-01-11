@@ -3,6 +3,7 @@
 from typing import Any
 
 from loguru import logger
+from networkx import out_degree_centrality
 
 from backend.app.ingesters.protocol import (
     Ingester,
@@ -75,7 +76,7 @@ class IngesterService:
                 errors=result.errors,
                 warnings=result.warnings,
             )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.exception(f"Validation failed for ingester '{key}'")
             return ValidateResponse(
                 is_valid=False,
@@ -122,12 +123,12 @@ class IngesterService:
 
             return IngestResponse(
                 success=result.success,
-                records_processed=result.records_processed,
+                records_processed=result.records_inserted,
                 message=result.message,
                 submission_id=result.submission_id,
-                output_path=result.output_path,
+                output_path=request.output_folder,
             )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.exception(f"Ingestion failed for ingester '{key}'")
             return IngestResponse(
                 success=False,

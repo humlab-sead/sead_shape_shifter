@@ -10,7 +10,7 @@ from backend.app.ingesters.protocol import Ingester, IngesterMetadata
 from src.utility import Registry
 
 
-class IngesterRegistry(Registry[Type[Ingester]]):
+class IngesterRegistry(Registry[type[Ingester]]):
     """Registry for data ingesters.
 
     Ingesters register themselves using the @Ingesters.register() decorator.
@@ -36,12 +36,14 @@ class IngesterRegistry(Registry[Type[Ingester]]):
                 ...
     """
 
-    items: dict[str, Type[Ingester]] = {}
+    items: dict[str, type[Ingester]] = {}
 
     @classmethod
-    def get(cls, key: str) -> Type[Ingester] | None:
+    def get(cls, key: str) -> type[Ingester]:
         """Get ingester by key, returning None if not found (overrides Registry.get)."""
-        return cls.items.get(key)
+        if key not in cls.items:
+            raise KeyError(f"Ingester with key '{key}' not found in registry.")
+        return cls.items[key]
 
     def get_metadata_list(self) -> list[IngesterMetadata]:
         """Get metadata for all registered ingesters.
@@ -53,4 +55,4 @@ class IngesterRegistry(Registry[Type[Ingester]]):
 
 
 # Global registry instance
-Ingesters = IngesterRegistry()
+Ingesters = IngesterRegistry()  # pylint: disable=invalid-name
