@@ -77,7 +77,9 @@ async def execute_workflow(name: str, request: ExecuteRequest) -> ExecuteResult:
 
 @router.get("/projects/{name}/execute/download")
 @handle_endpoint_errors
-async def download_execution_output(name: str, target: str = Query(..., description="Absolute path to the dispatched file")) -> FileResponse:
+async def download_execution_output(
+    name: str, target: str = Query(..., description="Absolute path to the dispatched file")
+) -> FileResponse:
     """
     Download a file produced by a successful execution.
 

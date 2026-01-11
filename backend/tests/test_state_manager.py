@@ -161,12 +161,12 @@ class TestApplicationState:
 
     @pytest.mark.asyncio
     async def test_get_active_sessions(self, app_state: ApplicationState):
-        """Test getting all active sessions for a configuration."""
-        session_id1 = await app_state.create_session("config1")
-        session_id2 = await app_state.create_session("config1")
-        session_id3 = await app_state.create_session("config2")
+        """Test getting all active sessions for a project."""
+        session_id1 = await app_state.create_session("project1", "user1")
+        session_id2 = await app_state.create_session("project1", "user2")
+        session_id3 = await app_state.create_session("project2", "user3")
 
-        sessions = await app_state.get_active_sessions("config1")
+        sessions = await app_state.get_active_sessions("project1")
 
         assert len(sessions) == 2
         session_ids = {s.session_id for s in sessions}
@@ -191,8 +191,8 @@ class TestApplicationState:
     @pytest.mark.asyncio
     async def test_release_session_keeps_config_if_other_sessions(self, app_state: ApplicationState, sample_config: Project):
         """Test that config is kept when other sessions exist."""
-        session_id1 = await app_state.create_session("test-project")
-        session_id2 = await app_state.create_session("test-project")
+        session_id1 = await app_state.create_session("test-project", "user1")
+        session_id2 = await app_state.create_session("test-project", "user2")
         app_state.set_active_project(sample_config)
 
         await app_state.release_session(session_id1)

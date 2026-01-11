@@ -1,9 +1,7 @@
 import asyncio
 import os
-from pathlib import Path
 import shutil
-
-import pytest
+from pathlib import Path
 
 from src.model import ShapeShiftProject
 from src.specifications.project import CompositeProjectSpecification

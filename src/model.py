@@ -618,7 +618,7 @@ class ShapeShiftProject:
             if col in table.columns and col not in seen:
                 existing_cols_to_move.append(col)
                 seen.add(col)
-        
+
         other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
         new_column_order: list[str] = existing_cols_to_move + sorted(other_cols)
         table = table[new_column_order]
