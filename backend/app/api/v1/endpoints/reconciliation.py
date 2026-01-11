@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Body
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
@@ -87,6 +87,38 @@ async def update_reconciliation_config(
     """Update entire reconciliation configuration."""
     service.save_reconciliation_config(project_name, recon_config)
     return recon_config
+
+
+@router.put("/projects/{project_name}/reconciliation/raw")
+@handle_endpoint_errors
+async def update_reconciliation_config_raw(
+    project_name: str,
+    yaml_content: str = Body(..., media_type="text/plain"),
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> ReconciliationConfig:
+    """
+    Update reconciliation configuration from raw YAML content.
+    
+    Parses the YAML content, validates it, and saves to the project's reconciliation file.
+    """
+    import yaml as pyyaml
+    from pydantic import ValidationError
+    
+    try:
+        # Parse YAML
+        config_dict = pyyaml.safe_load(yaml_content)
+        
+        # Validate against model
+        recon_config = ReconciliationConfig(**config_dict)
+        
+        # Save
+        service.save_reconciliation_config(project_name, recon_config)
+        
+        return recon_config
+    except pyyaml.YAMLError as e:
+        raise BadRequestError(f"Invalid YAML: {str(e)}")
+    except ValidationError as e:
+        raise BadRequestError(f"Invalid reconciliation configuration: {str(e)}")
 
 
 @router.get("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/preview")
