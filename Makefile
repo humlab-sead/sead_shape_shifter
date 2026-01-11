@@ -86,13 +86,19 @@ stop:
 	@lsof -ti:$(FRONTEND_PORT) 2>/dev/null | xargs -r kill -9 || true
 	@echo "Done."
 
+# Serve backend without frontend (hence frontend-clear)
 .PHONY: br
-br: backend-kill backend-run
+br: frontend-clear backend-kill backend-run
 
 .PHONY: fr
 fr: frontend-kill frontend-run
 
-fr2: frontend-clear-vite-cache fr
+fr2: frontend-clear fr
+
+# Serve frontend via backend, for production-like testing
+# Backend will serve frontend if frontend/dist/ exists  
+.PHONY: br+fr
+br+fr: frontend-kill frontend-build-fast backend-kill backend-run
 
 .PHONY: run-all
 run-all: backend-kill frontend-kill
@@ -159,9 +165,18 @@ frontend-kill:
 	@lsof -t -i ':$(FRONTEND_PORT)' | xargs -r kill -9
 	@echo "Killed all running servers."
 
-frontend-clear-vite-cache:
-	@rm -rf frontend/node_modules/.vite
-	@echo "Vite cache cleared."
+.PHONY: frontend-build
+frontend-build:
+	@cd frontend && rm -rf node_modules/.vite dist && pnpm dev 
+
+.PHONY: frontend-build-fast
+frontend-build-fast:
+	@echo "Building frontend (skipping type check)..."
+	@cd frontend && pnpm build:skip-check
+
+frontend-clear:
+	@rm -rf frontend/node_modules/.vite frontend/dist
+	@echo "info: frontend dist and Vite cache cleared."
 
 .PHONY: frontend-install
 frontend-install:
@@ -193,19 +208,10 @@ frontend-run:
 	@echo "Starting frontend dev server on http://localhost:$(FRONTEND_PORT)"
 	@cd frontend && pnpm dev
 
-.PHONY: frontend-build-fast
-frontend-build-fast:
-	@echo "Building frontend (skipping type check)..."
-	@cd frontend && pnpm build:skip-check
-
 .PHONY: frontend-preview
 frontend-preview:
 	@echo "Preview production build on http://localhost:4173"
 	@cd frontend && pnpm preview
-
-.PHONY: frontend-build
-frontend-build:
-	@cd frontend && rm -rf node_modules/.vite dist && pnpm dev 
 
 ################################################################################
 # Docker

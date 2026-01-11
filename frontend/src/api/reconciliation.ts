@@ -95,3 +95,29 @@ export const reconciliationSpecApi = {
     return response.count
   },
 }
+
+/**
+ * Reconciliation Service API
+ */
+export const reconciliationServiceApi = {
+  /**
+   * Get reconciliation service manifest
+   * Returns the service metadata including available entity types
+   */
+  getManifest: async (): Promise<any> => {
+    return apiRequest<any>({
+      method: 'GET',
+      url: '/reconciliation/manifest',
+    })
+  },
+
+  /**
+   * Check reconciliation service health
+   */
+  checkHealth: async (): Promise<{ status: string; service_name?: string; error?: string }> => {
+    return apiRequest<{ status: string; service_name?: string; error?: string }>({
+      method: 'GET',
+      url: '/reconciliation/health',
+    })
+  },
+}
