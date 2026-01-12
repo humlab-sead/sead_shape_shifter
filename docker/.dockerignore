@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node.js
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Git
+.git/
+.github/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+*.tmp
+
+# Backups
+backups/
+
+# Environment files (use .env.example instead)
+.env
+.env.local
+.env.*.local
+
+# Output and test data
+output/
+input/
+configurations/
+deprecated/
+
+# Docker
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile
+.dockerignore
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI/CD
+.releaserc.json
+.pre-commit-config.yaml
+
+# Other
+.DS_Store
+Thumbs.db
+.ruff_cache/

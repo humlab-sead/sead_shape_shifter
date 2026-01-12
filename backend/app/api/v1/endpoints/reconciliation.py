@@ -5,9 +5,11 @@ import json
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+import yaml as pyyaml
+from fastapi import APIRouter, Body, Depends, Query
 from fastapi.responses import StreamingResponse
 from loguru import logger
+from pydantic import ValidationError
 
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
@@ -52,6 +54,18 @@ async def check_reconciliation_service_health(service: ReconciliationService = D
     return await service.recon_client.check_health()
 
 
+@router.get("/reconciliation/manifest")
+@handle_endpoint_errors
+async def get_reconciliation_service_manifest(service: ReconciliationService = Depends(get_reconciliation_service)) -> dict:
+    """
+    Get reconciliation service manifest.
+
+    Returns:
+        Full service manifest including available entity types, properties, and configuration
+    """
+    return await service.recon_client.get_service_manifest()
+
+
 @router.get("/projects/{project_name}/reconciliation")
 @handle_endpoint_errors
 async def get_reconciliation_config(
@@ -75,6 +89,36 @@ async def update_reconciliation_config(
     """Update entire reconciliation configuration."""
     service.save_reconciliation_config(project_name, recon_config)
     return recon_config
+
+
+@router.put("/projects/{project_name}/reconciliation/raw")
+@handle_endpoint_errors
+async def update_reconciliation_config_raw(
+    project_name: str,
+    yaml_content: str = Body(..., media_type="text/plain"),
+    service: ReconciliationService = Depends(get_reconciliation_service),
+) -> ReconciliationConfig:
+    """
+    Update reconciliation configuration from raw YAML content.
+
+    Parses the YAML content, validates it, and saves to the project's reconciliation file.
+    """
+
+    try:
+        # Parse YAML
+        config_dict = pyyaml.safe_load(yaml_content)
+
+        # Validate against model
+        recon_config = ReconciliationConfig(**config_dict)
+
+        # Save
+        service.save_reconciliation_config(project_name, recon_config)
+
+        return recon_config
+    except pyyaml.YAMLError as e:
+        raise BadRequestError(f"Invalid YAML: {str(e)}") from e
+    except ValidationError as e:
+        raise BadRequestError(f"Invalid reconciliation configuration: {str(e)}") from e
 
 
 @router.get("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/preview")

@@ -252,12 +252,76 @@ mapping:
     created_by: "user"
 ```
 
+## Specification Validation
+
+The reconciliation UI automatically validates each specification and displays the validation status in the specifications list. This helps identify configuration errors before running reconciliation.
+
+### Validation Status Indicators
+
+Each specification shows a status icon:
+
+- ✅ **Green checkmark**: Valid - specification is correctly configured
+- ⚠️ **Yellow warning**: Warning - specification has potential issues but may still work
+- ❌ **Red error**: Error - specification has critical issues preventing reconciliation
+
+Hover over the status icon to see detailed validation messages.
+
+### Validation Checks
+
+The system validates specifications against the **actual entity preview data**, ensuring that all referenced columns exist after all transformations (filtering, linking, unnesting, mapping):
+
+1. **Entity Existence**: Verifies the entity exists in the project configuration
+2. **Target Field Validation**: Confirms the `target_field` exists in the entity's columns
+3. **Property Mappings**: Checks that all source columns in property_mappings exist
+
+### Column Types Checked
+
+Validation considers all five types of columns available in the reconciliation process:
+
+1. **Keys** (`entity.keys`) - Primary identifier columns from entity configuration
+2. **Regular Columns** (`entity.columns`) - Standard data columns from entity configuration
+3. **Extra Columns** (`entity.extra_columns`) - Additional computed or derived columns
+4. **Foreign Key Columns** (`entity.foreign_keys[].local_keys`) - Columns from FK join relationships
+5. **Unnest Columns** (`entity.unnest.var_name`, `entity.unnest.value_name`) - Variable and value columns from pivot/melt operations
+
+This comprehensive validation ensures that columns added through transformations (like unnesting wide-format data or joining foreign key tables) are properly recognized.
+
+### Common Validation Errors
+
+#### Missing Entity
+```
+Error: Entity 'unknown_entity' not found in project
+```
+**Solution**: Verify entity name matches exactly (case-sensitive), or create the entity in project configuration.
+
+#### Invalid Target Field
+```
+Error: Target field 'taxon_id' not found in entity 'taxon'. Available fields: species, genus, family
+```
+**Solution**: Update `target_field` to match an available column name, or add the column to entity configuration.
+
+#### Invalid Property Mapping
+```
+Warning: Property mapping 'latitude' references non-existent column 'lat'. Available fields: site_name, longitude, country
+```
+**Solution**: Correct the property mapping to use an existing column name (`latitude: latitude` instead of `latitude: lat`), or add the column to entity configuration.
+
+### API-Based Validation
+
+Validation uses the entity preview API (`/api/v1/entities/preview/{entity_name}/available-fields`) which returns the actual column set after all transformations. This ensures validation reflects the true state of the entity data, not just the static configuration.
+
+The validation results are cached and automatically revalidated when:
+- Specifications are added, edited, or deleted
+- The project configuration changes
+- The reconciliation view is refreshed
+
 ## Using the Reconciliation UI
 
 ### 1. Navigate to Reconciliation Tab
 
 1. Open your configuration in the Shape Shifter web UI
 2. Click the **Reconciliation** tab (between Dependencies and Data Sources)
+3. Review the specifications list - check status column for any validation errors
 
 ### 2. Select Entity
 
@@ -481,6 +545,20 @@ entities:
 
 ## Troubleshooting
 
+### Configuration Validation Errors
+
+**Problem**: Red error icon appears in specifications list
+
+**Solutions**:
+1. **Hover over status icon** to see detailed validation messages
+2. **Check entity exists**: Verify entity name in main project configuration
+3. **Verify target_field**: Ensure target_field column exists after all transformations (check entity preview)
+4. **Validate property mappings**: Confirm all source columns in property_mappings exist in the entity
+5. **Consider column types**: Remember that columns can come from keys, columns, extra_columns, FK joins, or unnesting
+6. **Use entity preview**: Open entity in Entity Editor to see final column list after all transformations
+
+**Note**: The validation uses the **actual preview data API**, so it reflects the true state after filtering, linking, unnesting, and mapping operations. If a column is added through unnesting (var_name/value_name) or FK joins (local_keys), it will be properly validated.
+
 ### Service Connection Issues
 
 **Problem**: Cannot connect to reconciliation service
@@ -489,12 +567,14 @@ entities:
 - Verify service is running: `curl http://localhost:8000`
 - Check `service.url` in reconciliation config
 - Ensure no firewall blocking localhost:8000
+- Check service status in reconciliation UI (displays entity type count when connected)
 
 ### No Candidates Returned
 
 **Problem**: Auto-reconcile returns no candidates
 
 **Solutions**:
+- **Check validation first**: Ensure specification shows green checkmark (no validation errors)
 - Verify `remote.service_type` matches available service types (see list above)
 - Check entity has preview data available
 - Inspect reconciliation service logs for errors

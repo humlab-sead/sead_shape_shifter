@@ -1,0 +1,15 @@
+{
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "dbname": "sead_staging",
+    "user": "sead_user"
+  },
+  "ignore_columns": [
+    "date_updated",
+    "*_uuid",
+    "(*"
+  ],
+  "custom_option": "value"
+}
+https://www.youtube.com/watch?v=nufBFT3mDQM&t=223s

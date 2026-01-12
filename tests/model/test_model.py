@@ -5,7 +5,6 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from src.configuration.config import Config
 from src.configuration.provider import MockConfigProvider, set_config_provider
 from src.loaders.base_loader import DataLoader
 from src.model import DataSourceConfig, ForeignKeyConfig, ForeignKeyConstraints, ShapeShiftProject, TableConfig, UnnestConfig
@@ -359,6 +358,7 @@ class TestForeignKeyConfig:
             fk_data = {"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"], "how": how}
             fk = ForeignKeyConfig(local_entity="site", fk_cfg=fk_data)
             assert fk.how == how
+
 
 class TestTableConfig:
     """Tests for TableConfig class."""
@@ -1167,7 +1167,6 @@ class TestShapeShiftProject:
 
         assert resolved.has_table("site") is True
         assert resolved.get_table("site").surrogate_id == "site_id"
-
 
     @pytest.mark.asyncio
     async def test_resolve_raises_when_context_not_configured(self):

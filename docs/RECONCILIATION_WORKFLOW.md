@@ -68,8 +68,32 @@ reconciliation:
 
 **Via UI:**
 1. Open the project in Shape Shifter editor
-2. Navigate to the entity
-3. Check the Metadata tab for reconciliation settings
+2. Navigate to the Reconciliation view
+3. Review the **Specifications List** table
+4. Check the **Status** column (first column):
+   - ✅ **Green check**: Valid configuration - no issues detected
+   - ⚠️ **Yellow warning**: Configuration warnings (e.g., missing remote service type)
+   - 🔴 **Red alert**: Configuration errors - must be fixed before reconciliation
+5. Hover over the status icon to see detailed validation messages
+
+**Validation Checks:**
+The system automatically validates each specification against the actual entity structure, including:
+- **Entity existence**: Verifies the entity exists in the project
+- **Target field availability**: Checks that the target field exists in the entity's output columns
+- **Column availability**: Validates all column types are considered:
+  1. **Keys** - Entity primary key columns
+  2. **Columns** - Regular data columns (excluding value_vars if unnest configured)
+  3. **Extra columns** - Dynamically added columns
+  4. **FK join columns** - Columns added through foreign key relationships
+  5. **Unnest columns** - `var_name` and `value_name` from unnest operations
+- **Property mappings**: Ensures mapped source columns exist in entity output
+- **Remote service type**: Warns if no service type is configured
+
+**Common Configuration Errors:**
+- **Entity not found**: The specified entity has been removed or renamed
+- **Target field not found**: The column doesn't exist in the entity's final output
+- **Missing columns in mappings**: Property mappings reference non-existent columns
+- Check the tooltip on error icons for specific details
 
 **Via CLI:**
 ```bash

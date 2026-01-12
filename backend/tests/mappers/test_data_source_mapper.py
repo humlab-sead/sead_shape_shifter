@@ -1,7 +1,6 @@
 """Tests for DataSourceMapper."""
 
 import pytest
-from pydantic import SecretStr
 
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.data_source import DataSourceConfig

@@ -57,8 +57,8 @@ black:
 pylint:
 	@uv run pylint src tests backend/app backend/tests
 
-.PHONY: ruff-check-fix
-ruff-check-fix:
+.PHONY: ruff
+ruff:
 	@uv run ruff check --fix --output-format concise src tests backend
 
 .PHONY: tidy
@@ -67,7 +67,7 @@ tidy:
 	@uv run black src tests backend/app backend/tests
 
 .PHONY: lint
-lint: tidy pylint ruff-check-fix
+lint: tidy ruff pylint
 
 .PHONY: check-imports
 check-imports:
@@ -86,13 +86,19 @@ stop:
 	@lsof -ti:$(FRONTEND_PORT) 2>/dev/null | xargs -r kill -9 || true
 	@echo "Done."
 
+# Serve backend without frontend (hence frontend-clear)
 .PHONY: br
-br: backend-kill backend-run
+br: frontend-clear backend-kill backend-run
 
 .PHONY: fr
 fr: frontend-kill frontend-run
 
-fr2: frontend-clear-vite-cache fr
+fr2: frontend-clear fr
+
+# Serve frontend via backend, for production-like testing
+# Backend will serve frontend if frontend/dist/ exists  
+.PHONY: br+fr
+br+fr: frontend-kill frontend-build-fast backend-kill backend-run
 
 .PHONY: run-all
 run-all: backend-kill frontend-kill
@@ -159,9 +165,18 @@ frontend-kill:
 	@lsof -t -i ':$(FRONTEND_PORT)' | xargs -r kill -9
 	@echo "Killed all running servers."
 
-frontend-clear-vite-cache:
-	@rm -rf frontend/node_modules/.vite
-	@echo "Vite cache cleared."
+.PHONY: frontend-build
+frontend-build:
+	@cd frontend && rm -rf node_modules/.vite dist && pnpm dev 
+
+.PHONY: frontend-build-fast
+frontend-build-fast:
+	@echo "Building frontend (skipping type check)..."
+	@cd frontend && pnpm build:skip-check
+
+frontend-clear:
+	@rm -rf frontend/node_modules/.vite frontend/dist
+	@echo "info: frontend dist and Vite cache cleared."
 
 .PHONY: frontend-install
 frontend-install:
@@ -193,19 +208,60 @@ frontend-run:
 	@echo "Starting frontend dev server on http://localhost:$(FRONTEND_PORT)"
 	@cd frontend && pnpm dev
 
-.PHONY: frontend-build-fast
-frontend-build-fast:
-	@echo "Building frontend (skipping type check)..."
-	@cd frontend && pnpm build:skip-check
-
 .PHONY: frontend-preview
 frontend-preview:
 	@echo "Preview production build on http://localhost:4173"
 	@cd frontend && pnpm preview
 
-.PHONY: frontend-build
-frontend-build:
-	@cd frontend && rm -rf node_modules/.vite dist && pnpm dev 
+################################################################################
+# Docker
+################################################################################
+
+.PHONY: docker-setup
+docker-setup:
+	@echo "Setting up Docker data directory..."
+	@./docker/setup.sh
+
+.PHONY: docker-build
+docker-build:
+	@echo "Building Docker image..."
+	@./docker/build.sh
+
+.PHONY: docker-test
+docker-test:
+	@echo "Testing Docker configuration..."
+	@./docker/test.sh
+
+.PHONY: docker-up
+docker-up:
+	@echo "Starting Shape Shifter with Docker Compose..."
+	@docker compose -f docker/docker-compose.yml up -d
+	@echo "✓ Application started at http://localhost:8012"
+
+.PHONY: docker-down
+docker-down:
+	@echo "Stopping Shape Shifter containers..."
+	@docker compose -f docker/docker-compose.yml down
+
+.PHONY: docker-logs
+docker-logs:
+	@docker compose -f docker/docker-compose.yml logs -f
+
+.PHONY: docker-restart
+docker-restart:
+	@echo "Restarting Shape Shifter..."
+	@docker compose -f docker/docker-compose.yml restart
+
+.PHONY: docker-clean
+docker-clean:
+	@echo "Cleaning up Docker resources..."
+	@docker compose -f docker/docker-compose.yml down -v
+	@docker image rm shape-shifter:latest 2>/dev/null || true
+	@echo "✓ Cleanup complete"
+
+.PHONY: docker-shell
+docker-shell:
+	@docker compose -f docker/docker-compose.yml exec shape-shifter /bin/bash
 
 ################################################################################
 # Other stuff

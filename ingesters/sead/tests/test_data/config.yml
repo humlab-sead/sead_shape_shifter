@@ -1,0 +1,98 @@
+options:
+  database:
+    dbname: sead_staging_202502
+    port: 5433
+  transfer_format: xml
+  ignore_columns:
+    - "date_updated"
+    - "*_uuid"
+    - "(*"
+policies:
+  if_foreign_key_value_is_missing_add_identity_mapping_to_foreign_key_table:
+    priority: 1
+  set_public_id_to_negative_system_id_for_new_lookups:
+    disabled: true
+  update_missing_foreign_key_policy:
+    tbl_dataset_contacts:
+      contact_type_id: 2
+      contact_id: 1
+  if_table_is_missing_add_table_using_system_id_as_public_id:
+    # add missing table foreign keys where the foreign key is a public id
+    tables:
+
+  if_table_is_missing_add_table_using_system_id_as_public_id:
+    disabled: false
+    tables:
+      # include:
+      #   - tbl_abundance_elements
+      #   - tbl_contact_types
+      #   - tbl_dataset_submission_types
+      #   - tbl_location_types
+      #   - tbl_project_types
+      #   - tbl_project_stages
+      #   - tbl_relative_ages
+      #   - tbl_sample_group_sampling_contexts
+      #   - tbl_sample_types
+      exclude: # these tables have prealloced identities
+        - tbl_locations
+  if_lookup_with_no_new_data_then_keep_only_system_id_public_id:
+    priority: 9
+  drop_ignored_columns:
+    priority: 3
+    columns:
+      - "date_updated"
+      - "*_uuid"
+      - "(*"
+test:
+  sites:
+    - 1635
+  reduced_excel_filename: tests/test_data/building_dendro_reduced.xlsx
+  source_excel_filename: data/input/building_dendro_2023-12_import.xlsx
+  tables:
+    - tbl_abundances
+    - tbl_analysis_entities
+    - tbl_dataset_contacts
+    - tbl_dataset_submissions
+    - tbl_datasets
+    - tbl_dendro_date_notes
+    - tbl_dendro_dates
+    - tbl_dendro
+    - tbl_locations
+    - tbl_methods
+    - tbl_physical_samples
+    - tbl_projects
+    - tbl_record_types
+    - tbl_sample_alt_refs
+    - tbl_sample_descriptions
+    - tbl_sample_group_coordinates
+    - tbl_sample_group_descriptions
+    - tbl_sample_group_notes
+    - tbl_sample_group_sampling_contexts
+    - tbl_sample_groups
+    - tbl_sample_locations
+    - tbl_sample_notes
+    - tbl_site_locations
+    - tbl_site_references
+    - tbl_site
+
+  adna:
+    source:
+      filename: data/input/SEAD_aDNA_data_20241114_RM.xlsx
+
+  dendrochronology:
+    living_tree:
+      source:
+        filename: data/input/lund_living_trees_20241213_RM.xlsx
+    database:
+      dbname: sead_staging_202502
+      port: 5433
+
+logging:
+  folder: tests/output
+  handlers:
+    - sink: "import_excel.log"
+      level: "DEBUG"
+      format: "{time} - {level} - {message}"
+    - sink: "sys.stdout"
+      level: "WARNING"
+      format: "{time} - {level} - {message}"

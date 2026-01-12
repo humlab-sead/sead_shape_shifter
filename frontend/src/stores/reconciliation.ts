@@ -14,7 +14,7 @@ import type {
   SpecificationUpdateRequest,
 } from '@/types/reconciliation'
 import { apiClient } from '@/api/client'
-import { reconciliationSpecApi } from '@/api/reconciliation'
+import { reconciliationSpecApi, reconciliationServiceApi } from '@/api/reconciliation'
 // import { load } from 'js-yaml'
 
 export const useReconciliationStore = defineStore('reconciliation', () => {
@@ -86,6 +86,23 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     error.value = null
     try {
       const response = await apiClient.put(`/projects/${projectName}/reconciliation`, reconciliationConfig.value)
+      reconciliationConfig.value = response.data
+    } catch (e: any) {
+      error.value = e.response?.data?.detail || 'Failed to save reconciliation config'
+      console.error('Failed to save reconciliation config:', e)
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function saveReconciliationConfigRaw(projectName: string, yamlContent: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await apiClient.put(`/projects/${projectName}/reconciliation/raw`, yamlContent, {
+        headers: { 'Content-Type': 'text/plain' }
+      })
       reconciliationConfig.value = response.data
     } catch (e: any) {
       error.value = e.response?.data?.detail || 'Failed to save reconciliation config'
@@ -237,10 +254,18 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
 
   async function checkServiceHealth() {
     try {
-      const response = await apiClient.get('/reconciliation/health')
-      return response.data
+      return await reconciliationServiceApi.checkHealth()
     } catch (e: any) {
       console.error('Failed to check reconciliation service health:', e)
+      throw e
+    }
+  }
+
+  async function getServiceManifest() {
+    try {
+      return await reconciliationServiceApi.getManifest()
+    } catch (e: any) {
+      console.error('Failed to get reconciliation service manifest:', e)
       throw e
     }
   }
@@ -400,6 +425,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     // Actions
     loadReconciliationConfig,
     saveReconciliationConfig,
+    saveReconciliationConfigRaw,
     autoReconcile,
     autoReconcileAsync,
     updateMapping,
@@ -407,6 +433,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     suggestEntities,
     loadPreviewData,
     checkServiceHealth,
+    getServiceManifest,
     clearError,
     $reset,
     

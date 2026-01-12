@@ -1,6 +1,18 @@
 import pytest
 
 from backend.app.core.config import get_settings
+from backend.app.ingesters.registry import Ingesters
+
+
+@pytest.fixture(scope="session", autouse=True)
+def discover_ingesters():
+    """Discover ingesters before running any tests (session-scoped, runs once).
+    
+    This ensures that ingesters are available for both unit and integration tests.
+    """
+    if not Ingesters._initialized:
+        Ingesters.discover(search_paths=["ingesters"])
+    yield
 
 
 @pytest.fixture

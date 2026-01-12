@@ -395,6 +395,11 @@ async function handleRefresh() {
 // Lifecycle
 onMounted(async () => {
   // Fetch global data source files
-  await dataSourceStore.fetchDataSources()
+  try {
+    await dataSourceStore.fetchDataSources()
+  } catch (err) {
+    console.error('Failed to load data sources:', err)
+    // Error is already set in the store, so the UI will show it
+  }
 })
 </script>
