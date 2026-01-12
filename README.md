@@ -4,47 +4,11 @@ A general-purpose data transformation and normalization framework with a modern 
 
 While initially developed for Arbodat archaeological data integration with the SEAD (Strategic Environmental Archaeology Database) system, the framework is designed to be adaptable to any domain requiring complex data transformations.
 
-## 🎉 Phase 2 Complete! (December 2025)
-
-**Shape Shifter Project Editor v0.1.0** - Now available for beta testing
-
-**Status:** ✅ Phase 2 Complete | 🚀 Ready for Beta Deployment
-
-### What's New in Phase 2
-
-- 🎨 **Web-Based Project Editor** - Professional Monaco editor with YAML syntax highlighting
-- ✅ **Comprehensive Validation** - Real-time structural and data validation with detailed error reporting
-- 🔧 **Auto-Fix Service** - One-click fixes for common errors with preview and automatic backups
-- ⚡ **Quick Wins UX** - 70% fewer API calls, instant cached validations, smooth animations
-- 🌳 **Visual Entity Tree** - Navigate and understand entity relationships at a glance
-- 📝 **Form-Based Editing** - Properties panel for error-free configuration updates
-- 🧪 **91% Test Coverage** - Comprehensive test suite with unit, integration, and E2E tests
-- 📚 **Complete Documentation** - User guides, developer guides, and release notes
-
-[See full release notes](RELEASE_NOTES_v0.1.0.md) | [Phase 2 summary](PHASE2_COMPLETE.md)
-
-## Recent Updates
-
-**v0.1.0 - Configuration Editor (December 14, 2025)**
-- ✨ **Web-Based Editor**: Full-featured configuration editor with Monaco integration
-- 🔍 **Smart Validation**: Multiple validation types (structural, data, entity-specific)
-- 🤖 **Auto-Fix**: Intelligent suggestions with preview, backup, and rollback
-- ⚡ **Performance**: 97% faster repeat validations with caching
-- 🎯 **UX Polish**: Tooltips, animations, loading states, debounced validation
-- 📊 **Metrics**: 91% test coverage, zero critical bugs, 16,800+ lines of documentation
-
-**v0.2.0 - Enhanced Constraints (November 2025)**
-- ✨ **Enhanced Foreign Key Constraints**: Comprehensive validation system with cardinality, uniqueness, and match requirements
-- 🚀 **Improved Validator Registry**: Efficient O(1) lookup for constraint validators using sub-key indexing
-- 🧹 **Streamlined API**: Removed redundant validators for cleaner, more maintainable codebase
-- 📝 **Better Documentation**: Updated configuration reference and constraint examples
-- 🔧 **Bug Fixes**: Fixed validator registration conflicts and improved error messages
-
 ## Overview
 
 Shape Shifter provides a comprehensive data transformation solution with two powerful components:
 
-### 1. Configuration Editor (Phase 2) 🆕
+### 1. Configuration Editor
 
 A modern web-based editor for creating and managing transformation configurations:
 
@@ -55,7 +19,7 @@ A modern web-based editor for creating and managing transformation configuration
 - **Fast & Smooth**: Caching, debouncing, and animations for professional UX
 - **Comprehensive Testing**: 91% test coverage ensures reliability
 
-### 2. Transformation Engine (Phase 1)
+### 2. Transformation Engine
 
 A declarative YAML-based system for defining complex data transformation pipelines:
 
@@ -68,7 +32,7 @@ A declarative YAML-based system for defining complex data transformation pipelin
 
 ## Features
 
-### Configuration Editor Features 🆕
+### Configuration Editor Features
 
 - **Monaco Editor Integration**: VS Code's powerful editor in your browser
 - **Dual-Mode Entity Editor**: Switch between visual form editor and YAML code editor (like VS Code settings)
@@ -95,6 +59,30 @@ A declarative YAML-based system for defining complex data transformation pipelin
 - **Data Validation**: Built-in validation for project files and data integrity
 - **Multiple Output Formats**: Export to CSV, Excel, or directly to databases
 - **Extensible Architecture**: Plugin-style loaders for different data sources
+
+## Quick Start with Docker 🐳
+
+The fastest way to get Shape Shifter running is with Docker:
+
+```bash
+# Clone the repository
+git clone https://github.com/humlab-sead/sead_shape_shifter.git
+cd sead_shape_shifter
+
+# Set up configuration
+cd docker/data
+cp backend.env.example backend.env
+cp frontend.env.example frontend.env
+nano backend.env  # Edit with your database credentials
+
+# Build and start
+cd ..
+docker compose up -d
+
+# Access the application at http://localhost:8012
+```
+
+All runtime configuration and data is stored in `docker/data/`. For detailed Docker deployment instructions, see [docker/README.md](docker/README.md).
 
 ## Developer Installation
 

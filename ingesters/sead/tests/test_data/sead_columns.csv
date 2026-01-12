@@ -1,0 +1,888 @@
+table_name,column_name,xml_column_name,position,data_type,numeric_precision,numeric_scale,character_maximum_length,is_nullable,is_pk,is_fk,fk_table_name,fk_column_name,class_name
+tbl_abundance_elements,abundance_element_id,abundanceElementId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_abundance_elements,record_type_id,recordTypeId,2,integer,32,0,0,True,False,True,tbl_record_types,record_type_id,TblRecordTypes
+tbl_abundance_elements,element_name,elementName,3,character varying,0,0,100,False,False,False,,,java.lang.String
+tbl_abundance_elements,element_description,elementDescription,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_abundance_elements,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_abundance_ident_levels,abundance_ident_level_id,abundanceIdentLevelId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_abundance_ident_levels,abundance_id,abundanceId,2,bigint,64,0,0,False,False,True,tbl_abundances,abundance_id,TblAbundances
+tbl_abundance_ident_levels,identification_level_id,identificationLevelId,3,integer,32,0,0,False,False,True,tbl_identification_levels,identification_level_id,TblIdentificationLevels
+tbl_abundance_ident_levels,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_abundance_modifications,abundance_modification_id,abundanceModificationId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_abundance_modifications,abundance_id,abundanceId,2,integer,32,0,0,False,False,True,tbl_abundances,abundance_id,TblAbundances
+tbl_abundance_modifications,modification_type_id,modificationTypeId,3,integer,32,0,0,False,False,True,tbl_modification_types,modification_type_id,TblModificationTypes
+tbl_abundance_modifications,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_abundances,abundance_id,abundanceId,1,bigint,64,0,0,False,True,False,,,java.lang.Integer
+tbl_abundances,taxon_id,taxonId,2,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_abundances,analysis_entity_id,analysisEntityId,3,bigint,64,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_abundances,abundance_element_id,abundanceElementId,4,integer,32,0,0,True,False,True,tbl_abundance_elements,abundance_element_id,TblAbundanceElements
+tbl_abundances,abundance,abundance,5,integer,32,0,0,False,False,False,,,java.lang.Integer
+tbl_abundances,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_activity_types,activity_type_id,activityTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_activity_types,activity_type,activityType,2,character varying,0,0,50,True,False,False,,,java.lang.String
+tbl_activity_types,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_activity_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_age_types,age_type_id,ageTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_age_types,age_type,ageType,2,character varying,0,0,150,False,False,False,,,java.lang.String
+tbl_age_types,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_age_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_aggregate_datasets,aggregate_dataset_id,aggregateDatasetId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_aggregate_datasets,aggregate_order_type_id,aggregateOrderTypeId,2,integer,32,0,0,False,False,True,tbl_aggregate_order_types,aggregate_order_type_id,TblAggregateOrderTypes
+tbl_aggregate_datasets,biblio_id,biblioId,3,integer,32,0,0,True,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_aggregate_datasets,aggregate_dataset_name,aggregateDatasetName,4,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_aggregate_datasets,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_aggregate_datasets,description,description,6,text,0,0,0,True,False,False,,,java.lang.String
+tbl_aggregate_datasets,aggregate_dataset_uuid,aggregateDatasetUuid,7,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_aggregate_order_types,aggregate_order_type_id,aggregateOrderTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_aggregate_order_types,aggregate_order_type,aggregateOrderType,2,character varying,0,0,60,False,False,False,,,java.lang.String
+tbl_aggregate_order_types,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_aggregate_order_types,description,description,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_aggregate_sample_ages,aggregate_sample_age_id,aggregateSampleAgeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_aggregate_sample_ages,aggregate_dataset_id,aggregateDatasetId,2,integer,32,0,0,False,False,True,tbl_aggregate_datasets,aggregate_dataset_id,TblAggregateDatasets
+tbl_aggregate_sample_ages,analysis_entity_age_id,analysisEntityAgeId,3,integer,32,0,0,False,False,True,tbl_analysis_entity_ages,analysis_entity_age_id,TblAnalysisEntityAges
+tbl_aggregate_sample_ages,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_aggregate_samples,aggregate_sample_id,aggregateSampleId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_aggregate_samples,aggregate_dataset_id,aggregateDatasetId,2,integer,32,0,0,False,False,True,tbl_aggregate_datasets,aggregate_dataset_id,TblAggregateDatasets
+tbl_aggregate_samples,analysis_entity_id,analysisEntityId,3,bigint,64,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_aggregate_samples,aggregate_sample_name,aggregateSampleName,4,character varying,0,0,50,True,False,False,,,java.lang.String
+tbl_aggregate_samples,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_alt_ref_types,alt_ref_type_id,altRefTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_alt_ref_types,alt_ref_type,altRefType,2,character varying,0,0,50,False,False,False,,,java.lang.String
+tbl_alt_ref_types,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_alt_ref_types,description,description,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_analysis_boolean_values,analysis_boolean_value_id,analysisBooleanValueId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_boolean_values,analysis_value_id,analysisValueId,2,bigint,64,0,0,False,False,True,tbl_analysis_values,analysis_value_id,TblAnalysisValues
+tbl_analysis_boolean_values,qualifier,qualifier,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_analysis_boolean_values,value,value,4,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_categorical_values,analysis_categorical_value_id,analysisCategoricalValueId,1,bigint,64,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_categorical_values,analysis_value_id,analysisValueId,2,bigint,64,0,0,False,False,True,tbl_analysis_values,analysis_value_id,TblAnalysisValues
+tbl_analysis_categorical_values,value_type_item_id,valueTypeItemId,3,integer,32,0,0,False,False,True,tbl_value_type_items,value_type_item_id,TblValueTypeItems
+tbl_analysis_categorical_values,value,value,4,numeric,20,10,0,True,False,False,,,java.math.BigDecimal
+tbl_analysis_categorical_values,is_variant,isVariant,5,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_dating_ranges,analysis_dating_range_id,analysisDatingRangeId,1,bigint,64,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_dating_ranges,analysis_value_id,analysisValueId,2,bigint,64,0,0,False,False,True,tbl_analysis_values,analysis_value_id,TblAnalysisValues
+tbl_analysis_dating_ranges,low_value,lowValue,3,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_analysis_dating_ranges,high_value,highValue,4,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_analysis_dating_ranges,low_is_uncertain,lowIsUncertain,5,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_dating_ranges,high_is_uncertain,highIsUncertain,6,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_dating_ranges,low_qualifier,lowQualifier,7,text,0,0,0,True,False,True,tbl_value_qualifier_symbols,symbol,TblValueQualifierSymbols
+tbl_analysis_dating_ranges,high_qualifier,highQualifier,8,text,0,0,0,True,False,True,tbl_value_qualifier_symbols,symbol,TblValueQualifierSymbols
+tbl_analysis_dating_ranges,age_type_id,ageTypeId,9,integer,32,0,0,False,False,True,tbl_age_types,age_type_id,TblAgeTypes
+tbl_analysis_dating_ranges,season_id,seasonId,10,integer,32,0,0,True,False,True,tbl_seasons,season_id,TblSeasons
+tbl_analysis_dating_ranges,dating_uncertainty_id,datingUncertaintyId,11,integer,32,0,0,True,False,True,tbl_dating_uncertainty,dating_uncertainty_id,TblDatingUncertainty
+tbl_analysis_dating_ranges,is_variant,isVariant,12,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_entities,analysis_entity_id,analysisEntityId,1,bigint,64,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_entities,physical_sample_id,physicalSampleId,2,integer,32,0,0,True,False,True,tbl_physical_samples,physical_sample_id,TblPhysicalSamples
+tbl_analysis_entities,dataset_id,datasetId,3,integer,32,0,0,True,False,True,tbl_datasets,dataset_id,TblDatasets
+tbl_analysis_entities,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_analysis_entity_ages,analysis_entity_age_id,analysisEntityAgeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_entity_ages,age,age,2,numeric,20,5,0,True,False,False,,,java.math.BigDecimal
+tbl_analysis_entity_ages,age_older,ageOlder,3,numeric,20,5,0,True,False,False,,,java.math.BigDecimal
+tbl_analysis_entity_ages,age_younger,ageYounger,4,numeric,20,5,0,True,False,False,,,java.math.BigDecimal
+tbl_analysis_entity_ages,analysis_entity_id,analysisEntityId,5,bigint,64,0,0,True,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_analysis_entity_ages,chronology_id,chronologyId,6,integer,32,0,0,True,False,True,tbl_chronologies,chronology_id,TblChronologies
+tbl_analysis_entity_ages,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_analysis_entity_ages,dating_specifier,datingSpecifier,8,text,0,0,0,True,False,False,,,java.lang.String
+tbl_analysis_entity_dimensions,analysis_entity_dimension_id,analysisEntityDimensionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_entity_dimensions,analysis_entity_id,analysisEntityId,2,bigint,64,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_analysis_entity_dimensions,dimension_id,dimensionId,3,integer,32,0,0,False,False,True,tbl_dimensions,dimension_id,TblDimensions
+tbl_analysis_entity_dimensions,dimension_value,dimensionValue,4,numeric,0,0,0,False,False,False,,,java.math.BigDecimal
+tbl_analysis_entity_dimensions,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_analysis_entity_prep_methods,analysis_entity_prep_method_id,analysisEntityPrepMethodId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_entity_prep_methods,analysis_entity_id,analysisEntityId,2,bigint,64,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_analysis_entity_prep_methods,method_id,methodId,3,integer,32,0,0,False,False,True,tbl_methods,method_id,TblMethods
+tbl_analysis_entity_prep_methods,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_analysis_identifiers,analysis_identifier_id,analysisIdentifierId,1,bigint,64,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_identifiers,analysis_value_id,analysisValueId,2,bigint,64,0,0,False,False,True,tbl_analysis_values,analysis_value_id,TblAnalysisValues
+tbl_analysis_identifiers,value,value,3,text,0,0,0,False,False,False,,,java.lang.String
+tbl_analysis_integer_ranges,analysis_integer_range_id,analysisIntegerRangeId,1,bigint,64,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_integer_ranges,analysis_value_id,analysisValueId,2,bigint,64,0,0,False,False,True,tbl_analysis_values,analysis_value_id,TblAnalysisValues
+tbl_analysis_integer_ranges,low_value,lowValue,3,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_analysis_integer_ranges,high_value,highValue,4,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_analysis_integer_ranges,low_is_uncertain,lowIsUncertain,5,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_integer_ranges,high_is_uncertain,highIsUncertain,6,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_integer_ranges,low_qualifier,lowQualifier,7,text,0,0,0,True,False,True,tbl_value_qualifier_symbols,symbol,TblValueQualifierSymbols
+tbl_analysis_integer_ranges,high_qualifier,highQualifier,8,text,0,0,0,True,False,True,tbl_value_qualifier_symbols,symbol,TblValueQualifierSymbols
+tbl_analysis_integer_ranges,is_variant,isVariant,9,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_integer_values,analysis_integer_value_id,analysisIntegerValueId,1,bigint,64,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_integer_values,analysis_value_id,analysisValueId,2,bigint,64,0,0,False,False,True,tbl_analysis_values,analysis_value_id,TblAnalysisValues
+tbl_analysis_integer_values,qualifier,qualifier,3,text,0,0,0,True,False,True,tbl_value_qualifier_symbols,symbol,TblValueQualifierSymbols
+tbl_analysis_integer_values,value,value,4,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_analysis_integer_values,is_variant,isVariant,5,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_notes,analysis_note_id,analysisNoteId,1,bigint,64,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_notes,analysis_value_id,analysisValueId,2,bigint,64,0,0,False,False,True,tbl_analysis_values,analysis_value_id,TblAnalysisValues
+tbl_analysis_notes,value,value,3,text,0,0,0,False,False,False,,,java.lang.String
+tbl_analysis_numerical_ranges,analysis_numerical_range_id,analysisNumericalRangeId,1,bigint,64,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_numerical_ranges,analysis_value_id,analysisValueId,2,bigint,64,0,0,False,False,True,tbl_analysis_values,analysis_value_id,TblAnalysisValues
+tbl_analysis_numerical_ranges,low_is_uncertain,lowIsUncertain,4,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_numerical_ranges,high_is_uncertain,highIsUncertain,5,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_numerical_ranges,low_qualifier,lowQualifier,6,text,0,0,0,True,False,True,tbl_value_qualifier_symbols,symbol,TblValueQualifierSymbols
+tbl_analysis_numerical_ranges,high_qualifier,highQualifier,7,text,0,0,0,True,False,True,tbl_value_qualifier_symbols,symbol,TblValueQualifierSymbols
+tbl_analysis_numerical_ranges,is_variant,isVariant,8,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_numerical_values,analysis_numerical_value_id,analysisNumericalValueId,1,bigint,64,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_numerical_values,analysis_value_id,analysisValueId,2,bigint,64,0,0,False,False,True,tbl_analysis_values,analysis_value_id,TblAnalysisValues
+tbl_analysis_numerical_values,qualifier,qualifier,3,text,0,0,0,True,False,True,tbl_value_qualifier_symbols,symbol,TblValueQualifierSymbols
+tbl_analysis_numerical_values,value,value,4,numeric,20,10,0,True,False,False,,,java.math.BigDecimal
+tbl_analysis_numerical_values,is_variant,isVariant,5,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_taxon_counts,analysis_taxon_count_id,analysisTaxonCountId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_taxon_counts,analysis_value_id,analysisValueId,2,bigint,64,0,0,False,False,True,tbl_analysis_values,analysis_value_id,TblAnalysisValues
+tbl_analysis_taxon_counts,taxon_id,taxonId,3,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_analysis_taxon_counts,value,value,4,numeric,20,10,0,False,False,False,,,java.math.BigDecimal
+tbl_analysis_value_dimensions,analysis_value_dimension_id,analysisValueDimensionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_value_dimensions,analysis_value_id,analysisValueId,2,bigint,64,0,0,False,False,True,tbl_analysis_values,analysis_value_id,TblAnalysisValues
+tbl_analysis_value_dimensions,dimension_id,dimensionId,3,integer,32,0,0,False,False,True,tbl_dimensions,dimension_id,TblDimensions
+tbl_analysis_value_dimensions,value,value,4,numeric,20,10,0,False,False,False,,,java.math.BigDecimal
+tbl_analysis_values,analysis_value_id,analysisValueId,1,bigint,64,0,0,False,True,False,,,java.lang.Integer
+tbl_analysis_values,value_class_id,valueClassId,2,integer,32,0,0,False,False,True,tbl_value_classes,value_class_id,TblValueClasses
+tbl_analysis_values,analysis_entity_id,analysisEntityId,3,bigint,64,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_analysis_values,analysis_value,analysisValue,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_analysis_values,boolean_value,booleanValue,5,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_values,is_boolean,isBoolean,6,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_values,is_uncertain,isUncertain,7,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_values,is_undefined,isUndefined,8,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_values,is_not_analyzed,isNotAnalyzed,9,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_values,is_indeterminable,isIndeterminable,10,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_analysis_values,is_anomaly,isAnomaly,11,boolean,0,0,0,True,False,False,,,java.lang.Boolean
+tbl_biblio,biblio_id,biblioId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_biblio,bugs_reference,bugsReference,6,character varying,0,0,60,True,False,False,,,java.lang.String
+tbl_biblio,date_updated,dateUpdated,9,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_biblio,doi,doi,10,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_biblio,isbn,isbn,12,character varying,0,0,128,True,False,False,,,java.lang.String
+tbl_biblio,notes,notes,14,text,0,0,0,True,False,False,,,java.lang.String
+tbl_biblio,title,title,20,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_biblio,year,year,22,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_biblio,authors,authors,23,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_biblio,full_reference,fullReference,24,text,0,0,0,False,False,False,,,java.lang.String
+tbl_biblio,url,url,25,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_biblio,biblio_uuid,biblioUuid,26,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_ceramics,ceramics_id,ceramicsId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_ceramics,analysis_entity_id,analysisEntityId,2,integer,32,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_ceramics,measurement_value,measurementValue,3,character varying,0,0,0,False,False,False,,,java.lang.String
+tbl_ceramics,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_ceramics,ceramics_lookup_id,ceramicsLookupId,5,integer,32,0,0,False,False,True,tbl_ceramics_lookup,ceramics_lookup_id,TblCeramicsLookup
+tbl_ceramics_lookup,ceramics_lookup_id,ceramicsLookupId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_ceramics_lookup,method_id,methodId,2,integer,32,0,0,False,False,True,tbl_methods,method_id,TblMethods
+tbl_ceramics_lookup,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_ceramics_lookup,name,name,4,character varying,0,0,0,False,False,False,,,java.lang.String
+tbl_ceramics_lookup,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_chronologies,chronology_id,chronologyId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_chronologies,age_model,ageModel,2,text,0,0,0,True,False,False,,,java.lang.String
+tbl_chronologies,relative_age_type_id,relativeAgeTypeId,3,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_chronologies,chronology_name,chronologyName,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_chronologies,contact_id,contactId,5,integer,32,0,0,True,False,True,tbl_contacts,contact_id,TblContacts
+tbl_chronologies,date_prepared,datePrepared,6,timestamp without time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_chronologies,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_chronologies,notes,notes,8,text,0,0,0,True,False,False,,,java.lang.String
+tbl_colours,colour_id,colourId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_colours,colour_name,colourName,2,character varying,0,0,30,False,False,False,,,java.lang.String
+tbl_colours,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_colours,method_id,methodId,4,integer,32,0,0,False,False,True,tbl_methods,method_id,TblMethods
+tbl_colours,rgb,rgb,5,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_contact_types,contact_type_id,contactTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_contact_types,contact_type_name,contactTypeName,2,character varying,0,0,150,False,False,False,,,java.lang.String
+tbl_contact_types,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_contact_types,description,description,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_contacts,contact_id,contactId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_contacts,address_1,address1,2,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_contacts,address_2,address2,3,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_contacts,location_id,locationId,4,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_contacts,email,email,5,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_contacts,first_name,firstName,6,character varying,0,0,50,True,False,False,,,java.lang.String
+tbl_contacts,last_name,lastName,7,character varying,0,0,100,True,False,False,,,java.lang.String
+tbl_contacts,phone_number,phoneNumber,8,character varying,0,0,50,True,False,False,,,java.lang.String
+tbl_contacts,url,url,9,text,0,0,0,True,False,False,,,java.lang.String
+tbl_contacts,date_updated,dateUpdated,10,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_coordinate_method_dimensions,coordinate_method_dimension_id,coordinateMethodDimensionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_coordinate_method_dimensions,dimension_id,dimensionId,2,integer,32,0,0,False,False,True,tbl_dimensions,dimension_id,TblDimensions
+tbl_coordinate_method_dimensions,method_id,methodId,3,integer,32,0,0,False,False,True,tbl_methods,method_id,TblMethods
+tbl_coordinate_method_dimensions,limit_upper,limitUpper,4,numeric,18,10,0,True,False,False,,,java.math.BigDecimal
+tbl_coordinate_method_dimensions,limit_lower,limitLower,5,numeric,18,10,0,True,False,False,,,java.math.BigDecimal
+tbl_coordinate_method_dimensions,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_data_type_groups,data_type_group_id,dataTypeGroupId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_data_type_groups,data_type_group_name,dataTypeGroupName,2,character varying,0,0,25,True,False,False,,,java.lang.String
+tbl_data_type_groups,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_data_type_groups,description,description,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_data_types,data_type_id,dataTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_data_types,data_type_group_id,dataTypeGroupId,2,integer,32,0,0,False,False,True,tbl_data_type_groups,data_type_group_id,TblDataTypeGroups
+tbl_data_types,data_type_name,dataTypeName,3,character varying,0,0,25,True,False,False,,,java.lang.String
+tbl_data_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_data_types,definition,definition,5,text,0,0,0,True,False,False,,,java.lang.String
+tbl_dataset_contacts,dataset_contact_id,datasetContactId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dataset_contacts,contact_id,contactId,2,integer,32,0,0,False,False,True,tbl_contacts,contact_id,TblContacts
+tbl_dataset_contacts,contact_type_id,contactTypeId,3,integer,32,0,0,False,False,True,tbl_contact_types,contact_type_id,TblContactTypes
+tbl_dataset_contacts,dataset_id,datasetId,4,integer,32,0,0,False,False,True,tbl_datasets,dataset_id,TblDatasets
+tbl_dataset_contacts,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_dataset_masters,master_set_id,masterSetId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dataset_masters,contact_id,contactId,2,integer,32,0,0,True,False,True,tbl_contacts,contact_id,TblContacts
+tbl_dataset_masters,biblio_id,biblioId,3,integer,32,0,0,True,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_dataset_masters,master_name,masterName,4,character varying,0,0,100,True,False,False,,,java.lang.String
+tbl_dataset_masters,master_notes,masterNotes,5,text,0,0,0,True,False,False,,,java.lang.String
+tbl_dataset_masters,url,url,6,text,0,0,0,True,False,False,,,java.lang.String
+tbl_dataset_masters,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_dataset_masters,master_set_uuid,masterSetUuid,8,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_dataset_methods,dataset_method_id,datasetMethodId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dataset_methods,dataset_id,datasetId,2,integer,32,0,0,False,False,True,tbl_datasets,dataset_id,TblDatasets
+tbl_dataset_methods,method_id,methodId,3,integer,32,0,0,False,False,True,tbl_methods,method_id,TblMethods
+tbl_dataset_methods,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_dataset_submission_types,submission_type_id,submissionTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dataset_submission_types,submission_type,submissionType,2,character varying,0,0,60,False,False,False,,,java.lang.String
+tbl_dataset_submission_types,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_dataset_submission_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_dataset_submissions,dataset_submission_id,datasetSubmissionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dataset_submissions,dataset_id,datasetId,2,integer,32,0,0,False,False,True,tbl_datasets,dataset_id,TblDatasets
+tbl_dataset_submissions,submission_type_id,submissionTypeId,3,integer,32,0,0,False,False,True,tbl_dataset_submission_types,submission_type_id,TblDatasetSubmissionTypes
+tbl_dataset_submissions,contact_id,contactId,4,integer,32,0,0,False,False,True,tbl_contacts,contact_id,TblContacts
+tbl_dataset_submissions,date_submitted,dateSubmitted,5,text,0,0,0,True,False,False,,,java.lang.String
+tbl_dataset_submissions,notes,notes,6,text,0,0,0,True,False,False,,,java.lang.String
+tbl_dataset_submissions,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_datasets,dataset_id,datasetId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_datasets,master_set_id,masterSetId,2,integer,32,0,0,True,False,True,tbl_dataset_masters,master_set_id,TblDatasetMasters
+tbl_datasets,data_type_id,dataTypeId,3,integer,32,0,0,False,False,True,tbl_data_types,data_type_id,TblDataTypes
+tbl_datasets,method_id,methodId,4,integer,32,0,0,True,False,True,tbl_methods,method_id,TblMethods
+tbl_datasets,biblio_id,biblioId,5,integer,32,0,0,True,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_datasets,updated_dataset_id,updatedDatasetId,6,integer,32,0,0,True,False,True,tbl_datasets,dataset_id,TblDatasets
+tbl_datasets,project_id,projectId,7,integer,32,0,0,True,False,True,tbl_projects,project_id,TblProjects
+tbl_datasets,dataset_name,datasetName,8,character varying,0,0,50,False,False,False,,,java.lang.String
+tbl_datasets,date_updated,dateUpdated,9,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_datasets,dataset_uuid,datasetUuid,10,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_dating_labs,dating_lab_id,datingLabId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dating_labs,contact_id,contactId,2,integer,32,0,0,True,False,True,tbl_contacts,contact_id,TblContacts
+tbl_dating_labs,international_lab_id,internationalLabId,3,character varying,0,0,10,False,False,False,,,java.lang.String
+tbl_dating_labs,lab_name,labName,4,character varying,0,0,100,True,False,False,,,java.lang.String
+tbl_dating_labs,country_id,countryId,5,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_dating_labs,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_dating_material,dating_material_id,datingMaterialId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dating_material,geochron_id,geochronId,2,integer,32,0,0,False,False,True,tbl_geochronology,geochron_id,TblGeochronology
+tbl_dating_material,taxon_id,taxonId,3,integer,32,0,0,True,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_dating_material,material_dated,materialDated,4,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_dating_material,description,description,5,text,0,0,0,True,False,False,,,java.lang.String
+tbl_dating_material,abundance_element_id,abundanceElementId,6,integer,32,0,0,True,False,True,tbl_abundance_elements,abundance_element_id,TblAbundanceElements
+tbl_dating_material,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_dating_uncertainty,dating_uncertainty_id,datingUncertaintyId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dating_uncertainty,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_dating_uncertainty,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_dating_uncertainty,uncertainty,uncertainty,4,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_dendro,dendro_id,dendroId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dendro,analysis_entity_id,analysisEntityId,2,integer,32,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_dendro,measurement_value,measurementValue,3,character varying,0,0,0,False,False,False,,,java.lang.String
+tbl_dendro,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_dendro,dendro_lookup_id,dendroLookupId,5,integer,32,0,0,False,False,True,tbl_dendro_lookup,dendro_lookup_id,TblDendroLookup
+tbl_dendro_date_notes,dendro_date_note_id,dendroDateNoteId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dendro_date_notes,dendro_date_id,dendroDateId,2,integer,32,0,0,False,False,True,tbl_dendro_dates,dendro_date_id,TblDendroDates
+tbl_dendro_date_notes,note,note,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_dendro_date_notes,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_dendro_dates,dendro_date_id,dendroDateId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dendro_dates,season_id,seasonId,2,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_dendro_dates,dating_uncertainty_id,datingUncertaintyId,3,integer,32,0,0,True,False,True,tbl_dating_uncertainty,dating_uncertainty_id,TblDatingUncertainty
+tbl_dendro_dates,dendro_lookup_id,dendroLookupId,4,integer,32,0,0,False,False,True,tbl_dendro_lookup,dendro_lookup_id,TblDendroLookup
+tbl_dendro_dates,age_type_id,ageTypeId,5,integer,32,0,0,False,False,True,tbl_age_types,age_type_id,TblAgeTypes
+tbl_dendro_dates,analysis_entity_id,analysisEntityId,6,integer,32,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_dendro_dates,age_older,ageOlder,7,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_dendro_dates,age_younger,ageYounger,8,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_dendro_dates,date_updated,dateUpdated,9,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_dendro_lookup,dendro_lookup_id,dendroLookupId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dendro_lookup,method_id,methodId,2,integer,32,0,0,True,False,True,tbl_methods,method_id,TblMethods
+tbl_dendro_lookup,name,name,3,character varying,0,0,0,False,False,False,,,java.lang.String
+tbl_dendro_lookup,description,description,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_dendro_lookup,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_dimensions,dimension_id,dimensionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_dimensions,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_dimensions,dimension_abbrev,dimensionAbbrev,3,character varying,0,0,40,True,False,False,,,java.lang.String
+tbl_dimensions,dimension_description,dimensionDescription,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_dimensions,dimension_name,dimensionName,5,character varying,0,0,50,False,False,False,,,java.lang.String
+tbl_dimensions,unit_id,unitId,6,integer,32,0,0,True,False,True,tbl_units,unit_id,TblUnits
+tbl_dimensions,method_group_id,methodGroupId,7,integer,32,0,0,True,False,True,tbl_method_groups,method_group_id,TblMethodGroups
+tbl_ecocode_definitions,ecocode_definition_id,ecocodeDefinitionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_ecocode_definitions,abbreviation,abbreviation,2,character varying,0,0,10,True,False,False,,,java.lang.String
+tbl_ecocode_definitions,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_ecocode_definitions,definition,definition,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_ecocode_definitions,ecocode_group_id,ecocodeGroupId,5,integer,32,0,0,True,False,True,tbl_ecocode_groups,ecocode_group_id,TblEcocodeGroups
+tbl_ecocode_definitions,name,name,6,character varying,0,0,150,True,False,False,,,java.lang.String
+tbl_ecocode_definitions,notes,notes,7,text,0,0,0,True,False,False,,,java.lang.String
+tbl_ecocode_definitions,sort_order,sortOrder,8,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_ecocode_groups,ecocode_group_id,ecocodeGroupId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_ecocode_groups,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_ecocode_groups,definition,definition,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_ecocode_groups,ecocode_system_id,ecocodeSystemId,4,integer,32,0,0,True,False,True,tbl_ecocode_systems,ecocode_system_id,TblEcocodeSystems
+tbl_ecocode_groups,name,name,5,character varying,0,0,200,True,False,False,,,java.lang.String
+tbl_ecocode_groups,abbreviation,abbreviation,6,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_ecocode_systems,ecocode_system_id,ecocodeSystemId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_ecocode_systems,biblio_id,biblioId,2,integer,32,0,0,True,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_ecocode_systems,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_ecocode_systems,definition,definition,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_ecocode_systems,name,name,5,character varying,0,0,50,True,False,False,,,java.lang.String
+tbl_ecocode_systems,notes,notes,6,text,0,0,0,True,False,False,,,java.lang.String
+tbl_ecocode_systems,ecocode_system_uuid,ecocodeSystemUuid,7,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_ecocodes,ecocode_id,ecocodeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_ecocodes,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_ecocodes,ecocode_definition_id,ecocodeDefinitionId,3,integer,32,0,0,True,False,True,tbl_ecocode_definitions,ecocode_definition_id,TblEcocodeDefinitions
+tbl_ecocodes,taxon_id,taxonId,4,integer,32,0,0,True,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_feature_types,feature_type_id,featureTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_feature_types,feature_type_name,featureTypeName,2,character varying,0,0,128,True,False,False,,,java.lang.String
+tbl_feature_types,feature_type_description,featureTypeDescription,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_feature_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_features,feature_id,featureId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_features,feature_type_id,featureTypeId,2,integer,32,0,0,False,False,True,tbl_feature_types,feature_type_id,TblFeatureTypes
+tbl_features,feature_name,featureName,3,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_features,feature_description,featureDescription,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_features,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_geochron_refs,geochron_ref_id,geochronRefId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_geochron_refs,geochron_id,geochronId,2,integer,32,0,0,False,False,True,tbl_geochronology,geochron_id,TblGeochronology
+tbl_geochron_refs,biblio_id,biblioId,3,integer,32,0,0,False,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_geochron_refs,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_geochronology,geochron_id,geochronId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_geochronology,analysis_entity_id,analysisEntityId,2,bigint,64,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_geochronology,dating_lab_id,datingLabId,3,integer,32,0,0,True,False,True,tbl_dating_labs,dating_lab_id,TblDatingLabs
+tbl_geochronology,lab_number,labNumber,4,character varying,0,0,40,True,False,False,,,java.lang.String
+tbl_geochronology,age,age,5,numeric,20,5,0,True,False,False,,,java.math.BigDecimal
+tbl_geochronology,error_older,errorOlder,6,numeric,20,5,0,True,False,False,,,java.math.BigDecimal
+tbl_geochronology,error_younger,errorYounger,7,numeric,20,5,0,True,False,False,,,java.math.BigDecimal
+tbl_geochronology,delta_13c,delta13c,8,numeric,10,5,0,True,False,False,,,java.math.BigDecimal
+tbl_geochronology,notes,notes,9,text,0,0,0,True,False,False,,,java.lang.String
+tbl_geochronology,date_updated,dateUpdated,10,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_geochronology,dating_uncertainty_id,datingUncertaintyId,11,integer,32,0,0,True,False,True,tbl_dating_uncertainty,dating_uncertainty_id,TblDatingUncertainty
+tbl_geochronology,geochron_uuid,geochronUuid,12,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_horizons,horizon_id,horizonId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_horizons,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_horizons,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_horizons,horizon_name,horizonName,4,character varying,0,0,15,False,False,False,,,java.lang.String
+tbl_horizons,method_id,methodId,5,integer,32,0,0,False,False,True,tbl_methods,method_id,TblMethods
+tbl_identification_levels,identification_level_id,identificationLevelId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_identification_levels,identification_level_abbrev,identificationLevelAbbrev,2,character varying,0,0,50,True,False,False,,,java.lang.String
+tbl_identification_levels,identification_level_name,identificationLevelName,3,character varying,0,0,50,True,False,False,,,java.lang.String
+tbl_identification_levels,notes,notes,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_identification_levels,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_image_types,image_type_id,imageTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_image_types,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_image_types,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_image_types,image_type,imageType,4,character varying,0,0,40,False,False,False,,,java.lang.String
+tbl_imported_taxa_replacements,imported_taxa_replacement_id,importedTaxaReplacementId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_imported_taxa_replacements,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_imported_taxa_replacements,imported_name_replaced,importedNameReplaced,3,character varying,0,0,100,False,False,False,,,java.lang.String
+tbl_imported_taxa_replacements,taxon_id,taxonId,4,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_isotope_measurements,isotope_measurement_id,isotopeMeasurementId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_isotope_measurements,isotope_standard_id,isotopeStandardId,2,integer,32,0,0,True,False,True,tbl_isotope_standards,isotope_standard_id,TblIsotopeStandards
+tbl_isotope_measurements,method_id,methodId,3,integer,32,0,0,True,False,True,tbl_methods,method_id,TblMethods
+tbl_isotope_measurements,isotope_type_id,isotopeTypeId,4,integer,32,0,0,True,False,True,tbl_isotope_types,isotope_type_id,TblIsotopeTypes
+tbl_isotope_measurements,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_isotope_standards,isotope_standard_id,isotopeStandardId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_isotope_standards,isotope_ration,isotopeRation,2,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_isotope_standards,international_scale,internationalScale,3,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_isotope_standards,accepted_ratio_xe6,acceptedRatioXe6,4,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_isotope_standards,error_of_ratio,errorOfRatio,5,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_isotope_standards,reference,reference,6,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_isotope_standards,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_isotope_types,isotope_type_id,isotopeTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_isotope_types,designation,designation,2,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_isotope_types,abbreviation,abbreviation,3,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_isotope_types,atomic_number,atomicNumber,4,numeric,0,0,0,True,False,False,,,java.math.BigDecimal
+tbl_isotope_types,description,description,5,text,0,0,0,True,False,False,,,java.lang.String
+tbl_isotope_types,alternative_designation,alternativeDesignation,6,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_isotope_types,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_isotope_value_specifiers,isotope_value_specifier_id,isotopeValueSpecifierId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_isotope_value_specifiers,name,name,2,character varying,0,0,0,False,False,False,,,java.lang.String
+tbl_isotope_value_specifiers,description,description,3,text,0,0,0,False,False,False,,,java.lang.String
+tbl_isotope_value_specifiers,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_isotopes,isotope_id,isotopeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_isotopes,analysis_entity_id,analysisEntityId,2,integer,32,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_isotopes,isotope_measurement_id,isotopeMeasurementId,3,integer,32,0,0,False,False,True,tbl_isotope_measurements,isotope_measurement_id,TblIsotopeMeasurements
+tbl_isotopes,isotope_standard_id,isotopeStandardId,4,integer,32,0,0,True,False,True,tbl_isotope_standards,isotope_standard_id,TblIsotopeStandards
+tbl_isotopes,measurement_value,measurementValue,5,text,0,0,0,True,False,False,,,java.lang.String
+tbl_isotopes,unit_id,unitId,6,integer,32,0,0,False,False,True,tbl_units,unit_id,TblUnits
+tbl_isotopes,isotope_value_specifier_id,isotopeValueSpecifierId,7,integer,32,0,0,False,False,True,tbl_isotope_value_specifiers,isotope_value_specifier_id,TblIsotopeValueSpecifiers
+tbl_isotopes,date_updated,dateUpdated,8,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_languages,language_id,languageId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_languages,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_languages,language_name_english,languageNameEnglish,3,character varying,0,0,100,True,False,False,,,java.lang.String
+tbl_languages,language_name_native,languageNameNative,4,character varying,0,0,100,True,False,False,,,java.lang.String
+tbl_lithology,lithology_id,lithologyId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_lithology,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_lithology,depth_bottom,depthBottom,3,numeric,20,5,0,True,False,False,,,java.math.BigDecimal
+tbl_lithology,depth_top,depthTop,4,numeric,20,5,0,False,False,False,,,java.math.BigDecimal
+tbl_lithology,description,description,5,text,0,0,0,False,False,False,,,java.lang.String
+tbl_lithology,lower_boundary,lowerBoundary,6,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_lithology,sample_group_id,sampleGroupId,7,integer,32,0,0,False,False,True,tbl_sample_groups,sample_group_id,TblSampleGroups
+tbl_location_types,location_type_id,locationTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_location_types,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_location_types,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_location_types,location_type,locationType,4,character varying,0,0,40,True,False,False,,,java.lang.String
+tbl_locations,location_id,locationId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_locations,location_name,locationName,2,character varying,0,0,255,False,False,False,,,java.lang.String
+tbl_locations,location_type_id,locationTypeId,3,integer,32,0,0,False,False,True,tbl_location_types,location_type_id,TblLocationTypes
+tbl_locations,default_lat_dd,defaultLatDd,4,numeric,18,10,0,True,False,False,,,java.math.BigDecimal
+tbl_locations,default_long_dd,defaultLongDd,5,numeric,18,10,0,True,False,False,,,java.math.BigDecimal
+tbl_locations,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_mcr_names,taxon_id,taxonId,1,integer,32,0,0,False,True,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_mcr_names,comparison_notes,comparisonNotes,2,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_mcr_names,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_mcr_names,mcr_name_trim,mcrNameTrim,4,character varying,0,0,80,True,False,False,,,java.lang.String
+tbl_mcr_names,mcr_number,mcrNumber,5,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_mcr_names,mcr_species_name,mcrSpeciesName,6,character varying,0,0,200,True,False,False,,,java.lang.String
+tbl_mcr_summary_data,mcr_summary_data_id,mcrSummaryDataId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_mcr_summary_data,cog_mid_tmax,cogMidTmax,2,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_mcr_summary_data,cog_mid_trange,cogMidTrange,3,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_mcr_summary_data,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_mcr_summary_data,taxon_id,taxonId,5,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_mcr_summary_data,tmax_hi,tmaxHi,6,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_mcr_summary_data,tmax_lo,tmaxLo,7,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_mcr_summary_data,tmin_hi,tminHi,8,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_mcr_summary_data,tmin_lo,tminLo,9,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_mcr_summary_data,trange_hi,trangeHi,10,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_mcr_summary_data,trange_lo,trangeLo,11,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_mcrdata_birmbeetledat,mcrdata_birmbeetledat_id,mcrdataBirmbeetledatId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_mcrdata_birmbeetledat,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_mcrdata_birmbeetledat,mcr_data,mcrData,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_mcrdata_birmbeetledat,mcr_row,mcrRow,4,smallint,16,0,0,False,False,False,,,java.lang.Short
+tbl_mcrdata_birmbeetledat,taxon_id,taxonId,5,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_measured_value_dimensions,measured_value_dimension_id,measuredValueDimensionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_measured_value_dimensions,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_measured_value_dimensions,dimension_id,dimensionId,3,integer,32,0,0,False,False,True,tbl_dimensions,dimension_id,TblDimensions
+tbl_measured_value_dimensions,dimension_value,dimensionValue,4,numeric,18,10,0,False,False,False,,,java.math.BigDecimal
+tbl_measured_value_dimensions,measured_value_id,measuredValueId,5,bigint,64,0,0,False,False,True,tbl_measured_values,measured_value_id,TblMeasuredValues
+tbl_measured_values,measured_value_id,measuredValueId,1,bigint,64,0,0,False,True,False,,,java.lang.Integer
+tbl_measured_values,analysis_entity_id,analysisEntityId,2,bigint,64,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_measured_values,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_measured_values,measured_value,measuredValue,4,numeric,20,10,0,False,False,False,,,java.math.BigDecimal
+tbl_method_groups,method_group_id,methodGroupId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_method_groups,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_method_groups,description,description,3,text,0,0,0,False,False,False,,,java.lang.String
+tbl_method_groups,group_name,groupName,4,character varying,0,0,100,False,False,False,,,java.lang.String
+tbl_methods,method_id,methodId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_methods,biblio_id,biblioId,2,integer,32,0,0,True,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_methods,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_methods,description,description,4,text,0,0,0,False,False,False,,,java.lang.String
+tbl_methods,method_abbrev_or_alt_name,methodAbbrevOrAltName,5,character varying,0,0,50,True,False,False,,,java.lang.String
+tbl_methods,method_group_id,methodGroupId,6,integer,32,0,0,False,False,True,tbl_method_groups,method_group_id,TblMethodGroups
+tbl_methods,method_name,methodName,7,character varying,0,0,50,False,False,False,,,java.lang.String
+tbl_methods,record_type_id,recordTypeId,8,integer,32,0,0,True,False,True,tbl_record_types,record_type_id,TblRecordTypes
+tbl_methods,unit_id,unitId,9,integer,32,0,0,True,False,True,tbl_units,unit_id,TblUnits
+tbl_methods,method_uuid,methodUuid,10,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_modification_types,modification_type_id,modificationTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_modification_types,modification_type_name,modificationTypeName,2,character varying,0,0,128,True,False,False,,,java.lang.String
+tbl_modification_types,modification_type_description,modificationTypeDescription,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_modification_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_physical_sample_features,physical_sample_feature_id,physicalSampleFeatureId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_physical_sample_features,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_physical_sample_features,feature_id,featureId,3,integer,32,0,0,False,False,True,tbl_features,feature_id,TblFeatures
+tbl_physical_sample_features,physical_sample_id,physicalSampleId,4,integer,32,0,0,False,False,True,tbl_physical_samples,physical_sample_id,TblPhysicalSamples
+tbl_physical_samples,physical_sample_id,physicalSampleId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_physical_samples,sample_group_id,sampleGroupId,2,integer,32,0,0,False,False,True,tbl_sample_groups,sample_group_id,TblSampleGroups
+tbl_physical_samples,alt_ref_type_id,altRefTypeId,3,integer,32,0,0,True,False,True,tbl_alt_ref_types,alt_ref_type_id,TblAltRefTypes
+tbl_physical_samples,sample_type_id,sampleTypeId,4,integer,32,0,0,False,False,True,tbl_sample_types,sample_type_id,TblSampleTypes
+tbl_physical_samples,sample_name,sampleName,5,character varying,0,0,50,False,False,False,,,java.lang.String
+tbl_physical_samples,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_physical_samples,date_sampled,dateSampled,7,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_project_stages,project_stage_id,projectStageId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_project_stages,stage_name,stageName,2,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_project_stages,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_project_stages,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_project_types,project_type_id,projectTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_project_types,project_type_name,projectTypeName,2,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_project_types,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_project_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_projects,project_id,projectId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_projects,project_type_id,projectTypeId,2,integer,32,0,0,True,False,True,tbl_project_types,project_type_id,TblProjectTypes
+tbl_projects,project_stage_id,projectStageId,3,integer,32,0,0,True,False,True,tbl_project_stages,project_stage_id,TblProjectStages
+tbl_projects,project_name,projectName,4,character varying,0,0,150,True,False,False,,,java.lang.String
+tbl_projects,project_abbrev_name,projectAbbrevName,5,character varying,0,0,25,True,False,False,,,java.lang.String
+tbl_projects,description,description,6,text,0,0,0,True,False,False,,,java.lang.String
+tbl_projects,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_rdb,rdb_id,rdbId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_rdb,location_id,locationId,2,integer,32,0,0,False,False,True,tbl_locations,location_id,TblLocations
+tbl_rdb,rdb_code_id,rdbCodeId,3,integer,32,0,0,True,False,True,tbl_rdb_codes,rdb_code_id,TblRdbCodes
+tbl_rdb,taxon_id,taxonId,4,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_rdb,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_rdb_codes,rdb_code_id,rdbCodeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_rdb_codes,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_rdb_codes,rdb_category,rdbCategory,3,character varying,0,0,4,True,False,False,,,java.lang.String
+tbl_rdb_codes,rdb_definition,rdbDefinition,4,character varying,0,0,200,True,False,False,,,java.lang.String
+tbl_rdb_codes,rdb_system_id,rdbSystemId,5,integer,32,0,0,True,False,True,tbl_rdb_systems,rdb_system_id,TblRdbSystems
+tbl_rdb_systems,rdb_system_id,rdbSystemId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_rdb_systems,biblio_id,biblioId,2,integer,32,0,0,False,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_rdb_systems,location_id,locationId,3,integer,32,0,0,False,False,True,tbl_locations,location_id,TblLocations
+tbl_rdb_systems,rdb_first_published,rdbFirstPublished,4,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_rdb_systems,rdb_system,rdbSystem,5,character varying,0,0,10,True,False,False,,,java.lang.String
+tbl_rdb_systems,rdb_system_date,rdbSystemDate,6,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_rdb_systems,rdb_version,rdbVersion,7,character varying,0,0,10,True,False,False,,,java.lang.String
+tbl_rdb_systems,date_updated,dateUpdated,8,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_rdb_systems,rdb_system_uuid,rdbSystemUuid,9,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_record_types,record_type_id,recordTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_record_types,record_type_name,recordTypeName,2,character varying,0,0,50,True,False,False,,,java.lang.String
+tbl_record_types,record_type_description,recordTypeDescription,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_record_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_relative_age_refs,relative_age_ref_id,relativeAgeRefId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_relative_age_refs,biblio_id,biblioId,2,integer,32,0,0,False,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_relative_age_refs,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_relative_age_refs,relative_age_id,relativeAgeId,4,integer,32,0,0,False,False,True,tbl_relative_ages,relative_age_id,TblRelativeAges
+tbl_relative_age_types,relative_age_type_id,relativeAgeTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_relative_age_types,age_type,ageType,2,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_relative_age_types,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_relative_age_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_relative_ages,relative_age_id,relativeAgeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_relative_ages,relative_age_type_id,relativeAgeTypeId,2,integer,32,0,0,True,False,True,tbl_relative_age_types,relative_age_type_id,TblRelativeAgeTypes
+tbl_relative_ages,relative_age_name,relativeAgeName,3,character varying,0,0,50,True,False,False,,,java.lang.String
+tbl_relative_ages,description,description,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_relative_ages,c14_age_older,c14AgeOlder,5,numeric,20,5,0,True,False,False,,,java.math.BigDecimal
+tbl_relative_ages,c14_age_younger,c14AgeYounger,6,numeric,20,5,0,True,False,False,,,java.math.BigDecimal
+tbl_relative_ages,cal_age_older,calAgeOlder,7,numeric,20,5,0,True,False,False,,,java.math.BigDecimal
+tbl_relative_ages,cal_age_younger,calAgeYounger,8,numeric,20,5,0,True,False,False,,,java.math.BigDecimal
+tbl_relative_ages,notes,notes,9,text,0,0,0,True,False,False,,,java.lang.String
+tbl_relative_ages,date_updated,dateUpdated,10,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_relative_ages,location_id,locationId,11,integer,32,0,0,True,False,True,tbl_locations,location_id,TblLocations
+tbl_relative_ages,abbreviation,abbreviation,12,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_relative_ages,relative_age_uuid,relativeAgeUuid,13,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_relative_dates,relative_date_id,relativeDateId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_relative_dates,relative_age_id,relativeAgeId,2,integer,32,0,0,True,False,True,tbl_relative_ages,relative_age_id,TblRelativeAges
+tbl_relative_dates,method_id,methodId,4,integer,32,0,0,True,False,True,tbl_methods,method_id,TblMethods
+tbl_relative_dates,notes,notes,5,text,0,0,0,True,False,False,,,java.lang.String
+tbl_relative_dates,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_relative_dates,dating_uncertainty_id,datingUncertaintyId,7,integer,32,0,0,True,False,True,tbl_dating_uncertainty,dating_uncertainty_id,TblDatingUncertainty
+tbl_relative_dates,analysis_entity_id,analysisEntityId,8,integer,32,0,0,False,False,True,tbl_analysis_entities,analysis_entity_id,TblAnalysisEntities
+tbl_sample_alt_refs,sample_alt_ref_id,sampleAltRefId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_alt_refs,alt_ref,altRef,2,character varying,0,0,80,False,False,False,,,java.lang.String
+tbl_sample_alt_refs,alt_ref_type_id,altRefTypeId,3,integer,32,0,0,False,False,True,tbl_alt_ref_types,alt_ref_type_id,TblAltRefTypes
+tbl_sample_alt_refs,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_alt_refs,physical_sample_id,physicalSampleId,5,integer,32,0,0,False,False,True,tbl_physical_samples,physical_sample_id,TblPhysicalSamples
+tbl_sample_colours,sample_colour_id,sampleColourId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_colours,colour_id,colourId,2,integer,32,0,0,False,False,True,tbl_colours,colour_id,TblColours
+tbl_sample_colours,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_colours,physical_sample_id,physicalSampleId,4,integer,32,0,0,False,False,True,tbl_physical_samples,physical_sample_id,TblPhysicalSamples
+tbl_sample_coordinates,sample_coordinate_id,sampleCoordinateId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_coordinates,physical_sample_id,physicalSampleId,2,integer,32,0,0,False,False,True,tbl_physical_samples,physical_sample_id,TblPhysicalSamples
+tbl_sample_coordinates,coordinate_method_dimension_id,coordinateMethodDimensionId,3,integer,32,0,0,False,False,True,tbl_coordinate_method_dimensions,coordinate_method_dimension_id,TblCoordinateMethodDimensions
+tbl_sample_coordinates,measurement,measurement,4,numeric,20,10,0,False,False,False,,,java.math.BigDecimal
+tbl_sample_coordinates,accuracy,accuracy,5,numeric,20,10,0,True,False,False,,,java.math.BigDecimal
+tbl_sample_coordinates,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_description_sample_group_contexts,sample_description_sample_group_context_id,sampleDescriptionSampleGroupContextId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_description_sample_group_contexts,sampling_context_id,samplingContextId,2,integer,32,0,0,True,False,True,tbl_sample_group_sampling_contexts,sampling_context_id,TblSampleGroupSamplingContexts
+tbl_sample_description_sample_group_contexts,sample_description_type_id,sampleDescriptionTypeId,3,integer,32,0,0,True,False,True,tbl_sample_description_types,sample_description_type_id,TblSampleDescriptionTypes
+tbl_sample_description_sample_group_contexts,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_description_types,sample_description_type_id,sampleDescriptionTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_description_types,type_name,typeName,2,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_sample_description_types,type_description,typeDescription,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_sample_description_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_descriptions,sample_description_id,sampleDescriptionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_descriptions,sample_description_type_id,sampleDescriptionTypeId,2,integer,32,0,0,False,False,True,tbl_sample_description_types,sample_description_type_id,TblSampleDescriptionTypes
+tbl_sample_descriptions,physical_sample_id,physicalSampleId,3,integer,32,0,0,False,False,True,tbl_physical_samples,physical_sample_id,TblPhysicalSamples
+tbl_sample_descriptions,description,description,4,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_sample_descriptions,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_dimensions,sample_dimension_id,sampleDimensionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_dimensions,physical_sample_id,physicalSampleId,2,integer,32,0,0,False,False,True,tbl_physical_samples,physical_sample_id,TblPhysicalSamples
+tbl_sample_dimensions,dimension_id,dimensionId,3,integer,32,0,0,False,False,True,tbl_dimensions,dimension_id,TblDimensions
+tbl_sample_dimensions,method_id,methodId,4,integer,32,0,0,False,False,True,tbl_methods,method_id,TblMethods
+tbl_sample_dimensions,dimension_value,dimensionValue,5,numeric,20,10,0,False,False,False,,,java.math.BigDecimal
+tbl_sample_dimensions,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_dimensions,qualifier_id,qualifierId,7,integer,32,0,0,True,False,True,tbl_value_qualifiers,qualifier_id,TblValueQualifiers
+tbl_sample_group_coordinates,sample_group_position_id,sampleGroupPositionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_group_coordinates,coordinate_method_dimension_id,coordinateMethodDimensionId,2,integer,32,0,0,False,False,True,tbl_coordinate_method_dimensions,coordinate_method_dimension_id,TblCoordinateMethodDimensions
+tbl_sample_group_coordinates,sample_group_position,sampleGroupPosition,3,numeric,20,10,0,True,False,False,,,java.math.BigDecimal
+tbl_sample_group_coordinates,position_accuracy,positionAccuracy,4,character varying,0,0,128,True,False,False,,,java.lang.String
+tbl_sample_group_coordinates,sample_group_id,sampleGroupId,5,integer,32,0,0,False,False,True,tbl_sample_groups,sample_group_id,TblSampleGroups
+tbl_sample_group_coordinates,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_group_description_type_sampling_contexts,sample_group_description_type_sampling_context_id,sampleGroupDescriptionTypeSamplingContextId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_group_description_type_sampling_contexts,sampling_context_id,samplingContextId,2,integer,32,0,0,False,False,True,tbl_sample_group_sampling_contexts,sampling_context_id,TblSampleGroupSamplingContexts
+tbl_sample_group_description_type_sampling_contexts,sample_group_description_type_id,sampleGroupDescriptionTypeId,3,integer,32,0,0,False,False,True,tbl_sample_group_description_types,sample_group_description_type_id,TblSampleGroupDescriptionTypes
+tbl_sample_group_description_type_sampling_contexts,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_group_description_types,sample_group_description_type_id,sampleGroupDescriptionTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_group_description_types,type_name,typeName,2,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_sample_group_description_types,type_description,typeDescription,3,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_sample_group_description_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_group_descriptions,sample_group_description_id,sampleGroupDescriptionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_group_descriptions,group_description,groupDescription,2,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_sample_group_descriptions,sample_group_description_type_id,sampleGroupDescriptionTypeId,3,integer,32,0,0,False,False,True,tbl_sample_group_description_types,sample_group_description_type_id,TblSampleGroupDescriptionTypes
+tbl_sample_group_descriptions,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_group_descriptions,sample_group_id,sampleGroupId,5,integer,32,0,0,True,False,True,tbl_sample_groups,sample_group_id,TblSampleGroups
+tbl_sample_group_dimensions,sample_group_dimension_id,sampleGroupDimensionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_group_dimensions,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_group_dimensions,dimension_id,dimensionId,3,integer,32,0,0,False,False,True,tbl_dimensions,dimension_id,TblDimensions
+tbl_sample_group_dimensions,dimension_value,dimensionValue,4,numeric,20,5,0,False,False,False,,,java.math.BigDecimal
+tbl_sample_group_dimensions,sample_group_id,sampleGroupId,5,integer,32,0,0,False,False,True,tbl_sample_groups,sample_group_id,TblSampleGroups
+tbl_sample_group_dimensions,qualifier_id,qualifierId,6,integer,32,0,0,True,False,True,tbl_value_qualifiers,qualifier_id,TblValueQualifiers
+tbl_sample_group_images,sample_group_image_id,sampleGroupImageId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_group_images,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_group_images,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_sample_group_images,image_location,imageLocation,4,text,0,0,0,False,False,False,,,java.lang.String
+tbl_sample_group_images,image_name,imageName,5,character varying,0,0,80,True,False,False,,,java.lang.String
+tbl_sample_group_images,image_type_id,imageTypeId,6,integer,32,0,0,False,False,True,tbl_image_types,image_type_id,TblImageTypes
+tbl_sample_group_images,sample_group_id,sampleGroupId,7,integer,32,0,0,False,False,True,tbl_sample_groups,sample_group_id,TblSampleGroups
+tbl_sample_group_notes,sample_group_note_id,sampleGroupNoteId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_group_notes,sample_group_id,sampleGroupId,2,integer,32,0,0,False,False,True,tbl_sample_groups,sample_group_id,TblSampleGroups
+tbl_sample_group_notes,note,note,3,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_sample_group_notes,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_group_references,sample_group_reference_id,sampleGroupReferenceId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_group_references,biblio_id,biblioId,2,integer,32,0,0,False,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_sample_group_references,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_group_references,sample_group_id,sampleGroupId,4,integer,32,0,0,True,False,True,tbl_sample_groups,sample_group_id,TblSampleGroups
+tbl_sample_group_sampling_contexts,sampling_context_id,samplingContextId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_group_sampling_contexts,sampling_context,samplingContext,2,character varying,0,0,80,False,False,False,,,java.lang.String
+tbl_sample_group_sampling_contexts,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_sample_group_sampling_contexts,sort_order,sortOrder,4,smallint,16,0,0,False,False,False,,,java.lang.Short
+tbl_sample_group_sampling_contexts,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_groups,sample_group_id,sampleGroupId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_groups,site_id,siteId,2,integer,32,0,0,True,False,True,tbl_sites,site_id,TblSites
+tbl_sample_groups,sampling_context_id,samplingContextId,3,integer,32,0,0,True,False,True,tbl_sample_group_sampling_contexts,sampling_context_id,TblSampleGroupSamplingContexts
+tbl_sample_groups,method_id,methodId,4,integer,32,0,0,False,False,True,tbl_methods,method_id,TblMethods
+tbl_sample_groups,sample_group_name,sampleGroupName,5,character varying,0,0,100,True,False,False,,,java.lang.String
+tbl_sample_groups,sample_group_description,sampleGroupDescription,6,text,0,0,0,True,False,False,,,java.lang.String
+tbl_sample_groups,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_groups,sample_group_uuid,sampleGroupUuid,8,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_sample_horizons,sample_horizon_id,sampleHorizonId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_horizons,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_horizons,horizon_id,horizonId,3,integer,32,0,0,False,False,True,tbl_horizons,horizon_id,TblHorizons
+tbl_sample_horizons,physical_sample_id,physicalSampleId,4,integer,32,0,0,False,False,True,tbl_physical_samples,physical_sample_id,TblPhysicalSamples
+tbl_sample_images,sample_image_id,sampleImageId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_images,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_images,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_sample_images,image_location,imageLocation,4,text,0,0,0,False,False,False,,,java.lang.String
+tbl_sample_images,image_name,imageName,5,character varying,0,0,80,True,False,False,,,java.lang.String
+tbl_sample_images,image_type_id,imageTypeId,6,integer,32,0,0,False,False,True,tbl_image_types,image_type_id,TblImageTypes
+tbl_sample_images,physical_sample_id,physicalSampleId,7,integer,32,0,0,False,False,True,tbl_physical_samples,physical_sample_id,TblPhysicalSamples
+tbl_sample_location_type_sampling_contexts,sample_location_type_sampling_context_id,sampleLocationTypeSamplingContextId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_location_type_sampling_contexts,sampling_context_id,samplingContextId,2,integer,32,0,0,False,False,True,tbl_sample_group_sampling_contexts,sampling_context_id,TblSampleGroupSamplingContexts
+tbl_sample_location_type_sampling_contexts,sample_location_type_id,sampleLocationTypeId,3,integer,32,0,0,False,False,True,tbl_sample_location_types,sample_location_type_id,TblSampleLocationTypes
+tbl_sample_location_type_sampling_contexts,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_location_types,sample_location_type_id,sampleLocationTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_location_types,location_type,locationType,2,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_sample_location_types,location_type_description,locationTypeDescription,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_sample_location_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_locations,sample_location_id,sampleLocationId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_locations,sample_location_type_id,sampleLocationTypeId,2,integer,32,0,0,False,False,True,tbl_sample_location_types,sample_location_type_id,TblSampleLocationTypes
+tbl_sample_locations,physical_sample_id,physicalSampleId,3,integer,32,0,0,False,False,True,tbl_physical_samples,physical_sample_id,TblPhysicalSamples
+tbl_sample_locations,location,location,4,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_sample_locations,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_notes,sample_note_id,sampleNoteId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_notes,physical_sample_id,physicalSampleId,2,integer,32,0,0,False,False,True,tbl_physical_samples,physical_sample_id,TblPhysicalSamples
+tbl_sample_notes,note_type,noteType,3,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_sample_notes,note,note,4,text,0,0,0,False,False,False,,,java.lang.String
+tbl_sample_notes,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sample_types,sample_type_id,sampleTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sample_types,type_name,typeName,2,character varying,0,0,40,False,False,False,,,java.lang.String
+tbl_sample_types,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_sample_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_season_types,season_type_id,seasonTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_season_types,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_season_types,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_season_types,season_type,seasonType,4,character varying,0,0,30,True,False,False,,,java.lang.String
+tbl_seasons,season_id,seasonId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_seasons,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_seasons,season_name,seasonName,3,character varying,0,0,20,True,False,False,,,java.lang.String
+tbl_seasons,season_type,seasonType,4,character varying,0,0,30,True,False,False,,,java.lang.String
+tbl_seasons,season_type_id,seasonTypeId,5,integer,32,0,0,True,False,True,tbl_season_types,season_type_id,TblSeasonTypes
+tbl_seasons,sort_order,sortOrder,6,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_site_images,site_image_id,siteImageId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_site_images,contact_id,contactId,2,integer,32,0,0,True,False,True,tbl_contacts,contact_id,TblContacts
+tbl_site_images,credit,credit,3,character varying,0,0,100,True,False,False,,,java.lang.String
+tbl_site_images,date_taken,dateTaken,4,date,0,0,0,True,False,False,,,java.util.Date
+tbl_site_images,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_site_images,description,description,6,text,0,0,0,True,False,False,,,java.lang.String
+tbl_site_images,image_location,imageLocation,7,text,0,0,0,False,False,False,,,java.lang.String
+tbl_site_images,image_name,imageName,8,character varying,0,0,80,True,False,False,,,java.lang.String
+tbl_site_images,image_type_id,imageTypeId,9,integer,32,0,0,False,False,True,tbl_image_types,image_type_id,TblImageTypes
+tbl_site_images,site_id,siteId,10,integer,32,0,0,False,False,True,tbl_sites,site_id,TblSites
+tbl_site_locations,site_location_id,siteLocationId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_site_locations,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_site_locations,location_id,locationId,3,integer,32,0,0,False,False,True,tbl_locations,location_id,TblLocations
+tbl_site_locations,site_id,siteId,4,integer,32,0,0,False,False,True,tbl_sites,site_id,TblSites
+tbl_site_natgridrefs,site_natgridref_id,siteNatgridrefId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_site_natgridrefs,site_id,siteId,2,integer,32,0,0,False,False,True,tbl_sites,site_id,TblSites
+tbl_site_natgridrefs,method_id,methodId,3,integer,32,0,0,False,False,True,tbl_methods,method_id,TblMethods
+tbl_site_natgridrefs,natgridref,natgridref,4,character varying,0,0,0,False,False,False,,,java.lang.String
+tbl_site_natgridrefs,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_site_other_records,site_other_records_id,siteOtherRecordsId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_site_other_records,site_id,siteId,2,integer,32,0,0,True,False,True,tbl_sites,site_id,TblSites
+tbl_site_other_records,biblio_id,biblioId,3,integer,32,0,0,True,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_site_other_records,record_type_id,recordTypeId,4,integer,32,0,0,True,False,True,tbl_record_types,record_type_id,TblRecordTypes
+tbl_site_other_records,description,description,5,text,0,0,0,True,False,False,,,java.lang.String
+tbl_site_other_records,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_site_other_records,site_other_records_uuid,siteOtherRecordsUuid,7,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_site_preservation_status,site_preservation_status_id,sitePreservationStatusId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_site_preservation_status,site_id,siteId,2,integer,32,0,0,True,False,True,tbl_sites,site_id,TblSites
+tbl_site_preservation_status,preservation_status_or_threat,preservationStatusOrThreat,3,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_site_preservation_status,description,description,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_site_preservation_status,assessment_type,assessmentType,5,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_site_preservation_status,assessment_author_contact_id,assessmentAuthorContactId,6,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_site_preservation_status,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_site_preservation_status,Evaluation_date,evaluationDate,8,date,0,0,0,True,False,False,,,java.util.Date
+tbl_site_references,site_reference_id,siteReferenceId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_site_references,site_id,siteId,2,integer,32,0,0,True,False,True,tbl_sites,site_id,TblSites
+tbl_site_references,biblio_id,biblioId,3,integer,32,0,0,False,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_site_references,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_site_site_types,site_site_type_id,siteSiteTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_site_site_types,site_id,siteId,2,integer,32,0,0,False,False,True,tbl_sites,site_id,TblSites
+tbl_site_site_types,site_type_id,siteTypeId,3,integer,32,0,0,False,False,True,tbl_site_types,site_type_id,TblSiteTypes
+tbl_site_site_types,is_primary_type,isPrimaryType,4,boolean,0,0,0,False,False,False,,,java.lang.Boolean
+tbl_site_site_types,confidence_code,confidenceCode,5,smallint,16,0,0,True,False,False,,,java.lang.Short
+tbl_site_site_types,notes,notes,6,text,0,0,0,True,False,False,,,java.lang.String
+tbl_site_type_groups,site_type_group_id,siteTypeGroupId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_site_type_groups,site_type_group_abbrev,siteTypeGroupAbbrev,2,character varying,0,0,40,False,False,False,,,java.lang.String
+tbl_site_type_groups,site_type_group,siteTypeGroup,3,character varying,0,0,255,False,False,False,,,java.lang.String
+tbl_site_type_groups,description,description,4,text,0,0,0,False,False,False,,,java.lang.String
+tbl_site_type_groups,origin_code,originCode,5,character varying,0,0,40,True,False,False,,,java.lang.String
+tbl_site_type_groups,origin_description,originDescription,6,text,0,0,0,False,False,False,,,java.lang.String
+tbl_site_types,site_type_id,siteTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_site_types,site_type_group_id,siteTypeGroupId,2,integer,32,0,0,False,False,True,tbl_site_type_groups,site_type_group_id,TblSiteTypeGroups
+tbl_site_types,site_type_abbrev,siteTypeAbbrev,3,character varying,0,0,40,False,False,False,,,java.lang.String
+tbl_site_types,site_type,siteType,4,character varying,0,0,256,False,False,False,,,java.lang.String
+tbl_site_types,description,description,5,text,0,0,0,False,False,False,,,java.lang.String
+tbl_sites,site_id,siteId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_sites,altitude,altitude,2,numeric,18,10,0,True,False,False,,,java.math.BigDecimal
+tbl_sites,latitude_dd,latitudeDd,3,numeric,18,10,0,True,False,False,,,java.math.BigDecimal
+tbl_sites,longitude_dd,longitudeDd,4,numeric,18,10,0,True,False,False,,,java.math.BigDecimal
+tbl_sites,national_site_identifier,nationalSiteIdentifier,5,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_sites,site_description,siteDescription,6,text,0,0,0,True,False,False,,,java.lang.String
+tbl_sites,site_name,siteName,7,character varying,0,0,60,True,False,False,,,java.lang.String
+tbl_sites,site_preservation_status_id,sitePreservationStatusId,8,integer,32,0,0,True,False,True,tbl_site_preservation_status,site_preservation_status_id,TblSitePreservationStatus
+tbl_sites,site_location_accuracy,siteLocationAccuracy,9,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_sites,date_updated,dateUpdated,10,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_sites,site_uuid,siteUuid,11,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_species_association_types,association_type_id,associationTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_species_association_types,association_type_name,associationTypeName,2,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_species_association_types,association_description,associationDescription,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_species_association_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_species_associations,species_association_id,speciesAssociationId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_species_associations,associated_taxon_id,associatedTaxonId,2,integer,32,0,0,False,False,False,,,java.lang.Integer
+tbl_species_associations,biblio_id,biblioId,3,integer,32,0,0,True,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_species_associations,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_species_associations,taxon_id,taxonId,5,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_species_associations,association_type_id,associationTypeId,6,integer,32,0,0,True,False,True,tbl_species_association_types,association_type_id,TblSpeciesAssociationTypes
+tbl_species_associations,referencing_type,referencingType,7,text,0,0,0,True,False,False,,,java.lang.String
+tbl_species_associations,species_association_uuid,speciesAssociationUuid,8,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_taxa_common_names,taxon_common_name_id,taxonCommonNameId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxa_common_names,common_name,commonName,2,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_taxa_common_names,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxa_common_names,language_id,languageId,4,integer,32,0,0,True,False,True,tbl_languages,language_id,TblLanguages
+tbl_taxa_common_names,taxon_id,taxonId,5,integer,32,0,0,True,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_taxa_images,taxa_images_id,taxaImagesId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxa_images,image_name,imageName,2,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_taxa_images,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_taxa_images,image_location,imageLocation,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_taxa_images,image_type_id,imageTypeId,5,integer,32,0,0,True,False,True,tbl_image_types,image_type_id,TblImageTypes
+tbl_taxa_images,taxon_id,taxonId,6,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_taxa_images,date_updated,dateUpdated,7,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxa_measured_attributes,measured_attribute_id,measuredAttributeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxa_measured_attributes,attribute_measure,attributeMeasure,2,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_taxa_measured_attributes,attribute_type,attributeType,3,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_taxa_measured_attributes,attribute_units,attributeUnits,4,character varying,0,0,10,True,False,False,,,java.lang.String
+tbl_taxa_measured_attributes,data,data,5,numeric,18,10,0,True,False,False,,,java.math.BigDecimal
+tbl_taxa_measured_attributes,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxa_measured_attributes,taxon_id,taxonId,7,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_taxa_reference_specimens,taxa_reference_specimen_id,taxaReferenceSpecimenId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxa_reference_specimens,taxon_id,taxonId,2,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_taxa_reference_specimens,contact_id,contactId,3,integer,32,0,0,False,False,True,tbl_contacts,contact_id,TblContacts
+tbl_taxa_reference_specimens,notes,notes,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_taxa_reference_specimens,date_updated,dateUpdated,5,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxa_seasonality,seasonality_id,seasonalityId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxa_seasonality,activity_type_id,activityTypeId,2,integer,32,0,0,False,False,True,tbl_activity_types,activity_type_id,TblActivityTypes
+tbl_taxa_seasonality,season_id,seasonId,3,integer,32,0,0,True,False,True,tbl_seasons,season_id,TblSeasons
+tbl_taxa_seasonality,taxon_id,taxonId,4,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_taxa_seasonality,location_id,locationId,5,integer,32,0,0,False,False,True,tbl_locations,location_id,TblLocations
+tbl_taxa_seasonality,date_updated,dateUpdated,6,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxa_synonyms,synonym_id,synonymId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxa_synonyms,biblio_id,biblioId,2,integer,32,0,0,False,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_taxa_synonyms,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxa_synonyms,family_id,familyId,4,integer,32,0,0,True,False,True,tbl_taxa_tree_families,family_id,TblTaxaTreeFamilies
+tbl_taxa_synonyms,genus_id,genusId,5,integer,32,0,0,True,False,True,tbl_taxa_tree_genera,genus_id,TblTaxaTreeGenera
+tbl_taxa_synonyms,notes,notes,6,text,0,0,0,True,False,False,,,java.lang.String
+tbl_taxa_synonyms,taxon_id,taxonId,7,integer,32,0,0,True,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_taxa_synonyms,author_id,authorId,8,integer,32,0,0,True,False,True,tbl_taxa_tree_authors,author_id,TblTaxaTreeAuthors
+tbl_taxa_synonyms,synonym,synonym,9,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_taxa_synonyms,reference_type,referenceType,10,character varying,0,0,0,True,False,False,,,java.lang.String
+tbl_taxa_synonyms,synonym_uuid,synonymUuid,11,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_taxa_tree_authors,author_id,authorId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxa_tree_authors,author_name,authorName,2,character varying,0,0,100,True,False,False,,,java.lang.String
+tbl_taxa_tree_authors,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxa_tree_families,family_id,familyId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxa_tree_families,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxa_tree_families,family_name,familyName,3,character varying,0,0,100,True,False,False,,,java.lang.String
+tbl_taxa_tree_families,order_id,orderId,4,integer,32,0,0,False,False,True,tbl_taxa_tree_orders,order_id,TblTaxaTreeOrders
+tbl_taxa_tree_genera,genus_id,genusId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxa_tree_genera,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxa_tree_genera,family_id,familyId,3,integer,32,0,0,True,False,True,tbl_taxa_tree_families,family_id,TblTaxaTreeFamilies
+tbl_taxa_tree_genera,genus_name,genusName,4,character varying,0,0,100,True,False,False,,,java.lang.String
+tbl_taxa_tree_master,taxon_id,taxonId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxa_tree_master,author_id,authorId,2,integer,32,0,0,True,False,True,tbl_taxa_tree_authors,author_id,TblTaxaTreeAuthors
+tbl_taxa_tree_master,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxa_tree_master,genus_id,genusId,4,integer,32,0,0,True,False,True,tbl_taxa_tree_genera,genus_id,TblTaxaTreeGenera
+tbl_taxa_tree_master,species,species,5,character varying,0,0,255,True,False,False,,,java.lang.String
+tbl_taxa_tree_orders,order_id,orderId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxa_tree_orders,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxa_tree_orders,order_name,orderName,3,character varying,0,0,50,True,False,False,,,java.lang.String
+tbl_taxa_tree_orders,record_type_id,recordTypeId,4,integer,32,0,0,True,False,True,tbl_record_types,record_type_id,TblRecordTypes
+tbl_taxa_tree_orders,sort_order,sortOrder,5,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_taxonomic_order,taxonomic_order_id,taxonomicOrderId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxonomic_order,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxonomic_order,taxon_id,taxonId,3,integer,32,0,0,True,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_taxonomic_order,taxonomic_code,taxonomicCode,4,numeric,18,10,0,True,False,False,,,java.math.BigDecimal
+tbl_taxonomic_order,taxonomic_order_system_id,taxonomicOrderSystemId,5,integer,32,0,0,True,False,True,tbl_taxonomic_order_systems,taxonomic_order_system_id,TblTaxonomicOrderSystems
+tbl_taxonomic_order_biblio,taxonomic_order_biblio_id,taxonomicOrderBiblioId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxonomic_order_biblio,biblio_id,biblioId,2,integer,32,0,0,True,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_taxonomic_order_biblio,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxonomic_order_biblio,taxonomic_order_system_id,taxonomicOrderSystemId,4,integer,32,0,0,True,False,True,tbl_taxonomic_order_systems,taxonomic_order_system_id,TblTaxonomicOrderSystems
+tbl_taxonomic_order_systems,taxonomic_order_system_id,taxonomicOrderSystemId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxonomic_order_systems,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxonomic_order_systems,system_description,systemDescription,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_taxonomic_order_systems,system_name,systemName,4,character varying,0,0,50,True,False,False,,,java.lang.String
+tbl_taxonomic_order_systems,taxonomic_order_system_uuid,taxonomicOrderSystemUuid,5,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_taxonomy_notes,taxonomy_notes_id,taxonomyNotesId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_taxonomy_notes,biblio_id,biblioId,2,integer,32,0,0,False,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_taxonomy_notes,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_taxonomy_notes,taxon_id,taxonId,4,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_taxonomy_notes,taxonomy_notes,taxonomyNotes,5,text,0,0,0,True,False,False,,,java.lang.String
+tbl_taxonomy_notes,taxonomy_notes_uuid,taxonomyNotesUuid,6,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_temperatures,record_id,recordId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_temperatures,years_bp,yearsBp,2,integer,32,0,0,False,False,False,,,java.lang.Integer
+tbl_temperatures,d180_gisp2,d180Gisp2,3,numeric,0,0,0,True,False,False,,,java.math.BigDecimal
+tbl_text_biology,biology_id,biologyId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_text_biology,biblio_id,biblioId,2,integer,32,0,0,False,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_text_biology,biology_text,biologyText,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_text_biology,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_text_biology,taxon_id,taxonId,5,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_text_biology,biology_uuid,biologyUuid,6,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_text_distribution,distribution_id,distributionId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_text_distribution,biblio_id,biblioId,2,integer,32,0,0,False,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_text_distribution,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_text_distribution,distribution_text,distributionText,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_text_distribution,taxon_id,taxonId,5,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_text_distribution,distribution_uuid,distributionUuid,6,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_text_identification_keys,key_id,keyId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_text_identification_keys,biblio_id,biblioId,2,integer,32,0,0,False,False,True,tbl_biblio,biblio_id,TblBiblio
+tbl_text_identification_keys,date_updated,dateUpdated,3,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_text_identification_keys,key_text,keyText,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_text_identification_keys,taxon_id,taxonId,5,integer,32,0,0,False,False,True,tbl_taxa_tree_master,taxon_id,TblTaxaTreeMaster
+tbl_text_identification_keys,key_uuid,keyUuid,6,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_units,unit_id,unitId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_units,date_updated,dateUpdated,2,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date
+tbl_units,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_units,unit_abbrev,unitAbbrev,4,character varying,0,0,15,True,False,False,,,java.lang.String
+tbl_units,unit_name,unitName,5,character varying,0,0,50,False,False,False,,,java.lang.String
+tbl_value_classes,value_class_id,valueClassId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_value_classes,value_type_id,valueTypeId,2,integer,32,0,0,False,False,True,tbl_value_types,value_type_id,TblValueTypes
+tbl_value_classes,method_id,methodId,3,integer,32,0,0,False,False,True,tbl_methods,method_id,TblMethods
+tbl_value_classes,parent_id,parentId,4,integer,32,0,0,True,False,True,tbl_value_classes,value_class_id,TblValueClasses
+tbl_value_classes,name,name,5,character varying,0,0,80,False,False,False,,,java.lang.String
+tbl_value_classes,description,description,6,text,0,0,0,False,False,False,,,java.lang.String
+tbl_value_classes,value_class_uuid,valueClassUuid,7,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_value_qualifier_symbols,qualifier_symbol_id,qualifierSymbolId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_value_qualifier_symbols,symbol,symbol,2,text,0,0,0,False,False,False,,,java.lang.String
+tbl_value_qualifier_symbols,cardinal_qualifier_id,cardinalQualifierId,3,integer,32,0,0,False,False,True,tbl_value_qualifiers,qualifier_id,TblValueQualifiers
+tbl_value_qualifier_symbols,qualifier_uuid,qualifierUuid,4,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_value_qualifiers,qualifier_id,qualifierId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_value_qualifiers,symbol,symbol,2,text,0,0,0,False,False,False,,,java.lang.String
+tbl_value_qualifiers,description,description,3,text,0,0,0,False,False,False,,,java.lang.String
+tbl_value_qualifiers,qualifier_uuid,qualifierUuid,4,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_value_type_items,value_type_item_id,valueTypeItemId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_value_type_items,value_type_id,valueTypeId,2,integer,32,0,0,False,False,True,tbl_value_types,value_type_id,TblValueTypes
+tbl_value_type_items,name,name,3,character varying,0,0,80,True,False,False,,,java.lang.String
+tbl_value_type_items,description,description,4,text,0,0,0,True,False,False,,,java.lang.String
+tbl_value_types,value_type_id,valueTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_value_types,unit_id,unitId,2,integer,32,0,0,True,False,True,tbl_units,unit_id,TblUnits
+tbl_value_types,data_type_id,dataTypeId,3,integer,32,0,0,True,False,True,tbl_data_types,data_type_id,TblDataTypes
+tbl_value_types,name,name,4,text,0,0,0,False,False,False,,,java.lang.String
+tbl_value_types,base_type,baseType,5,text,0,0,0,False,False,False,,,java.lang.String
+tbl_value_types,precision,precision,6,integer,32,0,0,True,False,False,,,java.lang.Integer
+tbl_value_types,description,description,7,text,0,0,0,False,False,False,,,java.lang.String
+tbl_value_types,value_type_uuid,valueTypeUuid,8,uuid,0,0,0,False,False,False,,,java.util.UUID
+tbl_years_types,years_type_id,yearsTypeId,1,integer,32,0,0,False,True,False,,,java.lang.Integer
+tbl_years_types,name,name,2,character varying,0,0,0,False,False,False,,,java.lang.String
+tbl_years_types,description,description,3,text,0,0,0,True,False,False,,,java.lang.String
+tbl_years_types,date_updated,dateUpdated,4,timestamp with time zone,0,0,0,True,False,False,,,java.util.Date

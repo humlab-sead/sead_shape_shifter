@@ -31,6 +31,191 @@
 - **Backend endpoint**: add router (`backend/app/api/v1/endpoints/`), define Pydantic models (`backend/app/models/`), implement service (`backend/app/services/`), and register in `backend/app/api/v1/api.py`.
 - **Constraint validator**: create class in `src/constraints.py`, decorate with `@Validators.register(key=..., stage=...)`, and add tests in `tests/test_constraints.py`.
 - **Project validation**: subclass `ProjectSpecification` in `src/specifications.py`, implement `is_satisfied_by()`, and include it inside `CompositeProjectSpecification.__init__()`.
+- **Data ingester**: create directory under `backend/app/ingesters/<name>/`, implement `Ingester` protocol in `ingester.py`, decorate with `@Ingesters.register(key="<name>")`, import in `backend/app/ingesters/__init__.py` to trigger registration, and add tests in `backend/tests/ingesters/`.
+
+## Ingester Development Pattern
+Ingesters provide a standardized interface for importing data into Shape Shifter from external systems. Each ingester is self-contained and registered via a global registry.
+
+### Ingester Protocol
+All ingesters must implement the `Ingester` protocol from `backend/app/ingesters/protocol.py`:
+```python
+from backend.app.ingesters.protocol import Ingester, IngesterConfig, IngesterMetadata, ValidationResult, IngestionResult
+from backend.app.ingesters.registry import Ingesters
+
+@Ingesters.register(key="my_ingester")
+class MyIngester(Ingester):
+    @classmethod
+    def get_metadata(cls) -> IngesterMetadata:
+        return IngesterMetadata(
+            key="my_ingester",
+            name="My Data Ingester",
+            description="Imports data from MySystem",
+            version="1.0.0",
+            supported_formats=["xlsx", "csv"],
+        )
+
+    def __init__(self, config: IngesterConfig):
+        self.config = config
+        # Initialize your ingester
+
+    def validate(self, source: str) -> ValidationResult:
+        # Validate source data without making changes
+        errors = []
+        warnings = []
+        # ... validation logic ...
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
+
+    def ingest(self, source: str) -> IngestionResult:
+        # Perform the actual data ingestion
+        # ... ingestion logic ...
+        return IngestionResult(success=True, records_processed=count, message="Import completed")
+```
+
+### Registration & Discovery
+- Ingesters auto-register via the `@Ingesters.register(key="...")` decorator
+- The key must be unique and is used to identify the ingester in API calls
+- Ingesters are dynamically discovered at application startup from `ingesters/` directory
+- Create ingester in `ingesters/<name>/` directory with `ingester.py` containing main class
+- Access registered ingesters: `Ingesters.items`, `Ingesters.get(key)`, `Ingesters.get_metadata_list()`
+
+### Configuration Pattern
+- Use `IngesterConfig` dataclass with `extra: dict[str, Any]` for custom parameters
+- Database credentials: `host`, `port`, `dbname`, `user` (standard fields)
+- Ingester-specific settings go in `extra` dict (e.g., `extra={"ignore_columns": [], "batch_size": 1000}`)
+- Pass explicit values to avoid ConfigValue lookups in tests:
+  ```python
+  config = IngesterConfig(
+      host="localhost",
+      port=5432,
+      dbname="test_db",
+      user="test_user",
+      submission_name="test",
+      data_types="test_data",
+      extra={"ignore_columns": []},  # Explicit config avoids ConfigValue
+  )
+  ```
+
+### Testing Pattern
+- Create test file in `backend/tests/ingesters/test_<ingester_name>.py`
+- Test metadata retrieval, validation logic, and successful ingestion
+- Use explicit `extra` config values to avoid ConfigStore initialization issues
+- Example test structure:
+  ```python
+  class TestMyIngester:
+      def test_metadata(self):
+          metadata = MyIngester.get_metadata()
+          assert metadata.key == "my_ingester"
+          assert metadata.version == "1.0.0"
+
+      def test_validation(self):
+          config = IngesterConfig(..., extra={"param": "value"})
+          ingester = MyIngester(config)
+          result = ingester.validate("path/to/source")
+          assert result.is_valid
+
+      def test_ingestion(self, mock_db):
+          # ... test ingestion with mocked dependencies
+  ```
+
+### File Organization
+```
+backend/app/ingesters/
+├── __init__.py           # Protocol and registry imports only
+├── protocol.py           # Ingester interface and result types
+├── registry.py           # IngesterRegistry with dynamic discovery
+└── README.md             # Guide to ingester system
+ingesters/                # Top-level ingesters directory
+├── __init__.py           # Package marker
+├── README.md             # Guide for creating new ingesters
+└── <ingester_name>/      # Each ingester in its own directory
+    ├── __init__.py
+    ├── ingester.py       # Main ingester class implementing protocol
+    └── ...               # Supporting modules (loaders, validators, etc.)
+```
+
+### Key Considerations
+- **ConfigValue Isolation**: If your ingester uses Shape Shifter's `ConfigValue`, ensure it can accept explicit parameters to avoid config context issues in tests. Use pattern: `if param is not None: use_param else: ConfigValue().resolve()`
+- **Validation-First**: Always implement thorough validation in `validate()` before attempting `ingest()`
+- **Error Handling**: Return structured errors/warnings in `ValidationResult` and `IngestionResult`
+- **Database Connections**: Use connection context managers and handle timeouts
+- **Testing**: Provide explicit config values via `extra` dict to avoid ConfigStore dependencies
+
+## CLI Tool Usage
+
+The ingester system includes a CLI tool for command-line operations:
+
+### List Available Ingesters
+```bash
+python -m backend.app.scripts.ingest list-ingesters
+```
+
+### Validate Data Source
+```bash
+# Basic validation
+python -m backend.app.scripts.ingest validate sead /path/to/data.xlsx
+
+# With configuration file
+python -m backend.app.scripts.ingest validate sead /path/to/data.xlsx \
+  --config ingest_config.json
+
+# With ignore patterns
+python -m backend.app.scripts.ingest validate sead /path/to/data.xlsx \
+  --ignore-columns "date_updated" --ignore-columns "*_uuid"
+```
+
+### Ingest Data
+```bash
+# Basic ingestion
+python -m backend.app.scripts.ingest ingest sead /path/to/data.xlsx \
+  --submission-name "dendro_2026_01" \
+  --data-types "dendro" \
+  --database-host localhost \
+  --database-port 5432 \
+  --database-name sead_staging \
+  --database-user sead_user
+
+# With registration and explosion
+python -m backend.app.scripts.ingest ingest sead /path/to/data.xlsx \
+  --submission-name "dendro_2026_01" \
+  --data-types "dendro" \
+  --config ingest_config.json \
+  --register \
+  --explode
+
+# Full example with all options
+python -m backend.app.scripts.ingest ingest sead /path/to/data.xlsx \
+  --submission-name "ceramics_batch_001" \
+  --data-types "ceramics" \
+  --output-folder /output/ceramics \
+  --database-host db.example.com \
+  --database-port 5433 \
+  --database-name sead_prod \
+  --database-user import_user \
+  --ignore-columns "temp_*" \
+  --register \
+  --explode \
+  --verbose
+```
+
+### Configuration File Format
+Create a JSON config file (`ingest_config.json`):
+```json
+{
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "dbname": "sead_staging",
+    "user": "sead_user"
+  },
+  "ignore_columns": [
+    "date_updated",
+    "*_uuid",
+    "(*"
+  ]
+}
+```
+
+Then use with `--config ingest_config.json`. CLI options override config file values.
 
 ## Frontend Practices
 - Always use `<script setup lang="ts">`, composables over mixins, and `defineProps<T>()` / `defineEmits<T>()` for typing.

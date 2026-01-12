@@ -13,6 +13,7 @@ export interface FieldMetadata {
   min_value?: number | null
   max_value?: number | null
   placeholder: string
+  aliases?: string[]
 }
 
 export interface DriverSchema {

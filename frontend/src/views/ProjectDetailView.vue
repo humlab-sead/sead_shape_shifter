@@ -34,6 +34,7 @@
           <div class="d-flex gap-2">
             <v-btn variant="outlined" prepend-icon="mdi-play-circle-outline" color="success" @click="handleTestRun">
               Test Run
+              <v-tooltip activator="parent">Preview transformation results for selected entities</v-tooltip>
             </v-btn>
             <v-btn
               variant="outlined"
@@ -42,13 +43,19 @@
               @click="handleValidate"
             >
               Validate
+              <v-tooltip activator="parent">Run validation checks on the entire project</v-tooltip>
             </v-btn>
             <v-btn variant="outlined" prepend-icon="mdi-play-circle" color="success" @click="showExecuteDialog = true">
               Execute
+              <v-tooltip activator="parent">Execute the full workflow and export data</v-tooltip>
             </v-btn>
-            <v-btn variant="outlined" prepend-icon="mdi-history" @click="showBackupsDialog = true"> Backups </v-btn>
+            <v-btn variant="outlined" prepend-icon="mdi-history" @click="showBackupsDialog = true">
+              Backups
+              <v-tooltip activator="parent">View and restore previous versions of this project</v-tooltip>
+            </v-btn>
             <v-btn color="primary" prepend-icon="mdi-content-save" :disabled="!hasUnsavedChanges" @click="handleSave">
               Save Changes
+              <v-tooltip activator="parent">Save changes to the project configuration</v-tooltip>
             </v-btn>
           </div>
         </div>
@@ -922,21 +929,61 @@ function formatBackupDate(timestamp: number): string {
 
 // Lifecycle
 onMounted(async () => {
-  if (projectName.value) {
-    await select(projectName.value)
+  if (!projectName.value) {
+    console.warn('ProjectDetailView: No project name in route params')
+    router.push({ name: 'projects' })
+    return
+  }
+
+  try {
+    console.debug(`ProjectDetailView: Initializing for project "${projectName.value}"`)
+    
+    // Only select if not already selected (avoid duplicate API calls)
+    if (!selectedProject.value || selectedProject.value.metadata?.name !== projectName.value) {
+      console.debug(`ProjectDetailView: Loading project "${projectName.value}"`)
+      await select(projectName.value)
+    } else {
+      console.debug(`ProjectDetailView: Project "${projectName.value}" already loaded`)
+    }
+    
     await fetchBackups(projectName.value)
     // Start editing session
     await startSession(projectName.value)
+    
+    console.debug(`ProjectDetailView: Successfully initialized for project "${projectName.value}"`)
+  } catch (err) {
+    console.error('ProjectDetailView: Failed to initialize project view:', err)
+    // Only navigate back if we're still on this route (avoid navigation loops)
+    if (router.currentRoute.value.name === 'project-detail') {
+      router.push({ name: 'projects' })
+    }
   }
 })
 
 // Watch for project name changes
 watch(
   () => projectName.value,
-  async (newName) => {
-    if (newName) {
-      await select(newName)
+  async (newName, oldName) => {
+    if (!newName) return
+    
+    // Avoid re-loading on initial mount (onMounted handles that)
+    if (!oldName) return
+    
+    console.debug(`ProjectDetailView: Project changed from "${oldName}" to "${newName}"`)
+    
+    try {
+      // Only select if the project actually changed
+      if (!selectedProject.value || selectedProject.value.metadata?.name !== newName) {
+        console.debug(`ProjectDetailView: Loading new project "${newName}"`)
+        await select(newName)
+      }
       await fetchBackups(newName)
+    } catch (err) {
+      console.error(`ProjectDetailView: Failed to load project "${newName}":`, err)
+      // Only navigate back if we're still on this route
+      if (router.currentRoute.value.name === 'project-detail') {
+        router.push({ name: 'projects' })
+      }
     }
   }
 )

@@ -44,6 +44,13 @@
           value="query-tester"
           :to="{ name: 'query-tester' }"
         />
+
+        <v-list-item
+          prepend-icon="mdi-database-import"
+          title="Data Ingestion"
+          value="ingesters"
+          :to="{ name: 'ingesters' }"
+        />
       </v-list>
 
       <template #append>
@@ -51,7 +58,7 @@
         <v-list density="compact" nav>
           <v-list-item prepend-icon="mdi-cog" title="Settings" value="settings" :to="{ name: 'settings' }" />
 
-          <v-list-item prepend-icon="mdi-help-circle" title="Help" value="help" @click="showHelpDialog = true" />
+          <v-list-item prepend-icon="mdi-help-circle" title="Help" value="help" :to="{ name: 'help' }" />
         </v-list>
       </template>
     </v-navigation-drawer>

@@ -8,10 +8,11 @@
 4. [Managing Entities](#4-managing-entities)
 5. [Validation](#5-validation)
 6. [Auto-Fix Features](#6-auto-fix-features)
-7. [Quick Wins & Performance Features](#7-quick-wins--performance-features)
-8. [Tips & Best Practices](#8-tips--best-practices)
-9. [Troubleshooting](#9-troubleshooting)
-10. [FAQ](#10-faq)
+7. [Execute Workflow](#7-execute-workflow)
+8. [Quick Wins & Performance Features](#8-quick-wins--performance-features)
+9. [Tips & Best Practices](#9-tips--best-practices)
+10. [Troubleshooting](#10-troubleshooting)
+11. [FAQ](#11-faq)
 
 ---
 
@@ -894,7 +895,230 @@ Wait 500ms
 
 ---
 
-## 8. Tips & Best Practices
+## 7. Execute Workflow
+
+### Overview
+
+The Execute feature runs the complete Shape Shifter normalization pipeline on your project and exports the results to your chosen format. This is the final step after validation and testing.
+
+**Workflow Steps:**
+1. Optional validation
+2. Load and normalize all entities
+3. Apply optional transformations
+4. Export to selected format
+
+### Opening Execute Dialog
+
+**From Project Detail View:**
+1. Open your project
+2. Click "Execute" button in toolbar (green play icon)
+3. Execute dialog opens
+
+### Selecting Output Format
+
+**Available Dispatchers:**
+
+**File Formats:**
+- **Excel Workbook (xlsx)** - Single Excel file with sheets per entity
+- **CSV (csv)** - Single CSV file (combined data)
+- **CSV in ZIP (csv_zip)** - Folder of CSV files compressed as ZIP
+
+**Database Formats:**
+- **PostgreSQL** - Export to PostgreSQL database
+- **SQLite** - Export to SQLite database file
+
+**Folder Formats:**
+- **CSV Folder** - Directory of separate CSV files per entity
+
+**How to Select:**
+1. Click "Output Format" dropdown
+2. Review available dispatchers
+3. Select desired format
+4. Form updates for selected type
+
+### Configuring File Output
+
+**For File Dispatchers (Excel, CSV):**
+
+1. Select file dispatcher
+2. Enter output path (optional)
+   - Default: `./output/{project_name}.{extension}`
+   - Custom: `./custom/path/output.xlsx`
+3. Path must match file extension
+4. File will be created/overwritten
+
+**Example Paths:**
+```
+./output/my_project.xlsx       ✅ Valid
+./data/export.csv              ✅ Valid
+./output/wrong.txt             ❌ Wrong extension
+```
+
+### Configuring Folder Output
+
+**For Folder Dispatchers:**
+
+1. Select folder dispatcher
+2. Enter folder path (optional)
+   - Default: `./output/{project_name}/`
+   - Custom: `./custom/output/`
+3. Folder will be created if needed
+4. Each entity becomes separate file
+
+**Output Structure:**
+```
+output/my_project/
+  ├── entity_1.csv
+  ├── entity_2.csv
+  └── entity_3.csv
+```
+
+### Configuring Database Output
+
+**For Database Dispatchers:**
+
+1. Select database dispatcher
+2. Choose target data source from dropdown
+3. Data source must be pre-configured
+4. Entities written as database tables
+
+**Requirements:**
+- Data source configured in Data Sources
+- Database must exist
+- Write permissions required
+- Connection tested
+
+### Execution Options
+
+**Run Validation Before Execution:**
+- **Default:** Enabled
+- **Purpose:** Ensure configuration valid
+- **Behavior:** Stops execution if validation fails
+- **Tip:** Disable to force execution of invalid config (not recommended)
+
+**Apply Translations:**
+- **Default:** Disabled
+- **Purpose:** Translate column names using configured mappings
+- **Use When:** Target schema differs from source
+- **Example:** `sample_id` → `sampleId`
+
+**Drop Foreign Key Columns:**
+- **Default:** Disabled
+- **Purpose:** Remove foreign key columns from output
+- **Use When:** Want only natural keys
+- **Effect:** Cleaner output, fewer columns
+
+### Running Execution
+
+**Steps:**
+1. Configure all settings
+2. Click "Execute" button
+3. Progress indicator appears
+4. Wait for completion (may take minutes)
+5. Success or error message displayed
+
+**What Happens:**
+1. Validation runs (if enabled)
+2. Entities processed in dependency order
+3. Transformations applied
+4. Data exported to target
+5. Result confirmation shown
+
+### Download Results
+
+**For File Outputs:**
+
+1. Execution completes successfully
+2. Success message shows entity count
+3. "Download result file" button appears
+4. Click to download file
+5. File downloads to browser's download folder
+
+**Download Features:**
+- Works for all file dispatchers
+- Direct browser download
+- Original filename preserved
+- Can download multiple times
+- Link remains until dialog closed
+
+**Not Available For:**
+- Database outputs (data already in database)
+- Folder outputs (access folder directly)
+
+### Understanding Results
+
+**Success Message Shows:**
+- ✅ Success indicator
+- Number of entities processed
+- Output location/path
+- Download button (if applicable)
+- Execution time (implied)
+
+**Example Success:**
+```
+Successfully executed workflow
+Processed 12 entities to ./output/my_project.xlsx
+[Download result file]
+```
+
+### Handling Errors
+
+**Validation Errors:**
+- Execution stops before processing
+- Validation errors displayed
+- Fix errors and retry
+- Or disable "Run validation" (risky)
+
+**Execution Errors:**
+- Error message shown
+- Details included when available
+- Check logs for full trace
+- Common causes:
+  - Data source unavailable
+  - Disk space full
+  - Write permission denied
+  - Invalid SQL in entity
+
+**Error Recovery:**
+1. Read error message
+2. Fix underlying issue
+3. Close and reopen dialog
+4. Configure again
+5. Retry execution
+
+### Best Practices
+
+**Before Execution:**
+- ✅ Run full validation
+- ✅ Fix all errors
+- ✅ Test with Test Run first
+- ✅ Verify data sources connected
+- ✅ Check disk space available
+- ✅ Backup existing output files
+
+**Choosing Format:**
+- **Excel** - Best for sharing, manual review
+- **CSV** - Simple, universal compatibility
+- **CSV in ZIP** - Many entities, organized
+- **Database** - Integration, queries, large data
+- **Folder** - Programmatic access, scripting
+
+**Performance Tips:**
+- Large datasets take longer
+- Database output fastest for large data
+- File outputs easier for small datasets
+- Test with subset first (Test Run)
+
+**Troubleshooting:**
+- Check backend logs if execution fails
+- Verify output path writable
+- Test data source connections
+- Review entity SQL for errors
+- Try with validation disabled to see specific error
+
+---
+
+## 8. Quick Wins & Performance Features
 
 ### Workflow Tips
 
@@ -1005,7 +1229,7 @@ Wait 500ms
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 ### Common Issues
 
@@ -1165,7 +1389,7 @@ Wait 500ms
 
 ---
 
-## 10. FAQ
+## 11. FAQ
 
 ### General Questions
 

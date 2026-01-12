@@ -75,8 +75,24 @@ class ApplicationState:
         logger.info("Application state manager stopped")
 
     async def create_session(self, project_name: str, user_id: str | None = None) -> UUID:
-        """Create a new editing session for a project file."""
+        """
+        Create a new editing session for a project file.
+
+        If a session already exists for the same user/project combination,
+        reuses the existing session instead of creating a new one to prevent
+        orphaned sessions on page refresh.
+        """
         async with self._session_lock:
+            # Check if there's already an active session for this user/project
+            existing_session = await self._find_existing_session(project_name, user_id)
+            if existing_session:
+                logger.info(
+                    f"Reusing existing session {existing_session.session_id} for project '{project_name}' "
+                    f"(user: {user_id or 'anonymous'})"
+                )
+                existing_session.touch()
+                return existing_session.session_id
+
             session_id: UUID = uuid4()
             session = ProjectSession(
                 session_id=session_id,
@@ -89,8 +105,19 @@ class ApplicationState:
             self._sessions[session_id] = session
             self._sessions_by_project.setdefault(project_name, set()).add(session_id)
 
-            logger.info(f"Created session {session_id} for project '{project_name}'")
+            logger.info(f"Created new session {session_id} for project '{project_name}' (user: {user_id or 'anonymous'})")
             return session_id
+
+    async def _find_existing_session(self, project_name: str, user_id: str | None) -> ProjectSession | None:
+        """Find an existing active session for the given project and user."""
+        project_sessions = self._sessions_by_project.get(project_name, set())
+
+        for session_id in project_sessions:
+            session = self._sessions.get(session_id)
+            if session and session.user_id == user_id:
+                return session
+
+        return None
 
     async def get_session(self, session_id: UUID) -> ProjectSession | None:
         """Retrieve and touch a session."""

@@ -5,7 +5,7 @@
         <div class="d-flex align-center justify-space-between">
           <span>Entity Reconciliation</span>
           <div class="d-flex align-center gap-2">
-            <!-- Service Status Indicator -->
+            <!-- Service Status with Entity Count -->
             <v-chip
               v-if="serviceStatus"
               :color="serviceStatus.status === 'online' ? 'success' : 'error'"
@@ -13,10 +13,12 @@
               variant="flat"
               :prepend-icon="serviceStatus.status === 'online' ? 'mdi-check-circle' : 'mdi-alert-circle'"
             >
-              Service {{ serviceStatus.status === 'online' ? 'Online' : 'Offline' }}
+              {{ serviceStatus.status === 'online' ? `Online (${availableEntityTypes} entities)` : 'Offline' }}
             </v-chip>
-            <v-chip v-if="reconcilableEntities.length > 0" size="small" variant="tonal">
-              {{ reconcilableEntities.length }} entities configured
+            
+            <!-- Configured Specifications Count -->
+            <v-chip v-if="specifications.length > 0" size="small" variant="tonal" color="primary">
+              {{ specifications.length }} {{ specifications.length === 1 ? 'specification' : 'specifications' }} configured
             </v-chip>
           </div>
         </div>
@@ -27,6 +29,10 @@
         <v-tab value="configuration">
           <v-icon start>mdi-file-document-edit</v-icon>
           Configuration
+        </v-tab>
+        <v-tab value="yaml">
+          <v-icon start>mdi-code-braces</v-icon>
+          YAML
         </v-tab>
         <v-tab value="reconcile" :disabled="!selectedEntity">
           <v-icon start>mdi-auto-fix</v-icon>
@@ -49,6 +55,50 @@
                 Configure reconciliation specifications for your entities. Click the reconcile button on any specification to start.
               </p>
               <specifications-list :project-name="projectName" @reconcile="handleReconcileSpec" />
+            </div>
+          </v-window-item>
+
+          <!-- YAML Editor Tab -->
+          <v-window-item value="yaml">
+            <div class="py-4">
+              <div class="d-flex justify-space-between align-center mb-4">
+                <h3 class="text-h6">
+                  <v-icon start>mdi-code-braces</v-icon>
+                  Edit Reconciliation YAML
+                </h3>
+                <div class="d-flex gap-2">
+                  <v-btn
+                    variant="text"
+                    color="primary"
+                    prepend-icon="mdi-undo"
+                    :disabled="!yamlModified"
+                    @click="reloadYaml"
+                  >
+                    Reload
+                  </v-btn>
+                  <v-btn
+                    variant="tonal"
+                    color="primary"
+                    prepend-icon="mdi-content-save"
+                    :disabled="!yamlModified"
+                    :loading="savingYaml"
+                    @click="saveYaml"
+                  >
+                    Save
+                  </v-btn>
+                </div>
+              </div>
+              
+              <v-alert v-if="yamlError" type="error" variant="tonal" class="mb-4" closable @click:close="yamlError = null">
+                <v-alert-title>YAML Error</v-alert-title>
+                {{ yamlError }}
+              </v-alert>
+              
+              <yaml-editor
+                v-model="yamlContent"
+                height="600px"
+                @update:model-value="yamlModified = true"
+              />
             </div>
           </v-window-item>
 
@@ -116,7 +166,9 @@ import { useReconciliationStore } from '@/stores/reconciliation'
 import { storeToRefs } from 'pinia'
 import ReconciliationGrid from './ReconciliationGrid.vue'
 import SpecificationsList from './SpecificationsList.vue'
+import YamlEditor from '@/components/common/YamlEditor.vue'
 import type { ReconciliationPreviewRow } from '@/types'
+import yaml from 'js-yaml'
 
 interface Props {
   projectName: string
@@ -126,7 +178,7 @@ const props = defineProps<Props>()
 
 // Store
 const reconciliationStore = useReconciliationStore()
-const { reconciliationConfig, loading, reconcilableEntities, previewData, getEntityTargets } = storeToRefs(reconciliationStore)
+const { reconciliationConfig, loading, reconcilableEntities, previewData, getEntityTargets, specifications } = storeToRefs(reconciliationStore)
 
 // Local state
 const activeTab = ref<string>('configuration') // Tab state: configuration, reconcile
@@ -137,6 +189,14 @@ const showResultSnackbar = ref(false)
 const resultMessage = ref('')
 const resultColor = ref('success')
 const serviceStatus = ref<{ status: string; service_name?: string; error?: string } | null>(null)
+const serviceManifest = ref<any>(null)
+const availableEntityTypes = ref<number>(0)
+
+// YAML Editor state
+const yamlContent = ref('')
+const yamlModified = ref(false)
+const yamlError = ref<string | null>(null)
+const savingYaml = ref(false)
 
 // Computed
 const entityTargets = computed(() => {
@@ -232,9 +292,67 @@ async function checkServiceHealth() {
   try {
     const response = await reconciliationStore.checkServiceHealth()
     serviceStatus.value = response
+    
+    // Also fetch the manifest to get available entity types
+    const manifest = await reconciliationStore.getServiceManifest()
+    serviceManifest.value = manifest
+    
+    // Extract entity types count from manifest
+    if (manifest.defaultTypes && Array.isArray(manifest.defaultTypes)) {
+      availableEntityTypes.value = manifest.defaultTypes.length
+      console.log(`[ReconciliationView] Service has ${availableEntityTypes.value} entity types available`)
+    }
   } catch (e: any) {
     console.error('Failed to check service health:', e)
     serviceStatus.value = { status: 'offline', error: e.message }
+    availableEntityTypes.value = 0
+  }
+}
+
+async function loadYamlContent() {
+  try {
+    if (!reconciliationStore.reconciliationConfig) {
+      await reconciliationStore.loadReconciliationConfig(props.projectName)
+    }
+    yamlContent.value = yaml.dump(reconciliationStore.reconciliationConfig, { indent: 2, lineWidth: 120 })
+    yamlModified.value = false
+    yamlError.value = null
+  } catch (e: any) {
+    console.error('Failed to load YAML:', e)
+    yamlError.value = `Failed to load YAML: ${e.message}`
+  }
+}
+
+async function reloadYaml() {
+  await loadYamlContent()
+}
+
+async function saveYaml() {
+  savingYaml.value = true
+  yamlError.value = null
+  
+  try {
+    // Parse YAML to validate
+    const parsedConfig = yaml.load(yamlContent.value)
+    
+    // Save the config
+    await reconciliationStore.saveReconciliationConfigRaw(props.projectName, yamlContent.value)
+    
+    // Reload specifications to reflect changes
+    await reconciliationStore.loadSpecifications(props.projectName)
+    
+    yamlModified.value = false
+    resultMessage.value = 'Reconciliation configuration saved successfully'
+    resultColor.value = 'success'
+    showResultSnackbar.value = true
+  } catch (e: any) {
+    console.error('Failed to save YAML:', e)
+    yamlError.value = `Failed to save: ${e.message}`
+    resultMessage.value = `Failed to save YAML: ${e.message}`
+    resultColor.value = 'error'
+    showResultSnackbar.value = true
+  } finally {
+    savingYaml.value = false
   }
 }
 
@@ -243,11 +361,15 @@ onMounted(async () => {
   try {
     console.log('[ReconciliationView] Mounted with project:', props.projectName)
 
-    // Check service health
+    // Check service health and load manifest
     await checkServiceHealth()
 
-    // Load config
+    // Load config and specifications
     await reconciliationStore.loadReconciliationConfig(props.projectName)
+    await reconciliationStore.loadSpecifications(props.projectName)
+    
+    // Load YAML content
+    await loadYamlContent()
 
     // Auto-select first entity if available
     if (reconcilableEntities.value.length > 0) {
@@ -270,9 +392,20 @@ watch(
     if (newProjectName) {
       selectedEntity.value = null
       await reconciliationStore.loadReconciliationConfig(newProjectName)
+      await loadYamlContent()
     }
   }
 )
+
+// Watch for tab changes to reload YAML when switching to YAML tab
+watch(activeTab, async (newTab) => {
+  if (newTab === 'yaml') {
+    // Load YAML content if not already loaded or not modified
+    if (!yamlContent.value || !yamlModified.value) {
+      await loadYamlContent()
+    }
+  }
+})
 
 // Watch for entity changes and auto-select first target
 watch(

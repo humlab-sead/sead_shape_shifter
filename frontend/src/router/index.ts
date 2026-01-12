@@ -67,6 +67,14 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/ingesters',
+    name: 'ingesters',
+    component: () => import('@/views/IngesterView.vue'),
+    meta: {
+      title: 'Data Ingestion',
+    },
+  },
+  {
     path: '/test-run/:name',
     name: 'test-run',
     component: () => import('@/views/TestRunView.vue'),
@@ -80,6 +88,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/SettingsView.vue'),
     meta: {
       title: 'Settings',
+    },
+  },
+  {
+    path: '/help',
+    name: 'help',
+    component: () => import('@/views/HelpView.vue'),
+    meta: {
+      title: 'Help',
     },
   },
 ]

@@ -11,6 +11,8 @@
 - Auto-accept threshold configuration
 - CLI script for reconciliation (`scripts/auto_reconcile.py`)
 - Comprehensive logging with `[RECON]` prefix
+- **Entity preview available fields endpoint** - `/api/v1/entities/preview/{entity_name}/available-fields` provides comprehensive field list including all column types (keys, columns, extra_columns, FK joins, unnest) for validation
+- **Service manifest endpoint** - `/reconciliation/manifest` provides service metadata including entity types for real-time service status
 
 ### ✅ Already Implemented (Frontend)
 - Basic ReconciliationView component with entity selection
@@ -20,6 +22,8 @@
 - Candidate review dialog
 - Statistics chips (auto-matched, needs review, unmatched)
 - Save changes functionality
+- **Specification validation with status indicators** - Real-time validation of reconciliation specifications with visual status column (✅/⚠️/❌), comprehensive column checking (keys, columns, extra_columns, FK joins, unnest), API-based validation using entity preview, validation caching, and detailed error/warning tooltips
+- **Dual-mode specification editor** - YAML and form-based editing modes with Monaco editor integration for reconciliation specifications
 
 ---
 
