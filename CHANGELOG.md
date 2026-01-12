@@ -1,3 +1,57 @@
+# [1.1.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.0.1...v1.1.0) (2026-01-12)
+
+
+### Bug Fixes
+
+* add targetField prop to AlternativeSearchDialog and update ReconciliationGrid integration ([98f505e](https://github.com/humlab-sead/sead_shape_shifter/commit/98f505efb5d9c2694f93c8787eb25d61af036987))
+* add validation status indicators and error handling for specifications ([dddec39](https://github.com/humlab-sead/sead_shape_shifter/commit/dddec390f11c296780a6fe9d8cfdac5d2264506b))
+* count of avaliable entity types ([#120](https://github.com/humlab-sead/sead_shape_shifter/issues/120)) ([2f1fc5d](https://github.com/humlab-sead/sead_shape_shifter/commit/2f1fc5d46466a3e0de06a9d28c0626b9f05547e7))
+* empty fields and cosmetic error ([8e3a305](https://github.com/humlab-sead/sead_shape_shifter/commit/8e3a305613a0246d3f4b898f7988d896722b5da0)), closes [#114](https://github.com/humlab-sead/sead_shape_shifter/issues/114) [#115](https://github.com/humlab-sead/sead_shape_shifter/issues/115)
+* enhance reconciliation specifications with validation status indicators and detailed error messages ([9a7ee4e](https://github.com/humlab-sead/sead_shape_shifter/commit/9a7ee4e5085ed6f7801914292ebee4ce0b1416cc))
+* enhance SpecificationEditor with YAML editor and tab navigation ([#121](https://github.com/humlab-sead/sead_shape_shifter/issues/121)) ([fee29d1](https://github.com/humlab-sead/sead_shape_shifter/commit/fee29d153c02d3b5b8563d20c57cd5dd561ad112))
+* handle errors when fetching data sources in onMounted lifecycle ([df20d3c](https://github.com/humlab-sead/sead_shape_shifter/commit/df20d3c6ebf666841641d4959472f3362ed3d2a7))
+* improve layout of checkboxes in EntityFormDialog for better usability ([#119](https://github.com/humlab-sead/sead_shape_shifter/issues/119)) ([5808536](https://github.com/humlab-sead/sead_shape_shifter/commit/5808536cf89a76250de9be20619b2d985498c7e5))
+* improve project initialization and error handling in ProjectDetailView ([13a50c1](https://github.com/humlab-sead/sead_shape_shifter/commit/13a50c1bf7668cffaa2fc93d33c63b3946287948))
+* reduce minimum width for preview column definitions for better layout ([2f81f87](https://github.com/humlab-sead/sead_shape_shifter/commit/2f81f87a2fcbcdacc17e0165503002b86af2cafa))
+* refactor Check Functional Dependency checkbox in EntityFormDialog for improved layout ([fc54afc](https://github.com/humlab-sead/sead_shape_shifter/commit/fc54afc03b3fee66550d6738c2739ff727e7bee7))
+* refactor validateSpecification to use API for entity columns and improve error handling ([#123](https://github.com/humlab-sead/sead_shape_shifter/issues/123), [#124](https://github.com/humlab-sead/sead_shape_shifter/issues/124)) ([eb8a0b4](https://github.com/humlab-sead/sead_shape_shifter/commit/eb8a0b46810cddb818245f2700202757fa731a7a))
+* remove AdvancedEntityConfig component and update GlobalComponents declaration ([851e130](https://github.com/humlab-sead/sead_shape_shifter/commit/851e130e16f8302537cd5a5125dbf7642c532717))
+* remove duplicates from existing columns to move while preserving order ([#126](https://github.com/humlab-sead/sead_shape_shifter/issues/126)) ([f94da9b](https://github.com/humlab-sead/sead_shape_shifter/commit/f94da9b1ecbd0ff3b59661b7f26404168d1d6435))
+* reuse existing sessions ([07cc817](https://github.com/humlab-sead/sead_shape_shifter/commit/07cc817093d6d5ded630be6f0a909fe5b44810f1)), closes [#117](https://github.com/humlab-sead/sead_shape_shifter/issues/117)
+* simplify import statement for useHelp composable ([2a17f48](https://github.com/humlab-sead/sead_shape_shifter/commit/2a17f48fe0eedf5e7be1c64499a7b643e8488504))
+* sort entity names before dispatching to Excel writer ([ae42e07](https://github.com/humlab-sead/sead_shape_shifter/commit/ae42e0714a92d414676985f4740849cae09484b4)), closes [#112](https://github.com/humlab-sead/sead_shape_shifter/issues/112)
+* update _split_extra_columns to support case sensitivity in column matching ([86d9bc0](https://github.com/humlab-sead/sead_shape_shifter/commit/86d9bc04a8cca161de1befdd55155e49c5f86d1a))
+* update .gitignore to include input and output Excel files ([f9bd377](https://github.com/humlab-sead/sead_shape_shifter/commit/f9bd377aaaf9b7158e518ad9d5fd2a6ff78fe708))
+* update arbodat-test.yml for improved data source definitions and formatting ([c5b2712](https://github.com/humlab-sead/sead_shape_shifter/commit/c5b2712da8f802c8e2fbb5a54853effa502c7f00))
+* update Makefile to enhance frontend build and clear commands ([5255fd4](https://github.com/humlab-sead/sead_shape_shifter/commit/5255fd480e4417fb50d81e37ba2ef648899237e6))
+* update NodeLegend.vue for improved card styling and dark theme support Resolves [#118](https://github.com/humlab-sead/sead_shape_shifter/issues/118) ([3925373](https://github.com/humlab-sead/sead_shape_shifter/commit/3925373ccd6ce9a924773a4f81592a31a10ca7af))
+* update property mappings and SQL query for taxa entity in reconciliation configuration ([c939402](https://github.com/humlab-sead/sead_shape_shifter/commit/c939402d9a6765b5b2f7216b28185afa4d92dac9))
+* update table_shapes.tsv to reflect accurate entity counts and structure ([1fa3696](https://github.com/humlab-sead/sead_shape_shifter/commit/1fa3696f7d17bbabefcf0d6c0d7da8b173be6a81))
+* UX/model sync not setup properly ([a9ebe5e](https://github.com/humlab-sead/sead_shape_shifter/commit/a9ebe5eb91831630f95b3b1f682ca4149cb8e07c))
+
+
+### Features
+
+*  relocate SEAD clearinghouse import into Shape Shifter ([#131](https://github.com/humlab-sead/sead_shape_shifter/issues/131)) ([29b2bc6](https://github.com/humlab-sead/sead_shape_shifter/commit/29b2bc621f06870f25a8b033f7aa99c37c60e61b))
+* **ingester:** add API endpoints and service for data ingester operations ([9a56a61](https://github.com/humlab-sead/sead_shape_shifter/commit/9a56a61b4e4df01c2fb2ac57b5c7cd49a86761ec))
+* **ingesters:** add complete test suite and documentation for SEAD ingester ([7dea94a](https://github.com/humlab-sead/sead_shape_shifter/commit/7dea94a2308988fc96e6a0c2bdc523b34635fdb2))
+* add endpoint to update reconciliation configuration from raw YAML content ([76bc03e](https://github.com/humlab-sead/sead_shape_shifter/commit/76bc03e695c149ebcf88083b4b47954cefde118e))
+* add Execute Workflow section to user guide ([700aa11](https://github.com/humlab-sead/sead_shape_shifter/commit/700aa1195d0b3f20bec77fe690ec66268697aa9e))
+* add Execute Workflow Testing section to the frontend manual testing guide ([a3ca1f1](https://github.com/humlab-sead/sead_shape_shifter/commit/a3ca1f19379a1eedd631684d591bc1a3f9851329))
+* add help documentation and improve user guide navigation. Resolves [#111](https://github.com/humlab-sead/sead_shape_shifter/issues/111) ([a596037](https://github.com/humlab-sead/sead_shape_shifter/commit/a5960376c361200d72deb761cde0da72a7f35d8c))
+* **workflow:** add ingestion capability to Shape Shifter workflow ([768d6aa](https://github.com/humlab-sead/sead_shape_shifter/commit/768d6aab3049286948b8a34d36f9afe4f2869b0f))
+* Add multi-stage Docker setup for Shape Shifter application ([6fdcfb4](https://github.com/humlab-sead/sead_shape_shifter/commit/6fdcfb4387c8590a55ba6923a9375a6c85eded14)), closes [#107](https://github.com/humlab-sead/sead_shape_shifter/issues/107)
+* add new TODOs for user guide help, sorting Excel sheets, and improving Excel coloring ([280d6c3](https://github.com/humlab-sead/sead_shape_shifter/commit/280d6c385a9ec25e91399cbcee0e5a3e87ba8e24))
+* add presentation for Shape Shifter data harmonization workshop ([f227044](https://github.com/humlab-sead/sead_shape_shifter/commit/f2270448b7808b6511f8afb9ec561effbda375a6))
+* add useHelp composable export to centralized index ([2d79d45](https://github.com/humlab-sead/sead_shape_shifter/commit/2d79d450fb28a0ed26b71ab5fce0b41047e5463a))
+* add YAML editor for reconciliation configuration with save and reload functionality ([#125](https://github.com/humlab-sead/sead_shape_shifter/issues/125)) ([dfeab42](https://github.com/humlab-sead/sead_shape_shifter/commit/dfeab42c412e56a7e0d48aa45c8ceec48a5f5790))
+* enhance session management to reuse existing sessions for user/project combinations ([7241489](https://github.com/humlab-sead/sead_shape_shifter/commit/7241489cff199bbfdfcfac1ea5945c7f7872d38a))
+* **ingester:** implement data ingestion functionality with API integration and UI components ([b4cf8b7](https://github.com/humlab-sead/sead_shape_shifter/commit/b4cf8b7755a02346cb61f28f66256ebbb604d4f9))
+* **ingester:** implement SEAD Clearinghouse ingester integration plan ([b6bfcf9](https://github.com/humlab-sead/sead_shape_shifter/commit/b6bfcf9fe464aaf4fcf77962cc328f18a1087715))
+* implement three-state view toggle for entity form dialog ([8c39645](https://github.com/humlab-sead/sead_shape_shifter/commit/8c396458202df52993d754dbfd5823a900b33d4b))
+* improve column color configuration for OpenpyxlExcelDispatcher ([6f0a4cd](https://github.com/humlab-sead/sead_shape_shifter/commit/6f0a4cd74163394c82dc6df1c9fd622b944dd5b2)), closes [#113](https://github.com/humlab-sead/sead_shape_shifter/issues/113)
+* updated user guide ([c44c579](https://github.com/humlab-sead/sead_shape_shifter/commit/c44c579629e62a41818207cf8ca129212771694d))
+
 ## [1.0.1](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.0.0...v1.0.1) (2026-01-07)
 
 
