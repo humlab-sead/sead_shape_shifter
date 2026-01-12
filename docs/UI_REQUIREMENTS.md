@@ -1,26 +1,33 @@
-# Project Editor UI - Requirements Specification
+# Shape Shifter Project Editor - System Capabilities
 
 ## 1. Executive Summary
 
-This document defines the functional and non-functional requirements for the Shape Shifter Project Editor, a web-based UI that enables users to create and manage data transformation configurations without directly editing YAML files.
+This document describes the capabilities of the Shape Shifter Project Editor, a web-based application that enables users to create and manage data transformation configurations through an intuitive visual interface.
 
 **Target Users**: Data managers, domain specialists, and developers working with data transformation pipelines  
-**Goal**: Enable users to configure complex data transformations through an intuitive visual interface  
-**Scope**: Complete configuration lifecycle including creation, editing, validation, testing, and data-aware features
+**Purpose**: Enable users to configure complex data transformations without directly editing YAML files  
+**Status**: Production-ready with comprehensive project lifecycle support
 
 ---
 
 ## 2. System Overview
 
-### 2.1 Purpose
+### 2.1 Architecture
 
-The Project Editor provides a user-friendly interface for managing entitys in the Shape Shifter data transformation framework. It bridges the gap between complex YAML configuration files and user needs, offering:
+The Shape Shifter Project Editor is built on a modern web stack:
 
-- Visual entity relationship management
-- Real-time configuration validation
-- Intelligent auto-fix suggestions
-- Data-aware features (schema introspection, preview)
-- Form-based editing to prevent syntax errors
+**Frontend**:
+- Vue 3 with Composition API
+- Vuetify 3 for Material Design components
+- Pinia for state management
+- Monaco Editor for YAML editing
+- Cytoscape.js for dependency visualization
+
+**Backend**:
+- FastAPI (Python) REST API
+- Pydantic v2 for data validation
+- Async I/O for performance
+- Ingester plugin system
 
 ### 2.2 Project Structure
 
@@ -39,19 +46,59 @@ entities:
     unnest: {...}                   # Wide-to-long transformations
     filters: [...]                  # Post-extraction filters
     append: [...]                   # Data augmentation
+    reconciliation: [...]           # Reconciliation services
 
 options:
   data_sources: {...}               # Database connections
   translations: {...}               # Column name mappings
+  ingesters: {...}                  # Dispatch configuration
 
 mappings:                            # Remote entity mappings
   entity_name: remote_entity
 ```
 
-### 2.3 Key Constraints
+### 2.3 Core Capabilities
+
+**Project Management**:
+- Create, load, save, and manage YAML projects
+- Automatic backups with restore capability
+- Session management for concurrent editing
+- Dual-mode editing (Form/YAML)
+
+**Entity Management**:
+- Visual dependency graph with Cytoscape
+- Entity CRUD operations
+- Foreign key relationship editing
+- Column mapping and transformations
+
+**Validation & Quality**:
+- Multi-type validation (structural, data, entity-specific)
+- Circular dependency detection
+- Auto-fix suggestions with preview
+- Real-time validation feedback
+
+**Data Integration**:
+- Database connections (PostgreSQL, SQLite, MS Access)
+- Schema introspection and exploration
+- Query testing and execution
+- Data preview for entities
+
+**Reconciliation**:
+- Integration with reconciliation services
+- Dual-mode editing (Form/YAML)
+- Column mapping validation
+- Service manifest discovery
+
+**Dispatch**:
+- Data dispatch to target systems
+- Project-based configuration
+- SEAD Clearinghouse integration
+- Validation before dispatch
+
+### 2.4 System Constraints
 
 - **Dependency Order**: Entities must be processed in topological order
-- **No Circular Dependencies**: System must detect and prevent circular references
+- **No Circular Dependencies**: System detects and prevents circular references
 - **Entity References**: All referenced entities must exist in configuration
 - **Naming Conventions**: Entity names use snake_case, surrogate IDs must end with `_id`
 - **Data Integrity**: Foreign key relationships must be valid
@@ -59,584 +106,438 @@ mappings:                            # Remote entity mappings
 
 ---
 
-## 3. User Personas
-
-### 3.1 Domain Data Manager
-
-**Background**: Subject matter expert with domain knowledge but limited programming experience
-
-**Goals**:
-- Configure data imports from domain-specific databases
-- Define entity relationships matching domain understanding
-- Validate configurations against actual data
-- Preview transformations before full processing
-
-**Pain Points**:
-- YAML syntax is error-prone
-- Difficult to visualize entity dependencies
-- Hard to validate configuration correctness
-- Time-consuming to test configurations
-
-### 3.2 Data Engineer
-
-**Background**: Technical user comfortable with code and SQL
-
-**Goals**:
-- Quickly create configurations for new data sources
-- Leverage schema introspection to accelerate setup
-- Test SQL queries and data transformations
-- Debug configuration issues efficiently
-
-**Pain Points**:
-- Manual column listing is tedious
-- Need to switch between tools for testing
-- Project errors only discovered at runtime
-- Difficult to maintain complex configurations
-
-### 3.3 Developer/Integrator
-
-**Background**: Software developer integrating Shape Shifter into data pipelines
-
-**Goals**:
-- Understand configuration structure and options
-- Programmatically generate configurations
-- Validate configurations before deployment
-- Debug transformation issues
-
-**Pain Points**:
-- Need comprehensive documentation
-- API endpoints for automation
-- Clear error messages and validation
-- Version control and change tracking
-
----
-
-## 4. Functional Requirements
-
-### 4.1 Project Management
-
-#### FR-1: Load Project
-**Priority**: Must Have  
-**Description**: Load existing YAML configuration files for editing
-
-**Acceptance Criteria**:
-- Load configuration from file system
-- Parse YAML and display in editor
-- Handle malformed YAML with clear error messages
-- Support large configurations (100+ entities)
-
-#### FR-2: Save Project  
-**Priority**: Must Have  
-**Description**: Save modified configuration to YAML file
-
-**Acceptance Criteria**:
-- Validate configuration before saving
-- Create backup of existing file
-- Atomic write operations (no partial saves)
-- Provide save confirmation feedback
-
-#### FR-3: Create New Project
-**Priority**: Must Have  
-**Description**: Create new configuration from scratch or template
-
-**Acceptance Criteria**:
-- Provide blank configuration option
-- Offer templates for common scenarios
-- Pre-populate with sensible defaults
-- Validate new configuration structure
-
-#### FR-4: Project Versioning
-**Priority**: Should Have  
-**Description**: Track configuration changes over time
-
-**Acceptance Criteria**:
-- Create timestamped backups on save
-- Display backup history
-- Restore from previous version
-- Compare versions (diff view)
-
-### 4.2 Entity Management
-
-#### FR-5: Create Entity
-**Priority**: Must Have  
-**Description**: Add new entity to configuration
-
-**Acceptance Criteria**:
-- Form-based entity creation
-- Validate entity name uniqueness
-- Set required properties (name, type, source)
-- Add to configuration in correct dependency order
-
-#### FR-6: Edit Entity
-**Priority**: Must Have  
-**Description**: Modify existing entity properties
-
-**Acceptance Criteria**:
-- Update all entity properties
-- Validate changes before applying
-- Update dependencies automatically
-- Provide undo capability
-
-#### FR-7: Delete Entity
-**Priority**: Must Have  
-**Description**: Remove entity from configuration
-
-**Acceptance Criteria**:
-- Confirm deletion with user
-- Check for dependent entities
-- Cascade delete option or prevention
-- Update configuration structure
-
-#### FR-8: Duplicate Entity
-**Priority**: Should Have  
-**Description**: Copy entity as template for new entity
-
-**Acceptance Criteria**:
-- Copy all properties except name
-- Generate unique name automatically
-- Clear entity-specific values (surrogate_id)
-- Validate duplicated entity
-
-### 4.3 Entity Visualization
-
-#### FR-9: Dependency Graph
-**Priority**: Must Have  
-**Description**: Visualize entity relationships and dependencies
-
-**Acceptance Criteria**:
-- Display directed graph of entities
-- Show foreign key relationships
-- Highlight circular dependencies
-- Interactive navigation (zoom, pan, click)
-
-#### FR-10: Entity Tree View
-**Priority**: Must Have  
-**Description**: Hierarchical tree view of entities
-
-**Acceptance Criteria**:
-- Display entities in dependency order
-- Expand/collapse entity groups
-- Search and filter entities
-- Quick navigation to entity details
-
-#### FR-11: Entity Properties Panel
-**Priority**: Must Have  
-**Description**: Side panel showing entity details
-
-**Acceptance Criteria**:
-- Display all entity properties
-- Inline editing of simple properties
-- Jump to related entities (foreign keys, source)
-- Show entity statistics (columns, dependencies)
-
-### 4.4 Validation
-
-#### FR-12: Structural Validation
-**Priority**: Must Have  
-**Description**: Validate configuration structure and syntax
-
-**Acceptance Criteria**:
-- Check YAML syntax validity
-- Verify required properties present
-- Validate entity references exist
-- Detect circular dependencies
-- Check naming conventions
-
-#### FR-13: Data Validation
-**Priority**: Must Have  
-**Description**: Validate configuration against actual data sources
-
-**Acceptance Criteria**:
-- Verify columns exist in data sources
-- Check data types compatibility
-- Validate foreign key relationships
-- Test SQL queries execute successfully
-- Report data quality issues
-
-#### FR-14: Validation Reporting
-**Priority**: Must Have  
-**Description**: Display validation results with clear messages
-
-**Acceptance Criteria**:
-- Categorize errors by severity (error, warning, info)
-- Show error location (entity, property, line)
-- Provide actionable error messages
-- Filter and search validation results
-- Export validation report
-
-#### FR-15: Real-Time Validation
-**Priority**: Should Have  
-**Description**: Validate configuration as user makes changes
-
-**Acceptance Criteria**:
-- Debounced validation (avoid constant re-validation)
-- Display validation status indicator
-- Highlight errors inline in editor
-- Cache validation results (5-minute TTL)
-
-### 4.5 Auto-Fix
-
-#### FR-16: Fix Suggestions
-**Priority**: Must Have  
-**Description**: Provide intelligent fix suggestions for validation errors
-
-**Acceptance Criteria**:
-- Analyze validation errors
-- Generate applicable fix suggestions
-- Categorize by fix type (automatic, manual, complex)
-- Display fix description and impact
-
-#### FR-17: Preview Fix
-**Priority**: Must Have  
-**Description**: Show changes before applying fix
-
-**Acceptance Criteria**:
-- Display before/after comparison
-- Show all affected configuration parts
-- Highlight changes clearly
-- Allow fix cancellation
-
-#### FR-18: Apply Fix
-**Priority**: Must Have  
-**Description**: Apply suggested fix to configuration
-
-**Acceptance Criteria**:
-- Create automatic backup before fix
-- Apply fix atomically
-- Revalidate after fix
-- Provide success/failure feedback
-
-#### FR-19: Rollback Fix
-**Priority**: Must Have  
-**Description**: Undo applied fix if result is unsatisfactory
-
-**Acceptance Criteria**:
-- Restore from automatic backup
-- Maintain rollback history
-- Allow selective rollback
-- Confirm before rollback
-
-### 4.6 Data-Aware Features
-
-#### FR-20: Data Source Connection
-**Priority**: Should Have  
-**Description**: Connect to databases and test credentials
-
-**Acceptance Criteria**:
-- Configure database connections
-- Test connection before saving
-- Display connection status
-- Securely store credentials
-
-#### FR-21: Schema Introspection
-**Priority**: Should Have  
-**Description**: Discover tables and columns from data sources
-
-**Acceptance Criteria**:
-- List available tables in database
-- Display column names and types
-- Suggest entitys based on schema
-- Auto-populate column lists
-
-#### FR-22: Data Preview
-**Priority**: Should Have  
-**Description**: Show sample data from entities
-
-**Acceptance Criteria**:
-- Display first N rows of entity data
-- Show column names and types
-- Filter and sort preview data
-- Export preview to CSV
-
-#### FR-23: Query Testing
-**Priority**: Should Have  
-**Description**: Test SQL queries before adding to configuration
-
-**Acceptance Criteria**:
-- Execute SQL queries on demand
-- Display query results
-- Show execution time and row count
-- Validate query syntax
-
-#### FR-24: Foreign Key Validation
-**Priority**: Should Have  
-**Description**: Verify foreign key relationships in actual data
-
-**Acceptance Criteria**:
-- Check referenced keys exist
-- Identify orphaned records
-- Validate cardinality constraints
-- Report match percentages
-
-### 4.7 YAML Editor
-
-#### FR-25: Syntax Highlighting
-**Priority**: Must Have  
-**Description**: Visual syntax highlighting for YAML
-
-**Acceptance Criteria**:
-- Color-code YAML elements
-- Highlight keywords and values
-- Show indentation guides
-- Support dark/light themes
-
-#### FR-26: Code Completion
-**Priority**: Should Have  
-**Description**: Auto-complete entity and property names
-
-**Acceptance Criteria**:
-- Suggest entity names
-- Complete property names
-- Show available values for enums
-- Context-aware suggestions
-
-#### FR-27: Error Highlighting
-**Priority**: Must Have  
-**Description**: Highlight validation errors in editor
-
-**Acceptance Criteria**:
-- Underline error locations
-- Show error on hover
-- Jump to error location
-- Clear errors on fix
-
-#### FR-28: Search and Replace
-**Priority**: Should Have  
-**Description**: Find and replace text in YAML
-
-**Acceptance Criteria**:
-- Search with regex support
-- Replace all or selective
-- Case-sensitive option
-- Search history
-
-### 4.8 User Experience
-
-#### FR-29: Responsive Design
-**Priority**: Must Have  
-**Description**: Work on different screen sizes
-
-**Acceptance Criteria**:
-- Support desktop (1920x1080+)
-- Usable on laptop (1366x768+)
-- Adapt layout to screen size
-- Maintain functionality on all sizes
-
-#### FR-30: Keyboard Shortcuts
-**Priority**: Should Have  
-**Description**: Common operations accessible via keyboard
-
-**Acceptance Criteria**:
-- Save (Ctrl/Cmd+S)
-- Validate (Ctrl/Cmd+V)
-- Find (Ctrl/Cmd+F)
-- Undo/Redo (Ctrl/Cmd+Z/Y)
-- Display shortcut help
-
-#### FR-31: Tooltips and Help
-**Priority**: Must Have  
-**Description**: Contextual help throughout interface
-
-**Acceptance Criteria**:
-- Tooltips on hover (500ms delay)
-- Help icon with descriptions
-- Link to documentation
-- Inline hints for complex features
-
-#### FR-32: Loading States
-**Priority**: Must Have  
-**Description**: Visual feedback during operations
-
-**Acceptance Criteria**:
-- Skeleton loaders for data fetching
-- Progress bars for long operations
-- Disable controls during processing
-- Timeout handling
-
-#### FR-33: Success/Error Feedback
-**Priority**: Must Have  
-**Description**: Clear confirmation of operations
-
-**Acceptance Criteria**:
-- Success snackbar with animation
-- Error messages with details
-- Auto-dismiss after timeout
-- Manual dismiss option
-
----
-
-## 5. Non-Functional Requirements
-
-### 5.1 Performance
-
-#### NFR-1: Response Time
-- Page load: < 2 seconds
-- Validation: < 500ms for typical config
-- Auto-save: < 200ms
-- Data preview: < 1 second
-
-#### NFR-2: Caching
-- Cache validation results (5-minute TTL)
-- Cache schema introspection (10-minute TTL)
-- Invalidate on configuration change
-
-#### NFR-3: Optimization
-- Debounce validation (500ms)
-- Lazy-load entity details
-- Virtual scrolling for large lists
-- Code splitting for faster initial load
-
-### 5.2 Reliability
-
-#### NFR-4: Data Integrity
-- Atomic save operations
-- Automatic backups before changes
+## 3. Feature Catalog
+
+### 3.1 Project Operations
+
+**Project Lifecycle**:
+- Load existing YAML configurations from file system
+- Create new projects from scratch or templates
+- Save projects with automatic backup creation
+- Restore from previous versions (backup management)
+- Session management with conflict detection
+
+**Project Views**:
+- Projects list with metadata (entity count, modified date, validation status)
+- Project detail with tabbed interface
+- Quick access to recent projects
+- Search and filter projects
+
+### 3.2 Entity Management
+
+**Entity Operations**:
+- Create entities with form-based wizard
+- Edit entity properties in dedicated panel
+- Delete entities with dependency checking
+- Duplicate entities as templates
+- Bulk operations support
+
+**Entity Views**:
+- List view with filtering and sorting
+- Dependency graph visualization (hierarchical and force-directed layouts)
+- Entity detail panel with all properties
+- Quick navigation between related entities
+
+**Entity Configuration**:
+- Surrogate ID and natural keys
+- Column selection and mapping
+- Foreign key relationships
+- Unnest/melt transformations
+- Filters and append operations
+- Extra columns with expressions
+
+### 3.3 Dependency Management
+
+**Visualization**:
+- Interactive directed graph (Cytoscape.js)
+- Hierarchical and force-directed layouts
+- Node and edge labels toggle
+- Zoom, pan, fit controls
+- Legend with node type indicators
+
+**Analysis**:
+- Topological sorting
+- Circular dependency detection
+- Dependency chain tracing
+- Deep linking to entities from graph
+
+**Statistics**:
+- Node and edge counts
+- Processing order display
+- Dependency depth analysis
+
+### 3.4 Validation System
+
+**Validation Types**:
+- Structural validation (YAML syntax, required fields)
+- Data validation (column existence, data types)
+- Entity-specific validation (foreign keys, references)
+- Circular dependency detection
+- Naming convention checks
+
+**Validation Features**:
+- Real-time validation as you edit
+- Comprehensive validation reports
+- Error categorization (error, warning, info)
+- Entity-level error summaries
+- Quick navigation to errors
+
+**Auto-Fix System**:
+- Intelligent fix suggestions
+- Fix preview with before/after comparison
+- One-click fix application
+- Automatic backups before fixes
 - Rollback capability
-- Data validation before write
 
-#### NFR-5: Error Handling
-- Graceful degradation on failures
-- Clear error messages
-- Log errors for debugging
-- Retry transient failures
+### 3.5 Data Source Integration
 
-#### NFR-6: Testing
-- 90%+ test coverage
-- Unit tests for business logic
-- Integration tests for API
-- E2E tests for critical paths
+**Supported Drivers**:
+- PostgreSQL
+- SQLite  
+- MS Access (via UCanAccess)
+- CSV files
+- Excel files
 
-### 5.3 Usability
+**Connection Management**:
+- Global data source configuration
+- Connection testing
+- Credential management
+- Connection status monitoring
 
-#### NFR-7: Accessibility
-- WCAG 2.1 AA compliance
-- Keyboard navigation
-- Screen reader support
-- Focus indicators
+**Schema Operations**:
+- Database schema introspection
+- Table and column discovery
+- Data type mapping
+- Index and constraint information
 
-#### NFR-8: Browser Support
-- Chrome 120+
+**Query Capabilities**:
+- SQL query testing
+- Query execution with result display
+- Performance metrics
+- Export results to CSV
+
+### 3.6 Schema Explorer
+
+**Features**:
+- Browse database schemas
+- View table structure (columns, types, keys)
+- Data preview with pagination
+- Column filtering and sorting
+- Export capabilities
+
+**Navigation**:
+- Tree view of tables
+- Schema selection (PostgreSQL)
+- Search and filter
+- Quick table selection
+
+### 3.7 Reconciliation Integration
+
+**Service Integration**:
+- Connect to reconciliation services
+- Service manifest discovery
+- Entity reconciliation configuration
+- Column mapping editor
+
+**Dual-Mode Editing**:
+- Form-based editor with validation
+- YAML editor with syntax highlighting
+- Seamless switching between modes
+- Real-time synchronization
+
+**Validation**:
+- Column type validation
+- Required field checking
+- Service endpoint testing
+- Status indicators
+
+### 3.8 Dispatch System
+
+**Configuration**:
+- Project-based dispatch settings
+- Data source references
+- Ingester-specific policies
+- Default value management
+
+**Dispatchers**:
+- SEAD Clearinghouse integration
+- Extensible ingester plugin system
+- Validation before dispatch
+- Status reporting
+
+**Operations**:
+- Validate data before dispatch
+- Dispatch to target systems
+- Track dispatch history
+- Error handling and reporting
+
+### 3.9 YAML Editor
+
+**Editing Features**:
+- Monaco Editor integration
+- Syntax highlighting
+- Auto-formatting
+- Validation feedback
+- Search and replace
+
+**Editor Capabilities**:
+- Direct YAML editing
+- Real-time validation
+- Error highlighting
+- Auto-save support
+- Keyboard shortcuts
+
+### 3.10 User Experience
+
+**Interface Design**:
+- Material Design (Vuetify 3)
+- Dark and light themes
+- Responsive layout
+- Accessible navigation
+
+**Feedback Systems**:
+- Success/error snackbars
+- Loading states and progress indicators
+- Tooltips and inline help
+- Validation status indicators
+
+**Navigation**:
+- Sidebar menu
+- Breadcrumb trails
+- Quick access shortcuts
+- Deep linking support
+
+---
+
+## 4. Technical Specifications
+
+### 4.1 Performance
+
+**Response Times**:
+- Configuration load: < 2s for 100+ entities
+- Entity operations: < 200ms
+- Validation: < 3s for 100+ entities  
+- Graph rendering: < 1s for 100+ nodes
+
+**Caching**:
+- Validation results cached with 5-minute TTL
+- Schema introspection cached for 10 minutes
+- Smart cache invalidation on configuration changes
+- Debounced validation (500ms) prevents excessive re-validation
+
+**Optimization**:
+- Lazy-load entity details on demand
+- Virtual scrolling for large entity lists
+- Code splitting for faster initial load
+- Efficient dependency graph algorithms
+
+**Scalability**:
+- Supports configurations with 500+ entities
+- Handles large dependency graphs smoothly
+- Efficient memory usage for large projects
+
+### 4.2 Reliability
+
+**Data Safety**:
+- Atomic save operations prevent partial writes
+- Automatic timestamped backups on every save
+- Backup restoration for version recovery
+- Validation before save prevents corrupt configs
+
+**Error Handling**:
+- Comprehensive error messages with context
+- Graceful degradation on service failures
+- Connection retry logic for databases
+- Detailed error logging for debugging
+- User-friendly error display with recovery suggestions
+
+**Testing**:
+- 90%+ test coverage (unit + integration)
+- E2E tests for critical user paths
+- Continuous integration validation
+- Backend and frontend test suites
+
+### 4.3 Usability
+
+**Learning Curve**:
+- Form-based editors reduce YAML knowledge requirement
+- Inline help and tooltips throughout
+- Validation feedback guides corrections
+- Intuitive navigation and workflows
+
+**Accessibility**:
+- Keyboard shortcuts for common operations (Save: Ctrl/Cmd+S, Find: Ctrl/Cmd+F)
+- Responsive design for different screen sizes (desktop 1920x1080+, laptop 1366x768+)
+- Material Design with dark/light themes
+- Focus indicators and keyboard navigation
+
+**Browser Support**:
+- Chrome/Edge 120+
 - Firefox 115+
 - Safari 16+
-- Edge 120+
+- Latest 2 versions of all major browsers
 
-#### NFR-9: User Guidance
-- Inline help and tooltips
-- Comprehensive documentation
-- Example configurations
-- Video tutorials (future)
+**User Guidance**:
+- Comprehensive inline help and tooltips
+- Example configurations included
+- Documentation for all features
+- Success/error feedback with snackbars
 
-### 5.4 Security
+### 4.4 Security
 
-#### NFR-10: Input Validation
-- Sanitize all user inputs
-- Validate YAML structure
-- Prevent code injection
-- Limit file sizes
+**Input Validation**:
+- All user inputs sanitized and validated
+- YAML structure validation before parsing
+- Prevention of code injection attacks
+- File size limits to prevent DoS
 
-#### NFR-11: Authentication (Future)
-- User login/logout
-- Session management
+**Data Security**:
+- Secure credential storage for data sources
+- HTTPS for all API communications
+- Sensitive data excluded from logs
+- No credentials in configuration files (environment variables)
+
+**Future Security Features**:
+- User authentication and session management
 - Role-based access control
-- Audit logging
+- Audit logging for all operations
+- Backup encryption
 
-#### NFR-12: Data Security
-- Secure credential storage
-- HTTPS for API calls
-- No sensitive data in logs
-- Backup encryption (future)
+### 4.5 Maintainability
 
-### 5.5 Maintainability
+**Code Quality**:
+- TypeScript strict mode enforcement
+- Pydantic v2 for runtime type safety
+- Comprehensive test coverage
+- Linting with zero errors (ESLint + Prettier)
+- Clear separation of concerns (components, stores, services)
 
-#### NFR-13: Code Quality
-- Type safety (TypeScript, Pydantic)
-- Consistent code style
-- Comprehensive comments
-- Design patterns
+**Documentation**:
+- User guides for all major features
+- API documentation (OpenAPI/Swagger)
+- Code comments for complex logic
+- Architecture and system documentation
+- Development guides for contributors
 
-#### NFR-14: Documentation
-- API documentation (OpenAPI)
-- User guides
-- Developer guides
-- Architecture diagrams
-
-#### NFR-15: Extensibility
+**Extensibility**:
 - Plugin architecture for validators
-- Configurable data loaders
-- Theme support
-- Extensible UI components
+- Registry pattern for loaders and dispatchers
+- Configurable data source drivers
+- Theme support (dark/light modes)
+- Modular component architecture
 
 ---
 
-## 6. Success Criteria
+## 5. Technology Stack
 
-### 6.1 Phase 1 Success Criteria
+### 5.1 Frontend
 
-- ✅ Users can create and edit entities without touching YAML
-- ✅ Dependency visualization prevents circular dependencies
-- ✅ Validation catches configuration errors before processing
-- ✅ Form-based editing reduces syntax errors by 90%+
-- ✅ 90%+ test coverage
+- **Framework**: Vue 3 with Composition API (`<script setup>` syntax)
+- **UI Library**: Vuetify 3 (Material Design components)
+- **State Management**: Pinia stores
+- **Language**: TypeScript with strict mode
+- **Code Editor**: Monaco Editor for YAML
+- **Visualization**: Cytoscape.js for dependency graphs
+- **Build Tool**: Vite
+- **Testing**: Vitest (unit), Playwright (E2E)
 
-### 6.2 Phase 2 Success Criteria
+### 5.2 Backend
 
-- ✅ Schema introspection saves 50%+ time on column listing
-- ✅ Data preview catches data issues before full processing
-- ✅ Auto-fix resolves 70%+ of common errors automatically
-- ✅ Query testing validates SQL before adding to config
-- ✅ Foreign key validation catches relationship errors
+- **Framework**: FastAPI (Python)
+- **Validation**: Pydantic v2 models
+- **Database**: SQLAlchemy ORM
+- **Logging**: Loguru
+- **Database Drivers**: PostgreSQL, SQLite, MS Access (UCanAccess), CSV, Excel
 
-### 6.3 Overall Success Criteria
+### 5.3 Infrastructure
 
-- ✅ Non-technical users can create configurations independently
-- ✅ Project errors reduced by 80%+
-- ✅ Time to create new configuration reduced by 60%+
-- ✅ User satisfaction score > 4/5
-- ✅ Zero data loss incidents
+- **Browser Support**: Chrome/Edge, Firefox, Safari (latest 2 versions)
+- **Configuration**: YAML with `@include` directive support
+- **Storage**: Local file system with automatic backup rotation
+- **Deployment**: Docker support, standalone application
 
 ---
 
-## 7. Constraints and Assumptions
+## 6. System Capabilities Summary
 
-### 7.1 Constraints
+Shape Shifter provides a comprehensive web-based interface for managing declarative data transformations:
 
-- Must work with existing Shape Shifter Python codebase
-- Cannot modify core transformation engine
-- Must maintain YAML configuration format
-- Limited to single-user initially (no concurrent editing)
+**Core Strengths**:
+- Declarative approach reduces ETL complexity
+- Visual tools make complex relationships understandable
+- Validation prevents errors before execution
+- Auto-fix accelerates problem resolution
+- Modular configuration supports maintainability
 
-### 7.2 Assumptions
+**Target Users**:
+- Domain data managers (minimal programming required)
+- Data engineers (accelerated configuration with schema introspection)
+- Developers/integrators (API-driven automation support)
 
-- Users have basic understanding of data transformation concepts
-- Data sources are accessible from server
-- Projects fit in browser memory (< 10MB)
-- Network connectivity for API calls
+**Typical Workflows**:
+1. **New Project**: Create configuration → Add data sources → Define entities → Validate → Dispatch
+2. **Extend Project**: Load existing → Add entities → Auto-fix validation errors → Save
+3. **Debug Issues**: Validate → Review errors → Preview fixes → Apply → Re-validate
+4. **Data Integration**: Connect sources → Explore schema → Test queries → Configure reconciliation
+5. **Production Deploy**: Validate data → Configure dispatch → Execute transformations
 
-### 7.3 Out of Scope
+---
 
-- Multi-user real-time collaboration (Phase 3)
-- Visual data transformation pipeline builder (Phase 3)
-- Advanced data quality checks (Phase 3)
-- Mobile app (Phase 4)
-- AI-powered configuration generation (Phase 4)
+## 7. Future Enhancements
+
+**Planned Features**:
+- Multi-user collaboration with real-time editing
+- Git integration for version control
+- Configuration templates library
+- Advanced graph analytics (impact analysis, bottleneck detection)
+- Configuration diff and merge tools
+- Scheduled automated validation
+- Entity-level performance profiling
+- User-defined custom validators
+- Workflow automation and scheduling
+- Mobile-responsive interface improvements
+
+**Known Limitations**:
+- Single-user editing (no concurrent edit protection)
+- Local file system storage only
+- Limited audit trail beyond backups
+- No auto-reload on external file changes
+- Manual refresh required for external updates
 
 ---
 
 ## 8. Glossary
 
-- **Entity**: A table or dataset in the transformation pipeline
-- **Surrogate ID**: Auto-generated integer identifier for entity records
-- **Natural Key**: Business key columns that uniquely identify records
-- **Foreign Key**: Relationship between entities referencing surrogate IDs
-- **Dependency**: Entity that must be processed before another
-- **Unnest**: Transform wide data to long format (melt operation)
-- **Topological Sort**: Ordering entities by dependencies for processing
-- **Schema Introspection**: Automatic discovery of database structure
-- **Validation**: Checking configuration correctness (structural or data)
-- **Auto-Fix**: Automated correction of configuration errors
+**Entity**: A data table/view configuration with source, columns, relationships, and transformations
+
+**Surrogate ID**: Auto-generated unique identifier column (must end with `_id`)
+
+**Natural Key**: Business key columns that uniquely identify records
+
+**Foreign Key**: Column(s) referencing another entity's primary/natural key
+
+**Unnest/Melt**: Transformation from wide format to long format (pivot inverse)
+
+**Dependency Graph**: Visual representation of entity relationships and processing order
+
+**Topological Sort**: Ordering entities by dependencies (prerequisites before dependents)
+
+**Reconciliation**: Matching and enriching data against external reference services
+
+**Dispatch**: Sending transformed data to target systems (e.g., databases, APIs)
+
+**Auto-Fix**: Automated correction suggestions for validation errors
+
+**@include**: YAML directive for modular configuration composition
+
+**Data Source**: Connection configuration for databases or file sources
+
+**Schema Introspection**: Automatic discovery of database table and column structure
+
+**Validation**: Multi-level checking (structural, data, entity-specific) of configuration correctness
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: December 14, 2025  
-**Status**: Complete (Phases 1 & 2 Implemented)
+**Document Status**: Production System Documentation  
+**Last Updated**: January 12, 2026  
+**Version**: 2.0
