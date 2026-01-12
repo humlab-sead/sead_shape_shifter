@@ -228,13 +228,9 @@ function formatDate(dateString: string | null | undefined): string {
   return date.toLocaleDateString()
 }
 
-async function handleSelectProject(name: string) {
-  try {
-    await select(name)
-    router.push({ name: 'project-detail', params: { name } })
-  } catch (err) {
-    console.error('Failed to select project:', err)
-  }
+function handleSelectProject(name: string) {
+  // Navigate directly - let ProjectDetailView handle loading
+  router.push({ name: 'project-detail', params: { name } })
 }
 
 async function handleValidate(name: string) {
