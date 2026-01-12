@@ -50,23 +50,23 @@
           <v-expansion-panel title="Database Configuration">
             <v-expansion-panel-text>
               <v-text-field
-                v-model="form.config?.database.host"
+                v-model="form.config.database.host"
                 label="Host"
                 prepend-icon="mdi-server"
               />
               <v-text-field
-                v-model.number="form.config?.database.port"
+                v-model.number="form.config.database.port"
                 label="Port"
                 type="number"
                 prepend-icon="mdi-ethernet"
               />
               <v-text-field
-                v-model="form.config?.database.dbname"
+                v-model="form.config.database.dbname"
                 label="Database Name"
                 prepend-icon="mdi-database"
               />
               <v-text-field
-                v-model="form.config?.database.user"
+                v-model="form.config.database.user"
                 label="User"
                 prepend-icon="mdi-account"
               />
