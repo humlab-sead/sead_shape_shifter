@@ -1,7 +1,7 @@
 import abc
 import io
 
-from backend.app.ingesters.sead.utility import Registry
+from ingesters.sead.utility import Registry
 
 from ..metadata import SeadSchema
 from ..submission import Submission

@@ -6,7 +6,7 @@ from typing import Any
 from loguru import logger
 from psycopg import Connection
 
-from backend.app.ingesters.sead.utility import Registry
+from ingesters.sead.utility import Registry
 
 
 class BaseUploader(abc.ABC):

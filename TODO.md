@@ -112,3 +112,31 @@ Ignore any code found in "deprecated" folder
 Ignore "importer/configuration" since this is an exact copy of configuration module in Shape Shifter.
 Avoid sharing domain model between the ingesters and the Shape Shifters. The main part of the API is the Excel file produced by Shape Shifter. You can ignore CSV output format for now. The API should have a "is_satisfied/validate" method (or endpoint) that the user via UX can call to check if the ingester accepts the Excel file.
 The API could be an endpoint exposed by the backend e.g. /ingest/ingester-name" etc with a set of well defined methods. In such a case the backend need to be able to scan the system (e.g. via a Registry) for avaliable ingesters.
+
+
+TODO: #131 Relocate the ingester implementations
+
+Move ingesters (e.g. "sead" folder) to a folder outside of backend to this structure:
+
+```
+backend/
+   app/
+      ...
+      ingeters/
+         __init__.py
+         protocol.py
+         registry.py
+         README.md
+ingesters/
+  sead/
+      /dispatchers
+      /importer
+      __init__.py
+      ingester.py
+      registry.py
+      README.md
+  ...
+```
+
+The IngesterRegistry would be responsible for scanning/loading for registering avaliable ingesters. A config option in the backend would point to the ingesters folder. This would make it easier to add new ingesters in the future without changing the backend codebase. The ingesters would implement a common interface defined in backend/app/ingesters/protocol.py.
+

@@ -27,6 +27,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
     app_state: ApplicationState = init_app_state(settings.PROJECTS_DIR)
     await app_state.start()
 
+    # Discover and load ingesters
+    from backend.app.ingesters.registry import Ingesters
+    Ingesters.discover(
+        search_paths=settings.INGESTER_PATHS,
+        enabled_only=settings.ENABLED_INGESTERS
+    )
+
     logger.info("Application ready - configurations loaded on-demand via sessions")
 
     yield
