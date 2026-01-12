@@ -35,6 +35,11 @@ class Project(BaseModel):
     options: dict[str, Any] = Field(default_factory=dict, description="Global options")
     metadata: ProjectMetadata | None = Field(default=None, description="Project metadata")
 
+    @property
+    def ingesters(self) -> dict[str, Any]:
+        """Get ingester configurations from options."""
+        return self.options.get("ingesters", {}) or {}
+
     def get_entity(self, name: str) -> dict[str, Any] | None:
         """Get entity by name."""
         return self.entities.get(name)  # pylint: disable=no-member

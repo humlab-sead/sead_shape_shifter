@@ -929,22 +929,19 @@ function formatBackupDate(timestamp: number): string {
 
 // Lifecycle
 onMounted(async () => {
+  // Ensure we have a project name from route params
   if (!projectName.value) {
     console.warn('ProjectDetailView: No project name in route params')
-    router.push({ name: 'projects' })
+    await router.push({ name: 'projects' })
     return
   }
 
   try {
     console.debug(`ProjectDetailView: Initializing for project "${projectName.value}"`)
     
-    // Only select if not already selected (avoid duplicate API calls)
-    if (!selectedProject.value || selectedProject.value.metadata?.name !== projectName.value) {
-      console.debug(`ProjectDetailView: Loading project "${projectName.value}"`)
-      await select(projectName.value)
-    } else {
-      console.debug(`ProjectDetailView: Project "${projectName.value}" already loaded`)
-    }
+    // Always load the project on mount to ensure fresh data
+    console.debug(`ProjectDetailView: Loading project "${projectName.value}"`)
+    await select(projectName.value)
     
     await fetchBackups(projectName.value)
     // Start editing session
@@ -955,7 +952,7 @@ onMounted(async () => {
     console.error('ProjectDetailView: Failed to initialize project view:', err)
     // Only navigate back if we're still on this route (avoid navigation loops)
     if (router.currentRoute.value.name === 'project-detail') {
-      router.push({ name: 'projects' })
+      await router.push({ name: 'projects' })
     }
   }
 })
@@ -972,17 +969,15 @@ watch(
     console.debug(`ProjectDetailView: Project changed from "${oldName}" to "${newName}"`)
     
     try {
-      // Only select if the project actually changed
-      if (!selectedProject.value || selectedProject.value.metadata?.name !== newName) {
-        console.debug(`ProjectDetailView: Loading new project "${newName}"`)
-        await select(newName)
-      }
+      // Always load the project to ensure fresh data
+      console.debug(`ProjectDetailView: Loading new project "${newName}"`)
+      await select(newName)
       await fetchBackups(newName)
     } catch (err) {
       console.error(`ProjectDetailView: Failed to load project "${newName}":`, err)
       // Only navigate back if we're still on this route
       if (router.currentRoute.value.name === 'project-detail') {
-        router.push({ name: 'projects' })
+        await router.push({ name: 'projects' })
       }
     }
   }
