@@ -34,12 +34,3 @@ policies:
     columns:
       - "date_updated"
       - "*_uuid"
-logging:
-  folder: ./logs
-  handlers:
-    - sink: "import_excel.log"
-      level: "DEBUG"
-      format: "{time} - {level} - {message}"
-    - sink: "sys.stdout"
-      level: "DEBUG"
-      format: "{time} - {level} - {message}"

@@ -140,3 +140,61 @@ ingesters/
 
 The IngesterRegistry would be responsible for scanning/loading for registering avaliable ingesters. A config option in the backend would point to the ingesters folder. This would make it easier to add new ingesters in the future without changing the backend codebase. The ingesters would implement a common interface defined in backend/app/ingesters/protocol.py.
 
+TODO: #134 Add ingestion options to Shape Shifter project file. 
+We need to introduce an "ingesters" section in the project file under "options". The values in this section would be default values for ingester UX, and values specific for a certain ingester module. 
+
+We should (at least for the time being) remove the target database from the ingestion UX, and instead rely on what's defined in the datasource.
+```yml
+metadata:
+  name: arbodat-test
+  type: shapeshifter-project
+  description: ...
+  ...
+entities:
+  abundance:
+    ...
+  ...
+options:
+  data_sources:
+    sead: "@include: sead-options.yml"
+    ....
+  ...
+  ingesters:
+    sead: # could be "@include: sead-ingester.yml"
+      data_source: sead # UX default. or "@include: sead-options.yml"
+      options:
+        database: # resolved value of data_source
+        transfer_format: csv
+        ignore_columns:  # UX default. 
+          - "date_updated"
+          - "*_uuid"
+          - "(*"
+      policies:
+        if_foreign_key_value_is_missing_add_identity_mapping_to_foreign_key_table:
+          priority: 1
+        set_public_id_to_negative_system_id_for_new_lookups:
+          disabled: true
+        update_missing_foreign_key_policy:
+          tbl_dataset_contacts:
+            contact_type_id: 2
+            contact_id: 1
+        if_lookup_table_is_missing_add_table_using_system_id_as_public_id:
+          tables:
+            - tbl_abundance_elements
+            - tbl_contact_types
+            - tbl_dataset_submission_types
+            - tbl_location_types
+            - tbl_project_types
+            - tbl_project_stages
+            - tbl_relative_ages
+            - tbl_sample_group_sampling_contexts
+            - tbl_sample_types
+          preallocated_tables:
+        if_lookup_with_no_new_data_then_keep_only_system_id_public_id:
+          priority: 9
+        drop_ignored_columns:
+          priority: 3
+          columns:
+            - "date_updated"
+            - "*_uuid"
+```
