@@ -1,4 +1,9 @@
-"""Ingester infrastructure for data ingestion into external systems."""
+"""Ingester infrastructure for data ingestion into external systems.
+
+Ingesters are now dynamically discovered from the top-level 'ingesters/' directory.
+The registry's discover() method is called during application startup to load
+available ingesters.
+"""
 
 from backend.app.ingesters.protocol import (
     Ingester,
@@ -9,8 +14,8 @@ from backend.app.ingesters.protocol import (
 )
 from backend.app.ingesters.registry import Ingesters
 
-# Import ingesters to trigger auto-registration
-from backend.app.ingesters.sead import SeadIngester  # noqa: F401
+# Note: Ingester implementations are no longer imported here.
+# They are dynamically discovered at application startup via Ingesters.discover()
 
 __all__ = [
     "Ingester",
@@ -19,5 +24,4 @@ __all__ = [
     "IngestionResult",
     "ValidationResult",
     "Ingesters",
-    "SeadIngester",
 ]

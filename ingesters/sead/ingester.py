@@ -15,10 +15,10 @@ from backend.app.ingesters.protocol import (
     ValidationResult,
 )
 from backend.app.ingesters.registry import Ingesters
-from backend.app.ingesters.sead.metadata import SchemaService, SeadSchema
-from backend.app.ingesters.sead.process import ImportService, Options
-from backend.app.ingesters.sead.specification import SpecificationError, SubmissionSpecification
-from backend.app.ingesters.sead.submission import Submission
+from ingesters.sead.metadata import SchemaService, SeadSchema
+from ingesters.sead.process import ImportService, Options
+from ingesters.sead.specification import SpecificationError, SubmissionSpecification
+from ingesters.sead.submission import Submission
 
 
 @Ingesters.register(key="sead")

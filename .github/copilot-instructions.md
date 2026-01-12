@@ -245,6 +245,7 @@ Use scopes to indicate which part of the codebase is affected:
 - `core`: Core processing pipeline (`src/`)
 - `backend`: Backend API (`backend/app/`)
 - `frontend`: Frontend application (`frontend/`)
+- `ingesters`: Data ingester plugins (`ingesters/`)
 - `config`: Project handling
 - `validation`: Validation services
 - `cache`: Caching functionality
@@ -321,6 +322,14 @@ This project uses **semantic-release** configured in `.releaserc.json`:
 2. Implement `is_satisfied_by()` returning bool
 3. Add to `CompositeConfigSpecification.__init__()` list
 
+### Adding a Data Ingester
+1. Create directory `ingesters/<name>/` with `__init__.py` and `ingester.py`
+2. Implement `Ingester` protocol in `ingester.py` with `get_metadata()`, `validate()`, and `ingest()` methods
+3. Register with `@Ingesters.register(key="<name>")` decorator
+4. Ingester will be auto-discovered at application startup from `ingesters/` directory
+5. Add tests in `backend/tests/ingesters/test_<name>.py`
+6. See `ingesters/sead/` for reference implementation and `backend/app/ingesters/README.md` for protocol details
+
 ## Frontend Conventions
 
 ### Vue 3 Patterns
@@ -375,9 +384,48 @@ export const useExampleStore = defineStore('example', () => {
 - `backend/app/main.py` - FastAPI application entry point
 - `backend/app/services/validation_service.py` - Multi-type validation
 - `backend/app/services/shapeshift_service.py` - Entity preview with 3-tier cache
+- `backend/app/ingesters/protocol.py` - Ingester interface definition
+- `backend/app/ingesters/registry.py` - Dynamic ingester discovery system
+- `ingesters/sead/` - SEAD Clearinghouse ingester implementation
 - `frontend/src/stores/` - Pinia state management
 
-## Recent Improvements (Dec 2024)
+## Ingester System
+
+Shape Shifter includes a plugin-based ingester system for importing data from external sources.
+
+### Architecture
+- **Protocol-based**: All ingesters implement the `Ingester` protocol from `backend/app/ingesters/protocol.py`
+- **Dynamic discovery**: Ingesters are discovered at startup from `ingesters/` directory via `IngesterRegistry.discover()`
+- **Separation of concerns**: Ingesters live in top-level `ingesters/` directory, not in `backend/`
+- **Configuration**: `INGESTER_PATHS` and `ENABLED_INGESTERS` settings in `backend/app/core/config.py`
+
+### Key Components
+- `backend/app/ingesters/protocol.py` - `Ingester` interface, `IngesterConfig`, result types
+- `backend/app/ingesters/registry.py` - `IngesterRegistry` with `discover()` method for dynamic loading
+- `ingesters/<name>/ingester.py` - Each ingester implementation with `@Ingesters.register(key="<name>")`
+
+### Discovery Mechanism
+Ingesters are discovered at three entry points:
+1. Application startup: `backend/app/main.py` calls `Ingesters.discover()` in lifespan
+2. Test sessions: `backend/tests/conftest.py` has session-scoped `discover_ingesters` fixture
+3. CLI scripts: `backend/app/scripts/ingest.py` calls `Ingesters.discover()` at module level
+
+### Creating New Ingesters
+See `ingesters/README.md` for detailed guide. Basic steps:
+1. Create `ingesters/<name>/` directory with `__init__.py` and `ingester.py`
+2. Implement `Ingester` protocol with `get_metadata()`, `validate()`, and `ingest()` methods
+3. Decorate class with `@Ingesters.register(key="<name>")`
+4. No manual imports needed - discovery is automatic
+5. Test with explicit `IngesterConfig` parameters to avoid ConfigValue dependencies
+
+## Recent Improvements (Dec 2024 - Jan 2026)
+
+### Ingester System Relocation (Jan 2026)
+- **Relocated**: Ingester implementations moved from `backend/app/ingesters/<name>/` to top-level `ingesters/<name>/`
+- **Dynamic Discovery**: Added `IngesterRegistry.discover()` for automatic ingester loading at startup
+- **Configuration**: Added `INGESTER_PATHS` and `ENABLED_INGESTERS` settings for flexible ingester management
+- **Benefits**: Cleaner separation of concerns, improved reusability, no manual import registration required
+- **Breaking Change**: Import paths changed from `backend.app.ingesters.<name>` to `ingesters.<name>`
 
 ### Class-Based Driver Schemas
 - **Schema location**: Defined in loader classes as `ClassVar[DriverSchema]`

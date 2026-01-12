@@ -242,11 +242,11 @@ from backend.app.ingesters.protocol import (
     ValidationResult, IngestionResult
 )
 from backend.app.ingesters.registry import Ingesters
-from backend.app.ingesters.sead.metadata import SchemaService, SeadSchema
-from backend.app.ingesters.sead.submission import Submission
-from backend.app.ingesters.sead.specification import SubmissionSpecification
-from backend.app.ingesters.sead.repository import SubmissionRepository
-from backend.app.ingesters.sead.process import ImportService, Options
+from ingesters.sead.metadata import SchemaService, SeadSchema
+from ingesters.sead.submission import Submission
+from ingesters.sead.specification import SubmissionSpecification
+from ingesters.sead.repository import SubmissionRepository
+from ingesters.sead.process import ImportService, Options
 
 
 @Ingesters.register(key="sead")
@@ -959,7 +959,7 @@ def run(
    - [ ] Create `backend/app/ingesters/sead/` directory structure
    - [ ] Copy relevant modules (metadata, policies, specification, etc.)
    - [ ] Exclude `configuration/` module (use Shape Shifter's)
-   - [ ] Update imports to use `backend.app.ingesters.sead` namespace
+   - [x] Update imports to use `ingesters.sead` namespace
    - [ ] Remove deprecated code
 
 3. **Implement SeadIngester class** (2 days)
@@ -1101,7 +1101,7 @@ SEAD_DB_PASSWORD=secret
 
 import pytest
 from pathlib import Path
-from backend.app.ingesters.sead.ingester import SeadIngester
+from ingesters.sead.ingester import SeadIngester
 from backend.app.ingesters.protocol import IngesterConfig, ValidationResult
 
 

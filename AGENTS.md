@@ -74,10 +74,8 @@ class MyIngester(Ingester):
 ### Registration & Discovery
 - Ingesters auto-register via the `@Ingesters.register(key="...")` decorator
 - The key must be unique and is used to identify the ingester in API calls
-- Import the ingester class in `backend/app/ingesters/__init__.py` to trigger registration:
-  ```python
-  from .sead.ingester import SeadIngester  # noqa: F401 - imports trigger @register decorator
-  ```
+- Ingesters are dynamically discovered at application startup from `ingesters/` directory
+- Create ingester in `ingesters/<name>/` directory with `ingester.py` containing main class
 - Access registered ingesters: `Ingesters.items`, `Ingesters.get(key)`, `Ingesters.get_metadata_list()`
 
 ### Configuration Pattern
@@ -122,9 +120,13 @@ class MyIngester(Ingester):
 ### File Organization
 ```
 backend/app/ingesters/
-├── __init__.py           # Import ingesters to trigger registration
+├── __init__.py           # Protocol and registry imports only
 ├── protocol.py           # Ingester interface and result types
-├── registry.py           # IngesterRegistry with get_metadata_list()
+├── registry.py           # IngesterRegistry with dynamic discovery
+└── README.md             # Guide to ingester system
+ingesters/                # Top-level ingesters directory
+├── __init__.py           # Package marker
+├── README.md             # Guide for creating new ingesters
 └── <ingester_name>/      # Each ingester in its own directory
     ├── __init__.py
     ├── ingester.py       # Main ingester class implementing protocol

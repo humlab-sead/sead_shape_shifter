@@ -36,8 +36,18 @@ from typing import Any
 import click
 from loguru import logger
 
+from backend.app.core.config import Settings
+from backend.app.ingesters.registry import Ingesters
 from backend.app.models.ingester import IngestRequest, ValidateRequest
 from backend.app.services.ingester_service import IngesterService
+
+# Discover ingesters on module load (before CLI commands run)
+settings = Settings()
+if not Ingesters._initialized:
+    Ingesters.discover(
+        search_paths=settings.INGESTER_PATHS,
+        enabled_only=settings.ENABLED_INGESTERS
+    )
 
 
 def setup_logging(verbose: bool = False) -> None:
