@@ -57,7 +57,7 @@ sead-ingest = "backend.app.scripts.ingest:cli"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*"]
+include = ["src*", "backend*", "ingesters*"]
 
 
 [tool.ruff]

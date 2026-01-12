@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     MAX_PROJECT_FILE_SIZE_MB: int = 10
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
 
+    # Ingester configuration
+    INGESTER_PATHS: list[str] = ["ingesters"]
+    ENABLED_INGESTERS: list[str] | None = None  # None = all discovered ingesters
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Ensure directories exist

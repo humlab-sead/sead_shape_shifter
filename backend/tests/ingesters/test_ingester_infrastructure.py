@@ -1,7 +1,8 @@
 """Unit tests for ingester protocol and registry."""
 
-from backend.app.ingesters import IngesterConfig, IngesterMetadata, Ingesters, SeadIngester
+from backend.app.ingesters import IngesterConfig, IngesterMetadata, Ingesters
 from backend.app.ingesters.protocol import IngestionResult, ValidationResult
+from ingesters.sead import SeadIngester
 
 
 class TestIngesterRegistry:

@@ -5,9 +5,9 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from backend.app.ingesters.sead.dispatchers import Dispatchers, IDispatcher
-from backend.app.ingesters.sead.metadata import Column, SeadSchema, Table
-from backend.app.ingesters.sead.submission import Submission
+from ingesters.sead.dispatchers import Dispatchers, IDispatcher
+from ingesters.sead.metadata import Column, SeadSchema, Table
+from ingesters.sead.submission import Submission
 
 
 def _to_int_or_none(value: Any) -> int | None:

@@ -5,7 +5,7 @@ import pandas as pd
 from psycopg import Connection
 from sqlalchemy import TEXT
 
-from backend.app.ingesters.sead.utility import get_connection_uri, log_decorator
+from ingesters.sead.utility import get_connection_uri, log_decorator
 
 from . import BaseUploader, Uploaders
 
