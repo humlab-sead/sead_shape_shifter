@@ -1,0 +1,202 @@
+[
+    {
+        "table_name": "tbl_abundances",
+        "pk_name": "abundance_id",
+        "java_class": "TblAbundances",
+        "excel_sheet": "tbl_abundances",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_analysis_entities",
+        "pk_name": "analysis_entity_id",
+        "java_class": "TblAnalysisEntities",
+        "excel_sheet": "tbl_analysis_entities",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_dataset_contacts",
+        "pk_name": "dataset_contact_id",
+        "java_class": "TblDatasetContacts",
+        "excel_sheet": "tbl_dataset_contacts",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_dataset_submissions",
+        "pk_name": "dataset_submission_id",
+        "java_class": "TblDatasetSubmissions",
+        "excel_sheet": "tbl_dataset_submissions",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_datasets",
+        "pk_name": "dataset_id",
+        "java_class": "TblDatasets",
+        "excel_sheet": "tbl_datasets",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_dendro",
+        "pk_name": "dendro_id",
+        "java_class": "TblDendro",
+        "excel_sheet": "tbl_dendro",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_dendro_date_notes",
+        "pk_name": "dendro_date_note_id",
+        "java_class": "TblDendroDateNotes",
+        "excel_sheet": "tbl_dendro_date_notes",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_dendro_dates",
+        "pk_name": "dendro_date_id",
+        "java_class": "TblDendroDates",
+        "excel_sheet": "tbl_dendro_dates",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_locations",
+        "pk_name": "location_id",
+        "java_class": "TblLocations",
+        "excel_sheet": "tbl_locations",
+        "is_lookup": true,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_methods",
+        "pk_name": "method_id",
+        "java_class": "TblMethods",
+        "excel_sheet": "tbl_methods",
+        "is_lookup": true,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_physical_samples",
+        "pk_name": "physical_sample_id",
+        "java_class": "TblPhysicalSamples",
+        "excel_sheet": "tbl_physical_samples",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_projects",
+        "pk_name": "project_id",
+        "java_class": "TblProjects",
+        "excel_sheet": "tbl_projects",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_record_types",
+        "pk_name": "record_type_id",
+        "java_class": "TblRecordTypes",
+        "excel_sheet": "tbl_record_types",
+        "is_lookup": true,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_sample_alt_refs",
+        "pk_name": "sample_alt_ref_id",
+        "java_class": "TblSampleAltRefs",
+        "excel_sheet": "tbl_sample_alt_refs",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_sample_descriptions",
+        "pk_name": "sample_description_id",
+        "java_class": "TblSampleDescriptions",
+        "excel_sheet": "tbl_sample_descriptions",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_sample_group_coordinates",
+        "pk_name": "sample_group_position_id",
+        "java_class": "TblSampleGroupCoordinates",
+        "excel_sheet": "tbl_sample_group_coordinates",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_sample_group_descriptions",
+        "pk_name": "sample_group_description_id",
+        "java_class": "TblSampleGroupDescriptions",
+        "excel_sheet": "tbl_sample_group_descriptions",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_sample_group_notes",
+        "pk_name": "sample_group_note_id",
+        "java_class": "TblSampleGroupNotes",
+        "excel_sheet": "tbl_sample_group_notes",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_sample_group_sampling_contexts",
+        "pk_name": "sampling_context_id",
+        "java_class": "TblSampleGroupSamplingContexts",
+        "excel_sheet": "tbl_s_g_sampling_contexts",
+        "is_lookup": true,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_sample_groups",
+        "pk_name": "sample_group_id",
+        "java_class": "TblSampleGroups",
+        "excel_sheet": "tbl_sample_groups",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_sample_locations",
+        "pk_name": "sample_location_id",
+        "java_class": "TblSampleLocations",
+        "excel_sheet": "tbl_sample_locations",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_sample_notes",
+        "pk_name": "sample_note_id",
+        "java_class": "TblSampleNotes",
+        "excel_sheet": "tbl_sample_notes",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_site_locations",
+        "pk_name": "site_location_id",
+        "java_class": "TblSiteLocations",
+        "excel_sheet": "tbl_site_locations",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_site_references",
+        "pk_name": "site_reference_id",
+        "java_class": "TblSiteReferences",
+        "excel_sheet": "tbl_site_references",
+        "is_lookup": false,
+        "is_unknown": false
+    },
+    {
+        "table_name": "tbl_sites",
+        "pk_name": "site_id",
+        "java_class": "TblSites",
+        "excel_sheet": "tbl_sites",
+        "is_lookup": false,
+        "is_unknown": false
+    }
+]

@@ -1,0 +1,582 @@
+column_name,data_type
+?column?,text
+Evaluation_date,date
+abbreviation,character varying
+abundance,integer
+abundance_element_id,integer
+abundance_id,bigint
+abundance_id,integer
+abundance_ident_level_id,integer
+abundance_modification_id,integer
+accepted_ratio_xe6,character varying
+accuracy,numeric
+activity_type,character varying
+activity_type_id,integer
+address_1,character varying
+address_2,character varying
+age,numeric
+age_model,text
+age_older,integer
+age_older,numeric
+age_range,int4range
+age_type,character varying
+age_type_id,integer
+age_younger,integer
+age_younger,numeric
+aggregate_dataset_id,integer
+aggregate_dataset_name,character varying
+aggregate_dataset_uuid,uuid
+aggregate_order_type,character varying
+aggregate_order_type_id,integer
+aggregate_sample_age_id,integer
+aggregate_sample_id,integer
+aggregate_sample_name,character varying
+alt_ref,character varying
+alt_ref_type,character varying
+alt_ref_type_id,integer
+alternative_designation,character varying
+altitude,numeric
+analysis_boolean_value_id,integer
+analysis_categorical_value_id,bigint
+analysis_dating_range_id,bigint
+analysis_entity_age_id,integer
+analysis_entity_dimension_id,integer
+analysis_entity_id,bigint
+analysis_entity_id,integer
+analysis_entity_prep_method_id,integer
+analysis_identifier_id,bigint
+analysis_integer_range_id,bigint
+analysis_integer_value_id,bigint
+analysis_note_id,bigint
+analysis_numerical_range_id,bigint
+analysis_numerical_value_id,bigint
+analysis_taxon_count_id,integer
+analysis_value,text
+analysis_value_dimension_id,integer
+analysis_value_id,bigint
+annotation,text
+archaeological_analyst,text
+archaeological_excavator,text
+archaeological_period_description,text
+archeaologic_period,text
+aridity,text
+assessment_author_contact_id,integer
+assessment_type,character varying
+associated_taxon_id,integer
+association,text
+association_description,text
+association_type_id,integer
+association_type_name,character varying
+association_uncertain,text
+atomic_number,numeric
+attribute_measure,character varying
+attribute_type,character varying
+attribute_units,character varying
+auth_name,character varying
+auth_srid,integer
+author,text
+author_id,integer
+author_name,character varying
+authors,character varying
+base_type,text
+biblio_id,integer
+biblio_uuid,uuid
+biology_id,integer
+biology_text,text
+biology_uuid,uuid
+boolean_value,boolean
+botanical_analyst,text
+botanical_identification,text
+botanical_identification_year,text
+bugs_reference,character varying
+building,text
+c14_age,numeric
+c14_age_older,numeric
+c14_age_younger,numeric
+cal_age,numeric
+cal_age_older,numeric
+cal_age_younger,numeric
+cardinal_qualifier_id,integer
+ceramics_id,integer
+ceramics_lookup_id,integer
+ceramics_measurement_id,integer
+cf_indicator,text
+chronological_date,text
+chronological_date_description,text
+chronology_id,integer
+chronology_name,text
+cog_mid_tmax,smallint
+cog_mid_trange,smallint
+colour_id,integer
+colour_name,character varying
+common_name,character varying
+comparison_notes,character varying
+confidence_code,smallint
+construction_year_feature,text
+contact_id,integer
+contact_type_id,integer
+contact_type_name,character varying
+continentality,text
+continentality_uncertain,text
+coord_x,text
+coord_y,text
+coord_z,text
+coordinate_method_dimension_id,integer
+coordinate_system,text
+country,text
+country_id,integer
+county,text
+credit,character varying
+crop_plant,text
+cultural_group,text
+d180_gisp2,numeric
+data,numeric
+data_type_group_id,integer
+data_type_group_name,character varying
+data_type_id,integer
+data_type_name,character varying
+dataset_contact_id,integer
+dataset_id,integer
+dataset_method_id,integer
+dataset_name,character varying
+dataset_submission_id,integer
+dataset_uuid,uuid
+date_prepared,timestamp without time zone
+date_sampled,character varying
+date_submitted,text
+date_taken,date
+date_updated,timestamp with time zone
+dating_lab_id,integer
+dating_material_id,integer
+dating_specifier,text
+dating_uncertainty_id,integer
+default_lat_dd,numeric
+default_long_dd,numeric
+definition,text
+delta_13c,numeric
+dendro_date_id,integer
+dendro_date_note_id,integer
+dendro_id,integer
+dendro_lookup_id,integer
+depth_bottom,numeric
+depth_from,text
+depth_to,text
+depth_top,numeric
+description,character varying
+description,text
+designation,character varying
+dimension_abbrev,character varying
+dimension_description,text
+dimension_id,integer
+dimension_name,character varying
+dimension_value,numeric
+distribution_id,integer
+distribution_text,text
+distribution_uuid,uuid
+district,text
+doi,character varying
+easting,text
+ecocode_definition_id,integer
+ecocode_group_id,integer
+ecocode_id,integer
+ecocode_system_id,integer
+ecocode_system_uuid,uuid
+ecological_group,text
+ecological_group_uncertain,text
+edible,text
+element_description,text
+element_name,character varying
+elevation,text
+elevation_asl_sample,text
+email,character varying
+epoch,text
+epoch_description,text
+error_of_ratio,character varying
+error_older,numeric
+error_younger,numeric
+family,text
+family_id,integer
+family_name,character varying
+feature_description,text
+feature_id,integer
+feature_name,character varying
+feature_number,text
+feature_ok,text
+feature_type,text
+feature_type_description,text
+feature_type_id,integer
+feature_type_name,character varying
+female,text
+find_count,text
+find_weight,text
+first_name,character varying
+flotation_channel,text
+flowering_time,text
+flowering_time_uncertain,text
+fragment_count,text
+full_reference,text
+garden_plant,text
+genus_id,integer
+genus_name,character varying
+geochron_id,integer
+geochron_ref_id,integer
+geochron_uuid,uuid
+group_description,character varying
+group_name,character varying
+growth_form,text
+growth_form_uncertain,text
+heavy_metal_tolerance,text
+high_is_uncertain,boolean
+high_qualifier,text
+high_value,integer
+horizon_id,integer
+horizon_name,character varying
+identification_level_abbrev,character varying
+identification_level_id,integer
+identification_level_name,character varying
+image_location,text
+image_name,character varying
+image_type,character varying
+image_type_id,integer
+imported,text
+imported_name_replaced,character varying
+imported_taxa_replacement_id,integer
+indicator_value,text
+international_lab_id,character varying
+international_scale,character varying
+is_anomaly,boolean
+is_boolean,boolean
+is_estimated_count,text
+is_indeterminable,boolean
+is_mass_find,text
+is_not_analyzed,boolean
+is_primary_type,boolean
+is_sample_dry_wet,text
+is_site_ok,text
+is_subsample_,text
+is_uncertain,boolean
+is_uncertain_site_type,text
+is_undefined,boolean
+is_variant,boolean
+isbn,character varying
+isotope_id,integer
+isotope_measurement_id,integer
+isotope_ration,character varying
+isotope_standard_id,integer
+isotope_type_id,integer
+isotope_value_specifier_id,integer
+key_id,integer
+key_text,text
+key_uuid,uuid
+lab_name,character varying
+lab_number,character varying
+language_id,integer
+language_name_english,character varying
+language_name_native,character varying
+last_name,character varying
+last_updated,date
+latitude_dd,numeric
+layer,text
+leaf_habit,text
+leaf_type,text
+life_form,text
+light_requirement,text
+light_requirement_uncertain,text
+limes_indicator,text
+limit_lower,numeric
+limit_upper,numeric
+lithology_id,integer
+location,character varying
+location_id,integer
+location_name,character varying
+location_type,character varying
+location_type_description,text
+location_type_id,integer
+longitude_dd,numeric
+low_is_uncertain,boolean
+low_qualifier,text
+low_value,integer
+lower_boundary,character varying
+luxury,text
+male,text
+map_sheet,text
+master_name,character varying
+master_notes,text
+master_set_id,integer
+master_set_uuid,uuid
+material_dated,character varying
+mcr_data,text
+mcr_name_trim,character varying
+mcr_number,smallint
+mcr_row,smallint
+mcr_species_name,character varying
+mcr_summary_data_id,integer
+mcrdata_birmbeetledat_id,integer
+measured_attribute_id,integer
+measured_value,numeric
+measured_value_dimension_id,integer
+measured_value_id,bigint
+measurement,numeric
+measurement_value,character varying
+measurement_value,text
+medical_use,text
+medicinal,text
+method_abbrev_or_alt_name,character varying
+method_group_id,integer
+method_id,integer
+method_name,character varying
+method_uuid,uuid
+mineral_0_25mm,text
+mineral_0_5mm,text
+mineral_1mm,text
+mineral_2mm,text
+modification_type_description,text
+modification_type_id,integer
+modification_type_name,character varying
+moisture,text
+moisture_special,text
+moisture_uncertain,text
+name,character varying
+name,text
+name_de,text
+name_en,text
+name_fr,text
+name_it,text
+natgridref,character varying
+national_site_identifier,character varying
+natural_major_unit,text
+natural_region,text
+natural_region_unit,text
+northing,text
+note,character varying
+note,text
+note_type,character varying
+notes,text
+nutrients,text
+nutrients_uncertain,text
+oil_plant,text
+order_id,integer
+order_name,character varying
+organic_0_25mm,text
+organic_0_5mm,text
+organic_1mm,text
+organic_2mm,text
+origin_code,character varying
+origin_description,text
+parent_id,integer
+phone_number,character varying
+physical_sample_feature_id,integer
+physical_sample_id,integer
+pioneer,text
+place,text
+place_street,text
+plan_number,text
+plant_remain_count,text
+position_accuracy,character varying
+precision,integer
+preservation_abbrev,text
+preservation_description,text
+preservation_ok,text
+preservation_status_or_threat,character varying
+proj4text,character varying
+project_abbrev_name,character varying
+project_id,integer
+project_name,character varying
+project_number,text
+project_stage_id,integer
+project_type_id,integer
+project_type_name,character varying
+publication_year,text
+qualifier,text
+qualifier_id,integer
+qualifier_symbol_id,integer
+qualifier_uuid,uuid
+rdb_category,character varying
+rdb_code_id,integer
+rdb_definition,character varying
+rdb_first_published,smallint
+rdb_id,integer
+rdb_system,character varying
+rdb_system_date,integer
+rdb_system_id,integer
+rdb_system_uuid,uuid
+rdb_version,character varying
+reaction,text
+reaction_uncertain,text
+record_id,integer
+record_type_description,text
+record_type_id,integer
+record_type_name,character varying
+reference,character varying
+reference_type,character varying
+referencing_type,text
+relative_age_id,integer
+relative_age_name,character varying
+relative_age_ref_id,integer
+relative_age_type_id,integer
+relative_age_uuid,uuid
+relative_date_id,integer
+remain_type,text
+remain_type_group,text
+rgb,integer
+ruderal,text
+salt_tolerance,text
+salt_tolerance_uncertain,text
+sample_alt_ref_id,integer
+sample_code,text
+sample_colour_id,integer
+sample_coordinate_id,integer
+sample_description_id,integer
+sample_description_sample_group_context_id,integer
+sample_description_type_id,integer
+sample_dimension_id,integer
+sample_group_description,text
+sample_group_description_id,integer
+sample_group_description_type_id,integer
+sample_group_description_type_sampling_context_id,integer
+sample_group_dimension_id,integer
+sample_group_id,integer
+sample_group_image_id,integer
+sample_group_name,character varying
+sample_group_note_id,integer
+sample_group_position,numeric
+sample_group_position_id,integer
+sample_group_reference_id,integer
+sample_group_uuid,uuid
+sample_horizon_id,integer
+sample_image_id,integer
+sample_location_id,integer
+sample_location_type_id,integer
+sample_location_type_sampling_context_id,integer
+sample_name,character varying
+sample_note_id,integer
+sample_number,text
+sample_type,text
+sample_type_description,text
+sample_type_id,integer
+sample_volume,text
+sampling_context,character varying
+sampling_context_id,integer
+sampling_date,text
+season_id,integer
+season_name,character varying
+season_type,character varying
+season_type_id,integer
+seasonality_id,integer
+site_description,text
+site_id,integer
+site_image_id,integer
+site_location_accuracy,character varying
+site_location_id,integer
+site_name,character varying
+site_name,text
+site_natgridref_id,integer
+site_other_records_id,integer
+site_other_records_uuid,uuid
+site_preservation_status_id,integer
+site_reference_id,integer
+site_reference_number,text
+site_site_type_id,integer
+site_type,character varying
+site_type,text
+site_type_abbrev,character varying
+site_type_description,text
+site_type_group,character varying
+site_type_group_abbrev,character varying
+site_type_group_id,integer
+site_type_id,integer
+site_uuid,uuid
+sociological_group,text
+sociological_group_extended,text
+sociological_group_uncertain,text
+sort_order,integer
+sort_order,smallint
+source,text
+species,character varying
+species,text
+species_association_id,integer
+species_association_uuid,uuid
+species_dominance,text
+species_dominance_uncertainty,text
+species_note,text
+square,text
+srid,integer
+srtext,character varying
+stage_name,character varying
+stratigraphy,text
+subassociation,text
+subassociation_uncertain,text
+submission_type,character varying
+submission_type_id,integer
+symbol,text
+synonym,character varying
+synonym_id,integer
+synonym_uuid,uuid
+system_description,text
+system_name,character varying
+system_order,text
+table_name,character varying
+taxa_images_id,integer
+taxa_reference_specimen_id,integer
+taxon_author,text
+taxon_common_name_id,integer
+taxon_id,integer
+taxonomic_code,numeric
+taxonomic_order_biblio_id,integer
+taxonomic_order_id,integer
+taxonomic_order_system_id,integer
+taxonomic_order_system_uuid,uuid
+taxonomy_notes,text
+taxonomy_notes_id,integer
+taxonomy_notes_uuid,uuid
+temperature_requirement,text
+temperature_requirement_uncertain,text
+tephra_date_id,integer
+tephra_id,integer
+tephra_name,character varying
+tephra_ref_id,integer
+tephra_uuid,uuid
+thousand_kernel_weight,text
+title,character varying
+tmax_hi,smallint
+tmax_lo,smallint
+tmin_hi,smallint
+tmin_lo,smallint
+trange_hi,smallint
+trange_lo,smallint
+type_description,character varying
+type_description,text
+type_name,character varying
+uncertainty,character varying
+unit_abbrev,character varying
+unit_id,integer
+unit_name,character varying
+updated_dataset_id,integer
+updates_log_id,integer
+upper_site_type,text
+upper_site_type_description,text
+url,character varying
+url,text
+useful,text
+value,boolean
+value,integer
+value,numeric
+value,numrange
+value,text
+value_class_id,integer
+value_class_uuid,uuid
+value_type_id,integer
+value_type_item_id,integer
+value_type_uuid,uuid
+vegetation_class,text
+vegetation_class_uncertain,text
+vegetation_order,text
+vegetation_order_uncertain,text
+warning,text
+water_tolerance,text
+weed_indicator,text
+weed_indicator_extended,text
+woody_plant,text
+year,character varying
+years_bp,integer
+years_type_id,integer
