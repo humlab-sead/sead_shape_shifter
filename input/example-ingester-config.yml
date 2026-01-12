@@ -1,0 +1,85 @@
+# Example configuration showing the new ingesters section in a Shape Shifter project file
+
+metadata:
+  name: example-project-with-ingester
+  type: shapeshifter-project
+  description: Example project demonstrating ingester configuration
+  version: "1.0.0"
+
+entities:
+  sample_data:
+    type: csv
+    data_source: local_data
+    columns:
+      - sample_id
+      - sample_name
+      - date_collected
+
+options:
+  data_sources:
+    # Target database for ingestion
+    sead_staging: "@include: sead-options.yml"
+    
+    # Local source data
+    local_data:
+      driver: csv
+      filename: "data/samples.csv"
+
+  # NEW: Ingester configurations
+  ingesters:
+    # Configuration for the SEAD ingester
+    sead:
+      # Data source to use (references options.data_sources)
+      data_source: sead_staging
+      
+      # Ingester-specific options
+      options:
+        # Transfer format (csv or excel)
+        transfer_format: csv
+        
+        # Columns to ignore during ingestion
+        ignore_columns:
+          - "date_updated"
+          - "*_uuid"
+          - "(*"
+      
+      # Ingester-specific policies
+      policies:
+        # Add identity mapping if foreign key value is missing
+        if_foreign_key_value_is_missing_add_identity_mapping_to_foreign_key_table:
+          priority: 1
+        
+        # Use negative system IDs for new lookup values
+        set_public_id_to_negative_system_id_for_new_lookups:
+          disabled: true
+        
+        # Update missing foreign keys with specific values
+        update_missing_foreign_key_policy:
+          tbl_dataset_contacts:
+            contact_type_id: 2
+            contact_id: 1
+        
+        # Add lookup tables if missing
+        if_lookup_table_is_missing_add_table_using_system_id_as_public_id:
+          tables:
+            - tbl_abundance_elements
+            - tbl_contact_types
+            - tbl_dataset_submission_types
+            - tbl_location_types
+            - tbl_project_types
+            - tbl_project_stages
+            - tbl_relative_ages
+            - tbl_sample_group_sampling_contexts
+            - tbl_sample_types
+          preallocated_tables: []
+        
+        # Keep only system_id and public_id for lookups with no new data
+        if_lookup_with_no_new_data_then_keep_only_system_id_public_id:
+          priority: 9
+        
+        # Drop ignored columns
+        drop_ignored_columns:
+          priority: 3
+          columns:
+            - "date_updated"
+            - "*_uuid"

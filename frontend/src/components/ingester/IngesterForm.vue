@@ -36,43 +36,43 @@
           prepend-icon="mdi-shape"
         />
 
-        <!-- Output Folder -->
-        <v-text-field
-          v-model="form.output_folder"
-          label="Output Folder"
-          hint="Folder for generated files (default: 'output')"
-          persistent-hint
-          prepend-icon="mdi-folder"
-        />
+        <!-- Target Database Info -->
+        <v-alert
+          v-if="targetDataSourceName"
+          type="info"
+          variant="tonal"
+          density="compact"
+          class="mt-4"
+        >
+          <div class="text-caption">
+            <strong>Target Database:</strong> {{ targetDataSourceName }}
+            <span v-if="targetDataSourceInfo">
+              <span v-if="targetDataSourceInfo.host">
+                • {{ targetDataSourceInfo.host }}{{ targetDataSourceInfo.port ? ':' + targetDataSourceInfo.port : '' }}
+              </span>
+              <span v-if="targetDataSourceInfo.database || targetDataSourceInfo.dbname">
+                • {{ targetDataSourceInfo.database || targetDataSourceInfo.dbname }}
+              </span>
+            </span>
+          </div>
+          <div v-if="!targetDataSourceInfo" class="text-caption error--text mt-1">
+            ⚠️ Data source "{{ targetDataSourceName }}" not found in project configuration
+          </div>
+        </v-alert>
 
-        <!-- Database Configuration -->
+        <v-alert
+          v-else
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="mt-4"
+        >
+          No target database configured for this ingester in the project file.
+          Please configure the "ingesters.{{ selectedIngester?.key }}.data_source" option.
+        </v-alert>
+
+        <!-- Advanced Options -->
         <v-expansion-panels class="mt-4">
-          <v-expansion-panel title="Database Configuration">
-            <v-expansion-panel-text>
-              <v-text-field
-                v-model="form.config!.database.host"
-                label="Host"
-                prepend-icon="mdi-server"
-              />
-              <v-text-field
-                v-model.number="form.config!.database.port"
-                label="Port"
-                type="number"
-                prepend-icon="mdi-ethernet"
-              />
-              <v-text-field
-                v-model="form.config!.database.dbname"
-                label="Database Name"
-                prepend-icon="mdi-database"
-              />
-              <v-text-field
-                v-model="form.config!.database.user"
-                label="User"
-                prepend-icon="mdi-account"
-              />
-            </v-expansion-panel-text>
-          </v-expansion-panel>
-
           <v-expansion-panel title="Advanced Options">
             <v-expansion-panel-text>
               <v-textarea
@@ -182,12 +182,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useIngesterStore } from '@/stores/ingester'
+import { useDataSourceStore } from '@/stores/data-source'
+import { useProjectStore } from '@/stores/project'
 import type { IngestRequest, ValidateRequest } from '@/types/ingester'
 
 const ingesterStore = useIngesterStore()
+const dataSourceStore = useDataSourceStore()
+const projectStore = useProjectStore()
+
 const {
   selectedIngester,
   validationResult,
@@ -197,6 +202,7 @@ const {
   isIngesting
 } = storeToRefs(ingesterStore)
 const { validate, ingest, clearError, clearValidation, clearIngestion } = ingesterStore
+const { selectedProject } = storeToRefs(projectStore)
 
 const formRef = ref()
 const formValid = ref(false)
@@ -205,21 +211,31 @@ const form = ref<IngestRequest>({
   source: '',
   submission_name: '',
   data_types: '',
-  output_folder: 'output',
   do_register: false,
   explode: false,
   config: {
-    database: {
-      host: 'localhost',
-      port: 5432,
-      dbname: '',
-      user: ''
-    },
+    data_source_name: '',
     ignore_columns: []
   }
 })
 
-const ignoreColumnsText = ref('date_updated\n*_uuid')
+const ignoreColumnsText = ref('date_updated\n*_uuid\n(*')
+
+// Computed properties
+const ingesterConfig = computed(() => {
+  if (!selectedProject.value || !selectedIngester.value) return null
+  const ingesters = selectedProject.value.options?.ingesters || {}
+  return ingesters[selectedIngester.value.key] || null
+})
+
+const targetDataSourceName = computed(() => {
+  return ingesterConfig.value?.data_source || null
+})
+
+const targetDataSourceInfo = computed(() => {
+  if (!targetDataSourceName.value) return null
+  return dataSourceStore.dataSourceByName(targetDataSourceName.value)
+})
 
 // Sync ignore_columns with textarea
 watch(ignoreColumnsText, (newValue) => {
@@ -228,6 +244,29 @@ watch(ignoreColumnsText, (newValue) => {
     .map(s => s.trim())
     .filter(s => s.length > 0)
 })
+
+// Load defaults from project ingester config when it changes
+watch(ingesterConfig, (config) => {
+  if (!config) return
+  
+  // Load data source
+  if (config.data_source && form.value.config) {
+    form.value.config.data_source_name = config.data_source
+  }
+  
+  // Load ignore columns
+  if (config.options?.ignore_columns) {
+    ignoreColumnsText.value = config.options.ignore_columns.join('\n')
+  }
+  
+  // Load register/explode flags
+  if (config.options?.do_register !== undefined) {
+    form.value.do_register = config.options.do_register
+  }
+  if (config.options?.explode !== undefined) {
+    form.value.explode = config.options.explode
+  }
+}, { immediate: true })
 
 const rules = {
   required: (v: string) => !!v || 'Required field'
@@ -258,8 +297,23 @@ async function handleIngest() {
 
 function resetForm() {
   formRef.value?.reset()
+  // Reload from project config
+  if (ingesterConfig.value) {
+    watch(ingesterConfig, () => {}, { immediate: true })
+  }
   clearValidation()
   clearIngestion()
   clearError()
 }
+
+// Load data sources on mount
+onMounted(async () => {
+  if (dataSourceStore.dataSources.length === 0) {
+    try {
+      await dataSourceStore.fetchDataSources()
+    } catch (err) {
+      console.error('Failed to load data sources:', err)
+    }
+  }
+})
 </script>
