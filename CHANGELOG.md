@@ -1,3 +1,19 @@
+# [1.2.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.1.0...v1.2.0) (2026-01-12)
+
+
+### Bug Fixes
+
+* update description in IngesterView to clarify data ingestion process ([7e9128e](https://github.com/humlab-sead/sead_shape_shifter/commit/7e9128e0c2ab755af4d29f9d1bb89d454636f51b))
+* update v-model bindings  to not use optional chaning for database configuration fields in IngesterForm ([130ef91](https://github.com/humlab-sead/sead_shape_shifter/commit/130ef918a9e51a3b12096c2f5de79b526c88cb32))
+* update v-model bindings in IngesterForm for database configuration to use non-null assertion ([0e01429](https://github.com/humlab-sead/sead_shape_shifter/commit/0e014298402164d9ec51256c657e0903fafd407a))
+
+
+### Features
+
+* add ingester configuration support in project files and update UI components for ingestion process ([#134](https://github.com/humlab-sead/sead_shape_shifter/issues/134)) ([c78d057](https://github.com/humlab-sead/sead_shape_shifter/commit/c78d057259b486a12c98bca4d6dc89de0fb3951c))
+* add IngesterForm and IngesterList components to Vue global components ([ed16717](https://github.com/humlab-sead/sead_shape_shifter/commit/ed16717e4d4725bb30216def8b20031850800c3c))
+* ensure project data is always loaded on mount in ProjectDetailView ([e08ecbb](https://github.com/humlab-sead/sead_shape_shifter/commit/e08ecbb3fd11bf61d8e8e822d4f0a9cb89a16008))
+
 # [1.1.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.0.1...v1.1.0) (2026-01-12)
 
 
