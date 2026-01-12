@@ -547,6 +547,15 @@ class ShapeShiftProject:
     def mappings(self) -> dict[str, dict[str, str]]:
         return self.options.get("mappings", {}) or {}
 
+    @property
+    def ingesters(self) -> dict[str, dict[str, Any]]:
+        """Get ingester configurations from project options."""
+        return self.options.get("ingesters", {}) or {}
+
+    def get_ingester_config(self, ingester_name: str) -> dict[str, Any] | None:
+        """Get configuration for a specific ingester."""
+        return self.ingesters.get(ingester_name)
+
     def get_table(self, entity_name: str) -> "TableConfig":
         if entity_name not in self.tables:
             raise KeyError(f"Table 'entities.{entity_name}' not found in configuration")
