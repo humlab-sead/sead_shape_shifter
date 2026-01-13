@@ -1,0 +1,75 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist-python
+build
+eggs
+.eggs
+*.egg
+.venv
+venv
+ENV
+env
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+.tox
+.nox
+*.cover
+.hypothesis
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Frontend development
+frontend/node_modules
+frontend/dist
+frontend/.vite
+frontend/coverage
+
+# Docker
+docker-compose.override.yml
+*.dockerfile
+Dockerfile.dev
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Documentation (keep essential docs)
+docs/images
+docs/archive
+
+# Development files
+*.log
+logs/*
+tmp/*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output and temporary files
+output/*
+backups/*
+*.bak
+*.tmp

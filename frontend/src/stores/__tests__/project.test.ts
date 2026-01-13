@@ -154,11 +154,11 @@ describe('useProjectStore', () => {
         entities: {},
       } as Project
 
-      vi.mocked(api.projects.get).mockResolvedValue(mockProject)
+      vi.mocked(api.projects.activate).mockResolvedValue(mockProject)
 
       const result = await store.selectProject('test-project')
 
-      expect(api.projects.get).toHaveBeenCalledWith('test-project')
+      expect(api.projects.activate).toHaveBeenCalledWith('test-project')
       expect(store.selectedProject).toEqual(mockProject)
       expect(store.hasUnsavedChanges).toBe(false)
       expect(result).toEqual(mockProject)
@@ -167,7 +167,7 @@ describe('useProjectStore', () => {
     it('should handle select errors', async () => {
       const store = useProjectStore()
 
-      vi.mocked(api.projects.get).mockRejectedValue(new Error('Not found'))
+      vi.mocked(api.projects.activate).mockRejectedValue(new Error('Not found'))
 
       await expect(store.selectProject('nonexistent')).rejects.toThrow('Not found')
 

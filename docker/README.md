@@ -1,282 +1,182 @@
 # Shape Shifter Docker Deployment
 
-This directory contains Docker configuration for deploying Shape Shifter in production.
-
-## Architecture
-
-The Dockerfile uses a multi-stage build process:
-
-1. **Stage 1 (frontend-builder)**: Builds the Vue 3 frontend using Node.js and pnpm
-2. **Stage 2 (python-builder)**: Installs Python dependencies using uv
-3. **Stage 3 (production)**: Creates the final minimal runtime image with both frontend and backend
-
-The frontend is built as static files and served directly by the FastAPI backend using StaticFiles.
+Single-container deployment for Shape Shifter with FastAPI backend serving both API and Vue 3 frontend.
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
-
 ```bash
-# 1. Set up configuration in docker/data directory
-cd docker/data
+# Create data directories
+mkdir -p projects input output backups logs
 
-# Copy environment templates
-cp backend.env.example backend.env
-cp frontend.env.example frontend.env
-cp .pgpass.example .pgpass
-
-# 2. Edit configuration files with your settings
-nano backend.env    # Database credentials, app settings
-nano frontend.env   # Frontend build variables
-nano .pgpass        # PostgreSQL password (format: host:port:db:user:pass)
-
-# Set .pgpass permissions
-chmod 600 .pgpass
-
-# 3. Return to docker directory and build
-cd ..
-docker compose up -d
-
-# Or from project root
-docker compose -f docker/docker-compose.yml up -d
+# Start with Docker Compose
+docker-compose up -d --build
 
 # View logs
-docker compose logs -f
-
-# Stop the application
-docker compose down
+docker-compose logs -f app
 ```
 
-Access the application at: http://localhost:8012
+**Access:** http://localhost:8012
 
-### Using Docker Directly
+- Frontend: http://localhost:8012/
+- API Docs: http://localhost:8012/api/v1/docs
+- Health: http://localhost:8012/api/v1/health
 
-```bash
-# Build the image
-docker build -f docker/Dockerfile -t shape-shifter:latest .
+## Architecture
 
-# Run the container
-docker run -d \
-  --name shape-shifter \
-  -p 8012:8012 \
-  -v shape-shifter-projects:/app/projects \
-  -v shape-shifter-logs:/app/logs \
-  -v shape-shifter-output:/app/output \
-  -e ENVIRONMENT=production \
-  shape-shifter:latest
-
-# View logs
-docker logs -f shape-shifter
-
-# Stop the container
-docker stop shape-shifter
-docker rm shape-shifter
-```
-
-## Build Script
-
-Use the provided build script for convenience:
-
-```bash
-# Make the script executable
-chmod +x docker/build.sh
-
-# Build the image
-./docker/build.sh
-
-# Build with a custom tag
-./docker/build.sh my-registry.com/shape-shifter:v1.0.0
-```
+Multi-stage build combining frontend and backend:
+1. **Stage 1**: Builds Vue 3 frontend with Vite
+2. **Stage 2**: Installs Python dependencies (uv)
+3. **Stage 3**: Production runtime - FastAPI serves both API and static frontend on port 8012
 
 ## Configuration
 
-### Environment Files Location
+### Environment Variables
 
-All runtime configuration is stored in the **`docker/data/`** directory:
+Two types of variables:
+- **🔧 Runtime** - Can change by restarting container
+- **🏗️ Build-time** - Requires image rebuild to change
 
-```
-docker/data/
-├── backend.env          # Backend runtime variables
-├── frontend.env         # Frontend build-time variables
-├── .pgpass             # PostgreSQL passwords (secure)
-├── projects/           # Project files (persistent)
-├── logs/               # Application logs (persistent)
-├── output/             # Generated files (persistent)
-├── backups/            # Config backups (persistent)
-└── tmp/                # Temporary files (persistent)
-```
+#### Backend/Runtime Variables
 
-### Initial Setup
-
-```bash
-cd docker/data
-
-# Copy templates
-cp backend.env.example backend.env
-cp frontend.env.example frontend.env
-cp .pgpass.example .pgpass
-
-# Edit files with your configuration
-nano backend.env
-nano frontend.env
-nano .pgpass
-
-# Secure .pgpass
-chmod 600 .pgpass
-```
-
-### Backend Variables (backend.env)
-
-Runtime configuration loaded when container starts. Changes take effect after restarting container.
-
-#### SEAD Database Connection
-
-```bash
-SEAD_HOST=db.example.com
-SEAD_DBNAME=sead_production
-SEAD_USER=sead_user
-SEAD_PORT=5432
-```
-
-**Password:** Use `docker/data/.pgpass` file (see setup instructions above).
-
-#### Application Settings
-```bash
-SHAPE_SHIFTER_PROJECT_NAME="Shape Shifter Configuration Editor"
-SHAPE_SHIFTER_ENVIRONMENT=production
-SHAPE_SHIFTER_PROJECTS_DIR=/app/projects
-SHAPE_SHIFTER_BACKUPS_DIR=/app/backups
-```
-
-#### CORS Configuration
-```bash
-# Development with specific origins
-SHAPE_SHIFTER_ALLOWED_ORIGINS='["http://localhost:5173","https://your-tunnel.devtunnels.ms"]'
-
-# Production (recommended - specific domains only)
-SHAPE_SHIFTER_ALLOWED_ORIGINS='["https://yourdomain.com","https://www.yourdomain.com"]'
-
-# Development/Testing only (allow all)
-SHAPE_SHIFTER_ALLOWED_ORIGINS=*
-```
-
-#### Frontend Build Variables (Vite)
-
-These variables are embedded into the frontend bundle during Docker build:
-
-```bash
-# Leave empty for production (uses relative paths)
-VITE_API_BASE_URL=
-
-# Or specify absolute URL if needed
-# VITE_API_BASE_URL=https://api.yourdomain.com
-
-VITE_ENV=production
-VITE_ENABLE_ANALYTICS=false
-VITE_ENABLE_DEBUG=false
-```
-
-**Note:** Frontend variables are **build-time** only. They are compiled into the JavaScript bundle and cannot be changed after the image is built.
-
-### Database Connections
-
-Configure the application using environment variables in `docker-compose.yml` or when running containers:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ENVIRONMENT` | Application environment | `production` |
-| `LOG_LEVEL` | Logging level | `INFO` |
-| `PROJECTS_DIR` | Projects directory | `/app/projects` |
-| `ALLOWED_ORIGINS` | CORS allowed origins | `*` |
-| `ALLOWED_ORIGIN_REGEX` | CORS regex pattern | `.*` |
-
-### Database Connections
-
-The primary SEAD database connection is configured via environment variables (see above). Additional database connections can be added:
-
-```bash
-# In .env file
-DB_POSTGRES_HOST=postgres.example.com
-DB_POSTGRES_PORT=5432
-DB_POSTGRES_USER=myuser
-DB_POSTGRES_PASSWORD=mypassword
-```
-
-### PostgreSQL Password File (.pgpass)
-
-For secure password management, mount your `~/.pgpass` file:
+Edit `docker-compose.yml` or create `.env` file:
 
 ```yaml
-# In docker-compose.yml
-volumes:
-  - ~/.pgpass:/root/.pgpass:ro
+environment:
+  # Application
+  - SHAPE_SHIFTER_ENVIRONMENT=production
+  - SHAPE_SHIFTER_PROJECT_NAME=Shape Shifter
+  - SHAPE_SHIFTER_VERSION=1.2.0
+  - SHAPE_SHIFTER_API_V1_PREFIX=/api/v1
+  - SHAPE_SHIFTER_PROJECTS_DIR=/app/projects
+  - SHAPE_SHIFTER_BACKUPS_DIR=/app/backups
+  - SHAPE_SHIFTER_MAX_ENTITIES_PER_CONFIG=1000
+  - SHAPE_SHIFTER_MAX_CONFIG_FILE_SIZE_MB=10
+  
+  # CORS (production - restrict origins)
+  - SHAPE_SHIFTER_ALLOWED_ORIGINS=["https://yourdomain.com"]
+  
+  # SEAD Database
+  - SEAD_HOST=db.example.com
+  - SEAD_DBNAME=sead_production
+  - SEAD_USER=sead_user
+  - SEAD_PORT=5432
+  
+  # External Services (optional)
+  - SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL=http://localhost:8000
 ```
 
-Format of `.pgpass`:
+**Password Authentication:** Use `~/.pgpass` instead of environment variables:
+```bash
+# Format: hostname:port:database:username:password
+echo "db.example.com:5432:sead_production:sead_user:password" > ~/.pgpass
+chmod 600 ~/.pgpass
 ```
-hostname:port:database:username:password
-db.example.com:5432:sead_production:sead_user:yourpassword
+
+#### Frontend Build Variables
+
+Set in `docker-compose.yml` under `build.args`:
+
+```yaml
+args:
+  VITE_API_BASE_URL: ""              # Empty = same-origin (recommended)
+  VITE_ENV: production
+  VITE_ENABLE_ANALYTICS: "false"
+  VITE_ENABLE_DEBUG: "false"
 ```
 
-Set permissions: `chmod 600 ~/.pgpass`
+**Important:** Frontend variables are baked into JavaScript bundle - requires rebuild to change.
 
-### Volumes
+### Using .env Files
 
-The Docker Compose configuration creates persistent volumes for:
+```bash
+# 1. Create .env from template
+cp docker/.env.example .env
 
-- **Projects**: `/app/projects` - YAML configuration files
-- **Logs**: `/app/logs` - Application logs
-- **Output**: `/app/output` - Generated output files
-- **Backups**: `/app/backups` - Configuration backups
+# 2. Edit values
+nano .env
 
-To use local directories instead of Docker volumes:
+# 3. Start (auto-loads .env)
+docker-compose up -d
+
+# Or use custom env file
+docker-compose --env-file .env.production up -d
+```
+
+## Data Volumes
+
+Persistent data mounts (auto-created):
 
 ```yaml
 volumes:
-  - ./projects:/app/projects
-  - ./logs:/app/logs
-  - ./output:/app/output
-  - ./backups:/app/backups
+  - ./projects:/app/projects       # YAML configurations
+  - ./input:/app/input:ro          # Input data (read-only)
+  - ./output:/app/output           # Generated outputs
+  - ./backups:/app/backups         # Auto-fix backups
+  - ./logs:/app/logs               # Application logs
 ```
 
-## Production Deployment
+## Common Commands
 
-### Security Considerations
+```bash
+# Stop
+docker-compose down
 
-1. **Environment Files**: Protect sensitive configuration files
-   ```bash
-   chmod 600 docker/data/backend.env
-   chmod 600 docker/data/frontend.env
-   chmod 600 docker/data/.pgpass
-   ```
+# Rebuild after changes
+docker-compose up -d --build
 
-2. **Never commit runtime files**: The `.gitignore` in `docker/data/` prevents this
+# Force rebuild (no cache)
+docker-compose build --no-cache && docker-compose up -d
 
-3. **CORS Configuration**: Restrict allowed origins in production
-   ```bash
-   # In docker/data/backend.env
-   SHAPE_SHIFTER_ALLOWED_ORIGINS='["https://yourdomain.com"]'
-   ```
+# Shell access
+docker-compose exec app bash
 
-4. **Use .pgpass for passwords**: Don't put database passwords in environment files
+# Clean everything
+docker-compose down -v
+docker system prune -a
+```
+
+## Advanced Usage
+
+### Manual Docker Build
+
+```bash
+docker build -f docker/Dockerfile -t shape-shifter:latest .
+
+docker run -d \
+  -p 8012:8012 \
+  -v $(pwd)/projects:/app/projects \
+  -v $(pwd)/input:/app/input:ro \
+  -v $(pwd)/output:/app/output \
+  -v $(pwd)/backups:/app/backups \
+  -v $(pwd)/logs:/app/logs \
+  -e ENVIRONMENT=production \
+  -e LOG_LEVEL=info \
+  --name shape-shifter \
+  shape-shifter:latest
+```
 
 ### Performance Tuning
 
-The default configuration uses 4 Uvicorn workers. Adjust based on your CPU cores:
-
-```dockerfile
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8012", "--workers", "8"]
-```
-
-Or override in docker-compose:
+**Uvicorn Workers** - Adjust based on CPU cores:
 
 ```yaml
+# In docker-compose.yml
 command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8012 --workers 8
 ```
 
-### Reverse Proxy Setup
+Recommended: `workers = (2 × CPU cores) + 1`
 
-When deploying behind a reverse proxy (nginx, traefik, etc.), configure proxy headers:
+**Resource Limits:**
+
+```yaml
+deploy:
+  resources:
+    limits:
+      cpus: '4'
+      memory: 8G
+```
+
+### Reverse Proxy (Nginx)
 
 ```nginx
 location / {
@@ -288,119 +188,237 @@ location / {
 }
 ```
 
-## Health Checks
+## Data Directory Setup
 
-The container includes a health check that verifies the API is responding:
+Create `docker/data/` structure for advanced configuration:
 
-```bash
-# Check container health
-docker inspect --format='{{.State.Health.Status}}' shape-shifter
-
-# View health check logs
-docker inspect --format='{{json .State.Health}}' shape-shifter | jq
+```
+docker/data/
+├── backend.env          # Runtime environment variables
+├── frontend.env         # Build-time environment variables
+├── .pgpass             # PostgreSQL passwords (chmod 600)
+├── projects/           # Project YAML files
+├── logs/               # Application logs
+├── output/             # Generated files
+└── backups/            # Configuration backups
 ```
 
-## Troubleshooting
+**backend.env** (runtime - can change and restart):
+```bash
+SEAD_HOST=db.example.com
+SEAD_DBNAME=sead_production
+SEAD_USER=sead_user
+SEAD_PORT=5432
+SHAPE_SHIFTER_ALLOWED_ORIGINS='["https://yourdomain.com"]'
+```
+
+**frontend.env** (build-time - requires rebuild):
+```bash
+VITE_API_BASE_URL=
+VITE_ENV=production
+VITE_ENABLE_DEBUG=false
+```
+
+**.pgpass** (PostgreSQL authentication):
+```
+db.example.com:5432:sead_production:sead_user:password
+```
+
+**Important:** `chmod 600 docker/data/.pgpass`
+
+## Production Security
+
+1. **Restrict CORS:**
+   ```yaml
+   - SHAPE_SHIFTER_ALLOWED_ORIGINS=["https://yourdomain.com"]
+   ```
+
+2. **File permissions:**
+   ```bash
+   chmod 600 docker/data/.pgpass docker/data/*.env
+   chmod 755 projects input output backups logs
+   ```
+
+3. **Never commit:**
+   - `docker/data/*.env`
+   - `docker/data/.pgpass`
+   - Data directories content## Debugging
 
 ### View Application Logs
 
 ```bash
-# Docker Compose
-docker compose -f docker/docker-compose.yml logs -f shape-shifter
+# All logs
+docker-compose logs -f
 
-# Docker
-docker logs -f shape-shifter
+# Application logs only
+docker-compose logs -f app
+
+# Last 100 lines
+docker-compose logs --tail=100 app
+
+# Follow specific keywords
+docker-compose logs -f app | grep ERROR
 ```
 
 ### Access Container Shell
 
 ```bash
-# Docker Compose
-docker compose -f docker/docker-compose.yml exec shape-shifter /bin/bash
+# Interactive bash shell
+docker-compose exec app bash
 
-# Docker
-docker exec -it shape-shifter /bin/bash
+# Or with standalone docker
+docker exec -it shapeshifter-app bash
+
+# Once inside, useful commands:
+ls -la /app/frontend/dist     # Check frontend build
+python -c "import sys; print(sys.version)"  # Check Python version
+pip list                       # List installed packages
+curl http://localhost:8012/api/v1/health   # Test API
 ```
 
 ### Rebuild After Changes
 
 ```bash
-# Force rebuild without cache
-docker compose -f docker/docker-compose.yml build --no-cache
+# Remove containers and rebuild from scratch
+docker-compose down
+docker-compose build --no-cache
+docker-compose up
 
-# Or with Docker directly
-docker build --no-cache -f docker/Dockerfile -t shape-shifter:latest .
+# Or quick rebuild (uses cache)
+docker-compose up --build
 ```
 
 ### Frontend Not Loading
 
-If the frontend doesn't load:
+If the frontend doesn't load at http://localhost:8012:
 
-1. Check that the frontend was built correctly:
+1. Check that frontend was built correctly:
    ```bash
-   docker exec shape-shifter ls -la /app/frontend/dist
+   docker-compose exec app ls -la /app/frontend/dist
+   ```
+   You should see `index.html`, `assets/`, etc.
+
+2. Check backend logs for static file serving:
+   ```bash
+   docker-compose logs app | grep "Serving frontend"
+   ```
+   Should show: "Serving frontend from: /app/frontend/dist"
+
+3. Verify files inside container:
+   ```bash
+   docker-compose exec app cat /app/frontend/dist/index.html
    ```
 
-2. Check backend logs for static file serving errors:
+4. Test API separately:
    ```bash
-   docker logs shape-shifter | grep -i frontend
+   curl http://localhost:8012/api/v1/health
    ```
 
-## Image Size Optimization
+### Port Already in Use
 
-The multi-stage build keeps the final image small:
+If port 8012 is busy:
 
-- Frontend build artifacts (node_modules) are not included
-- Only production Python packages are installed
-- Python build tools are excluded from the final image
+```yaml
+# In docker-compose.yml
+ports:
+  - "8080:8012"  # Use different host port
+```
 
-Check image size:
+### Permission Issues
+Troubleshooting
+
+**View logs:**
 ```bash
-docker images shape-shifter:latest
+docker-compose logs -f app
+docker-compose logs --tail=100 app | grep ERROR
+```
+
+**Shell access:**
+```bash
+docker-compose exec app bash
+ls -la /app/frontend/dist          # Check frontend build
+curl http://localhost:8012/api/v1/health
+```
+
+**Frontend not loading:**
+```bash
+# Verify build
+docker-compose exec app ls /app/frontend/dist
+
+# Check logs
+docker-compose logs app | grep "Serving frontend"
+```
+
+**Port in use:**
+```yaml
+ports:
+  - "8080:8012"  # Use different host port
+```
+
+**CORS errors:**
+```bash
+# Check CORS setting
+docker exec shape-shifter env | grep ALLOWED_ORIGINS
+
+# Test CORS
+curl -H "Origin: http://localhost:5173" \
+     -H "Access-Control-Request-Method: GET" \
+     -X OPTIONS http://localhost:8012/api/v1/health
+```
+
+**Variables not loading:**
+```bash
+# See what Docker Compose will use
+docker-compose config
+
+# Check inside container
+docker exec shape-shifter env | grep SHAPE_SHIFTER
+docker exec shape-shifter env | grep SEAD
+```
+
+**Frontend variables not applied:**
+```bash
+# Frontend vars require rebuild
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+## Maintenance
+
+**Backup:**
+```bash
+tar -czf backup-$(date +%Y%m%d).tar.gz projects/ output/ backups/
+```
+
+**Update:**
+```bash
+git pull
+docker-compose down
+docker-compose up -d --build
+```
+
+**Cleanup:**
+```bash
+docker system prune -a          # Remove unused images
+docker volume prune             # Remove unused volumes (CAREFUL!)
 ```
 
 ## Development Mode
 
-For development with hot-reload, use the local development setup instead:
+For development with hot-reload, **use local setup instead of Docker:**
 
 ```bash
-# Backend
-make backend-run
-
-# Frontend (separate terminal)
-make frontend-run
+make install
+make backend-run      # Terminal 1
+make frontend-run     # Terminal 2
 ```
 
-## CI/CD Integration
+- Frontend: http://localhost:5173 (Vite dev server)
+- Backend: http://localhost:8012 (auto-reload)
 
-### GitHub Actions Example
+## Documentation
 
-```yaml
-name: Build and Push Docker Image
-
-on:
-  push:
-    tags:
-      - 'v*'
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Build Docker image
-        run: docker build -f docker/Dockerfile -t shape-shifter:${{ github.ref_name }} .
-      
-      - name: Push to registry
-        run: |
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-          docker push shape-shifter:${{ github.ref_name }}
-```
-
-## Support
-
-For issues or questions, refer to:
-- Main README: `../README.md`
-- System Documentation: `../docs/SYSTEM_DOCUMENTATION.md`
-- Backend API Documentation: `../docs/BACKEND_API.md`
+- [README.md](../README.md) - Project overview
+- [docs/SYSTEM_DOCUMENTATION.md](../docs/SYSTEM_DOCUMENTATION.md) - Architecture
+- [docs/BACKEND_API.md](../docs/BACKEND_API.md) - API reference
+- [docs/CONFIGURATION_GUIDE.md](../docs/CONFIGURATION_GUIDE.md) - YAML config
