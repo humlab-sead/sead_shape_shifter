@@ -59,8 +59,8 @@ describe('graphAdapter', () => {
           { name: 'entity3', depends_on: ['entity2'], depth: 2 },
         ],
         edges: [
-          ['entity1', 'entity2'],
-          ['entity2', 'entity3'],
+          { source: 'entity1', target: 'entity2' },
+          { source: 'entity2', target: 'entity3' },
         ],
         has_cycles: false,
         cycles: [],
@@ -95,7 +95,7 @@ describe('graphAdapter', () => {
         topological_order: null,
       }
 
-      const elements = toCytoscapeElements(graph, { showLabels: false })
+      const elements = toCytoscapeElements(graph, { showNodeLabels: false })
       expect(elements[0]?.classes).toContain('hide-label')
     })
 
@@ -108,7 +108,7 @@ describe('graphAdapter', () => {
         topological_order: null,
       }
 
-      const elements = toCytoscapeElements(graph, { showLabels: true })
+      const elements = toCytoscapeElements(graph, { showNodeLabels: true })
       expect(elements[0]?.classes).not.toContain('hide-label')
     })
 
@@ -144,8 +144,8 @@ describe('graphAdapter', () => {
           { name: 'entity2', depends_on: ['entity1'], depth: 1 },
         ],
         edges: [
-          ['entity1', 'entity2'],
-          ['entity2', 'entity1'],
+          { source: 'entity1', target: 'entity2' },
+          { source: 'entity2', target: 'entity1' },
         ],
         has_cycles: true,
         cycles: [['entity1', 'entity2']],
@@ -169,8 +169,8 @@ describe('graphAdapter', () => {
           { name: 'entity2', depends_on: ['entity1'], depth: 1 },
         ],
         edges: [
-          ['entity1', 'entity2'],
-          ['entity2', 'entity1'],
+          { source: 'entity1', target: 'entity2' },
+          { source: 'entity2', target: 'entity1' },
         ],
         has_cycles: true,
         cycles: [['entity1', 'entity2']],
@@ -197,9 +197,9 @@ describe('graphAdapter', () => {
           { name: 'D', depends_on: [], depth: 0 },
         ],
         edges: [
-          ['A', 'B'],
-          ['B', 'C'],
-          ['C', 'A'],
+          { source: 'A', target: 'B' },
+          { source: 'B', target: 'C' },
+          { source: 'C', target: 'A' },
         ],
         has_cycles: true,
         cycles: [['A', 'B', 'C']],
@@ -250,8 +250,8 @@ describe('graphAdapter', () => {
           { name: 'entity2', depends_on: ['entity1'], depth: 1 },
         ],
         edges: [
-          ['entity1', 'entity2'],
-          ['entity1', 'entity2'], // Duplicate edge
+          { source: 'entity1', target: 'entity2' },
+          { source: 'entity1', target: 'entity2' }, // Duplicate edge
         ],
         has_cycles: false,
         cycles: [],
@@ -320,9 +320,9 @@ describe('graphAdapter', () => {
         { name: 'entity3', depends_on: ['entity1', 'entity2'], depth: 2 },
       ],
       edges: [
-        ['entity1', 'entity2'],
-        ['entity1', 'entity3'],
-        ['entity2', 'entity3'],
+        { source: 'entity1', target: 'entity2' },
+        { source: 'entity1', target: 'entity3' },
+        { source: 'entity2', target: 'entity3' },
       ],
       has_cycles: false,
       cycles: [],
