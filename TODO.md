@@ -20,6 +20,7 @@
 ### Tech debts:
 
  - [ ] FIXME: #89 Test Faker or mimesis for data generation in normalization tests
+ - [ ] FIXME: #143 Update Docker configuration and related documentation
 
 ### New features
 
@@ -202,7 +203,183 @@ The user experience of this system can be improved.  Currently the "default" wor
 
 1. Use the dependency graph view as an alternative view point of the project, i.e. instead of using the "entity list" view. These would mean adding "Open entity" (e.g. double click) and "Add entity". It would be best if the entity editor overlayed the dependency graph instead of the system bouncing to the entity view
 
-2. Emphasing the end result. When a project is started the user (most often) knows what entities to create. How can this information be utilized so that the user get a feel of having a task log? Some entities are mandatory, and the "depend_on" and foreign keys gives a possibly logical "work order". or "action item list".
+TODO: #141 Improve user experience (right click context menu)
+
+Add a context menu on right mouse click show "duplicate", "delete" and "preview" options.
+
+
+TODO: Improve user experience ()
+
+Emphasing the end result. When a project is started the user (most often) knows what entities to create. How can this information be utilized so that the user get a feel of having a task log? Some entities are mandatory, and the "depend_on" and foreign keys gives a possibly logical "work order". or "action item list".
    
 3. Perhaps intriducing "project templates", which would basically be project YAML files where mandatory entities exists. That can form the starting point for templates.
 
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+These are excellent UX improvement ideas that align well with how users naturally think about data transformation workflows. Here are my thoughts:
+
+## On Your Proposed Improvements
+
+### 1. Dependency Graph as Primary Navigation ✓ Strong idea
+
+**Benefits:**
+- **Visual workflow understanding**: Users can see the entire transformation pipeline at a glance
+- **Context preservation**: Editing in overlay keeps the big picture visible
+- **Natural navigation**: Graph structure mirrors actual work dependencies
+- **Reduced cognitive load**: No context switching between views
+
+**Implementation considerations:**
+- **Overlay pattern**: Use a slide-out panel or modal that doesn't hide the graph
+- **Visual feedback**: Highlight entity in graph when editing, show validation states as node colors
+- **Quick actions**: Right-click context menu for common operations (duplicate, delete, preview)
+- **Mini-map**: For large projects, add a zoom-able overview
+
+### 2. Task-Oriented Templates & Progress Tracking ✓ Very strong idea
+
+**Benefits:**
+- **Guided workflow**: Especially valuable for new users or complex domains
+- **Progress visibility**: Clear completion tracking motivates users
+- **Consistency**: Templates ensure best practices
+- **Onboarding**: New team members can start faster
+
+**Implementation suggestions:**
+- **Template structure**: Include mandatory entities, optional entities, and suggested work order
+- **Smart completion tracking**: Mark entities as "complete" when they pass validation and have preview data
+- **Dependency-aware ordering**: Auto-suggest next entity based on what's complete
+- **Template marketplace**: Start with SEAD template, allow users to export their own as templates
+
+## Additional UX Improvements
+
+### 3. **Entity Quick-Add Wizard**
+Since you already know target entities, streamline creation:
+```
+"Add Entity" → Wizard shows:
+- Required fields only (name, source_data, depend_on)
+- Smart defaults from similar entities
+- Preview column mapping immediately
+- Validate & create in one flow
+```
+
+### 4. **Inline Validation Feedback**
+Currently validation may feel separate from editing:
+- **Real-time validation badges** on graph nodes (✓ valid, ⚠ warnings, ✗ errors)
+- **Hover tooltips** on graph showing validation messages
+- **One-click fixes** for auto-fixable issues directly from graph
+- **Diff preview** before applying auto-fixes
+
+### 5. **Entity Cloning/Duplication**
+For similar entities (common in multi-table workflows):
+- **"Duplicate entity" action** preserving structure
+- **Bulk edit mode** for changing multiple entities at once
+- **Pattern detection**: Suggest duplication when adding similar entity names
+
+### 6. **Work Session Management**
+Track user progress across sessions:
+- **Auto-save drafts** (you already have backups/)
+- **Session resume**: "Continue where you left off" with highlighted incomplete entities
+- **Change history**: Show recent edits in sidebar
+- **Collaboration markers**: If multi-user, show who's editing what
+
+### 7. **Smart Search & Filtering**
+For projects with many entities:
+- **Quick filter** in graph: by status (incomplete/complete), by data source, by dependencies
+- **Search highlights** matching entities in graph
+- **Bookmark frequently edited** entities
+
+### 8. **Preview-Driven Development**
+Make preview more central:
+- **Split-screen mode**: Edit YAML on left, live preview on right
+- **Preview caching** (you already have this in backend)
+- **Sample data explorer**: Show sample rows for any entity from graph
+- **Preview comparison**: Side-by-side before/after when editing
+
+### 9. **Keyboard Navigation**
+Power users will appreciate:
+- **Arrow keys** to navigate graph nodes
+- **Enter** to open entity editor
+- **Ctrl+S** to save, **Ctrl+P** to preview
+- **Tab** to cycle through incomplete entities
+- **Command palette** (Cmd+K) for all actions
+
+### 10. **Contextual Help**
+Reduce learning curve:
+- **Inline documentation** for each YAML field (tooltips or ? icons)
+- **Example snippets** for common patterns (reconciliation, unnest, filters)
+- **Guided tours** for first-time users
+- **Validation error explanations** with links to docs
+
+## Recommended Implementation Priority
+
+**Phase 1 (High Impact, Lower Effort):**
+1. Graph overlay entity editor
+2. Inline validation badges on graph
+3. Entity quick-add with smart defaults
+4. Keyboard navigation basics
+
+**Phase 2 (Template System):**
+1. Template YAML schema extension
+2. Template loader/manager
+3. Progress tracker UI component
+4. SEAD starter template
+
+**Phase 3 (Polish):**
+1. Session management & auto-save improvements
+2. Split-screen preview mode
+3. Entity cloning
+4. Advanced search/filtering
+
+**Phase 4 (Power Features):**
+1. Command palette
+2. Bulk editing
+3. Collaborative features
+4. Advanced keyboard shortcuts
+
+## Technical Approach
+
+### Frontend Changes Needed:
+```typescript
+// New composables
+useGraphNavigation() - handle node selection, double-click, overlay
+useTemplates() - load/apply templates, track completion
+useTaskProgress() - calculate completion % based on validation
+useKeyboardShortcuts() - global keyboard event handling
+
+// Store enhancements
+graphStore - selection state, filter state, view mode
+templateStore - available templates, active template, completion tracking
+sessionStore - draft state, recent changes, bookmarks
+
+// New components
+EntityEditorOverlay.vue - slide-out panel over graph
+TemplateSelector.vue - template chooser on project creation
+ProgressTracker.vue - task completion widget
+GraphContextMenu.vue - right-click actions on nodes
+```
+
+### Backend Changes Needed:
+```python
+# New endpoints
+GET /api/v1/templates - list available templates
+GET /api/v1/templates/{name} - get template YAML
+POST /api/v1/projects/from-template - create project from template
+GET /api/v1/projects/{name}/progress - calculate completion metrics
+
+# Template schema
+metadata.template = True
+metadata.mandatory_entities = ["entity1", "entity2"]
+metadata.suggested_order = ["entity1", "entity2", "entity3"]
+```
+
+## Quick Win: Graph Overlay Editor
+
+This could be implemented relatively quickly with high impact:
+
+1. Add `showEntityEditor` ref to graph component store
+2. Create `EntityEditorOverlay.vue` that takes entity name as prop
+3. Emit `edit-entity` event from graph on double-click
+4. Render overlay with backdrop, slide animation from right
+5. Reuse existing entity editor form inside overlay
+6. Add close button and Escape key handler
+
+Would you like me to start implementing any of these improvements? I'd recommend starting with the **graph overlay editor** as it provides immediate value and sets up the foundation for the template system.

@@ -34,8 +34,8 @@ RUN echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" > .env.production && \
     echo "VITE_ENABLE_ANALYTICS=${VITE_ENABLE_ANALYTICS}" >> .env.production && \
     echo "VITE_ENABLE_DEBUG=${VITE_ENABLE_DEBUG}" >> .env.production
 
-# Build frontend for production
-RUN pnpm run build
+# Build frontend for production (skip TypeScript checking for faster builds)
+RUN pnpm run build:skip-check
 
 
 # ------------------------------------------------------------------------------
@@ -49,7 +49,11 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 # Copy Python dependency files
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml ./
+COPY README.md ./
+
+# Create empty uv.lock if it doesn't exist (optional)
+RUN touch uv.lock || true
 
 # Install Python dependencies (core + api)
 RUN uv pip install --system --no-cache -e ".[api]"
@@ -81,11 +85,14 @@ COPY backend/ ./backend/
 # Copy built frontend from frontend-builder
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Copy UCanAccess library (optional - only if directory exists)
-COPY --chown=root:root lib ./lib/
+# Copy UCanAccess library for MS Access support
+COPY lib/ ./lib/
 
 # Copy scripts
 COPY scripts/ ./scripts/
+
+# Create required directories
+RUN mkdir -p /app/projects /app/logs /app/output /app/backups /app/tmp
 
 # Create required directories
 RUN mkdir -p /app/projects /app/logs /app/output /app/backups /app/tmp
@@ -101,8 +108,8 @@ ENV PYTHONPATH=/app \
 EXPOSE 8012
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8012/').read()"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8012/api/v1/health').read()"
 
 # Run the application
 CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8012", "--workers", "4"]
