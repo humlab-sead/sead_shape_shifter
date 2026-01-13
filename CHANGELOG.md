@@ -1,3 +1,22 @@
+# [1.3.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.2.0...v1.3.0) (2026-01-13)
+
+
+### Bug Fixes
+
+* **TODO:** improve user experience  by allowing entity to be edited from graph view ([#140](https://github.com/humlab-sead/sead_shape_shifter/issues/140)) ([af17b7c](https://github.com/humlab-sead/sead_shape_shifter/commit/af17b7cc4a288a0e5915a619861bb691a4af2228))
+* **yml:** standardize quotes and formatting in arbodat-test.yml ([8d969f1](https://github.com/humlab-sead/sead_shape_shifter/commit/8d969f13663b87a19fc39a3cea128bfd92377af6))
+* update activity bar and status bar colors in VSCode settings ([e24af35](https://github.com/humlab-sead/sead_shape_shifter/commit/e24af35556c09ee7c084b1a099fd51a7b0d910d6))
+* update TODO list to address VITE_API_BASE_URL issue and rename "ingest" to "dispatch" for better UX clarity ([4080367](https://github.com/humlab-sead/sead_shape_shifter/commit/4080367e7e7a951beea998f1af99da7ebcb09817))
+* **api:** use nullish coalescing for API base URL to handle empty string in production ([843699e](https://github.com/humlab-sead/sead_shape_shifter/commit/843699e24eb5acb5a5d59dfc893a0b44858aefa3))
+
+
+### Features
+
+* add dispatch functionality and update UI components for ingester configuration ([#137](https://github.com/humlab-sead/sead_shape_shifter/issues/137)) ([925f2f0](https://github.com/humlab-sead/sead_shape_shifter/commit/925f2f03d84fda5263efa7ed46bde9d9afb45826))
+* **context-menu:** add GraphNodeContextMenu component and integrate right-click functionality in the graph ([#141](https://github.com/humlab-sead/sead_shape_shifter/issues/141)) ([788d6e9](https://github.com/humlab-sead/sead_shape_shifter/commit/788d6e9cf7a78b88a883938c909d566e5deba058))
+* archived docs ([aaf1076](https://github.com/humlab-sead/sead_shape_shifter/commit/aaf10765093f4f55bb734bea5d58d244235d8170))
+* **docker:** Update Docker configuration and related documentation ([#143](https://github.com/humlab-sead/sead_shape_shifter/issues/143)) ([eaa70b2](https://github.com/humlab-sead/sead_shape_shifter/commit/eaa70b2b2d2e1f3f0f66aabbf521cafd8d077783))
+
 # [1.2.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.1.0...v1.2.0) (2026-01-12)
 
 
