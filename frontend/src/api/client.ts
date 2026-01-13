@@ -4,7 +4,10 @@
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8012'
+// In production (served by backend), VITE_API_BASE_URL should be empty (same origin)
+// In development (served by Vite dev server), it should point to the backend
+// Use ?? (nullish coalescing) instead of || to preserve empty string from .env.production
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8012'
 const API_V1_PREFIX = '/api/v1'
 
 /**

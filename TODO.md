@@ -195,3 +195,14 @@ options:
             - "date_updated"
             - "*_uuid"
 ```
+
+TODO: Project templates
+
+The user experience of this system can be improved.  Currently the "default" workflow is to edit entities via the project's entity list, which can be somewhat cumbersome when there are a lot of entities.  I'm considering improving some of the existing functions in the system to get a smoother usee experience.
+
+Some things under consideration are:
+
+1. Use the dependency graph view as an alternative view point of the project, i.e. instead of using the "entity list" view. These would mean adding "Open entity" (e.g. double click) and "Add entity". It would be best if the entity editor overlayed the dependency graph instead of the system bouncing to the entity view
+2. Emphasing the end result. When a project is started the user (most often) knows what entities to create. How can this information be utilized so that the user get a feel of having a task log? Some entities are mandatory, and the "depend_on" and foreign keys gives a possibly logical "work order". Perhaps intriducing "project templates", which would basically be project YAML files where mandatory entities exists. That can form the starting point for templates.
+
+What are your thoughts on this?
