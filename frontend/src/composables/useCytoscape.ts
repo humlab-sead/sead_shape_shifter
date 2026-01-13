@@ -67,6 +67,11 @@ export interface UseCytoscapeOptions {
    * Node click handler
    */
   onNodeClick?: (nodeId: string) => void
+  
+  /**
+   * Node double-click handler
+   */
+  onNodeDoubleClick?: (nodeId: string) => void
 
   /**
    * Background click handler
@@ -86,12 +91,17 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     cycles = ref([]),
     isDark = ref(false),
     onNodeClick,
+    onNodeDoubleClick,
     onBackgroundClick,
   } = options
 
   const cy = ref<Core | null>(null)
   const isInitialized = ref(false)
   const isAnimating = ref(false)
+  
+  // Track single-click timeout for preventing conflicts with double-click
+  let singleClickTimeout: number | null = null
+  const CLICK_DELAY = 250 // milliseconds
 
   /**
    * Initialize Cytoscape instance
@@ -113,9 +123,35 @@ export function useCytoscape(options: UseCytoscapeOptions) {
 
       // Add event listeners
       if (cy.value) {
+        // Double tap/click - handle FIRST to prevent single-click action
+        cy.value.on('dbltap', 'node', (event) => {
+          const nodeId = event.target.id()
+          console.debug('[useCytoscape] Node double-click:', nodeId)
+          
+          // Cancel any pending single-click action
+          if (singleClickTimeout !== null) {
+            clearTimeout(singleClickTimeout)
+            singleClickTimeout = null
+          }
+          
+          onNodeDoubleClick?.(nodeId)
+        })
+        
+        // Single tap/click - delay to allow double-click to cancel it
         cy.value.on('tap', 'node', (event) => {
           const nodeId = event.target.id()
-          onNodeClick?.(nodeId)
+          
+          // Cancel previous timeout if exists
+          if (singleClickTimeout !== null) {
+            clearTimeout(singleClickTimeout)
+          }
+          
+          // Delay single-click action to see if double-click occurs
+          singleClickTimeout = window.setTimeout(() => {
+            console.debug('[useCytoscape] Node single-click:', nodeId)
+            onNodeClick?.(nodeId)
+            singleClickTimeout = null
+          }, CLICK_DELAY)
         })
 
         cy.value.on('tap', (event) => {
