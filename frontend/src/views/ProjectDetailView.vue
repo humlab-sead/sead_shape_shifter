@@ -512,6 +512,17 @@
       @executed="handleExecuted"
     />
 
+    <!-- Entity Editor Overlay (for graph double-click) -->
+    <entity-form-dialog
+      v-if="entityStore.overlayEntityName"
+      v-model="entityStore.showEditorOverlay"
+      :project-name="projectName"
+      :entity="entityStore.entities.find((e) => e.name === entityStore.overlayEntityName) || null"
+      mode="edit"
+      @saved="handleOverlayEntitySaved"
+      @update:modelValue="handleOverlayClose"
+    />
+
     <!-- Success Snackbar with Animation -->
     <v-scale-transition>
       <template #default>
@@ -534,8 +545,10 @@ import { api } from '@/api'
 import { useProjects, useEntities, useValidation, useDependencies, useCytoscape } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
+import { useEntityStore } from '@/stores/entity'
 import { getNodeInfo } from '@/utils/graphAdapter'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
+import EntityFormDialog from '@/components/entities/EntityFormDialog.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
 import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 import ProjectDataSources from '@/components/ProjectDataSources.vue'
@@ -699,6 +712,8 @@ const selectedNodeInfo = computed(() => {
 })
 
 // Cytoscape integration
+const entityStore = useEntityStore()
+
 const { fit, zoomIn, zoomOut, reset, exportPNG } = useCytoscape({
   container: graphContainer,
   graphData: dependencyGraph,
@@ -712,6 +727,11 @@ const { fit, zoomIn, zoomOut, reset, exportPNG } = useCytoscape({
   onNodeClick: (nodeId: string) => {
     selectedNode.value = nodeId
     showDetailsDrawer.value = true
+  },
+  onNodeDoubleClick: (nodeId: string) => {
+    // Open entity editor overlay on double-click
+    console.debug('[ProjectDetailView] Opening overlay for entity:', nodeId)
+    entityStore.openEditorOverlay(nodeId)
   },
   onBackgroundClick: () => {
     selectedNode.value = null
@@ -849,6 +869,24 @@ function handleEditEntity(entityName: string) {
   activeTab.value = 'entities'
   showDetailsDrawer.value = false
   entityToEdit.value = entityName
+}
+
+async function handleOverlayEntitySaved() {
+  // Refresh entities and dependencies after saving from overlay
+  markAsChanged()
+  successMessage.value = 'Entity saved successfully'
+  showSuccessSnackbar.value = true
+  
+  // Refresh the dependency graph if we're on the dependencies tab
+  if (activeTab.value === 'dependencies' && projectName.value) {
+    await fetchDependencies(projectName.value)
+  }
+}
+
+function handleOverlayClose(isOpen: boolean) {
+  if (!isOpen) {
+    entityStore.closeEditorOverlay()
+  }
 }
 
 async function handleRefreshDependencies() {

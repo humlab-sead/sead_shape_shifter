@@ -17,6 +17,7 @@ declare module 'vue' {
     DeleteConfirmationDialog: typeof import('./components/common/DeleteConfirmationDialog.vue')['default']
     EmptyState: typeof import('./components/common/EmptyState.vue')['default']
     EntityDataPreview: typeof import('./components/entities/EntityDataPreview.vue')['default']
+    EntityEditorOverlay: typeof import('./components/entities/EntityEditorOverlay.vue')['default']
     EntityFormDialog: typeof import('./components/entities/EntityFormDialog.vue')['default']
     EntityListCard: typeof import('./components/entities/EntityListCard.vue')['default']
     EntityPreviewPanel: typeof import('./components/entities/EntityPreviewPanel.vue')['default']
