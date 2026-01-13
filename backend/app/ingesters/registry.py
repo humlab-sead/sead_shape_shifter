@@ -7,7 +7,6 @@ Uses the same Registry pattern as Shape Shifter's Dispatchers with added dynamic
 import importlib
 import sys
 from pathlib import Path
-from typing import Type
 
 from loguru import logger
 
@@ -87,7 +86,7 @@ class IngesterRegistry(Registry[type[Ingester]]):
             for ingester_dir in path.iterdir():
                 if not ingester_dir.is_dir():
                     continue
-                
+
                 # Skip special directories
                 if ingester_dir.name.startswith(("_", ".")):
                     continue
@@ -136,7 +135,7 @@ class IngesterRegistry(Registry[type[Ingester]]):
 
         # Dynamic import
         try:
-            module = importlib.import_module(module_path)
+            importlib.import_module(module_path)
         except ImportError as e:
             raise ImportError(f"Failed to import {module_path}: {e}") from e
 

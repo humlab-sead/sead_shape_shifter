@@ -3,7 +3,6 @@
 from typing import Any
 
 from loguru import logger
-from networkx import out_degree_centrality
 
 from backend.app.ingesters.protocol import (
     Ingester,
