@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   shape-shifter:
     build:
@@ -17,28 +15,8 @@ services:
     ports:
       - "${HOST_PORT:-8012}:8012"
     env_file:
-      # Load backend runtime environment variables
+      # Load all environment variables from backend.env
       - ./data/backend.env
-    environment:
-      # Application settings (override .env if needed)
-      - SHAPE_SHIFTER_ENVIRONMENT=${SHAPE_SHIFTER_ENVIRONMENT:-production}
-      - SHAPE_SHIFTER_PROJECTS_DIR=${SHAPE_SHIFTER_PROJECTS_DIR:-/app/projects}
-      - SHAPE_SHIFTER_BACKUPS_DIR=${SHAPE_SHIFTER_BACKUPS_DIR:-/app/backups}
-      
-      # SEAD Database connection (from backend.env)
-      - SEAD_HOST=${SEAD_HOST}
-      - SEAD_DBNAME=${SEAD_DBNAME}
-      - SEAD_USER=${SEAD_USER}
-      - SEAD_PORT=${SEAD_PORT}
-      
-      # Shape Shifter settings (from backend.env)
-      - SHAPE_SHIFTER_PROJECT_NAME=${SHAPE_SHIFTER_PROJECT_NAME:-Shape Shifter}
-      - SHAPE_SHIFTER_VERSION=${SHAPE_SHIFTER_VERSION:-1.2.0}
-      - SHAPE_SHIFTER_API_V1_PREFIX=${SHAPE_SHIFTER_API_V1_PREFIX:-/api/v1}
-      - SHAPE_SHIFTER_MAX_ENTITIES_PER_CONFIG=${SHAPE_SHIFTER_MAX_ENTITIES_PER_CONFIG:-1000}
-      - SHAPE_SHIFTER_MAX_CONFIG_FILE_SIZE_MB=${SHAPE_SHIFTER_MAX_CONFIG_FILE_SIZE_MB:-10}
-      - SHAPE_SHIFTER_ALLOWED_ORIGINS=${SHAPE_SHIFTER_ALLOWED_ORIGINS:-*}
-      - SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL=${SHAPE_SHIFTER_RECONCILIATION_SERVICE_URL}
       
     volumes:
       # Mount local data directories from docker/data/

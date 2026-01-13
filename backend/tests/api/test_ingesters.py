@@ -167,6 +167,6 @@ class TestIngesterServiceIntegration:
         assert config.data_types == "test_type"
 
         assert config.extra is not None
-        
+
         assert config.extra["ignore_columns"] == ["col1", "col2"]
         assert config.extra["custom_param"] == "value"

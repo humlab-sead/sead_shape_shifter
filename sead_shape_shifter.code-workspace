@@ -1,0 +1,73 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"workbench.colorCustomizations": {
+			"activityBar.activeBackground": "#5b7456",
+			"activityBar.background": "#5b7456",
+			"activityBar.foreground": "#e7e7e7",
+			"activityBar.inactiveForeground": "#e7e7e799",
+			"activityBarBadge.background": "#283578",
+			"activityBarBadge.foreground": "#e7e7e7",
+			"commandCenter.border": "#e7e7e799",
+			"sash.hoverBorder": "#5b7456",
+			"statusBar.background": "#445740",
+			"statusBar.foreground": "#e7e7e7",
+			"statusBarItem.hoverBackground": "#5b7456",
+			"statusBarItem.remoteBackground": "#445740",
+			"statusBarItem.remoteForeground": "#e7e7e7",
+			"titleBar.activeBackground": "#445740",
+			"titleBar.activeForeground": "#e7e7e7",
+			"titleBar.inactiveBackground": "#44574099",
+			"titleBar.inactiveForeground": "#e7e7e799",
+			"editor.background": "#000000",
+			"sideBar.background": "#000000",
+			"panel.background": "#000000"
+		},
+		"yaml.keyOrdering": false,
+		"python.analysis.autoFormatStrings": true,
+		"remote.autoForwardPorts": true,
+		"remote.portsAttributes": {
+			"22": {
+				"onAutoForward": "ignore"
+			},
+			"25": {
+				"onAutoForward": "ignore"
+			},
+			"80": {
+				"onAutoForward": "ignore"
+			},
+			"443": {
+				"onAutoForward": "ignore"
+			},
+			"8010": {
+				"onAutoForward": "ignore"
+			},
+			"8011": {
+				"onAutoForward": "ignore"
+			},
+			"8020": {
+				"onAutoForward": "ignore"
+			},
+			"8021": {
+				"onAutoForward": "ignore"
+			},
+			"8030": {
+				"onAutoForward": "ignore"
+			},
+			"8084": {
+				"onAutoForward": "ignore"
+			},
+			"8484": {
+				"onAutoForward": "ignore"
+			},
+			"8485": {
+				"onAutoForward": "ignore"
+			}
+		},
+		"peacock.remoteColor": "#445740"
+	}
+}
