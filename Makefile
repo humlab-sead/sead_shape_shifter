@@ -230,8 +230,8 @@ docker-build-no-cache:
 .PHONY: docker-up
 docker-up:
 	@echo "Starting Shape Shifter with Docker Compose..."
-	@docker compose -f docker/docker-compose.yml up -d
-	@echo "✓ Application started at http://localhost:8012"
+	@cd docker && docker compose up -d
+	@echo "✓ Application started at http://localhost:${BACKEND_PORT}"
 
 .PHONY: docker-start
 docker-start: docker-up
@@ -239,41 +239,43 @@ docker-start: docker-up
 .PHONY: docker-down
 docker-down:
 	@echo "Stopping Shape Shifter containers..."
-	@docker compose -f docker/docker-compose.yml down
+	@cd docker && docker compose down
 
 .PHONY: docker-stop
 docker-stop: docker-down
 
 .PHONY: docker-logs
 docker-logs:
-	@docker compose -f docker/docker-compose.yml logs -f
+	@cd docker && docker compose logs -f
 
 .PHONY: docker-restart
 docker-restart:
 	@echo "Restarting Shape Shifter..."
-	@docker compose -f docker/docker-compose.yml restart
+	@cd docker && docker compose down
+	@cd docker && docker compose up -d
+	@echo "✓ Application restarted at http://localhost:${BACKEND_PORT}"
 
 .PHONY: docker-rebuild
 docker-rebuild:
 	@echo "Rebuilding and restarting Shape Shifter..."
-	@docker compose -f docker/docker-compose.yml down
-	@docker compose -f docker/docker-compose.yml up -d --build
-	@echo "✓ Application rebuilt and started at http://localhost:8012"
+	@cd docker && docker compose down
+	@cd docker && docker compose up -d --build
+	@echo "✓ Application rebuilt and started at http://localhost:${BACKEND_PORT}"
 
 .PHONY: docker-shell
 docker-shell:
-	@docker compose -f docker/docker-compose.yml exec shape-shifter /bin/bash
+	@cd docker && docker compose exec shape-shifter /bin/bash
 
 .PHONY: docker-clean
 docker-clean:
 	@echo "Cleaning up Docker resources..."
-	@docker compose -f docker/docker-compose.yml down -v
+	@cd docker && docker compose down -v
 	@docker image rm shape-shifter:latest 2>/dev/null || true
 	@echo "✓ Cleanup complete"
 
 .PHONY: docker-ps
 docker-ps:
-	@docker compose -f docker/docker-compose.yml ps
+	@cd docker && docker compose ps
 
 .PHONY: docker-health
 docker-health:
