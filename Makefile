@@ -95,8 +95,8 @@ fr: frontend-kill frontend-run
 
 fr2: frontend-clear fr
 
-# Serve frontend via backend, for production-like testing
-# Backend will serve frontend if frontend/dist/ exists  
+# Serve frontend via backend (production mode)
+# Builds frontend with .env.production (VITE_API_BASE_URL="") then serves via backend
 .PHONY: br+fr
 br+fr: frontend-kill frontend-build-fast backend-kill backend-run
 
@@ -171,7 +171,7 @@ frontend-build:
 
 .PHONY: frontend-build-fast
 frontend-build-fast:
-	@echo "Building frontend (skipping type check)..."
+	@echo "Building frontend for production (skipping type check)..."
 	@cd frontend && pnpm build:skip-check
 
 frontend-clear:
