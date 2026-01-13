@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.3.0...v1.3.1) (2026-01-13)
+
+
+### Bug Fixes
+
+* **docker:** additional fixes related to docker ([#143](https://github.com/humlab-sead/sead_shape_shifter/issues/143)) ([e9c6030](https://github.com/humlab-sead/sead_shape_shifter/commit/e9c60307a9654c9aaeeb7882d3359450eecf44f5))
+
 # [1.3.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.2.0...v1.3.0) (2026-01-13)
 
 
