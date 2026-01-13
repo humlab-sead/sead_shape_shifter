@@ -219,8 +219,8 @@
               </v-card-text>
             </v-card>
 
-            <!-- Loading State -->
-            <v-card v-if="dependenciesLoading" variant="outlined" class="text-center py-12">
+            <!-- Loading State (only on initial load, not during refresh) -->
+            <v-card v-if="dependenciesLoading && !dependencyGraph" variant="outlined" class="text-center py-12">
               <v-progress-circular indeterminate color="primary" size="64" />
               <p class="mt-4 text-grey">Loading dependency graph...</p>
             </v-card>
@@ -235,7 +235,7 @@
             </v-alert>
 
             <!-- Graph Container -->
-            <v-card v-else-if="dependencyGraph" variant="outlined">
+            <v-card v-else variant="outlined">
               <v-card-text class="pa-0">
                 <div ref="graphContainer" class="graph-container" />
               </v-card-text>
@@ -257,17 +257,21 @@
               </v-card-actions>
             </v-card>
 
-            <!-- Empty State -->
-            <v-card v-else variant="outlined" class="text-center py-12">
-              <v-icon icon="mdi-graph-outline" size="64" color="grey" />
-              <h3 class="text-h6 mt-4 mb-2">No Graph Data</h3>
-              <p class="text-grey mb-4">No dependency data available for this project</p>
-            </v-card>
-
             <!-- Legend Dialog -->
             <v-dialog v-model="showLegend" max-width="500">
               <node-legend :show-source-nodes="showSourceNodes" @close="showLegend = false" />
             </v-dialog>
+            
+            <!-- Context Menu -->
+            <graph-node-context-menu
+              v-model="showContextMenu"
+              :x="contextMenuX"
+              :y="contextMenuY"
+              :entity-name="contextMenuEntity"
+              @preview="handleContextMenuPreview"
+              @duplicate="handleContextMenuDuplicate"
+              @delete="handleContextMenuDelete"
+            />
 
             <!-- Entity Details Drawer -->
             <v-navigation-drawer v-model="showDetailsDrawer" location="right" temporary width="400">
@@ -512,6 +516,17 @@
       @executed="handleExecuted"
     />
 
+    <!-- Entity Editor Overlay (for graph double-click) -->
+    <entity-form-dialog
+      v-if="entityStore.overlayEntityName"
+      v-model="entityStore.showEditorOverlay"
+      :project-name="projectName"
+      :entity="entityStore.entities.find((e) => e.name === entityStore.overlayEntityName) || null"
+      mode="edit"
+      @saved="handleOverlayEntitySaved"
+      @update:modelValue="handleOverlayClose"
+    />
+
     <!-- Success Snackbar with Animation -->
     <v-scale-transition>
       <template #default>
@@ -527,21 +542,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
 import { api } from '@/api'
 import { useProjects, useEntities, useValidation, useDependencies, useCytoscape } from '@/composables'
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
+import { useEntityStore } from '@/stores/entity'
 import { getNodeInfo } from '@/utils/graphAdapter'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
+import EntityFormDialog from '@/components/entities/EntityFormDialog.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
 import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 import ProjectDataSources from '@/components/ProjectDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
 import NodeLegend from '@/components/dependencies/NodeLegend.vue'
+import GraphNodeContextMenu from '@/components/dependencies/GraphNodeContextMenu.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
@@ -640,6 +658,12 @@ const showLegend = ref(false)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
 
+// Context menu state
+const showContextMenu = ref(false)
+const contextMenuX = ref(0)
+const contextMenuY = ref(0)
+const contextMenuEntity = ref<string | null>(null)
+
 // YAML editing state
 const rawYamlContent = ref<string | null>(null)
 const originalYamlContent = ref<string | null>(null)
@@ -699,7 +723,9 @@ const selectedNodeInfo = computed(() => {
 })
 
 // Cytoscape integration
-const { fit, zoomIn, zoomOut, reset, exportPNG } = useCytoscape({
+const entityStore = useEntityStore()
+
+const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG } = useCytoscape({
   container: graphContainer,
   graphData: dependencyGraph,
   layoutType,
@@ -712,6 +738,26 @@ const { fit, zoomIn, zoomOut, reset, exportPNG } = useCytoscape({
   onNodeClick: (nodeId: string) => {
     selectedNode.value = nodeId
     showDetailsDrawer.value = true
+  },
+  onNodeDoubleClick: (nodeId: string) => {
+    // Open entity editor overlay on double-click
+    console.debug('[ProjectDetailView] Opening overlay for entity:', nodeId)
+    entityStore.openEditorOverlay(nodeId)
+  },
+  onNodeRightClick: (nodeId: string, x: number, y: number) => {
+    // Open context menu on right-click
+    console.debug('[ProjectDetailView] Context menu for entity:', nodeId, 'at', x, y)
+    console.debug('[ProjectDetailView] Setting context menu state...')
+    contextMenuEntity.value = nodeId
+    contextMenuX.value = x
+    contextMenuY.value = y
+    showContextMenu.value = true
+    console.debug('[ProjectDetailView] Context menu state:', {
+      entity: contextMenuEntity.value,
+      x: contextMenuX.value,
+      y: contextMenuY.value,
+      show: showContextMenu.value
+    })
   },
   onBackgroundClick: () => {
     selectedNode.value = null
@@ -851,6 +897,195 @@ function handleEditEntity(entityName: string) {
   entityToEdit.value = entityName
 }
 
+async function handleOverlayEntitySaved() {
+  // Refresh entities and dependencies after saving from overlay
+  markAsChanged()
+  successMessage.value = 'Entity saved successfully'
+  showSuccessSnackbar.value = true
+  
+  // Refresh the dependency graph if we're on the dependencies tab
+  if (activeTab.value === 'dependencies' && projectName.value) {
+    await fetchDependencies(projectName.value)
+  }
+}
+
+function handleOverlayClose(isOpen: boolean) {
+  if (!isOpen) {
+    entityStore.closeEditorOverlay()
+  }
+}
+
+// Context menu handlers
+async function handleContextMenuPreview(entityName: string) {
+  console.debug('[ProjectDetailView] Preview entity:', entityName)
+  // Navigate to test run with this entity selected
+  window.location.href = `/test-run/${projectName.value}?entity=${entityName}`
+}
+
+async function handleContextMenuDuplicate(entityName: string) {
+  console.log('=========================================')
+  console.log('[ProjectDetailView] handleContextMenuDuplicate CALLED')
+  console.log('Entity name:', entityName)
+  console.log('=========================================')
+  console.log('[1] Starting duplicate process')
+  
+  console.log('[2] Looking for source entity:', entityName)
+  const sourceEntity = entityStore.entities.find((e) => e.name === entityName)
+  console.log('[3] Source entity found:', sourceEntity ? 'YES' : 'NO')
+  if (!sourceEntity) {
+    console.error('Source entity not found:', entityName)
+    return
+  }
+  
+  console.log('[4] Generating new entity name')
+  // Create a new entity name
+  let newName = `${entityName}_copy`
+  let counter = 1
+  while (entityStore.entities.find((e) => e.name === newName)) {
+    newName = `${entityName}_copy${counter++}`
+  }
+  console.log('[5] New entity name:', newName)
+  
+  try {
+    console.log('[6] About to create entity...')
+    // Create duplicate entity with copied data
+    await entityStore.createEntity(projectName.value, {
+      name: newName,
+      entity_data: {
+        ...sourceEntity.entity_data,
+        // Clear any reconciliation specs that might reference the old name
+        reconciliation: undefined,
+      },
+    })
+    console.log('[7] Entity created successfully')
+    
+    console.log('[8] About to fetch dependencies...')
+    // Refresh dependencies to update the graph (silently, without showing loading state)
+    await fetchDependencies(projectName.value)
+    console.log('[9] Dependencies fetched, graph data:', dependencyGraph.value)
+    
+    console.log('[10] Setting success message first...')
+    successMessage.value = `Entity "${newName}" created from "${entityName}"`
+    showSuccessSnackbar.value = true
+    markAsChanged()
+    
+    console.log('[11] Waiting for Vue updates to settle...')
+    await nextTick()
+    
+    console.log('[12] About to render graph...')
+    renderGraph()
+    console.log('[13] Graph rendered')
+    console.log('[14] Duplicate complete!')
+    
+    // Diagnostic: Check if container/graph still exists after a short delay
+    setTimeout(() => {
+      console.log('[DIAGNOSTIC] Post-duplicate state:', {
+        hasContainer: !!graphContainer.value,
+        containerInDOM: graphContainer.value ? document.contains(graphContainer.value) : false,
+        dependencyGraphExists: !!dependencyGraph.value,
+        nodesCount: dependencyGraph.value?.nodes?.length ?? 0,
+      })
+      
+      // Additional Cytoscape diagnostics
+      if (graphContainer.value) {
+        const rect = graphContainer.value.getBoundingClientRect()
+        console.log('[DIAGNOSTIC] Container dimensions:', {
+          width: rect.width,
+          height: rect.height,
+          visible: rect.width > 0 && rect.height > 0,
+        })
+        
+        // Check for canvas element
+        const canvas = graphContainer.value.querySelector('canvas')
+        if (canvas) {
+          const canvasRect = canvas.getBoundingClientRect()
+          console.log('[DIAGNOSTIC] Canvas found:', {
+            width: canvasRect.width,
+            height: canvasRect.height,
+            visible: canvasRect.width > 0 && canvasRect.height > 0,
+          })
+        } else {
+          console.warn('[DIAGNOSTIC] No canvas element found in container!')
+        }
+      }
+    }, 500)
+  } catch (err) {
+    console.error('[ERROR] Failed to duplicate entity:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to duplicate entity'
+    showSuccessSnackbar.value = true
+  }
+}
+
+async function handleContextMenuDelete(entityName: string) {
+  console.log('=========================================')
+  console.log('[ProjectDetailView] handleContextMenuDelete CALLED')
+  console.log('Entity name:', entityName)
+  console.log('=========================================')
+  const confirmed = confirm(`Are you sure you want to delete entity "${entityName}"?`)
+  if (!confirmed) return
+  
+  try {
+    console.debug('[ProjectDetailView] Deleting entity:', entityName)
+    await entityStore.deleteEntity(projectName.value, entityName)
+    
+    console.log('[ProjectDetailView] Entity deleted, refreshing dependencies...')
+    // Refresh dependencies to update the graph (silently, without showing loading state)
+    await fetchDependencies(projectName.value)
+    console.log('[ProjectDetailView] Dependencies refreshed, graph data:', dependencyGraph.value)
+    
+    console.log('[ProjectDetailView] Setting success message first...')
+    successMessage.value = `Entity "${entityName}" deleted`
+    showSuccessSnackbar.value = true
+    markAsChanged()
+    
+    console.log('[ProjectDetailView] Waiting for Vue updates to settle...')
+    await nextTick()
+    
+    // Force graph re-render after Vue's DOM updates settle
+    console.log('[ProjectDetailView] Forcing graph re-render...')
+    renderGraph()
+    console.log('[ProjectDetailView] Graph rendered')
+    console.log('[ProjectDetailView] Delete complete!')
+    
+    // Diagnostic: Check if container/graph still exists after a short delay
+    setTimeout(() => {
+      console.log('[DIAGNOSTIC] Post-delete state:', {
+        hasContainer: !!graphContainer.value,
+        containerInDOM: graphContainer.value ? document.contains(graphContainer.value) : false,
+        dependencyGraphExists: !!dependencyGraph.value,
+        nodesCount: dependencyGraph.value?.nodes?.length ?? 0,
+      })
+      
+      // Additional Cytoscape diagnostics
+      if (graphContainer.value) {
+        const rect = graphContainer.value.getBoundingClientRect()
+        console.log('[DIAGNOSTIC] Container dimensions:', {
+          width: rect.width,
+          height: rect.height,
+          visible: rect.width > 0 && rect.height > 0,
+        })
+        
+        // Check for canvas element
+        const canvas = graphContainer.value.querySelector('canvas')
+        if (canvas) {
+          const canvasRect = canvas.getBoundingClientRect()
+          console.log('[DIAGNOSTIC] Canvas found:', {
+            width: canvasRect.width,
+            height: canvasRect.height,
+            visible: canvasRect.width > 0 && canvasRect.height > 0,
+          })
+        } else {
+          console.warn('[DIAGNOSTIC] No canvas element found in container!')
+        }
+      }
+    }, 500)
+  } catch (err) {
+    console.error('Failed to delete entity:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to delete entity'
+    showSuccessSnackbar.value = true
+  }
+}
+
 async function handleRefreshDependencies() {
   clearDependenciesError()
   if (projectName.value) {
@@ -986,6 +1221,7 @@ onMounted(async () => {
 watch(
   () => projectName.value,
   async (newName, oldName) => {
+    
     if (!newName) return
     
     // Avoid re-loading on initial mount (onMounted handles that)
