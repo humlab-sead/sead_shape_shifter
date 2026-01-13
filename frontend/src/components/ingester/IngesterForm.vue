@@ -1,11 +1,29 @@
 <template>
   <v-card>
     <v-card-title>
-      {{ selectedIngester?.name || 'Ingester Configuration' }}
+      {{ selectedIngester?.name || 'Dispatcher Configuration' }}
     </v-card-title>
 
     <v-card-text>
-      <v-form ref="formRef" v-model="formValid">
+      <v-alert v-if="!selectedIngester" type="info" variant="tonal" class="mb-4">
+        Select a dispatcher from the list below to configure dispatch settings.
+      </v-alert>
+
+      <!-- Ingester Selector -->
+      <v-select
+        v-if="availableIngesters.length > 0"
+        v-model="selectedIngesterKey"
+        :items="availableIngesters"
+        item-title="name"
+        item-value="key"
+        label="Select Dispatcher *"
+        hint="Choose the target system dispatcher"
+        persistent-hint
+        prepend-icon="mdi-send"
+        class="mb-4"
+      />
+
+      <v-form v-if="selectedIngester" ref="formRef" v-model="formValid">
         <!-- Source File -->
         <v-text-field
           v-model="form.source"
@@ -124,7 +142,7 @@
           </div>
         </v-alert>
 
-        <!-- Ingestion Result -->
+        <!-- Dispatch Result -->
         <v-alert
           v-if="ingestionResult"
           :type="ingestionResult.success ? 'success' : 'error'"
@@ -168,8 +186,8 @@
         :disabled="!formValid || !selectedIngester"
         @click="handleIngest"
       >
-        <v-icon start>mdi-database-import</v-icon>
-        Ingest
+        <v-icon start>mdi-send</v-icon>
+        Dispatch
       </v-btn>
 
       <v-spacer />
@@ -206,6 +224,7 @@ const { selectedProject } = storeToRefs(projectStore)
 
 const formRef = ref()
 const formValid = ref(false)
+const selectedIngesterKey = ref<string | null>(null)
 
 const form = ref<IngestRequest>({
   source: '',
@@ -222,6 +241,7 @@ const form = ref<IngestRequest>({
 const ignoreColumnsText = ref('date_updated\n*_uuid\n(*')
 
 // Computed properties
+const availableIngesters = computed(() => ingesterStore.ingesters)
 const ingesterConfig = computed(() => {
   if (!selectedProject.value || !selectedIngester.value) return null
   const ingesters = selectedProject.value.options?.ingesters || {}
@@ -243,6 +263,16 @@ watch(ignoreColumnsText, (newValue) => {
     .split('\n')
     .map(s => s.trim())
     .filter(s => s.length > 0)
+})
+
+// Update selected ingester in store when changed
+watch(selectedIngesterKey, (key) => {
+  if (key) {
+    const ingester = availableIngesters.value.find(i => i.key === key)
+    if (ingester) {
+      ingesterStore.selectIngester(ingester)
+    }
+  }
 })
 
 // Load defaults from project ingester config when it changes
@@ -306,8 +336,19 @@ function resetForm() {
   clearError()
 }
 
-// Load data sources on mount
+// Load ingesters and data sources on mount
 onMounted(async () => {
+  // Fetch available ingesters
+  if (ingesterStore.ingesters.length === 0) {
+    await ingesterStore.fetchIngesters()
+  }
+  
+  // Auto-select first ingester if only one is available
+  if (availableIngesters.value.length === 1) {
+    selectedIngesterKey.value = availableIngesters.value[0].key
+  }
+  
+  // Fetch data sources
   if (dataSourceStore.dataSources.length === 0) {
     try {
       await dataSourceStore.fetchDataSources()
