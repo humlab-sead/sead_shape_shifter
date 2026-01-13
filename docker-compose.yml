@@ -1,49 +1,40 @@
 version: '3.8'
 
 services:
-  # Backend API
-  backend:
+  # Shape Shifter Application (Backend serves Frontend)
+  app:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: shapeshifter-backend
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        # Build-time environment variables for frontend build
+        VITE_API_BASE_URL: ""
+        VITE_ENV: production
+        VITE_ENABLE_ANALYTICS: "false"
+        VITE_ENABLE_DEBUG: "false"
+    container_name: shapeshifter-app
     ports:
-      - "8012:8012"
+      - "8012:8012"  # Backend API + Frontend UI
     environment:
+      # Runtime environment variables
       - ENVIRONMENT=production
       - LOG_LEVEL=info
+      - PYTHONUNBUFFERED=1
+      # Projects directory
+      - PROJECTS_DIR=/app/projects
     volumes:
-      - ./input:/app/input:ro
-      - ./output:/app/output
-      - ./backups:/app/backups
+      # Persistent data volumes
+      - ./projects:/app/projects       # Project YAML files
+      - ./input:/app/input:ro          # Input data (read-only)
+      - ./output:/app/output           # Output data
+      - ./backups:/app/backups         # Auto-fix backups
+      - ./logs:/app/logs               # Application logs
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8012/api/v1/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8012/api/v1/health').read()"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    restart: unless-stopped
-    networks:
-      - shapeshifter-network
-
-  # Frontend UI
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: shapeshifter-frontend
-    ports:
-      - "80:80"
-    environment:
-      - VITE_API_BASE_URL=http://backend:8012
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     restart: unless-stopped
     networks:
       - shapeshifter-network
@@ -53,5 +44,5 @@ networks:
     driver: bridge
 
 volumes:
-  backend-data:
+  projects-data:
     driver: local

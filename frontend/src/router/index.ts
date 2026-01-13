@@ -67,14 +67,6 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/ingesters',
-    name: 'ingesters',
-    component: () => import('@/views/IngesterView.vue'),
-    meta: {
-      title: 'Data Ingestion',
-    },
-  },
-  {
     path: '/test-run/:name',
     name: 'test-run',
     component: () => import('@/views/TestRunView.vue'),

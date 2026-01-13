@@ -69,20 +69,22 @@ The fastest way to get Shape Shifter running is with Docker:
 git clone https://github.com/humlab-sead/sead_shape_shifter.git
 cd sead_shape_shifter
 
-# Set up configuration
-cd docker/data
-cp backend.env.example backend.env
-cp frontend.env.example frontend.env
-nano backend.env  # Edit with your database credentials
+# Create required directories
+mkdir -p projects input output backups logs
 
 # Build and start
-cd ..
-docker compose up -d
+docker-compose up -d --build
 
 # Access the application at http://localhost:8012
 ```
 
-All runtime configuration and data is stored in `docker/data/`. For detailed Docker deployment instructions, see [docker/README.md](docker/README.md).
+**That's it!** The unified container includes both the backend API and frontend UI.
+
+- Frontend UI: http://localhost:8012/
+- API Documentation: http://localhost:8012/api/v1/docs
+- Health Check: http://localhost:8012/api/v1/health
+
+For detailed Docker deployment instructions, see [DOCKER.md](DOCKER.md) or [docker/README.md](docker/README.md).
 
 ## Developer Installation
 

@@ -11,6 +11,10 @@ export const useEntityStore = defineStore('entity', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const hasUnsavedChanges = ref(false)
+  
+  // Overlay state
+  const showEditorOverlay = ref(false)
+  const overlayEntityName = ref<string | null>(null)
 
   // Getters
   const entitiesByType = computed(() => {
@@ -155,6 +159,19 @@ export const useEntityStore = defineStore('entity', () => {
     loading.value = false
     error.value = null
     hasUnsavedChanges.value = false
+    showEditorOverlay.value = false
+    overlayEntityName.value = null
+  }
+  
+  // Overlay management
+  function openEditorOverlay(entityName: string) {
+    overlayEntityName.value = entityName
+    showEditorOverlay.value = true
+  }
+  
+  function closeEditorOverlay() {
+    showEditorOverlay.value = false
+    overlayEntityName.value = null
   }
 
   return {
@@ -165,6 +182,8 @@ export const useEntityStore = defineStore('entity', () => {
     loading,
     error,
     hasUnsavedChanges,
+    showEditorOverlay,
+    overlayEntityName,
     // Getters
     entitiesByType,
     entityCount,
@@ -182,5 +201,7 @@ export const useEntityStore = defineStore('entity', () => {
     markAsChanged,
     clearError,
     reset,
+    openEditorOverlay,
+    closeEditorOverlay,
   }
 })

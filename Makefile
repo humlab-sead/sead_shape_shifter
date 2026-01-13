@@ -95,8 +95,8 @@ fr: frontend-kill frontend-run
 
 fr2: frontend-clear fr
 
-# Serve frontend via backend, for production-like testing
-# Backend will serve frontend if frontend/dist/ exists  
+# Serve frontend via backend (production mode)
+# Builds frontend with .env.production (VITE_API_BASE_URL="") then serves via backend
 .PHONY: br+fr
 br+fr: frontend-kill frontend-build-fast backend-kill backend-run
 
@@ -171,7 +171,7 @@ frontend-build:
 
 .PHONY: frontend-build-fast
 frontend-build-fast:
-	@echo "Building frontend (skipping type check)..."
+	@echo "Building frontend for production (skipping type check)..."
 	@cd frontend && pnpm build:skip-check
 
 frontend-clear:
@@ -217,20 +217,15 @@ frontend-preview:
 # Docker
 ################################################################################
 
-.PHONY: docker-setup
-docker-setup:
-	@echo "Setting up Docker data directory..."
-	@./docker/setup.sh
-
 .PHONY: docker-build
 docker-build:
 	@echo "Building Docker image..."
-	@./docker/build.sh
+	@docker compose -f docker/docker-compose.yml build
 
-.PHONY: docker-test
-docker-test:
-	@echo "Testing Docker configuration..."
-	@./docker/test.sh
+.PHONY: docker-build-no-cache
+docker-build-no-cache:
+	@echo "Building Docker image (no cache)..."
+	@docker compose -f docker/docker-compose.yml build --no-cache
 
 .PHONY: docker-up
 docker-up:
@@ -238,10 +233,16 @@ docker-up:
 	@docker compose -f docker/docker-compose.yml up -d
 	@echo "✓ Application started at http://localhost:8012"
 
+.PHONY: docker-start
+docker-start: docker-up
+
 .PHONY: docker-down
 docker-down:
 	@echo "Stopping Shape Shifter containers..."
 	@docker compose -f docker/docker-compose.yml down
+
+.PHONY: docker-stop
+docker-stop: docker-down
 
 .PHONY: docker-logs
 docker-logs:
@@ -252,6 +253,17 @@ docker-restart:
 	@echo "Restarting Shape Shifter..."
 	@docker compose -f docker/docker-compose.yml restart
 
+.PHONY: docker-rebuild
+docker-rebuild:
+	@echo "Rebuilding and restarting Shape Shifter..."
+	@docker compose -f docker/docker-compose.yml down
+	@docker compose -f docker/docker-compose.yml up -d --build
+	@echo "✓ Application rebuilt and started at http://localhost:8012"
+
+.PHONY: docker-shell
+docker-shell:
+	@docker compose -f docker/docker-compose.yml exec shape-shifter /bin/bash
+
 .PHONY: docker-clean
 docker-clean:
 	@echo "Cleaning up Docker resources..."
@@ -259,9 +271,14 @@ docker-clean:
 	@docker image rm shape-shifter:latest 2>/dev/null || true
 	@echo "✓ Cleanup complete"
 
-.PHONY: docker-shell
-docker-shell:
-	@docker compose -f docker/docker-compose.yml exec shape-shifter /bin/bash
+.PHONY: docker-ps
+docker-ps:
+	@docker compose -f docker/docker-compose.yml ps
+
+.PHONY: docker-health
+docker-health:
+	@echo "Checking application health..."
+	@curl -sf http://localhost:8012/api/v1/health | jq . || echo "❌ Health check failed"
 
 ################################################################################
 # Other stuff
