@@ -44,10 +44,7 @@ from backend.app.services.ingester_service import IngesterService
 # Discover ingesters on module load (before CLI commands run)
 settings = Settings()
 if not Ingesters._initialized:
-    Ingesters.discover(
-        search_paths=settings.INGESTER_PATHS,
-        enabled_only=settings.ENABLED_INGESTERS
-    )
+    Ingesters.discover(search_paths=settings.INGESTER_PATHS, enabled_only=settings.ENABLED_INGESTERS)
 
 
 def setup_logging(verbose: bool = False) -> None:
