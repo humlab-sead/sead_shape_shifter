@@ -29,6 +29,7 @@ declare module 'vue' {
     FixedValuesGrid: typeof import('./components/entities/FixedValuesGrid.vue')['default']
     ForeignKeyEditor: typeof import('./components/entities/ForeignKeyEditor.vue')['default']
     ForeignKeyTester: typeof import('./components/entities/ForeignKeyTester.vue')['default']
+    GraphNodeContextMenu: typeof import('./components/dependencies/GraphNodeContextMenu.vue')['default']
     IngesterForm: typeof import('./components/ingester/IngesterForm.vue')['default']
     IngesterList: typeof import('./components/ingester/IngesterList.vue')['default']
     LoadingSkeleton: typeof import('./components/common/LoadingSkeleton.vue')['default']

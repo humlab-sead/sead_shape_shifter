@@ -3,7 +3,7 @@
  * Handles initialization, styling, layout, and event management
  */
 
-import { ref, watch, onBeforeUnmount, type Ref } from 'vue'
+import { ref, watch, onBeforeUnmount, nextTick, type Ref } from 'vue'
 import cytoscape, { type Core, type LayoutOptions } from 'cytoscape'
 // @ts-expect-error - No type definitions available
 import dagre from 'cytoscape-dagre'
@@ -72,6 +72,11 @@ export interface UseCytoscapeOptions {
    * Node double-click handler
    */
   onNodeDoubleClick?: (nodeId: string) => void
+  
+  /**
+   * Node right-click handler
+   */
+  onNodeRightClick?: (nodeId: string, x: number, y: number) => void
 
   /**
    * Background click handler
@@ -92,6 +97,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     isDark = ref(false),
     onNodeClick,
     onNodeDoubleClick,
+    onNodeRightClick,
     onBackgroundClick,
   } = options
 
@@ -153,6 +159,30 @@ export function useCytoscape(options: UseCytoscapeOptions) {
             singleClickTimeout = null
           }, CLICK_DELAY)
         })
+        
+        // Right-click (context menu) - using cxttap event
+        cy.value.on('cxttap', 'node', (event) => {
+          console.debug('[useCytoscape] cxttap event fired!', event)
+          const nodeId = event.target.id()
+          
+          // Get the graph container's position
+          const containerRect = container.value?.getBoundingClientRect()
+          if (!containerRect) return
+          
+          // Get the rendered position (position on screen relative to container)
+          const renderedPosition = event.renderedPosition
+          
+          // Calculate absolute screen coordinates
+          const x = containerRect.left + renderedPosition.x
+          const y = containerRect.top + renderedPosition.y
+          
+          console.debug('[useCytoscape] Node right-click:', nodeId, 'at screen position', { x, y })
+          
+          onNodeRightClick?.(nodeId, x, y)
+          
+          // Prevent default context menu
+          event.preventDefault()
+        })
 
         cy.value.on('tap', (event) => {
           if (event.target === cy.value) {
@@ -168,12 +198,24 @@ export function useCytoscape(options: UseCytoscapeOptions) {
   }
 
   /**
-   * Update graph elements
+   * Update graph elements (preserves positions of existing nodes)
    */
   function updateElements() {
-    if (!cy.value || !graphData.value) return
+    console.log('[useCytoscape] updateElements called', {
+      hasCy: !!cy.value,
+      hasGraphData: !!graphData.value,
+      nodesCount: graphData.value?.nodes?.length ?? 0,
+    })
+    
+    if (!cy.value || !graphData.value) {
+      console.warn('[useCytoscape] updateElements early return:', {
+        hasCy: !!cy.value,
+        hasGraphData: !!graphData.value,
+      })
+      return
+    }
 
-    const elements = toCytoscapeElements(graphData.value, {
+    const newElements = toCytoscapeElements(graphData.value, {
       cycles: cycles.value,
       showNodeLabels: showNodeLabels.value,
       showEdgeLabels: showEdgeLabels.value,
@@ -181,8 +223,49 @@ export function useCytoscape(options: UseCytoscapeOptions) {
       showSourceNodes: showSourceNodes.value,
     })
 
-    cy.value.elements().remove()
-    cy.value.add(elements)
+    const currentElements = cy.value.elements()
+    const isInitialRender = currentElements.length === 0
+    
+    console.log('[useCytoscape] Updating elements:', {
+      newElementsCount: newElements.length,
+      currentElementsCount: currentElements.length,
+      isInitialRender,
+    })
+
+    if (isInitialRender) {
+      // Initial render: add all elements and run full layout
+      console.log('[useCytoscape] Initial render: adding all elements')
+      cy.value.add(newElements)
+      applyLayout(true)
+    } else {
+      // Incremental update: preserve existing positions
+      const currentIds = new Set(currentElements.map((el) => el.id()))
+      const newIds = new Set(newElements.map((el) => el.data.id))
+      const toRemove = currentElements.filter((el) => !newIds.has(el.id()))
+      const toAdd = newElements.filter((el) => !currentIds.has(el.data.id))
+
+      // Remove deleted elements
+      if (toRemove.length > 0) {
+        console.log('[useCytoscape] Removing', toRemove.length, 'elements')
+        toRemove.remove()
+      }
+
+      // Add new elements and layout only them
+      if (toAdd.length > 0) {
+        console.log('[useCytoscape] Adding', toAdd.length, 'new elements')
+        const added = cy.value.add(toAdd)
+        
+        // Run layout only on new nodes
+        const newNodes = added.nodes()
+        if (newNodes.length > 0) {
+          console.log('[useCytoscape] Running layout for', newNodes.length, 'new nodes')
+          const layoutConfig = getLayoutConfig(layoutType.value, true)
+          newNodes.layout(layoutConfig as LayoutOptions).run()
+        }
+      }
+    }
+
+    console.log('[useCytoscape] Elements updated, final count:', cy.value.elements().length)
   }
 
   /**
@@ -289,22 +372,42 @@ export function useCytoscape(options: UseCytoscapeOptions) {
    * Render the graph (initialize + update + layout)
    */
   function render() {
-    if (!container.value) return
+    console.log('[useCytoscape] render() called', {
+      hasContainer: !!container.value,
+      isInitialized: isInitialized.value,
+      hasCy: !!cy.value,
+      hasGraphData: !!graphData.value,
+      nodesCount: graphData.value?.nodes?.length ?? 0,
+    })
+    
+    if (!container.value) {
+      console.warn('[useCytoscape] render() early return: no container')
+      return
+    }
 
     if (!isInitialized.value) {
+      console.log('[useCytoscape] render() calling initialize()')
       initialize()
     }
 
     if (cy.value && graphData.value) {
+      console.log('[useCytoscape] render() calling updateElements()')
       updateElements()
-      applyLayout(true)
+      // Don't call applyLayout here - updateElements handles layout for new nodes
+    } else {
+      console.warn('[useCytoscape] render() skipped updateElements:', {
+        hasCy: !!cy.value,
+        hasGraphData: !!graphData.value,
+      })
     }
+    console.log('[useCytoscape] render() complete')
   }
 
   /**
    * Destroy Cytoscape instance
    */
   function destroy() {
+    console.warn('[useCytoscape] destroy() called!', new Error().stack)
     if (cy.value) {
       cy.value.destroy()
       cy.value = null
@@ -313,21 +416,44 @@ export function useCytoscape(options: UseCytoscapeOptions) {
   }
 
   // Watch for container changes - initialize when container becomes available
-  watch(container, (newContainer) => {
-    if (newContainer && !isInitialized.value) {
+  // Also handles container re-creation (when Vue replaces the div element)
+  watch(container, (newContainer, oldContainer) => {
+    if (!newContainer) return
+
+    // Case 1: Initial creation (no cy instance yet)
+    if (!isInitialized.value) {
       initialize()
+      
+      // If graphData is already available (race condition after component remount), render it
       if (graphData.value) {
-        render()
+        nextTick(() => render())
+      }
+      return
+    }
+
+    // Case 2: Container was replaced or reappeared (cy exists but container changed)
+    // This handles Vue recreating the container div during reactive updates
+    if (cy.value && newContainer !== oldContainer) {
+      const canvas = newContainer.querySelector('canvas')
+      if (!canvas) {
+        // Re-mount Cytoscape to the new container
+        cy.value.mount(newContainer)
+        nextTick(() => render())
       }
     }
   })
 
+
   // Watch for graph data changes
-  watch(graphData, (newData) => {
-    if (newData) {
-      render()
-    }
-  })
+  watch(
+    graphData,
+    (newData) => {
+      if (newData && isInitialized.value) {
+        render()
+      }
+    },
+    { deep: true }
+  )
 
   // Watch for layout type changes
   watch(layoutType, () => {
@@ -365,6 +491,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
 
   // Cleanup on unmount
   onBeforeUnmount(() => {
+
     destroy()
   })
 
