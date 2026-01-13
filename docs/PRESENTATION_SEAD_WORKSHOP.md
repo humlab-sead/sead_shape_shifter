@@ -18,10 +18,11 @@ date: January 8, 2026
 2. **The Solution** - Shape Shifter overview
 3. **Key Features** - What makes it work
 4. **Identity Reconciliation** - Assigning SEAD identities
-5. **Live Walkthrough** - See it in action
-6. **Your Benefits** - Why this matters to you
-7. **Getting Started** - Next steps
-8. **Q&A** - Your questions
+5. **Data Dispatch** - Sending data to target systems
+6. **Live Walkthrough** - See it in action
+7. **Your Benefits** - Why this matters to you
+8. **Getting Started** - Next steps
+9. **Q&A** - Your questions
 
 *~30 minutes*
 
@@ -164,13 +165,15 @@ sample:
 
 **Web-Based Interface:**
 - 🖥️ No installation required (browser-based)
-- 📝 YAML editor with syntax highlighting
-- 🔍 Real-time validation
-- 💾 Automatic backups
+- � Tabbed interface: Entities, Dependencies, Validation, Reconciliation, Dispatch
+- 📝 Monaco editor with YAML syntax highlighting
+- 🔍 Real-time validation with auto-fix suggestions
+- 💾 Automatic timestamped backups
 - 📱 Works on any device
 
 **For Archaeologists:**
 - No programming required for basic tasks
+- Form-based editors alongside YAML view
 - Copy-paste from examples
 - Immediate feedback on errors
 
@@ -282,43 +285,69 @@ foreign_keys:
 
 **See Results Before Committing:**
 
-- 🔬 Preview individual entities
-- 📊 Interactive data table
-- 🔍 Filter and search
+- 🔬 Preview individual entities from Entities tab
+- 📊 Interactive data table with pagination
+- 🔍 Filter and search capabilities
 - 📈 Row counts and statistics
-- ⚡ Fast, cached results
+- ⚡ 3-tier intelligent caching (TTL, version, hash)
 
-**Split-View Mode:**
-- Edit configuration on left
-- See live preview on right
-- Auto-refresh on changes
-
----
-
-## 8. Execute Workflow
-
-**Export to Multiple Formats:**
-
-📁 **Excel Workbook**
-- One file, multiple sheets
-- Easy to review manually
-- Share with colleagues
-
-📂 **CSV Files**
-- Standard format
-- Import anywhere
-- Folder or ZIP
-
-🗄️ **Direct to Database**
-- PostgreSQL, SQLite
-- Skip file intermediates
-- Ready for queries
-
-**Plus:** Download results directly in browser!
+**Smart Caching:**
+- Cached results with 5-minute TTL
+- Version-based invalidation on project changes
+- Hash-based detection of entity modifications
+- Instant preview for unchanged entities
 
 ---
 
-## 9. Identity Reconciliation
+## 8. Data Dispatch System
+
+**Integrated Project Workflow:**
+
+🎯 **Dispatch Tab** (within each project)
+- Configure target systems once in project settings
+- Select dispatcher (SEAD Clearinghouse, etc.)
+- Set ingester-specific policies
+- Validate before dispatching
+
+📤 **Supported Dispatchers:**
+- **SEAD Clearinghouse** - Direct integration with submission policies
+- **File Export** - Excel, CSV, JSON formats
+- **Database** - PostgreSQL, SQLite direct writes
+- **Extensible** - Plugin architecture for custom dispatchers
+
+**Configuration-Based:**
+- Dispatcher settings in project YAML under `options.ingesters`
+- Reference existing data sources by name
+- Reusable across project versions
+
+---
+
+## 9. Dispatch Workflow Integration
+
+**Complete Data Pipeline:**
+
+```
+1. Define Entities (Entities tab)
+   ↓
+2. Configure Relationships (Dependencies graph)
+   ↓
+3. Validate Configuration (Validation tab)
+   ↓
+4. Reconcile Identities (Reconciliation tab)
+   ↓
+5. Dispatch Data (Dispatch tab)
+```
+
+**Dispatch Tab Features:**
+- 🎯 Select ingester from project configuration
+- 🔍 View target data source details
+- ✅ Validate before dispatch
+- 📊 Track dispatch status and results
+- 💾 All settings saved in project file
+
+---
+
+## 10. Identity Reconciliation
 
 **The Critical Integration Step**
 
@@ -575,14 +604,17 @@ Candidate: "Storsjön, Jämtland" (ID: 1523)
 
 **Action:**
 1. Open Shape Shifter web interface
-2. Click "Projects" → "Create New Project"
-3. Name: `arbodat_integration`
-4. Click "Create"
+2. Click "Projects" in sidebar navigation
+3. Click "New Project" button
+4. Name: `arbodat_integration`
+5. Select template or start blank
+6. Click "Create"
 
 **Result:**
 - New YAML configuration created
-- Automatic backup system enabled
-- Ready to configure
+- Automatic timestamped backup system enabled
+- Project opens in tabbed interface
+- Ready to configure entities and data sources
 
 ---
 
@@ -652,21 +684,32 @@ entities:
 
 ## Step 5: Validate Configuration
 
-**Click "Validate All":**
+**Navigate to Validation Tab:**
 
-**Results:**
+**Click "Validate All" button:**
+
+**Multi-Level Results:**
 ```
 ✅ Structural validation passed
-✅ All entities defined correctly
-✅ Foreign keys valid
-⚠️ Warning: Column 'site_code' has 3 null values
-ℹ️ Info: 1,247 samples will be processed
+  - YAML syntax valid
+  - All entities defined
+  - No circular dependencies
+
+✅ Data validation passed
+  - All columns exist in sources
+  - Foreign keys valid
+  
+⚠️ Entity-specific warnings:
+  - Column 'site_code' has 3 null values in 'sample'
+  
+ℹ️ Summary: 1,247 samples will be processed
 ```
 
-**Action:**
-- Review warnings
-- Decide if acceptable
-- Apply auto-fixes if available
+**Actions:**
+- Review warnings by entity
+- View auto-fix suggestions
+- Preview and apply fixes
+- Re-validate after changes
 
 ---
 
@@ -713,18 +756,18 @@ Unique Left: ✅ No duplicates
 
 **Navigate to Reconciliation Tab:**
 
-**Configure Reconciliation:**
-```yaml
-reconciliation:
-  entities:
-    sample_taxon:
-      taxon_id:
-        remote:
-          service_type: "Taxon"
-        property_mappings:
-          taxon_name: "taxon_name"
-        auto_accept_threshold: 0.95
-```
+**Dual-Mode Editor:**
+- 📝 **Form View**: Visual configuration with dropdowns
+- 🖊️ **YAML View**: Direct YAML editing with Monaco
+- 🔄 Switch seamlessly between modes
+
+**Configure in Form View:**
+1. Select entity: `sample_taxon`
+2. Select field: `taxon_id`
+3. Service type: `Taxon`
+4. Property mappings: `taxon_name` → `taxon_name`
+5. Auto-accept threshold: `0.95`
+6. Review threshold: `0.70`
 
 **Click "Run Auto-Reconcile":**
 - 🔍 Found 45 unique taxon names
@@ -732,33 +775,49 @@ reconciliation:
 - ⚠️ Need review: 2 (4%)
 - ❌ No match: 1 (2%)
 
-**Review Grid:**
-- Accept auto-matches (already done!)
-- Review "Betula sp." → Select "Betula pubescens"
-- Mark "Local code X" as "will not match"
-- Save mappings
+**Interactive Review Grid:**
+- ✅ Auto-matches already applied
+- 🔍 Review "Betula sp." → Select "Betula pubescens" from candidates
+- 🚫 Mark "Local code X" as "will not match"
+- 💾 Save mappings to project configuration
 
 **Result:** All taxon names resolved to SEAD IDs!
 
 ---
 
-## Step 9: Execute Workflow
+## Step 9: Configure Dispatch
 
-**Click "Execute":**
+**Navigate to Dispatch Tab:**
 
-**Configuration:**
-1. Select output format: "Excel Workbook"
-2. Output path: `./output/arbodat_sead.xlsx`
-3. Options:
-   - ✅ Run validation before execution
-   - ⬜ Apply translations
-   - ⬜ Drop foreign keys
-4. Click "Execute"
+**Configure Target System:**
+
+In project YAML (or use form editor later):
+```yaml
+options:
+  ingesters:
+    sead:
+      target_data_source: sead_staging_db
+      submission_name: arbodat_2026_01
+      data_types: [dendro]
+      policies:
+        ignore_columns: ["temp_*"]
+        register: true
+        explode: false
+```
+
+**Dispatch Form:**
+1. Ingester auto-selected (if only one configured)
+2. View target data source details
+3. Verify submission settings
+4. Click "Validate Data" (optional pre-check)
+5. Click "Dispatch"
 
 **Result:**
-- Processing... (30 seconds)
-- ✅ Success! Processed 8 entities
-- 📥 Download result file
+- 🔄 Validating... (5 seconds)
+- ✅ Validation passed
+- 📤 Dispatching to SEAD Clearinghouse... (30 seconds)
+- ✅ Success! 1,247 samples dispatched
+- 📊 View dispatch report
 
 ---
 
@@ -831,15 +890,16 @@ Total: ~6 days per dataset
 ```
 New dataset arrives
   ↓
-2 hours: Configure or update project
+2 hours: Configure entities & data sources (first time)
   ↓
-1 hour: Run reconciliation & review
+1 hour: Configure reconciliation & review matches
   ↓
-5 minutes: Execute and validate
+30 minutes: Configure dispatch settings
   ↓
-Import to SEAD
+5 minutes: Validate → Dispatch to SEAD
 ───────────────────
-Total: ~3 hours first time, ~30 minutes repeat
+Total: ~3.5 hours first time
+       ~15 minutes for repeat deliveries (just re-dispatch!)
 ```
 
 ---
@@ -1065,26 +1125,36 @@ entities:
 ## Appendix: Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│         Web Browser (You)               │
-│  ┌──────────────┐  ┌─────────────────┐ │
-│  │   Vue.js UI  │  │  Monaco Editor  │ │
-│  └──────┬───────┘  └────────┬────────┘ │
-└─────────┼────────────────────┼──────────┘
-          │                    │
-          ▼                    ▼
-┌─────────────────────────────────────────┐
-│         FastAPI Backend                 │
-│  ┌────────────┐  ┌──────────────────┐  │
-│  │ Validation │  │  Transformation  │  │
-│  │  Service   │  │     Engine       │  │
-│  └────────────┘  └──────────────────┘  │
-└─────────────────────────────────────────┘
-          │
-          ▼
-┌─────────────────────────────────────────┐
-│         Data Sources                    │
-│  PostgreSQL | Access | CSV | Excel      │
-└─────────────────────────────────────────┘
+┌────────────────────────────────────────────────┐
+│         Web Browser (Vue 3 + Vuetify)          │
+│  ┌──────────────────────────────────────────┐  │
+│  │  Project Detail (Tabbed Interface)       │  │
+│  │  - Entities  - Dependencies  - Dispatch  │  │
+│  │  - Validation  - Reconciliation  - YAML  │  │
+│  └────────────┬─────────────────────────────┘  │
+│  ┌────────────┴─────────────────────────────┐  │
+│  │  Monaco Editor | Cytoscape.js | Pinia    │  │
+│  └────────────┬─────────────────────────────┘  │
+└───────────────┼────────────────────────────────┘
+                │ REST API
+                ▼
+┌────────────────────────────────────────────────┐
+│         FastAPI Backend (Python)               │
+│  ┌──────────────┐  ┌────────────────────────┐ │
+│  │  Validation  │  │  ShapeShift Service    │ │
+│  │   Service    │  │  (3-tier cache)        │ │
+│  └──────────────┘  └────────────────────────┘ │
+│  ┌──────────────┐  ┌────────────────────────┐ │
+│  │ Reconciliation│ │  Ingester Registry     │ │
+│  │   Service    │  │  (Dispatchers)         │ │
+│  └──────────────┘  └────────────────────────┘ │
+└────────────────────┬───────────────────────────┘
+                     │
+                     ▼
+┌────────────────────────────────────────────────┐
+│         Data Sources & Targets                 │
+│  PostgreSQL | SQLite | MS Access | CSV | Excel │
+│  SEAD Clearinghouse | Reconciliation Services  │
+└────────────────────────────────────────────────┘
 ```
 

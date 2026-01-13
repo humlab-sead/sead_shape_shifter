@@ -117,6 +117,10 @@
               class="ml-2"
             />
           </v-tab>
+          <v-tab value="dispatch">
+            <v-icon icon="mdi-send" class="mr-2" />
+            Dispatch
+          </v-tab>
           <v-tab value="metadata">
             <v-icon icon="mdi-information-outline" class="mr-2" />
             Metadata
@@ -369,6 +373,26 @@
             <metadata-editor :project-name="projectName" />
           </v-window-item>
 
+          <!-- Dispatch Tab -->
+          <v-window-item value="dispatch">
+            <v-card variant="outlined">
+              <v-card-title class="d-flex align-center">
+                <v-icon icon="mdi-send" class="mr-2" />
+                Dispatch Data to Target System
+              </v-card-title>
+              <v-card-text>
+                <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+                  <div class="text-caption">
+                    <strong>Dispatch:</strong> Send processed Shape Shifter data to the configured target database.
+                    Configuration is loaded from the project's <code>options.ingesters</code> section.
+                  </div>
+                </v-alert>
+
+                <ingester-form />
+              </v-card-text>
+            </v-card>
+          </v-window-item>
+
           <!-- YAML Tab -->
           <v-window-item value="yaml">
             <v-card variant="outlined">
@@ -522,6 +546,7 @@ import ReconciliationView from '@/components/reconciliation/ReconciliationView.v
 import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
 import ExecuteDialog from '@/components/execute/ExecuteDialog.vue'
+import IngesterForm from '@/components/ingester/IngesterForm.vue'
 
 const route = useRoute()
 const router = useRouter()

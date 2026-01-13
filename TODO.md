@@ -15,6 +15,7 @@
  - [x] FIXME: #122 No API call made when doing alternative search in entity reconciliation editor (Fixed: Added targetField parameter)
  - [ ] FIXME: #124 Reconciliation editor complains when "extra_columns" entered in property field
  - [ ] FIXME: #126 Preview fails due to duplicate column names.
+ - [ ] FIXME: #138 Wrong VITE_API_BASE_URL when front end served via backend
 
 ### Tech debts:
 
@@ -31,17 +32,13 @@
  - [] TODO: #69 Add "parent" property to entity definitions.
  - [] TODO: #67 Introduce support for string concatenation in "extra_columns".
  - [] TODO: Add capability to duplicate an existing configuration.
- - [] TODO: #107 Publish frontend files via the backend (FastAPI) server for easier deployment.
  - [] TODO: #98 Enable entity to have multiple reconciliation specifications.
- - [] TODO: #104 Enable download of workflow output from frontend 
  - [] TODO: #108 Add tiny DSL Expression Support in extra_columns
  - [] TODO: Introduce optional support for types for entity fields
           (e.g., string, integer, date) and support type conversions in extra_columns.
- - [x] TODO: Add validation indicators for reconciliation specifications (Completed: Status column with comprehensive column type validation)
- - [] TODO: #123 Columns mapped to properties should be constrained by (all) avaliable columns
  - [] TODO: #125 Add capability to edit full reconciliation YAML
  - [] TODO: #127 Add three-state toggling of L/R panes in entity ediitor.
- - [] TODO: 
+ - [] TODO: #137 Rename "ingest" in UX to "dispatch" since it better conveys UX perspective. Move feature inside project editor.
 
  qbj 
 
@@ -198,3 +195,14 @@ options:
             - "date_updated"
             - "*_uuid"
 ```
+
+TODO: Project templates
+
+The user experience of this system can be improved.  Currently the "default" workflow is to edit entities via the project's entity list, which can be somewhat cumbersome when there are a lot of entities.  I'm considering improving some of the existing functions in the system to get a smoother usee experience.
+
+Some things under consideration are:
+
+1. Use the dependency graph view as an alternative view point of the project, i.e. instead of using the "entity list" view. These would mean adding "Open entity" (e.g. double click) and "Add entity". It would be best if the entity editor overlayed the dependency graph instead of the system bouncing to the entity view
+2. Emphasing the end result. When a project is started the user (most often) knows what entities to create. How can this information be utilized so that the user get a feel of having a task log? Some entities are mandatory, and the "depend_on" and foreign keys gives a possibly logical "work order". Perhaps intriducing "project templates", which would basically be project YAML files where mandatory entities exists. That can form the starting point for templates.
+
+What are your thoughts on this?
