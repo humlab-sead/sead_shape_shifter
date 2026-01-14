@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.3.1...v1.4.0) (2026-01-14)
+
+
+### Features
+
+* **docker:** enhance Dockerfile with improved source detection and user security ([b325643](https://github.com/humlab-sead/sead_shape_shifter/commit/b325643fe34898865b1853792c89911fc351dd8f))
+
 ## [1.3.1](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.3.0...v1.3.1) (2026-01-13)
 
 
