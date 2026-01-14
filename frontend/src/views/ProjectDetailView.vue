@@ -147,7 +147,7 @@
               <v-card-text class="d-flex align-center gap-4">
                 <v-btn-toggle v-model="layoutType" mandatory density="compact">
                   <v-btn 
-                    size="small"
+                    size="x-small"
                     value="hierarchical" 
                     :color="layoutType === 'hierarchical' ? 'primary' : undefined"
                     prepend-icon="mdi-file-tree"
@@ -158,9 +158,52 @@
                     :color="layoutType === 'force' ? 'primary' : undefined"
                     prepend-icon="mdi-vector-arrange-above"
                   >
-                  Force-Directed
+                  Force
                 </v-btn>
+                  <v-btn 
+                    size="small"
+                    value="custom"
+                    :color="layoutType === 'custom' ? 'primary' : undefined"
+                    :disabled="!hasCustomLayout"
+                    prepend-icon="mdi-cursor-move"
+                  >
+                    Custom
+                    <v-tooltip v-if="!hasCustomLayout" activator="parent">
+                      No custom layout saved yet. Save current layout to enable.
+                    </v-tooltip>
+                  </v-btn>
                 </v-btn-toggle>
+
+                <v-divider vertical />
+
+                <!-- Save layout button -->
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  prepend-icon="mdi-content-save"
+                  :loading="savingLayout"
+                  @click="handleSaveCustomLayout"
+                >
+                  Save as Custom
+                  <v-tooltip activator="parent">
+                    Save the current node positions as a custom layout
+                  </v-tooltip>
+                </v-btn>
+
+                <!-- Clear layout button (only show if custom layout exists) -->
+                <v-btn
+                  v-if="hasCustomLayout"
+                  size="small"
+                  variant="text"
+                  prepend-icon="mdi-delete"
+                  color="error"
+                  @click="handleClearCustomLayout"
+                >
+                  Clear Custom
+                  <v-tooltip activator="parent">
+                    Remove the saved custom layout
+                  </v-tooltip>
+                </v-btn>
 
                 <v-divider vertical />
 
@@ -551,6 +594,7 @@ import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
 import { useEntityStore } from '@/stores/entity'
 import { getNodeInfo } from '@/utils/graphAdapter'
+import type { CustomGraphLayout } from '@/types'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import EntityFormDialog from '@/components/entities/EntityFormDialog.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
@@ -649,7 +693,10 @@ const entityToEdit = ref<string | null>(null)
 
 // Graph state
 const graphContainer = ref<HTMLElement | null>(null)
-const layoutType = ref<'hierarchical' | 'force'>('force')
+const layoutType = ref<'hierarchical' | 'force' | 'custom'>('force')
+const customLayout = ref<CustomGraphLayout | null>(null)
+const hasCustomLayout = ref(false)
+const savingLayout = ref(false)
 const showNodeLabels = ref(true)
 const showEdgeLabels = ref(true)
 const highlightCycles = ref(true)
@@ -725,10 +772,11 @@ const selectedNodeInfo = computed(() => {
 // Cytoscape integration
 const entityStore = useEntityStore()
 
-const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG } = useCytoscape({
+const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurrentPositions } = useCytoscape({
   container: graphContainer,
   graphData: dependencyGraph,
   layoutType,
+  customPositions: customLayout,
   showNodeLabels,
   showEdgeLabels,
   highlightCycles,
@@ -764,6 +812,71 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG } = useC
     showDetailsDrawer.value = false
   },
 })
+
+// Load custom layout when project loads
+watch(
+  () => projectName.value,
+  async (name) => {
+    if (!name) return
+
+    try {
+      const { layout, has_custom_layout } = await api.projects.getLayout(name)
+      customLayout.value = layout
+      hasCustomLayout.value = has_custom_layout
+
+      // Auto-switch to custom layout if it exists and has positions
+      if (has_custom_layout && Object.keys(layout).length > 0) {
+        layoutType.value = 'custom'
+      }
+    } catch (error) {
+      console.warn('Failed to load custom layout:', error)
+      // Not a critical error, just continue without custom layout
+    }
+  },
+  { immediate: true }
+)
+
+// Save current layout as custom
+async function handleSaveCustomLayout() {
+  if (!projectName.value || !getCurrentPositions) return
+
+  savingLayout.value = true
+  try {
+    const positions = getCurrentPositions()
+    await api.projects.saveLayout(projectName.value, positions)
+    customLayout.value = positions
+    hasCustomLayout.value = true
+    layoutType.value = 'custom'
+
+    successMessage.value = `Custom layout saved with ${Object.keys(positions).length} entity positions`
+    showSuccessSnackbar.value = true
+  } catch (error) {
+    console.error('Failed to save custom layout:', error)
+  } finally {
+    savingLayout.value = false
+  }
+}
+
+// Clear custom layout
+async function handleClearCustomLayout() {
+  if (!projectName.value) return
+
+  try {
+    await api.projects.clearLayout(projectName.value)
+    customLayout.value = null
+    hasCustomLayout.value = false
+
+    // Switch back to default layout
+    if (layoutType.value === 'custom') {
+      layoutType.value = 'force'
+    }
+
+    successMessage.value = 'Custom layout cleared'
+    showSuccessSnackbar.value = true
+  } catch (error) {
+    console.error('Failed to clear custom layout:', error)
+  }
+}
 
 // Methods
 function handleTestRun() {
