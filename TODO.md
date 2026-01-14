@@ -384,6 +384,20 @@ This could be implemented relatively quickly with high impact:
 
 Would you like me to start implementing any of these improvements? I'd recommend starting with the **graph overlay editor** as it provides immediate value and sets up the foundation for the template system.
 
+TODO: #153 Improve user experience (Custom graph layout)
 
-It would be super if we could add a "custom" layout to the dependency graph. This layout, when pressed, would save the position of all nodes/entities (e.g. in the broswer). When 
+The dependency graph view currently has two layouts: 1) HIEARCHICAL and 2) FORCE-DIRECTED. Neither of these two views tries to replicate the user's mental model of the entity model. The user has the option of moving nodes around, but this repositioning is lost between sessions, or changing the layout.
 
+Since the user's mental view is very important, we should add an option to save the user's repositioning of the nodes. This should be a layout associated to a specific projekt (by name/filename) project (by name), and the x/y coordinated of each entity's name.
+
+When doing the layout, entities with stored (x,y) that has been removed can be ignored.
+
+For the UX, we can add a third layout option "CUSTOM" which switches to saved layout. We should probably have a "Save as custom layout" button that stores corrent layout. I don't think we need any automatic store of the layout. - it's up to the user when the layout should be updated.
+
+We need to have rules for laying out new entities that has no x/y.
+
+It might be best to store the layout in the project, e.g.
+
+Another option is to store it in browser's cache, but then user's can't share layout. Storing it in the project also enables layout reuse, since many project's that targets the SEAD database will probably have the same "mental" layout.
+
+Please review this change, and how it can be implemented.
