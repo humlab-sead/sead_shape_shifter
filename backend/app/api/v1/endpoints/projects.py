@@ -1,5 +1,6 @@
 """API endpoints for project management."""
 
+from datetime import datetime, timezone
 from io import StringIO
 from pathlib import Path
 from typing import Any
@@ -505,3 +506,162 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
     logger.info(f"Updated project '{name}' from raw YAML")
 
     return updated_project
+
+
+# Layout Management Models
+class LayoutPositionResponse(BaseModel):
+    """Node position in graph layout."""
+
+    x: float = Field(..., description="X coordinate")
+    y: float = Field(..., description="Y coordinate")
+
+
+class CustomLayoutResponse(BaseModel):
+    """Custom graph layout response."""
+
+    project_name: str = Field(..., description="Project name")
+    layout: dict[str, LayoutPositionResponse] = Field(..., description="Entity positions")
+    has_custom_layout: bool = Field(..., description="Whether custom layout exists")
+
+
+class SaveLayoutRequest(BaseModel):
+    """Request to save custom graph layout."""
+
+    layout: dict[str, dict[str, float]] = Field(..., description="Entity name to position mapping")
+
+
+class SaveLayoutResponse(BaseModel):
+    """Response after saving custom layout."""
+
+    project_name: str = Field(..., description="Project name")
+    entities_positioned: int = Field(..., description="Number of entities positioned")
+    message: str = Field(..., description="Success message")
+
+
+# Layout Management Endpoints
+@router.get("/projects/{name}/layout", response_model=CustomLayoutResponse)
+@handle_endpoint_errors
+async def get_custom_layout(name: str) -> CustomLayoutResponse:
+    """
+    Get custom graph layout for project.
+
+    Returns the saved custom node positions for the dependency graph.
+    If no custom layout exists, returns an empty layout.
+
+    Args:
+        name: Project name
+
+    Returns:
+        Custom layout with entity positions
+    """
+    project_service: ProjectService = get_project_service()
+    project: Project = project_service.load_project(name)
+
+    # Get layout from project options
+    layout_data = project.options.get("layout", {}).get("custom", {})
+
+    # Convert to response model
+    layout_positions = {
+        entity_name: LayoutPositionResponse(x=pos["x"], y=pos["y"])
+        for entity_name, pos in layout_data.items()
+        if not entity_name.startswith("_")  # Skip metadata
+    }
+
+    logger.info(f"Retrieved custom layout for project '{name}': {len(layout_positions)} entities")
+
+    return CustomLayoutResponse(
+        project_name=name,
+        layout=layout_positions,
+        has_custom_layout=bool(layout_data),
+    )
+
+
+@router.put("/projects/{name}/layout", response_model=SaveLayoutResponse)
+@handle_endpoint_errors
+async def save_custom_layout(name: str, request: SaveLayoutRequest) -> SaveLayoutResponse:
+    """
+    Save custom graph layout for project.
+
+    Saves the current positions of nodes in the dependency graph.
+    Creates a backup before modifying the project file.
+
+    Args:
+        name: Project name
+        request: Layout data with entity positions
+
+    Returns:
+        Success response with number of entities positioned
+    """
+    project_service: ProjectService = get_project_service()
+    project: Project = project_service.load_project(name)
+
+    # Validate layout structure
+    for entity_name, pos in request.layout.items():
+        if "x" not in pos or "y" not in pos:
+            raise BadRequestError(f"Invalid position for entity '{entity_name}': must have x and y")
+        # Note: We don't require entities to exist in project - allows saving layout before entity creation
+        if entity_name not in project.entities:
+            logger.warning(f"Entity '{entity_name}' not found in project '{name}', keeping position anyway")
+
+    # Update project options
+    if "layout" not in project.options:
+        project.options["layout"] = {}
+    project.options["layout"]["custom"] = request.layout
+    project.options["layout"]["_metadata"] = {
+        "last_updated": datetime.now(timezone.utc).isoformat(),
+        "layout_version": 1,
+    }
+
+    # Save project (backup is created automatically by save_project)
+    project_service.save_project(project)
+
+    logger.info(f"Saved custom layout for project '{name}': {len(request.layout)} entities positioned")
+
+    return SaveLayoutResponse(
+        project_name=name,
+        entities_positioned=len(request.layout),
+        message="Custom layout saved successfully",
+    )
+
+
+@router.delete("/projects/{name}/layout", response_model=dict[str, str])
+@handle_endpoint_errors
+async def clear_custom_layout(name: str) -> dict[str, str]:
+    """
+    Clear custom graph layout for project.
+
+    Removes saved custom node positions from the project.
+    Creates a backup before modifying the project file.
+
+    Args:
+        name: Project name
+
+    Returns:
+        Success message
+    """
+    project_service: ProjectService = get_project_service()
+    project: Project = project_service.load_project(name)
+
+    # Check if custom layout exists
+    had_layout = bool(project.options.get("layout", {}).get("custom"))
+
+    # Remove custom layout
+    if "layout" in project.options and "custom" in project.options["layout"]:
+        del project.options["layout"]["custom"]
+        # Clean up metadata
+        if "_metadata" in project.options["layout"]:
+            del project.options["layout"]["_metadata"]
+        # Clean up empty layout dict
+        if not project.options["layout"]:
+            del project.options["layout"]
+
+    if had_layout:
+        # Save project (backup is created automatically by save_project)
+        project_service.save_project(project)
+
+        logger.info(f"Cleared custom layout for project '{name}'")
+        return {"project_name": name, "message": "Custom layout cleared successfully"}
+    else:
+        logger.info(f"No custom layout found for project '{name}'")
+        return {"project_name": name, "message": "No custom layout to clear"}
+
