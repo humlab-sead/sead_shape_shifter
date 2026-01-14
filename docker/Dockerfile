@@ -167,9 +167,10 @@ COPY lib/ ./lib/
 # Copy built frontend from frontend-builder
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Create required directories with proper ownership
+# Create required directories and set ownership for ALL files
 RUN mkdir -p /app/projects /app/logs /app/output /app/backups /app/tmp && \
-    chown -R shapeshifter:shapeshifter /app
+    chown -R shapeshifter:shapeshifter /app && \
+    chmod -R u+w /app
 
 # Set environment variables
 ENV PYTHONPATH=/app \
