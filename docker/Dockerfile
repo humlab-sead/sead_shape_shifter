@@ -60,7 +60,8 @@ RUN if [ "$SOURCE" = "github" ]; then \
         mkdir -p /source; \
     fi
 
-# Only copy context when SOURCE=workdir (still copied unconditionally, but clearer intent)
+# Copy local context when SOURCE=workdir
+# When SOURCE=github, this will copy whatever is in the build context (should be empty/minimal)
 ARG USER_UID
 ARG USER_GID
 COPY --chown=${USER_UID}:${USER_GID} . /source-context/
@@ -68,7 +69,7 @@ RUN if [ "$SOURCE" = "workdir" ]; then \
         echo "Using local context"; \
         cp -r /source-context/* /source/ 2>/dev/null || true; \
     else \
-        echo "Ignoring local context (using GitHub clone)"; \
+        echo "Using GitHub clone (ignoring build context)"; \
     fi && \
     rm -rf /source-context
 
@@ -147,8 +148,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # UID/GID can be overridden via build args to match host user
 ARG USER_UID
 ARG USER_GID
-RUN groupadd -r shapeshifter --gid=${USER_GID} && \
-    useradd -r -g shapeshifter --uid=${USER_UID} --home-dir=/app --shell=/bin/bash shapeshifter
+RUN groupadd -r shapeshifter --gid=${USER_GID} 2>/dev/null || groupmod -n shapeshifter $(getent group ${USER_GID} | cut -d: -f1) && \
+    useradd -r -g shapeshifter --uid=${USER_UID} --home-dir=/app --shell=/bin/bash shapeshifter 2>/dev/null || usermod -l shapeshifter -d /app $(getent passwd ${USER_UID} | cut -d: -f1)
 
 # Copy Python packages from builder
 ARG PYTHON_VERSION
@@ -158,15 +159,18 @@ COPY --from=python-builder /usr/local/bin /usr/local/bin
 # Copy application source from source resolver
 COPY --from=source-resolver /source/src ./src/
 COPY --from=source-resolver /source/backend ./backend/
-COPY --from=source-resolver /source/lib ./lib/
 COPY --from=source-resolver /source/scripts ./scripts/
+
+# Copy lib directory from build context (not in git, must be provided separately)
+COPY lib/ ./lib/
 
 # Copy built frontend from frontend-builder
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Create required directories with proper ownership
+# Create required directories and set ownership for ALL files
 RUN mkdir -p /app/projects /app/logs /app/output /app/backups /app/tmp && \
-    chown -R shapeshifter:shapeshifter /app
+    chown -R shapeshifter:shapeshifter /app && \
+    chmod -R u+w /app
 
 # Set environment variables
 ENV PYTHONPATH=/app \
