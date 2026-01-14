@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.4.0...v1.5.0) (2026-01-14)
+
+
+### Features
+
+* enhance Docker setup with user UID/GID support and Makefile integration ([d461ee0](https://github.com/humlab-sead/sead_shape_shifter/commit/d461ee0224586995d68366818d2f50aeeffaf1c2))
+
 # [1.4.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.3.1...v1.4.0) (2026-01-14)
 
 
