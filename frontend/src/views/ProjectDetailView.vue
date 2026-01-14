@@ -96,7 +96,7 @@
           </v-tab>
           <v-tab value="dependencies">
             <v-icon icon="mdi-graph-outline" class="mr-2" />
-            Dependencies
+            Graph
           </v-tab>
           <v-tab value="reconciliation">
             <v-icon icon="mdi-link-variant" class="mr-2" />
