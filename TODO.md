@@ -383,3 +383,7 @@ This could be implemented relatively quickly with high impact:
 6. Add close button and Escape key handler
 
 Would you like me to start implementing any of these improvements? I'd recommend starting with the **graph overlay editor** as it provides immediate value and sets up the foundation for the template system.
+
+
+It would be super if we could add a "custom" layout to the dependency graph. This layout, when pressed, would save the position of all nodes/entities (e.g. in the broswer). When 
+
