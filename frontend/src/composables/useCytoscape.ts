@@ -11,7 +11,7 @@ import dagre from 'cytoscape-dagre'
 import coseBilkent from 'cytoscape-cose-bilkent'
 import { getCytoscapeStyles } from '@/config/cytoscapeStyles'
 import { toCytoscapeElements, getLayoutConfig } from '@/utils/graphAdapter'
-import type { DependencyGraph } from '@/types'
+import type { CustomGraphLayout, DependencyGraph } from '@/types'
 
 // Register layouts
 cytoscape.use(dagre)
@@ -31,7 +31,12 @@ export interface UseCytoscapeOptions {
   /**
    * Layout type
    */
-  layoutType?: Ref<'hierarchical' | 'force'>
+  layoutType?: Ref<'hierarchical' | 'force' | 'custom'>
+
+  /**
+   * Custom layout positions
+   */
+  customPositions?: Ref<CustomGraphLayout | null>
 
   /**
    * Whether to show node labels
@@ -89,6 +94,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     container,
     graphData,
     layoutType = ref('hierarchical'),
+    customPositions = ref(null),
     showNodeLabels = ref(true),
     showEdgeLabels = ref(true),
     highlightCycles = ref(false),
@@ -259,8 +265,19 @@ export function useCytoscape(options: UseCytoscapeOptions) {
         const newNodes = added.nodes()
         if (newNodes.length > 0) {
           console.log('[useCytoscape] Running layout for', newNodes.length, 'new nodes')
-          const layoutConfig = getLayoutConfig(layoutType.value, true)
-          newNodes.layout(layoutConfig as LayoutOptions).run()
+          
+          // For custom layout, run on all nodes to trigger smart positioning
+          if (layoutType.value === 'custom') {
+            applyLayout(true)
+          } else {
+            // For other layouts, only layout new nodes
+            const layoutConfig = getLayoutConfig(
+              layoutType.value,
+              true,
+              layoutType.value === 'custom' ? customPositions.value ?? undefined : undefined
+            )
+            newNodes.layout(layoutConfig as LayoutOptions).run()
+          }
         }
       }
     }
@@ -274,7 +291,11 @@ export function useCytoscape(options: UseCytoscapeOptions) {
   function applyLayout(animate: boolean = true) {
     if (!cy.value || isAnimating.value) return
 
-    const layoutConfig = getLayoutConfig(layoutType.value, animate)
+    const layoutConfig = getLayoutConfig(
+      layoutType.value,
+      animate,
+      layoutType.value === 'custom' ? customPositions.value ?? undefined : undefined
+    )
 
     isAnimating.value = true
 
@@ -495,6 +516,22 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     destroy()
   })
 
+  /**
+   * Get current node positions for saving custom layout
+   * Saves positions for all visible nodes (entities and sources)
+   */
+  function getCurrentPositions(): CustomGraphLayout {
+    if (!cy.value) return {}
+
+    const positions: CustomGraphLayout = {}
+    cy.value.nodes().forEach((node) => {
+      const nodeName = node.data('id')
+      const pos = node.position()
+      positions[nodeName] = { x: pos.x, y: pos.y }
+    })
+    return positions
+  }
+
   return {
     cy,
     isInitialized,
@@ -507,6 +544,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     fit,
     center,
     reset,
+    getCurrentPositions,
     zoomIn,
     zoomOut,
     exportPNG,
