@@ -2,7 +2,7 @@
  * API service for project management
  */
 
-import type { Project, ProjectMetadata, ValidationResult } from '@/types'
+import type { CustomGraphLayout, Project, ProjectMetadata, ValidationResult } from '@/types'
 import { apiRequest } from './client'
 
 export interface ProjectCreateRequest {
@@ -202,4 +202,36 @@ export const projectsApi = {
       url: `/projects/${name}/raw-yaml`,
       data: { yaml_content: yamlContent },
     })
-  },}
+  },
+
+  /**
+   * Get custom graph layout for project
+   */
+  getLayout: async (name: string): Promise<{ layout: CustomGraphLayout; has_custom_layout: boolean }> => {
+    return apiRequest<{ layout: CustomGraphLayout; has_custom_layout: boolean }>({
+      method: 'GET',
+      url: `/projects/${name}/layout`,
+    })
+  },
+
+  /**
+   * Save custom graph layout for project
+   */
+  saveLayout: async (name: string, layout: CustomGraphLayout): Promise<{ entities_positioned: number }> => {
+    return apiRequest<{ entities_positioned: number }>({
+      method: 'PUT',
+      url: `/projects/${name}/layout`,
+      data: { layout },
+    })
+  },
+
+  /**
+   * Clear custom graph layout for project
+   */
+  clearLayout: async (name: string): Promise<void> => {
+    return apiRequest<void>({
+      method: 'DELETE',
+      url: `/projects/${name}/layout`,
+    })
+  },
+}

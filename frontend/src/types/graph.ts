@@ -73,3 +73,25 @@ export interface DependencyCheckResult {
   has_cycles: boolean
   cycles: CircularDependency[]
 }
+
+// Graph layout types
+export interface NodePosition {
+  x: number
+  y: number
+}
+
+export interface CustomGraphLayout {
+  [nodeName: string]: NodePosition
+}
+
+export interface LayoutMetadata {
+  created_at?: string
+  last_updated?: string
+  layout_version?: number
+}
+
+export interface GraphLayoutOptions {
+  custom?: CustomGraphLayout
+  _metadata?: LayoutMetadata
+}
+
