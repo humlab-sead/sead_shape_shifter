@@ -217,70 +217,10 @@ frontend-preview:
 # Docker
 ################################################################################
 
-.PHONY: docker-build
-docker-build:
-	@echo "Building Docker image..."
-	@docker compose -f docker/docker-compose.yml build
-
-.PHONY: docker-build-no-cache
-docker-build-no-cache:
-	@echo "Building Docker image (no cache)..."
-	@docker compose -f docker/docker-compose.yml build --no-cache
-
-.PHONY: docker-up
-docker-up:
-	@echo "Starting Shape Shifter with Docker Compose..."
-	@cd docker && docker compose up -d
-	@echo "✓ Application started at http://localhost:${BACKEND_PORT}"
-
-.PHONY: docker-start
-docker-start: docker-up
-
-.PHONY: docker-down
-docker-down:
-	@echo "Stopping Shape Shifter containers..."
-	@cd docker && docker compose down
-
-.PHONY: docker-stop
-docker-stop: docker-down
-
-.PHONY: docker-logs
-docker-logs:
-	@cd docker && docker compose logs -f
-
-.PHONY: docker-restart
-docker-restart:
-	@echo "Restarting Shape Shifter..."
-	@cd docker && docker compose down
-	@cd docker && docker compose up -d
-	@echo "✓ Application restarted at http://localhost:${BACKEND_PORT}"
-
-.PHONY: docker-rebuild
-docker-rebuild:
-	@echo "Rebuilding and restarting Shape Shifter..."
-	@cd docker && docker compose down
-	@cd docker && docker compose up -d --build
-	@echo "✓ Application rebuilt and started at http://localhost:${BACKEND_PORT}"
-
-.PHONY: docker-shell
-docker-shell:
-	@cd docker && docker compose exec shape-shifter /bin/bash
-
-.PHONY: docker-clean
-docker-clean:
-	@echo "Cleaning up Docker resources..."
-	@cd docker && docker compose down -v
-	@docker image rm shape-shifter:latest 2>/dev/null || true
-	@echo "✓ Cleanup complete"
-
-.PHONY: docker-ps
-docker-ps:
-	@cd docker && docker compose ps
-
-.PHONY: docker-health
-docker-health:
-	@echo "Checking application health..."
-	@curl -sf http://localhost:8012/api/v1/health | jq . || echo "❌ Health check failed"
+# Include Docker recipes from docker/Makefile
+DOCKER_DIR := ./docker
+export DOCKER_DIR
+include docker/Makefile
 
 ################################################################################
 # Other stuff
