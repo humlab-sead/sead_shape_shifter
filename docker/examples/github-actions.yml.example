@@ -10,6 +10,7 @@
 #    - DOCKER_USERNAME: Docker Hub username (or registry username)
 #    - DOCKER_PASSWORD: Docker Hub password/token (or registry token)
 # 3. Customize the registry and image name as needed
+# 4. Adjust USER_UID and USER_GID if needed (defaults to 1000:1000)
 # ==============================================================================
 
 name: Build and Push Docker Image
@@ -76,6 +77,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            SOURCE=github
+            GIT_REF=${{ github.ref_name }}
+            CACHE_BUST=${{ github.sha }}
+            USER_UID=1000
+            USER_GID=1000
 
       - name: Image digest
         run: echo ${{ steps.meta.outputs.digest }}
@@ -98,7 +105,9 @@ jobs:
             cd /opt/shape-shifter
             docker compose pull
             docker compose up -d
-            docker compose exec -T shape-shifter python -c "import urllib.request; urllib.request.urlopen('http://localhost:8012/').read()"
+            # Wait for health check
+            timeout 60 bash -c 'until curl -sf http://localhost:8012/api/v1/health >/dev/null 2>&1; do sleep 2; done'
+            echo "Deployment successful - application is healthy"
 
 # ==============================================================================
 # GitHub Container Registry Alternative
@@ -109,3 +118,20 @@ jobs:
 #    username: ${{ github.actor }}
 #    password: ${{ secrets.GITHUB_TOKEN }}
 # 3. No additional secrets needed - GITHUB_TOKEN is automatic
+#
+# Build Args Reference:
+# - SOURCE: 'github' (build from GitHub) or 'workdir' (build from context)
+# - GIT_REF: Branch, tag, or commit to build from (when SOURCE=github)
+# - CACHE_BUST: Commit SHA to invalidate Docker cache on new commits
+# - USER_UID: User ID for container (default: 1000)
+# - USER_GID: Group ID for container (default: 1000)
+# - VITE_API_BASE_URL: Frontend API base URL (default: "" for same-origin)
+# - VITE_ENV: Frontend environment (default: "production")
+#
+# For custom UID/GID (e.g., for specific deployment user):
+#   build-args: |
+#     USER_UID=1002
+#     USER_GID=33
+#     SOURCE=github
+#     GIT_REF=${{ github.ref_name }}
+#     CACHE_BUST=${{ github.sha }}
