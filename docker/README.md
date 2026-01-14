@@ -4,15 +4,33 @@ Single-container deployment for Shape Shifter with FastAPI backend serving both 
 
 ## Quick Start
 
-```bash
-# Create data directories
-mkdir -p projects input output backups logs
+### Using Make (Recommended)
 
-# Start with Docker Compose
-docker-compose up -d --build
+```bash
+# From repository root
+make docker-build
+make docker-up
+
+# From docker/ directory
+cd docker/
+make docker-build
+make docker-up
 
 # View logs
-docker-compose logs -f app
+make docker-logs
+```
+
+### Using Docker Compose Directly
+
+```bash
+# Create data directories
+mkdir -p data/projects data/logs data/output data/backups data/tmp
+
+# Start with Docker Compose
+docker compose up -d --build
+
+# View logs
+docker compose logs -f
 ```
 
 **Access:** http://localhost:8012
@@ -24,9 +42,10 @@ docker-compose logs -f app
 ## Architecture
 
 Multi-stage build combining frontend and backend:
-1. **Stage 1**: Builds Vue 3 frontend with Vite
-2. **Stage 2**: Installs Python dependencies (uv)
-3. **Stage 3**: Production runtime - FastAPI serves both API and static frontend on port 8012
+1. **Stage 0**: Resolves codebase source (local context or GitHub clone)
+2. **Stage 1**: Builds Vue 3 frontend with Vite
+3. **Stage 2**: Installs Python dependencies (uv)
+4. **Stage 3**: Production runtime - FastAPI serves both API and static frontend on port 8012
 
 ## Configuration
 
@@ -117,27 +136,127 @@ volumes:
 
 ## Common Commands
 
+### Using Make (Preferred)
+
+```bash
+# Build
+make docker-build                   # Build from local context
+make docker-build-github            # Build from GitHub main (with cache bust)
+make docker-build-tag TAG=v1.2.0    # Build from specific tag/branch
+make docker-build-no-cache          # Build without cache
+
+# Run
+make docker-up                      # Start containers
+make docker-down                    # Stop containers
+make docker-restart                 # Restart containers
+make docker-rebuild                 # Rebuild and restart
+
+# Inspect
+make docker-logs                    # View logs (follow mode)
+make docker-ps                      # List running containers
+make docker-health                  # Check application health
+make docker-shell                   # Open bash shell in container
+
+# Clean
+make docker-clean                   # Stop containers and remove volumes
+```
+
+### Using Docker Compose Directly
+
 ```bash
 # Stop
-docker-compose down
+docker compose down
 
 # Rebuild after changes
-docker-compose up -d --build
+docker compose up -d --build
 
 # Force rebuild (no cache)
-docker-compose build --no-cache && docker-compose up -d
+docker compose build --no-cache && docker compose up -d
 
 # Shell access
-docker-compose exec app bash
+docker compose exec shape-shifter bash
 
 # Clean everything
-docker-compose down -v
+docker compose down -v
 docker system prune -a
 ```
 
 ## Advanced Usage
 
-### Manual Docker Build
+### Build Source Modes
+
+The Dockerfile supports two explicit build modes for optimal cache behavior:
+
+#### 1. Local Context (Default - Development)
+Uses source code from your local repository:
+
+```bash
+# From repository root
+cd /path/to/sead_shape_shifter
+docker build -f docker/Dockerfile -t shapeshifter:dev .
+
+# Explicit local source
+docker build -f docker/Dockerfile \
+  --build-arg SOURCE=workdir \
+  -t shapeshifter:dev .
+```
+
+#### 2. GitHub Clone (CI/CD / Production)
+Clones source from GitHub repository:
+
+```bash
+# Build from main branch (uses cache if main hasn't changed)
+docker build -f docker/Dockerfile \
+  --build-arg SOURCE=github \
+  --build-arg GIT_REF=main \
+  -t shapeshifter:main .
+
+# Build from main branch with cache invalidation (always pulls latest)
+docker build -f docker/Dockerfile \
+  --build-arg SOURCE=github \
+  --build-arg GIT_REF=main \
+  --build-arg CACHE_BUST=$(git ls-remote https://github.com/humlab-sead/sead_shape_shifter.git refs/heads/main | cut -f1) \
+  -t shapeshifter:main .
+
+# Alternative: Use timestamp for cache busting (simpler but always invalidates)
+docker build -f docker/Dockerfile \
+  --build-arg SOURCE=github \
+  --build-arg GIT_REF=main \
+  --build-arg CACHE_BUST=$(date +%s) \
+  -t shapeshifter:main .
+
+# Build from specific tag (recommended for production - uses cache efficiently)
+docker build -f docker/Dockerfile \
+  --build-arg SOURCE=github \
+  --build-arg GIT_REF=v1.2.0 \
+  -t shapeshifter:1.2.0 .
+
+# Build from custom repository/branch
+docker build -f docker/Dockerfile \
+  --build-arg SOURCE=github \
+  --build-arg GIT_REPO=https://github.com/yourorg/fork.git \
+  --build-arg GIT_REF=feature-branch \
+  -t shapeshifter:custom .
+```
+
+**Cache Invalidation Explained:**
+- When using branch names (`main`, `develop`), Docker caches the git clone
+- Use `CACHE_BUST` with remote commit SHA to invalidate cache when branch updates
+- For specific tags (`v1.2.0`), cache invalidation isn't needed - tags don't change
+- In CI/CD, always use `CACHE_BUST=$(git ls-remote ...)` to get latest commits
+
+**Note:** When using `SOURCE=github`, local context is ignored. This prevents cache invalidation from local file changes and ensures reproducible builds.
+
+#### Version Selection
+```bash
+# Use different Python/Node versions
+docker build -f docker/Dockerfile \
+  --build-arg PYTHON_VERSION=3.12 \
+  --build-arg NODE_VERSION=18 \
+  -t shapeshifter:py312 .
+```
+
+### Manual Docker Build (Basic)
 
 ```bash
 docker build -f docker/Dockerfile -t shape-shifter:latest .

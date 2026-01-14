@@ -1,26 +1,90 @@
 # ==============================================================================
 # Multi-stage Dockerfile for Shape Shifter
 # Builds frontend (Vue 3) and serves via FastAPI backend
+#
+# Build Modes:
+#   1. From local context (default - recommended for development):
+#      docker build -f docker/Dockerfile -t shapeshifter .
+#
+#   2. From GitHub repository (recommended for CI/CD):
+#      docker build -f docker/Dockerfile \
+#                   --build-arg SOURCE=github \
+#                   --build-arg GIT_REF=main \
+#                   -t shapeshifter .
+#
+#   3. From GitHub with cache invalidation (when branch has new commits):
+#      docker build -f docker/Dockerfile \
+#                   --build-arg SOURCE=github \
+#                   --build-arg GIT_REF=main \
+#                   --build-arg CACHE_BUST=$(git ls-remote https://github.com/humlab-sead/sead_shape_shifter.git refs/heads/main | cut -f1) \
+#                   -t shapeshifter .
+#
+# NOTE: Auto-detection removed to follow Docker best practices.
+#       Explicit SOURCE mode prevents cache invalidation issues.
 # ==============================================================================
+
+# Global build arguments (available to all stages)
+ARG PYTHON_VERSION=3.13
+ARG NODE_VERSION=20
+ARG ALPINE_VERSION=3.19
+
+# ------------------------------------------------------------------------------
+# Stage 0: Resolve Codebase Source
+# ------------------------------------------------------------------------------
+ARG ALPINE_VERSION
+FROM alpine:${ALPINE_VERSION} AS source-resolver
+
+ARG SOURCE=workdir
+ARG GIT_REPO=https://github.com/humlab-sead/sead_shape_shifter.git
+ARG GIT_REF=main
+# Cache bust arg - set to commit SHA or timestamp to invalidate cache when branch updates
+# Example: --build-arg CACHE_BUST=$(git rev-parse HEAD)
+# Example: --build-arg CACHE_BUST=$(date +%s)
+ARG CACHE_BUST=1
+
+WORKDIR /source
+
+# Clone from GitHub or use local context based on SOURCE argument
+# Split into separate paths for better cache utilization
+RUN if [ "$SOURCE" = "github" ]; then \
+        echo "Cloning from GitHub: ${GIT_REPO} (ref: ${GIT_REF})..."; \
+        echo "Cache bust value: ${CACHE_BUST}"; \
+        apk add --no-cache git && \
+        git clone --depth 1 --branch "${GIT_REF}" "${GIT_REPO}" /source && \
+        cd /source && \
+        echo "Cloned commit: $(git rev-parse HEAD)"; \
+    else \
+        echo "Preparing for local context copy..."; \
+        mkdir -p /source; \
+    fi
+
+# Only copy context when SOURCE=workdir (still copied unconditionally, but clearer intent)
+COPY --chown=1000:1000 . /source-context/
+RUN if [ "$SOURCE" = "workdir" ]; then \
+        echo "Using local context"; \
+        cp -r /source-context/* /source/ 2>/dev/null || true; \
+    else \
+        echo "Ignoring local context (using GitHub clone)"; \
+    fi && \
+    rm -rf /source-context
+
 
 # ------------------------------------------------------------------------------
 # Stage 1: Build Frontend
 # ------------------------------------------------------------------------------
-FROM node:20-alpine AS frontend-builder
+ARG NODE_VERSION
+FROM node:${NODE_VERSION}-alpine AS frontend-builder
+
+# Copy codebase from source resolver
+COPY --from=source-resolver /source /app
 
 WORKDIR /app/frontend
 
 # Install pnpm
 RUN npm install -g pnpm@9
 
-# Copy package files
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
-
 # Install dependencies
 RUN pnpm install --frozen-lockfile
-
-# Copy frontend source
-COPY frontend/ ./
 
 # Build-time environment variables for Vite
 ARG VITE_API_BASE_URL
@@ -41,16 +105,16 @@ RUN pnpm run build:skip-check
 # ------------------------------------------------------------------------------
 # Stage 2: Python Dependencies
 # ------------------------------------------------------------------------------
-FROM python:3.13-slim AS python-builder
+ARG PYTHON_VERSION
+FROM python:${PYTHON_VERSION}-slim AS python-builder
+
+# Copy codebase from source resolver
+COPY --from=source-resolver /source /app
 
 WORKDIR /app
 
 # Install uv for fast Python package installation
 RUN pip install --no-cache-dir uv
-
-# Copy Python dependency files
-COPY pyproject.toml ./
-COPY README.md ./
 
 # Create empty uv.lock if it doesn't exist (optional)
 RUN touch uv.lock || true
@@ -62,7 +126,8 @@ RUN uv pip install --system --no-cache -e ".[api]"
 # ------------------------------------------------------------------------------
 # Stage 3: Production Runtime
 # ------------------------------------------------------------------------------
-FROM python:3.13-slim
+ARG PYTHON_VERSION
+FROM python:${PYTHON_VERSION}-slim
 
 WORKDIR /app
 
@@ -74,28 +139,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user for security
+RUN groupadd -r shapeshifter --gid=1000 && \
+    useradd -r -g shapeshifter --uid=1000 --home-dir=/app --shell=/bin/bash shapeshifter
+
 # Copy Python packages from builder
-COPY --from=python-builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+ARG PYTHON_VERSION
+COPY --from=python-builder /usr/local/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
 COPY --from=python-builder /usr/local/bin /usr/local/bin
 
-# Copy application source
-COPY src/ ./src/
-COPY backend/ ./backend/
+# Copy application source from source resolver
+COPY --from=source-resolver /source/src ./src/
+COPY --from=source-resolver /source/backend ./backend/
+COPY --from=source-resolver /source/lib ./lib/
+COPY --from=source-resolver /source/scripts ./scripts/
 
 # Copy built frontend from frontend-builder
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Copy UCanAccess library for MS Access support
-COPY lib/ ./lib/
-
-# Copy scripts
-COPY scripts/ ./scripts/
-
-# Create required directories
-RUN mkdir -p /app/projects /app/logs /app/output /app/backups /app/tmp
-
-# Create required directories
-RUN mkdir -p /app/projects /app/logs /app/output /app/backups /app/tmp
+# Create required directories with proper ownership
+RUN mkdir -p /app/projects /app/logs /app/output /app/backups /app/tmp && \
+    chown -R shapeshifter:shapeshifter /app
 
 # Set environment variables
 ENV PYTHONPATH=/app \
@@ -104,12 +168,13 @@ ENV PYTHONPATH=/app \
     PROJECTS_DIR=/app/projects \
     LOG_LEVEL=INFO
 
-# Expose port
+# Switch to non-root user
+USER shapeshifter
+
 EXPOSE 8012
 
-# Health check
+# Health check using wget (more lightweight than Python)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8012/api/v1/health').read()"
 
-# Run the application
 CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8012", "--workers", "4"]
