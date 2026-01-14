@@ -247,16 +247,6 @@
                 </v-btn>
                 <v-spacer />
 
-                <v-btn
-                  size="small"
-                  variant="outlined"
-                  prepend-icon="mdi-information-outline"
-                  :color="showLegend ? 'primary' : undefined"
-                  @click="showLegend = !showLegend"
-                >
-                  Legend
-                </v-btn>
-
                 <v-chip prepend-icon="mdi-cube-outline"> {{ depStatistics.nodeCount }} nodes </v-chip>
                 <v-chip prepend-icon="mdi-arrow-right"> {{ depStatistics.edgeCount }} edges </v-chip>
               </v-card-text>
@@ -322,6 +312,19 @@
                   >
                     <v-icon>mdi-refresh</v-icon>
                     <v-tooltip activator="parent" location="left">Reset View</v-tooltip>
+                  </v-btn>
+                  
+                  <v-divider class="my-1" />
+                  
+                  <v-btn 
+                    icon
+                    size="small"
+                    class="graph-fab"
+                    color="primary"
+                    @click="handleCreateNewNode"
+                  >
+                    <v-icon>mdi-plus-circle-outline</v-icon>
+                    <v-tooltip activator="parent" location="left">Create New Node</v-tooltip>
                   </v-btn>
                   
                   <v-divider class="my-1" />
@@ -1262,6 +1265,13 @@ function handleExportPNG() {
     link.href = png
     link.click()
   }
+}
+
+function handleCreateNewNode() {
+  // Switch to entities tab to create a new entity
+  activeTab.value = 'entities'
+  // Note: The entity creation dialog will be triggered by the EntityListCard component
+  // We could emit an event or use a shared state if we want to auto-open the dialog
 }
 
 async function handleLoadYaml() {
