@@ -1,3 +1,11 @@
+# [1.6.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.5.0...v1.6.0) (2026-01-14)
+
+
+### Features
+
+* enhance Dockerfile with directory ownership and permissions setup ([6f1328d](https://github.com/humlab-sead/sead_shape_shifter/commit/6f1328d29f9270e6138fb59524c448d278c69e79))
+* update Dockerfile and Makefile for standalone builds and context handling ([d9baceb](https://github.com/humlab-sead/sead_shape_shifter/commit/d9baceb09a2fe31b1f921707e6d973a18186d05a))
+
 # [1.5.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.4.0...v1.5.0) (2026-01-14)
 
 
