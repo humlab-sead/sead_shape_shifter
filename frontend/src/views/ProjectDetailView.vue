@@ -278,8 +278,8 @@
             </v-alert>
 
             <!-- Graph Container -->
-            <v-card v-else variant="outlined">
-              <v-card-text class="pa-0">
+            <v-card v-else variant="outlined" class="graph-card">
+              <v-card-text class="pa-0 graph-card-content">
                 <div ref="graphContainer" class="graph-container" />
               </v-card-text>
               <v-card-actions class="justify-end">
@@ -1388,10 +1388,22 @@ watch(
   gap: 1rem;
 }
 
+.graph-card {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 420px);
+  min-height: 500px;
+}
+
+.graph-card-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
 .graph-container {
   width: 100%;
-  height: 600px;
-  min-height: 600px;
+  height: 100%;
   position: relative;
   background: transparent;
 }
