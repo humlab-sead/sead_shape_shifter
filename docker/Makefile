@@ -7,6 +7,7 @@ DOCKER_DIR ?= .
 
 # Repository and build settings
 GIT_REPO ?= https://github.com/humlab-sead/sead_shape_shifter.git
+GIT_REF ?= main
 BACKEND_PORT ?= 8012
 
 # User ID settings for container (defaults to sead user)
@@ -25,6 +26,7 @@ USER_GID ?= $(shell id sead -g)
 #   - docker-build          : Build from local context (default, for development)
 #   - docker-build-github   : Build from GitHub main (CI/CD, with cache invalidation)
 #   - docker-build-tag TAG=v1.0.0 : Build from specific tag/branch (production)
+#   - docker-build-standalone : Build from GitHub with minimal context (any directory)
 #
 # Run modes:
 #   - docker-up             : Start containers
@@ -88,6 +90,7 @@ docker-build-no-cache:
 		--build-arg USER_GID=$(USER_GID)
 
 # Build from GitHub main branch (with cache invalidation)
+# NOTE: Run from project root directory
 .PHONY: docker-build-github
 docker-build-github:
 	@echo "Building Docker image from GitHub (main branch, UID=$(USER_UID), GID=$(USER_GID))..."
@@ -100,10 +103,11 @@ docker-build-github:
 		--build-arg USER_UID=$(USER_UID) \
 		--build-arg USER_GID=$(USER_GID) \
 		-t shape-shifter:latest \
-		$(DOCKER_DIR)/..
+		.
 	@echo "✓ Built from GitHub main ($${CACHE_BUST:0:8})"
 
 # Build from specific GitHub tag/branch (no cache bust needed for tags)
+# NOTE: Run from project root directory
 .PHONY: docker-build-tag
 docker-build-tag:
 	@if [ -z "$(TAG)" ]; then \
@@ -118,8 +122,38 @@ docker-build-tag:
 		--build-arg USER_UID=$(USER_UID) \
 		--build-arg USER_GID=$(USER_GID) \
 		-t shape-shifter:$(TAG) \
-		$(DOCKER_DIR)/..
+		.
 	@echo "✓ Built from GitHub tag/branch: $(TAG)"
+
+# Build from GitHub with minimal context (standalone build from any directory)
+# NOTE: Requires lib/ directory in current directory (UCanAccess library)
+.PHONY: docker-build-standalone
+docker-build-standalone:
+	@echo "Building Docker image from GitHub (standalone, minimal context)..."
+	@if [ ! -d "lib" ]; then \
+		echo "❌ Error: lib/ directory not found in current directory"; \
+		echo "   The lib/ directory (UCanAccess) must be present for standalone builds"; \
+		exit 1; \
+	fi
+	@TEMP_DIR=$$(mktemp -d) && \
+	echo "# Ignore everything except lib/" > $$TEMP_DIR/.dockerignore && \
+	echo "*" >> $$TEMP_DIR/.dockerignore && \
+	echo "!lib/" >> $$TEMP_DIR/.dockerignore && \
+	cp -r lib $$TEMP_DIR/ && \
+	DOCKERFILE_PATH=$$(realpath $(DOCKER_DIR)/Dockerfile) && \
+	CACHE_BUST=$$(git ls-remote $(GIT_REPO) refs/heads/main 2>/dev/null | cut -f1 || echo "1") && \
+	cd $$TEMP_DIR && \
+	docker build -f $$DOCKERFILE_PATH \
+		--build-arg SOURCE=github \
+		--build-arg GIT_REPO=$(GIT_REPO) \
+		--build-arg GIT_REF=$(GIT_REF) \
+		--build-arg CACHE_BUST=$$CACHE_BUST \
+		--build-arg USER_UID=$(USER_UID) \
+		--build-arg USER_GID=$(USER_GID) \
+		-t shape-shifter:latest \
+		. && \
+	rm -rf $$TEMP_DIR
+	@echo "✓ Built from GitHub (standalone) with minimal context"
 
 .PHONY: docker-up
 docker-up:
