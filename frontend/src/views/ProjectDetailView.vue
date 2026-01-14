@@ -281,23 +281,62 @@
             <v-card v-else variant="outlined" class="graph-card">
               <v-card-text class="pa-0 graph-card-content">
                 <div ref="graphContainer" class="graph-container" />
+                
+                <!-- Floating Action Buttons -->
+                <div class="graph-fab-container">
+                  <v-btn 
+                    icon
+                    size="small"
+                    class="graph-fab"
+                    @click="handleFit"
+                  >
+                    <v-icon>mdi-fit-to-screen</v-icon>
+                    <v-tooltip activator="parent" location="left">Fit to Screen</v-tooltip>
+                  </v-btn>
+                  
+                  <v-btn 
+                    icon
+                    size="small"
+                    class="graph-fab"
+                    @click="handleZoomIn"
+                  >
+                    <v-icon>mdi-magnify-plus</v-icon>
+                    <v-tooltip activator="parent" location="left">Zoom In</v-tooltip>
+                  </v-btn>
+                  
+                  <v-btn 
+                    icon
+                    size="small"
+                    class="graph-fab"
+                    @click="handleZoomOut"
+                  >
+                    <v-icon>mdi-magnify-minus</v-icon>
+                    <v-tooltip activator="parent" location="left">Zoom Out</v-tooltip>
+                  </v-btn>
+                  
+                  <v-btn 
+                    icon
+                    size="small"
+                    class="graph-fab"
+                    @click="handleResetView"
+                  >
+                    <v-icon>mdi-refresh</v-icon>
+                    <v-tooltip activator="parent" location="left">Reset View</v-tooltip>
+                  </v-btn>
+                  
+                  <v-divider class="my-1" />
+                  
+                  <v-btn 
+                    icon
+                    size="small"
+                    class="graph-fab"
+                    @click="handleExportPNG"
+                  >
+                    <v-icon>mdi-download</v-icon>
+                    <v-tooltip activator="parent" location="left">Export PNG</v-tooltip>
+                  </v-btn>
+                </div>
               </v-card-text>
-              <v-card-actions class="justify-end">
-                <v-btn variant="text" prepend-icon="mdi-fit-to-screen" size="small" @click="handleFit"> Fit </v-btn>
-                <v-btn variant="text" prepend-icon="mdi-magnify-plus" size="small" @click="handleZoomIn">
-                  Zoom In
-                </v-btn>
-                <v-btn variant="text" prepend-icon="mdi-magnify-minus" size="small" @click="handleZoomOut">
-                  Zoom Out
-                </v-btn>
-                <v-btn variant="text" prepend-icon="mdi-refresh" size="small" @click="handleResetView">
-                  Reset View
-                </v-btn>
-                <v-divider vertical class="mx-2" />
-                <v-btn variant="text" prepend-icon="mdi-download" size="small" @click="handleExportPNG">
-                  Export PNG
-                </v-btn>
-              </v-card-actions>
             </v-card>
 
             <!-- Legend Dialog -->
@@ -1391,7 +1430,7 @@ watch(
 .graph-card {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 420px);
+  height: calc(100vh - 360px);
   min-height: 500px;
 }
 
@@ -1399,6 +1438,7 @@ watch(
   flex: 1;
   display: flex;
   overflow: hidden;
+  position: relative;
 }
 
 .graph-container {
@@ -1406,5 +1446,28 @@ watch(
   height: 100%;
   position: relative;
   background: transparent;
+}
+
+.graph-fab-container {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10;
+}
+
+.graph-fab {
+  background: rgba(var(--v-theme-surface), 0.9) !important;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.graph-fab:hover {
+  background: rgba(var(--v-theme-surface), 1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transform: translateY(-2px);
 }
 </style>
