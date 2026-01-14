@@ -4,15 +4,53 @@ Single-container deployment for Shape Shifter with FastAPI backend serving both 
 
 ## Quick Start
 
+### Prerequisites
+
+**Important:** The container runs as a non-root user (shapeshifter) matching your host user's UID/GID.
+
+**For most users (UID/GID auto-detected):**
+```bash
+# Makefile automatically detects $(id -u) and $(id -g)
+make setup-volumes    # One-time setup
+make docker-build
+make docker-up
+```
+
+**Manual setup (if needed):**
+```bash
+mkdir -p data/{projects,logs,output,backups,tmp}
+sudo chown -R $(id -u):$(id -g) data/{projects,logs,output,backups,tmp}
+chmod -R 755 data/{projects,logs,output,backups,tmp}
+```
+
+**For specific user (e.g., UID 1002, GID 33):**
+```bash
+# Option 1: Export environment variables
+export USER_UID=1002
+export USER_GID=33
+make setup-volumes && make docker-build && make docker-up
+
+# Option 2: Inline per command
+USER_UID=1002 USER_GID=33 make setup-volumes
+USER_UID=1002 USER_GID=33 make docker-build
+USER_UID=1002 USER_GID=33 make docker-up
+```
+
 ### Using Make (Recommended)
 
 ```bash
-# From repository root
-make docker-build
-make docker-up
+# Complete first-time setup (volumes + env files)
+make setup
 
-# From docker/ directory
+# Or step by step:
+make setup-volumes    # Create directories with proper permissions
+make setup-env        # Copy .env files from examples
+make docker-build     # Build the image
+make docker-up        # Start the application
+
+# From docker/ directory:
 cd docker/
+make setup
 make docker-build
 make docker-up
 
@@ -20,11 +58,44 @@ make docker-up
 make docker-logs
 ```
 
+**All Available Make Targets:**
+```bash
+# Setup
+make setup              # Complete setup (volumes + env files)
+make setup-volumes      # Create data directories
+make setup-env          # Copy environment file templates
+
+# Build
+make docker-build              # Build from local context
+make docker-build-no-cache     # Build without cache
+make docker-build-github       # Build from GitHub main
+make docker-build-tag TAG=v1.0 # Build from specific tag
+
+# Run
+make docker-up          # Start containers
+make docker-down        # Stop containers
+make docker-restart     # Restart containers
+make docker-rebuild     # Rebuild and restart
+
+# Inspect
+make docker-logs        # View logs (follow mode)
+make docker-shell       # Open bash in container
+make docker-health      # Check health endpoint
+make docker-ps          # List containers
+
+# Test & Validate
+make docker-validate    # Validate configuration
+make docker-test        # Full integration test
+
+# Clean
+make docker-clean       # Stop and remove everything
+```
+
 ### Using Docker Compose Directly
 
 ```bash
-# Create data directories
-mkdir -p data/projects data/logs data/output data/backups data/tmp
+# Setup directories first
+make setup-volumes
 
 # Start with Docker Compose
 docker compose up -d --build
@@ -443,18 +514,48 @@ ports:
   - "8080:8012"  # Use different host port
 ```
 
+## Troubleshooting
+
 ### Permission Issues
-Troubleshooting
+
+**Problem:** Container cannot write to mounted volumes (projects, logs, output, backups, tmp)
+
+**Solution:**
+```bash
+# 1. Check your user ID
+id -u  # Should match container's UID (default 1000)
+id -g  # Should match container's GID (default 1000)
+
+# 2. If your UID/GID is 1000 (most common), just fix directory permissions:
+make setup-volumes
+
+# 3. If your UID/GID is NOT 1000, rebuild with custom UID/GID:
+USER_UID=$(id -u) USER_GID=$(id -g) make docker-build
+USER_UID=$(id -u) USER_GID=$(id -g) make docker-up
+
+# 4. Manual fix (alternative):
+sudo chown -R $(id -u):$(id -g) docker/data/{projects,logs,output,backups,tmp}
+chmod -R 755 docker/data/{projects,logs,output,backups,tmp}
+```
+
+**Check permissions inside container:**
+```bash
+docker compose exec shape-shifter id                    # Check user UID/GID
+docker compose exec shape-shifter ls -la /app/projects  # Check directory ownership
+docker compose exec shape-shifter touch /app/logs/test  # Test write access
+```
+
+### General Troubleshooting
 
 **View logs:**
 ```bash
-docker-compose logs -f app
-docker-compose logs --tail=100 app | grep ERROR
+docker compose logs -f shape-shifter
+docker compose logs --tail=100 shape-shifter | grep ERROR
 ```
 
 **Shell access:**
 ```bash
-docker-compose exec app bash
+docker compose exec shape-shifter bash
 ls -la /app/frontend/dist          # Check frontend build
 curl http://localhost:8012/api/v1/health
 ```
@@ -462,10 +563,10 @@ curl http://localhost:8012/api/v1/health
 **Frontend not loading:**
 ```bash
 # Verify build
-docker-compose exec app ls /app/frontend/dist
+docker compose exec shape-shifter ls /app/frontend/dist
 
 # Check logs
-docker-compose logs app | grep "Serving frontend"
+docker compose logs shape-shifter | grep "Serving frontend"
 ```
 
 **Port in use:**

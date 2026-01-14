@@ -27,6 +27,8 @@
 ARG PYTHON_VERSION=3.13
 ARG NODE_VERSION=20
 ARG ALPINE_VERSION=3.19
+ARG USER_UID=1000
+ARG USER_GID=1000
 
 # ------------------------------------------------------------------------------
 # Stage 0: Resolve Codebase Source
@@ -59,7 +61,9 @@ RUN if [ "$SOURCE" = "github" ]; then \
     fi
 
 # Only copy context when SOURCE=workdir (still copied unconditionally, but clearer intent)
-COPY --chown=1000:1000 . /source-context/
+ARG USER_UID
+ARG USER_GID
+COPY --chown=${USER_UID}:${USER_GID} . /source-context/
 RUN if [ "$SOURCE" = "workdir" ]; then \
         echo "Using local context"; \
         cp -r /source-context/* /source/ 2>/dev/null || true; \
@@ -140,8 +144,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
-RUN groupadd -r shapeshifter --gid=1000 && \
-    useradd -r -g shapeshifter --uid=1000 --home-dir=/app --shell=/bin/bash shapeshifter
+# UID/GID can be overridden via build args to match host user
+ARG USER_UID
+ARG USER_GID
+RUN groupadd -r shapeshifter --gid=${USER_GID} && \
+    useradd -r -g shapeshifter --uid=${USER_UID} --home-dir=/app --shell=/bin/bash shapeshifter
 
 # Copy Python packages from builder
 ARG PYTHON_VERSION
