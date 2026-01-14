@@ -46,6 +46,9 @@
         />
       </v-list>
 
+      <!-- Context-Sensitive Help -->
+      <context-help :rail="rail" />
+
       <template #append>
         <v-divider />
         <v-list density="compact" nav>
@@ -189,6 +192,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
 import { useSettings } from '@/composables/useSettings'
+import ContextHelp from '@/components/ContextHelp.vue'
 // import logo from '@/assets/images/SEAD-logo-with-subtext.png'
 
 const router = useRouter()

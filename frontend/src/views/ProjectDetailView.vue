@@ -338,11 +338,6 @@
                 </div>
               </v-card-text>
             </v-card>
-
-            <!-- Legend Dialog -->
-            <v-dialog v-model="showLegend" max-width="500">
-              <node-legend :show-source-nodes="showSourceNodes" @close="showLegend = false" />
-            </v-dialog>
             
             <!-- Context Menu -->
             <graph-node-context-menu
@@ -641,7 +636,6 @@ import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 import ProjectDataSources from '@/components/ProjectDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
-import NodeLegend from '@/components/dependencies/NodeLegend.vue'
 import GraphNodeContextMenu from '@/components/dependencies/GraphNodeContextMenu.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
@@ -740,7 +734,6 @@ const showNodeLabels = ref(true)
 const showEdgeLabels = ref(true)
 const highlightCycles = ref(true)
 const showSourceNodes = ref(false)
-const showLegend = ref(false)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
 
@@ -1400,6 +1393,12 @@ watch(
 watch(activeTab, async (newTab) => {
   if (newTab === 'yaml' && rawYamlContent.value === null) {
     await handleLoadYaml()
+  }
+  
+  // Update route query to enable context-sensitive help
+  const currentTab = route.query.tab
+  if (currentTab !== newTab) {
+    router.replace({ query: { ...route.query, tab: newTab } })
   }
 })
 
