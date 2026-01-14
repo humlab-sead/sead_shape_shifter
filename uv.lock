@@ -968,11 +968,12 @@ wheels = [
 
 [[package]]
 name = "shape-shifter"
-version = "1.2.0"
+version = "1.6.0"
 source = { virtual = "." }
 dependencies = [
     { name = "click" },
     { name = "dotenv" },
+    { name = "httpx" },
     { name = "jaydebeapi" },
     { name = "jinja2" },
     { name = "jpype1" },
@@ -996,7 +997,6 @@ dependencies = [
 all = [
     { name = "black" },
     { name = "fastapi" },
-    { name = "httpx" },
     { name = "pylint" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -1013,7 +1013,6 @@ api = [
 ]
 dev = [
     { name = "black" },
-    { name = "httpx" },
     { name = "pylint" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -1028,7 +1027,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.3.0" },
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.109.0" },
-    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.24.1,<1" },
+    { name = "httpx", specifier = ">=0.24.1,<1" },
     { name = "jaydebeapi", specifier = ">=1.2.3" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "jpype1", specifier = ">=1.6.0" },
