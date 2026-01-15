@@ -1,30 +1,30 @@
 # Shape Shifter - System Diagrams
 
-Visual representations of Shape Shifter's architecture, workflow, and capabilities.
+Diagrams showing Shape Shifter's architecture, workflow, and capabilities.
 
 ---
 
 ## 1. The Problem: Data Integration Chaos
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph "Data Providers"
-        P1[Provider A<br/>Excel Spreadsheet]
-        P2[Provider B<br/>Access Database]
-        P3[Provider C<br/>CSV Files]
-        P4[Provider D<br/>PostgreSQL]
+        P1[<b>Provider</b> A<br/>Excel Spreadsheet]
+        P2[<b>Provider</b> B<br/>Access Database]
+        P3[<b>Provider</b> C<br/>CSV Files]
+        P4[<b>Provider</b> D<br/>Database]
     end
     
     subgraph "Manual Integration Pain Points"
         M1[❌ Manual Column Mapping]
         M2[❌ Inconsistent Formats]
-        M3[❌ Error-Prone Transformations]
+        M3[❌ Manual & Error-Prone Transformations]
         M4[❌ ID Lookup Nightmares]
-        M5[❌ Days of Work Per Dataset]
+        M5[❌ Weeks of Work Per Dataset]
         M6[❌ Hard to Reproduce]
     end
     
-    subgraph "SEAD Database"
+    subgraph "<b>SEAD</b>"
         S[Requires:<br/>✓ Standard Schema<br/>✓ Valid IDs<br/>✓ Clean Data<br/>✓ Documented Provenance]
     end
     
@@ -38,13 +38,21 @@ flowchart TB
     M4 --> M6
     M5 --> S
     M6 --> S
+
+    style P1 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style P2 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style P3 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style P4 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
     
-    style M1 fill:#ffcccc
-    style M2 fill:#ffcccc
-    style M3 fill:#ffcccc
-    style M4 fill:#ffcccc
-    style M5 fill:#ff9999
-    style M6 fill:#ff9999
+    style M1 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style M2 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style M3 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style M4 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style M5 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style M6 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+
+    style S fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+
 ```
 
 ---
@@ -52,12 +60,12 @@ flowchart TB
 ## 2. The Solution: Shape Shifter Integration Platform
 
 ```mermaid
-flowchart TB
-    subgraph "Data Sources (Unchanged)"
-        DS1[Excel/CSV]
-        DS2[MS Access]
-        DS3[PostgreSQL]
-        DS4[SQLite]
+flowchart LR
+    subgraph "Data Sources "
+        DS1[<b>Provider</b> A<br/>Excel Spreadsheet]
+        DS2[<b>Provider</b> B<br/>Access Database]
+        DS3[<b>Provider</b> C<br/>CSV Files]
+        DS4[<b>Provider</b> D<br/>Database]
     end
     
     subgraph "Shape Shifter Platform"
@@ -69,7 +77,7 @@ flowchart TB
         SS5[📊 Preview & Verify<br/>Before Commit]
     end
     
-    subgraph "SEAD Ready"
+    subgraph "<b>SEAD</b>"
         SEAD[✓ Validated Data<br/>✓ Resolved IDs<br/>✓ Documented Lineage<br/>✓ Ready to Import]
     end
     
@@ -83,13 +91,19 @@ flowchart TB
     SS3 --> SS4
     SS4 --> SS5
     SS5 --> SEAD
+
+    style DS1 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style DS2 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style DS3 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style DS4 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
     
-    style SS1 fill:#e6f3ff
-    style SS2 fill:#e6ffe6
-    style SS3 fill:#fff0e6
-    style SS4 fill:#ffe6f0
-    style SS5 fill:#f0e6ff
-    style SEAD fill:#ccffcc
+    style SS1 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style SS2 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style SS3 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style SS4 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+    style SS5 fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
+
+    style SEAD fill:#ffffff,color:#000000,stroke:#ffffff,stroke-width:2px
 ```
 
 ---
@@ -97,32 +111,32 @@ flowchart TB
 ## 3. Complete User Workflow
 
 ```mermaid
-flowchart LR
-    subgraph "1. Setup Phase"
+flowchart TB
+    subgraph "1 Setup Phase"
         A1[Create Project]
         A2[Configure<br/>Data Sources]
         A3[Define<br/>Entities]
     end
     
-    subgraph "2. Configuration Phase"
+    subgraph "2 Configuration Phase"
         B1[Set Up<br/>Relationships]
         B2[Configure<br/>Transformations]
         B3[Add<br/>Filters]
     end
     
-    subgraph "3. Validation Phase"
+    subgraph "3 Validation Phase"
         C1[Run<br/>Validation]
         C2[Review<br/>Errors]
         C3[Apply<br/>Auto-Fixes]
     end
     
-    subgraph "4. Reconciliation Phase"
+    subgraph "4 Reconciliation Phase"
         D1[Configure<br/>Reconciliation]
         D2[Auto-Match<br/>Identities]
         D3[Review &<br/>Accept]
     end
     
-    subgraph "5. Dispatch Phase"
+    subgraph "5 Dispatch Phase"
         E1[Configure<br/>Target]
         E2[Preview<br/>Results]
         E3[Dispatch<br/>to SEAD]
@@ -225,6 +239,7 @@ flowchart TB
         direction LR
         
         subgraph "Tabs"
+            direction TB
             T1[📋 Entities]
             T2[🔗 Dependencies]
             T3[✅ Validation]

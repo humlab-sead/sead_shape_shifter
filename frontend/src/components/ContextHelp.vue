@@ -19,37 +19,29 @@
               {{ helpContent.description }}
             </div>
             
-            <v-list v-if="helpContent.tips && helpContent.tips.length > 0" density="compact" class="pa-0">
-              <v-list-subheader class="px-0 text-caption">Quick Tips</v-list-subheader>
-              <v-list-item
+            <div v-if="helpContent.tips && helpContent.tips.length > 0" class="tips-section mt-3">
+              <div class="text-caption font-weight-medium mb-1 text-medium-emphasis">Tips</div>
+              <div
                 v-for="(tip, index) in helpContent.tips"
                 :key="index"
-                class="px-0 mb-1"
-                density="compact"
+                class="tip-item"
               >
-                <template #prepend>
-                  <v-icon size="x-small" class="mr-2" color="primary">mdi-lightbulb-outline</v-icon>
-                </template>
-                <v-list-item-title class="text-caption">{{ tip }}</v-list-item-title>
-              </v-list-item>
-            </v-list>
+                <span class="tip-bullet">•</span>
+                <span class="tip-text" v-html="tip" />
+              </div>
+            </div>
             
-            <v-list v-if="helpContent.shortcuts && helpContent.shortcuts.length > 0" density="compact" class="pa-0 mt-3">
-              <v-list-subheader class="px-0 text-caption">Shortcuts</v-list-subheader>
-              <v-list-item
+            <div v-if="helpContent.shortcuts && helpContent.shortcuts.length > 0" class="shortcuts-section mt-3">
+              <div class="text-caption font-weight-medium mb-1 text-medium-emphasis">Shortcuts</div>
+              <div
                 v-for="(shortcut, index) in helpContent.shortcuts"
                 :key="index"
-                class="px-0 mb-1"
-                density="compact"
+                class="shortcut-item"
               >
-                <template #prepend>
-                  <v-icon size="x-small" class="mr-2" color="secondary">mdi-keyboard-outline</v-icon>
-                </template>
-                <v-list-item-title class="text-caption">
-                  <span class="font-weight-bold">{{ shortcut.keys }}</span> - {{ shortcut.action }}
-                </v-list-item-title>
-              </v-list-item>
-            </v-list>
+                <div class="shortcut-keys">{{ shortcut.keys }}</div>
+                <div class="shortcut-action">{{ shortcut.action }}</div>
+              </div>
+            </div>
           </div>
           
           <div v-else class="text-caption text-grey">
@@ -110,19 +102,22 @@ const helpContentMap: Record<string, HelpContent> = {
     title: 'Dependency Graph',
     description: 'Visualize entity dependencies and data flow.',
     tips: [
-      'Click nodes to see details',
       'Right-click nodes for quick actions (Preview, Duplicate, Delete)',
       'Double-click nodes to edit entity configuration',
+      'Click nodes to open YAML editor',
       'Drag nodes in custom layout mode to rearrange',
       'Save custom layouts to preserve positions',
       'Toggle "Source Nodes" to show/hide data sources',
-      'Red nodes/edges indicate circular dependencies',
+      '<span style="color: #9C27B0; font-weight: 600;">Purple</span> entities have fixed values (no data source)',
+      '<span style="color: #4CAF50; font-weight: 600;">Green</span> entities are SQL sourced (e.g. SEAD)',
+      '<span style="color: #2196F3; font-weight: 600;">Blue</span> entities are source from another entity',
+      '<span style="color: #f44336; font-weight: 600;">Red</span> nodes/edges indicate circular dependencies',
       'Entity shapes: Ellipse (CSV/file), Rectangle (SQL), Diamond (Fixed values)',
       'Source shapes: Barrel (Database), Small rectangle (Table)',
       'Solid edges show entity dependencies, dotted edges show source relationships'
     ],
     shortcuts: [
-      { keys: 'Click', action: 'View node details' },
+      { keys: 'Click', action: 'Open YAML editor' },
       { keys: 'Double-click', action: 'Edit entity' },
       { keys: 'Right-click', action: 'Context menu (Preview/Duplicate/Delete)' },
       { keys: 'Drag', action: 'Move node (custom layout)' }
@@ -212,6 +207,57 @@ const helpContent = computed(() => {
 }
 
 .help-content {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.tips-section,
+.shortcuts-section {
+  margin-top: 0.75rem;
+}
+
+.tip-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0.375rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.tip-bullet {
+  color: rgb(var(--v-theme-primary));
+  margin-right: 0.375rem;
+  flex-shrink: 0;
+  font-weight: bold;
+}
+
+.tip-text {
+  flex: 1;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.shortcut-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.shortcut-keys {
+  font-weight: 600;
+  color: rgb(var(--v-theme-secondary));
+  font-family: 'Courier New', monospace;
+  font-size: 0.6875rem;
+  margin-bottom: 0.125rem;
+}
+
+.shortcut-action {
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.8;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 </style>
