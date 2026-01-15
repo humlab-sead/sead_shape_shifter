@@ -148,8 +148,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # UID/GID can be overridden via build args to match host user
 ARG USER_UID
 ARG USER_GID
-RUN groupadd -r shapeshifter --gid=${USER_GID} 2>/dev/null || groupmod -n shapeshifter $(getent group ${USER_GID} | cut -d: -f1) && \
-    useradd -r -g shapeshifter --uid=${USER_UID} --home-dir=/app --shell=/bin/bash shapeshifter 2>/dev/null || usermod -l shapeshifter -d /app $(getent passwd ${USER_UID} | cut -d: -f1)
+RUN groupadd -r shapeshifter --gid=${USER_GID} 2>/dev/null || groupmod -n shapeshifter $(getent group ${USER_GID} | cut -d: -f1)
+RUN useradd -r -g shapeshifter --uid=${USER_UID} --home-dir=/app --shell=/bin/bash shapeshifter 2>/dev/null || usermod -l shapeshifter -d /app $(getent passwd ${USER_UID} | cut -d: -f1)
 
 # Copy Python packages from builder
 ARG PYTHON_VERSION
