@@ -5,8 +5,8 @@ services:
       dockerfile: docker/Dockerfile
       args:
         # User ID settings (defaults to 1000:1000, override via environment)
-        - USER_UID=${USER_UID:-1000}
-        - USER_GID=${USER_GID:-1000}
+        - USER_UID=${USER_UID:-1002}  # Use 1002 for 'shapeshifter' user, maps to "sead" on host
+        - USER_GID=${USER_GID:-33}  # Use 33 for 'shapeshifter' group, maps to "www-data" on host
         # Build-time arguments for frontend (served via backend, so API URL is blank)
         - VITE_API_BASE_URL=${VITE_API_BASE_URL:-""}
         - VITE_ENV=${VITE_ENV:-production}
@@ -14,7 +14,7 @@ services:
         - VITE_ENABLE_DEBUG=${VITE_ENABLE_DEBUG:-false}
     image: shape-shifter:latest
     container_name: shape-shifter
-    user: "${USER_UID:-1000}:${USER_GID:-1000}"  # Run as shapeshifter user (matches build args)
+    user: "${USER_UID:-1002}:${USER_GID:-33}"  # Run as shapeshifter user (matches build args)
     ports:
       - "${HOST_PORT:-8012}:8012"
     env_file:
@@ -32,7 +32,7 @@ services:
       - ./data/tmp:/app/tmp
       
       # Mount .pgpass for PostgreSQL authentication (if exists)
-      - ./data/.pgpass:/app/.pgpass:ro
+      - ./data/.pgpass/.pgpass:/app/.pgpass:ro
       
       # Optional: mount input directory for development
       # - ./data/input:/app/input
