@@ -3,7 +3,7 @@
  */
 
 import type { ElementDefinition } from 'cytoscape'
-import type { DependencyGraph } from '@/types'
+import type { CustomGraphLayout, DependencyGraph, NodePosition } from '@/types'
 
 export interface GraphAdapterOptions {
   /**
@@ -172,8 +172,93 @@ export function toCytoscapeElements(
 /**
  * Get layout configuration for Cytoscape
  */
-export function getLayoutConfig(layoutType: 'hierarchical' | 'force', animate: boolean = true) {
-  if (layoutType === 'hierarchical') {
+export function getLayoutConfig(
+  layoutType: 'hierarchical' | 'force' | 'custom',
+  animate: boolean = true,
+  customPositions?: CustomGraphLayout
+) {
+  if (layoutType === 'custom') {
+    const mappedPositions: NodePosition[] = customPositions ? Object.values(customPositions) : []
+    
+    // Preset layout uses fixed positions from customPositions
+    return {
+      name: 'preset',
+      positions: (node: any) => {
+        const nodeName = node.data('id')
+        const pos = customPositions?.[nodeName]
+        
+        if (pos) {
+          // Return saved position
+          return { x: pos.x, y: pos.y }
+        } else {
+          // Temporarily place at origin (will be repositioned after layout)
+          return { x: 0, y: 0 }
+        }
+      },
+      fit: true,
+      padding: 50,
+      animate,
+      animationDuration: 300,
+      // After preset layout, position unmapped nodes
+      stop: function(this: any) {
+        const cy = this.cy()  // Call the function to get Cytoscape instance
+        console.log('[graphAdapter] Custom layout stop callback', {
+          hasCy: !!cy,
+          mappedPositionsCount: mappedPositions.length,
+        })
+        
+        if (!cy || mappedPositions.length === 0) {
+          console.log('[graphAdapter] Early return - no cy or no mapped positions')
+          return
+        }
+        
+        // Find all nodes at origin (0, 0) - these are unmapped
+        const allNodes = cy.nodes()
+        console.log('[graphAdapter] All nodes:', allNodes.length)
+        
+        const unmappedNodes = allNodes.filter((node: any) => {
+          const pos = node.position()
+          const isAtOrigin = Math.abs(pos.x) < 0.1 && Math.abs(pos.y) < 0.1
+          if (isAtOrigin) {
+            console.log('[graphAdapter] Found unmapped node:', node.data('id'), 'at', pos)
+          }
+          return isAtOrigin
+        })
+        
+        console.log('[graphAdapter] Unmapped nodes count:', unmappedNodes.length)
+        
+        if (unmappedNodes.length === 0) return
+        
+        // Calculate bounding box of positioned nodes
+        const xs = mappedPositions.map(p => p.x)
+        const ys = mappedPositions.map(p => p.y)
+        const minX = Math.min(...xs)
+        const maxX = Math.max(...xs)
+        const minY = Math.min(...ys)
+        const maxY = Math.max(...ys)
+        const centerX = (minX + maxX) / 2
+        const centerY = (minY + maxY) / 2
+        const width = maxX - minX
+        const height = maxY - minY
+        
+        console.log('[graphAdapter] Bounding box:', { minX, maxX, minY, maxY, centerX, centerY, width, height })
+        
+        // Position unmapped nodes in a radial layout around the positioned nodes
+        const radius = Math.max(width, height) / 2 + 150
+        const angleStep = (2 * Math.PI) / unmappedNodes.length
+        
+        console.log('[graphAdapter] Positioning unmapped nodes with radius:', radius)
+        
+        unmappedNodes.forEach((node: any, index: number) => {
+          const angle = index * angleStep
+          const x = centerX + radius * Math.cos(angle)
+          const y = centerY + radius * Math.sin(angle)
+          console.log('[graphAdapter] Positioning node', node.data('id'), 'at', { x, y })
+          node.position({ x, y })
+        })
+      },
+    }
+  } else if (layoutType === 'hierarchical') {
     return {
       name: 'dagre',
       rankDir: 'TB', // Top to bottom
