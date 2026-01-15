@@ -117,6 +117,23 @@
             </template>
           </v-list-item>
         </v-list>
+        
+        <!-- Initialize Task List Button -->
+        <v-divider class="my-2" />
+        <div class="px-4 pb-2">
+          <v-btn
+            block
+            variant="outlined"
+            size="small"
+            prepend-icon="mdi-playlist-plus"
+            @click="$emit('initialize')"
+          >
+            Initialize Task List
+            <v-tooltip activator="parent" location="bottom">
+              Auto-generate task list from entity dependencies
+            </v-tooltip>
+          </v-btn>
+        </div>
       </v-expansion-panel-text>
     </v-expansion-panel>
   </v-expansion-panels>
@@ -142,6 +159,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: TaskFilter): void
+  (e: 'initialize'): void
 }
 
 const props = withDefaults(defineProps<Props>(), {

@@ -339,6 +339,90 @@ class TaskService:
             "message": "Entity status reset to todo",
         }
 
+    async def initialize_task_list(
+        self,
+        project_name: str,
+        strategy: str = "dependency-order",
+    ) -> dict[str, Any]:
+        """
+        Initialize task list based on project structure.
+
+        Args:
+            project_name: Name of the project
+            strategy: Initialization strategy:
+                - "all": Include all entities
+                - "required-only": Include only entities with foreign keys (derived data)
+                - "dependency-order": Include all, sorted by dependency order (default)
+
+        Returns:
+            Dict with success status and initialized task list details
+
+        Raises:
+            ValueError: If project not found or invalid strategy
+        """
+        from backend.app.services.dependency_service import get_dependency_service
+
+        valid_strategies = {"all", "required-only", "dependency-order"}
+        if strategy not in valid_strategies:
+            raise ValueError(f"Invalid strategy '{strategy}'. Must be one of: {valid_strategies}")
+
+        # Load project (API layer)
+        api_project: Project = self.project_service.load_project(project_name)
+
+        # Convert to core layer
+        project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+
+        entity_names = list(project.tables.keys())
+        required_entities: list[str] = []
+
+        if strategy == "all":
+            required_entities = entity_names
+
+        elif strategy == "required-only":
+            # Include only entities with foreign keys (derived from other data)
+            for name, table in project.tables.items():
+                if table.foreign_keys:
+                    required_entities.append(name)
+
+        elif strategy == "dependency-order":
+            # Get topologically sorted entities from dependency graph
+            try:
+                dep_service = get_dependency_service()
+                graph = dep_service.analyze_dependencies(api_project)
+                
+                # Use topological order if available
+                if graph.get("topological_order"):
+                    required_entities = graph["topological_order"]
+                else:
+                    # Fallback to all entities
+                    required_entities = entity_names
+            except Exception as e:
+                logger.warning(f"Failed to get dependency order: {e}. Using all entities.")
+                required_entities = entity_names
+
+        # Initialize task list
+        project.cfg["task_list"] = {
+            "required_entities": required_entities,
+            "completed": [],
+            "ignored": [],
+        }
+
+        # Convert back to API layer and save
+        updated_api_project: Project = ProjectMapper.to_api_config(project.cfg, project_name)
+        self.project_service.save_project(updated_api_project)
+
+        logger.info(
+            f"Initialized task list for '{project_name}' with strategy '{strategy}': "
+            f"{len(required_entities)} required entities"
+        )
+
+        return {
+            "success": True,
+            "strategy": strategy,
+            "required_entities": required_entities,
+            "message": f"Task list initialized with {len(required_entities)} entities",
+        }
+
 
 @lru_cache
 def get_task_service() -> TaskService:

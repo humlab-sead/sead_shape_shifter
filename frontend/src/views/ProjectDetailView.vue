@@ -147,6 +147,7 @@
               v-model="currentTaskFilter"
               :task-status="taskStatusStore.taskStatus"
               class="mb-4"
+              @initialize="handleInitializeTaskList"
             />
 
             <!-- Graph Controls -->
@@ -253,16 +254,6 @@
                   Source Nodes
                 </v-btn>
                 <v-spacer />
-
-                <!-- Task Completion Stats -->
-                <task-completion-stats
-                  :task-status="taskStatusStore.taskStatus"
-                  show-details
-                  class="mr-2"
-                />
-
-                <v-chip prepend-icon="mdi-cube-outline"> {{ depStatistics.nodeCount }} nodes </v-chip>
-                <v-chip prepend-icon="mdi-arrow-right"> {{ depStatistics.edgeCount }} edges </v-chip>
               </v-card-text>
             </v-card>
 
@@ -285,6 +276,61 @@
             <v-card v-else variant="outlined" class="graph-card">
               <v-card-text class="pa-0 graph-card-content">
                 <div ref="graphContainer" class="graph-container" />
+                
+                <!-- Stats Overlay (top-left) -->
+                <div class="graph-stats-overlay">
+                  <v-card variant="flat" class="stats-card">
+                    <v-card-text class="pa-2">
+                      <!-- Task Completion -->
+                      <div v-if="taskStatusStore.taskStatus" class="mb-2">
+                        <v-row no-gutters align="center" class="mb-1">
+                          <v-col cols="auto" class="mr-2">
+                            <v-icon 
+                              :icon="completionIcon" 
+                              :color="completionColor"
+                              size="small"
+                            />
+                          </v-col>
+                          <v-col>
+                            <div class="text-caption">
+                              <span class="font-weight-medium">{{ taskStats.completed }}</span>
+                              <span class="text-medium-emphasis"> of </span>
+                              <span class="font-weight-medium">{{ taskStats.total }}</span>
+                              <span class="text-medium-emphasis"> complete</span>
+                            </div>
+                          </v-col>
+                          <v-col cols="auto" class="ml-2">
+                            <v-chip
+                              :color="completionColor"
+                              size="x-small"
+                              variant="flat"
+                            >
+                              {{ Math.round(taskStats.completion_percentage) }}%
+                            </v-chip>
+                          </v-col>
+                        </v-row>
+                        <v-progress-linear
+                          :model-value="taskStats.completion_percentage"
+                          :color="completionColor"
+                          height="3"
+                          rounded
+                        />
+                      </div>
+                      
+                      <!-- Node/Edge Counts -->
+                      <div class="d-flex gap-1">
+                        <v-chip size="x-small" variant="flat" color="primary">
+                          <v-icon icon="mdi-cube-outline" size="x-small" class="mr-1" />
+                          {{ depStatistics.nodeCount }}
+                        </v-chip>
+                        <v-chip size="x-small" variant="flat" color="secondary">
+                          <v-icon icon="mdi-arrow-right" size="x-small" class="mr-1" />
+                          {{ depStatistics.edgeCount }}
+                        </v-chip>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+                </div>
                 
                 <!-- Floating Action Buttons -->
                 <div class="graph-fab-container">
@@ -661,7 +707,6 @@ import SessionIndicator from '@/components/SessionIndicator.vue'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
 import GraphNodeContextMenu from '@/components/dependencies/GraphNodeContextMenu.vue'
 import TaskFilterPanel from '@/components/dependencies/TaskFilterPanel.vue'
-import TaskCompletionStats from '@/components/dependencies/TaskCompletionStats.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
@@ -832,11 +877,6 @@ const validationChipText = computed(() => {
 
 const isDark = computed(() => theme.global.current.value.dark)
 
-const selectedNodeInfo = computed(() => {
-  if (!selectedNode.value) return null
-  return getNodeInfo(selectedNode.value, dependencyGraph.value)
-})
-
 const isSelectedNodeDataSource = computed(() => {
   if (!selectedNode.value || !dependencyGraph.value) return false
   const sourceNodes = dependencyGraph.value.source_nodes || []
@@ -846,6 +886,36 @@ const isSelectedNodeDataSource = computed(() => {
 // Cytoscape integration
 const entityStore = useEntityStore()
 const taskStatusStore = useTaskStatusStore()
+
+// Task completion stats
+const taskStats = computed(() => {
+  if (!taskStatusStore.taskStatus) {
+    return {
+      total: 0,
+      completed: 0,
+      ignored: 0,
+      todo: 0,
+      completion_percentage: 0
+    }
+  }
+  return taskStatusStore.taskStatus.completion_stats
+})
+
+const completionColor = computed(() => {
+  const percentage = taskStats.value.completion_percentage
+  if (percentage === 100) return 'success'
+  if (percentage >= 75) return 'info'
+  if (percentage >= 50) return 'warning'
+  return 'error'
+})
+
+const completionIcon = computed(() => {
+  const percentage = taskStats.value.completion_percentage
+  if (percentage === 100) return 'mdi-check-circle'
+  if (percentage >= 75) return 'mdi-progress-check'
+  if (percentage >= 25) return 'mdi-progress-clock'
+  return 'mdi-clock-outline'
+})
 
 const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurrentPositions } = useCytoscape({
   container: graphContainer,
@@ -1328,6 +1398,27 @@ async function handleResetStatus(entityName: string) {
   }
 }
 
+async function handleInitializeTaskList() {
+  try {
+    const result = await api.tasks.initialize(projectName.value, 'dependency-order')
+    
+    if (result.success) {
+      successMessage.value = result.message || 'Task list initialized successfully'
+      showSuccessSnackbar.value = true
+      
+      // Refresh task status to show updated task list
+      await taskStatusStore.refresh()
+      
+      // Refresh graph to show updated badges
+      applyTaskStatusToNodes()
+    }
+  } catch (err) {
+    console.error('Failed to initialize task list:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to initialize task list'
+    showSuccessSnackbar.value = true
+  }
+}
+
 // Apply task status styling to graph nodes
 function applyTaskStatusToNodes() {
   if (!cy.value || !taskStatusStore.taskStatus) return
@@ -1757,6 +1848,22 @@ function applyTaskFilter() {
   height: 100%;
   position: relative;
   background: transparent;
+}
+
+.graph-stats-overlay {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  max-width: 280px;
+}
+
+.stats-card {
+  background: rgba(var(--v-theme-surface), 0.95) !important;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(var(--v-border-color), 0.12);
+  border-radius: 8px;
 }
 
 .graph-fab-container {

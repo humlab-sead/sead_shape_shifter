@@ -1322,3 +1322,18 @@ options:
     _metadata:
       last_updated: '2026-01-14T19:39:51.890309+00:00'
       layout_version: 1
+
+  task_list:
+    entities:
+      - name: location
+        required: true
+        order: 1
+      - name: site
+        required: true
+        order: 2
+      - name: sample
+        required: false
+        order: 3
+    
+    completed: []
+    ignored: []
