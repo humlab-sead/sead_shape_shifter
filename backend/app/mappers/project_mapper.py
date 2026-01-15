@@ -68,10 +68,14 @@ class ProjectMapper:
         # Map options (preserve as-is)
         options = cfg_dict.get("options", {})
 
+        # Map task_list (preserve as-is)
+        task_list = cfg_dict.get("task_list")
+
         return Project(
             metadata=metadata,
             entities=entities,
             options=options,
+            task_list=task_list,
         )
 
     @staticmethod
@@ -99,6 +103,10 @@ class ProjectMapper:
             "entities": {},
             "options": api_config.options or {},
         }
+
+        # Add task_list if present
+        if api_config.task_list is not None:
+            cfg_dict["task_list"] = api_config.task_list
 
         # Map entities (preserve sparse structure)
         for entity_name, api_entity in api_config.entities.items():

@@ -32,6 +32,7 @@ class ProjectCreateRequest(BaseModel):
 
     name: str = Field(..., description="Project name")
     entities: dict[str, dict[str, Any]] = Field(default_factory=dict, description="Initial entities")
+    task_list: dict[str, Any] | None = Field(default=None, description="Task list configuration")
 
 
 class ProjectUpdateRequest(BaseModel):
@@ -119,7 +120,11 @@ async def create_project(request: ProjectCreateRequest) -> Project:
         Created project with metadata
     """
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.create_project(request.name, request.entities)
+    project: Project = project_service.create_project(
+        request.name, 
+        entities=request.entities,
+        task_list=request.task_list
+    )
     logger.info(f"Created project '{request.name}'")
     return project
 
@@ -661,7 +666,6 @@ async def clear_custom_layout(name: str) -> dict[str, str]:
 
         logger.info(f"Cleared custom layout for project '{name}'")
         return {"project_name": name, "message": "Custom layout cleared successfully"}
-    else:
-        logger.info(f"No custom layout found for project '{name}'")
-        return {"project_name": name, "message": "No custom layout to clear"}
 
+    logger.info(f"No custom layout found for project '{name}'")
+    return {"project_name": name, "message": "No custom layout to clear"}

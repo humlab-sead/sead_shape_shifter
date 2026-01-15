@@ -33,6 +33,7 @@ class Project(BaseModel):
 
     entities: dict[str, dict[str, Any]] = Field(default_factory=dict, description="Map of entity name to entity (raw dicts)")
     options: dict[str, Any] = Field(default_factory=dict, description="Global options")
+    task_list: dict[str, Any] | None = Field(default=None, description="Task list for entity progress tracking")
     metadata: ProjectMetadata | None = Field(default=None, description="Project metadata")
 
     @property
@@ -64,3 +65,7 @@ class Project(BaseModel):
     def filename(self) -> str | None:
         """Get project filename from metadata."""
         return self.metadata.file_path if self.metadata else None  # pylint: disable=no-member
+
+    def has_table(self, entity_name: str) -> bool:
+        """Check if entity exists in project."""
+        return entity_name in self.entities  # pylint: disable=no-member
