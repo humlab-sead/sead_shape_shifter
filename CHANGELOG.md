@@ -1,3 +1,24 @@
+# [1.7.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.6.0...v1.7.0) (2026-01-15)
+
+
+### Bug Fixes
+
+* rename 'Dependencies' tab to 'Graph' in ProjectDetailView ([7aac0f1](https://github.com/humlab-sead/sead_shape_shifter/commit/7aac0f1320e407804145a28468cf26f1ae76e0fb))
+* update backend port to 8013 in Makefile ([93dc4bb](https://github.com/humlab-sead/sead_shape_shifter/commit/93dc4bb93e7d3a9e46431e524e14d6d18a597414))
+
+
+### Features
+
+* add button to create new node ([#156](https://github.com/humlab-sead/sead_shape_shifter/issues/156)) ([0323ffc](https://github.com/humlab-sead/sead_shape_shifter/commit/0323ffc0253ddef8c542289cdf21638aa3ad3105))
+* add context-sensitive help component and integrate into ProjectDetailView ([#155](https://github.com/humlab-sead/sead_shape_shifter/issues/155)) ([cf38dbc](https://github.com/humlab-sead/sead_shape_shifter/commit/cf38dbc5426e5be97d9f874d9f4fb69563e6ca52))
+* add custom graph layout management endpoints and models ([61989dc](https://github.com/humlab-sead/sead_shape_shifter/commit/61989dc0dd8491096010a0fd29214322d1b2fae0))
+* add floating action buttons for graph controls and export functionality ([15ca827](https://github.com/humlab-sead/sead_shape_shifter/commit/15ca827c6a14225a02d429d3709efa1ffb1d815c))
+* add task list feature proposal with simplified design and graph-centric tracking ([cdd7d5b](https://github.com/humlab-sead/sead_shape_shifter/commit/cdd7d5b76e6c1b83e98b014fd0bc776fa26b23f3))
+* enhance custom graph layout with user-defined positioning and save functionality ([d90f75a](https://github.com/humlab-sead/sead_shape_shifter/commit/d90f75a5e5db3159b33eb3111227e8f13bbfbc30))
+* enhance system diagrams and improve UI/UX in project editor ([ba83f4a](https://github.com/humlab-sead/sead_shape_shifter/commit/ba83f4ab8b0214b9aac4310020761b735f4290be)), closes [#155](https://github.com/humlab-sead/sead_shape_shifter/issues/155) [#157](https://github.com/humlab-sead/sead_shape_shifter/issues/157)
+* implement custom graph layout management with save, load, and clear functionality ([#153](https://github.com/humlab-sead/sead_shape_shifter/issues/153)) ([269949f](https://github.com/humlab-sead/sead_shape_shifter/commit/269949f9809978aa050e5d7b3054e62b19851375))
+* update shape-shifter package version and adjust httpx dependency ([f433ae8](https://github.com/humlab-sead/sead_shape_shifter/commit/f433ae8dec52d4bce7fbb7aefb473434bffe8214))
+
 # [1.6.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.5.0...v1.6.0) (2026-01-14)
 
 
