@@ -401,3 +401,286 @@ It might be best to store the layout in the project, e.g.
 Another option is to store it in browser's cache, but then user's can't share layout. Storing it in the project also enables layout reuse, since many project's that targets the SEAD database will probably have the same "mental" layout.
 
 Please review this change, and how it can be implemented.
+
+TODO: #155 Improve user experience (Context sensitive help)
+
+TODO: #156 Improve user experience (Add new node button in dependency graph)
+
+TODO: NOT WORTH THE EFFORT! Improve user experience (Add new edge/relationship in dependency graph)
+
+Add an "Add Edge" button to the dependency graph view. It would work something like this (feel free to suggest other/better implementations):
+
+1. User Selects a source (child) node
+2. User Select "Add Edge"
+3. User select target (parent) node
+4. System checks if FK relationships already exists bwteen the two entities.
+   If yes, show error message and abort (or simply do nothing).
+5. System adds the "depend_on" relationship in the source (child) entity's YAML definition.
+6. System opens the entity editor for the source (child) entity.
+   If feasable, the system opens the entity editor with the FK relationship field selected.
+7. User can then select the FK relationship field, and specify the relationship details.
+8. User confirms/saves the entity.
+9. System updates the dependency graph to reflect the new relationship.
+
+Please suggest a detailed implementation plan how this can be achieved, including any necessary changes to the frontend and backend codebase.
+
+TODO: #157 Improve user experience (Edit YAML in sidebar)
+
+The right sidebar that appear when single-clicking a node feels less useful now that we can double click to edit an entity. Instead it could be used as a "power-user" tool if showing the YAML editor for the entity + Save Button.
+
+TODO: Improve user experience (Action List / Task List)
+
+Currently, there is no indicators of the status of an entity (e.g. done, in progress, blocked) etc. or which entity the user should focus on. It would be good to have some kind of "action list" or "task list" that shows the entities that needs attention from the user. Note that the "task lists" should be a guide only, and the and not enforcing user to work with entities in a specific order.
+
+To keep things simple, the task list should be based on entities only (not individual fields or relationship.) there should only one task per entity. Possibly, the task list could be integrated into existing entities/graph view, but that might be difficult since these view currently only shows already added entities (the task list will contain entities that are not yet created).
+
+A task must have a status (e.g. pending, in progress, done, ignored).
+A task is "done" if the user has explicitly marked the entity as done. Only entities that pass validation and have preview data could be marked done. The user should also be able to mark an entity as "in progress" or "blocked" manually.
+
+This task task list could be based on:
+1. Predefined suggested order (e.g. from a project template, Start with "Site" entity, then "Sample", then "Abundance" etc.)
+2. Mandatory entities (not yet created)
+3. Dependencies (e.g. add "Site type" before "Site", since "Site" depends on "Site type")
+4. Validation status (errors in a dependency cases preview to fail)
+
+The task list could be shown in a sidebar, or as an overlay when opening the project. It could also be integrated with the dependency graph, e.g. highlighting entities that need attention or that are done.
+
+The task list could show:
+- Entity name
+- Status (e.g. not started, in progress, done, blocked)
+- Action (e.g. "Create entity", "Fix validation errors", "Add foreign key relationship" etc.)
+- Link to entity editor or dependency graph node
+  
+Possibly, the task list could be merged with the entities list, with a way of sorting and filtering based on status and actions.
+
+The task list should be dynamic, and update as the user makes progress in the project.
+
+The task list state should partly be stored in the project file, and partly be derived from the current state of the project (e.g. validation status, existing entities etc.) 
+
+The storage in the project could be under a new optional "task_list" section, e.g.
+
+```yml
+task_list:
+  mandatory_entities:
+    - site
+    - location
+    - sample
+    - ...
+  suggested_order:
+    - site
+    - sample
+    ...
+  status: # an entity should only have one status
+    - done: # These are entities that the user has marked as done
+        - location
+    - created: # These are entities that exists
+        - site
+    - pending: # These are entities that needs to be created (but haven't yet)
+        - sample
+    # candidate statuses
+    - in_progress: # These are entities that the user has marked as in progress
+    - blocked: # These are entities that the user has marked as blocked
+    - ignored: # These are entities that the user has marked as ignored
+```
+
+Please suggest a detailed implementation plan how to achieve this, including any necessary changes to the frontend and backend codebase.
+
+Below is a **concise but detailed feature description** that you could use as a design note, requirements section, or proposal. I’ve kept your intent, terminology, and constraints, but tightened the structure, clarified responsibilities, and separated *derived state* from *user-declared state*.
+
+---
+
+## Feature: Improve user experience (Action List / Task List)
+
+### Purpose
+
+Introduce a **light-weight, non-enforcing task list** to guide users when defining entities in an Shape Shifter project. The purpose of the task list is to visualize **progress, priorities, and blockers** when creating the entities.
+
+Note that the word "task" here should be understood as nothing more than **progress status of an entity**, that can be used to track and manage work.
+
+The task list is **advisory only**: it provides guidance and validation feedback but does **not enforce a working order**.
+
+---
+
+### Scope and Conceptual Model
+
+* A **task corresponds 1:1 with an entity**.
+* Tasks operate at the **entity level only** (not fields, attributes, or relationships).
+* ER constraints (e.g. foreign keys) are **not enforced**, but used for:
+  * validation
+  * dependency awareness
+  * suggested work order
+
+The system maintains two complementary views of entities:
+
+* **List view**
+* **Graph (dependency) view**
+
+The task list augments these views by making **work status and attention needs explicit**, including entities not yet created.
+
+---
+
+### Core Goals
+
+* Make it clear **what remains to be done**
+* Indicate **which entities need attention and why**
+* Provide **progress visibility** across the shapeshifting (ETL) pipeline
+* Guide users without constraining workflow
+* Persist high-level intent while deriving real-time state dynamically
+
+---
+
+### Task Status Model
+
+Each entity task has exactly **one status**.
+
+#### User-controlled statuses
+
+* **pending** – Entity not yet started
+* **in_progress** – User is actively working on the entity by creating/editing it
+* **blocked** – User has explicitly marked the entity as blocked
+* **ignored** – Entity intentionally excluded from the project
+* **done** – User has explicitly marked the entity as complete
+
+#### Rules for `done`
+
+An entity can only be marked **done** if:
+
+* It passes validation
+* Preview data can be generated successfully
+
+Validation failures or missing previews prevent completion but do not automatically change the status.
+
+---
+
+### Task Derivation and Guidance Signals
+
+The task list combines **explicit metadata** with **derived project state**.
+
+Guidance is based on:
+
+1. **Mandatory entities**
+   Entities defined as required but not yet completed.
+
+2. **Suggested order**
+   A non-enforced ordering, e.g. from:
+
+   * project templates
+   * domain conventions (e.g. *Site → Sample → Abundance*)
+
+3. **Dependencies**
+   Relational dependencies (e.g. foreign keys) are used to:
+
+   * suggest upstream entities
+   * indicate potential blockers
+   * highlight risky sequencing
+
+4. **Validation status**
+
+   * Errors or warnings in an entity or its dependencies
+   * Failed preview generation
+
+These factors influence **priority, highlighting, and suggested actions**, not hard constraints.
+
+---
+
+### User Interface Considerations
+
+The task list may be presented as:
+
+* A **sidebar**
+* A **project startup overlay**
+* An enhancement to the **entity list**
+* Visual cues within the **dependency graph**
+
+Possible UI behaviors:
+
+* Highlight entities that:
+
+  * are mandatory and incomplete
+  * are blocked by dependency issues
+  * are complete
+* Allow sorting and filtering by:
+
+  * status
+  * mandatory vs optional
+  * suggested order
+  * validation state
+
+* Highlight pending entities (not yet created)
+
+---
+
+### Optional if we choose to visualize the task list: Task List Item Contents
+
+Each task entry should display:
+
+* **Entity name**
+* **Status** (pending, in progress, done, blocked, ignored)
+* **Primary action**, derived from state, e.g.:
+
+  * “Create entity”
+  * “Fix validation errors”
+  * “Resolve dependency”
+* **Navigation link** to:
+
+  * entity editor
+  * corresponding node in the dependency graph
+
+---
+
+### Persistence and State Management
+
+The task list state is **partly stored** and **partly derived**.
+
+#### Stored in project file (YAML)
+
+* Mandatory entities
+* Suggested order
+* User-declared statuses (e.g. done, blocked, ignored)
+
+#### Derived at runtime
+
+* Whether an entity exists
+* Validation results
+* Preview availability
+* Dependency issues
+
+---
+
+### Project File Extension (Illustrative)
+
+```yaml
+task_list:
+  mandatory_entities:
+    - site
+    - location
+    - sample
+
+  suggested_order:
+    - location
+    - site
+    - sample
+
+  status:
+    done:
+      - location
+    in_progress:
+      - site
+    pending:
+      - sample
+    blocked: []
+    ignored: []
+```
+
+Rules:
+
+* Each entity may appear in **only one status**
+* Missing entities default to `pending`
+* Statuses do not override validation logic
+
+---
+
+### Summary
+
+The entity task list provides a **lightweight, domain-aware progress layer** on top of the ETL entity model.
+It improves usability and project transparency by combining **user intent**, **relational structure**, and **live validation feedback**, while preserving flexibility and user autonomy.

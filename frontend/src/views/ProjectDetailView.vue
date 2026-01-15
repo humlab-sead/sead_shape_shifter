@@ -247,16 +247,6 @@
                 </v-btn>
                 <v-spacer />
 
-                <v-btn
-                  size="small"
-                  variant="outlined"
-                  prepend-icon="mdi-information-outline"
-                  :color="showLegend ? 'primary' : undefined"
-                  @click="showLegend = !showLegend"
-                >
-                  Legend
-                </v-btn>
-
                 <v-chip prepend-icon="mdi-cube-outline"> {{ depStatistics.nodeCount }} nodes </v-chip>
                 <v-chip prepend-icon="mdi-arrow-right"> {{ depStatistics.edgeCount }} edges </v-chip>
               </v-card-text>
@@ -330,6 +320,19 @@
                     icon
                     size="small"
                     class="graph-fab"
+                    color="primary"
+                    @click="handleCreateNewNode"
+                  >
+                    <v-icon>mdi-plus-circle-outline</v-icon>
+                    <v-tooltip activator="parent" location="left">Create New Node</v-tooltip>
+                  </v-btn>
+                  
+                  <v-divider class="my-1" />
+                  
+                  <v-btn 
+                    icon
+                    size="small"
+                    class="graph-fab"
                     @click="handleExportPNG"
                   >
                     <v-icon>mdi-download</v-icon>
@@ -338,11 +341,6 @@
                 </div>
               </v-card-text>
             </v-card>
-
-            <!-- Legend Dialog -->
-            <v-dialog v-model="showLegend" max-width="500">
-              <node-legend :show-source-nodes="showSourceNodes" @close="showLegend = false" />
-            </v-dialog>
             
             <!-- Context Menu -->
             <graph-node-context-menu
@@ -356,75 +354,75 @@
             />
 
             <!-- Entity Details Drawer -->
-            <v-navigation-drawer v-model="showDetailsDrawer" location="right" temporary width="400">
+            <v-navigation-drawer v-model="showDetailsDrawer" location="right" temporary width="500">
               <template v-if="selectedNode">
-                <v-toolbar color="primary">
-                  <v-toolbar-title>{{ selectedNode }}</v-toolbar-title>
-                  <v-btn icon="mdi-close" @click="showDetailsDrawer = false" />
+                <v-toolbar color="primary" density="compact">
+                  <v-toolbar-title class="text-subtitle-1">
+                    <v-icon size="small" class="mr-2">mdi-code-braces</v-icon>
+                    {{ selectedNode }}
+                  </v-toolbar-title>
+                  <v-spacer />
+                  <v-btn icon="mdi-open-in-new" variant="text" size="small" @click="handleEditEntity(selectedNode)">
+                    <v-tooltip activator="parent" location="bottom">Open Full Editor</v-tooltip>
+                  </v-btn>
+                  <v-btn icon="mdi-close" variant="text" size="small" @click="handleCloseQuickEdit" />
                 </v-toolbar>
 
-                <v-list>
-                  <v-list-item>
-                    <v-list-item-title>Entity Name</v-list-item-title>
-                    <v-list-item-subtitle>{{ selectedNodeInfo?.id }}</v-list-item-subtitle>
-                  </v-list-item>
-
-                  <v-list-item>
-                    <v-list-item-title>Depth</v-list-item-title>
-                    <v-list-item-subtitle>{{ selectedNodeInfo?.depth ?? 'N/A' }}</v-list-item-subtitle>
-                  </v-list-item>
-
-                  <v-list-item>
-                    <v-list-item-title>Topological Order</v-list-item-title>
-                    <v-list-item-subtitle>
-                      {{ selectedNodeInfo?.topologicalOrder ?? 'N/A' }}
-                    </v-list-item-subtitle>
-                  </v-list-item>
-
-                  <v-list-item>
-                    <v-list-item-title>Dependencies</v-list-item-title>
-                    <v-list-item-subtitle>
-                      <v-chip
-                        v-for="dep in selectedNodeInfo?.dependencies ?? []"
-                        :key="dep"
-                        size="small"
-                        class="mr-1 mt-1"
-                      >
-                        {{ dep }}
-                      </v-chip>
-                      <span v-if="(selectedNodeInfo?.dependencies ?? []).length === 0">None</span>
-                    </v-list-item-subtitle>
-                  </v-list-item>
-
-                  <v-list-item>
-                    <v-list-item-title>Dependents</v-list-item-title>
-                    <v-list-item-subtitle>
-                      <v-chip
-                        v-for="dependent in selectedNodeInfo?.dependents ?? []"
-                        :key="dependent"
-                        size="small"
-                        class="mr-1 mt-1"
-                      >
-                        {{ dependent }}
-                      </v-chip>
-                      <span v-if="(selectedNodeInfo?.dependents ?? []).length === 0">None</span>
-                    </v-list-item-subtitle>
-                  </v-list-item>
-
-                  <v-list-item v-if="isInCycle(selectedNode)">
-                    <v-alert type="warning" variant="tonal" density="compact">
-                      This entity is part of a circular dependency
+                <div class="drawer-body">
+                  <div class="drawer-alerts">
+                    <v-alert v-if="isInCycle(selectedNode)" type="warning" variant="tonal" density="compact" class="ma-2">
+                      <v-icon size="small" class="mr-1">mdi-alert</v-icon>
+                      Part of circular dependency
                     </v-alert>
-                  </v-list-item>
-                </v-list>
+                    
+                    <v-progress-linear v-if="drawerYamlLoading" indeterminate color="primary" />
+                    
+                    <v-alert v-if="drawerYamlError" type="error" variant="tonal" density="compact" class="ma-2" closable @click:close="drawerYamlError = null">
+                      {{ drawerYamlError }}
+                    </v-alert>
+                  </div>
+                  
+                  <div class="drawer-editor">
+                    <div v-if="isSelectedNodeDataSource" class="data-source-info pa-4">
+                      <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-database</v-icon>
+                      <div class="text-subtitle-2 mb-2">Data Source Node</div>
+                      <div class="text-caption text-medium-emphasis">
+                        Data sources cannot be edited from the graph view.
+                        Configure data sources in the Data Sources tab.
+                      </div>
+                    </div>
+                    <yaml-editor
+                      v-else-if="drawerYamlContent !== null"
+                      v-model="drawerYamlContent"
+                      height="calc(100vh - 200px)"
+                      @change="handleDrawerYamlChange"
+                    />
+                  </div>
+                </div>
 
-                <v-divider />
-
-                <v-card-actions>
-                  <v-btn variant="text" prepend-icon="mdi-pencil" block @click="handleEditEntity(selectedNode)">
-                    Edit Entity
-                  </v-btn>
-                </v-card-actions>
+                <div v-if="!isSelectedNodeDataSource" class="drawer-footer">
+                  <v-divider />
+                  <v-card-actions class="pa-3">
+                    <v-btn 
+                      variant="text" 
+                      @click="handleCloseQuickEdit"
+                      :disabled="drawerYamlSaving"
+                    >
+                      Cancel
+                    </v-btn>
+                    <v-spacer />
+                    <v-btn 
+                      color="primary" 
+                      variant="flat"
+                      prepend-icon="mdi-content-save"
+                      :loading="drawerYamlSaving"
+                      :disabled="!drawerYamlHasChanges || drawerYamlLoading"
+                      @click="handleSaveQuickEdit"
+                    >
+                      Save
+                    </v-btn>
+                  </v-card-actions>
+                </div>
               </template>
             </v-navigation-drawer>
           </v-window-item>
@@ -641,7 +639,6 @@ import PreviewFixesModal from '@/components/validation/PreviewFixesModal.vue'
 import ProjectDataSources from '@/components/ProjectDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
-import NodeLegend from '@/components/dependencies/NodeLegend.vue'
 import GraphNodeContextMenu from '@/components/dependencies/GraphNodeContextMenu.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
@@ -740,9 +737,16 @@ const showNodeLabels = ref(true)
 const showEdgeLabels = ref(true)
 const highlightCycles = ref(true)
 const showSourceNodes = ref(false)
-const showLegend = ref(false)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
+
+// Quick YAML editor state (drawer)
+const drawerYamlContent = ref<string | null>(null)
+const drawerOriginalYamlContent = ref<string | null>(null)
+const drawerYamlLoading = ref(false)
+const drawerYamlSaving = ref(false)
+const drawerYamlError = ref<string | null>(null)
+const drawerYamlHasChanges = ref(false)
 
 // Context menu state
 const showContextMenu = ref(false)
@@ -808,6 +812,12 @@ const selectedNodeInfo = computed(() => {
   return getNodeInfo(selectedNode.value, dependencyGraph.value)
 })
 
+const isSelectedNodeDataSource = computed(() => {
+  if (!selectedNode.value || !dependencyGraph.value) return false
+  const sourceNodes = dependencyGraph.value.source_nodes || []
+  return sourceNodes.some((sn: any) => sn.name === selectedNode.value)
+})
+
 // Cytoscape integration
 const entityStore = useEntityStore()
 
@@ -822,8 +832,9 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
   showSourceNodes,
   cycles,
   isDark,
-  onNodeClick: (nodeId: string) => {
+  onNodeClick: async (nodeId: string) => {
     selectedNode.value = nodeId
+    await loadEntityYamlForDrawer(nodeId)
     showDetailsDrawer.value = true
   },
   onNodeDoubleClick: (nodeId: string) => {
@@ -1271,6 +1282,112 @@ function handleExportPNG() {
   }
 }
 
+function handleCreateNewNode() {
+  // Switch to entities tab to create a new entity
+  activeTab.value = 'entities'
+  // Note: The entity creation dialog will be triggered by the EntityListCard component
+  // We could emit an event or use a shared state if we want to auto-open the dialog
+}
+
+// Quick YAML editor handlers
+async function loadEntityYamlForDrawer(entityName: string) {
+  // Check if this is a data source node
+  if (dependencyGraph.value) {
+    const sourceNodes = dependencyGraph.value.source_nodes || []
+    const isDataSource = sourceNodes.some((sn: any) => sn.name === entityName)
+    if (isDataSource) {
+      // Don't load YAML for data sources
+      drawerYamlContent.value = null
+      drawerOriginalYamlContent.value = null
+      drawerYamlHasChanges.value = false
+      return
+    }
+  }
+  
+  drawerYamlLoading.value = true
+  drawerYamlError.value = null
+  try {
+    const entity = entityStore.entities.find(e => e.name === entityName)
+    if (!entity) {
+      throw new Error(`Entity '${entityName}' not found`)
+    }
+    
+    // Convert entity data to YAML
+    const yaml = await import('js-yaml')
+    const yamlContent = yaml.dump(entity.entity_data, { indent: 2, lineWidth: -1 })
+    drawerYamlContent.value = yamlContent
+    drawerOriginalYamlContent.value = yamlContent
+    drawerYamlHasChanges.value = false
+  } catch (err) {
+    drawerYamlError.value = err instanceof Error ? err.message : 'Failed to load entity YAML'
+    console.error('Failed to load entity YAML:', err)
+  } finally {
+    drawerYamlLoading.value = false
+  }
+}
+
+function handleDrawerYamlChange() {
+  drawerYamlHasChanges.value = drawerYamlContent.value !== drawerOriginalYamlContent.value
+}
+
+async function handleSaveQuickEdit() {
+  if (!selectedNode.value || !drawerYamlContent.value) return
+  
+  drawerYamlSaving.value = true
+  drawerYamlError.value = null
+  
+  try {
+    // Parse YAML to validate
+    const yaml = await import('js-yaml')
+    const entityData = yaml.load(drawerYamlContent.value)
+    
+    if (typeof entityData !== 'object' || entityData === null) {
+      throw new Error('Invalid YAML: must be an object')
+    }
+    
+    // Update entity
+    await entityStore.updateEntity(projectName.value, selectedNode.value, {
+      entity_data: entityData as any
+    })
+    
+    // Update original content to match saved content
+    drawerOriginalYamlContent.value = drawerYamlContent.value
+    drawerYamlHasChanges.value = false
+    
+    // Mark project as changed
+    markAsChanged()
+    
+    // Refresh dependencies and graph
+    await fetchDependencies(projectName.value)
+    await nextTick()
+    renderGraph()
+    
+    successMessage.value = `Entity '${selectedNode.value}' saved successfully`
+    showSuccessSnackbar.value = true
+    
+  } catch (err) {
+    drawerYamlError.value = err instanceof Error ? err.message : 'Failed to save entity'
+    console.error('Failed to save quick edit:', err)
+  } finally {
+    drawerYamlSaving.value = false
+  }
+}
+
+function handleCloseQuickEdit() {
+  if (drawerYamlHasChanges.value) {
+    if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
+      return
+    }
+  }
+  
+  showDetailsDrawer.value = false
+  selectedNode.value = null
+  drawerYamlContent.value = null
+  drawerOriginalYamlContent.value = null
+  drawerYamlHasChanges.value = false
+  drawerYamlError.value = null
+}
+
 async function handleLoadYaml() {
   if (!projectName.value) return
 
@@ -1401,6 +1518,12 @@ watch(activeTab, async (newTab) => {
   if (newTab === 'yaml' && rawYamlContent.value === null) {
     await handleLoadYaml()
   }
+  
+  // Update route query to enable context-sensitive help
+  const currentTab = route.query.tab
+  if (currentTab !== newTab) {
+    router.replace({ query: { ...route.query, tab: newTab } })
+  }
 })
 
 // Watch for entity query parameter (from dependency graph deep links)
@@ -1469,5 +1592,43 @@ watch(
   background: rgba(var(--v-theme-surface), 1) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   transform: translateY(-2px);
+}
+
+/* Quick edit drawer styles */
+.drawer-body {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 112px); /* viewport - toolbar - footer */
+  overflow: hidden;
+}
+
+.drawer-alerts {
+  flex-shrink: 0; /* Don't shrink alerts */
+}
+
+.drawer-editor {
+  flex: 1;
+  min-height: 0; /* Critical for flex */
+  overflow: hidden;
+}
+
+.drawer-footer {
+  position: sticky;
+  bottom: 0;
+  background: rgb(var(--v-theme-surface));
+  z-index: 10;
+}
+
+.drawer-editor :deep(.monaco-editor-container) {
+  height: 100% !important;
+}
+
+.data-source-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
 }
 </style>
