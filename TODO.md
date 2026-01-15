@@ -428,7 +428,7 @@ TODO: #157 Improve user experience (Edit YAML in sidebar)
 
 The right sidebar that appear when single-clicking a node feels less useful now that we can double click to edit an entity. Instead it could be used as a "power-user" tool if showing the YAML editor for the entity + Save Button.
 
-TODO: Improve user experience (Action List / Task List)
+TODO: #161 Improve user experience (Action List / Task List)
 
 Currently, there is no indicators of the status of an entity (e.g. done, in progress, blocked) etc. or which entity the user should focus on. It would be good to have some kind of "action list" or "task list" that shows the entities that needs attention from the user. Note that the "task lists" should be a guide only, and the and not enforcing user to work with entities in a specific order.
 

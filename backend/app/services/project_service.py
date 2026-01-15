@@ -146,7 +146,7 @@ class ProjectService:
             logger.error(f"Failed to load project '{name}': {e}")
             raise InvalidProjectError(f"Failed to load project '{name}': {e}") from e
 
-    def save_project(self, project: Project, create_backup: bool = True, original_file_path: Path | None = None) -> Project:
+    def save_project(self, project: Project, *, create_backup: bool = True, original_file_path: Path | None = None) -> Project:
         """
         Save project to file.
 
@@ -192,13 +192,19 @@ class ProjectService:
             logger.error(f"Failed to save project: {e}")
             raise InvalidProjectError(f"Failed to save project: {e}") from e
 
-    def create_project(self, name: str, entities: dict[str, Any] | None = None) -> Project:
+    def create_project(
+        self, 
+        name: str, 
+        entities: dict[str, Any] | None = None,
+        task_list: dict[str, Any] | None = None
+    ) -> Project:
         """
         Create new project.
 
         Args:
             name: Project name
             entities: Optional initial entities
+            task_list: Optional task list configuration
 
         Returns:
             New project
@@ -223,7 +229,12 @@ class ProjectService:
             type="shapeshifter-project",
         )
 
-        project: Project = Project(entities=entities or {}, options={}, metadata=metadata)
+        project: Project = Project(
+            entities=entities or {}, 
+            options={}, 
+            task_list=task_list,
+            metadata=metadata
+        )
 
         return self.save_project(project, create_backup=False)
 

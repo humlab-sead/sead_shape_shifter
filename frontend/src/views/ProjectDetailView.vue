@@ -142,6 +142,13 @@
             <!-- Circular Dependencies Alert -->
             <circular-dependency-alert v-if="hasCircularDependencies" :cycles="cycles" class="mb-4" />
 
+            <!-- Task Filter Panel -->
+            <task-filter-panel
+              v-model="currentTaskFilter"
+              :task-status="taskStatusStore.taskStatus"
+              class="mb-4"
+            />
+
             <!-- Graph Controls -->
             <v-card variant="outlined" class="mb-4">
               <v-card-text class="d-flex align-center gap-4">
@@ -247,6 +254,13 @@
                 </v-btn>
                 <v-spacer />
 
+                <!-- Task Completion Stats -->
+                <task-completion-stats
+                  :task-status="taskStatusStore.taskStatus"
+                  show-details
+                  class="mr-2"
+                />
+
                 <v-chip prepend-icon="mdi-cube-outline"> {{ depStatistics.nodeCount }} nodes </v-chip>
                 <v-chip prepend-icon="mdi-arrow-right"> {{ depStatistics.edgeCount }} edges </v-chip>
               </v-card-text>
@@ -348,9 +362,13 @@
               :x="contextMenuX"
               :y="contextMenuY"
               :entity-name="contextMenuEntity"
+              :task-status="taskStatusStore.getEntityStatus(contextMenuEntity || '')"
               @preview="handleContextMenuPreview"
               @duplicate="handleContextMenuDuplicate"
               @delete="handleContextMenuDelete"
+              @mark-complete="handleMarkComplete"
+              @mark-ignored="handleMarkIgnored"
+              @reset-status="handleResetStatus"
             />
 
             <!-- Entity Details Drawer -->
@@ -630,8 +648,10 @@ import { useProjects, useEntities, useValidation, useDependencies, useCytoscape 
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
 import { useEntityStore } from '@/stores/entity'
+import { useTaskStatusStore } from '@/stores/taskStatus'
 import { getNodeInfo } from '@/utils/graphAdapter'
 import type { CustomGraphLayout } from '@/types'
+import type { TaskFilter } from '@/components/dependencies/TaskFilterPanel.vue'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import EntityFormDialog from '@/components/entities/EntityFormDialog.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
@@ -640,6 +660,8 @@ import ProjectDataSources from '@/components/ProjectDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
 import GraphNodeContextMenu from '@/components/dependencies/GraphNodeContextMenu.vue'
+import TaskFilterPanel from '@/components/dependencies/TaskFilterPanel.vue'
+import TaskCompletionStats from '@/components/dependencies/TaskCompletionStats.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
@@ -754,6 +776,9 @@ const contextMenuX = ref(0)
 const contextMenuY = ref(0)
 const contextMenuEntity = ref<string | null>(null)
 
+// Task status state
+const currentTaskFilter = ref<TaskFilter>('all')
+
 // YAML editing state
 const rawYamlContent = ref<string | null>(null)
 const originalYamlContent = ref<string | null>(null)
@@ -820,6 +845,7 @@ const isSelectedNodeDataSource = computed(() => {
 
 // Cytoscape integration
 const entityStore = useEntityStore()
+const taskStatusStore = useTaskStatusStore()
 
 const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurrentPositions } = useCytoscape({
   container: graphContainer,
@@ -936,6 +962,8 @@ function handleTestRun() {
 async function handleValidate() {
   try {
     await validate(projectName.value)
+    // Refresh task status after validation since status depends on validation results
+    await taskStatusStore.refresh()
     successMessage.value = 'Project validated successfully'
     showSuccessSnackbar.value = true
   } catch (err) {
@@ -947,6 +975,8 @@ async function handleDataValidate(project?: any) {
   try {
     const entityNames = project?.entities
     await validateData(projectName.value, entityNames)
+    // Refresh task status after validation
+    await taskStatusStore.refresh()
     successMessage.value = 'Data validation completed'
     showSuccessSnackbar.value = true
   } catch (err) {
@@ -1249,6 +1279,83 @@ async function handleContextMenuDelete(entityName: string) {
   }
 }
 
+// Task status handlers
+async function handleMarkComplete(entityName: string) {
+  try {
+    const success = await taskStatusStore.markComplete(entityName)
+    if (success) {
+      successMessage.value = `Entity "${entityName}" marked as complete`
+      showSuccessSnackbar.value = true
+      // Refresh graph to show updated badges
+      applyTaskStatusToNodes()
+    }
+  } catch (err) {
+    console.error('Failed to mark entity as complete:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to mark entity as complete'
+    showSuccessSnackbar.value = true
+  }
+}
+
+async function handleMarkIgnored(entityName: string) {
+  try {
+    const success = await taskStatusStore.markIgnored(entityName)
+    if (success) {
+      successMessage.value = `Entity "${entityName}" marked as ignored`
+      showSuccessSnackbar.value = true
+      // Refresh graph to show updated badges
+      applyTaskStatusToNodes()
+    }
+  } catch (err) {
+    console.error('Failed to mark entity as ignored:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to mark entity as ignored'
+    showSuccessSnackbar.value = true
+  }
+}
+
+async function handleResetStatus(entityName: string) {
+  try {
+    const success = await taskStatusStore.resetStatus(entityName)
+    if (success) {
+      successMessage.value = `Status reset for entity "${entityName}"`
+      showSuccessSnackbar.value = true
+      // Refresh graph to show updated badges
+      applyTaskStatusToNodes()
+    }
+  } catch (err) {
+    console.error('Failed to reset entity status:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to reset entity status'
+    showSuccessSnackbar.value = true
+  }
+}
+
+// Apply task status styling to graph nodes
+function applyTaskStatusToNodes() {
+  if (!cy.value || !taskStatusStore.taskStatus) return
+
+  cy.value.nodes().forEach(node => {
+    const entityName = node.id()
+    const status = taskStatusStore.getEntityStatus(entityName)
+    
+    if (!status) return
+
+    // Remove existing task classes
+    node.removeClass('task-done task-ignored task-blocked task-critical task-ready')
+
+    // Apply status-based classes
+    if (status.status === 'done') {
+      node.addClass('task-done')
+    } else if (status.status === 'ignored') {
+      node.addClass('task-ignored')
+    } else if (status.blocked_by && status.blocked_by.length > 0) {
+      node.addClass('task-blocked')
+    } else if (status.priority === 'critical') {
+      node.addClass('task-critical')
+    } else if (status.priority === 'ready') {
+      node.addClass('task-ready')
+    }
+  })
+}
+
 async function handleRefreshDependencies() {
   clearDependenciesError()
   if (projectName.value) {
@@ -1476,6 +1583,9 @@ onMounted(async () => {
     // Start editing session
     await startSession(projectName.value)
     
+    // Initialize task status
+    await taskStatusStore.initialize(projectName.value)
+    
     console.debug(`ProjectDetailView: Successfully initialized for project "${projectName.value}"`)
   } catch (err) {
     console.error('ProjectDetailView: Failed to initialize project view:', err)
@@ -1503,6 +1613,8 @@ watch(
       console.debug(`ProjectDetailView: Loading new project "${newName}"`)
       await select(newName)
       await fetchBackups(newName)
+      // Reinitialize task status for new project
+      await taskStatusStore.initialize(newName)
     } catch (err) {
       console.error(`ProjectDetailView: Failed to load project "${newName}":`, err)
       // Only navigate back if we're still on this route
@@ -1539,6 +1651,82 @@ watch(
   },
   { immediate: true }
 )
+
+// Watch for task status updates to apply styling
+watch(
+  () => taskStatusStore.taskStatus,
+  () => {
+    applyTaskStatusToNodes()
+  },
+  { deep: true }
+)
+
+// Watch for dependency graph updates to apply task status
+watch(
+  () => dependencyGraph.value,
+  async () => {
+    // Wait for graph to render, then apply task status
+    await nextTick()
+    applyTaskStatusToNodes()
+    applyTaskFilter()
+  }
+)
+
+// Watch for task filter changes to show/hide nodes
+watch(
+  () => currentTaskFilter.value,
+  () => {
+    applyTaskFilter()
+  }
+)
+
+// Apply task filter to show/hide nodes based on status
+function applyTaskFilter() {
+  if (!cy.value || !taskStatusStore.taskStatus) return
+
+  const filter = currentTaskFilter.value
+
+  cy.value.nodes().forEach(node => {
+    const entityName = node.id()
+    const status = taskStatusStore.getEntityStatus(entityName)
+    
+    if (!status) {
+      // If no status info, show by default
+      node.style('display', 'element')
+      return
+    }
+
+    let shouldShow = true
+
+    switch (filter) {
+      case 'todo':
+        shouldShow = status.status === 'todo'
+        break
+      case 'done':
+        shouldShow = status.status === 'done'
+        break
+      case 'ignored':
+        shouldShow = status.status === 'ignored'
+        break
+      case 'all':
+      default:
+        shouldShow = true
+        break
+    }
+
+    node.style('display', shouldShow ? 'element' : 'none')
+  })
+
+  // Also hide edges connected to hidden nodes
+  cy.value.edges().forEach(edge => {
+    const source = edge.source()
+    const target = edge.target()
+    const sourceHidden = source.style('display') === 'none'
+    const targetHidden = target.style('display') === 'none'
+    
+    edge.style('display', sourceHidden || targetHidden ? 'none' : 'element')
+  })
+}
 </script>
 
 <style scoped>
