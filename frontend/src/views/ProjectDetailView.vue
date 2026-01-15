@@ -100,15 +100,11 @@
           </v-tab>
           <v-tab value="reconciliation">
             <v-icon icon="mdi-link-variant" class="mr-2" />
-            Reconciliation
-          </v-tab>
-          <v-tab value="data-sources">
-            <v-icon icon="mdi-database-outline" class="mr-2" />
-            Data Sources
+            Reconcile
           </v-tab>
           <v-tab value="validation">
             <v-icon icon="mdi-check-circle-outline" class="mr-2" />
-            Validation
+            Validate
             <v-badge
               v-if="validationResult && (hasErrors || hasWarnings)"
               :content="errorCount + warningCount"
@@ -120,6 +116,10 @@
           <v-tab value="dispatch">
             <v-icon icon="mdi-send" class="mr-2" />
             Dispatch
+          </v-tab>
+          <v-tab value="data-sources">
+            <v-icon icon="mdi-database-outline" class="mr-2" />
+            Data Sources
           </v-tab>
           <v-tab value="metadata">
             <v-icon icon="mdi-information-outline" class="mr-2" />
