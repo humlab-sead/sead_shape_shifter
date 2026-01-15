@@ -1089,3 +1089,236 @@ options:
           columns:
           - date_updated
           - '*_uuid'
+  layout:
+    custom:
+      abundance:
+        x: 675.4454285316694
+        y: 167.56055311837812
+      abundance_element:
+        x: 962.2743047396117
+        y: 111.6525872883319
+      abundance_element_group:
+        x: 1169.9710645152486
+        y: 12.88742394036478
+      abundance_modification:
+        x: 502.884257870446
+        y: 654.0964470344421
+      abundance_property:
+        x: 983.7075204436169
+        y: 359.1158609957804
+      abundance_property_type:
+        x: 1210.2186401800789
+        y: 253.23701186617907
+      analysis_entity:
+        x: 353.0256627524145
+        y: 208.1511963802725
+      archaeological_period:
+        x: 171.37014872809786
+        y: -144.6872266243012
+      chronological_period:
+        x: 381.92704704431367
+        y: -98.62950199163335
+      contact:
+        x: 572.1266349494397
+        y: 457.7526737614415
+      contact_type:
+        x: 372.38471522103293
+        y: 486.7093337481287
+      coordinate_method_dimension:
+        x: -416.98131044948633
+        y: 420.84257348715613
+      coordinate_system:
+        x: 802.767243454006
+        y: 868.1095050185854
+      cultural_group:
+        x: 1025.767243454006
+        y: 700.1095050185854
+      dataset:
+        x: 36.58033627752685
+        y: 232.84228038917283
+      dataset_contacts:
+        x: -937.7075243150333
+        y: 35.401769498441645
+      dataset_submission:
+        x: 807.767243454006
+        y: 784.1095050185854
+      dataset_submission_type:
+        x: 831.267243454006
+        y: 700.1095050185854
+      dating:
+        x: -331.539254227074
+        y: 294.1633129676144
+      dating_period:
+        x: 280.79243137227905
+        y: 56.766424215300056
+      dimension:
+        x: -565.8446387682295
+        y: 531.430170955799
+      epoch:
+        x: 346.32385691585694
+        y: -220.54958150285574
+      feature:
+        x: -261.85848762712976
+        y: 6.667457332130798
+      feature_property:
+        x: -258.6480516125304
+        y: -85.45835063626575
+      feature_property_type:
+        x: -377.93697272135006
+        y: -172.32273962374327
+      feature_type:
+        x: -391.69485280105533
+        y: -44.751630244507474
+      identification_level:
+        x: 987.767243454006
+        y: 868.1095050185854
+      location:
+        x: 240.80344048551564
+        y: -365.91650257409935
+      location_type:
+        x: 99.3552968131274
+        y: -457.1783770938211
+      master_dataset:
+        x: 984.767243454006
+        y: 784.1095050185854
+      method:
+        x: 46.06778742321573
+        y: 412.0471670445004
+      method_group:
+        x: 930.767243454006
+        y: 952.1095050185854
+      modification_type:
+        x: 205.23540855794474
+        y: 678.3078447656787
+      natural_region:
+        x: -788.6847459181952
+        y: -393.8123561019895
+      natural_region_group:
+        x: -876.9868157771434
+        y: -291.83795230466865
+      project:
+        x: -1.0579063090030802
+        y: -118.86988641284734
+      relative_dating:
+        x: 783.267243454006
+        y: 952.1095050185854
+      sample:
+        x: -483.81085456471453
+        y: 140.57667249815623
+      sample_coordinate:
+        x: -544.0180907084795
+        y: 315.95731471600413
+      sample_description_type:
+        x: -883.1224048671289
+        y: 403.14856048852783
+      sample_description:
+        x: -738.2793769888876
+        y: 244.6324187237029
+      sample_group:
+        x: -532.6456344455565
+        y: -112.61574188056689
+      sample_type:
+        x: -694.7424538063067
+        y: 71.13266121714865
+      site:
+        x: -432.4111304264938
+        y: -270.32494256427407
+      site_location:
+        x: -25.87267022499684
+        y: -293.55421099775754
+      site_natural_region:
+        x: -711.7269641662831
+        y: -242.42711870489907
+      site_property_type:
+        x: -386.1362094786371
+        y: -446.95222333285426
+      site_property:
+        x: -556.0219434649146
+        y: -398.5723604896434
+      site_type_group:
+        x: -83.1340253641626
+        y: -406.5010002675421
+      site_type:
+        x: -229.67512365350117
+        y: -414.49356569702167
+      _pcodes:
+        x: 1360.2186401800789
+        y: 233.7854956838512
+      taxa:
+        x: 683.5117779709823
+        y: -183.90506369097685
+      taxa_use_categories:
+        x: 866.2175955732832
+        y: -119.26121267340876
+      taxa_plant_sociological_behaviour:
+        x: 1116.4482242399126
+        y: -166.48457206292534
+      taxa_dominance:
+        x: 1141.1992802307689
+        y: -263.6994168980955
+      taxa_oberdorfer_characteristics:
+        x: 858.3995458732765
+        y: -484.53851365088303
+      taxa_persistence:
+        x: 1000.5880575804882
+        y: -365.91210222341095
+      taxa_briemle_characteristics:
+        x: 504.3537370983374
+        y: -322.48697262164836
+      taxa_ecological_behaviour:
+        x: 618.8894485913696
+        y: -448.6066271602773
+      _project_contact:
+        x: -1326.2713424887481
+        y: -447.3177821137942
+      source:arbodat_data:
+        x: 1073.8656756710398
+        y: 1020.5337996663268
+      source:arbodat_lookup:
+        x: 748.2370990563008
+        y: 1293.768618204537
+      table:arbodat_lookup:ArchDat:
+        x: 348.79451669641014
+        y: 1439.1538284819633
+      table:arbodat_lookup:ChronoDat:
+        x: -76.28340083136447
+        y: 1439.1538284819633
+      table:arbodat_lookup:KoordSys:
+        x: -475.725983191255
+        y: 1293.768618204537
+      table:arbodat_data:Datierung:
+        x: -801.3545598059941
+        y: 1020.533799666327
+      table:arbodat_data:Proben:
+        x: -1013.8935185698813
+        y: 652.4055244994877
+      table:arbodat_lookup:Epochen:
+        x: -1087.7075243150332
+        y: 233.78549568385134
+      table:arbodat_data:Befunde:
+        x: -1013.8935185698815
+        y: -184.83453313178507
+      source:sead:
+        x: -801.3545598059941
+        y: -552.9628082986244
+      table:sead:tbl_identification_levels:
+        x: -475.7259831912558
+        y: -826.1976268368342
+      table:arbodat_data:Projekte:
+        x: -76.2834008313645
+        y: -971.5828371142609
+      table:sead:tbl_method_groups:
+        x: 348.7945166964096
+        y: -971.5828371142609
+      table:arbodat_lookup:Probentypen:
+        x: 748.2370990563008
+        y: -826.1976268368346
+      table:arbodat_data:Details:
+        x: 1073.8656756710395
+        y: -552.9628082986249
+      table:arbodat_lookup:ÖkoSozDaten:
+        x: 1286.4046344349267
+        y: -184.83453313178603
+    _metadata:
+      last_updated: '2026-01-14T19:39:51.890309+00:00'
+      layout_version: 1
