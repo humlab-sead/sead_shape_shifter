@@ -27,8 +27,8 @@
 ARG PYTHON_VERSION=3.13
 ARG NODE_VERSION=20
 ARG ALPINE_VERSION=3.19
-ARG USER_UID=1000
-ARG USER_GID=1000
+ARG USER_UID=1002
+ARG USER_GID=33
 
 # ------------------------------------------------------------------------------
 # Stage 0: Resolve Codebase Source
