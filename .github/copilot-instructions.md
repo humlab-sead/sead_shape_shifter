@@ -140,8 +140,31 @@ from src.configuration.provider import ConfigStore  # Config singleton
 from backend.app.services.validation_service import ValidationService  # Backend
 ```
 
-### Mapper Pattern (Environment Variables)
-**Critical**: Environment variable resolution happens ONLY in the mapper layer:
+### Layer Boundary Architecture (Awesome Pattern) ⭐
+
+**Critical architectural principle: Strict separation between API and Core layers.**
+
+#### Three-Layer Model
+
+```
+API Layer (backend/app/models/)    ← HTTP interface, Pydantic validation
+      ↕ ProjectMapper
+Core Layer (src/model.py)          ← Domain logic, business rules
+      ↕ ConfigStore  
+YAML Files                         ← Persistence, source of truth
+```
+
+**Why awesome:**
+- Domain logic (`TaskList`, entity processing) lives in Core (framework-independent)
+- API layer is pure interface (no business logic in DTOs)
+- Mappers enforce boundaries and prevent layer confusion
+- Core can be used in CLI, scripts, ingesters without API dependency
+- Testing is cleaner (domain tests don't need HTTP mocking)
+
+#### Mapper Pattern Rules
+
+**1. Environment Variable Resolution** 
+Happens ONLY in mapper layer:
 ```python
 # backend/app/mappers/data_source_mapper.py
 class DataSourceMapper:
@@ -155,10 +178,40 @@ class DataSourceMapper:
 **Layer responsibilities:**
 - API Models (`backend/app/models/`) - Raw `${ENV_VARS}` (unresolved)
 - Services (`backend/app/services/`) - Work with raw API entities
-- Mappers (`backend/app/mappers/`) - **Resolve env vars here**
+- Mappers (`backend/app/mappers/`) - **Resolve env vars + translate layers**
 - Core (`src/`) - Always fully resolved
 
-**Never** call `resolve_config_env_vars()` in services - let the mapper handle it.
+**2. Domain State Manipulation**
+Always use mapper when working with domain state:
+```python
+# ✅ CORRECT: Service converts API → Core → API
+class TaskService:
+    async def mark_complete(self, project_name: str, entity: str):
+        # Load API model
+        api_project: Project = self.project_service.load_project(project_name)
+        
+        # Convert to Core for business logic
+        project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+        
+        # Domain logic (task_list only exists on Core)
+        project.task_list.mark_completed(entity)
+        
+        # Convert back to API
+        updated: Project = ProjectMapper.to_api_config(project.cfg, project_name)
+        
+        # Save via API layer
+        self.project_service.save_project(updated)
+
+# ❌ WRONG: Type confusion
+api_project: ShapeShiftProject = load_project(name)  # Returns Project, not ShapeShiftProject!
+api_project.task_list.mark_completed(entity)  # AttributeError!
+```
+
+**Never:**
+- Call `resolve_config_env_vars()` in services - mapper's job
+- Assign API `Project` to `ShapeShiftProject` variable - type confusion
+- Put business logic in API models - keep them as DTOs
+- Skip mapper when needing domain logic - always convert properly
 
 ### Test Patterns
 ```python
