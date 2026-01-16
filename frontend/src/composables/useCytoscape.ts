@@ -246,9 +246,9 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     } else {
       // Incremental update: preserve existing positions
       const currentIds = new Set(currentElements.map((el) => el.id()))
-      const newIds = new Set(newElements.map((el) => el.data.id))
+      const newIds = new Set(newElements.map((el) => el.data.id).filter((id): id is string => !!id))
       const toRemove = currentElements.filter((el) => !newIds.has(el.id()))
-      const toAdd = newElements.filter((el) => !currentIds.has(el.data.id))
+      const toAdd = newElements.filter((el) => el.data.id && !currentIds.has(el.data.id))
 
       // Remove deleted elements
       if (toRemove.length > 0) {
@@ -258,7 +258,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
 
       // Update classes on existing elements (for label visibility, cycles, etc.)
       newElements.forEach((newEl) => {
-        if (currentIds.has(newEl.data.id)) {
+        if (newEl.data.id && currentIds.has(newEl.data.id)) {
           const existingEl = cy.value!.getElementById(newEl.data.id)
           if (existingEl.length > 0) {
             // Remove all classes and re-apply from new element definition
@@ -288,7 +288,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
             const layoutConfig = getLayoutConfig(
               layoutType.value,
               true,
-              layoutType.value === 'custom' ? customPositions.value ?? undefined : undefined
+              undefined
             )
             newNodes.layout(layoutConfig as LayoutOptions).run()
           }
