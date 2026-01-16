@@ -256,6 +256,20 @@ export function useCytoscape(options: UseCytoscapeOptions) {
         toRemove.remove()
       }
 
+      // Update classes on existing elements (for label visibility, cycles, etc.)
+      newElements.forEach((newEl) => {
+        if (currentIds.has(newEl.data.id)) {
+          const existingEl = cy.value!.getElementById(newEl.data.id)
+          if (existingEl.length > 0) {
+            // Remove all classes and re-apply from new element definition
+            existingEl.classes([])
+            if (newEl.classes && newEl.classes.length > 0) {
+              existingEl.classes(newEl.classes)
+            }
+          }
+        }
+      })
+
       // Add new elements and layout only them
       if (toAdd.length > 0) {
         console.log('[useCytoscape] Adding', toAdd.length, 'new elements')
