@@ -9,6 +9,7 @@ export * from './validation'
 export * from './data-sources'
 export * from './sessions'
 export * from './reconciliation'
+export * from './tasks'
 
 // Convenience re-export of all API services
 import { projectsApi } from './projects'
@@ -17,6 +18,7 @@ import { validationApi } from './validation'
 import { dataSourcesApi } from './data-sources'
 import { sessionsApi } from './sessions'
 import { reconciliationSpecApi } from './reconciliation'
+import { tasksApi } from './tasks'
 
 export const api = {
   projects: projectsApi,
@@ -25,4 +27,5 @@ export const api = {
   dataSources: dataSourcesApi,
   sessions: sessionsApi,
   reconciliationSpec: reconciliationSpecApi,
+  tasks: tasksApi,
 }

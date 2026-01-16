@@ -10,7 +10,7 @@ from backend.app.core.config import Settings, settings
 from backend.app.core.state_manager import ApplicationState, get_app_state
 from backend.app.core.utility import friendly_dtype
 from backend.app.models.shapeshift import ColumnInfo, PreviewResult
-from backend.app.services.project_service import ProjectService
+from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.caches import ShapeShiftCache, ShapeShiftProjectCache
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
@@ -200,3 +200,16 @@ class PreviewResultBuilder:
             dependencies_loaded=dependencies_loaded,
             cache_hit=cache_hit,
         )
+
+
+# Singleton instance
+_shapeshift_service: ShapeShiftService | None = None  # pylint: disable=invalid-name
+
+
+def get_shapeshift_service() -> ShapeShiftService:
+    """Get singleton ShapeShiftService instance."""
+    global _shapeshift_service  # pylint: disable=global-statement
+    if _shapeshift_service is None:
+
+        _shapeshift_service = ShapeShiftService(project_service=get_project_service())
+    return _shapeshift_service

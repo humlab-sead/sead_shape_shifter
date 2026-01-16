@@ -615,6 +615,138 @@ class LayoutOptions:
         return result
 
 
+class TaskList:
+    """Task list configuration for tracking entity progress.
+
+    This class provides a lightweight, non-enforcing progress tracking system
+    for entities in a Shape Shifter project. It combines user-declared statuses
+    with derived state (validation, preview availability) to guide workflow.
+
+    Status Model:
+        - done: User explicitly marked as complete (requires validation + preview)
+        - todo: Not marked done (derived)
+        - ignored: User explicitly excluded from project
+
+    Derived Signals:
+        - blocked: Has validation errors or dependency issues
+        - in_progress: Entity exists but not done
+        - pending: Entity doesn't exist yet
+    """
+
+    def __init__(self, data: dict[str, Any] | None = None) -> None:
+        """Initialize task list from configuration data.
+
+        Args:
+            data: Dictionary containing task list configuration with keys:
+                - required_entities: List of entity names that must be completed
+                - completed: List of entity names marked as done by user
+                - ignored: List of entity names explicitly excluded
+        """
+        self.data: dict[str, Any] = data or {}
+
+    @property
+    def required_entities(self) -> list[str]:
+        """Get list of required entity names."""
+        return self.data.get("required_entities", []) or []
+
+    @property
+    def completed(self) -> list[str]:
+        """Get list of completed entity names."""
+        return self.data.get("completed", []) or []
+
+    @property
+    def ignored(self) -> list[str]:
+        """Get list of ignored entity names."""
+        return self.data.get("ignored", []) or []
+
+    def is_required(self, entity_name: str) -> bool:
+        """Check if entity is required."""
+        return entity_name in self.required_entities
+
+    def is_completed(self, entity_name: str) -> bool:
+        """Check if entity is marked as completed."""
+        return entity_name in self.completed
+
+    def is_ignored(self, entity_name: str) -> bool:
+        """Check if entity is marked as ignored."""
+        return entity_name in self.ignored
+
+    def mark_completed(self, entity_name: str) -> None:
+        """Mark entity as completed.
+
+        Args:
+            entity_name: Name of entity to mark as done
+
+        Note:
+            This only updates in-memory state. Caller must persist to project file.
+        """
+        # Ensure completed list exists in data
+        if "completed" not in self.data:
+            self.data["completed"] = []
+
+        # Add to completed list if not already there
+        if entity_name not in self.data["completed"]:
+            self.data["completed"].append(entity_name)
+
+        # Remove from ignored if present
+        if "ignored" in self.data and entity_name in self.data["ignored"]:
+            self.data["ignored"] = [e for e in self.data["ignored"] if e != entity_name]
+
+    def mark_ignored(self, entity_name: str) -> None:
+        """Mark entity as ignored.
+
+        Args:
+            entity_name: Name of entity to ignore
+
+        Note:
+            This only updates in-memory state. Caller must persist to project file.
+        """
+        # Ensure ignored list exists in data
+        if "ignored" not in self.data:
+            self.data["ignored"] = []
+
+        # Add to ignored list if not already there
+        if entity_name not in self.data["ignored"]:
+            self.data["ignored"].append(entity_name)
+
+        # Remove from completed if present
+        if "completed" in self.data and entity_name in self.data["completed"]:
+            self.data["completed"] = [e for e in self.data["completed"] if e != entity_name]
+
+    def reset_status(self, entity_name: str) -> None:
+        """Reset entity status to todo.
+
+        Args:
+            entity_name: Name of entity to reset
+
+        Note:
+            This only updates in-memory state. Caller must persist to project file.
+        """
+        # Remove from completed if present
+        if "completed" in self.data and entity_name in self.data["completed"]:
+            self.data["completed"] = [e for e in self.data["completed"] if e != entity_name]
+
+        # Remove from ignored if present
+        if "ignored" in self.data and entity_name in self.data["ignored"]:
+            self.data["ignored"] = [e for e in self.data["ignored"] if e != entity_name]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        result = {}
+        if self.required_entities:
+            result["required_entities"] = self.required_entities
+        if self.completed:
+            result["completed"] = self.completed
+        if self.ignored:
+            result["ignored"] = self.ignored
+        return result
+
+    @property
+    def is_empty(self) -> bool:
+        """Check if task list has no configuration."""
+        return not (self.required_entities or self.completed or self.ignored)
+
+
 class ShapeShiftProject:
     """Project configuration for database tables. Read-Only. Wraps overall project configuration."""
 
@@ -665,6 +797,12 @@ class ShapeShiftProject:
         """Get layout options for dependency graph visualization."""
         layout_data = self.options.get("layout", {})
         return LayoutOptions(layout_data)
+
+    @cached_property
+    def task_list(self) -> TaskList:
+        """Get task list configuration for entity progress tracking."""
+        task_data = self.cfg.get("task_list", {})
+        return TaskList(task_data)
 
     def get_ingester_config(self, ingester_name: str) -> dict[str, Any] | None:
         """Get configuration for a specific ingester."""

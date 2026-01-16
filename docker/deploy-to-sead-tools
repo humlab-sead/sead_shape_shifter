@@ -1,0 +1,14 @@
+#!/bin/bash
+
+SOURCE_DIR=$(realpath $(dirname "$(realpath "$0")")/..)
+TARGET_DIR=/home/sead/sead-tools/sead_shape_shifter
+echo $SOURCE_DIR
+
+for file in \
+    docker/Dockerfile \
+    docker/docker-compose.yml \
+    docker/Makefile \
+    .dockerignore
+do
+    cp -f "$SOURCE_DIR/$file" "$TARGET_DIR/"
+done

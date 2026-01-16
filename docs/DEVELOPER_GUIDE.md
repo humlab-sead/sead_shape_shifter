@@ -197,6 +197,175 @@ sead_shape_shifter/
 
 ## 3. System Architecture
 
+### Layer Boundary Architecture (Awesome Principles) ⭐
+
+**Shape Shifter follows a strict layer separation pattern that is both awesome and essential for maintainability.**
+
+#### The Three Layers
+
+```
+┌─────────────────────────────────────────┐
+│  API Layer (backend/app/models/)        │  ← HTTP interface
+│  - Pydantic models for request/response │
+│  - Data validation & serialization      │
+│  - Raw environment variables (${VAR})   │
+└─────────────────────────────────────────┘
+              ↕ ProjectMapper
+┌─────────────────────────────────────────┐
+│  Core Layer (src/model.py)              │  ← Domain logic
+│  - ShapeShiftProject business logic     │
+│  - TaskList state manipulation          │
+│  - Resolved configuration data          │
+│  - Framework-independent                │
+└─────────────────────────────────────────┘
+              ↕ ConfigStore
+┌─────────────────────────────────────────┐
+│  Persistence (YAML files)               │  ← Source of truth
+│  - Project configuration                │
+│  - Task list state                      │
+└─────────────────────────────────────────┘
+```
+
+#### Why This Architecture is Awesome
+
+**1. Domain-Driven Design**
+- Business logic (like `TaskList`) belongs in the domain (Core), not the API
+- Domain state is persisted in YAML, making Core the natural owner
+- API layer is just for HTTP concerns - validation, serialization, routing
+
+**2. Separation of Concerns**
+- **Core** = Pure business logic, zero framework dependencies
+- **API** = HTTP/REST interface, Pydantic validation
+- **Mappers** = Translation between layers
+- Mixing these creates "smart DTOs" (anti-pattern) and tight coupling
+
+**3. Reusability**
+```python
+# Core can be used independently of FastAPI
+from src.model import ShapeShiftProject
+
+# CLI tools
+project = ShapeShiftProject.load("project.yml")
+project.task_list.mark_completed("site")
+project.save()
+
+# Scripts, ingesters, batch processors - all use same core
+```
+
+**4. Framework Independence**
+- Swap FastAPI for Flask/Django without touching domain logic
+- Core has zero dependency on Pydantic/FastAPI
+- Better long-term maintainability and testability
+
+**5. Testing Benefits**
+- Test domain logic without HTTP mocking
+- Pure business logic tests are faster and clearer
+- API tests focus on HTTP concerns only
+
+#### The Mapper Pattern (Critical)
+
+**Never bypass the mapper.** Services must convert between layers explicitly:
+
+```python
+# ✅ CORRECT: Service uses mapper for layer conversion
+from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.models.project import Project
+from src.model import ShapeShiftProject
+
+class TaskService:
+    async def mark_complete(self, project_name: str, entity_name: str):
+        # 1. Load from API layer
+        api_project: Project = self.project_service.load_project(project_name)
+        
+        # 2. Convert to core layer for business logic
+        project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+        
+        # 3. Execute domain logic
+        project.task_list.mark_completed(entity_name)
+        
+        # 4. Convert back to API layer
+        updated_api_project: Project = ProjectMapper.to_api_config(
+            project.cfg, project_name
+        )
+        
+        # 5. Save via API layer
+        self.project_service.save_project(updated_api_project)
+```
+
+```python
+# ❌ WRONG: Type confusion, bypassing mapper
+class TaskService:
+    async def mark_complete(self, project_name: str, entity_name: str):
+        # This returns API Project, not ShapeShiftProject!
+        project: ShapeShiftProject = self.project_service.load_project(project_name)
+        project.task_list.mark_completed(entity_name)  # AttributeError!
+```
+
+#### Mapper Responsibilities
+
+**Data Source Mapper** (`backend/app/mappers/data_source_mapper.py`):
+- Converts API models ↔ Core configuration
+- **Resolves environment variables at API→Core boundary**
+- Never resolve in services - always in mapper
+
+**Project Mapper** (`backend/app/mappers/project_mapper.py`):
+- Converts `Project` (API) ↔ `ShapeShiftProject` (Core)
+- Handles entity dict transformations
+- Preserves sparse YAML structure
+
+**Environment Variable Resolution:**
+```python
+# ✅ CORRECT: Mapper resolves variables
+class DataSourceMapper:
+    @staticmethod
+    def to_core_config(api_config):
+        api_config = api_config.resolve_config_env_vars()  # HERE!
+        return CoreDataSourceConfig(...)
+
+# ❌ WRONG: Service resolving variables
+class SomeService:
+    def do_something(self, config):
+        config = config.resolve_config_env_vars()  # NO! Mapper's job
+```
+
+#### Layer Communication Rules
+
+1. **Services** work with API models, call mapper when needing Core
+2. **Mappers** are the ONLY place for layer translation
+3. **Core** knows nothing about API models or HTTP
+4. **API models** are DTOs - no business logic
+5. **Environment variables** resolved in mapper, never in services
+
+#### When to Use Each Layer
+
+**Use Core (ShapeShiftProject) when:**
+- Manipulating domain state (task_list, entities)
+- Business logic that should work in CLI/scripts
+- Need access to framework-independent logic
+
+**Use API (Project) when:**
+- Receiving HTTP requests
+- Validating user input with Pydantic
+- Serializing responses
+- Storing in ApplicationState
+
+**Use Mapper when:**
+- Converting between API ↔ Core
+- Resolving environment variables
+- Translating data structures between layers
+
+#### Performance Note
+
+The mapper "cost" (object construction) is negligible:
+- One-time per request (not in loops)
+- No I/O overhead
+- Enforces contracts and prevents bugs
+- Architectural benefits far outweigh minimal conversion cost
+
+**This pattern is awesome because it saves you from pain later.** 🎉
+
+## 3. System Architecture (Continued)
+
 ### High-Level Architecture
 
 ```
