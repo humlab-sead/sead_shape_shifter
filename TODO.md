@@ -42,7 +42,7 @@
  - [] TODO: #127 Add three-state toggling of L/R panes in entity ediitor.
  - [] TODO: #137 Rename "ingest" in UX to "dispatch" since it better conveys UX perspective. Move feature inside project editor.
  - [] TODO: #163 Reduce clutter in Graph view toolbar
- 
+ - [] TODO: #166 Improve YAML syntax support
 
 # Tiny DSL Expression Support in extra_columns
 

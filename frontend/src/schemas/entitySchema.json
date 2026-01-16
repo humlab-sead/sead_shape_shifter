@@ -1,0 +1,244 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ShapeShifter Entity Definition",
+  "description": "Schema for a single entity definition (without project wrapper)",
+  "type": "object",
+  "properties": {
+    "type": {
+      "enum": ["sql", "fixed"],
+      "description": "Entity source type: sql (database query) or fixed (hardcoded values)"
+    },
+    "data_source": {
+      "type": "string",
+      "description": "Reference to data source in options.data_sources"
+    },
+    "source": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "object" },
+        { "type": "null" }
+      ],
+      "description": "Source entity or data source reference"
+    },
+    "surrogate_id": {
+      "type": "string",
+      "description": "Surrogate key column name (must end with _id)",
+      "pattern": ".*_id$"
+    },
+    "surrogate_name": {
+      "type": "string",
+      "description": "Surrogate name column"
+    },
+    "keys": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Array of key column names"
+        },
+        {
+          "type": "string",
+          "description": "Expression or @value reference"
+        }
+      ],
+      "description": "Natural key columns"
+    },
+    "columns": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Array of column names"
+        },
+        {
+          "type": "string",
+          "description": "Expression or @value reference"
+        }
+      ],
+      "description": "Columns to select"
+    },
+    "query": {
+      "type": "string",
+      "description": "SQL query to execute (for sql type entities)"
+    },
+    "values": {
+      "type": "array",
+      "description": "Fixed values (for fixed type entities)",
+      "items": {
+        "type": "array"
+      }
+    },
+    "depends_on": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of entity names this entity depends on"
+    },
+    "foreign_keys": {
+      "type": "array",
+      "description": "Foreign key relationships to other entities",
+      "items": {
+        "type": "object",
+        "required": ["entity"],
+        "properties": {
+          "entity": {
+            "type": "string",
+            "description": "Referenced entity name"
+          },
+          "local_keys": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Array of local key column names"
+              },
+              {
+                "type": "string",
+                "description": "Expression or @value reference"
+              }
+            ],
+            "description": "Local key columns"
+          },
+          "remote_keys": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Array of remote key column names"
+              },
+              {
+                "type": "string",
+                "description": "Expression or @value reference"
+              }
+            ],
+            "description": "Remote key columns in referenced entity"
+          },
+          "how": {
+            "enum": ["left", "inner", "outer"],
+            "default": "left",
+            "description": "Join type: left (keep all local), inner (matching only), outer (all from both)"
+          },
+          "constraints": {
+            "type": "object",
+            "description": "Foreign key constraint validations",
+            "properties": {
+              "cardinality": {
+                "enum": ["many-to-one", "one-to-many", "one-to-one", "many-to-many"],
+                "description": "Expected relationship cardinality"
+              },
+              "allow_unmatched_left": {
+                "type": "boolean",
+                "default": false,
+                "description": "Allow records in local entity with no match in remote"
+              },
+              "allow_null_keys": {
+                "type": "boolean",
+                "default": false,
+                "description": "Allow NULL values in key columns"
+              }
+            }
+          }
+        }
+      }
+    },
+    "filters": {
+      "type": "object",
+      "description": "Post-load data filters",
+      "properties": {
+        "exists_in": {
+          "type": "object",
+          "description": "Filter records that exist in another entity",
+          "required": ["entity", "keys"],
+          "properties": {
+            "entity": {
+              "type": "string",
+              "description": "Entity to check existence against"
+            },
+            "keys": {
+              "oneOf": [
+                { "type": "array", "items": { "type": "string" } },
+                { "type": "string" }
+              ],
+              "description": "Key columns to match"
+            }
+          }
+        }
+      }
+    },
+    "unnest": {
+      "type": "object",
+      "description": "Configuration for wide-to-long transformation (melt operation)",
+      "required": ["value_column", "category_column", "columns"],
+      "properties": {
+        "value_column": {
+          "type": "string",
+          "description": "Name for the new column containing values"
+        },
+        "category_column": {
+          "type": "string",
+          "description": "Name for the new column containing category labels"
+        },
+        "columns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Columns to unnest into rows"
+        }
+      }
+    },
+    "append": {
+      "type": "array",
+      "description": "List of entity names to append (union operation)",
+      "items": { "type": "string" }
+    },
+    "extra_columns": {
+      "type": "object",
+      "description": "Additional computed columns to add",
+      "additionalProperties": {
+        "type": "string",
+        "description": "Expression to compute column value"
+      }
+    },
+    "drop_duplicates": {
+      "type": "object",
+      "description": "Configuration for removing duplicate rows",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "columns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Columns to consider for duplicate detection"
+        }
+      }
+    },
+    "drop_empty_rows": {
+      "type": "object",
+      "description": "Configuration for removing rows with empty values",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "columns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Columns to check for empty values"
+        }
+      }
+    },
+    "check_functional_dependency": {
+      "type": "boolean",
+      "default": false,
+      "description": "Validate that keys determine all other columns (functional dependency)"
+    },
+    "replacements": {
+      "type": "object",
+      "description": "Value replacement rules",
+      "additionalProperties": {
+        "type": "object",
+        "description": "Map of old values to new values for a column"
+      }
+    }
+  }
+}
