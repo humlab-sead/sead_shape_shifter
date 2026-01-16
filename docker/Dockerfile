@@ -62,9 +62,7 @@ RUN if [ "$SOURCE" = "github" ]; then \
 
 # Copy local context when SOURCE=workdir
 # When SOURCE=github, this will copy whatever is in the build context (should be empty/minimal)
-ARG USER_UID
-ARG USER_GID
-COPY --chown=${USER_UID}:${USER_GID} . /source-context/
+COPY . /source-context/
 RUN if [ "$SOURCE" = "workdir" ]; then \
         echo "Using local context"; \
         cp -r /source-context/* /source/ 2>/dev/null || true; \
@@ -148,15 +146,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # UID/GID can be overridden via build args to match host user
 ARG USER_UID
 ARG USER_GID
-RUN groupadd -r shapeshifter --gid=${USER_GID} 2>/dev/null || groupmod -n shapeshifter $(getent group ${USER_GID} | cut -d: -f1)
-RUN useradd -r -g shapeshifter --uid=${USER_UID} --home-dir=/app --shell=/bin/bash shapeshifter 2>/dev/null || usermod -l shapeshifter -d /app $(getent passwd ${USER_UID} | cut -d: -f1)
 
 RUN GROUP_NAME=$(getent group ${USER_GID} | cut -d: -f1) && \
     if [ -z "$GROUP_NAME" ]; then \
         groupadd -r shapeshifter --gid=${USER_GID}; \
         GROUP_NAME=shapeshifter; \
     fi && \
-    useradd --uid ${USER_UID} -g $GROUP_NAME --home-dir=/app --shell=/bin/bash shapeshifter
+    useradd --uid ${USER_UID} -g ${USER_GID} --home-dir=/app --shell=/bin/bash shapeshifter
 
 # Copy Python packages from builder
 ARG PYTHON_VERSION
@@ -176,7 +172,7 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Create required directories and set ownership for ALL files
 RUN mkdir -p /app/projects /app/logs /app/output /app/backups /app/tmp && \
-    chown -R shapeshifter:shapeshifter /app && \
+    chown -R ${USER_UID}:${USER_GID} /app && \
     chmod -R u+w /app
 
 # Set environment variables

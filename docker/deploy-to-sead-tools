@@ -1,14 +1,22 @@
 #!/bin/bash
 
-SOURCE_DIR=$(realpath $(dirname "$(realpath "$0")")/..)
+SOURCE_DIR=$(realpath $(dirname "$(realpath "$0")"))
 TARGET_DIR=/home/sead/sead-tools/sead_shape_shifter
-echo $SOURCE_DIR
+
+echo "Copying files from $SOURCE_DIR to $TARGET_DIR..."
+echo "  ignored: docker-compose.yml (copy manually if needed)"
 
 for file in \
-    docker/Dockerfile \
-    docker/docker-compose.yml \
-    docker/Makefile \
+    Dockerfile \
+    Makefile \
+    BUILD_SCRIPT_GUIDE.md \
+    build.sh \
+    README.md \
     .dockerignore
 do
     cp -f "$SOURCE_DIR/$file" "$TARGET_DIR/"
+    chown sead:www-data "$TARGET_DIR/$file"
+    echo "  copied: $file"
 done
+echo "✓ All files copied successfully."
+
