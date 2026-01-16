@@ -29,12 +29,18 @@
 import { ref, watch } from 'vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import * as yaml from 'js-yaml'
+import { setupYamlIntelligence } from '@/composables/useMonacoYamlIntelligence'
+import { validateProjectYaml, type ValidationContext } from '@/utils/projectYamlValidator'
+import { registerProjectCompletions } from '@/utils/projectYamlCompletions'
+import type * as monacoType from 'monaco-editor'
 
 interface Props {
   modelValue: string
   height?: string
   readonly?: boolean
   validateOnChange?: boolean
+  mode?: 'project' | 'entity'
+  validationContext?: ValidationContext
 }
 
 interface Emits {
@@ -47,12 +53,17 @@ const props = withDefaults(defineProps<Props>(), {
   height: '400px',
   readonly: false,
   validateOnChange: true,
+  mode: 'project',
 })
 
 const emit = defineEmits<Emits>()
 
 const content = ref(props.modelValue)
 const error = ref<string | null>(null)
+const editor = ref<monacoType.editor.IStandaloneCodeEditor | null>(null)
+const model = ref<monacoType.editor.ITextModel | null>(null)
+const monacoInstance = ref<typeof monacoType | null>(null)
+const intelligenceInitialized = ref(false)
 
 // Monaco editor options
 const editorOptions = {
@@ -74,9 +85,43 @@ const editorOptions = {
   },
 }
 
-function handleMount(_editor: any) {
-  // Editor mounted - can add custom functionality here
-  console.log('Monaco editor mounted')
+function handleMount(editorInstance: monacoType.editor.IStandaloneCodeEditor, monacoRef: typeof monacoType) {
+  editor.value = editorInstance
+  model.value = editorInstance.getModel()
+  monacoInstance.value = monacoRef
+
+  // Initialize YAML intelligence once
+  if (!intelligenceInitialized.value && monacoRef) {
+    setupYamlIntelligence(monacoRef, {
+      mode: props.mode,
+      context: props.validationContext
+    })
+
+    // Register custom completions with context provider
+    registerProjectCompletions(
+      monacoRef,
+      props.validationContext ? () => props.validationContext : undefined
+    )
+
+    intelligenceInitialized.value = true
+  }
+
+  // Run initial validation if context is provided
+  if (props.validationContext && model.value && monacoRef) {
+    runCustomValidation(monacoRef)
+  }
+}
+
+function runCustomValidation(monaco: typeof monacoType) {
+  if (!model.value) return
+
+  const markers = validateProjectYaml(
+    content.value,
+    model.value,
+    props.validationContext
+  )
+
+  monaco.editor.setModelMarkers(model.value, 'yaml-custom', markers)
 }
 
 function validateYaml(yamlContent: string): { valid: boolean; error?: string } {
@@ -99,6 +144,11 @@ function handleChange(value: string) {
     const validation = validateYaml(value)
     error.value = validation.error || null
     emit('validate', validation.valid, validation.error)
+
+    // Run custom validation if we have context
+    if (props.validationContext && monacoInstance.value) {
+      runCustomValidation(monacoInstance.value)
+    }
   }
 }
 
@@ -110,6 +160,17 @@ watch(
       content.value = newValue
     }
   }
+)
+
+// Re-validate when context changes
+watch(
+  () => props.validationContext,
+  () => {
+    if (props.validationContext && monacoInstance.value) {
+      runCustomValidation(monacoInstance.value)
+    }
+  },
+  { deep: true }
 )
 </script>
 
