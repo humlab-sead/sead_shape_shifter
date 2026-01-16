@@ -83,14 +83,16 @@ class TestTaskServiceBasic:
     """Tests for basic task service functionality."""
 
     @pytest.mark.asyncio
-    async def test_compute_status_returns_all_entities(self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result):
+    async def test_compute_status_returns_all_entities(
+        self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
+    ):
         """Test that compute_status returns status for all entities."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
         task_service.shapeshift_service.preview_entity = AsyncMock()
-        
+
         # Mock ProjectMapper.to_core to return our core project
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project):
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             result = await task_service.compute_status("test-project")
 
             assert len(result.entities) == 3
@@ -99,41 +101,47 @@ class TestTaskServiceBasic:
             assert "sample" in result.entities
 
     @pytest.mark.asyncio
-    async def test_compute_status_marks_completed_entity_as_done(self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result):
+    async def test_compute_status_marks_completed_entity_as_done(
+        self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
+    ):
         """Test that completed entities have done status."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
         task_service.shapeshift_service.preview_entity = AsyncMock()
-        
+
         # Mock ProjectMapper.to_core to return our core project
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project):
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             result = await task_service.compute_status("test-project")
 
             assert result.entities["location"].status == TaskStatus.DONE
 
     @pytest.mark.asyncio
-    async def test_compute_status_marks_uncompleted_as_todo(self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result):
+    async def test_compute_status_marks_uncompleted_as_todo(
+        self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
+    ):
         """Test that uncompleted entities have todo status."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
         task_service.shapeshift_service.preview_entity = AsyncMock()
-        
+
         # Mock ProjectMapper.to_core to return our core project
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project):
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             result = await task_service.compute_status("test-project")
 
             assert result.entities["site"].status == TaskStatus.TODO
             assert result.entities["sample"].status == TaskStatus.TODO
 
     @pytest.mark.asyncio
-    async def test_compute_status_calculates_stats(self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result):
+    async def test_compute_status_calculates_stats(
+        self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
+    ):
         """Test that completion statistics are calculated correctly."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
         task_service.shapeshift_service.preview_entity = AsyncMock()
-        
+
         # Mock ProjectMapper.to_core to return our core project
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project):
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             result = await task_service.compute_status("test-project")
 
             assert result.completion_stats["total"] == 3
@@ -147,13 +155,15 @@ class TestTaskServicePriority:
     """Tests for priority determination."""
 
     @pytest.mark.asyncio
-    async def test_required_entity_without_errors_is_ready(self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result):
+    async def test_required_entity_without_errors_is_ready(
+        self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
+    ):
         """Test that required entity with no errors has ready priority."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
         task_service.shapeshift_service.preview_entity = AsyncMock()
 
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project):
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             result = await task_service.compute_status("test-project")
 
             # Site should be ready (exists, validates, has preview, no blockers)
@@ -179,14 +189,16 @@ class TestTaskServicePriority:
         task_service.validation_service.validate_project_data = AsyncMock(return_value=validation_result)
         task_service.shapeshift_service.preview_entity = AsyncMock()
 
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project):
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             result = await task_service.compute_status("test-project")
 
             assert result.entities["site"].priority == TaskPriority.CRITICAL
             assert not result.entities["site"].validation_passed
 
     @pytest.mark.asyncio
-    async def test_ignored_entity_is_optional_priority(self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result):
+    async def test_ignored_entity_is_optional_priority(
+        self, task_service: TaskService, mock_api_project, mock_core_project, mock_validation_result
+    ):
         """Test that ignored entities have optional priority."""
         # Mark site as ignored
         mock_core_project.task_list.ignored = ["site"]
@@ -196,7 +208,7 @@ class TestTaskServicePriority:
         task_service.validation_service.validate_project_data = AsyncMock(return_value=mock_validation_result)
         task_service.shapeshift_service.preview_entity = AsyncMock()
 
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project):
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             result = await task_service.compute_status("test-project")
 
             assert result.entities["site"].status == TaskStatus.IGNORED
@@ -210,12 +222,16 @@ class TestTaskServiceMarkComplete:
     async def test_mark_complete_validates_entity(self, task_service: TaskService, mock_api_project, mock_core_project):
         """Test that mark_complete validates entity before marking done."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
-        task_service.validation_service.validate_project_data = AsyncMock(return_value=ValidationResult(is_valid=True, errors=[], warnings=[]))
+        task_service.validation_service.validate_project_data = AsyncMock(
+            return_value=ValidationResult(is_valid=True, errors=[], warnings=[])
+        )
         task_service.shapeshift_service.preview_entity = AsyncMock()
         task_service.project_service.save_project = Mock()  # Not AsyncMock since it's not awaited
 
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project), \
-             patch.object(ProjectMapper, 'to_api_config', return_value=mock_api_project):
+        with (
+            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
+            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
+        ):
             result = await task_service.mark_complete("test-project", "site")
 
             assert result["success"] is True
@@ -226,12 +242,16 @@ class TestTaskServiceMarkComplete:
     async def test_mark_complete_checks_preview_availability(self, task_service: TaskService, mock_api_project, mock_core_project):
         """Test that mark_complete checks preview generation."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
-        task_service.validation_service.validate_project_data = AsyncMock(return_value=ValidationResult(is_valid=True, errors=[], warnings=[]))
+        task_service.validation_service.validate_project_data = AsyncMock(
+            return_value=ValidationResult(is_valid=True, errors=[], warnings=[])
+        )
         task_service.shapeshift_service.preview_entity = AsyncMock()
         task_service.project_service.save_project = Mock()  # Not AsyncMock since it's not awaited
 
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project), \
-             patch.object(ProjectMapper, 'to_api_config', return_value=mock_api_project):
+        with (
+            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
+            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
+        ):
             await task_service.mark_complete("test-project", "site")
 
             task_service.shapeshift_service.preview_entity.assert_called_once()
@@ -254,7 +274,7 @@ class TestTaskServiceMarkComplete:
             )
         )
 
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project):
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             with pytest.raises(ValueError, match="validation failed"):
                 await task_service.mark_complete("test-project", "site")
 
@@ -262,10 +282,12 @@ class TestTaskServiceMarkComplete:
     async def test_mark_complete_fails_if_preview_fails(self, task_service: TaskService, mock_api_project, mock_core_project):
         """Test that mark_complete raises error if preview generation fails."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
-        task_service.validation_service.validate_project_data = AsyncMock(return_value=ValidationResult(is_valid=True, errors=[], warnings=[]))
+        task_service.validation_service.validate_project_data = AsyncMock(
+            return_value=ValidationResult(is_valid=True, errors=[], warnings=[])
+        )
         task_service.shapeshift_service.preview_entity = AsyncMock(side_effect=Exception("Preview failed"))
 
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project):
+        with patch.object(ProjectMapper, "to_core", return_value=mock_core_project):
             with pytest.raises(ValueError, match="preview generation failed"):
                 await task_service.mark_complete("test-project", "site")
 
@@ -273,12 +295,16 @@ class TestTaskServiceMarkComplete:
     async def test_mark_complete_updates_task_list(self, task_service: TaskService, mock_api_project, mock_core_project):
         """Test that mark_complete updates task list."""
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
-        task_service.validation_service.validate_project_data = AsyncMock(return_value=ValidationResult(is_valid=True, errors=[], warnings=[]))
+        task_service.validation_service.validate_project_data = AsyncMock(
+            return_value=ValidationResult(is_valid=True, errors=[], warnings=[])
+        )
         task_service.shapeshift_service.preview_entity = AsyncMock()
         task_service.project_service.save_project = Mock()  # Not AsyncMock since it's not awaited
 
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project), \
-             patch.object(ProjectMapper, 'to_api_config', return_value=mock_api_project):
+        with (
+            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
+            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
+        ):
             await task_service.mark_complete("test-project", "site")
 
             mock_core_project.task_list.mark_completed.assert_called_once_with("site")
@@ -293,8 +319,10 @@ class TestTaskServiceMarkIgnored:
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.project_service.save_project = Mock()  # Not AsyncMock
 
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project), \
-             patch.object(ProjectMapper, 'to_api_config', return_value=mock_api_project):
+        with (
+            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
+            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
+        ):
             result = await task_service.mark_ignored("test-project", "site")
 
             assert result["success"] is True
@@ -307,8 +335,10 @@ class TestTaskServiceMarkIgnored:
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.project_service.save_project = Mock()  # Not AsyncMock
 
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project), \
-             patch.object(ProjectMapper, 'to_api_config', return_value=mock_api_project):
+        with (
+            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
+            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
+        ):
             await task_service.mark_ignored("test-project", "site")
 
             task_service.project_service.save_project.assert_called_once()
@@ -323,8 +353,10 @@ class TestTaskServiceResetStatus:
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.project_service.save_project = Mock()  # Not AsyncMock
 
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project), \
-             patch.object(ProjectMapper, 'to_api_config', return_value=mock_api_project):
+        with (
+            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
+            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
+        ):
             result = await task_service.reset_status("test-project", "location")
 
             assert result["success"] is True
@@ -337,8 +369,10 @@ class TestTaskServiceResetStatus:
         task_service.project_service.load_project = Mock(return_value=mock_api_project)
         task_service.project_service.save_project = Mock()  # Not AsyncMock
 
-        with patch.object(ProjectMapper, 'to_core', return_value=mock_core_project), \
-             patch.object(ProjectMapper, 'to_api_config', return_value=mock_api_project):
+        with (
+            patch.object(ProjectMapper, "to_core", return_value=mock_core_project),
+            patch.object(ProjectMapper, "to_api_config", return_value=mock_api_project),
+        ):
             await task_service.reset_status("test-project", "location")
 
             task_service.project_service.save_project.assert_called_once()
