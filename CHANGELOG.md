@@ -1,3 +1,26 @@
+# [1.8.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.7.0...v1.8.0) (2026-01-16)
+
+
+### Bug Fixes
+
+* leabel toggle buttens doesn't work. ([246ca26](https://github.com/humlab-sead/sead_shape_shifter/commit/246ca268c767d3014b52f0965c0b7f814e86a5cf))
+* separate user and group creation commands in Dockerfile for clarity ([aed9303](https://github.com/humlab-sead/sead_shape_shifter/commit/aed930324b40b1da00f1adf3df8bbd694f0872b9))
+* update tab labels for clarity in ProjectDetailView ([89d90e8](https://github.com/humlab-sead/sead_shape_shifter/commit/89d90e88e20c588b7fa47f87c9357d93882da16c))
+
+
+### Features
+
+* add deployment script for sead-tools to automate file copying ([33258a4](https://github.com/humlab-sead/sead_shape_shifter/commit/33258a475fd2836dd419544f78397584831f4e7a))
+* add graph display and layout options dropdowns, and task filter dropdown ([#163](https://github.com/humlab-sead/sead_shape_shifter/issues/163)) ([1c3ec0e](https://github.com/humlab-sead/sead_shape_shifter/commit/1c3ec0ed0fe42b5992d39019b12af7c4ef48618c))
+* add Layer Boundary Architecture section to Developer Guide for improved clarity on system structure ([dfed270](https://github.com/humlab-sead/sead_shape_shifter/commit/dfed2701ea0193edb0f0f59b417fbfa88a74d431))
+* add Task List Feature - Stage 2 Integration Guide with integration steps and UI components ([0c10bd6](https://github.com/humlab-sead/sead_shape_shifter/commit/0c10bd6eade7dbecd843cd9b48d489d8f66d393b))
+* add task list initialization endpoint and service with strategies ([7e64c67](https://github.com/humlab-sead/sead_shape_shifter/commit/7e64c67d21bbaafc4574ebf5eefbb836e107f58a))
+* add task list initialization endpoint with customizable strategies ([edbbf3d](https://github.com/humlab-sead/sead_shape_shifter/commit/edbbf3d74d7468365e153e5b1eb3c6a7ec73c4f2))
+* add task management features including completion stats and filters ([#161](https://github.com/humlab-sead/sead_shape_shifter/issues/161)) ([a371814](https://github.com/humlab-sead/sead_shape_shifter/commit/a371814c044e3d20dd106619f68b798ab0db375c))
+* enhance Layer Boundary Architecture section in documentation for improved clarity on API and Core separation ([1b177d8](https://github.com/humlab-sead/sead_shape_shifter/commit/1b177d832e4083305845ffd89ba04b1001b0c780))
+* imrove task list and fixed tests ([d2471d9](https://github.com/humlab-sead/sead_shape_shifter/commit/d2471d9292e1d153b414e3b324c373bac511aa4a))
+* update Docker configuration for user and group IDs, add no-cache build option ([ed611c4](https://github.com/humlab-sead/sead_shape_shifter/commit/ed611c4f878e8b12046b5427816ba985e67579d2))
+
 # [1.7.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.6.0...v1.7.0) (2026-01-15)
 
 
