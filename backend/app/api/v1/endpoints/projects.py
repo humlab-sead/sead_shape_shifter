@@ -120,11 +120,7 @@ async def create_project(request: ProjectCreateRequest) -> Project:
         Created project with metadata
     """
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.create_project(
-        request.name, 
-        entities=request.entities,
-        task_list=request.task_list
-    )
+    project: Project = project_service.create_project(request.name, entities=request.entities, task_list=request.task_list)
     logger.info(f"Created project '{request.name}'")
     return project
 

@@ -1,10 +1,13 @@
 """Tests for TaskService initialize_task_list functionality."""
 
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
 
-from backend.app.services.task_service import TaskService
+import pytest
+
 from backend.app.models.project import Project, ProjectMetadata
+from backend.app.services.task_service import TaskService
+
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
@@ -66,10 +69,12 @@ class TestInitializeTaskList:
         service = TaskService()
 
         # Mock dependencies
-        with patch.object(service.project_service, 'load_project', return_value=mock_project), \
-             patch('backend.app.mappers.project_mapper.ProjectMapper.to_core') as mock_to_core, \
-             patch('backend.app.mappers.project_mapper.ProjectMapper.to_api_config', return_value=mock_project) as mock_to_api, \
-             patch.object(service.project_service, 'save_project', return_value=mock_project):
+        with (
+            patch.object(service.project_service, "load_project", return_value=mock_project),
+            patch("backend.app.mappers.project_mapper.ProjectMapper.to_core") as mock_to_core,
+            patch("backend.app.mappers.project_mapper.ProjectMapper.to_api_config", return_value=mock_project),
+            patch.object(service.project_service, "save_project", return_value=mock_project),
+        ):
 
             # Mock core project
             mock_core_project = Mock()
@@ -98,10 +103,12 @@ class TestInitializeTaskList:
         """Test initializing task list with 'required-only' strategy."""
         service = TaskService()
 
-        with patch.object(service.project_service, 'load_project', return_value=mock_project), \
-             patch('backend.app.mappers.project_mapper.ProjectMapper.to_core') as mock_to_core, \
-             patch('backend.app.mappers.project_mapper.ProjectMapper.to_api_config', return_value=mock_project), \
-             patch.object(service.project_service, 'save_project', return_value=mock_project):
+        with (
+            patch.object(service.project_service, "load_project", return_value=mock_project),
+            patch("backend.app.mappers.project_mapper.ProjectMapper.to_core") as mock_to_core,
+            patch("backend.app.mappers.project_mapper.ProjectMapper.to_api_config", return_value=mock_project),
+            patch.object(service.project_service, "save_project", return_value=mock_project),
+        ):
 
             # Mock core project with foreign keys
             mock_core_project = Mock()
@@ -124,7 +131,7 @@ class TestInitializeTaskList:
         """Test that invalid strategy raises ValueError."""
         service = TaskService()
 
-        with patch.object(service.project_service, 'load_project', return_value=mock_project):
+        with patch.object(service.project_service, "load_project", return_value=mock_project):
             with pytest.raises(ValueError, match="Invalid strategy"):
                 await service.initialize_task_list("test_project", "invalid-strategy")
 
@@ -132,26 +139,24 @@ class TestInitializeTaskList:
         """Test initializing with dependency-order strategy."""
         service = TaskService()
 
-        with patch.object(service.project_service, 'load_project', return_value=mock_project), \
-             patch('backend.app.mappers.project_mapper.ProjectMapper.to_core') as mock_to_core, \
-             patch('backend.app.mappers.project_mapper.ProjectMapper.to_api_config', return_value=mock_project), \
-             patch.object(service.project_service, 'save_project', return_value=mock_project), \
-             patch('backend.app.services.dependency_service.get_dependency_service') as mock_get_dep_service:
+        with (
+            patch.object(service.project_service, "load_project", return_value=mock_project),
+            patch("backend.app.mappers.project_mapper.ProjectMapper.to_core") as mock_to_core,
+            patch("backend.app.mappers.project_mapper.ProjectMapper.to_api_config", return_value=mock_project),
+            patch.object(service.project_service, "save_project", return_value=mock_project),
+            patch("backend.app.services.task_service.get_dependency_service") as mock_get_dep_service,
+        ):
 
             mock_core_project = Mock()
             mock_core_project.tables = {"location": Mock(), "site": Mock(), "sample": Mock()}
             mock_core_project.cfg = {}
             mock_to_core.return_value = mock_core_project
 
-            # Mock dependency service
+            # Mock dependency service returning resolved dependency graph
             mock_dep_service = Mock()
-            mock_dep_service.generate_graph = AsyncMock(return_value={
-                "nodes": [
-                    {"data": {"id": "location", "is_source": False}},
-                    {"data": {"id": "site", "is_source": False}},
-                    {"data": {"id": "sample", "is_source": False}},
-                ]
-            })
+            mock_dep_service.analyze_dependencies.return_value = {
+                "topological_order": ["location", "site", "sample"]
+            }
             mock_get_dep_service.return_value = mock_dep_service
 
             result = await service.initialize_task_list("test_project", "dependency-order")

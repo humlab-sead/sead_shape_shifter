@@ -9,6 +9,7 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
 from backend.app.models.task import EntityTaskStatus, ProjectTaskStatus, TaskPriority, TaskStatus
 from backend.app.models.validation import ValidationError, ValidationResult
+from backend.app.services.dependency_service import get_dependency_service
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService, get_shapeshift_service
 from backend.app.services.validation_service import ValidationService, get_validation_service
@@ -360,7 +361,6 @@ class TaskService:
         Raises:
             ValueError: If project not found or invalid strategy
         """
-        from backend.app.services.dependency_service import get_dependency_service
 
         valid_strategies = {"all", "required-only", "dependency-order"}
         if strategy not in valid_strategies:
@@ -389,14 +389,14 @@ class TaskService:
             try:
                 dep_service = get_dependency_service()
                 graph = dep_service.analyze_dependencies(api_project)
-                
+
                 # Use topological order if available
                 if graph.get("topological_order"):
                     required_entities = graph["topological_order"]
                 else:
                     # Fallback to all entities
                     required_entities = entity_names
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 logger.warning(f"Failed to get dependency order: {e}. Using all entities.")
                 required_entities = entity_names
 
@@ -412,8 +412,7 @@ class TaskService:
         self.project_service.save_project(updated_api_project)
 
         logger.info(
-            f"Initialized task list for '{project_name}' with strategy '{strategy}': "
-            f"{len(required_entities)} required entities"
+            f"Initialized task list for '{project_name}' with strategy '{strategy}': " f"{len(required_entities)} required entities"
         )
 
         return {

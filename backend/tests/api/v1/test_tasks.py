@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.core.config import settings
 from backend.app.main import app
+from backend.app.models.validation import ValidationResult
 from backend.app.services import project_service, task_service, validation_service, yaml_service
 
 client = TestClient(app)
@@ -22,7 +23,7 @@ def reset_services():
     project_service._project_service = None
     validation_service._validation_service = None
     yaml_service._yaml_service = None
-    
+
     # Clear LRU cache for task_service
     task_service.get_task_service.cache_clear()
 
@@ -149,17 +150,19 @@ class TestMarkComplete:
         # Mock the task_service.mark_complete method to succeed
         with patch("backend.app.api.v1.endpoints.tasks.get_task_service") as mock_get_service:
             mock_service = Mock()
-            mock_service.mark_complete = AsyncMock(return_value={
-                "success": True,
-                "entity_name": "location",
-                "status": "done",
-                "message": "Entity marked as completed",
-            })
+            mock_service.mark_complete = AsyncMock(
+                return_value={
+                    "success": True,
+                    "entity_name": "location",
+                    "status": "done",
+                    "message": "Entity marked as completed",
+                }
+            )
             mock_get_service.return_value = mock_service
-            
+
             # Mark location as complete
             response = client.post("/api/v1/projects/test_project/tasks/location/complete")
-            
+
             assert response.status_code == 200
             data = response.json()
             assert data["success"] is True
@@ -187,13 +190,14 @@ class TestMarkComplete:
 
         # For this test, we'll use a mock that actually calls the real service
         # so we can test the integration, but we'll mock the validation/preview parts
-        with patch("backend.app.services.validation_service.ValidationService.validate_project_data") as mock_validate, \
-             patch("backend.app.services.shapeshift_service.ShapeShiftService.preview_entity") as mock_preview:
-            
-            from backend.app.models.validation import ValidationResult
+        with (
+            patch("backend.app.services.validation_service.ValidationService.validate_project_data") as mock_validate,
+            patch("backend.app.services.shapeshift_service.ShapeShiftService.preview_entity") as mock_preview,
+        ):
+
             mock_validate.return_value = ValidationResult(is_valid=True, errors=[], warnings=[])
             mock_preview.return_value = None  # Preview succeeds
-            
+
             # Mark as complete
             response = client.post("/api/v1/projects/test_project/tasks/location/complete")
             assert response.status_code == 200

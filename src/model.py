@@ -683,11 +683,11 @@ class TaskList:
         # Ensure completed list exists in data
         if "completed" not in self.data:
             self.data["completed"] = []
-        
+
         # Add to completed list if not already there
         if entity_name not in self.data["completed"]:
             self.data["completed"].append(entity_name)
-        
+
         # Remove from ignored if present
         if "ignored" in self.data and entity_name in self.data["ignored"]:
             self.data["ignored"] = [e for e in self.data["ignored"] if e != entity_name]
@@ -704,11 +704,11 @@ class TaskList:
         # Ensure ignored list exists in data
         if "ignored" not in self.data:
             self.data["ignored"] = []
-        
+
         # Add to ignored list if not already there
         if entity_name not in self.data["ignored"]:
             self.data["ignored"].append(entity_name)
-        
+
         # Remove from completed if present
         if "completed" in self.data and entity_name in self.data["completed"]:
             self.data["completed"] = [e for e in self.data["completed"] if e != entity_name]
@@ -725,7 +725,7 @@ class TaskList:
         # Remove from completed if present
         if "completed" in self.data and entity_name in self.data["completed"]:
             self.data["completed"] = [e for e in self.data["completed"] if e != entity_name]
-        
+
         # Remove from ignored if present
         if "ignored" in self.data and entity_name in self.data["ignored"]:
             self.data["ignored"] = [e for e in self.data["ignored"] if e != entity_name]
