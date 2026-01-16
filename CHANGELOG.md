@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.8.0...v1.9.0) (2026-01-16)
+
+
+### Features
+
+* enhance YAML editor with entity and project validation ([#166](https://github.com/humlab-sead/sead_shape_shifter/issues/166)) ([3744e86](https://github.com/humlab-sead/sead_shape_shifter/commit/3744e861c4cd89ae76714d71235782a085d1b873))
+
 # [1.8.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.7.0...v1.8.0) (2026-01-16)
 
 
