@@ -38,7 +38,7 @@
             </v-btn>
             <v-btn
               variant="outlined"
-              prepend-icon="mdi-check-circle-outline"
+              prepend-icon="mdi-check-circle-outline" color="success"
               :loading="validationLoading"
               @click="handleValidate"
             >
@@ -49,11 +49,11 @@
               Execute
               <v-tooltip activator="parent">Execute the full workflow and export data</v-tooltip>
             </v-btn>
-            <v-btn variant="outlined" prepend-icon="mdi-history" @click="showBackupsDialog = true">
+            <v-btn variant="outlined" prepend-icon="mdi-history" color="success" @click="showBackupsDialog = true">
               Backups
               <v-tooltip activator="parent">View and restore previous versions of this project</v-tooltip>
             </v-btn>
-            <v-btn color="primary" prepend-icon="mdi-content-save" :disabled="!hasUnsavedChanges" @click="handleSave">
+            <v-btn variant="outlined" color="success" prepend-icon="mdi-content-save" :disabled="!hasUnsavedChanges" @click="handleSave">
               Save Changes
               <v-tooltip activator="parent">Save changes to the project configuration</v-tooltip>
             </v-btn>
@@ -572,12 +572,12 @@
                 </div>
               </v-card-title>
               <v-card-text>
-                <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+                <!-- <v-alert type="info" variant="tonal" density="compact" class="mb-4">
                   <div class="text-caption">
                     <strong>Direct YAML editing:</strong> Edit the complete project YAML file. Changes are saved to
                     the file immediately. A backup is created automatically before saving.
                   </div>
-                </v-alert>
+                </v-alert> -->
 
                 <v-alert v-if="yamlError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="yamlError = null">
                   {{ yamlError }}

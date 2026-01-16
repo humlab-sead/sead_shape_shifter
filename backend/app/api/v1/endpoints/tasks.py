@@ -81,6 +81,47 @@ async def get_project_task_status(name: str) -> ProjectTaskStatus:
     return result
 
 
+@router.post("/projects/{name}/tasks/initialize")
+@handle_endpoint_errors
+async def initialize_task_list(
+    name: str,
+    strategy: str = "dependency-order",
+) -> dict[str, Any]:
+    """
+    Initialize task list for the project.
+
+    Auto-generates task list based on project structure and entity dependencies.
+
+    Args:
+        name: Project name
+        strategy: Initialization strategy:
+            - "all": Include all entities as required
+            - "required-only": Include only entities with foreign keys
+            - "dependency-order": Order by dependency graph (default)
+
+    Returns:
+        Dict with initialization results including list of required entities
+
+    Example:
+        POST /api/v1/projects/my-project/tasks/initialize?strategy=dependency-order
+
+        Response:
+        {
+          "success": true,
+          "strategy": "dependency-order",
+          "required_entities": ["location", "site", "sample"],
+          "message": "Task list initialized with 3 entities"
+        }
+    """
+    task_service = get_task_service()
+
+    result = await task_service.initialize_task_list(name, strategy)
+
+    logger.info(f"Initialized task list for '{name}' with strategy '{strategy}'")
+
+    return result
+
+
 @router.post("/projects/{name}/tasks/{entity_name}/complete", response_model=TaskUpdateResponse)
 @handle_endpoint_errors
 async def mark_task_complete(name: str, entity_name: str) -> TaskUpdateResponse:
@@ -173,47 +214,6 @@ async def mark_task_ignored(name: str, entity_name: str) -> TaskUpdateResponse:
         new_status=result["status"],
         message=result.get("message"),
     )
-
-
-@router.post("/projects/{name}/tasks/initialize")
-@handle_endpoint_errors
-async def initialize_task_list(
-    name: str,
-    strategy: str = "dependency-order",
-) -> dict[str, Any]:
-    """
-    Initialize task list for the project.
-
-    Auto-generates task list based on project structure and entity dependencies.
-
-    Args:
-        name: Project name
-        strategy: Initialization strategy:
-            - "all": Include all entities as required
-            - "required-only": Include only entities with foreign keys
-            - "dependency-order": Order by dependency graph (default)
-
-    Returns:
-        Dict with initialization results including list of required entities
-
-    Example:
-        POST /api/v1/projects/my-project/tasks/initialize?strategy=dependency-order
-
-        Response:
-        {
-          "success": true,
-          "strategy": "dependency-order",
-          "required_entities": ["location", "site", "sample"],
-          "message": "Task list initialized with 3 entities"
-        }
-    """
-    task_service = get_task_service()
-
-    result = await task_service.initialize_task_list(name, strategy)
-
-    logger.info(f"Initialized task list for '{name}' with strategy '{strategy}'")
-
-    return result
 
 
 @router.delete("/projects/{name}/tasks/{entity_name}", response_model=TaskUpdateResponse)
