@@ -351,6 +351,8 @@
                 <yaml-editor
                   v-model="yamlContent"
                   height="500px"
+                  mode="entity"
+                  :validation-context="validationContext"
                   :validate-on-change="true"
                   @validate="handleYamlValidation"
                   @change="handleYamlChange"
@@ -490,6 +492,7 @@ import SuggestionsPanel from './SuggestionsPanel.vue'
 // import EntityPreviewPanel from './EntityPreviewPanel.vue'
 import YamlEditor from '../common/YamlEditor.vue'
 import SqlEditor from '../common/SqlEditor.vue'
+import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent } from 'vue'
 
 // Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
@@ -748,6 +751,15 @@ const availableDataSources = computed(() => {
   }
   return []
 })
+
+// Validation context for YAML intelligence
+const validationContext = computed<ValidationContext>(() => ({
+  entityNames: entities.value
+    .filter((e) => e.name !== formData.value.name) // Exclude self
+    .map((e) => e.name),
+  dataSourceNames: availableDataSources.value,
+  currentEntityName: formData.value.name,
+}))
 
 // Validation rules
 const requiredRule = [
