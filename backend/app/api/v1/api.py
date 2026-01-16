@@ -15,6 +15,7 @@ from backend.app.api.v1.endpoints import (
     schema,
     sessions,
     suggestions,
+    tasks,
     test_run,
     validation,
 )
@@ -27,6 +28,7 @@ api_router.include_router(sessions.router, tags=["sessions"])
 api_router.include_router(projects.router, tags=["projects"])
 api_router.include_router(entities.router, tags=["entities"])
 api_router.include_router(validation.router, tags=["validation"])
+api_router.include_router(tasks.router, tags=["tasks"])
 api_router.include_router(data_sources.router, tags=["data-sources"])
 api_router.include_router(schema.router, tags=["schema"])
 api_router.include_router(query.router, tags=["query"])
