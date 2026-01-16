@@ -6,6 +6,9 @@ SHELL := /bin/bash
 DOCKER_DIR ?= .
 DEPLOY_DIR ?= /home/sead/sead-tools/sead_shape_shifter
 
+# Temporary override for Roger's deployment
+DEPLOY_SOURCE_DIR ?= /home/roger/source/sead_shape_shifter/docker
+
 # Repository and build settings
 GIT_REPO ?= https://github.com/humlab-sead/sead_shape_shifter.git
 GIT_REF ?= main
@@ -14,10 +17,12 @@ BACKEND_PORT ?= 8012
 # User ID settings for container (defaults to sead user)
 # Override with: make docker-build USER_UID=1001 USER_GID=1001
 USER_UID ?= $(shell id sead -u)
-USER_GID ?= $(shell id sead -g)
+USER_GID ?= $(shell id www-data -g)
+
+PGPASS_DIR := $(DOCKER_DIR)/data/.pgpass
 
 ################################################################################
-# Docker Build & Runtime
+# Docker Build 
 #
 # Usage:
 #   From repository root: make docker-build
@@ -27,59 +32,16 @@ USER_GID ?= $(shell id sead -g)
 #   - docker-build          : Build from local context (default, for development)
 #   - docker-build-github   : Build from GitHub main (CI/CD, with cache invalidation)
 #   - docker-build-tag TAG=v1.0.0 : Build from specific tag/branch (production)
-#
-# Run modes:
-#   - docker-up             : Start containers
-#   - docker-down           : Stop containers
-#   - docker-logs           : View logs
-#   - docker-shell          : Open shell in container
-#   - docker-health         : Check application health
 ################################################################################
 
-# Complete setup: directories + env files
-################################################################################
-.PHONY: setup
-setup: setup-volumes setup-env
-	@echo ""
-	@echo "✓ Complete setup finished!"
-	@echo ""
-	@echo "Next steps:"
-	@echo "  1. Edit configuration: nano $(DOCKER_DIR)/data/backend.env"
-	@echo "  2. Build image: make docker-build"
-	@echo "  3. Start application: make docker-up"
+update-deploy-scripts:
+	@echo "Update deploy scripts to $(DEPLOY_DIR)..."
+	@for file in Makefile Dockerfile build.sh README.md BUILD_SCRIPT_GUIDE.md; do \
+		sudo cp -f $(DEPLOY_SOURCE_DIR)/$$file $(DEPLOY_DIR)/$$file; \
+		sudo chown sead:www-data $(DEPLOY_DIR)/$$file; \
+	done
+	@echo "✓ Deployment complete"
 
-# Setup host directories with correct permissions
-.PHONY: setup-volumes
-setup-volumes:
-	@echo "Setting up host directories with UID=$(USER_UID) GID=$(USER_GID)..."
-	@mkdir -p $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
-	@sudo chown -R $(USER_UID):$(USER_GID) $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
-	@chmod -R 755 $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
-	@echo "✓ Volume directories created with proper permissions"
-
-# Setup environment files from examples
-.PHONY: setup-env
-setup-env:
-	@echo "Setting up environment files..."
-	@if [ ! -f "$(DOCKER_DIR)/data/backend.env" ] && [ -f "$(DOCKER_DIR)/data/backend.env.example" ]; then \
-		cp $(DOCKER_DIR)/data/backend.env.example $(DOCKER_DIR)/data/backend.env; \
-		echo "✓ Created backend.env from template"; \
-	else \
-		echo "✓ backend.env already exists"; \
-	fi
-	@if [ ! -f "$(DOCKER_DIR)/data/.pgpass" ] && [ -f "$(DOCKER_DIR)/data/.pgpass.example" ]; then \
-		cp $(DOCKER_DIR)/data/.pgpass.example $(DOCKER_DIR)/data/.pgpass; \
-		chmod 600 $(DOCKER_DIR)/data/.pgpass; \
-		echo "✓ Created .pgpass from template (permissions: 600)"; \
-	else \
-		echo "✓ .pgpass already exists or template not found"; \
-	fi
-
-################################################################################
-# Build targets using build.sh script
-################################################################################
-
-# Default build target (github development)
 .PHONY: docker-build
 docker-build: docker-build-github
 
@@ -111,6 +73,16 @@ docker-build-tag:
 		--user-uid $(USER_UID) \
 		--user-gid $(USER_GID) \
 		--git-repo $(GIT_REPO)
+
+################################################################################
+# Docker runtime targets
+# Run modes:
+#   - docker-up             : Start containers
+#   - docker-down           : Stop containers
+#   - docker-logs           : View logs
+#   - docker-shell          : Open shell in container
+#   - docker-health         : Check application health
+################################################################################
 
 .PHONY: docker-up
 docker-up:
@@ -217,3 +189,44 @@ docker-test: docker-validate
 	@echo "  Frontend:  http://localhost:$(BACKEND_PORT)/"
 	@echo "  API Docs:  http://localhost:$(BACKEND_PORT)/api/v1/docs"
 	@echo "  Health:    http://localhost:$(BACKEND_PORT)/api/v1/health"
+
+################################################################################
+# Complete setup: directories + env files
+################################################################################
+
+.PHONY: setup
+setup: setup-volumes setup-env
+	@echo ""
+	@echo "✓ Complete setup finished!"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Edit configuration: nano $(DOCKER_DIR)/data/backend.env"
+	@echo "  2. Build image: make docker-build"
+	@echo "  3. Start application: make docker-up"
+
+# Setup host directories with correct permissions
+.PHONY: setup-volumes
+setup-volumes:
+	@echo "Setting up host directories with UID=$(USER_UID) GID=$(USER_GID)..."
+	@mkdir -p $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
+	@sudo chown -R $(USER_UID):$(USER_GID) $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
+	@chmod -R 755 $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
+	@echo "✓ Volume directories created with proper permissions"
+
+# Setup environment files from examples
+.PHONY: setup-env
+setup-env:
+	@echo "Setting up environment files..."
+	@if [ ! -f "$(DOCKER_DIR)/data/backend.env" ] && [ -f "$(DOCKER_DIR)/data/backend.env.example" ]; then \
+		cp $(DOCKER_DIR)/data/backend.env.example $(DOCKER_DIR)/data/backend.env; \
+		echo "✓ Created backend.env from template"; \
+	else \
+		echo "✓ backend.env already exists"; \
+	fi
+	@if [ ! -f "$(PGPASS_DIR)/.pgpass" ] && [ -f "$(PGPASS_DIR)/.pgpass.example" ]; then \
+		cp $(PGPASS_DIR)/.pgpass.example $(PGPASS_DIR)/.pgpass; \
+		chmod 600 $(PGPASS_DIR)/.pgpass; \
+		echo "✓ Created .pgpass from template (permissions: 600)"; \
+	else \
+		echo "✓ .pgpass already exists or template not found"; \
+	fi

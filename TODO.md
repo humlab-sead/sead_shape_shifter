@@ -25,7 +25,6 @@
 
 ### New features
 
- - [x] TODO: #121 Add dual-mode editing of entity reconciliation specifications (Completed: YAML/Form tabs with Monaco editor)
  - [] TODO: [Frontend/Backend] Edit data source configuration in a dual-mode editor (Form/YAML).
  - [] TODO: Add additional frontend/backend options (e.g., themes, temp directory, logging level, etc.)
  - [] TODO: Add capability to generate a default reconciliation YAML based on service manifest received from calling services /reconcile endpoint.
