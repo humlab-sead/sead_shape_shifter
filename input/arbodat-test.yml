@@ -1325,15 +1325,85 @@ options:
 
   task_list:
     entities:
-      - name: location
-        required: true
-        order: 1
-      - name: site
-        required: true
-        order: 2
-      - name: sample
-        required: false
-        order: 3
-    
+    - name: location
+      required: true
+      order: 1
+    - name: site
+      required: true
+      order: 2
+    - name: sample
+      required: false
+      order: 3
+
     completed: []
     ignored: []
+task_list:
+  required_entities:
+  - abundance_modification
+  - abundance_property
+  - contact
+  - coordinate_system
+  - cultural_group
+  - dataset_contacts
+  - dataset_submission
+  - dataset_submission_type
+  - dating
+  - dating_period
+  - feature_property
+  - identification_level
+  - master_dataset
+  - method_group
+  - relative_dating
+  - sample_coordinate
+  - sample_description
+  - site_location
+  - site_natural_region
+  - site_property
+  - taxa_use_categories
+  - taxa_plant_sociological_behaviour
+  - taxa_dominance
+  - taxa_oberdorfer_characteristics
+  - taxa_persistence
+  - taxa_briemle_characteristics
+  - taxa_ecological_behaviour
+  - modification_type
+  - "abundance"
+  - "abundance_property_type"
+  - "contact_type"
+  - "_project_contact"
+  - "dataset"
+  - archaeological_period
+  - chronological_period
+  - "feature_property_type"
+  - "coordinate_method_dimension"
+  - "sample_description_type"
+  - "location"
+  - "natural_region"
+  - "site_property_type"
+  - abundance_element
+  - analysis_entity
+  - "epoch"
+  - "dimension"
+  - "location_type"
+  - "natural_region_group"
+  - "abundance_element_group"
+  - "method"
+  - "taxa"
+  - "sample"
+  - _pcodes
+  - "sample_type"
+  - "sample_group"
+  - "feature"
+  - feature_type
+  - "project"
+  - site
+  - site_type
+  - "site_type_group"
+  completed: []
+  ignored:
+  - taxa_briemle_characteristics
+  - taxa_ecological_behaviour
+  - taxa_oberdorfer_characteristics
+  - taxa_dominance
+  - taxa_plant_sociological_behaviour
+  - taxa_persistence

@@ -16,6 +16,7 @@
  - [ ] FIXME: #124 Reconciliation editor complains when "extra_columns" entered in property field
  - [ ] FIXME: #126 Preview fails due to duplicate column names.
  - [ ] FIXME: #138 Wrong VITE_API_BASE_URL when front end served via backend
+ - [ ] FIXME: #162 Show node/edge label buttons no longer work
 
 ### Tech debts:
 
@@ -40,7 +41,7 @@
  - [] TODO: #125 Add capability to edit full reconciliation YAML
  - [] TODO: #127 Add three-state toggling of L/R panes in entity ediitor.
  - [] TODO: #137 Rename "ingest" in UX to "dispatch" since it better conveys UX perspective. Move feature inside project editor.
-
+ - [] TODO: #163 Reduce clutter in Graph view toolbar
  qbj 
 
 # Tiny DSL Expression Support in extra_columns

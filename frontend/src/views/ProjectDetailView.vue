@@ -142,117 +142,35 @@
             <!-- Circular Dependencies Alert -->
             <circular-dependency-alert v-if="hasCircularDependencies" :cycles="cycles" class="mb-4" />
 
-            <!-- Task Filter Panel -->
-            <task-filter-panel
-              v-model="currentTaskFilter"
-              :task-status="taskStatusStore.taskStatus"
-              class="mb-4"
-              @initialize="handleInitializeTaskList"
-            />
-
             <!-- Graph Controls -->
             <v-card variant="outlined" class="mb-4">
               <v-card-text class="d-flex align-center gap-4">
-                <v-btn-toggle v-model="layoutType" mandatory density="compact">
-                  <v-btn 
-                    size="x-small"
-                    value="hierarchical" 
-                    :color="layoutType === 'hierarchical' ? 'primary' : undefined"
-                    prepend-icon="mdi-file-tree"
-                  > Hierarchical </v-btn>
-                  <v-btn 
-                    size="small"
-                    value="force"
-                    :color="layoutType === 'force' ? 'primary' : undefined"
-                    prepend-icon="mdi-vector-arrange-above"
-                  >
-                  Force
-                </v-btn>
-                  <v-btn 
-                    size="small"
-                    value="custom"
-                    :color="layoutType === 'custom' ? 'primary' : undefined"
-                    :disabled="!hasCustomLayout"
-                    prepend-icon="mdi-cursor-move"
-                  >
-                    Custom
-                    <v-tooltip v-if="!hasCustomLayout" activator="parent">
-                      No custom layout saved yet. Save current layout to enable.
-                    </v-tooltip>
-                  </v-btn>
-                </v-btn-toggle>
+                <!-- Task Filter Dropdown -->
+                <task-filter-dropdown
+                  v-model="currentTaskFilter"
+                  :task-status="taskStatusStore.taskStatus"
+                  @initialize="handleInitializeTaskList"
+                />
 
                 <v-divider vertical />
 
-                <!-- Save layout button -->
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  prepend-icon="mdi-content-save"
-                  :loading="savingLayout"
-                  @click="handleSaveCustomLayout"
-                >
-                  Save as Custom
-                  <v-tooltip activator="parent">
-                    Save the current node positions as a custom layout
-                  </v-tooltip>
-                </v-btn>
-
-                <!-- Clear layout button (only show if custom layout exists) -->
-                <v-btn
-                  v-if="hasCustomLayout"
-                  size="small"
-                  variant="text"
-                  prepend-icon="mdi-delete"
-                  color="error"
-                  @click="handleClearCustomLayout"
-                >
-                  Clear Custom
-                  <v-tooltip activator="parent">
-                    Remove the saved custom layout
-                  </v-tooltip>
-                </v-btn>
+                <!-- Graph Layout Dropdown -->
+                <graph-layout-dropdown
+                  v-model:layout-type="layoutType"
+                  :has-custom-layout="hasCustomLayout"
+                  :saving="savingLayout"
+                  @save-custom="handleSaveCustomLayout"
+                  @clear-custom="handleClearCustomLayout"
+                />
 
                 <v-divider vertical />
 
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  :color="showNodeLabels ? 'primary' : undefined"
-                  @click="showNodeLabels = !showNodeLabels"
-                  class="text-capitalize"
-                >
-                  Node Labels
-                </v-btn>
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  :color="showEdgeLabels ? 'primary' : undefined"
-                  @click="showEdgeLabels = !showEdgeLabels"
-                  class="text-capitalize"
-                >
-                  Edge Labels
-                </v-btn>
+                <!-- Graph Display Options -->
+                <graph-display-options-dropdown
+                  :options="displayOptions"
+                  @update:options="updateDisplayOptions"
+                />
 
-                <!-- <v-btn
-                  size="small"
-                  :variant="highlightCycles ? 'tonal' : 'tonal'"
-                  :color="highlightCycles ? 'primary' : undefined"
-                  @click="highlightCycles = !highlightCycles"
-                  class="text-capitalize"
-                >
-                  Cycles
-                </v-btn> -->
-
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  :color="showSourceNodes ? 'primary' : undefined"
-                  @click="showSourceNodes = !showSourceNodes"
-                  class="text-capitalize"
-                >
-                  Source Nodes
-                </v-btn>
                 <v-spacer />
               </v-card-text>
             </v-card>
@@ -695,9 +613,8 @@ import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
 import { useEntityStore } from '@/stores/entity'
 import { useTaskStatusStore } from '@/stores/taskStatus'
-import { getNodeInfo } from '@/utils/graphAdapter'
 import type { CustomGraphLayout } from '@/types'
-import type { TaskFilter } from '@/components/dependencies/TaskFilterPanel.vue'
+import type { TaskFilter } from '@/components/dependencies/TaskFilterDropdown.vue'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import EntityFormDialog from '@/components/entities/EntityFormDialog.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
@@ -706,7 +623,10 @@ import ProjectDataSources from '@/components/ProjectDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
 import GraphNodeContextMenu from '@/components/dependencies/GraphNodeContextMenu.vue'
-import TaskFilterPanel from '@/components/dependencies/TaskFilterPanel.vue'
+import TaskFilterDropdown from '@/components/dependencies/TaskFilterDropdown.vue'
+import GraphDisplayOptionsDropdown from '@/components/dependencies/GraphDisplayOptionsDropdown.vue'
+import type { GraphDisplayOptions } from '@/components/dependencies/GraphDisplayOptionsDropdown.vue'
+import GraphLayoutDropdown from '@/components/dependencies/GraphLayoutDropdown.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
@@ -800,10 +720,12 @@ const layoutType = ref<'hierarchical' | 'force' | 'custom'>('force')
 const customLayout = ref<CustomGraphLayout | null>(null)
 const hasCustomLayout = ref(false)
 const savingLayout = ref(false)
-const showNodeLabels = ref(true)
-const showEdgeLabels = ref(true)
+const displayOptions = ref<GraphDisplayOptions>({
+  nodeLabels: true,
+  edgeLabels: true,
+  sourceNodes: false,
+})
 const highlightCycles = ref(true)
-const showSourceNodes = ref(false)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
 
@@ -922,10 +844,10 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
   graphData: dependencyGraph,
   layoutType,
   customPositions: customLayout,
-  showNodeLabels,
-  showEdgeLabels,
+  showNodeLabels: computed(() => displayOptions.value.nodeLabels),
+  showEdgeLabels: computed(() => displayOptions.value.edgeLabels),
   highlightCycles,
-  showSourceNodes,
+  showSourceNodes: computed(() => displayOptions.value.sourceNodes),
   cycles,
   isDark,
   onNodeClick: async (nodeId: string) => {
@@ -983,6 +905,11 @@ watch(
 )
 
 // Save current layout as custom
+// Graph display options handlers
+function updateDisplayOptions(options: GraphDisplayOptions) {
+  displayOptions.value = options
+}
+
 async function handleSaveCustomLayout() {
   if (!projectName.value || !getCurrentPositions) return
 
