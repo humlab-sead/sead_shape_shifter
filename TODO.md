@@ -4,7 +4,6 @@
 ### Bugs
 
  - [] FIXME: Right preview pane doesn't clear values between entities
- - [] FIXME: Active route only highlighted in navigation breadcrumbs for "Projects"
  - [] FIXME: #116 Intermittent navigation error when opening project
  - [] FIXME: #124 Reconciliation editor complains when "extra_columns" entered in property field
 
@@ -27,7 +26,6 @@
  - [] TODO: #108 Add tiny DSL Expression Support in extra_columns
  - [] TODO: Introduce optional support for types for entity fields
           (e.g., string, integer, date) and support type conversions in extra_columns.
- - [] TODO: #166 Improve YAML syntax support
  - [] TODO: Improve multiuser support (working on same project)
  - [] TODO: Add more reconciliation entity types, and non-SEAD types (e.g. Geonames, RAÄ-lämningsnummer)
  - [] TODO: NOT WORTH THE EFFORT! Improve user experience (Add new edge/relationship in dependency graph)
@@ -94,22 +92,6 @@ Keep helper mappings simple so non-technical users can combine columns with stri
 
 # AI Assessment of TODO Items (Generated 2026-01-16)
 
-## ✅ ALREADY COMPLETED
-
-### #166 Improve YAML syntax support - **DONE!**
-- Full Monaco YAML intelligence implemented with:
-  - JSON schemas (projectSchema.json, entitySchema.json)
-  - Custom validators (projectYamlValidator.ts)
-  - Smart completions (projectYamlCompletions.ts)
-  - Dual-mode support (project/entity)
-  - Validation context injection
-- **Recommendation: ✅ Check this off the list**
-
-### Review test coverage - **DONE!**
-- Current: 91% backend, 88% frontend
-- **Recommendation: ✅ Check this off - coverage is excellent**
-- Only add tests when adding new features
-
 ---
 
 ## 🔥 HIGH PRIORITY - Quick Wins
@@ -123,11 +105,6 @@ Keep helper mappings simple so non-technical users can combine columns with stri
 - Likely missing reactive reset in EntityPreviewPanel.vue
 - Pattern: Add `watch(() => props.entityName, () => clearState())`
 - **Effort: 30 minutes** | **Value: Medium** (polish)
-
-### Active route highlighting only works for "Projects" - **Navigation Polish**
-- Check App.vue breadcrumb logic (line 232+)
-- Likely missing `disabled: false` for non-Project routes
-- **Effort: 1 hour** | **Value: Low** (cosmetic)
 
 ---
 
