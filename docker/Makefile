@@ -4,6 +4,7 @@ SHELL := /bin/bash
 # When running from docker/ directory, set DOCKER_DIR to "."
 # When included from root Makefile, DOCKER_DIR is set to "./docker"
 DOCKER_DIR ?= .
+DEPLOY_DIR ?= /home/sead/sead-tools/sead_shape_shifter
 
 # Repository and build settings
 GIT_REPO ?= https://github.com/humlab-sead/sead_shape_shifter.git
@@ -22,11 +23,10 @@ USER_GID ?= $(shell id sead -g)
 #   From repository root: make docker-build
 #   From docker/ folder:  make -f Makefile docker-build
 #
-# Build modes:
+# Build modes (all use build.sh script):
 #   - docker-build          : Build from local context (default, for development)
 #   - docker-build-github   : Build from GitHub main (CI/CD, with cache invalidation)
 #   - docker-build-tag TAG=v1.0.0 : Build from specific tag/branch (production)
-#   - docker-build-standalone : Build from GitHub with minimal context (any directory)
 #
 # Run modes:
 #   - docker-up             : Start containers
@@ -37,6 +37,7 @@ USER_GID ?= $(shell id sead -g)
 ################################################################################
 
 # Complete setup: directories + env files
+################################################################################
 .PHONY: setup
 setup: setup-volumes setup-env
 	@echo ""
@@ -74,50 +75,29 @@ setup-env:
 		echo "✓ .pgpass already exists or template not found"; \
 	fi
 
-# Default build - uses local context (SOURCE=workdir by default in Dockerfile)
+################################################################################
+# Build targets using build.sh script
+################################################################################
+
+# Default build target (github development)
 .PHONY: docker-build
-docker-build:
-	@echo "Building Docker image from local context (UID=$(USER_UID), GID=$(USER_GID))..."
-	@docker compose -f $(DOCKER_DIR)/docker-compose.yml build \
-		--build-arg USER_UID=$(USER_UID) \
-		--build-arg USER_GID=$(USER_GID)
+docker-build: docker-build-github
 
-.PHONY: docker-build-no-cache
-docker-build-no-cache:
-	@echo "Building Docker image (no cache, UID=$(USER_UID), GID=$(USER_GID))..."
-	@docker compose -f $(DOCKER_DIR)/docker-compose.yml build --no-cache \
-		--build-arg USER_UID=$(USER_UID) \
-		--build-arg USER_GID=$(USER_GID)
-
-# Build from GitHub main branch (with cache invalidation)
-# NOTE: Run from project root directory
 .PHONY: docker-build-github
 docker-build-github:
-	@echo "Building Docker image from GitHub (main branch, UID=$(USER_UID), GID=$(USER_GID))..."
-	@CACHE_BUST=$$(git ls-remote $(GIT_REPO) refs/heads/main | cut -f1) && \
-	docker build -f $(DOCKER_DIR)/Dockerfile \
-		--build-arg SOURCE=github \
-		--build-arg GIT_REPO=$(GIT_REPO) \
-		--build-arg GIT_REF=main \
-		--build-arg CACHE_BUST=$$CACHE_BUST \
-		--build-arg USER_UID=$(USER_UID) \
-		--build-arg USER_GID=$(USER_GID) \
-		-t shape-shifter:latest \
-		.
-	@echo "✓ Built from GitHub main ($${CACHE_BUST:0:8})"
+	@cd $(DOCKER_DIR) && ./build.sh --git-ref main \
+		--user-uid $(USER_UID) \
+		--user-gid $(USER_GID) \
+		--git-repo $(GIT_REPO)
 
-.PHONY: docker-build-github-no-cache
-docker-build-github-no-cache:
-	@echo "Building Docker image from GitHub (main branch, UID=$(USER_UID), GID=$(USER_GID))..."
-	@docker build --no-cache --progress=plain -f $(DOCKER_DIR)/Dockerfile \
-		--build-arg SOURCE=github \
-		--build-arg GIT_REPO=$(GIT_REPO) \
-		--build-arg GIT_REF=main \
-		--build-arg USER_UID=$(USER_UID) \
-		--build-arg USER_GID=$(USER_GID) \
-		-t shape-shifter:latest \
-		. 2>&1 | tee build.log
-	@echo "✓ Built from GitHub main (log saved to build.log)"
+.PHONY: build-and-deploy
+build-and-deploy: docker-build-github docker-restart
+
+.PHONY: docker-build-local
+docker-build-local:
+	@cd $(DOCKER_DIR) && ./build.sh --local \
+		--user-uid $(USER_UID) \
+		--user-gid $(USER_GID)
 
 # Build from specific GitHub tag/branch (no cache bust needed for tags)
 # NOTE: Run from project root directory
@@ -127,46 +107,10 @@ docker-build-tag:
 		echo "❌ Error: TAG variable required. Usage: make docker-build-tag TAG=v1.2.0"; \
 		exit 1; \
 	fi
-	@echo "Building Docker image from GitHub tag/branch: $(TAG) (UID=$(USER_UID), GID=$(USER_GID))..."
-	@docker build -f $(DOCKER_DIR)/Dockerfile \
-		--build-arg SOURCE=github \
-		--build-arg GIT_REPO=$(GIT_REPO) \
-		--build-arg GIT_REF=$(TAG) \
-		--build-arg USER_UID=$(USER_UID) \
-		--build-arg USER_GID=$(USER_GID) \
-		-t shape-shifter:$(TAG) \
-		.
-	@echo "✓ Built from GitHub tag/branch: $(TAG)"
-
-# Build from GitHub with minimal context (standalone build from any directory)
-# NOTE: Requires lib/ directory in current directory (UCanAccess library)
-.PHONY: docker-build-standalone
-docker-build-standalone:
-	@echo "Building Docker image from GitHub (standalone, minimal context)..."
-	@if [ ! -d "lib" ]; then \
-		echo "❌ Error: lib/ directory not found in current directory"; \
-		echo "   The lib/ directory (UCanAccess) must be present for standalone builds"; \
-		exit 1; \
-	fi
-	@TEMP_DIR=$$(mktemp -d) && \
-	echo "# Ignore everything except lib/" > $$TEMP_DIR/.dockerignore && \
-	echo "*" >> $$TEMP_DIR/.dockerignore && \
-	echo "!lib/" >> $$TEMP_DIR/.dockerignore && \
-	cp -r lib $$TEMP_DIR/ && \
-	DOCKERFILE_PATH=$$(realpath $(DOCKER_DIR)/Dockerfile) && \
-	CACHE_BUST=$$(git ls-remote $(GIT_REPO) refs/heads/main 2>/dev/null | cut -f1 || echo "1") && \
-	cd $$TEMP_DIR && \
-	docker build -f $$DOCKERFILE_PATH \
-		--build-arg SOURCE=github \
-		--build-arg GIT_REPO=$(GIT_REPO) \
-		--build-arg GIT_REF=$(GIT_REF) \
-		--build-arg CACHE_BUST=$$CACHE_BUST \
-		--build-arg USER_UID=$(USER_UID) \
-		--build-arg USER_GID=$(USER_GID) \
-		-t shape-shifter:latest \
-		. && \
-	rm -rf $$TEMP_DIR
-	@echo "✓ Built from GitHub (standalone) with minimal context"
+	@cd $(DOCKER_DIR) && ./build.sh --git-ref $(TAG) \
+		--user-uid $(USER_UID) \
+		--user-gid $(USER_GID) \
+		--git-repo $(GIT_REPO)
 
 .PHONY: docker-up
 docker-up:
