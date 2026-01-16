@@ -106,6 +106,19 @@ docker-build-github:
 		.
 	@echo "✓ Built from GitHub main ($${CACHE_BUST:0:8})"
 
+.PHONY: docker-build-github-no-cache
+docker-build-github-no-cache:
+	@echo "Building Docker image from GitHub (main branch, UID=$(USER_UID), GID=$(USER_GID))..."
+	@docker build --no-cache --progress=plain -f $(DOCKER_DIR)/Dockerfile \
+		--build-arg SOURCE=github \
+		--build-arg GIT_REPO=$(GIT_REPO) \
+		--build-arg GIT_REF=main \
+		--build-arg USER_UID=$(USER_UID) \
+		--build-arg USER_GID=$(USER_GID) \
+		-t shape-shifter:latest \
+		. 2>&1 | tee build.log
+	@echo "✓ Built from GitHub main (log saved to build.log)"
+
 # Build from specific GitHub tag/branch (no cache bust needed for tags)
 # NOTE: Run from project root directory
 .PHONY: docker-build-tag

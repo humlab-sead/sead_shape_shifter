@@ -73,6 +73,10 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
         try:
             return await func(*args, **kwargs)
 
+        # Let HTTPException pass through unchanged
+        except HTTPException:
+            raise
+
         # Handle 404 Not Found errors
         except (NotFoundError, ProjectNotFoundError, EntityNotFoundError) as e:
             logger.debug(f"Resource not found in {func.__name__}: {e}")

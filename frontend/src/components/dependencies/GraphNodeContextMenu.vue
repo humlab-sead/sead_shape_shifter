@@ -14,7 +14,7 @@
       />
     </template>
     
-    <v-list density="compact" min-width="180">
+    <v-list density="compact" min-width="200">
       <v-list-item
         prepend-icon="mdi-eye"
         title="Preview Data"
@@ -25,6 +25,36 @@
         title="Duplicate Entity"
         @click="handleDuplicate"
       />
+      
+      <!-- Task Status Actions -->
+      <template v-if="taskStatus">
+        <v-divider />
+        
+        <!-- Mark as Done -->
+        <v-list-item
+          v-if="canMarkComplete"
+          prepend-icon="mdi-check-circle"
+          title="Mark as Done"
+          @click="handleMarkComplete"
+        />
+        
+        <!-- Mark as Ignored -->
+        <v-list-item
+          v-if="taskStatus.status !== 'ignored'"
+          prepend-icon="mdi-cancel"
+          title="Mark as Ignored"
+          @click="handleMarkIgnored"
+        />
+        
+        <!-- Reset Status -->
+        <v-list-item
+          v-if="taskStatus.status !== 'todo'"
+          prepend-icon="mdi-refresh"
+          title="Reset Status"
+          @click="handleResetStatus"
+        />
+      </template>
+      
       <v-divider />
       <v-list-item
         prepend-icon="mdi-delete"
@@ -38,12 +68,14 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { EntityTaskStatus } from '@/composables/useTaskStatus'
 
 interface Props {
   modelValue: boolean
   x: number
   y: number
   entityName: string | null
+  taskStatus?: EntityTaskStatus
 }
 
 interface Emits {
@@ -51,6 +83,9 @@ interface Emits {
   (e: 'preview', entityName: string): void
   (e: 'duplicate', entityName: string): void
   (e: 'delete', entityName: string): void
+  (e: 'mark-complete', entityName: string): void
+  (e: 'mark-ignored', entityName: string): void
+  (e: 'reset-status', entityName: string): void
 }
 
 const props = defineProps<Props>()
@@ -73,6 +108,17 @@ const activatorStyle = computed(() => ({
   top: `${props.y}px`,
 }))
 
+// Can mark complete if entity exists, validation passed, and preview available
+const canMarkComplete = computed(() => {
+  if (!props.taskStatus) return false
+  return (
+    props.taskStatus.exists &&
+    props.taskStatus.validation_passed &&
+    props.taskStatus.preview_available &&
+    props.taskStatus.status !== 'done'
+  )
+})
+
 function handlePreview() {
   if (props.entityName) {
     emit('preview', props.entityName)
@@ -94,6 +140,27 @@ function handleDelete() {
   if (props.entityName) {
     console.log('[GraphNodeContextMenu] Emitting delete event')
     emit('delete', props.entityName)
+  }
+  isOpen.value = false
+}
+
+function handleMarkComplete() {
+  if (props.entityName) {
+    emit('mark-complete', props.entityName)
+  }
+  isOpen.value = false
+}
+
+function handleMarkIgnored() {
+  if (props.entityName) {
+    emit('mark-ignored', props.entityName)
+  }
+  isOpen.value = false
+}
+
+function handleResetStatus() {
+  if (props.entityName) {
+    emit('reset-status', props.entityName)
   }
   isOpen.value = false
 }

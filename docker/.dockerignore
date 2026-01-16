@@ -54,6 +54,13 @@ input/
 configurations/
 deprecated/
 
+# Data directory (when building from docker/ folder with context ..)
+data/projects/*
+data/backups/*
+data/logs/*
+data/output/*
+data/tmp/*
+
 # Docker
 docker-compose.yml
 docker-compose.*.yml
