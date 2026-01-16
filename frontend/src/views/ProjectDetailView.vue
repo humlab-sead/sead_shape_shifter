@@ -38,7 +38,7 @@
             </v-btn>
             <v-btn
               variant="outlined"
-              prepend-icon="mdi-check-circle-outline"
+              prepend-icon="mdi-check-circle-outline" color="success"
               :loading="validationLoading"
               @click="handleValidate"
             >
@@ -49,11 +49,11 @@
               Execute
               <v-tooltip activator="parent">Execute the full workflow and export data</v-tooltip>
             </v-btn>
-            <v-btn variant="outlined" prepend-icon="mdi-history" @click="showBackupsDialog = true">
+            <v-btn variant="outlined" prepend-icon="mdi-history" color="success" @click="showBackupsDialog = true">
               Backups
               <v-tooltip activator="parent">View and restore previous versions of this project</v-tooltip>
             </v-btn>
-            <v-btn color="primary" prepend-icon="mdi-content-save" :disabled="!hasUnsavedChanges" @click="handleSave">
+            <v-btn variant="outlined" color="success" prepend-icon="mdi-content-save" :disabled="!hasUnsavedChanges" @click="handleSave">
               Save Changes
               <v-tooltip activator="parent">Save changes to the project configuration</v-tooltip>
             </v-btn>
@@ -100,15 +100,11 @@
           </v-tab>
           <v-tab value="reconciliation">
             <v-icon icon="mdi-link-variant" class="mr-2" />
-            Reconciliation
-          </v-tab>
-          <v-tab value="data-sources">
-            <v-icon icon="mdi-database-outline" class="mr-2" />
-            Data Sources
+            Reconcile
           </v-tab>
           <v-tab value="validation">
             <v-icon icon="mdi-check-circle-outline" class="mr-2" />
-            Validation
+            Validate
             <v-badge
               v-if="validationResult && (hasErrors || hasWarnings)"
               :content="errorCount + warningCount"
@@ -120,6 +116,10 @@
           <v-tab value="dispatch">
             <v-icon icon="mdi-send" class="mr-2" />
             Dispatch
+          </v-tab>
+          <v-tab value="data-sources">
+            <v-icon icon="mdi-database-outline" class="mr-2" />
+            Data Sources
           </v-tab>
           <v-tab value="metadata">
             <v-icon icon="mdi-information-outline" class="mr-2" />
@@ -145,110 +145,33 @@
             <!-- Graph Controls -->
             <v-card variant="outlined" class="mb-4">
               <v-card-text class="d-flex align-center gap-4">
-                <v-btn-toggle v-model="layoutType" mandatory density="compact">
-                  <v-btn 
-                    size="x-small"
-                    value="hierarchical" 
-                    :color="layoutType === 'hierarchical' ? 'primary' : undefined"
-                    prepend-icon="mdi-file-tree"
-                  > Hierarchical </v-btn>
-                  <v-btn 
-                    size="small"
-                    value="force"
-                    :color="layoutType === 'force' ? 'primary' : undefined"
-                    prepend-icon="mdi-vector-arrange-above"
-                  >
-                  Force
-                </v-btn>
-                  <v-btn 
-                    size="small"
-                    value="custom"
-                    :color="layoutType === 'custom' ? 'primary' : undefined"
-                    :disabled="!hasCustomLayout"
-                    prepend-icon="mdi-cursor-move"
-                  >
-                    Custom
-                    <v-tooltip v-if="!hasCustomLayout" activator="parent">
-                      No custom layout saved yet. Save current layout to enable.
-                    </v-tooltip>
-                  </v-btn>
-                </v-btn-toggle>
+                <!-- Task Filter Dropdown -->
+                <task-filter-dropdown
+                  v-model="currentTaskFilter"
+                  :task-status="taskStatusStore.taskStatus"
+                  @initialize="handleInitializeTaskList"
+                />
 
                 <v-divider vertical />
 
-                <!-- Save layout button -->
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  prepend-icon="mdi-content-save"
-                  :loading="savingLayout"
-                  @click="handleSaveCustomLayout"
-                >
-                  Save as Custom
-                  <v-tooltip activator="parent">
-                    Save the current node positions as a custom layout
-                  </v-tooltip>
-                </v-btn>
-
-                <!-- Clear layout button (only show if custom layout exists) -->
-                <v-btn
-                  v-if="hasCustomLayout"
-                  size="small"
-                  variant="text"
-                  prepend-icon="mdi-delete"
-                  color="error"
-                  @click="handleClearCustomLayout"
-                >
-                  Clear Custom
-                  <v-tooltip activator="parent">
-                    Remove the saved custom layout
-                  </v-tooltip>
-                </v-btn>
+                <!-- Graph Layout Dropdown -->
+                <graph-layout-dropdown
+                  v-model:layout-type="layoutType"
+                  :has-custom-layout="hasCustomLayout"
+                  :saving="savingLayout"
+                  @save-custom="handleSaveCustomLayout"
+                  @clear-custom="handleClearCustomLayout"
+                />
 
                 <v-divider vertical />
 
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  :color="showNodeLabels ? 'primary' : undefined"
-                  @click="showNodeLabels = !showNodeLabels"
-                  class="text-capitalize"
-                >
-                  Node Labels
-                </v-btn>
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  :color="showEdgeLabels ? 'primary' : undefined"
-                  @click="showEdgeLabels = !showEdgeLabels"
-                  class="text-capitalize"
-                >
-                  Edge Labels
-                </v-btn>
+                <!-- Graph Display Options -->
+                <graph-display-options-dropdown
+                  :options="displayOptions"
+                  @update:options="updateDisplayOptions"
+                />
 
-                <!-- <v-btn
-                  size="small"
-                  :variant="highlightCycles ? 'tonal' : 'tonal'"
-                  :color="highlightCycles ? 'primary' : undefined"
-                  @click="highlightCycles = !highlightCycles"
-                  class="text-capitalize"
-                >
-                  Cycles
-                </v-btn> -->
-
-                <v-btn
-                  size="small"
-                  variant="tonal"
-                  :color="showSourceNodes ? 'primary' : undefined"
-                  @click="showSourceNodes = !showSourceNodes"
-                  class="text-capitalize"
-                >
-                  Source Nodes
-                </v-btn>
                 <v-spacer />
-
-                <v-chip prepend-icon="mdi-cube-outline"> {{ depStatistics.nodeCount }} nodes </v-chip>
-                <v-chip prepend-icon="mdi-arrow-right"> {{ depStatistics.edgeCount }} edges </v-chip>
               </v-card-text>
             </v-card>
 
@@ -271,6 +194,61 @@
             <v-card v-else variant="outlined" class="graph-card">
               <v-card-text class="pa-0 graph-card-content">
                 <div ref="graphContainer" class="graph-container" />
+                
+                <!-- Stats Overlay (top-left) -->
+                <div class="graph-stats-overlay">
+                  <v-card variant="flat" class="stats-card">
+                    <v-card-text class="pa-2">
+                      <!-- Task Completion -->
+                      <div v-if="taskStatusStore.taskStatus" class="mb-2">
+                        <v-row no-gutters align="center" class="mb-1">
+                          <v-col cols="auto" class="mr-2">
+                            <v-icon 
+                              :icon="completionIcon" 
+                              :color="completionColor"
+                              size="small"
+                            />
+                          </v-col>
+                          <v-col>
+                            <div class="text-caption">
+                              <span class="font-weight-medium">{{ taskStats.completed }}</span>
+                              <span class="text-medium-emphasis"> of </span>
+                              <span class="font-weight-medium">{{ taskStats.total }}</span>
+                              <span class="text-medium-emphasis"> complete</span>
+                            </div>
+                          </v-col>
+                          <v-col cols="auto" class="ml-2">
+                            <v-chip
+                              :color="completionColor"
+                              size="x-small"
+                              variant="flat"
+                            >
+                              {{ Math.round(taskStats.completion_percentage) }}%
+                            </v-chip>
+                          </v-col>
+                        </v-row>
+                        <v-progress-linear
+                          :model-value="taskStats.completion_percentage"
+                          :color="completionColor"
+                          height="3"
+                          rounded
+                        />
+                      </div>
+                      
+                      <!-- Node/Edge Counts -->
+                      <div class="d-flex gap-1">
+                        <v-chip size="x-small" variant="flat" color="primary">
+                          <v-icon icon="mdi-cube-outline" size="x-small" class="mr-1" />
+                          {{ depStatistics.nodeCount }}
+                        </v-chip>
+                        <v-chip size="x-small" variant="flat" color="secondary">
+                          <v-icon icon="mdi-arrow-right" size="x-small" class="mr-1" />
+                          {{ depStatistics.edgeCount }}
+                        </v-chip>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+                </div>
                 
                 <!-- Floating Action Buttons -->
                 <div class="graph-fab-container">
@@ -348,9 +326,13 @@
               :x="contextMenuX"
               :y="contextMenuY"
               :entity-name="contextMenuEntity"
+              :task-status="taskStatusStore.getEntityStatus(contextMenuEntity || '')"
               @preview="handleContextMenuPreview"
               @duplicate="handleContextMenuDuplicate"
               @delete="handleContextMenuDelete"
+              @mark-complete="handleMarkComplete"
+              @mark-ignored="handleMarkIgnored"
+              @reset-status="handleResetStatus"
             />
 
             <!-- Entity Details Drawer -->
@@ -508,12 +490,12 @@
                 </div>
               </v-card-title>
               <v-card-text>
-                <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+                <!-- <v-alert type="info" variant="tonal" density="compact" class="mb-4">
                   <div class="text-caption">
                     <strong>Direct YAML editing:</strong> Edit the complete project YAML file. Changes are saved to
                     the file immediately. A backup is created automatically before saving.
                   </div>
-                </v-alert>
+                </v-alert> -->
 
                 <v-alert v-if="yamlError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="yamlError = null">
                   {{ yamlError }}
@@ -630,8 +612,9 @@ import { useProjects, useEntities, useValidation, useDependencies, useCytoscape 
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
 import { useEntityStore } from '@/stores/entity'
-import { getNodeInfo } from '@/utils/graphAdapter'
+import { useTaskStatusStore } from '@/stores/taskStatus'
 import type { CustomGraphLayout } from '@/types'
+import type { TaskFilter } from '@/components/dependencies/TaskFilterDropdown.vue'
 import EntityListCard from '@/components/entities/EntityListCard.vue'
 import EntityFormDialog from '@/components/entities/EntityFormDialog.vue'
 import ValidationPanel from '@/components/validation/ValidationPanel.vue'
@@ -640,6 +623,10 @@ import ProjectDataSources from '@/components/ProjectDataSources.vue'
 import SessionIndicator from '@/components/SessionIndicator.vue'
 import CircularDependencyAlert from '@/components/dependencies/CircularDependencyAlert.vue'
 import GraphNodeContextMenu from '@/components/dependencies/GraphNodeContextMenu.vue'
+import TaskFilterDropdown from '@/components/dependencies/TaskFilterDropdown.vue'
+import GraphDisplayOptionsDropdown from '@/components/dependencies/GraphDisplayOptionsDropdown.vue'
+import type { GraphDisplayOptions } from '@/components/dependencies/GraphDisplayOptionsDropdown.vue'
+import GraphLayoutDropdown from '@/components/dependencies/GraphLayoutDropdown.vue'
 import ReconciliationView from '@/components/reconciliation/ReconciliationView.vue'
 import MetadataEditor from '@/components/MetadataEditor.vue'
 import YamlEditor from '@/components/common/YamlEditor.vue'
@@ -733,10 +720,12 @@ const layoutType = ref<'hierarchical' | 'force' | 'custom'>('force')
 const customLayout = ref<CustomGraphLayout | null>(null)
 const hasCustomLayout = ref(false)
 const savingLayout = ref(false)
-const showNodeLabels = ref(true)
-const showEdgeLabels = ref(true)
+const displayOptions = ref<GraphDisplayOptions>({
+  nodeLabels: true,
+  edgeLabels: true,
+  sourceNodes: false,
+})
 const highlightCycles = ref(true)
-const showSourceNodes = ref(false)
 const showDetailsDrawer = ref(false)
 const selectedNode = ref<string | null>(null)
 
@@ -753,6 +742,9 @@ const showContextMenu = ref(false)
 const contextMenuX = ref(0)
 const contextMenuY = ref(0)
 const contextMenuEntity = ref<string | null>(null)
+
+// Task status state
+const currentTaskFilter = ref<TaskFilter>('all')
 
 // YAML editing state
 const rawYamlContent = ref<string | null>(null)
@@ -807,11 +799,6 @@ const validationChipText = computed(() => {
 
 const isDark = computed(() => theme.global.current.value.dark)
 
-const selectedNodeInfo = computed(() => {
-  if (!selectedNode.value) return null
-  return getNodeInfo(selectedNode.value, dependencyGraph.value)
-})
-
 const isSelectedNodeDataSource = computed(() => {
   if (!selectedNode.value || !dependencyGraph.value) return false
   const sourceNodes = dependencyGraph.value.source_nodes || []
@@ -820,16 +807,47 @@ const isSelectedNodeDataSource = computed(() => {
 
 // Cytoscape integration
 const entityStore = useEntityStore()
+const taskStatusStore = useTaskStatusStore()
+
+// Task completion stats
+const taskStats = computed(() => {
+  if (!taskStatusStore.taskStatus) {
+    return {
+      total: 0,
+      completed: 0,
+      ignored: 0,
+      todo: 0,
+      completion_percentage: 0
+    }
+  }
+  return taskStatusStore.taskStatus.completion_stats
+})
+
+const completionColor = computed(() => {
+  const percentage = taskStats.value.completion_percentage
+  if (percentage === 100) return 'success'
+  if (percentage >= 75) return 'info'
+  if (percentage >= 50) return 'warning'
+  return 'error'
+})
+
+const completionIcon = computed(() => {
+  const percentage = taskStats.value.completion_percentage
+  if (percentage === 100) return 'mdi-check-circle'
+  if (percentage >= 75) return 'mdi-progress-check'
+  if (percentage >= 25) return 'mdi-progress-clock'
+  return 'mdi-clock-outline'
+})
 
 const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurrentPositions } = useCytoscape({
   container: graphContainer,
   graphData: dependencyGraph,
   layoutType,
   customPositions: customLayout,
-  showNodeLabels,
-  showEdgeLabels,
+  showNodeLabels: computed(() => displayOptions.value.nodeLabels),
+  showEdgeLabels: computed(() => displayOptions.value.edgeLabels),
   highlightCycles,
-  showSourceNodes,
+  showSourceNodes: computed(() => displayOptions.value.sourceNodes),
   cycles,
   isDark,
   onNodeClick: async (nodeId: string) => {
@@ -887,6 +905,11 @@ watch(
 )
 
 // Save current layout as custom
+// Graph display options handlers
+function updateDisplayOptions(options: GraphDisplayOptions) {
+  displayOptions.value = options
+}
+
 async function handleSaveCustomLayout() {
   if (!projectName.value || !getCurrentPositions) return
 
@@ -936,6 +959,8 @@ function handleTestRun() {
 async function handleValidate() {
   try {
     await validate(projectName.value)
+    // Refresh task status after validation since status depends on validation results
+    await taskStatusStore.refresh()
     successMessage.value = 'Project validated successfully'
     showSuccessSnackbar.value = true
   } catch (err) {
@@ -947,6 +972,8 @@ async function handleDataValidate(project?: any) {
   try {
     const entityNames = project?.entities
     await validateData(projectName.value, entityNames)
+    // Refresh task status after validation
+    await taskStatusStore.refresh()
     successMessage.value = 'Data validation completed'
     showSuccessSnackbar.value = true
   } catch (err) {
@@ -1249,6 +1276,104 @@ async function handleContextMenuDelete(entityName: string) {
   }
 }
 
+// Task status handlers
+async function handleMarkComplete(entityName: string) {
+  try {
+    const success = await taskStatusStore.markComplete(entityName)
+    if (success) {
+      successMessage.value = `Entity "${entityName}" marked as complete`
+      showSuccessSnackbar.value = true
+      // Refresh graph to show updated badges
+      applyTaskStatusToNodes()
+    }
+  } catch (err) {
+    console.error('Failed to mark entity as complete:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to mark entity as complete'
+    showSuccessSnackbar.value = true
+  }
+}
+
+async function handleMarkIgnored(entityName: string) {
+  try {
+    const success = await taskStatusStore.markIgnored(entityName)
+    if (success) {
+      successMessage.value = `Entity "${entityName}" marked as ignored`
+      showSuccessSnackbar.value = true
+      // Refresh graph to show updated badges
+      applyTaskStatusToNodes()
+    }
+  } catch (err) {
+    console.error('Failed to mark entity as ignored:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to mark entity as ignored'
+    showSuccessSnackbar.value = true
+  }
+}
+
+async function handleResetStatus(entityName: string) {
+  try {
+    const success = await taskStatusStore.resetStatus(entityName)
+    if (success) {
+      successMessage.value = `Status reset for entity "${entityName}"`
+      showSuccessSnackbar.value = true
+      // Refresh graph to show updated badges
+      applyTaskStatusToNodes()
+    }
+  } catch (err) {
+    console.error('Failed to reset entity status:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to reset entity status'
+    showSuccessSnackbar.value = true
+  }
+}
+
+async function handleInitializeTaskList() {
+  try {
+    const result = await api.tasks.initialize(projectName.value, 'dependency-order')
+    
+    if (result.success) {
+      successMessage.value = result.message || 'Task list initialized successfully'
+      showSuccessSnackbar.value = true
+      
+      // Refresh task status to show updated task list
+      await taskStatusStore.refresh()
+      
+      // Refresh graph to show updated badges
+      applyTaskStatusToNodes()
+    }
+  } catch (err) {
+    console.error('Failed to initialize task list:', err)
+    successMessage.value = err instanceof Error ? err.message : 'Failed to initialize task list'
+    showSuccessSnackbar.value = true
+  }
+}
+
+// Apply task status styling to graph nodes
+function applyTaskStatusToNodes() {
+  if (!cy.value || !taskStatusStore.taskStatus) return
+
+  cy.value.nodes().forEach(node => {
+    const entityName = node.id()
+    const status = taskStatusStore.getEntityStatus(entityName)
+    
+    if (!status) return
+
+    // Remove existing task classes
+    node.removeClass('task-done task-ignored task-blocked task-critical task-ready')
+
+    // Apply status-based classes
+    if (status.status === 'done') {
+      node.addClass('task-done')
+    } else if (status.status === 'ignored') {
+      node.addClass('task-ignored')
+    } else if (status.blocked_by && status.blocked_by.length > 0) {
+      node.addClass('task-blocked')
+    } else if (status.priority === 'critical') {
+      node.addClass('task-critical')
+    } else if (status.priority === 'ready') {
+      node.addClass('task-ready')
+    }
+  })
+}
+
 async function handleRefreshDependencies() {
   clearDependenciesError()
   if (projectName.value) {
@@ -1476,6 +1601,9 @@ onMounted(async () => {
     // Start editing session
     await startSession(projectName.value)
     
+    // Initialize task status
+    await taskStatusStore.initialize(projectName.value)
+    
     console.debug(`ProjectDetailView: Successfully initialized for project "${projectName.value}"`)
   } catch (err) {
     console.error('ProjectDetailView: Failed to initialize project view:', err)
@@ -1503,6 +1631,8 @@ watch(
       console.debug(`ProjectDetailView: Loading new project "${newName}"`)
       await select(newName)
       await fetchBackups(newName)
+      // Reinitialize task status for new project
+      await taskStatusStore.initialize(newName)
     } catch (err) {
       console.error(`ProjectDetailView: Failed to load project "${newName}":`, err)
       // Only navigate back if we're still on this route
@@ -1539,6 +1669,82 @@ watch(
   },
   { immediate: true }
 )
+
+// Watch for task status updates to apply styling
+watch(
+  () => taskStatusStore.taskStatus,
+  () => {
+    applyTaskStatusToNodes()
+  },
+  { deep: true }
+)
+
+// Watch for dependency graph updates to apply task status
+watch(
+  () => dependencyGraph.value,
+  async () => {
+    // Wait for graph to render, then apply task status
+    await nextTick()
+    applyTaskStatusToNodes()
+    applyTaskFilter()
+  }
+)
+
+// Watch for task filter changes to show/hide nodes
+watch(
+  () => currentTaskFilter.value,
+  () => {
+    applyTaskFilter()
+  }
+)
+
+// Apply task filter to show/hide nodes based on status
+function applyTaskFilter() {
+  if (!cy.value || !taskStatusStore.taskStatus) return
+
+  const filter = currentTaskFilter.value
+
+  cy.value.nodes().forEach(node => {
+    const entityName = node.id()
+    const status = taskStatusStore.getEntityStatus(entityName)
+    
+    if (!status) {
+      // If no status info, show by default
+      node.style('display', 'element')
+      return
+    }
+
+    let shouldShow = true
+
+    switch (filter) {
+      case 'todo':
+        shouldShow = status.status === 'todo'
+        break
+      case 'done':
+        shouldShow = status.status === 'done'
+        break
+      case 'ignored':
+        shouldShow = status.status === 'ignored'
+        break
+      case 'all':
+      default:
+        shouldShow = true
+        break
+    }
+
+    node.style('display', shouldShow ? 'element' : 'none')
+  })
+
+  // Also hide edges connected to hidden nodes
+  cy.value.edges().forEach(edge => {
+    const source = edge.source()
+    const target = edge.target()
+    const sourceHidden = source.style('display') === 'none'
+    const targetHidden = target.style('display') === 'none'
+    
+    edge.style('display', sourceHidden || targetHidden ? 'none' : 'element')
+  })
+}
 </script>
 
 <style scoped>
@@ -1569,6 +1775,22 @@ watch(
   height: 100%;
   position: relative;
   background: transparent;
+}
+
+.graph-stats-overlay {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  max-width: 280px;
+}
+
+.stats-card {
+  background: rgba(var(--v-theme-surface), 0.95) !important;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(var(--v-border-color), 0.12);
+  border-radius: 8px;
 }
 
 .graph-fab-container {

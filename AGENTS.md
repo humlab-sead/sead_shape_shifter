@@ -20,7 +20,41 @@
 - Await every async data loader in `src/loaders/`; check backend service signatures before mixing sync/async logic.
 - Decorate async tests with `@pytest.mark.asyncio` (Core) and use FastAPI `TestClient` for backend routes.
 - Import backend usages of Core with absolute paths only (e.g., `from src.model import ShapeShiftProject`).
-- **Environment variable resolution**: Happens ONLY in mapper layer (`backend/app/mappers/`). API entities stay raw (`${VAR}`), core entities are always resolved. Never call `resolve_config_env_vars()` in services.
+
+### Layer Boundary Architecture (Awesome Rule) ⭐
+
+**Critical: Services must convert between API and Core layers using ProjectMapper.**
+
+**Why awesome:** Domain logic (`TaskList`, business rules) lives in Core (framework-independent), not API DTOs. This enables CLI/script usage, cleaner tests, and prevents tight coupling.
+
+**Correct pattern:**
+```python
+from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.models.project import Project
+from src.model import ShapeShiftProject
+
+# Load API model
+api_project: Project = project_service.load_project(name)
+
+# Convert to Core for domain logic
+project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+
+# Business logic (task_list only on Core)
+project.task_list.mark_completed(entity)
+
+# Convert back to API
+updated: Project = ProjectMapper.to_api_config(project.cfg, name)
+
+# Save
+project_service.save_project(updated)
+```
+
+**Never:**
+- Skip mapper (causes type confusion: `Project` ≠ `ShapeShiftProject`)
+- Put business logic in API models (they're DTOs)
+- Resolve env vars in services (mapper's job)
+
+**Environment variable resolution**: Happens ONLY in mapper layer (`backend/app/mappers/`). API entities stay raw (`${VAR}`), core entities are always resolved. Never call `resolve_config_env_vars()` in services.
 
 ## Code Conventions
 - Keep line length ≤ 140 characters and rely on Black + isort formatting.
