@@ -18,12 +18,12 @@
         <!-- <template #prepend>
           <div class="d-flex align-center justify-center" :style="{ width: rail ? '40px' : '48px', height: '48px' }">
             <v-img 
-src="/src/assets/images/sead-logo.svg" 
-alt="SEAD Logo" 
+              src="/src/assets/images/sead-logo.svg" 
+              alt="SEAD Logo" 
               :width="rail ? 32 : 40"
               :height="rail ? 32 : 40"
               contain
-/>
+            />
           </div>
         </template> -->
         <template #append>
@@ -86,7 +86,7 @@ alt="SEAD Logo"
         <span class="font-weight-bold">SEAD Shape Shifter</span>
         <span v-if="currentProject" class="ml-2 text-caption"> / {{ currentProject }} </span>
       </v-toolbar-title>
-
+        
       <v-spacer />
 
       <v-btn
