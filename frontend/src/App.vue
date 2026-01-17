@@ -93,11 +93,7 @@
         :icon="theme.isDark.value ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent'"
         variant="text"
         @click="theme.toggleDarkMode()"
-      >
-        <v-tooltip activator="parent">
-          {{ theme.isDark.value ? 'Switch to light mode' : 'Switch to dark mode' }}
-        </v-tooltip>
-      </v-btn>
+      />
 
       <v-btn icon="mdi-magnify" variant="text" @click="showCommandPalette = true" />
 
