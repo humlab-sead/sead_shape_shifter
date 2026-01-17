@@ -245,6 +245,22 @@ rm -rf test-results playwright-report
 - **Best Practices:** https://playwright.dev/docs/best-practices
 - **API Reference:** https://playwright.dev/docs/api/class-test
 
+## Working with VS Code Remote SSH
+
+If you're using VS Code Remote SSH (connected to a remote server), the standard UI mode won't work because there's no display server. Use this instead:
+
+```bash
+# Run UI mode accessible via browser
+pnpm run test:e2e:ui-remote
+```
+
+VS Code will automatically forward port 9323. Then open `http://localhost:9323` in your **local browser** to access the Playwright UI.
+
+Alternatively, run tests in headless mode:
+```bash
+pnpm run test:e2e
+```
+
 ## Troubleshooting
 
 ### Tests fail with "Navigation timeout"
