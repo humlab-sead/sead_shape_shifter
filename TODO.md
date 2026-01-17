@@ -12,6 +12,7 @@
  - [] FIXME: Update documentation, archive non-relevent documents
  - [] FIXME: Review test code coverage
  - [] FIXME: #169 Initialize Playwright setup (UX E2E tests)
+ - [] FIXME: #171 Increade manual testing guide feature coverage
 
 ### New features
 
@@ -32,6 +33,7 @@
  - [] TODO: Improve in-system help (full User Guide, more context sensitive help)
  - [] TODO: Improve UX suggestions when editing entity (awareness of availiable tables, columns etc)
  - [] TODO: Improve Reconcile user experience
+ - [] TODO: Auto-save feature in YAML editing mode (trigger after 2 seconds of inactivity)
 
 
 APPENDIX
