@@ -117,7 +117,7 @@ class ProjectService:
             logger.debug(f"Loading active project '{name}' from ApplicationState")
             return active_project
 
-        filename: Path = self.projects_dir / (f"{name.rstrip('.yml')}.yml")
+        filename: Path = self.projects_dir / (f"{name.removesuffix('.yml')}.yml")
         if not filename.exists():
             raise ProjectNotFoundError(f"Project not found: {name}")
 
@@ -165,9 +165,8 @@ class ProjectService:
         """
         if not project.metadata or not project.metadata.name:
             raise InvalidProjectError("Project must have metadata with name")
-
         # Use original file path if provided, otherwise derive from metadata.name
-        file_path: Path = original_file_path or (self.projects_dir / f"{project.metadata.name.rstrip(".yml")}.yml")
+        file_path: Path = original_file_path or (self.projects_dir / f"{project.metadata.name.removesuffix('.yml')}.yml")
 
         try:
             # Convert to core dict for saving (sparse structure)
