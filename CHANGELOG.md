@@ -1,3 +1,33 @@
+# [1.10.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.9.0...v1.10.0) (2026-01-18)
+
+
+### Bug Fixes
+
+* **tests:** add regression test for project name handling to prevent truncation ([#170](https://github.com/humlab-sead/sead_shape_shifter/issues/170)) ([0acac69](https://github.com/humlab-sead/sead_shape_shifter/commit/0acac692d17f1b1cd06e64e9257568284ac3aa1b))
+* **ui:** correct indentation and formatting for SEAD logo in App.vue ([3d0b774](https://github.com/humlab-sead/sead_shape_shifter/commit/3d0b774080a636df341ac5eea61aacede46efd2d))
+* **ui:** ensure session indicator only displays when active session is present ([b9c14e6](https://github.com/humlab-sead/sead_shape_shifter/commit/b9c14e6b5f254639dabf8d9321e3b5fd9a781e57))
+* **todos:** remove completed TODO items and update FIXME entries for clarity ([2e121b6](https://github.com/humlab-sead/sead_shape_shifter/commit/2e121b6a8ab0570af4d2b8dcbc7ac135a6d67552))
+* **ui:** simplify dark mode toggle button by removing tooltip ([8d4c173](https://github.com/humlab-sead/sead_shape_shifter/commit/8d4c1732645b7d8dcb537d74a1c1d66c236cf89f))
+* **todos:** update FIXME and TODO items for clarity and organization ([277063c](https://github.com/humlab-sead/sead_shape_shifter/commit/277063caf16ae3772b816c9107241dbb4392e1b8))
+* **docs:** update Frontend Manual Testing Guide for project terminology and feature coverage ([#171](https://github.com/humlab-sead/sead_shape_shifter/issues/171)) ([db73eae](https://github.com/humlab-sead/sead_shape_shifter/commit/db73eae60599ba2b29ea9ceb70873efdad75faa3))
+* **docs:** update manual testing guide for project terminology and structure ([9a298c3](https://github.com/humlab-sead/sead_shape_shifter/commit/9a298c3e55efccec3b380f2eae4438b686edce7f))
+* **todos:** update TODO list with additional FIXME and TODO items for manual testing guide and auto-save feature ([78c4868](https://github.com/humlab-sead/sead_shape_shifter/commit/78c4868472cc8c16f0e3d7a28017346c4cbe5ec5))
+
+
+### Features
+
+* add comprehensive build script and documentation for Docker image ([52fbf3a](https://github.com/humlab-sead/sead_shape_shifter/commit/52fbf3aa9a85b3720fdaad6a499117cb8ab269b9))
+* **tests:** add comprehensive tests for ProjectService functionality ([7adb731](https://github.com/humlab-sead/sead_shape_shifter/commit/7adb73186ace7e13423a88fa42361d64de6ca849))
+* **tests:** add end-to-end tests for application workflows ([#169](https://github.com/humlab-sead/sead_shape_shifter/issues/169)) ([851dadc](https://github.com/humlab-sead/sead_shape_shifter/commit/851dadcbaecd6f1b7538d25e054a1e9e378c9068))
+* **package:** add favicon generation script and svg2img dependency ([9184b42](https://github.com/humlab-sead/sead_shape_shifter/commit/9184b428f571d7c05c0b09959f8e44f217dc7193))
+* **config:** add initial test configuration file for shapeshifter project ([ccf89df](https://github.com/humlab-sead/sead_shape_shifter/commit/ccf89dfe7ad01209c8520bc1c3fb38c1a14e9cb1))
+* add test-results directory to .gitignore ([07d0b59](https://github.com/humlab-sead/sead_shape_shifter/commit/07d0b59ab99a2dd1ced075c7fc5e7b359624a5ba))
+* **docs:** add VS Code Remote SSH instructions and update package.json for remote UI testing ([b2b376a](https://github.com/humlab-sead/sead_shape_shifter/commit/b2b376aa0cf8451e2fbe6a51b477fef50b8b2d7b))
+* **ui:** restructure HomeView layout and enhance backend status display ([34dc0e5](https://github.com/humlab-sead/sead_shape_shifter/commit/34dc0e58b0573427d2aedea0f169ab27d43b9c3f))
+* update Dockerfile and Makefile for improved deployment process ([#143](https://github.com/humlab-sead/sead_shape_shifter/issues/143)) ([356edc9](https://github.com/humlab-sead/sead_shape_shifter/commit/356edc9f2b3f5f07a6150887605db34d5c91f94f))
+* update favicon links and improve page title in index.html ([2536e97](https://github.com/humlab-sead/sead_shape_shifter/commit/2536e977cf91657e07d9e6826849d436cee9f76b))
+* **ui:** update SEAD logo display and improve toolbar alignment ([96235be](https://github.com/humlab-sead/sead_shape_shifter/commit/96235be17a8d9664a432da0bc0743a5ffbd24865))
+
 # [1.9.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.8.0...v1.9.0) (2026-01-16)
 
 
