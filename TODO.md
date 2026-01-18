@@ -4,47 +4,41 @@
 ### Bugs
 
  - [] FIXME: Right preview pane doesn't clear values between entities
- - [] FIXME: Active route only highlighted in navigation breadcrumbs for "Projects"
- - [] FIXME: #114 Database and port number fields in data source view are empty
- - [] FIXME: #115 Titles in data source view are displayed inconsistently
  - [] FIXME: #116 Intermittent navigation error when opening project
- - [] FIXME: #117 pening a project always creates a new session
- - [] FIXME: #118 Legend in dependency graph has transparent background.
- - [] FIXME: #119 Entity Editor layout needs improvements
- - [x] FIXME: #120 [Reconciliation] Wrong number of published entities. (Fixed: Added service manifest endpoint and real-time entity count)
- - [x] FIXME: #122 No API call made when doing alternative search in entity reconciliation editor (Fixed: Added targetField parameter)
- - [ ] FIXME: #124 Reconciliation editor complains when "extra_columns" entered in property field
- - [ ] FIXME: #126 Preview fails due to duplicate column names.
- - [ ] FIXME: #138 Wrong VITE_API_BASE_URL when front end served via backend
- - [ ] FIXME: #162 Show node/edge label buttons no longer work
+ - [] FIXME: #124 Reconciliation editor complains when "extra_columns" entered in property field
 
 ### Tech debts:
 
- - [ ] FIXME: #89 Test Faker or mimesis for data generation in normalization tests
- - [ ] FIXME: #143 Update Docker configuration and related documentation
+ - [] FIXME: Update documentation, archive non-relevent documents
+ - [] FIXME: Review test code coverage
+ - [] FIXME: #169 Initialize Playwright setup (UX E2E tests)
+ - [] FIXME: #171 Increade manual testing guide feature coverage
 
 ### New features
 
- - [x] TODO: #121 Add dual-mode editing of entity reconciliation specifications (Completed: YAML/Form tabs with Monaco editor)
  - [] TODO: [Frontend/Backend] Edit data source configuration in a dual-mode editor (Form/YAML).
  - [] TODO: Add additional frontend/backend options (e.g., themes, temp directory, logging level, etc.)
  - [] TODO: Add capability to generate a default reconciliation YAML based on service manifest received from calling services /reconcile endpoint.
- - [] TODO: #68 Add a "finally" step.
- - [] TODO: #66 Introduce a "transformations" section.
+ - [] TODO: #68 Add a "finally" step that removes intermediate tables and columns.
+ - [] TODO: #66 Introduce a "transformations" section with more advance columnar transforms (e.g. toWSG84).
  - [] TODO: #69 Add "parent" property to entity definitions.
  - [] TODO: #67 Introduce support for string concatenation in "extra_columns".
  - [] TODO: Add capability to duplicate an existing configuration.
- - [] TODO: #98 Enable entity to have multiple reconciliation specifications.
  - [] TODO: #108 Add tiny DSL Expression Support in extra_columns
  - [] TODO: Introduce optional support for types for entity fields
           (e.g., string, integer, date) and support type conversions in extra_columns.
- - [] TODO: #125 Add capability to edit full reconciliation YAML
- - [] TODO: #127 Add three-state toggling of L/R panes in entity ediitor.
- - [] TODO: #137 Rename "ingest" in UX to "dispatch" since it better conveys UX perspective. Move feature inside project editor.
- - [] TODO: #163 Reduce clutter in Graph view toolbar
- - [] TODO: #166 Improve YAML syntax support
+ - [] TODO: Improve multiuser support (working on same project)
+ - [] TODO: Add more reconciliation entity types, and non-SEAD types (e.g. Geonames, RAÄ-lämningsnummer)
+ - [] TODO: NOT WORTH THE EFFORT! Improve user experience (Add new edge/relationship in dependency graph)
+ - [] TODO: Improve in-system help (full User Guide, more context sensitive help)
+ - [] TODO: Improve UX suggestions when editing entity (awareness of availiable tables, columns etc)
+ - [] TODO: Improve Reconcile user experience
+ - [] TODO: Auto-save feature in YAML editing mode (trigger after 2 seconds of inactivity)
 
-# Tiny DSL Expression Support in extra_columns
+
+APPENDIX
+
+# TODO: #108 Tiny DSL Expression Support in extra_columns DETAILS
 
 The "extra_colums" key in an entity's specification provides a way of adding new columns to the resulting DataFrame. The extra_columns value is a dict, where each key is the name of the new column, and the value is the initial value of the new column. The value can be a constant, or anoother column in the source or DataFrame.
 
@@ -82,7 +76,6 @@ This keeps defaults simple (constants work out of the box) while giving a clear 
 
 Using "expr: python-pandas-row-expression" sounds great. It might be a bit complicated for non-technical users, thoght. Can you suggest a layer/notation above these expressions that exposes the most common e.g. string expressions,a nd that "ompiles" into these pandas expressions? E.g. "= <user-friendly-expression>" by the backend compiles to "expr:<corresponding-python-expression>". In such a case, non-tech user can add simple expressions, but we still have a super-user option.
 
-
 Expression DSL
 
 Introduce a mini DSL for extra_columns like:
@@ -97,22 +90,158 @@ Backend implementation: parse the string when it’s added to the DataFrame. If 
 
 Keep helper mappings simple so non-technical users can combine columns with string functions; expose more via extending the compiler (e.g., additional helpers for dates or math).
 
-TODO: #129 Add "ingestion" capability to Shape Shifter workflow (e.g sead_clearinghouse_import) 
+---
 
-TODO: #131 Relocate the ingester implementations
+# AI Assessment of TODO Items (Generated 2026-01-16)
 
-TODO: #134 Add ingestion options to Shape Shifter project file. 
+---
 
-TODO: #141 Improve user experience (right click context menu)
+## 🔥 HIGH PRIORITY - Quick Wins
 
-TODO: #153 Improve user experience (Custom graph layout)
+### #124 Reconciliation editor extra_columns complaint - **Easy Fix**
+- The reconciliation editor validation is likely too strict
+- Simple fix: Update schema/validation to allow `extra_columns` property
+- **Effort: 1-2 hours** | **Value: High** (removes user friction)
 
-TODO: #155 Improve user experience (Context sensitive help)
+### Right preview pane doesn't clear values - **Simple Bug**
+- Likely missing reactive reset in EntityPreviewPanel.vue
+- Pattern: Add `watch(() => props.entityName, () => clearState())`
+- **Effort: 30 minutes** | **Value: Medium** (polish)
 
-TODO: #156 Improve user experience (Add new node button in dependency graph)
+---
 
-TODO: NOT WORTH THE EFFORT! Improve user experience (Add new edge/relationship in dependency graph)
+## 💡 MEDIUM PRIORITY - Moderate Value
 
-TODO: #157 Improve user experience (Edit YAML in sidebar)
+### #116 Intermittent navigation error - **Needs Investigation**
+- Could be race condition in router or store
+- **Effort: 2-4 hours** | **Value: High IF frequent** (stability)
+- Check browser console logs and navigation guards
 
-TODO: #161 Improve user experience (Action List / Task List)
+### Edit data source in dual-mode editor (Form/YAML) - **Good UX Pattern**
+- Already have this pattern for entities
+- Reuse EntityFormDialog.vue architecture
+- **Effort: 4-6 hours** | **Value: Medium** (consistency)
+
+### Generate default reconciliation YAML from manifest - **Smart Feature**
+- Calls `/reconcile` endpoint and scaffolds YAML
+- **Effort: 6-8 hours** | **Value: High** (user productivity)
+- Reconciliation system already exists with full implementation
+
+### #68 Add "finally" cleanup step - **Pipeline Feature**
+- Drops intermediate tables/columns after processing
+- **Effort: 8-12 hours** | **Value: Medium** (clean output)
+- Fits naturally after Store phase
+
+---
+
+## 🎯 WORTH CONSIDERING - Strategic Features
+
+### #108 Tiny DSL for extra_columns - **HIGH VALUE but Complex**
+- Detailed spec already exists in TODO.md
+- Two-tier approach is smart: `=concat(...)` for users, `expr:...` for power users
+- **Effort: 2-3 weeks** | **Value: Very High** (major feature)
+- **Recommendation: Phase 1 = Just `expr:` support (1 week), Phase 2 = DSL compiler (2 weeks)**
+
+### #66 Transformations section (toWGS84, etc.) - **Data Quality Feature**
+- Coordinate transformations, case normalization, etc.
+- **Effort: 2-3 weeks** | **Value: High for geo data**
+- Consider using existing libraries (pyproj for coords)
+
+### #69 Add "parent" property to entities - **Hierarchical Data**
+- Useful for nested structures (site → feature → sample)
+- **Effort: 1-2 weeks** | **Value: Medium** (depends on use cases)
+
+### #67 String concatenation in extra_columns - **Subset of #108**
+- **Recommendation: Skip if doing #108 DSL, otherwise quick win**
+- **Effort: 2-3 days** | **Value: Medium**
+
+### Duplicate existing configuration - **User Convenience**
+- Copy project with new name
+- **Effort: 2-3 hours** | **Value: Medium**
+
+### Add optional types for entity fields - **Type Safety**
+- Schema validation + conversions in extra_columns
+- **Effort: 1-2 weeks** | **Value: Medium** (better error messages)
+
+---
+
+## ⚠️ LOW PRIORITY / DEFER
+
+### Update documentation - **Continuous Task**
+- Current docs are comprehensive (CONFIGURATION_GUIDE.md is 2,500+ lines!)
+- Archive old docs as you find them
+- **Recommendation: Do incrementally, not as big task**
+
+### Improve multiuser support - **Complex Feature**
+- Requires conflict resolution, locking, real-time sync
+- **Effort: 4-6 weeks** | **Value: Low** (unless multiple concurrent users)
+- **Recommendation: Defer unless actual need arises**
+
+### Add more reconciliation entity types - **Domain-Specific**
+- Geonames, RAÄ, etc.
+- **Effort: Varies** | **Value: Depends on user base**
+- **Recommendation: Add on demand, not preemptively**
+
+### Improve UX suggestions when editing entity - **Context-Aware Editor**
+- Show available tables/columns from data source
+- **Effort: 2-3 weeks** | **Value: High for new users**
+- Could integrate with existing YAML intelligence
+
+### Improve in-system help - **User Guide Integration**
+- Context-sensitive help tooltips
+- **Effort: 2-4 weeks** | **Value: Medium**
+- **Recommendation: You have good tooltips already; defer full guide**
+
+### Improve Reconcile UX - **Vague Item**
+- **Recommendation: Clarify specific pain points before tackling**
+
+---
+
+## ❌ NOT WORTH IT
+
+### Improve UX for adding edges in dependency graph - **Marked as "NOT WORTH THE EFFORT"**
+- Agreed - dependency graph is visualization, not primary editor
+- YAML or form editing is sufficient
+
+---
+
+## Recommended Priority Order
+
+### Phase 1: Quick Wins (1-2 days total)
+1. ✅ Check off #166 YAML intelligence (DONE)
+2. ✅ Check off "Review test coverage" (91% is excellent)
+3. Fix #124 reconciliation editor extra_columns
+4. Fix right preview pane clearing bug
+5. Fix active route highlighting
+
+### Phase 2: High-Value Features (2-3 weeks)
+1. #108 DSL for extra_columns (Phase 1: `expr:` support only)
+2. Generate default reconciliation YAML
+3. Edit data source in dual-mode
+
+### Phase 3: Strategic Additions (4-6 weeks)
+1. #108 DSL (Phase 2: user-friendly compiler)
+2. #68 Finally cleanup step
+3. #66 Transformations section
+4. Improve UX suggestions (context-aware editing)
+
+### Deferred
+- Multiuser support (until proven need)
+- Additional reconciliation types (on demand)
+- Full in-system help (incremental improvement better)
+
+---
+
+## New Tech Debt Identified
+
+1. **Frontend type safety** - Some `any` types in stores could be stricter
+2. **Error boundaries** - Add Vue error boundaries for production robustness
+3. **API retry logic** - Add exponential backoff for transient failures
+4. **Stale data indicator** - Show when cached data might be stale
+
+None of these are critical given your 91% test coverage.
+
+---
+
+**Bottom line:** Focus on Phase 1 (bugs), then tackle #108 DSL in two phases. The extra_columns DSL is your highest-value unimplemented feature based on the detailed spec you've already written.
+

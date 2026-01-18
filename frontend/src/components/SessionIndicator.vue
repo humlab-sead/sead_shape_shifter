@@ -1,5 +1,5 @@
 <template>
-  <v-alert v-if="hasActiveSession" density="compact" variant="outlined" :color="alertColor" class="mb-4">
+  <v-alert v-if="hasActiveSession && showIndicator" density="compact" variant="outlined" :color="alertColor" class="mb-4">
     <v-row align="center" no-gutters>
       <v-col>
         <div class="d-flex align-center">
@@ -22,7 +22,7 @@
         >
           {{ concurrentEditors }} {{ concurrentEditors === 1 ? 'Editor' : 'Editors' }}
         </v-btn>
-        <v-btn size="x-small" variant="text" @click="handleCloseSession"> Close </v-btn>
+        <v-btn size="x-small" variant="text" @click="handleCloseIndicator"> Close </v-btn>
       </v-col>
     </v-row>
 
@@ -54,9 +54,10 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const { hasActiveSession, isModified, version, concurrentEditWarning, otherActiveSessions, endSession } = useSession()
+const { hasActiveSession, isModified, version, concurrentEditWarning, otherActiveSessions } = useSession()
 
 const showConcurrentWarning = ref(false)
+const showIndicator = ref(true)
 
 const concurrentEditors = computed(() => otherActiveSessions.value.length)
 
@@ -72,11 +73,15 @@ const alertIcon = computed(() => {
   return 'mdi-check-circle'
 })
 
-async function handleCloseSession() {
-  if (isModified.value) {
-    const confirmed = confirm('You have unsaved changes. Close session anyway?')
-    if (!confirmed) return
-  }
-  await endSession()
+function handleCloseIndicator() {
+  showIndicator.value = false
 }
+
+// async function handleCloseSession() {
+//   if (isModified.value) {
+//     const confirmed = confirm('You have unsaved changes. Close session anyway?')
+//     if (!confirmed) return
+//   }
+//   await endSession()
+// }
 </script>

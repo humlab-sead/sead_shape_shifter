@@ -4,6 +4,10 @@ SHELL := /bin/bash
 # When running from docker/ directory, set DOCKER_DIR to "."
 # When included from root Makefile, DOCKER_DIR is set to "./docker"
 DOCKER_DIR ?= .
+DEPLOY_DIR ?= /home/sead/sead-tools/sead_shape_shifter
+
+# Temporary override for Roger's deployment
+DEPLOY_SOURCE_DIR ?= /home/roger/source/sead_shape_shifter/docker
 
 # Repository and build settings
 GIT_REPO ?= https://github.com/humlab-sead/sead_shape_shifter.git
@@ -13,111 +17,49 @@ BACKEND_PORT ?= 8012
 # User ID settings for container (defaults to sead user)
 # Override with: make docker-build USER_UID=1001 USER_GID=1001
 USER_UID ?= $(shell id sead -u)
-USER_GID ?= $(shell id sead -g)
+USER_GID ?= $(shell id www-data -g)
+
+PGPASS_DIR := $(DOCKER_DIR)/data/.pgpass
 
 ################################################################################
-# Docker Build & Runtime
+# Docker Build 
 #
 # Usage:
 #   From repository root: make docker-build
 #   From docker/ folder:  make -f Makefile docker-build
 #
-# Build modes:
+# Build modes (all use build.sh script):
 #   - docker-build          : Build from local context (default, for development)
 #   - docker-build-github   : Build from GitHub main (CI/CD, with cache invalidation)
 #   - docker-build-tag TAG=v1.0.0 : Build from specific tag/branch (production)
-#   - docker-build-standalone : Build from GitHub with minimal context (any directory)
-#
-# Run modes:
-#   - docker-up             : Start containers
-#   - docker-down           : Stop containers
-#   - docker-logs           : View logs
-#   - docker-shell          : Open shell in container
-#   - docker-health         : Check application health
 ################################################################################
 
-# Complete setup: directories + env files
-.PHONY: setup
-setup: setup-volumes setup-env
-	@echo ""
-	@echo "✓ Complete setup finished!"
-	@echo ""
-	@echo "Next steps:"
-	@echo "  1. Edit configuration: nano $(DOCKER_DIR)/data/backend.env"
-	@echo "  2. Build image: make docker-build"
-	@echo "  3. Start application: make docker-up"
+update-deploy-scripts:
+	@echo "Update deploy scripts to $(DEPLOY_DIR)..."
+	@for file in Makefile Dockerfile build.sh README.md BUILD_SCRIPT_GUIDE.md; do \
+		sudo cp -f $(DEPLOY_SOURCE_DIR)/$$file $(DEPLOY_DIR)/$$file; \
+		sudo chown sead:www-data $(DEPLOY_DIR)/$$file; \
+	done
+	@echo "✓ Deployment complete"
 
-# Setup host directories with correct permissions
-.PHONY: setup-volumes
-setup-volumes:
-	@echo "Setting up host directories with UID=$(USER_UID) GID=$(USER_GID)..."
-	@mkdir -p $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
-	@sudo chown -R $(USER_UID):$(USER_GID) $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
-	@chmod -R 755 $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
-	@echo "✓ Volume directories created with proper permissions"
-
-# Setup environment files from examples
-.PHONY: setup-env
-setup-env:
-	@echo "Setting up environment files..."
-	@if [ ! -f "$(DOCKER_DIR)/data/backend.env" ] && [ -f "$(DOCKER_DIR)/data/backend.env.example" ]; then \
-		cp $(DOCKER_DIR)/data/backend.env.example $(DOCKER_DIR)/data/backend.env; \
-		echo "✓ Created backend.env from template"; \
-	else \
-		echo "✓ backend.env already exists"; \
-	fi
-	@if [ ! -f "$(DOCKER_DIR)/data/.pgpass" ] && [ -f "$(DOCKER_DIR)/data/.pgpass.example" ]; then \
-		cp $(DOCKER_DIR)/data/.pgpass.example $(DOCKER_DIR)/data/.pgpass; \
-		chmod 600 $(DOCKER_DIR)/data/.pgpass; \
-		echo "✓ Created .pgpass from template (permissions: 600)"; \
-	else \
-		echo "✓ .pgpass already exists or template not found"; \
-	fi
-
-# Default build - uses local context (SOURCE=workdir by default in Dockerfile)
 .PHONY: docker-build
-docker-build:
-	@echo "Building Docker image from local context (UID=$(USER_UID), GID=$(USER_GID))..."
-	@docker compose -f $(DOCKER_DIR)/docker-compose.yml build \
-		--build-arg USER_UID=$(USER_UID) \
-		--build-arg USER_GID=$(USER_GID)
+docker-build: docker-build-github
 
-.PHONY: docker-build-no-cache
-docker-build-no-cache:
-	@echo "Building Docker image (no cache, UID=$(USER_UID), GID=$(USER_GID))..."
-	@docker compose -f $(DOCKER_DIR)/docker-compose.yml build --no-cache \
-		--build-arg USER_UID=$(USER_UID) \
-		--build-arg USER_GID=$(USER_GID)
-
-# Build from GitHub main branch (with cache invalidation)
-# NOTE: Run from project root directory
 .PHONY: docker-build-github
 docker-build-github:
-	@echo "Building Docker image from GitHub (main branch, UID=$(USER_UID), GID=$(USER_GID))..."
-	@CACHE_BUST=$$(git ls-remote $(GIT_REPO) refs/heads/main | cut -f1) && \
-	docker build -f $(DOCKER_DIR)/Dockerfile \
-		--build-arg SOURCE=github \
-		--build-arg GIT_REPO=$(GIT_REPO) \
-		--build-arg GIT_REF=main \
-		--build-arg CACHE_BUST=$$CACHE_BUST \
-		--build-arg USER_UID=$(USER_UID) \
-		--build-arg USER_GID=$(USER_GID) \
-		-t shape-shifter:latest \
-		.
-	@echo "✓ Built from GitHub main ($${CACHE_BUST:0:8})"
+	@cd $(DOCKER_DIR) && ./build.sh --git-ref main \
+		--user-uid $(USER_UID) \
+		--user-gid $(USER_GID) \
+		--git-repo $(GIT_REPO)
 
-.PHONY: docker-build-github-no-cache
-docker-build-github-no-cache:
-	@echo "Building Docker image from GitHub (main branch, UID=$(USER_UID), GID=$(USER_GID))..."
-	@docker build --no-cache --progress=plain -f $(DOCKER_DIR)/Dockerfile \
-		--build-arg SOURCE=github \
-		--build-arg GIT_REPO=$(GIT_REPO) \
-		--build-arg GIT_REF=main \
-		--build-arg USER_UID=$(USER_UID) \
-		--build-arg USER_GID=$(USER_GID) \
-		-t shape-shifter:latest \
-		. 2>&1 | tee build.log
-	@echo "✓ Built from GitHub main (log saved to build.log)"
+.PHONY: build-and-deploy
+build-and-deploy: docker-build-github docker-restart
+
+.PHONY: docker-build-local
+docker-build-local:
+	@cd $(DOCKER_DIR) && ./build.sh --local \
+		--user-uid $(USER_UID) \
+		--user-gid $(USER_GID)
 
 # Build from specific GitHub tag/branch (no cache bust needed for tags)
 # NOTE: Run from project root directory
@@ -127,46 +69,20 @@ docker-build-tag:
 		echo "❌ Error: TAG variable required. Usage: make docker-build-tag TAG=v1.2.0"; \
 		exit 1; \
 	fi
-	@echo "Building Docker image from GitHub tag/branch: $(TAG) (UID=$(USER_UID), GID=$(USER_GID))..."
-	@docker build -f $(DOCKER_DIR)/Dockerfile \
-		--build-arg SOURCE=github \
-		--build-arg GIT_REPO=$(GIT_REPO) \
-		--build-arg GIT_REF=$(TAG) \
-		--build-arg USER_UID=$(USER_UID) \
-		--build-arg USER_GID=$(USER_GID) \
-		-t shape-shifter:$(TAG) \
-		.
-	@echo "✓ Built from GitHub tag/branch: $(TAG)"
+	@cd $(DOCKER_DIR) && ./build.sh --git-ref $(TAG) \
+		--user-uid $(USER_UID) \
+		--user-gid $(USER_GID) \
+		--git-repo $(GIT_REPO)
 
-# Build from GitHub with minimal context (standalone build from any directory)
-# NOTE: Requires lib/ directory in current directory (UCanAccess library)
-.PHONY: docker-build-standalone
-docker-build-standalone:
-	@echo "Building Docker image from GitHub (standalone, minimal context)..."
-	@if [ ! -d "lib" ]; then \
-		echo "❌ Error: lib/ directory not found in current directory"; \
-		echo "   The lib/ directory (UCanAccess) must be present for standalone builds"; \
-		exit 1; \
-	fi
-	@TEMP_DIR=$$(mktemp -d) && \
-	echo "# Ignore everything except lib/" > $$TEMP_DIR/.dockerignore && \
-	echo "*" >> $$TEMP_DIR/.dockerignore && \
-	echo "!lib/" >> $$TEMP_DIR/.dockerignore && \
-	cp -r lib $$TEMP_DIR/ && \
-	DOCKERFILE_PATH=$$(realpath $(DOCKER_DIR)/Dockerfile) && \
-	CACHE_BUST=$$(git ls-remote $(GIT_REPO) refs/heads/main 2>/dev/null | cut -f1 || echo "1") && \
-	cd $$TEMP_DIR && \
-	docker build -f $$DOCKERFILE_PATH \
-		--build-arg SOURCE=github \
-		--build-arg GIT_REPO=$(GIT_REPO) \
-		--build-arg GIT_REF=$(GIT_REF) \
-		--build-arg CACHE_BUST=$$CACHE_BUST \
-		--build-arg USER_UID=$(USER_UID) \
-		--build-arg USER_GID=$(USER_GID) \
-		-t shape-shifter:latest \
-		. && \
-	rm -rf $$TEMP_DIR
-	@echo "✓ Built from GitHub (standalone) with minimal context"
+################################################################################
+# Docker runtime targets
+# Run modes:
+#   - docker-up             : Start containers
+#   - docker-down           : Stop containers
+#   - docker-logs           : View logs
+#   - docker-shell          : Open shell in container
+#   - docker-health         : Check application health
+################################################################################
 
 .PHONY: docker-up
 docker-up:
@@ -273,3 +189,44 @@ docker-test: docker-validate
 	@echo "  Frontend:  http://localhost:$(BACKEND_PORT)/"
 	@echo "  API Docs:  http://localhost:$(BACKEND_PORT)/api/v1/docs"
 	@echo "  Health:    http://localhost:$(BACKEND_PORT)/api/v1/health"
+
+################################################################################
+# Complete setup: directories + env files
+################################################################################
+
+.PHONY: setup
+setup: setup-volumes setup-env
+	@echo ""
+	@echo "✓ Complete setup finished!"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Edit configuration: nano $(DOCKER_DIR)/data/backend.env"
+	@echo "  2. Build image: make docker-build"
+	@echo "  3. Start application: make docker-up"
+
+# Setup host directories with correct permissions
+.PHONY: setup-volumes
+setup-volumes:
+	@echo "Setting up host directories with UID=$(USER_UID) GID=$(USER_GID)..."
+	@mkdir -p $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
+	@sudo chown -R $(USER_UID):$(USER_GID) $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
+	@chmod -R 755 $(DOCKER_DIR)/data/{projects,logs,output,backups,tmp}
+	@echo "✓ Volume directories created with proper permissions"
+
+# Setup environment files from examples
+.PHONY: setup-env
+setup-env:
+	@echo "Setting up environment files..."
+	@if [ ! -f "$(DOCKER_DIR)/data/backend.env" ] && [ -f "$(DOCKER_DIR)/data/backend.env.example" ]; then \
+		cp $(DOCKER_DIR)/data/backend.env.example $(DOCKER_DIR)/data/backend.env; \
+		echo "✓ Created backend.env from template"; \
+	else \
+		echo "✓ backend.env already exists"; \
+	fi
+	@if [ ! -f "$(PGPASS_DIR)/.pgpass" ] && [ -f "$(PGPASS_DIR)/.pgpass.example" ]; then \
+		cp $(PGPASS_DIR)/.pgpass.example $(PGPASS_DIR)/.pgpass; \
+		chmod 600 $(PGPASS_DIR)/.pgpass; \
+		echo "✓ Created .pgpass from template (permissions: 600)"; \
+	else \
+		echo "✓ .pgpass already exists or template not found"; \
+	fi
