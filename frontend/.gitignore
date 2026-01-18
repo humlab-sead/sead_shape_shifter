@@ -31,3 +31,7 @@ Thumbs.db
 
 # Build
 *.tsbuildinfo
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
