@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml
 
+from backend.app.core.config import settings
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.services.project_service import (
@@ -18,6 +19,8 @@ from backend.app.services.project_service import (
     ProjectService,
     get_project_service,
 )
+
+# pylint: disable=redefined-outer-name, unused-argument
 
 
 class TestProjectService:
@@ -49,7 +52,7 @@ class TestProjectService:
     @pytest.fixture
     def service(self, temp_config_dir: Path, mock_metadata: dict[str, Any]) -> ProjectService:
         """Create service instance with temporary directory."""
-        with (patch("backend.app.services.project_service.settings") as mock_settings,):
+        with patch("backend.app.services.project_service.settings") as mock_settings:
             mock_settings.PROJECTS_DIR = temp_config_dir
             mock_state = MagicMock()
             mock_state.update = MagicMock()
@@ -58,6 +61,13 @@ class TestProjectService:
 
             service = ProjectService(state=mock_state)
             return service
+
+    @pytest.fixture
+    def simple_service(self, tmp_path: Path, monkeypatch):
+        """Create ProjectService with temporary directory (simpler setup)."""
+        # Override settings to use temp directory
+        monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
+        return ProjectService()
 
     @pytest.fixture
     def sample_yaml_dict(self, mock_metadata: dict[str, Any]) -> dict[str, Any]:
@@ -77,6 +87,34 @@ class TestProjectService:
     def sample_config(self, sample_yaml_dict) -> Project:
         """Create sample configuration."""
         return Project(**sample_yaml_dict)
+
+    @pytest.fixture
+    def sample_config_file(self, tmp_path):
+        """Create a sample configuration file with multiple entities."""
+        config_path = tmp_path / "test_project.yml"
+        content = """
+metadata:
+  type: shapeshifter-project
+  name: test_project
+  description: A test project
+  version: 1.0.0
+
+entities:
+  sample:
+    type: data
+    keys: [sample_id]
+    columns: [name, value]
+
+  site:
+    type: data
+    keys: [site_id]
+    columns: [name, location]
+
+options:
+  verbose: true
+"""
+        config_path.write_text(content)
+        return config_path
 
     # List configurations tests
 
@@ -170,6 +208,16 @@ class TestProjectService:
             assert config.metadata
             assert config.metadata.file_path == str(file_path)
             assert config.metadata.entity_count == 1
+
+    def test_load_configuration_multiple_entities(self, simple_service: ProjectService, sample_config_file):
+        """Test loading valid configuration with multiple entities."""
+        config = simple_service.load_project("test_project")
+
+        assert config.metadata.name == "test_project"
+        assert len(config.entities) == 2
+        assert "sample" in config.entities
+        assert "site" in config.entities
+        assert config.options["verbose"] is True
 
     # Save configuration tests
 
@@ -282,6 +330,43 @@ class TestProjectService:
         assert config.metadata.version == "1.0.0"
         assert config.metadata.entity_count == 0
         assert config.metadata.is_valid is True
+
+    def test_create_configuration_name_ending_in_yml_chars(self, service: ProjectService):
+        """Test creating configuration with name ending in 'l', 'y', 'm', or '.' doesn't truncate.
+        
+        Regression test for bug where .rstrip('.yml') would remove trailing characters
+        that happened to be in the set {'.', 'y', 'm', 'l'}.
+        """
+        # Test various problematic endings
+        test_names = [
+            "test_config_manual",  # ends with 'l'
+            "data_file_final",     # ends with 'l'
+            "my_query",            # ends with 'y'
+            "system_memory",       # ends with 'y'
+            "algorithm",           # ends with 'm'
+            "test.name",           # contains '.'
+        ]
+        
+        for name in test_names:
+            config = service.create_project(name)
+            
+            # Verify filename is correct (not truncated)
+            expected_file = service.projects_dir / f"{name}.yml"
+            assert expected_file.exists(), f"File for '{name}' was truncated to {list(service.projects_dir.glob('*.yml'))}"
+            
+            # Verify metadata.name matches
+            assert config.metadata
+            assert config.metadata.name == name, f"Metadata name '{config.metadata.name}' doesn't match expected '{name}'"
+            
+            # Verify we can load it back with correct name
+            # Mock state.get to return None so it loads from disk
+            with patch.object(service.state, "get", return_value=None):
+                loaded = service.load_project(name)
+                assert loaded.metadata
+                assert loaded.metadata.name == name
+            
+            # Clean up for next iteration
+            service.delete_project(name)
 
     # Delete configuration tests
 
@@ -529,6 +614,27 @@ class TestProjectService:
 
         with pytest.raises(ProjectConflictError, match="modified by another user"):
             service.save_with_version_check(sample_config, "1.0.0")
+
+    # Roundtrip tests
+
+    def test_roundtrip(self, simple_service: ProjectService, sample_config_file):
+        """Test load-modify-save-reload cycle."""
+        # Load
+        config = simple_service.load_project("test_project")
+        original_entity_count = len(config.entities)
+
+        # Modify
+        entity = Entity(name="new_entity", surrogate_id="new_entity_id", keys=["id"])
+        config = simple_service.add_entity(config, "new_entity", entity)
+
+        # Save
+        simple_service.save_project(config)
+
+        # Reload
+        reloaded = simple_service.load_project("test_project")
+
+        assert len(reloaded.entities) == original_entity_count + 1
+        assert "new_entity" in reloaded.entities
 
     # Singleton instance tests
 
