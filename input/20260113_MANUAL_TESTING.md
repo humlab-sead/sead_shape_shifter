@@ -4,19 +4,18 @@
 
 This guide provides comprehensive step-by-step manual testing procedures for the Shape Shifter Project Editor frontend application. Use this guide to ensure all UI features work correctly across different browsers and scenarios.
 
-## Testing protocol
-
- - FIXME: 
-
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
 - [Core Application Testing](#core-application-testing)
-- [Project Editor Testing](#configuration-editor-testing)
+- [Project Editor Testing](#project-editor-testing)
 - [Entity Editor Testing](#entity-editor-testing)
+- [Graph & Dependencies Testing](#graph--dependencies-testing)
+- [Reconciliation Testing](#reconciliation-testing)
 - [Validation Testing](#validation-testing)
 - [Execute Workflow Testing](#execute-workflow-testing)
+- [Ingester Testing](#ingester-testing)
 - [Data Source Testing](#data-source-testing)
 - [Cross-Browser Testing](#cross-browser-testing)
 - [Feature-Specific Testing](#feature-specific-testing)
@@ -46,11 +45,12 @@ make fr
 
 Before starting tests, verify:
 
+- [x] Backend server running at http://localhost:8012
 - [x] Frontend server running at http://localhost:5173
 - [x] Backend health check passes: http://localhost:8012/api/v1/health
 - [x] No console errors on initial page load
 - [x] Browser DevTools open (F12)
-- [x] Test configuration files available in `input/` directory
+- [x] Test project files available in `input/` directory
 
 ---
 
@@ -74,9 +74,9 @@ Before starting tests, verify:
 - [x] Current route highlighted in navigation
 
 **Screenshot Checklist:**
-- [ ] Light mode renders correctly
-- [ ] Dark mode renders correctly (toggle theme)
-- [ ] Layout is responsive
+- [x] Light mode renders correctly
+- [x] Dark mode renders correctly (toggle theme)
+- [x] Layout is responsive
 
 ---
 
@@ -93,11 +93,11 @@ Before starting tests, verify:
 
 **Expected Results:**
 
-- [ ] Each page loads without errors
-- [ ] Active route highlighted in navigation
-- [ ] Page content changes appropriately
-- [ ] Browser history works correctly
-- [ ] No console errors during navigation
+- [x] Each page loads without errors
+- [x] Active route highlighted in navigation
+- [x] Page content changes appropriately
+- [x] Browser history works correctly
+- [x] No console errors during navigation
 
 ### Theme Toggle
 
@@ -111,11 +111,11 @@ Before starting tests, verify:
 
 **Expected Results:**
 
-- [ ] Theme switches immediately
-- [ ] All UI elements adapt to new theme
-- [ ] Text remains readable (sufficient contrast)
-- [ ] Theme preference persists after refresh
-- [ ] No flickering during theme switch
+- [x] Theme switches immediately
+- [x] All UI elements adapt to new theme
+- [x] Text remains readable (sufficient contrast)
+- [x] Theme preference persists after refresh
+- [x] No flickering during theme switch
 
 ### Responsive Layout
 
@@ -130,11 +130,11 @@ Before starting tests, verify:
 
 **Expected Results:**
 
-- [ ] Navigation collapses to hamburger menu on mobile
-- [ ] Content reflows appropriately
-- [ ] No horizontal scrolling
-- [ ] Touch targets ≥ 44x44px on mobile
-- [ ] Text remains readable at all sizes
+- [x] Navigation collapses to hamburger menu on mobile
+- [x] Content reflows appropriately
+- [x] No horizontal scrolling
+- [x] Touch targets ≥ 44x44px on mobile
+- [x] Text remains readable at all sizes
 
 ---
 
@@ -149,90 +149,92 @@ Before starting tests, verify:
 
 **Expected Results:**
 
-- [ ] Project cards displayed
-- [ ] Each card shows: name, description, entity count
-- [ ] Cards are clickable
-- [ ] Loading skeleton appears before data loads
-- [ ] Empty state shown if no configurations
+- [x] Project cards displayed
+- [x] Each card shows: name, description, entity count
+- [x] Cards are clickable
+- [x] Loading skeleton appears before data loads
+- [x] Empty state shown if no projects
 
 **Test: Search Projects**
 
 1. Enter search term in search box
 2. Clear search
-3. Search for non-existent config
+3. Search for non-existent project
 
 **Expected Results:**
 
-- [ ] List filters as you type
-- [ ] Search is case-insensitive
-- [ ] Clearing search restores full list
-- [ ] "No results" message for no matches
+- [x] List filters as you type
+- [x] Search is case-insensitive
+- [x] Clearing search restores full list
+- [x] "No results" message for no matches
 
 ### Create New Project
 
 **Test: Project Creation**
 
 1. Click "Create New Project" button
-2. Enter configuration name: `test_config_manual`
+2. Enter project name: `test_project_manual`
 3. Enter description (optional)
 4. Click "Create"
 
 **Expected Results:**
 
-- [ ] Dialog opens with form fields
-- [ ] Name field validates (required, unique)
-- [ ] Create button disabled until valid
-- [ ] Success notification appears
-- [ ] Redirected to configuration editor
-- [ ] New config appears in list
+- [x] Dialog opens with form fields
+- [x] Name field validates (required, unique)
+- [x] Create button disabled until valid
+- [x] Success notification appears
+- [x] Redirected to project editor
+- [x] New project appears in list
 
 ### Edit Project
 
 **Test: Open Existing Project**
 
-1. Click on configuration card
+1. Click on project card
 2. Wait for editor to load
 
 **Expected Results:**
 
-- [ ] Editor view loads
-- [ ] YAML content displayed in Monaco editor
-- [ ] Syntax highlighting active
-- [ ] Line numbers visible
-- [ ] Entity list panel visible
-- [ ] Toolbar buttons enabled (Test Run, Validate, Execute, Backups, Save)
+- [x] Editor view loads
+- [x] YAML content displayed in Monaco editor
+- [x] Syntax highlighting active
+- [x] Line numbers visible
+- [x] Entity list panel visible
+- [x] Toolbar buttons enabled (Test Run, Validate, Execute, Backups, Save)
 
 **Test: Edit YAML Content**
 
 1. Make a simple edit (e.g., add comment)
-2. Observe for auto-save indicator
+2. Observe unsaved changes indicator
 3. Make a syntax error
 4. Fix the error
 
 **Expected Results:**
 
-- [ ] Unsaved changes indicator appears (*)
-- [ ] Syntax errors underlined in red
-- [ ] Error details shown on hover
-- [ ] Auto-save triggers after 2 seconds of inactivity
-- [ ] Save button state reflects save status
+- [ ] IGNORED: Unsaved changes indicator appears (*)
+- [x] Syntax errors underlined in red
+- [x] Error details shown on hover
+- [x] Save button enabled when changes exist
+- [x] Save button state reflects save status
+
+**Note:** Auto-save is not currently implemented. Changes must be saved manually using the "Save" button.
 
 ### Save Project
 
 **Test: Manual Save**
 
-1. Edit configuration content
+1. Edit project content
 2. Click "Save" button
 3. Observe notifications
 4. Refresh page
 
 **Expected Results:**
 
-- [ ] Save button shows loading state
-- [ ] Success notification appears
-- [ ] Unsaved indicator clears
-- [ ] Backup created (timestamp in `backups/`)
-- [ ] Changes persist after refresh
+- [x] Save button shows loading state
+- [x] Success notification appears
+- [x] Unsaved indicator clears
+- [x] Backup created (timestamp in `backups/`)
+- [x] Changes persist after refresh
 
 **Test: Save with Validation Errors**
 
@@ -241,7 +243,7 @@ Before starting tests, verify:
 
 **Expected Results:**
 
-- [ ] Save completes (saves invalid config)
+- [ ] Save completes (saves invalid project)
 - [ ] Warning notification about validation
 - [ ] Validation panel shows errors
 - [ ] User can fix and re-save
@@ -250,7 +252,7 @@ Before starting tests, verify:
 
 **Test: Delete Project**
 
-1. Open configuration
+1. Open project
 2. Click "Delete" button
 3. Confirm deletion in dialog
 
@@ -259,9 +261,9 @@ Before starting tests, verify:
 - [ ] Confirmation dialog appears
 - [ ] Dialog explains consequences
 - [ ] Cancel button works
-- [ ] Confirm deletes configuration
-- [ ] Redirected to configuration list
-- [ ] Deleted config removed from list
+- [ ] Confirm deletes project
+- [ ] Redirected to project list
+- [ ] Deleted project removed from list
 
 ---
 
@@ -271,7 +273,7 @@ Before starting tests, verify:
 
 **Test: Entity List Display**
 
-1. Open configuration with multiple entities
+1. Open project with multiple entities
 2. Observe entity list panel
 
 **Expected Results:**
@@ -617,13 +619,527 @@ Before starting tests, verify:
 
 ---
 
+## Graph & Dependencies Testing
+
+### Dependency Graph View
+
+**Test: Open Graph View**
+
+1. Open project with multiple entities
+2. Click "Graph" tab in project detail view
+3. Observe dependency graph
+
+**Expected Results:**
+
+- [ ] Graph renders with cytoscape.js
+- [ ] Nodes displayed for all entities
+- [ ] Edges show foreign key relationships
+- [ ] Data source nodes distinguished (different style)
+- [ ] Layout is readable and organized
+- [ ] Zoom controls visible
+- [ ] Fit-to-screen button available
+
+### Graph Layout Options
+
+**Test: Change Graph Layout**
+
+1. Open graph view
+2. Click layout dropdown
+3. Select different layouts:
+   - Breadthfirst
+   - Circle
+   - Concentric
+   - Cose
+   - Grid
+   - Hierarchical
+
+**Expected Results:**
+
+- [ ] Layout dropdown accessible
+- [ ] Each layout renders correctly
+- [ ] Layout transitions smoothly
+- [ ] Graph remains interactive
+- [ ] Node positions update appropriately
+- [ ] Performance acceptable (< 1s for layout change)
+
+### Graph Display Options
+
+**Test: Toggle Display Options**
+
+1. Open graph view
+2. Click display options dropdown
+3. Toggle options:
+   - Show labels
+   - Show edge labels
+   - Highlight paths
+   - Compact view
+
+**Expected Results:**
+
+- [ ] Display options accessible
+- [ ] Each option toggles immediately
+- [ ] Labels appear/disappear correctly
+- [ ] Edge labels readable
+- [ ] Path highlighting works
+- [ ] Options persist during session
+
+### Graph Interaction
+
+**Test: Node Selection**
+
+1. Click on entity node in graph
+2. Observe selection state
+3. Click on data source node
+4. Click on empty area to deselect
+
+**Expected Results:**
+
+- [ ] Node highlights on click
+- [ ] Quick edit drawer opens for entities
+- [ ] Data source nodes show info message
+- [ ] Clicking empty area deselects
+- [ ] Selection state visible
+
+**Test: Graph Navigation**
+
+1. Zoom in/out using mouse wheel
+2. Pan by dragging background
+3. Click "Fit to screen" button
+4. Double-click node
+
+**Expected Results:**
+
+- [ ] Zoom works smoothly
+- [ ] Pan works in all directions
+- [ ] Fit-to-screen centers graph
+- [ ] Double-click may trigger action
+- [ ] Navigation controls responsive
+
+### Quick Edit from Graph
+
+**Test: Edit Entity from Graph**
+
+1. Click entity node in graph
+2. Observe quick edit drawer
+3. Make changes to entity YAML
+4. Save changes
+
+**Expected Results:**
+
+- [ ] Drawer opens on right side
+- [ ] Entity YAML loaded in editor
+- [ ] YAML editable
+- [ ] Unsaved changes indicator works
+- [ ] Save button functional
+- [ ] Graph updates after save
+- [ ] Can close drawer
+
+**Test: Close Quick Edit**
+
+1. Open quick edit drawer
+2. Make unsaved changes
+3. Click close or outside drawer
+
+**Expected Results:**
+
+- [ ] Confirmation dialog if unsaved changes
+- [ ] Can cancel close action
+- [ ] Changes discarded if confirmed
+- [ ] Drawer closes smoothly
+
+### Circular Dependency Detection
+
+**Test: View Circular Dependencies**
+
+1. Open project with circular dependencies
+2. Observe circular dependency alert
+3. Click on alert to view details
+
+**Expected Results:**
+
+- [ ] Alert appears if circular dependencies exist
+- [ ] Alert shows number of cycles
+- [ ] Can expand to see cycle details
+- [ ] Affected entities listed
+- [ ] Cycle path shown clearly
+- [ ] Can navigate to entities from alert
+
+### Task Status Filtering
+
+**Test: Filter by Task Status**
+
+1. Open graph view
+2. Click task filter dropdown
+3. Select filters:
+   - All tasks
+   - Pending
+   - In progress
+   - Completed
+   - Not started
+
+**Expected Results:**
+
+- [ ] Filter dropdown accessible
+- [ ] Graph nodes update based on filter
+- [ ] Filtered nodes highlighted/dimmed
+- [ ] Filter persists during session
+- [ ] Count updates correctly
+
+### Graph Context Menu
+
+**Test: Right-Click Context Menu**
+
+1. Right-click on entity node
+2. Observe context menu
+3. Select menu options
+
+**Expected Results:**
+
+- [ ] Context menu appears on right-click
+- [ ] Options include: Edit, Validate, Preview, Delete
+- [ ] Selecting option performs action
+- [ ] Menu closes after selection
+- [ ] Menu positioned near cursor
+
+### Graph Performance
+
+**Test: Large Graph Performance**
+
+1. Open project with 20+ entities
+2. Observe graph rendering
+3. Interact with graph (zoom, pan, select)
+
+**Expected Results:**
+
+- [ ] Graph renders within 2 seconds
+- [ ] Interactions remain smooth (60fps)
+- [ ] No lag when zooming/panning
+- [ ] Node selection immediate
+- [ ] Layout changes performant
+
+---
+
+## Reconciliation Testing
+
+### Reconciliation Overview
+
+**Test: Access Reconciliation**
+
+1. Open project
+2. Click "Reconcile" tab
+3. Observe reconciliation interface
+
+**Expected Results:**
+
+- [ ] Reconciliation tab accessible
+- [ ] Three sub-tabs visible: Configuration, Reconcile, YAML
+- [ ] Service health check displays
+- [ ] Service name shown if connected
+- [ ] Error message if service offline
+
+### Service Health Check
+
+**Test: Check Service Status**
+
+1. Navigate to Reconciliation tab
+2. Observe service status indicator
+3. Click refresh if available
+
+**Expected Results:**
+
+- [ ] Service status shown (online/offline)
+- [ ] Service name displayed when online
+- [ ] Error message clear when offline
+- [ ] Refresh button functional
+- [ ] Status updates automatically
+
+### Reconciliation Configuration
+
+**Test: View Specifications List**
+
+1. Click "Configuration" sub-tab
+2. Observe specifications list
+3. Search for specific specification
+
+**Expected Results:**
+
+- [ ] All specifications listed
+- [ ] Each shows: entity name, target field, mapping count
+- [ ] Search box functional
+- [ ] Specifications filterable
+- [ ] Empty state if no specifications
+- [ ] Can click to view details
+
+**Test: Create Reconciliation Specification**
+
+1. Click "Add Specification" button
+2. Fill in specification form:
+   - Entity name: select from dropdown
+   - Target field: select from dropdown
+   - Source field: enter field name
+   - Service type: select (e.g., "site")
+   - Auto-accept threshold: set value (0-100)
+   - Review threshold: set value (0-100)
+3. Add property mappings (optional)
+4. Click "Create"
+
+**Expected Results:**
+
+- [ ] Create dialog opens
+- [ ] Entity dropdown populated
+- [ ] Target field dropdown updates based on entity
+- [ ] Service type dropdown shows available types
+- [ ] Threshold sliders functional (0-100 range)
+- [ ] Can add multiple property mappings
+- [ ] Validation prevents invalid values
+- [ ] Create button disabled until form valid
+- [ ] Success message on creation
+- [ ] New spec appears in list
+
+**Test: Edit Reconciliation Specification**
+
+1. Click edit icon on existing specification
+2. Modify fields:
+   - Change auto-accept threshold
+   - Update property mappings
+   - Add new property mapping
+3. Click "Save"
+
+**Expected Results:**
+
+- [ ] Edit dialog opens with current values
+- [ ] All fields editable
+- [ ] Changes apply immediately
+- [ ] Success message on save
+- [ ] Specification list updates
+
+**Test: Delete Reconciliation Specification**
+
+1. Click delete icon on specification
+2. Confirm deletion
+
+**Expected Results:**
+
+- [ ] Confirmation dialog appears
+- [ ] Warning about data loss shown
+- [ ] Can cancel deletion
+- [ ] Specification removed from list
+- [ ] Success message displayed
+
+### Auto-Reconcile Workflow
+
+**Test: Run Auto-Reconcile**
+
+1. Click "Reconcile" sub-tab
+2. Select entity from dropdown
+3. Select target field from dropdown
+4. Adjust auto-accept threshold slider (default 95%)
+5. Click "Run Auto-Reconcile" button
+6. Wait for completion
+
+**Expected Results:**
+
+- [ ] Entity dropdown populated with reconcilable entities
+- [ ] Target field dropdown updates based on entity
+- [ ] Threshold slider functional (0-100)
+- [ ] Run button disabled until entity+field selected
+- [ ] Loading indicator appears during reconciliation
+- [ ] Progress updates shown (if available)
+- [ ] Success message on completion
+- [ ] Results displayed in grid
+
+### Reconciliation Grid
+
+**Test: View Reconciliation Results**
+
+1. After auto-reconcile, observe grid
+2. Scroll through results
+3. Sort by columns
+
+**Expected Results:**
+
+- [ ] Grid displays all source records
+- [ ] Columns include: source value, matched value, confidence, status
+- [ ] Confidence shown as percentage
+- [ ] Status indicators clear (matched/unmatched/review)
+- [ ] Color coding for status (green/yellow/red)
+- [ ] Grid scrollable
+- [ ] Column sorting works
+- [ ] Row count displayed
+
+**Test: Review Reconciliation Matches**
+
+1. Find row with "Review" status (confidence below auto-accept)
+2. Click on row
+3. Observe candidate suggestions
+4. Select correct match from suggestions
+5. Click "Accept" or "Reject"
+
+**Expected Results:**
+
+- [ ] Review rows highlighted
+- [ ] Click expands row or opens dialog
+- [ ] Candidate suggestions shown
+- [ ] Each candidate shows name, ID, confidence
+- [ ] Can select candidate
+- [ ] Accept button applies mapping
+- [ ] Reject button marks as unmatched
+- [ ] Grid updates immediately
+
+**Test: Manual Mapping**
+
+1. Find unmatched row
+2. Click "Add Mapping" or edit icon
+3. Search for entity in autocomplete
+4. Select correct entity
+5. Add notes (optional)
+6. Save mapping
+
+**Expected Results:**
+
+- [ ] Mapping dialog/form opens
+- [ ] Autocomplete search functional
+- [ ] Search queries reconciliation service
+- [ ] Results show entity name and ID
+- [ ] Can select from results
+- [ ] Notes field optional
+- [ ] Save updates mapping
+- [ ] Grid row status changes to "Matched"
+- [ ] Confidence shows 100% (manual)
+
+**Test: Delete Mapping**
+
+1. Find mapped row
+2. Click delete/remove mapping button
+3. Confirm deletion
+
+**Expected Results:**
+
+- [ ] Delete button visible for mapped rows
+- [ ] Confirmation dialog appears
+- [ ] Mapping removed from config
+- [ ] Row status reverts to "Unmatched"
+- [ ] Grid updates immediately
+
+**Test: Mark as Unmatched**
+
+1. Find row with low-confidence match
+2. Click "Mark as Unmatched" button
+3. Add notes explaining why (optional)
+4. Confirm
+
+**Expected Results:**
+
+- [ ] Mark unmatched button available
+- [ ] Notes field optional
+- [ ] Action recorded in config
+- [ ] Status changes to "Unmatched"
+- [ ] Notes stored with record
+
+### Reconciliation YAML Editor
+
+**Test: Edit Reconciliation YAML**
+
+1. Click "YAML" sub-tab
+2. Observe YAML content
+3. Make direct edit to YAML
+4. Click "Save"
+
+**Expected Results:**
+
+- [ ] YAML tab shows reconciliation config
+- [ ] Syntax highlighting active
+- [ ] YAML structure clear
+- [ ] Can edit directly
+- [ ] Save button appears when modified
+- [ ] Validation on save
+- [ ] Error shown if invalid YAML
+- [ ] Success message on save
+
+**Test: Reload YAML**
+
+1. Make changes to YAML
+2. Click "Reload" button
+3. Confirm discard changes
+
+**Expected Results:**
+
+- [ ] Reload button available
+- [ ] Confirmation if unsaved changes
+- [ ] YAML reverts to saved state
+- [ ] Can cancel reload
+
+### Reconciliation Preview
+
+**Test: Preview Entity Data**
+
+1. Select entity and target field
+2. Observe preview data in grid
+3. Check that mappings are applied
+
+**Expected Results:**
+
+- [ ] Preview loads automatically
+- [ ] Shows source data with mappings
+- [ ] Enriched columns visible (sead_id, confidence)
+- [ ] Unmapped rows clearly indicated
+- [ ] Preview updates after mappings change
+- [ ] Row count accurate
+
+### Save Reconciliation Changes
+
+**Test: Save Reconciliation Config**
+
+1. Make several mappings/changes
+2. Observe unsaved changes indicator
+3. Click "Save Changes" button
+4. Confirm save
+
+**Expected Results:**
+
+- [ ] Unsaved indicator appears after changes
+- [ ] Save button enabled when changes exist
+- [ ] Save writes to reconciliation YAML file
+- [ ] Success message displayed
+- [ ] Changes persist after page refresh
+- [ ] Backup created (optional)
+
+### Reconciliation Error Handling
+
+**Test: Service Connection Error**
+
+1. Stop reconciliation service
+2. Try to run auto-reconcile
+3. Observe error handling
+
+**Expected Results:**
+
+- [ ] Error message clear and actionable
+- [ ] Service status shows "Offline"
+- [ ] Cannot run auto-reconcile when offline
+- [ ] Can retry connection
+- [ ] Manual mapping still works (cached data)
+
+**Test: Invalid Entity Configuration**
+
+1. Select entity without reconciliation spec
+2. Attempt auto-reconcile
+
+**Expected Results:**
+
+- [ ] Error message explains missing spec
+- [ ] Suggests creating specification
+- [ ] Provides link to configuration tab
+
+---
+
 ## Validation Testing
 
 ### Full Project Validation
 
 **Test: Validate All**
 
-1. Open configuration
+1. Open project
 2. Click "Validate All" button in toolbar
 3. Wait for results
 
@@ -651,7 +1167,7 @@ Before starting tests, verify:
 **Expected Results:**
 
 - [ ] Summary tab shows overview
-- [ ] Structural tab shows config structure issues
+- [ ] Structural tab shows project structure issues
 - [ ] Data tab shows data quality issues
 - [ ] Entities tab lists entity-specific validations
 - [ ] Counts accurate in each tab
@@ -692,8 +1208,8 @@ Before starting tests, verify:
 **Test: Cache Invalidation**
 
 1. Run validation (cache results)
-2. Edit configuration (modify entity)
-3. Save configuration
+2. Edit project (modify entity)
+3. Save project
 4. Run validation again
 
 **Expected Results:**
@@ -758,7 +1274,7 @@ Before starting tests, verify:
 
 **Test: Open Execute Dialog**
 
-1. Open a configuration/project
+1. Open a project
 2. Click "Execute" button in toolbar
 3. Observe dialog
 
@@ -916,7 +1432,7 @@ Before starting tests, verify:
 
 **Test: Execute with Validation Errors**
 
-1. Open configuration with validation errors
+1. Open project with validation errors
 2. Open Execute dialog
 3. Keep "Run validation" enabled
 4. Click "Execute"
@@ -931,7 +1447,7 @@ Before starting tests, verify:
 
 **Test: Execute with Backend Error**
 
-1. Select invalid configuration
+1. Select invalid project
 2. Click "Execute"
 3. Observe error handling
 
@@ -1018,6 +1534,316 @@ Before starting tests, verify:
 - [ ] Result object passed to parent
 - [ ] Parent can react to execution
 - [ ] UI updates appropriately
+
+---
+
+## Ingester Testing
+
+### Ingester Overview
+
+**Test: Access Ingester View**
+
+1. Navigate to "Data Ingestion" in main navigation
+2. Observe ingester interface
+
+**Expected Results:**
+
+- [ ] Ingester view loads
+- [ ] Two-column layout (list + form)
+- [ ] Info message when no ingester selected
+- [ ] Title: "Data Ingestion"
+- [ ] Description explaining purpose
+
+### Ingester List
+
+**Test: View Available Ingesters**
+
+1. Observe left column (ingester list)
+2. Review ingester cards
+
+**Expected Results:**
+
+- [ ] All registered ingesters displayed
+- [ ] Each shows: name, description, version
+- [ ] Icon or badge for each ingester
+- [ ] Supported formats listed
+- [ ] Clickable cards
+- [ ] Active selection highlighted
+
+**Test: Select Ingester**
+
+1. Click on ingester card
+2. Observe form update
+
+**Expected Results:**
+
+- [ ] Card highlights on selection
+- [ ] Form appears in right column
+- [ ] Form fields specific to selected ingester
+- [ ] Info message replaced by form
+
+### Ingester Form - Basic Fields
+
+**Test: Fill in Common Fields**
+
+1. Select ingester (e.g., "SEAD")
+2. Fill in required fields:
+   - Source file path
+   - Submission name
+   - Data types
+   - Output folder
+3. Observe validation
+
+**Expected Results:**
+
+- [ ] All required fields marked with asterisk
+- [ ] File path field accepts path input
+- [ ] Browse button opens file picker
+- [ ] Submission name validates (no spaces/special chars)
+- [ ] Data types dropdown/input functional
+- [ ] Output folder has default value
+- [ ] Validation messages clear
+- [ ] Submit button disabled until valid
+
+**Test: Database Connection Fields**
+
+1. Observe database configuration section
+2. Fill in database fields:
+   - Host
+   - Port
+   - Database name
+   - Username
+   - Password (optional)
+
+**Expected Results:**
+
+- [ ] Database section collapsible/expandable
+- [ ] Host field validates hostname/IP
+- [ ] Port field accepts numbers only (default 5432)
+- [ ] Database name required
+- [ ] Username required
+- [ ] Password field masked
+- [ ] Test connection button available
+
+### Ingester Form - Advanced Options
+
+**Test: Configure Advanced Options**
+
+1. Expand advanced options section
+2. Configure options:
+   - Ignore columns pattern
+   - Batch size
+   - Register data
+   - Explode data
+   - Verbose mode
+
+**Expected Results:**
+
+- [ ] Advanced section collapsible
+- [ ] Ignore columns accepts patterns (comma-separated)
+- [ ] Batch size accepts positive integers
+- [ ] Register checkbox functional
+- [ ] Explode checkbox functional
+- [ ] Verbose checkbox functional
+- [ ] Help text/tooltips available
+
+### Validate Before Ingestion
+
+**Test: Run Validation**
+
+1. Fill in form completely
+2. Click "Validate" button
+3. Wait for validation results
+
+**Expected Results:**
+
+- [ ] Validate button visible
+- [ ] Loading indicator during validation
+- [ ] Progress messages shown
+- [ ] Validation runs without modifying data
+- [ ] Results displayed clearly
+- [ ] Errors listed with details
+- [ ] Warnings shown separately
+- [ ] Success message if no issues
+- [ ] Can proceed to ingest after validation
+
+**Test: Validation Errors**
+
+1. Enter invalid data (e.g., wrong file format)
+2. Click "Validate"
+3. Observe error handling
+
+**Expected Results:**
+
+- [ ] Validation catches errors
+- [ ] Error messages specific and actionable
+- [ ] Line numbers/locations provided (if applicable)
+- [ ] Cannot proceed to ingest with errors
+- [ ] Can fix errors and revalidate
+
+### Run Ingestion
+
+**Test: Execute Ingestion**
+
+1. Complete valid form
+2. Click "Ingest" or "Run" button
+3. Monitor progress
+4. Wait for completion
+
+**Expected Results:**
+
+- [ ] Ingest button enabled when form valid
+- [ ] Confirmation dialog if validation not run
+- [ ] Loading overlay appears
+- [ ] Progress bar or spinner shown
+- [ ] Progress messages update (if verbose)
+- [ ] Execution time displayed
+- [ ] Cannot close/navigate away during ingest
+- [ ] Success message on completion
+- [ ] Record count displayed
+
+**Test: Ingestion Results**
+
+1. After successful ingestion
+2. Observe results panel/message
+
+**Expected Results:**
+
+- [ ] Success alert displayed
+- [ ] Statistics shown (records processed, inserted, errors)
+- [ ] Execution time shown
+- [ ] Output file location displayed (if file-based)
+- [ ] Database table name shown (if database)
+- [ ] Can download results/logs
+- [ ] Can run another ingestion
+
+### Ingestion Error Handling
+
+**Test: Database Connection Error**
+
+1. Enter invalid database credentials
+2. Attempt ingestion
+3. Observe error handling
+
+**Expected Results:**
+
+- [ ] Connection error caught
+- [ ] Error message explains issue
+- [ ] Suggests checking credentials
+- [ ] Ingestion stops gracefully
+- [ ] Can correct and retry
+
+**Test: File Not Found Error**
+
+1. Enter non-existent file path
+2. Attempt validation/ingestion
+3. Observe error
+
+**Expected Results:**
+
+- [ ] File error caught early (validation)
+- [ ] Error message clear
+- [ ] Suggests checking path
+- [ ] Browse button helps find correct file
+
+**Test: Data Format Error**
+
+1. Select Excel ingester
+2. Provide CSV file
+3. Attempt ingestion
+
+**Expected Results:**
+
+- [ ] Format mismatch detected
+- [ ] Error message explains expected format
+- [ ] Lists supported formats
+- [ ] Suggests correct ingester
+
+### Ingester Configuration Persistence
+
+**Test: Save Configuration**
+
+1. Fill in ingester form
+2. Click "Save Configuration" (if available)
+3. Reload page
+
+**Expected Results:**
+
+- [ ] Save config button available
+- [ ] Configuration saved to file
+- [ ] Can load saved config
+- [ ] All fields populated from saved config
+- [ ] Passwords not saved (security)
+
+**Test: Load Configuration File**
+
+1. Click "Load Configuration" button
+2. Select previously saved config file
+3. Observe form update
+
+**Expected Results:**
+
+- [ ] Load config button available
+- [ ] File picker opens
+- [ ] Accepts .json or .yaml files
+- [ ] Form populates from config
+- [ ] Validation runs on loaded config
+- [ ] Can override loaded values
+
+### Real-time Feedback
+
+**Test: Progress Updates**
+
+1. Enable verbose mode
+2. Run ingestion on large dataset
+3. Observe progress updates
+
+**Expected Results:**
+
+- [ ] Progress messages stream in real-time
+- [ ] Percentage complete shown
+- [ ] Current step/entity displayed
+- [ ] Estimated time remaining (optional)
+- [ ] Can view detailed logs
+- [ ] Messages scrollable
+
+### Cancel Ingestion
+
+**Test: Cancel Running Ingestion**
+
+1. Start long-running ingestion
+2. Click "Cancel" button during execution
+3. Confirm cancellation
+
+**Expected Results:**
+
+- [ ] Cancel button visible during execution
+- [ ] Confirmation dialog appears
+- [ ] Ingestion stops gracefully
+- [ ] Partial results preserved (optional)
+- [ ] Cleanup performed
+- [ ] Can start new ingestion
+
+### Ingester-Specific Features
+
+**Test: SEAD Ingester Specifics**
+
+1. Select SEAD ingester
+2. Observe SEAD-specific options:
+   - Submission type selection
+   - Data type mapping
+   - Column ignoring patterns
+   - Auto-registration
+   - Data explosion
+
+**Expected Results:**
+
+- [ ] SEAD options visible
+- [ ] Submission types dropdown populated
+- [ ] Data type mapping interface functional
+- [ ] Ignore patterns accept wildcards
+- [ ] Auto-register checkbox with explanation
+- [ ] Explode option with warning
 
 ---
 
@@ -1204,7 +2030,7 @@ console.table(performance.getEntriesByType('measure'));
 
 **Test Steps:**
 
-1. Open configuration
+1. Open project
 2. Click "Validate All"
 3. Note request time in Network tab
 4. Click "Validate All" again immediately
@@ -1256,7 +2082,7 @@ console.table(performance.getEntriesByType('measure'));
 **Test Steps:**
 
 1. Make YAML change
-2. Save configuration
+2. Save project
 3. Observe success notification
 
 **Expected Results:**
@@ -1382,7 +2208,7 @@ console.table(performance.getEntriesByType('measure'));
 **Test: Backend Unavailable**
 
 1. Stop backend server (`Ctrl+C` in backend terminal)
-2. Try to load configuration or validate
+2. Try to load project or validate
 
 **Expected Results:**
 - [ ] Error notification appears
@@ -1407,7 +2233,7 @@ console.table(performance.getEntriesByType('measure'));
 
 1. Open DevTools Network tab
 2. Throttle to "Slow 3G"
-3. Perform actions (load config, validate, preview)
+3. Perform actions (load project, validate, preview)
 
 **Expected Results:**
 - [ ] Loading indicators appear
@@ -1436,7 +2262,7 @@ console.table(performance.getEntriesByType('measure'));
 
 **Test: Component Render Performance**
 
-1. Open large configuration (10+ entities)
+1. Open large project (10+ entities)
 2. Open DevTools Performance tab
 3. Start recording
 4. Perform actions (open entity editor, switch tabs)
@@ -1469,7 +2295,7 @@ console.table(performance.getEntriesByType('measure'));
 
 1. Open DevTools Network tab
 2. Perform actions that trigger API calls:
-   - Load configuration
+   - Load project
    - Validate
    - Preview entity
    - Execute workflow
@@ -1478,7 +2304,7 @@ console.table(performance.getEntriesByType('measure'));
 
 **Expected Results:**
 - [ ] Health check < 50ms
-- [ ] Load config < 500ms
+- [ ] Load project < 500ms
 - [ ] Validate < 5 seconds
 - [ ] Preview < 2 seconds
 - [ ] Execute < 15 seconds (depends on data size)
@@ -1622,7 +2448,7 @@ console.table(performance.getEntriesByType('measure'));
 **Issue**: Save button occasionally takes > 2 seconds
 
 **Steps to Reproduce**:
-1. Open large configuration (20+ entities)
+1. Open large project (20+ entities)
 2. Make small edit
 3. Click Save
 
@@ -1654,7 +2480,7 @@ console.table(performance.getEntriesByType('measure'));
 
 | Feature | Chrome 121 | Firefox 115 | Edge 121 | Safari 16 |
 |---------|-----------|-------------|----------|-----------|
-| Config List | ✅ | ✅ | ✅ | ⚠️ Slow |
+| Project List | ✅ | ✅ | ✅ | ⚠️ Slow |
 | YAML Editor | ✅ | ✅ | ✅ | ✅ |
 | Entity Editor | ✅ | ✅ | ✅ | ✅ |
 | Validation | ✅ | ✅ | ✅ | ❌ Cache |
@@ -1674,7 +2500,7 @@ console.table(performance.getEntriesByType('measure'));
 | Metric | Chrome | Firefox | Edge | Safari | Target |
 |--------|--------|---------|------|--------|--------|
 | Initial Load | 1.2s | 1.5s | 1.3s | 1.8s | < 2s |
-| Config Load | 450ms | 500ms | 480ms | 600ms | < 500ms |
+| Project Load | 450ms | 500ms | 480ms | 600ms | < 500ms |
 | Validation | 3.2s | 3.5s | 3.3s | 4.1s | < 5s |
 | Execute Workflow | 8.5s | 9.1s | 8.7s | 10.2s | < 15s |
 | Memory (10min) | 85MB | 92MB | 87MB | 105MB | < 100MB |
@@ -1710,7 +2536,7 @@ Minimal test to verify basic functionality:
 
 - [ ] Application loads without errors
 - [ ] Can navigate between pages
-- [ ] Can open a configuration
+- [ ] Can open a project
 - [ ] Can edit and save YAML
 - [ ] Can run validation
 - [ ] Can open entity editor
@@ -1721,9 +2547,9 @@ Minimal test to verify basic functionality:
 
 After code changes, verify core features:
 
-- [ ] Load configuration list
-- [ ] Create new configuration
-- [ ] Edit existing configuration
+- [ ] Load project list
+- [ ] Create new project
+- [ ] Edit existing project
 - [ ] Save changes
 - [ ] Run full validation
 - [ ] View validation results
@@ -1758,7 +2584,7 @@ Comprehensive test before release:
 ### Useful Keyboard Shortcuts
 
 **Application:**
-- `Ctrl/Cmd + S` - Save configuration
+- `Ctrl/Cmd + S` - Save project
 - `Ctrl/Cmd + K` - Open command palette (if implemented)
 - `Ctrl/Cmd + /` - Toggle comments in YAML editor
 
@@ -1780,7 +2606,7 @@ Comprehensive test before release:
 - **Solution**: Check Network tab for API errors, verify backend connection
 
 **Issue**: Entity editor won't open
-- **Solution**: Check console for errors, verify entity exists in config
+- **Solution**: Check console for errors, verify entity exists in project
 
 **Issue**: Save not working
 - **Solution**: Check for validation errors, verify backend writable permissions
