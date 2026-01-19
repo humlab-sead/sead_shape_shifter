@@ -35,22 +35,17 @@ PGPASS_DIR := $(DOCKER_DIR)/data/.pgpass
 ################################################################################
 
 update-deploy-scripts:
-	@echo "Update deploy scripts to $(DEPLOY_DIR)..."
-	@for file in Makefile Dockerfile build.sh README.md BUILD_SCRIPT_GUIDE.md; do \
-		sudo cp -f $(DEPLOY_SOURCE_DIR)/$$file $(DEPLOY_DIR)/$$file; \
-		sudo chown sead:www-data $(DEPLOY_DIR)/$$file; \
-	done
-	@echo "✓ Deployment complete"
+	@sudo ./deploy-to-sead-tools
 
 .PHONY: docker-build
 docker-build: docker-build-github
 
 .PHONY: docker-build-github
 docker-build-github:
-	@cd $(DOCKER_DIR) && ./build.sh --git-ref main \
+	@pushd $(DEPLOY_DIR) && sudo ./build.sh --git-ref main \
 		--user-uid $(USER_UID) \
 		--user-gid $(USER_GID) \
-		--git-repo $(GIT_REPO)
+		--git-repo $(GIT_REPO) && popd
 
 .PHONY: build-and-deploy
 build-and-deploy: docker-build-github docker-restart
@@ -109,6 +104,7 @@ docker-logs:
 docker-restart:
 	@echo "Restarting Shape Shifter..."
 	@cd $(DOCKER_DIR) && docker compose down
+	@cd $(DOCKER_DIR) && docker rm -f shape-shifter 2>/dev/null || true
 	@cd $(DOCKER_DIR) && docker compose up -d
 	@echo "✓ Application restarted at http://localhost:$(BACKEND_PORT)"
 
