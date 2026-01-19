@@ -63,11 +63,7 @@
     </v-row>
 
     <!-- Session Indicator -->
-    <v-row>
-      <v-col>
-        <session-indicator :project-name="projectName" />
-      </v-col>
-    </v-row>
+    <session-indicator v-if="projectName" :project-name="projectName" class="mb-4" />
 
     <!-- Loading State -->
     <v-row v-if="projectLoading">
