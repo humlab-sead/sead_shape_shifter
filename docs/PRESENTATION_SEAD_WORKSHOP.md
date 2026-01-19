@@ -1,14 +1,46 @@
 ---
-title: Shape Shifter - Data Harmonization for SEAD
-subtitle: Transforming Archaeological Data Integration
-author: SEAD Development Team
-date: January 8, 2026
+marp: true
+theme: default
+paginate: true
+backgroundColor: #fff
+backgroundImage: url('https://marp.app/assets/hero-background.svg')
+header: 'Shape Shifter - SEAD Workshop'
+footer: 'SEAD Development Team | January 2026'
 ---
+
+<!--
+This presentation uses Marp (Markdown Presentation Ecosystem)
+
+To view/export:
+1. Install Marp CLI: npm install -g @marp-team/marp-cli
+2. Export to PDF: marp PRESENTATION_SEAD_WORKSHOP.md --pdf
+3. Export to HTML: marp PRESENTATION_SEAD_WORKSHOP.md --html
+4. Export to PPTX: marp PRESENTATION_SEAD_WORKSHOP.md --pptx
+5. Watch mode: marp -w PRESENTATION_SEAD_WORKSHOP.md
+
+Or use the Makefile:
+  make presentation-pdf
+  make presentation-html
+  make presentation-pptx
+
+Images:
+- Place images in: docs/images/
+- Screenshots in: docs/images/screenshots/
+- Uncomment ![bg ...] lines and add your images
+- Supported formats: PNG, JPG, SVG, GIF
+- Use relative paths from this file
+-->
+
+<!-- _class: lead -->
+<!-- _paginate: false -->
 
 # Shape Shifter
 ## Data Harmonization for SEAD
 
 *Simplifying Archaeological Data Integration*
+
+**SEAD Development Team**
+January 18, 2026
 
 ---
 
@@ -30,9 +62,15 @@ date: January 8, 2026
 
 # Part 1: The Challenge
 
+<!-- _class: lead -->
+<!-- _backgroundColor: #1e3a8a -->
+<!-- _color: white -->
+
 ---
 
 ## Data Integration Today
+
+<!-- ![bg right:40%](docs/images/data-chaos.png) -->
 
 **The Current Reality:**
 
@@ -44,6 +82,11 @@ date: January 8, 2026
 - 🔁 Repeat for every new data delivery
 
 **Sound familiar?**
+
+<!-- 
+Image suggestion: Screenshot showing messy Excel files, 
+Access databases, CSV files scattered on desktop
+-->
 
 ---
 
@@ -87,9 +130,15 @@ sample_id | sample_type_id | latitude_dd | longitude_dd
 
 # Part 2: The Solution
 
+<!-- _class: lead -->
+<!-- _backgroundColor: #1e3a8a -->
+<!-- _color: white -->
+
 ---
 
 ## Introducing Shape Shifter
+
+<!-- ![bg right:35%](docs/images/shape-shifter-logo.svg) -->
 
 **Declarative Data Transformation Framework**
 
@@ -104,6 +153,10 @@ sample_id | sample_type_id | latitude_dd | longitude_dd
 - Complex entity relationships
 - Data quality requirements
 - Integration workflows
+
+<!-- 
+Image suggestion: Shape Shifter logo or screenshot of the main interface
+-->
 
 ---
 
@@ -159,13 +212,19 @@ sample:
 
 # Part 3: Key Features
 
+<!-- _class: lead -->
+<!-- _backgroundColor: #1e3a8a -->
+<!-- _color: white -->
+
 ---
 
 ## 1. Visual Project Editor
 
+![bg right:50% fit](docs/images/screenshots/project-editor.png)
+
 **Web-Based Interface:**
 - 🖥️ No installation required (browser-based)
-- � Tabbed interface: Entities, Dependencies, Validation, Reconciliation, Dispatch
+- 📑 Tabbed interface: Entities, Dependencies, Validation, Reconciliation, Dispatch
 - 📝 Monaco editor with YAML syntax highlighting
 - 🔍 Real-time validation with auto-fix suggestions
 - 💾 Automatic timestamped backups
@@ -582,6 +641,10 @@ Candidate: "Storsjön, Jämtland" (ID: 1523)
 ---
 
 # Part 4: Live Walkthrough
+
+<!-- _class: lead -->
+<!-- _backgroundColor: #1e3a8a -->
+<!-- _color: white -->
 
 ---
 
@@ -1006,6 +1069,10 @@ Total: ~3.5 hours first time
 
 # Part 7: Q&A
 
+<!-- _class: lead -->
+<!-- _backgroundColor: #1e3a8a -->
+<!-- _color: white -->
+
 ---
 
 ## Common Questions
@@ -1052,6 +1119,11 @@ A: Yes! Saved in your project config. Rerun on new data to apply existing mappin
 **Your Questions?**
 
 ---
+
+<!-- _class: lead -->
+<!-- _paginate: false -->
+<!-- _backgroundColor: #1e3a8a -->
+<!-- _color: white -->
 
 # Thank You!
 
@@ -1158,3 +1230,48 @@ entities:
 └────────────────────────────────────────────────┘
 ```
 
+---
+
+## Appendix: Docker Deployment
+
+**Containerized Deployment:**
+
+Shape Shifter can be deployed as a Docker container for production use:
+
+```bash
+# Build and start container
+make docker-build
+make docker-start
+
+# Access at http://localhost:8012
+```
+
+**Hot-Patching Frontend:**
+
+During development or for quick fixes, you can rebuild and patch the frontend without container rebuild:
+
+```bash
+# Rebuild frontend and patch running container
+make docker-patch-frontend
+```
+
+**What It Does:**
+1. 🔨 Rebuilds Vue 3 frontend (production mode, skip type checks)
+2. 📦 Bundles assets with Vite
+3. 🚀 Copies `dist/` to running container
+4. ⚡ No container restart needed - instant update
+
+**Use Cases:**
+- Fix UI bugs in production
+- Update logos or branding
+- Quick CSS/styling adjustments
+- Test frontend changes before full rebuild
+
+**Container Architecture:**
+- Multi-stage Docker build
+- Frontend served by FastAPI backend
+- UCanAccess for MS Access support
+- Non-root user for security
+- Health checks and auto-restart
+
+---
