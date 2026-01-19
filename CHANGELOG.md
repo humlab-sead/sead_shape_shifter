@@ -1,3 +1,15 @@
+# [1.11.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.10.0...v1.11.0) (2026-01-19)
+
+
+### Bug Fixes
+
+* update SEAD logo source to use variable ([028d509](https://github.com/humlab-sead/sead_shape_shifter/commit/028d5099aa8b93469fc0f050ff5516aef69c2829))
+
+
+### Features
+
+* add docker-patch-frontend and presentation export commands ([da61f07](https://github.com/humlab-sead/sead_shape_shifter/commit/da61f078ada4317f25c13c2bd64be135f505dfae))
+
 # [1.10.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.9.0...v1.10.0) (2026-01-18)
 
 
