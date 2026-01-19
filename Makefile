@@ -222,6 +222,13 @@ DOCKER_DIR := ./docker
 export DOCKER_DIR
 include docker/Makefile
 
+.PHONY: docker-patch-frontend
+docker-patch-frontend:
+	@echo "Rebuilding frontend and patching running container..."
+	@cd frontend && pnpm build:skip-check
+	@docker cp frontend/dist/. shape-shifter:/app/frontend/dist/
+	@echo "✓ Frontend patched in running container"
+
 ################################################################################
 # Other stuff
 ################################################################################
@@ -259,3 +266,78 @@ arbodat-lookup-schema:
 
 arbodat-schema: arbodat-data-schema arbodat-lookup-schema
 	@echo "✅ Schema extraction complete!"
+
+################################################################################
+# Presentation
+################################################################################
+
+PRESENTATION_FILE := docs/PRESENTATION_SEAD_WORKSHOP.md
+
+.PHONY: presentation-pdf
+presentation-pdf:
+	@echo "Exporting presentation to PDF..."
+	@npx -y @marp-team/marp-cli@latest $(PRESENTATION_FILE) --pdf -o docs/PRESENTATION_SEAD_WORKSHOP.pdf
+	@echo "✓ PDF created: docs/PRESENTATION_SEAD_WORKSHOP.pdf"
+
+.PHONY: presentation-html
+presentation-html:
+	@echo "Exporting presentation to HTML..."
+	@npx -y @marp-team/marp-cli@latest $(PRESENTATION_FILE) --html -o docs/PRESENTATION_SEAD_WORKSHOP.html
+	@echo "✓ HTML created: docs/PRESENTATION_SEAD_WORKSHOP.html"
+
+.PHONY: presentation-pptx
+presentation-pptx:
+	@echo "Exporting presentation to PowerPoint..."
+	@npx -y @marp-team/marp-cli@latest $(PRESENTATION_FILE) --pptx -o docs/PRESENTATION_SEAD_WORKSHOP.pptx
+	@echo "✓ PPTX created: docs/PRESENTATION_SEAD_WORKSHOP.pptx"
+
+.PHONY: presentation-watch
+presentation-watch:
+	@echo "Starting Marp watch mode (auto-reload in browser)..."
+	@npx -y @marp-team/marp-cli@latest -w $(PRESENTATION_FILE)
+
+.PHONY: presentation-all
+presentation-all: presentation-pdf presentation-html presentation-pptx
+	@echo "✓ All presentation formats exported"
+
+################################################################################
+# Diagrams
+################################################################################
+
+.PHONY: diagrams-extract
+diagrams-extract:
+	@echo "Extracting Mermaid diagrams from SYSTEM_DIAGRAMS.md..."
+	@mkdir -p tmp/mermaid
+	@python3 tmp/extract_mermaid.py 2>/dev/null || python3 -c " \
+		import re, os; \
+		content = open('docs/SYSTEM_DIAGRAMS.md').read(); \
+		matches = re.findall(r'## (\d+)\.\s+([^\n]+)\n\n\`\`\`mermaid\n(.*?)\`\`\`', content, re.DOTALL); \
+		os.makedirs('tmp/mermaid', exist_ok=True); \
+		[open(f'tmp/mermaid/{num}-{re.sub(r\"[^\\w\\s-]\", \"\", title).strip().lower().replace(\" \", \"-\").replace(\"--\", \"-\")}.mmd', 'w').write(diagram.strip()) for num, title, diagram in matches]; \
+		print(f'Extracted {len(matches)} diagrams to tmp/mermaid/')"
+	@echo "✓ Diagrams extracted"
+
+.PHONY: diagrams-to-svg
+diagrams-to-svg: diagrams-extract
+	@echo "Converting Mermaid diagrams to SVG (using mermaid.ink API)..."
+	@mkdir -p docs/images/diagrams
+	@python3 tmp/mermaid_to_svg_retry.py 2>/dev/null || python3 -c " \
+		import base64, urllib.request, time; \
+		from pathlib import Path; \
+		mermaid_dir = Path('tmp/mermaid'); \
+		output_dir = Path('docs/images/diagrams'); \
+		output_dir.mkdir(parents=True, exist_ok=True); \
+		[(print(f'Converting: {f.stem}'), \
+		  (lambda code, out: \
+		    (urllib.request.urlopen(f'https://mermaid.ink/svg/{base64.b64encode(code.encode()).decode()}', timeout=30).read() if True else None, \
+		     open(out, 'wb').write(_) if _ else None, \
+		     print(f'  ✓ Created {out.name}') if out.exists() else print(f'  ✗ Failed'), \
+		     time.sleep(2))[-1] \
+		  )(open(f).read(), output_dir / f'{f.stem}.svg')) \
+		 for f in sorted(mermaid_dir.glob('*.mmd')) if not (output_dir / f'{f.stem}.svg').exists()]"
+	@echo "✓ SVG diagrams created in docs/images/diagrams/"
+
+.PHONY: diagrams-list
+diagrams-list:
+	@echo "SVG Diagrams:"
+	@ls -1 docs/images/diagrams/*.svg 2>/dev/null | xargs -n1 basename || echo "No diagrams found"
