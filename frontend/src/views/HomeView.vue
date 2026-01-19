@@ -58,7 +58,7 @@
     <v-row class="mt-auto">
       <v-col cols="12" class="d-flex justify-center align-center pb-4">
         <v-img
-          src="/src/assets/images/SEAD-logo-subtext.svg"
+          :src="seadLogo"
           alt="Strategic Environmental Archaeology Database"
           width="100%"
           contain
@@ -72,6 +72,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import seadLogo from '@/assets/images/SEAD-logo-subtext.svg'
 
 const navItems = [
   {
