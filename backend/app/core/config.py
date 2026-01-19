@@ -6,6 +6,9 @@ from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Import version from package
+from backend.app import __version__
+
 
 class Settings(BaseSettings):
     """Application settings."""
@@ -19,7 +22,7 @@ class Settings(BaseSettings):
     )
     PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
     PROJECT_NAME: str = "Shape Shifter Project Editor"
-    VERSION: str = "9.9.9"
+    VERSION: str = __version__
     ENVIRONMENT: Literal["development", "production", "test"] = "development"
     API_V1_PREFIX: str = "/api/v1"
 
