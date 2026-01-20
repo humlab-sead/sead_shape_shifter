@@ -21,12 +21,27 @@ USER_GID ?= $(shell id www-data -g)
 
 PGPASS_DIR := $(DOCKER_DIR)/data/.pgpass
 
+REQUIRED_USER := sead
+
+guard-user:
+	@if [ "$$(whoami)" != "$(REQUIRED_USER)" ] && [ "$$(whoami)" != "root" ]; then \
+		echo "❌ This target must be run as user '$(REQUIRED_USER)'"; \
+		exit 1; \
+	fi
+
+guard-cwd:
+	@if [ "$(CURDIR)" != "$(DEPLOY_DIR)" ]; then \
+		echo "❌ This target must be run from $(DEPLOY_DIR)"; \
+		echo "   Current directory: $(CURDIR)"; \
+		exit 1; \
+	fi
+
+.PHONY: deploy-shell
+deploy-shell:
+	@cd $(DEPLOY_DIR)
+
 ################################################################################
-# Docker Build 
-#
-# Usage:
-#   From repository root: make docker-build
-#   From docker/ folder:  make -f Makefile docker-build
+# These are the main Docker build targets.
 #
 # Build modes (all use build.sh script):
 #   - docker-build          : Build from local context (default, for development)
@@ -34,32 +49,35 @@ PGPASS_DIR := $(DOCKER_DIR)/data/.pgpass
 #   - docker-build-tag TAG=v1.0.0 : Build from specific tag/branch (production)
 ################################################################################
 
-update-deploy-scripts:
-	@sudo ./deploy-to-sead-tools
+update-deploy-scripts: guard-user
+	@pushd $(DEPLOY_SOURCE_DIR) && ./deploy-to-sead-tools && popd
 
 .PHONY: docker-build
-docker-build: docker-build-github
+docker-build: deploy-shell guard-user guard-cwd docker-build-github
 
 .PHONY: docker-build-github
-docker-build-github:
-	@pushd $(DEPLOY_DIR) && sudo ./build.sh --git-ref main \
+docker-build-github: deploy-shell guard-user guard-cwd
+	@pushd $(DEPLOY_DIR) && ./build.sh --git-ref main \
 		--user-uid $(USER_UID) \
 		--user-gid $(USER_GID) \
 		--git-repo $(GIT_REPO) && popd
 
 .PHONY: build-and-deploy
-build-and-deploy: docker-build-github docker-restart
+build-and-deploy: deploy-shell docker-build-github docker-restart
 
 .PHONY: docker-build-local
-docker-build-local:
+docker-build-local: deploy-shell guard-user guard-cwd
 	@cd $(DOCKER_DIR) && ./build.sh --local \
 		--user-uid $(USER_UID) \
 		--user-gid $(USER_GID)
 
+################################################################################
 # Build from specific GitHub tag/branch (no cache bust needed for tags)
 # NOTE: Run from project root directory
+################################################################################
+
 .PHONY: docker-build-tag
-docker-build-tag:
+docker-build-tag: guard-user guard-cwd
 	@if [ -z "$(TAG)" ]; then \
 		echo "❌ Error: TAG variable required. Usage: make docker-build-tag TAG=v1.2.0"; \
 		exit 1; \

@@ -1,5 +1,5 @@
 <template>
-  <v-alert v-if="hasActiveSession && showIndicator" density="compact" variant="outlined" :color="alertColor" class="mb-4">
+  <v-alert v-if="hasActiveSession && showIndicator" density="compact" variant="outlined" :color="alertColor" closable class="mb-0">
     <v-row align="center" no-gutters>
       <v-col>
         <div class="d-flex align-center">
