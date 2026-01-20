@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     # File paths
     PROJECTS_DIR: Path = Path("./projects")
     BACKUPS_DIR: Path = Path("./backups")
+    DATA_SOURCE_FILES_DIR: Path = Path("./input")
 
     # Validation
     MAX_ENTITIES_PER_CONFIG: int = 1000
@@ -60,6 +61,7 @@ class Settings(BaseSettings):
         # Ensure directories exist
         self.PROJECTS_DIR.mkdir(exist_ok=True)
         self.BACKUPS_DIR.mkdir(exist_ok=True)
+        self.DATA_SOURCE_FILES_DIR.mkdir(exist_ok=True)
 
     @property
     def env_prefix(self) -> str:
