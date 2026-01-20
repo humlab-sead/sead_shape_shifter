@@ -12,10 +12,10 @@ from .policies import UpdatePolicies
 from .utility import flatten_sets, log_decorator, to_lookups_sql
 
 
-def load_excel_sheet(reader: pd.ExcelFile, sheetname: str) -> pd.DataFrame:
+def load_excel_sheet(reader: pd.ExcelFile, sheet_name: str) -> pd.DataFrame:
     with contextlib.suppress(Exception):
-        return reader.parse(sheetname)
-    raise ValueError(f"Could not read sheet {sheetname} from Excel file")
+        return reader.parse(sheet_name)
+    raise ValueError(f"Could not read sheet {sheet_name} from Excel file")
 
 
 class Submission:
