@@ -435,4 +435,3 @@ async def get_data_source_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get data source status: {str(e)}",
         ) from e
-

@@ -333,38 +333,38 @@ options:
 
     def test_create_configuration_name_ending_in_yml_chars(self, service: ProjectService):
         """Test creating configuration with name ending in 'l', 'y', 'm', or '.' doesn't truncate.
-        
+
         Regression test for bug where .rstrip('.yml') would remove trailing characters
         that happened to be in the set {'.', 'y', 'm', 'l'}.
         """
         # Test various problematic endings
         test_names = [
             "test_config_manual",  # ends with 'l'
-            "data_file_final",     # ends with 'l'
-            "my_query",            # ends with 'y'
-            "system_memory",       # ends with 'y'
-            "algorithm",           # ends with 'm'
-            "test.name",           # contains '.'
+            "data_file_final",  # ends with 'l'
+            "my_query",  # ends with 'y'
+            "system_memory",  # ends with 'y'
+            "algorithm",  # ends with 'm'
+            "test.name",  # contains '.'
         ]
-        
+
         for name in test_names:
             config = service.create_project(name)
-            
+
             # Verify filename is correct (not truncated)
             expected_file = service.projects_dir / f"{name}.yml"
             assert expected_file.exists(), f"File for '{name}' was truncated to {list(service.projects_dir.glob('*.yml'))}"
-            
+
             # Verify metadata.name matches
             assert config.metadata
             assert config.metadata.name == name, f"Metadata name '{config.metadata.name}' doesn't match expected '{name}'"
-            
+
             # Verify we can load it back with correct name
             # Mock state.get to return None so it loads from disk
             with patch.object(service.state, "get", return_value=None):
                 loaded = service.load_project(name)
                 assert loaded.metadata
                 assert loaded.metadata.name == name
-            
+
             # Clean up for next iteration
             service.delete_project(name)
 
