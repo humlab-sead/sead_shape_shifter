@@ -4,7 +4,7 @@ from typing import Any, ClassVar
 import openpyxl
 import pandas as pd
 
-from model import TableConfig
+from src.model import TableConfig
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.loaders.file_loaders import FileLoader
 
