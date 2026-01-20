@@ -209,3 +209,21 @@ class HasValueValidator(FieldValidator):
             entity=entity_name,
             column=field,
         )
+
+
+@FIELD_VALIDATORS.register(key="is_absent")
+class FieldIsAbsentValidator(FieldValidator):
+    """Validator to check if a field is absent in the configuration.
+
+    Fails if the field path is present in the target config.
+    """
+
+    def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
+        return not dotexists(target_cfg, field)
+
+    def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
+        self.rule_handler(
+            f"Entity '{entity_name}': Field '{field}' must be absent. {kwargs.get('message', '')}",
+            entity=entity_name,
+            column=field,
+        )
