@@ -197,7 +197,6 @@ Persistent data mounts (auto-created):
 ```yaml
 volumes:
   - ./projects:/app/projects       # YAML configurations
-  - ./input:/app/input:ro          # Input data (read-only)
   - ./output:/app/output           # Generated outputs
   - ./backups:/app/backups         # Auto-fix backups
   - ./logs:/app/logs               # Application logs
@@ -333,7 +332,6 @@ docker build -f docker/Dockerfile -t shape-shifter:latest .
 docker run -d \
   -p 8012:8012 \
   -v $(pwd)/projects:/app/projects \
-  -v $(pwd)/input:/app/input:ro \
   -v $(pwd)/output:/app/output \
   -v $(pwd)/backups:/app/backups \
   -v $(pwd)/logs:/app/logs \
@@ -424,7 +422,7 @@ db.example.com:5432:sead_production:sead_user:password
 2. **File permissions:**
    ```bash
    chmod 600 docker/data/.pgpass docker/data/*.env
-   chmod 755 projects input output backups logs
+   chmod 755 projects output backups logs
    ```
 
 3. **Never commit:**

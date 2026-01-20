@@ -554,7 +554,7 @@ class UCanAccessSqlLoader(SqlLoader):
                 type="file_path",
                 required=True,
                 description="Path to .mdb or .accdb file",
-                placeholder="./input/database.mdb",
+                placeholder="./projects/database.mdb",
                 aliases=["file", "filepath", "path"],
             ),
             FieldMetadata(

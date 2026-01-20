@@ -65,7 +65,7 @@ access:
       type: file_path
       required: true
       description: Path to .mdb or .accdb file
-      placeholder: ./input/database.mdb
+      placeholder: ./projects/database.mdb
 
     - name: ucanaccess_dir
       type: string
@@ -84,7 +84,7 @@ ucanaccess:
       type: file_path
       required: true
       description: Path to .mdb or .accdb file
-      placeholder: ./input/database.mdb
+      placeholder: ./projects/database.mdb
 
     - name: ucanaccess_dir
       type: string

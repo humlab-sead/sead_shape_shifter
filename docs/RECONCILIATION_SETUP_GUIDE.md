@@ -25,7 +25,7 @@ Ensure your OpenRefine reconciliation service is running:
 
 ### 2. Create Reconciliation Project
 
-Create a YAML file named `{configuration-name}-reconciliation.yml` in the `input/` directory alongside your main configuration file.
+Create a YAML file named `{configuration-name}-reconciliation.yml` in the `projects/` directory alongside your main configuration file.
 
 **Example: `arbodat-reconciliation.yml`**
 
@@ -598,7 +598,7 @@ entities:
 
 **Solutions**:
 - Ensure you clicked **Save Changes** button
-- Check file permissions on `input/{config}-reconciliation.yml`
+- Check file permissions on `projects/{config}-reconciliation.yml`
 - Verify backend API is running (port 8012)
 - Check browser console for API errors
 

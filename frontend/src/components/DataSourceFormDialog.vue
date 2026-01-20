@@ -118,7 +118,7 @@
                     <v-btn size="small" variant="text" prepend-icon="mdi-refresh" @click="fetchProjectFiles">
                       Refresh list
                     </v-btn>
-                    <div class="text-caption text-grey">Files saved in workspace input folder</div>
+                    <div class="text-caption text-grey">Files saved in workspace projects folder</div>
                   </div>
 
                   <v-alert v-if="projectFilesError" type="error" variant="tonal" density="compact" class="mt-2">

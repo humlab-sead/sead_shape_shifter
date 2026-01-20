@@ -7,8 +7,8 @@ from src.loaders.sql_loaders import UCanAccessSqlLoader
 from src.model import DataSourceConfig
 
 UCANACCESS_HOME = os.path.abspath("lib/ucanaccess")
-ARBODAT_DATA_MDB = os.path.abspath("./input/ArchBotDaten.mdb")
-ARBODAT_LOOKUP_MDB = os.path.abspath("./input/ArchBotStrukDat.mdb")
+ARBODAT_DATA_MDB = os.path.abspath("./projects/ArchBotDaten.mdb")
+ARBODAT_LOOKUP_MDB = os.path.abspath("./projects/ArchBotStrukDat.mdb")
 
 DATA_SOURCE_CONFIG = DataSourceConfig(
     cfg={

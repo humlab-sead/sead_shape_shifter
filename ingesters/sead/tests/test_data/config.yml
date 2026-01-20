@@ -47,7 +47,7 @@ test:
   sites:
     - 1635
   reduced_excel_filename: tests/test_data/building_dendro_reduced.xlsx
-  source_excel_filename: data/input/building_dendro_2023-12_import.xlsx
+  source_excel_filename: data/projects/building_dendro_2023-12_import.xlsx
   tables:
     - tbl_abundances
     - tbl_analysis_entities
@@ -77,12 +77,12 @@ test:
 
   adna:
     source:
-      filename: data/input/SEAD_aDNA_data_20241114_RM.xlsx
+      filename: data/projects/SEAD_aDNA_data_20241114_RM.xlsx
 
   dendrochronology:
     living_tree:
       source:
-        filename: data/input/lund_living_trees_20241213_RM.xlsx
+        filename: data/projects/lund_living_trees_20241213_RM.xlsx
     database:
       dbname: sead_staging_202502
       port: 5433

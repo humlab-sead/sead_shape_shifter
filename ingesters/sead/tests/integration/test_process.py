@@ -10,7 +10,7 @@ def test_create_options(cfg: Config):
     opts: Options = Options(
         **{
             "submission_name": "42",
-            "filename": "data/input/dummy.xlsx",
+            "filename": "data/projects/dummy.xlsx",
             "data_types": "dendrochronology",
             "database": cfg.get("options:database"),
             "output_folder": "data/output",
