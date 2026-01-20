@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from numpy import median
+
 from src.model import TableConfig
 from src.utility import Registry, dotget
 
@@ -39,7 +41,17 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
         return TableConfig(entity_name=entity_name, entities_cfg=self.project_cfg.get("entities", {}))
 
 
-class FixedEntityFieldsSpecification(EntityFieldsBaseSpecification):
+class DataEntityFieldsSpecification(EntityFieldsBaseSpecification):
+    """Validates that fields are present for a data entity."""
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that fields are for the data entity."""
+        super().is_satisfied_by(entity_name=entity_name, **kwargs)
+        self.check_fields(entity_name, ["data_source", "query"], "is_absent/E", message="Non-sql data entities should not have data_source or query fields")
+        return not self.has_errors()
+
+
+class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that fields are for the fixed entity."""
@@ -91,7 +103,7 @@ class EntityFieldsSpecification(ProjectSpecification):
         if entity_type == "sql":
             return SqlEntityFieldsSpecification(self.project_cfg)
         if entity_type == "data":
-            return EntityFieldsBaseSpecification(self.project_cfg)
+            return DataEntityFieldsSpecification(self.project_cfg)
         return EntityFieldsBaseSpecification(self.project_cfg)
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
