@@ -30,27 +30,21 @@
             :items="availableDrivers"
             label="Type *"
             :rules="[rules.required]"
+            item-title="title"
+            item-value="value"
+            item-subtitle="description"
             variant="outlined"
             class="mb-2"
             :loading="schemaLoading"
             @update:model-value="handleDriverChange"
-          >
-            <template #item="{ item, props: itemProps }">
-              <v-list-item v-bind="itemProps">
-                <v-list-item-title>{{ item.title }}</v-list-item-title>
-                <v-list-item-subtitle class="text-caption">
-                  {{ item.raw.description }}
-                </v-list-item-subtitle>
-              </v-list-item>
-            </template>
-          </v-select>
+          />
 
           <!-- Dynamic Fields based on Driver Schema -->
           <template v-if="currentSchema">
             <template v-for="field in currentSchema.fields" :key="field.name">
               <!-- String/File Path Field -->
               <v-text-field
-                v-if="field.type === 'string' || field.type === 'file_path'"
+                v-if="field.type === 'string'"
                 v-model="form.options[field.name]"
                 :label="formatFieldLabel(field)"
                 :placeholder="field.placeholder"
@@ -69,6 +63,68 @@
                 variant="outlined"
                 class="mb-2"
               />
+
+              <!-- File Path Field (upload or select existing) -->
+              <div v-else-if="field.type === 'file_path'" class="mb-2">
+                <div class="d-flex align-center mb-2">
+                  <div class="font-weight-medium">{{ formatFieldLabel(field) }}</div>
+                  <v-spacer />
+                  <v-btn-toggle v-model="filePickerMode" density="comfortable" rounded="0" divided>
+                    <v-btn value="existing" size="small">Select</v-btn>
+                    <v-btn value="upload" size="small">Upload</v-btn>
+                  </v-btn-toggle>
+                </div>
+
+                <v-select
+                  v-if="filePickerMode === 'existing'"
+                  v-model="form.options[field.name]"
+                    :items="projectFileItems"
+                    label="Select existing file"
+                    variant="outlined"
+                    class="mb-2"
+                    :loading="projectFilesLoading"
+                    :disabled="projectFilesLoading"
+                    item-title="title"
+                    item-value="value"
+                    :rules="field.required ? [rules.required] : []"
+                    @focus="fetchProjectFiles"
+                  >
+                    <template #item="{ props: itemProps, item }">
+                      <v-list-item v-bind="itemProps">
+                        <v-list-item-title>{{ item.title }}</v-list-item-title>
+                        <v-list-item-subtitle class="text-caption">{{ item.raw.subtitle }}</v-list-item-subtitle>
+                      </v-list-item>
+                    </template>
+                  </v-select>
+
+                  <div v-else>
+                    <v-file-input
+                      v-model="uploadSelection"
+                      label="Upload file"
+                      :placeholder="field.placeholder || 'Choose file'"
+                      :rules="field.required ? [rules.required] : []"
+                      variant="outlined"
+                      class="mb-2"
+                      :accept="fileAccept"
+                      :loading="fileUploadInProgress"
+                      @update:model-value="(files) => handleFileUpload(files, field.name)"
+                    />
+                    <div v-if="form.options[field.name]" class="text-caption text-success">
+                      Selected: {{ form.options[field.name] }}
+                    </div>
+                  </div>
+
+                  <div class="d-flex align-center justify-space-between mt-1">
+                    <v-btn size="small" variant="text" prepend-icon="mdi-refresh" @click="fetchProjectFiles">
+                      Refresh list
+                    </v-btn>
+                    <div class="text-caption text-grey">Files saved in workspace input folder</div>
+                  </div>
+
+                  <v-alert v-if="projectFilesError" type="error" variant="tonal" density="compact" class="mt-2">
+                    {{ projectFilesError }}
+                  </v-alert>
+                </div>
 
               <!-- Password Field -->
               <!-- <v-text-field
@@ -128,7 +184,9 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
 import { useDriverSchema } from '@/composables/useDriverSchema'
+import { dataSourceFilesApi } from '@/api/data-source-files'
 import type { DataSourceConfig, DataSourceType } from '@/types/data-source'
+import type { ProjectFileInfo } from '@/types'
 import type { FieldMetadata } from '@/types/driver-schema'
 
 const props = defineProps<{
@@ -142,7 +200,14 @@ const emit = defineEmits<{
 }>()
 
 const dataSourceStore = useDataSourceStore()
-const { availableDrivers, getSchema, getDefaultFormValues, loading: schemaLoading, loadSchemas } = useDriverSchema()
+const {
+  availableDrivers,
+  getSchema,
+  getDefaultFormValues,
+  getCanonicalDriver,
+  loading: schemaLoading,
+  loadSchemas,
+} = useDriverSchema()
 
 // State
 const formRef = ref()
@@ -160,10 +225,28 @@ const form = ref<{
 })
 const saving = ref(false)
 const errorMessage = ref<string | null>(null)
+const filePickerMode = ref<'existing' | 'upload'>('existing')
+const uploadSelection = ref<File[] | File | null>(null)
+const projectFiles = ref<ProjectFileInfo[]>([])
+const projectFilesLoading = ref(false)
+const projectFilesError = ref<string | null>(null)
+const fileUploadInProgress = ref(false)
 
 // Computed
 const isEditing = computed(() => !!props.dataSource)
 const currentSchema = computed(() => (form.value.driver ? getSchema(form.value.driver) : null))
+const hasFileField = computed(() => currentSchema.value?.fields.some((field) => field.type === 'file_path') ?? false)
+const projectFileItems = computed(() =>
+  projectFiles.value.map((file) => ({
+    title: file.name,
+    value: file.path,
+    subtitle: formatProjectFileSubtitle(file),
+  }))
+)
+const fileAccept = computed(() => {
+  const extensions = getExtensionsForDriver(form.value.driver || currentSchema.value?.driver)
+  return extensions ? extensions.map((ext) => `.${ext}`).join(',') : undefined
+})
 
 // Validation rules
 const rules = {
@@ -182,6 +265,68 @@ const rules = {
   },
 }
 
+const driverExtensionMap: Record<string, string[]> = {
+  csv: ['csv', 'tsv'],
+  tsv: ['csv', 'tsv'],
+  access: ['mdb', 'accdb'],
+  ucanaccess: ['mdb', 'accdb'],
+  xlsx: ['xlsx', 'xls'],
+  openpyxl: ['xlsx', 'xls'],
+}
+
+function getExtensionsForDriver(driver?: string | null): string[] | undefined {
+  if (!driver) return undefined
+  return driverExtensionMap[driver] || undefined
+}
+
+function formatProjectFileSubtitle(file: ProjectFileInfo): string {
+  const kb = Math.max(1, Math.round(file.size_bytes / 1024))
+  return `${kb} KB${file.modified_at ? ` • ${file.modified_at}` : ''}`
+}
+
+async function fetchProjectFiles() {
+  if (!hasFileField.value) {
+    projectFiles.value = []
+    return
+  }
+
+  projectFilesLoading.value = true
+  projectFilesError.value = null
+
+  try {
+    const extensions = getExtensionsForDriver(form.value.driver || currentSchema.value?.driver)
+    projectFiles.value = await dataSourceFilesApi.listFiles(extensions)
+  } catch (e) {
+    projectFilesError.value = e instanceof Error ? e.message : 'Failed to load data source files'
+  } finally {
+    projectFilesLoading.value = false
+  }
+}
+
+async function handleFileUpload(files: File[] | File | null, fieldName: string) {
+  if (!files) {
+    return
+  }
+
+  const file = Array.isArray(files) ? files[0] : files
+  if (!file) return
+
+  fileUploadInProgress.value = true
+  projectFilesError.value = null
+
+  try {
+    const info = await dataSourceFilesApi.uploadFile(file)
+    form.value.options[fieldName] = info.path
+    uploadSelection.value = null
+    filePickerMode.value = 'existing'
+    await fetchProjectFiles()
+  } catch (e) {
+    projectFilesError.value = e instanceof Error ? e.message : 'Failed to upload file'
+  } finally {
+    fileUploadInProgress.value = false
+  }
+}
+
 // Methods
 function formatFieldLabel(field: FieldMetadata): string {
   // Use description as user-friendly label, fall back to field name
@@ -198,6 +343,8 @@ function handleDriverChange(newDriver: string) {
   // Reset options and apply defaults for new driver
   const defaults = getDefaultFormValues(newDriver)
   form.value.options = { ...defaults }
+  filePickerMode.value = 'existing'
+  void fetchProjectFiles()
 }
 
 async function handleSave() {
@@ -280,12 +427,15 @@ function resetForm() {
     options: {},
   }
   errorMessage.value = null
+  projectFilesError.value = null
+  uploadSelection.value = null
+  filePickerMode.value = 'existing'
   formRef.value?.resetValidation()
 }
 
 function loadDataSource(dataSource: DataSourceConfig) {
   form.value.name = dataSource.name
-  form.value.driver = dataSource.driver
+  form.value.driver = getCanonicalDriver(dataSource.driver)
   form.value.description = dataSource.description || ''
 
   // Load all fields into options
@@ -323,6 +473,8 @@ function loadDataSource(dataSource: DataSourceConfig) {
   }
 
   form.value.options = options
+
+  void fetchProjectFiles()
 }
 
 // Lifecycle
@@ -330,7 +482,6 @@ onMounted(async () => {
   await loadSchemas()
 })
 
-// Watch for dialog open/close
 watch(
   () => props.modelValue,
   (newValue) => {
@@ -340,6 +491,20 @@ watch(
       } else {
         resetForm()
       }
+
+      projectFilesError.value = null
+      if (hasFileField.value) {
+        void fetchProjectFiles()
+      }
+    }
+  }
+)
+
+watch(
+  () => hasFileField.value,
+  (newValue) => {
+    if (newValue) {
+      void fetchProjectFiles()
     }
   }
 )

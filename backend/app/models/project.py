@@ -6,6 +6,22 @@ from typing import Any
 from pydantic import BaseModel, Field, field_serializer
 
 
+class ProjectFileInfo(BaseModel):
+    """Metadata about a file stored under a project uploads directory."""
+
+    name: str = Field(..., description="Filename")
+    path: str = Field(..., description="Path relative to server root")
+    size_bytes: int = Field(..., description="File size in bytes")
+    modified_at: float = Field(..., description="Last modified timestamp (Unix timestamp)")
+
+    @field_serializer("modified_at")
+    def serialize_timestamp(self, value: float) -> str | None:
+        """Convert Unix timestamp to ISO 8601 string for API responses."""
+        if value <= 0:
+            return None
+        return datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
+
+
 class ProjectMetadata(BaseModel):
     """Metadata about a project."""
 
