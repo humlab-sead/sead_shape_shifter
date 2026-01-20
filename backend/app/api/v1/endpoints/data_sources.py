@@ -113,7 +113,7 @@ async def list_data_sources(
     """
     Retrieve all global data source files.
 
-    Returns data sources from separate YAML files in input/ directory.
+    Returns data sources from separate YAML files in projects/ directory.
     Environment variables remain as ${VAR_NAME} for editing.
     Passwords are excluded from the response.
 
@@ -209,7 +209,7 @@ async def create_data_source(
     """
     Create a new global data source file.
 
-    Creates a YAML file in input/ directory (e.g., my-db-options.yml).
+    Creates a YAML file in projects/ directory (e.g., my-db-options.yml).
     The filename will be derived from the name field with "-options.yml" suffix.
 
     **Request Body**: DataSourceConfig with all required fields

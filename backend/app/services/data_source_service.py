@@ -17,7 +17,7 @@ class DataSourceService:
     """
     Service for managing global data source files.
 
-    Data sources are stored as separate YAML files in the input/ directory
+    Data sources are stored as separate YAML files in the projects/ directory
     (e.g., sead-options.yml, arbodat-data-options.yml) and referenced by
     projects using @include directives.
     """
@@ -39,7 +39,7 @@ class DataSourceService:
         return path
 
     def _list_data_source_files(self) -> list[Path]:
-        """List all data source YAML files in the input directory.
+        """List all data source YAML files in the projects directory.
 
         Looks for files matching patterns like *.yml and test for a top-level "driver" key.
 
@@ -107,7 +107,7 @@ class DataSourceService:
             List of data source projects with unresolved env vars
 
         Note:
-            Data sources are loaded from separate YAML files in input/ directory.
+            Data sources are loaded from separate YAML files in projects/ directory.
             The filename (without extension) serves as the file identifier.
             Environment variables remain as ${VAR_NAME} for UI editing.
         """

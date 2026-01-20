@@ -23,11 +23,8 @@ def settings(monkeypatch):
     monkeypatch.setenv("SHAPE_SHIFTER_ENVIRONMENT", "development")
     monkeypatch.setenv("SHAPE_SHIFTER_API_V1_PREFIX", "/api/v1")
 
-    monkeypatch.setenv("SHAPE_SHIFTER_CONFIGURATIONS_DIR", "backend/tests/test_data/configurations")
+    monkeypatch.setenv("SHAPE_SHIFTER_PROJECTS_DIR", "backend/tests/test_data/projects")
     monkeypatch.setenv("SHAPE_SHIFTER_BACKUPS_DIR", "backend/tests/test_data/backups")
-
-    monkeypatch.setenv("SHAPE_SHIFTER_MAX_ENTITIES_PER_CONFIG", "1000")
-    monkeypatch.setenv("SHAPE_SHIFTER_MAX_CONFIG_FILE_SIZE_MB", "10")
 
     get_settings.cache_clear()  # reset the lru_cache
     cfg = get_settings()

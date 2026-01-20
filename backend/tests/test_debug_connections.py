@@ -43,7 +43,7 @@ def mock_config():
         "arbodat": {
             "driver": "ucanaccess",
             "options": {
-                "filename": "./input/ArchBotDaten.mdb",
+                "filename": "./projects/ArchBotDaten.mdb",
                 "ucanaccess_dir": "lib/ucanaccess",
             },
         },
@@ -97,12 +97,11 @@ async def test_debug_postgresql_connection(settings: Settings):
 async def test_debug_access_connection(settings: Settings):
     """Debug Access connection with detailed output."""
     # Find an Access database
-    input_dir: Path = Path(__file__).parent.parent.parent / "input"
+    input_dir: Path = Path(__file__).parent.parent.parent / "projects"
     mdb_files: list[Path] = list(input_dir.glob("*.mdb"))
 
     if not mdb_files:
-        pytest.skip("No .mdb files found in input/ directory")
-
+        pytest.skip("No .mdb files found in projects/ directory")
     mdb_file: Path = mdb_files[0]
     print("\n--- Using Access Database ---")
     print(f"File: {mdb_file}")
@@ -268,7 +267,7 @@ async def test_debug_mapper_validation():
     access = api.DataSourceConfig(
         name="access_test",
         driver="ucanaccess",  # type: ignore
-        filename="./input/test.mdb",
+        filename="./projects/test.mdb",
         options={"ucanaccess_dir": "lib/ucanaccess"},
         **{},
     )
@@ -282,7 +281,7 @@ async def test_debug_mapper_validation():
 
     # Test 4: CSV with filename
     print("\nTest 4: CSV with filename")
-    csv = api.DataSourceConfig(name="csv_test", driver="csv", filename="./input/test.csv", **{})  # type: ignore
+    csv = api.DataSourceConfig(name="csv_test", driver="csv", filename="./projects/test.csv", **{})  # type: ignore
 
     try:
         cfg_core = DataSourceMapper.to_core_config(csv)

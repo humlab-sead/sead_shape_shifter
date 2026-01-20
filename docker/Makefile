@@ -56,7 +56,7 @@ update-deploy-scripts: guard-user
 docker-build: deploy-shell guard-user guard-cwd docker-build-github
 
 .PHONY: docker-build-github
-docker-build-github: deploy-shell guard-user guard-cwd
+docker-build-github: guard-user guard-cwd
 	@pushd $(DEPLOY_DIR) && ./build.sh --git-ref main \
 		--user-uid $(USER_UID) \
 		--user-gid $(USER_GID) \

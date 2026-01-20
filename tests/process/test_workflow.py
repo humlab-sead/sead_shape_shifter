@@ -11,7 +11,7 @@ from src.workflow import validate_entity_shapes, workflow
 
 def test_validate_project_file():
 
-    config_file: str = "./input/arbodat-test.yml"
+    config_file: str = "./projects/arbodat-test.yml"
     project: ShapeShiftProject = ShapeShiftProject.from_file(
         config_file,
         env_prefix="SEAD_NORMALIZER",
@@ -28,7 +28,7 @@ def test_validate_project_file():
 
 def test_access_database_csv_workflow():
 
-    config_file: str = "./input/arbodat-test.yml"
+    config_file: str = "./projects/arbodat-test.yml"
     config: ShapeShiftProject = ShapeShiftProject.from_file(
         config_file,
         env_prefix="SEAD_NORMALIZER",
@@ -63,9 +63,9 @@ def test_access_database_csv_workflow():
 
 def check_regression_of_shapes(output_path: Path, shape_filename: Path):
     # Load and verify table shapes
-    # Truth is stored in ./input/table_shapes.tsv
+    # Truth is stored in ./projects/table_shapes.tsv
     # We need to compare this against the generated tsv-files in output_path
-    truth_filename: Path = Path("./input/table_shapes.tsv")
+    truth_filename: Path = Path("./projects/table_shapes.tsv")
     if truth_filename.exists():
         truth_shapes: dict[str, tuple[int, int]] = load_shape_file(filename=str(truth_filename))
         new_shapes: dict[str, tuple[int, int]] = load_shape_file(filename=str(shape_filename))
