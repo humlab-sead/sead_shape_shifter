@@ -1,3 +1,20 @@
+# [1.12.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.11.0...v1.12.0) (2026-01-20)
+
+
+### Bug Fixes
+
+* update versioning in config files and enhance release preparation ([b3c967e](https://github.com/humlab-sead/sead_shape_shifter/commit/b3c967e86c7c3dc8f27863d44c7efc7e6e5fea75))
+
+
+### Features
+
+* add TODO for Excel file upload capability to data source directory ([1a12561](https://github.com/humlab-sead/sead_shape_shifter/commit/1a125612eaa764a2f66df0c082a8a285c8a61822))
+* add user and directory guards in Makefile for deployment safety ([2a09784](https://github.com/humlab-sead/sead_shape_shifter/commit/2a0978457e405732f3cbd32d1a59d40a22b624b1))
+* enhance configuration with additional table name overrides and ignores ([8e4e299](https://github.com/humlab-sead/sead_shape_shifter/commit/8e4e299b32cac6c326b2c7638e68ea8d2165274a))
+* enhance SessionIndicator component with closable alert and streamline ProjectDetailView layout ([11e42c2](https://github.com/humlab-sead/sead_shape_shifter/commit/11e42c27555595411c044c40a1cef3bd2fdf989a))
+* update README.md with detailed diagram generation instructions and available diagrams list ([afd0369](https://github.com/humlab-sead/sead_shape_shifter/commit/afd03694880e7ad12393b6ed3de32d1ccabd9449))
+* upload Excel file ([#174](https://github.com/humlab-sead/sead_shape_shifter/issues/174)) ([3b73847](https://github.com/humlab-sead/sead_shape_shifter/commit/3b73847e83cc693fe0dd7dd7d5dbfd3390079249))
+
 # [1.11.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.10.0...v1.11.0) (2026-01-19)
 
 
