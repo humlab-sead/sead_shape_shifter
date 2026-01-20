@@ -1,3 +1,13 @@
+# [1.13.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.12.0...v1.13.0) (2026-01-20)
+
+
+### Features
+
+* add DataEntityFieldsSpecification to validate fields for data entities ([996430e](https://github.com/humlab-sead/sead_shape_shifter/commit/996430e888dfc2ec585295aea5cbf98a3715b696))
+* add FieldIsAbsentValidator to check for absent fields in configuration ([6fe8096](https://github.com/humlab-sead/sead_shape_shifter/commit/6fe8096a17f6f63de00100f15fbec55ae707d55c))
+* fixed type in filename ExcelLoader and cyclic dependency ([8f44da3](https://github.com/humlab-sead/sead_shape_shifter/commit/8f44da304eedd643ceb895cd0a6559291cd4aed5))
+* update abundance entity type from 'data' to 'sql' ([d59a339](https://github.com/humlab-sead/sead_shape_shifter/commit/d59a3392b5f7ea818b53ad65f625aae7ecca9dbf))
+
 # [1.12.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.11.0...v1.12.0) (2026-01-20)
 
 
