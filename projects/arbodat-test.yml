@@ -8,7 +8,7 @@ entities:
   abundance:
     source:
     data_source: arbodat_data
-    type: data
+    type: sql
     surrogate_id: abundance_id
     keys: "@value: entities.analysis_entity.keys"
     columns: ["rAnzahl", "rGewicht", "geschätzt", "rFrag", "Multiplikator", "FAnzahl", "FFragmente", "FGewicht", "EDatProb", "AnmFrakt"]
