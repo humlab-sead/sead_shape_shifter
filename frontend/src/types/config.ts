@@ -22,6 +22,13 @@ export interface Project {
   metadata?: ProjectMetadata | null
 }
 
+export interface ProjectFileInfo {
+  name: string
+  path: string
+  size_bytes: number
+  modified_at?: string | null
+}
+
 // Helper types for API operations
 export interface ProjectListItem {
   name: string

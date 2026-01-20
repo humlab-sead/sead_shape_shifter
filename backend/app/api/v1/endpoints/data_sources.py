@@ -7,7 +7,7 @@ Supports CRUD operations, connection testing, and status checking.
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from loguru import logger
 
 from backend.app.api.dependencies import get_data_source_service
@@ -17,10 +17,16 @@ from backend.app.models.data_source import (
     DataSourceTestResult,
 )
 from backend.app.models.driver_schema import DriverSchemaResponse, FieldMetadataResponse
+from backend.app.models.project import ProjectFileInfo
 from backend.app.services.data_source_service import DataSourceService
+from backend.app.services.project_service import ProjectService, get_project_service
+from backend.app.utils.error_handlers import handle_endpoint_errors
 from src.loaders.driver_metadata import DriverSchemaRegistry
 
 router = APIRouter(prefix="/data-sources", tags=["data-sources"])
+
+ALLOWED_FILE_EXTENSIONS = {".xlsx", ".xls", ".csv"}
+MAX_FILE_SIZE_MB = 50
 
 
 @router.get("/drivers", response_model=dict[str, DriverSchemaResponse], summary="Get available data source drivers")
@@ -129,6 +135,33 @@ async def list_data_sources(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to list data sources: {str(e)}",
         ) from e
+
+
+@router.get("/files", response_model=list[ProjectFileInfo], summary="List available data source files")
+@handle_endpoint_errors
+async def list_data_source_files(ext: list[str] | None = Query(default=None, description="Filter by extension")) -> list[ProjectFileInfo]:
+    """List Excel/CSV files available for data source configuration."""
+
+    project_service: ProjectService = get_project_service()
+    return project_service.list_data_source_files(extensions=ext)
+
+
+@router.post(
+    "/files",
+    response_model=ProjectFileInfo,
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload a data source file",
+)
+@handle_endpoint_errors
+async def upload_data_source_file(file: UploadFile = File(...)) -> ProjectFileInfo:
+    """Upload an Excel or CSV file for use in data source configurations."""
+
+    project_service: ProjectService = get_project_service()
+    return project_service.save_data_source_file(
+        upload=file,
+        allowed_extensions=ALLOWED_FILE_EXTENSIONS,
+        max_size_mb=MAX_FILE_SIZE_MB,
+    )
 
 
 @router.get("/{filename}", response_model=DataSourceConfig, summary="Get data source by filename")
