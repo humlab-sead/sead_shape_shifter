@@ -6,6 +6,69 @@ options:
     - "date_updated"
     - "*_uuid"
     - "(*"
+  table_name_overrides:
+    abundance_element_group: tbl_abundance_element_groups
+    abundance_element: tbl_abundance_elements
+    abundance_modification: tbl_abundance_modifications
+    abundance_property_type: tbl_abundance_property_types
+    abundance_property: tbl_abundance_properties
+    abundance: tbl_abundances
+    analysis_entity: tbl_analysis_entities
+    contact_type: tbl_contact_types
+    contact: tbl_contacts
+    coordinate_method_dimension: tbl_coordinate_method_dimensions
+    coordinate_system: tbl_coordinate_systems
+    dataset_contacts: tbl_dataset_contacts
+    dataset_submission_type: tbl_dataset_submission_types
+    dataset_submission: tbl_dataset_submissions
+    dataset: tbl_datasets
+    dating_period: tbl_dating_periods
+    dating: tbl_datings
+    dimension: tbl_dimensions
+    feature_property_type: tbl_feature_property_types
+    feature_property: tbl_feature_properties
+    feature_type: tbl_feature_types
+    feature: tbl_features
+    identification_level: tbl_identification_levels
+    location_type: tbl_location_types
+    location: tbl_locations
+    master_dataset: tbl_master_datasets
+    method_group: tbl_method_groups
+    method_id: tbl_method_ids
+    modification_type: tbl_modification_types
+    project: tbl_projects
+    relative_dating: tbl_relative_datings
+    sample_coordinate: tbl_sample_coordinates
+    sample_description_type: tbl_sample_description_types
+    sample_description: tbl_sample_descriptions
+    sample_group: tbl_sample_groups
+    sample_type: tbl_sample_types
+    sample: tbl_samples
+    site_location: tbl_site_locations
+    site_property_type: tbl_site_property_types
+    site_property: tbl_site_properties
+    site_type_group: tbl_site_type_groups
+    site_type: tbl_site_types
+    site: tbl_sites
+    taxa: tbl_taxa_tree_master
+  table_name_ignores:
+    - _pcodes
+    - _project_contact
+    - archaeological_period
+    - chronological_period
+    - cultural_group
+    - epoch
+    - natural_region
+    - natural_region_group
+    - site_natural_region
+    - taxa_briemle_characteristics
+    - taxa_dominance
+    - taxa_ecological_behaviour
+    - taxa_oberdorfer_characteristics
+    - taxa_persistence
+    - taxa_plant_sociological_behaviour
+    - taxa_use_categories
+
 policies:
   if_foreign_key_value_is_missing_add_identity_mapping_to_foreign_key_table:
     priority: 1

@@ -149,13 +149,40 @@ export function useDriverSchema() {
    * Get list of all available drivers
    */
   const availableDrivers = computed(() => {
-    return Object.keys(schemas.value).map((driver) => ({
-      value: driver,
-      title: schemas.value[driver]?.display_name,
-      description: schemas.value[driver]?.description,
-      category: schemas.value[driver]?.category,
-    }))
+    // Deduplicate drivers by display name to collapse aliases (e.g., csv/tsv, xlsx/xls)
+    const unique = new Map<
+      string,
+      { value: string; title?: string; description?: string; category?: string; aliases: string[] }
+    >()
+
+    Object.entries(schemas.value).forEach(([key, schema]) => {
+      const dedupeKey = schema.display_name || schema.driver || key
+      const value = schema.driver || key
+
+      if (!unique.has(dedupeKey)) {
+        unique.set(dedupeKey, {
+          value,
+          title: schema.display_name,
+          description: schema.description,
+          category: schema.category,
+          aliases: Array.from(new Set([key, schema.driver].filter(Boolean) as string[])),
+        })
+      } else {
+        const entry = unique.get(dedupeKey)
+        if (entry) {
+          entry.aliases = Array.from(new Set([...entry.aliases, key, schema.driver].filter(Boolean) as string[]))
+        }
+      }
+    })
+
+    return Array.from(unique.values())
   })
+
+  function getCanonicalDriver(driver: string): string {
+    // Prefer canonical value for the deduped entry that contains this driver as value or alias
+    const match = availableDrivers.value.find((entry) => entry.value === driver || entry.aliases.includes(driver))
+    return match?.value || driver
+  }
 
   /**
    * Get drivers by category
@@ -185,6 +212,7 @@ export function useDriverSchema() {
     getDefaultFormValues,
     validateField,
     availableDrivers,
+    getCanonicalDriver,
     getDriversByCategory,
   }
 }

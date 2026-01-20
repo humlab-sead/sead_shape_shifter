@@ -154,9 +154,7 @@ class TestInitializeTaskList:
 
             # Mock dependency service returning resolved dependency graph
             mock_dep_service = Mock()
-            mock_dep_service.analyze_dependencies.return_value = {
-                "topological_order": ["location", "site", "sample"]
-            }
+            mock_dep_service.analyze_dependencies.return_value = {"topological_order": ["location", "site", "sample"]}
             mock_get_dep_service.return_value = mock_dep_service
 
             result = await service.initialize_task_list("test_project", "dependency-order")

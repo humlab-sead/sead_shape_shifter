@@ -2,7 +2,7 @@
  * API service for project management
  */
 
-import type { CustomGraphLayout, Project, ProjectMetadata, ValidationResult } from '@/types'
+import type { CustomGraphLayout, Project, ProjectFileInfo, ProjectMetadata, ValidationResult } from '@/types'
 import { apiRequest } from './client'
 
 export interface ProjectCreateRequest {
@@ -183,9 +183,33 @@ export const projectsApi = {
       url: `/projects/${name}/data-sources/${sourceName}`,
     })
   },
+
   /**
-   * Get raw YAML content
+   * List files available for a project (uploads directory)
    */
+  listFiles: async (name: string, extensions?: string[]): Promise<ProjectFileInfo[]> => {
+    return apiRequest<ProjectFileInfo[]>({
+      method: 'GET',
+      url: `/projects/${name}/files`,
+      params: extensions && extensions.length > 0 ? { ext: extensions } : undefined,
+    })
+  },
+
+  /**
+   * Upload a file into the project's uploads directory
+   */
+  uploadFile: async (name: string, file: File): Promise<ProjectFileInfo> => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    return apiRequest<ProjectFileInfo>({
+      method: 'POST',
+      url: `/projects/${name}/files`,
+      data: formData,
+      // Let axios set Content-Type header automatically for FormData
+    })
+  },
+
   getRawYaml: async (name: string): Promise<{ yaml_content: string }> => {
     return apiRequest<{ yaml_content: string }>({
       method: 'GET',

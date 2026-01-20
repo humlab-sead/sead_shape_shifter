@@ -1,16 +1,19 @@
 """Project service for managing entities."""
 
+import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
+from fastapi import UploadFile
 from loguru import logger
 
 from backend.app.core.config import settings
 from backend.app.core.state_manager import ApplicationStateManager, get_app_state_manager
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.entity import Entity
-from backend.app.models.project import Project, ProjectMetadata
+from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
+from backend.app.utils.exceptions import BadRequestError
 
 
 class ProjectServiceError(Exception):
@@ -35,6 +38,11 @@ class InvalidProjectError(ProjectServiceError):
 
 class ProjectConflictError(ProjectServiceError):
     """Raised when optimistic lock fails due to concurrent modification."""
+
+
+UPLOADS_SUBDIR: str = "uploads"
+DEFAULT_ALLOWED_UPLOAD_EXTENSIONS: set[str] = {".xlsx", ".xls"}
+MAX_PROJECT_UPLOAD_SIZE_MB: int = 50
 
 
 class ProjectYamlSpecification:
@@ -544,6 +552,225 @@ class ProjectService:
             )
 
         return self.save_project(project, create_backup=create_backup)
+
+    # File management helpers
+
+    def _sanitize_project_name(self, name: str) -> str:
+        safe_name: str = name.strip()
+        if not safe_name or Path(safe_name).name != safe_name:
+            raise BadRequestError("Invalid project name")
+        return safe_name
+
+    def _ensure_project_exists(self, name: str) -> Path:
+        safe_name = self._sanitize_project_name(name)
+        project_file = self.projects_dir / f"{safe_name}.yml"
+        if not project_file.exists():
+            raise ProjectNotFoundError(f"Project not found: {name}")
+        return project_file
+
+    def _get_project_upload_dir(self, project_name: str) -> Path:
+        safe_name = self._sanitize_project_name(project_name)
+        return self.projects_dir / safe_name / UPLOADS_SUBDIR
+
+    def _to_public_path(self, path: Path) -> str:
+        try:
+            return str(path.relative_to(settings.PROJECT_ROOT))
+        except ValueError:
+            try:
+                return str(path.relative_to(settings.PROJECTS_DIR.parent))
+            except ValueError:
+                return str(path)
+
+    def _sanitize_filename(self, filename: str | None) -> str:
+        if not filename:
+            raise BadRequestError("Filename is required")
+        safe_name = Path(filename).name
+        if not safe_name:
+            raise BadRequestError("Invalid filename")
+        return safe_name
+
+    def list_project_files(self, project_name: str, extensions: Iterable[str] | None = None) -> list[ProjectFileInfo]:
+        """List files stored under a project's uploads directory."""
+
+        self._ensure_project_exists(project_name)
+        upload_dir: Path = self._get_project_upload_dir(project_name)
+
+        if not upload_dir.exists():
+            return []
+
+        ext_set: set[str] | None = None
+        if extensions:
+            ext_set = {f".{ext.lstrip('.').lower()}" for ext in extensions if ext}
+
+        files: list[ProjectFileInfo] = []
+        for file_path in sorted(upload_dir.glob("*")):
+            if not file_path.is_file():
+                continue
+
+            if ext_set and file_path.suffix.lower() not in ext_set:
+                continue
+
+            stat = file_path.stat()
+            files.append(
+                ProjectFileInfo(
+                    name=file_path.name,
+                    path=self._to_public_path(file_path),
+                    size_bytes=stat.st_size,
+                    modified_at=stat.st_mtime,
+                )
+            )
+
+        return files
+
+    def save_project_file(
+        self,
+        project_name: str,
+        upload: UploadFile,
+        *,
+        allowed_extensions: set[str] | None = DEFAULT_ALLOWED_UPLOAD_EXTENSIONS,
+        max_size_mb: int = MAX_PROJECT_UPLOAD_SIZE_MB,
+    ) -> ProjectFileInfo:
+        """Save an uploaded file into the project's uploads directory."""
+
+        self._ensure_project_exists(project_name)
+        allowed: set[str] = allowed_extensions or set()
+
+        filename = self._sanitize_filename(upload.filename)
+        ext = Path(filename).suffix.lower()
+        if allowed and ext not in allowed:
+            allowed_list = ", ".join(sorted(allowed))
+            raise BadRequestError(f"Unsupported file type '{ext}'. Allowed: {allowed_list}")
+
+        upload_dir = self._get_project_upload_dir(project_name)
+        upload_dir.mkdir(parents=True, exist_ok=True)
+
+        target_path: Path = upload_dir / filename
+        counter = 1
+        while target_path.exists():
+            target_path = upload_dir / f"{Path(filename).stem}-{counter}{ext}"
+            counter += 1
+
+        max_bytes: int = max_size_mb * 1024 * 1024
+        total_bytes = 0
+
+        try:
+            with target_path.open("wb") as buffer:
+                while True:
+                    chunk = upload.file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    total_bytes += len(chunk)
+                    if max_bytes and total_bytes > max_bytes:
+                        raise BadRequestError(f"File is too large ({total_bytes} bytes). Maximum allowed is {max_bytes} bytes")
+                    buffer.write(chunk)
+        except Exception as exc:  # pylint: disable=broad-except
+            target_path.unlink(missing_ok=True)
+            raise exc
+        finally:
+            try:
+                upload.file.close()
+            except Exception:  # pylint: disable=broad-except
+                pass
+
+        stat = target_path.stat()
+
+        return ProjectFileInfo(
+            name=target_path.name,
+            path=self._to_public_path(target_path),
+            size_bytes=stat.st_size,
+            modified_at=stat.st_mtime,
+        )
+
+    # Global data source file management
+
+    def list_data_source_files(self, extensions: Iterable[str] | None = None) -> list[ProjectFileInfo]:
+        """List files available for data source configuration in the global input directory."""
+
+        upload_dir: Path = settings.DATA_SOURCE_FILES_DIR
+
+        if not upload_dir.exists():
+            return []
+
+        ext_set: set[str] | None = None
+        if extensions:
+            ext_set = {f".{ext.lstrip('.').lower()}" for ext in extensions if ext}
+
+        files: list[ProjectFileInfo] = []
+        for file_path in sorted(upload_dir.glob("*")):
+            if not file_path.is_file():
+                continue
+
+            if ext_set and file_path.suffix.lower() not in ext_set:
+                continue
+
+            stat = file_path.stat()
+            files.append(
+                ProjectFileInfo(
+                    name=file_path.name,
+                    path=self._to_public_path(file_path),
+                    size_bytes=stat.st_size,
+                    modified_at=stat.st_mtime,
+                )
+            )
+
+        return files
+
+    def save_data_source_file(
+        self,
+        upload: UploadFile,
+        *,
+        allowed_extensions: set[str] | None = None,
+        max_size_mb: int = MAX_PROJECT_UPLOAD_SIZE_MB,
+    ) -> ProjectFileInfo:
+        """Save an uploaded file into the global data source files directory."""
+
+        allowed: set[str] = allowed_extensions or set()
+
+        filename = self._sanitize_filename(upload.filename)
+        ext = Path(filename).suffix.lower()
+        if allowed and ext not in allowed:
+            allowed_list = ", ".join(sorted(allowed))
+            raise BadRequestError(f"Unsupported file type '{ext}'. Allowed: {allowed_list}")
+
+        upload_dir: Path = settings.DATA_SOURCE_FILES_DIR
+        upload_dir.mkdir(parents=True, exist_ok=True)
+
+        target_path: Path = upload_dir / filename
+        counter = 1
+        while target_path.exists():
+            target_path = upload_dir / f"{Path(filename).stem}-{counter}{ext}"
+            counter += 1
+
+        max_bytes: int = max_size_mb * 1024 * 1024
+        total_bytes = 0
+
+        try:
+            with target_path.open("wb") as buffer:
+                while True:
+                    chunk = upload.file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    total_bytes += len(chunk)
+                    if max_bytes and total_bytes > max_bytes:
+                        raise BadRequestError(f"File is too large ({total_bytes} bytes). Maximum allowed is {max_bytes} bytes")
+                    buffer.write(chunk)
+        except Exception as exc:  # pylint: disable=broad-except
+            target_path.unlink(missing_ok=True)
+            raise exc
+        finally:
+            try:
+                upload.file.close()
+            except Exception:  # pylint: disable=broad-except
+                pass
+
+        stat = target_path.stat()
+
+        return ProjectFileInfo(
+            name=target_path.name,
+            path=self._to_public_path(target_path),
+            size_bytes=stat.st_size,
+            modified_at=stat.st_mtime,
+        )
 
 
 # Singleton instance
