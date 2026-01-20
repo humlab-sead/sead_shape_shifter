@@ -9,6 +9,14 @@
 
 set -e
 
+RED='\e[31m'
+GREEN='\e[32m'
+YELLOW='\e[33m'
+BLUE='\e[34m'
+MAGENTA='\e[35m'
+CYAN='\e[36m'
+RESET='\e[0m'
+
 # Script location
 g_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 g_script_file="$(basename "${BASH_SOURCE[0]}")"
@@ -274,20 +282,20 @@ echo ""
 
 docker build "${build_args[@]}"
 
-echo ""
-echo "============================================================"
-echo "✓ Build complete!"
-echo "============================================================"
-echo "Image: $g_image_name:$g_image_tag"
-echo ""
-echo "To run the container:"
-echo "  cd $g_script_dir"
-echo "  docker compose up -d"
-echo ""
-echo "Or standalone:"
-echo "  docker run -d -p 8012:8012 \\"
-echo "    -v \$PWD/data/projects:/app/projects \\"
-echo "    -v \$PWD/data/logs:/app/logs \\"
-echo "    -v \$PWD/data/output:/app/output \\"
-echo "    $g_image_name:$g_image_tag"
-echo "============================================================"
+echo -e ""
+echo -e "${GREEN}============================================================${RESET}"
+echo -e "${GREEN}✓ Build complete!${RESET}"
+echo -e "${GREEN}============================================================${RESET}"
+echo -e "${GREEN}Image:${RESET} $g_image_name:$g_image_tag"
+echo -e ""
+echo -e "${BLUE}To run the container:${RESET}"
+echo -e "  cd $g_script_dir"
+echo -e "  docker compose up -d"
+echo -e ""
+echo -e "${BLUE}Or standalone:${RESET}"
+echo -e "  docker run -d -p 8012:8012 \\"
+echo -e "    -v \$PWD/data/projects:/app/projects \\"
+echo -e "    -v \$PWD/data/logs:/app/logs \\"
+echo -e "    -v \$PWD/data/output:/app/output \\"
+echo -e "    $g_image_name:$g_image_tag"
+echo -e "${GREEN}============================================================${RESET}"

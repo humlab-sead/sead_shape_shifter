@@ -188,7 +188,7 @@ sead_shape_shifter/
 │   │   └── main.ts             # App bootstrap
 │   └── package.json            # Dependencies
 ├── docs/                       # Documentation
-├── input/                      # Sample configurations
+├── projects/                   # Sample projects
 ├── tests/                      # Shape Shifter core tests
 └── src/                        # Shape Shifter core library
 ```
@@ -585,12 +585,12 @@ Abstract data access:
 class YAMLService:
     """Handles YAML file operations."""
     
-    def __init__(self, config_dir: Path):
-        self.config_dir = config_dir
+    def __init__(self, project_dir: Path):
+        self.project_dir = project_dir
     
     async def load_project(self, name: str) -> dict:
         """Load configuration from file."""
-        path = self.config_dir / f"{name}.yml"
+        path = self.project_dir / f"{name}.yml"
         
         if not path.exists():
             raise ProjectNotFoundError(name)
@@ -603,7 +603,7 @@ class YAMLService:
     
     def save_project(self, name: str, data: dict) -> None:
         """Save configuration to file."""
-        path = self.config_dir / f"{name}.yml"
+        path = self.project_dir / f"{name}.yml"
         
         with open(path, 'w') as f:
             yaml.dump(data, f, default_flow_style=False)
@@ -625,8 +625,8 @@ from fastapi import Depends
 
 def get_yaml_service() -> YAMLService:
     """Get YAML service instance."""
-    config_dir = Path("input")
-    return YAMLService(config_dir)
+    project_dir = Path("projects")
+    return YAMLService(project_dir)
 
 def get_cache_service() -> CacheService:
     """Get cache service instance."""

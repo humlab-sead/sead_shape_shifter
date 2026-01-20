@@ -1400,7 +1400,7 @@ A: Chrome 120+, Firefox 115+, Safari 16+, Edge 120+. Chrome recommended.
 A: Editor works offline for loaded configs. Validation requires backend connection.
 
 **Q: Where are configurations stored?**  
-A: In the configured directory, typically `input/` or similar.
+A: In the configured directory, typically `projects/` or similar.
 
 **Q: Are my changes auto-saved?**  
 A: Yes, after 30 seconds of inactivity. Manual save recommended for important changes.

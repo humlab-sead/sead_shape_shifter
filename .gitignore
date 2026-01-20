@@ -120,6 +120,6 @@ output*.xlsx
 backups
 .vite
 coverage
-input/*.xlsx
+projects/*.xlsx
 output/*.xlsx
 **/test-results

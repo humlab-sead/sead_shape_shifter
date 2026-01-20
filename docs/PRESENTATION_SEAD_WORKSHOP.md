@@ -689,7 +689,7 @@ Candidate: "Storsjön, Jämtland" (ID: 1523)
 data_sources:
   arbodat:
     driver: ucanaccess
-    database: ./input/Arbodat_2024.mdb
+    database: ./projects/Arbodat_2024.mdb
 ```
 
 **Visual Form:**
@@ -1011,7 +1011,7 @@ Total: ~3.5 hours first time
 4. **Radiocarbon** - Dating sample processing
 5. **Dendro Samples** - Tree-ring samples
 
-**Location:** `input/` directory
+**Location:** `projects/` directory
 
 **Use:**
 - Open and study structure

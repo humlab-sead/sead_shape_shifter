@@ -51,6 +51,7 @@ backups/
 # Output and test data
 output/
 input/
+projects/
 configurations/
 deprecated/
 

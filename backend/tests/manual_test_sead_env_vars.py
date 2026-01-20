@@ -11,7 +11,7 @@ from src.configuration.provider import ConfigStore
 
 project_root: Path = Path(__file__).parent.parent.parent
 
-config_file: Path = project_root / "input" / "arbodat-database.yml"
+config_file: Path = project_root / "projects" / "arbodat-database.yml"
 
 print(f"Loading config from: {config_file}")
 print()
@@ -25,7 +25,7 @@ config: ConfigLike | None = store.config()
 assert config is not None
 
 # Create service
-service = DataSourceService(project_root / "input")
+service = DataSourceService(project_root / "projects")
 
 # List data sources
 print("=" * 80)

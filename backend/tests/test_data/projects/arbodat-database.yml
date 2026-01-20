@@ -1,6 +1,5 @@
 metadata:
-  type: shapeshifter-project
-  name: "arbodat-database"
+  name: "ArboDat Database Configuration"
   description: "Configuration for importing data from ArboDat database into SEAD."
   version: "1.0.0"
   default_entity: "survey"
@@ -11,7 +10,7 @@ entities:
     source: null
     type: csv
     options:
-      filename: "input/arbodat_mal_elena_input.csv"
+      filename: "projects/arbodat_mal_elena_input.csv"
       sep: ";"
       encoding: "utf-8"
       quotechar: '"'

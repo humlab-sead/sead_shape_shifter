@@ -127,7 +127,7 @@ drop_ignored_columns:
 
 ## Complete Example
 
-See [`input/example-ingester-config.yml`](../input/example-ingester-config.yml) for a complete example.
+See [`projects/example-ingester-config.yml`](../projects/example-ingester-config.yml) for a complete example.
 
 ## Usage in UI
 
