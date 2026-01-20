@@ -4,14 +4,27 @@ from typing import Any, ClassVar
 import openpyxl
 import pandas as pd
 
+from model import TableConfig
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.loaders.file_loaders import FileLoader
 
 from .base_loader import ConnectTestResult, DataLoaders
 
 
+class ExcelLoader(FileLoader):
+    """Loader for Excel files."""
+
+    def get_loader_opts(self, table_cfg: "TableConfig") -> dict[str, str]:
+        """Get loader options from the TableConfig source."""
+        if isinstance(table_cfg.source, str):
+            return {"sheet_name": table_cfg.source}
+        if self.data_source and self.data_source.options:
+            return self.data_source.options.get("sheet_name", {})
+        return {}
+
+
 @DataLoaders.register(key=["xlsx", "xls"])
-class PandasLoader(FileLoader):
+class PandasLoader(ExcelLoader):
     """Loader for Excel files using pandas."""
 
     schema: ClassVar["DriverSchema | None"] = DriverSchema(
@@ -28,7 +41,13 @@ class PandasLoader(FileLoader):
                 placeholder="./data/file.xlsx",
                 aliases=["file", "filepath", "path"],
             ),
-            FieldMetadata(name="sheet_name", type="string", required=False, description="Sheet name to load", placeholder="Sheet1"),
+            FieldMetadata(
+                name="sheet_name",
+                type="string",
+                required=False,
+                description="Sheet name to load",
+                placeholder="Sheet1",
+            ),
         ],
     )
 
@@ -49,7 +68,7 @@ class PandasLoader(FileLoader):
 
 
 @DataLoaders.register(key=["openpyxl"])
-class OpenPyxlLoader(FileLoader):
+class OpenPyxlLoader(ExcelLoader):
     """Loader for Excel files using openpyxl."""
 
     schema: ClassVar["DriverSchema | None"] = DriverSchema(
@@ -66,9 +85,19 @@ class OpenPyxlLoader(FileLoader):
                 placeholder="./data/file.xlsx",
                 aliases=["file", "filepath", "path"],
             ),
-            FieldMetadata(name="sheet_name", type="string", required=False, description="Sheet name to load", placeholder="Sheet1"),
             FieldMetadata(
-                name="range", type="string", required=False, description="Cell range to load (e.g., A1:D10)", placeholder="A1:D10"
+                name="sheet_name",
+                type="string",
+                required=False,
+                description="Sheet name to load",
+                placeholder="Sheet1",
+            ),
+            FieldMetadata(
+                name="range",
+                type="string",
+                required=False,
+                description="Cell range to load (e.g., A1:D10)",
+                placeholder="A1:D10",
             ),
         ],
     )
