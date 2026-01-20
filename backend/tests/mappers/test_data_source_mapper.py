@@ -51,7 +51,7 @@ def test_map_ucanaccess_config():
     api_config = DataSourceConfig(
         name="test_access",
         driver="ucanaccess",  # type: ignore
-        filename="./input/test.mdb",
+        filename="./projects/test.mdb",
         options={"ucanaccess_dir": "lib/ucanaccess"},
         **{},
     )
@@ -63,7 +63,7 @@ def test_map_ucanaccess_config():
     assert core_config.data_source_cfg["driver"] in ("ucanaccess", "access")
 
     options = core_config.data_source_cfg["options"]
-    assert options["filename"] == "./input/test.mdb"
+    assert options["filename"] == "./projects/test.mdb"
     assert options["ucanaccess_dir"] == "lib/ucanaccess"
 
 
@@ -73,14 +73,14 @@ def test_map_ucanaccess_prefers_options_filename_when_metadata_present():
         name="test_access",
         driver="ucanaccess",  # type: ignore
         filename="arbodat-data-options.yml",  # metadata from service
-        options={"filename": "./input/real-db.mdb", "ucanaccess_dir": "lib/ucanaccess"},
+        options={"filename": "./projects/real-db.mdb", "ucanaccess_dir": "lib/ucanaccess"},
         **{},
     )
 
     core_config = DataSourceMapper.to_core_config(api_config)
 
     options = core_config.data_source_cfg["options"]
-    assert options["filename"] == "./input/real-db.mdb"
+    assert options["filename"] == "./projects/real-db.mdb"
     assert options["ucanaccess_dir"] == "lib/ucanaccess"
 
 

@@ -6,7 +6,7 @@ options:
     # SQLite test database with sample data
     test_sqlite:
       driver: sqlite
-      database: "input/test_query_tester.db"
+      database: "projects/test_query_tester.db"
     
     # PostgreSQL example (requires actual database)
     # sead_production:

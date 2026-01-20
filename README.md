@@ -330,7 +330,7 @@ sead_shape_shifter/
 │   └── arbodat/               # Arbodat-specific implementations
 ├── tests/                     # Test suite
 ├── docs/                      # Documentation
-├── input/                     # Example input files and configs
+├── projects/                  # Example projects files and configs
 ├── scripts/                   # Utility scripts
 └── lib/                       # External libraries (UCanAccess)
 ```

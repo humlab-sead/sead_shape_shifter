@@ -17,7 +17,7 @@ project_root: Path = find_parent_with(Path(__file__), "pyproject.toml")
 @pytest.mark.asyncio
 async def test_postgresql_connection(settings: Settings):
 
-    dotenv.load_dotenv(project_root / "input/.env")
+    dotenv.load_dotenv(project_root / "projects/.env")
 
     schema: DriverSchema | None = DriverSchemaRegistry.get("postgresql")
     logger.info(f"PostgreSQL Schema: {schema}")
@@ -50,11 +50,11 @@ async def test_access_connection(settings: Settings) -> None:
     logger.info(f"Access Schema: {schema}")
 
     # Find an actual Access database file
-    input_dir: Path = project_root / "input"
+    input_dir: Path = project_root / "projects"
     mdb_files = list(input_dir.glob("*.mdb"))
 
     if not mdb_files:
-        logger.warning("No .mdb files found in input/ directory")
+        logger.warning("No .mdb files found in projects/ directory")
         return
 
     mdb_file = mdb_files[0]

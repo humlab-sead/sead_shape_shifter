@@ -34,9 +34,6 @@ services:
       # Mount .pgpass for PostgreSQL authentication (if exists)
       - ./data/.pgpass/.pgpass:/app/.pgpass:ro
       
-      # Optional: mount input directory for development
-      # - ./data/input:/app/input
-      
     restart: unless-stopped
     
     logging:

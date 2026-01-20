@@ -50,7 +50,7 @@ Before starting tests, verify:
 - [ ] Backend health check passes: http://localhost:8012/api/v1/health
 - [ ] No console errors on initial page load
 - [ ] Browser DevTools open (F12)
-- [ ] Test project files available in `input/` directory
+- [ ] Test project files available in `projects/` directory
 
 ---
 
@@ -2613,8 +2613,8 @@ Comprehensive test before release:
 
 ### Test Data Locations
 
-- **Projects**: `/home/roger/source/sead_shape_shifter/input/`
-- **Test Database**: `/home/roger/source/sead_shape_shifter/input/test_query_tester.db`
+- **Projects**: `/home/roger/source/sead_shape_shifter/projects/`
+- **Test Database**: `/home/roger/source/sead_shape_shifter/projects/test_query_tester.db`
 - **Backups**: `/home/roger/source/sead_shape_shifter/backups/`
 
 ### Contact

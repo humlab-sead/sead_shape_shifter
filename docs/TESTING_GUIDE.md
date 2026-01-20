@@ -368,7 +368,7 @@ curl -s http://localhost:8000/api/v1/health | python3 -m json.tool
 timeout 3 curl -s http://localhost:5173 > /dev/null && echo "✓ OK" || echo "✗ Failed"
 
 # Check test database
-ls -lh input/test_query_tester.db
+ls -lh projects/test_query_tester.db
 ```
 
 #### API Test Checklist
@@ -545,7 +545,7 @@ pkill -f "uvicorn backend.app.main:app"
 ```bash
 # Restart backend
 cd /home/roger/source/sead_shape_shifter && \
-CONFIG_FILE=input/query_tester_config.yml \
+CONFIG_FILE=projects/query_tester_config.yml \
 uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
 ```
 
@@ -781,7 +781,7 @@ npx playwright test --project=accessibility
 
 ```bash
 # Create test database
-sqlite3 input/test_query_tester.db < scripts/create_test_db.sql
+sqlite3 projects/test_query_tester.db < scripts/create_test_db.sql
 ```
 
 **Tables:**
@@ -853,7 +853,7 @@ export const mockTableSchema = {
 python scripts/generate_test_data.py \
   --entities 3 \
   --rows-per-entity 100 \
-  --output input/test_data/
+  --output projects/test_data/
 ```
 
 ---
@@ -1063,10 +1063,10 @@ npm install
 
 ```bash
 # Set environment variable
-export CONFIG_FILE=input/test_config.yml
+export CONFIG_FILE=projects/test_config.yml
 
 # Or pass as argument
-python script.py --config-file input/test_config.yml
+python script.py --config-file projects/test_config.yml
 ```
 
 ### Performance Test Issues

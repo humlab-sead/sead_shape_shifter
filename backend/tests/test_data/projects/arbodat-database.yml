@@ -10,7 +10,7 @@ entities:
     source: null
     type: csv
     options:
-      filename: "input/arbodat_mal_elena_input.csv"
+      filename: "projects/arbodat_mal_elena_input.csv"
       sep: ";"
       encoding: "utf-8"
       quotechar: '"'

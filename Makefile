@@ -6,20 +6,20 @@ FRONTEND_PORT ?= 5173
 .PHONY: csv excel
 excel:
 	@export PYTHONPATH=. && python src/arbodat/survey2excel.py \ 
-		--env-file ./input/.env \
+		--env-file ./projects/.env \
 		--sep ";" \
 		--mode excel \
-		--config-file ./input/arbodat.yml \
-		./input/arbodat_mal_elena_input.csv \
+		--config-file ./projects/arbodat.yml \
+		./projects/arbodat_mal_elena_input.csv \
 		tmp/arbodat.xlsx
 
 csv:
 	@export PYTHONPATH=. && python src/arbodat/survey2excel.py \ 
-		--env-file ./input/.env \
+		--env-file ./projects/.env \
 		--sep ';' \
 		--mode csv \
-		--config-file ./input/arbodat.yml \
-		./input/arbodat_mal_elena_input.csv \
+		--config-file ./projects/arbodat.yml \
+		./projects/arbodat_mal_elena_input.csv \
 		tmp/arbodat
 
 .PHONY: install
@@ -134,6 +134,7 @@ backend-run-with-hmr:
 		--reload-exclude '.git' \
 		--reload-exclude 'frontend' \
 		--reload-exclude 'input' \
+		--reload-exclude 'projects' \
 		--reload-exclude 'backups' \
 		--reload-exclude 'tmp' \
 		--reload-exclude 'htmlcov' \
@@ -259,10 +260,10 @@ SCHEMA_OPTS = --no-drop-table --not-null --default-values --no-not_empty --comme
 BACKEND = postgres
 
 arbodat-data-schema:
-	@mdb-schema $(SCHEMA_OPTS) ./input/ArchBotDaten.mdb $(BACKEND) > ./input/ArchBotDaten_$(BACKEND)_schema.sql 
+	@mdb-schema $(SCHEMA_OPTS) ./projects/ArchBotDaten.mdb $(BACKEND) > ./projects/ArchBotDaten_$(BACKEND)_schema.sql 
 
 arbodat-lookup-schema:
-	@mdb-schema $(SCHEMA_OPTS) ./input/ArchBotStrukDat.mdb $(BACKEND) > ./input/ArchBotStrukDat_$(BACKEND)_schema.sql 
+	@mdb-schema $(SCHEMA_OPTS) ./projects/ArchBotStrukDat.mdb $(BACKEND) > ./projects/ArchBotStrukDat_$(BACKEND)_schema.sql 
 
 arbodat-schema: arbodat-data-schema arbodat-lookup-schema
 	@echo "✅ Schema extraction complete!"
