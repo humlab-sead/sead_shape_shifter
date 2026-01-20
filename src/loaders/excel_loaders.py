@@ -1,10 +1,12 @@
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, TYPE_CHECKING
 
 import openpyxl
 import pandas as pd
 
-from src.model import TableConfig
+if TYPE_CHECKING:
+    from src.model import TableConfig
+
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.loaders.file_loaders import FileLoader
 
