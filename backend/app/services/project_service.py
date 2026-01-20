@@ -661,9 +661,7 @@ class ProjectService:
                         break
                     total_bytes += len(chunk)
                     if max_bytes and total_bytes > max_bytes:
-                        raise BadRequestError(
-                            f"File is too large ({total_bytes} bytes). Maximum allowed is {max_bytes} bytes"
-                        )
+                        raise BadRequestError(f"File is too large ({total_bytes} bytes). Maximum allowed is {max_bytes} bytes")
                     buffer.write(chunk)
         except Exception as exc:  # pylint: disable=broad-except
             target_path.unlink(missing_ok=True)
@@ -754,9 +752,7 @@ class ProjectService:
                         break
                     total_bytes += len(chunk)
                     if max_bytes and total_bytes > max_bytes:
-                        raise BadRequestError(
-                            f"File is too large ({total_bytes} bytes). Maximum allowed is {max_bytes} bytes"
-                        )
+                        raise BadRequestError(f"File is too large ({total_bytes} bytes). Maximum allowed is {max_bytes} bytes")
                     buffer.write(chunk)
         except Exception as exc:  # pylint: disable=broad-except
             target_path.unlink(missing_ok=True)
