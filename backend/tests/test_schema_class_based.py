@@ -7,6 +7,7 @@ registered and accessible through the DriverSchemaRegistry.
 import asyncio
 
 from backend.app.api.v1.endpoints.data_sources import list_drivers
+from loaders.driver_metadata import DriverSchema
 from src.loaders.base_loader import DataLoaders
 from src.loaders.driver_metadata import DriverSchemaRegistry
 
@@ -95,7 +96,7 @@ class TestClassBasedSchemas:
     def test_excel_pandas_schema_fields(self):
         """Excel (pandas) schema should have correct fields."""
         schemas = DriverSchemaRegistry.all()
-        xlsx_schema = schemas["xlsx"]
+        xlsx_schema: DriverSchema = schemas["xlsx"]
 
         field_names = {f.name for f in xlsx_schema.fields}
         assert "filename" in field_names

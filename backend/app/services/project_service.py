@@ -684,9 +684,9 @@ class ProjectService:
     # Global data source file management
 
     def list_data_source_files(self, extensions: Iterable[str] | None = None) -> list[ProjectFileInfo]:
-        """List files available for data source configuration in the global input directory."""
+        """List files available for data source configuration in the projects directory."""
 
-        upload_dir: Path = settings.DATA_SOURCE_FILES_DIR
+        upload_dir: Path = settings.PROJECTS_DIR
 
         if not upload_dir.exists():
             return []
@@ -722,7 +722,7 @@ class ProjectService:
         allowed_extensions: set[str] | None = None,
         max_size_mb: int = MAX_PROJECT_UPLOAD_SIZE_MB,
     ) -> ProjectFileInfo:
-        """Save an uploaded file into the global data source files directory."""
+        """Save an uploaded file into the projects directory."""
 
         allowed: set[str] = allowed_extensions or set()
 
@@ -732,7 +732,7 @@ class ProjectService:
             allowed_list = ", ".join(sorted(allowed))
             raise BadRequestError(f"Unsupported file type '{ext}'. Allowed: {allowed_list}")
 
-        upload_dir: Path = settings.DATA_SOURCE_FILES_DIR
+        upload_dir: Path = settings.PROJECTS_DIR
         upload_dir.mkdir(parents=True, exist_ok=True)
 
         target_path: Path = upload_dir / filename

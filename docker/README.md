@@ -139,8 +139,6 @@ environment:
   - SHAPE_SHIFTER_API_V1_PREFIX=/api/v1
   - SHAPE_SHIFTER_PROJECTS_DIR=/app/projects
   - SHAPE_SHIFTER_BACKUPS_DIR=/app/backups
-  - SHAPE_SHIFTER_MAX_ENTITIES_PER_CONFIG=1000
-  - SHAPE_SHIFTER_MAX_CONFIG_FILE_SIZE_MB=10
   
   # CORS (production - restrict origins)
   - SHAPE_SHIFTER_ALLOWED_ORIGINS=["https://yourdomain.com"]
