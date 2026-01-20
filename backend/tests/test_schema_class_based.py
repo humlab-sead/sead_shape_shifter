@@ -7,7 +7,7 @@ registered and accessible through the DriverSchemaRegistry.
 import asyncio
 
 from backend.app.api.v1.endpoints.data_sources import list_drivers
-from loaders.driver_metadata import DriverSchema
+from src.loaders.driver_metadata import DriverSchema
 from src.loaders.base_loader import DataLoaders
 from src.loaders.driver_metadata import DriverSchemaRegistry
 
