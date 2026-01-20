@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, ClassVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import openpyxl
 import pandas as pd

@@ -47,7 +47,12 @@ class DataEntityFieldsSpecification(EntityFieldsBaseSpecification):
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that fields are for the data entity."""
         super().is_satisfied_by(entity_name=entity_name, **kwargs)
-        self.check_fields(entity_name, ["data_source", "query"], "is_absent/E", message="Non-sql data entities should not have data_source or query fields")
+        self.check_fields(
+            entity_name,
+            ["data_source", "query"],
+            "is_absent/E",
+            message="Non-sql data entities should not have data_source or query fields",
+        )
         return not self.has_errors()
 
 
