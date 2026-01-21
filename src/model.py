@@ -284,7 +284,7 @@ class TableConfig:
     @property
     def check_functional_dependency(self) -> bool:
         return self.entity_cfg.get("check_functional_dependency", True)
-    
+
     @cached_property
     def depends_on(self) -> set[str]:
         """Get set of entities this table depends on."""

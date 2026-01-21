@@ -50,13 +50,13 @@ def check_functional_dependency(df: pd.DataFrame, determinant_columns: list[str]
 def drop_duplicate_rows(
     data: pd.DataFrame, columns: bool | list[str] = False, fd_check: bool = False, entity_name: str | None = None
 ) -> pd.DataFrame:
-    """Drop duplicate rows from DataFrame. """
+    """Drop duplicate rows from DataFrame."""
     if columns is False:
         return data
-    
+
     if not isinstance(columns, list):
         return data.drop_duplicates().reset_index(drop=True)
-    
+
     if any(c not in data.columns for c in columns):
         missing_requested_columns: set[str] = set(columns).difference(data.columns)
         logger.error(
