@@ -343,13 +343,32 @@ class ForeignKeyConstraintValidator:
                     )
                 )
 
-        added_column_count: int = 1 + len(self.fk.get_valid_remote_columns(remote_df))
-        if self.size_after_merge[1] != self.size_before_merge[1] + added_column_count:
+        # Calculate expected column increase
+        # Start with surrogate ID (1) + extra columns from remote
+        remote_extra_cols = self.fk.get_valid_remote_columns(remote_df)
+        expected_new_columns = 1 + len(remote_extra_cols)
+        
+        # Add merge indicator if present
+        if self.merge_indicator_col:
+            expected_new_columns += 1
+        
+        # Check how many of the remote columns already exist in local_df
+        # (pandas merge won't duplicate columns that already exist)
+        existing_cols = set(local_df.columns)
+        remote_cols_to_add = [col for col in remote_extra_cols if col not in existing_cols]
+        
+        # Actual expected increase accounts for columns that won't be duplicated
+        actual_expected_increase = 1  # surrogate ID always added
+        if self.merge_indicator_col:
+            actual_expected_increase += 1  # merge indicator
+        actual_expected_increase += len(remote_cols_to_add)  # only new remote columns
+        
+        if self.size_after_merge[1] != self.size_before_merge[1] + actual_expected_increase:
             added_columns: set[str] = set(linked_df.columns) - set(local_df.columns)
             message = (
                 f"{self.entity_name} -> {self.fk.remote_entity}[linking]: join resulted in unexpected number of columns: "
                 f"before={self.size_before_merge[1]}, after={self.size_after_merge[1]}, "
-                f"expected increase={added_column_count} "
+                f"expected increase={actual_expected_increase} "
                 f"(added columns: {added_columns})"
             )
             logger.warning(message)
@@ -363,7 +382,7 @@ class ForeignKeyConstraintValidator:
                     metadata={
                         "column_count_before": self.size_before_merge[1],
                         "column_count_after": self.size_after_merge[1],
-                        "expected_increase": added_column_count,
+                        "expected_increase": actual_expected_increase,
                         "added_columns": list(added_columns),
                     },
                 )
