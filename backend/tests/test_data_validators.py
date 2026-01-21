@@ -238,11 +238,15 @@ class TestForeignKeyDataValidator:
         # Setup
         validator = ForeignKeyDataValidator()
 
-        config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
+        config = {
+            "foreign_keys": [
+                {"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}
+            ]
+        }
 
         # Mock preview service and config service
         with (
-            patch("backend.app.validators.data_validators.ShapeShiftService") as mock_preview_class,
+            patch("backend.app.services.shapeshift_service.ShapeShiftService") as mock_preview_class,
             patch("backend.app.services.project_service.ProjectService"),
             patch("src.configuration.provider.ConfigStore.config_global"),
         ):
@@ -269,10 +273,14 @@ class TestForeignKeyDataValidator:
         # Setup
         validator = ForeignKeyDataValidator()
 
-        config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
+        config = {
+            "foreign_keys": [
+                {"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}
+            ]
+        }
 
         with (
-            patch("backend.app.validators.data_validators.ShapeShiftService") as mock_preview_class,
+            patch("backend.app.services.shapeshift_service.ShapeShiftService") as mock_preview_class,
             patch("backend.app.services.project_service.ProjectService"),
             patch("src.configuration.provider.ConfigStore.config_global"),
         ):
@@ -309,9 +317,13 @@ class TestDataTypeCompatibilityValidator:
         # Setup
         validator = DataTypeCompatibilityValidator()
 
-        config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
+        config = {
+            "foreign_keys": [
+                {"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}
+            ]
+        }
 
-        with patch("backend.app.validators.data_validators.ShapeShiftService") as mock_preview_class:
+        with patch("backend.app.services.shapeshift_service.ShapeShiftService") as mock_preview_class:
             mock_service = Mock()
             mock_preview_class.return_value = mock_service
 
@@ -335,9 +347,13 @@ class TestDataTypeCompatibilityValidator:
         # Setup
         validator = DataTypeCompatibilityValidator()
 
-        config = Mock(foreign_keys=[Mock(entity="remote_entity", local_keys=["remote_id"], remote_keys=["id"])])
+        config = {
+            "foreign_keys": [
+                {"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}
+            ]
+        }
 
-        with patch("backend.app.validators.data_validators.ShapeShiftService") as mock_preview_class:
+        with patch("backend.app.services.shapeshift_service.ShapeShiftService") as mock_preview_class:
             mock_service = Mock()
             mock_preview_class.return_value = mock_service
 
@@ -369,11 +385,11 @@ class TestDataValidationService:
 
         service = DataValidationService(mock_preview_service)
 
-        with patch("backend.app.validators.data_validators.ProjectService") as mock_config_svc:
+        with patch("backend.app.services.project_service.ProjectService") as mock_config_svc:
             mock_config = Mock()
             mock_config.entities = {
-                "entity1": Mock(columns=["id"], keys=["id"], foreign_keys=[]),
-                "entity2": Mock(columns=["name"], keys=["name"], foreign_keys=[]),
+                "entity1": {"columns": ["id"], "keys": ["id"], "foreign_keys": []},
+                "entity2": {"columns": ["name"], "keys": ["name"], "foreign_keys": []},
             }
             mock_config_svc.return_value.load_project.return_value = mock_config
 
@@ -390,11 +406,11 @@ class TestDataValidationService:
 
         service = DataValidationService(mock_preview_service)
 
-        with patch("backend.app.validators.data_validators.ProjectService") as mock_config_svc:
+        with patch("backend.app.services.project_service.ProjectService") as mock_config_svc:
             mock_config = Mock()
             mock_config.entities = {
-                "entity1": Mock(columns=["id"], keys=["id"], foreign_keys=[]),
-                "entity2": Mock(columns=["name"], keys=["name"], foreign_keys=[]),
+                "entity1": {"columns": ["id"], "keys": ["id"], "foreign_keys": []},
+                "entity2": {"columns": ["name"], "keys": ["name"], "foreign_keys": []},
             }
             mock_config_svc.return_value.load_project.return_value = mock_config
 
