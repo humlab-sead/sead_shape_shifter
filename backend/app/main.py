@@ -76,8 +76,8 @@ if frontend_dist.exists() and frontend_dist.is_dir():
     # Serve index.html for all non-API routes (SPA routing)
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
 else:
-    logger.warning(f"Frontend dist directory not found: {frontend_dist}")
-    logger.warning("Running in API-only mode. Build frontend with 'cd frontend && pnpm run build'")
+    logger.info(f"Frontend dist directory not found: {frontend_dist}")
+    logger.info("Running in API-only mode. Build frontend with 'cd frontend && pnpm run build'")
 
     @app.get("/")
     async def root() -> dict[str, str]:

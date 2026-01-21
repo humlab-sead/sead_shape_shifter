@@ -311,15 +311,17 @@ class ForeignKeyConstraintValidator:
         if self.fk.how != "cross":
             if self.size_before_merge[0] != self.size_after_merge[0]:
                 logger.warning(
-                    f"{self.fk.local_entity}[linking]: join resulted in change in row count for "
-                    f"'{self.fk.remote_entity}': before={self.size_before_merge[0]}, after={self.size_after_merge[0]}"
+                    f"{self.fk.local_entity} -> {self.fk.remote_entity}[linking]: join resulted in change in row count: "
+                    f"before={self.size_before_merge[0]}, after={self.size_after_merge[0]}"
                 )
 
         added_column_count: int = 1 + len(self.fk.get_valid_remote_columns(remote_df))
         if self.size_after_merge[1] != self.size_before_merge[1] + added_column_count:
+            added_columns: set[str] = set(linked_df.columns) - set(local_df.columns)
             logger.warning(
-                f"{self.entity_name}[linking]: join resulted in unexpected number of columns for "
-                f"'{self.fk.remote_entity}': before={self.size_before_merge[1]}, after={self.size_after_merge[1]}, "
-                f"expected increase={added_column_count}"
+                f"{self.entity_name} -> {self.fk.remote_entity}[linking]: join resulted in unexpected number of columns: "
+                f"before={self.size_before_merge[1]}, after={self.size_after_merge[1]}, "
+                f"expected increase={added_column_count} "
+                f"(added columns: {added_columns})"
             )
         return self
