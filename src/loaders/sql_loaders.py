@@ -25,32 +25,32 @@ if TYPE_CHECKING:
 def init_jvm_for_ucanaccess(ucanaccess_dir: str = "lib/ucanaccess") -> None:
     """
     Initialize the JVM for UCanAccess JDBC driver.
-    
+
     This function should be called once at application startup.
     JPype does not allow restarting the JVM after shutdown, so this must
     be done before any UCanAccess connections are made.
-    
+
     Args:
         ucanaccess_dir: Path to UCanAccess library directory containing JAR files
     """
     if jpype.isJVMStarted():
         logger.debug("JVM already started, skipping initialization")
         return
-    
+
     # Find all JAR files in the UCanAccess directory
     jar_files: list[str] = []
     for root, _, files in os.walk(ucanaccess_dir):
         for file in files:
             if file.lower().endswith(".jar"):
                 jar_files.append(os.path.join(root, file))
-    
+
     if not jar_files:
         logger.warning(f"No JAR files found in {ucanaccess_dir}, JVM initialized without UCanAccess classpath")
         classpath = ""
     else:
         classpath = os.pathsep.join(jar_files)
         logger.info(f"Starting JVM with {len(jar_files)} JAR files from {ucanaccess_dir}")
-    
+
     jpype.startJVM(jpype.getDefaultJVMPath(), "-ea", f"-Djava.class.path={classpath}")
     logger.info("JVM started successfully for UCanAccess")
 
@@ -132,7 +132,7 @@ class SqlLoader(DataLoader):
             table_cfg.columns = list(data.columns)
 
         if table_cfg.check_column_names:
-            if set(data.columns) != set(table_cfg.keys_and_columns):
+            if set(data.columns) != (set(table_cfg.keys_and_columns) - set(table_cfg.unnest_columns)):
                 raise ValueError(f"Data for entity '{entity_name}' has different columns compared to configuration")
         else:
             data.columns = table_cfg.keys_and_columns
@@ -633,13 +633,13 @@ class UCanAccessSqlLoader(SqlLoader):
                 columns = [str(desc[0]) for desc in cursor.description] if cursor.description else []
                 rows = cursor.fetchall()
                 df = pd.DataFrame(rows, columns=columns)
-                
+
                 # Convert all Java String objects in the DataFrame to Python strings
                 # JPype 1.6.0 no longer auto-converts Java Strings
                 for col in df.columns:
                     if df[col].dtype == object:
                         df[col] = df[col].apply(lambda x: str(x) if x is not None else x)
-                
+
                 return df
 
     async def execute_scalar_sql(self, sql: str) -> Any:
@@ -700,7 +700,7 @@ class UCanAccessSqlLoader(SqlLoader):
     def _ensure_jvm(self) -> None:
         """
         Ensure the JVM is running before making JDBC calls.
-        
+
         Preferably, JVM should be initialized at application startup via init_jvm_for_ucanaccess().
         If not started (e.g., in worker processes), initializes it on-demand.
         """
@@ -766,10 +766,7 @@ class UCanAccessSqlLoader(SqlLoader):
                 # Convert Java strings to Python strings
                 comment = rs.getString("REMARKS")
                 tables[table_name] = CoreSchema.TableMetadata(
-                    name=table_name, 
-                    schema=None, 
-                    comment=str(comment) if comment else None, 
-                    row_count=0
+                    name=table_name, schema=None, comment=str(comment) if comment else None, row_count=0
                 )
         finally:
             rs.close()
@@ -786,7 +783,7 @@ class UCanAccessSqlLoader(SqlLoader):
                 data_type = str(rs.getString("TYPE_NAME"))
                 column_def = rs.getString("COLUMN_DEF")
                 default = str(column_def) if column_def else None
-                
+
                 columns.append(
                     CoreSchema.ColumnMetadata(
                         name=column_name,
