@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.13.0...v1.14.0) (2026-01-21)
+
+
+### Features
+
+* add support for CSV and Excel file types in entity editor ([36fbdb8](https://github.com/humlab-sead/sead_shape_shifter/commit/36fbdb8b68be72cf1104bd6211c7286258670a0a))
+
 # [1.13.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.12.0...v1.13.0) (2026-01-20)
 
 
