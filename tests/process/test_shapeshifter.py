@@ -605,7 +605,7 @@ class TestShapeShifter:
 
             # Should be called for each processed entity (survey, site, and sample)
             assert mock_link.call_count == 3
-            call_args_list = [call[1] for call in mock_link.call_args_list]
+            call_args_list = [call.kwargs for call in mock_link.call_args_list]
             entity_names = [args["entity_name"] for args in call_args_list]
             assert set(entity_names) == {"survey", "site", "sample"}
 
