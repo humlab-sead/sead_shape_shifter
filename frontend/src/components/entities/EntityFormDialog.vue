@@ -145,14 +145,8 @@
                             :rules="requiredRule"
                             variant="outlined"
                             clearable
-                            persistent-hint
-                            :hint="getFileExtensionHint"
                             :loading="filesLoading"
-                          >
-                            <template #message>
-                              <span class="text-caption">{{ getFileExtensionHint }}</span>
-                            </template>
-                          </v-autocomplete>
+                          />
                         </v-col>
 
                         <!-- CSV Delimiter -->
@@ -176,8 +170,6 @@
                             label="Sheet Name"
                             variant="outlined"
                             placeholder="Sheet1"
-                            hint="Leave empty to load first sheet"
-                            persistent-hint
                           />
                         </v-col>
 
@@ -188,8 +180,6 @@
                             label="Cell Range"
                             variant="outlined"
                             placeholder="A1:G99"
-                            hint="e.g., A1:G99 (optional)"
-                            persistent-hint
                           />
                         </v-col>
                       </v-row>
