@@ -30,15 +30,15 @@ class ProcessState:
 
     def get_next_entity_to_process(self) -> str | None:
         """Get the next entity that can be processed based on dependencies."""
-        logger.debug(f"Processed entities so far: {self.processed_entities}")
+        # logger.debug(f"Processed entities so far: {self.processed_entities}")
 
         for entity_name in self.unprocessed_entities:
-            logger.debug(f"{entity_name}[check]: Checking if entity '{entity_name}' can be processed...")
+            # logger.debug(f"{entity_name}[check]: Checking if entity '{entity_name}' can be processed...")
             unmet_dependencies: set[str] = self.get_unmet_dependencies(entity=entity_name)
             if unmet_dependencies:
-                logger.debug(f"{entity_name}[check]: Entity has unmet dependencies: {unmet_dependencies}")
+                # logger.debug(f"{entity_name}[check]: Entity has unmet dependencies: {unmet_dependencies}")
                 continue
-            logger.debug(f"{entity_name}[check]: Entity can be processed next.")
+            # logger.debug(f"{entity_name}[check]: Entity can be processed next.")
             return entity_name
         return None
 
