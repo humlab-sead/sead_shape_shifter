@@ -12,6 +12,7 @@ class ForeignKeyLinker:
 
     def __init__(self, table_store: dict[str, pd.DataFrame]) -> None:
         self.table_store: dict[str, pd.DataFrame] = table_store
+        self.validators: list[ForeignKeyConstraintValidator] = []
 
     def link_foreign_key(
         self, entity_name: str, local_df: pd.DataFrame, fk: ForeignKeyConfig, remote_id: str, remote_df: pd.DataFrame
@@ -33,6 +34,9 @@ class ForeignKeyLinker:
         """
 
         validator: ForeignKeyConstraintValidator = ForeignKeyConstraintValidator(entity_name, fk).validate_before_merge(local_df, remote_df)
+
+        # Store validator to collect issues later
+        self.validators.append(validator)
 
         remote_extra_cols: list[str] = fk.get_valid_remote_columns(remote_df)
 

@@ -35,6 +35,7 @@ class PreviewResult(BaseModel):
     dependencies_loaded: list[str] = []
     cache_hit: bool = False
     row_count: int = 0
+    validation_issues: list[dict[str, Any]] = []  # Validation issues from linking
 
 
 class EntityPreviewError(BaseModel):
