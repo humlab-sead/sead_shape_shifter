@@ -2,8 +2,6 @@
 
 from typing import Any
 
-from numpy import median
-
 from src.model import TableConfig
 from src.utility import Registry, dotget
 

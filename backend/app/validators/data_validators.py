@@ -650,8 +650,8 @@ class ForeignKeyIntegrityValidator:
                     )
                 else:
                     suggestion = (
-                        f"Unexpected column count after join. "
-                        f"Check the foreign key configuration and ensure extra_columns are correctly specified."
+                        "Unexpected column count after join. "
+                        "Check the foreign key configuration and ensure extra_columns are correctly specified."
                     )
 
                 errors.append(

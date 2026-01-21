@@ -1,6 +1,5 @@
 """Project service for managing entities."""
 
-import time
 from pathlib import Path
 from typing import Any, Iterable
 
