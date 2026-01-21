@@ -13,7 +13,7 @@ from loguru import logger
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
 from src.filter import apply_filters
-from src.link import link_entity
+from src.link import ForeignKeyLinker
 from src.loaders import DataLoader
 from src.mapping import LinkToRemoteService
 from src.model import ShapeShiftProject, TableConfig
@@ -100,6 +100,7 @@ class ShapeShifter:
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
         self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
         self.state: ProcessState = self._initialize_process_state(target_entities)
+        self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store)
 
     def _initialize_process_state(self, target_entities: set[str] | None = None) -> ProcessState:
         """Initialize the processing state based on target entities."""
@@ -190,12 +191,11 @@ class ShapeShifter:
 
             self.register(entity, data)
 
-            link_entity(entity_name=entity, config=self.project, table_store=self.table_store)
+            self.linker.link_entity(entity_name=entity, config=self.project)
 
             if table_cfg.unnest:
                 self.unnest_entity(entity=entity)
-                link_entity(entity_name=entity, config=self.project, table_store=self.table_store)
-
+                self.linker.link_entity(entity_name=entity, config=self.project)
             if delay_drop_duplicates and table_cfg.drop_duplicates:
                 self.table_store[entity] = drop_duplicate_rows(
                     data=self.table_store[entity], fd_check=True, columns=table_cfg.drop_duplicates, entity_name=entity
@@ -216,7 +216,11 @@ class ShapeShifter:
     def link(self) -> Self:
         """Link entities based on foreign key configuration."""
         for entity_name in self.state.processed_entities:
-            link_entity(entity_name=entity_name, config=self.project, table_store=self.table_store)
+            deferred: bool = self.linker.link_entity(entity_name=entity_name, config=self.project)
+
+            if deferred:
+                logger.warning(f"{entity_name}[linking]: entity has deferred foreign keys after final linking.")
+
         return self
 
     def store(self, target: str, mode: str) -> Self:

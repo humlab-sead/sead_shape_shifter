@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from src.link import link_entity, link_foreign_key
+from src.link import ForeignKeyLinker
 from src.model import ForeignKeyConfig, ShapeShiftProject
 
 # pylint: disable=redefined-outer-name
@@ -49,6 +49,7 @@ def test_link_foreign_key_renames_and_drops_remote_id(fk_config: ForeignKeyConfi
         def __init__(self, entity_name, fk):
             captured["init_entity"] = entity_name
             captured["fk"] = fk
+            self.merge_indicator_col = "_merge_indicator_"
 
         def validate_before_merge(self, local_df_arg, remote_df_arg):
             captured["before_merge"] = (local_df_arg.copy(), remote_df_arg.copy())
@@ -58,12 +59,18 @@ def test_link_foreign_key_renames_and_drops_remote_id(fk_config: ForeignKeyConfi
             captured["merge_opts_called"] = True
             return {}
 
-        def validate_after_merge(self, *_):
+        def validate_after_merge(self, local_df_arg, remote_df_arg, linked_df_arg, merge_indicator_col=None):
             captured["after_merge_called"] = True
+            captured["merge_indicator"] = merge_indicator_col
 
     monkeypatch.setattr("src.link.ForeignKeyConstraintValidator", DummyValidator)
+    table_store = {
+        "local": pd.DataFrame({"remote_ref": [1]}),
+        "remote": pd.DataFrame({"remote_id": [1]}),
+    }
+    linker: ForeignKeyLinker = ForeignKeyLinker(table_store=table_store)
 
-    linked = link_foreign_key("local", local_df, fk_config, "remote_pk", remote_df)
+    linked = linker.link_foreign_key("local", local_df, fk_config, "remote_pk", remote_df)
 
     assert "remote_pk" not in linked.columns  # dropped after merge
     assert "remote_name" in linked.columns
@@ -110,9 +117,13 @@ def test_link_entity_returns_deferred_when_specification_defers(monkeypatch: pyt
             self.deferred = True
             return True
 
+    linker = ForeignKeyLinker(table_store=table_store)
+    
     monkeypatch.setattr("src.link.ForeignKeyDataSpecification", DummySpecification)
-    with patch("src.link.link_foreign_key") as mock_link:
-        deferred = link_entity(entity_name="local", config=config, table_store=table_store)
+
+    # Patch linker.link_foreign_key
+    with patch.object(linker, "link_foreign_key") as mock_link:
+        deferred = linker.link_entity(entity_name="local", config=config)
 
     assert deferred is True
     mock_link.assert_not_called()
