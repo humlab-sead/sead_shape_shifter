@@ -133,6 +133,68 @@
                       </v-row>
                     </div>
 
+                    <!-- File Options Row (for CSV, Excel types) -->
+                    <div class="form-row" v-if="isFileType">
+                      <v-row no-gutters>
+                        <!-- Filename -->
+                        <v-col :cols="formData.type === 'csv' ? 8 : 12" :class="formData.type === 'csv' ? 'pr-2' : ''">
+                          <v-autocomplete
+                            v-model="formData.options.filename"
+                            :items="availableProjectFiles"
+                            label="File *"
+                            :rules="requiredRule"
+                            variant="outlined"
+                            clearable
+                            persistent-hint
+                            :hint="getFileExtensionHint"
+                            :loading="filesLoading"
+                          >
+                            <template #message>
+                              <span class="text-caption">{{ getFileExtensionHint }}</span>
+                            </template>
+                          </v-autocomplete>
+                        </v-col>
+
+                        <!-- CSV Delimiter -->
+                        <v-col v-if="formData.type === 'csv'" cols="4" class="pl-2">
+                          <v-select
+                            v-model="formData.options.sep"
+                            :items="delimiterOptions"
+                            label="Delimiter *"
+                            :rules="requiredRule"
+                            variant="outlined"
+                          />
+                        </v-col>
+                      </v-row>
+
+                      <!-- Excel Options (sheet name and range) -->
+                      <v-row no-gutters v-if="isExcelType" class="mt-2">
+                        <!-- Sheet Name -->
+                        <v-col :cols="formData.type === 'openpyxl' ? 6 : 12" :class="formData.type === 'openpyxl' ? 'pr-2' : ''">
+                          <v-text-field
+                            v-model="formData.options.sheet_name"
+                            label="Sheet Name"
+                            variant="outlined"
+                            placeholder="Sheet1"
+                            hint="Leave empty to load first sheet"
+                            persistent-hint
+                          />
+                        </v-col>
+
+                        <!-- Range (OpenPyxl only) -->
+                        <v-col v-if="formData.type === 'openpyxl'" cols="6" class="pl-2">
+                          <v-text-field
+                            v-model="formData.options.range"
+                            label="Cell Range"
+                            variant="outlined"
+                            placeholder="A1:G99"
+                            hint="e.g., A1:G99 (optional)"
+                            persistent-hint
+                          />
+                        </v-col>
+                      </v-row>
+                    </div>
+
                     <!-- Surrogate ID and Keys on same row -->
                     <div class="form-row">
                       <v-row no-gutters>
@@ -572,6 +634,13 @@ interface FormData {
   source: string | null
   data_source: string
   query: string
+  options: {
+    filename: string
+    sep: string
+    encoding: string
+    sheet_name: string
+    range: string
+  }
   foreign_keys: any[]
   depends_on: string[]
   drop_duplicates: {
@@ -601,6 +670,13 @@ const formData = ref<FormData>({
   source: null,
   data_source: '',
   query: '',
+  options: {
+    filename: '',
+    sep: ',',
+    encoding: 'utf-8',
+    sheet_name: '',
+    range: '',
+  },
   foreign_keys: [],
   depends_on: [],
   drop_duplicates: {
@@ -621,6 +697,19 @@ const formData = ref<FormData>({
 })
 
 const activeTab = ref('basic')
+
+// File handling state
+const availableProjectFiles = ref<string[]>([])
+const filesLoading = ref(false)
+
+// Delimiter options for CSV
+const delimiterOptions = [
+  { title: 'Comma (,)', value: ',' },
+  { title: 'Semicolon (;)', value: ';' },
+  { title: 'Tab', value: '\t' },
+  { title: 'Pipe (|)', value: '|' },
+  { title: 'Space', value: ' ' },
+]
 
 // Computed property for all columns (keys + columns) for fixed values grid
 const allColumns = computed(() => {
@@ -700,16 +789,77 @@ function formatRefreshTime(date: Date): string {
   return date.toLocaleTimeString()
 }
 
+// Fetch project files based on entity type
+async function fetchProjectFiles() {
+  if (!isFileType.value) {
+    availableProjectFiles.value = []
+    return
+  }
+
+  filesLoading.value = true
+  try {
+    const extensions = getFileExtensions()
+    // Use existing data source files endpoint
+    const response = await fetch(`/api/v1/data-sources/files?extensions=${extensions.join(',')}`)
+    if (response.ok) {
+      const files = await response.json()
+      availableProjectFiles.value = files.map((f: any) => f.path)
+    }
+  } catch (error) {
+    console.error('Failed to fetch project files:', error)
+  } finally {
+    filesLoading.value = false
+  }
+}
+
+function getFileExtensions(): string[] {
+  if (formData.value.type === 'csv') return ['csv']
+  if (formData.value.type === 'xlsx') return ['xlsx', 'xls']
+  if (formData.value.type === 'openpyxl') return ['xlsx']
+  return []
+}
+
 // Watch for changes and auto-refresh if enabled
 watch(
   formData,
   () => {
-    if (autoRefreshEnabled.value && splitView.value && canPreview.value) {
+    if (autoRefreshEnabled.value && viewMode.value !== 'form' && canPreview.value) {
       debouncedPreviewEntity(props.projectName, formData.value.name, 100)
     }
   },
   { deep: true }
 )
+
+// Watch for entity type changes to fetch appropriate files
+watch(() => formData.value.type, async (newType, oldType) => {
+  // Clear data source and query when switching away from SQL
+  if (newType !== 'sql') {
+    formData.value.data_source = ''
+    formData.value.query = ''
+  }
+  
+  // Clear source when switching away from data
+  if (newType !== 'data') {
+    formData.value.source = null
+  }
+
+  // Clear or initialize options based on type
+  if (!isFileType.value) {
+    formData.value.options = {
+      filename: '',
+      sep: ',',
+      encoding: 'utf-8',
+      sheet_name: '',
+      range: '',
+    }
+  }
+
+  // Fetch files when switching to a file type
+  const wasFileType = oldType && ['csv', 'xlsx', 'openpyxl'].includes(oldType)
+  if (isFileType.value && !wasFileType) {
+    await fetchProjectFiles()
+  }
+})
 
 // Keyboard shortcut for split view toggle (Ctrl+Shift+P)
 function handleKeyPress(e: KeyboardEvent) {
@@ -721,6 +871,11 @@ function handleKeyPress(e: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeyPress)
+  
+  // Fetch project files if editing a file type entity
+  if (props.mode === 'edit' && isFileType.value) {
+    fetchProjectFiles()
+  }
 })
 
 onUnmounted(() => {
@@ -734,9 +889,12 @@ const dialogModel = computed({
 })
 
 const entityTypeOptions = [
-  { title: 'Data', value: 'data', subtitle: 'Load from CSV or other data source' },
-  { title: 'SQL', value: 'sql', subtitle: 'Execute SQL query' },
-  { title: 'Fixed', value: 'fixed', subtitle: 'Fixed values defined in entity' },
+  { title: 'Data (Derived)', value: 'data', subtitle: 'Derive from another entity' },
+  { title: 'SQL Query', value: 'sql', subtitle: 'Execute SQL against database' },
+  { title: 'Fixed Values', value: 'fixed', subtitle: 'Hard-coded values' },
+  { title: 'CSV File', value: 'csv', subtitle: 'Load from CSV file' },
+  { title: 'Excel File (Pandas)', value: 'xlsx', subtitle: 'Load Excel with pandas' },
+  { title: 'Excel File (OpenPyXL)', value: 'openpyxl', subtitle: 'Load Excel with OpenPyXL (supports ranges)' },
 ]
 
 const availableSourceEntities = computed(() => {
@@ -750,6 +908,22 @@ const availableDataSources = computed(() => {
     return Object.keys(dataSources)
   }
   return []
+})
+
+// File type computed properties
+const isFileType = computed(() => {
+  return ['csv', 'xlsx', 'openpyxl'].includes(formData.value.type)
+})
+
+const isExcelType = computed(() => {
+  return ['xlsx', 'openpyxl'].includes(formData.value.type)
+})
+
+const getFileExtensionHint = computed(() => {
+  if (formData.value.type === 'csv') return 'Select a .csv file from the projects directory'
+  if (formData.value.type === 'xlsx') return 'Select a .xlsx or .xls file from the projects directory'
+  if (formData.value.type === 'openpyxl') return 'Select a .xlsx file from the projects directory'
+  return ''
 })
 
 // Validation context for YAML intelligence
@@ -812,6 +986,27 @@ function formDataToYaml(): string {
     }
     if (formData.value.query) {
       entityData.query = formData.value.query
+    }
+  }
+
+  // Add file options for CSV and Excel types
+  if (isFileType.value && formData.value.options.filename) {
+    entityData.options = {} as Record<string, any>
+    
+    if (formData.value.type === 'csv') {
+      entityData.options.filename = formData.value.options.filename
+      entityData.options.sep = formData.value.options.sep
+      if (formData.value.options.encoding && formData.value.options.encoding !== 'utf-8') {
+        entityData.options.encoding = formData.value.options.encoding
+      }
+    } else if (formData.value.type === 'xlsx' || formData.value.type === 'openpyxl') {
+      entityData.options.filename = formData.value.options.filename
+      if (formData.value.options.sheet_name) {
+        entityData.options.sheet_name = formData.value.options.sheet_name
+      }
+      if (formData.value.type === 'openpyxl' && formData.value.options.range) {
+        entityData.options.range = formData.value.options.range
+      }
     }
   }
 
@@ -888,6 +1083,13 @@ function yamlToFormData(yamlString: string): boolean {
       source: data.source || null,
       data_source: data.data_source || '',
       query: data.query || '',
+      options: {
+        filename: data.options?.filename || '',
+        sep: data.options?.sep || ',',
+        encoding: data.options?.encoding || 'utf-8',
+        sheet_name: data.options?.sheet_name || '',
+        range: data.options?.range || '',
+      },
       foreign_keys: Array.isArray(data.foreign_keys) ? data.foreign_keys : [],
       depends_on: Array.isArray(data.depends_on) ? data.depends_on : [],
       drop_duplicates: dropDuplicatesData,
@@ -958,6 +1160,31 @@ async function handleSubmit() {
     if (formData.value.type === 'sql') {
       entityData.data_source = formData.value.data_source
       entityData.query = formData.value.query
+    }
+
+    // Include file options for CSV and Excel types
+    if (isFileType.value && formData.value.options.filename) {
+      const options: Record<string, unknown> = {
+        filename: formData.value.options.filename,
+      }
+
+      if (formData.value.type === 'csv') {
+        if (formData.value.options.sep) {
+          options.sep = formData.value.options.sep
+        }
+        if (formData.value.options.encoding) {
+          options.encoding = formData.value.options.encoding
+        }
+      } else if (isExcelType.value) {
+        if (formData.value.options.sheet_name) {
+          options.sheet_name = formData.value.options.sheet_name
+        }
+        if (formData.value.options.range) {
+          options.range = formData.value.options.range
+        }
+      }
+
+      entityData.options = options
     }
 
     // Include foreign keys if any
@@ -1064,6 +1291,13 @@ watch(
         source: (newEntity.entity_data.source as string) || null,
         data_source: (newEntity.entity_data.data_source as string) || '',
         query: (newEntity.entity_data.query as string) || '',
+        options: {
+          filename: (newEntity.entity_data.options as any)?.filename || '',
+          sep: (newEntity.entity_data.options as any)?.sep || ',',
+          encoding: (newEntity.entity_data.options as any)?.encoding || 'utf-8',
+          sheet_name: (newEntity.entity_data.options as any)?.sheet_name || '',
+          range: (newEntity.entity_data.options as any)?.range || '',
+        },
         foreign_keys: (newEntity.entity_data.foreign_keys as any[]) || [],
         depends_on: (newEntity.entity_data.depends_on as string[]) || [],
         drop_duplicates: dropDuplicatesData,
@@ -1087,6 +1321,13 @@ watch(
         source: null,
         data_source: '',
         query: '',
+        options: {
+          filename: '',
+          sep: ',',
+          encoding: 'utf-8',
+          sheet_name: '',
+          range: '',
+        },
         foreign_keys: [],
         depends_on: [],
         drop_duplicates: {
