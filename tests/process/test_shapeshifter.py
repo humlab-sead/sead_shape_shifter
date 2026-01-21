@@ -599,7 +599,8 @@ class TestShapeShifter:
         )
         normalizer = ShapeShifter(project=config, table_store=table_store, default_entity="survey")
 
-        with patch("src.normalizer.link_entity") as mock_link:
+        # Mock the linker's link_entity method
+        with patch.object(normalizer.linker, "link_entity", return_value=False) as mock_link:
             normalizer.link()
 
             # Should be called for each processed entity (survey, site, and sample)
