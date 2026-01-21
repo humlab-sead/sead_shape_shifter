@@ -411,6 +411,7 @@ entities:
     keys: ["Projekt", "Befu"]
     columns: ["FlSchn", "BefuTyp", "FustelTyp", "FuTypVermut", "gebäud", "okBefu", "okErh", "BotBest", "BestJa", "Anmerkung"]
     query: select [Projekt], [Befu], [FlSchn], [BefuTyp], [FustelTyp], [FuTypVermut], [gebäud], [okBefu], [okErh], [BotBest], [BestJa], [Anmerkung] from [Befunde]
+    drop_duplicates:  ["Projekt", "Befu"]
     foreign_keys:
     - entity: project
       local_keys: ["Projekt"]
