@@ -3,10 +3,22 @@ import os
 import shutil
 from pathlib import Path
 
+import jpype
+import pytest
+
+from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.model import ShapeShiftProject
 from src.specifications.project import CompositeProjectSpecification
 from src.utility import load_shape_file
 from src.workflow import validate_entity_shapes, workflow
+
+
+@pytest.fixture(scope="module", autouse=True)
+def initialize_jvm():
+    """Initialize JVM once for all tests in this module."""
+    if not jpype.isJVMStarted():
+        init_jvm_for_ucanaccess()
+    yield
 
 
 def test_validate_project_file():
