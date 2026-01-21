@@ -165,7 +165,7 @@ class ShapeShifter:
                 sub_source: pd.DataFrame = await self.resolve_source(table_cfg=sub_table_cfg)
                 sub_data: pd.DataFrame = subset_service.get_subset(
                     source=sub_source,
-                    columns=sub_table_cfg.keys_columns_and_fks,
+                    columns=self.get_subset_columns(sub_table_cfg),
                     entity_name=sub_table_cfg.entity_name,
                     extra_columns=sub_table_cfg.extra_columns,
                     drop_duplicates=sub_table_cfg.drop_duplicates if not delay_drop_duplicates else False,
