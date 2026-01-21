@@ -133,6 +133,7 @@ class TestAppendProcessingBasic:
 
         assert len(result) == 4
 
+    @pytest.mark.skip(reason="Append with distinct source is disabled for now.")
     @pytest.mark.asyncio
     @with_test_config
     async def test_append_mode_distinct(
