@@ -4,7 +4,16 @@
 
 export type Cardinality = 'one_to_one' | 'many_to_one' | 'one_to_many' | 'many_to_many'
 export type JoinType = 'left' | 'inner' | 'outer' | 'right' | 'cross'
-export type EntityType = 'data' | 'sql' | 'fixed'
+export type EntityType = 'data' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
+
+export interface EntityFileOptions {
+  filename?: string | null
+  sep?: string | null // CSV delimiter
+  encoding?: string | null // CSV encoding
+  sheet_name?: string | null // Excel sheet name
+  range?: string | null // OpenPyxl range
+  [key: string]: any // Allow additional pandas/openpyxl options
+}
 
 export interface ForeignKeyConstraints {
   cardinality?: Cardinality | null
@@ -53,6 +62,7 @@ export interface Entity {
   source?: string | null
   data_source?: string | null
   query?: string | null
+  options?: EntityFileOptions | null
   surrogate_id?: string | null
   keys?: string[]
   columns?: string[]
