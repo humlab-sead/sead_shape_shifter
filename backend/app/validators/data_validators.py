@@ -1,7 +1,7 @@
 """Data-aware validators that check actual data for issues."""
 
 import asyncio
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from loguru import logger
@@ -12,14 +12,18 @@ from backend.app.models.validation import (
     ValidationError,
     ValidationPriority,
 )
-from backend.app.services.project_service import ProjectService
-from backend.app.services.shapeshift_service import ShapeShiftService
+
+if TYPE_CHECKING:
+    from backend.app.services.shapeshift_service import ShapeShiftService
+
+
+# pylint: disable=import-outside-toplevel
 
 
 class ColumnExistsValidator:
     """Validate that configured columns actually exist in the data."""
 
-    def __init__(self, preview_service: ShapeShiftService):
+    def __init__(self, preview_service: "ShapeShiftService"):
         """Initialize validator with preview service for data sampling."""
         self.preview_service = preview_service
 
@@ -97,7 +101,7 @@ class ColumnExistsValidator:
 class NaturalKeyUniquenessValidator:
     """Validate that natural keys are actually unique in the data."""
 
-    def __init__(self, preview_service: ShapeShiftService):
+    def __init__(self, preview_service: "ShapeShiftService"):
         """Initialize validator with preview service for data sampling."""
         self.preview_service = preview_service
 
@@ -186,7 +190,7 @@ class NaturalKeyUniquenessValidator:
 class NonEmptyResultValidator:
     """Validate that data source returns at least one row."""
 
-    def __init__(self, preview_service: ShapeShiftService):
+    def __init__(self, preview_service: "ShapeShiftService"):
         """Initialize validator with preview service for data sampling."""
         self.preview_service = preview_service
 
@@ -262,10 +266,13 @@ class ForeignKeyDataValidator:
 
     async def validate(self, project_name: str, entity_name: str, entity_cfg: Any) -> list[ValidationError]:
         """Validate foreign key data integrity."""
+        from backend.app.services.project_service import ProjectService
+        from backend.app.services.shapeshift_service import ShapeShiftService
 
         errors = []
 
-        if not entity_cfg.foreign_keys:
+        foreign_keys = entity_cfg.get("foreign_keys", []) if isinstance(entity_cfg, dict) else getattr(entity_cfg, "foreign_keys", [])
+        if not foreign_keys:
             return errors
 
         project_service = ProjectService()
@@ -281,11 +288,12 @@ class ForeignKeyDataValidator:
             local_df = pd.DataFrame(local_result.rows)
 
             # Validate each foreign key
-            for fk_index, fk in enumerate(entity_cfg.foreign_keys):
-                remote_entity = fk.entity
+            for fk_index, fk in enumerate(foreign_keys):
+                remote_entity = fk.get("entity") if isinstance(fk, dict) else fk.entity
 
                 # Check if local keys exist
-                missing_local = [key for key in fk.local_keys if key not in local_df.columns]
+                local_keys = fk.get("local_keys", []) if isinstance(fk, dict) else fk.local_keys
+                missing_local = [key for key in local_keys if key not in local_df.columns]
                 if missing_local:
                     errors.append(
                         ValidationError(
@@ -321,7 +329,8 @@ class ForeignKeyDataValidator:
                     remote_df = pd.DataFrame(remote_result.rows)
 
                     # Check if remote keys exist
-                    missing_remote = [key for key in fk.remote_keys if key not in remote_df.columns]
+                    remote_keys_list = fk.get("remote_keys", []) if isinstance(fk, dict) else fk.remote_keys
+                    missing_remote = [key for key in remote_keys_list if key not in remote_df.columns]
                     if missing_remote:
                         errors.append(
                             ValidationError(
@@ -337,17 +346,19 @@ class ForeignKeyDataValidator:
                         continue
 
                     # Check data integrity - do foreign key values exist?
-                    local_values = local_df[fk.local_keys].drop_duplicates().dropna()
-                    remote_values = remote_df[fk.remote_keys].drop_duplicates()
+                    local_values = local_df[local_keys].drop_duplicates().dropna()
+                    remote_values = remote_df[remote_keys_list].drop_duplicates().dropna()
 
                     if len(local_values) > 0:
                         # Create composite keys for comparison
-                        local_keys = [tuple(row) for row in local_values.values]
-                        remote_keys = [tuple(row) for row in remote_values.values]
-                        remote_keys_set = set(remote_keys)
+                        local_key_tuples = [tuple(row) for row in local_values.values]
+                        remote_key_tuples = [tuple(row) for row in remote_values.values]
+                        remote_keys_set = set(remote_key_tuples)
 
-                        unmatched = [key for key in local_keys if key not in remote_keys_set]
-                        match_percentage = (len(local_keys) - len(unmatched)) / len(local_keys) * 100 if len(local_keys) > 0 else 100
+                        unmatched = [key for key in local_key_tuples if key not in remote_keys_set]
+                        match_percentage = (
+                            (len(local_key_tuples) - len(unmatched)) / len(local_key_tuples) * 100 if len(local_key_tuples) > 0 else 100
+                        )
 
                         if match_percentage < 100:
                             severity = "error" if match_percentage < 90 else "warning"
@@ -400,10 +411,13 @@ class DataTypeCompatibilityValidator:
 
     async def validate(self, project_name: str, entity_name: str, entity_cfg: Any) -> list[ValidationError]:
         """Validate foreign key column type compatibility."""
+        from backend.app.services.project_service import ProjectService
+        from backend.app.services.shapeshift_service import ShapeShiftService
 
         errors = []
 
-        if not entity_cfg.foreign_keys:
+        foreign_keys = entity_cfg.get("foreign_keys", []) if isinstance(entity_cfg, dict) else getattr(entity_cfg, "foreign_keys", [])
+        if not foreign_keys:
             return errors
 
         project_service = ProjectService()
@@ -418,11 +432,12 @@ class DataTypeCompatibilityValidator:
             local_df = pd.DataFrame(local_result.rows)
 
             # Check each foreign key
-            for fk_index, fk in enumerate(entity_cfg.foreign_keys):
-                remote_entity = fk.entity
+            for fk_index, fk in enumerate(foreign_keys):
+                remote_entity = fk.get("entity") if isinstance(fk, dict) else fk.entity
 
                 # Check if local keys exist
-                missing_local = [key for key in fk.local_keys if key not in local_df.columns]
+                local_keys = fk.get("local_keys", []) if isinstance(fk, dict) else fk.local_keys
+                missing_local = [key for key in local_keys if key not in local_df.columns]
                 if missing_local:
                     continue  # ColumnExistsValidator will catch this
 
@@ -435,12 +450,13 @@ class DataTypeCompatibilityValidator:
                     remote_df = pd.DataFrame(remote_result.rows)
 
                     # Check if remote keys exist
-                    missing_remote = [key for key in fk.remote_keys if key not in remote_df.columns]
+                    remote_keys = fk.get("remote_keys", []) if isinstance(fk, dict) else fk.remote_keys
+                    missing_remote = [key for key in remote_keys if key not in remote_df.columns]
                     if missing_remote:
                         continue  # ForeignKeyDataValidator will catch this
 
                     # Compare data types
-                    for local_key, remote_key in zip(fk.local_keys, fk.remote_keys):
+                    for local_key, remote_key in zip(local_keys, remote_keys):
                         try:
                             local_series = local_df[local_key]
                             remote_series = remote_df[remote_key]
@@ -512,7 +528,7 @@ class DataTypeCompatibilityValidator:
 class DataValidationService:
     """Service to run all data validators."""
 
-    def __init__(self, preview_service: ShapeShiftService):
+    def __init__(self, preview_service: "ShapeShiftService"):
         """Initialize data validation service."""
         self.preview_service = preview_service
         self.validators = [
@@ -573,6 +589,7 @@ class DataValidationService:
         Returns:
             List of all validation errors found
         """
+        from backend.app.services.project_service import ProjectService
 
         project_service = ProjectService()
         project: Project = project_service.load_project(project_name)
