@@ -118,7 +118,7 @@ def test_link_entity_returns_deferred_when_specification_defers(monkeypatch: pyt
             return True
 
     linker = ForeignKeyLinker(table_store=table_store)
-    
+
     monkeypatch.setattr("src.link.ForeignKeyDataSpecification", DummySpecification)
 
     # Patch linker.link_foreign_key

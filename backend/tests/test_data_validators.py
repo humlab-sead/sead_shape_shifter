@@ -238,11 +238,7 @@ class TestForeignKeyDataValidator:
         # Setup
         validator = ForeignKeyDataValidator()
 
-        config = {
-            "foreign_keys": [
-                {"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}
-            ]
-        }
+        config = {"foreign_keys": [{"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}]}
 
         # Mock preview service and config service
         with (
@@ -273,11 +269,7 @@ class TestForeignKeyDataValidator:
         # Setup
         validator = ForeignKeyDataValidator()
 
-        config = {
-            "foreign_keys": [
-                {"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}
-            ]
-        }
+        config = {"foreign_keys": [{"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}]}
 
         with (
             patch("backend.app.services.shapeshift_service.ShapeShiftService") as mock_preview_class,
@@ -317,11 +309,7 @@ class TestDataTypeCompatibilityValidator:
         # Setup
         validator = DataTypeCompatibilityValidator()
 
-        config = {
-            "foreign_keys": [
-                {"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}
-            ]
-        }
+        config = {"foreign_keys": [{"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}]}
 
         with patch("backend.app.services.shapeshift_service.ShapeShiftService") as mock_preview_class:
             mock_service = Mock()
@@ -347,11 +335,7 @@ class TestDataTypeCompatibilityValidator:
         # Setup
         validator = DataTypeCompatibilityValidator()
 
-        config = {
-            "foreign_keys": [
-                {"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}
-            ]
-        }
+        config = {"foreign_keys": [{"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}]}
 
         with patch("backend.app.services.shapeshift_service.ShapeShiftService") as mock_preview_class:
             mock_service = Mock()

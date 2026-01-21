@@ -560,7 +560,7 @@ class DuplicateKeysValidator:
 
             # Check for duplicates
             df = pd.DataFrame(preview_result.rows)
-            
+
             # Ensure all key columns exist
             missing_keys = set(keys) - set(df.columns)
             if missing_keys:
@@ -568,11 +568,11 @@ class DuplicateKeysValidator:
                 return errors
 
             has_duplicates = df.duplicated(subset=list(keys)).any()
-            
+
             if has_duplicates:
                 duplicate_count = df.duplicated(subset=list(keys)).sum()
                 duplicate_examples = df[df.duplicated(subset=list(keys), keep=False)][keys].drop_duplicates().head(5)
-                
+
                 errors.append(
                     ValidationError(
                         severity="error",
@@ -624,24 +624,22 @@ class ForeignKeyIntegrityValidator:
 
         try:
             # Run preview which includes linking and collects validation issues
-            preview_result = await self.preview_service.preview_entity(
-                project_name=project_name, entity_name=entity_name, limit=None
-            )
+            preview_result = await self.preview_service.preview_entity(project_name=project_name, entity_name=entity_name, limit=None)
 
             # Convert validation issues to ValidationError objects
             for issue in preview_result.validation_issues:
                 # Determine if this is an error or warning
                 severity = issue.get("severity", "warning")
-                
+
                 # Map issue types to validation codes
                 code_map = {
                     "row_count_mismatch": "FK_ROW_COUNT_MISMATCH",
                     "column_count_mismatch": "FK_COLUMN_COUNT_MISMATCH",
                 }
-                
+
                 issue_type = issue.get("type", "unknown")
                 code = code_map.get(issue_type, "FK_INTEGRITY_ISSUE")
-                
+
                 # Create appropriate suggestion based on issue type
                 if issue.get("type") == "row_count_mismatch":
                     metadata = issue.get("metadata", {})

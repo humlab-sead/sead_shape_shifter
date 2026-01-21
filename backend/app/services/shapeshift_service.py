@@ -59,7 +59,7 @@ class ShapeShiftService:
 
         table_store: dict[str, pd.DataFrame]
         validation_issues: list[dict] = []
-        
+
         if cached_data.data is not None:
             table_store = {entity_name: cached_data.data} | cached_data.dependencies
         else:

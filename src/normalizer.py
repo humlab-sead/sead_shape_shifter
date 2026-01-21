@@ -229,7 +229,7 @@ class ShapeShifter:
     def get_subset_columns(self, sub_table_cfg):
         columns: list[str] = sub_table_cfg.keys_columns_and_fks
         if sub_table_cfg.unnest:
-                    # Ignore columns that will be un-nested
+            # Ignore columns that will be un-nested
             columns = [col for col in columns if col not in sub_table_cfg.unnest_columns]
         return columns
 
