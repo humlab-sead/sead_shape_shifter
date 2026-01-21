@@ -221,6 +221,29 @@ class ShapeShifter:
             self.link()  # Try to resolve any pending deferred links after each entity is processed
         return self
 
+    def get_subset_columns(self, sub_table_cfg):
+        columns: list[str] = sub_table_cfg.keys_columns_and_fks
+        if sub_table_cfg.unnest:
+                    # Ignore columns that will be un-nested
+            columns = [col for col in columns if col not in sub_table_cfg.unnest_columns]
+        return columns
+
+    def _check_duplicate_keys(self, entity, table_cfg) -> None:
+        """Check for duplicate keys in the processed table and log an error if found."""
+
+        if not table_cfg.keys:
+            return
+
+        missing_keys: list[str] = table_cfg.keys - set(self.table_store[entity].columns)
+        if missing_keys:
+            # We cannot check for duplicates if keys are missing, just return
+            return
+
+        has_duplicate_keys: bool = bool(self.table_store[entity].duplicated(subset=list(table_cfg.keys)).any())
+        if has_duplicate_keys:
+            # raise ValueError(f"{entity}[keys]: Duplicate keys found for keys {table_cfg.keys}.")
+            logger.error(f"{entity}[keys]: DUPLICATE KEYS FOUND FOR KEYS {table_cfg.keys}.")
+
     def link(self) -> Self:
         """Link entities based on foreign key configuration."""
         for entity_name in self.state.processed_entities:
