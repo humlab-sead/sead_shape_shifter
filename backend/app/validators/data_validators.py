@@ -525,6 +525,157 @@ class DataTypeCompatibilityValidator:
         return False
 
 
+class DuplicateKeysValidator:
+    """Validate that natural keys are unique within entities."""
+
+    def __init__(self, preview_service: "ShapeShiftService"):
+        """Initialize validator with preview service."""
+        self.preview_service = preview_service
+
+    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
+        """
+        Check that natural keys are unique.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            entity_cfg: Entity configuration dict
+
+        Returns:
+            List of validation errors for duplicate keys
+        """
+        errors = []
+
+        # Only validate entities with keys specified
+        keys = entity_cfg.get("keys")
+        if not keys:
+            return errors
+
+        try:
+            # Get sample data
+            preview_result = await self.preview_service.preview_entity(project_name=project_name, entity_name=entity_name, limit=None)
+
+            if not preview_result.rows or len(preview_result.rows) == 0:
+                return errors
+
+            # Check for duplicates
+            df = pd.DataFrame(preview_result.rows)
+            
+            # Ensure all key columns exist
+            missing_keys = set(keys) - set(df.columns)
+            if missing_keys:
+                logger.debug(f"Cannot validate keys for {entity_name}: missing columns {missing_keys}")
+                return errors
+
+            has_duplicates = df.duplicated(subset=list(keys)).any()
+            
+            if has_duplicates:
+                duplicate_count = df.duplicated(subset=list(keys)).sum()
+                duplicate_examples = df[df.duplicated(subset=list(keys), keep=False)][keys].drop_duplicates().head(5)
+                
+                errors.append(
+                    ValidationError(
+                        severity="error",
+                        entity=entity_name,
+                        field="keys",
+                        message=f"Duplicate natural keys found ({duplicate_count} duplicate rows). "
+                        f"Keys {keys} should be unique but have duplicates.",
+                        code="DUPLICATE_KEYS",
+                        suggestion=f"Review the data and ensure keys {keys} are unique. "
+                        f"Examples of duplicate key values: {duplicate_examples.to_dict('records')[:3]}. "
+                        f"Consider adding more columns to the keys or using drop_duplicates configuration.",
+                        category=ValidationCategory.DATA,
+                        priority=ValidationPriority.CRITICAL,
+                        auto_fixable=False,
+                    )
+                )
+
+        except Exception as e:
+            logger.warning(f"Could not validate keys for {entity_name}: {e}")
+
+        return errors
+
+
+class ForeignKeyIntegrityValidator:
+    """Validate foreign key linking integrity (row count changes, column mismatches)."""
+
+    def __init__(self, preview_service: "ShapeShiftService"):
+        """Initialize validator with preview service."""
+        self.preview_service = preview_service
+
+    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
+        """
+        Check FK linking integrity by running normalization and collecting issues.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            entity_cfg: Entity configuration dict
+
+        Returns:
+            List of validation errors for FK integrity issues
+        """
+        errors = []
+
+        # Only validate entities with foreign keys
+        fks = entity_cfg.get("fks", [])
+        if not fks:
+            return errors
+
+        try:
+            # Run preview which includes linking and collects validation issues
+            preview_result = await self.preview_service.preview_entity(
+                project_name=project_name, entity_name=entity_name, limit=None
+            )
+
+            # Convert validation issues to ValidationError objects
+            for issue in preview_result.validation_issues:
+                # Determine if this is an error or warning
+                severity = issue.get("severity", "warning")
+                
+                # Map issue types to validation codes
+                code_map = {
+                    "row_count_mismatch": "FK_ROW_COUNT_MISMATCH",
+                    "column_count_mismatch": "FK_COLUMN_COUNT_MISMATCH",
+                }
+                
+                issue_type = issue.get("type", "unknown")
+                code = code_map.get(issue_type, "FK_INTEGRITY_ISSUE")
+                
+                # Create appropriate suggestion based on issue type
+                if issue.get("type") == "row_count_mismatch":
+                    metadata = issue.get("metadata", {})
+                    suggestion = (
+                        f"Join type '{metadata.get('join_type', 'unknown')}' caused row count to change. "
+                        f"This may indicate duplicate foreign key values or a missing constraint. "
+                        f"Consider adding cardinality constraints or checking for data quality issues."
+                    )
+                else:
+                    suggestion = (
+                        f"Unexpected column count after join. "
+                        f"Check the foreign key configuration and ensure extra_columns are correctly specified."
+                    )
+
+                errors.append(
+                    ValidationError(
+                        severity=severity,
+                        entity=issue.get("local_entity", entity_name),
+                        field="fks",
+                        message=issue.get("message", "Foreign key integrity issue"),
+                        code=code,
+                        suggestion=suggestion,
+                        category=ValidationCategory.DATA,
+                        priority=ValidationPriority.HIGH if severity == "error" else ValidationPriority.MEDIUM,
+                        auto_fixable=False,
+                    )
+                )
+
+        except Exception as e:
+            logger.warning(f"Could not validate FK integrity for {entity_name}: {e}")
+
+        return errors
+
+
 class DataValidationService:
     """Service to run all data validators."""
 
@@ -537,6 +688,8 @@ class DataValidationService:
             NonEmptyResultValidator(preview_service),
             ForeignKeyDataValidator(),
             DataTypeCompatibilityValidator(),
+            DuplicateKeysValidator(preview_service),
+            ForeignKeyIntegrityValidator(preview_service),
         ]
 
     async def validate_entity(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:

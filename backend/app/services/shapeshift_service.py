@@ -58,11 +58,13 @@ class ShapeShiftService:
         )
 
         table_store: dict[str, pd.DataFrame]
+        validation_issues: list[dict] = []
+        
         if cached_data.data is not None:
             table_store = {entity_name: cached_data.data} | cached_data.dependencies
         else:
             resolved_cfg: ShapeShiftProject = project.clone().resolve(filename=project.filename, **self.settings.env_opts)
-            table_store = await self.shapeshift(
+            table_store, validation_issues = await self.shapeshift(
                 project=resolved_cfg,
                 entity_name=entity_name,
                 initial_table_store=cached_data.dependencies,
@@ -77,6 +79,7 @@ class ShapeShiftService:
             table_store=table_store,
             limit=limit,
             cache_hit=cached_data.found,
+            validation_issues=validation_issues,
         )
 
         execution_time_ms: int = int((time.time() - start_time) * 1000)
@@ -89,7 +92,7 @@ class ShapeShiftService:
         project: ShapeShiftProject,
         entity_name: str,
         initial_table_store: dict[str, pd.DataFrame],
-    ) -> dict[str, pd.DataFrame]:
+    ) -> tuple[dict[str, pd.DataFrame], list[dict]]:
         """
         Run ShapeShifter to produce entity data.
 
@@ -99,7 +102,7 @@ class ShapeShiftService:
             initial_table_store: Pre-existing cached entities to reuse
 
         Returns:
-            Complete table_store with target entity and all dependencies
+            Tuple of (Complete table_store with target entity and all dependencies, validation issues)
         """
         try:
             shapeshifter: ShapeShifter = ShapeShifter(
@@ -116,11 +119,40 @@ class ShapeShiftService:
             if entity_name not in shapeshifter.table_store:
                 raise RuntimeError(f"Entity {entity_name} was not produced by normalizer")
 
-            return shapeshifter.table_store
+            # Collect validation issues from the linker
+            validation_issues = self._collect_validation_issues(shapeshifter)
+
+            return shapeshifter.table_store, validation_issues
 
         except Exception as e:
             logger.exception(f"ShapeShift failed for {entity_name}: {e}", exc_info=True)
             raise RuntimeError(f"ShapeShift failed for {entity_name}: {str(e)}") from e
+
+    def _collect_validation_issues(self, shapeshifter: ShapeShifter) -> list[dict]:
+        """Collect validation issues from the linker's constraint validators."""
+        from src.constraints import ValidationIssue
+
+        all_issues: list[dict] = []
+
+        # Access the linker's validators to collect issues
+        # The linker stores validators that have been run during linking
+        if hasattr(shapeshifter.linker, "validators"):
+            for validator in shapeshifter.linker.validators:
+                if hasattr(validator, "issues"):
+                    for issue in validator.issues:
+                        if isinstance(issue, ValidationIssue):
+                            all_issues.append(
+                                {
+                                    "type": issue.issue_type,
+                                    "severity": issue.severity,
+                                    "local_entity": issue.local_entity,
+                                    "remote_entity": issue.remote_entity,
+                                    "message": issue.message,
+                                    "metadata": issue.metadata,
+                                }
+                            )
+
+        return all_issues
 
     async def get_entity_sample(self, project_name: str, entity_name: str, limit: int = 100) -> PreviewResult:
         """
@@ -158,6 +190,7 @@ class PreviewResultBuilder:
         table_store: dict[str, pd.DataFrame],
         limit: int | None,
         cache_hit: bool,
+        validation_issues: list[dict] | None = None,
     ) -> PreviewResult:
         """Build PreviewResult from table_store with limit applied.
 
@@ -167,6 +200,7 @@ class PreviewResultBuilder:
             table_store: Dictionary of DataFrames
             limit: Maximum rows to return, or None for all rows
             cache_hit: Whether result came from cache
+            validation_issues: Validation issues from linking
         """
         if entity_name not in table_store:
             raise RuntimeError(f"Entity {entity_name} not found in table_store")
@@ -199,6 +233,7 @@ class PreviewResultBuilder:
             has_dependencies=len(dependencies_loaded) > 0,
             dependencies_loaded=dependencies_loaded,
             cache_hit=cache_hit,
+            validation_issues=validation_issues or [],
         )
 
 

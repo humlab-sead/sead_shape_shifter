@@ -16,6 +16,18 @@ class ForeignKeyConstraintViolation(Exception):
 
 
 @dataclass
+class ValidationIssue:
+    """Represents a validation issue found during constraint checking."""
+
+    issue_type: str  # e.g., 'row_count_mismatch', 'column_count_mismatch'
+    severity: str  # 'error', 'warning', 'info'
+    local_entity: str
+    remote_entity: str
+    message: str
+    metadata: dict[str, Any]
+
+
+@dataclass
 class ValidationContext:
     """Contains data needed for constraint checks."""
 
@@ -254,6 +266,7 @@ class ForeignKeyConstraintValidator:
         self.merge_indicator_col: str | None = None
         self.size_before_merge: tuple[int, int] = (0, 0)
         self.size_after_merge: tuple[int, int] = (0, 0)
+        self.issues: list[ValidationIssue] = []
 
     def validate_before_merge(self, local_df: pd.DataFrame, remote_df: pd.DataFrame) -> Self:
         """Validate constraints before performing the merge."""
@@ -310,18 +323,49 @@ class ForeignKeyConstraintValidator:
 
         if self.fk.how != "cross":
             if self.size_before_merge[0] != self.size_after_merge[0]:
-                logger.warning(
+                message = (
                     f"{self.fk.local_entity} -> {self.fk.remote_entity}[linking]: join resulted in change in row count: "
                     f"before={self.size_before_merge[0]}, after={self.size_after_merge[0]}"
+                )
+                logger.warning(message)
+                self.issues.append(
+                    ValidationIssue(
+                        issue_type="row_count_mismatch",
+                        severity="warning",
+                        local_entity=self.fk.local_entity,
+                        remote_entity=self.fk.remote_entity,
+                        message=message,
+                        metadata={
+                            "row_count_before": self.size_before_merge[0],
+                            "row_count_after": self.size_after_merge[0],
+                            "join_type": self.fk.how,
+                        },
+                    )
                 )
 
         added_column_count: int = 1 + len(self.fk.get_valid_remote_columns(remote_df))
         if self.size_after_merge[1] != self.size_before_merge[1] + added_column_count:
             added_columns: set[str] = set(linked_df.columns) - set(local_df.columns)
-            logger.warning(
+            message = (
                 f"{self.entity_name} -> {self.fk.remote_entity}[linking]: join resulted in unexpected number of columns: "
                 f"before={self.size_before_merge[1]}, after={self.size_after_merge[1]}, "
                 f"expected increase={added_column_count} "
                 f"(added columns: {added_columns})"
+            )
+            logger.warning(message)
+            self.issues.append(
+                ValidationIssue(
+                    issue_type="column_count_mismatch",
+                    severity="warning",
+                    local_entity=self.entity_name,
+                    remote_entity=self.fk.remote_entity,
+                    message=message,
+                    metadata={
+                        "column_count_before": self.size_before_merge[1],
+                        "column_count_after": self.size_after_merge[1],
+                        "expected_increase": added_column_count,
+                        "added_columns": list(added_columns),
+                    },
+                )
             )
         return self
