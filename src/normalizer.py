@@ -206,7 +206,10 @@ class ShapeShifter:
                 self.linker.link_entity(entity_name=entity, config=self.project)
             if delay_drop_duplicates and table_cfg.drop_duplicates:
                 self.table_store[entity] = drop_duplicate_rows(
-                    data=self.table_store[entity], fd_check=True, columns=table_cfg.drop_duplicates, entity_name=entity
+                    data=self.table_store[entity],
+                    fd_check=table_cfg.check_functional_dependency,
+                    columns=table_cfg.drop_duplicates,
+                    entity_name=entity,
                 )
 
             self._check_duplicate_keys(entity, table_cfg)
