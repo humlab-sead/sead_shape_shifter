@@ -11,8 +11,9 @@ def test_drop_duplicate_rows_validates_columns_and_fd_check():
     df = pd.DataFrame({"a": [1, 1], "b": [2, 3]})
 
     # Missing column should return unchanged data
-    result = drop_duplicate_rows(df, columns=["missing"], entity_name="e1")
-    pd.testing.assert_frame_equal(result, df)
+    with pytest.raises(ValueError, match="columns are missing"):
+        result = drop_duplicate_rows(df, columns=["missing"], entity_name="e1")
+    # pd.testing.assert_frame_equal(result, df)
 
     # FD check should raise when duplicates found on determinant
     with pytest.raises(ValueError, match="fd_check"):
