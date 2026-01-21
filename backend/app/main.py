@@ -13,6 +13,7 @@ from backend.app.api.v1.api import api_router
 from backend.app.core.config import settings
 from backend.app.core.state_manager import ApplicationState, init_app_state
 from backend.app.ingesters.registry import Ingesters
+from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 
 
 @asynccontextmanager
@@ -27,6 +28,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
     logger.info(f"Project directory: {settings.PROJECTS_DIR}")
     app_state: ApplicationState = init_app_state(settings.PROJECTS_DIR)
     await app_state.start()
+
+    # Initialize JVM for UCanAccess (MS Access database support)
+    # Must be done once at startup, as JPype doesn't allow JVM restart
+    logger.info("Initializing JVM for MS Access database support...")
+    init_jvm_for_ucanaccess()
 
     Ingesters.discover(search_paths=settings.INGESTER_PATHS, enabled_only=settings.ENABLED_INGESTERS)
 

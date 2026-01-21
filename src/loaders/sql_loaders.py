@@ -22,6 +22,39 @@ if TYPE_CHECKING:
     from src.model import DataSourceConfig, TableConfig
 
 
+def init_jvm_for_ucanaccess(ucanaccess_dir: str = "lib/ucanaccess") -> None:
+    """
+    Initialize the JVM for UCanAccess JDBC driver.
+    
+    This function should be called once at application startup.
+    JPype does not allow restarting the JVM after shutdown, so this must
+    be done before any UCanAccess connections are made.
+    
+    Args:
+        ucanaccess_dir: Path to UCanAccess library directory containing JAR files
+    """
+    if jpype.isJVMStarted():
+        logger.debug("JVM already started, skipping initialization")
+        return
+    
+    # Find all JAR files in the UCanAccess directory
+    jar_files: list[str] = []
+    for root, _, files in os.walk(ucanaccess_dir):
+        for file in files:
+            if file.lower().endswith(".jar"):
+                jar_files.append(os.path.join(root, file))
+    
+    if not jar_files:
+        logger.warning(f"No JAR files found in {ucanaccess_dir}, JVM initialized without UCanAccess classpath")
+        classpath = ""
+    else:
+        classpath = os.pathsep.join(jar_files)
+        logger.info(f"Starting JVM with {len(jar_files)} JAR files from {ucanaccess_dir}")
+    
+    jpype.startJVM(jpype.getDefaultJVMPath(), "-ea", f"-Djava.class.path={classpath}")
+    logger.info("JVM started successfully for UCanAccess")
+
+
 class CoreSchema:
     @dataclass
     class TableMetadata:
@@ -596,9 +629,18 @@ class UCanAccessSqlLoader(SqlLoader):
         with self.connection() as conn:
             with self._cursor(conn) as cursor:
                 cursor.execute(sql)
-                columns = [desc[0] for desc in cursor.description] if cursor.description else []
+                # Convert Java String column names to Python strings
+                columns = [str(desc[0]) for desc in cursor.description] if cursor.description else []
                 rows = cursor.fetchall()
-                return pd.DataFrame(rows, columns=columns)
+                df = pd.DataFrame(rows, columns=columns)
+                
+                # Convert all Java String objects in the DataFrame to Python strings
+                # JPype 1.6.0 no longer auto-converts Java Strings
+                for col in df.columns:
+                    if df[col].dtype == object:
+                        df[col] = df[col].apply(lambda x: str(x) if x is not None else x)
+                
+                return df
 
     async def execute_scalar_sql(self, sql: str) -> Any:
         with self.connection() as conn:
@@ -636,6 +678,8 @@ class UCanAccessSqlLoader(SqlLoader):
 
     @contextmanager
     def connection(self) -> Generator[jaydebeapi.Connection, Any, None]:
+        """Context manager for database connection."""
+        self._ensure_jvm()  # Ensure JVM is started before connecting
         driver_class = "net.ucanaccess.jdbc.UcanaccessDriver"
         url: str = f"jdbc:ucanaccess://{self.filename}"
         conn: jaydebeapi.Connection = jaydebeapi.connect(driver_class, url, [], self.jars)
@@ -654,13 +698,18 @@ class UCanAccessSqlLoader(SqlLoader):
         return jar_files
 
     def _ensure_jvm(self) -> None:
-        """Start the JVM once with the correct classpath, if not already started."""
-        if jpype.isJVMStarted():
-            return
-
-        classpath: str = os.pathsep.join(self.jars)
-
-        jpype.startJVM(jpype.getDefaultJVMPath(), "-ea", f"-Djava.class.path={classpath}")
+        """
+        Ensure the JVM is running before making JDBC calls.
+        
+        Preferably, JVM should be initialized at application startup via init_jvm_for_ucanaccess().
+        If not started (e.g., in worker processes), initializes it on-demand.
+        """
+        if not jpype.isJVMStarted():
+            logger.warning(
+                "JVM not started - initializing on-demand. "
+                "For better performance, call init_jvm_for_ucanaccess() at application startup."
+            )
+            init_jvm_for_ucanaccess(self.ucanaccess_dir)
 
     def get_queries(self) -> dict[str, str]:
         """Return saved queries from the Access database as {name: sql}."""
@@ -711,10 +760,17 @@ class UCanAccessSqlLoader(SqlLoader):
         try:
             tables: dict[str, CoreSchema.TableMetadata] = {}
             while rs.next():
-                table_name = rs.getString("TABLE_NAME")
+                table_name = str(rs.getString("TABLE_NAME"))
                 if table_name.startswith("MSys") or table_name.startswith("~"):
                     continue
-                tables[table_name] = CoreSchema.TableMetadata(name=table_name, schema=None, comment=rs.getString("REMARKS"), row_count=0)
+                # Convert Java strings to Python strings
+                comment = rs.getString("REMARKS")
+                tables[table_name] = CoreSchema.TableMetadata(
+                    name=table_name, 
+                    schema=None, 
+                    comment=str(comment) if comment else None, 
+                    row_count=0
+                )
         finally:
             rs.close()
         return tables
@@ -725,14 +781,20 @@ class UCanAccessSqlLoader(SqlLoader):
             columns: list[CoreSchema.ColumnMetadata] = []
             primary_keys: set[str] = set(self._get_primary_keys(meta, table_name))
             while rs.next():
+                # Convert Java strings to Python strings
+                column_name = str(rs.getString("COLUMN_NAME"))
+                data_type = str(rs.getString("TYPE_NAME"))
+                column_def = rs.getString("COLUMN_DEF")
+                default = str(column_def) if column_def else None
+                
                 columns.append(
                     CoreSchema.ColumnMetadata(
-                        name=rs.getString("COLUMN_NAME"),
-                        data_type=rs.getString("TYPE_NAME"),
+                        name=column_name,
+                        data_type=data_type,
                         max_length=rs.getInt("COLUMN_SIZE"),
                         nullable=rs.getInt("NULLABLE") == meta.columnNullable,
-                        default=rs.getString("COLUMN_DEF"),
-                        is_primary_key=rs.getString("COLUMN_NAME") in primary_keys,
+                        default=default,
+                        is_primary_key=column_name in primary_keys,
                     )
                 )
         finally:
@@ -747,7 +809,8 @@ class UCanAccessSqlLoader(SqlLoader):
         pks: list[tuple[int, str]] = []
         try:
             while rs.next():
-                pks.append((rs.getInt("KEY_SEQ"), rs.getString("COLUMN_NAME")))
+                # Convert Java string to Python string
+                pks.append((rs.getInt("KEY_SEQ"), str(rs.getString("COLUMN_NAME"))))
         finally:
             rs.close()
 
