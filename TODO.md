@@ -248,3 +248,29 @@ None of these are critical given your 91% test coverage.
 # TODO: #174 Upload Excel files to data source directory
 
 Add capability to upload Excel files (.xls, .xlsx) to the data source files directory defined by SHAPE_SHIFTER_DATA_SOURCE_FILES_DIR in the .env file. The uploaded Excel files should be accessible for use in entity configurations within the Shape Shifter application.
+
+
+
+I have a bug which can be reproduced with these steps:
+
+1. Click on projects
+2. Open a project
+3. Click YAML
+```
+metadata:
+  name: strukke_test
+  type: shapeshifter-project
+  description: Project for strukke_test
+  version: 1.0.0
+  default_entity:
+entities:
+  strukke_data:
+    type: xlsx
+    keys: []
+    options:
+      filename: projects/AllaC14_230316_v4_clean (1).xlsx
+options: {}
+```
+4. Close YAML
+5. Click on entities
+6. 
