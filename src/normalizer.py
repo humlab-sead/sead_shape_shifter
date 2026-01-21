@@ -209,6 +209,8 @@ class ShapeShifter:
                     data=self.table_store[entity], fd_check=True, columns=table_cfg.drop_duplicates, entity_name=entity
                 )
 
+            self._check_duplicate_keys(entity, table_cfg)
+
             if table_cfg.drop_empty_rows:
                 self.table_store[entity] = drop_empty_rows(
                     data=self.table_store[entity], entity_name=entity, subset=table_cfg.drop_empty_rows
