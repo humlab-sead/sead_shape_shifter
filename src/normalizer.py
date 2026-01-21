@@ -190,11 +190,12 @@ class ShapeShifter:
                 data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store)
 
             # Apply post-concatenation deduplication if append_mode is "distinct"
-            if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
+            # if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
+            if table_cfg.drop_duplicates and not delay_drop_duplicates:
                 data = drop_duplicate_rows(
                     data=data, columns=table_cfg.drop_duplicates if table_cfg.drop_duplicates else True, entity_name=entity
                 )
-                logger.debug(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
+                # logger.info(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
 
             self.register(entity, data)
 
