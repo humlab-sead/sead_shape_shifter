@@ -828,7 +828,7 @@ class ShapeShiftProject:
         """Create a deep copy of the ShapeShiftProject."""
         return ShapeShiftProject(cfg=copy.deepcopy(self.cfg), filename=self.filename)
 
-    def resolve(self, **context) -> "ShapeShiftProject":
+    def resolve(self, strict: bool = False, **context) -> "ShapeShiftProject":
         """Resolve and return a new ShapeShiftProject instance."""
         return ShapeShiftProject(
             cfg=Config.resolve_references(
@@ -837,6 +837,7 @@ class ShapeShiftProject:
                 env_prefix=dotget(context, "env_prefix"),
                 source_path=dotget(context, "filename, file_path") or self.filename,
                 inplace=False,
+                strict=strict,
             ),
             filename=context.get("filename") or self.filename,
         )
