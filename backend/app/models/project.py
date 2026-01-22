@@ -85,3 +85,11 @@ class Project(BaseModel):
     def has_table(self, entity_name: str) -> bool:
         """Check if entity exists in project."""
         return entity_name in self.entities  # pylint: disable=no-member
+
+    def is_resolved(self) -> bool:
+        """Check if the project has any unresolved references."""
+        return not self.unresolved_directives()
+
+    def unresolved_directives(self) -> list[str]:
+        """Check if the project has any unresolved references."""
+        return Config.find_unresolved_directives(self.entities) + Config.find_unresolved_directives(self.options)
