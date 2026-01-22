@@ -59,12 +59,12 @@ def drop_duplicate_rows(
 
     if any(c not in data.columns for c in columns):
         missing_requested_columns: set[str] = set(columns).difference(data.columns)
-        logger.error(
-            f"{entity_name}[drop_duplicate_rows]: Unable to drop_duplicates because some columns "
+        logger.warning(
+            f"{entity_name}[drop_duplicate_rows]: Delaying drop_duplicates because some columns "
             f"are missing from DataFrame: {missing_requested_columns}"
         )
-        raise ValueError(f"Unable to drop_duplicates because some columns are missing from DataFrame: {missing_requested_columns}")
-        # return data
+        # raise ValueError(f"Unable to drop_duplicates because some columns are missing from DataFrame: {missing_requested_columns}")
+        return data
 
     columns = [c for c in columns if c in data.columns]
     if not columns:
