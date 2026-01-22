@@ -20,6 +20,11 @@ from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
 from src.unnest import unnest
 
+# Debug flag to control verbose normalization logging
+# Set to True to see detailed "Normalizing entity..." logs for each entity
+# When False, only INFO level logs for overall progress are shown
+_ENABLE_NORMALIZATION_DEBUG = False
+
 
 class ProcessState:
     """Helper class to track processing state of entities during normalization."""
@@ -47,7 +52,7 @@ class ProcessState:
         return None
 
     def get_unmet_dependencies(self, entity: str) -> set[str]:
-        return self.config.get_table(entity_name=entity).depends_on - self.processed_entities
+        return self.project.get_table(entity_name=entity).depends_on - self.processed_entities
 
     def get_all_unmet_dependencies(self) -> dict[str, set[str]]:
         unmet_dependencies: dict[str, set[str]] = {
@@ -167,7 +172,8 @@ class ShapeShifter:
 
             table_cfg: TableConfig = self.project.get_table(entity)
 
-            logger.debug(f"{entity}[normalizing]: Normalizing entity...")
+            if _ENABLE_NORMALIZATION_DEBUG:
+                logger.debug(f"{entity}[normalizing]: Normalizing entity...")
 
             # source: pd.DataFrame = await self.resolve_source(table_cfg=table_cfg)
             if not isinstance(table_cfg.columns, list):
