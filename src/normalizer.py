@@ -24,10 +24,13 @@ from src.unnest import unnest
 class ProcessState:
     """Helper class to track processing state of entities during normalization."""
 
-    def __init__(self, config: ShapeShiftProject, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
-        self.config: ShapeShiftProject = config
+    def __init__(self, project: ShapeShiftProject, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
+        self.project: ShapeShiftProject = project
         self.table_store: dict[str, pd.DataFrame] = table_store
-        self.target_entities: set[str] = target_entities if target_entities else set(config.tables.keys())
+        # Resolve target entities through the project to ensure dependencies are included consistently.
+        self.target_entities: set[str] = project.resolve_target_entities(target_entities)
+
+        # def _initialize_process_state(self, target_entities: set[str] | None = None) -> ProcessState:
 
     def get_next_entity_to_process(self) -> str | None:
         """Get the next entity that can be processed based on dependencies."""
@@ -66,23 +69,6 @@ class ProcessState:
         """Return the set of unprocessed target entities."""
         return self.target_entities - self.processed_entities
 
-    def get_required_entities(self, entity_name: str) -> set[str]:
-        """Get all entities required to process the given entity (including the entity itself)."""
-        required_entities: set[str] = {entity_name}
-        unprocessed: list[str] = [entity_name]
-
-        while unprocessed:
-            current: str = unprocessed.pop()
-            if current not in self.config.tables:
-                continue
-            for dep in self.config.get_table(entity_name=current).depends_on:
-                if dep in required_entities:
-                    continue
-                required_entities.add(dep)
-                unprocessed.append(dep)
-
-        return required_entities
-
 
 class ShapeShifter:
 
@@ -100,20 +86,10 @@ class ShapeShifter:
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
         self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
-        self.state: ProcessState = self._initialize_process_state(target_entities)
+        self.state: ProcessState = ProcessState(
+            project=self.project, table_store=self.table_store, target_entities=self.project.resolve_target_entities(target_entities)
+        )
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store)
-
-    def _initialize_process_state(self, target_entities: set[str] | None = None) -> ProcessState:
-        """Initialize the processing state based on target entities."""
-        if target_entities:
-            state = ProcessState(config=self.project, table_store=self.table_store, target_entities=set())
-            all_required: set[str] = set()
-            for entity in target_entities:
-                all_required.update(state.get_required_entities(entity))
-            state: ProcessState = ProcessState(config=self.project, table_store=self.table_store, target_entities=all_required)
-        else:
-            state = ProcessState(config=self.project, table_store=self.table_store, target_entities=None)
-        return state
 
     def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
         """Resolve the DataLoader, if any, for the given TableConfig."""
