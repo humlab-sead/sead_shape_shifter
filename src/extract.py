@@ -16,7 +16,7 @@ def add_surrogate_id(target: pd.DataFrame, id_name: str) -> pd.DataFrame:
     return target
 
 
-def check_functional_dependency(df: pd.DataFrame, determinant_columns: list[str], raise_error: bool = True) -> bool:
+def check_functional_dependency_original(df: pd.DataFrame, determinant_columns: list[str], raise_error: bool = True) -> bool:
     """Check functional dependency: for each unique combination of subset columns,
     the other columns should have consistent values.
     Args:
@@ -46,6 +46,49 @@ def check_functional_dependency(df: pd.DataFrame, determinant_columns: list[str]
 
     return len(bad_keys) == 0
 
+def check_functional_dependency(
+    df: pd.DataFrame,
+    determinant_columns: list[str],
+    raise_error: bool = True,
+    max_bad_keys: int = 50,   # avoid huge messages
+) -> bool:
+    """
+    NOTE: ChatGPT-5.2 optimized version of functional dependency check.
+    Check functional dependency: for each unique combination of determinant_columns,
+    all other columns must be consistent.
+    """
+    # Dependent columns = everything else
+    dependent_columns: list[str] = [c for c in df.columns if c not in determinant_columns]
+    if not dependent_columns:
+        return True
+
+    cols: list[str] = determinant_columns + dependent_columns
+
+    # Keep only distinct (determinant + dependent) rows.
+    # If a determinant maps to >1 distinct dependent-row, FD is violated.
+    distinct: pd.DataFrame = df[cols].drop_duplicates()
+
+    # Count how many distinct dependent-rows each determinant has
+    counts: pd.Series[int] = (
+        distinct
+        .groupby(determinant_columns, sort=False, dropna=False)
+        .size()
+    )
+
+    bad: pd.Series[int] = counts[counts > 1]
+    if bad.empty:
+        return True
+
+    # Make keys readable (MultiIndex -> tuples)
+    bad_keys: list[Any] = bad.index.tolist()
+    shown: list[Any] = bad_keys[:max_bad_keys]
+    more: str = "" if len(bad_keys) <= max_bad_keys else f" (showing first {max_bad_keys} of {len(bad_keys)})"
+    msg: str = f"inconsistent non-subset values for keys: {shown}{more}"
+
+    if raise_error:
+        raise ValueError(f"[fd_check]: {msg}")
+    logger.warning(f"[fd_check]: {msg}")
+    return False
 
 def drop_duplicate_rows(
     data: pd.DataFrame, columns: bool | list[str] = False, fd_check: bool = False, entity_name: str | None = None
