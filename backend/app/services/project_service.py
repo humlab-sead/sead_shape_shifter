@@ -121,7 +121,7 @@ class ProjectService:
         # Check application state if this is the active project
         active_project: Project | None = self.state.get(name)
         if active_project:
-            logger.debug(f"Loading active project '{name}' from ApplicationState")
+            logger.debug(f"Loaded active project '{name}' from ApplicationState")
             return active_project
 
         filename: Path = self.projects_dir / (f"{name.removesuffix('.yml')}.yml")
