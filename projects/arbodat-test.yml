@@ -286,9 +286,12 @@ entities:
       local_keys: ["Projekt"]
       remote_keys: ["Projekt"]
       extra_columns:
-        contact_name: "contact_id"
+        contact_name: "contact_name"
+    - entity: contact
+      local_keys: ["contact_name"]
+      remote_keys: ["contact_name"]
     drop_duplicates: ["Projekt", "Fraktion", "contact_id"]
-    depends_on: ["_project_contact", "dataset", "project"]
+    depends_on: ["_project_contact", "contact", "dataset", "project"]
   dataset_submission:
     source: dataset
     surrogate_id: dataset_submission_id
@@ -751,7 +754,7 @@ entities:
       longitude_dd: "hWert"
       altitude: "üNN"
     replacements:
-      coordinate_system: "@value: replacements.site.KoordSys"
+      coordinate_system: "@value: options.replacements.site.KoordSys"
     query: select distinct p.Fustel, p.EVNr, b.FustelTyp, p.KoordSys, p.rWert, p.hWert, p.[üNN] from Projekte as p inner join ( select distinct Projekt, FustelTyp from Befunde ) as b on p.Projekt = b.Projekt;
     foreign_keys:
     - entity: site_type
@@ -1023,7 +1026,7 @@ entities:
   _project_contact:
     source:
     data_source: arbodat_data
-    surrogate_id: contact_id
+    surrogate_id: project_contact_id
     keys: ["Projekt", "contact_type", "contact_name"]
     columns: ["Projekt", "ArchAusg", "ArchBear", "BotBear"]
     type: sql
