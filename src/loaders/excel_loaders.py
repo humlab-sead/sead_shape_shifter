@@ -4,13 +4,14 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import openpyxl
 import pandas as pd
 
-if TYPE_CHECKING:
-    from src.model import TableConfig
-
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.loaders.file_loaders import FileLoader
 
 from .base_loader import ConnectTestResult, DataLoaders
+
+
+if TYPE_CHECKING:
+    from src.model import TableConfig
 
 
 class ExcelLoader(FileLoader):
