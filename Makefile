@@ -44,6 +44,19 @@ install-api:
 test:
 	@uv run pytest tests backend/tests -v
 
+.PHONY: profile
+profile:
+	@echo "Profiling test with py-spy..."
+	@uv run py-spy record -o profile.svg --format speedscope -- pytest $(TEST) -v -s
+	@echo "✓ Profile saved to profile.svg (open in browser or speedscope.app)"
+
+.PHONY: profile-stats
+profile-stats:
+	@echo "Profiling test with cProfile..."
+	@uv run python -m cProfile -o profile.stats -m pytest $(TEST) -v
+	@uv run python -c "import pstats; p = pstats.Stats('profile.stats'); p.sort_stats('cumulative').print_stats(30)"
+	@echo "✓ Full stats saved to profile.stats"
+
 .PHONY: publish
 publish:
 	@echo "Publishing Python package to PyPI"
