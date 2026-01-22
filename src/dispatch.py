@@ -70,7 +70,9 @@ class ExcelDispatcher(Dispatcher):
     """Dispatcher for Excel data."""
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
-        with pd.ExcelWriter(target, engine="openpyxl") as writer:
+        with pd.ExcelWriter(target, engine="openpyxl", mode="w") as writer:
+            if hasattr(writer, "book"):
+                writer.book.calculation.calcMode = "manual"  # type: ignore
             for entity_name in sorted(data):
                 data[entity_name].to_excel(writer, sheet_name=entity_name, index=False)
 
@@ -89,8 +91,11 @@ class OpenpyxlExcelDispatcher(Dispatcher):
     }
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
-        wb = Workbook()
+        wb = Workbook(write_only=False)  # Keep False for styling support
         wb.remove(wb.active)  # type: ignore[attr-defined] ; openpyxl creates a default sheet
+        
+        # Disable formula calculations for better performance
+        wb.calculation.calcMode = "manual"  # type: ignore
 
         for entity_name in sorted(data):
             table: pd.DataFrame = data[entity_name]
