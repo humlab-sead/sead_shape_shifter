@@ -9,7 +9,6 @@ from src.loaders.file_loaders import FileLoader
 
 from .base_loader import ConnectTestResult, DataLoaders
 
-
 if TYPE_CHECKING:
     from src.model import TableConfig
 

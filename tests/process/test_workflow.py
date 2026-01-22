@@ -51,7 +51,7 @@ def test_access_database_csv_workflow():
     target_type: str = "csv"
 
     output_path: Path = Path("tmp/arbodat-test.xlsx") if target_type == "excel" else Path("tmp/arbodat-test")
-    
+
     asyncio.run(asyncio.sleep(0.1))  # type: ignore ; ensure config is fully loaded;
 
     remove_path(output_path)
