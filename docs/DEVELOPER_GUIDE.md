@@ -1218,6 +1218,165 @@ npx vitest run --coverage
 | Frontend Composables | 90%+ | 92% |
 | **Overall** | **90%+** | **91%** |
 
+### Performance Profiling
+
+#### Finding Performance Bottlenecks
+
+Shape Shifter includes profiling tools to identify slow code paths and optimize performance.
+
+#### Quick Start with py-spy
+
+**Visual profiling** (recommended for most cases):
+
+```bash
+# Profile a specific test
+make profile TEST="tests/process/test_workflow.py::test_access_database_csv_workflow"
+
+# View results
+# Opens profile.svg in browser or upload to speedscope.app
+xdg-open profile.svg
+```
+
+**Statistical profiling** (text-based summary):
+
+```bash
+# Profile with cProfile and show top 30 functions
+make profile-stats TEST="tests/process/test_workflow.py::test_my_test"
+
+# View detailed stats file
+python -c "import pstats; p = pstats.Stats('profile.stats'); p.sort_stats('cumulative').print_stats(50)"
+```
+
+#### Available Profiling Methods
+
+**1. py-spy (Sampling Profiler)**
+- ✅ No code changes required
+- ✅ Low overhead
+- ✅ Beautiful visualizations (flame graphs)
+- 📊 Best for: Finding overall bottlenecks
+
+```bash
+# Record flame graph
+make profile TEST="tests/your_test.py::test_name"
+
+# Upload profile.svg to https://www.speedscope.app/
+```
+
+**2. cProfile (Deterministic Profiler)**
+- ✅ Exact function call counts
+- ✅ Built into Python
+- ⚠️ Higher overhead
+- 📊 Best for: Detailed statistics
+
+```bash
+# Run with statistics
+make profile-stats TEST="tests/your_test.py::test_name"
+```
+
+**3. line_profiler (Line-by-Line Analysis)**
+- ✅ Per-line timing
+- ⚠️ Requires code modification
+- 📊 Best for: Optimizing specific functions
+
+```bash
+# Install line_profiler
+uv pip install line-profiler
+
+# Add @profile decorator to function in your code
+# Then run:
+uv run kernprof -l -v tests/your_test.py
+```
+
+**4. pytest-profiling (Plugin)**
+- ✅ Integrates with pytest
+- ✅ SVG output
+- 📊 Best for: Quick test profiling
+
+```bash
+uv pip install pytest-profiling
+uv run pytest tests/your_test.py --profile --profile-svg
+```
+
+#### Interpreting Results
+
+**Flame Graph (py-spy/speedscope):**
+- **Width** = time spent in function
+- **Height** = call stack depth
+- **Color** = different modules/files
+- Look for **wide horizontal bars** = hotspots
+
+**cProfile Output:**
+```
+ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+```
+- `ncalls` - number of calls
+- `tottime` - time in function only (excluding subcalls)
+- `cumtime` - total time (including subcalls) ← **Most important**
+- `percall` - average time per call
+
+#### Common Bottlenecks
+
+Look for time spent in:
+- **Database queries** - `await loader.load()`
+- **DataFrame operations** - pandas transformations
+- **File I/O** - Excel/CSV reading/writing
+- **Validation** - Foreign key resolution
+- **Deep copies** - Configuration processing
+
+#### Example: Analyzing Workflow Test
+
+```bash
+# Profile the workflow test
+make profile TEST="tests/process/test_workflow.py::test_access_database_csv_workflow"
+
+# Expected output shows:
+# ✓ Profile saved to profile.svg (open in browser or speedscope.app)
+```
+
+**Top time consumers (typical results):**
+1. Database connection/queries (40-50%)
+2. Excel file writing (20-30%)
+3. DataFrame transformations (10-20%)
+4. Validation/linking (5-10%)
+5. Configuration loading (1-5%)
+
+#### Optimization Workflow
+
+1. **Profile first** - Don't guess, measure
+2. **Identify bottlenecks** - Focus on cumulative time
+3. **Fix the biggest issue** - 80/20 rule applies
+4. **Profile again** - Verify improvement
+5. **Iterate** - Repeat until acceptable
+
+#### Advanced Profiling
+
+**Profile specific function:**
+```python
+# Add to your test
+import cProfile
+import pstats
+
+profiler = cProfile.Profile()
+profiler.enable()
+
+# Your code here
+result = expensive_function()
+
+profiler.disable()
+stats = pstats.Stats(profiler)
+stats.sort_stats('cumulative')
+stats.print_stats(20)
+```
+
+**Memory profiling:**
+```bash
+# Install memory_profiler
+uv pip install memory_profiler
+
+# Add @profile decorator
+uv run python -m memory_profiler your_script.py
+```
+
 ---
 
 ## 7. API Development
