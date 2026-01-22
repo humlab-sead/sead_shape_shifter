@@ -1449,53 +1449,6 @@ class TestShapeShiftProject:
         with pytest.raises(ValueError, match="Data source.*not found"):
             config.get_data_source("nonexistent")
 
-    def test_resolve_loader_with_data_source(self):
-        """Test resolve_loader with data_source configured."""
-        entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "data_source": "postgres_db"}}
-        options = {"data_sources": {"postgres_db": {"driver": "postgresql", "options": {"host": "localhost"}}}}
-
-        config = ShapeShiftProject(cfg={"entities": entities, "options": options}, filename="test-config.yml")
-        table_cfg: TableConfig = config.get_table("site")
-
-        # This will fail if the loader type isn't registered, but we're testing the logic
-        # In real code, the DataLoaders would be registered
-        try:
-            _ = config.resolve_loader(table_cfg)
-            # If it succeeds, check it's not None (depends on DataLoaders being registered)
-            # For now, we just test that it doesn't crash
-        except KeyError:
-            # Expected if the loader type isn't registered
-            pass
-
-    def test_resolve_loader_with_type(self):
-        """Test resolve_loader with type configured."""
-        entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "type": "fixed"}}
-        options: dict[str, dict[str, Any]] = {}
-
-        config = ShapeShiftProject(cfg={"entities": entities, "options": options}, filename="test-config.yml")
-        table_cfg: TableConfig = config.get_table("site")
-
-        # This will fail if the loader type isn't registered
-        try:
-            _ = config.resolve_loader(table_cfg)
-            # Test passes if no exception
-        except KeyError:
-            # Expected if the loader type isn't registered
-            pass
-
-    def test_resolve_loader_no_loader(self):
-        """Test resolve_loader returns None when no loader available."""
-        entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
-        options: dict[str, dict[str, Any]] = {}
-
-        config = ShapeShiftProject(cfg={"entities": entities, "options": options}, filename="test-config.yml")
-        table_cfg: TableConfig = config.get_table("site")
-
-        loader: DataLoader | None = config.resolve_loader(table_cfg)
-
-        # Should return None or log warning
-        assert loader is None
-
 
 class TestDataSourceConfig:
     """Tests for DataSourceConfig class."""

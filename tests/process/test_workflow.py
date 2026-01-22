@@ -48,8 +48,10 @@ def test_access_database_csv_workflow():
     )
 
     translate: bool = False
+    target_type: str = "csv"
 
-    output_path: Path = Path("tmp/arbodat-test.xlsx")
+    output_path: Path = Path("tmp/arbodat-test.xlsx") if target_type == "excel" else Path("tmp/arbodat-test")
+    
     asyncio.run(asyncio.sleep(0.1))  # type: ignore ; ensure config is fully loaded;
 
     remove_path(output_path)
@@ -61,7 +63,7 @@ def test_access_database_csv_workflow():
             project=config,
             target=str(output_path),
             translate=translate,
-            target_type="xlsx",
+            target_type=target_type,
             drop_foreign_keys=False,
         )
     )
