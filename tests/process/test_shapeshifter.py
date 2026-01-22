@@ -123,7 +123,7 @@ class TestProcessState:
         assert next_entity is None
 
     def test_get_required_entities_collects_dependencies(self):
-        """Test collecting all dependencies for a target entity."""
+        """ShapeShiftProject resolves required entities and ProcessState honors it."""
         cfg = ShapeShiftProject(
             cfg={
                 "entities": {
@@ -134,9 +134,10 @@ class TestProcessState:
             }
         )
 
-        state = ProcessState(config=cfg, table_store={})
+        assert cfg.get_required_entities("sample") == {"sample", "site", "survey"}
 
-        assert state.get_required_entities("sample") == {"sample", "site", "survey"}
+        state = ProcessState(project=cfg, table_store={}, target_entities={"sample"})
+        assert state.target_entities == {"sample", "site", "survey"}
 
     def test_get_unmet_dependencies(self):
         """Test getting unmet dependencies for an entity."""
