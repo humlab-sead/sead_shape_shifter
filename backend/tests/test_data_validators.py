@@ -233,129 +233,105 @@ class TestForeignKeyDataValidator:
     """Tests for ForeignKeyDataValidator."""
 
     @pytest.mark.asyncio
-    async def test_valid_foreign_keys(self):
+    async def test_valid_foreign_keys(self, mock_preview_service):
         """Test when all foreign key values exist in remote entity."""
         # Setup
-        validator = ForeignKeyDataValidator()
-
         config = {"foreign_keys": [{"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}]}
 
-        # Mock preview service and config service
-        with (
-            patch("backend.app.services.shapeshift_service.ShapeShiftService") as mock_preview_class,
-            patch("backend.app.services.project_service.ProjectService"),
-            patch("src.configuration.provider.ConfigStore.config_global"),
-        ):
-            mock_service = Mock()
-            mock_preview_class.return_value = mock_service
+        # Local entity has remote_id values: 1, 2, 3
+        # Remote entity has id values: 1, 2, 3, 4 (all local values exist)
+        mock_preview_service.preview_entity = AsyncMock(
+            side_effect=[
+                create_preview_result([{"remote_id": 1}, {"remote_id": 2}, {"remote_id": 3}], "test_entity"),
+                create_preview_result([{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}], "remote_entity"),
+            ]
+        )
 
-            # Local entity has remote_id values: 1, 2, 3
-            mock_service.preview_entity = AsyncMock(
-                side_effect=[
-                    create_preview_result([{"remote_id": 1}, {"remote_id": 2}, {"remote_id": 3}], "test_entity"),
-                    create_preview_result([{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}], "remote_entity"),
-                ]
-            )
+        validator = ForeignKeyDataValidator(mock_preview_service)
 
-            # Execute
-            errors = await validator.validate("test_project", "test_entity", config)
+        # Execute
+        errors = await validator.validate("test_project", "test_entity", config)
 
-            # Assert
-            assert len(errors) == 0
+        # Assert
+        assert len(errors) == 0
 
     @pytest.mark.asyncio
-    async def test_missing_foreign_key_values(self):
+    async def test_missing_foreign_key_values(self, mock_preview_service):
         """Test when some foreign key values don't exist in remote entity."""
         # Setup
-        validator = ForeignKeyDataValidator()
-
         config = {"foreign_keys": [{"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}]}
 
-        with (
-            patch("backend.app.services.shapeshift_service.ShapeShiftService") as mock_preview_class,
-            patch("backend.app.services.project_service.ProjectService"),
-            patch("src.configuration.provider.ConfigStore.config_global"),
-        ):
-            # Mock preview service
-            mock_service = Mock()
-            mock_preview_class.return_value = mock_service
+        # Local entity has remote_id values: 1, 2, 99 (99 doesn't exist in remote)
+        # Remote entity has id values: 1, 2
+        mock_preview_service.preview_entity = AsyncMock(
+            side_effect=[
+                create_preview_result([{"remote_id": 1}, {"remote_id": 2}, {"remote_id": 99}], "test_entity"),
+                create_preview_result([{"id": 1}, {"id": 2}], "remote_entity"),
+            ]
+        )
 
-            # Local entity has remote_id values: 1, 2, 99 (99 doesn't exist in remote)
-            mock_service.preview_entity = AsyncMock(
-                side_effect=[
-                    create_preview_result([{"remote_id": 1}, {"remote_id": 2}, {"remote_id": 99}], "test_entity"),
-                    create_preview_result([{"id": 1}, {"id": 2}], "remote_entity"),
-                ]
-            )
+        validator = ForeignKeyDataValidator(mock_preview_service)
 
-            # Execute
-            errors = await validator.validate("test_project", "test_entity", config)
+        # Execute
+        errors = await validator.validate("test_project", "test_entity", config)
 
-            # Assert
-            assert len(errors) == 1
-            error = errors[0]
-            assert error.severity in ["error", "warning"]
-            assert error.code == "FK_DATA_INTEGRITY"
-            assert "not found" in error.message.lower()
-            assert error.category == ValidationCategory.DATA
+        # Assert
+        assert len(errors) == 1
+        error = errors[0]
+        assert error.severity in ["error", "warning"]
+        assert error.code == "FK_DATA_INTEGRITY"
+        assert "not found" in error.message.lower()
+        assert error.category == ValidationCategory.DATA
 
 
 class TestDataTypeCompatibilityValidator:
     """Tests for DataTypeCompatibilityValidator."""
 
     @pytest.mark.asyncio
-    async def test_compatible_types(self):
+    async def test_compatible_types(self, mock_preview_service):
         """Test when foreign key column types are compatible."""
         # Setup
-        validator = DataTypeCompatibilityValidator()
-
         config = {"foreign_keys": [{"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}]}
 
-        with patch("backend.app.services.shapeshift_service.ShapeShiftService") as mock_preview_class:
-            mock_service = Mock()
-            mock_preview_class.return_value = mock_service
+        # Both have integer types
+        mock_preview_service.preview_entity = AsyncMock(
+            side_effect=[
+                create_preview_result([{"remote_id": 1}, {"remote_id": 2}], "test_entity"),
+                create_preview_result([{"id": 1}, {"id": 2}], "remote_entity"),
+            ]
+        )
 
-            # Both have integer types
-            mock_service.preview_entity = AsyncMock(
-                side_effect=[
-                    create_preview_result([{"remote_id": 1}, {"remote_id": 2}], "test_entity"),
-                    create_preview_result([{"id": 1}, {"id": 2}], "remote_entity"),
-                ]
-            )
+        validator = DataTypeCompatibilityValidator(mock_preview_service)
 
-            # Execute
-            errors = await validator.validate("test_project", "test_entity", config)
+        # Execute
+        errors = await validator.validate("test_project", "test_entity", config)
 
-            # Assert - integer types are compatible
-            assert len(errors) == 0
+        # Assert - integer types are compatible
+        assert len(errors) == 0
 
     @pytest.mark.asyncio
-    async def test_incompatible_types(self):
+    async def test_incompatible_types(self, mock_preview_service):
         """Test when foreign key column types are incompatible."""
         # Setup
-        validator = DataTypeCompatibilityValidator()
-
         config = {"foreign_keys": [{"entity": "remote_entity", "local_keys": ["remote_id"], "remote_keys": ["id"]}]}
 
-        with patch("backend.app.services.shapeshift_service.ShapeShiftService") as mock_preview_class:
-            mock_service = Mock()
-            mock_preview_class.return_value = mock_service
+        # Local has string, remote has integer
+        mock_preview_service.preview_entity = AsyncMock(
+            side_effect=[
+                create_preview_result([{"remote_id": "1"}, {"remote_id": "2"}], "test_entity"),
+                create_preview_result([{"id": 1}, {"id": 2}], "remote_entity"),
+            ]
+        )
 
-            # Local has string, remote has integer
-            mock_service.preview_entity = AsyncMock(
-                side_effect=[
-                    create_preview_result([{"remote_id": "1"}, {"remote_id": "2"}], "test_entity"),
-                    create_preview_result([{"id": 1}, {"id": 2}], "remote_entity"),
-                ]
-            )
+        validator = DataTypeCompatibilityValidator(mock_preview_service)
 
-            # Execute
-            errors = await validator.validate("test_project", "test_entity", config)
+        # Execute
+        errors = await validator.validate("test_project", "test_entity", config)
 
-            # Assert - should warn about type mismatch (string vs int are compatible in pandas)
-            # Actually pandas treats them as compatible, so this may not error
-            # The validator is conservative and may warn
-            assert len(errors) >= 0  # May or may not warn depending on pandas behavior
+        # Assert - should warn about type mismatch (string vs int are compatible in pandas)
+        # Actually pandas treats them as compatible, so this may not error
+        # The validator is conservative and may warn
+        assert len(errors) >= 0  # May or may not warn depending on pandas behavior
 
 
 class TestDataValidationService:
