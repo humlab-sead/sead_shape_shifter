@@ -15,6 +15,7 @@ No hardcoded field lists - all field handling is derived from Pydantic schemas.
 
 from typing import Any
 
+from src.configuration.config import Config
 from loguru import logger
 
 from backend.app.models import (
