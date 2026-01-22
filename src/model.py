@@ -825,16 +825,6 @@ class ShapeShiftProject:
             raise ValueError(f"Data source 'options.data_sources.{name}' not found in configuration")
         return DataSourceConfig(cfg=self.data_sources[name], name=name)
 
-    def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
-        """Resolve the DataLoader, if any, for the given TableConfig."""
-        if table_cfg.data_source:
-            data_source: DataSourceConfig = self.get_data_source(table_cfg.data_source)
-            return DataLoaders.get(key=data_source.driver)(data_source=data_source)
-
-        if table_cfg.type and table_cfg.type in DataLoaders.items:
-            return DataLoaders.get(key=table_cfg.type)(data_source=None)
-
-        return None
 
     def clone(self) -> "ShapeShiftProject":
         """Create a deep copy of the ShapeShiftProject."""

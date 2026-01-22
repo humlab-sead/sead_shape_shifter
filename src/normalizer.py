@@ -10,13 +10,14 @@ from typing import Any, Self
 import pandas as pd
 from loguru import logger
 
+from src.loaders.base_loader import DataLoaders
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
 from src.filter import apply_filters
 from src.link import ForeignKeyLinker
 from src.loaders import DataLoader
 from src.mapping import LinkToRemoteService
-from src.model import ShapeShiftProject, TableConfig
+from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
 from src.unnest import unnest
 
 
@@ -114,10 +115,21 @@ class ShapeShifter:
             state = ProcessState(config=self.project, table_store=self.table_store, target_entities=None)
         return state
 
+    def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
+        """Resolve the DataLoader, if any, for the given TableConfig."""
+        if table_cfg.data_source:
+            data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
+            return DataLoaders.get(key=data_source.driver)(data_source=data_source)
+
+        if table_cfg.type and table_cfg.type in DataLoaders.items:
+            return DataLoaders.get(key=table_cfg.type)(data_source=None)
+
+        return None
+
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
 
-        loader: DataLoader | None = self.project.resolve_loader(table_cfg=table_cfg)
+        loader: DataLoader | None = self.resolve_loader(table_cfg=table_cfg)
         if loader:
             logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)

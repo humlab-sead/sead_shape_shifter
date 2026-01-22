@@ -198,7 +198,7 @@ class TestAppendProcessingSQL:
         mock_loader = AsyncMock()
         mock_loader.load = AsyncMock(return_value=sql_result)
 
-        with patch.object(normalizer.project, "resolve_loader", side_effect=[None, mock_loader]):
+        with patch.object(normalizer, "resolve_loader", side_effect=[None, mock_loader]):
             # First config has no loader, second uses mock_loader.
             await normalizer.normalize()
             result: pd.DataFrame = normalizer.table_store["site"]
