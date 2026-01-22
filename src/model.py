@@ -8,7 +8,6 @@ from loguru import logger
 
 from src.configuration import ConfigFactory, ConfigLike
 from src.configuration.config import Config, is_config_path
-from src.loaders.base_loader import DataLoader, DataLoaders
 from src.utility import dotget, unique
 
 
@@ -932,6 +931,32 @@ class ShapeShiftProject:
     #     config = ShapeShiftProject(cfg=provider.get_config(context).data)
 
     #     return config
+
+    def resolve_target_entities(self, target_entities: set[str] | None = None) -> set[str]:
+        """Resolve target entities including all dependencies. If no target entities are provided, return all entities in the project."""
+        if target_entities:
+            all_required: set[str] = set()
+            for entity in target_entities:
+                all_required.update(self.get_required_entities(entity))
+            return all_required
+        return set(self.tables.keys())
+
+    def get_required_entities(self, entity_name: str) -> set[str]:
+        """Get all entities required to process the given entity (including the entity itself)."""
+        required_entities: set[str] = {entity_name}
+        unprocessed: list[str] = [entity_name]
+
+        while unprocessed:
+            current: str = unprocessed.pop()
+            if current not in self.tables:
+                continue
+            for dep in self.get_table(entity_name=current).depends_on:
+                if dep in required_entities:
+                    continue
+                required_entities.add(dep)
+                unprocessed.append(dep)
+
+        return required_entities
 
 
 class DataSourceConfig:
