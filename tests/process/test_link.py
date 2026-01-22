@@ -59,7 +59,9 @@ def test_link_foreign_key_renames_and_drops_remote_id(fk_config: ForeignKeyConfi
             captured["merge_opts_called"] = True
             return {}
 
-        def validate_after_merge(self, local_df_arg, remote_df_arg, linked_df_arg, merge_indicator_col=None):
+        def validate_after_merge(
+            self, local_df_arg, remote_df_arg, linked_df_arg, merge_indicator_col=None  # pylint: disable=unused-argument
+        ):
             captured["after_merge_called"] = True
             captured["merge_indicator"] = merge_indicator_col
 
