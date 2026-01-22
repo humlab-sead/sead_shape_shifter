@@ -5,6 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_serializer
 
+from src.configuration.config import Config
+
 
 class ProjectFileInfo(BaseModel):
     """Metadata about a file stored under a project uploads directory."""
