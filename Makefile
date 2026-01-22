@@ -103,6 +103,10 @@ stop:
 .PHONY: br
 br: frontend-clear backend-kill backend-run
 
+# Serve backend with console + file logging
+.PHONY: br-log
+br-log: frontend-clear backend-kill backend-run-log
+
 .PHONY: fr
 fr: frontend-kill frontend-run
 
@@ -134,6 +138,14 @@ backend-run:
 	@PYTHONPATH=. uv run uvicorn backend.app.main:app \
 		--log-level debug \
 		--host 0.0.0.0 --port $(BACKEND_PORT)
+
+.PHONY: backend-run-log
+backend-run-log:
+	@echo "Starting backend server on http://localhost:$(BACKEND_PORT) (logs also saved to logs/backend.log)"
+	@mkdir -p logs
+	@PYTHONPATH=. uv run uvicorn backend.app.main:app \
+		--log-level debug \
+		--host 0.0.0.0 --port $(BACKEND_PORT) 2>&1 | tee logs/backend.log
 
 .PHONY: backend-run-with-hmr
 backend-run-with-hmr:
