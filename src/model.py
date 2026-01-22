@@ -842,6 +842,14 @@ class ShapeShiftProject:
             filename=context.get("filename") or self.filename,
         )
 
+    def is_resolved(self) -> bool:
+        """Check if the configuration has any unresolved references."""
+        return not Config.find_unresolved_directives(self.cfg)
+
+    def unresolved_directives(self) -> list[str]:
+        """Check if the configuration has any unresolved references."""
+        return Config.find_unresolved_directives(self.cfg)
+
     @cached_property
     def table_names(self) -> list[str]:
         return list(self.tables.keys())
