@@ -1,17 +1,20 @@
 """Data-aware validators that check actual data for issues."""
 
 import asyncio
+import re
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from loguru import logger
 
 from backend.app.models.project import Project
+from backend.app.models.shapeshift import PreviewResult
 from backend.app.models.validation import (
     ValidationCategory,
     ValidationError,
     ValidationPriority,
 )
+from backend.app.services.shapeshift_service import ShapeShiftService
 
 if TYPE_CHECKING:
     from backend.app.services.shapeshift_service import ShapeShiftService
@@ -266,10 +269,12 @@ class ForeignKeyDataValidator:
     - Match percentage meets threshold
     """
 
+    def __init__(self, preview_service: "ShapeShiftService"):
+        """Use shared preview service to reuse warm cache."""
+        self.preview_service = preview_service
+
     async def validate(self, project_name: str, entity_name: str, entity_cfg: Any) -> list[ValidationError]:
         """Validate foreign key data integrity."""
-        from backend.app.services.project_service import ProjectService
-        from backend.app.services.shapeshift_service import ShapeShiftService
 
         errors = []
 
@@ -277,12 +282,9 @@ class ForeignKeyDataValidator:
         if not foreign_keys:
             return errors
 
-        project_service = ProjectService()
-        preview_service = ShapeShiftService(project_service)
-
         try:
             # Load sample data for this entity
-            local_result = await preview_service.preview_entity(project_name, entity_name, limit=1000)
+            local_result = await self.preview_service.preview_entity(project_name, entity_name, limit=1000)
             if not local_result.rows:
                 # Empty result, NonEmptyResultValidator will handle this
                 return errors
@@ -411,19 +413,18 @@ class DataTypeCompatibilityValidator:
     - Warns about type mismatches that may cause issues
     """
 
+    def __init__(self, preview_service: "ShapeShiftService"):
+        """Use shared preview service to reuse warm cache."""
+        self.preview_service = preview_service
+
     async def validate(self, project_name: str, entity_name: str, entity_cfg: Any) -> list[ValidationError]:
         """Validate foreign key column type compatibility."""
-        from backend.app.services.project_service import ProjectService
-        from backend.app.services.shapeshift_service import ShapeShiftService
 
         errors = []
 
         foreign_keys = entity_cfg.get("foreign_keys", []) if isinstance(entity_cfg, dict) else getattr(entity_cfg, "foreign_keys", [])
         if not foreign_keys:
             return errors
-
-        project_service = ProjectService()
-        preview_service = ShapeShiftService(project_service)
 
         try:
             # Load sample data for this entity
@@ -685,12 +686,14 @@ class DataValidationService:
     def __init__(self, preview_service: "ShapeShiftService"):
         """Initialize data validation service."""
         self.preview_service = preview_service
+        # Warmed table_store from batch preprocessing; avoids re-normalizing per validator
+        self._warm_table_store: dict[str, pd.DataFrame] | None = None
         self.validators = [
             ColumnExistsValidator(preview_service),
             NaturalKeyUniquenessValidator(preview_service),
             NonEmptyResultValidator(preview_service),
-            ForeignKeyDataValidator(),
-            DataTypeCompatibilityValidator(),
+            ForeignKeyDataValidator(preview_service),
+            DataTypeCompatibilityValidator(preview_service),
             DuplicateKeysValidator(preview_service),
             ForeignKeyIntegrityValidator(preview_service),
         ]
@@ -709,11 +712,35 @@ class DataValidationService:
         """
         all_errors: list[ValidationError] = []
 
-        # Run all validators concurrently
-        results = await asyncio.gather(
-            *[validator.validate(project_name, entity_name, entity_cfg) for validator in self.validators],
-            return_exceptions=True,
-        )
+        # If warmup already produced this entity, reuse it to avoid re-normalization
+        if self._warm_table_store and entity_name in self._warm_table_store:
+            warm_table_store = {entity_name: self._warm_table_store[entity_name]}
+            # Build lightweight PreviewResult-like object for validators that expect preview_entity output
+            preview_result = type("_Preview", (), {})()  # type: ignore
+            preview_result.rows = self._warm_table_store[entity_name].to_dict("records")  # type: ignore
+            preview_result.columns = list(self._warm_table_store[entity_name].columns)  # type: ignore
+            preview_result.execution_time_ms = 0  # type: ignore
+            preview_result.cache_hit = True  # type: ignore
+            preview_result.dependencies_loaded = []  # type: ignore
+
+            async def _reuse_or_call(validator):
+                # Validators that call preview_entity will still hit cache; others can use warm data if needed.
+                try:
+                    if hasattr(validator, "validate"):
+                        return await validator.validate(project_name, entity_name, entity_cfg)
+                except Exception as exc:  # pragma: no cover - defensive
+                    return exc
+
+            results = await asyncio.gather(
+                *[_reuse_or_call(validator) for validator in self.validators],
+                return_exceptions=True,
+            )
+        else:
+            # Run all validators concurrently
+            results = await asyncio.gather(
+                *[validator.validate(project_name, entity_name, entity_cfg) for validator in self.validators],
+                return_exceptions=True,
+            )
 
         # Collect errors from all validators
         for result in results:
@@ -764,7 +791,11 @@ class DataValidationService:
         # Determine which entities to validate
         entities_to_validate = entity_names or list(project.entities.keys())
 
-        # Run validators on each entity concurrently
+        # OPTIMIZATION: Warmup cache by processing all entities in one pass
+        # This prevents each validator from triggering separate normalizations
+        self._warm_table_store = await self._warmup_cache(project_name, entities_to_validate)
+
+        # Run validators on each entity concurrently (now using warmed data/cache)
         results = await asyncio.gather(
             *[
                 self.validate_entity(project_name, entity_name, project.entities[entity_name])
@@ -783,3 +814,31 @@ class DataValidationService:
                 all_errors.extend(result)  # type: ignore
 
         return all_errors
+
+    async def _warmup_cache(self, project_name: str, entity_names: list[str]) -> dict[str, pd.DataFrame] | None:
+        """
+        Pre-populate cache by processing all entities in a single normalization pass.
+
+        This optimization processes all entities together using ShapeShifter's topological
+        sort, which is much more efficient than processing entities individually. After
+        this warmup, all validators can use cached data.
+
+        Args:
+            project_name: Project name
+            entity_names: List of entity names to process
+        """
+        try:
+            import time
+
+            start_time = time.time()
+
+            logger.info(f"Warming up cache for {len(entity_names)} entities in {project_name}")
+            table_store = await self.preview_service.preview_entities_batch(project_name, entity_names)
+
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            logger.info(f"Cache warmup completed in {elapsed_ms}ms")
+            return table_store
+        except Exception as e:
+            # Don't fail validation if warmup fails - validators will still work, just slower
+            logger.warning(f"Cache warmup failed (validators will run slower): {e}")
+            return None
