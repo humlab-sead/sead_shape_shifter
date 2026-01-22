@@ -299,7 +299,7 @@ class ForeignKeyConstraintValidator:
 
         self.size_after_merge = linked_df.shape
 
-        logger.debug(f"{self.entity_name}[linking]: merge size: before={self.size_before_merge}, after={self.size_after_merge}")
+        # logger.debug(f"{self.entity_name}[linking]: merge size: before={self.size_before_merge}, after={self.size_after_merge}")
 
         context = ValidationContext(local_df=local_df, remote_df=remote_df, linked_df=linked_df)
         for validator_cls in Validators.get_validators_for_stage("post-merge"):
