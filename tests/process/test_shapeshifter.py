@@ -61,9 +61,9 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
 
-        assert state.config == config
+        assert state.project == config
         assert state.unprocessed_entities == {"site", "sample", "taxa"}
         assert state.processed_entities == set()
 
@@ -84,7 +84,7 @@ class TestProcessState:
             mock_table.depends_on = set()
             mock_get_table.return_value = mock_table
 
-            state = ProcessState(config=config, table_store={})
+            state = ProcessState(project=config, table_store={})
             next_entity = state.get_next_entity_to_process()
 
             assert next_entity in ["site", "sample"]
@@ -100,7 +100,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
 
         # First entity should be 'site' since 'sample' depends on it
         next_entity = state.get_next_entity_to_process()
@@ -116,7 +116,7 @@ class TestProcessState:
     def test_get_next_entity_all_processed(self, survey_only_config: ShapeShiftProject):
         """Test getting next entity when all are processed."""
 
-        state = ProcessState(config=survey_only_config, table_store={"survey": Mock()})
+        state = ProcessState(project=survey_only_config, table_store={"survey": Mock()})
         state.table_store["site"] = Mock()
 
         next_entity: str | None = state.get_next_entity_to_process()
@@ -144,7 +144,7 @@ class TestProcessState:
             cfg={"entities": {"site": {"depends_on": []}, "sample": {"depends_on": ["site", "taxa"]}, "taxa": {"depends_on": []}}},
         )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
 
         unmet = state.get_unmet_dependencies("sample")
         assert unmet == {"site", "taxa"}
@@ -164,7 +164,7 @@ class TestProcessState:
                 }
             },
         )
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
         assert "site" in state.unprocessed_entities
         assert "site" not in state.processed_entities
 
@@ -185,7 +185,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
 
         all_unmet = state.get_all_unmet_dependencies()
 
@@ -207,7 +207,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
         assert state.processed_entities == set()
 
         state.table_store["site"] = Mock()
@@ -227,7 +227,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
 
         with patch.object(config, "get_table") as mock_get_table:
             mock_table = Mock()

@@ -25,7 +25,7 @@ class ColumnExistsValidator:
 
     def __init__(self, preview_service: "ShapeShiftService"):
         """Initialize validator with preview service for data sampling."""
-        self.preview_service = preview_service
+        self.preview_service: ShapeShiftService = preview_service
 
     async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
         """
@@ -39,10 +39,10 @@ class ColumnExistsValidator:
         Returns:
             List of validation errors for missing columns
         """
-        errors = []
+        errors: list[ValidationError] = []
 
         # Only validate entities with column specifications
-        columns = entity_cfg.get("columns")
+        columns: list[str] | None = entity_cfg.get("columns")
         if not columns:
             return errors
 
@@ -57,11 +57,11 @@ class ColumnExistsValidator:
 
             # Get actual column names from data
             df = pd.DataFrame(preview_result.rows)
-            actual_columns = set(df.columns)
+            actual_columns: set[str] = set(df.columns)
 
             # Check each configured column
-            configured_columns = set(columns)
-            missing_columns = configured_columns - actual_columns
+            configured_columns: set[str] = set(columns)
+            missing_columns: set[str] = configured_columns - actual_columns
 
             for col in missing_columns:
                 errors.append(
@@ -103,7 +103,7 @@ class NaturalKeyUniquenessValidator:
 
     def __init__(self, preview_service: "ShapeShiftService"):
         """Initialize validator with preview service for data sampling."""
-        self.preview_service = preview_service
+        self.preview_service: ShapeShiftService = preview_service
 
     async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
         """
@@ -117,16 +117,18 @@ class NaturalKeyUniquenessValidator:
         Returns:
             List of validation errors for non-unique keys
         """
-        errors = []
+        errors: list[ValidationError] = []
 
         # Only validate entities with natural keys
-        keys = entity_cfg.get("keys")
+        keys: list[str] | None = entity_cfg.get("keys")
         if not keys:
             return errors
 
         try:
             # Get larger sample for better uniqueness check
-            preview_result = await self.preview_service.preview_entity(project_name=project_name, entity_name=entity_name, limit=1000)
+            preview_result: PreviewResult = await self.preview_service.preview_entity(
+                project_name=project_name, entity_name=entity_name, limit=1000
+            )
 
             if not preview_result.rows or len(preview_result.rows) < 2:
                 # Need at least 2 rows to check uniqueness
@@ -135,21 +137,21 @@ class NaturalKeyUniquenessValidator:
             df = pd.DataFrame(preview_result.rows)
 
             # Check if all key columns exist
-            missing_keys = set(keys) - set(df.columns)
+            missing_keys: set[str] = set(keys) - set(df.columns)
             if missing_keys:
                 # Column existence is handled by ColumnExistsValidator
                 return errors
 
             # Check for duplicates
-            duplicates = df[df.duplicated(subset=keys, keep=False)]
+            duplicates: pd.DataFrame = df[df.duplicated(subset=keys, keep=False)]
 
             if not duplicates.empty:
-                duplicate_count = len(duplicates)
-                unique_duplicate_keys = len(duplicates.drop_duplicates(subset=keys))
+                duplicate_count: int = len(duplicates)
+                unique_duplicate_keys: int = len(duplicates.drop_duplicates(subset=keys))
 
                 # Show example of duplicate
-                example = duplicates[keys].iloc[0].to_dict()
-                example_str = ", ".join([f"{k}={v}" for k, v in example.items()])
+                example: dict[Any, Any] = duplicates[keys].iloc[0].to_dict()
+                example_str: str = ", ".join([f"{k}={v}" for k, v in example.items()])
 
                 errors.append(
                     ValidationError(
@@ -311,7 +313,7 @@ class ForeignKeyDataValidator:
 
                 # Load remote entity data
                 try:
-                    remote_result = await preview_service.preview_entity(project_name, remote_entity, limit=1000)
+                    remote_result = await self.preview_service.preview_entity(project_name, remote_entity, limit=1000)  # type: ignore
                     if not remote_result.rows:
                         errors.append(
                             ValidationError(
@@ -425,7 +427,7 @@ class DataTypeCompatibilityValidator:
 
         try:
             # Load sample data for this entity
-            local_result = await preview_service.preview_entity(project_name, entity_name, limit=100)
+            local_result: PreviewResult = await self.preview_service.preview_entity(project_name, entity_name, limit=100)
             if not local_result.rows:
                 return errors
 
@@ -446,7 +448,7 @@ class DataTypeCompatibilityValidator:
                     if not remote_entity:
                         continue  # ForeignKeyDataValidator will catch this
 
-                    remote_result = await preview_service.preview_entity(project_name, remote_entity, limit=100)
+                    remote_result: PreviewResult = await self.preview_service.preview_entity(project_name, remote_entity, limit=100)
                     if not remote_result.rows:
                         continue  # ForeignKeyDataValidator will catch this
 
