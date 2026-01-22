@@ -446,7 +446,7 @@ class DataTypeCompatibilityValidator:
                     if not remote_entity:
                         continue  # ForeignKeyDataValidator will catch this
 
-                    remote_result = await preview_service.preview_entity(project_name, remote_entity, limit=100)  
+                    remote_result = await preview_service.preview_entity(project_name, remote_entity, limit=100)
                     if not remote_result.rows:
                         continue  # ForeignKeyDataValidator will catch this
 

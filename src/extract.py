@@ -46,11 +46,12 @@ def check_functional_dependency_original(df: pd.DataFrame, determinant_columns: 
 
     return len(bad_keys) == 0
 
+
 def check_functional_dependency(
     df: pd.DataFrame,
     determinant_columns: list[str],
     raise_error: bool = True,
-    max_bad_keys: int = 50,   # avoid huge messages
+    max_bad_keys: int = 50,  # avoid huge messages
 ) -> bool:
     """
     NOTE: ChatGPT-5.2 optimized version of functional dependency check.
@@ -69,11 +70,7 @@ def check_functional_dependency(
     distinct: pd.DataFrame = df[cols].drop_duplicates()
 
     # Count how many distinct dependent-rows each determinant has
-    counts: pd.Series[int] = (
-        distinct
-        .groupby(determinant_columns, sort=False, dropna=False)
-        .size()
-    )
+    counts: pd.Series[int] = distinct.groupby(determinant_columns, sort=False, dropna=False).size()
 
     bad: pd.Series[int] = counts[counts > 1]
     if bad.empty:
@@ -89,6 +86,7 @@ def check_functional_dependency(
         raise ValueError(f"[fd_check]: {msg}")
     logger.warning(f"[fd_check]: {msg}")
     return False
+
 
 def drop_duplicate_rows(
     data: pd.DataFrame, columns: bool | list[str] = False, fd_check: bool = False, entity_name: str | None = None

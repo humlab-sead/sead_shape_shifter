@@ -825,7 +825,6 @@ class ShapeShiftProject:
             raise ValueError(f"Data source 'options.data_sources.{name}' not found in configuration")
         return DataSourceConfig(cfg=self.data_sources[name], name=name)
 
-
     def clone(self) -> "ShapeShiftProject":
         """Create a deep copy of the ShapeShiftProject."""
         return ShapeShiftProject(cfg=copy.deepcopy(self.cfg), filename=self.filename)

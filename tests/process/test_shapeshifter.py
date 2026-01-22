@@ -1,8 +1,8 @@
 """Unit tests for arbodat normalizer classes."""
 
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
 from typing import Any
+from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
 import pytest
@@ -692,7 +692,6 @@ class TestShapeShifter:
         assert content[0] == "entity\tnum_rows\tnum_columns"
         assert len(content) == 3  # header + two entities
 
-
     def test_resolve_loader_with_data_source(self, survey_only_config: ShapeShiftProject):
         """Test resolve_loader with data_source configured."""
         entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "data_source": "postgres_db"}}
@@ -744,4 +743,3 @@ class TestShapeShifter:
 
         # Should return None or log warning
         assert loader is None
-

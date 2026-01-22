@@ -10,12 +10,12 @@ from typing import Any, Self
 import pandas as pd
 from loguru import logger
 
-from src.loaders.base_loader import DataLoaders
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
 from src.filter import apply_filters
 from src.link import ForeignKeyLinker
 from src.loaders import DataLoader
+from src.loaders.base_loader import DataLoaders
 from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
 from src.unnest import unnest
