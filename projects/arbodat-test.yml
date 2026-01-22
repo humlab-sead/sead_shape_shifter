@@ -430,7 +430,7 @@ entities:
     data_source: arbodat_data
     type: sql
     surrogate_id: feature_property_id
-    keys: ["Projekt", "Befu"]
+    keys: ["Projekt", "Befu", "feature_property_type"]
     columns: "@value: entities.feature_property_type.values"
     query: select [Projekt], [Befu], [FlSchn], [gebäud], [okBefu], [okErh], [BestJa], [Anmerkung] from [Befunde] ;
     foreign_keys:
@@ -446,7 +446,7 @@ entities:
       value_vars: "@value: entities.feature_property_type.values"
       var_name: feature_property_type
       value_name: feature_property_value
-    drop_duplicates: ["Projekt", "Befu"]
+    drop_duplicates: ["Projekt", "Befu", "feature_property_type"]
     depends_on: ["feature", "feature_property_type"]
   feature_property_type:
     type: fixed
