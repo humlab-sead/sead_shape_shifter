@@ -131,7 +131,7 @@ class ShapeShifter:
 
         loader: DataLoader | None = self.resolve_loader(table_cfg=table_cfg)
         if loader:
-            logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
+            # logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
 
         source_table: str | None = table_cfg.source or self.default_entity
@@ -143,6 +143,39 @@ class ShapeShifter:
     def register(self, name: str, df: pd.DataFrame) -> pd.DataFrame:
         self.table_store[name] = df
         return df
+
+    async def get_subset(self, subset_service: SubsetService, entity: str, table_cfg: TableConfig) -> pd.DataFrame:
+
+        dfs: list[pd.DataFrame] = []
+        delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
+
+        for sub_table_cfg in table_cfg.get_sub_table_configs():
+            # logger.debug(f"{entity}[normalizing]: Processing sub-table '{sub_table_cfg.entity_name}'...")
+            sub_source: pd.DataFrame = await self.resolve_source(table_cfg=sub_table_cfg)
+            sub_data: pd.DataFrame = subset_service.get_subset(
+                source=sub_source,
+                columns=self.get_subset_columns(sub_table_cfg),
+                entity_name=sub_table_cfg.entity_name,
+                extra_columns=sub_table_cfg.extra_columns,
+                drop_duplicates=sub_table_cfg.drop_duplicates if not delay_drop_duplicates else False,
+                replacements=sub_table_cfg.replacements if sub_table_cfg.replacements else None,
+                raise_if_missing=False,
+                drop_empty=False,
+            )
+            dfs.append(sub_data)
+
+            # Concatenate all dataframes (filter out empty DataFrames to avoid FutureWarning)
+        non_empty_dfs: list[pd.DataFrame] = [df for df in dfs if not df.empty]
+        if not non_empty_dfs:
+            logger.warning(f"{entity}[normalizing]: All sub-tables are empty after processing.")
+
+        data: pd.DataFrame = (
+            pd.concat(non_empty_dfs, ignore_index=True)
+            if non_empty_dfs
+            else pd.DataFrame(columns=table_cfg.keys_columns_and_fks) if len(dfs) == 0 else dfs[0]
+        )
+
+        return data
 
     async def normalize(self) -> Self:
         """Extract all configured entities and store them."""
@@ -167,40 +200,13 @@ class ShapeShifter:
             if not all(isinstance(col, str) for col in table_cfg.columns):
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': all columns must be strings")
 
-            delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
-
             # Process all configured tables (base + append items)
-            dfs: list[pd.DataFrame] = []
-
-            for sub_table_cfg in table_cfg.get_sub_table_configs():
-                logger.debug(f"{entity}[normalizing]: Processing sub-table '{sub_table_cfg.entity_name}'...")
-                sub_source: pd.DataFrame = await self.resolve_source(table_cfg=sub_table_cfg)
-                sub_data: pd.DataFrame = subset_service.get_subset(
-                    source=sub_source,
-                    columns=self.get_subset_columns(sub_table_cfg),
-                    entity_name=sub_table_cfg.entity_name,
-                    extra_columns=sub_table_cfg.extra_columns,
-                    drop_duplicates=sub_table_cfg.drop_duplicates if not delay_drop_duplicates else False,
-                    replacements=sub_table_cfg.replacements if sub_table_cfg.replacements else None,
-                    raise_if_missing=False,
-                    drop_empty=False,
-                )
-                dfs.append(sub_data)
-
-            # Concatenate all dataframes (filter out empty DataFrames to avoid FutureWarning)
-            non_empty_dfs: list[pd.DataFrame] = [df for df in dfs if not df.empty]
-            if not non_empty_dfs:
-                logger.warning(f"{entity}[normalizing]: All sub-tables are empty after processing.")
-
-            data: pd.DataFrame = (
-                pd.concat(non_empty_dfs, ignore_index=True)
-                if non_empty_dfs
-                else pd.DataFrame(columns=table_cfg.keys_columns_and_fks) if len(dfs) == 0 else dfs[0]
-            )
+            data: pd.DataFrame = await self.get_subset(subset_service, entity, table_cfg)
 
             if table_cfg.filters:
                 data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store)
 
+            delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
             # Apply post-concatenation deduplication if append_mode is "distinct"
             # if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
             if table_cfg.drop_duplicates and not delay_drop_duplicates:
