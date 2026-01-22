@@ -191,6 +191,7 @@ class Config(ConfigLike):
         env_prefix: str | None = None,
         source_path: str | None = None,
         inplace: bool = False,
+        strict: bool = False,
     ) -> dict[str, Any]:
         """Resolve configuration directives in the provided data dictionary.
 
@@ -216,7 +217,34 @@ class Config(ConfigLike):
         data = replace_env_vars(data)  # type: ignore
         data = replace_references(data)  # type: ignore
 
+        if strict:
+            unresolved = Config.find_unresolved_directives(data)
+            if unresolved:
+                paths = ", ".join(unresolved[:5])
+                extra = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
+                raise ValueError(f"Unresolved configuration directives at: {paths}{extra}")
+
         return data
+
+    @staticmethod
+    def find_unresolved_directives(data: Any, path: str | None = None) -> list[str]:
+        """Recursively find unresolved directive strings like @value:, @include:, @load:."""
+        tags: list[str] = ["@value:", "@include", "@load"]
+        hits: list[str] = []
+
+        if isinstance(data, dict):
+            for k, v in data.items():
+                next_path = f"{path}.{k}" if path else str(k)
+                hits.extend(Config.find_unresolved_directives(v, next_path))
+        elif isinstance(data, list):
+            for idx, v in enumerate(data):
+                next_path = f"{path}[{idx}]" if path else f"[{idx}]"
+                hits.extend(Config.find_unresolved_directives(v, next_path))
+        elif isinstance(data, str):
+            if any(tag in data for tag in tags):
+                hits.append(f"{path or '<root>'}: {data}")
+
+        return hits
 
 
 class ConfigFactory:
