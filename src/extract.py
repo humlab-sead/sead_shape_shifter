@@ -16,76 +16,7 @@ def add_surrogate_id(target: pd.DataFrame, id_name: str) -> pd.DataFrame:
     return target
 
 
-def check_functional_dependency_original(df: pd.DataFrame, determinant_columns: list[str], raise_error: bool = True) -> bool:
-    """Check functional dependency: for each unique combination of subset columns,
-    the other columns should have consistent values.
-    Args:
-        df (pd.DataFrame): DataFrame to check.
-        determinant_columns (list[str]): List of column names that are checked for functional dependency.
-        raise_error (bool): Whether to raise an error if inconsistencies are found.
-    Returns:
-        bool: True if no inconsistencies are found, otherwise False.
-    """
-
-    # The columns that should have consistent values given the determinant columns
-    dependent_columns: list[str] = df.columns.difference(determinant_columns).to_list()
-
-    if len(dependent_columns) == 0:
-        return True
-
-    bad_keys: list = []
-    for keys, group in df.groupby(determinant_columns):
-        if (group[dependent_columns].nunique(dropna=False) > 1).any():
-            bad_keys.append(keys)
-
-    if bad_keys:
-        msg: str = f"inconsistent non-subset values for keys: {bad_keys}"
-        if raise_error:
-            raise ValueError(f"[fd_check]: {msg}")
-        logger.warning(f"[fd_check]: {msg}")
-
-    return len(bad_keys) == 0
-
-
-def check_functional_dependency(
-    df: pd.DataFrame,
-    determinant_columns: list[str],
-    raise_error: bool = True,
-    max_bad_keys: int = 50,  # avoid huge messages
-) -> bool:
-    """
-    NOTE: ChatGPT-5.2 optimized version of functional dependency check.
-    Check functional dependency: for each unique combination of determinant_columns,
-    all other columns must be consistent.
-    """
-    # Dependent columns = everything else
-    dependent_columns: list[str] = [c for c in df.columns if c not in determinant_columns]
-    if not dependent_columns:
-        return True
-
-    cols: list[str] = determinant_columns + dependent_columns
-
-    # Keep only distinct (determinant + dependent) rows.
-    # If a determinant maps to >1 distinct dependent-row, FD is violated.
-    distinct: pd.DataFrame = df[cols].drop_duplicates()
-
-    # Count how many distinct dependent-rows each determinant has
-    counts: pd.Series[int] = distinct.groupby(determinant_columns, sort=False, dropna=False).size()
-
-    bad: pd.Series[int] = counts[counts > 1]
-    if bad.empty:
-        return True
-
-    # Make keys readable (MultiIndex -> tuples)
-    bad_keys: list[Any] = bad.index.tolist()
-    shown: list[Any] = bad_keys[:max_bad_keys]
-    more: str = "" if len(bad_keys) <= max_bad_keys else f" (showing first {max_bad_keys} of {len(bad_keys)})"
-    msg: str = f"inconsistent non-subset values for keys: {shown}{more}"
-
-    if raise_error:
-        raise ValueError(f"[fd_check]: {msg}")
-    logger.warning(f"[fd_check]: {msg}")
-    return False
+# FIXME: Move to transformation utility module?
 
 
 def drop_duplicate_rows(
@@ -115,7 +46,9 @@ def drop_duplicate_rows(
         )
         return data
     if fd_check:
-        check_functional_dependency(data, determinant_columns=columns, raise_error=True)
+        specification = FunctionalDependencySpecification()
+        specification.is_satisfied_by(df=data, determinant_columns=columns, raise_error=True)
+
     data = data.drop_duplicates(subset=columns).reset_index(drop=True)
     return data
 

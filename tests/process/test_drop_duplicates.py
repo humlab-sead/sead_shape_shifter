@@ -3,7 +3,8 @@
 import pandas as pd
 import pytest
 
-from src.extract import check_functional_dependency, drop_duplicate_rows, drop_empty_rows
+from src.extract import drop_duplicate_rows, drop_empty_rows
+from src.specifications.fd import FunctionalDependencySpecification
 
 
 def test_drop_duplicate_rows_validates_columns_and_fd_check():
@@ -39,14 +40,14 @@ def test_drop_empty_rows_variants():
     assert filtered.iloc[0]["a"] == "keep"
 
 
-class TestCheckFunctionalDependency:
-    """Tests for check_functional_dependency function."""
+class TestFunctionalDependencySpecification:
+    """Tests for FunctionalDependencySpecification class."""
 
     def test_valid_functional_dependency(self):
         """Test with valid functional dependency."""
         df = pd.DataFrame({"key": ["A", "A", "B", "B"], "value": [1, 1, 2, 2]})
-
-        result = check_functional_dependency(df, ["key"], raise_error=False)
+        specification = FunctionalDependencySpecification()
+        result = specification.is_satisfied_by(df=df, determinant_columns=["key"], raise_error=False)
         assert result is True
 
     def test_invalid_functional_dependency_raises(self):
@@ -54,25 +55,29 @@ class TestCheckFunctionalDependency:
         df = pd.DataFrame({"key": ["A", "A", "B"], "value": [1, 2, 3]})
 
         with pytest.raises(ValueError, match="inconsistent non-subset values"):
-            check_functional_dependency(df, ["key"], raise_error=True)
+            specification = FunctionalDependencySpecification()
+            specification.is_satisfied_by(df=df, determinant_columns=["key"], raise_error=True)
 
     def test_invalid_functional_dependency_warns(self):
         """Test that invalid dependency warns when raise_error=False."""
         df = pd.DataFrame({"key": ["A", "A"], "value": [1, 2]})
 
-        result = check_functional_dependency(df, ["key"], raise_error=False)
+        specification = FunctionalDependencySpecification()
+        result = specification.is_satisfied_by(df=df, determinant_columns=["key"], raise_error=False)
         assert result is False
 
     def test_no_dependent_columns(self):
         """Test with only determinant columns."""
         df = pd.DataFrame({"key": ["A", "B", "C"]})
 
-        result = check_functional_dependency(df, ["key"], raise_error=True)
+        specification = FunctionalDependencySpecification()
+        result = specification.is_satisfied_by(df=df, determinant_columns=["key"], raise_error=True)
         assert result is True
 
     def test_multiple_determinant_columns(self):
         """Test with multiple determinant columns."""
         df = pd.DataFrame({"key1": ["A", "A", "B", "B"], "key2": [1, 2, 1, 2], "value": [10, 20, 30, 40]})
 
-        result = check_functional_dependency(df, ["key1", "key2"], raise_error=False)
+        specification = FunctionalDependencySpecification()
+        result = specification.is_satisfied_by(df=df, determinant_columns=["key1", "key2"], raise_error=False)
         assert result is True
