@@ -36,46 +36,28 @@ class SpecificationIssue:
         return self.__str__()
 
 
-class ProjectSpecification(ABC):
+class Specification(ABC):
     """Base specification for project validation."""
 
-    def __init__(self, project_cfg: dict[str, Any]) -> None:
+    def __init__(self) -> None:
         self.errors: list[SpecificationIssue] = []
         self.warnings: list[SpecificationIssue] = []
-        self.project_cfg: dict[str, Any] = project_cfg
 
     def clear(self) -> None:
         """Clear all errors and warnings."""
         self.errors = []
         self.warnings = []
 
-    def merge(self, other: "ProjectSpecification") -> "ProjectSpecification":
-        """Merge another FieldValidator's issues into this one."""
+    def merge(self, other: "Specification") -> "Specification":
+        """Merge another specification's issues into this one."""
         self.errors.extend(other.errors)
         self.warnings.extend(other.warnings)
         return self
 
-    def get_entity_cfg(self, entity_name: str) -> dict[str, Any]:
-        """Get the configuration for a specific entity."""
-        return dotget(self.project_cfg, f"entities.{entity_name}", {})
-
-    def entity_exists(self, entity_name: str) -> bool:
-        """Check if a specific entity exists in the configuration."""
-        return dotget(self.project_cfg, f"entities.{entity_name}", None) is not None
-
-    def field_exists(self, path: str) -> bool:
-        """Check if a specific field exists in the entity configuration."""
-        return dotexists(self.project_cfg, path)
-
     @abstractmethod
     def is_satisfied_by(self, **kwargs) -> bool:
-        """Check if the configuration satisfies this specification.
-
-        Implementations should accept specific named parameters appropriate
-        to their validation scope (e.g., entity_name, fk_cfg) via **kwargs.
-
-        Returns:
-            True if valid, False otherwise.
+        """Check if the input satisfies this specification.
+        True if valid, False otherwise.
         """
 
     def add_error(self, error: str, entity: str | None, **kwargs) -> None:
@@ -93,6 +75,46 @@ class ProjectSpecification(ABC):
     def has_warnings(self) -> bool:
         """Check if there are any warnings."""
         return len(self.warnings) > 0
+
+    def get_report(self) -> str:
+        """Generate a human-readable validation report."""
+        lines = []
+
+        if not self.has_errors() and not self.has_warnings():
+            lines.append("✓ Configuration is valid")
+            return "\n".join(lines)
+
+        if self.has_errors():
+            lines.append(f"✗ Configuration has {len(self.errors)} error(s):")
+            for idx, error in enumerate(self.errors, 1):
+                lines.append(f"  {idx}. {error}")
+
+        if self.has_warnings():
+            lines.append(f"\n⚠ Configuration has {len(self.warnings)} warning(s):")
+            for idx, warning in enumerate(self.warnings, 1):
+                lines.append(f"  {idx}. {warning}")
+
+        return "\n".join(lines)
+
+
+class ProjectSpecification(Specification):
+    """Base specification for project validation."""
+
+    def __init__(self, project_cfg: dict[str, Any]) -> None:
+        super().__init__()
+        self.project_cfg: dict[str, Any] = project_cfg
+
+    def get_entity_cfg(self, entity_name: str) -> dict[str, Any]:
+        """Get the configuration for a specific entity."""
+        return dotget(self.project_cfg, f"entities.{entity_name}", {})
+
+    def entity_exists(self, entity_name: str) -> bool:
+        """Check if a specific entity exists in the configuration."""
+        return dotget(self.project_cfg, f"entities.{entity_name}", None) is not None
+
+    def field_exists(self, path: str) -> bool:
+        """Check if a specific field exists in the entity configuration."""
+        return dotexists(self.project_cfg, path)
 
     def check_fields(self, entity_name: str, fields: list[str], keys: str, message: str | None = None, **kwargs) -> None:
         """Check fields based on the specified check type.
@@ -120,26 +142,6 @@ class ProjectSpecification(ABC):
             specification = FIELD_VALIDATORS.get(key.strip())(self.project_cfg, severity=severity)
             specification.is_satisfied_by(entity_name=entity_name, fields=fields, message=message, **kwargs)
             self.merge(specification)
-
-    def get_report(self) -> str:
-        """Generate a human-readable validation report."""
-        lines = []
-
-        if not self.has_errors() and not self.has_warnings():
-            lines.append("✓ Configuration is valid")
-            return "\n".join(lines)
-
-        if self.has_errors():
-            lines.append(f"✗ Configuration has {len(self.errors)} error(s):")
-            for idx, error in enumerate(self.errors, 1):
-                lines.append(f"  {idx}. {error}")
-
-        if self.has_warnings():
-            lines.append(f"\n⚠ Configuration has {len(self.warnings)} warning(s):")
-            for idx, warning in enumerate(self.warnings, 1):
-                lines.append(f"  {idx}. {warning}")
-
-        return "\n".join(lines)
 
 
 class FieldValidator(ProjectSpecification):
