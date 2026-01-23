@@ -1,7 +1,6 @@
 """Data-aware validators that check actual data for issues."""
 
 import asyncio
-import re
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
@@ -714,8 +713,6 @@ class DataValidationService:
 
         # If warmup already produced this entity, reuse it to avoid re-normalization
         if self._warm_table_store and entity_name in self._warm_table_store:
-            warm_table_store = {entity_name: self._warm_table_store[entity_name]}
-            # Build lightweight PreviewResult-like object for validators that expect preview_entity output
             preview_result = type("_Preview", (), {})()  # type: ignore
             preview_result.rows = self._warm_table_store[entity_name].to_dict("records")  # type: ignore
             preview_result.columns = list(self._warm_table_store[entity_name].columns)  # type: ignore
