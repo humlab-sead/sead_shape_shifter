@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from src.link import ForeignKeyLinker
+from src.transforms.link import ForeignKeyLinker
 from src.model import ForeignKeyConfig, ShapeShiftProject
 
 # pylint: disable=redefined-outer-name
