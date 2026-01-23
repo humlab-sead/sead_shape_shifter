@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from src.drop import drop_empty_rows, drop_duplicate_rows
+from src.drop import drop_duplicate_rows, drop_empty_rows
 from src.specifications.fd import FunctionalDependencySpecification
 
 

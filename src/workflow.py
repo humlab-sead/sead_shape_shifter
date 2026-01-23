@@ -12,10 +12,10 @@ from pathlib import Path
 
 from loguru import logger
 
-from src.transforms.translate import extract_translation_map
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications import CompositeProjectSpecification
+from src.transforms.translate import extract_translation_map
 from src.utility import load_shape_file
 
 # pylint: disable=no-value-for-parameter

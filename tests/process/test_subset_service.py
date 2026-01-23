@@ -8,7 +8,6 @@ import pytest
 from src.extract import SubsetService
 from src.model import TableConfig
 
-
 ENTITY_NAME = "test_entity"
 
 BASE_ENTITY_CFG: dict[str, object] = {
@@ -277,15 +276,17 @@ def test_restore_columns_order_with_extra_columns() -> None:
 def test_get_subset_with_multiple_transformations() -> None:
     """Test get_subset with combined operations: extra_columns, duplicates, empty rows, replacements."""
     service = SubsetService()
-    df = pd.DataFrame({
-        "id": [1, 1, 2, 3],
-        "status": ["active", "active", "active", "old"],
-    })
+    df = pd.DataFrame(
+        {
+            "id": [1, 1, 2, 3],
+            "status": ["active", "active", "active", "old"],
+        }
+    )
     table_cfg = build_table_config(
         columns=["id", "status"],
         extra_columns={"id_copy": "id"},
         drop_duplicates=["id", "status"],
-        replacements={"status": {"old": "archived"}}
+        replacements={"status": {"old": "archived"}},
     )
 
     result = service.get_subset(source=df, table_cfg=table_cfg)
