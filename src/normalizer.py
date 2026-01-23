@@ -11,8 +11,9 @@ import pandas as pd
 from loguru import logger
 
 from src.dispatch import Dispatcher, Dispatchers
-from src.extract import SubsetService, add_surrogate_id, translate
-from src.drop import drop_empty_rows, drop_duplicate_rows
+from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
+from src.extract import SubsetService, add_surrogate_id
+from src.transforms.translate import translate
 from src.filter import apply_filters
 from src.link import ForeignKeyLinker
 from src.loaders import DataLoader

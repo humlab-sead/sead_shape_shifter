@@ -4,8 +4,9 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
+from src.model import TableConfig
 from src.utility import unique
-from src.drop import drop_duplicate_rows, drop_empty_rows
 
 # pylint: disable=line-too-long
 
