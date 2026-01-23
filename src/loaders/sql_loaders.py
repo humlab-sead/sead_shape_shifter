@@ -11,7 +11,7 @@ import pandas as pd
 from loguru import logger
 from sqlalchemy import create_engine
 
-from src.extract import add_surrogate_id
+from src.transforms.utility import add_surrogate_id
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.utility import create_db_uri as create_pg_uri
 from src.utility import dotget
