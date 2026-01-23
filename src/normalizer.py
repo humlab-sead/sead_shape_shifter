@@ -12,10 +12,11 @@ from loguru import logger
 
 from src.dispatch import Dispatcher, Dispatchers
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
-from src.extract import SubsetService, add_surrogate_id
+from src.extract import SubsetService
 from src.transforms.translate import translate
 from src.transforms.filter import apply_filters
 from src.transforms.link import ForeignKeyLinker
+from src.transforms.utility import add_surrogate_id
 from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders
 from src.mapping import LinkToRemoteService

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 from loguru import logger
 
-from src.extract import add_surrogate_id
+from src.transforms.utility import add_surrogate_id
 from src.loaders.base_loader import ConnectTestResult
 
 from .base_loader import DataLoader, DataLoaders
