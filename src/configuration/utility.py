@@ -1,7 +1,7 @@
 from typing import Any
 
-from loguru import logger
 import yaml
+from loguru import logger
 
 from src.utility import dotexists, dotget
 

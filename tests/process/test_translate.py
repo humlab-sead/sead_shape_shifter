@@ -4,6 +4,7 @@ import pandas as pd
 
 from src.transforms.translate import extract_translation_map, translate
 
+
 class TestTranslate:
     """Tests for translate function."""
 

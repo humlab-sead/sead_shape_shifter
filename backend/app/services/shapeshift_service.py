@@ -116,7 +116,7 @@ class ShapeShiftService:
         """
         try:
             target_entities = set(entity_names)
-            
+
             shapeshifter: ShapeShifter = ShapeShifter(
                 project=project,
                 table_store=initial_table_store,
@@ -156,7 +156,7 @@ class ShapeShiftService:
         """
         try:
             target_entities: set[str] = {entity_name}
-            
+
             shapeshifter: ShapeShifter = ShapeShifter(
                 project=project,
                 table_store=initial_table_store,
@@ -240,7 +240,7 @@ class ShapeShiftService:
         resolved_project: ShapeShiftProject = project
         if not project.is_resolved():
             resolved_project = project.clone().resolve(filename=project.filename, strict=True, **self.settings.env_opts)
-            
+
         table_store, _ = await self.shapeshift_batch(
             project=resolved_project,
             entity_names=entity_names,  # Pass actual target entities
@@ -254,7 +254,7 @@ class ShapeShiftService:
             table_store=table_store,
             target_entity="batch",  # Just for logging
             project_version=project_version,
-            entity_configs=entities
+            entity_configs=entities,
         )
 
         # Preserve warm table_store for subsequent preview calls in this service instance

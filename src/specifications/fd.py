@@ -1,5 +1,6 @@
-import pandas as pd
 from typing import Any
+
+import pandas as pd
 from loguru import logger
 
 from src.specifications.base import Specification
@@ -8,21 +9,23 @@ from src.specifications.base import Specification
 class FunctionalDependencySpecification(Specification):
     """Specification for checking functional dependencies when dropping duplicates.
 
-        This check is needed because droping duplicates is an important step indata normalization.
+    This check is needed because droping duplicates is an important step indata normalization.
 
-        Given a DataFrame with columns [ key-columns..., other-columns...] this specification
-        checks that other-columns are functionally dependent on key-columns, i.e., for each unique
-        combination of key-columns, the values in other-columns are constant.
-    
-        If FD check fails, then we probably have defined the wrong key-columns.
+    Given a DataFrame with columns [ key-columns..., other-columns...] this specification
+    checks that other-columns are functionally dependent on key-columns, i.e., for each unique
+    combination of key-columns, the values in other-columns are constant.
 
-        AI-way of putting it: Note Functional Dependency (FD): In a dataset, a set of columns A functionally
-        determines another set of columns B if, for every unique combination of values in A,
-        there is exactly one corresponding combination of values in B.
+    If FD check fails, then we probably have defined the wrong key-columns.
+
+    AI-way of putting it: Note Functional Dependency (FD): In a dataset, a set of columns A functionally
+    determines another set of columns B if, for every unique combination of values in A,
+    there is exactly one corresponding combination of values in B.
 
     """
 
-    def check_functional_dependency_original_to_sloq(self, *, df: pd.DataFrame, determinant_columns: list[str], raise_error: bool = True) -> bool:
+    def check_functional_dependency_original_to_sloq(
+        self, *, df: pd.DataFrame, determinant_columns: list[str], raise_error: bool = True
+    ) -> bool:
         """Check functional dependency: for each unique combination of subset columns,
         the other columns should have consistent values.
         Args:
@@ -52,15 +55,8 @@ class FunctionalDependencySpecification(Specification):
 
         return len(bad_keys) == 0
 
-
     def is_satisfied_by(
-        self,
-        *,
-        df: pd.DataFrame,
-        determinant_columns: list[str],
-        raise_error: bool = True,
-        max_bad_keys: int = 5,
-        **kwargs
+        self, *, df: pd.DataFrame, determinant_columns: list[str], raise_error: bool = True, max_bad_keys: int = 5, **kwargs
     ) -> bool:
         """
         NOTE: ChatGPT-5.2 optimized version of functional dependency check.
@@ -95,7 +91,7 @@ class FunctionalDependencySpecification(Specification):
 
         if raise_error:
             raise ValueError(f"[fd_check]: {msg}")
-        
+
         logger.warning(f"[fd_check]: {msg}")
 
         return self.has_errors() is False
