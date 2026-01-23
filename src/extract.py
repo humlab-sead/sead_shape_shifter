@@ -235,19 +235,7 @@ class SubsetService:
         return data[columns_in_result]
 
 
-def _rename_last_occurence(data: pd.DataFrame, rename_map: dict[str, str]) -> list[str]:
-    """Rename the last occurrence of each source column in rename_map to the new name."""
-    target_columns: list[str] = data.columns.tolist()
-    for src, new in rename_map.items():
-        if src not in target_columns:
-            continue
-        if new in target_columns:
-            continue
-        for i in range(len(target_columns) - 1, -1, -1):
-            if target_columns[i] == src:
-                target_columns[i] = new
-                break
-    return target_columns
+# FIXME: Move to transformation utility module?
 
 
 def extract_translation_map(
