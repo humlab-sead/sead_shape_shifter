@@ -11,22 +11,22 @@ import pandas as pd
 from loguru import logger
 
 from src.dispatch import Dispatcher, Dispatchers
-from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.extract import SubsetService
-from src.transforms.translate import translate
-from src.transforms.filter import apply_filters
-from src.transforms.link import ForeignKeyLinker
-from src.transforms.utility import add_surrogate_id
 from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders
 from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
+from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
+from src.transforms.filter import apply_filters
+from src.transforms.link import ForeignKeyLinker
+from src.transforms.translate import translate
 from src.transforms.unnest import unnest
+from src.transforms.utility import add_surrogate_id
 
 # Debug flag to control verbose normalization logging
 # Set to True to see detailed "Normalizing entity..." logs for each entity
 # When False, only INFO level logs for overall progress are shown
-_ENABLE_NORMALIZATION_DEBUG = False
+_ENABLE_NORMALIZATION_DEBUG = True
 
 
 class ProcessState:
@@ -138,13 +138,9 @@ class ShapeShifter:
             sub_source: pd.DataFrame = await self.resolve_source(table_cfg=sub_table_cfg)
             sub_data: pd.DataFrame = subset_service.get_subset(
                 source=sub_source,
-                columns=self.get_subset_columns(sub_table_cfg),
-                entity_name=sub_table_cfg.entity_name,
-                extra_columns=sub_table_cfg.extra_columns,
-                drop_duplicates=sub_table_cfg.drop_duplicates if not delay_drop_duplicates else False,
-                replacements=sub_table_cfg.replacements if sub_table_cfg.replacements else None,
-                raise_if_missing=False,
+                table_cfg=sub_table_cfg,
                 drop_empty=False,
+                raise_if_missing=False,
             )
             dfs.append(sub_data)
 
