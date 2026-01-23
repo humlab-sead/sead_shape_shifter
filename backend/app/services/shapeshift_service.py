@@ -182,7 +182,7 @@ class ShapeShiftService:
 
     def _collect_validation_issues(self, shapeshifter: ShapeShifter) -> list[dict]:
         """Collect validation issues from the linker's constraint validators."""
-        from src.constraints import ValidationIssue
+        from src.specifications.constraints import ValidationIssue
 
         all_issues: list[dict] = []
 
