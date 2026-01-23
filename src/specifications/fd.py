@@ -100,7 +100,7 @@ class FunctionalDependencySpecification(Specification):
         if strict:
             raise ValueError(f"[fd_check]: {msg}")
 
-        logger.warning(f"[fd_check]: {msg}")
+        logger.error(f"[fd_check]: {msg}")
 
         return self.has_errors() is False
 

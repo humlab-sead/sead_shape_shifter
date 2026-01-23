@@ -877,6 +877,7 @@ entities:
         how: "left"
     drop_duplicates: ["Fustel", "FustelTyp"]
     check_functional_dependency: true
+    strict_functional_dependency: false
     depends_on: []
 
   site_location:

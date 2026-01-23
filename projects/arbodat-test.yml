@@ -767,6 +767,7 @@ entities:
       how: "left"
     drop_duplicates: ["Fustel", "EVNr"]
     check_functional_dependency: true
+    strict_functional_dependency: false
     depends_on: ["site_type"]
   site_location:
     source:
@@ -794,13 +795,14 @@ entities:
   site_natural_region:
     source:
     surrogate_id: site_natural_region_id
-    keys: ["Projekt", "Fustel", "EVNr"]
-    columns: ["Projekt", "Fustel", "EVNr", "NaturE"]
+    keys: ["Fustel", "EVNr"]
+    columns: ["Fustel", "EVNr", "NaturE"]
     type: sql
     data_source: arbodat_data
     query: |
-      select distinct Projekt, Fustel, EVNr, NaturE
-      from Projekte ;
+      select distinct Fustel, EVNr, NaturE
+      from Projekte
+      where NaturE is not null ;
     foreign_keys:
     - entity: natural_region
       local_keys: "@value: entities.natural_region.keys"
@@ -808,8 +810,9 @@ entities:
     - entity: site
       local_keys: "@value: entities.site.keys"
       remote_keys: "@value: entities.site.keys"
-    drop_duplicates: "@value: entities.natural_region.keys + @value: entities.site.keys"
+    drop_duplicates: ["Fustel", "EVNr"]
     check_functional_dependency: true
+    strict_functional_dependency: true
     depends_on: ["site", "natural_region"]
   site_property_type:
     source:

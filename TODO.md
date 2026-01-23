@@ -273,4 +273,20 @@ options: {}
 ```
 4. Close YAML
 5. Click on entities
-6. 
+
+
+TODO: #181 Drop duplicates of "site" entity fails FD validation
+
+| Fustel            | EVNr       | FustelTyp | KoordSys                            | rWert    | hWert     | üNN   | site_name         | national_site_identifier | coordinate_system                   | latitude_dd | longitude_dd | altitude |
+|-------------------|------------|-----------|-------------------------------------|----------|-----------|-------|-------------------|--------------------------|-------------------------------------|-------------|--------------|----------|
+| Bkaker            | 274939     | Siedl     | Geografische Länge/Breite (dezimal) | 23.2     | 61.2      |       | Bkaker            | 274939                   | Geografische Länge/Breite (dezimal) | 23.2        | 61.2         |          |
+| Blaker kirkegård  | 224073     | Siedl     |                                     | 628472.0 | 6653720.0 | 143.0 | Blaker kirkegård  | 224073                   |                                     | 628472.0    | 6653720.0    | 143.0    |
+| Blaker kirkegård  | 224073     | Siedl     | Geografische Länge/Breite (dezimal) |          |           |       | Blaker kirkegård  | 224073                   | Geografische Länge/Breite (dezimal) |             |              |          |
+| Blaker kirkegård  | 224073     | Siedl     | Geografische Länge/Breite (dezimal) | 628472.0 | 6653720.0 | 143.0 | Blaker kirkegård  | 224073                   | Geografische Länge/Breite (dezimal) | 628472.0    | 6653720.0    | 143.0    |
+| Göteborg 342      | L1960:2928 | Stadt     |                                     |          |           |       | Göteborg 342      | L1960:2928               |                                     |             |              |          |
+| Kville 1502       |            | Rin       |                                     |          |           |       | Kville 1502       |                          |                                     |             |              |          |
+| Sandarna Gbg 15:1 | L1969:1130 | FustelSo  |                                     |          |           |       | Sandarna Gbg 15:1 | L1969:1130               |                                     |             |              |          |
+| Sandarna Gbg 15:1 | L1969:1130 | unbek     |                                     |          |           |       | Sandarna Gbg 15:1 | L1969:1130               |                                     |             |              |          |
+
+
+determinent_columns:  ["Fustel", "EVNr"]
