@@ -24,7 +24,7 @@ class TransformerRegistry(Registry):
     items: dict[str, type["Transformer"]] = {}
 
 
-Transformers: TransformerRegistry = TransformerRegistry().scan(__name__, Path(__file__).parent)  # pylint: disable=invalid-name
+Transformers: TransformerRegistry = TransformerRegistry().scan(__name__, str(Path(__file__).parent))  # pylint: disable=invalid-name
 
 
 class TranslateTransformer(abc.ABC):
