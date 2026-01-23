@@ -35,8 +35,7 @@ class SubsetService:
         drop_empty: None | bool | list[str] | dict[str, Any] = None,
         raise_if_missing: bool = True,
     ) -> pd.DataFrame:
-        """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
-        """
+        """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling."""
         if source is None:
             raise ValueError("Source DataFrame must be provided")
 
@@ -48,7 +47,7 @@ class SubsetService:
 
         if drop_empty is None:
             drop_empty = table_cfg.drop_empty_rows
-    
+
         return self.get_subset2(
             source,
             columns,
@@ -201,4 +200,3 @@ class SubsetService:
         """Reorder columns in DataFrame to match specified order."""
         columns_in_result: list[str] = [c for c in columns if c in data.columns] + [c for c in data.columns if c not in columns]
         return data[columns_in_result]
-

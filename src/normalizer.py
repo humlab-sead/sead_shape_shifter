@@ -131,7 +131,6 @@ class ShapeShifter:
     async def get_subset(self, subset_service: SubsetService, entity: str, table_cfg: TableConfig) -> pd.DataFrame:
 
         dfs: list[pd.DataFrame] = []
-        delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
 
         for sub_table_cfg in table_cfg.get_sub_table_configs():
             # logger.debug(f"{entity}[normalizing]: Processing sub-table '{sub_table_cfg.entity_name}'...")

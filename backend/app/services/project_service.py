@@ -39,7 +39,6 @@ class ProjectConflictError(ProjectServiceError):
     """Raised when optimistic lock fails due to concurrent modification."""
 
 
-UPLOADS_SUBDIR: str = "uploads"
 DEFAULT_ALLOWED_UPLOAD_EXTENSIONS: set[str] = {".xlsx", ".xls"}
 MAX_PROJECT_UPLOAD_SIZE_MB: int = 50
 
@@ -567,9 +566,9 @@ class ProjectService:
             raise ProjectNotFoundError(f"Project not found: {name}")
         return project_file
 
-    def _get_project_upload_dir(self, project_name: str) -> Path:
-        safe_name = self._sanitize_project_name(project_name)
-        return self.projects_dir / safe_name / UPLOADS_SUBDIR
+    def _get_project_upload_dir(self, project_name: str) -> Path:  # pylint: disable=unused-argument
+        # safe_name = self._sanitize_project_name(project_name)
+        return self.projects_dir
 
     def _to_public_path(self, path: Path) -> str:
         try:
@@ -626,13 +625,13 @@ class ProjectService:
         project_name: str,
         upload: UploadFile,
         *,
-        allowed_extensions: set[str] | None = DEFAULT_ALLOWED_UPLOAD_EXTENSIONS,
+        allowed_extensions: set[str] | None = None,
         max_size_mb: int = MAX_PROJECT_UPLOAD_SIZE_MB,
     ) -> ProjectFileInfo:
         """Save an uploaded file into the project's uploads directory."""
 
         self._ensure_project_exists(project_name)
-        allowed: set[str] = allowed_extensions or set()
+        allowed: set[str] = allowed_extensions or DEFAULT_ALLOWED_UPLOAD_EXTENSIONS
 
         filename = self._sanitize_filename(upload.filename)
         ext = Path(filename).suffix.lower()

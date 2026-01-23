@@ -40,9 +40,6 @@ def drop_duplicate_rows(
     return data
 
 
-# FIXME: Move to transformation utility module?
-
-
 def drop_empty_rows(
     *, data: pd.DataFrame, entity_name: str, subset: bool | list[str] | dict[str, Any] | None = None, treat_empty_strings_as_na: bool = True
 ) -> pd.DataFrame:

@@ -14,6 +14,7 @@ from backend.app.services.project_service import ProjectService, get_project_ser
 from backend.app.utils.caches import ShapeShiftCache, ShapeShiftProjectCache
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
+from src.specifications.constraints import ValidationIssue
 
 
 class ShapeShiftService:
@@ -182,7 +183,6 @@ class ShapeShiftService:
 
     def _collect_validation_issues(self, shapeshifter: ShapeShifter) -> list[dict]:
         """Collect validation issues from the linker's constraint validators."""
-        from src.specifications.constraints import ValidationIssue
 
         all_issues: list[dict] = []
 

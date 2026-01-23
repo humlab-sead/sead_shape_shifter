@@ -56,7 +56,13 @@ class FunctionalDependencySpecification(Specification):
         return len(bad_keys) == 0
 
     def is_satisfied_by(
-        self, *, df: pd.DataFrame, determinant_columns: list[str], raise_error: bool = True, max_bad_keys: int = 5, **kwargs
+        self,
+        *,
+        df: pd.DataFrame | None = None,
+        determinant_columns: list[str] | None = None,
+        raise_error: bool = True,
+        max_bad_keys: int = 5,
+        **kwargs,
     ) -> bool:
         """
         NOTE: ChatGPT-5.2 optimized version of functional dependency check.
@@ -64,6 +70,11 @@ class FunctionalDependencySpecification(Specification):
         all other columns must be consistent.
 
         """
+
+        # This is only to silence type checking warnings of override having different signature
+        assert df is not None, "DataFrame 'df' must be provided"
+        assert determinant_columns is not None, "List of 'determinant_columns' must be provided"
+
         # Dependent columns = everything else
         dependent_columns: list[str] = [c for c in df.columns if c not in determinant_columns]
         if not dependent_columns:

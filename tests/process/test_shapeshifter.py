@@ -693,7 +693,7 @@ class TestShapeShifter:
         assert content[0] == "entity\tnum_rows\tnum_columns"
         assert len(content) == 3  # header + two entities
 
-    def test_resolve_loader_with_data_source(self, survey_only_config: ShapeShiftProject):
+    def test_resolve_loader_with_data_source(self):
         """Test resolve_loader with data_source configured."""
         entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "data_source": "postgres_db"}}
         options = {"data_sources": {"postgres_db": {"driver": "postgresql", "options": {"host": "localhost"}}}}
@@ -713,7 +713,7 @@ class TestShapeShifter:
             # Expected if the loader type isn't registered
             pass
 
-    def test_resolve_loader_with_type(self, survey_only_config: ShapeShiftProject):
+    def test_resolve_loader_with_type(self):
         """Test resolve_loader with type configured."""
         entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "type": "fixed"}}
         options: dict[str, dict[str, Any]] = {}
@@ -731,7 +731,7 @@ class TestShapeShifter:
             # Expected if the loader type isn't registered
             pass
 
-    def test_resolve_loader_no_loader(self, survey_only_config: ShapeShiftProject):
+    def test_resolve_loader_no_loader(self):
         """Test resolve_loader returns None when no loader available."""
         entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
         options: dict[str, dict[str, Any]] = {}
