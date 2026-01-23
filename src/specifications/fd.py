@@ -60,7 +60,7 @@ class FunctionalDependencySpecification(Specification):
         *,
         df: pd.DataFrame | None = None,
         determinant_columns: list[str] | None = None,
-        raise_error: bool = True,
+        strict: bool = True,
         max_bad_keys: int = 5,
         **kwargs,
     ) -> bool:
@@ -93,16 +93,19 @@ class FunctionalDependencySpecification(Specification):
         if bad.empty:
             return True
 
-        # Compile error message
-        bad_keys: list[Any] = bad.index.tolist()
-        more_msg: str = "" if len(bad_keys) <= max_bad_keys else f" (showing first {max_bad_keys} of {len(bad_keys)})"
-        msg: str = f"inconsistent non-subset values for keys: {bad_keys[:max_bad_keys]}{more_msg}"
+        msg: str = self.compile_error_message(max_bad_keys, bad)
 
         self.add_error(msg, entity=kwargs.get("entity_name"))
 
-        if raise_error:
+        if strict:
             raise ValueError(f"[fd_check]: {msg}")
 
         logger.warning(f"[fd_check]: {msg}")
 
         return self.has_errors() is False
+
+    def compile_error_message(self, max_bad_keys: int, bad: pd.Series) -> str:
+        bad_keys: list[Any] = bad.index.tolist()
+        more_msg: str = "" if len(bad_keys) <= max_bad_keys else f" (showing first {max_bad_keys} of {len(bad_keys)})"
+        msg: str = f"values vary within keyset: {bad_keys[:max_bad_keys]}{more_msg}"
+        return msg

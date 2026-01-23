@@ -18,6 +18,7 @@ BASE_ENTITY_CFG: dict[str, object] = {
     "extra_columns": {},
     "replacements": {},
     "check_functional_dependency": False,
+    "strict_functional_dependency": False,
 }
 
 
@@ -308,3 +309,40 @@ def test_get_subset_empty_dataframe() -> None:
 
     assert len(result) == 0
     assert list(result.columns) == ["id", "value"]
+
+
+def test_get_subset_with_drop_duplicates_as_dict() -> None:
+    """Test get_subset with drop_duplicates as dict with columns."""
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 1, 2], "value": [10, 10, 20]})
+    table_cfg = build_table_config(
+        columns=["id", "value"],
+        drop_duplicates={"columns": ["id", "value"]},
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    assert len(result) == 2
+    assert result["id"].tolist() == [1, 2]
+
+
+def test_get_subset_with_drop_duplicates_dict_and_fd_settings() -> None:
+    """Test drop_duplicates dict with functional dependency settings."""
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 1, 2], "value": [10, 10, 20]})
+    table_cfg = build_table_config(
+        columns=["id", "value"],
+        drop_duplicates={
+            "columns": ["id"],
+            "check_functional_dependency": False,
+            "strict_functional_dependency": False,
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # Should drop duplicates by id column
+    assert len(result) == 2
+    # Verify that the FD settings are accessible
+    assert table_cfg.check_functional_dependency is False
+    assert table_cfg.strict_functional_dependency is False

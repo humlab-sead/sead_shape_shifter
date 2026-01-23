@@ -144,6 +144,7 @@ class TestAppendIntegration:
                     "surrogate_id": "test_id",
                     "columns": ["id", "name"],
                     "drop_duplicates": ["id"],
+                    "strict_functional_dependency": False,
                     "append": [
                         {
                             "type": "fixed",

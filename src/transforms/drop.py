@@ -7,7 +7,12 @@ from src.specifications.fd import FunctionalDependencySpecification
 
 
 def drop_duplicate_rows(
-    data: pd.DataFrame, columns: bool | list[str] = False, fd_check: bool = False, entity_name: str | None = None
+    data: pd.DataFrame,
+    *,
+    columns: bool | list[str] = False,
+    entity_name: str | None = None,
+    fd_check: bool = False,
+    strict_fd_check: bool = True,
 ) -> pd.DataFrame:
     """Drop duplicate rows from DataFrame."""
     if columns is False:
@@ -34,7 +39,7 @@ def drop_duplicate_rows(
         return data
     if fd_check:
         specification = FunctionalDependencySpecification()
-        specification.is_satisfied_by(df=data, determinant_columns=columns, raise_error=True)
+        specification.is_satisfied_by(df=data, determinant_columns=columns, entity_name=entity_name, strict=strict_fd_check)
 
     data = data.drop_duplicates(subset=columns).reset_index(drop=True)
     return data

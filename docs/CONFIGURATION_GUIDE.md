@@ -430,13 +430,21 @@ entities:
 ### Data Quality Properties
 
 #### `drop_duplicates`
-- **Type**: `bool | list[string] | string`
+- **Type**: `bool | list[string] | string | dict`
 - **Required**: No (defaults to `false`)
-- **Description**: Controls duplicate row removal:
+- **Description**: Controls duplicate row removal. Can be specified as:
   - `true`: Drop all duplicate rows
   - `false`: Keep all rows
   - `list[string]`: Drop duplicates based on specified columns
   - `string` with `@value:`: Reference another entity's keys
+  - `dict`: Complex configuration with columns and optional functional dependency settings
+- **Dict Format**: The dict format allows grouping duplicate removal with functional dependency validation settings:
+  ```yaml
+  drop_duplicates:
+    columns: [col1, col2]                          # Columns to check for duplicates
+    check_functional_dependency: true              # (Optional, defaults to true)
+    strict_functional_dependency: false            # (Optional, defaults to true)
+  ```
 - **Example**:
   ```yaml
   # Drop all duplicates
@@ -447,15 +455,27 @@ entities:
   
   # Reference another entity's keys
   drop_duplicates: "@value: entities.site.keys"
+  
+  # Dict format with functional dependency settings
+  drop_duplicates:
+    columns: ["id"]
+    check_functional_dependency: true
+    strict_functional_dependency: false
   ```
+- **Functional Dependency Settings** (when using dict format):
+  - `check_functional_dependency`: Whether to validate functional dependencies during duplicate removal
+  - `strict_functional_dependency`: Whether to raise error (true) or warning (false) if FD validation fails
+- **Precedence**: Top-level `check_functional_dependency` and `strict_functional_dependency` properties take precedence over those specified in the `drop_duplicates` dict
 - **Validation Rules**:
-  - **Type**: Must be `bool`, `str`, or `list[string]` (error if not)
+  - **Type**: Must be `bool`, `str`, `list[string]`, or `dict` (error if not)
   - **List Items**: If list, all items must be strings (error if not)
-  - **Column Existence**: If list, columns should exist in entity's columns/keys (suggested validation)
+  - **Dict Columns**: If dict, `columns` key is required and must be `bool`, `string`, or `list[string]`
+  - **Column Existence**: If list or dict columns, should exist in entity's columns/keys (suggested validation)
   - **Reference Resolution**: If `@value:` string, referenced path must exist
 - **Common Issues**:
   - Columns in list don't exist in entity
   - Invalid `@value:` reference
+  - Dict missing required `columns` key
 - **Suggested Additional Validation**:
   - Warn if drop_duplicates columns don't include all key columns
   - Validate referenced columns exist before runtime

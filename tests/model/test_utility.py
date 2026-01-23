@@ -103,6 +103,31 @@ class TestTableConfig:
         table = TableConfig(entities_cfg=entities, entity_name="site")
         assert table.drop_duplicates is False
 
+    def test_table_drop_duplicates_as_dict_with_columns(self):
+        """Test drop_duplicates as dict with columns."""
+        entities = {"site": {"surrogate_id": "site_id", "drop_duplicates": {"columns": ["col1", "col2"]}}}
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        assert table.drop_duplicates == ["col1", "col2"]
+
+    def test_table_drop_duplicates_as_dict_with_fd_settings(self):
+        """Test drop_duplicates as dict with functional dependency settings."""
+        entities = {
+            "site": {
+                "surrogate_id": "site_id",
+                "drop_duplicates": {
+                    "columns": ["col1"],
+                    "check_functional_dependency": False,
+                    "strict_functional_dependency": False,
+                },
+            }
+        }
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        assert table.drop_duplicates == ["col1"]
+        assert table.check_functional_dependency is False
+        assert table.strict_functional_dependency is False
+
     def test_table_with_unnest(self):
         """Test table configuration with unnest."""
         entities = {

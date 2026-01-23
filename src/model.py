@@ -270,7 +270,18 @@ class TableConfig:
 
     @property
     def drop_duplicates(self) -> bool | list[str]:
-        return self.entity_cfg.get("drop_duplicates") or False
+        value = self.entity_cfg.get("drop_duplicates")
+        if isinstance(value, dict):
+            return value.get("columns") or False
+        return value or False
+
+    @property
+    def check_functional_dependency(self) -> bool:
+        return dotget(self.entity_cfg, "check_functional_dependency,drop_duplicates.check_functional_dependency", True)
+    
+    @property
+    def strict_functional_dependency(self) -> bool:
+        return dotget(self.entity_cfg, "strict_functional_dependency,drop_duplicates.strict_functional_dependency", True)
 
     @property
     def drop_empty_rows(self) -> bool | list[str] | dict[str, Any]:
@@ -279,10 +290,6 @@ class TableConfig:
     @property
     def unnest(self) -> UnnestConfig | None:
         return UnnestConfig(data=self.entity_cfg) if self.entity_cfg.get("unnest") else None
-
-    @property
-    def check_functional_dependency(self) -> bool:
-        return self.entity_cfg.get("check_functional_dependency", True)
 
     @cached_property
     def depends_on(self) -> set[str]:
