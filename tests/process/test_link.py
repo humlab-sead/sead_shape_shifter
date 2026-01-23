@@ -65,7 +65,7 @@ def test_link_foreign_key_renames_and_drops_remote_id(fk_config: ForeignKeyConfi
             captured["after_merge_called"] = True
             captured["merge_indicator"] = merge_indicator_col
 
-    monkeypatch.setattr("src.link.ForeignKeyConstraintValidator", DummyValidator)
+    monkeypatch.setattr("src.transforms.link.ForeignKeyConstraintValidator", DummyValidator)
     table_store = {
         "local": pd.DataFrame({"remote_ref": [1]}),
         "remote": pd.DataFrame({"remote_id": [1]}),
@@ -121,7 +121,7 @@ def test_link_entity_returns_deferred_when_specification_defers(monkeypatch: pyt
 
     linker = ForeignKeyLinker(table_store=table_store)
 
-    monkeypatch.setattr("src.link.ForeignKeyDataSpecification", DummySpecification)
+    monkeypatch.setattr("src.transforms.link.ForeignKeyDataSpecification", DummySpecification)
 
     # Patch linker.link_foreign_key
     with patch.object(linker, "link_foreign_key") as mock_link:

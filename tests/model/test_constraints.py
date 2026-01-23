@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from src.constraints import ForeignKeyConstraintValidator, ForeignKeyConstraintViolation, Validators
+from src.specifications.constraints import ForeignKeyConstraintValidator, ForeignKeyConstraintViolation, Validators
 from src.model import ForeignKeyConfig, ShapeShiftProject
 
 

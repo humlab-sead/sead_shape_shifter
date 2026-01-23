@@ -3,7 +3,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.constraints import ForeignKeyConstraintValidator
+from src.specifications.constraints import ForeignKeyConstraintValidator
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 from src.specifications import ForeignKeyDataSpecification
 
