@@ -12,7 +12,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from src.extract import extract_translation_map
+from src.transforms.translate import extract_translation_map
 from src.model import ShapeShiftProject
 from src.normalizer import ShapeShifter
 from src.specifications import CompositeProjectSpecification
