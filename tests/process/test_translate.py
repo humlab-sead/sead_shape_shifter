@@ -2,8 +2,7 @@
 
 import pandas as pd
 
-from src.extract import extract_translation_map, translate
-
+from src.transforms.translate import extract_translation_map, translate
 
 class TestTranslate:
     """Tests for translate function."""
