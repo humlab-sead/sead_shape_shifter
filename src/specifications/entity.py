@@ -153,11 +153,37 @@ class DropDuplicatesSpecification(ProjectSpecification):
         if drop_dup is None:
             return True
 
-        # Can be bool, string (include directive), or list
-        self.check_fields(entity_name, ["drop_duplicates"], "of_type/E", expected_types=(bool, str, list))
+        # Can be bool, string (include directive), list, or dict
+        self.check_fields(entity_name, ["drop_duplicates"], "of_type/E", expected_types=(bool, str, list, dict))
 
         if isinstance(drop_dup, list):
             self.check_fields(entity_name, ["drop_duplicates"], "is_string_list/E")
+        elif isinstance(drop_dup, dict):
+            # Dict format must have a "columns" key
+            if "columns" not in drop_dup:
+                self.add_error("dict format requires 'columns' key", entity=entity_name, field="drop_duplicates")
+            else:
+                columns = drop_dup["columns"]
+                # Columns must be bool, string, or list
+                if not isinstance(columns, (bool, str, list)):
+                    self.add_error(
+                        f"must be bool, string, or list[string], got {type(columns).__name__}",
+                        entity=entity_name,
+                        field="drop_duplicates.columns",
+                    )
+                elif isinstance(columns, list):
+                    # If list, all items must be strings
+                    non_strings = [item for item in columns if not isinstance(item, str)]
+                    if non_strings:
+                        self.add_error("list items must all be strings", entity=entity_name, field="drop_duplicates.columns")
+            # Optional functional dependency settings
+            for opt_key in ["check_functional_dependency", "strict_functional_dependency"]:
+                if opt_key in drop_dup and not isinstance(drop_dup[opt_key], bool):
+                    self.add_error(
+                        f"must be bool, got {type(drop_dup[opt_key]).__name__}",
+                        entity=entity_name,
+                        field=f"drop_duplicates.{opt_key}",
+                    )
         return not self.has_errors()
 
 

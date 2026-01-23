@@ -55,6 +55,7 @@ class SubsetService:
             extra_columns=extra_columns,
             drop_duplicates=drop_duplicates,
             fd_check=table_cfg.check_functional_dependency,
+            strict_fd_check=table_cfg.strict_functional_dependency,
             replacements=replacements,
             raise_if_missing=raise_if_missing,
             drop_empty=drop_empty,
@@ -69,6 +70,7 @@ class SubsetService:
         extra_columns: None | dict[str, Any] = None,
         drop_duplicates: bool | list[str] = False,
         fd_check: bool = False,
+        strict_fd_check: bool = False,
         replacements: dict[str, Any] | None = None,
         raise_if_missing: bool = True,
         drop_empty: bool | list[str] | dict[str, Any] = False,
@@ -86,6 +88,7 @@ class SubsetService:
                 - If list: drop duplicates based on those columns
                 - If False: keep all rows
             fd_check (bool): Whether to check functional dependency when dropping duplicates.
+            strict_fd_check (bool): Whether to raise an error on FD violation (if fd_check is True).
             replacements (dict[str, Any] | None): Column-specific value replacement mappings.
                 Dictionary where keys are column names and values are dicts mapping old values to new values.
                 Replacements are applied after column extraction. Useful for normalizing values,
@@ -144,8 +147,9 @@ class SubsetService:
             result = drop_duplicate_rows(
                 result,
                 columns=drop_duplicates,
-                fd_check=fd_check,
                 entity_name=entity_name,
+                fd_check=fd_check,
+                strict_fd_check=strict_fd_check,
             )
 
         result = self._restore_columns_order(result, columns)

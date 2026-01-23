@@ -442,6 +442,75 @@ class TestTableConfig:
         table = TableConfig(entities_cfg=entities, entity_name="site")
         assert table.drop_duplicates is False
 
+    def test_table_drop_duplicates_as_dict_with_columns(self):
+        """Test drop_duplicates as dict with columns."""
+        entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "drop_duplicates": {"columns": ["col1", "col2"]}}}
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        assert table.drop_duplicates == ["col1", "col2"]
+
+    def test_table_drop_duplicates_as_dict_with_fd_settings(self):
+        """Test drop_duplicates as dict with functional dependency settings."""
+        entities: dict[str, dict[str, Any]] = {
+            "site": {
+                "surrogate_id": "site_id",
+                "drop_duplicates": {
+                    "columns": ["col1"],
+                    "check_functional_dependency": False,
+                    "strict_functional_dependency": False,
+                },
+            }
+        }
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        assert table.drop_duplicates == ["col1"]
+        assert table.check_functional_dependency is False
+        assert table.strict_functional_dependency is False
+
+    def test_table_check_functional_dependency_from_drop_duplicates(self):
+        """Test check_functional_dependency inherited from drop_duplicates dict."""
+        entities: dict[str, dict[str, Any]] = {
+            "site": {
+                "surrogate_id": "site_id",
+                "drop_duplicates": {"columns": ["col1"], "check_functional_dependency": True},
+            }
+        }
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        assert table.check_functional_dependency is True
+
+    def test_table_strict_functional_dependency_from_drop_duplicates(self):
+        """Test strict_functional_dependency inherited from drop_duplicates dict."""
+        entities: dict[str, dict[str, Any]] = {
+            "site": {
+                "surrogate_id": "site_id",
+                "drop_duplicates": {"columns": ["col1"], "strict_functional_dependency": True},
+            }
+        }
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        assert table.strict_functional_dependency is True
+
+    def test_table_functional_dependency_top_level_overrides_nested(self):
+        """Test that top-level functional dependency settings override nested ones."""
+        entities: dict[str, dict[str, Any]] = {
+            "site": {
+                "surrogate_id": "site_id",
+                "check_functional_dependency": False,
+                "strict_functional_dependency": False,
+                "drop_duplicates": {
+                    "columns": ["col1"],
+                    "check_functional_dependency": True,
+                    "strict_functional_dependency": True,
+                },
+            }
+        }
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        # Top-level should take precedence
+        assert table.check_functional_dependency is False
+        assert table.strict_functional_dependency is False
+
     def test_table_with_unnest(self):
         """Test table configuration with unnest."""
         entities: dict[str, dict[str, Any]] = {

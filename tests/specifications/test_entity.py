@@ -284,6 +284,21 @@ class TestDropDuplicatesSpecification:
                 "list_drop": {"drop_duplicates": ["col1", "col2"]},
                 "invalid_type": {"drop_duplicates": 123},
                 "mixed_list": {"drop_duplicates": ["col1", 123]},
+                "dict_drop": {"drop_duplicates": {"columns": ["col1", "col2"]}},
+                "dict_drop_with_fd": {
+                    "drop_duplicates": {
+                        "columns": ["col1"],
+                        "check_functional_dependency": True,
+                        "strict_functional_dependency": False,
+                    }
+                },
+                "dict_drop_bool_columns": {"drop_duplicates": {"columns": True}},
+                "dict_drop_string_columns": {"drop_duplicates": {"columns": "col1"}},
+                "dict_drop_missing_columns": {"drop_duplicates": {"check_functional_dependency": True}},
+                "dict_drop_invalid_fd": {"drop_duplicates": {"columns": ["col1"], "check_functional_dependency": "yes"}},
+                "dict_drop_invalid_strict_fd": {
+                    "drop_duplicates": {"columns": ["col1"], "strict_functional_dependency": "no"}
+                },
             }
         }
 
@@ -326,6 +341,65 @@ class TestDropDuplicatesSpecification:
         result = spec.is_satisfied_by(entity_name="mixed_list")
 
         assert result is False
+
+    def test_dict_drop_duplicates(self, project_cfg):
+        """Test validation passes for dict drop_duplicates with columns."""
+        spec = DropDuplicatesSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="dict_drop")
+
+        assert result is True
+
+    def test_dict_drop_duplicates_with_fd_settings(self, project_cfg):
+        """Test validation passes for dict with functional dependency settings."""
+        spec = DropDuplicatesSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="dict_drop_with_fd")
+
+        assert result is True
+
+    def test_dict_drop_duplicates_bool_columns(self, project_cfg):
+        """Test validation passes for dict with bool columns."""
+        spec = DropDuplicatesSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="dict_drop_bool_columns")
+
+        assert result is True
+
+    def test_dict_drop_duplicates_string_columns(self, project_cfg):
+        """Test validation passes for dict with string columns."""
+        spec = DropDuplicatesSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="dict_drop_string_columns")
+
+        assert result is True
+
+    def test_dict_drop_duplicates_missing_columns(self, project_cfg):
+        """Test validation fails when dict missing columns key."""
+        spec = DropDuplicatesSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="dict_drop_missing_columns")
+
+        assert result is False
+        assert len(spec.errors) > 0
+
+    def test_dict_drop_duplicates_invalid_fd_check(self, project_cfg):
+        """Test validation fails when check_functional_dependency is not bool."""
+        spec = DropDuplicatesSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="dict_drop_invalid_fd")
+
+        assert result is False
+        assert len(spec.errors) > 0
+
+    def test_dict_drop_duplicates_invalid_strict_fd(self, project_cfg):
+        """Test validation fails when strict_functional_dependency is not bool."""
+        spec = DropDuplicatesSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="dict_drop_invalid_strict_fd")
+
+        assert result is False
+        assert len(spec.errors) > 0
 
 
 class TestForeignKeySpecification:
