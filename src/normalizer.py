@@ -20,7 +20,7 @@ from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders
 from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
-from src.unnest import unnest
+from src.transforms.unnest import unnest
 
 # Debug flag to control verbose normalization logging
 # Set to True to see detailed "Normalizing entity..." logs for each entity
