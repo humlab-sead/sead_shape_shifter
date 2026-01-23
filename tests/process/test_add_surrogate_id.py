@@ -4,6 +4,7 @@ import pandas as pd
 
 from src.transforms.utility import add_surrogate_id
 
+
 class TestAddSurrogateId:
     """Tests for add_surrogate_id function."""
 

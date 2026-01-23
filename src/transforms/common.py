@@ -1,9 +1,8 @@
 import abc
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
-
-from pathlib import Path
 
 from src.utility import Registry
 

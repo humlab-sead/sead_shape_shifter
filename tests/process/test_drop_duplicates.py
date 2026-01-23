@@ -3,8 +3,8 @@
 import pandas as pd
 import pytest
 
-from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.specifications.fd import FunctionalDependencySpecification
+from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 
 
 def test_drop_duplicate_rows_validates_columns_and_fd_check():
