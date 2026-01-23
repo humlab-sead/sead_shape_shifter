@@ -296,9 +296,7 @@ class TestDropDuplicatesSpecification:
                 "dict_drop_string_columns": {"drop_duplicates": {"columns": "col1"}},
                 "dict_drop_missing_columns": {"drop_duplicates": {"check_functional_dependency": True}},
                 "dict_drop_invalid_fd": {"drop_duplicates": {"columns": ["col1"], "check_functional_dependency": "yes"}},
-                "dict_drop_invalid_strict_fd": {
-                    "drop_duplicates": {"columns": ["col1"], "strict_functional_dependency": "no"}
-                },
+                "dict_drop_invalid_strict_fd": {"drop_duplicates": {"columns": ["col1"], "strict_functional_dependency": "no"}},
             }
         }
 

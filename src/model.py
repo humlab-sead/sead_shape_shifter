@@ -278,7 +278,7 @@ class TableConfig:
     @property
     def check_functional_dependency(self) -> bool:
         return dotget(self.entity_cfg, "check_functional_dependency,drop_duplicates.check_functional_dependency", True)
-    
+
     @property
     def strict_functional_dependency(self) -> bool:
         return dotget(self.entity_cfg, "strict_functional_dependency,drop_duplicates.strict_functional_dependency", True)
