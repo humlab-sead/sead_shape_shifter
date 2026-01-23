@@ -4,18 +4,64 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.model import TableConfig
+from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.utility import unique
 
 # pylint: disable=line-too-long
 
 
-
 class SubsetService:
     """Class for extracting subsets from DataFrames with various options."""
 
+    def get_subset_columns(self, table_cfg: TableConfig) -> list[str]:
+        """Get the list of columns to extract from the table configuration.
+        Excludes un-nested columns and extra columns from remote FK tables."""
+        columns: list[str] = table_cfg.keys_columns_and_fks
+        # Ignore columns that will be added via un-nesting
+        if table_cfg.unnest:
+            columns = [col for col in columns if col not in table_cfg.unnest_columns]
+        # Ignore extra columns added when linking remote FK tables
+        for fk in table_cfg.foreign_keys:
+            if fk.extra_columns:
+                columns = [col for col in columns if col not in fk.extra_columns.keys()]
+        return columns
+
     def get_subset(
+        self,
+        source: pd.DataFrame,
+        table_cfg: TableConfig,
+        *,
+        drop_empty: None | bool | list[str] | dict[str, Any] = None,
+        raise_if_missing: bool = True,
+    ) -> pd.DataFrame:
+        """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
+        """
+        if source is None:
+            raise ValueError("Source DataFrame must be provided")
+
+        columns: list[str] = unique(self.get_subset_columns(table_cfg))
+        entity_name: str = table_cfg.entity_name or "unspecified"
+        extra_columns: dict[str, str] = table_cfg.extra_columns or {}
+        drop_duplicates: bool | list[str] = table_cfg.drop_duplicates if not table_cfg.is_drop_duplicate_dependent_on_unnesting() else False
+        replacements: dict[str, dict[Any, Any]] | None = table_cfg.replacements if table_cfg.replacements else None
+
+        if drop_empty is None:
+            drop_empty = table_cfg.drop_empty_rows
+    
+        return self.get_subset2(
+            source,
+            columns,
+            entity_name=entity_name,
+            extra_columns=extra_columns,
+            drop_duplicates=drop_duplicates,
+            fd_check=table_cfg.check_functional_dependency,
+            replacements=replacements,
+            raise_if_missing=raise_if_missing,
+            drop_empty=drop_empty,
+        )
+
+    def get_subset2(
         self,
         source: pd.DataFrame,
         columns: list[str],
@@ -99,7 +145,7 @@ class SubsetService:
             result = drop_duplicate_rows(
                 result,
                 columns=drop_duplicates,
-                fd_check=table_cfg.check_functional_dependency,
+                fd_check=fd_check,
                 entity_name=entity_name,
             )
 
