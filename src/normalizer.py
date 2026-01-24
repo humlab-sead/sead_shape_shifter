@@ -231,8 +231,10 @@ class ShapeShifter:
 
         if not table_cfg.keys:
             return
-
-        missing_keys: list[str] = table_cfg.keys - set(self.table_store[entity].columns)
+        
+        keys: set[str] = set(table_cfg.keys) if table_cfg.keys else set()
+        missing_keys: set[str] = keys - set(self.table_store[entity].columns)
+        
         if missing_keys:
             # We cannot check for duplicates if keys are missing, just return
             return
