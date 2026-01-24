@@ -95,7 +95,7 @@ class ShapeShifter:
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
         self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
         self.state: ProcessState = ProcessState(
-            project=self.project, table_store=self.table_store, target_entities=self.project.resolve_target_entities(target_entities)
+            project=self.project, table_store=self.table_store, target_entities=target_entities
         )
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store)
 
