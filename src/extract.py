@@ -124,15 +124,15 @@ class SubsetService:
         extra_columns = extra_columns or {}
 
         extra_source_columns, extra_constant_columns = self._split_extra_columns(source, extra_columns, case_sensitive=False)
-        all_requested_columns: set[str] = set(columns).union(extra_source_columns.values())
 
-        self._check_if_missing_requested_columns(source, entity_name, raise_if_missing, all_requested_columns)
+        # Columns we need to read from source to build the result
+        required_source_cols: set[str] = set(columns) | set(extra_source_columns.values())
 
-        columns_to_extract: list[str] = [c for c in source.columns if c in all_requested_columns]
+        self._check_if_missing_requested_columns(source, entity_name, raise_if_missing, required_source_cols)
 
-        # Extract only columns that exist, and uniqueify
-        columns_to_extract = [c for c in source.columns if c in columns_to_extract]
-        result: pd.DataFrame = source[columns_to_extract].copy()
+        # Extract only columns that exist (in source order)
+        columns_to_extract: list[str] = [c for c in source.columns if c in required_source_cols]
+        result: pd.DataFrame = source.loc[:, columns_to_extract].copy()
 
         # Add extra columns that are copies of existing columns
         for col_name, existing_col_name in extra_source_columns.items():
@@ -141,6 +141,11 @@ class SubsetService:
         # Add constant columns
         for col_name, value in extra_constant_columns.items():
             result[col_name] = value
+
+        # Drop helper source columns that weren't explicitly requested
+        helper_cols: set[str] = set(extra_source_columns.values()) - set(columns)
+        if helper_cols:
+            result = result.drop(columns=list(helper_cols))
 
         # Handle duplicate removal
         if drop_duplicates:
