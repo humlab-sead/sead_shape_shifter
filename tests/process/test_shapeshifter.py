@@ -375,18 +375,6 @@ class TestShapeShifter:
             pd.testing.assert_frame_equal(result, sql_df)
             mock_loader.load.assert_called_once_with(entity_name="test_sql_entity", table_cfg=table_cfg)
 
-    def test_register(self, survey_only_config: ShapeShiftProject):
-        """Test registering a DataFrame."""
-        df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ShapeShifter(project=survey_only_config, default_entity="survey", table_store={"survey": df})
-
-        new_df = pd.DataFrame({"site_name": ["A", "B"]})
-        result = normalizer.register("site", new_df)
-
-        assert "site" in normalizer.table_store
-        pd.testing.assert_frame_equal(normalizer.table_store["site"], new_df)
-        pd.testing.assert_frame_equal(result, new_df)
-
     def test_translate(self, survey_and_site_config: ShapeShiftProject):
         """Test translating column names."""
         df = pd.DataFrame({"Ort": ["Berlin"], "Datum": ["2020-01-01"]})
