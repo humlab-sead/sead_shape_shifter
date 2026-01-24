@@ -22,7 +22,7 @@ from src.utility import load_shape_file
 
 
 def resolve_config(project: ShapeShiftProject | str, env_file: str | None = None) -> ShapeShiftProject:
-
+    """Resolve the project configuration from a file or object."""
     if isinstance(project, str):
 
         if not Path(project).exists():
@@ -51,7 +51,7 @@ async def workflow(
     default_entity: str | None = None,
     env_file: str | None = None,
 ) -> None:
-
+    """Main workflow to normalize data and store the results."""
     project = resolve_config(project, env_file=env_file)
 
     shapeshifter: ShapeShifter = ShapeShifter(project=project, default_entity=default_entity)
@@ -78,6 +78,7 @@ async def workflow(
 
 
 def validate_project(project: str | ShapeShiftProject) -> bool:
+    """Validate the project configuration against specifications."""
     if isinstance(project, str):
         if not Path(project).exists():
             raise FileNotFoundError(f"Project file not found: {project}")
@@ -96,6 +97,7 @@ def validate_project(project: str | ShapeShiftProject) -> bool:
 
 
 def validate_entity_shapes(target: str, mode: str, regression_file: str | None):
+    """Validate entity shapes against a regression file if provided."""
     if mode != "csv" or not regression_file:
         return
 
