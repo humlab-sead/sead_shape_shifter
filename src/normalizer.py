@@ -124,10 +124,6 @@ class ShapeShifter:
 
         raise ValueError(f"Unable to resolve source for entity '{table_cfg.entity_name}'")
 
-    def register(self, name: str, df: pd.DataFrame) -> pd.DataFrame:
-        self.table_store[name] = df
-        return df
-
     async def get_subset(self, subset_service: SubsetService, entity: str, table_cfg: TableConfig) -> pd.DataFrame:
 
         dfs: list[pd.DataFrame] = []
@@ -199,7 +195,7 @@ class ShapeShifter:
                 )
                 # logger.info(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
 
-            self.register(entity, data)
+            self.table_store[entity] = data
 
             self.linker.link_entity(entity_name=entity, config=self.project)
 
