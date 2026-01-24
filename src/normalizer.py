@@ -169,7 +169,7 @@ class ShapeShifter:
             if _ENABLE_NORMALIZATION_DEBUG:
                 logger.debug(f"{entity}[normalizing]: Normalizing entity...")
 
-            # source: pd.DataFrame = await self.resolve_source(table_cfg=table_cfg)
+            # FIXME: consider removing this check and enforcing valid config earlier
             if not isinstance(table_cfg.columns, list):
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': must be a list")
 
