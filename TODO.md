@@ -290,3 +290,64 @@ TODO: #181 Drop duplicates of "site" entity fails FD validation
 
 
 determinent_columns:  ["Fustel", "EVNr"]
+
+# TODO: Keep log of deferred links during normalization (performance optimization)
+Add capability to keep track of entities with deferred foreign key links during the normalization process. This will allow the system to retry linking only those entities that have unresolved foreign key references after each entity is processed, rather than attempting to relink all entities with deferred links. This optimization aims to reduce the time complexity from O(n^2) to a more efficient approach, improving overall performance during the normalization phase.
+
+```
+class _Linker(Protocol):
+    """Minimal protocol for ForeignKeyLinker (keeps this class decoupled)."""
+
+    def link_entity(self, *, entity_name: str, config: ShapeShiftProject) -> bool:
+        """Return True if linking is still deferred for this entity."""
+
+
+@dataclass
+class DeferredLinkingTracker:
+    """
+    Tracks entities whose foreign key linking is deferred and retries linking efficiently.
+
+    Usage pattern:
+      - After each link_entity call: tracker.note(entity, deferred)
+      - After processing entity: tracker.retry()
+      - At end: unresolved = tracker.finalize()
+    """
+
+    project: ShapeShiftProject
+    linker: _Linker
+
+    deferred: set[str] = field(default_factory=set)
+
+    def note(self, *, entity_name: str, deferred: bool) -> None:
+        """Record the deferred status of a just-linked entity."""
+        if deferred:
+            self.deferred.add(entity_name)
+        else:
+            self.deferred.discard(entity_name)
+
+    def retry(self) -> None:
+        """Retry linking only for entities currently in deferred set."""
+        if not self.deferred:
+            return
+
+        still_deferred: set[str] = set()
+        for entity_name in self.deferred:
+            if self.linker.link_entity(entity_name=entity_name, config=self.project):
+                still_deferred.add(entity_name)
+
+        self.deferred = still_deferred
+
+    def finalize(self, *, include_entities: set[str] | None = None) -> set[str]:
+        """
+        Final retry sweep.
+
+        If include_entities is provided and we haven't tracked anything yet,
+        initialize deferred set from include_entities to force a last attempt.
+        Returns the remaining unresolved deferred entities.
+        """
+        if include_entities is not None and not self.deferred:
+            self.deferred = set(include_entities)
+
+        self.retry()
+        return set(self.deferred)
+```

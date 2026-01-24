@@ -6,6 +6,7 @@ from loguru import logger
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
 from src.specifications import ForeignKeyDataSpecification
 from src.specifications.constraints import ForeignKeyConstraintValidator
+from src.process_state import DeferredLinkingTracker
 
 
 class ForeignKeyLinker:
@@ -13,6 +14,7 @@ class ForeignKeyLinker:
     def __init__(self, table_store: dict[str, pd.DataFrame]) -> None:
         self.table_store: dict[str, pd.DataFrame] = table_store
         self.validators: list[ForeignKeyConstraintValidator] = []
+        self.deferred_tracker: DeferredLinkingTracker = DeferredLinkingTracker()
 
     def link_foreign_key(
         self, entity_name: str, local_df: pd.DataFrame, fk: ForeignKeyConfig, remote_id: str, remote_df: pd.DataFrame
@@ -62,10 +64,10 @@ class ForeignKeyLinker:
         opts |= validator.validate_merge_opts()
         return opts
 
-    def link_entity(self, entity_name: str, config: ShapeShiftProject) -> bool:
+    def link_entity(self, entity_name: str, project: ShapeShiftProject) -> bool:
         """Link foreign keys for the specified entity in the data store."""
 
-        table_cfg: TableConfig = config.get_table(entity_name=entity_name)
+        table_cfg: TableConfig = project.get_table(entity_name=entity_name)
         foreign_keys: list[ForeignKeyConfig] = table_cfg.foreign_keys or []
         local_df: pd.DataFrame = self.table_store[entity_name]
         deferred: bool = False
@@ -75,7 +77,7 @@ class ForeignKeyLinker:
             if len(fk.local_keys) != len(fk.remote_keys):
                 raise ValueError(f"Foreign key for entity '{entity_name}': local keys {fk.local_keys}, remote keys {fk.remote_keys}")
 
-            if fk.remote_entity not in config.table_names:
+            if fk.remote_entity not in project.table_names:
                 raise ValueError(f"Remote entity '{fk.remote_entity}' not found in configuration for linking with '{entity_name}'")
 
             # Skip if remote entity hasn't been processed yet
@@ -83,7 +85,7 @@ class ForeignKeyLinker:
                 logger.debug(f"{entity_name}[linking]: deferring link to '{fk.remote_entity}' - entity not yet processed")
                 continue
 
-            remote_cfg: TableConfig = config.get_table(fk.remote_entity)
+            remote_cfg: TableConfig = project.get_table(fk.remote_entity)
             remote_id: str | None = remote_cfg.surrogate_id or f"{fk.remote_entity}_id"
             remote_df: pd.DataFrame = self.table_store[fk.remote_entity]
 
@@ -91,7 +93,7 @@ class ForeignKeyLinker:
                 # logger.debug(f"{entity_name}[linking]: skipped since FK '{remote_id}' and/or extra columns already exist.")
                 continue
 
-            specification: ForeignKeyDataSpecification = ForeignKeyDataSpecification(cfg=config, table_store=self.table_store)
+            specification: ForeignKeyDataSpecification = ForeignKeyDataSpecification(cfg=project, table_store=self.table_store)
 
             satisfied: bool | None = specification.is_satisfied_by(fk_cfg=fk)
             if satisfied is False:
@@ -108,5 +110,7 @@ class ForeignKeyLinker:
             # logger.debug(f"{entity_name}[linking]: added link to '{fk.remote_entity}' via {fk.local_keys} -> {fk.remote_keys}")
 
         self.table_store[entity_name] = local_df
+
+        self.deferred_tracker.track(entity_name=entity_name, deferred=deferred)
 
         return deferred

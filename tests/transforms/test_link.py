@@ -125,8 +125,316 @@ def test_link_entity_returns_deferred_when_specification_defers(monkeypatch: pyt
 
     # Patch linker.link_foreign_key
     with patch.object(linker, "link_foreign_key") as mock_link:
-        deferred = linker.link_entity(entity_name="local", config=config)
+        deferred = linker.link_entity(entity_name="local", project=config)
 
     assert deferred is True
     mock_link.assert_not_called()
     pd.testing.assert_frame_equal(table_store["local"], pd.DataFrame({"remote_ref": [1]}))
+
+
+class TestDeferredLinkingTrackerIntegration:
+    """Tests for DeferredLinkingTracker integration with ForeignKeyLinker."""
+
+    def test_linker_initializes_deferred_tracker(self):
+        """ForeignKeyLinker should initialize DeferredLinkingTracker on creation."""
+        table_store: dict[str, pd.DataFrame] = {}
+        linker: ForeignKeyLinker = ForeignKeyLinker(table_store=table_store)
+
+        assert linker.deferred_tracker is not None
+        assert linker.deferred_tracker.deferred == set()
+
+    def test_link_entity_tracks_deferred_status_when_not_deferred(self, monkeypatch: pytest.MonkeyPatch):
+        """link_entity should track entity as not deferred when linking completes successfully."""
+        config = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "local": {
+                        "columns": ["remote_ref"],
+                        "keys": ["remote_ref"],
+                        "foreign_keys": [
+                            {"entity": "remote", "local_keys": ["remote_ref"], "remote_keys": ["remote_id"]},
+                        ],
+                    },
+                    "remote": {
+                        "columns": ["remote_id"],
+                        "keys": ["remote_id"],
+                        "surrogate_id": "remote_id",
+                    },
+                }
+            }
+        )
+
+        table_store = {
+            "local": pd.DataFrame({"remote_ref": [1]}),
+            "remote": pd.DataFrame({"remote_id": [1]}),
+        }
+
+        class DummyValidator:
+            def __init__(self, entity_name, fk):
+                self.merge_indicator_col = "_merge_indicator_"
+
+            def validate_before_merge(self, local_df_arg, remote_df_arg):
+                return self
+
+            def validate_merge_opts(self):
+                return {}
+
+            def validate_after_merge(self, local_df_arg, remote_df_arg, linked_df_arg, merge_indicator_col=None):
+                pass
+
+        class DummySpecification:
+            def __init__(self, cfg=None, table_store=None, **_):
+                self.deferred = False
+                self.error = ""
+
+            def is_satisfied_by(self, fk_cfg):
+                return True
+
+        linker = ForeignKeyLinker(table_store=table_store)
+
+        monkeypatch.setattr("src.transforms.link.ForeignKeyConstraintValidator", DummyValidator)
+        monkeypatch.setattr("src.transforms.link.ForeignKeyDataSpecification", DummySpecification)
+
+        with patch.object(linker, "link_foreign_key", return_value=table_store["local"]):
+            deferred = linker.link_entity(entity_name="local", project=config)
+
+        assert deferred is False
+        assert "local" not in linker.deferred_tracker.deferred
+
+    def test_link_entity_tracks_deferred_status_when_deferred(self, monkeypatch: pytest.MonkeyPatch):
+        """link_entity should track entity as deferred in tracker when linking is deferred."""
+        config = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "local": {
+                        "columns": ["remote_ref"],
+                        "keys": ["remote_ref"],
+                        "foreign_keys": [
+                            {"entity": "remote", "local_keys": ["remote_ref"], "remote_keys": ["remote_id"]},
+                        ],
+                    },
+                    "remote": {
+                        "columns": ["remote_id"],
+                        "keys": ["remote_id"],
+                        "surrogate_id": "remote_id",
+                    },
+                }
+            }
+        )
+
+        table_store = {
+            "local": pd.DataFrame({"remote_ref": [1]}),
+            "remote": pd.DataFrame({"remote_id": [1]}),
+        }
+
+        class DummySpecification:
+            def __init__(self, cfg=None, table_store=None, **_):
+                self.deferred = False
+                self.error = ""
+
+            def is_satisfied_by(self, fk_cfg):
+                self.deferred = True
+                return True
+
+        linker = ForeignKeyLinker(table_store=table_store)
+
+        monkeypatch.setattr("src.transforms.link.ForeignKeyDataSpecification", DummySpecification)
+
+        deferred = linker.link_entity(entity_name="local", project=config)
+
+        assert deferred is True
+        assert "local" in linker.deferred_tracker.deferred
+
+    def test_link_entity_multiple_entities_tracking(self, monkeypatch: pytest.MonkeyPatch):
+        """DeferredLinkingTracker should track deferred status of multiple entities."""
+        config = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "local": {
+                        "columns": ["remote_ref"],
+                        "keys": ["remote_ref"],
+                        "foreign_keys": [
+                            {"entity": "remote", "local_keys": ["remote_ref"], "remote_keys": ["remote_id"]},
+                        ],
+                    },
+                    "middle": {
+                        "columns": ["local_ref"],
+                        "keys": ["local_ref"],
+                        "depends_on": ["local"],
+                        "foreign_keys": [
+                            {"entity": "local", "local_keys": ["local_ref"], "remote_keys": ["local_ref"]},
+                        ],
+                    },
+                    "remote": {
+                        "columns": ["remote_id"],
+                        "keys": ["remote_id"],
+                        "surrogate_id": "remote_id",
+                    },
+                }
+            }
+        )
+
+        table_store = {
+            "local": pd.DataFrame({"remote_ref": [1]}),
+            "middle": pd.DataFrame({"local_ref": [1]}),
+            "remote": pd.DataFrame({"remote_id": [1]}),
+        }
+
+        class DummyValidator:
+            def __init__(self, entity_name, fk):
+                self.merge_indicator_col = "_merge_indicator_"
+
+            def validate_before_merge(self, local_df_arg, remote_df_arg):
+                return self
+
+            def validate_merge_opts(self):
+                return {}
+
+            def validate_after_merge(self, local_df_arg, remote_df_arg, linked_df_arg, merge_indicator_col=None):
+                pass
+
+        class DummySpecification:
+            def __init__(self, cfg=None, table_store=None, **_):
+                self.deferred = False
+                self.error = ""
+
+            def is_satisfied_by(self, fk_cfg):
+                return True
+
+        linker = ForeignKeyLinker(table_store=table_store)
+
+        monkeypatch.setattr("src.transforms.link.ForeignKeyConstraintValidator", DummyValidator)
+        monkeypatch.setattr("src.transforms.link.ForeignKeyDataSpecification", DummySpecification)
+
+        with patch.object(linker, "link_foreign_key", return_value=table_store["local"]):
+            deferred_local = linker.link_entity(entity_name="local", project=config)
+            deferred_middle = linker.link_entity(entity_name="middle", project=config)
+
+        assert deferred_local is False
+        assert deferred_middle is False
+        assert linker.deferred_tracker.deferred == set()
+
+    def test_deferred_tracker_removes_entity_when_no_longer_deferred(self, monkeypatch: pytest.MonkeyPatch):
+        """DeferredLinkingTracker should remove entity when it transitions from deferred to not deferred."""
+        config = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "entity": {
+                        "columns": ["ref"],
+                        "keys": ["ref"],
+                        "foreign_keys": [
+                            {"entity": "remote", "local_keys": ["ref"], "remote_keys": ["id"]},
+                        ],
+                    },
+                    "remote": {
+                        "columns": ["id"],
+                        "keys": ["id"],
+                        "surrogate_id": "id",
+                    },
+                }
+            }
+        )
+
+        table_store = {
+            "entity": pd.DataFrame({"ref": [1]}),
+            "remote": pd.DataFrame({"id": [1]}),
+        }
+
+        class DummyValidator:
+            def __init__(self, entity_name, fk):
+                self.merge_indicator_col = "_merge_indicator_"
+
+            def validate_before_merge(self, local_df_arg, remote_df_arg):
+                return self
+
+            def validate_merge_opts(self):
+                return {}
+
+            def validate_after_merge(self, local_df_arg, remote_df_arg, linked_df_arg, merge_indicator_col=None):
+                pass
+
+        # Use a shared state object to track calls across multiple instantiations
+        shared_state = {"call_count": 0}
+
+        class DummySpecification:
+            def __init__(self, cfg=None, table_store=None, **_):
+                self.deferred = False
+                self.error = ""
+
+            def is_satisfied_by(self, fk_cfg):
+                # First call: deferred, second call: not deferred
+                shared_state["call_count"] += 1
+                if shared_state["call_count"] == 1:
+                    self.deferred = True
+                    return True
+                self.deferred = False
+                return True
+
+        linker = ForeignKeyLinker(table_store=table_store)
+
+        monkeypatch.setattr("src.transforms.link.ForeignKeyConstraintValidator", DummyValidator)
+        monkeypatch.setattr("src.transforms.link.ForeignKeyDataSpecification", DummySpecification)
+
+        with patch.object(linker, "link_foreign_key", return_value=table_store["entity"]):
+            # First call: entity should be tracked as deferred
+            deferred1 = linker.link_entity(entity_name="entity", project=config)
+            assert deferred1 is True
+            assert "entity" in linker.deferred_tracker.deferred
+
+            # Second call: entity should be removed from deferred set
+            deferred2 = linker.link_entity(entity_name="entity", project=config)
+            assert deferred2 is False
+            assert "entity" not in linker.deferred_tracker.deferred
+
+    def test_deferred_tracker_state_independence(self, monkeypatch: pytest.MonkeyPatch):
+        """Each ForeignKeyLinker instance should have independent DeferredLinkingTracker state."""
+        config = ShapeShiftProject(
+            cfg={
+                "entities": {
+                    "entity": {
+                        "columns": ["ref"],
+                        "keys": ["ref"],
+                        "foreign_keys": [
+                            {"entity": "remote", "local_keys": ["ref"], "remote_keys": ["id"]},
+                        ],
+                    },
+                    "remote": {
+                        "columns": ["id"],
+                        "keys": ["id"],
+                        "surrogate_id": "id",
+                    },
+                }
+            }
+        )
+
+        table_store1 = {
+            "entity": pd.DataFrame({"ref": [1]}),
+            "remote": pd.DataFrame({"id": [1]}),
+        }
+
+        table_store2 = {
+            "entity": pd.DataFrame({"ref": [2]}),
+            "remote": pd.DataFrame({"id": [2]}),
+        }
+
+        class DummySpecification:
+            def __init__(self, cfg=None, table_store=None, **_):
+                self.deferred = True
+                self.error = ""
+
+            def is_satisfied_by(self, fk_cfg):
+                return True
+
+        linker1 = ForeignKeyLinker(table_store=table_store1)
+        linker2 = ForeignKeyLinker(table_store=table_store2)
+
+        monkeypatch.setattr("src.transforms.link.ForeignKeyDataSpecification", DummySpecification)
+
+        linker1.link_entity(entity_name="entity", project=config)
+        linker2.link_entity(entity_name="entity", project=config)
+
+        # Both should have tracked the entity as deferred
+        assert "entity" in linker1.deferred_tracker.deferred
+        assert "entity" in linker2.deferred_tracker.deferred
+        # But they should be independent instances
+        assert linker1.deferred_tracker is not linker2.deferred_tracker
