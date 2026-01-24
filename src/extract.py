@@ -194,11 +194,11 @@ class SubsetService:
     def _check_if_missing_requested_columns(
         self, source: pd.DataFrame, entity_name: str, raise_if_missing: bool, all_requested_columns: set[str]
     ) -> None:
-        missing_requested_columns: list[str] = [c for c in all_requested_columns if c not in source.columns]
-        if missing_requested_columns:
+        missing: list[str] = [c for c in all_requested_columns if c not in source.columns]
+        if missing:
             if raise_if_missing:
-                raise ValueError(f"{entity_name}[subsetting]: Columns not found in DataFrame: {missing_requested_columns}")
-            logger.warning(f"{entity_name}[subsetting]: Columns not found in DataFrame and will be skipped: {missing_requested_columns}")
+                raise ValueError(f"{entity_name}[subsetting]: Columns not found in DataFrame: {missing}")
+            logger.warning(f"{entity_name}[subsetting]: Columns not found in DataFrame and will be skipped: {missing}")
 
     def _restore_columns_order(self, data: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
         """Reorder columns in DataFrame to match specified order."""
