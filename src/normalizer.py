@@ -226,14 +226,7 @@ class ShapeShifter:
             self.link()  # Try to resolve any pending deferred links after each entity is processed
         return self
 
-    def get_subset_columns(self, sub_table_cfg):
-        columns: list[str] = sub_table_cfg.keys_columns_and_fks
-        if sub_table_cfg.unnest:
-            # Ignore columns that will be un-nested
-            columns = [col for col in columns if col not in sub_table_cfg.unnest_columns]
-        return columns
-
-    def _check_duplicate_keys(self, entity, table_cfg) -> None:
+    def _check_duplicate_keys(self, entity: str, table_cfg: TableConfig) -> None:
         """Check for duplicate keys in the processed table and log an error if found."""
 
         if not table_cfg.keys:
