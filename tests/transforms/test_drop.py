@@ -1,6 +1,6 @@
 # test_drop_empty_rows.py
-from loguru import logger
 import pandas as pd
+from loguru import logger
 
 from src.transforms.drop import drop_empty_rows
 

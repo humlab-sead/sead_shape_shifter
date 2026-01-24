@@ -94,6 +94,7 @@ def drop_empty_rows_obselete(
         data = data.replace("", pd.NA)
     return data.dropna(how="all")
 
+
 def drop_empty_rows(
     *,
     data: pd.DataFrame,
@@ -113,7 +114,7 @@ def drop_empty_rows(
 
     if subset is False:
         return data
-    
+
     if subset == []:
         return data
 
