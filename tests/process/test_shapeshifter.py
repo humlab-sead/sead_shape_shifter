@@ -1,6 +1,7 @@
 """Unit tests for arbodat normalizer classes."""
 
 from pathlib import Path
+from re import M
 from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -573,8 +574,8 @@ class TestShapeShifter:
         with pytest.raises(ValueError, match="Invalid columns configuration"):
             await normalizer.normalize()
 
-    def test_link_calls_link_entity(self):
-        """Test that link() calls link_entity for all processed entities."""
+    def test_retry_linking_calls_link_entity(self):
+        """Test that retry_linking() calls link_entity for all processed entities."""
         survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
         sample_df = pd.DataFrame({"sample_id": [1, 2], "type": ["X", "Y"]})
@@ -589,10 +590,11 @@ class TestShapeShifter:
             },
         )
         normalizer = ShapeShifter(project=config, table_store=table_store, default_entity="survey")
-
-        # Mock the linker's link_entity method
+        linker = Mock(deferred_tracker=Mock(deferred={"survey", "site", "sample"}))
+        # Mock the normalizer's linker entity
+        normalizer.linker = linker
         with patch.object(normalizer.linker, "link_entity", return_value=False) as mock_link:
-            normalizer.link()
+            normalizer.retry_linking()
 
             # Should be called for each processed entity (survey, site, and sample)
             assert mock_link.call_count == 3

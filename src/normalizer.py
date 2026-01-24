@@ -10,6 +10,7 @@ from typing import Any, Self
 import pandas as pd
 from loguru import logger
 
+from src.process_state import DeferredLinkingTracker, ProcessState
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService
 from src.loaders import DataLoader
@@ -29,55 +30,6 @@ from src.transforms.utility import add_surrogate_id
 _ENABLE_NORMALIZATION_DEBUG = True
 
 
-class ProcessState:
-    """Helper class to track processing state of entities during normalization."""
-
-    def __init__(self, project: ShapeShiftProject, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
-        self.project: ShapeShiftProject = project
-        self.table_store: dict[str, pd.DataFrame] = table_store
-        # Resolve target entities through the project to ensure dependencies are included consistently.
-        self.target_entities: set[str] = project.resolve_target_entities(target_entities)
-
-        # def _initialize_process_state(self, target_entities: set[str] | None = None) -> ProcessState:
-
-    def get_next_entity_to_process(self) -> str | None:
-        """Get the next entity that can be processed based on dependencies."""
-        # logger.debug(f"Processed entities so far: {self.processed_entities}")
-
-        for entity_name in self.unprocessed_entities:
-            # logger.debug(f"{entity_name}[check]: Checking if entity '{entity_name}' can be processed...")
-            unmet_dependencies: set[str] = self.get_unmet_dependencies(entity=entity_name)
-            if unmet_dependencies:
-                # logger.debug(f"{entity_name}[check]: Entity has unmet dependencies: {unmet_dependencies}")
-                continue
-            # logger.debug(f"{entity_name}[check]: Entity can be processed next.")
-            return entity_name
-        return None
-
-    def get_unmet_dependencies(self, entity: str) -> set[str]:
-        return self.project.get_table(entity_name=entity).depends_on - self.processed_entities
-
-    def get_all_unmet_dependencies(self) -> dict[str, set[str]]:
-        unmet_dependencies: dict[str, set[str]] = {
-            entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed_entities
-        }
-        return {k: v for k, v in unmet_dependencies.items() if v}
-
-    def log_unmet_dependencies(self) -> None:
-        for entity, unmet in self.get_all_unmet_dependencies().items():
-            logger.error(f"{entity}[check]: Entity has unmet dependencies: {unmet}")
-
-    @property
-    def processed_entities(self) -> set[str]:
-        """Return the set of processed entities."""
-        return set(self.table_store.keys())
-
-    @property
-    def unprocessed_entities(self) -> set[str]:
-        """Return the set of unprocessed target entities."""
-        return self.target_entities - self.processed_entities
-
-
 class ShapeShifter:
 
     def __init__(
@@ -94,9 +46,7 @@ class ShapeShifter:
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
         self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
-        self.state: ProcessState = ProcessState(
-            project=self.project, table_store=self.table_store, target_entities=target_entities
-        )
+        self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
         self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store)
 
     def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
@@ -197,11 +147,11 @@ class ShapeShifter:
 
             self.table_store[entity] = data
 
-            self.linker.link_entity(entity_name=entity, config=self.project)
+            self.linker.link_entity(entity_name=entity, project=self.project)
 
             if table_cfg.unnest:
                 self.unnest_entity(entity=entity)
-                self.linker.link_entity(entity_name=entity, config=self.project)
+                self.linker.link_entity(entity_name=entity, project=self.project)
 
             if delay_drop_duplicates and table_cfg.drop_duplicates:
                 self.table_store[entity] = drop_duplicate_rows(
@@ -223,7 +173,11 @@ class ShapeShifter:
             if table_cfg.surrogate_id and table_cfg.surrogate_id not in self.table_store[entity].columns:
                 self.table_store[entity] = add_surrogate_id(self.table_store[entity], table_cfg.surrogate_id)
 
-            self.link()  # Try to resolve any pending deferred links after each entity is processed
+            self.retry_linking()
+
+        if self.linker.deferred_tracker.deferred:
+            logger.warning(f"Entities with unresolved deferred links after normalization: {self.linker.deferred_tracker.deferred}")
+
         return self
 
     def _check_duplicate_keys(self, entity: str, table_cfg: TableConfig) -> None:
@@ -231,10 +185,10 @@ class ShapeShifter:
 
         if not table_cfg.keys:
             return
-        
+
         keys: set[str] = set(table_cfg.keys) if table_cfg.keys else set()
         missing_keys: set[str] = keys - set(self.table_store[entity].columns)
-        
+
         if missing_keys:
             # We cannot check for duplicates if keys are missing, just return
             return
@@ -244,15 +198,10 @@ class ShapeShifter:
             # raise ValueError(f"{entity}[keys]: Duplicate keys found for keys {table_cfg.keys}.")
             logger.error(f"{entity}[keys]: DUPLICATE KEYS FOUND FOR KEYS {table_cfg.keys}.")
 
-    def link(self) -> Self:
-        """Link entities based on foreign key configuration."""
-        for entity_name in self.state.processed_entities:
-            deferred: bool = self.linker.link_entity(entity_name=entity_name, config=self.project)
-
-            if deferred:
-                logger.warning(f"{entity_name}[linking]: entity has deferred foreign keys after final linking.")
-
-        return self
+    def retry_linking(self) -> None:
+        """Retry linking only for entities currently in deferred set."""
+        for entity_name in self.linker.deferred_tracker.deferred:
+            self.linker.link_entity(entity_name=entity_name, project=self.project)
 
     def store(self, target: str, mode: str) -> Self:
         """Write to specified target based on the specified mode."""
