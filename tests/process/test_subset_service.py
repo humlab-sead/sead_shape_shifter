@@ -146,7 +146,7 @@ def test_get_subset_raises_when_source_is_none() -> None:
     table_cfg = build_table_config(columns=["id"])
 
     with pytest.raises(ValueError, match="Source DataFrame must be provided"):
-        service.get_subset(source=None, table_cfg=table_cfg)
+        service.get_subset(source=None, table_cfg=table_cfg)  # type: ignore[arg-type]
 
 
 def test_get_subset_respects_drop_empty_false() -> None:
