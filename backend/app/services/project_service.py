@@ -3,6 +3,8 @@
 from pathlib import Path
 from typing import Any, Iterable
 
+import pandas as pd
+
 from fastapi import UploadFile
 from loguru import logger
 
@@ -579,6 +581,27 @@ class ProjectService:
             except ValueError:
                 return str(path)
 
+    def _resolve_path(self, path_str: str) -> Path:
+        """Resolve a user-supplied path relative to project root (or projects dir) and validate existence."""
+
+        raw = Path(path_str)
+        candidates: list[Path] = []
+
+        # Absolute path as-is
+        if raw.is_absolute():
+            candidates.append(raw)
+        else:
+            # Relative to repo root
+            candidates.append((settings.PROJECT_ROOT / raw).resolve())
+            # Relative to projects dir
+            candidates.append((settings.PROJECTS_DIR / raw.name).resolve())
+
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+
+        raise BadRequestError(f"File not found: {path_str}")
+
     def _sanitize_filename(self, filename: str | None) -> str:
         if not filename:
             raise BadRequestError("Filename is required")
@@ -712,6 +735,41 @@ class ProjectService:
             )
 
         return files
+
+    def get_excel_metadata(self, file_path: str, sheet_name: str | None = None) -> tuple[list[str], list[str]]:
+        """Return available sheets and columns for an Excel file.
+
+        Args:
+            file_path: Path (absolute or relative to project root) to the Excel file
+            sheet_name: Optional sheet to inspect for columns
+
+        Raises:
+            BadRequestError: If file is missing/unsupported or sheet is not found
+        """
+
+        resolved_path = self._resolve_path(file_path)
+        if resolved_path.suffix.lower() not in {".xlsx", ".xls"}:
+            raise BadRequestError("Only .xlsx and .xls files are supported for metadata probing")
+
+        try:
+            with pd.ExcelFile(resolved_path) as xls:
+                sheets: list[str] = list(xls.sheet_names)
+
+                target_sheet = sheet_name or (sheets[0] if sheets else None)
+                columns: list[str] = []
+
+                if target_sheet:
+                    if target_sheet not in sheets:
+                        raise BadRequestError(f"Sheet '{target_sheet}' not found in {resolved_path.name}")
+                    df = pd.read_excel(xls, sheet_name=target_sheet, nrows=0)
+                    columns = [str(col) for col in df.columns]
+
+                return sheets, columns
+        except BadRequestError:
+            raise
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error(f"Failed to read Excel metadata for {resolved_path}: {exc}")
+            raise BadRequestError(f"Failed to read Excel metadata: {exc}") from exc
 
     def save_data_source_file(
         self,

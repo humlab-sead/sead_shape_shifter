@@ -17,7 +17,7 @@ from backend.app.models.data_source import (
     DataSourceTestResult,
 )
 from backend.app.models.driver_schema import DriverSchemaResponse, FieldMetadataResponse
-from backend.app.models.project import ProjectFileInfo
+from backend.app.models.project import ExcelMetadataResponse, ProjectFileInfo
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
@@ -144,6 +144,19 @@ async def list_data_source_files(ext: list[str] | None = Query(default=None, des
 
     project_service: ProjectService = get_project_service()
     return project_service.list_data_source_files(extensions=ext)
+
+
+@router.get("/excel/metadata", response_model=ExcelMetadataResponse, summary="Get Excel sheets and columns")
+@handle_endpoint_errors
+async def get_excel_metadata(
+    file: str = Query(..., description="Path to Excel file (absolute or relative to project root)"),
+    sheet_name: str | None = Query(default=None, description="Optional sheet name to inspect for columns"),
+) -> ExcelMetadataResponse:
+    """Return available sheets and columns for a given Excel file."""
+
+    project_service: ProjectService = get_project_service()
+    sheets, columns = project_service.get_excel_metadata(file_path=file, sheet_name=sheet_name)
+    return ExcelMetadataResponse(sheets=sheets, columns=columns)
 
 
 @router.post(
