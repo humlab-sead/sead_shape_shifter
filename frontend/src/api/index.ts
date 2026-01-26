@@ -10,6 +10,7 @@ export * from './data-sources'
 export * from './data-source-files'
 export * from './sessions'
 export * from './reconciliation'
+export * from './excel-metadata'
 export * from './tasks'
 
 // Convenience re-export of all API services
@@ -20,6 +21,7 @@ import { dataSourcesApi } from './data-sources'
 import { dataSourceFilesApi } from './data-source-files'
 import { sessionsApi } from './sessions'
 import { reconciliationSpecApi } from './reconciliation'
+import { excelMetadataApi } from './excel-metadata'
 import { tasksApi } from './tasks'
 
 export const api = {
@@ -30,5 +32,6 @@ export const api = {
   dataSourceFiles: dataSourceFilesApi,
   sessions: sessionsApi,
   reconciliationSpec: reconciliationSpecApi,
+  excelMetadata: excelMetadataApi,
   tasks: tasksApi,
 }

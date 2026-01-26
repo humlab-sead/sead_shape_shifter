@@ -165,11 +165,15 @@
                       <v-row no-gutters v-if="isExcelType" class="mt-2">
                         <!-- Sheet Name -->
                         <v-col :cols="formData.type === 'openpyxl' ? 6 : 12" :class="formData.type === 'openpyxl' ? 'pr-2' : ''">
-                          <v-text-field
+                          <v-autocomplete
                             v-model="formData.options.sheet_name"
+                            :items="sheetOptions"
                             label="Sheet Name"
                             variant="outlined"
                             placeholder="Sheet1"
+                            clearable
+                            :loading="sheetOptionsLoading"
+                            @update:model-value="handleSheetSelection"
                           />
                         </v-col>
 
@@ -224,9 +228,10 @@
                     </div>
 
                     <!-- Columns (for data/fixed types) -->
-                    <div class="form-row" v-if="formData.type === 'data' || formData.type === 'fixed'">
+                    <div class="form-row" v-if="formData.type === 'data' || formData.type === 'fixed' || isFileType">
                       <v-combobox
                         v-model="formData.columns"
+                        :items="availableColumns"
                         label="Columns"
                         variant="outlined"
                         multiple
@@ -546,6 +551,7 @@ import YamlEditor from '../common/YamlEditor.vue'
 import SqlEditor from '../common/SqlEditor.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent } from 'vue'
+import { api } from '@/api'
 
 // Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
 const FixedValuesGrid = defineAsyncComponent(() => import('./FixedValuesGrid.vue'))
@@ -691,6 +697,10 @@ const activeTab = ref('basic')
 // File handling state
 const availableProjectFiles = ref<string[]>([])
 const filesLoading = ref(false)
+const sheetOptions = ref<string[]>([])
+const sheetOptionsLoading = ref(false)
+const columnsOptions = ref<string[]>([])
+const columnsLoading = ref(false)
 
 // Delimiter options for CSV
 const delimiterOptions = [
@@ -802,6 +812,66 @@ async function fetchProjectFiles() {
   }
 }
 
+async function fetchSheetOptions() {
+  sheetOptionsLoading.value = true
+  sheetOptions.value = []
+  columnsOptions.value = []
+
+  const filename = formData.value.options.filename
+  if (!isExcelType.value || !filename) {
+    sheetOptionsLoading.value = false
+    return
+  }
+
+  try {
+    const meta = await api.excelMetadata.fetch(filename)
+    sheetOptions.value = meta.sheets || []
+
+    if (!formData.value.options.sheet_name && sheetOptions.value.length > 0) {
+      formData.value.options.sheet_name = sheetOptions.value[0]
+    }
+
+    if (formData.value.options.sheet_name) {
+      await fetchColumns()
+    }
+  } catch (error) {
+    console.error('Failed to fetch sheet names', error)
+  } finally {
+    sheetOptionsLoading.value = false
+  }
+}
+
+async function fetchColumns() {
+  columnsLoading.value = true
+  columnsOptions.value = []
+  formData.value.columns = []
+
+  const filename = formData.value.options.filename
+  const sheet = formData.value.options.sheet_name
+  if (!isExcelType.value || !filename || !sheet) {
+    columnsLoading.value = false
+    return
+  }
+
+  try {
+    const meta = await api.excelMetadata.fetch(filename, sheet)
+    columnsOptions.value = meta.columns || []
+    if (columnsOptions.value.length > 0) {
+      formData.value.columns = [...columnsOptions.value]
+    }
+  } catch (error) {
+    console.error('Failed to fetch columns', error)
+  } finally {
+    columnsLoading.value = false
+  }
+}
+
+async function handleSheetSelection() {
+  columnsOptions.value = []
+  formData.value.columns = []
+  await fetchColumns()
+}
+
 function getFileExtensions(): string[] {
   if (formData.value.type === 'csv') return ['csv']
   if (formData.value.type === 'xlsx') return ['xlsx', 'xls']
@@ -818,6 +888,53 @@ watch(
     }
   },
   { deep: true }
+)
+
+// Watch for Excel filename changes to refresh sheet list
+watch(
+  () => formData.value.options.filename,
+  async (newFilename, oldFilename) => {
+    if (!isExcelType.value) return
+
+    // Initial hydration should load metadata without clearing existing selection
+    if (newFilename && oldFilename === undefined) {
+      await fetchSheetOptions()
+      return
+    }
+
+    if (newFilename && newFilename !== oldFilename) {
+      formData.value.options.sheet_name = ''
+      columnsOptions.value = []
+      await fetchSheetOptions()
+    }
+
+    if (!newFilename) {
+      sheetOptions.value = []
+      columnsOptions.value = []
+    }
+  }
+)
+
+// Watch for sheet selection to load columns
+watch(
+  () => formData.value.options.sheet_name,
+  async (newSheet, oldSheet) => {
+    if (!isExcelType.value) return
+
+    // On initial hydration, fetch columns without clearing the selection
+    if (newSheet && oldSheet === undefined) {
+      await fetchColumns()
+      return
+    }
+
+    if (newSheet && newSheet !== oldSheet) {
+      await fetchColumns()
+    }
+
+    if (!newSheet) {
+      columnsOptions.value = []
+    }
+  }
 )
 
 // Watch for entity type changes to fetch appropriate files
@@ -849,6 +966,13 @@ watch(() => formData.value.type, async (newType, oldType) => {
   if (isFileType.value && !wasFileType) {
     await fetchProjectFiles()
   }
+
+  if (isExcelType.value && formData.value.options.filename) {
+    await fetchSheetOptions()
+  } else {
+    sheetOptions.value = []
+    columnsOptions.value = []
+  }
 })
 
 // Keyboard shortcut for split view toggle (Ctrl+Shift+P)
@@ -866,6 +990,10 @@ onMounted(() => {
   if (props.mode === 'edit' && isFileType.value) {
     fetchProjectFiles()
   }
+
+   if (isExcelType.value && formData.value.options.filename) {
+     fetchSheetOptions()
+   }
 })
 
 onUnmounted(() => {
@@ -908,6 +1036,8 @@ const isFileType = computed(() => {
 const isExcelType = computed(() => {
   return ['xlsx', 'openpyxl'].includes(formData.value.type)
 })
+
+const availableColumns = computed(() => columnsOptions.value)
 
 const getFileExtensionHint = computed(() => {
   if (formData.value.type === 'csv') return 'Select a .csv file from the projects directory'
@@ -1129,14 +1259,12 @@ async function handleSubmit() {
     const entityData: Record<string, unknown> = {
       type: formData.value.type,
       keys: formData.value.keys,
+      // Always include columns so new entities default to an empty list instead of omitting the field
+      columns: formData.value.columns,
     }
 
     if (formData.value.surrogate_id) {
       entityData.surrogate_id = formData.value.surrogate_id
-    }
-
-    if (formData.value.columns.length > 0) {
-      entityData.columns = formData.value.columns
     }
 
     if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
@@ -1254,88 +1382,93 @@ function handleClose() {
   dialogModel.value = false
 }
 
+function buildFormDataFromEntity(entity: EntityResponse): FormData {
+  const dropDuplicates = entity.entity_data.drop_duplicates
+  const dropEmptyRows = entity.entity_data.drop_empty_rows
+
+  return {
+    name: entity.name,
+    type: (entity.entity_data.type as string) || 'data',
+    surrogate_id: (entity.entity_data.surrogate_id as string) || '',
+    keys: (entity.entity_data.keys as string[]) || [],
+    columns: (entity.entity_data.columns as string[]) || [],
+    values: (entity.entity_data.values as any[][]) || [],
+    source: (entity.entity_data.source as string) || null,
+    data_source: (entity.entity_data.data_source as string) || '',
+    query: (entity.entity_data.query as string) || '',
+    options: {
+      filename: (entity.entity_data.options as any)?.filename || '',
+      sep: (entity.entity_data.options as any)?.sep || ',',
+      encoding: (entity.entity_data.options as any)?.encoding || 'utf-8',
+      sheet_name: (entity.entity_data.options as any)?.sheet_name || '',
+      range: (entity.entity_data.options as any)?.range || '',
+    },
+    foreign_keys: (entity.entity_data.foreign_keys as any[]) || [],
+    depends_on: (entity.entity_data.depends_on as string[]) || [],
+    drop_duplicates: {
+      enabled: dropDuplicates !== undefined && dropDuplicates !== null,
+      columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
+    },
+    drop_empty_rows: {
+      enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
+      columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
+    },
+    check_functional_dependency: (entity.entity_data.check_functional_dependency as boolean) || false,
+    advanced: {
+      filters: (entity.entity_data.filters as any[]) || [],
+      unnest: entity.entity_data.unnest || null,
+      append: (entity.entity_data.append as any[]) || [],
+      extra_columns: (entity.entity_data.extra_columns as Record<string, string | null>) || undefined,
+    },
+  }
+}
+
+function buildDefaultFormData(): FormData {
+  return {
+    name: '',
+    type: 'data',
+    surrogate_id: '',
+    keys: [],
+    columns: [],
+    values: [],
+    source: null,
+    data_source: '',
+    query: '',
+    options: {
+      filename: '',
+      sep: ',',
+      encoding: 'utf-8',
+      sheet_name: '',
+      range: '',
+    },
+    foreign_keys: [],
+    depends_on: [],
+    drop_duplicates: {
+      enabled: false,
+      columns: [],
+    },
+    drop_empty_rows: {
+      enabled: false,
+      columns: [],
+    },
+    check_functional_dependency: false,
+    advanced: {
+      filters: [],
+      unnest: null,
+      append: [],
+      extra_columns: undefined,
+    },
+  }
+}
+
 // Load entity data when editing
 watch(
   () => props.entity,
   (newEntity) => {
     if (newEntity && props.mode === 'edit') {
-      const dropDuplicates = newEntity.entity_data.drop_duplicates
-      const dropDuplicatesData = {
-        enabled: dropDuplicates !== undefined && dropDuplicates !== null,
-        columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
-      }
-
-      const dropEmptyRows = newEntity.entity_data.drop_empty_rows
-      const dropEmptyRowsData = {
-        enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
-        columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
-      }
-
-      formData.value = {
-        name: newEntity.name,
-        type: (newEntity.entity_data.type as string) || 'data',
-        surrogate_id: (newEntity.entity_data.surrogate_id as string) || '',
-        keys: (newEntity.entity_data.keys as string[]) || [],
-        columns: (newEntity.entity_data.columns as string[]) || [],
-        values: (newEntity.entity_data.values as any[][]) || [],
-        source: (newEntity.entity_data.source as string) || null,
-        data_source: (newEntity.entity_data.data_source as string) || '',
-        query: (newEntity.entity_data.query as string) || '',
-        options: {
-          filename: (newEntity.entity_data.options as any)?.filename || '',
-          sep: (newEntity.entity_data.options as any)?.sep || ',',
-          encoding: (newEntity.entity_data.options as any)?.encoding || 'utf-8',
-          sheet_name: (newEntity.entity_data.options as any)?.sheet_name || '',
-          range: (newEntity.entity_data.options as any)?.range || '',
-        },
-        foreign_keys: (newEntity.entity_data.foreign_keys as any[]) || [],
-        depends_on: (newEntity.entity_data.depends_on as string[]) || [],
-        drop_duplicates: dropDuplicatesData,
-        drop_empty_rows: dropEmptyRowsData,
-        check_functional_dependency: (newEntity.entity_data.check_functional_dependency as boolean) || false,
-        advanced: {
-          filters: (newEntity.entity_data.filters as any[]) || [],
-          unnest: newEntity.entity_data.unnest || null,
-          append: (newEntity.entity_data.append as any[]) || [],
-          extra_columns: (newEntity.entity_data.extra_columns as Record<string, string | null>) || undefined,
-        },
-      }
+      formData.value = buildFormDataFromEntity(newEntity)
     } else if (props.mode === 'create') {
-      formData.value = {
-        name: '',
-        type: 'data',
-        surrogate_id: '',
-        keys: [],
-        columns: [],
-        values: [],
-        source: null,
-        data_source: '',
-        query: '',
-        options: {
-          filename: '',
-          sep: ',',
-          encoding: 'utf-8',
-          sheet_name: '',
-          range: '',
-        },
-        foreign_keys: [],
-        depends_on: [],
-        drop_duplicates: {
-          enabled: false,
-          columns: [],
-        },
-        drop_empty_rows: {
-          enabled: false,
-          columns: [],
-        },
-        check_functional_dependency: false,
-        advanced: {
-          filters: [],
-          unnest: null,
-          append: [],
-          extra_columns: undefined,
-        },
-      }
+      formData.value = buildDefaultFormData()
     }
   },
   { immediate: true }
@@ -1352,9 +1485,17 @@ watch(
       showSuggestions.value = false
       yamlError.value = null
 
+      if (props.mode === 'edit' && props.entity) {
+        formData.value = buildFormDataFromEntity(props.entity)
+      } else if (props.mode === 'create') {
+        formData.value = buildDefaultFormData()
+      }
+
       // Initialize YAML content from form data
       if (props.mode === 'edit') {
         yamlContent.value = formDataToYaml()
+      } else {
+        yamlContent.value = ''
       }
     }
   }

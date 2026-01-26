@@ -8,6 +8,13 @@ from pydantic import BaseModel, Field, field_serializer
 from src.configuration.config import Config
 
 
+class ExcelMetadataResponse(BaseModel):
+    """Metadata for an Excel file (sheets + columns for a selected sheet)."""
+
+    sheets: list[str] = Field(default_factory=list, description="Available worksheet names")
+    columns: list[str] = Field(default_factory=list, description="Column names for the selected sheet (empty if none)")
+
+
 class ProjectFileInfo(BaseModel):
     """Metadata about a file stored under a project uploads directory."""
 
