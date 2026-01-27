@@ -42,12 +42,39 @@ const baseStyles: StylesheetCSS[] = [
     },
   },
 
-  // Node types - data source
+  // Node types - entity (derived)
   {
-    selector: 'node[type="data"]',
+    selector: 'node[type="entity"]',
     css: {
       shape: 'ellipse',
       'background-color': '#1976d2',
+    },
+  },
+
+  // Node types - CSV file
+  {
+    selector: 'node[type="csv"]',
+    css: {
+      shape: 'ellipse',
+      'background-color': '#FFA500',
+    },
+  },
+
+  // Node types - Excel (Pandas)
+  {
+    selector: 'node[type="xlsx"]',
+    css: {
+      shape: 'ellipse',
+      'background-color': '#00a86b',
+    },
+  },
+
+  // Node types - Excel (OpenPyXL)
+  {
+    selector: 'node[type="openpyxl"]',
+    css: {
+      shape: 'ellipse',
+      'background-color': '#20b2aa',
     },
   },
 
