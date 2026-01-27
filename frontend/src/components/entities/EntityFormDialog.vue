@@ -1489,6 +1489,8 @@ watch(
         formData.value = buildFormDataFromEntity(props.entity)
       } else if (props.mode === 'create') {
         formData.value = buildDefaultFormData()
+        // Reset to form-only view when creating new entity
+        viewMode.value = 'form'
       }
 
       // Initialize YAML content from form data
