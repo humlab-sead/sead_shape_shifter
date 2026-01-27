@@ -92,7 +92,7 @@ class Entity(BaseModel):
     """Entity (table) configuration."""
 
     name: str = Field(..., description="Entity name (snake_case)")
-    type: Literal["data", "sql", "fixed"] | None = Field(default=None, description="Data source type")
+    type: Literal["entity", "sql", "fixed", "csv", "xlsx", "openpyxl"] | None = Field(default=None, description="Data source type")
     source: str | None = Field(default=None, description="Source entity name")
     data_source: str | None = Field(default=None, description="Data source name for SQL type")
     query: str | None = Field(default=None, description="SQL query for SQL type")

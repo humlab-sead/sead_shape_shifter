@@ -107,7 +107,7 @@ class DependencyService:
         # Calculate depths for visualization
         depths: dict[str, int] = self._calculate_depths(dependency_map, topological_order)
 
-        allowed_entity_types = {"data", "sql", "fixed"}
+        allowed_entity_types = {"entity", "sql", "fixed", "csv", "xlsx", "openpyxl"}
         nodes: list[DependencyNode] = []
         for name, deps in dependency_map.items():
             entity_type = api_project.entities.get(name, {}).get("type")
@@ -299,7 +299,7 @@ class DependencyService:
                 # Fixed entities have no source
                 continue
 
-            if entity_type == "data":
+            if entity_type == "entity":
                 # Data entities - add data source node
                 source_name = entity_config.get("source")
                 if source_name and source_name not in seen_sources:

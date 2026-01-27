@@ -1,0 +1,57 @@
+metadata:
+  name: strucke_test
+  type: shapeshifter-project
+  description: Project for strucke_test
+  version: 1.0.0
+  default_entity:
+entities:
+  excel_sheet:
+    type: xlsx
+    keys: []
+    columns:
+    - system_id
+    - socken
+    - by_gard
+    - raa_nummer
+    - fornlamningstyp
+    - lamningsnr
+    - uppdragsnummer
+    - landskap_id
+    - labnr
+    - c14_alder
+    - c14_stdav
+    - c13
+    - modern
+    - kommentar
+    - bedomd_relevant
+    - sort
+    - art_1
+    - art_2
+    - anlnr
+    - anlaggning
+    - forfattare
+    - titel
+    - tidskrift
+    - forlagsort
+    - kommentar_sl
+    - lst_dnr
+    - linked_lamningsnr
+    - linked_lamningtyp
+    - linked_latitude
+    - linked_longitude
+    - linked_lan
+    - linked_kommun
+    - linked_socken
+    surrogate_id: excel_sheet_id
+    options:
+      filename: projects/strukke_allaC14_230316_v4_clean.xlsx
+      sheet_name: samples_with_coords
+  site:
+    type: entity
+    keys: []
+    columns:
+    - by_gard
+    - raa_nummer
+    surrogate_id: site_id
+    source: excel_sheet
+options: {}

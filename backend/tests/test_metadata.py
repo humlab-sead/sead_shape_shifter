@@ -64,7 +64,7 @@ class TestMetadataHandling:
             },
             "entities": {
                 "sample": {
-                    "type": "data",
+                    "type": "entity",
                     "keys": ["id"],
                 }
             },
@@ -86,7 +86,7 @@ class TestMetadataHandling:
             },
             "entities": {
                 "users": {
-                    "type": "data",
+                    "type": "entity",
                     "keys": ["user_id"],
                     "columns": ["name", "email"],
                 }

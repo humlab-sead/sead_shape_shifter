@@ -101,12 +101,12 @@ metadata:
 
 entities:
   sample:
-    type: data
+    type: entity
     keys: [sample_id]
     columns: [name, value]
 
   site:
-    type: data
+    type: entity
     keys: [site_id]
     columns: [name, location]
 
@@ -401,7 +401,7 @@ options:
 
     def test_add_entity_success(self, service: ProjectService, sample_config: Project):
         """Test adding entity to configuration."""
-        entity = Entity(source="new_table", name="new_entity", type="data", columns=["id", "name"])
+        entity = Entity(source="new_table", name="new_entity", type="entity", columns=["id", "name"])
         config = service.add_entity(sample_config, "new_entity", entity)
 
         assert "new_entity" in config.entities
@@ -409,14 +409,14 @@ options:
 
     def test_add_entity_already_exists(self, service: ProjectService, sample_config: Project):
         """Test adding duplicate entity raises error."""
-        entity = Entity(source="table", name="sample", type="data")
+        entity = Entity(source="table", name="sample", type="entity")
 
         with pytest.raises(EntityAlreadyExistsError, match="already exists"):
             service.add_entity(sample_config, "sample", entity)
 
     def test_add_entity_serializes_model(self, service: ProjectService, sample_config: Project):
         """Test entity is serialized as dict."""
-        entity = Entity(source="table", name="new", type="data", columns=["id"])
+        entity = Entity(source="table", name="new", type="entity", columns=["id"])
         config = service.add_entity(sample_config, "new", entity)
 
         assert isinstance(config.entities["new"], dict)
@@ -425,7 +425,7 @@ options:
 
     def test_update_entity_success(self, service: ProjectService, sample_config: Project):
         """Test updating existing entity."""
-        entity = Entity(source="updated_table", name="sample", type="data", columns=["id", "name", "value"])
+        entity = Entity(source="updated_table", name="sample", type="entity", columns=["id", "name", "value"])
         config = service.update_entity(sample_config, "sample", entity)
 
         assert config.entities["sample"]["source"] == "updated_table"
@@ -433,7 +433,7 @@ options:
 
     def test_update_entity_not_found(self, service: ProjectService, sample_config: Project):
         """Test updating non-existent entity raises error."""
-        entity = Entity(source="table", name="new", type="data", columns=[])
+        entity = Entity(source="table", name="new", type="entity", columns=[])
 
         with pytest.raises(EntityNotFoundError, match="not found"):
             service.update_entity(sample_config, "nonexistent", entity)

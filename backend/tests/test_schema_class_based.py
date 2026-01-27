@@ -37,7 +37,7 @@ class TestClassBasedSchemas:
             "xls": "xlsx",  # XLS uses same schema as XLSX
             "openpyxl": "openpyxl",
             "fixed": None,  # Fixed loader doesn't have a schema
-            "data": None,  # Data loader doesn't have a schema
+            "entity": None,  # Data loader doesn't have a schema
         }
 
         # Check each registered loader

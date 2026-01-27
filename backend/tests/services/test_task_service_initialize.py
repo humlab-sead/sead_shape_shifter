@@ -16,12 +16,12 @@ def mock_project():
     return Project(
         entities={
             "location": {
-                "type": "data",
+                "type": "entity",
                 "keys": ["location_id"],
                 "columns": ["name", "latitude"],
             },
             "site": {
-                "type": "data",
+                "type": "entity",
                 "keys": ["site_id"],
                 "columns": ["name", "location_id"],
                 "foreign_keys": [
@@ -33,7 +33,7 @@ def mock_project():
                 ],
             },
             "sample": {
-                "type": "data",
+                "type": "entity",
                 "keys": ["sample_id"],
                 "columns": ["name", "site_id"],
                 "foreign_keys": [

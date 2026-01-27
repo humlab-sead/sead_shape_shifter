@@ -42,7 +42,7 @@
           "description": "Entity definition",
           "properties": {
             "type": {
-              "enum": ["sql", "fixed", "data"],
+              "enum": ["sql", "fixed", "entity", "csv", "xlsx", "openpyxl"],
               "description": "Entity source type: sql (database query) or fixed (hardcoded values)"
             },
             "data_source": {

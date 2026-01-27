@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from src.model import TableConfig
 
 
-@DataLoaders.register(key=["fixed", "data"])
+@DataLoaders.register(key=["fixed"])
 class FixedLoader(DataLoader):
     """Loader for fixed data entities."""
 

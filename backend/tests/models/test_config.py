@@ -15,7 +15,7 @@ class TestConfiguration:
     def test_add_entity(self):
         """Test adding entity to configuration."""
         config = Project()
-        entity_data = {"type": "data", "keys": ["id"]}
+        entity_data = {"type": "entity", "keys": ["id"]}
         config.add_entity("sample", entity_data)
         assert "sample" in config.entities
         assert config.entity_names == ["sample"]
@@ -23,12 +23,12 @@ class TestConfiguration:
     def test_get_entity(self):
         """Test getting entity by name."""
         config = Project()
-        entity_data = {"type": "data", "keys": ["id"]}
+        entity_data = {"type": "entity", "keys": ["id"]}
         config.add_entity("sample", entity_data)
 
         retrieved = config.get_entity("sample")
         assert retrieved is not None
-        assert retrieved["type"] == "data"
+        assert retrieved["type"] == "entity"
 
         missing = config.get_entity("nonexistent")
         assert missing is None
@@ -36,7 +36,7 @@ class TestConfiguration:
     def test_remove_entity(self):
         """Test removing entity from configuration."""
         config = Project()
-        entity_data = {"type": "data", "keys": ["id"]}
+        entity_data = {"type": "entity", "keys": ["id"]}
         config.add_entity("sample", entity_data)
 
         result = config.remove_entity("sample")

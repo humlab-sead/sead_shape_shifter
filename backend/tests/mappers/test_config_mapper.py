@@ -34,7 +34,7 @@ class TestProjectMapperToApiConfig:
         core_dict = {
             "entities": {
                 "sample": {
-                    "type": "data",
+                    "type": "entity",
                     "keys": ["id"],
                     "columns": ["name", "value"],
                 }
@@ -48,7 +48,7 @@ class TestProjectMapperToApiConfig:
         assert result.metadata.name == "test_project"
         assert result.metadata.entity_count == 1
         assert "sample" in result.entities
-        assert result.entities["sample"]["type"] == "data"
+        assert result.entities["sample"]["type"] == "entity"
         assert result.entities["sample"]["keys"] == ["id"]
         assert result.entities["sample"]["columns"] == ["name", "value"]
 
@@ -56,7 +56,7 @@ class TestProjectMapperToApiConfig:
         """Test converting config with options."""
         core_dict = {
             "entities": {
-                "sample": {"type": "data", "keys": ["id"]},
+                "sample": {"type": "entity", "keys": ["id"]},
             },
             "options": {"some_option": "value", "another_option": 123},
         }
@@ -82,7 +82,7 @@ class TestProjectMapperToApiConfig:
         core_dict = {
             "entities": {
                 "sample": {
-                    "type": "data",
+                    "type": "entity",
                     "source": "raw_sample",
                     "data_source": "postgres",
                     "query": "SELECT * FROM samples",
@@ -102,7 +102,7 @@ class TestProjectMapperToApiConfig:
         result = ProjectMapper.to_api_config(core_dict, "test_project")
         entity = result.entities["sample"]
 
-        assert entity["type"] == "data"
+        assert entity["type"] == "entity"
         assert entity["source"] == "raw_sample"
         assert entity["data_source"] == "postgres"
         assert entity["query"] == "SELECT * FROM samples"
@@ -121,7 +121,7 @@ class TestProjectMapperToApiConfig:
         core_dict = {
             "entities": {
                 "sample": {
-                    "type": "data",
+                    "type": "entity",
                     "keys": ["id"],
                     "foreign_keys": {
                         "site_fk": {"entity": "sites", "key": "site_id"},
@@ -158,7 +158,7 @@ class TestProjectMapperToCoreDict:
             ),
             entities={
                 "sample": {
-                    "type": "data",
+                    "type": "entity",
                     "keys": ["id"],
                     "columns": ["name", "value"],
                 }
@@ -171,7 +171,7 @@ class TestProjectMapperToCoreDict:
         assert "metadata" in result
         assert result["metadata"]["name"] == "test_project"
         assert "sample" in result["entities"]
-        assert result["entities"]["sample"]["type"] == "data"
+        assert result["entities"]["sample"]["type"] == "entity"
 
     def test_project_with_options(self):
         """Test converting config with options."""
@@ -204,7 +204,7 @@ class TestProjectMapperToCoreDict:
             metadata=ProjectMetadata(name="test", entity_count=1),
             entities={
                 "sample": {
-                    "type": "data",
+                    "type": "entity",
                     "keys": ["id"],
                     "columns": ["name"],
                     "surrogate_id": "sample_id",
@@ -215,7 +215,7 @@ class TestProjectMapperToCoreDict:
 
         result = ProjectMapper.to_core_dict(api_config)
 
-        assert result["entities"]["sample"]["type"] == "data"
+        assert result["entities"]["sample"]["type"] == "entity"
         assert result["entities"]["sample"]["keys"] == ["id"]
         assert result["entities"]["sample"]["columns"] == ["name"]
         assert result["entities"]["sample"]["surrogate_id"] == "sample_id"
@@ -227,14 +227,14 @@ class TestDictToApiEntity:
     def test_minimal_entity(self):
         """Test minimal entity conversion."""
         entity_dict = {
-            "type": "data",
+            "type": "entity",
             "keys": ["id"],
         }
 
         result = ProjectMapper._dict_to_api_entity("sample", entity_dict)
 
         assert result["name"] == "sample"
-        assert result["type"] == "data"
+        assert result["type"] == "entity"
         assert result["keys"] == ["id"]
 
     def test_default_type(self):
@@ -250,7 +250,7 @@ class TestDictToApiEntity:
     def test_none_fields_excluded(self):
         """Test that None values are preserved (not excluded)."""
         entity_dict = {
-            "type": "data",
+            "type": "entity",
             "keys": ["id"],
             "source": None,
             "columns": ["name"],
@@ -266,7 +266,7 @@ class TestDictToApiEntity:
     def test_foreign_keys_converted_to_list(self):
         """Test foreign keys dict is converted to list of plain dicts."""
         entity_dict = {
-            "type": "data",
+            "type": "entity",
             "keys": ["id"],
             "foreign_keys": {
                 "site_fk": {"entity": "sites", "key": "site_id"},
@@ -284,7 +284,7 @@ class TestDictToApiEntity:
     def test_foreign_keys_with_key_field(self):
         """Test foreign key dict uses key field for local and remote keys."""
         entity_dict = {
-            "type": "data",
+            "type": "entity",
             "keys": ["id"],
             "foreign_keys": {"sample_fk": {"entity": "targets", "key": ["target_id"]}},
         }
@@ -328,7 +328,7 @@ class TestApiEntityToDict:
     def test_dict_passthrough(self):
         """Test that dict input is copied (to remove 'name' field)."""
         entity_dict = {
-            "type": "data",
+            "type": "entity",
             "keys": ["id"],
             "columns": ["name"],
         }
@@ -342,20 +342,20 @@ class TestApiEntityToDict:
     def test_minimal_entity_dict_output(self):
         """Test minimal entity produces minimal dict."""
         entity_dict = {
-            "type": "data",
+            "type": "entity",
             "keys": ["id"],
         }
 
         result = ProjectMapper._api_entity_to_dict(entity_dict)
 
-        assert result["type"] == "data"
+        assert result["type"] == "entity"
         assert result["keys"] == ["id"]
 
     def test_pydantic_entity_conversion_strips_defaults(self):
         """Test conversion strips API-only name and default flags while dumping nested models."""
         entity = Entity(
             name="sample_entity",
-            type="data",
+            type="entity",
             keys=["id"],
             columns=["name"],
             foreign_keys=[
@@ -390,7 +390,7 @@ class TestApiEntityToDict:
         """Test conversion keeps explicit True/False flags for drop and column checks."""
         entity = Entity(
             name="another_entity",
-            type="data",
+            type="entity",
             keys=["id"],
             drop_duplicates=True,
             drop_empty_rows=["col1"],
@@ -413,7 +413,7 @@ class TestRoundTripConversion:
             metadata=ProjectMetadata(name="test", entity_count=1),
             entities={
                 "sample": {
-                    "type": "data",
+                    "type": "entity",
                     "keys": ["id"],
                     "columns": ["name", "value"],
                 }
@@ -465,7 +465,7 @@ class TestEdgeCases:
     def test_entity_with_empty_lists(self):
         """Test entity with empty lists."""
         entity_dict = {
-            "type": "data",
+            "type": "entity",
             "keys": [],
             "columns": [],
             "depends_on": [],
@@ -481,7 +481,7 @@ class TestEdgeCases:
     def test_entity_with_empty_dict(self):
         """Test entity with empty dict for extra_columns."""
         entity_dict = {
-            "type": "data",
+            "type": "entity",
             "keys": ["id"],
             "extra_columns": {},
         }

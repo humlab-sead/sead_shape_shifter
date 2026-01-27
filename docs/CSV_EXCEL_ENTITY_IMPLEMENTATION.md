@@ -19,7 +19,7 @@ This was cumbersome for simple file loading scenarios. The new implementation al
 
 ### Entity Types Added
 
-Three new entity types were added to complement existing types (data, sql, fixed):
+Three new entity types were added to complement existing types (entity, sql, fixed):
 
 - **`csv`** - CSV files with configurable delimiter and encoding
 - **`xlsx`** - Excel files using Pandas loader (supports sheet_name, range)
@@ -31,7 +31,7 @@ Three new entity types were added to complement existing types (data, sql, fixed
 
 **EntityType enum extended:**
 ```typescript
-export type EntityType = 'data' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
+export type EntityType = 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
 ```
 
 **New EntityFileOptions interface:**
@@ -371,7 +371,7 @@ data_sources:
 
 entities:
   my_data:
-    type: data
+    type: entity
     source: csv_files
     query: data.csv
     keys: [id]

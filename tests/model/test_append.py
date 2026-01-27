@@ -57,7 +57,7 @@ class TestAppendConfigurationParsing:
                 "append": [
                     {"type": "fixed", "values": [["val1"]]},
                     {"type": "fixed", "values": [["val2"]]},
-                    {"type": "data", "source": "other_entity"},
+                    {"type": "entity", "source": "other_entity"},
                 ],
             }
         }
@@ -108,7 +108,7 @@ class TestAppendDependencyResolution:
                 "columns": [],
                 "depends_on": [],
                 "append": [
-                    {"type": "data", "source": "source_entity"},
+                    {"type": "entity", "source": "source_entity"},
                 ],
             },
             "source_entity": {
@@ -130,8 +130,8 @@ class TestAppendDependencyResolution:
                 "columns": [],
                 "depends_on": ["manual_dep"],
                 "append": [
-                    {"type": "data", "source": "source1"},
-                    {"type": "data", "source": "source2"},
+                    {"type": "entity", "source": "source1"},
+                    {"type": "entity", "source": "source2"},
                 ],
             },
             "source1": {"columns": [], "depends_on": []},
@@ -280,7 +280,7 @@ class TestAppendPropertyInheritance:
         cfg = {
             "test_entity": {
                 "surrogate_id": "test_id",
-                "type": "data",
+                "type": "entity",
                 "columns": [],
                 "depends_on": [],
             }
@@ -291,14 +291,14 @@ class TestAppendPropertyInheritance:
 
         merged = table_cfg.create_append_config(append_data)
 
-        assert merged["type"] == "data"
+        assert merged["type"] == "entity"
 
     def test_create_append_config_can_override_type(self):
         """Test that append config can override type."""
         cfg = {
             "test_entity": {
                 "surrogate_id": "test_id",
-                "type": "data",
+                "type": "entity",
                 "columns": [],
                 "depends_on": [],
             }
@@ -408,7 +408,7 @@ class TestGetSubTablesConfigs:
                 "depends_on": [],
                 "append": [
                     {"type": "fixed", "values": ["A", "B"]},
-                    {"type": "data", "source": "source_entity"},
+                    {"type": "entity", "source": "source_entity"},
                     {"type": "sql", "data_source": "db", "values": "SELECT * FROM table"},
                 ],
             },
@@ -484,7 +484,7 @@ class TestGetSubTablesConfigs:
             "test_entity": {
                 "surrogate_id": "test_id",
                 "columns": ["id", "name"],
-                "type": "data",  # Parent type
+                "type": "entity",  # Parent type
                 "depends_on": [],
                 "append": [
                     {"values": [1, 2]},  # Should default to parent type

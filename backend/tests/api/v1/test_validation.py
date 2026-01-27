@@ -32,7 +32,7 @@ def reset_services():
 @pytest.fixture
 def sample_entity_data():
     """Sample entity data for tests."""
-    return {"type": "data", "keys": ["id"], "columns": ["name", "value"]}
+    return {"type": "entity", "keys": ["id"], "columns": ["name", "value"]}
 
 
 class TestEntityValidation:
@@ -142,8 +142,8 @@ class TestDependencies:
 
         # Create config with circular dependencies
         entities = {
-            "entity1": {"type": "data", "keys": ["id"], "source": "entity2"},
-            "entity2": {"type": "data", "keys": ["id"], "source": "entity1"},
+            "entity1": {"type": "entity", "keys": ["id"], "source": "entity2"},
+            "entity2": {"type": "entity", "keys": ["id"], "source": "entity1"},
         }
         client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
 
@@ -194,8 +194,8 @@ class TestCircularDependencyCheck:
 
         # Create config with circular dependencies
         entities = {
-            "entity1": {"type": "data", "keys": ["id"], "source": "entity2"},
-            "entity2": {"type": "data", "keys": ["id"], "source": "entity1"},
+            "entity1": {"type": "entity", "keys": ["id"], "source": "entity2"},
+            "entity2": {"type": "entity", "keys": ["id"], "source": "entity1"},
         }
         client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
 

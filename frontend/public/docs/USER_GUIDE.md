@@ -83,7 +83,7 @@ This guide is for:
 │             │                        │                    │
 │  • entity_1 │  entities:             │  ✓ No errors       │
 │  • entity_2 │    entity_1:           │                    │
-│    - entity_3│      type: data       │  📋 Properties     │
+│    - entity_3│      type: entity       │  📋 Properties     │
 │             │      columns: [...]    │                    │
 │             │                        │                    │
 └─────────────┴────────────────────────┴────────────────────┘
@@ -232,11 +232,11 @@ The left panel shows your configuration's entity structure:
 
 ### Entity Types
 
-**Data Entity:**
+**Entity (Derived):**
 ```yaml
 entity_name:
-  type: data
-  source: null  # Root entity
+  type: entity
+  source: null  # Root entity or name of another entity
   columns: [col1, col2, col3]
 ```
 
@@ -255,6 +255,38 @@ entity_name:
   values:
     - [val1, val2]
     - [val3, val4]
+```
+
+**CSV Entity:**
+```yaml
+entity_name:
+  type: csv
+  columns: [col1, col2]
+  options:
+    filename: projects/my-file.csv
+    sep: ","           # optional, defaults to comma
+    encoding: utf-8     # optional
+```
+
+**Excel Entity (Pandas):**
+```yaml
+entity_name:
+  type: xlsx
+  columns: [col1, col2]
+  options:
+    filename: projects/my-file.xlsx
+    sheet_name: Sheet1   # optional; defaults to first sheet
+```
+
+**Excel Entity (OpenPyXL):**
+```yaml
+entity_name:
+  type: openpyxl
+  columns: [col1, col2]
+  options:
+    filename: projects/my-file.xlsx
+    sheet_name: Sheet1
+    range: A1:D50        # optional
 ```
 
 ### Adding Entities
