@@ -47,7 +47,7 @@ class TestCreateFixedTable:
     async def test_raises_when_not_fixed_data(self):
         """Test that await FixedLoader(data_source=None).load raises ValueError when entity is not fixed data."""
         entity = "test_entity"
-        config = {"test_entity": {"type": "data", "columns": ["col1"]}}  # Not fixed
+        config = {"test_entity": {"type": "entity", "columns": ["col1"]}}  # Not fixed
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
         with pytest.raises(ValueError, match="is not of type 'fixed'"):

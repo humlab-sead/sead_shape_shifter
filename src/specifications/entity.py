@@ -1,5 +1,6 @@
 """Specifications for validating entity configurations."""
 
+from tkinter import E
 from typing import Any
 
 from src.model import TableConfig
@@ -14,9 +15,17 @@ class EntitySpecificationRegistry(Registry[type[ProjectSpecification]]):
     items: dict[str, type[ProjectSpecification]] = {}
 
 
+class EntityTypeSpecificationRegistry(Registry[type[ProjectSpecification]]):
+    """Registry for entity type validators."""
+
+    items: dict[str, type[ProjectSpecification]] = {}
+
+
 ENTITY_SPECIFICATION = EntitySpecificationRegistry()
+ENTITY_TYPE_SPECIFICATION = EntityTypeSpecificationRegistry()
 
 
+@ENTITY_TYPE_SPECIFICATION.register(key="other")
 class EntityFieldsBaseSpecification(ProjectSpecification):
     """Validates that fields are present for a single entity."""
 
@@ -39,6 +48,7 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
         return TableConfig(entity_name=entity_name, entities_cfg=self.project_cfg.get("entities", {}))
 
 
+@ENTITY_TYPE_SPECIFICATION.register(key="entity")
 class DataEntityFieldsSpecification(EntityFieldsBaseSpecification):
     """Validates that fields are present for a data entity."""
 
@@ -54,6 +64,7 @@ class DataEntityFieldsSpecification(EntityFieldsBaseSpecification):
         return not self.has_errors()
 
 
+@ENTITY_TYPE_SPECIFICATION.register(key="fixed")
 class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
@@ -86,6 +97,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         return not self.has_errors()
 
 
+@ENTITY_TYPE_SPECIFICATION.register(key="sql")
 class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
     """Validates that fields are present for a SQL entity."""
 
@@ -100,20 +112,21 @@ class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
 class EntityFieldsSpecification(ProjectSpecification):
     """Validates that all required fields are present in all entities."""
 
-    def get_specification(self, *, entity_type: str) -> EntityFieldsBaseSpecification:
-        if entity_type == "fixed":
-            return FixedEntityFieldsSpecification(self.project_cfg)
-        if entity_type == "sql":
-            return SqlEntityFieldsSpecification(self.project_cfg)
-        if entity_type == "data":
-            return DataEntityFieldsSpecification(self.project_cfg)
-        return EntityFieldsBaseSpecification(self.project_cfg)
+    def get_specification(self, *, entity_type: str) -> ProjectSpecification:
+        """Get the appropriate specification based on entity type."""
+        spec_cls: type[ProjectSpecification] = (
+            ENTITY_TYPE_SPECIFICATION.get(entity_type)
+            if ENTITY_TYPE_SPECIFICATION.is_registered(entity_type)
+            else EntityFieldsBaseSpecification
+        )
+
+        return spec_cls(self.project_cfg)
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that entity's fields are valid (based on entity type)."""
         self.clear()
-        entity_type: str = self.get_entity_cfg(entity_name).get("type", "data")
-        specification: EntityFieldsBaseSpecification = self.get_specification(entity_type=entity_type)
+        entity_type: str = self.get_entity_cfg(entity_name).get("type", "entity")
+        specification: ProjectSpecification = self.get_specification(entity_type=entity_type)
         specification.is_satisfied_by(entity_name=entity_name)
         self.merge(specification)
         return not self.has_errors()

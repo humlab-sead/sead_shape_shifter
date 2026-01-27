@@ -42,12 +42,12 @@ def sample_project_data():
         "name": "test_project",
         "entities": {
             "location": {
-                "type": "data",
+                "type": "entity",
                 "keys": ["location_id"],
                 "columns": ["name", "latitude", "longitude"],
             },
             "site": {
-                "type": "data",
+                "type": "entity",
                 "keys": ["site_id"],
                 "columns": ["name", "location_id"],
                 "foreign_keys": [

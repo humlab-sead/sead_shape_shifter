@@ -58,7 +58,7 @@ The metadata section is entirely optional. Projects without metadata will work a
 ```yaml
 entities:
   sample:
-    type: data
+    type: entity
     keys: ["id"]
 ```
 

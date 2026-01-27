@@ -212,7 +212,7 @@ class NonEmptyResultValidator:
         """
         errors = []
 
-        entity_type = entity_cfg.get("type", "data")
+        entity_type = entity_cfg.get("type", "entity")
 
         # Skip fixed entities - they don't have data sources
         if entity_type == "fixed":

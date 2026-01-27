@@ -198,7 +198,7 @@ class TestEntityFieldsSpecification:
             "entities": {
                 "fixed_entity": {"type": "fixed", "columns": ["col1"], "keys": ["id"], "surrogate_id": "entity_id", "values": [["val"]]},
                 "sql_entity": {"type": "sql", "columns": ["col1"], "keys": ["id"], "data_source": "db1", "query": "SELECT *"},
-                "data_entity": {"type": "data", "columns": ["col1"], "keys": ["id"]},
+                "data_entity": {"type": "entity", "columns": ["col1"], "keys": ["id"]},
             }
         }
 

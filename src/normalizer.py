@@ -212,7 +212,7 @@ class ShapeShifter:
         else:
             raise ValueError(f"Unsupported dispatch mode: {mode}")
         return self
-
+ 
     def unnest_all(self) -> Self:
         """Unnest dataframes based on configuration."""
         for entity in self.table_store:

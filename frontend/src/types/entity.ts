@@ -4,7 +4,7 @@
 
 export type Cardinality = 'one_to_one' | 'many_to_one' | 'one_to_many' | 'many_to_many'
 export type JoinType = 'left' | 'inner' | 'outer' | 'right' | 'cross'
-export type EntityType = 'data' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
+export type EntityType = 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
 
 export interface EntityFileOptions {
   filename?: string | null
