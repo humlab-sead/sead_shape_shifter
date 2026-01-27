@@ -1064,7 +1064,6 @@ options:
       - analysis_entity.surrogate_id
       - abundance.surrogate_id
       - location.surrogate_id
-  replacements: '@include: replacements.yml'
   ingesters:
     sead:
       data_source: sead
