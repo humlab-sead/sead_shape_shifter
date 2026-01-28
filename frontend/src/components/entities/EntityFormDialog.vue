@@ -245,15 +245,18 @@
                         </template>
                       </v-combobox>
                     </div>
-
                     <!-- Fixed Values Grid (only for fixed type) -->
-                    <div class="form-row" v-show="formData.type === 'fixed' && allColumns.length > 0">
+                    <div class="form-row" v-if="formData.type === 'fixed'">
                       <FixedValuesGrid
-                        v-if="formData.type === 'fixed' && allColumns.length > 0"
+                        v-if="allColumns.length > 0"
                         v-model="formData.values"
                         :columns="allColumns"
                         height="400px"
                       />
+                      <v-alert v-else type="info" variant="tonal" density="compact" class="mb-2">
+                        <v-alert-title>No Columns Defined</v-alert-title>
+                        Add keys and/or columns above to define the grid structure for fixed values.
+                      </v-alert>
                     </div>
 
                     <!-- Depends On -->
