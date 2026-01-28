@@ -220,10 +220,9 @@ class SourceNodeService:
         """Factory method to get appropriate extractor based on entity type."""
         if entity_type == "sql":
             return SqlSourceNodeExtractor(self.seen_sources)
-        elif entity_type in ("csv", "xlsx", "openpyxl"):
+        if entity_type in ("csv", "xlsx", "openpyxl"):
             return FileSourceNodeExtractor(self.seen_sources)
-        else:
-            return NullSourceNodeExtractor(self.seen_sources)
+        return NullSourceNodeExtractor(self.seen_sources)
 
 
 class BaseSourceNodeExtractor:

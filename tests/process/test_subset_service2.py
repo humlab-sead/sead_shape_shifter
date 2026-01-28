@@ -8,6 +8,7 @@ from typing import Any
 import pandas as pd
 import pytest
 
+from loguru import logger as loguru_logger
 from src.extract import SubsetService
 
 # --- Minimal fakes for TableConfig / FK specs (keeps tests independent of your model layer) ---
@@ -87,12 +88,11 @@ def test_get_subset2_raise_if_missing_true_raises():
         svc.get_subset2(df, ["id", "missing"], entity_name="X", raise_if_missing=True)
 
 
-def test_get_subset2_raise_if_missing_false_skips_missing_and_keeps_existing_columns(monkeypatch):
+def test_get_subset2_raise_if_missing_false_skips_missing_and_keeps_existing_columns():
     svc = SubsetService()
     df = pd.DataFrame({"id": [1], "name": ["a"]})
 
     warnings: list[str] = []
-    from loguru import logger as loguru_logger
 
     sink_id = loguru_logger.add(warnings.append, level="WARNING")
     try:
@@ -177,7 +177,7 @@ def test_get_subset2_replacements_scalar_list_blanks_out_and_ffills_legacy_behav
     assert out["a"].tolist() == ["ok", "ok", "ok", "keep"]
 
 
-def test_get_subset2_drop_duplicates_true_drops_exact_duplicates(monkeypatch):
+def test_get_subset2_drop_duplicates_true_drops_exact_duplicates():
     svc = SubsetService()
     df = pd.DataFrame({"id": [1, 1, 2], "x": ["a", "a", "b"]})
 
@@ -192,7 +192,7 @@ def test_get_subset2_drop_duplicates_true_drops_exact_duplicates(monkeypatch):
     assert out.equals(pd.DataFrame({"id": [1, 2], "x": ["a", "b"]}))
 
 
-def test_get_subset2_drop_duplicates_list_drops_duplicates_on_subset(monkeypatch):
+def test_get_subset2_drop_duplicates_list_drops_duplicates_on_subset():
     svc = SubsetService()
     df = pd.DataFrame({"id": [1, 1, 1], "x": ["a", "a", "b"], "y": [10, 10, 20]})
 

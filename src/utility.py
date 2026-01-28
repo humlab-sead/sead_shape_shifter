@@ -370,7 +370,7 @@ class Registry(Generic[T]):
     @classmethod
     def unique_items(cls) -> set[T]:
         """Get the set of unique registered items. Same item may be registered under multiple keys."""
-        return {t for t in cls.items.values()}
+        return set(cls.items.values())
 
     def keys(self) -> set[str]:
         """Get the set of registered keys. This is the first key if an item is registered under multiple keys."""
