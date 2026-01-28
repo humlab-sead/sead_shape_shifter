@@ -1,11 +1,13 @@
 """Service for analyzing entity dependencies in projects."""
 
-import re
+from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
 from backend.app.models.project import Project
+from backend.app.utils.graph import calculate_depths, find_cycles, topological_sort
+from backend.app.utils.sql import extract_tables
 from src.model import ShapeShiftProject
 
 
@@ -43,12 +45,7 @@ class SourceNode(dict):
             node_type: Node category ("datasource", "table", "file")
             metadata: Additional metadata (datasource, table name, etc.)
         """
-        super().__init__(
-            name=name,
-            source_type=source_type,
-            type=node_type,
-            metadata=metadata or {},
-        )
+        super().__init__(name=name, source_type=source_type, type=node_type, metadata=metadata or {})
 
 
 class DependencyGraph(dict):
@@ -93,19 +90,28 @@ class DependencyService:
             cfg={"entities": api_project.entities, "options": api_project.options}, filename=api_project.filename or ""
         )
 
-        dependency_map: dict[str, list[str]] = {
-            entity_name: list(project.get_table(entity_name).depends_on or []) for entity_name in api_project.entities
-        }
+        dependency_map: dict[str, list[str]] = {}
+        for entity_name in api_project.entities:
+            deps = list(project.get_table(entity_name).depends_on or [])
+
+            # If entity type is "entity", add source as a dependency
+            entity_config = api_project.entities.get(entity_name, {})
+            if entity_config.get("type") == "entity":
+                source = entity_config.get("source")
+                if source and source not in deps:
+                    deps.append(source)
+
+            dependency_map[entity_name] = deps
 
         # Detect cycles
-        cycles: list[list[str]] = self._find_cycles(dependency_map)
+        cycles: list[list[str]] = find_cycles(dependency_map)
         has_cycles: bool = len(cycles) > 0
 
         # Calculate topological order if no cycles
-        topological_order: None | list[str] = None if has_cycles else self._topological_sort(dependency_map)
+        topological_order: None | list[str] = None if has_cycles else topological_sort(dependency_map)
 
         # Calculate depths for visualization
-        depths: dict[str, int] = self._calculate_depths(dependency_map, topological_order)
+        depths: dict[str, int] = calculate_depths(dependency_map, topological_order)
 
         allowed_entity_types = {"entity", "sql", "fixed", "csv", "xlsx", "openpyxl"}
         nodes: list[DependencyNode] = []
@@ -116,6 +122,20 @@ class DependencyService:
 
         # Build edges with foreign key information
         edges: list[dict[str, Any]] = []
+
+        # Add dependency edges from depends_on relationships
+        for entity_name, deps in dependency_map.items():
+            for dep in deps:
+                edges.append(
+                    {
+                        "source": dep,
+                        "target": entity_name,
+                        "type": "provides",
+                        "label": "provides",
+                    }
+                )
+
+        # Add foreign key edges
         for entity_name in api_project.entities:
             entity_config = api_project.entities[entity_name]
             foreign_keys = entity_config.get("foreign_keys") or []
@@ -147,7 +167,7 @@ class DependencyService:
         logger.debug(f"Analyzed dependencies: {len(nodes)} nodes, {len(edges)} edges, " f"cycles: {has_cycles}")
 
         # Extract source nodes and edges
-        source_nodes, source_edges = self._extract_source_nodes(api_project)
+        source_nodes, source_edges = SourceNodeService().extract(api_project)
 
         return DependencyGraph(
             nodes=nodes,
@@ -169,7 +189,7 @@ class DependencyService:
         Returns:
             Dictionary with has_cycles flag and list of cycles
         """
-        graph = self.analyze_dependencies(project)
+        graph: DependencyGraph = self.analyze_dependencies(project)
 
         return {
             "has_cycles": graph["has_cycles"],
@@ -177,248 +197,134 @@ class DependencyService:
             "cycle_count": len(graph["cycles"]),
         }
 
-    def _find_cycles(self, dependency_map: dict[str, list[str]]) -> list[list[str]]:
-        """
-        Find all cycles in dependency graph using DFS.
 
-        Args:
-            dependency_map: Entity name -> list of dependencies
+class SourceNodeService:
+    """Base class for source node extractors."""
 
-        Returns:
-            List of cycles, where each cycle is a list of entity names
-        """
-        cycles: list[list[str]] = []
-        visited: set[str] = set()
-        rec_stack: set[str] = set()
-        path: list[str] = []
+    def __init__(self):
+        self.source_nodes: list[SourceNode] = []
+        self.source_edges: list[dict[str, Any]] = []
+        self.seen_sources: set[str] = set()
 
-        def dfs(node: str) -> None:
-            """Depth-first search to find cycles."""
-            visited.add(node)
-            rec_stack.add(node)
-            path.append(node)
+    def extract(self, api_project: Project) -> tuple[list[SourceNode], list[dict[str, Any]]]:
+        """Extract source nodes and edges from project entities."""
 
-            for neighbor in dependency_map.get(node, []):
-                if neighbor not in visited:
-                    dfs(neighbor)
-                elif neighbor in rec_stack:
-                    # Found a cycle
-                    cycle_start: int = path.index(neighbor)
-                    cycle: list[str] = path[cycle_start:] + [neighbor]
-                    cycles.append(cycle)
+        for entity_name, entity_cfg in api_project.entities.items():
+            source_nodes, source_edges = self.get_extractor(entity_cfg.get("type", "")).extract(entity_name, entity_cfg)
+            self.source_nodes.extend(source_nodes)
+            self.source_edges.extend(source_edges)
 
-            path.pop()
-            rec_stack.remove(node)
+        return self.source_nodes, self.source_edges
 
-        for node in dependency_map:
-            if node not in visited:
-                dfs(node)
-
-        return cycles
-
-    def _topological_sort(self, dependency_map: dict[str, list[str]]) -> list[str]:
-        """
-        Perform topological sort on dependency graph.
-
-        Args:
-            dependency_map: Entity name -> list of dependencies
-
-        Returns:
-            Topologically sorted list of entity names
-        """
-        in_degree: dict[str, int] = {node: 0 for node in dependency_map}
-
-        # Calculate in-degrees
-        for deps in dependency_map.values():
-            for dep in deps:
-                if dep in in_degree:
-                    in_degree[dep] += 1
-
-        # Start with nodes that have no dependencies
-        queue: list[str] = [node for node, degree in in_degree.items() if degree == 0]
-        result = []
-
-        while queue:
-            node: str = queue.pop(0)
-            result.append(node)
-
-            # Reduce in-degree for neighbors
-            for neighbor in dependency_map.get(node, []):
-                if neighbor in in_degree:
-                    in_degree[neighbor] -= 1
-                    if in_degree[neighbor] == 0:
-                        queue.append(neighbor)
-
-        return result
-
-    def _calculate_depths(self, dependency_map: dict[str, list[str]], topological_order: list[str] | None) -> dict[str, int]:
-        """
-        Calculate depth of each node in dependency graph.
-
-        Args:
-            dependency_map: Entity name -> list of dependencies
-            topological_order: Topologically sorted entity names (if no cycles)
-
-        Returns:
-            Dictionary mapping entity name to depth level
-        """
-        depths = {node: 0 for node in dependency_map}
-
-        if topological_order:
-            # Process in topological order
-            for node in topological_order:
-                for dep in dependency_map.get(node, []):
-                    if dep in depths:
-                        depths[dep] = max(depths[dep], depths[node] + 1)
+    def get_extractor(self, entity_type: str) -> "BaseSourceNodeExtractor":
+        """Factory method to get appropriate extractor based on entity type."""
+        if entity_type == "sql":
+            return SqlSourceNodeExtractor(self.seen_sources)
+        elif entity_type in ("csv", "xlsx", "openpyxl"):
+            return FileSourceNodeExtractor(self.seen_sources)
         else:
-            # If there are cycles, use simple heuristic
-            for node, deps in dependency_map.items():
-                if deps:
-                    depths[node] = 1
+            return NullSourceNodeExtractor(self.seen_sources)
 
-        return depths
 
-    def _extract_source_nodes(self, api_project: Project) -> tuple[list[SourceNode], list[dict[str, Any]]]:
-        """
-        Extract source nodes and edges from project entities.
+class BaseSourceNodeExtractor:
+    """Base class for specific source node extractors."""
 
-        Args:
-            api_project: Project to extract sources from
+    def __init__(self, seen_sources: set[str]):
+        self.seen_sources: set[str] = seen_sources
 
-        Returns:
-            Tuple of (source_nodes, source_edges)
-        """
+    def extract(self, entity_name: str, entity_cfg: dict[str, Any]):
+        """Extract source nodes and edges for an entity."""
+        raise NotImplementedError("Subclasses must implement extract method.")
+
+
+class NullSourceNodeExtractor(BaseSourceNodeExtractor):
+    """No-op extractor for unsupported entity types."""
+
+    def extract(
+        self, entity_name: str, entity_cfg: dict[str, Any]
+    ) -> tuple[list[SourceNode], list[dict[str, Any]]]:  # pylint: disable=unused-argument
+        """Do nothing for unsupported types."""
+        return [], []
+
+
+class FileSourceNodeExtractor(BaseSourceNodeExtractor):
+    """Utility class for extracting file source nodes."""
+
+    def extract(self, entity_name: str, entity_cfg: dict[str, Any]) -> tuple[list[SourceNode], list[dict[str, Any]]]:
+        options: dict[str, Any] = entity_cfg.get("options") or {}
+        filename: str | None = options.get("filename")
+        entity_type: str = entity_cfg.get("type", "csv")
+
+        if not filename:
+            return [], []
+
         source_nodes: list[SourceNode] = []
         source_edges: list[dict[str, Any]] = []
-        seen_sources: set[str] = set()
 
-        for entity_name, entity_config in api_project.entities.items():
-            entity_type = entity_config.get("type")
+        source_node_id: str = f"file:{Path(filename).stem}"
+        if source_node_id not in self.seen_sources:
+            metadata: dict[str, Any] = {"filename": filename, "type": entity_type}
+            sheet_name: str | None = options.get("sheet_name")  # For Excel files
+            if sheet_name:
+                metadata["sheet_name"] = sheet_name
 
-            if entity_type == "fixed":
-                # Fixed entities have no source
-                continue
+            source_nodes.append(SourceNode(name=source_node_id, source_type=entity_type, node_type="file", metadata=metadata))
+            self.seen_sources.add(source_node_id)
 
-            if entity_type == "entity":
-                # Data entities - add data source node
-                source_name = entity_config.get("source")
-                if source_name and source_name not in seen_sources:
-                    source_node_id = f"source:{source_name}"
-                    source_nodes.append(
-                        SourceNode(
-                            name=source_node_id,
-                            source_type="file",
-                            node_type="datasource",
-                            metadata={"source": source_name},
-                        )
-                    )
-                    seen_sources.add(source_name)
-
-                # Add edge from source to entity
-                if source_name:
-                    source_edges.append(
-                        {
-                            "source": f"source:{source_name}",
-                            "target": entity_name,
-                            "label": "provides",
-                        }
-                    )
-
-            elif entity_type == "sql":
-                # SQL entities - add data source and tables
-                datasource = entity_config.get("data_source")
-                sql_query = entity_config.get("query")
-
-                # Add data source node
-                if datasource and datasource not in seen_sources:
-                    source_node_id = f"source:{datasource}"
-                    source_nodes.append(
-                        SourceNode(
-                            name=source_node_id,
-                            source_type="database",
-                            node_type="datasource",
-                            metadata={"datasource": datasource},
-                        )
-                    )
-                    seen_sources.add(datasource)
-
-                # Extract and add table nodes
-                if sql_query and datasource:
-                    tables = self._extract_tables_from_sql(sql_query)
-                    for table in tables:
-                        table_node_id = f"table:{datasource}:{table}"
-                        # Only add if not already added
-                        if not any(node["name"] == table_node_id for node in source_nodes):
-                            source_nodes.append(
-                                SourceNode(
-                                    name=table_node_id,
-                                    source_type="database_table",
-                                    node_type="table",
-                                    metadata={"datasource": datasource, "table": table},
-                                )
-                            )
-
-                            # Edge: datasource -> table
-                            source_edges.append(
-                                {
-                                    "source": f"source:{datasource}",
-                                    "target": table_node_id,
-                                    "label": "contains",
-                                }
-                            )
-
-                        # Edge: table -> entity
-                        source_edges.append(
-                            {
-                                "source": table_node_id,
-                                "target": entity_name,
-                                "label": "used_in",
-                            }
-                        )
-
+        # Edge: file -> entity
+        source_edges.append(
+            {
+                "source": source_node_id,
+                "target": entity_name,
+                "label": "provides",
+            }
+        )
         return source_nodes, source_edges
 
-    def _extract_tables_from_sql(self, sql_query: str) -> list[str]:
-        """
-        Extract table names from SQL query using regex.
 
-        Args:
-            sql_query: SQL query string
+class SqlSourceNodeExtractor(BaseSourceNodeExtractor):
+    """Utility class for extracting SQL source nodes."""
 
-        Returns:
-            List of table names found in query
+    def extract(self, entity_name: str, entity_cfg: dict[str, Any]) -> tuple[list[SourceNode], list[dict[str, Any]]]:
+        data_source: str | None = entity_cfg.get("data_source")
+        sql_query: str | None = entity_cfg.get("query")
 
-        Note:
-            This is a basic implementation using regex patterns.
-            For complex queries, consider using sqlparse library.
-        """
+        source_nodes: list[SourceNode] = []
+        source_edges: list[dict[str, Any]] = []
 
-        if not sql_query:
-            return []
+        # Add data source node
+        if data_source and data_source not in self.seen_sources:
+            source_node_id = f"source:{data_source}"
+            source_nodes.append(
+                SourceNode(name=source_node_id, source_type="database", node_type="datasource", metadata={"datasource": data_source})
+            )
+            self.seen_sources.add(data_source)
 
-        # Remove comments and normalize whitespace
-        sql = re.sub(r"--[^\n]*", "", sql_query)  # Remove -- comments
-        sql = re.sub(r"/\*.*?\*/", "", sql, flags=re.DOTALL)  # Remove /* */ comments
-        sql = re.sub(r"\s+", " ", sql).strip()  # Normalize whitespace
+            # Extract and add table nodes
+        if not (sql_query and data_source):
+            return source_nodes, source_edges
 
-        tables: set[str] = set()
+        tables: list[str] = extract_tables(sql_query)
+        for table in tables:
+            table_node_id: str = f"table:{data_source}:{table}"
+            # Only add if not already added
+            if not any(node["name"] == table_node_id for node in source_nodes):
+                source_nodes.append(
+                    SourceNode(
+                        name=table_node_id,
+                        source_type="database_table",
+                        node_type="table",
+                        metadata={"datasource": data_source, "table": table},
+                    )
+                )
 
-        # Pattern 1: FROM table_name or FROM schema.table_name
-        # This handles: FROM table, FROM schema.table, FROM [schema.table]
-        from_pattern = r"\bFROM\s+(?:\[)?(?:\w+\.)?(\w+)(?:\])?(?:\s+(?:AS\s+)?\w+)?(?:\s|,|$|INNER|LEFT|RIGHT|JOIN)"
-        for match in re.finditer(from_pattern, sql, re.IGNORECASE):
-            table = match.group(1)
-            if table.upper() not in ("SELECT", "WHERE", "AND", "OR"):
-                tables.add(table)
+                # Edge: datasource -> table
+                source_edges.append({"source": f"source:{data_source}", "target": table_node_id, "label": "contains"})
 
-        # Pattern 2: JOIN table_name or JOIN schema.table_name
-        # This handles: JOIN table, INNER JOIN table, LEFT JOIN table, etc.
-        join_pattern = r"(?:INNER|LEFT|RIGHT|FULL|OUTER|CROSS)?\s*JOIN\s+(?:\[)?(?:\w+\.)?(\w+)(?:\])?(?:\s+(?:AS\s+)?\w+)?(?:\s|ON|$)"
-        for match in re.finditer(join_pattern, sql, re.IGNORECASE):
-            table = match.group(1)
-            tables.add(table)
+                # Edge: table -> entity
+            source_edges.append({"source": table_node_id, "target": entity_name, "label": "used_in"})
 
-        return sorted(list(tables))
+        return source_nodes, source_edges
 
 
 # Singleton instance
