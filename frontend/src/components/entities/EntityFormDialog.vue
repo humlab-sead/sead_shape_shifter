@@ -387,7 +387,10 @@
               </v-window-item>
 
               <v-window-item value="unnest">
-                <unnest-editor v-model="formData.advanced.unnest" />
+                <unnest-editor
+                  v-model="formData.advanced.unnest"
+                  :available-columns="availableColumnsForUnnest"
+                />
               </v-window-item>
 
               <v-window-item value="append">
@@ -1090,6 +1093,14 @@ const isExcelType = computed(() => {
 })
 
 const availableColumns = computed(() => columnsOptions.value)
+
+const availableColumnsForUnnest = computed(() => {
+  const keys = formData.value.keys || []
+  const columns = formData.value.columns || []
+  const options = columnsOptions.value.length > 0 ? columnsOptions.value : columns
+  const combined = Array.from(new Set([...keys, ...options]))
+  return combined.filter((c) => c && c !== 'system_id')
+})
 
 // const getFileExtensionHint = computed(() => {
 //   if (formData.value.type === 'csv') return 'Select a .csv file from the projects directory'
