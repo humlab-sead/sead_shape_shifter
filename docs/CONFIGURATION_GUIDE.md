@@ -197,7 +197,7 @@ entities:
   - **Context-Dependent**:
     - **When `type: fixed`**: Should be empty/null (warning if set, value ignored)
     - **When `type: sql`**: Should be empty/null (warning if set, value ignored)
-    - **When `type: data`**: Can reference another entity name
+    - **When `type: entity`**: Can reference another entity name
   - **Entity Existence**: If string, must reference an existing entity in the project (error if not)
   - **Circular Dependencies**: Source entity must not create circular dependency chain (error)
 - **Common Issues**:
@@ -207,16 +207,16 @@ entities:
   - Warn if source entity is processed after current entity in dependency order
   - Validate that source entity produces compatible output columns
 #### `type`
-- **Type**: `"data" | "fixed" | "sql"`
-- **Required**: No (defaults to `"data"`)
+- **Type**: `"entity" | "fixed" | "sql"`
+- **Required**: No (defaults to `"entity"`)
 - **Description**: 
-  - `"data"`: Extract from source data (spreadsheet or another entity)
+  - `"entity"`: Extract from source data (spreadsheet or another entity)
   - `"fixed"`: Use fixed/hardcoded values defined in `values`
   - `"sql"`: Execute SQL query against a database (requires `data_source` and `query`)
 - **Requirements by Type**:
   - `type: fixed` → requires `values` (list of lists)
   - `type: sql` → requires `data_source` and `query`
-  - `type: data` → uses `source` (defaults to root data if omitted)
+  - `type: entity` → uses `source` (defaults to root data if omitted)
 - **Example**:
   ```yaml
   # Fixed lookup table
@@ -233,8 +233,8 @@ entities:
     from tbl_dimensions
   ```
 - **Validation Rules**:
-  - **Type**: Must be one of `"data"`, `"fixed"`, or `"sql"` if provided
-  - **Default**: Defaults to `"data"` if omitted
+  - **Type**: Must be one of `"entity"`, `"fixed"`, or `"sql"` if provided
+  - **Default**: Defaults to `"entity"` if omitted
   - **Context-Dependent Requirements**:
     - **When `type: fixed`**:
       - `values` field is required (error if missing)
@@ -249,7 +249,7 @@ entities:
       - `data_source` must exist in `options.data_sources` (error if not)
       - `source` should be empty (warning if set)
       - `values` should be empty (warning if set)
-    - **When `type: data`**:
+    - **When `type: entity`**:
       - Can use `source` field to reference another entity
       - Should not have `values`, `data_source`, or `query` (warning if present)
 - **Common Issues**:
@@ -273,7 +273,7 @@ entities:
   - **Context-Dependent**:
     - **When `type: sql`**: Required (error if missing)
     - **When `type: fixed`**: Should be empty (warning if set)
-    - **When `type: data`**: Should be empty (warning if set)
+    - **When `type: entity`**: Should be empty (warning if set)
   - **Append Configurations**: Also validated for each append item with `type: sql`
 - **Common Issues**:
   - Typos in data source name
@@ -302,7 +302,7 @@ entities:
   - **Context-Dependent**:
     - **When `type: sql`**: Required (error if missing)
     - **When `type: fixed`**: Should be empty (warning if set)
-    - **When `type: data`**: Should be empty (warning if set)
+    - **When `type: entity`**: Should be empty (warning if set)
   - **Non-Empty**: Must contain actual SQL text (error if empty)
   - **Append Configurations**: Also validated for append items with `type: sql`
 - **Common Issues**:
@@ -332,7 +332,7 @@ entities:
   - **Context-Dependent**:
     - **When `type: fixed`**: Required (error if missing), must be non-empty (error if empty)
     - **When `type: sql`**: Should be empty (warning if set)
-    - **When `type: data`**: Should be empty (warning if set)
+    - **When `type: entity`**: Should be empty (warning if set)
   - **Type**: Must be a `list` (error if not)
   - **Non-Empty**: Must contain at least one value/row (error if empty)
   - **Structure Validation**:
@@ -380,7 +380,7 @@ entities:
   - **Context-Dependent**:
     - **When `type: fixed`**: Required (error if missing)
     - **When `type: sql`**: Recommended (warning if missing)
-    - **When `type: data`**: Recommended (warning if missing)
+    - **When `type: entity`**: Recommended (warning if missing)
   - **Reference Resolution**: If using `@value:` syntax, the referenced path must exist (error if not)
   - **Fixed Values**: For `type: fixed`, column count must match values row width (error if mismatch)
 - **Common Issues**:
@@ -1707,13 +1707,13 @@ The `append` property is added to entitys and specifies a list of additional dat
 ```yaml
 entity_name:
   # Primary entity
-  type: data | sql | fixed
+  type: entity | sql | fixed | csv | xlsx | openpyxl
   columns: [...]
   # ... other properties ...
   
   # Append additional sources
   append:
-    - type: fixed | sql | data
+    - type: fixed | sql | entity | csv | xlsx | openpyxl
       # Source-specific configuration
       # Inherits selected properties from parent entity
 ```
@@ -1781,18 +1781,18 @@ Append rows extracted from another entity or data source:
 
 ```yaml
 measurement:
-  type: data
+  type: entity
   source: survey_2023
   columns: [measurement_id, value, unit]
   
   append:
-    - type: data
+    - type: entity
       source: survey_2024  # Different source entity
       columns: [measurement_id, value, unit]
 ```
 
-**Properties for `type: data`:**
-- `type`: Must be `"data"`
+**Properties for `type: entity`:**
+- `type`: Must be `"entity"`
 - `source`: Required, entity name to extract from
 - `columns`: Optional, inherits from parent if not specified
 - Inherits: `drop_duplicates`, `drop_empty_rows`, `replacements`, `filters`
@@ -1927,7 +1927,7 @@ Combine data from survey spreadsheet, database, and fixed values:
 
 ```yaml
 sample:
-  type: data
+  type: entity
   source: survey_data
   columns: [sample_id, sample_name, type_code, depth]
   drop_duplicates: [sample_id]
@@ -1959,16 +1959,16 @@ Union data from several Excel/CSV files:
 
 ```yaml
 observation:
-  type: data
+  type: entity
   source: site_a_observations
   columns: [obs_id, site_id, date, value]
   
   append:
-    - type: data
+    - type: entity
       source: site_b_observations
       # Inherits columns from parent
       
-    - type: data
+    - type: entity
       source: site_c_observations
 ```
 
@@ -2073,11 +2073,11 @@ If append sources reference other entities via `source`, those entities must:
 ```yaml
 measurement:
   depends_on: [survey_2023, survey_2024]  # Required!
-  type: data
+  type: entity
   source: survey_2023
   
   append:
-    - type: data
+    - type: entity
       source: survey_2024  # Must be in depends_on
 ```
 
@@ -2123,7 +2123,7 @@ Append allows building datasets incrementally:
 
 ```yaml
 observation:
-  type: data
+  type: entity
   source: base_observations
   
   append:
@@ -2601,7 +2601,7 @@ WARNING: Entity 'sample': Surrogate ID 'sample_id' conflicts with column name 's
 - Type-specific required fields:
   - `type: fixed` requires `values`
   - `type: sql` requires `data_source` and `query`
-  - `type: data` requires `source`
+  - `type: entity` requires `source`
 - `values` for fixed sources is a list of lists (2D array)
 - Referenced entities in `source` exist
 - Referenced data sources exist
@@ -2611,9 +2611,9 @@ WARNING: Entity 'sample': Surrogate ID 'sample_id' conflicts with column name 's
 ERROR: Append source in entity 'sample_type' missing required field 'type'
 ERROR: Append source in entity 'contact' (type: fixed) missing 'values'
 ERROR: Append source in entity 'measurement' (type: sql) missing 'data_source'
-ERROR: Append source in entity 'observation' (type: data) missing 'source'
+ERROR: Append source in entity 'observation' (type: entity) missing 'source'
 ERROR: Append source in entity 'lookup' has invalid values format (expected list of lists)
-ERROR: Append source in entity 'sample' (type: data) references non-existent entity 'calibration'
+ERROR: Append source in entity 'sample' (type: entity) references non-existent entity 'calibration'
 ```
 
 **Why It Matters**: Append operations fail if sources are misconfigured. Validation ensures all append sources have proper type-specific configuration before attempting concatenation.
@@ -2894,7 +2894,7 @@ EntityConfig:
   
   # Source
   source?: string | null
-  type?: "data" | "fixed" | "sql"
+  type?: "entity" | "fixed" | "sql"
   data_source?: string
   values?: string | list[list]
   

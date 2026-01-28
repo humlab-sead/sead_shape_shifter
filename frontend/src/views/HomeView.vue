@@ -15,7 +15,7 @@
             />
           </div> -->
           <!-- <v-list>
-            <v-list-item v-for="item in navItems" :key="item.path" :to="item.path" :prepend-icon="item.icon">
+            <v-list-item v-for="item in navItems" :key="item.title" :to="item.to" :prepend-icon="item.icon">
               <v-list-item-title>{{ item.title }}</v-list-item-title>
               <v-list-item-subtitle>{{ item.description }}</v-list-item-subtitle>
             </v-list-item>
@@ -26,7 +26,7 @@
           <v-row>
             <v-col cols="12" md="6">
               <v-list bg-color="transparent">
-                <v-list-item v-for="item in navItems" :key="item.path" :to="item.path" :prepend-icon="item.icon">
+                <v-list-item v-for="item in navItems" :key="item.title" :to="item.to" :prepend-icon="item.icon">
                   <v-list-item-title>{{ item.title }}</v-list-item-title>
                   <v-list-item-subtitle>{{ item.description }}</v-list-item-subtitle>
                 </v-list-item>
@@ -72,26 +72,29 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
 import seadLogo from '@/assets/images/SEAD-logo-subtext.svg'
+
+const router = useRouter()
 
 const navItems = [
   {
     title: 'Projects',
     description: 'Manage project files',
     icon: 'mdi-file-document-multiple',
-    path: '/projects',
+    to: { name: 'projects' },
   },
   {
     title: 'Data Sources',
     description: 'Configure database connections',
     icon: 'mdi-database',
-    path: '/data-sources',
+    to: { name: 'data-sources' },
   },
   {
     title: 'Settings',
     description: 'Configure editor preferences',
     icon: 'mdi-cog',
-    path: '/settings',
+    to: { name: 'settings' },
   },
 ]
 

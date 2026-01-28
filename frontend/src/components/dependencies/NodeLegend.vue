@@ -13,9 +13,45 @@
             <div class="node-shape ellipse data" />
           </div>
           <div class="legend-text">
-            <span class="font-weight-medium">Data Entity</span>
+            <span class="font-weight-medium">Entity (Derived)</span>
             <div class="text-caption text-medium-emphasis">
-              Data loaded from a CSV file or similar source
+              Entity derived from another entity
+            </div>
+          </div>
+        </div>
+
+        <div class="legend-item mb-2">
+          <div class="node-preview">
+            <div class="node-shape ellipse csv" />
+          </div>
+          <div class="legend-text">
+            <span class="font-weight-medium">CSV File Entity</span>
+            <div class="text-caption text-medium-emphasis">
+              Data loaded from a CSV file
+            </div>
+          </div>
+        </div>
+
+        <div class="legend-item mb-2">
+          <div class="node-preview">
+            <div class="node-shape ellipse xlsx" />
+          </div>
+          <div class="legend-text">
+            <span class="font-weight-medium">Excel Entity (Pandas)</span>
+            <div class="text-caption text-medium-emphasis">
+              Data loaded from Excel using Pandas
+            </div>
+          </div>
+        </div>
+
+        <div class="legend-item mb-2">
+          <div class="node-preview">
+            <div class="node-shape ellipse openpyxl" />
+          </div>
+          <div class="legend-text">
+            <span class="font-weight-medium">Excel Entity (OpenPyXL)</span>
+            <div class="text-caption text-medium-emphasis">
+              Data loaded from Excel using OpenPyXL
             </div>
           </div>
         </div>
@@ -224,6 +260,21 @@ const emit = defineEmits<{
 .node-shape.data {
   background-color: #1976d2;
   border-color: #1976d2;
+}
+
+.node-shape.csv {
+  background-color: #FFA500;
+  border-color: #FFA500;
+}
+
+.node-shape.xlsx {
+  background-color: #00a86b;
+  border-color: #00a86b;
+}
+
+.node-shape.openpyxl {
+  background-color: #20b2aa;
+  border-color: #20b2aa;
 }
 
 .node-shape.sql {

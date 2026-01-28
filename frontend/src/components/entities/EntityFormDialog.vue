@@ -100,13 +100,14 @@
                         </v-col>
 
                         <v-col cols="4" class="pl-2">
-                          <!-- Source Entity (only for 'data' type) -->
+                          <!-- Source Entity (only for 'entity' type) -->
                           <v-autocomplete
-                            v-if="formData.type === 'data'"
+                            v-if="formData.type === 'entity'"
                             v-model="formData.source"
                             :items="availableSourceEntities"
                             label="Source Entity"
                             variant="outlined"
+                            :disabled="mode === 'edit'"
                             clearable
                             persistent-placeholder
                           >
@@ -227,8 +228,8 @@
                       </v-row>
                     </div>
 
-                    <!-- Columns (for data/fixed types) -->
-                    <div class="form-row" v-if="formData.type === 'data' || formData.type === 'fixed' || isFileType">
+                    <!-- Columns (for entity/fixed types) -->
+                    <div class="form-row" v-if="formData.type === 'entity' || formData.type === 'fixed' || isFileType">
                       <v-combobox
                         v-model="formData.columns"
                         :items="availableColumns"
@@ -244,15 +245,18 @@
                         </template>
                       </v-combobox>
                     </div>
-
                     <!-- Fixed Values Grid (only for fixed type) -->
-                    <div class="form-row" v-show="formData.type === 'fixed' && allColumns.length > 0">
+                    <div class="form-row" v-if="formData.type === 'fixed'">
                       <FixedValuesGrid
-                        v-if="formData.type === 'fixed' && allColumns.length > 0"
+                        v-if="allColumns.length > 0"
                         v-model="formData.values"
                         :columns="allColumns"
                         height="400px"
                       />
+                      <v-alert v-else type="info" variant="tonal" density="compact" class="mb-2">
+                        <v-alert-title>No Columns Defined</v-alert-title>
+                        Add keys and/or columns above to define the grid structure for fixed values.
+                      </v-alert>
                     </div>
 
                     <!-- Depends On -->
@@ -386,7 +390,10 @@
               </v-window-item>
 
               <v-window-item value="unnest">
-                <unnest-editor v-model="formData.advanced.unnest" />
+                <unnest-editor
+                  v-model="formData.advanced.unnest"
+                  :available-columns="availableColumnsForUnnest"
+                />
               </v-window-item>
 
               <v-window-item value="append">
@@ -490,17 +497,19 @@
               <v-progress-linear v-if="previewLoading" indeterminate color="primary" />
 
               <div v-if="livePreviewData && !previewLoading" class="preview-table-container">
-                <ag-grid-vue
-                  class="ag-theme-alpine preview-ag-grid"
-                  :style="{ height: '100%', width: '100%' }"
-                  :columnDefs="previewColumnDefs"
-                  :rowData="previewRowData"
-                  :defaultColDef="previewDefaultColDef"
-                  :animateRows="true"
-                  :suppressCellFocus="true"
-                  :headerHeight="32"
-                  :rowHeight="28"
-                />
+                <div class="preview-grid-wrapper">
+                  <ag-grid-vue
+                    class="ag-theme-alpine preview-ag-grid"
+                    :style="{ height: '100%', width: '100%' }"
+                    :columnDefs="previewColumnDefs"
+                    :rowData="previewRowData"
+                    :defaultColDef="previewDefaultColDef"
+                    :animateRows="true"
+                    :suppressCellFocus="true"
+                    :headerHeight="32"
+                    :rowHeight="28"
+                  />
+                </div>
               </div>
 
               <div
@@ -594,6 +603,7 @@ const {
   lastRefresh: livePreviewLastRefresh,
   previewEntity,
   debouncedPreviewEntity,
+  clearPreview,
 } = useEntityPreview()
 
 const previewLimitOptions = [
@@ -658,7 +668,7 @@ interface FormData {
 
 const formData = ref<FormData>({
   name: '',
-  type: 'data',
+  type: 'entity',
   surrogate_id: '',
   keys: [],
   columns: [],
@@ -828,7 +838,7 @@ async function fetchSheetOptions() {
     sheetOptions.value = meta.sheets || []
 
     if (!formData.value.options.sheet_name && sheetOptions.value.length > 0) {
-      formData.value.options.sheet_name = sheetOptions.value[0]
+      formData.value.options.sheet_name = sheetOptions.value[0] || ''
     }
 
     if (formData.value.options.sheet_name) {
@@ -872,6 +882,30 @@ async function handleSheetSelection() {
   await fetchColumns()
 }
 
+function getColumnsFromEntity(entityName: string | null): string[] {
+  if (!entityName) return []
+  const sourceEntity = entities.value.find((e) => e.name === entityName)
+  if (!sourceEntity) return []
+
+  const sourceColumns = Array.isArray((sourceEntity as any)?.entity_data?.columns)
+    ? (sourceEntity as any).entity_data.columns
+    : []
+  const sourceKeys = Array.isArray((sourceEntity as any)?.entity_data?.keys)
+    ? (sourceEntity as any).entity_data.keys
+    : []
+
+  const combined = Array.from(new Set([...sourceKeys, ...sourceColumns]))
+  return combined.filter((c) => c !== 'system_id')
+}
+
+function hydrateColumnsFromSource() {
+  if (formData.value.type !== 'entity') return
+  const colsFromSource = getColumnsFromEntity(formData.value.source)
+  const existing = formData.value.columns || []
+  // Ensure saved selections stay visible even if source metadata is not yet available
+  columnsOptions.value = Array.from(new Set([...existing, ...colsFromSource]))
+}
+
 function getFileExtensions(): string[] {
   if (formData.value.type === 'csv') return ['csv']
   if (formData.value.type === 'xlsx') return ['xlsx', 'xls']
@@ -890,21 +924,41 @@ watch(
   { deep: true }
 )
 
+// Watch for source entity changes (entity type) to hydrate columns
+watch(
+  () => formData.value.source,
+  (newSource, oldSource) => {
+    if (formData.value.type !== 'entity') return
+
+    if (newSource && newSource !== oldSource) {
+      // Only clear selections when the user actually changes the source
+      if (oldSource !== undefined && oldSource !== null) {
+        formData.value.columns = []
+      }
+      hydrateColumnsFromSource()
+    }
+
+    // Avoid clearing during initial hydration (oldSource undefined)
+    if (!newSource && oldSource !== undefined) {
+      columnsOptions.value = []
+      formData.value.columns = []
+    }
+  },
+  { immediate: true }
+)
+
 // Watch for Excel filename changes to refresh sheet list
 watch(
   () => formData.value.options.filename,
   async (newFilename, oldFilename) => {
     if (!isExcelType.value) return
 
-    // Initial hydration should load metadata without clearing existing selection
-    if (newFilename && oldFilename === undefined) {
-      await fetchSheetOptions()
-      return
-    }
-
     if (newFilename && newFilename !== oldFilename) {
-      formData.value.options.sheet_name = ''
-      columnsOptions.value = []
+      // Only clear sheet_name if it's not already set (initial hydration case)
+      // If sheet_name is already set, preserve it and just refresh metadata
+      if (!formData.value.options.sheet_name) {
+        columnsOptions.value = []
+      }
       await fetchSheetOptions()
     }
 
@@ -921,13 +975,13 @@ watch(
   async (newSheet, oldSheet) => {
     if (!isExcelType.value) return
 
-    // On initial hydration, fetch columns without clearing the selection
-    if (newSheet && oldSheet === undefined) {
+    // Fetch columns on sheet change, but preserve columns list during initial hydration
+    // (oldSheet === undefined means watcher fired for the first time during load)
+    if (newSheet && newSheet !== oldSheet && oldSheet !== undefined) {
+      columnsOptions.value = []
       await fetchColumns()
-      return
-    }
-
-    if (newSheet && newSheet !== oldSheet) {
+    } else if (newSheet && oldSheet === undefined) {
+      // Initial hydration: fetch columns without clearing
       await fetchColumns()
     }
 
@@ -945,8 +999,8 @@ watch(() => formData.value.type, async (newType, oldType) => {
     formData.value.query = ''
   }
   
-  // Clear source when switching away from data
-  if (newType !== 'data') {
+  // Clear source when switching away from entity
+  if (newType !== 'entity') {
     formData.value.source = null
   }
 
@@ -965,6 +1019,11 @@ watch(() => formData.value.type, async (newType, oldType) => {
   const wasFileType = oldType && ['csv', 'xlsx', 'openpyxl'].includes(oldType)
   if (isFileType.value && !wasFileType) {
     await fetchProjectFiles()
+  }
+
+  // Hydrate columns from source entity when switching to entity type
+  if (newType === 'entity') {
+    hydrateColumnsFromSource()
   }
 
   if (isExcelType.value && formData.value.options.filename) {
@@ -1007,7 +1066,7 @@ const dialogModel = computed({
 })
 
 const entityTypeOptions = [
-  { title: 'Data (Derived)', value: 'data', subtitle: 'Derive from another entity' },
+  { title: 'Data (Derived)', value: 'entity', subtitle: 'Derive from another entity' },
   { title: 'SQL Query', value: 'sql', subtitle: 'Execute SQL against database' },
   { title: 'Fixed Values', value: 'fixed', subtitle: 'Hard-coded values' },
   { title: 'CSV File', value: 'csv', subtitle: 'Load from CSV file' },
@@ -1020,7 +1079,7 @@ const availableSourceEntities = computed(() => {
 })
 
 const availableDataSources = computed(() => {
-  // Get data source names from project's options.data_sources (e.g., "arbodat_data", "sead")
+  // Get entity source names from project's options.data_sources (e.g., "arbodat_data", "sead")
   const dataSources = projectStore.selectedProject?.options?.data_sources
   if (dataSources && typeof dataSources === 'object') {
     return Object.keys(dataSources)
@@ -1039,12 +1098,20 @@ const isExcelType = computed(() => {
 
 const availableColumns = computed(() => columnsOptions.value)
 
-const getFileExtensionHint = computed(() => {
-  if (formData.value.type === 'csv') return 'Select a .csv file from the projects directory'
-  if (formData.value.type === 'xlsx') return 'Select a .xlsx or .xls file from the projects directory'
-  if (formData.value.type === 'openpyxl') return 'Select a .xlsx file from the projects directory'
-  return ''
+const availableColumnsForUnnest = computed(() => {
+  const keys = formData.value.keys || []
+  const columns = formData.value.columns || []
+  const options = columnsOptions.value.length > 0 ? columnsOptions.value : columns
+  const combined = Array.from(new Set([...keys, ...options]))
+  return combined.filter((c) => c && c !== 'system_id')
 })
+
+// const getFileExtensionHint = computed(() => {
+//   if (formData.value.type === 'csv') return 'Select a .csv file from the projects directory'
+//   if (formData.value.type === 'xlsx') return 'Select a .xlsx or .xls file from the projects directory'
+//   if (formData.value.type === 'openpyxl') return 'Select a .xlsx file from the projects directory'
+//   return ''
+// })
 
 // Validation context for YAML intelligence
 const validationContext = computed<ValidationContext>(() => ({
@@ -1195,7 +1262,7 @@ function yamlToFormData(yamlString: string): boolean {
 
     formData.value = {
       name: data.name || formData.value.name,
-      type: data.type || 'data',
+      type: data.type || 'entity',
       surrogate_id: data.surrogate_id || '',
       keys: Array.isArray(data.keys) ? data.keys : [],
       columns: Array.isArray(data.columns) ? data.columns : [],
@@ -1388,7 +1455,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
 
   return {
     name: entity.name,
-    type: (entity.entity_data.type as string) || 'data',
+    type: (entity.entity_data.type as string) || 'entity',
     surrogate_id: (entity.entity_data.surrogate_id as string) || '',
     keys: (entity.entity_data.keys as string[]) || [],
     columns: (entity.entity_data.columns as string[]) || [],
@@ -1426,7 +1493,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
 function buildDefaultFormData(): FormData {
   return {
     name: '',
-    type: 'data',
+    type: 'entity',
     surrogate_id: '',
     keys: [],
     columns: [],
@@ -1484,6 +1551,13 @@ watch(
       suggestions.value = null
       showSuggestions.value = false
       yamlError.value = null
+      
+      // Clear preview data to avoid showing stale data from previous entity
+      clearPreview()
+      previewError.value = null
+      
+      // Reset to form-only view to avoid confusing users with empty preview
+      viewMode.value = 'form'
 
       if (props.mode === 'edit' && props.entity) {
         formData.value = buildFormDataFromEntity(props.entity)
@@ -1660,6 +1734,21 @@ function handleRejectDependency(dep: DependencySuggestion) {
 }
 
 /* Ag-grid preview styles */
+.preview-table-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.preview-grid-wrapper {
+  flex: 1;
+  overflow: auto;
+  height: 100%;
+  width: 100%;
+}
+
 .preview-ag-grid {
   font-size: 11px;
   --ag-background-color: rgb(var(--v-theme-background)) !important;

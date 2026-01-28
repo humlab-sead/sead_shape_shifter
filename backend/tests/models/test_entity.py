@@ -87,13 +87,13 @@ class TestEntity:
         """Test valid entity creation."""
         entity = Entity(
             name="sample",
-            type="data",
+            type="entity",
             surrogate_id="sample_id",
             keys=["natural_key"],
             columns=["col1", "col2"],
         )
         assert entity.name == "sample"
-        assert entity.type == "data"
+        assert entity.type == "entity"
         assert entity.surrogate_id == "sample_id"
 
     def test_name_validation(self):

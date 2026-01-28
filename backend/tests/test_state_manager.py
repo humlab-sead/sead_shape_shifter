@@ -476,7 +476,7 @@ class TestApplicationStateManagerHelpers:
         sm._app_state.set_active_project(sample_config)  # type: ignore[union-attr]
         updated_config = Project(
             metadata=ProjectMetadata(name="test-project", entity_count=0),
-            entities={"updated": {"type": "data", "keys": ["id"]}},
+            entities={"updated": {"type": "entity", "keys": ["id"]}},
             options={"flag": True},
         )
 
@@ -485,7 +485,7 @@ class TestApplicationStateManagerHelpers:
         assert sm._app_state.get_project("test-project") is updated_config  # type: ignore[union-attr]
         assert sm._app_state.get_version("test-project") == 2  # type: ignore[union-attr]
         assert sm._app_state.is_dirty("test-project") is False  # type: ignore[union-attr]
-        expected_entities = {"updated": {"type": "data", "keys": ["id"]}}
+        expected_entities = {"updated": {"type": "entity", "keys": ["id"]}}
         assert sm._app_state._active_projects["test-project"].entities == expected_entities  # type: ignore[attr-defined]
 
     def test_activate_and_metadata(self, project_dir: Path, sample_config: Project, reset_singletons):

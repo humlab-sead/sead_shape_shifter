@@ -5,7 +5,7 @@
 export interface GraphNode {
   id: string
   label: string
-  type?: 'data' | 'sql' | 'fixed'
+  type?: 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
   status?: 'valid' | 'warning' | 'error'
   topological_order?: number
   data?: any
@@ -19,7 +19,7 @@ export interface GraphEdge {
   id: string
   source: string
   target: string
-  type?: 'dependency' | 'foreign_key'
+  type?: 'dependency' | 'foreign_key' | 'provides'
   label?: string
   data?: any
 }
@@ -29,7 +29,7 @@ export interface DependencyNode {
   name: string
   depends_on: string[]
   depth: number
-  type?: 'data' | 'sql' | 'fixed'
+  type?: 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
 }
 
 export interface DependencyEdge {
@@ -37,6 +37,7 @@ export interface DependencyEdge {
   target: string
   local_keys?: string[]
   remote_keys?: string[]
+  type?: 'dependency' | 'foreign_key' | 'provides'
   label?: string
 }
 

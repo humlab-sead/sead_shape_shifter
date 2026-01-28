@@ -18,7 +18,7 @@ def sample_config_data():
     return {
         "entities": {
             "sample": {
-                "type": "data",
+                "type": "entity",
                 "keys": ["sample_id"],
                 "columns": ["name", "value"],
             }
@@ -158,7 +158,7 @@ class TestConfigurationsUpdate:
 
         response = client.put(
             "/api/v1/projects/nonexistent",
-            json={"entities": {"sample": {"type": "data"}}, "options": {}},
+            json={"entities": {"sample": {"type": "entity"}}, "options": {}},
         )
         assert response.status_code == 404
 
@@ -269,7 +269,7 @@ class TestConfigurationsValidate:
 
         # Create a fully valid configuration with all required fields
         valid_entities = {
-            "sample": {"type": "data", "keys": ["sample_id"], "columns": ["name", "value"], "depends_on": []}  # Required field
+            "sample": {"type": "entity", "keys": ["sample_id"], "columns": ["name", "value"], "depends_on": []}  # Required field
         }
 
         payload = {"name": "test_project", "entities": valid_entities}
@@ -292,7 +292,7 @@ class TestConfigurationsValidate:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create config with invalid entity (missing keys)
-        invalid_entities = {"sample": {"type": "data"}}
+        invalid_entities = {"sample": {"type": "entity"}}
         client.post("/api/v1/projects", json={"name": project_name, "entities": invalid_entities})
 
         # Validate
@@ -316,7 +316,7 @@ class TestConfigurationsBackups:
         client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]})
 
         # Update to create backup
-        updated_entities = {"sample": {"type": "data", "keys": ["id"], "columns": ["name"]}}
+        updated_entities = {"sample": {"type": "entity", "keys": ["id"], "columns": ["name"]}}
         client.put("/api/v1/projects/test_project", json={"entities": updated_entities, "options": {}})
 
         # List backups
@@ -338,7 +338,7 @@ class TestConfigurationsBackups:
         original_data = create_response.json()
 
         # Update to create backup
-        updated_entities = {"sample": {"type": "data", "keys": ["id"], "columns": ["modified"]}}
+        updated_entities = {"sample": {"type": "entity", "keys": ["id"], "columns": ["modified"]}}
         client.put("/api/v1/projects/test_project", json={"entities": updated_entities, "options": {}})
 
         # Get backup path

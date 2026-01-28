@@ -16,7 +16,7 @@ from src.transforms.utility import add_surrogate_id
 from src.utility import create_db_uri as create_pg_uri
 from src.utility import dotget
 
-from .base_loader import ConnectTestResult, DataLoader, DataLoaders
+from .base_loader import ConnectTestResult, DataLoader, DataLoaders, LoaderType
 
 if TYPE_CHECKING:
     from src.model import DataSourceConfig, TableConfig
@@ -103,6 +103,11 @@ class CoreSchema:
 
 class SqlLoader(DataLoader):
     """Loader for fixed data entities."""
+
+    @classmethod
+    def loader_type(cls) -> LoaderType:
+        """Get the loader type."""
+        return LoaderType.SQL
 
     def __init__(self, data_source: "DataSourceConfig") -> None:
         super().__init__(data_source=data_source)
@@ -263,7 +268,7 @@ class SqlLoader(DataLoader):
         return result
 
 
-@DataLoaders.register(key="sqlite")
+@DataLoaders.register(key=["sqlite"])
 class SqliteLoader(SqlLoader):
     """Loader for SQLite database queries."""
 
