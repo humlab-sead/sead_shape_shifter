@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pandas as pd
 import pytest
 
+from src.loaders.base_loader import LoaderType
 from src.loaders.sql_loaders import (
     CoreSchema,
     PostgresSqlLoader,
@@ -73,6 +74,11 @@ class TestPostgresSqlLoader:
     def loader(self, postgres_config):
         """Create PostgresSqlLoader instance."""
         return PostgresSqlLoader(data_source=postgres_config)
+
+    @pytest.mark.asyncio
+    async def test_loader_type(self, loader):
+        """Check loader type."""
+        assert loader.loader_type() == LoaderType.SQL
 
     @pytest.mark.asyncio
     async def test_get_tables(self, loader):
