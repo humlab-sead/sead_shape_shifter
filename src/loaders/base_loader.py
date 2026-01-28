@@ -1,5 +1,7 @@
 import abc
 from dataclasses import dataclass
+from enum import StrEnum
+from turtle import st
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import pandas as pd
@@ -12,6 +14,13 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=unused-argument
+
+
+class LoaderType(StrEnum):
+    BASE = "base"
+    FILE = "file"
+    SQL = "sql"
+    VALUE = "value"
 
 
 @dataclass
@@ -44,6 +53,11 @@ class DataLoader(abc.ABC):
     their configuration fields for dynamic form generation.
     """
 
+    @classmethod
+    def loader_type(cls) -> LoaderType:
+        """Get the loader type (e.g., 'file', 'sql', 'value')."""
+        return LoaderType.BASE
+
     # Subclasses can define their schema for configuration metadata
     schema: ClassVar["DriverSchema | None"] = None
 
@@ -72,5 +86,13 @@ class DataLoaderRegistry(Registry):
 
     items: dict[str, type[DataLoader]] = {}
 
+    def get_loader_types(self) -> set[str]:
+        """Get the set of loader types registered."""
+        return {loader_cls.loader_type().value for loader_cls in self.items.values()}
+
+    def get_loader_keys_by_type(self, loader_type: LoaderType) -> set[str]:
+        """Get loader keys filtered by loader type.
+        """
+        return {cls._registry_key for _, cls in self.items.items() if cls.loader_type() == loader_type}
 
 DataLoaders: DataLoaderRegistry = DataLoaderRegistry()  # pylint: disable=invalid-name
