@@ -52,6 +52,30 @@ entities:
     columns:
     - by_gard
     - raa_nummer
+    - socken
     surrogate_id: site_id
     source: excel_sheet
+    depends_on:
+    - excel_sheet
+  location:
+    type: entity
+    keys: []
+    columns:
+    - socken
+    - by_gard
+    - landskap_id
+    - linked_kommun
+    - linked_socken
+    surrogate_id: location_id
+    source: excel_sheet
+    drop_duplicates: true
+    unnest:
+      id_vars: []
+      value_vars:
+      - by_gard
+      - landskap_id
+      - linked_kommun
+      - linked_socken
+      var_name: location_type
+      value_name: location_name
 options: {}
