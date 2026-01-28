@@ -7,8 +7,8 @@ from typing import Any
 
 import pandas as pd
 import pytest
-
 from loguru import logger as loguru_logger
+
 from src.extract import SubsetService
 
 # --- Minimal fakes for TableConfig / FK specs (keeps tests independent of your model layer) ---
