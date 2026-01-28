@@ -10,8 +10,8 @@ import pytest
 
 from src.extract import SubsetService
 
-
 # --- Minimal fakes for TableConfig / FK specs (keeps tests independent of your model layer) ---
+
 
 @dataclass
 class FakeFK:
@@ -40,6 +40,7 @@ class FakeTableConfig:
 
 
 # --- Tests ---
+
 
 def test_get_subset_columns_excludes_unnest_and_fk_extra_columns():
     svc = SubsetService()
@@ -92,6 +93,7 @@ def test_get_subset2_raise_if_missing_false_skips_missing_and_keeps_existing_col
 
     warnings: list[str] = []
     from loguru import logger as loguru_logger
+
     sink_id = loguru_logger.add(warnings.append, level="WARNING")
     try:
         out = svc.get_subset2(df, ["id", "missing"], entity_name="X", raise_if_missing=False)
@@ -201,9 +203,7 @@ def test_get_subset2_drop_duplicates_list_drops_duplicates_on_subset(monkeypatch
         drop_duplicates=["id", "x"],  # keep first per (id,x)
     )
 
-    assert out.reset_index(drop=True).equals(
-        pd.DataFrame({"id": [1, 1], "x": ["a", "b"], "y": [10, 20]})
-    )
+    assert out.reset_index(drop=True).equals(pd.DataFrame({"id": [1, 1], "x": ["a", "b"], "y": [10, 20]}))
 
 
 def test_get_subset_calls_get_subset2_with_config_values(monkeypatch):

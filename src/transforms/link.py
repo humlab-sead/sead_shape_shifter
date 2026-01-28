@@ -4,9 +4,9 @@ import pandas as pd
 from loguru import logger
 
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
+from src.process_state import DeferredLinkingTracker
 from src.specifications import ForeignKeyDataSpecification
 from src.specifications.constraints import ForeignKeyConstraintValidator
-from src.process_state import DeferredLinkingTracker
 
 
 class ForeignKeyLinker:

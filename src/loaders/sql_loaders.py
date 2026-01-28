@@ -108,7 +108,7 @@ class SqlLoader(DataLoader):
     def loader_type(cls) -> LoaderType:
         """Get the loader type."""
         return LoaderType.SQL
-    
+
     def __init__(self, data_source: "DataSourceConfig") -> None:
         super().__init__(data_source=data_source)
 

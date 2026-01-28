@@ -10,13 +10,13 @@ from typing import Any, Self
 import pandas as pd
 from loguru import logger
 
-from src.process_state import DeferredLinkingTracker, ProcessState
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService
 from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders
 from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
+from src.process_state import DeferredLinkingTracker, ProcessState
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.transforms.filter import apply_filters
 from src.transforms.link import ForeignKeyLinker
@@ -212,7 +212,7 @@ class ShapeShifter:
         else:
             raise ValueError(f"Unsupported dispatch mode: {mode}")
         return self
- 
+
     def unnest_all(self) -> Self:
         """Unnest dataframes based on configuration."""
         for entity in self.table_store:

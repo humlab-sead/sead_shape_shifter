@@ -1,5 +1,5 @@
 import sqlparse
-from sqlparse.sql import IdentifierList, Identifier, Statement
+from sqlparse.sql import Identifier, IdentifierList, Statement
 from sqlparse.tokens import Keyword
 
 

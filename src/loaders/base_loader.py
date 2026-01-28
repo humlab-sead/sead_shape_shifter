@@ -91,8 +91,8 @@ class DataLoaderRegistry(Registry):
         return {loader_cls.loader_type().value for loader_cls in self.items.values()}
 
     def get_loader_keys_by_type(self, loader_type: LoaderType) -> set[str]:
-        """Get loader keys filtered by loader type.
-        """
+        """Get loader keys filtered by loader type."""
         return {cls._registry_key for _, cls in self.items.items() if cls.loader_type() == loader_type}
+
 
 DataLoaders: DataLoaderRegistry = DataLoaderRegistry()  # pylint: disable=invalid-name
