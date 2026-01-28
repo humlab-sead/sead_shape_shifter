@@ -753,7 +753,7 @@ class ProjectService:
 
         try:
             with pd.ExcelFile(resolved_path) as xls:
-                sheets: list[str] = list(xls.sheet_names)
+                sheets: list[str] = list(xls.sheet_names)  # type: ignore
 
                 target_sheet = sheet_name or (sheets[0] if sheets else None)
                 columns: list[str] = []
