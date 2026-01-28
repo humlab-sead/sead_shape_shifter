@@ -603,6 +603,7 @@ const {
   lastRefresh: livePreviewLastRefresh,
   previewEntity,
   debouncedPreviewEntity,
+  clearPreview,
 } = useEntityPreview()
 
 const previewLimitOptions = [
@@ -837,7 +838,7 @@ async function fetchSheetOptions() {
     sheetOptions.value = meta.sheets || []
 
     if (!formData.value.options.sheet_name && sheetOptions.value.length > 0) {
-      formData.value.options.sheet_name = sheetOptions.value[0]
+      formData.value.options.sheet_name = sheetOptions.value[0] || ''
     }
 
     if (formData.value.options.sheet_name) {
@@ -1550,13 +1551,18 @@ watch(
       suggestions.value = null
       showSuggestions.value = false
       yamlError.value = null
+      
+      // Clear preview data to avoid showing stale data from previous entity
+      clearPreview()
+      previewError.value = null
+      
+      // Reset to form-only view to avoid confusing users with empty preview
+      viewMode.value = 'form'
 
       if (props.mode === 'edit' && props.entity) {
         formData.value = buildFormDataFromEntity(props.entity)
       } else if (props.mode === 'create') {
         formData.value = buildDefaultFormData()
-        // Reset to form-only view when creating new entity
-        viewMode.value = 'form'
       }
 
       // Initialize YAML content from form data
