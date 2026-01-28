@@ -80,8 +80,8 @@ Each entity represents a table/dataset to be extracted and processed. Entities a
 entities:
   entity_name:
     # Identity & Keys
-    surrogate_id: string                    # Locally scoped primary key
-    surrogate_name: string                  # Alternative name for surrogate ID
+    public_id: string                       # Target system primary key name
+    surrogate_name: string                  # Alternative name for public ID
     keys: [string, ...]                     # Natural (business) key columns
     
     # Data Selection
@@ -121,30 +121,102 @@ entities:
 
 ### Identity Properties
 
-#### `surrogate_id`
+Shape Shifter implements a three-tier identity system to support flexible data transformation and integration:
+
+1. **system_id**: Standardized local auto-incrementing ID (always "system_id")
+2. **keys**: Business/natural keys from source data
+3. **public_id**: Target system primary key name (defines FK column names)
+
+This architecture separates concerns between:
+- **Local scope**: `system_id` for internal processing (1, 2, 3...)  
+- **Business logic**: `keys` for entity identification in source data
+- **Global scope**: `public_id` for target system integration and FK relationships
+
+#### `system_id` (Auto-Managed)
+- **Type**: `string` (always "system_id")
+- **Required**: Automatically managed by system
+- **Description**: Standardized name for auto-incrementing integer IDs (1, 2, 3...). This column is always added automatically during data loading and is used for internal processing. When data is exported, this column is renamed based on the entity's `public_id` setting.
+- **Behavior**:
+  - Added automatically by all loaders (SQL, fixed, file)
+  - Always numbered sequentially starting from 1
+  - Column name is always "system_id" during processing
+  - Renamed to `public_id` value during export/dispatch
+  - Read-only in UI (cannot be edited)
+- **Example**: Not configured directly - automatically managed
+
+#### `public_id`
 - **Type**: `string`
-- **Required**: Recommended (warning if missing)
-- **Description**: Name of the surrogate primary key column to be generated. The system will create an integer ID starting from 1. This should be the same name as the primary key in the remote entity the project targets. This field is renamed to "system_id" when the final dataset is dispatched, and a new column with the same name is initalized with empty values.
+- **Required**: **Yes** (error if missing for fixed entities, warning for others)
+- **Description**: Name of the primary key column in the target system. This field serves two critical purposes:
+  1. Defines the column name that will be used when data is exported to the target system
+  2. Determines FK column names in child entities (FK column = parent's `public_id`)
 - **Example**:
   ```yaml
-  surrogate_id: site_id
+  public_id: site_id
+  ```
+- **Foreign Key Naming Convention**:
+  When establishing foreign key relationships, the FK column in the child table is named after the parent entity's `public_id`:
+  ```yaml
+  # Parent entity
+  site:
+    public_id: site_id
+    keys: ["site_code"]
+  
+  # Child entity - FK column will be named "site_id" (from parent's public_id)
+  sample:
+    public_id: sample_id
+    keys: ["sample_code"]
+    foreign_keys:
+      - entity: site
+        remote_keys: ["site_code"]
+        local_keys: ["sample_site_code"]
+        # Result: FK column named "site_id" containing parent's system_id values
   ```
 - **Validation Rules**:
-  - **Existence**: Warning if missing (prevents reconciliation)
+  - **Existence**: Error if missing (required for proper integration)
   - **Type**: Must be `string` (error if not)
-  - **Naming Convention**: Warning if doesn't end with `_id` suffix
-  - **Uniqueness**: Each entity should have a unique surrogate_id name (suggested validation)
+  - **Naming Convention**: Error if doesn't end with `_id` suffix
+  - **Uniqueness**: Each entity should have unique public_id (suggested validation)
 - **Common Issues**:
-  - Missing `surrogate_id` prevents reconciliation in editor
-  - Not following `_id` naming convention can cause confusion
+  - Missing `public_id` prevents proper export and FK relationships
+  - Not following `_id` naming convention violates schema expectations
+  - Duplicate `public_id` names across entities causes confusion
+- **Backward Compatibility**:
+  Configurations using the deprecated `surrogate_id` field will automatically migrate to `public_id`:
+  ```yaml
+  # Old format (deprecated but still works)
+  surrogate_id: site_id
   
+  # Automatically migrated to:
+  public_id: site_id
+  ```
+
+#### `surrogate_id` (Deprecated - Use `public_id`)
+- **Status**: **DEPRECATED** - Use `public_id` instead
+- **Type**: `string`
+- **Required**: No (automatically migrates to `public_id`)
+- **Description**: Legacy field name for primary key configuration. When present, values are automatically migrated to `public_id` during project loading.
+- **Migration**: 
+  ```yaml
+  # Before (old config)
+  entities:
+    my_entity:
+      surrogate_id: entity_id
+  
+  # After (recommended)
+  entities:
+    my_entity:
+      public_id: entity_id
+  ```
+- **Note**: Both fields are accepted for backward compatibility, but `public_id` takes precedence if both are present.
+
 #### `surrogate_name`
 - **Type**: `string`
 - **Required**: No
-- **Description**: Name of text text column associated to the surrogate ID column. This column can e.g. be used when reconciling entities by name.
+- **Description**: Name of a text column associated with the `public_id`. This column can be used when reconciling entities by name in the UI editor.
 - **Example**:
   ```yaml
-  surrogate_id: contact_type_id
+  public_id: contact_type_id
   surrogate_name: contact_type
   ```
 - **Validation Rules**:
@@ -152,14 +224,14 @@ entities:
   - **Usage**: Currently not validated but should be documented
 - **Suggested Additional Validation**:
   - Should not conflict with existing column names
-  - Should not be the same as `surrogate_id`
+  - Should not be the same as `public_id`
   - Must exist in `columns` if provided
 
 
 #### `keys`
 - **Type**: `list[string]`
 - **Required**: Yes (field must exist, but can be empty list)
-- **Description**: Key columns that uniquely identify rows in the source data. Used for duplicate detection and foreign key relationships.
+- **Description**: Natural/business key columns that uniquely identify rows in the source data. Used for duplicate detection and foreign key relationships. These are the "real world" identifiers from your source system (e.g., sample codes, site names).
 - **Example**:
   ```yaml
   keys: ["ProjektNr", "Befu"]
@@ -176,6 +248,54 @@ entities:
 - **Suggested Additional Validation**:
   - Warn if keys are not unique in source data
   - Validate that all key columns are present after data extraction
+
+---
+
+#### Three-Tier Identity System: Complete Example
+
+```yaml
+entities:
+  # Parent entity with natural key
+  site:
+    type: sql
+    data_source: my_database
+    query: SELECT * FROM sites
+    public_id: site_id           # Target PK name
+    keys: ["site_code"]          # Business key from source
+    columns:
+      - site_code
+      - site_name
+      - location
+  
+  # Child entity referencing parent
+  sample:
+    type: sql
+    data_source: my_database
+    query: SELECT * FROM samples
+    public_id: sample_id          # Target PK name
+    keys: ["sample_code"]         # Business key from source
+    columns:
+      - sample_code
+      - sample_name
+      - parent_site_code
+    foreign_keys:
+      - entity: site
+        remote_keys: ["site_code"]     # Match parent's business key
+        local_keys: ["parent_site_code"] # Local column with parent's business key
+        # Result: Creates FK column "site_id" (from parent's public_id)
+        #         containing parent's system_id values (1, 2, 3...)
+```
+
+**Processing Flow**:
+1. **Load**: `site` loaded with `system_id=1,2,3...` and `site_code` from source
+2. **Link**: `sample` FK created:
+   - Column name: `site_id` (from parent's `public_id`)
+   - Column values: Parent's `system_id` (matched via `keys`)
+3. **Export**: 
+   - `site`: `system_id` column renamed to `site_id`
+   - `sample`: `system_id` renamed to `sample_id`, FK `site_id` preserved
+
+**Critical Rule**: FK column names come from parent's `public_id`, FK values are parent's `system_id`.
 ---
 
 ### Data Source Properties

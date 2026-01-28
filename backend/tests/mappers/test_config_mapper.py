@@ -86,7 +86,8 @@ class TestProjectMapperToApiConfig:
                     "source": "raw_sample",
                     "data_source": "postgres",
                     "query": "SELECT * FROM samples",
-                    "surrogate_id": "sample_id",
+                    "system_id": "system_id",
+                    "public_id": "sample_id",
                     "keys": ["natural_key"],
                     "columns": ["col1", "col2"],
                     "extra_columns": {"computed": "expression"},
@@ -106,7 +107,8 @@ class TestProjectMapperToApiConfig:
         assert entity["source"] == "raw_sample"
         assert entity["data_source"] == "postgres"
         assert entity["query"] == "SELECT * FROM samples"
-        assert entity["surrogate_id"] == "sample_id"
+        assert entity["system_id"] == "system_id"
+        assert entity["public_id"] == "sample_id"
         assert entity["keys"] == ["natural_key"]
         assert entity["columns"] == ["col1", "col2"]
         assert entity["extra_columns"] == {"computed": "expression"}
@@ -207,7 +209,7 @@ class TestProjectMapperToCoreDict:
                     "type": "entity",
                     "keys": ["id"],
                     "columns": ["name"],
-                    "surrogate_id": "sample_id",
+                    "public_id": "sample_id",
                 }
             },
             options={},
@@ -218,7 +220,7 @@ class TestProjectMapperToCoreDict:
         assert result["entities"]["sample"]["type"] == "entity"
         assert result["entities"]["sample"]["keys"] == ["id"]
         assert result["entities"]["sample"]["columns"] == ["name"]
-        assert result["entities"]["sample"]["surrogate_id"] == "sample_id"
+        assert result["entities"]["sample"]["public_id"] == "sample_id"
 
 
 class TestDictToApiEntity:
@@ -304,7 +306,7 @@ class TestDictToApiEntity:
             "source": "raw_data",
             "data_source": "postgres",
             "query": "SELECT * FROM table",
-            "surrogate_id": "id",
+            "public_id": "id",
             "keys": ["natural_key"],
             "columns": ["col1", "col2"],
             "extra_columns": {"computed": "expr"},
