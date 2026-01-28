@@ -1,7 +1,5 @@
 """Tests for graph utility functions."""
 
-import pytest
-
 from backend.app.utils.graph import calculate_depths, find_cycles, topological_sort
 
 

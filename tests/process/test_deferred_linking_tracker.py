@@ -1,7 +1,5 @@
 """Unit tests for DeferredLinkingTracker."""
 
-import pytest
-
 from src.process_state import DeferredLinkingTracker
 
 
@@ -197,7 +195,7 @@ class TestDeferredLinkingTracker:
             tracker.track(entity_name=f"entity_{i}", deferred=True)
 
         assert len(tracker.deferred) == num_entities
-        assert f"entity_0" in tracker.deferred
+        assert "entity_0" in tracker.deferred
         assert f"entity_{num_entities - 1}" in tracker.deferred
 
     def test_is_entity_deferred_via_membership(self) -> None:

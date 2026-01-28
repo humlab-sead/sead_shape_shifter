@@ -1,7 +1,6 @@
 """Unit tests for arbodat normalizer classes."""
 
 from pathlib import Path
-from re import M
 from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
