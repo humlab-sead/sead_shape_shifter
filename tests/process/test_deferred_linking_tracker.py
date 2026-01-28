@@ -169,10 +169,10 @@ class TestDeferredLinkingTracker:
         assert "entity2" not in tracker.deferred
 
         # Test with boolean expressions
-        tracker.track(entity_name="entity3", deferred=1 > 0)  # True
+        tracker.track(entity_name="entity3", deferred=1 > 0)  # type: ignore[arg-type]
         assert "entity3" in tracker.deferred
 
-        tracker.track(entity_name="entity4", deferred=1 < 0)  # False
+        tracker.track(entity_name="entity4", deferred=1 < 0)  # type: ignore[arg-type]
         assert "entity4" not in tracker.deferred
 
     def test_clear_all_deferred_entities(self) -> None:
