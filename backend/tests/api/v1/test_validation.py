@@ -105,6 +105,26 @@ class TestDependencies:
                 "foreign_keys": [{"entity": "base", "local_keys": ["base_id"], "remote_keys": ["id"]}],
             },
         }
+        expected_graph = {
+            "nodes": [
+                # Two nodes: base and derived
+                {"name": "base", "depends_on": [], "depth": 1, "type": "sql"},
+                {"name": "derived", "depends_on": ["base"], "depth": 0, "type": "sql"},
+            ],
+            "edges": [
+                # FK dependency from derived to base
+                {"source": "base", "target": "derived", "type": "provides", "label": "provides"},
+                {"source": "derived", "target": "base", "local_keys": ["base_id"], "remote_keys": ["id"], "label": "base_id → id"},
+            ],
+            "has_cycles": False,
+            "cycles": [],
+            "topological_order": ["derived", "base"],
+            "source_nodes": [
+                {"name": "source:test_db", "source_type": "database", "type": "datasource", "metadata": {"datasource": "test_db"}}
+            ],
+            "source_edges": [],
+        }
+
         client.post("/api/v1/projects", json={"name": "test_project", "entities": entities})
 
         # Get dependencies
@@ -115,8 +135,8 @@ class TestDependencies:
         assert "edges" in data
         assert "has_cycles" in data
         assert "topological_order" in data
-        assert len(data["nodes"]) == 2
-        assert len(data["edges"]) == 1
+        assert data["nodes"] == expected_graph["nodes"]
+        assert data["edges"] == expected_graph["edges"]
 
     def test_get_dependencies_no_deps(self, tmp_path, monkeypatch, reset_services, sample_entity_data):
         """Test getting dependency graph with no dependencies."""

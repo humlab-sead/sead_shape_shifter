@@ -19,7 +19,7 @@ export interface GraphEdge {
   id: string
   source: string
   target: string
-  type?: 'dependency' | 'foreign_key'
+  type?: 'dependency' | 'foreign_key' | 'provides'
   label?: string
   data?: any
 }
@@ -37,6 +37,7 @@ export interface DependencyEdge {
   target: string
   local_keys?: string[]
   remote_keys?: string[]
+  type?: 'dependency' | 'foreign_key' | 'provides'
   label?: string
 }
 
