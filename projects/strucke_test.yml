@@ -57,11 +57,11 @@ entities:
     source: excel_sheet
     depends_on:
     - excel_sheet
+    drop_duplicates: true
   location:
     type: entity
     keys: []
     columns:
-    - socken
     - by_gard
     - landskap_id
     - linked_kommun
@@ -78,4 +78,20 @@ entities:
       - linked_socken
       var_name: location_type
       value_name: location_name
+  location_type:
+    type: fixed
+    keys: []
+    columns:
+    - location_type
+    - sead_id
+    surrogate_id: location_type_id
+    values:
+    - - by_gard
+      - '1'
+    - - linked_socken
+      - '2'
+    - - linked_kommun
+      - '3'
+    - - landskap_id
+      - '4'
 options: {}
