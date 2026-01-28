@@ -138,7 +138,7 @@ class TestCalculateDepths:
         }
         topological_order = ["c", "b", "a"]  # Reverse topological order
         depths = calculate_depths(dependency_map, topological_order)
-        
+
         # Depth increases toward dependencies (roots)
         assert depths["c"] == 0  # Leaf
         assert depths["b"] == 1  # Mid-level
@@ -153,7 +153,7 @@ class TestCalculateDepths:
         }
         topological_order = ["a", "b", "c"]
         depths = calculate_depths(dependency_map, topological_order)
-        
+
         # All should have depth 0
         assert depths["a"] == 0
         assert depths["b"] == 0
@@ -169,7 +169,7 @@ class TestCalculateDepths:
         }
         topological_order = ["d", "b", "c", "a"]  # Reverse topological
         depths = calculate_depths(dependency_map, topological_order)
-        
+
         assert depths["d"] == 0  # Leaf
         assert depths["b"] == 1
         assert depths["c"] == 1
@@ -184,7 +184,7 @@ class TestCalculateDepths:
         }
         # When cycles exist, topological_order is None
         depths = calculate_depths(dependency_map, None)
-        
+
         # Heuristic: nodes with dependencies get depth 1
         assert depths["a"] == 1
         assert depths["b"] == 1
@@ -201,7 +201,7 @@ class TestCalculateDepths:
         }
         topological_order = ["final", "derived2", "derived1", "base2", "base1"]  # Reverse topological
         depths = calculate_depths(dependency_map, topological_order)
-        
+
         assert depths["final"] == 0  # Leaf
         assert depths["derived1"] == 1
         assert depths["derived2"] == 1

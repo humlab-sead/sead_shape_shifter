@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import pandas as pd
-
 from fastapi import UploadFile
 from loguru import logger
 

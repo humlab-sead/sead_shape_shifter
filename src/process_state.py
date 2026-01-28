@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from loguru import logger
 import pandas as pd
+from loguru import logger
 
 from src.model import ShapeShiftProject
 
