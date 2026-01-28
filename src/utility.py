@@ -367,7 +367,15 @@ class Registry(Generic[T]):
         import_sub_modules(module_name, module_folder)
         return self
 
-
+    @classmethod
+    def unique_items(cls) -> set[T]:
+        """Get the set of unique registered items. Same item may be registered under multiple keys."""
+        return { t for t in cls.items.values() }
+    
+    def keys(self) -> set[str]:
+        """Get the set of registered keys. This is the first key if an item is registered under multiple keys."""
+        return set(getattr(item, "key") for item in self.items.values())
+    
 def create_db_uri(*, host: str, port: int | str, user: str, dbname: str, driver: str = "postgresql+psycopg") -> str:
     """
     Builds database URI from the individual config elements.
