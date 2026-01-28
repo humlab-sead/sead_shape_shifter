@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Protocol
 
 import pandas as pd
 from loguru import logger

@@ -16,7 +16,7 @@ from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders
 from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
-from src.process_state import DeferredLinkingTracker, ProcessState
+from src.process_state import ProcessState
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.transforms.filter import apply_filters
 from src.transforms.link import ForeignKeyLinker

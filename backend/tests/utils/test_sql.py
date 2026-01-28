@@ -1,7 +1,5 @@
 """Tests for SQL utility functions."""
 
-import pytest
-
 from backend.app.utils.sql import extract_tables
 
 
@@ -66,7 +64,7 @@ class TestExtractTables:
     def test_subquery(self):
         """Test that subqueries are handled."""
         sql = """
-        SELECT * 
+        SELECT *
         FROM (SELECT * FROM users WHERE active = 1) AS active_users
         JOIN orders ON active_users.id = orders.user_id
         """
@@ -96,7 +94,7 @@ class TestExtractTables:
     def test_complex_real_world_query(self):
         """Test complex real-world query."""
         sql = """
-        SELECT 
+        SELECT
             u.id,
             u.name,
             COUNT(o.id) as order_count,

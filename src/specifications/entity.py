@@ -1,6 +1,5 @@
 """Specifications for validating entity configurations."""
 
-from tkinter import E
 from typing import Any
 
 from src.model import TableConfig

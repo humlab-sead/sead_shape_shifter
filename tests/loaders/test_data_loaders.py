@@ -4,7 +4,6 @@ Tests for Database Loaders
 Tests the vendor-specific database introspection methods in database loaders.
 """
 
-import pandas as pd
 import pytest
 
 from src.loaders.base_loader import DataLoaders, LoaderType
