@@ -196,7 +196,7 @@ class TestRunService:
 
         try:
             # Get entity type
-            entity_type = entity_config.get("type", "data")
+            entity_type = entity_config.get("type", "entity")
 
             # For now, just analyze project
             # Full implementation would actually run the transformation pipeline

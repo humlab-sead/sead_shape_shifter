@@ -141,7 +141,7 @@ def drop_empty_rows(
 
         for col, empty_values in subset.items():  # type: ignore[union-attr]
             if empty_values:
-                mask: pd.Series[bool] = out[col].isin(list(empty_values))
+                mask: pd.Series = out[col].isin(list(empty_values))
                 if mask.any():
                     out[col] = out[col].where(~mask, pd.NA)  # type: ignore[arg-type]
 

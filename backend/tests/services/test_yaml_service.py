@@ -27,13 +27,13 @@ def temp_yaml_file(tmp_path):
 # Test configuration
 entities:
   sample:
-    type: data
+    type: entity
     keys: [id]
     columns: [name, value]
 
   # Another entity
   site:
-    type: data
+    type: entity
     keys: [site_id]
 """
     file_path.write_text(content)
@@ -48,7 +48,7 @@ class TestYamlServiceLoad:
         data = yaml_service.load(temp_yaml_file)
         assert "entities" in data
         assert "sample" in data["entities"]
-        assert data["entities"]["sample"]["type"] == "data"
+        assert data["entities"]["sample"]["type"] == "entity"
 
     def test_load_nonexistent_file(self, yaml_service, tmp_path):
         """Test loading non-existent file raises error."""
@@ -87,7 +87,7 @@ class TestYamlServiceSave:
     def test_save_creates_file(self, yaml_service, tmp_path):
         """Test saving creates new file."""
         file_path = tmp_path / "new.yml"
-        data = {"entities": {"sample": {"type": "data"}}}
+        data = {"entities": {"sample": {"type": "entity"}}}
 
         result = yaml_service.save(data, file_path, create_backup=False)
 

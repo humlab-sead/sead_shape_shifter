@@ -10,13 +10,13 @@ from typing import Any, Self
 import pandas as pd
 from loguru import logger
 
-from src.process_state import DeferredLinkingTracker, ProcessState
 from src.dispatch import Dispatcher, Dispatchers
 from src.extract import SubsetService
 from src.loaders import DataLoader
 from src.loaders.base_loader import DataLoaders
 from src.mapping import LinkToRemoteService
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
+from src.process_state import ProcessState
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.transforms.filter import apply_filters
 from src.transforms.link import ForeignKeyLinker
@@ -119,7 +119,6 @@ class ShapeShifter:
             if _ENABLE_NORMALIZATION_DEBUG:
                 logger.debug(f"{entity}[normalizing]: Normalizing entity...")
 
-            # FIXME: consider removing this check and enforcing valid config earlier
             if not isinstance(table_cfg.columns, list):
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': must be a list")
 

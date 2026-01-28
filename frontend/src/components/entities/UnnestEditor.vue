@@ -3,8 +3,9 @@
     <v-switch v-model="unnestEnabled" label="Enable Unnest" density="compact" hide-details class="mb-4" />
 
     <template v-if="unnestEnabled">
-      <v-combobox
+      <v-select
         v-model="unnest.id_vars"
+        :items="availableColumns"
         label="ID Variables"
         hint="Columns to keep as-is"
         persistent-hint
@@ -15,8 +16,9 @@
         class="mb-4"
       />
 
-      <v-combobox
+      <v-select
         v-model="unnest.value_vars"
+        :items="availableColumns"
         label="Value Variables"
         hint="Columns to unpivot"
         persistent-hint
@@ -50,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 interface UnnestConfig {
   id_vars: string[]
@@ -61,6 +63,7 @@ interface UnnestConfig {
 
 interface Props {
   modelValue?: UnnestConfig | null
+  availableColumns?: string[]
 }
 
 const props = defineProps<Props>()
@@ -79,6 +82,8 @@ const unnest = ref<UnnestConfig>(
 )
 
 const unnestEnabled = ref(!!props.modelValue)
+
+const availableColumns = computed(() => props.availableColumns || [])
 
 watch(
   [unnestEnabled, unnest],

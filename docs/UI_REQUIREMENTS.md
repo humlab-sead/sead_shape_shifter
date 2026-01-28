@@ -36,8 +36,8 @@ Projects define data transformation pipelines with:
 ```yaml
 entities:
   entity_name:
-    source: null | entity_name      # Data source entity
-    type: data | sql | fixed        # Entity type
+    source: null | entity_name      # Source entity
+    type: entity | sql | fixed | csv | xlsx | openpyxl  # Entity type
     surrogate_id: column_name       # Generated ID column
     keys: [natural_key_columns]     # Natural key columns
     columns: [column_list]          # Columns to extract

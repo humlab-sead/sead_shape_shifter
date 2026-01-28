@@ -50,7 +50,7 @@ The YAML Editor feature provides a dual-mode editing experience for entity, simi
 │  YAML Editor (Advanced):                            │
 │  ┌────────────────────────────────────────────┐    │
 │  │ 1  sample_type:                            │    │
-│  │ 2    type: data                            │    │
+│  │ 2    type: entity                            │    │
 │  │ 3    keys: [key1, key2]                    │    │
 │  │ 4    surrogate_id: sample_type_id          │    │
 │  │ 5    columns: [col1, col2, col3]           │    │
@@ -190,7 +190,7 @@ function yamlToFormData(yamlString: string): void {
     
     // Update form fields
     entityName.value = entityKey
-    entityType.value = entity.type || 'data'
+    entityType.value = entity.type || 'entity'
     naturalKeys.value = entity.keys?.join(', ') || ''
     surrogateId.value = entity.surrogate_id || ''
     columns.value = entity.columns?.join(', ') || ''
@@ -450,7 +450,7 @@ describe('EntityFormDialog YAML Integration', () => {
 ```typescript
 POST /api/v1/projects/{name}/entities/validate-yaml
 {
-  "yaml": "entity_name:\n  type: data\n  ..."
+  "yaml": "entity_name:\n  type: entity\n  ..."
 }
 
 Response:

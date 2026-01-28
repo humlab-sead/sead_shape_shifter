@@ -1,7 +1,5 @@
 """Unit tests for DeferredLinkingTracker."""
 
-import pytest
-
 from src.process_state import DeferredLinkingTracker
 
 
@@ -171,10 +169,10 @@ class TestDeferredLinkingTracker:
         assert "entity2" not in tracker.deferred
 
         # Test with boolean expressions
-        tracker.track(entity_name="entity3", deferred=1 > 0)  # True
+        tracker.track(entity_name="entity3", deferred=1 > 0)  # type: ignore ; pylint: disable=comparison-of-constants
         assert "entity3" in tracker.deferred
 
-        tracker.track(entity_name="entity4", deferred=1 < 0)  # False
+        tracker.track(entity_name="entity4", deferred=1 < 0)  # type: ignore ; pylint: disable=comparison-of-constants
         assert "entity4" not in tracker.deferred
 
     def test_clear_all_deferred_entities(self) -> None:
@@ -197,7 +195,7 @@ class TestDeferredLinkingTracker:
             tracker.track(entity_name=f"entity_{i}", deferred=True)
 
         assert len(tracker.deferred) == num_entities
-        assert f"entity_0" in tracker.deferred
+        assert "entity_0" in tracker.deferred
         assert f"entity_{num_entities - 1}" in tracker.deferred
 
     def test_is_entity_deferred_via_membership(self) -> None:
