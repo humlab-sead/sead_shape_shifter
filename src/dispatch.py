@@ -85,7 +85,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
         "header": "#e7e7ef",
         "key_column": "#ccc0da",
         "system_id": "#dce6f1",
-        "surrogate_id": "#ebf1de",
+        "public_id": "#ebf1de",
         "foreign_key": "#fde9d9",
         "source_column": "#e4dfec",
     }
@@ -143,8 +143,8 @@ class OpenpyxlExcelDispatcher(Dispatcher):
                 self.set_column_background_color(column, columns, ws, self.column_colors["key_column"])
             elif column == "system_id":
                 self.set_column_background_color(column, columns, ws, self.column_colors["system_id"])
-            elif column == entity_cfg.surrogate_id:
-                self.set_column_background_color(column, columns, ws, self.column_colors["surrogate_id"])
+            elif column == entity_cfg.public_id:
+                self.set_column_background_color(column, columns, ws, self.column_colors["public_id"])
             elif column in entity_cfg.fk_columns:
                 self.set_column_background_color(column, columns, ws, self.column_colors["foreign_key"])
             elif column in entity_cfg.safe_columns:

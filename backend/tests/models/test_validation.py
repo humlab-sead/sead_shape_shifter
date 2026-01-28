@@ -11,14 +11,14 @@ class TestValidationError:
         error = ValidationError(
             severity="error",
             entity="sample",
-            field="surrogate_id",
-            message="Surrogate ID must end with _id",
-            code="INVALID_SURROGATE_ID",
+            field="public_id",
+            message="Public ID must end with _id",
+            code="INVALID_PUBLIC_ID",
             suggestion="Rename to 'sample_id'",
         )
         assert error.severity == "error"
         assert error.entity == "sample"
-        assert error.message == "Surrogate ID must end with _id"
+        assert error.message == "Public ID must end with _id"
 
     def test_warning(self):
         """Test warning validation error."""

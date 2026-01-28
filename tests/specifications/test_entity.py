@@ -12,8 +12,8 @@ from src.specifications.entity import (
     EntitySpecification,
     FixedEntityFieldsSpecification,
     ForeignKeySpecification,
+    PublicIdSpecification,
     SqlEntityFieldsSpecification,
-    SurrogateIdSpecification,
     UnnestSpecification,
 )
 
@@ -451,42 +451,42 @@ class TestForeignKeySpecification:
         assert result is False
 
 
-class TestSurrogateIdSpecification:
-    """Tests for SurrogateIdSpecification."""
+class TestPublicIdSpecification:
+    """Tests for PublicIdSpecification."""
 
     @pytest.fixture
     def project_cfg(self):
         """Sample project configuration."""
         return {
             "entities": {
-                "valid_id": {"surrogate_id": "entity_id"},
-                "no_id_suffix": {"surrogate_id": "entity"},
-                "non_string_id": {"surrogate_id": 123},
-                "no_surrogate": {},
+                "valid_id": {"public_id": "entity_id"},
+                "no_id_suffix": {"public_id": "entity"},
+                "non_string_id": {"public_id": 123},
+                "no_public_id": {},
             }
         }
 
-    def test_valid_surrogate_id(self, project_cfg):
-        """Test validation passes for valid surrogate ID."""
-        spec = SurrogateIdSpecification(project_cfg)
+    def test_valid_public_id(self, project_cfg):
+        """Test validation passes for valid public_id."""
+        spec = PublicIdSpecification(project_cfg)
 
         result = spec.is_satisfied_by(entity_name="valid_id")
 
         assert result is True
         assert len(spec.warnings) == 0
 
-    def test_no_id_suffix_warning(self, project_cfg):
-        """Test warning when surrogate_id doesn't end with _id."""
-        spec = SurrogateIdSpecification(project_cfg)
+    def test_no_id_suffix_error(self, project_cfg):
+        """Test error when public_id doesn't end with _id."""
+        spec = PublicIdSpecification(project_cfg)
 
         result = spec.is_satisfied_by(entity_name="no_id_suffix")
 
-        assert result is True
-        assert len(spec.warnings) > 0
+        assert result is False
+        assert len(spec.errors) > 0
 
-    def test_non_string_surrogate_id(self, project_cfg):
-        """Test validation fails for non-string surrogate_id."""
-        spec = SurrogateIdSpecification(project_cfg)
+    def test_non_string_public_id(self, project_cfg):
+        """Test validation fails for non-string public_id."""
+        spec = PublicIdSpecification(project_cfg)
 
         result = spec.is_satisfied_by(entity_name="non_string_id")
 
