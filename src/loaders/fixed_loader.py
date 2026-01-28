@@ -6,7 +6,7 @@ from loguru import logger
 from src.loaders.base_loader import ConnectTestResult
 from src.transforms.utility import add_surrogate_id
 
-from .base_loader import DataLoader, DataLoaders
+from .base_loader import DataLoader, DataLoaders, LoaderType
 
 if TYPE_CHECKING:
     from src.model import TableConfig
@@ -15,6 +15,11 @@ if TYPE_CHECKING:
 @DataLoaders.register(key=["fixed"])
 class FixedLoader(DataLoader):
     """Loader for fixed data entities."""
+
+    @classmethod
+    def loader_type(cls) -> LoaderType:
+        """Get the loader type."""
+        return LoaderType.VALUE
 
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         """Create a fixed data entity based on configuration."""

@@ -7,7 +7,7 @@ import pandas as pd
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.loaders.file_loaders import FileLoader
 
-from .base_loader import ConnectTestResult, DataLoaders
+from .base_loader import ConnectTestResult, DataLoaders, LoaderType
 
 if TYPE_CHECKING:
     from src.model import TableConfig
@@ -15,6 +15,11 @@ if TYPE_CHECKING:
 
 class ExcelLoader(FileLoader):
     """Loader for Excel files."""
+
+    @classmethod
+    def loader_type(cls) -> LoaderType:
+        """Get the loader type."""
+        return LoaderType.FILE
 
     def get_loader_opts(self, table_cfg: "TableConfig") -> dict[str, str]:
         """Get loader options from the TableConfig or data source.
