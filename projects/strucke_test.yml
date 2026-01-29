@@ -10,6 +10,7 @@ entities:
     keys: []
     columns:
     - system_id
+    - excel_sheet_id
     - socken
     - by_gard
     - raa_nummer
@@ -42,7 +43,7 @@ entities:
     - linked_lan
     - linked_kommun
     - linked_socken
-    surrogate_id: excel_sheet_id
+    public_id: excel_sheet_id
     options:
       filename: projects/strukke_allaC14_230316_v4_clean.xlsx
       sheet_name: samples_with_coords
