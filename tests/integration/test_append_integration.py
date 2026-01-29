@@ -33,7 +33,7 @@ class TestAppendIntegration:
                 },
                 "test_entity": {
                     "keys": ["id"],
-                    "surrogate_id": "test_id",
+                    "public_id": "test_id",
                     "columns": ["id", "name", "value"],
                     "depends_on": [],
                     "append": [
@@ -86,12 +86,12 @@ class TestAppendIntegration:
                 },
                 "source_entity": {
                     "keys": ["id"],
-                    "surrogate_id": "source_id",
+                    "public_id": "source_id",
                     "columns": ["id", "category"],
                 },
                 "target_entity": {
                     "keys": ["id"],
-                    "surrogate_id": "target_id",
+                    "public_id": "target_id",
                     "columns": ["id", "name"],
                     "depends_on": ["source_entity"],
                     "append": [
@@ -141,7 +141,7 @@ class TestAppendIntegration:
                 },
                 "test_entity": {
                     "keys": ["id"],
-                    "surrogate_id": "test_id",
+                    "public_id": "test_id",
                     "columns": ["id", "name"],
                     "drop_duplicates": ["id"],
                     "strict_functional_dependency": False,
@@ -194,7 +194,7 @@ class TestAppendIntegration:
                 },
                 "test_entity": {
                     "keys": ["id"],
-                    "surrogate_id": "test_id",
+                    "public_id": "test_id",
                     "columns": ["id", "name"],
                     "append": [
                         {
@@ -244,7 +244,7 @@ class TestAppendIntegration:
                 },
                 "test_entity": {
                     "keys": ["id"],
-                    "surrogate_id": "test_id",
+                    "public_id": "test_id",
                     "columns": ["id", "name"],
                     "append": [
                         {

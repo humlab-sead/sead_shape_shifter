@@ -216,9 +216,9 @@ class TestUnnest:
             }
         )
         config = {
-            "location_type": {"surrogate_id": "location_type_id", "values": ["Ort", "Kreis", "Land", "Staat", "FlurStr"]},
+            "location_type": {"public_id": "location_type_id", "values": ["Ort", "Kreis", "Land", "Staat", "FlurStr"]},
             "location": {
-                "surrogate_id": "location_id",
+                "public_id": "location_id",
                 "columns": ["Ort", "Kreis", "Land", "Staat", "FlurStr"],
                 "unnest": {
                     "value_vars": ["Ort", "Kreis", "Land", "Staat", "FlurStr"],
@@ -251,10 +251,10 @@ class TestUnnest:
             }
         )
         config = {
-            "site": {"surrogate_id": "site_id", "keys": ["ProjektNr", "Fustel", "EVNr"]},
-            "site_property_type": {"surrogate_id": "site_property_type_id", "values": ["FustelTyp?", "okFustel", "Limes", "TK"]},
+            "site": {"public_id": "site_id", "keys": ["ProjektNr", "Fustel", "EVNr"]},
+            "site_property_type": {"public_id": "site_property_type_id", "values": ["FustelTyp?", "okFustel", "Limes", "TK"]},
             "site_property": {
-                "surrogate_id": "site_property_id",
+                "public_id": "site_property_id",
                 "columns": ["ProjektNr", "Fustel", "EVNr", "FustelTyp?", "okFustel", "Limes", "TK"],
                 "unnest": {
                     "id_vars": ["ProjektNr", "Fustel", "EVNr"],
@@ -343,9 +343,9 @@ class TestUnnest:
             }
         )
         config = {
-            "sample": {"surrogate_id": "sample_id", "keys": ["ProjektNr", "Befu", "ProbNr"]},
+            "sample": {"public_id": "sample_id", "keys": ["ProjektNr", "Befu", "ProbNr"]},
             "sample_coordinates": {
-                "surrogate_id": "sample_coordinate_id",
+                "public_id": "sample_coordinate_id",
                 "columns": ["KoordX", "KoordY", "KoordZ", "TiefeBis", "TiefeVon"],
                 "unnest": {
                     "id_vars": ["sample_id"],
