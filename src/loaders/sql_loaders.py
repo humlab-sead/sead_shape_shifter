@@ -243,7 +243,7 @@ class SqlLoader(DataLoader):
             test_table_cfg: TableConfig = TableConfig(
                 entities_cfg={
                     "test": {
-                        "surrogate_id": "test_id",
+                        "public_id": "test_id",
                         "type": "sql",
                         "keys": [],
                         "columns": [],

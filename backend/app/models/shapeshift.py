@@ -19,7 +19,7 @@ class ColumnInfo(BaseModel):
     name: str
     data_type: str
     nullable: bool = True
-    is_key: bool = False  # True if part of keys or surrogate_id
+    is_key: bool = False  # True if part of keys or public_id
 
 
 class PreviewResult(BaseModel):

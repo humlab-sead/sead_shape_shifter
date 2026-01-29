@@ -31,7 +31,7 @@ def fk_config() -> ForeignKeyConfig:
         "remote": {
             "columns": ["remote_pk", "remote_code", "name"],
             "keys": ["remote_code"],
-            "surrogate_id": "remote_pk",
+            "public_id": "remote_pk",
         },
     }
     fk_cfg = entities_cfg["local"]["foreign_keys"][0]
@@ -97,7 +97,7 @@ def test_link_entity_returns_deferred_when_specification_defers(monkeypatch: pyt
                 "remote": {
                     "columns": ["remote_id"],
                     "keys": ["remote_id"],
-                    "surrogate_id": "remote_id",
+                    "public_id": "remote_id",
                 },
             }
         }
@@ -158,7 +158,7 @@ class TestDeferredLinkingTrackerIntegration:
                     "remote": {
                         "columns": ["remote_id"],
                         "keys": ["remote_id"],
-                        "surrogate_id": "remote_id",
+                        "public_id": "remote_id",
                     },
                 }
             }
@@ -216,7 +216,7 @@ class TestDeferredLinkingTrackerIntegration:
                     "remote": {
                         "columns": ["remote_id"],
                         "keys": ["remote_id"],
-                        "surrogate_id": "remote_id",
+                        "public_id": "remote_id",
                     },
                 }
             }
@@ -268,7 +268,7 @@ class TestDeferredLinkingTrackerIntegration:
                     "remote": {
                         "columns": ["remote_id"],
                         "keys": ["remote_id"],
-                        "surrogate_id": "remote_id",
+                        "public_id": "remote_id",
                     },
                 }
             }
@@ -329,7 +329,7 @@ class TestDeferredLinkingTrackerIntegration:
                     "remote": {
                         "columns": ["id"],
                         "keys": ["id"],
-                        "surrogate_id": "id",
+                        "public_id": "id",
                     },
                 }
             }
@@ -401,7 +401,7 @@ class TestDeferredLinkingTrackerIntegration:
                     "remote": {
                         "columns": ["id"],
                         "keys": ["id"],
-                        "surrogate_id": "id",
+                        "public_id": "id",
                     },
                 }
             }

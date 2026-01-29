@@ -268,7 +268,7 @@ async def import_entity_from_table(
 
     **Features**:
     - Auto-generates SQL query
-    - Suggests surrogate_id from primary keys
+    - Suggests public_id from primary keys
     - Suggests natural keys from column names
     - Provides column type information
     """
