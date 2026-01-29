@@ -173,7 +173,7 @@ markers = [
 # python_files = "test_*.py" "*_test.py"
 # Uncomment to see logs during test runs:
 # log_cli = true
-# log_cli_level = "DEBUG"
+# log_cli_level = "INFO"
 
 # --------------------
 # coverage.py

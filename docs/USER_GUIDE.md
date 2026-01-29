@@ -37,6 +37,32 @@ This guide is for:
 - **Auto-Fix Capabilities** - Intelligent error resolution
 - **Data Preview** - See transformation results
 - **Performance Optimizations** - Fast, responsive interface
+- **Three-Tier Identity System** - Clear separation of local, source, and target identities
+
+### What's New: Three-Tier Identity System
+
+**Important Update:** Shape Shifter now uses a three-tier identity system for clearer entity identification:
+
+1. **System ID** (`system_id`) - Auto-managed local identity
+   - Always uses column name `system_id`
+   - Auto-incremented (1, 2, 3...)
+   - Scoped to your project only
+   - Read-only, cannot be changed
+
+2. **Business Keys** (`keys`) - Source domain identifiers
+   - Natural keys from your source data
+   - Used for deduplication and reconciliation
+   - Multi-column support for composite keys
+   - Example: `[site_code, year]` or `[sample_name]`
+
+3. **Public ID** (`public_id`) - Target system primary key
+   - Defines the column name for target database PK
+   - Used to name foreign key columns in child entities
+   - Must end with `_id` suffix
+   - Required field with validation
+   - Example: `site_id`, `sample_type_id`
+
+**Migration Note:** Legacy configurations using `surrogate_id` are automatically migrated to `public_id`. No manual changes required.
 
 ---
 
@@ -83,7 +109,7 @@ This guide is for:
 │             │                        │                    │
 │  • entity_1 │  entities:             │  ✓ No errors       │
 │  • entity_2 │    entity_1:           │                    │
-│    - entity_3│      type: data       │  📋 Properties     │
+│    - entity_3│      type: entity       │  📋 Properties     │
 │             │      columns: [...]    │                    │
 │             │                        │                    │
 └─────────────┴────────────────────────┴────────────────────┘
@@ -232,11 +258,11 @@ The left panel shows your configuration's entity structure:
 
 ### Entity Types
 
-**Data Entity:**
+**Entity (Derived):**
 ```yaml
 entity_name:
-  type: data
-  source: null  # Root entity
+  type: entity
+  source: null  # Root entity or name of another entity
   columns: [col1, col2, col3]
 ```
 
@@ -255,6 +281,38 @@ entity_name:
   values:
     - [val1, val2]
     - [val3, val4]
+```
+
+**CSV Entity:**
+```yaml
+entity_name:
+  type: csv
+  columns: [col1, col2]
+  options:
+    filename: projects/my-file.csv
+    sep: ","           # optional, defaults to comma
+    encoding: utf-8     # optional
+```
+
+**Excel Entity (Pandas):**
+```yaml
+entity_name:
+  type: xlsx
+  columns: [col1, col2]
+  options:
+    filename: projects/my-file.xlsx
+    sheet_name: Sheet1   # optional; defaults to first sheet
+```
+
+**Excel Entity (OpenPyXL):**
+```yaml
+entity_name:
+  type: openpyxl
+  columns: [col1, col2]
+  options:
+    filename: projects/my-file.xlsx
+    sheet_name: Sheet1
+    range: A1:D50        # optional
 ```
 
 ### Adding Entities
@@ -289,16 +347,33 @@ Shape Shifter provides **two ways to edit entities**, similar to VS Code's setti
 
 The form editor provides a structured interface for editing entity properties:
 
-**Natural Keys:**
-- **Field**: Natural Keys
-- **Description**: Unique identifier columns
-- **Format**: Comma-separated list (e.g., `key1, key2`)
+**Identity Configuration (Three-Tier System):**
 
-**Surrogate IDs:**
-- **Field**: Surrogate ID
-- **Description**: Generated integer ID column name
-- **Format**: Single column name ending in `_id`
-- **Example**: `entity_name_id`
+Shape Shifter uses a three-tier identity system to manage entity identification:
+
+1. **System ID Column** (Auto-managed)
+   - **Field**: System ID
+   - **Description**: Local project-scoped identity, auto-incremented (1, 2, 3...)
+   - **Default**: `system_id` (read-only, cannot be changed)
+   - **Purpose**: Internal tracking within the transformation pipeline
+   - **Scope**: Local to this project only
+
+2. **Business Keys** (Source Identifiers)
+   - **Field**: Business Keys
+   - **Description**: Natural/domain keys from source data for deduplication and reconciliation
+   - **Format**: Multi-select list of column names
+   - **Example**: `[site_code, year]` or `[sample_name]`
+   - **Purpose**: Identify unique records in source data, detect duplicates
+   - **Scope**: Source system domain
+
+3. **Public ID** (Target System Identity)
+   - **Field**: Public ID Column
+   - **Description**: Target system primary key name that defines FK column naming in child entities
+   - **Format**: Single column name ending in `_id`
+   - **Example**: `site_id`, `sample_type_id`
+   - **Required**: Yes (validation enforces `_id` suffix)
+   - **Purpose**: Maps to remote system, determines foreign key column names
+   - **Scope**: Target database or external system
 
 **Column Selection:**
 - **Field**: Columns
@@ -328,11 +403,20 @@ The YAML editor provides direct access to the entity's YAML definition:
 **Example YAML:**
 ```yaml
 entity_name:
-  keys: [key1, key2]  # Unique identifier columns
-  surrogate_id: entity_name_id  # Generated integer ID
+  system_id: system_id  # Auto-managed local identity (default, cannot change)
+  keys: [key1, key2]  # Business keys from source data for deduplication
+  public_id: entity_name_id  # Target system PK (defines FK column names in children)
   columns: [col1, col2, col3]  # Columns to extract
   source: parent_entity  # Depends on parent_entity
   depends_on: [other_entity]  # Additional dependencies
+```
+
+**Legacy Format (Backward Compatible):**
+```yaml
+entity_name:
+  surrogate_id: entity_name_id  # Automatically migrated to public_id
+  keys: [key1, key2]
+  # ... rest of config
 ```
 
 **When to Use YAML Editor:**
@@ -630,16 +714,30 @@ Field: foreign_keys
 - Suggests checking entity names
 - May require manual intervention
 
-#### Duplicate Natural Keys
+#### Duplicate Business Keys
 
-**Problem:** Data has duplicate values for natural keys
+**Problem:** Data has duplicate values for business keys (natural identifiers)
 
 **Example Error:**
 ```
-Found 5 duplicate natural keys
+Found 5 duplicate business keys
 Entity: sample_entity
 Keys: name, code
 ```
+
+**Auto-Fix:**
+- Not automatically fixable (data quality issue)
+- Manual review required
+- Options:
+  1. Add more columns to keys for uniqueness
+  2. Clean source data to remove duplicates
+  3. Use system_id as temporary identifier
+  4. Investigate root cause in source system
+
+**Best Practice:**
+- Business keys should uniquely identify records in source data
+- Used for deduplication and reconciliation
+- Consider composite keys if single column insufficient
 
 **Auto-Fix Recommendation:**
 - Guidance on resolving duplicates
@@ -1151,15 +1249,25 @@ Processed 12 entities to ./output/my_project.xlsx
 
 **Entity Design:**
 - ✅ Use descriptive entity names
-- ✅ Define natural keys carefully
+- ✅ Define business keys carefully (for source data deduplication)
+- ✅ Set public_id to match target system naming (defines FK columns)
+- ✅ Keep system_id as default (`system_id`) for internal tracking
 - ✅ Document complex relationships
 - ✅ Keep entity scope focused
+
+**Identity Fields:**
+- ✅ **System ID**: Always use default `system_id` (auto-managed)
+- ✅ **Business Keys**: Choose columns that uniquely identify source records
+- ✅ **Public ID**: Must end with `_id`, matches target system PK name
+- ✅ **FK Naming**: Child entities use parent's public_id as FK column name
+- ✅ Test for duplicate business keys before processing
 
 **Foreign Keys:**
 - ✅ Always specify constraints
 - ✅ Use appropriate cardinality
 - ✅ Test join results
 - ✅ Handle null keys explicitly
+- ✅ Ensure FK column names match parent's public_id
 
 **Column Selection:**
 - ✅ Include only needed columns

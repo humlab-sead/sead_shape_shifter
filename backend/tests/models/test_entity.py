@@ -84,17 +84,18 @@ class TestEntity:
     """Tests for Entity model."""
 
     def test_valid_entity(self):
-        """Test valid entity creation."""
+        """Test valid entity creation with new identity model."""
         entity = Entity(
             name="sample",
-            type="data",
-            surrogate_id="sample_id",
+            type="entity",
+            public_id="sample_id",
             keys=["natural_key"],
             columns=["col1", "col2"],
         )
         assert entity.name == "sample"
-        assert entity.type == "data"
-        assert entity.surrogate_id == "sample_id"
+        assert entity.type == "entity"
+        assert entity.system_id == "system_id"  # Always standardized
+        assert entity.public_id == "sample_id"
 
     def test_name_validation(self):
         """Test entity name must be snake_case."""
@@ -104,14 +105,20 @@ class TestEntity:
         with pytest.raises(ValidationError):
             Entity(name="has space")
 
-    def test_surrogate_id_validation(self):
-        """Test surrogate ID must end with _id."""
+    def test_public_id_validation(self):
+        """Test public_id must end with _id."""
         with pytest.raises(ValidationError):
-            Entity(name="sample", surrogate_id="sample_key")
+            Entity(name="sample", public_id="sample_key")
 
         # Valid
+        entity = Entity(name="sample", public_id="sample_id")
+        assert entity.public_id == "sample_id"
+
+    def test_surrogate_id_migration(self):
+        """Test backward compatibility: surrogate_id migrates to public_id."""
         entity = Entity(name="sample", surrogate_id="sample_id")
-        assert entity.surrogate_id == "sample_id"
+        assert entity.public_id == "sample_id"  # Automatically migrated
+        assert entity.surrogate_id == "sample_id"  # Still accessible for compat
 
     def test_default_values(self):
         """Test default values for optional fields."""

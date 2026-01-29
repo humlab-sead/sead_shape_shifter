@@ -319,7 +319,7 @@ class TestExcelDispatcher:
 
             dispatcher.dispatch(str(output_file), data)
 
-            mock_writer.assert_called_once_with(str(output_file), engine="openpyxl")
+            mock_writer.assert_called_once_with(str(output_file), engine="openpyxl", mode="w")
 
 
 class TestDatabaseDispatcher:

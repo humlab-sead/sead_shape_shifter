@@ -233,7 +233,7 @@ interface ValidationResult {
 import YamlEditor from '@/components/common/YamlEditor.vue'
 import { ref } from 'vue'
 
-const yamlContent = ref('entity:\n  type: data')
+const yamlContent = ref('entity:\n  type: entity')
 
 function handleValidation(result: { valid: boolean; error: string | null }) {
   if (!result.valid) {

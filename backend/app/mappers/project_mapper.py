@@ -22,6 +22,7 @@ from backend.app.models import (
     Project,
     ProjectMetadata,
 )
+from src.configuration.config import Config
 from src.model import ShapeShiftProject
 
 
@@ -111,6 +112,11 @@ class ProjectMapper:
         # Map entities (preserve sparse structure)
         for entity_name, api_entity in api_config.entities.items():
             cfg_dict["entities"][entity_name] = ProjectMapper._api_entity_to_dict(api_entity)
+
+        unresolved: list[str] = Config.find_unresolved_directives(cfg_dict)
+        if unresolved:
+            extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
+            logger.error(f"Unresolved @value references found in config: {', '.join(unresolved[:5])} {extra}")
 
         return cfg_dict
 

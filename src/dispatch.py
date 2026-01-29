@@ -70,7 +70,9 @@ class ExcelDispatcher(Dispatcher):
     """Dispatcher for Excel data."""
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
-        with pd.ExcelWriter(target, engine="openpyxl") as writer:
+        with pd.ExcelWriter(target, engine="openpyxl", mode="w") as writer:
+            if hasattr(writer, "book"):
+                writer.book.calculation.calcMode = "manual"  # type: ignore
             for entity_name in sorted(data):
                 data[entity_name].to_excel(writer, sheet_name=entity_name, index=False)
 
@@ -83,14 +85,17 @@ class OpenpyxlExcelDispatcher(Dispatcher):
         "header": "#e7e7ef",
         "key_column": "#ccc0da",
         "system_id": "#dce6f1",
-        "surrogate_id": "#ebf1de",
+        "public_id": "#ebf1de",
         "foreign_key": "#fde9d9",
         "source_column": "#e4dfec",
     }
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
-        wb = Workbook()
+        wb = Workbook(write_only=False)  # Keep False for styling support
         wb.remove(wb.active)  # type: ignore[attr-defined] ; openpyxl creates a default sheet
+
+        # Disable formula calculations for better performance
+        wb.calculation.calcMode = "manual"  # type: ignore
 
         for entity_name in sorted(data):
             table: pd.DataFrame = data[entity_name]
@@ -138,8 +143,8 @@ class OpenpyxlExcelDispatcher(Dispatcher):
                 self.set_column_background_color(column, columns, ws, self.column_colors["key_column"])
             elif column == "system_id":
                 self.set_column_background_color(column, columns, ws, self.column_colors["system_id"])
-            elif column == entity_cfg.surrogate_id:
-                self.set_column_background_color(column, columns, ws, self.column_colors["surrogate_id"])
+            elif column == entity_cfg.public_id:
+                self.set_column_background_color(column, columns, ws, self.column_colors["public_id"])
             elif column in entity_cfg.fk_columns:
                 self.set_column_background_color(column, columns, ws, self.column_colors["foreign_key"])
             elif column in entity_cfg.safe_columns:

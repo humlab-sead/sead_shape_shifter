@@ -16,6 +16,18 @@ class ForeignKeyConstraintViolation(Exception):
 
 
 @dataclass
+class ValidationIssue:
+    """Represents a validation issue found during constraint checking."""
+
+    issue_type: str  # e.g., 'row_count_mismatch', 'column_count_mismatch'
+    severity: str  # 'error', 'warning', 'info'
+    local_entity: str
+    remote_entity: str
+    message: str
+    metadata: dict[str, Any]
+
+
+@dataclass
 class ValidationContext:
     """Contains data needed for constraint checks."""
 
@@ -254,6 +266,7 @@ class ForeignKeyConstraintValidator:
         self.merge_indicator_col: str | None = None
         self.size_before_merge: tuple[int, int] = (0, 0)
         self.size_after_merge: tuple[int, int] = (0, 0)
+        self.issues: list[ValidationIssue] = []
 
     def validate_before_merge(self, local_df: pd.DataFrame, remote_df: pd.DataFrame) -> Self:
         """Validate constraints before performing the merge."""
@@ -286,7 +299,7 @@ class ForeignKeyConstraintValidator:
 
         self.size_after_merge = linked_df.shape
 
-        logger.debug(f"{self.entity_name}[linking]: merge size: before={self.size_before_merge}, after={self.size_after_merge}")
+        # logger.debug(f"{self.entity_name}[linking]: merge size: before={self.size_before_merge}, after={self.size_after_merge}")
 
         context = ValidationContext(local_df=local_df, remote_df=remote_df, linked_df=linked_df)
         for validator_cls in Validators.get_validators_for_stage("post-merge"):
@@ -310,16 +323,68 @@ class ForeignKeyConstraintValidator:
 
         if self.fk.how != "cross":
             if self.size_before_merge[0] != self.size_after_merge[0]:
-                logger.warning(
-                    f"{self.fk.local_entity}[linking]: join resulted in change in row count for "
-                    f"'{self.fk.remote_entity}': before={self.size_before_merge[0]}, after={self.size_after_merge[0]}"
+                message = (
+                    f"{self.fk.local_entity} -> {self.fk.remote_entity}[linking]: join resulted in change in row count: "
+                    f"before={self.size_before_merge[0]}, after={self.size_after_merge[0]}"
+                )
+                logger.warning(message)
+                self.issues.append(
+                    ValidationIssue(
+                        issue_type="row_count_mismatch",
+                        severity="warning",
+                        local_entity=self.fk.local_entity,
+                        remote_entity=self.fk.remote_entity,
+                        message=message,
+                        metadata={
+                            "row_count_before": self.size_before_merge[0],
+                            "row_count_after": self.size_after_merge[0],
+                            "join_type": self.fk.how,
+                        },
+                    )
                 )
 
-        added_column_count: int = 1 + len(self.fk.get_valid_remote_columns(remote_df))
-        if self.size_after_merge[1] != self.size_before_merge[1] + added_column_count:
-            logger.warning(
-                f"{self.entity_name}[linking]: join resulted in unexpected number of columns for "
-                f"'{self.fk.remote_entity}': before={self.size_before_merge[1]}, after={self.size_after_merge[1]}, "
-                f"expected increase={added_column_count}"
+        # Calculate expected column increase
+        # Start with surrogate ID (1) + extra columns from remote
+        remote_extra_cols = self.fk.get_valid_remote_columns(remote_df)
+        expected_new_columns = 1 + len(remote_extra_cols)
+
+        # Add merge indicator if present
+        if self.merge_indicator_col:
+            expected_new_columns += 1
+
+        # Check how many of the remote columns already exist in local_df
+        # (pandas merge won't duplicate columns that already exist)
+        existing_cols = set(local_df.columns)
+        remote_cols_to_add = [col for col in remote_extra_cols if col not in existing_cols]
+
+        # Actual expected increase accounts for columns that won't be duplicated
+        actual_expected_increase = 1  # surrogate ID always added
+        if self.merge_indicator_col:
+            actual_expected_increase += 1  # merge indicator
+        actual_expected_increase += len(remote_cols_to_add)  # only new remote columns
+
+        if self.size_after_merge[1] != self.size_before_merge[1] + actual_expected_increase:
+            added_columns: set[str] = set(linked_df.columns) - set(local_df.columns)
+            message = (
+                f"{self.entity_name} -> {self.fk.remote_entity}[linking]: join resulted in unexpected number of columns: "
+                f"before={self.size_before_merge[1]}, after={self.size_after_merge[1]}, "
+                f"expected increase={actual_expected_increase} "
+                f"(added columns: {added_columns})"
+            )
+            logger.warning(message)
+            self.issues.append(
+                ValidationIssue(
+                    issue_type="column_count_mismatch",
+                    severity="warning",
+                    local_entity=self.entity_name,
+                    remote_entity=self.fk.remote_entity,
+                    message=message,
+                    metadata={
+                        "column_count_before": self.size_before_merge[1],
+                        "column_count_after": self.size_after_merge[1],
+                        "expected_increase": actual_expected_increase,
+                        "added_columns": list(added_columns),
+                    },
+                )
             )
         return self

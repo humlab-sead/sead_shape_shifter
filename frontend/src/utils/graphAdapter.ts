@@ -125,6 +125,7 @@ export function toCytoscapeElements(
   // Convert edges
   const edges: ElementDefinition[] = graph.edges.map((edge, index) => {
     const classes: string[] = []
+    const isProvidesEdge = edge.type === 'provides'
 
     if (!showEdgeLabels) {
       classes.push('hide-label')
@@ -134,12 +135,16 @@ export function toCytoscapeElements(
       classes.push('cycle-edge')
     }
 
+    if (isProvidesEdge) {
+      classes.push('source-edge')
+    }
+
     return {
       data: {
         id: `edge-${edge.source}-${edge.target}-${index}`,
         source: edge.source,
         target: edge.target,
-        label: edge.label || '',
+        label: edge.label || (isProvidesEdge ? 'provides' : ''),
       },
       classes,
     }

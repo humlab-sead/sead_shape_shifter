@@ -100,13 +100,14 @@
                         </v-col>
 
                         <v-col cols="4" class="pl-2">
-                          <!-- Source Entity (only for 'data' type) -->
+                          <!-- Source Entity (only for 'entity' type) -->
                           <v-autocomplete
-                            v-if="formData.type === 'data'"
+                            v-if="formData.type === 'entity'"
                             v-model="formData.source"
                             :items="availableSourceEntities"
                             label="Source Entity"
                             variant="outlined"
+                            :disabled="mode === 'edit'"
                             clearable
                             persistent-placeholder
                           >
@@ -145,14 +146,8 @@
                             :rules="requiredRule"
                             variant="outlined"
                             clearable
-                            persistent-hint
-                            :hint="getFileExtensionHint"
                             :loading="filesLoading"
-                          >
-                            <template #message>
-                              <span class="text-caption">{{ getFileExtensionHint }}</span>
-                            </template>
-                          </v-autocomplete>
+                          />
                         </v-col>
 
                         <!-- CSV Delimiter -->
@@ -171,13 +166,15 @@
                       <v-row no-gutters v-if="isExcelType" class="mt-2">
                         <!-- Sheet Name -->
                         <v-col :cols="formData.type === 'openpyxl' ? 6 : 12" :class="formData.type === 'openpyxl' ? 'pr-2' : ''">
-                          <v-text-field
+                          <v-autocomplete
                             v-model="formData.options.sheet_name"
+                            :items="sheetOptions"
                             label="Sheet Name"
                             variant="outlined"
                             placeholder="Sheet1"
-                            hint="Leave empty to load first sheet"
-                            persistent-hint
+                            clearable
+                            :loading="sheetOptionsLoading"
+                            @update:model-value="handleSheetSelection"
                           />
                         </v-col>
 
@@ -188,37 +185,86 @@
                             label="Cell Range"
                             variant="outlined"
                             placeholder="A1:G99"
-                            hint="e.g., A1:G99 (optional)"
-                            persistent-hint
                           />
                         </v-col>
                       </v-row>
                     </div>
 
-                    <!-- Surrogate ID and Keys on same row -->
+                    <!-- Identity Section: system_id (info), public_id (required), keys (required) -->
                     <div class="form-row">
                       <v-row no-gutters>
+                        <!-- System ID (info only - always "system_id") -->
                         <v-col cols="4" class="pr-2">
-                          <!-- Surrogate ID -->
                           <v-text-field
-                            v-model="formData.surrogate_id"
-                            label="Surrogate ID"
+                            model-value="system_id"
+                            label="System ID"
                             variant="outlined"
-                            placeholder="e.g., sample_id"
+                            readonly
+                            disabled
+                            bg-color="grey-lighten-3"
                           >
+                            <template #append-inner>
+                              <v-tooltip location="top" max-width="400">
+                                <template #activator="{ props }">
+                                  <v-icon
+                                    v-bind="props"
+                                    icon="mdi-information-outline"
+                                    size="small"
+                                    class="text-medium-emphasis"
+                                  />
+                                </template>
+                                <div class="text-body-2">
+                                  <strong>System ID (Local Scope)</strong><br />
+                                  Auto-incrementing local identifier (1, 2, 3...).<br />
+                                  Always named 'system_id' - not configurable.
+                                </div>
+                              </v-tooltip>
+                            </template>
                             <template #message>
-                              <span class="text-caption">Generated integer ID field name</span>
+                              <span class="text-caption">Local auto-incrementing ID (always "system_id")</span>
                             </template>
                           </v-text-field>
                         </v-col>
 
-                        <v-col cols="8" class="pl-2">
-                          <!-- Keys -->
-                          <!-- :rules="requiredRule"
-                          required -->
+                        <!-- Public ID (target system PK, defines FK columns) -->
+                        <v-col cols="4" class="px-1">
+                          <v-text-field
+                            v-model="formData.public_id"
+                            label="Public ID *"
+                            variant="outlined"
+                            placeholder="e.g., sample_type_id"
+                            :rules="publicIdRules"
+                            required
+                          >
+                            <template #append-inner>
+                              <v-tooltip location="top" max-width="400">
+                                <template #activator="{ props }">
+                                  <v-icon
+                                    v-bind="props"
+                                    icon="mdi-information-outline"
+                                    size="small"
+                                    class="text-medium-emphasis"
+                                  />
+                                </template>
+                                <div class="text-body-2">
+                                  <strong>Public ID (Global Scope)</strong><br />
+                                  1. Target system primary key name<br />
+                                  2. Defines FK column names in child entities<br />
+                                  Must end with '_id' (e.g., 'sample_type_id').
+                                </div>
+                              </v-tooltip>
+                            </template>
+                            <template #message>
+                              <span class="text-caption">Target PK name + FK column name pattern</span>
+                            </template>
+                          </v-text-field>
+                        </v-col>
+
+                        <v-col cols="4" class="pl-2">
+                          <!-- Keys (business keys) -->
                           <v-combobox
                             v-model="formData.keys"
-                            label="Keys *"
+                            label="Business Keys *"
                             variant="outlined"
                             multiple
                             chips
@@ -233,10 +279,11 @@
                       </v-row>
                     </div>
 
-                    <!-- Columns (for data/fixed types) -->
-                    <div class="form-row" v-if="formData.type === 'data' || formData.type === 'fixed'">
+                    <!-- Columns (for entity/fixed types) -->
+                    <div class="form-row" v-if="formData.type === 'entity' || formData.type === 'fixed' || isFileType">
                       <v-combobox
                         v-model="formData.columns"
+                        :items="availableColumns"
                         label="Columns"
                         variant="outlined"
                         multiple
@@ -249,15 +296,18 @@
                         </template>
                       </v-combobox>
                     </div>
-
                     <!-- Fixed Values Grid (only for fixed type) -->
-                    <div class="form-row" v-show="formData.type === 'fixed' && allColumns.length > 0">
+                    <div class="form-row" v-if="formData.type === 'fixed'">
                       <FixedValuesGrid
-                        v-if="formData.type === 'fixed' && allColumns.length > 0"
+                        v-if="allColumns.length > 0"
                         v-model="formData.values"
                         :columns="allColumns"
                         height="400px"
                       />
+                      <v-alert v-else type="info" variant="tonal" density="compact" class="mb-2">
+                        <v-alert-title>No Columns Defined</v-alert-title>
+                        Add keys and/or columns above to define the grid structure for fixed values.
+                      </v-alert>
                     </div>
 
                     <!-- Depends On -->
@@ -391,7 +441,10 @@
               </v-window-item>
 
               <v-window-item value="unnest">
-                <unnest-editor v-model="formData.advanced.unnest" />
+                <unnest-editor
+                  v-model="formData.advanced.unnest"
+                  :available-columns="availableColumnsForUnnest"
+                />
               </v-window-item>
 
               <v-window-item value="append">
@@ -495,17 +548,19 @@
               <v-progress-linear v-if="previewLoading" indeterminate color="primary" />
 
               <div v-if="livePreviewData && !previewLoading" class="preview-table-container">
-                <ag-grid-vue
-                  class="ag-theme-alpine preview-ag-grid"
-                  :style="{ height: '100%', width: '100%' }"
-                  :columnDefs="previewColumnDefs"
-                  :rowData="previewRowData"
-                  :defaultColDef="previewDefaultColDef"
-                  :animateRows="true"
-                  :suppressCellFocus="true"
-                  :headerHeight="32"
-                  :rowHeight="28"
-                />
+                <div class="preview-grid-wrapper">
+                  <ag-grid-vue
+                    class="ag-theme-alpine preview-ag-grid"
+                    :style="{ height: '100%', width: '100%' }"
+                    :columnDefs="previewColumnDefs"
+                    :rowData="previewRowData"
+                    :defaultColDef="previewDefaultColDef"
+                    :animateRows="true"
+                    :suppressCellFocus="true"
+                    :headerHeight="32"
+                    :rowHeight="28"
+                  />
+                </div>
               </div>
 
               <div
@@ -556,6 +611,7 @@ import YamlEditor from '../common/YamlEditor.vue'
 import SqlEditor from '../common/SqlEditor.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent } from 'vue'
+import { api } from '@/api'
 
 // Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
 const FixedValuesGrid = defineAsyncComponent(() => import('./FixedValuesGrid.vue'))
@@ -598,6 +654,7 @@ const {
   lastRefresh: livePreviewLastRefresh,
   previewEntity,
   debouncedPreviewEntity,
+  clearPreview,
 } = useEntityPreview()
 
 const previewLimitOptions = [
@@ -627,7 +684,9 @@ const yamlValid = ref(true)
 interface FormData {
   name: string
   type: string
-  surrogate_id: string
+  system_id: string  // Always "system_id"
+  public_id: string  // Target system PK name and FK column pattern
+  surrogate_id: string  // Deprecated - for backward compatibility
   keys: string[]
   columns: string[]
   values: any[][] // For fixed type entities
@@ -662,8 +721,10 @@ interface FormData {
 
 const formData = ref<FormData>({
   name: '',
-  type: 'data',
-  surrogate_id: '',
+  type: 'entity',
+  system_id: 'system_id',  // Always "system_id"
+  public_id: '',  // Required field
+  surrogate_id: '',  // Deprecated - kept for backward compat
   keys: [],
   columns: [],
   values: [],
@@ -701,6 +762,10 @@ const activeTab = ref('basic')
 // File handling state
 const availableProjectFiles = ref<string[]>([])
 const filesLoading = ref(false)
+const sheetOptions = ref<string[]>([])
+const sheetOptionsLoading = ref(false)
+const columnsOptions = ref<string[]>([])
+const columnsLoading = ref(false)
 
 // Delimiter options for CSV
 const delimiterOptions = [
@@ -812,6 +877,90 @@ async function fetchProjectFiles() {
   }
 }
 
+async function fetchSheetOptions() {
+  sheetOptionsLoading.value = true
+  sheetOptions.value = []
+  columnsOptions.value = []
+
+  const filename = formData.value.options.filename
+  if (!isExcelType.value || !filename) {
+    sheetOptionsLoading.value = false
+    return
+  }
+
+  try {
+    const meta = await api.excelMetadata.fetch(filename)
+    sheetOptions.value = meta.sheets || []
+
+    if (!formData.value.options.sheet_name && sheetOptions.value.length > 0) {
+      formData.value.options.sheet_name = sheetOptions.value[0] || ''
+    }
+
+    if (formData.value.options.sheet_name) {
+      await fetchColumns()
+    }
+  } catch (error) {
+    console.error('Failed to fetch sheet names', error)
+  } finally {
+    sheetOptionsLoading.value = false
+  }
+}
+
+async function fetchColumns() {
+  columnsLoading.value = true
+  columnsOptions.value = []
+  formData.value.columns = []
+
+  const filename = formData.value.options.filename
+  const sheet = formData.value.options.sheet_name
+  if (!isExcelType.value || !filename || !sheet) {
+    columnsLoading.value = false
+    return
+  }
+
+  try {
+    const meta = await api.excelMetadata.fetch(filename, sheet)
+    columnsOptions.value = meta.columns || []
+    if (columnsOptions.value.length > 0) {
+      formData.value.columns = [...columnsOptions.value]
+    }
+  } catch (error) {
+    console.error('Failed to fetch columns', error)
+  } finally {
+    columnsLoading.value = false
+  }
+}
+
+async function handleSheetSelection() {
+  columnsOptions.value = []
+  formData.value.columns = []
+  await fetchColumns()
+}
+
+function getColumnsFromEntity(entityName: string | null): string[] {
+  if (!entityName) return []
+  const sourceEntity = entities.value.find((e) => e.name === entityName)
+  if (!sourceEntity) return []
+
+  const sourceColumns = Array.isArray((sourceEntity as any)?.entity_data?.columns)
+    ? (sourceEntity as any).entity_data.columns
+    : []
+  const sourceKeys = Array.isArray((sourceEntity as any)?.entity_data?.keys)
+    ? (sourceEntity as any).entity_data.keys
+    : []
+
+  const combined = Array.from(new Set([...sourceKeys, ...sourceColumns]))
+  return combined.filter((c) => c !== 'system_id')
+}
+
+function hydrateColumnsFromSource() {
+  if (formData.value.type !== 'entity') return
+  const colsFromSource = getColumnsFromEntity(formData.value.source)
+  const existing = formData.value.columns || []
+  // Ensure saved selections stay visible even if source metadata is not yet available
+  columnsOptions.value = Array.from(new Set([...existing, ...colsFromSource]))
+}
+
 function getFileExtensions(): string[] {
   if (formData.value.type === 'csv') return ['csv']
   if (formData.value.type === 'xlsx') return ['xlsx', 'xls']
@@ -830,6 +979,73 @@ watch(
   { deep: true }
 )
 
+// Watch for source entity changes (entity type) to hydrate columns
+watch(
+  () => formData.value.source,
+  (newSource, oldSource) => {
+    if (formData.value.type !== 'entity') return
+
+    if (newSource && newSource !== oldSource) {
+      // Only clear selections when the user actually changes the source
+      if (oldSource !== undefined && oldSource !== null) {
+        formData.value.columns = []
+      }
+      hydrateColumnsFromSource()
+    }
+
+    // Avoid clearing during initial hydration (oldSource undefined)
+    if (!newSource && oldSource !== undefined) {
+      columnsOptions.value = []
+      formData.value.columns = []
+    }
+  },
+  { immediate: true }
+)
+
+// Watch for Excel filename changes to refresh sheet list
+watch(
+  () => formData.value.options.filename,
+  async (newFilename, oldFilename) => {
+    if (!isExcelType.value) return
+
+    if (newFilename && newFilename !== oldFilename) {
+      // Only clear sheet_name if it's not already set (initial hydration case)
+      // If sheet_name is already set, preserve it and just refresh metadata
+      if (!formData.value.options.sheet_name) {
+        columnsOptions.value = []
+      }
+      await fetchSheetOptions()
+    }
+
+    if (!newFilename) {
+      sheetOptions.value = []
+      columnsOptions.value = []
+    }
+  }
+)
+
+// Watch for sheet selection to load columns
+watch(
+  () => formData.value.options.sheet_name,
+  async (newSheet, oldSheet) => {
+    if (!isExcelType.value) return
+
+    // Fetch columns on sheet change, but preserve columns list during initial hydration
+    // (oldSheet === undefined means watcher fired for the first time during load)
+    if (newSheet && newSheet !== oldSheet && oldSheet !== undefined) {
+      columnsOptions.value = []
+      await fetchColumns()
+    } else if (newSheet && oldSheet === undefined) {
+      // Initial hydration: fetch columns without clearing
+      await fetchColumns()
+    }
+
+    if (!newSheet) {
+      columnsOptions.value = []
+    }
+  }
+)
+
 // Watch for entity type changes to fetch appropriate files
 watch(() => formData.value.type, async (newType, oldType) => {
   // Clear data source and query when switching away from SQL
@@ -838,8 +1054,8 @@ watch(() => formData.value.type, async (newType, oldType) => {
     formData.value.query = ''
   }
   
-  // Clear source when switching away from data
-  if (newType !== 'data') {
+  // Clear source when switching away from entity
+  if (newType !== 'entity') {
     formData.value.source = null
   }
 
@@ -859,6 +1075,18 @@ watch(() => formData.value.type, async (newType, oldType) => {
   if (isFileType.value && !wasFileType) {
     await fetchProjectFiles()
   }
+
+  // Hydrate columns from source entity when switching to entity type
+  if (newType === 'entity') {
+    hydrateColumnsFromSource()
+  }
+
+  if (isExcelType.value && formData.value.options.filename) {
+    await fetchSheetOptions()
+  } else {
+    sheetOptions.value = []
+    columnsOptions.value = []
+  }
 })
 
 // Keyboard shortcut for split view toggle (Ctrl+Shift+P)
@@ -876,6 +1104,10 @@ onMounted(() => {
   if (props.mode === 'edit' && isFileType.value) {
     fetchProjectFiles()
   }
+
+   if (isExcelType.value && formData.value.options.filename) {
+     fetchSheetOptions()
+   }
 })
 
 onUnmounted(() => {
@@ -889,7 +1121,7 @@ const dialogModel = computed({
 })
 
 const entityTypeOptions = [
-  { title: 'Data (Derived)', value: 'data', subtitle: 'Derive from another entity' },
+  { title: 'Data (Derived)', value: 'entity', subtitle: 'Derive from another entity' },
   { title: 'SQL Query', value: 'sql', subtitle: 'Execute SQL against database' },
   { title: 'Fixed Values', value: 'fixed', subtitle: 'Hard-coded values' },
   { title: 'CSV File', value: 'csv', subtitle: 'Load from CSV file' },
@@ -902,7 +1134,7 @@ const availableSourceEntities = computed(() => {
 })
 
 const availableDataSources = computed(() => {
-  // Get data source names from project's options.data_sources (e.g., "arbodat_data", "sead")
+  // Get entity source names from project's options.data_sources (e.g., "arbodat_data", "sead")
   const dataSources = projectStore.selectedProject?.options?.data_sources
   if (dataSources && typeof dataSources === 'object') {
     return Object.keys(dataSources)
@@ -919,12 +1151,22 @@ const isExcelType = computed(() => {
   return ['xlsx', 'openpyxl'].includes(formData.value.type)
 })
 
-const getFileExtensionHint = computed(() => {
-  if (formData.value.type === 'csv') return 'Select a .csv file from the projects directory'
-  if (formData.value.type === 'xlsx') return 'Select a .xlsx or .xls file from the projects directory'
-  if (formData.value.type === 'openpyxl') return 'Select a .xlsx file from the projects directory'
-  return ''
+const availableColumns = computed(() => columnsOptions.value)
+
+const availableColumnsForUnnest = computed(() => {
+  const keys = formData.value.keys || []
+  const columns = formData.value.columns || []
+  const options = columnsOptions.value.length > 0 ? columnsOptions.value : columns
+  const combined = Array.from(new Set([...keys, ...options]))
+  return combined.filter((c) => c && c !== 'system_id')
 })
+
+// const getFileExtensionHint = computed(() => {
+//   if (formData.value.type === 'csv') return 'Select a .csv file from the projects directory'
+//   if (formData.value.type === 'xlsx') return 'Select a .xlsx or .xls file from the projects directory'
+//   if (formData.value.type === 'openpyxl') return 'Select a .xlsx file from the projects directory'
+//   return ''
+// })
 
 // Validation context for YAML intelligence
 const validationContext = computed<ValidationContext>(() => ({
@@ -953,6 +1195,12 @@ const nameRules = [
   },
 ]
 
+const publicIdRules = [
+  (v: string) => !!v || 'Public ID is required',
+  (v: string) => v.endsWith('_id') || 'Public ID must end with _id',
+  (v: string) => /^[a-z][a-z0-9_]*_id$/.test(v) || 'Public ID must be lowercase snake_case ending with _id',
+]
+
 // YAML Editor Functions
 function formDataToYaml(): string {
   const entityData: Record<string, any> = {
@@ -960,7 +1208,16 @@ function formDataToYaml(): string {
     type: formData.value.type,
   }
 
-  if (formData.value.surrogate_id) {
+  // Always include system_id (standardized to "system_id")
+  entityData.system_id = 'system_id'
+
+  // Include public_id (required for target system PK and FK naming)
+  if (formData.value.public_id) {
+    entityData.public_id = formData.value.public_id
+  }
+
+  // Legacy: Only include surrogate_id if migrating from old config
+  if (formData.value.surrogate_id && !formData.value.public_id) {
     entityData.surrogate_id = formData.value.surrogate_id
   }
 
@@ -1075,8 +1332,10 @@ function yamlToFormData(yamlString: string): boolean {
 
     formData.value = {
       name: data.name || formData.value.name,
-      type: data.type || 'data',
-      surrogate_id: data.surrogate_id || '',
+      type: data.type || 'entity',
+      system_id: 'system_id',  // Always standardized
+      public_id: data.public_id || data.surrogate_id || '',  // Migrate surrogate_id → public_id
+      surrogate_id: data.surrogate_id || '',  // Keep for backward compat
       keys: Array.isArray(data.keys) ? data.keys : [],
       columns: Array.isArray(data.columns) ? data.columns : [],
       values: Array.isArray(data.values) ? data.values : [],
@@ -1139,14 +1398,12 @@ async function handleSubmit() {
     const entityData: Record<string, unknown> = {
       type: formData.value.type,
       keys: formData.value.keys,
+      // Always include columns so new entities default to an empty list instead of omitting the field
+      columns: formData.value.columns,
     }
 
     if (formData.value.surrogate_id) {
       entityData.surrogate_id = formData.value.surrogate_id
-    }
-
-    if (formData.value.columns.length > 0) {
-      entityData.columns = formData.value.columns
     }
 
     if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
@@ -1264,88 +1521,97 @@ function handleClose() {
   dialogModel.value = false
 }
 
+function buildFormDataFromEntity(entity: EntityResponse): FormData {
+  const dropDuplicates = entity.entity_data.drop_duplicates
+  const dropEmptyRows = entity.entity_data.drop_empty_rows
+
+  return {
+    name: entity.name,
+    type: (entity.entity_data.type as string) || 'entity',
+    system_id: 'system_id',  // Always standardized
+    public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '',  // Migrate
+    surrogate_id: (entity.entity_data.surrogate_id as string) || '',  // Backward compat
+    keys: (entity.entity_data.keys as string[]) || [],
+    columns: (entity.entity_data.columns as string[]) || [],
+    values: (entity.entity_data.values as any[][]) || [],
+    source: (entity.entity_data.source as string) || null,
+    data_source: (entity.entity_data.data_source as string) || '',
+    query: (entity.entity_data.query as string) || '',
+    options: {
+      filename: (entity.entity_data.options as any)?.filename || '',
+      sep: (entity.entity_data.options as any)?.sep || ',',
+      encoding: (entity.entity_data.options as any)?.encoding || 'utf-8',
+      sheet_name: (entity.entity_data.options as any)?.sheet_name || '',
+      range: (entity.entity_data.options as any)?.range || '',
+    },
+    foreign_keys: (entity.entity_data.foreign_keys as any[]) || [],
+    depends_on: (entity.entity_data.depends_on as string[]) || [],
+    drop_duplicates: {
+      enabled: dropDuplicates !== undefined && dropDuplicates !== null,
+      columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
+    },
+    drop_empty_rows: {
+      enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
+      columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
+    },
+    check_functional_dependency: (entity.entity_data.check_functional_dependency as boolean) || false,
+    advanced: {
+      filters: (entity.entity_data.filters as any[]) || [],
+      unnest: entity.entity_data.unnest || null,
+      append: (entity.entity_data.append as any[]) || [],
+      extra_columns: (entity.entity_data.extra_columns as Record<string, string | null>) || undefined,
+    },
+  }
+}
+
+function buildDefaultFormData(): FormData {
+  return {
+    name: '',
+    type: 'entity',
+    system_id: 'system_id',  // Always standardized
+    public_id: '',
+    surrogate_id: '',  // Backward compat
+    keys: [],
+    columns: [],
+    values: [],
+    source: null,
+    data_source: '',
+    query: '',
+    options: {
+      filename: '',
+      sep: ',',
+      encoding: 'utf-8',
+      sheet_name: '',
+      range: '',
+    },
+    foreign_keys: [],
+    depends_on: [],
+    drop_duplicates: {
+      enabled: false,
+      columns: [],
+    },
+    drop_empty_rows: {
+      enabled: false,
+      columns: [],
+    },
+    check_functional_dependency: false,
+    advanced: {
+      filters: [],
+      unnest: null,
+      append: [],
+      extra_columns: undefined,
+    },
+  }
+}
+
 // Load entity data when editing
 watch(
   () => props.entity,
   (newEntity) => {
     if (newEntity && props.mode === 'edit') {
-      const dropDuplicates = newEntity.entity_data.drop_duplicates
-      const dropDuplicatesData = {
-        enabled: dropDuplicates !== undefined && dropDuplicates !== null,
-        columns: Array.isArray(dropDuplicates) ? dropDuplicates : [],
-      }
-
-      const dropEmptyRows = newEntity.entity_data.drop_empty_rows
-      const dropEmptyRowsData = {
-        enabled: dropEmptyRows !== undefined && dropEmptyRows !== null,
-        columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
-      }
-
-      formData.value = {
-        name: newEntity.name,
-        type: (newEntity.entity_data.type as string) || 'data',
-        surrogate_id: (newEntity.entity_data.surrogate_id as string) || '',
-        keys: (newEntity.entity_data.keys as string[]) || [],
-        columns: (newEntity.entity_data.columns as string[]) || [],
-        values: (newEntity.entity_data.values as any[][]) || [],
-        source: (newEntity.entity_data.source as string) || null,
-        data_source: (newEntity.entity_data.data_source as string) || '',
-        query: (newEntity.entity_data.query as string) || '',
-        options: {
-          filename: (newEntity.entity_data.options as any)?.filename || '',
-          sep: (newEntity.entity_data.options as any)?.sep || ',',
-          encoding: (newEntity.entity_data.options as any)?.encoding || 'utf-8',
-          sheet_name: (newEntity.entity_data.options as any)?.sheet_name || '',
-          range: (newEntity.entity_data.options as any)?.range || '',
-        },
-        foreign_keys: (newEntity.entity_data.foreign_keys as any[]) || [],
-        depends_on: (newEntity.entity_data.depends_on as string[]) || [],
-        drop_duplicates: dropDuplicatesData,
-        drop_empty_rows: dropEmptyRowsData,
-        check_functional_dependency: (newEntity.entity_data.check_functional_dependency as boolean) || false,
-        advanced: {
-          filters: (newEntity.entity_data.filters as any[]) || [],
-          unnest: newEntity.entity_data.unnest || null,
-          append: (newEntity.entity_data.append as any[]) || [],
-          extra_columns: (newEntity.entity_data.extra_columns as Record<string, string | null>) || undefined,
-        },
-      }
+      formData.value = buildFormDataFromEntity(newEntity)
     } else if (props.mode === 'create') {
-      formData.value = {
-        name: '',
-        type: 'data',
-        surrogate_id: '',
-        keys: [],
-        columns: [],
-        values: [],
-        source: null,
-        data_source: '',
-        query: '',
-        options: {
-          filename: '',
-          sep: ',',
-          encoding: 'utf-8',
-          sheet_name: '',
-          range: '',
-        },
-        foreign_keys: [],
-        depends_on: [],
-        drop_duplicates: {
-          enabled: false,
-          columns: [],
-        },
-        drop_empty_rows: {
-          enabled: false,
-          columns: [],
-        },
-        check_functional_dependency: false,
-        advanced: {
-          filters: [],
-          unnest: null,
-          append: [],
-          extra_columns: undefined,
-        },
-      }
+      formData.value = buildDefaultFormData()
     }
   },
   { immediate: true }
@@ -1361,10 +1627,25 @@ watch(
       suggestions.value = null
       showSuggestions.value = false
       yamlError.value = null
+      
+      // Clear preview data to avoid showing stale data from previous entity
+      clearPreview()
+      previewError.value = null
+      
+      // Reset to form-only view to avoid confusing users with empty preview
+      viewMode.value = 'form'
+
+      if (props.mode === 'edit' && props.entity) {
+        formData.value = buildFormDataFromEntity(props.entity)
+      } else if (props.mode === 'create') {
+        formData.value = buildDefaultFormData()
+      }
 
       // Initialize YAML content from form data
       if (props.mode === 'edit') {
         yamlContent.value = formDataToYaml()
+      } else {
+        yamlContent.value = ''
       }
     }
   }
@@ -1529,6 +1810,21 @@ function handleRejectDependency(dep: DependencySuggestion) {
 }
 
 /* Ag-grid preview styles */
+.preview-table-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.preview-grid-wrapper {
+  flex: 1;
+  overflow: auto;
+  height: 100%;
+  width: 100%;
+}
+
 .preview-ag-grid {
   font-size: 11px;
   --ag-background-color: rgb(var(--v-theme-background)) !important;

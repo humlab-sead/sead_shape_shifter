@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from src.extract import add_surrogate_id
+from src.transforms.utility import add_surrogate_id
 
 
 class TestAddSurrogateId:

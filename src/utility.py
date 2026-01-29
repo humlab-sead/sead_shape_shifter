@@ -12,6 +12,21 @@ import yaml
 from loguru import logger
 
 
+def rename_last_occurence(data: pd.DataFrame, rename_map: dict[str, str]) -> list[str]:
+    """Rename the last occurrence of each source column in rename_map to the new name."""
+    target_columns: list[str] = data.columns.tolist()
+    for src, new in rename_map.items():
+        if src not in target_columns:
+            continue
+        if new in target_columns:
+            continue
+        for i in range(len(target_columns) - 1, -1, -1):
+            if target_columns[i] == src:
+                target_columns[i] = new
+                break
+    return target_columns
+
+
 def find_parent_with(path: Path | str, filename: str) -> Path:
     """Get a path relative to the project root."""
     path = Path(path) if isinstance(path, str) else path
@@ -351,6 +366,15 @@ class Registry(Generic[T]):
     def scan(self, module_name, module_folder: str) -> Self:
         import_sub_modules(module_name, module_folder)
         return self
+
+    @classmethod
+    def unique_items(cls) -> set[T]:
+        """Get the set of unique registered items. Same item may be registered under multiple keys."""
+        return set(cls.items.values())
+
+    def keys(self) -> set[str]:
+        """Get the set of registered keys. This is the first key if an item is registered under multiple keys."""
+        return set(getattr(item, "key") for item in self.items.values())
 
 
 def create_db_uri(*, host: str, port: int | str, user: str, dbname: str, driver: str = "postgresql+psycopg") -> str:

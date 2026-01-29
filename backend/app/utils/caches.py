@@ -11,6 +11,8 @@ from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
 from src.model import ShapeShiftProject, TableConfig
 
+logger.disable(__name__)  # Disables all logging for this module
+
 
 @dataclass
 class CacheMetadata:

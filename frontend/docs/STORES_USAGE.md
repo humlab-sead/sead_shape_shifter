@@ -111,7 +111,7 @@ const entityStore = useEntityStore()
 await entityStore.fetchEntities('my-config')
 
 // Get entities by type
-const dataEntities = entityStore.entitiesByType['data']
+const dataEntities = entityStore.entitiesByType['entity']
 const sqlEntities = entityStore.entitiesByType['sql']
 
 // Select an entity
@@ -121,7 +121,7 @@ await entityStore.selectEntity('my-config', 'sample')
 await entityStore.createEntity('my-config', {
   name: 'new_entity',
   entity_data: {
-    type: 'data',
+    type: 'entity',
     keys: ['id'],
     columns: ['id', 'name'],
   },
@@ -130,7 +130,7 @@ await entityStore.createEntity('my-config', {
 // Update entity
 await entityStore.updateEntity('my-config', 'new_entity', {
   entity_data: {
-    type: 'data',
+    type: 'entity',
     keys: ['id', 'code'],
     columns: ['id', 'code', 'name', 'description'],
   },

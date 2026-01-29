@@ -71,7 +71,7 @@ class TestIsEmptyFieldValidator:
                     "empty_list": [],
                     "empty_dict": {},
                     "none_value": None,
-                    "non_empty_string": "data",
+                    "non_empty_string": "entity",
                     "non_empty_list": ["item"],
                 }
             }
@@ -424,7 +424,7 @@ class TestIsOfCategoricalValuesValidator:
         """Test that value in categories passes."""
         validator = IsOfCategoricalValuesValidator(project_cfg, severity="E")
 
-        validator.is_satisfied_by_field("sample", "type", categories=["sql", "fixed", "data"])
+        validator.is_satisfied_by_field("sample", "type", categories=["sql", "fixed", "entity"])
 
         assert len(validator.errors) == 0
 

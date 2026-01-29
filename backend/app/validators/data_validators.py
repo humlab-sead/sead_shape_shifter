@@ -1,27 +1,33 @@
 """Data-aware validators that check actual data for issues."""
 
 import asyncio
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from loguru import logger
 
 from backend.app.models.project import Project
+from backend.app.models.shapeshift import PreviewResult
 from backend.app.models.validation import (
     ValidationCategory,
     ValidationError,
     ValidationPriority,
 )
-from backend.app.services.project_service import ProjectService
 from backend.app.services.shapeshift_service import ShapeShiftService
+
+if TYPE_CHECKING:
+    from backend.app.services.shapeshift_service import ShapeShiftService
+
+
+# pylint: disable=import-outside-toplevel
 
 
 class ColumnExistsValidator:
     """Validate that configured columns actually exist in the data."""
 
-    def __init__(self, preview_service: ShapeShiftService):
+    def __init__(self, preview_service: "ShapeShiftService"):
         """Initialize validator with preview service for data sampling."""
-        self.preview_service = preview_service
+        self.preview_service: ShapeShiftService = preview_service
 
     async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
         """
@@ -35,10 +41,10 @@ class ColumnExistsValidator:
         Returns:
             List of validation errors for missing columns
         """
-        errors = []
+        errors: list[ValidationError] = []
 
         # Only validate entities with column specifications
-        columns = entity_cfg.get("columns")
+        columns: list[str] | None = entity_cfg.get("columns")
         if not columns:
             return errors
 
@@ -53,11 +59,11 @@ class ColumnExistsValidator:
 
             # Get actual column names from data
             df = pd.DataFrame(preview_result.rows)
-            actual_columns = set(df.columns)
+            actual_columns: set[str] = set(df.columns)
 
             # Check each configured column
-            configured_columns = set(columns)
-            missing_columns = configured_columns - actual_columns
+            configured_columns: set[str] = set(columns)
+            missing_columns: set[str] = configured_columns - actual_columns
 
             for col in missing_columns:
                 errors.append(
@@ -97,9 +103,9 @@ class ColumnExistsValidator:
 class NaturalKeyUniquenessValidator:
     """Validate that natural keys are actually unique in the data."""
 
-    def __init__(self, preview_service: ShapeShiftService):
+    def __init__(self, preview_service: "ShapeShiftService"):
         """Initialize validator with preview service for data sampling."""
-        self.preview_service = preview_service
+        self.preview_service: ShapeShiftService = preview_service
 
     async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
         """
@@ -113,16 +119,18 @@ class NaturalKeyUniquenessValidator:
         Returns:
             List of validation errors for non-unique keys
         """
-        errors = []
+        errors: list[ValidationError] = []
 
         # Only validate entities with natural keys
-        keys = entity_cfg.get("keys")
+        keys: list[str] | None = entity_cfg.get("keys")
         if not keys:
             return errors
 
         try:
             # Get larger sample for better uniqueness check
-            preview_result = await self.preview_service.preview_entity(project_name=project_name, entity_name=entity_name, limit=1000)
+            preview_result: PreviewResult = await self.preview_service.preview_entity(
+                project_name=project_name, entity_name=entity_name, limit=1000
+            )
 
             if not preview_result.rows or len(preview_result.rows) < 2:
                 # Need at least 2 rows to check uniqueness
@@ -131,21 +139,21 @@ class NaturalKeyUniquenessValidator:
             df = pd.DataFrame(preview_result.rows)
 
             # Check if all key columns exist
-            missing_keys = set(keys) - set(df.columns)
+            missing_keys: set[str] = set(keys) - set(df.columns)
             if missing_keys:
                 # Column existence is handled by ColumnExistsValidator
                 return errors
 
             # Check for duplicates
-            duplicates = df[df.duplicated(subset=keys, keep=False)]
+            duplicates: pd.DataFrame = df[df.duplicated(subset=keys, keep=False)]
 
             if not duplicates.empty:
-                duplicate_count = len(duplicates)
-                unique_duplicate_keys = len(duplicates.drop_duplicates(subset=keys))
+                duplicate_count: int = len(duplicates)
+                unique_duplicate_keys: int = len(duplicates.drop_duplicates(subset=keys))
 
                 # Show example of duplicate
-                example = duplicates[keys].iloc[0].to_dict()
-                example_str = ", ".join([f"{k}={v}" for k, v in example.items()])
+                example: dict[Any, Any] = duplicates[keys].iloc[0].to_dict()
+                example_str: str = ", ".join([f"{k}={v}" for k, v in example.items()])
 
                 errors.append(
                     ValidationError(
@@ -186,7 +194,7 @@ class NaturalKeyUniquenessValidator:
 class NonEmptyResultValidator:
     """Validate that data source returns at least one row."""
 
-    def __init__(self, preview_service: ShapeShiftService):
+    def __init__(self, preview_service: "ShapeShiftService"):
         """Initialize validator with preview service for data sampling."""
         self.preview_service = preview_service
 
@@ -204,7 +212,7 @@ class NonEmptyResultValidator:
         """
         errors = []
 
-        entity_type = entity_cfg.get("type", "data")
+        entity_type = entity_cfg.get("type", "entity")
 
         # Skip fixed entities - they don't have data sources
         if entity_type == "fixed":
@@ -260,20 +268,22 @@ class ForeignKeyDataValidator:
     - Match percentage meets threshold
     """
 
+    def __init__(self, preview_service: "ShapeShiftService"):
+        """Use shared preview service to reuse warm cache."""
+        self.preview_service = preview_service
+
     async def validate(self, project_name: str, entity_name: str, entity_cfg: Any) -> list[ValidationError]:
         """Validate foreign key data integrity."""
 
         errors = []
 
-        if not entity_cfg.foreign_keys:
+        foreign_keys = entity_cfg.get("foreign_keys", []) if isinstance(entity_cfg, dict) else getattr(entity_cfg, "foreign_keys", [])
+        if not foreign_keys:
             return errors
-
-        project_service = ProjectService()
-        preview_service = ShapeShiftService(project_service)
 
         try:
             # Load sample data for this entity
-            local_result = await preview_service.preview_entity(project_name, entity_name, limit=1000)
+            local_result = await self.preview_service.preview_entity(project_name, entity_name, limit=1000)
             if not local_result.rows:
                 # Empty result, NonEmptyResultValidator will handle this
                 return errors
@@ -281,11 +291,12 @@ class ForeignKeyDataValidator:
             local_df = pd.DataFrame(local_result.rows)
 
             # Validate each foreign key
-            for fk_index, fk in enumerate(entity_cfg.foreign_keys):
-                remote_entity = fk.entity
+            for fk_index, fk in enumerate(foreign_keys):
+                remote_entity = fk.get("entity") if isinstance(fk, dict) else fk.entity
 
                 # Check if local keys exist
-                missing_local = [key for key in fk.local_keys if key not in local_df.columns]
+                local_keys = fk.get("local_keys", []) if isinstance(fk, dict) else fk.local_keys
+                missing_local = [key for key in local_keys if key not in local_df.columns]
                 if missing_local:
                     errors.append(
                         ValidationError(
@@ -303,7 +314,7 @@ class ForeignKeyDataValidator:
 
                 # Load remote entity data
                 try:
-                    remote_result = await preview_service.preview_entity(project_name, remote_entity, limit=1000)
+                    remote_result = await self.preview_service.preview_entity(project_name, remote_entity, limit=1000)  # type: ignore
                     if not remote_result.rows:
                         errors.append(
                             ValidationError(
@@ -321,7 +332,8 @@ class ForeignKeyDataValidator:
                     remote_df = pd.DataFrame(remote_result.rows)
 
                     # Check if remote keys exist
-                    missing_remote = [key for key in fk.remote_keys if key not in remote_df.columns]
+                    remote_keys_list = fk.get("remote_keys", []) if isinstance(fk, dict) else fk.remote_keys
+                    missing_remote = [key for key in remote_keys_list if key not in remote_df.columns]
                     if missing_remote:
                         errors.append(
                             ValidationError(
@@ -337,17 +349,19 @@ class ForeignKeyDataValidator:
                         continue
 
                     # Check data integrity - do foreign key values exist?
-                    local_values = local_df[fk.local_keys].drop_duplicates().dropna()
-                    remote_values = remote_df[fk.remote_keys].drop_duplicates()
+                    local_values = local_df[local_keys].drop_duplicates().dropna()
+                    remote_values = remote_df[remote_keys_list].drop_duplicates().dropna()
 
                     if len(local_values) > 0:
                         # Create composite keys for comparison
-                        local_keys = [tuple(row) for row in local_values.values]
-                        remote_keys = [tuple(row) for row in remote_values.values]
-                        remote_keys_set = set(remote_keys)
+                        local_key_tuples = [tuple(row) for row in local_values.values]
+                        remote_key_tuples = [tuple(row) for row in remote_values.values]
+                        remote_keys_set = set(remote_key_tuples)
 
-                        unmatched = [key for key in local_keys if key not in remote_keys_set]
-                        match_percentage = (len(local_keys) - len(unmatched)) / len(local_keys) * 100 if len(local_keys) > 0 else 100
+                        unmatched = [key for key in local_key_tuples if key not in remote_keys_set]
+                        match_percentage = (
+                            (len(local_key_tuples) - len(unmatched)) / len(local_key_tuples) * 100 if len(local_key_tuples) > 0 else 100
+                        )
 
                         if match_percentage < 100:
                             severity = "error" if match_percentage < 90 else "warning"
@@ -398,49 +412,56 @@ class DataTypeCompatibilityValidator:
     - Warns about type mismatches that may cause issues
     """
 
+    def __init__(self, preview_service: "ShapeShiftService"):
+        """Use shared preview service to reuse warm cache."""
+        self.preview_service = preview_service
+
     async def validate(self, project_name: str, entity_name: str, entity_cfg: Any) -> list[ValidationError]:
         """Validate foreign key column type compatibility."""
 
         errors = []
 
-        if not entity_cfg.foreign_keys:
+        foreign_keys = entity_cfg.get("foreign_keys", []) if isinstance(entity_cfg, dict) else getattr(entity_cfg, "foreign_keys", [])
+        if not foreign_keys:
             return errors
-
-        project_service = ProjectService()
-        preview_service = ShapeShiftService(project_service)
 
         try:
             # Load sample data for this entity
-            local_result = await preview_service.preview_entity(project_name, entity_name, limit=100)
+            local_result: PreviewResult = await self.preview_service.preview_entity(project_name, entity_name, limit=100)
             if not local_result.rows:
                 return errors
 
             local_df = pd.DataFrame(local_result.rows)
 
             # Check each foreign key
-            for fk_index, fk in enumerate(entity_cfg.foreign_keys):
-                remote_entity = fk.entity
+            for fk_index, fk in enumerate(foreign_keys):
+                remote_entity = fk.get("entity") if isinstance(fk, dict) else fk.entity
 
                 # Check if local keys exist
-                missing_local = [key for key in fk.local_keys if key not in local_df.columns]
+                local_keys = fk.get("local_keys", []) if isinstance(fk, dict) else fk.local_keys
+                missing_local = [key for key in local_keys if key not in local_df.columns]
                 if missing_local:
                     continue  # ColumnExistsValidator will catch this
 
                 # Load remote entity data
                 try:
-                    remote_result = await preview_service.preview_entity(project_name, remote_entity, limit=100)
+                    if not remote_entity:
+                        continue  # ForeignKeyDataValidator will catch this
+
+                    remote_result: PreviewResult = await self.preview_service.preview_entity(project_name, remote_entity, limit=100)
                     if not remote_result.rows:
                         continue  # ForeignKeyDataValidator will catch this
 
                     remote_df = pd.DataFrame(remote_result.rows)
 
                     # Check if remote keys exist
-                    missing_remote = [key for key in fk.remote_keys if key not in remote_df.columns]
+                    remote_keys = fk.get("remote_keys", []) if isinstance(fk, dict) else fk.remote_keys
+                    missing_remote = [key for key in remote_keys if key not in remote_df.columns]
                     if missing_remote:
                         continue  # ForeignKeyDataValidator will catch this
 
                     # Compare data types
-                    for local_key, remote_key in zip(fk.local_keys, fk.remote_keys):
+                    for local_key, remote_key in zip(local_keys, remote_keys):
                         try:
                             local_series = local_df[local_key]
                             remote_series = remote_df[remote_key]
@@ -509,18 +530,171 @@ class DataTypeCompatibilityValidator:
         return False
 
 
+class DuplicateKeysValidator:
+    """Validate that natural keys are unique within entities."""
+
+    def __init__(self, preview_service: "ShapeShiftService"):
+        """Initialize validator with preview service."""
+        self.preview_service = preview_service
+
+    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
+        """
+        Check that natural keys are unique.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            entity_cfg: Entity configuration dict
+
+        Returns:
+            List of validation errors for duplicate keys
+        """
+        errors = []
+
+        # Only validate entities with keys specified
+        keys = entity_cfg.get("keys")
+        if not keys:
+            return errors
+
+        try:
+            # Get sample data
+            preview_result = await self.preview_service.preview_entity(project_name=project_name, entity_name=entity_name, limit=None)
+
+            if not preview_result.rows or len(preview_result.rows) == 0:
+                return errors
+
+            # Check for duplicates
+            df = pd.DataFrame(preview_result.rows)
+
+            # Ensure all key columns exist
+            missing_keys = set(keys) - set(df.columns)
+            if missing_keys:
+                logger.debug(f"Cannot validate keys for {entity_name}: missing columns {missing_keys}")
+                return errors
+
+            has_duplicates = df.duplicated(subset=list(keys)).any()
+
+            if has_duplicates:
+                duplicate_count = df.duplicated(subset=list(keys)).sum()
+                duplicate_examples = df[df.duplicated(subset=list(keys), keep=False)][keys].drop_duplicates().head(5)
+
+                errors.append(
+                    ValidationError(
+                        severity="error",
+                        entity=entity_name,
+                        field="keys",
+                        message=f"Duplicate natural keys found ({duplicate_count} duplicate rows). "
+                        f"Keys {keys} should be unique but have duplicates.",
+                        code="DUPLICATE_KEYS",
+                        suggestion=f"Review the data and ensure keys {keys} are unique. "
+                        f"Examples of duplicate key values: {duplicate_examples.to_dict('records')[:3]}. "
+                        f"Consider adding more columns to the keys or using drop_duplicates configuration.",
+                        category=ValidationCategory.DATA,
+                        priority=ValidationPriority.CRITICAL,
+                        auto_fixable=False,
+                    )
+                )
+
+        except Exception as e:
+            logger.warning(f"Could not validate keys for {entity_name}: {e}")
+
+        return errors
+
+
+class ForeignKeyIntegrityValidator:
+    """Validate foreign key linking integrity (row count changes, column mismatches)."""
+
+    def __init__(self, preview_service: "ShapeShiftService"):
+        """Initialize validator with preview service."""
+        self.preview_service = preview_service
+
+    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
+        """
+        Check FK linking integrity by running normalization and collecting issues.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            entity_cfg: Entity configuration dict
+
+        Returns:
+            List of validation errors for FK integrity issues
+        """
+        errors = []
+
+        # Only validate entities with foreign keys
+        fks = entity_cfg.get("fks", [])
+        if not fks:
+            return errors
+
+        try:
+            # Run preview which includes linking and collects validation issues
+            preview_result = await self.preview_service.preview_entity(project_name=project_name, entity_name=entity_name, limit=None)
+
+            # Convert validation issues to ValidationError objects
+            for issue in preview_result.validation_issues:
+                # Determine if this is an error or warning
+                severity = issue.get("severity", "warning")
+
+                # Map issue types to validation codes
+                code_map = {
+                    "row_count_mismatch": "FK_ROW_COUNT_MISMATCH",
+                    "column_count_mismatch": "FK_COLUMN_COUNT_MISMATCH",
+                }
+
+                issue_type = issue.get("type", "unknown")
+                code = code_map.get(issue_type, "FK_INTEGRITY_ISSUE")
+
+                # Create appropriate suggestion based on issue type
+                if issue.get("type") == "row_count_mismatch":
+                    metadata = issue.get("metadata", {})
+                    suggestion = (
+                        f"Join type '{metadata.get('join_type', 'unknown')}' caused row count to change. "
+                        f"This may indicate duplicate foreign key values or a missing constraint. "
+                        f"Consider adding cardinality constraints or checking for data quality issues."
+                    )
+                else:
+                    suggestion = (
+                        "Unexpected column count after join. "
+                        "Check the foreign key configuration and ensure extra_columns are correctly specified."
+                    )
+
+                errors.append(
+                    ValidationError(
+                        severity=severity,
+                        entity=issue.get("local_entity", entity_name),
+                        field="fks",
+                        message=issue.get("message", "Foreign key integrity issue"),
+                        code=code,
+                        suggestion=suggestion,
+                        category=ValidationCategory.DATA,
+                        priority=ValidationPriority.HIGH if severity == "error" else ValidationPriority.MEDIUM,
+                        auto_fixable=False,
+                    )
+                )
+
+        except Exception as e:
+            logger.warning(f"Could not validate FK integrity for {entity_name}: {e}")
+
+        return errors
+
+
 class DataValidationService:
     """Service to run all data validators."""
 
-    def __init__(self, preview_service: ShapeShiftService):
+    def __init__(self, preview_service: "ShapeShiftService"):
         """Initialize data validation service."""
         self.preview_service = preview_service
+        # Warmed table_store from batch preprocessing; avoids re-normalizing per validator
+        self._warm_table_store: dict[str, pd.DataFrame] | None = None
         self.validators = [
             ColumnExistsValidator(preview_service),
             NaturalKeyUniquenessValidator(preview_service),
             NonEmptyResultValidator(preview_service),
-            ForeignKeyDataValidator(),
-            DataTypeCompatibilityValidator(),
+            ForeignKeyDataValidator(preview_service),
+            DataTypeCompatibilityValidator(preview_service),
+            DuplicateKeysValidator(preview_service),
+            ForeignKeyIntegrityValidator(preview_service),
         ]
 
     async def validate_entity(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
@@ -537,11 +711,33 @@ class DataValidationService:
         """
         all_errors: list[ValidationError] = []
 
-        # Run all validators concurrently
-        results = await asyncio.gather(
-            *[validator.validate(project_name, entity_name, entity_cfg) for validator in self.validators],
-            return_exceptions=True,
-        )
+        # If warmup already produced this entity, reuse it to avoid re-normalization
+        if self._warm_table_store and entity_name in self._warm_table_store:
+            preview_result = type("_Preview", (), {})()  # type: ignore
+            preview_result.rows = self._warm_table_store[entity_name].to_dict("records")  # type: ignore
+            preview_result.columns = list(self._warm_table_store[entity_name].columns)  # type: ignore
+            preview_result.execution_time_ms = 0  # type: ignore
+            preview_result.cache_hit = True  # type: ignore
+            preview_result.dependencies_loaded = []  # type: ignore
+
+            async def _reuse_or_call(validator):
+                # Validators that call preview_entity will still hit cache; others can use warm data if needed.
+                try:
+                    if hasattr(validator, "validate"):
+                        return await validator.validate(project_name, entity_name, entity_cfg)
+                except Exception as exc:  # pragma: no cover - defensive
+                    return exc
+
+            results = await asyncio.gather(
+                *[_reuse_or_call(validator) for validator in self.validators],
+                return_exceptions=True,
+            )
+        else:
+            # Run all validators concurrently
+            results = await asyncio.gather(
+                *[validator.validate(project_name, entity_name, entity_cfg) for validator in self.validators],
+                return_exceptions=True,
+            )
 
         # Collect errors from all validators
         for result in results:
@@ -573,6 +769,7 @@ class DataValidationService:
         Returns:
             List of all validation errors found
         """
+        from backend.app.services.project_service import ProjectService
 
         project_service = ProjectService()
         project: Project = project_service.load_project(project_name)
@@ -591,7 +788,11 @@ class DataValidationService:
         # Determine which entities to validate
         entities_to_validate = entity_names or list(project.entities.keys())
 
-        # Run validators on each entity concurrently
+        # OPTIMIZATION: Warmup cache by processing all entities in one pass
+        # This prevents each validator from triggering separate normalizations
+        self._warm_table_store = await self._warmup_cache(project_name, entities_to_validate)
+
+        # Run validators on each entity concurrently (now using warmed data/cache)
         results = await asyncio.gather(
             *[
                 self.validate_entity(project_name, entity_name, project.entities[entity_name])
@@ -610,3 +811,31 @@ class DataValidationService:
                 all_errors.extend(result)  # type: ignore
 
         return all_errors
+
+    async def _warmup_cache(self, project_name: str, entity_names: list[str]) -> dict[str, pd.DataFrame] | None:
+        """
+        Pre-populate cache by processing all entities in a single normalization pass.
+
+        This optimization processes all entities together using ShapeShifter's topological
+        sort, which is much more efficient than processing entities individually. After
+        this warmup, all validators can use cached data.
+
+        Args:
+            project_name: Project name
+            entity_names: List of entity names to process
+        """
+        try:
+            import time
+
+            start_time = time.time()
+
+            logger.info(f"Warming up cache for {len(entity_names)} entities in {project_name}")
+            table_store = await self.preview_service.preview_entities_batch(project_name, entity_names)
+
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            logger.info(f"Cache warmup completed in {elapsed_ms}ms")
+            return table_store
+        except Exception as e:
+            # Don't fail validation if warmup fails - validators will still work, just slower
+            logger.warning(f"Cache warmup failed (validators will run slower): {e}")
+            return None

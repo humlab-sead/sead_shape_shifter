@@ -38,7 +38,7 @@ class LinkToRemoteService:
         link_cfg: dict[str, Any] = self.remote_link_cfgs.get(entity_name, {})
 
         if not link_cfg:
-            logger.info(f"{entity_name}[mapping]: No remote linking configuration found. Skipping remote linking for this entity.")
+            logger.debug(f"{entity_name}[mapping]: No remote linking configuration found. Skipping remote linking for this entity.")
             return table
 
         local_key: str = link_cfg.get("local_key", "") or ""

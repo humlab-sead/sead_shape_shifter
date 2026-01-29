@@ -155,7 +155,7 @@ entities:
     surrogate_id: archaeological_period_id
     keys: ["ArchDat"]
     columns: ["ArchDat", "Beschreibung", "Epoche", "Nummer"]
-    query: "select [ArchDat], [Beschreibung], [Epoche], [Nummer] from [ArchDat] ;"
+    query: "select distinct [ArchDat], [Beschreibung], [Epoche], [Nummer] from [ArchDat] ;"
     foreign_keys:
     - entity: epoch
       local_keys: ["Epoche"]
@@ -168,7 +168,7 @@ entities:
     surrogate_id: chronological_period_id
     keys: ["ChronoDat"]
     columns: ["ChronoDat", "Beschreibung", "Nummer", "von", "bis"]
-    query: "select [ChronoDat], [Beschreibung], [Nummer], [von], [bis] from [ChronoDat] ;"
+    query: "select distinct [ChronoDat], [Beschreibung], [Nummer], [von], [bis] from [ChronoDat] ;"
     depends_on: []
   contact:
     source: _project_contact
@@ -181,7 +181,7 @@ entities:
       check_column_names: false
       type: sql
       query: |
-        select [BotBest], "BotBest" from [Befunde] where [BotBest] is not null ;
+        select distinct [BotBest], "BotBest" from [Befunde] where [BotBest] is not null ;
     foreign_keys:
     - entity: contact_type
       local_keys: ["contact_type"]
@@ -233,7 +233,8 @@ entities:
     surrogate_id: coordinate_system_id
     keys: ["Koordsys"]
     columns: ["Index", "Koordsys", "Bemerkung"]
-    query: "select [Index], [Koordsys], [Bemerkung] from [KoordSys] ;"
+    query: "select distinct [Index], [Koordsys], [Bemerkung] from [KoordSys] ;"
+    drop_duplicates: true
     depends_on: []
   cultural_group:
     source:
@@ -242,7 +243,8 @@ entities:
     keys: ["KultGr"]
     columns: ["KultGr", "Cult_EN"]
     type: sql
-    query: select KultGr, Cult_EN from Kulturgruppen;
+    query: select distinct KultGr, Cult_EN from Kulturgruppen;
+    drop_duplicates: true
     depends_on: []
   dataset:
     source: analysis_entity
@@ -277,16 +279,19 @@ entities:
   dataset_contacts:
     source: dataset
     surrogate_id: dataset_contact_id
-    keys: ["dataset_id", "Projekt"]
+    keys: ["Projekt", "Fraktion", "contact_id"]
     columns: []
     foreign_keys:
     - entity: _project_contact
       local_keys: ["Projekt"]
       remote_keys: ["Projekt"]
       extra_columns:
-        contact_name: "contact_id"
-    drop_duplicates: true
-    depends_on: ["_project_contact", "dataset", "project"]
+        contact_name: "contact_name"
+    - entity: contact
+      local_keys: ["contact_name"]
+      remote_keys: ["contact_name"]
+    drop_duplicates: ["Projekt", "Fraktion", "contact_id"]
+    depends_on: ["_project_contact", "contact", "dataset", "project"]
   dataset_submission:
     source: dataset
     surrogate_id: dataset_submission_id
@@ -332,25 +337,25 @@ entities:
     - "Anmerkungen"
     type: sql
     query: |
-      select
+      select distinct
         [Projekt],
         [Befu],
         [ProbNr],
-          [Unterprobe],
-          [Labornummer],
-          [Material],
-          [Methode],
-          [Waldkante],
-          [C14-Alter BP],
-          [Standardab C14],
-          [C14 cal],
-          [Dendroalter],
-          [Alter andere],
-          [13C PDB-Wert],
-          [Standardab 13C PDB],
-          [pMC-Wert],
-          [Standardab PMC],
-          [Anmerkungen]
+        [Unterprobe],
+        [Labornummer],
+        [Material],
+        [Methode],
+        [Waldkante],
+        [C14-Alter BP],
+        [Standardab C14],
+        [C14 cal],
+        [Dendroalter],
+        [Alter andere],
+        [13C PDB-Wert],
+        [Standardab 13C PDB],
+        [pMC-Wert],
+        [Standardab PMC],
+        [Anmerkungen]
       from [Datierung] ;
     foreign_keys:
     - entity: sample
@@ -401,7 +406,7 @@ entities:
     surrogate_id: epoch_id
     keys: ["Epoche"]
     columns: ["Epoche", "Beschreibung", "Epoch_EN", "Nummer"]
-    query: "select [Epoche], [Beschreibung], [Epoch_EN], [Nummer] from [Epochen] ;"
+    query: "select distinct [Epoche], [Beschreibung], [Epoch_EN], [Nummer] from [Epochen] ;"
     depends_on: []
   feature:
     source:
@@ -409,8 +414,9 @@ entities:
     type: sql
     surrogate_id: feature_id
     keys: ["Projekt", "Befu"]
-    columns: ["FlSchn", "BefuTyp", "FustelTyp", "FuTypVermut", "gebäud", "okBefu", "okErh", "BotBest", "BestJa", "Anmerkung"]
-    query: select [Projekt], [Befu], [FlSchn], [BefuTyp], [FustelTyp], [FuTypVermut], [gebäud], [okBefu], [okErh], [BotBest], [BestJa], [Anmerkung] from [Befunde]
+    columns: ["FlSchn", "BefuTyp", "FuTypVermut", "gebäud", "okBefu", "okErh", "BotBest", "BestJa", "Anmerkung"]
+    query: select [Projekt], [Befu], [FlSchn], [BefuTyp], [FuTypVermut], [gebäud], [okBefu], [okErh], [BotBest], [BestJa], [Anmerkung] from [Befunde]
+    drop_duplicates:  ["Projekt", "Befu"]
     foreign_keys:
     - entity: project
       local_keys: ["Projekt"]
@@ -427,7 +433,7 @@ entities:
     data_source: arbodat_data
     type: sql
     surrogate_id: feature_property_id
-    keys: ["Projekt", "Befu"]
+    keys: ["Projekt", "Befu", "feature_property_type"]
     columns: "@value: entities.feature_property_type.values"
     query: select [Projekt], [Befu], [FlSchn], [gebäud], [okBefu], [okErh], [BestJa], [Anmerkung] from [Befunde] ;
     foreign_keys:
@@ -443,7 +449,7 @@ entities:
       value_vars: "@value: entities.feature_property_type.values"
       var_name: feature_property_type
       value_name: feature_property_value
-    drop_duplicates: true
+    drop_duplicates: ["Projekt", "Befu", "feature_property_type"]
     depends_on: ["feature", "feature_property_type"]
   feature_property_type:
     type: fixed
@@ -467,6 +473,7 @@ entities:
       feature_type_name: "Befundtyp"
       description: "Beschreibung"
     query: "select [Befundtyp], [Beschreibung] from [Befundtypen];"
+    drop_duplicates: true
     depends_on: []
   identification_level:
     data_source: sead
@@ -474,7 +481,6 @@ entities:
     type: sql
     keys: []
     columns: ["identification_level_id", "identification_level_abbrev", "identification_level_name", "notes"]
-    drop_duplicates: false
     query: select identification_level_id, identification_level_abbrev, identification_level_name, notes from public.tbl_identification_levels
     depends_on: []
   location:
@@ -588,7 +594,7 @@ entities:
       project_stage_id: 0
       project_abbrev_name:
       description:
-    query: select [Projekt], [Fustel] from [Projekte];
+    query: select distinct [Projekt], [Fustel] from [Projekte];
     foreign_keys:
     - entity: site
       local_keys: ["Fustel"]
@@ -597,13 +603,14 @@ entities:
   relative_dating:
     source: sample
     surrogate_id: relative_age_id
-    keys: []
+    keys: ["Projekt", "Befu", "ProbNr"]
     columns: ["Projekt", "Befu", "ProbNr", "ArchDat"]
     extra_columns:
       relative_age_id:
       method_id:
       notes:
       dating_uncertainty_id:
+    drop_duplicates: true
     depends_on: ["sample"]
   sample:
     source:
@@ -634,12 +641,13 @@ entities:
     - entity: sample_type
       local_keys: ["ProbTyp"]
       remote_keys: ["ProbTyp"]
+    drop_duplicates: ["Projekt", "Befu", "ProbNr"]
     depends_on: ["feature", "sample_type", "sample_group"]
   sample_coordinate:
     source:
     data_source: arbodat_data
     surrogate_id: sample_coordinate_id
-    keys: "@value: entities.sample.keys"
+    keys: ["Projekt", "Befu", "ProbNr", "coordinate_type"]
     columns: ["KoordX", "KoordY", "KoordZ", "TiefeBis", "TiefeVon", "Prob_üNN"]
     type: sql
     query: "select [Projekt], [Befu], [ProbNr], [KoordX], [KoordY], [KoordZ], [TiefeBis], [TiefeVon], [Prob_üNN] from [Proben] ;"
@@ -657,7 +665,7 @@ entities:
       local_keys: ["coordinate_type"]
       remote_keys: ["arbodat_dimension_code"]
       how: "left"
-    drop_duplicates: true
+    drop_duplicates: "@value: entities.sample.keys"
     drop_empty_rows: ["coordinate_value"]
     depends_on: ["sample", "dimension", "coordinate_method_dimension"]
   sample_description_type:
@@ -728,7 +736,8 @@ entities:
     extra_columns:
       sample_type_name: "ProbTyp"
       sample_type_description: "PrTyp"
-    query: "select [ProbTyp], [PrTyp], [Nummer] from [Probentypen] ;"
+    query: "select distinct [ProbTyp], [PrTyp], [Nummer] from [Probentypen] ;"
+    drop_duplicates: ["ProbTyp"]
     depends_on: []
   site:
     source:
@@ -736,7 +745,7 @@ entities:
     type: sql
     surrogate_id: site_id
     keys: ["Fustel", "EVNr"]
-    columns: ["FustelTyp", "KoordSys", "rWert", "hWert", "üNN"]
+    columns: ["Fustel", "EVNr", "FustelTyp", "KoordSys", "rWert", "hWert", "üNN"]
     extra_columns:
       site_name: "Fustel"
       national_site_identifier: "EVNr"
@@ -745,8 +754,8 @@ entities:
       longitude_dd: "hWert"
       altitude: "üNN"
     replacements:
-      coordinate_system: "@value: replacements.site.KoordSys"
-    query: select distinct p.Fustel, b.FustelTyp, p.EVNr, p.KoordSys, p.rWert, p.hWert, p.[üNN] from Projekte as p inner join ( select distinct Projekt, FustelTyp from Befunde ) as b on p.Projekt = b.Projekt;
+      coordinate_system: "@value: options.replacements.site.KoordSys"
+    query: select distinct p.Fustel, p.EVNr, b.FustelTyp, p.KoordSys, p.rWert, p.hWert, p.[üNN] from Projekte as p inner join ( select distinct Projekt, FustelTyp from Befunde ) as b on p.Projekt = b.Projekt;
     foreign_keys:
     - entity: site_type
       local_keys: ["FustelTyp"]
@@ -756,9 +765,10 @@ entities:
         allow_null_keys: false
         cardinality: "many-to-one"
       how: "left"
-    drop_duplicates: ["Fustel", "FustelTyp"]
+    drop_duplicates: ["Fustel", "EVNr"]
     check_functional_dependency: true
-    depends_on: []
+    strict_functional_dependency: false
+    depends_on: ["site_type"]
   site_location:
     source:
     data_source: arbodat_data
@@ -785,13 +795,14 @@ entities:
   site_natural_region:
     source:
     surrogate_id: site_natural_region_id
-    keys: []
-    columns: ["Projekt", "Fustel", "EVNr", "NaturE"]
+    keys: ["Fustel", "EVNr"]
+    columns: ["Fustel", "EVNr", "NaturE"]
     type: sql
     data_source: arbodat_data
     query: |
-      select distinct Projekt, Fustel, EVNr, NaturE
-      from Projekte ;
+      select distinct Fustel, EVNr, NaturE
+      from Projekte
+      where NaturE is not null ;
     foreign_keys:
     - entity: natural_region
       local_keys: "@value: entities.natural_region.keys"
@@ -799,8 +810,9 @@ entities:
     - entity: site
       local_keys: "@value: entities.site.keys"
       remote_keys: "@value: entities.site.keys"
-    drop_duplicates: "@value: entities.natural_region.keys + @value: entities.site.keys"
+    drop_duplicates: ["Fustel", "EVNr"]
     check_functional_dependency: true
+    strict_functional_dependency: true
     depends_on: ["site", "natural_region"]
   site_property_type:
     source:
@@ -821,8 +833,8 @@ entities:
     data_source: arbodat_data
     type: sql
     surrogate_id: site_property_id
-    keys: ["Fustel"]
-    columns: ["EVNr", "okFustel", "Limes", "TK", "AnmFustel"]
+    keys: ["Fustel", "EVNr", "site_property_type"]
+    columns: ["Fustel", "EVNr", "okFustel", "Limes", "TK", "AnmFustel"]
     query: |
       select distinct [Fustel], [EVNr], [okFustel], [Limes], [TK], [AnmFustel] from [Projekte] ;
     foreign_keys:
@@ -831,13 +843,14 @@ entities:
       remote_keys: "@value: entities.site.keys"
     - entity: site_property_type
       local_keys: ["@value: entities.site_property_type.surrogate_name"]
-      remote_keys: ["@value: entities.site_property_type.surrogate_name"]
+      remote_keys: ["arbodat_code"]
     unnest:
       id_vars: ["Fustel", "EVNr"]
       value_vars: "@value: entities.site_property.columns"
       var_name: site_property_type
       value_name: site_property_value
-    drop_duplicates: true
+    drop_duplicates: ["Fustel", "EVNr", "site_property_type"]
+    check_functional_dependency: false
     depends_on: ["site", "site_property_type"]
   site_type_group:
     source:
@@ -915,7 +928,7 @@ entities:
     data_source: arbodat_lookup
     type: sql
     surrogate_id: use_category_id
-    keys: []
+    keys: ["PCODE"]
     columns: ["PCODE", "Ess", "Gar", "Ge", "Hü", "Imp", "Kp", "Med", "Nut", "Öl"]
     query: select [PCODE], [Ess], [Gar], [Ge], [Hü], [Imp], [Kp], [Med], [Nut], [Öl] from [ÖkoSozDaten];
     foreign_keys:
@@ -1016,18 +1029,18 @@ entities:
   _project_contact:
     source:
     data_source: arbodat_data
-    surrogate_id: contact_id
-    keys: []
+    surrogate_id: project_contact_id
+    keys: ["Projekt", "contact_type", "contact_name"]
     columns: ["Projekt", "ArchAusg", "ArchBear", "BotBear"]
     type: sql
     query: |
       select distinct [Projekt], [ArchAusg], [ArchBear], [BotBear] from [Projekte] ;
     unnest:
       id_vars: ["Projekt"]
-      value_vars: "@value: entities._project_contact.columns"
+      value_vars: ["ArchAusg", "ArchBear", "BotBear"]
       var_name: contact_type
       value_name: contact_name
-    drop_duplicates: true
+    drop_duplicates: ["Projekt", "contact_type", "contact_name"]
 options:
   translations:
     filename: translations.tsv
@@ -1051,7 +1064,6 @@ options:
       - analysis_entity.surrogate_id
       - abundance.surrogate_id
       - location.surrogate_id
-  replacements: '@include: replacements.yml'
   ingesters:
     sead:
       data_source: sead

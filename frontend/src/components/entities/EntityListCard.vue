@@ -86,7 +86,7 @@
           <v-list-item-title class="entity-title-row">
             <span class="entity-name">{{ entity.name }}</span>
             <v-chip size="x-small" variant="outlined" class="mx-2">
-              {{ entity.entity_data.type || 'data' }}
+              {{ entity.entity_data.type || 'entity' }}
             </v-chip>
             <span v-if="entity.entity_data.source" class="text-caption text-medium-emphasis">
               Source: {{ entity.entity_data.source }}
@@ -209,12 +209,18 @@ const filteredEntities = computed(() => {
 // Methods
 function getEntityIcon(type: unknown): string {
   switch (type) {
-    case 'data':
+    case 'entity':
       return 'mdi-database'
     case 'sql':
       return 'mdi-code-braces'
     case 'fixed':
       return 'mdi-table-lock'
+    case 'xlsx':
+      return 'mdi-file-excel'
+    case 'csv':
+      return 'mdi-file-delimited'
+    case 'openpyxl':
+      return 'mdi-file-spreadsheet'
     default:
       return 'mdi-cube'
   }

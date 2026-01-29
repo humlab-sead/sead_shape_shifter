@@ -13,9 +13,9 @@ from src.configuration import Config, ConfigFactory, MockConfigProvider
 
 @pytest.fixture(autouse=True, scope="session")
 def setup_test_logging():
-    """Configure logging for all tests with DEBUG level."""
+    """Configure logging for all tests with INFO level."""
     logger.remove()
-    logger.add(sys.stderr, level="DEBUG", format="{time} | {level} | {name}:{function}:{line} - {message}")
+    logger.add(sys.stderr, level="INFO", format="{time} | {level} | {name}:{function}:{line} - {message}")
 
 
 class MockRow:

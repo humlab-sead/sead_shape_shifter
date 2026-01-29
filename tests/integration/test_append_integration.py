@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from src.model import ShapeShiftProject
-from src.normalizer import ProcessState, ShapeShifter
+from src.normalizer import ShapeShifter
 
 # pylint: disable=no-member, redefined-outer-name
 
@@ -106,12 +106,11 @@ class TestAppendIntegration:
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ShapeShifter.__new__(ShapeShifter)
-        normalizer.default_entity = "survey"
-        normalizer.table_store = {"survey": survey_df}
-        normalizer.project = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
-        normalizer.state = ProcessState(config=normalizer.project, table_store=normalizer.table_store, target_entities=None)
-
+        normalizer: ShapeShifter = ShapeShifter(
+            table_store={"survey": survey_df},
+            project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
+            default_entity="survey",
+        )
         # Run normalization
         await normalizer.normalize()
 
@@ -145,6 +144,7 @@ class TestAppendIntegration:
                     "surrogate_id": "test_id",
                     "columns": ["id", "name"],
                     "drop_duplicates": ["id"],
+                    "strict_functional_dependency": False,
                     "append": [
                         {
                             "type": "fixed",
@@ -159,12 +159,11 @@ class TestAppendIntegration:
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ShapeShifter.__new__(ShapeShifter)
-        normalizer.default_entity = "survey"
-        normalizer.table_store = {"survey": survey_df}
-        normalizer.project = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
-        normalizer.state = ProcessState(config=normalizer.project, table_store=normalizer.table_store, target_entities=None)
-
+        normalizer: ShapeShifter = ShapeShifter(
+            table_store={"survey": survey_df},
+            project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
+            default_entity="survey",
+        )
         # Run normalization
         await normalizer.normalize()
 
@@ -211,12 +210,11 @@ class TestAppendIntegration:
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ShapeShifter.__new__(ShapeShifter)
-        normalizer.default_entity = "survey"
-        normalizer.table_store = {"survey": survey_df}
-        normalizer.project = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
-        normalizer.state = ProcessState(config=normalizer.project, table_store=normalizer.table_store, target_entities=None)
-
+        normalizer: ShapeShifter = ShapeShifter(
+            table_store={"survey": survey_df},
+            project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
+            default_entity="survey",
+        )
         # Run normalization
         await normalizer.normalize()
 
@@ -271,12 +269,11 @@ class TestAppendIntegration:
 
         # Initialize normalizer directly without ConfigStore
 
-        normalizer = ShapeShifter.__new__(ShapeShifter)
-        normalizer.default_entity = "survey"
-        normalizer.table_store = {"survey": survey_df}
-        normalizer.project = ShapeShiftProject(cfg=cfg, filename="test-config.yml")
-        normalizer.state = ProcessState(config=normalizer.project, table_store=normalizer.table_store, target_entities=None)
-
+        normalizer: ShapeShifter = ShapeShifter(
+            table_store={"survey": survey_df},
+            project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
+            default_entity="survey",
+        )
         # Run normalization
         await normalizer.normalize()
 

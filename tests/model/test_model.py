@@ -6,7 +6,6 @@ import pandas as pd
 import pytest
 
 from src.configuration.provider import MockConfigProvider, set_config_provider
-from src.loaders.base_loader import DataLoader
 from src.model import DataSourceConfig, ForeignKeyConfig, ForeignKeyConstraints, ShapeShiftProject, TableConfig, UnnestConfig
 
 
@@ -443,6 +442,75 @@ class TestTableConfig:
         table = TableConfig(entities_cfg=entities, entity_name="site")
         assert table.drop_duplicates is False
 
+    def test_table_drop_duplicates_as_dict_with_columns(self):
+        """Test drop_duplicates as dict with columns."""
+        entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "drop_duplicates": {"columns": ["col1", "col2"]}}}
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        assert table.drop_duplicates == ["col1", "col2"]
+
+    def test_table_drop_duplicates_as_dict_with_fd_settings(self):
+        """Test drop_duplicates as dict with functional dependency settings."""
+        entities: dict[str, dict[str, Any]] = {
+            "site": {
+                "surrogate_id": "site_id",
+                "drop_duplicates": {
+                    "columns": ["col1"],
+                    "check_functional_dependency": False,
+                    "strict_functional_dependency": False,
+                },
+            }
+        }
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        assert table.drop_duplicates == ["col1"]
+        assert table.check_functional_dependency is False
+        assert table.strict_functional_dependency is False
+
+    def test_table_check_functional_dependency_from_drop_duplicates(self):
+        """Test check_functional_dependency inherited from drop_duplicates dict."""
+        entities: dict[str, dict[str, Any]] = {
+            "site": {
+                "surrogate_id": "site_id",
+                "drop_duplicates": {"columns": ["col1"], "check_functional_dependency": True},
+            }
+        }
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        assert table.check_functional_dependency is True
+
+    def test_table_strict_functional_dependency_from_drop_duplicates(self):
+        """Test strict_functional_dependency inherited from drop_duplicates dict."""
+        entities: dict[str, dict[str, Any]] = {
+            "site": {
+                "surrogate_id": "site_id",
+                "drop_duplicates": {"columns": ["col1"], "strict_functional_dependency": True},
+            }
+        }
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        assert table.strict_functional_dependency is True
+
+    def test_table_functional_dependency_top_level_overrides_nested(self):
+        """Test that top-level functional dependency settings override nested ones."""
+        entities: dict[str, dict[str, Any]] = {
+            "site": {
+                "surrogate_id": "site_id",
+                "check_functional_dependency": False,
+                "strict_functional_dependency": False,
+                "drop_duplicates": {
+                    "columns": ["col1"],
+                    "check_functional_dependency": True,
+                    "strict_functional_dependency": True,
+                },
+            }
+        }
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        # Top-level should take precedence
+        assert table.check_functional_dependency is False
+        assert table.strict_functional_dependency is False
+
     def test_table_with_unnest(self):
         """Test table configuration with unnest."""
         entities: dict[str, dict[str, Any]] = {
@@ -775,17 +843,17 @@ class TestTableConfig:
         assert list(result.columns) == list(df.columns)
 
     def test_add_system_id_column(self):
-        """Test add_system_id_column adds system_id and sets surrogate_id to None."""
-        entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "columns": ["name"]}}
+        """Test add_system_id_column adds system_id column."""
+        entities: dict[str, dict[str, Any]] = {"site": {"public_id": "site_id", "columns": ["name"]}}
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
-        df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
+        df = pd.DataFrame({"name": ["A", "B"]})
 
         result = table.add_system_id_column(df)
 
         assert "system_id" in result.columns
         assert result["system_id"].tolist() == [1, 2]
-        assert result["site_id"].isna().all()
+        assert "site_id" not in result.columns  # public_id not added here
 
     def test_add_system_id_column_already_exists(self):
         """Test add_system_id_column doesn't overwrite existing system_id."""
@@ -1448,53 +1516,6 @@ class TestShapeShiftProject:
 
         with pytest.raises(ValueError, match="Data source.*not found"):
             config.get_data_source("nonexistent")
-
-    def test_resolve_loader_with_data_source(self):
-        """Test resolve_loader with data_source configured."""
-        entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "data_source": "postgres_db"}}
-        options = {"data_sources": {"postgres_db": {"driver": "postgresql", "options": {"host": "localhost"}}}}
-
-        config = ShapeShiftProject(cfg={"entities": entities, "options": options}, filename="test-config.yml")
-        table_cfg: TableConfig = config.get_table("site")
-
-        # This will fail if the loader type isn't registered, but we're testing the logic
-        # In real code, the DataLoaders would be registered
-        try:
-            _ = config.resolve_loader(table_cfg)
-            # If it succeeds, check it's not None (depends on DataLoaders being registered)
-            # For now, we just test that it doesn't crash
-        except KeyError:
-            # Expected if the loader type isn't registered
-            pass
-
-    def test_resolve_loader_with_type(self):
-        """Test resolve_loader with type configured."""
-        entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "type": "fixed"}}
-        options: dict[str, dict[str, Any]] = {}
-
-        config = ShapeShiftProject(cfg={"entities": entities, "options": options}, filename="test-config.yml")
-        table_cfg: TableConfig = config.get_table("site")
-
-        # This will fail if the loader type isn't registered
-        try:
-            _ = config.resolve_loader(table_cfg)
-            # Test passes if no exception
-        except KeyError:
-            # Expected if the loader type isn't registered
-            pass
-
-    def test_resolve_loader_no_loader(self):
-        """Test resolve_loader returns None when no loader available."""
-        entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
-        options: dict[str, dict[str, Any]] = {}
-
-        config = ShapeShiftProject(cfg={"entities": entities, "options": options}, filename="test-config.yml")
-        table_cfg: TableConfig = config.get_table("site")
-
-        loader: DataLoader | None = config.resolve_loader(table_cfg)
-
-        # Should return None or log warning
-        assert loader is None
 
 
 class TestDataSourceConfig:

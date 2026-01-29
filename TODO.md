@@ -248,3 +248,339 @@ None of these are critical given your 91% test coverage.
 # TODO: #174 Upload Excel files to data source directory
 
 Add capability to upload Excel files (.xls, .xlsx) to the data source files directory defined by SHAPE_SHIFTER_DATA_SOURCE_FILES_DIR in the .env file. The uploaded Excel files should be accessible for use in entity configurations within the Shape Shifter application.
+
+
+
+I have a bug which can be reproduced with these steps:
+
+1. Click on projects
+2. Open a project
+3. Click YAML
+```
+metadata:
+  name: strukke_test
+  type: shapeshifter-project
+  description: Project for strukke_test
+  version: 1.0.0
+  default_entity:
+entities:
+  strukke_data:
+    type: xlsx
+    keys: []
+    options:
+      filename: projects/AllaC14_230316_v4_clean (1).xlsx
+options: {}
+```
+4. Close YAML
+5. Click on entities
+
+
+TODO: #181 Drop duplicates of "site" entity fails FD validation
+
+| Fustel            | EVNr       | FustelTyp | KoordSys                            | rWert    | hWert     | üNN   | site_name         | national_site_identifier | coordinate_system                   | latitude_dd | longitude_dd | altitude |
+|-------------------|------------|-----------|-------------------------------------|----------|-----------|-------|-------------------|--------------------------|-------------------------------------|-------------|--------------|----------|
+| Bkaker            | 274939     | Siedl     | Geografische Länge/Breite (dezimal) | 23.2     | 61.2      |       | Bkaker            | 274939                   | Geografische Länge/Breite (dezimal) | 23.2        | 61.2         |          |
+| Blaker kirkegård  | 224073     | Siedl     |                                     | 628472.0 | 6653720.0 | 143.0 | Blaker kirkegård  | 224073                   |                                     | 628472.0    | 6653720.0    | 143.0    |
+| Blaker kirkegård  | 224073     | Siedl     | Geografische Länge/Breite (dezimal) |          |           |       | Blaker kirkegård  | 224073                   | Geografische Länge/Breite (dezimal) |             |              |          |
+| Blaker kirkegård  | 224073     | Siedl     | Geografische Länge/Breite (dezimal) | 628472.0 | 6653720.0 | 143.0 | Blaker kirkegård  | 224073                   | Geografische Länge/Breite (dezimal) | 628472.0    | 6653720.0    | 143.0    |
+| Göteborg 342      | L1960:2928 | Stadt     |                                     |          |           |       | Göteborg 342      | L1960:2928               |                                     |             |              |          |
+| Kville 1502       |            | Rin       |                                     |          |           |       | Kville 1502       |                          |                                     |             |              |          |
+| Sandarna Gbg 15:1 | L1969:1130 | FustelSo  |                                     |          |           |       | Sandarna Gbg 15:1 | L1969:1130               |                                     |             |              |          |
+| Sandarna Gbg 15:1 | L1969:1130 | unbek     |                                     |          |           |       | Sandarna Gbg 15:1 | L1969:1130               |                                     |             |              |          |
+
+
+determinent_columns:  ["Fustel", "EVNr"]
+
+# TODO: Keep log of deferred links during normalization (performance optimization)
+Add capability to keep track of entities with deferred foreign key links during the normalization process. This will allow the system to retry linking only those entities that have unresolved foreign key references after each entity is processed, rather than attempting to relink all entities with deferred links. This optimization aims to reduce the time complexity from O(n^2) to a more efficient approach, improving overall performance during the normalization phase.
+
+```
+class _Linker(Protocol):
+    """Minimal protocol for ForeignKeyLinker (keeps this class decoupled)."""
+
+    def link_entity(self, *, entity_name: str, config: ShapeShiftProject) -> bool:
+        """Return True if linking is still deferred for this entity."""
+
+
+@dataclass
+class DeferredLinkingTracker:
+    """
+    Tracks entities whose foreign key linking is deferred and retries linking efficiently.
+
+    Usage pattern:
+      - After each link_entity call: tracker.note(entity, deferred)
+      - After processing entity: tracker.retry()
+      - At end: unresolved = tracker.finalize()
+    """
+
+    project: ShapeShiftProject
+    linker: _Linker
+
+    deferred: set[str] = field(default_factory=set)
+
+    def note(self, *, entity_name: str, deferred: bool) -> None:
+        """Record the deferred status of a just-linked entity."""
+        if deferred:
+            self.deferred.add(entity_name)
+        else:
+            self.deferred.discard(entity_name)
+
+    def retry(self) -> None:
+        """Retry linking only for entities currently in deferred set."""
+        if not self.deferred:
+            return
+
+        still_deferred: set[str] = set()
+        for entity_name in self.deferred:
+            if self.linker.link_entity(entity_name=entity_name, config=self.project):
+                still_deferred.add(entity_name)
+
+        self.deferred = still_deferred
+
+    def finalize(self, *, include_entities: set[str] | None = None) -> set[str]:
+        """
+        Final retry sweep.
+
+        If include_entities is provided and we haven't tracked anything yet,
+        initialize deferred set from include_entities to force a last attempt.
+        Returns the remaining unresolved deferred entities.
+        """
+        if include_entities is not None and not self.deferred:
+            self.deferred = set(include_entities)
+
+        self.retry()
+        return set(self.deferred)
+```
+
+# TODO: Local vs remote identity fields
+
+This system shapeshifts incoming data to a form that conforms to a target's system requirements.
+Some entity instances (e.g. lookups etc) of the incoming data already exists in the target system, and
+we need to reconcile these entities by assigning the target system's identity to these instances.
+
+An example:
+Income data has a site "Xyz" which exists in SEAD with identity 99. The user must be able to assign
+target system's identity 99 to this incoming site "Xyz".
+
+We do have the reconciliation workflow in a later step where we can search for identities in the
+remote system. But user's need to be able to assign values to "fixed value" entities already 
+in the entity editor.
+
+## Current System Model
+
+All foreign keys in the system refer to local identities within the shape shifting project.
+Normally, this is a sequence number starting from 1.
+
+Currently, this local id is assumed to be given the same name as the target system's identity.
+For instance, entity "site" corresponds to SEAD table "tbl_sites" that has PK "site_id", and
+entity "site" is then given the surrogate id "site_id".
+
+A later step in the workflow copies this local surrogate id column to a "system_id" column, and
+clears all values in the surrogate id column. This cleared column is then assumed to be the
+public id (i.e. SEAD PK). Later on, if a row has a value in this column, that is an indication
+that the row is an existing entity, and row with local "system_id" maps to this remote/public id.
+
+For "tbl_sites" we can have "system_id" 2 maps to "sead_id" 6745.
+
+This mapping/linking which is implemented in the reconciliation workflow is a fundamental feature
+of this system.
+
+## Proposed Enhancement: Three Explicit Identity Types
+
+Make the three types of identities explicit and separate:
+
+1. **Local Identity** (`system_id`): Project-scoped, auto-populated sequence
+   - **Always named "system_id"** (standardized column name)
+   - Auto-assigned starting from 1
+   - Project-local scope (each project has its own sequence)
+   - Used for internal foreign key relationships
+   - For fixed-value entities: read-only, auto-renumbered on row add/delete
+   - Config field can be omitted (defaults to "system_id")
+
+2. **Source Business Keys** (`keys`): Natural/business keys from source data
+   - Example: `keys: ["bygd", "raa_nummer"]` for Swedish archaeological sites
+   - Uniquely identify entities within the source domain
+   - Used for duplicate detection and source data reconciliation
+   - Can span multiple columns
+   - **Uses existing `keys` field** (already in the model)
+
+3. **Target System Identity** (`public_id`): Remote system's primary key name
+   - **Required field** - specifies FK column name (e.g., `public_id: site_id`)
+   - Defines what FK columns are named in child tables
+   - When child joins parent, FK column = parent's public_id, values = parent's system_id
+   - Maps to target system's PK name (e.g., SEAD's tbl_sites.site_id)
+   - Can be assigned values directly in entity editor for fixed-value entities
+
+## Entity Configuration Model
+
+```yaml
+entities:
+  site:
+    type: fixed
+    # Local identity (auto-managed, always named "system_id")
+    # system_id: system_id  # Optional - defaults to "system_id" if omitted
+    
+    # Target system identity - defines FK column name in child tables
+    public_id: site_id
+    
+    # Source business keys (for reconciliation and duplicate detection)
+    keys: [bygd, raa_nummer]
+    
+    # Regular data columns
+    columns: [site_name, coordinate_system, latitude_dd, longitude_dd]
+    
+    values:
+      - system_id: 1           # Auto-managed (always this column name)
+        bygd: "Bkaker"
+        raa_nummer: "274939"
+        site_id: 6745          # Target system ID (column name = public_id)
+        site_name: "Bkaker"
+        coordinate_system: "WGS84"
+        latitude_dd: 23.2
+        longitude_dd: 61.2
+
+  location:
+    type: fixed
+    public_id: location_id
+    keys: [location_type, location_name]
+    columns: [location_type, location_name, latitude, longitude]
+    
+    values:
+      - system_id: 1
+        location_type: "settlement"
+        location_name: "Main area"
+        location_id: 4521
+        latitude: 59.123
+        longitude: 18.456
+
+  site_location:
+    type: entity
+    source: source_data
+    public_id: site_location_id
+    columns: [bygd, raa_nummer, location_type, location_name, ...]
+    
+    foreign_keys:
+      - entity: site
+        local_keys: [bygd, raa_nummer]
+        remote_keys: [bygd, raa_nummer]
+      - entity: location
+        local_keys: [location_type, location_name]
+        remote_keys: [location_type, location_name]
+```
+
+**After normalization**, `site_location` will have:
+- `system_id` (auto-numbered: 1, 2, 3...)
+- `bygd`, `raa_nummer`, `location_type`, `location_name` (original columns)
+- `site_id` (FK column, name from site.public_id, values from site.system_id)
+- `location_id` (FK column, name from location.public_id, values from location.system_id)
+
+## Benefits
+
+- **Eliminates confusion**: Clearly distinguishes local project IDs from target system IDs
+- **Standardized local IDs**: `system_id` is always named "system_id" (no configuration needed)
+- **Clear FK naming**: Foreign key columns automatically named after parent's `public_id`
+- **Enables early mapping**: Users can assign target system IDs in entity editor before reconciliation
+- **Supports source reconciliation**: Business keys enable duplicate detection and source-to-source mapping
+- **Flexible imports**: Incoming data may already have target system IDs; business keys allow matching
+- **Better audit trail**: Three distinct identity types make data lineage transparent
+- **Simpler model**: Uses existing `keys` field; `system_id` standardized; only `public_id` varies
+
+## Implementation Changes
+
+### Core Model (`src/model.py`)
+- Rename `surrogate_id` → `system_id` (always "system_id" column, config field optional)
+- Clarify `keys` field usage as source business keys
+- Add required `public_id` field (defines FK column name in child tables)
+
+### Entity Editor UI
+- Show three sections:
+  - Local identity: info text "Always named 'system_id' (auto-managed 1, 2, 3...)"
+  - Business keys: multi-select for keys (source identifiers)
+  - Public ID: **required** field for public_id (defines FK column name, e.g., "site_id")
+- For fixed-value grids: show system_id column (read-only, auto-numbered) and {public_id} column (user-assignable target IDs)
+
+### Validation
+- Ensure `system_id` column is always auto-populated (standardized name)
+- Validate `keys` are valid column names in the data
+- Validate `public_id` is specified (required for FK naming)
+- Validate `public_id` values are unique in fixed-value entities
+- Warn if `public_id` column name conflicts with existing column names
+
+### Reconciliation Integration
+- Use `keys` (business keys) for matching incoming to existing target system entities
+- Pre-populate `{public_id}` column from reconciliation service when identities are resolved
+- Allow user override of suggested public IDs
+- FK resolution: when joining child to parent, create column named `{parent.public_id}` with values from `parent.system_id`
+
+## Phased Implementation
+
+**Phase 1: Foundation (1-2 weeks)**
+- Rename `surrogate_id` → `system_id` throughout codebase
+- Clarify `keys` field as source business keys in documentation
+- Update fixed-value grid to show and manage `system_id` column (auto-numbered)
+- Update entity editor UI to clearly show three identity sections
+
+**Phase 2: Public ID Support (1-2 weeks)**
+- Add `public_id` field to entity model
+- Update entity editor UI to show all three identity sections
+- Implement validation for unique `public_id` values
+
+**Phase 3: Reconciliation Integration (1-2 weeks)**
+- Update reconciliation workflow to use `keys` (business keys) for matching
+- Auto-populate `public_id` column from reconciliation results
+- Support user override of suggested mappings
+
+**Phase 4: Data Ingestion (1 week)**
+- Support incoming data with pre-existing target system IDs
+- Use `keys` (business keys) to match and merge with existing entities
+- Preserve incoming public IDs if valid
+
+## Future: "Freeze" Feature
+
+Later, implement entity materialization:
+- Run a derived entity through normalization pipeline
+- "Freeze" button converts derived → fixed-value entity
+- Auto-populate with computed results + auto-assigned system_ids
+- User can then assign public_ids for reconciliation
+
+## Notes
+
+- No migrations needed (system is pre-deployment, all projects are test)
+- Backward-compatible: existing surrogate_id projects still work (Phase 1 handles rename)
+- Simplifies reconciliation by making identity flow explicit from the start 
+
+
+Regarding naming of system_id/public_id. An important thing, which we might have missed in the analysis, is that when we join/merge tables using foreign key's, the **resulting FK field name in the "child" table** should be named as the public id in the parent table. We are basically, most often, joining on domain keys (not necesserally those defined in keys), and we wan't to "pull in" the join target's "system_id" into the local entity, but the local field must be named to remote table's public id.
+
+Example:
+```
+entities:
+  site:
+    system_id: system_id      # I think we always can use this name so this key-value could possibly be ignored
+    public_id: site_id
+    keys: [bygd, raa_nummer]
+    columns: [bygd, raa_nummer, ...]
+  location:
+    system_id: system_id
+    public_id: location_id
+    keys: [location_type, location]
+    columns: [location_type, location_name, latitude, longitude, ...]
+  site_location:
+    system_id: system_id
+    public_id: site_location_id
+    columns: [bygd, raa_nummer, location_type, location_name, ...]
+    foreign_keys:
+    - entity: site
+      local_keys: [bygd, raa_nummer]
+      remote_keys: [bygd, raa_nummer]
+    - entity: location
+      local_keys: [location_type, location]
+      remote_keys: [location_type, location]
+```
+After normalizing "site_location", it would have the following columns:
+   - bygd, raa_nummer, location_type, location_name, site_id, location_id
+   - site_id would have value from "site.system_id" columns
+   - location_id would have values from "location.system_id" columns
+ 
+That would give a behaviour consistent with current use of "surrogate_id".
+

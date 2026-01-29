@@ -6,7 +6,7 @@ import pandas as pd
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 
-from .base_loader import ConnectTestResult, DataLoader, DataLoaders
+from .base_loader import ConnectTestResult, DataLoader, DataLoaders, LoaderType
 
 if TYPE_CHECKING:
     from src.model import DataSourceConfig, TableConfig
@@ -17,6 +17,11 @@ class FileLoader(DataLoader):
 
     def __init__(self, data_source: "DataSourceConfig | None" = None) -> None:
         super().__init__(data_source=data_source)
+
+    @classmethod
+    def loader_type(cls) -> LoaderType:
+        """Get the loader type."""
+        return LoaderType.FILE
 
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         """Load data from a CSV file into a DataFrame."""
