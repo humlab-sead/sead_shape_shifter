@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api'
+import { useProjectStore } from '@/stores'
 import type { EntityResponse, EntityCreateRequest, EntityUpdateRequest } from '@/api/entities'
 
 export const useEntityStore = defineStore('entity', () => {
@@ -15,6 +16,37 @@ export const useEntityStore = defineStore('entity', () => {
   // Overlay state
   const showEditorOverlay = ref(false)
   const overlayEntityName = ref<string | null>(null)
+
+  // Cross-store access
+  const projectStore = useProjectStore()
+
+  function syncProjectEntity(projectName: string, entity: EntityResponse) {
+    if (projectStore.selectedProject?.metadata?.name !== projectName) return
+
+    const nextEntities = {
+      ...(projectStore.selectedProject.entities || {}),
+      [entity.name]: entity.entity_data,
+    }
+
+    projectStore.selectedProject = {
+      ...projectStore.selectedProject,
+      entities: nextEntities,
+    }
+  }
+
+  function removeProjectEntity(projectName: string, entityName: string) {
+    if (projectStore.selectedProject?.metadata?.name !== projectName) return
+
+    const currentEntities = projectStore.selectedProject.entities || {}
+    if (!(entityName in currentEntities)) return
+
+    const { [entityName]: _removed, ...rest } = currentEntities
+
+    projectStore.selectedProject = {
+      ...projectStore.selectedProject,
+      entities: rest,
+    }
+  }
 
   // Getters
   const entitiesByType = computed(() => {
@@ -95,6 +127,7 @@ export const useEntityStore = defineStore('entity', () => {
       entities.value.push(entity)
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
+      syncProjectEntity(projectName, entity)
       return entity
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create entity'
@@ -118,6 +151,7 @@ export const useEntityStore = defineStore('entity', () => {
 
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
+      syncProjectEntity(projectName, entity)
       return entity
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update entity'
@@ -136,6 +170,7 @@ export const useEntityStore = defineStore('entity', () => {
       if (selectedEntity.value?.name === entityName) {
         selectedEntity.value = null
       }
+      removeProjectEntity(projectName, entityName)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete entity'
       throw err

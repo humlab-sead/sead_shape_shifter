@@ -3,8 +3,8 @@
 import pandas as pd
 import pytest
 
-from src.constraints import ForeignKeyConstraintValidator, ForeignKeyConstraintViolation, Validators
 from src.model import ForeignKeyConfig, ShapeShiftProject
+from src.specifications.constraints import ForeignKeyConstraintValidator, ForeignKeyConstraintViolation, Validators
 
 
 def build_fk(*, local_entity: str = "orders", remote_entity: str = "customers", constraints: dict | None = None) -> ForeignKeyConfig:

@@ -5,6 +5,15 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_serializer
 
+from src.configuration.config import Config
+
+
+class ExcelMetadataResponse(BaseModel):
+    """Metadata for an Excel file (sheets + columns for a selected sheet)."""
+
+    sheets: list[str] = Field(default_factory=list, description="Available worksheet names")
+    columns: list[str] = Field(default_factory=list, description="Column names for the selected sheet (empty if none)")
+
 
 class ProjectFileInfo(BaseModel):
     """Metadata about a file stored under a project uploads directory."""
@@ -85,3 +94,11 @@ class Project(BaseModel):
     def has_table(self, entity_name: str) -> bool:
         """Check if entity exists in project."""
         return entity_name in self.entities  # pylint: disable=no-member
+
+    def is_resolved(self) -> bool:
+        """Check if the project has any unresolved references."""
+        return not self.unresolved_directives()
+
+    def unresolved_directives(self) -> list[str]:
+        """Check if the project has any unresolved references."""
+        return Config.find_unresolved_directives(self.entities) + Config.find_unresolved_directives(self.options)

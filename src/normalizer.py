@@ -11,76 +11,23 @@ import pandas as pd
 from loguru import logger
 
 from src.dispatch import Dispatcher, Dispatchers
-from src.extract import SubsetService, add_surrogate_id, drop_duplicate_rows, drop_empty_rows, translate
-from src.filter import apply_filters
-from src.link import link_entity
+from src.extract import SubsetService
 from src.loaders import DataLoader
+from src.loaders.base_loader import DataLoaders
 from src.mapping import LinkToRemoteService
-from src.model import ShapeShiftProject, TableConfig
-from src.unnest import unnest
+from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
+from src.process_state import ProcessState
+from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
+from src.transforms.filter import apply_filters
+from src.transforms.link import ForeignKeyLinker
+from src.transforms.translate import translate
+from src.transforms.unnest import unnest
+from src.transforms.utility import add_system_id  # Renamed from add_surrogate_id
 
-
-class ProcessState:
-    """Helper class to track processing state of entities during normalization."""
-
-    def __init__(self, config: ShapeShiftProject, table_store: dict[str, pd.DataFrame], target_entities: set[str] | None = None) -> None:
-        self.config: ShapeShiftProject = config
-        self.table_store: dict[str, pd.DataFrame] = table_store
-        self.target_entities: set[str] = target_entities if target_entities else set(config.tables.keys())
-
-    def get_next_entity_to_process(self) -> str | None:
-        """Get the next entity that can be processed based on dependencies."""
-        logger.debug(f"Processed entities so far: {self.processed_entities}")
-
-        for entity_name in self.unprocessed_entities:
-            logger.debug(f"{entity_name}[check]: Checking if entity '{entity_name}' can be processed...")
-            unmet_dependencies: set[str] = self.get_unmet_dependencies(entity=entity_name)
-            if unmet_dependencies:
-                logger.debug(f"{entity_name}[check]: Entity has unmet dependencies: {unmet_dependencies}")
-                continue
-            logger.debug(f"{entity_name}[check]: Entity can be processed next.")
-            return entity_name
-        return None
-
-    def get_unmet_dependencies(self, entity: str) -> set[str]:
-        return self.config.get_table(entity_name=entity).depends_on - self.processed_entities
-
-    def get_all_unmet_dependencies(self) -> dict[str, set[str]]:
-        unmet_dependencies: dict[str, set[str]] = {
-            entity: self.get_unmet_dependencies(entity=entity) for entity in self.unprocessed_entities
-        }
-        return {k: v for k, v in unmet_dependencies.items() if v}
-
-    def log_unmet_dependencies(self) -> None:
-        for entity, unmet in self.get_all_unmet_dependencies().items():
-            logger.error(f"{entity}[check]: Entity has unmet dependencies: {unmet}")
-
-    @property
-    def processed_entities(self) -> set[str]:
-        """Return the set of processed entities."""
-        return set(self.table_store.keys())
-
-    @property
-    def unprocessed_entities(self) -> set[str]:
-        """Return the set of unprocessed target entities."""
-        return self.target_entities - self.processed_entities
-
-    def get_required_entities(self, entity_name: str) -> set[str]:
-        """Get all entities required to process the given entity (including the entity itself)."""
-        required_entities: set[str] = {entity_name}
-        unprocessed: list[str] = [entity_name]
-
-        while unprocessed:
-            current: str = unprocessed.pop()
-            if current not in self.config.tables:
-                continue
-            for dep in self.config.get_table(entity_name=current).depends_on:
-                if dep in required_entities:
-                    continue
-                required_entities.add(dep)
-                unprocessed.append(dep)
-
-        return required_entities
+# Debug flag to control verbose normalization logging
+# Set to True to see detailed "Normalizing entity..." logs for each entity
+# When False, only INFO level logs for overall progress are shown
+_ENABLE_NORMALIZATION_DEBUG = True
 
 
 class ShapeShifter:
@@ -99,26 +46,26 @@ class ShapeShifter:
         self.default_entity: str | None = default_entity
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
         self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
-        self.state: ProcessState = self._initialize_process_state(target_entities)
+        self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
+        self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store)
 
-    def _initialize_process_state(self, target_entities: set[str] | None = None) -> ProcessState:
-        """Initialize the processing state based on target entities."""
-        if target_entities:
-            state = ProcessState(config=self.project, table_store=self.table_store, target_entities=set())
-            all_required: set[str] = set()
-            for entity in target_entities:
-                all_required.update(state.get_required_entities(entity))
-            state: ProcessState = ProcessState(config=self.project, table_store=self.table_store, target_entities=all_required)
-        else:
-            state = ProcessState(config=self.project, table_store=self.table_store, target_entities=None)
-        return state
+    def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
+        """Resolve the DataLoader, if any, for the given TableConfig."""
+        if table_cfg.data_source:
+            data_source: DataSourceConfig = self.project.get_data_source(table_cfg.data_source)
+            return DataLoaders.get(key=data_source.driver)(data_source=data_source)
+
+        if table_cfg.type and table_cfg.type in DataLoaders.items:
+            return DataLoaders.get(key=table_cfg.type)(data_source=None)
+
+        return None
 
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
 
-        loader: DataLoader | None = self.project.resolve_loader(table_cfg=table_cfg)
+        loader: DataLoader | None = self.resolve_loader(table_cfg=table_cfg)
         if loader:
-            logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
+            # logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
 
         source_table: str | None = table_cfg.source or self.default_entity
@@ -127,9 +74,33 @@ class ShapeShifter:
 
         raise ValueError(f"Unable to resolve source for entity '{table_cfg.entity_name}'")
 
-    def register(self, name: str, df: pd.DataFrame) -> pd.DataFrame:
-        self.table_store[name] = df
-        return df
+    async def get_subset(self, subset_service: SubsetService, entity: str, table_cfg: TableConfig) -> pd.DataFrame:
+
+        dfs: list[pd.DataFrame] = []
+
+        for sub_table_cfg in table_cfg.get_sub_table_configs():
+            # logger.debug(f"{entity}[normalizing]: Processing sub-table '{sub_table_cfg.entity_name}'...")
+            sub_source: pd.DataFrame = await self.resolve_source(table_cfg=sub_table_cfg)
+            sub_data: pd.DataFrame = subset_service.get_subset(
+                source=sub_source,
+                table_cfg=sub_table_cfg,
+                drop_empty=False,
+                raise_if_missing=False,
+            )
+            dfs.append(sub_data)
+
+            # Concatenate all dataframes (filter out empty DataFrames to avoid FutureWarning)
+        non_empty_dfs: list[pd.DataFrame] = [df for df in dfs if not df.empty]
+        if not non_empty_dfs:
+            logger.warning(f"{entity}[normalizing]: All sub-tables are empty after processing.")
+
+        data: pd.DataFrame = (
+            pd.concat(non_empty_dfs, ignore_index=True)
+            if non_empty_dfs
+            else pd.DataFrame(columns=table_cfg.keys_columns_and_fks) if len(dfs) == 0 else dfs[0]
+        )
+
+        return data
 
     async def normalize(self) -> Self:
         """Extract all configured entities and store them."""
@@ -145,79 +116,91 @@ class ShapeShifter:
 
             table_cfg: TableConfig = self.project.get_table(entity)
 
-            logger.debug(f"{entity}[normalizing]: Normalizing entity...")
+            if _ENABLE_NORMALIZATION_DEBUG:
+                logger.debug(f"{entity}[normalizing]: Normalizing entity...")
 
-            # source: pd.DataFrame = await self.resolve_source(table_cfg=table_cfg)
             if not isinstance(table_cfg.columns, list):
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': must be a list")
 
             if not all(isinstance(col, str) for col in table_cfg.columns):
                 raise ValueError(f"Invalid columns configuration for entity '{entity}': all columns must be strings")
 
-            delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
-
             # Process all configured tables (base + append items)
-            dfs: list[pd.DataFrame] = []
-
-            for sub_table_cfg in table_cfg.get_sub_table_configs():
-                logger.debug(f"{entity}[normalizing]: Processing sub-table '{sub_table_cfg.entity_name}'...")
-                sub_source: pd.DataFrame = await self.resolve_source(table_cfg=sub_table_cfg)
-                sub_data: pd.DataFrame = subset_service.get_subset(
-                    source=sub_source,
-                    columns=sub_table_cfg.keys_columns_and_fks,
-                    entity_name=sub_table_cfg.entity_name,
-                    extra_columns=sub_table_cfg.extra_columns,
-                    drop_duplicates=sub_table_cfg.drop_duplicates if not delay_drop_duplicates else False,
-                    replacements=sub_table_cfg.replacements if sub_table_cfg.replacements else None,
-                    raise_if_missing=False,
-                    drop_empty=False,
-                )
-                dfs.append(sub_data)
-
-            # Concatenate all dataframes (filter out empty DataFrames to avoid FutureWarning)
-            non_empty_dfs = [df for df in dfs if not df.empty]
-            data: pd.DataFrame = pd.concat(non_empty_dfs, ignore_index=True) if non_empty_dfs else pd.DataFrame()
+            data: pd.DataFrame = await self.get_subset(subset_service, entity, table_cfg)
 
             if table_cfg.filters:
                 data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store)
 
+            delay_drop_duplicates: bool = table_cfg.is_drop_duplicate_dependent_on_unnesting()
             # Apply post-concatenation deduplication if append_mode is "distinct"
-            if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
+            # if table_cfg.has_append and table_cfg.append_mode == "distinct" and not delay_drop_duplicates:
+            if table_cfg.drop_duplicates and not delay_drop_duplicates:
                 data = drop_duplicate_rows(
-                    data=data, columns=table_cfg.drop_duplicates if table_cfg.drop_duplicates else True, entity_name=entity
+                    data=data,
+                    columns=table_cfg.drop_duplicates if table_cfg.drop_duplicates else True,
+                    entity_name=entity,
+                    fd_check=table_cfg.check_functional_dependency,
+                    strict_fd_check=table_cfg.strict_functional_dependency,
                 )
-                logger.debug(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
+                # logger.info(f"{entity}[append]: Applied UNION DISTINCT, rows after dedup: {len(data)}")
 
-            self.register(entity, data)
+            self.table_store[entity] = data
 
-            link_entity(entity_name=entity, config=self.project, table_store=self.table_store)
+            self.linker.link_entity(entity_name=entity, project=self.project)
 
             if table_cfg.unnest:
                 self.unnest_entity(entity=entity)
-                link_entity(entity_name=entity, config=self.project, table_store=self.table_store)
+                self.linker.link_entity(entity_name=entity, project=self.project)
 
             if delay_drop_duplicates and table_cfg.drop_duplicates:
                 self.table_store[entity] = drop_duplicate_rows(
-                    data=self.table_store[entity], fd_check=True, columns=table_cfg.drop_duplicates, entity_name=entity
+                    data=self.table_store[entity],
+                    columns=table_cfg.drop_duplicates,
+                    entity_name=entity,
+                    fd_check=table_cfg.check_functional_dependency,
+                    strict_fd_check=table_cfg.strict_functional_dependency,
                 )
+
+            self._check_duplicate_keys(entity, table_cfg)
 
             if table_cfg.drop_empty_rows:
                 self.table_store[entity] = drop_empty_rows(
                     data=self.table_store[entity], entity_name=entity, subset=table_cfg.drop_empty_rows
                 )
 
-            # Add surrogate ID if requested and not present
-            if table_cfg.surrogate_id and table_cfg.surrogate_id not in self.table_store[entity].columns:
-                self.table_store[entity] = add_surrogate_id(self.table_store[entity], table_cfg.surrogate_id)
+            # Add system_id if requested and not present (always uses "system_id" column name)
+            if table_cfg.system_id and table_cfg.system_id not in self.table_store[entity].columns:
+                self.table_store[entity] = add_system_id(self.table_store[entity], table_cfg.system_id)
 
-            self.link()  # Try to resolve any pending deferred links after each entity is processed
+            self.retry_linking()
+
+        if self.linker.deferred_tracker.deferred:
+            logger.warning(f"Entities with unresolved deferred links after normalization: {self.linker.deferred_tracker.deferred}")
+
         return self
 
-    def link(self) -> Self:
-        """Link entities based on foreign key configuration."""
-        for entity_name in self.state.processed_entities:
-            link_entity(entity_name=entity_name, config=self.project, table_store=self.table_store)
-        return self
+    def _check_duplicate_keys(self, entity: str, table_cfg: TableConfig) -> None:
+        """Check for duplicate keys in the processed table and log an error if found."""
+
+        if not table_cfg.keys:
+            return
+
+        keys: set[str] = set(table_cfg.keys) if table_cfg.keys else set()
+        missing_keys: set[str] = keys - set(self.table_store[entity].columns)
+
+        if missing_keys:
+            # We cannot check for duplicates if keys are missing, just return
+            return
+
+        has_duplicate_keys: bool = bool(self.table_store[entity].duplicated(subset=list(table_cfg.keys)).any())
+        if has_duplicate_keys:
+            # raise ValueError(f"{entity}[keys]: Duplicate keys found for keys {table_cfg.keys}.")
+            logger.error(f"{entity}[keys]: DUPLICATE KEYS FOUND FOR KEYS {table_cfg.keys}.")
+
+    def retry_linking(self) -> None:
+        """Retry linking only for entities currently in deferred set."""
+        for entity_name in self.linker.deferred_tracker.deferred:
+            self.linker.link_entity(entity_name=entity_name, project=self.project)
 
     def store(self, target: str, mode: str) -> Self:
         """Write to specified target based on the specified mode."""
@@ -259,7 +242,7 @@ class ShapeShifter:
         return self
 
     def add_system_id_columns(self) -> Self:
-        """Add "system_id" with same value as surrogate_id. Set surrogate_id to None."""
+        """Add auto-incrementing 'system_id' column to each entity table."""
         for entity_name in self.table_store.keys():
             if entity_name not in self.project.table_names:
                 continue

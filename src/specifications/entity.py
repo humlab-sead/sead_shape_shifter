@@ -2,8 +2,6 @@
 
 from typing import Any
 
-from numpy import median
-
 from src.model import TableConfig
 from src.utility import Registry, dotget
 
@@ -16,9 +14,17 @@ class EntitySpecificationRegistry(Registry[type[ProjectSpecification]]):
     items: dict[str, type[ProjectSpecification]] = {}
 
 
+class EntityTypeSpecificationRegistry(Registry[type[ProjectSpecification]]):
+    """Registry for entity type validators."""
+
+    items: dict[str, type[ProjectSpecification]] = {}
+
+
 ENTITY_SPECIFICATION = EntitySpecificationRegistry()
+ENTITY_TYPE_SPECIFICATION = EntityTypeSpecificationRegistry()
 
 
+@ENTITY_TYPE_SPECIFICATION.register(key="other")
 class EntityFieldsBaseSpecification(ProjectSpecification):
     """Validates that fields are present for a single entity."""
 
@@ -41,6 +47,7 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
         return TableConfig(entity_name=entity_name, entities_cfg=self.project_cfg.get("entities", {}))
 
 
+@ENTITY_TYPE_SPECIFICATION.register(key="entity")
 class DataEntityFieldsSpecification(EntityFieldsBaseSpecification):
     """Validates that fields are present for a data entity."""
 
@@ -56,6 +63,7 @@ class DataEntityFieldsSpecification(EntityFieldsBaseSpecification):
         return not self.has_errors()
 
 
+@ENTITY_TYPE_SPECIFICATION.register(key="fixed")
 class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
@@ -67,7 +75,12 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         if table.type != "fixed":
             self.add_error(f"Entity '{entity_name}' is not of type 'fixed'", entity=entity_name, field="type")
 
-        self.check_fields(entity_name, ["surrogate_id"], "exists/E,not_empty/E")
+        # Check for public_id or surrogate_id (backward compatibility)
+        entity_cfg = self.get_entity_cfg(entity_name)
+        has_id = entity_cfg.get("public_id") or entity_cfg.get("surrogate_id")
+        if not has_id:
+            self.add_error(f"Entity '{entity_name}': Field 'public_id' is required but missing.", entity=entity_name, field="public_id")
+
         self.check_fields(entity_name, ["values"], "exists/E,not_empty/W")
         self.check_fields(entity_name, ["type"], "has_value/E", expected_value="fixed")
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
@@ -88,6 +101,7 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         return not self.has_errors()
 
 
+@ENTITY_TYPE_SPECIFICATION.register(key="sql")
 class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
     """Validates that fields are present for a SQL entity."""
 
@@ -102,20 +116,21 @@ class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
 class EntityFieldsSpecification(ProjectSpecification):
     """Validates that all required fields are present in all entities."""
 
-    def get_specification(self, *, entity_type: str) -> EntityFieldsBaseSpecification:
-        if entity_type == "fixed":
-            return FixedEntityFieldsSpecification(self.project_cfg)
-        if entity_type == "sql":
-            return SqlEntityFieldsSpecification(self.project_cfg)
-        if entity_type == "data":
-            return DataEntityFieldsSpecification(self.project_cfg)
-        return EntityFieldsBaseSpecification(self.project_cfg)
+    def get_specification(self, *, entity_type: str) -> ProjectSpecification:
+        """Get the appropriate specification based on entity type."""
+        spec_cls: type[ProjectSpecification] = (
+            ENTITY_TYPE_SPECIFICATION.get(entity_type)
+            if ENTITY_TYPE_SPECIFICATION.is_registered(entity_type)
+            else EntityFieldsBaseSpecification
+        )
+
+        return spec_cls(self.project_cfg)
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that entity's fields are valid (based on entity type)."""
         self.clear()
-        entity_type: str = self.get_entity_cfg(entity_name).get("type", "data")
-        specification: EntityFieldsBaseSpecification = self.get_specification(entity_type=entity_type)
+        entity_type: str = self.get_entity_cfg(entity_name).get("type", "entity")
+        specification: ProjectSpecification = self.get_specification(entity_type=entity_type)
         specification.is_satisfied_by(entity_name=entity_name)
         self.merge(specification)
         return not self.has_errors()
@@ -155,11 +170,37 @@ class DropDuplicatesSpecification(ProjectSpecification):
         if drop_dup is None:
             return True
 
-        # Can be bool, string (include directive), or list
-        self.check_fields(entity_name, ["drop_duplicates"], "of_type/E", expected_types=(bool, str, list))
+        # Can be bool, string (include directive), list, or dict
+        self.check_fields(entity_name, ["drop_duplicates"], "of_type/E", expected_types=(bool, str, list, dict))
 
         if isinstance(drop_dup, list):
             self.check_fields(entity_name, ["drop_duplicates"], "is_string_list/E")
+        elif isinstance(drop_dup, dict):
+            # Dict format must have a "columns" key
+            if "columns" not in drop_dup:
+                self.add_error("dict format requires 'columns' key", entity=entity_name, field="drop_duplicates")
+            else:
+                columns = drop_dup["columns"]
+                # Columns must be bool, string, or list
+                if not isinstance(columns, (bool, str, list)):
+                    self.add_error(
+                        f"must be bool, string, or list[string], got {type(columns).__name__}",
+                        entity=entity_name,
+                        field="drop_duplicates.columns",
+                    )
+                elif isinstance(columns, list):
+                    # If list, all items must be strings
+                    non_strings = [item for item in columns if not isinstance(item, str)]
+                    if non_strings:
+                        self.add_error("list items must all be strings", entity=entity_name, field="drop_duplicates.columns")
+            # Optional functional dependency settings
+            for opt_key in ["check_functional_dependency", "strict_functional_dependency"]:
+                if opt_key in drop_dup and not isinstance(drop_dup[opt_key], bool):
+                    self.add_error(
+                        f"must be bool, got {type(drop_dup[opt_key]).__name__}",
+                        entity=entity_name,
+                        field=f"drop_duplicates.{opt_key}",
+                    )
         return not self.has_errors()
 
 
@@ -224,21 +265,21 @@ class ForeignKeySpecification(ProjectSpecification):
                 )
 
 
-@ENTITY_SPECIFICATION.register(key="surrogate_id")
-class SurrogateIdSpecification(ProjectSpecification):
-    """Validates surrogate ID configurations."""
+@ENTITY_SPECIFICATION.register(key="public_id")
+class PublicIdSpecification(ProjectSpecification):
+    """Validates public_id configurations (target system PK and FK column pattern)."""
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
-        """Check that surrogate IDs follow naming conventions and are unique."""
+        """Check that public_id follows naming conventions (must end with _id)."""
         self.clear()
 
         entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
-        surrogate_id = entity_cfg.get("surrogate_id", "")
+        public_id = entity_cfg.get("public_id", "")
 
-        self.check_fields(entity_name, ["surrogate_id"], "exists/W")
-        if surrogate_id:
-            self.check_fields(entity_name, ["surrogate_id"], "of_type/E", expected_types=(str,))
-            self.check_fields(entity_name, ["surrogate_id"], "ends_with_id/W")
+        self.check_fields(entity_name, ["public_id"], "exists/W")
+        if public_id:
+            self.check_fields(entity_name, ["public_id"], "of_type/E", expected_types=(str,))
+            self.check_fields(entity_name, ["public_id"], "ends_with_id/E")
 
         return not self.has_errors()
 

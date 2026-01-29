@@ -1,8 +1,9 @@
 # type: ignore
 from pathlib import Path
 
-from .base import FIELD_VALIDATORS, ProjectSpecification, SpecificationIssue
+from .base import FIELD_VALIDATORS, ProjectSpecification, Specification, SpecificationIssue
 from .entity import EntitySpecification
+from .fd import FunctionalDependencySpecification
 from .foreign_key import ForeignKeyConfigSpecification, ForeignKeyDataSpecification
 from .project import (
     CircularDependencySpecification,

@@ -4,6 +4,32 @@
 
 This guide provides comprehensive step-by-step manual testing procedures for the Shape Shifter Project Editor frontend application. Use this guide to ensure all UI features work correctly across different browsers and scenarios.
 
+### Recent Updates: Three-Tier Identity System
+
+**What Changed:**
+
+Shape Shifter now uses a three-tier identity system to replace the ambiguous `surrogate_id` field:
+
+1. **System ID** - Auto-managed local identity (always `system_id`, read-only)
+2. **Business Keys** - Source domain keys for deduplication (multi-select, from `keys` field)
+3. **Public ID** - Target system PK name that defines FK column naming (required, must end with `_id`)
+
+**Testing Focus Areas:**
+
+- ✅ System ID field is read-only/disabled and always shows `system_id`
+- ✅ Business Keys support multiple column selections
+- ✅ Public ID is required and validates `_id` suffix
+- ✅ Legacy `surrogate_id` configs automatically migrate to `public_id`
+- ✅ Foreign key column names match parent entity's `public_id`
+- ✅ Fixed values grid auto-populates `system_id` column (1, 2, 3...)
+
+**Key UI Changes:**
+
+- Entity editor Basic tab now shows three identity sections with tooltips
+- System ID field is disabled (cannot be changed from default `system_id`)
+- Public ID field has validation (required, must end with `_id`)
+- Business Keys renamed from "Natural Keys" with clearer description
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
@@ -298,6 +324,49 @@ Before starting tests, verify:
 - [ ] Count updates
 - [ ] Clear button appears when typing
 
+### Three-Tier Identity System Testing
+
+**Test: Understanding Identity Fields**
+
+Before creating entities, verify understanding of three-tier identity:
+
+1. Open any existing entity
+2. Observe three identity sections:
+   - System ID (auto-managed, local)
+   - Business Keys (source identifiers)
+   - Public ID (target system PK)
+3. Read tooltip/help text for each field
+
+**Expected Results:**
+
+- [ ] Three distinct identity sections visible
+- [ ] System ID shows `system_id` (read-only)
+- [ ] Business Keys accepts multiple columns
+- [ ] Public ID is single column, required, must end with `_id`
+- [ ] Tooltips explain purpose of each field
+- [ ] Documentation/help links available
+
+**Test: Identity Field Behavior**
+
+1. Create new entity
+2. Observe System ID: should be `system_id` and disabled
+3. Try to edit System ID (should fail)
+4. Add Business Keys: `code`, `year`
+5. Try to save without Public ID (should fail)
+6. Enter Public ID without `_id` suffix: `test_entity` (should fail)
+7. Enter valid Public ID: `test_entity_id`
+8. Save entity
+
+**Expected Results:**
+
+- [ ] System ID cannot be changed from `system_id`
+- [ ] System ID field is disabled/read-only
+- [ ] Business Keys support multiple selections
+- [ ] Cannot save without Public ID (required validation)
+- [ ] Public ID without `_id` suffix shows validation error
+- [ ] Valid Public ID (ending with `_id`) passes validation
+- [ ] Entity saves successfully with all three identity fields
+
 ### Create New Entity
 
 **Test: Entity Creation Flow**
@@ -307,7 +376,9 @@ Before starting tests, verify:
    - Name: `test_entity_manual`
    - Type: `sql`
    - Data Source: select from dropdown
-   - Keys: add `test_id`
+   - System ID: observe default `system_id` (read-only/disabled)
+   - Business Keys: add `test_code`, `test_year`
+   - Public ID: enter `test_entity_manual_id` (required, must end with `_id`)
    - SQL Query: enter simple SELECT
 3. Click "Create"
 
@@ -343,31 +414,61 @@ Before starting tests, verify:
 1. Open entity editor
 2. On Basic tab, modify:
    - Change type (if applicable)
-   - Update keys
+   - Update business keys (multi-select)
    - Modify columns
-   - Change surrogate_id
+   - Change public_id (must end with `_id`)
+   - Observe system_id (should be read-only/disabled)
 3. Click "Save"
 
 **Expected Results:**
 
-- [ ] All fields editable
+- [ ] All fields editable except system_id
+- [ ] System ID field is read-only or disabled
 - [ ] Type change updates available fields
-- [ ] Multi-select fields work (chips)
+- [ ] Business Keys multi-select works (chips)
+- [ ] Public ID validates `_id` suffix requirement
+- [ ] Public ID field is required (cannot save without it)
 - [ ] Validation updates in real-time
 - [ ] Save updates YAML immediately
 - [ ] Changes reflect in entity list
 
+**Test: Identity Field Validation**
+
+1. Open entity editor
+2. Try to clear Public ID field
+3. Enter Public ID without `_id` suffix (e.g., `test_entity`)
+4. Enter valid Public ID with `_id` suffix (e.g., `test_entity_id`)
+5. Try to edit System ID field
+6. Click "Save"
+
+**Expected Results:**
+
+- [ ] Public ID cannot be empty (required field validation)
+- [ ] Public ID without `_id` suffix shows validation error
+- [ ] Valid Public ID clears validation error
+- [ ] System ID field cannot be edited (read-only/disabled)
+- [ ] System ID always shows `system_id`
+- [ ] Cannot save with invalid Public ID
+- [ ] Can save with valid Public ID
+
 **Test: Fixed Values Entity**
 
 1. Create new entity, type: `fixed`
-2. Add keys and columns
-3. Observe Fixed Values Grid
+2. Set System ID: `system_id` (read-only)
+3. Add business keys: `test_code`
+4. Set Public ID: `test_fixed_id`
+5. Add columns: `name`, `description`
+6. Observe Fixed Values Grid
 
 **Expected Results:**
 
 - [ ] Grid appears when type is `fixed`
-- [ ] Columns from keys + columns shown
-- [ ] Add Row button works
+- [ ] Columns shown: system_id, test_code, name, description, test_fixed_id
+- [ ] System ID column is auto-populated (1, 2, 3...) on row add
+- [ ] System ID column may be read-only in grid
+- [ ] Business key columns are editable
+- [ ] Public ID column is editable (if shown)
+- [ ] Add Row button works and auto-increments system_id
 - [ ] Delete Selected button works
 - [ ] Cells are editable
 - [ ] Data saves to YAML as 2D array
@@ -524,6 +625,43 @@ Before starting tests, verify:
 - [ ] Invalid YAML shows error
 - [ ] Error message clear and actionable
 - [ ] Can correct errors in YAML view
+
+**Test: Verify Three-Tier Identity in YAML**
+
+1. Switch to YAML tab
+2. Observe entity YAML structure
+3. Verify presence of identity fields:
+   - `system_id: system_id`
+   - `keys: [...]` (business keys array)
+   - `public_id: entity_name_id` (ending with _id)
+4. Try editing system_id in YAML to different value
+5. Switch to Basic tab
+6. Observe System ID field
+
+**Expected Results:**
+
+- [ ] YAML shows all three identity fields
+- [ ] system_id is always `system_id`
+- [ ] keys is an array of business key column names
+- [ ] public_id ends with `_id`
+- [ ] Editing system_id in YAML may be allowed but form shows read-only
+- [ ] Form correctly displays identity fields from YAML
+- [ ] Legacy `surrogate_id` field automatically migrates to `public_id`
+
+**Test: Backward Compatibility with Legacy YAML**
+
+1. Switch to YAML tab
+2. Replace `public_id:` with `surrogate_id:` 
+3. Remove `system_id:` line
+4. Switch to Basic tab
+
+**Expected Results:**
+
+- [ ] Form automatically migrates `surrogate_id` to `public_id`
+- [ ] Public ID field shows value from `surrogate_id`
+- [ ] System ID defaults to `system_id`
+- [ ] No errors during migration
+- [ ] Saving converts YAML to new format
 
 ### Entity Editor - Preview Tab
 

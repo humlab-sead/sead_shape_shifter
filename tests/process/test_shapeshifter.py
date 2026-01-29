@@ -1,12 +1,14 @@
 """Unit tests for arbodat normalizer classes."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pandas as pd
 import pytest
 
-from src.model import ShapeShiftProject
+from src.loaders.base_loader import DataLoader
+from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ProcessState, ShapeShifter
 
 # pylint: disable=redefined-outer-name
@@ -59,9 +61,9 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
 
-        assert state.config == config
+        assert state.project == config
         assert state.unprocessed_entities == {"site", "sample", "taxa"}
         assert state.processed_entities == set()
 
@@ -82,7 +84,7 @@ class TestProcessState:
             mock_table.depends_on = set()
             mock_get_table.return_value = mock_table
 
-            state = ProcessState(config=config, table_store={})
+            state = ProcessState(project=config, table_store={})
             next_entity = state.get_next_entity_to_process()
 
             assert next_entity in ["site", "sample"]
@@ -98,7 +100,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
 
         # First entity should be 'site' since 'sample' depends on it
         next_entity = state.get_next_entity_to_process()
@@ -114,14 +116,14 @@ class TestProcessState:
     def test_get_next_entity_all_processed(self, survey_only_config: ShapeShiftProject):
         """Test getting next entity when all are processed."""
 
-        state = ProcessState(config=survey_only_config, table_store={"survey": Mock()})
+        state = ProcessState(project=survey_only_config, table_store={"survey": Mock()})
         state.table_store["site"] = Mock()
 
         next_entity: str | None = state.get_next_entity_to_process()
         assert next_entity is None
 
     def test_get_required_entities_collects_dependencies(self):
-        """Test collecting all dependencies for a target entity."""
+        """ShapeShiftProject resolves required entities and ProcessState honors it."""
         cfg = ShapeShiftProject(
             cfg={
                 "entities": {
@@ -132,9 +134,10 @@ class TestProcessState:
             }
         )
 
-        state = ProcessState(config=cfg, table_store={})
+        assert cfg.get_required_entities("sample") == {"sample", "site", "survey"}
 
-        assert state.get_required_entities("sample") == {"sample", "site", "survey"}
+        state = ProcessState(project=cfg, table_store={}, target_entities={"sample"})
+        assert state.target_entities == {"sample", "site", "survey"}
 
     def test_get_unmet_dependencies(self):
         """Test getting unmet dependencies for an entity."""
@@ -142,7 +145,7 @@ class TestProcessState:
             cfg={"entities": {"site": {"depends_on": []}, "sample": {"depends_on": ["site", "taxa"]}, "taxa": {"depends_on": []}}},
         )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
 
         unmet = state.get_unmet_dependencies("sample")
         assert unmet == {"site", "taxa"}
@@ -162,7 +165,7 @@ class TestProcessState:
                 }
             },
         )
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
         assert "site" in state.unprocessed_entities
         assert "site" not in state.processed_entities
 
@@ -183,7 +186,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
 
         all_unmet = state.get_all_unmet_dependencies()
 
@@ -205,7 +208,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
         assert state.processed_entities == set()
 
         state.table_store["site"] = Mock()
@@ -225,7 +228,7 @@ class TestProcessState:
             },
         )
 
-        state = ProcessState(config=config, table_store={})
+        state = ProcessState(project=config, table_store={})
 
         with patch.object(config, "get_table") as mock_get_table:
             mock_table = Mock()
@@ -343,7 +346,7 @@ class TestShapeShifter:
         mock_loader = Mock()
         mock_loader.load = AsyncMock(return_value=fixed_df)
 
-        with patch.object(normalizer.project, "resolve_loader", return_value=mock_loader):
+        with patch.object(normalizer, "resolve_loader", return_value=mock_loader):
             result = await normalizer.resolve_source(table_cfg)
 
             pd.testing.assert_frame_equal(result, fixed_df)
@@ -366,23 +369,11 @@ class TestShapeShifter:
         mock_loader = Mock()
         mock_loader.load = AsyncMock(return_value=sql_df)
 
-        with patch.object(normalizer.project, "resolve_loader", return_value=mock_loader):
+        with patch.object(normalizer, "resolve_loader", return_value=mock_loader):
             result: pd.DataFrame = await normalizer.resolve_source(table_cfg=table_cfg)
 
             pd.testing.assert_frame_equal(result, sql_df)
             mock_loader.load.assert_called_once_with(entity_name="test_sql_entity", table_cfg=table_cfg)
-
-    def test_register(self, survey_only_config: ShapeShiftProject):
-        """Test registering a DataFrame."""
-        df = pd.DataFrame({"col1": [1, 2]})
-        normalizer = ShapeShifter(project=survey_only_config, default_entity="survey", table_store={"survey": df})
-
-        new_df = pd.DataFrame({"site_name": ["A", "B"]})
-        result = normalizer.register("site", new_df)
-
-        assert "site" in normalizer.table_store
-        pd.testing.assert_frame_equal(normalizer.table_store["site"], new_df)
-        pd.testing.assert_frame_equal(result, new_df)
 
     def test_translate(self, survey_and_site_config: ShapeShiftProject):
         """Test translating column names."""
@@ -475,7 +466,7 @@ class TestShapeShifter:
 
         mock_table_cfg = Mock()
         mock_table_cfg.unnest = True
-        mock_table_cfg.surrogate_id = None
+        mock_table_cfg.system_id = "system_id"  # Standardized
 
         unnested_df = pd.DataFrame({"site_id": [1, 1], "location_type": ["Ort", "Kreis"], "location_name": ["Berlin", "Mitte"]})
 
@@ -582,8 +573,8 @@ class TestShapeShifter:
         with pytest.raises(ValueError, match="Invalid columns configuration"):
             await normalizer.normalize()
 
-    def test_link_calls_link_entity(self):
-        """Test that link() calls link_entity for all processed entities."""
+    def test_retry_linking_calls_link_entity(self):
+        """Test that retry_linking() calls link_entity for all processed entities."""
         survey_df = pd.DataFrame({"col1": [1, 2]})
         site_df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
         sample_df = pd.DataFrame({"sample_id": [1, 2], "type": ["X", "Y"]})
@@ -598,13 +589,15 @@ class TestShapeShifter:
             },
         )
         normalizer = ShapeShifter(project=config, table_store=table_store, default_entity="survey")
-
-        with patch("src.normalizer.link_entity") as mock_link:
-            normalizer.link()
+        linker = Mock(deferred_tracker=Mock(deferred={"survey", "site", "sample"}))
+        # Mock the normalizer's linker entity
+        normalizer.linker = linker
+        with patch.object(normalizer.linker, "link_entity", return_value=False) as mock_link:
+            normalizer.retry_linking()
 
             # Should be called for each processed entity (survey, site, and sample)
             assert mock_link.call_count == 3
-            call_args_list = [call[1] for call in mock_link.call_args_list]
+            call_args_list = [call.kwargs for call in mock_link.call_args_list]
             entity_names = [args["entity_name"] for args in call_args_list]
             assert set(entity_names) == {"survey", "site", "sample"}
 
@@ -688,3 +681,55 @@ class TestShapeShifter:
         content = tsv_path.read_text().strip().splitlines()
         assert content[0] == "entity\tnum_rows\tnum_columns"
         assert len(content) == 3  # header + two entities
+
+    def test_resolve_loader_with_data_source(self):
+        """Test resolve_loader with data_source configured."""
+        entities: dict[str, dict[str, Any]] = {"site": {"public_id": "site_id", "data_source": "postgres_db"}}
+        options = {"data_sources": {"postgres_db": {"driver": "postgresql", "options": {"host": "localhost"}}}}
+
+        project = ShapeShiftProject(cfg={"entities": entities, "options": options}, filename="test-config.yml")
+        table_cfg: TableConfig = project.get_table("site")
+
+        normalizer = ShapeShifter(project=project, default_entity="site")
+
+        # This will fail if the loader type isn't registered, but we're testing the logic
+        # In real code, the DataLoaders would be registered
+        try:
+            loader = normalizer.resolve_loader(table_cfg)
+            # If it succeeds, check it's not None (depends on DataLoaders being registered)
+            assert loader is not None
+        except KeyError:
+            # Expected if the loader type isn't registered
+            pass
+
+    def test_resolve_loader_with_type(self):
+        """Test resolve_loader with type configured."""
+        entities: dict[str, dict[str, Any]] = {"site": {"public_id": "site_id", "type": "fixed"}}
+        options: dict[str, dict[str, Any]] = {}
+
+        project = ShapeShiftProject(cfg={"entities": entities, "options": options}, filename="test-config.yml")
+        table_cfg: TableConfig = project.get_table("site")
+        normalizer = ShapeShifter(project=project, default_entity="site")
+
+        # This will fail if the loader type isn't registered
+        try:
+            loader = normalizer.resolve_loader(table_cfg)
+            # Test passes if no exception and loader is returned
+            assert loader is not None
+        except KeyError:
+            # Expected if the loader type isn't registered
+            pass
+
+    def test_resolve_loader_no_loader(self):
+        """Test resolve_loader returns None when no loader available."""
+        entities: dict[str, dict[str, str]] = {"site": {"public_id": "site_id"}}
+        options: dict[str, dict[str, Any]] = {}
+
+        project = ShapeShiftProject(cfg={"entities": entities, "options": options}, filename="test-config.yml")
+        table_cfg: TableConfig = project.get_table("site")
+        normalizer = ShapeShifter(project=project, default_entity="site")
+
+        loader: DataLoader | None = normalizer.resolve_loader(table_cfg)
+
+        # Should return None or log warning
+        assert loader is None

@@ -1,9 +1,9 @@
 """Project service for managing entities."""
 
-import time
 from pathlib import Path
 from typing import Any, Iterable
 
+import pandas as pd
 from fastapi import UploadFile
 from loguru import logger
 
@@ -40,7 +40,6 @@ class ProjectConflictError(ProjectServiceError):
     """Raised when optimistic lock fails due to concurrent modification."""
 
 
-UPLOADS_SUBDIR: str = "uploads"
 DEFAULT_ALLOWED_UPLOAD_EXTENSIONS: set[str] = {".xlsx", ".xls"}
 MAX_PROJECT_UPLOAD_SIZE_MB: int = 50
 
@@ -122,7 +121,7 @@ class ProjectService:
         # Check application state if this is the active project
         active_project: Project | None = self.state.get(name)
         if active_project:
-            logger.debug(f"Loading active project '{name}' from ApplicationState")
+            logger.debug(f"Loaded active project '{name}' from ApplicationState")
             return active_project
 
         filename: Path = self.projects_dir / (f"{name.removesuffix('.yml')}.yml")
@@ -568,9 +567,9 @@ class ProjectService:
             raise ProjectNotFoundError(f"Project not found: {name}")
         return project_file
 
-    def _get_project_upload_dir(self, project_name: str) -> Path:
-        safe_name = self._sanitize_project_name(project_name)
-        return self.projects_dir / safe_name / UPLOADS_SUBDIR
+    def _get_project_upload_dir(self, project_name: str) -> Path:  # pylint: disable=unused-argument
+        # safe_name = self._sanitize_project_name(project_name)
+        return self.projects_dir
 
     def _to_public_path(self, path: Path) -> str:
         try:
@@ -580,6 +579,27 @@ class ProjectService:
                 return str(path.relative_to(settings.PROJECTS_DIR.parent))
             except ValueError:
                 return str(path)
+
+    def _resolve_path(self, path_str: str) -> Path:
+        """Resolve a user-supplied path relative to project root (or projects dir) and validate existence."""
+
+        raw = Path(path_str)
+        candidates: list[Path] = []
+
+        # Absolute path as-is
+        if raw.is_absolute():
+            candidates.append(raw)
+        else:
+            # Relative to repo root
+            candidates.append((settings.PROJECT_ROOT / raw).resolve())
+            # Relative to projects dir
+            candidates.append((settings.PROJECTS_DIR / raw.name).resolve())
+
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+
+        raise BadRequestError(f"File not found: {path_str}")
 
     def _sanitize_filename(self, filename: str | None) -> str:
         if not filename:
@@ -627,13 +647,13 @@ class ProjectService:
         project_name: str,
         upload: UploadFile,
         *,
-        allowed_extensions: set[str] | None = DEFAULT_ALLOWED_UPLOAD_EXTENSIONS,
+        allowed_extensions: set[str] | None = None,
         max_size_mb: int = MAX_PROJECT_UPLOAD_SIZE_MB,
     ) -> ProjectFileInfo:
         """Save an uploaded file into the project's uploads directory."""
 
         self._ensure_project_exists(project_name)
-        allowed: set[str] = allowed_extensions or set()
+        allowed: set[str] = allowed_extensions or DEFAULT_ALLOWED_UPLOAD_EXTENSIONS
 
         filename = self._sanitize_filename(upload.filename)
         ext = Path(filename).suffix.lower()
@@ -714,6 +734,41 @@ class ProjectService:
             )
 
         return files
+
+    def get_excel_metadata(self, file_path: str, sheet_name: str | None = None) -> tuple[list[str], list[str]]:
+        """Return available sheets and columns for an Excel file.
+
+        Args:
+            file_path: Path (absolute or relative to project root) to the Excel file
+            sheet_name: Optional sheet to inspect for columns
+
+        Raises:
+            BadRequestError: If file is missing/unsupported or sheet is not found
+        """
+
+        resolved_path = self._resolve_path(file_path)
+        if resolved_path.suffix.lower() not in {".xlsx", ".xls"}:
+            raise BadRequestError("Only .xlsx and .xls files are supported for metadata probing")
+
+        try:
+            with pd.ExcelFile(resolved_path) as xls:
+                sheets: list[str] = list(xls.sheet_names)  # type: ignore
+
+                target_sheet = sheet_name or (sheets[0] if sheets else None)
+                columns: list[str] = []
+
+                if target_sheet:
+                    if target_sheet not in sheets:
+                        raise BadRequestError(f"Sheet '{target_sheet}' not found in {resolved_path.name}")
+                    df = pd.read_excel(xls, sheet_name=target_sheet, nrows=0)
+                    columns = [str(col) for col in df.columns]
+
+                return sheets, columns
+        except BadRequestError:
+            raise
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error(f"Failed to read Excel metadata for {resolved_path}: {exc}")
+            raise BadRequestError(f"Failed to read Excel metadata: {exc}") from exc
 
     def save_data_source_file(
         self,

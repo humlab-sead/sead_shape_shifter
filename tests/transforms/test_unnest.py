@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from src.model import TableConfig
-from src.unnest import unnest
+from src.transforms.unnest import unnest
 
 
 class TestUnnest:

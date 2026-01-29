@@ -15,7 +15,7 @@ client = TestClient(app)
 @pytest.fixture
 def sample_entity_data():
     """Sample entity data for tests."""
-    return {"type": "data", "keys": ["id"], "columns": ["name", "value"]}
+    return {"type": "entity", "keys": ["id"], "columns": ["name", "value"]}
 
 
 @pytest.fixture
@@ -102,7 +102,7 @@ class TestEntitiesGet:
         assert response.status_code == 200
         entity = response.json()
         assert entity["name"] == "test_entity"
-        assert entity["entity_data"]["type"] == "data"
+        assert entity["entity_data"]["type"] == "entity"
         assert entity["entity_data"]["keys"] == ["id"]
 
     def test_get_nonexistent_entity(self, tmp_path, monkeypatch, reset_services):
@@ -137,7 +137,7 @@ class TestEntitiesCreate:
         assert response.status_code == 201
         entity = response.json()
         assert entity["name"] == "new_entity"
-        assert entity["entity_data"]["type"] == "data"
+        assert entity["entity_data"]["type"] == "entity"
 
         # Verify entity was added
         get_response = client.get("/api/v1/projects/test_project/entities/new_entity")
@@ -188,7 +188,7 @@ class TestEntitiesUpdate:
         )
 
         # Update entity
-        updated_data = {"type": "data", "keys": ["id"], "columns": ["updated", "fields"]}
+        updated_data = {"type": "entity", "keys": ["id"], "columns": ["updated", "fields"]}
         response = client.put(
             "/api/v1/projects/test_project/entities/test_entity",
             json={"entity_data": updated_data},

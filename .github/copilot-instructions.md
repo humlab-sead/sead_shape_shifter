@@ -21,9 +21,10 @@ The orchestrator is `ShapeShifter` in `src/normalizer.py` which uses `ProcessSta
 
 ### Backend Architecture (`backend/app/`)
 - **API Layer** (`api/v1/endpoints/`) - FastAPI routers for each feature
-- **Services** (`services/`) - Business logic (validation, auto-fix, query execution)
+- **Services** (`services/`) - Business logic (validation, auto-fix, query execution, dependency analysis)
 - **Models** (`models/`) - Pydantic v2 schemas for request/response (raw `${ENV_VARS}`)
 - **Mappers** (`mappers/`) - Layer boundary translators (resolve env vars here)
+- **Utils** (`utils/`) - Reusable utilities (graph algorithms, SQL parsing)
 - **Core** (`core/`) - Settings and configuration
 
 Key services:
@@ -32,10 +33,15 @@ Key services:
 - `query_service.py` - SQL query execution against configured data sources
 - `schema_service.py` - Database schema introspection
 - `shapeshift_service.py` - Entity preview with intelligent 3-tier cache (TTL, version, hash)
+- `dependency_service.py` - Entity dependency analysis with cycle detection and topological sorting
 
 Key mappers:
 - `data_source_mapper.py` - API ↔ Core translation + environment variable resolution
 - `table_schema_mapper.py` - Schema metadata translation
+
+Key utilities:
+- `graph.py` - Graph algorithms (cycle detection, topological sort, depth calculation)
+- `sql.py` - SQL parsing utilities (table extraction using sqlparse)
 
 ### Frontend Architecture (`frontend/src/`)
 - **Vue 3 Composition API** with `<script setup>` syntax

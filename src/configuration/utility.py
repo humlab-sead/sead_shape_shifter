@@ -1,8 +1,9 @@
 from typing import Any
 
 import yaml
+from loguru import logger
 
-from src.utility import dotget
+from src.utility import dotexists, dotget
 
 REF_TAG = "@value:"
 
@@ -143,7 +144,13 @@ def _replace_references(
         # Handle simple include directive
         if data.startswith(REF_TAG):
             ref_path: str = data[len(REF_TAG) :].strip()
-            ref_value: Any = dotget(full_data, ref_path)  # type: ignore
+            assert full_data is not None
+            assert isinstance(full_data, dict)
+
+            if not dotexists(full_data, ref_path):
+                logger.error(f"Reference path '{ref_path}' not found in configuration data.")
+
+            ref_value: Any = dotget(full_data, ref_path)
             ref_value = _replace_references(ref_value, full_data=full_data)
             return ref_value if ref_value is not None else data
     return data

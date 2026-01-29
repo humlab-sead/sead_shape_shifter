@@ -44,6 +44,19 @@ install-api:
 test:
 	@uv run pytest tests backend/tests -v
 
+.PHONY: profile
+profile:
+	@echo "Profiling test with py-spy..."
+	@uv run py-spy record -o profile.svg --format speedscope -- pytest $(TEST) -v -s
+	@echo "✓ Profile saved to profile.svg (open in browser or speedscope.app)"
+
+.PHONY: profile-stats
+profile-stats:
+	@echo "Profiling test with cProfile..."
+	@uv run python -m cProfile -o profile.stats -m pytest $(TEST) -v
+	@uv run python -c "import pstats; p = pstats.Stats('profile.stats'); p.sort_stats('cumulative').print_stats(30)"
+	@echo "✓ Full stats saved to profile.stats"
+
 .PHONY: publish
 publish:
 	@echo "Publishing Python package to PyPI"
@@ -90,6 +103,10 @@ stop:
 .PHONY: br
 br: frontend-clear backend-kill backend-run
 
+# Serve backend with console + file logging
+.PHONY: br-log
+br-log: frontend-clear backend-kill backend-run-log
+
 .PHONY: fr
 fr: frontend-kill frontend-run
 
@@ -121,6 +138,14 @@ backend-run:
 	@PYTHONPATH=. uv run uvicorn backend.app.main:app \
 		--log-level debug \
 		--host 0.0.0.0 --port $(BACKEND_PORT)
+
+.PHONY: backend-run-log
+backend-run-log:
+	@echo "Starting backend server on http://localhost:$(BACKEND_PORT) (logs also saved to logs/backend.log)"
+	@mkdir -p logs
+	@PYTHONPATH=. uv run uvicorn backend.app.main:app \
+		--log-level debug \
+		--host 0.0.0.0 --port $(BACKEND_PORT) 2>&1 | tee logs/backend.log
 
 .PHONY: backend-run-with-hmr
 backend-run-with-hmr:

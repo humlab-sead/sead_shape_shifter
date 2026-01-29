@@ -4,7 +4,7 @@ from typing import Any
 import pandas as pd
 import pyproj
 
-from . import Transformer, Transformers
+from .common import Transformer, Transformers
 
 
 def to_wgs84(src_crs: str | pd.Series, x: float | pd.Series, y: float | pd.Series) -> tuple[float | pd.Series, float | pd.Series]:

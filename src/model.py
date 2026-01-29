@@ -8,7 +8,6 @@ from loguru import logger
 
 from src.configuration import ConfigFactory, ConfigLike
 from src.configuration.config import Config, is_config_path
-from src.loaders.base_loader import DataLoader, DataLoaders
 from src.utility import dotget, unique
 
 
@@ -226,7 +225,21 @@ class TableConfig:
 
     @property
     def surrogate_id(self) -> str:
-        return self.entity_cfg.get("surrogate_id", "")
+        """Deprecated: Use system_id instead. Kept for backward compatibility."""
+        return self.system_id
+
+    @property
+    def system_id(self) -> str:
+        """Get system_id column name (always 'system_id', or from legacy surrogate_id)."""
+        # Support both new system_id and legacy surrogate_id for backward compatibility
+        return self.entity_cfg.get("system_id") or self.entity_cfg.get("surrogate_id") or "system_id"
+
+    @property
+    def public_id(self) -> str:
+        """Get public_id column name (defines FK column names in child tables).
+        Falls back to surrogate_id for backward compatibility.
+        """
+        return self.entity_cfg.get("public_id") or self.entity_cfg.get("surrogate_id") or ""
 
     @property
     def check_column_names(self) -> bool:
@@ -271,7 +284,18 @@ class TableConfig:
 
     @property
     def drop_duplicates(self) -> bool | list[str]:
-        return self.entity_cfg.get("drop_duplicates") or False
+        value = self.entity_cfg.get("drop_duplicates")
+        if isinstance(value, dict):
+            return value.get("columns") or False
+        return value or False
+
+    @property
+    def check_functional_dependency(self) -> bool:
+        return dotget(self.entity_cfg, "check_functional_dependency,drop_duplicates.check_functional_dependency", True)
+
+    @property
+    def strict_functional_dependency(self) -> bool:
+        return dotget(self.entity_cfg, "strict_functional_dependency,drop_duplicates.strict_functional_dependency", True)
 
     @property
     def drop_empty_rows(self) -> bool | list[str] | dict[str, Any]:
@@ -407,13 +431,20 @@ class TableConfig:
         return table
 
     def add_system_id_column(self, table: pd.DataFrame) -> pd.DataFrame:
-        """Add a `system_id` column to `table` with the same values as the `surrogate_id` column, then set `surrogate_id` to None."""
-        surrogate_id: str = self.surrogate_id
-        if surrogate_id and surrogate_id in table.columns:
-            # If system_id already exists, do not overwrite, it is assumed to be set correctly
-            if "system_id" not in table.columns:
-                table["system_id"] = table[surrogate_id]
-                table[surrogate_id] = None
+        """Add 'system_id' column with auto-incrementing values if not already present.
+        Returns:
+            pd.DataFrame: DataFrame with 'system_id' column added if it was missing.
+        Note: In the new identity model, system_id is always named 'system_id' and contains
+        local sequence numbers (1, 2, 3...). The public_id column (if present) contains
+        target system identifiers and is used for FK column naming.
+        """
+        system_id_col: str = self.system_id
+
+        if system_id_col and system_id_col not in table.columns:
+            # Add auto-incrementing system_id
+            table = table.reset_index(drop=True).copy()
+            table[system_id_col] = range(1, len(table) + 1)
+
         return table
 
     def is_drop_duplicate_dependent_on_unnesting(self) -> bool:
@@ -468,9 +499,12 @@ class TableConfig:
             del self.entities_cfg[append_entity_name]
 
     def get_key_columns(self) -> set[str]:
+        """Get all key columns including system_id and public_id."""
         key_columns = set(self.keys or [])
-        if self.surrogate_id:
-            key_columns.add(self.surrogate_id)
+        if self.system_id:
+            key_columns.add(self.system_id)
+        if self.public_id:
+            key_columns.add(self.public_id)
         return key_columns
 
     def hash(self) -> str:
@@ -821,22 +855,11 @@ class ShapeShiftProject:
             raise ValueError(f"Data source 'options.data_sources.{name}' not found in configuration")
         return DataSourceConfig(cfg=self.data_sources[name], name=name)
 
-    def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
-        """Resolve the DataLoader, if any, for the given TableConfig."""
-        if table_cfg.data_source:
-            data_source: DataSourceConfig = self.get_data_source(table_cfg.data_source)
-            return DataLoaders.get(key=data_source.driver)(data_source=data_source)
-
-        if table_cfg.type and table_cfg.type in DataLoaders.items:
-            return DataLoaders.get(key=table_cfg.type)(data_source=None)
-
-        return None
-
     def clone(self) -> "ShapeShiftProject":
         """Create a deep copy of the ShapeShiftProject."""
         return ShapeShiftProject(cfg=copy.deepcopy(self.cfg), filename=self.filename)
 
-    def resolve(self, **context) -> "ShapeShiftProject":
+    def resolve(self, strict: bool = False, **context) -> "ShapeShiftProject":
         """Resolve and return a new ShapeShiftProject instance."""
         return ShapeShiftProject(
             cfg=Config.resolve_references(
@@ -845,33 +868,64 @@ class ShapeShiftProject:
                 env_prefix=dotget(context, "env_prefix"),
                 source_path=dotget(context, "filename, file_path") or self.filename,
                 inplace=False,
+                strict=strict,
             ),
             filename=context.get("filename") or self.filename,
         )
+
+    def is_resolved(self) -> bool:
+        """Check if the configuration has any unresolved references."""
+        return not Config.find_unresolved_directives(self.cfg)
+
+    def unresolved_directives(self) -> list[str]:
+        """Check if the configuration has any unresolved references."""
+        return Config.find_unresolved_directives(self.cfg)
 
     @cached_property
     def table_names(self) -> list[str]:
         return list(self.tables.keys())
 
     def get_sorted_columns(self, entity_name: str) -> list[str]:
-        """Return a list of columns with all keys in front of other columns."""
+        """Return a list of columns with system_id and FK columns first, then other columns.
+
+        FK columns are named after the parent entity's public_id.
+        """
         table: TableConfig = self.get_table(entity_name)
-        cols_to_move: list[str] = [table.surrogate_id] + [self.get_table(fk.remote_entity).surrogate_id for fk in table.foreign_keys]
+        # Start with system_id, then add FK columns (named after parent's public_id)
+        cols_to_move: list[str] = [table.system_id] + [self.get_table(fk.remote_entity).public_id for fk in table.foreign_keys]
         existing_cols_to_move: list[str] = [col for col in cols_to_move if col in table.columns]
         other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
         new_column_order: list[str] = existing_cols_to_move + other_cols
         return unique(new_column_order)
 
     def reorder_columns(self, table_cfg: str | TableConfig, table: pd.DataFrame) -> pd.DataFrame:
-        """Reorder columns in the DataFrame to have keys first, then extra columns, then other columns."""
+        """Reorder columns in the DataFrame to have system_id, public_id, FK columns, extra columns, then others.
+
+        Returns:
+            pd.DataFrame: DataFrame with columns reordered.
+
+        FK columns are named after the parent entity's public_id.
+        """
         if isinstance(table_cfg, str):
             table_cfg = self.get_table(entity_name=table_cfg)
-        cols_to_move: list[str] = (
-            (["system_id"] if "system_id" in table.columns else [])
-            + [table_cfg.surrogate_id]
-            + sorted([self.get_table(fk.remote_entity).surrogate_id for fk in table_cfg.foreign_keys])
-            + sorted(table_cfg.extra_column_names)
-        )
+
+        # Build ordered list: system_id (if present), public_id, FK columns (parent's public_id), extra columns
+        cols_to_move: list[str] = []
+
+        # Add system_id if present in dataframe
+        if "system_id" in table.columns:
+            cols_to_move.append("system_id")
+
+        # Add entity's own public_id
+        if table_cfg.public_id:
+            cols_to_move.append(table_cfg.public_id)
+
+        # Add FK columns (use parent's public_id)
+        cols_to_move.extend(sorted([self.get_table(fk.remote_entity).public_id for fk in table_cfg.foreign_keys]))
+
+        # Add extra columns
+        cols_to_move.extend(sorted(table_cfg.extra_column_names))
+
         # Remove duplicates while preserving order
         existing_cols_to_move: list[str] = []
         seen: set[str] = set()
@@ -931,6 +985,32 @@ class ShapeShiftProject:
     #     config = ShapeShiftProject(cfg=provider.get_config(context).data)
 
     #     return config
+
+    def resolve_target_entities(self, target_entities: set[str] | None = None) -> set[str]:
+        """Resolve target entities including all dependencies. If no target entities are provided, return all entities in the project."""
+        if target_entities:
+            all_required: set[str] = set()
+            for entity in target_entities:
+                all_required.update(self.get_required_entities(entity))
+            return all_required
+        return set(self.tables.keys())
+
+    def get_required_entities(self, entity_name: str) -> set[str]:
+        """Get all entities required to process the given entity (including the entity itself)."""
+        required_entities: set[str] = {entity_name}
+        unprocessed: list[str] = [entity_name]
+
+        while unprocessed:
+            current: str = unprocessed.pop()
+            if current not in self.tables:
+                continue
+            for dep in self.get_table(entity_name=current).depends_on:
+                if dep in required_entities:
+                    continue
+                required_entities.add(dep)
+                unprocessed.append(dep)
+
+        return required_entities
 
 
 class DataSourceConfig:

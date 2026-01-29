@@ -80,8 +80,8 @@ Each entity represents a table/dataset to be extracted and processed. Entities a
 entities:
   entity_name:
     # Identity & Keys
-    surrogate_id: string                    # Locally scoped primary key
-    surrogate_name: string                  # Alternative name for surrogate ID
+    public_id: string                       # Target system primary key name
+    surrogate_name: string                  # Alternative name for public ID
     keys: [string, ...]                     # Natural (business) key columns
     
     # Data Selection
@@ -121,30 +121,102 @@ entities:
 
 ### Identity Properties
 
-#### `surrogate_id`
+Shape Shifter implements a three-tier identity system to support flexible data transformation and integration:
+
+1. **system_id**: Standardized local auto-incrementing ID (always "system_id")
+2. **keys**: Business/natural keys from source data
+3. **public_id**: Target system primary key name (defines FK column names)
+
+This architecture separates concerns between:
+- **Local scope**: `system_id` for internal processing (1, 2, 3...)  
+- **Business logic**: `keys` for entity identification in source data
+- **Global scope**: `public_id` for target system integration and FK relationships
+
+#### `system_id` (Auto-Managed)
+- **Type**: `string` (always "system_id")
+- **Required**: Automatically managed by system
+- **Description**: Standardized name for auto-incrementing integer IDs (1, 2, 3...). This column is always added automatically during data loading and is used for internal processing. When data is exported, this column is renamed based on the entity's `public_id` setting.
+- **Behavior**:
+  - Added automatically by all loaders (SQL, fixed, file)
+  - Always numbered sequentially starting from 1
+  - Column name is always "system_id" during processing
+  - Renamed to `public_id` value during export/dispatch
+  - Read-only in UI (cannot be edited)
+- **Example**: Not configured directly - automatically managed
+
+#### `public_id`
 - **Type**: `string`
-- **Required**: Recommended (warning if missing)
-- **Description**: Name of the surrogate primary key column to be generated. The system will create an integer ID starting from 1. This should be the same name as the primary key in the remote entity the project targets. This field is renamed to "system_id" when the final dataset is dispatched, and a new column with the same name is initalized with empty values.
+- **Required**: **Yes** (error if missing for fixed entities, warning for others)
+- **Description**: Name of the primary key column in the target system. This field serves two critical purposes:
+  1. Defines the column name that will be used when data is exported to the target system
+  2. Determines FK column names in child entities (FK column = parent's `public_id`)
 - **Example**:
   ```yaml
-  surrogate_id: site_id
+  public_id: site_id
+  ```
+- **Foreign Key Naming Convention**:
+  When establishing foreign key relationships, the FK column in the child table is named after the parent entity's `public_id`:
+  ```yaml
+  # Parent entity
+  site:
+    public_id: site_id
+    keys: ["site_code"]
+  
+  # Child entity - FK column will be named "site_id" (from parent's public_id)
+  sample:
+    public_id: sample_id
+    keys: ["sample_code"]
+    foreign_keys:
+      - entity: site
+        remote_keys: ["site_code"]
+        local_keys: ["sample_site_code"]
+        # Result: FK column named "site_id" containing parent's system_id values
   ```
 - **Validation Rules**:
-  - **Existence**: Warning if missing (prevents reconciliation)
+  - **Existence**: Error if missing (required for proper integration)
   - **Type**: Must be `string` (error if not)
-  - **Naming Convention**: Warning if doesn't end with `_id` suffix
-  - **Uniqueness**: Each entity should have a unique surrogate_id name (suggested validation)
+  - **Naming Convention**: Error if doesn't end with `_id` suffix
+  - **Uniqueness**: Each entity should have unique public_id (suggested validation)
 - **Common Issues**:
-  - Missing `surrogate_id` prevents reconciliation in editor
-  - Not following `_id` naming convention can cause confusion
+  - Missing `public_id` prevents proper export and FK relationships
+  - Not following `_id` naming convention violates schema expectations
+  - Duplicate `public_id` names across entities causes confusion
+- **Backward Compatibility**:
+  Configurations using the deprecated `surrogate_id` field will automatically migrate to `public_id`:
+  ```yaml
+  # Old format (deprecated but still works)
+  surrogate_id: site_id
   
+  # Automatically migrated to:
+  public_id: site_id
+  ```
+
+#### `surrogate_id` (Deprecated - Use `public_id`)
+- **Status**: **DEPRECATED** - Use `public_id` instead
+- **Type**: `string`
+- **Required**: No (automatically migrates to `public_id`)
+- **Description**: Legacy field name for primary key configuration. When present, values are automatically migrated to `public_id` during project loading.
+- **Migration**: 
+  ```yaml
+  # Before (old config)
+  entities:
+    my_entity:
+      surrogate_id: entity_id
+  
+  # After (recommended)
+  entities:
+    my_entity:
+      public_id: entity_id
+  ```
+- **Note**: Both fields are accepted for backward compatibility, but `public_id` takes precedence if both are present.
+
 #### `surrogate_name`
 - **Type**: `string`
 - **Required**: No
-- **Description**: Name of text text column associated to the surrogate ID column. This column can e.g. be used when reconciling entities by name.
+- **Description**: Name of a text column associated with the `public_id`. This column can be used when reconciling entities by name in the UI editor.
 - **Example**:
   ```yaml
-  surrogate_id: contact_type_id
+  public_id: contact_type_id
   surrogate_name: contact_type
   ```
 - **Validation Rules**:
@@ -152,14 +224,14 @@ entities:
   - **Usage**: Currently not validated but should be documented
 - **Suggested Additional Validation**:
   - Should not conflict with existing column names
-  - Should not be the same as `surrogate_id`
+  - Should not be the same as `public_id`
   - Must exist in `columns` if provided
 
 
 #### `keys`
 - **Type**: `list[string]`
 - **Required**: Yes (field must exist, but can be empty list)
-- **Description**: Key columns that uniquely identify rows in the source data. Used for duplicate detection and foreign key relationships.
+- **Description**: Natural/business key columns that uniquely identify rows in the source data. Used for duplicate detection and foreign key relationships. These are the "real world" identifiers from your source system (e.g., sample codes, site names).
 - **Example**:
   ```yaml
   keys: ["ProjektNr", "Befu"]
@@ -176,6 +248,54 @@ entities:
 - **Suggested Additional Validation**:
   - Warn if keys are not unique in source data
   - Validate that all key columns are present after data extraction
+
+---
+
+#### Three-Tier Identity System: Complete Example
+
+```yaml
+entities:
+  # Parent entity with natural key
+  site:
+    type: sql
+    data_source: my_database
+    query: SELECT * FROM sites
+    public_id: site_id           # Target PK name
+    keys: ["site_code"]          # Business key from source
+    columns:
+      - site_code
+      - site_name
+      - location
+  
+  # Child entity referencing parent
+  sample:
+    type: sql
+    data_source: my_database
+    query: SELECT * FROM samples
+    public_id: sample_id          # Target PK name
+    keys: ["sample_code"]         # Business key from source
+    columns:
+      - sample_code
+      - sample_name
+      - parent_site_code
+    foreign_keys:
+      - entity: site
+        remote_keys: ["site_code"]     # Match parent's business key
+        local_keys: ["parent_site_code"] # Local column with parent's business key
+        # Result: Creates FK column "site_id" (from parent's public_id)
+        #         containing parent's system_id values (1, 2, 3...)
+```
+
+**Processing Flow**:
+1. **Load**: `site` loaded with `system_id=1,2,3...` and `site_code` from source
+2. **Link**: `sample` FK created:
+   - Column name: `site_id` (from parent's `public_id`)
+   - Column values: Parent's `system_id` (matched via `keys`)
+3. **Export**: 
+   - `site`: `system_id` column renamed to `site_id`
+   - `sample`: `system_id` renamed to `sample_id`, FK `site_id` preserved
+
+**Critical Rule**: FK column names come from parent's `public_id`, FK values are parent's `system_id`.
 ---
 
 ### Data Source Properties
@@ -197,7 +317,7 @@ entities:
   - **Context-Dependent**:
     - **When `type: fixed`**: Should be empty/null (warning if set, value ignored)
     - **When `type: sql`**: Should be empty/null (warning if set, value ignored)
-    - **When `type: data`**: Can reference another entity name
+    - **When `type: entity`**: Can reference another entity name
   - **Entity Existence**: If string, must reference an existing entity in the project (error if not)
   - **Circular Dependencies**: Source entity must not create circular dependency chain (error)
 - **Common Issues**:
@@ -207,16 +327,16 @@ entities:
   - Warn if source entity is processed after current entity in dependency order
   - Validate that source entity produces compatible output columns
 #### `type`
-- **Type**: `"data" | "fixed" | "sql"`
-- **Required**: No (defaults to `"data"`)
+- **Type**: `"entity" | "fixed" | "sql"`
+- **Required**: No (defaults to `"entity"`)
 - **Description**: 
-  - `"data"`: Extract from source data (spreadsheet or another entity)
+  - `"entity"`: Extract from source data (spreadsheet or another entity)
   - `"fixed"`: Use fixed/hardcoded values defined in `values`
   - `"sql"`: Execute SQL query against a database (requires `data_source` and `query`)
 - **Requirements by Type**:
   - `type: fixed` → requires `values` (list of lists)
   - `type: sql` → requires `data_source` and `query`
-  - `type: data` → uses `source` (defaults to root data if omitted)
+  - `type: entity` → uses `source` (defaults to root data if omitted)
 - **Example**:
   ```yaml
   # Fixed lookup table
@@ -233,8 +353,8 @@ entities:
     from tbl_dimensions
   ```
 - **Validation Rules**:
-  - **Type**: Must be one of `"data"`, `"fixed"`, or `"sql"` if provided
-  - **Default**: Defaults to `"data"` if omitted
+  - **Type**: Must be one of `"entity"`, `"fixed"`, or `"sql"` if provided
+  - **Default**: Defaults to `"entity"` if omitted
   - **Context-Dependent Requirements**:
     - **When `type: fixed`**:
       - `values` field is required (error if missing)
@@ -249,7 +369,7 @@ entities:
       - `data_source` must exist in `options.data_sources` (error if not)
       - `source` should be empty (warning if set)
       - `values` should be empty (warning if set)
-    - **When `type: data`**:
+    - **When `type: entity`**:
       - Can use `source` field to reference another entity
       - Should not have `values`, `data_source`, or `query` (warning if present)
 - **Common Issues**:
@@ -273,7 +393,7 @@ entities:
   - **Context-Dependent**:
     - **When `type: sql`**: Required (error if missing)
     - **When `type: fixed`**: Should be empty (warning if set)
-    - **When `type: data`**: Should be empty (warning if set)
+    - **When `type: entity`**: Should be empty (warning if set)
   - **Append Configurations**: Also validated for each append item with `type: sql`
 - **Common Issues**:
   - Typos in data source name
@@ -302,7 +422,7 @@ entities:
   - **Context-Dependent**:
     - **When `type: sql`**: Required (error if missing)
     - **When `type: fixed`**: Should be empty (warning if set)
-    - **When `type: data`**: Should be empty (warning if set)
+    - **When `type: entity`**: Should be empty (warning if set)
   - **Non-Empty**: Must contain actual SQL text (error if empty)
   - **Append Configurations**: Also validated for append items with `type: sql`
 - **Common Issues**:
@@ -332,7 +452,7 @@ entities:
   - **Context-Dependent**:
     - **When `type: fixed`**: Required (error if missing), must be non-empty (error if empty)
     - **When `type: sql`**: Should be empty (warning if set)
-    - **When `type: data`**: Should be empty (warning if set)
+    - **When `type: entity`**: Should be empty (warning if set)
   - **Type**: Must be a `list` (error if not)
   - **Non-Empty**: Must contain at least one value/row (error if empty)
   - **Structure Validation**:
@@ -380,7 +500,7 @@ entities:
   - **Context-Dependent**:
     - **When `type: fixed`**: Required (error if missing)
     - **When `type: sql`**: Recommended (warning if missing)
-    - **When `type: data`**: Recommended (warning if missing)
+    - **When `type: entity`**: Recommended (warning if missing)
   - **Reference Resolution**: If using `@value:` syntax, the referenced path must exist (error if not)
   - **Fixed Values**: For `type: fixed`, column count must match values row width (error if mismatch)
 - **Common Issues**:
@@ -430,13 +550,21 @@ entities:
 ### Data Quality Properties
 
 #### `drop_duplicates`
-- **Type**: `bool | list[string] | string`
+- **Type**: `bool | list[string] | string | dict`
 - **Required**: No (defaults to `false`)
-- **Description**: Controls duplicate row removal:
+- **Description**: Controls duplicate row removal. Can be specified as:
   - `true`: Drop all duplicate rows
   - `false`: Keep all rows
   - `list[string]`: Drop duplicates based on specified columns
   - `string` with `@value:`: Reference another entity's keys
+  - `dict`: Complex configuration with columns and optional functional dependency settings
+- **Dict Format**: The dict format allows grouping duplicate removal with functional dependency validation settings:
+  ```yaml
+  drop_duplicates:
+    columns: [col1, col2]                          # Columns to check for duplicates
+    check_functional_dependency: true              # (Optional, defaults to true)
+    strict_functional_dependency: false            # (Optional, defaults to true)
+  ```
 - **Example**:
   ```yaml
   # Drop all duplicates
@@ -447,15 +575,27 @@ entities:
   
   # Reference another entity's keys
   drop_duplicates: "@value: entities.site.keys"
+  
+  # Dict format with functional dependency settings
+  drop_duplicates:
+    columns: ["id"]
+    check_functional_dependency: true
+    strict_functional_dependency: false
   ```
+- **Functional Dependency Settings** (when using dict format):
+  - `check_functional_dependency`: Whether to validate functional dependencies during duplicate removal
+  - `strict_functional_dependency`: Whether to raise error (true) or warning (false) if FD validation fails
+- **Precedence**: Top-level `check_functional_dependency` and `strict_functional_dependency` properties take precedence over those specified in the `drop_duplicates` dict
 - **Validation Rules**:
-  - **Type**: Must be `bool`, `str`, or `list[string]` (error if not)
+  - **Type**: Must be `bool`, `str`, `list[string]`, or `dict` (error if not)
   - **List Items**: If list, all items must be strings (error if not)
-  - **Column Existence**: If list, columns should exist in entity's columns/keys (suggested validation)
+  - **Dict Columns**: If dict, `columns` key is required and must be `bool`, `string`, or `list[string]`
+  - **Column Existence**: If list or dict columns, should exist in entity's columns/keys (suggested validation)
   - **Reference Resolution**: If `@value:` string, referenced path must exist
 - **Common Issues**:
   - Columns in list don't exist in entity
   - Invalid `@value:` reference
+  - Dict missing required `columns` key
 - **Suggested Additional Validation**:
   - Warn if drop_duplicates columns don't include all key columns
   - Validate referenced columns exist before runtime
@@ -1687,13 +1827,13 @@ The `append` property is added to entitys and specifies a list of additional dat
 ```yaml
 entity_name:
   # Primary entity
-  type: data | sql | fixed
+  type: entity | sql | fixed | csv | xlsx | openpyxl
   columns: [...]
   # ... other properties ...
   
   # Append additional sources
   append:
-    - type: fixed | sql | data
+    - type: fixed | sql | entity | csv | xlsx | openpyxl
       # Source-specific configuration
       # Inherits selected properties from parent entity
 ```
@@ -1761,18 +1901,18 @@ Append rows extracted from another entity or data source:
 
 ```yaml
 measurement:
-  type: data
+  type: entity
   source: survey_2023
   columns: [measurement_id, value, unit]
   
   append:
-    - type: data
+    - type: entity
       source: survey_2024  # Different source entity
       columns: [measurement_id, value, unit]
 ```
 
-**Properties for `type: data`:**
-- `type`: Must be `"data"`
+**Properties for `type: entity`:**
+- `type`: Must be `"entity"`
 - `source`: Required, entity name to extract from
 - `columns`: Optional, inherits from parent if not specified
 - Inherits: `drop_duplicates`, `drop_empty_rows`, `replacements`, `filters`
@@ -1907,7 +2047,7 @@ Combine data from survey spreadsheet, database, and fixed values:
 
 ```yaml
 sample:
-  type: data
+  type: entity
   source: survey_data
   columns: [sample_id, sample_name, type_code, depth]
   drop_duplicates: [sample_id]
@@ -1939,16 +2079,16 @@ Union data from several Excel/CSV files:
 
 ```yaml
 observation:
-  type: data
+  type: entity
   source: site_a_observations
   columns: [obs_id, site_id, date, value]
   
   append:
-    - type: data
+    - type: entity
       source: site_b_observations
       # Inherits columns from parent
       
-    - type: data
+    - type: entity
       source: site_c_observations
 ```
 
@@ -2053,11 +2193,11 @@ If append sources reference other entities via `source`, those entities must:
 ```yaml
 measurement:
   depends_on: [survey_2023, survey_2024]  # Required!
-  type: data
+  type: entity
   source: survey_2023
   
   append:
-    - type: data
+    - type: entity
       source: survey_2024  # Must be in depends_on
 ```
 
@@ -2103,7 +2243,7 @@ Append allows building datasets incrementally:
 
 ```yaml
 observation:
-  type: data
+  type: entity
   source: base_observations
   
   append:
@@ -2581,7 +2721,7 @@ WARNING: Entity 'sample': Surrogate ID 'sample_id' conflicts with column name 's
 - Type-specific required fields:
   - `type: fixed` requires `values`
   - `type: sql` requires `data_source` and `query`
-  - `type: data` requires `source`
+  - `type: entity` requires `source`
 - `values` for fixed sources is a list of lists (2D array)
 - Referenced entities in `source` exist
 - Referenced data sources exist
@@ -2591,9 +2731,9 @@ WARNING: Entity 'sample': Surrogate ID 'sample_id' conflicts with column name 's
 ERROR: Append source in entity 'sample_type' missing required field 'type'
 ERROR: Append source in entity 'contact' (type: fixed) missing 'values'
 ERROR: Append source in entity 'measurement' (type: sql) missing 'data_source'
-ERROR: Append source in entity 'observation' (type: data) missing 'source'
+ERROR: Append source in entity 'observation' (type: entity) missing 'source'
 ERROR: Append source in entity 'lookup' has invalid values format (expected list of lists)
-ERROR: Append source in entity 'sample' (type: data) references non-existent entity 'calibration'
+ERROR: Append source in entity 'sample' (type: entity) references non-existent entity 'calibration'
 ```
 
 **Why It Matters**: Append operations fail if sources are misconfigured. Validation ensures all append sources have proper type-specific configuration before attempting concatenation.
@@ -2874,7 +3014,7 @@ EntityConfig:
   
   # Source
   source?: string | null
-  type?: "data" | "fixed" | "sql"
+  type?: "entity" | "fixed" | "sql"
   data_source?: string
   values?: string | list[list]
   

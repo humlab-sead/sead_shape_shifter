@@ -3,10 +3,22 @@ import os
 import shutil
 from pathlib import Path
 
+import jpype
+import pytest
+
+from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 from src.model import ShapeShiftProject
 from src.specifications.project import CompositeProjectSpecification
 from src.utility import load_shape_file
 from src.workflow import validate_entity_shapes, workflow
+
+
+@pytest.fixture(scope="module", autouse=True)
+def initialize_jvm():
+    """Initialize JVM once for all tests in this module."""
+    if not jpype.isJVMStarted():
+        init_jvm_for_ucanaccess()
+    yield
 
 
 def test_validate_project_file():
@@ -36,8 +48,10 @@ def test_access_database_csv_workflow():
     )
 
     translate: bool = False
+    target_type: str = "csv"
 
-    output_path: Path = Path("tmp/arbodat-test.xlsx")
+    output_path: Path = Path("tmp/arbodat-test.xlsx") if target_type == "excel" else Path("tmp/arbodat-test")
+
     asyncio.run(asyncio.sleep(0.1))  # type: ignore ; ensure config is fully loaded;
 
     remove_path(output_path)
@@ -49,7 +63,7 @@ def test_access_database_csv_workflow():
             project=config,
             target=str(output_path),
             translate=translate,
-            target_type="xlsx",
+            target_type=target_type,
             drop_foreign_keys=False,
         )
     )

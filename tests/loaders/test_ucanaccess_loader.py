@@ -2,8 +2,9 @@ import os
 
 import jpype
 import pandas as pd
+import pytest
 
-from src.loaders.sql_loaders import UCanAccessSqlLoader
+from src.loaders.sql_loaders import UCanAccessSqlLoader, init_jvm_for_ucanaccess
 from src.model import DataSourceConfig
 
 UCANACCESS_HOME = os.path.abspath("lib/ucanaccess")
@@ -20,6 +21,15 @@ DATA_SOURCE_CONFIG = DataSourceConfig(
     },
     name="ucanaccess_test",
 )
+
+
+@pytest.fixture(scope="module", autouse=True)
+def initialize_jvm():
+    """Initialize JVM once for all tests in this module."""
+    if not jpype.isJVMStarted():
+        init_jvm_for_ucanaccess(UCANACCESS_HOME)
+    yield
+    # JVM shutdown is not recommended by JPype and causes issues with subsequent tests
 
 
 def test_can_load_ucanaccess():

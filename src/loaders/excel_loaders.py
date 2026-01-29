@@ -4,25 +4,37 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import openpyxl
 import pandas as pd
 
-if TYPE_CHECKING:
-    from src.model import TableConfig
-
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.loaders.file_loaders import FileLoader
 
-from .base_loader import ConnectTestResult, DataLoaders
+from .base_loader import ConnectTestResult, DataLoaders, LoaderType
+
+if TYPE_CHECKING:
+    from src.model import TableConfig
 
 
 class ExcelLoader(FileLoader):
     """Loader for Excel files."""
 
+    @classmethod
+    def loader_type(cls) -> LoaderType:
+        """Get the loader type."""
+        return LoaderType.FILE
+
     def get_loader_opts(self, table_cfg: "TableConfig") -> dict[str, str]:
-        """Get loader options from the TableConfig source."""
-        if isinstance(table_cfg.source, str):
-            return {"sheet_name": table_cfg.source}
-        if self.data_source and self.data_source.options:
-            return self.data_source.options.get("sheet_name", {})
-        return {}
+        """Get loader options from the TableConfig or data source.
+
+        Base FileLoader already handles filename/options on the table config or data source.
+        We extend it to also respect a shorthand sheet name when provided as `source`.
+        """
+        opts: dict[str, str] = super().get_loader_opts(table_cfg)
+
+        # If the sheet is specified via `source: <sheet>` keep the filename from options
+        # and just add sheet_name instead of replacing the whole options dict.
+        if isinstance(table_cfg.source, str) and table_cfg.source:
+            opts.setdefault("sheet_name", table_cfg.source)
+
+        return opts
 
 
 @DataLoaders.register(key=["xlsx", "xls"])

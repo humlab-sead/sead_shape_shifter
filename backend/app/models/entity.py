@@ -92,12 +92,21 @@ class Entity(BaseModel):
     """Entity (table) configuration."""
 
     name: str = Field(..., description="Entity name (snake_case)")
-    type: Literal["data", "sql", "fixed"] | None = Field(default=None, description="Data source type")
+    type: Literal["entity", "sql", "fixed", "csv", "xlsx", "openpyxl"] | None = Field(default=None, description="Data source type")
     source: str | None = Field(default=None, description="Source entity name")
     data_source: str | None = Field(default=None, description="Data source name for SQL type")
     query: str | None = Field(default=None, description="SQL query for SQL type")
-    surrogate_id: str | None = Field(default=None, description="Surrogate ID column name")
-    keys: list[str] = Field(default_factory=list, description="Natural key columns")
+
+    # Identity fields (three-tier model)
+    system_id: str | None = Field(default="system_id", description="Local auto-incrementing identifier (always 'system_id')")
+    public_id: str | None = Field(
+        default=None, description="Public identifier for target system and FK column naming (e.g., 'sample_type_id')"
+    )
+    surrogate_id: str | None = Field(
+        default=None, description="DEPRECATED: Use system_id/public_id instead. Kept for backward compatibility."
+    )
+    keys: list[str] = Field(default_factory=list, description="Business/natural key columns from source data")
+
     columns: list[str] = Field(default_factory=list, description="Columns to extract")
     extra_columns: dict[str, Any] = Field(default_factory=dict, description="Additional computed columns")
     foreign_keys: list[ForeignKeyConfig] = Field(default_factory=list, description="Foreign key relationships")
@@ -118,10 +127,22 @@ class Entity(BaseModel):
             raise ValueError(f"Entity name must be snake_case: {v}")
         return v
 
+    @field_validator("public_id")
+    @classmethod
+    def validate_public_id(cls, v: str | None) -> str | None:
+        """Validate public_id ends with _id."""
+        if v and not v.endswith("_id"):
+            raise ValueError(f"public_id must end with '_id': {v}")
+        return v
+
     @field_validator("surrogate_id")
     @classmethod
-    def validate_surrogate_id(cls, v: str | None) -> str | None:
-        """Validate surrogate ID ends with _id."""
-        if v and not v.endswith("_id"):
-            raise ValueError(f"Surrogate ID must end with '_id': {v}")
+    def migrate_surrogate_id(cls, v: str | None, info) -> str | None:
+        """Handle backward compatibility: copy surrogate_id to public_id if not set."""
+        if v is not None:
+            # Get the current values dict
+            values = info.data
+            # If surrogate_id is set but public_id is not, migrate it
+            if values.get("public_id") is None:
+                values["public_id"] = v
         return v
