@@ -53,13 +53,14 @@ class TestTableConfig:
     def test_basic_table_config(self):
         """Test creating a basic table configuration."""
         entities = {
-            "site": {"surrogate_id": "site_id", "keys": ["site_name"], "columns": ["site_name", "description"], "depends_on": ["location"]}
+            "site": {"public_id": "site_id", "keys": ["site_name"], "columns": ["site_name", "description"], "depends_on": ["location"]}
         }
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
 
         assert table.entity_name == "site"
-        assert table.surrogate_id == "site_id"
+        assert table.system_id == "system_id"  # Always standardized
+        assert table.public_id == "site_id"
         assert table.keys == {"site_name"}
         assert table.columns == ["site_name", "description"]
         assert table.depends_on == {"location"}
@@ -69,11 +70,11 @@ class TestTableConfig:
         """Test table configuration with foreign keys."""
         entities = {
             "site": {
-                "surrogate_id": "site_id",
+                "public_id": "site_id",
                 "columns": ["site_name"],
                 "foreign_keys": [{"entity": "location", "local_keys": ["location_id"], "remote_keys": ["location_id"]}],
             },
-            "location": {"surrogate_id": "location_id", "columns": ["location_name"]},
+            "location": {"public_id": "location_id", "columns": ["location_name"]},
         }
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
@@ -84,14 +85,14 @@ class TestTableConfig:
 
     def test_table_drop_duplicates_bool(self):
         """Test drop_duplicates as boolean."""
-        entities = {"site": {"surrogate_id": "site_id", "drop_duplicates": True}}
+        entities = {"site": {"public_id": "site_id", "drop_duplicates": True}}
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
         assert table.drop_duplicates is True
 
     def test_table_drop_duplicates_list(self):
         """Test drop_duplicates as list of columns."""
-        entities = {"site": {"surrogate_id": "site_id", "drop_duplicates": ["col1", "col2"]}}
+        entities = {"site": {"public_id": "site_id", "drop_duplicates": ["col1", "col2"]}}
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
         assert table.drop_duplicates == ["col1", "col2"]
@@ -105,7 +106,7 @@ class TestTableConfig:
 
     def test_table_drop_duplicates_as_dict_with_columns(self):
         """Test drop_duplicates as dict with columns."""
-        entities = {"site": {"surrogate_id": "site_id", "drop_duplicates": {"columns": ["col1", "col2"]}}}
+        entities = {"site": {"public_id": "site_id", "drop_duplicates": {"columns": ["col1", "col2"]}}}
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
         assert table.drop_duplicates == ["col1", "col2"]
@@ -150,14 +151,14 @@ class TestTableConfig:
 
     def test_table_without_unnest(self):
         """Test table configuration without unnest."""
-        entities = {"site": {"surrogate_id": "site_id"}}
+        entities = {"site": {"public_id": "site_id"}}
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
         assert table.unnest is None
 
     def test_missing_entity_raises_error(self):
         """Test that missing entity raises KeyError."""
-        entities = {"site": {"surrogate_id": "site_id"}}
+        entities = {"site": {"public_id": "site_id"}}
 
         with pytest.raises(KeyError):
             TableConfig(entities_cfg=entities, entity_name="nonexistent")

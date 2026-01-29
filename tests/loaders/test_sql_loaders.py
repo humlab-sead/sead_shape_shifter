@@ -417,7 +417,7 @@ class TestUCanAccessLoader:
                     "query": "SELECT * FROM Products",
                     "keys": ["ProductID"],
                     "columns": ["ProductID", "ProductName"],
-                    "surrogate_id": None,
+                    "public_id": "product_id",
                 }
             },
             entity_name="products",
@@ -431,6 +431,7 @@ class TestUCanAccessLoader:
             assert len(result) == 3
             assert "ProductID" in result.columns
             assert "ProductName" in result.columns
+            assert "system_id" in result.columns
 
     @pytest.mark.asyncio
     async def test_get_tables_filters_system_tables(self, loader):
@@ -513,8 +514,8 @@ class TestSqlLoaderCore:
         return DummySqlLoader(data_source=Mock())
 
     @pytest.mark.asyncio
-    async def test_load_auto_detects_columns_and_adds_surrogate_id(self, monkeypatch: pytest.MonkeyPatch):
-        """SqlLoader.load should infer columns when configured and append surrogate id."""
+    async def test_load_auto_detects_columns_and_adds_system_id(self, monkeypatch: pytest.MonkeyPatch):
+        """SqlLoader.load should infer columns when configured and append system_id."""
         loader = DummySqlLoader(data_source=DataSourceConfig(name="dummy", cfg={"driver": "postgres"}))
 
         sample_df = pd.DataFrame({"col_a": [1, 2], "col_b": ["x", "y"]})
@@ -529,18 +530,18 @@ class TestSqlLoaderCore:
                     "columns": [],
                     "auto_detect_columns": True,
                     "check_column_names": True,
-                    "surrogate_id": "sql_id",
+                    "public_id": "sql_id",  # public_id for target system
                 }
             },
             entity_name="sql_entity",
         )
 
-        with patch("src.loaders.sql_loaders.add_surrogate_id", side_effect=lambda df, col: df.assign(**{col: [10, 20]})):
+        with patch("src.loaders.sql_loaders.add_system_id", side_effect=lambda df, col: df.assign(**{col: [10, 20]})):
             result = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
 
         assert list(table_cfg.columns) == ["col_a", "col_b"]
-        assert list(result.columns) == ["col_a", "col_b", "sql_id"]
-        assert result["sql_id"].tolist() == [10, 20]
+        assert list(result.columns) == ["col_a", "col_b", "system_id"]
+        assert result["system_id"].tolist() == [10, 20]
 
     @pytest.mark.asyncio
     async def test_load_rejects_non_sql_entity(self):
@@ -634,14 +635,15 @@ class TestSqlLoaderCore:
                     "columns": ["a", "b"],
                     "auto_detect_columns": False,
                     "check_column_names": False,
-                    "surrogate_id": None,
+                    "public_id": "sql_entity_id",
                 }
             },
             entity_name="sql_entity",
         )
 
         result = await loader.load("sql_entity", table_cfg)
-        assert list(result.columns) == ["a", "b"]
+        # When public_id is configured, system_id is automatically added
+        assert list(result.columns) == ["a", "b", "system_id"]
 
     def test_get_test_query_formats_default(self):
         loader = DummySqlLoader(data_source=Mock())

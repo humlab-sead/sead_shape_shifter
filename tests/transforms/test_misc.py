@@ -8,7 +8,7 @@ from src.utility import (
 
 
 class TestRenameLastOccurrence:
-    """Test suite for rename_last_occurence helper function."""
+    """Test suite for rename_last_occurrence helper function."""
 
     def test_basic_rename_single_occurrence(self):
         """Test renaming a column that appears once."""

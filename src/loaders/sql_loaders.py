@@ -12,7 +12,7 @@ from loguru import logger
 from sqlalchemy import create_engine
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
-from src.transforms.utility import add_surrogate_id
+from src.transforms.utility import add_system_id
 from src.utility import create_db_uri as create_pg_uri
 from src.utility import dotget
 
@@ -137,13 +137,17 @@ class SqlLoader(DataLoader):
             table_cfg.columns = list(data.columns)
 
         if table_cfg.check_column_names:
-            if set(data.columns) != (set(table_cfg.keys_and_columns) - set(table_cfg.unnest_columns)):
+            # Expected columns are the configured keys/columns excluding any unnest columns,
+            # which are handled separately by the unnesting logic and should not be present in the raw data.
+            expected_columns: set[str] = set(table_cfg.keys_and_columns) - set(table_cfg.unnest_columns)
+            if set(data.columns) != expected_columns:
                 raise ValueError(f"Data for entity '{entity_name}' has different columns compared to configuration")
         else:
             data.columns = table_cfg.keys_and_columns
 
-        if table_cfg.surrogate_id:
-            data = add_surrogate_id(data, table_cfg.surrogate_id)
+        # Add system_id if configured (always "system_id" column name)
+        if table_cfg.system_id and table_cfg.system_id not in data.columns:
+            data = add_system_id(data, table_cfg.system_id)
 
         return data
 
