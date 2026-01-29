@@ -501,7 +501,7 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
     # Write new content
     project_path.write_text(request.yaml_content, encoding="utf-8")
 
-    # Load and return updated project
+    # Load and return updated project (always reads from disk)
     updated_project = project_service.load_project(name)
 
     logger.info(f"Updated project '{name}' from raw YAML")
