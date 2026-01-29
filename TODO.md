@@ -585,7 +585,7 @@ That would give a behaviour consistent with current use of "surrogate_id".
 
 
 
-TODO: Materialized of entities
+TODO: #191 Materialized of entities
 
 Please assess how an entity materialization feature could be defined and implemented. 
 
