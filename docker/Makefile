@@ -36,6 +36,12 @@ guard-cwd:
 		exit 1; \
 	fi
 
+guard-docker-files-exists:
+	@if [ ! -f "./docker-compose.yml" ] || [ ! -f "./Dockerfile" ]; then \
+		echo "❌ docker-compose.yml not found in $(shell pwd)"; \
+		exit 1; \
+	fi
+
 .PHONY: deploy-shell
 deploy-shell:
 	@cd $(DEPLOY_DIR)
@@ -53,10 +59,10 @@ update-deploy-scripts: guard-user
 	@pushd $(DEPLOY_SOURCE_DIR) && ./deploy-to-sead-tools && popd
 
 .PHONY: docker-build
-docker-build: deploy-shell guard-user guard-cwd docker-build-github
+docker-build: deploy-shell guard-user guard-cwd guard-docker-files-exists docker-build-github
 
 .PHONY: docker-build-github
-docker-build-github: guard-user guard-cwd
+docker-build-github: guard-user guard-cwd guard-docker-files-exists
 	@pushd $(DEPLOY_DIR) && ./build.sh --git-ref main \
 		--user-uid $(USER_UID) \
 		--user-gid $(USER_GID) \
@@ -65,24 +71,18 @@ docker-build-github: guard-user guard-cwd
 .PHONY: build-and-deploy
 build-and-deploy: deploy-shell docker-build-github docker-restart
 
-.PHONY: docker-build-local
-docker-build-local: deploy-shell guard-user guard-cwd
-	@cd $(DOCKER_DIR) && ./build.sh --local \
-		--user-uid $(USER_UID) \
-		--user-gid $(USER_GID)
-
 ################################################################################
 # Build from specific GitHub tag/branch (no cache bust needed for tags)
 # NOTE: Run from project root directory
 ################################################################################
 
 .PHONY: docker-build-tag
-docker-build-tag: guard-user guard-cwd
+docker-build-tag: guard-user guard-cwd guard-docker-files-exists
 	@if [ -z "$(TAG)" ]; then \
 		echo "❌ Error: TAG variable required. Usage: make docker-build-tag TAG=v1.2.0"; \
 		exit 1; \
 	fi
-	@cd $(DOCKER_DIR) && ./build.sh --git-ref $(TAG) \
+	@./build.sh --git-ref $(TAG) \
 		--user-uid $(USER_UID) \
 		--user-gid $(USER_GID) \
 		--git-repo $(GIT_REPO)
@@ -100,7 +100,7 @@ docker-build-tag: guard-user guard-cwd
 .PHONY: docker-up
 docker-up:
 	@echo "Starting Shape Shifter with Docker Compose..."
-	@cd $(DOCKER_DIR) && docker compose up -d
+	@pushd $(DOCKER_DIR) && docker compose up -d && popd
 	@echo "✓ Application started at http://localhost:$(BACKEND_PORT)"
 
 .PHONY: docker-start
@@ -109,33 +109,36 @@ docker-start: docker-up
 .PHONY: docker-down
 docker-down:
 	@echo "Stopping Shape Shifter containers..."
-	@cd $(DOCKER_DIR) && docker compose down
+	@pushd $(DOCKER_DIR) && docker compose down && popd
 
 .PHONY: docker-stop
 docker-stop: docker-down
 
 .PHONY: docker-logs
 docker-logs:
-	@cd $(DOCKER_DIR) && docker compose logs -f
+	@pushd $(DOCKER_DIR) && docker compose logs -f && popd
 
 .PHONY: docker-restart
 docker-restart:
 	@echo "Restarting Shape Shifter..."
-	@cd $(DOCKER_DIR) && docker compose down
-	@cd $(DOCKER_DIR) && docker rm -f shape-shifter 2>/dev/null || true
-	@cd $(DOCKER_DIR) && docker compose up -d
+	@pushd $(DOCKER_DIR) \
+		&& docker compose down \
+		&& docker rm -f shape-shifter 2>/dev/null || true \
+		&& docker compose up -d \
+		&& popd
 	@echo "✓ Application restarted at http://localhost:$(BACKEND_PORT)"
 
-.PHONY: docker-rebuild
-docker-rebuild:
-	@echo "Rebuilding and restarting Shape Shifter..."
-	@cd $(DOCKER_DIR) && docker compose down
-	@cd $(DOCKER_DIR) && docker compose up -d --build
-	@echo "✓ Application rebuilt and started at http://localhost:$(BACKEND_PORT)"
+# .PHONY: docker-rebuild
+# docker-rebuild: guard-dockerfile-exists
+# 	@echo "Rebuilding and restarting Shape Shifter..."
+# 	@docker compose down && docker compose up -d --build
+# 	@echo "✓ Application rebuilt and started at http://localhost:$(BACKEND_PORT)"
 
 .PHONY: docker-shell
 docker-shell:
-	@cd $(DOCKER_DIR) && docker compose exec shape-shifter /bin/bash
+	@pushd $(DOCKER_DIR) \
+		&& docker compose exec shape-shifter /bin/bash \
+		&& popd
 
 .PHONY: docker-clean
 docker-clean:

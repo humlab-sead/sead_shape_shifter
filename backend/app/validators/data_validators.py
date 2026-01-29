@@ -165,7 +165,7 @@ class NaturalKeyUniquenessValidator:
                         code="NON_UNIQUE_KEYS",
                         suggestion=f"Natural keys must uniquely identify rows. "
                         f"Example duplicate: {example_str}. "
-                        f"Consider using a different key combination or add surrogate_id.",
+                        f"Consider using a different key combination or add public_id.",
                         category=ValidationCategory.DATA,
                         priority=ValidationPriority.HIGH,
                         auto_fixable=False,

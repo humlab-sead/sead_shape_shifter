@@ -230,16 +230,13 @@ class TableConfig:
 
     @property
     def system_id(self) -> str:
-        """Get system_id column name (always 'system_id', or from legacy surrogate_id)."""
-        # Support both new system_id and legacy surrogate_id for backward compatibility
-        return self.entity_cfg.get("system_id") or self.entity_cfg.get("surrogate_id") or "system_id"
+        """Get system_id column name (always 'system_id')."""
+        return self.entity_cfg.get("system_id") or "system_id"
 
     @property
     def public_id(self) -> str:
-        """Get public_id column name (defines FK column names in child tables).
-        Falls back to surrogate_id for backward compatibility.
-        """
-        return self.entity_cfg.get("public_id") or self.entity_cfg.get("surrogate_id") or ""
+        """Get public_id column name (defines FK column names in child tables)."""
+        return self.entity_cfg.get("public_id") or ""
 
     @property
     def check_column_names(self) -> bool:
@@ -891,8 +888,12 @@ class ShapeShiftProject:
         FK columns are named after the parent entity's public_id.
         """
         table: TableConfig = self.get_table(entity_name)
-        # Start with system_id, then add FK columns (named after parent's public_id)
-        cols_to_move: list[str] = [table.system_id] + [self.get_table(fk.remote_entity).public_id for fk in table.foreign_keys]
+        # Start with system_id and public_id, then add FK columns (named after parent's public_id)
+        cols_to_move: list[str] = (
+            [table.system_id]
+            + ([table.public_id] if table.public_id else [])
+            + [self.get_table(fk.remote_entity).public_id for fk in table.foreign_keys]
+        )
         existing_cols_to_move: list[str] = [col for col in cols_to_move if col in table.columns]
         other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
         new_column_order: list[str] = existing_cols_to_move + other_cols
