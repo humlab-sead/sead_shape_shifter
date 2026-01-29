@@ -200,8 +200,7 @@
                             label="System ID"
                             variant="outlined"
                             readonly
-                            disabled
-                            bg-color="grey-lighten-3"
+                            class="system-id-field"
                           >
                             <template #append-inner>
                               <v-tooltip location="top" max-width="400">
@@ -1235,13 +1234,12 @@ function formDataToYaml(): string {
     entityData.surrogate_id = formData.value.surrogate_id
   }
 
-  if (formData.value.keys.length > 0) {
-    entityData.keys = formData.value.keys
-  }
+  // Always include keys (even if empty array) for consistency with project YAML
+  entityData.keys = formData.value.keys
 
-  if (formData.value.columns.length > 0) {
-    entityData.columns = formData.value.columns
-  }
+  // Always include columns (even if empty array) for consistency with project YAML
+  // Note: columns should contain ALL columns including identity columns (system_id, public_id)
+  entityData.columns = formData.value.columns
 
   if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
     entityData.values = formData.value.values
@@ -1756,6 +1754,21 @@ function handleRejectDependency(dep: DependencySuggestion) {
 </script>
 
 <style scoped>
+/* System ID field - read-only with dimmed text and subtle background */
+.system-id-field :deep(input) {
+  color: rgba(var(--v-theme-on-surface), 0.5) !important;
+  cursor: not-allowed;
+}
+
+.system-id-field :deep(.v-field) {
+  pointer-events: none;
+  background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
+}
+
+.system-id-field :deep(.v-field__outline) {
+  opacity: 0.5;
+}
+
 /* Dialog content height management */
 .dialog-content {
   min-height: 600px;
