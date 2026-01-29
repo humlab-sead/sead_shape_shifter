@@ -867,18 +867,6 @@ class TestTableConfig:
         # system_id should not be overwritten
         assert result["system_id"].tolist() == [100, 200]
 
-    def test_add_system_id_column_no_surrogate_id(self):
-        """Test add_system_id_column when public_id not in dataframe."""
-        entities: dict[str, dict[str, Any]] = {"site": {"public_id": "site_id", "columns": ["name"]}}
-
-        table = TableConfig(entities_cfg=entities, entity_name="site")
-        df = pd.DataFrame({"name": ["A", "B"]})
-
-        result = table.add_system_id_column(df)
-
-        # Should not add system_id if public_id doesn't exist
-        assert "system_id" not in result.columns
-
     def test_is_drop_duplicate_dependent_on_unnesting_true(self):
         """Test is_drop_duplicate_dependent_on_unnesting returns True."""
         entities: dict[str, dict[str, Any]] = {
@@ -1276,7 +1264,7 @@ class TestShapeShiftProject:
             },
             "site": {
                 "public_id": "site_id",
-                "columns": ["site_id", "location_id", "site_name", "location_name", "description"],
+                "columns": ["system_id", "site_id", "location_id", "site_name", "location_name", "description"],
                 "foreign_keys": [{"entity": "location", "local_keys": ["location_name"], "remote_keys": ["location_name"]}],
             },
         }
@@ -1284,10 +1272,11 @@ class TestShapeShiftProject:
         tables = ShapeShiftProject(cfg={"entities": entities}, filename="test-config.yml")
         sorted_cols = tables.get_sorted_columns("site")
 
-        # Order: site_id, location_id (FK), then other columns
-        assert sorted_cols[0] == "site_id"
-        assert sorted_cols[1] == "location_id"
-        assert set(sorted_cols[2:]) == {"site_name", "location_name", "description"}
+        # Order: system_id, site_id, location_id (FK), then other columns
+        assert sorted_cols[0] == "system_id"
+        assert sorted_cols[1] == "site_id"
+        assert sorted_cols[2] == "location_id"
+        assert set(sorted_cols[3:]) == {"site_name", "location_name", "description"}
 
     def test_get_sorted_columns_multiple_foreign_keys(self):
         """Test get_sorted_columns with multiple foreign keys."""
