@@ -44,12 +44,14 @@ import 'ag-grid-community/styles/ag-theme-alpine.css'
 
 interface Props {
   modelValue: any[][] // 2D array of values
-  columns: string[] // Column names from keys + columns
+  columns: string[] // Column names (includes system_id, public_id, keys, columns)
+  publicId?: string // Name of the public_id column
   height?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   height: '300px',
+  publicId: undefined,
 })
 
 const emit = defineEmits<{
@@ -95,7 +97,11 @@ const columnDefs = computed<ColDef[]>(() => {
     ...props.columns.map((col, index) => ({
       field: `col_${index}`,
       headerName: col,
-      editable: true,
+      // system_id is read-only and auto-numbered
+      editable: col !== 'system_id',
+      // Highlight system_id and public_id columns
+      cellClass: col === 'system_id' ? 'system-id-column' : (col === props.publicId ? 'public-id-column' : ''),
+      headerClass: col === 'system_id' ? 'system-id-header' : (col === props.publicId ? 'public-id-header' : ''),
     })),
   ]
 })
@@ -109,7 +115,13 @@ const rowData = computed(() => {
   return props.modelValue.map((row, rowIndex) => {
     const rowObj: any = { id: rowIndex }
     row.forEach((value, colIndex) => {
-      rowObj[`col_${colIndex}`] = value
+      const columnName = props.columns[colIndex]
+      // Auto-populate system_id with sequential numbers (1-based)
+      if (columnName === 'system_id') {
+        rowObj[`col_${colIndex}`] = rowIndex + 1
+      } else {
+        rowObj[`col_${colIndex}`] = value
+      }
     })
     return rowObj
   })
@@ -148,10 +160,20 @@ function getAllRows(): any[][] {
 function addRow() {
   if (!gridApi.value) return
 
+  // Get current row count to calculate next system_id
+  let rowCount = 0
+  gridApi.value.forEachNode(() => rowCount++)
+
   // Create a new row with null values
   const newRow: any = { id: Date.now() }
   for (let i = 0; i < props.columns.length; i++) {
-    newRow[`col_${i}`] = null
+    const columnName = props.columns[i]
+    // Auto-populate system_id with next sequential number
+    if (columnName === 'system_id') {
+      newRow[`col_${i}`] = rowCount + 1
+    } else {
+      newRow[`col_${i}`] = null
+    }
   }
 
   gridApi.value.applyTransaction({ add: [newRow] })
@@ -254,5 +276,29 @@ watch(
 
 .compact-grid :deep(.ag-row-hover) {
   background: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+/* system_id column - read-only, auto-numbered */
+.compact-grid :deep(.system-id-column) {
+  background: rgba(var(--v-theme-surface), 0.5) !important;
+  font-style: italic;
+  color: rgba(var(--v-theme-on-background), 0.6) !important;
+}
+
+.compact-grid :deep(.system-id-header) {
+  background: rgba(var(--v-theme-surface), 0.8) !important;
+  font-weight: 700;
+}
+
+/* public_id column - editable, highlighted */
+.compact-grid :deep(.public-id-column) {
+  background: rgba(var(--v-theme-primary), 0.05) !important;
+  font-weight: 500;
+}
+
+.compact-grid :deep(.public-id-header) {
+  background: rgba(var(--v-theme-primary), 0.1) !important;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary)) !important;
 }
 </style>
