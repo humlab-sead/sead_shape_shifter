@@ -184,6 +184,39 @@ class ForeignKeyConfig:
         return False
 
 
+class MaterializationConfig:
+    """Configuration for materialized entity state. Read-Only."""
+
+    def __init__(self, data: dict[str, Any] | None = None) -> None:
+        """Initialize materialization config from data."""
+        self.data: dict[str, Any] = data or {}
+
+    @property
+    def enabled(self) -> bool:
+        """Check if entity is materialized."""
+        return self.data.get("enabled", False)
+
+    @property
+    def source_state(self) -> dict[str, Any] | None:
+        """Get saved pre-materialization entity config."""
+        return self.data.get("source_state")
+
+    @property
+    def materialized_at(self) -> str | None:
+        """Get materialization timestamp (ISO format)."""
+        return self.data.get("materialized_at")
+
+    @property
+    def materialized_by(self) -> str | None:
+        """Get user email who materialized the entity."""
+        return self.data.get("materialized_by")
+
+    @property
+    def data_file(self) -> str | None:
+        """Get relative path to materialized data file (parquet/csv)."""
+        return self.data.get("data_file")
+
+
 class TableConfig:
     """Configuration for a database table. Read-Only. Wraps table setting from entities config."""
 
@@ -237,6 +270,16 @@ class TableConfig:
     def public_id(self) -> str:
         """Get public_id column name (defines FK column names in child tables)."""
         return self.entity_cfg.get("public_id") or ""
+
+    @property
+    def materialized(self) -> MaterializationConfig:
+        """Get materialization configuration."""
+        return MaterializationConfig(self.entity_cfg.get("materialized", {}))
+
+    @property
+    def is_materialized(self) -> bool:
+        """Check if entity is materialized."""
+        return self.materialized.enabled
 
     @property
     def check_column_names(self) -> bool:
@@ -444,6 +487,26 @@ class TableConfig:
 
         return table
 
+    def add_public_id_column(self, table: pd.DataFrame) -> pd.DataFrame:
+        """Add public_id column with None values if not already present.
+        
+        For entities with append configurations, the public_id column is excluded
+        from append source extractions and added after concatenation.
+        This allows the entity to have a proper public_id column structure
+        even when building from heterogeneous sources.
+        
+        Returns:
+            pd.DataFrame: DataFrame with public_id column added if it was missing.
+        """
+        public_id_col: str = self.public_id
+
+        if public_id_col and public_id_col not in table.columns:
+            # Add public_id column initialized to None
+            table = table.copy()
+            table[public_id_col] = None
+
+        return table
+
     def is_drop_duplicate_dependent_on_unnesting(self) -> bool:
         """Check if `drop_duplicates` is dependent on columns created during unnesting."""
         if not self.drop_duplicates or not self.unnest:
@@ -453,7 +516,12 @@ class TableConfig:
         return False
 
     def create_append_config(self, append_data: dict[str, Any]) -> dict[str, Any]:
-        """Create a merged configuration for an append item, inheriting parent properties."""
+        """Create a merged configuration for an append item, inheriting parent properties.
+        
+        Special handling:
+        - Filters out public_id from columns list (will be added after concatenation)
+        - Inherits most properties except foreign_keys, unnest, append, append_mode, depends_on
+        """
         merged: dict[str, Any] = {}
         non_inheritable_keys: set[str] = {"foreign_keys", "unnest", "append", "append_mode", "depends_on"}
         all_keys: set[str] = set(self.entity_cfg.keys()) | set(append_data.keys())
@@ -472,6 +540,13 @@ class TableConfig:
                 value = special_conversions[key](value)
 
             merged[key] = value
+
+        # Filter out public_id from columns list for append sources
+        # The public_id column will be added after concatenation with None values
+        if "columns" in merged and self.public_id:
+            columns = merged["columns"]
+            if isinstance(columns, list) and self.public_id in columns:
+                merged["columns"] = [col for col in columns if col != self.public_id]
 
         return merged
 
@@ -503,6 +578,43 @@ class TableConfig:
         if self.public_id:
             key_columns.add(self.public_id)
         return key_columns
+
+    def can_materialize(self, project: "ShapeShiftProject") -> tuple[bool, list[str]]:
+        """
+        Check if entity can be materialized.
+
+        Returns:
+            (can_materialize, [error_messages])
+        """
+        errors = []
+
+        # Rule 1: Cannot be fixed
+        if self.type == "fixed":
+            errors.append("Entity is already type 'fixed'")
+
+        # Rule 2: Cannot already be materialized
+        if self.is_materialized:
+            errors.append("Entity is already materialized")
+
+        # Rule 3: Cannot depend on non-materialized dynamic entities
+        for fk in self.foreign_keys:
+            try:
+                parent = project.get_table(fk.remote_entity)
+                if parent.type != "fixed" and not parent.is_materialized:
+                    errors.append(f"Depends on non-materialized entity '{fk.remote_entity}'")
+            except KeyError:
+                errors.append(f"Foreign key references non-existent entity '{fk.remote_entity}'")
+
+        # Check depends_on (source dependencies)
+        for dep in self.depends_on:
+            try:
+                dep_entity = project.get_table(dep)
+                if dep_entity.type != "fixed" and not dep_entity.is_materialized:
+                    errors.append(f"Depends on non-materialized entity '{dep}'")
+            except KeyError:
+                errors.append(f"Depends on non-existent entity '{dep}'")
+
+        return (len(errors) == 0, errors)
 
     def hash(self) -> str:
         """Compute a hash of the metadata for change detection."""

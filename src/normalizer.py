@@ -128,6 +128,11 @@ class ShapeShifter:
             # Process all configured tables (base + append items)
             data: pd.DataFrame = await self.get_subset(subset_service, entity, table_cfg)
 
+            # Add public_id column if needed (after concatenation, before filters)
+            # For entities with append, public_id is filtered from append sources and added here
+            if table_cfg.has_append:
+                data = table_cfg.add_public_id_column(data)
+
             if table_cfg.filters:
                 data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store)
 

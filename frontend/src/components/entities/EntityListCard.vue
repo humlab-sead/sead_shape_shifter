@@ -88,6 +88,16 @@
             <v-chip size="x-small" variant="outlined" class="mx-2">
               {{ entity.entity_data.type || 'entity' }}
             </v-chip>
+            <v-chip
+              v-if="entity.materialized?.enabled"
+              size="x-small"
+              color="primary"
+              variant="flat"
+              class="mr-2"
+            >
+              <v-icon size="x-small" class="mr-1">mdi-database-check</v-icon>
+              Materialized
+            </v-chip>
             <span v-if="entity.entity_data.source" class="text-caption text-medium-emphasis">
               Source: {{ entity.entity_data.source }}
             </span>

@@ -425,6 +425,60 @@ class EntityReferencesExistSpecification(ProjectSpecification):
                 )
 
 
+@ENTITY_SPECIFICATION.register(key="materialization")
+class MaterializationSpecification(ProjectSpecification):
+    """Validates materialized entity configurations."""
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that materialized entity is properly configured."""
+        self.clear()
+
+        entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
+        materialized_cfg = entity_cfg.get("materialized")
+
+        if materialized_cfg is None or not materialized_cfg.get("enabled"):
+            return True
+
+        # Materialized entities must be fixed type
+        entity_type = entity_cfg.get("type")
+        if entity_type != "fixed":
+            self.add_error(
+                f"Materialized entity '{entity_name}' must have type='fixed', got '{entity_type}'",
+                entity=entity_name,
+                field="type",
+            )
+
+        # Must have values or data_file
+        has_values = bool(entity_cfg.get("values"))
+        has_data_file = bool(materialized_cfg.get("data_file"))
+
+        if not has_values and not has_data_file:
+            self.add_error(
+                "Materialized entity must have either 'values' or 'materialized.data_file'",
+                entity=entity_name,
+                field="materialized",
+            )
+
+        # Must have source_state (snapshot of original config)
+        if not materialized_cfg.get("source_state"):
+            self.add_error(
+                "Materialized entity must have 'materialized.source_state' to allow unmaterialization",
+                entity=entity_name,
+                field="materialized.source_state",
+            )
+
+        # Validate required metadata fields
+        for field in ["materialized_at", "materialized_by"]:
+            if not materialized_cfg.get(field):
+                self.add_warning(
+                    f"Materialized entity should have '{field}' metadata",
+                    entity=entity_name,
+                    field=f"materialized.{field}",
+                )
+
+        return not self.has_errors()
+
+
 class EntitySpecification(ProjectSpecification):
     """Validates that entities are properly configured.
 

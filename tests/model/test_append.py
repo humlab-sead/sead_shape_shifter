@@ -311,6 +311,60 @@ class TestAppendPropertyInheritance:
 
         assert merged["type"] == "fixed"
 
+    def test_create_append_config_filters_public_id_from_columns(self):
+        """Test that append config filters public_id from columns list."""
+        cfg = {
+            "test_entity": {
+                "public_id": "test_id",
+                "columns": ["test_id", "name", "value"],
+                "depends_on": [],
+            }
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
+        append_data = {"type": "sql", "query": "SELECT * FROM test"}
+
+        merged = table_cfg.create_append_config(append_data)
+
+        # public_id should be filtered out from columns
+        assert merged["columns"] == ["name", "value"]
+        assert "test_id" not in merged["columns"]
+
+    def test_create_append_config_preserves_columns_without_public_id(self):
+        """Test that append config preserves columns when public_id not in list."""
+        cfg = {
+            "test_entity": {
+                "public_id": "test_id",
+                "columns": ["name", "value"],  # public_id not in columns
+                "depends_on": [],
+            }
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
+        append_data = {"type": "sql", "query": "SELECT * FROM test"}
+
+        merged = table_cfg.create_append_config(append_data)
+
+        # Columns should remain unchanged
+        assert merged["columns"] == ["name", "value"]
+
+    def test_create_append_config_no_public_id_defined(self):
+        """Test that append config works without public_id."""
+        cfg = {
+            "test_entity": {
+                "columns": ["id", "name", "value"],
+                "depends_on": [],
+            }
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
+        append_data = {"type": "fixed", "values": [[1, "A", 100]]}
+
+        merged = table_cfg.create_append_config(append_data)
+
+        # Columns should remain unchanged
+        assert merged["columns"] == ["id", "name", "value"]
+
 
 class TestAppendEdgeCases:
     """Test edge cases and error conditions."""

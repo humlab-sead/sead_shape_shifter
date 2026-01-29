@@ -579,12 +579,50 @@
       </v-card-text>
 
       <v-card-actions>
+        <!-- Materialization buttons (edit mode only, not create) -->
+        <template v-if="mode === 'edit' && entity">
+          <v-btn
+            v-if="entity.materialized?.enabled"
+            color="warning"
+            variant="text"
+            prepend-icon="mdi-database-arrow-up"
+            @click="showUnmaterializeDialog = true"
+            :disabled="loading"
+          >
+            Unmaterialize
+          </v-btn>
+          <v-btn
+            v-else-if="entity.type !== 'fixed'"
+            color="primary"
+            variant="text"
+            prepend-icon="mdi-database-arrow-down"
+            @click="showMaterializeDialog = true"
+            :disabled="loading"
+          >
+            Materialize
+          </v-btn>
+        </template>
+
         <v-spacer />
         <v-btn variant="text" @click="handleCancel" :disabled="loading"> Cancel </v-btn>
         <v-btn color="primary" variant="flat" :loading="loading" :disabled="!formValid" @click="handleSubmit">
           {{ mode === 'create' ? 'Create' : 'Save' }}
         </v-btn>
       </v-card-actions>
+
+      <!-- Materialization Dialogs -->
+      <MaterializeDialog
+        v-model="showMaterializeDialog"
+        :project-name="projectName"
+        :entity-name="entity?.name || ''"
+        @materialized="handleMaterialized"
+      />
+      <UnmaterializeDialog
+        v-model="showUnmaterializeDialog"
+        :project-name="projectName"
+        :entity-name="entity?.name || ''"
+        @unmaterialized="handleUnmaterialized"
+      />
     </v-card>
   </v-dialog>
 </template>
@@ -621,6 +659,8 @@ import SuggestionsPanel from './SuggestionsPanel.vue'
 // import EntityPreviewPanel from './EntityPreviewPanel.vue'
 import YamlEditor from '../common/YamlEditor.vue'
 import SqlEditor from '../common/SqlEditor.vue'
+import MaterializeDialog from './MaterializeDialog.vue'
+import UnmaterializeDialog from './UnmaterializeDialog.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent } from 'vue'
 import { api } from '@/api'
@@ -692,6 +732,10 @@ const showSuggestions = ref(false)
 const yamlContent = ref('')
 const yamlError = ref<string | null>(null)
 const yamlValid = ref(true)
+
+// Materialization dialogs
+const showMaterializeDialog = ref(false)
+const showUnmaterializeDialog = ref(false)
 
 interface FormData {
   name: string
@@ -1531,6 +1575,25 @@ function handleClose() {
   error.value = null
   formRef.value?.reset()
   dialogModel.value = false
+}
+
+function handleMaterialized() {
+  // Entity was materialized - emit saved event to refresh parent
+  emit('saved')
+  // Close the form dialog
+  handleClose()
+}
+
+function handleUnmaterialized(unmaterializedEntities: string[]) {
+  // Entities were unmaterialized - emit saved event to refresh parent
+  emit('saved')
+  // Close the form dialog
+  handleClose()
+  
+  // Could show a notification about which entities were unmaterialized
+  if (unmaterializedEntities.length > 1) {
+    console.log(`Unmaterialized ${unmaterializedEntities.length} entities:`, unmaterializedEntities)
+  }
 }
 
 function buildFormDataFromEntity(entity: EntityResponse): FormData {
