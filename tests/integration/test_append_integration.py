@@ -18,7 +18,8 @@ class TestAppendIntegration:
         # Create a simple survey dataframe
         survey_df = pd.DataFrame(
             {
-                "id": ["1", "2"],
+                "system_id": [1, 2],
+                "id": ["a", "b"],
                 "name": ["Alice", "Bob"],
                 "value": ["100", "200"],
             }
@@ -29,18 +30,19 @@ class TestAppendIntegration:
             "entities": {
                 "survey": {
                     "keys": ["id"],
-                    "columns": ["id", "name", "value"],
+                    "columns": ["system_id", "id", "name", "value"],
                 },
                 "test_entity": {
+                    "source": "survey",
                     "keys": ["id"],
                     "public_id": "test_id",
-                    "columns": ["id", "name", "value"],
+                    "columns": ["system_id", "id", "name", "value"],
                     "depends_on": [],
                     "append": [
                         {
                             "type": "fixed",
-                            "values": ["3", "4"],
-                            "columns": ["id"],
+                            "values": [[3, 'c', None, None], [4, 'd', None, None]],
+                            "columns": ["system_id", "id", "name", "value"],
                         }
                     ],
                 },
@@ -62,12 +64,18 @@ class TestAppendIntegration:
 
         # Should have 4 rows: 2 from survey + 2 from fixed append
         assert len(result) == 4
-        assert "test_id" in result.columns
-        assert set(result["id"].values) == {"1", "2", "3", "4"}
+        assert "id" in result.columns
+        assert set(result["id"].values) == {"a", "b", "c", "d"}
 
     @pytest.mark.asyncio
     async def test_append_from_entity_source(self):
-        """Test appending data from another entity."""
+        """Test appending data from another entity.
+        
+        Demonstrates vertical concatenation (UNION-like behavior):
+        - Base entity extracts 2 rows from survey with columns [id, name]
+        - Append extracts 2 rows from source_entity with columns [id, category]
+        - Result: 4 rows total with columns [id, name, category]
+        """
         # Create survey dataframe
         survey_df = pd.DataFrame(
             {
@@ -85,19 +93,20 @@ class TestAppendIntegration:
                     "columns": ["id", "name", "category"],
                 },
                 "source_entity": {
+                    # Extracts from survey (default_entity)
                     "keys": ["id"],
-                    "public_id": "source_id",
-                    "columns": ["id", "category"],
+                    "columns": ["id", "category"],  # Subset: only id and category
                 },
                 "target_entity": {
+                    # Base: extracts from survey (default_entity)
                     "keys": ["id"],
-                    "public_id": "target_id",
-                    "columns": ["id", "name"],
+                    "columns": ["id", "name"],  # Subset: only id and name
                     "depends_on": ["source_entity"],
                     "append": [
                         {
+                            # Append: extracts from source_entity
                             "source": "source_entity",
-                            "columns": ["id", "category"],
+                            "columns": ["id", "category"],  # These are the columns in source_entity
                         }
                     ],
                 },
@@ -117,9 +126,22 @@ class TestAppendIntegration:
         # Verify results
         result = normalizer.table_store["target_entity"]
 
-        # Should have 4 rows: 2 from base (id, name) + 2 from append (id, category)
+        # VERTICAL CONCATENATION BEHAVIOR:
+        # Row 1-2: From base (survey → target_entity)
+        #   id="1", name="Alice", category=NaN
+        #   id="2", name="Bob", category=NaN
+        # Row 3-4: From append (survey → source_entity → target_entity)
+        #   id="1", name=NaN, category="A"
+        #   id="2", name=NaN, category="B"
         assert len(result) == 4
-        assert "target_id" in result.columns
+        assert set(result.columns) >= {"id", "name", "category", "system_id"}
+        
+        # Verify data structure
+        assert result["id"].tolist() == ["1", "2", "1", "2"]
+        assert result["name"].tolist()[:2] == ["Alice", "Bob"]  # First 2 rows have names
+        assert pd.isna(result["name"].tolist()[2:]).all()  # Last 2 rows have NaN names
+        assert pd.isna(result["category"].tolist()[:2]).all()  # First 2 rows have NaN category
+        assert result["category"].tolist()[2:] == ["A", "B"]  # Last 2 rows have categories
 
     @pytest.mark.asyncio
     async def test_append_with_distinct_mode(self):
@@ -283,3 +305,69 @@ class TestAppendIntegration:
         # Should have 4 rows: 1 from survey + 3 from append sources
         assert len(result) == 4
         assert set(result["id"].values) == {"1", "2", "3", "4"}
+
+    @pytest.mark.asyncio
+    async def test_append_with_public_id_column(self):
+        """Test that public_id column is properly handled in append configurations.
+        
+        When public_id is defined:
+        1. The column is filtered from append source extractions
+        2. After concatenation, the column is added with None values
+        3. This avoids 'column not found' warnings and provides proper structure
+        """
+        # Create survey dataframe - note: no 'target_id' column in source data
+        survey_df = pd.DataFrame(
+            {
+                "id": ["1", "2"],
+                "name": ["Alice", "Bob"],
+                "category": ["A", "B"],
+            }
+        )
+
+        # Create configuration
+        cfg = {
+            "entities": {
+                "survey": {
+                    "keys": ["id"],
+                    "columns": ["id", "name", "category"],
+                },
+                "source_entity": {
+                    "keys": ["id"],
+                    "public_id": "source_id",
+                    "columns": ["id", "category"],
+                },
+                "target_entity": {
+                    "keys": ["id"],
+                    "public_id": "target_id",  # This column doesn't exist in source!
+                    "columns": ["target_id", "id", "name"],  # Includes target_id
+                    "depends_on": ["source_entity"],
+                    "append": [
+                        {
+                            "source": "source_entity",
+                            "columns": ["source_id", "id", "category"],  # Includes source_id
+                        }
+                    ],
+                },
+            }
+        }
+
+        normalizer: ShapeShifter = ShapeShifter(
+            table_store={"survey": survey_df},
+            project=ShapeShiftProject(cfg=cfg, filename="test-config.yml"),
+            default_entity="survey",
+        )
+        
+        await normalizer.normalize()
+
+        result = normalizer.table_store["target_entity"]
+
+        # Verify the structure
+        assert len(result) == 4  # 2 base + 2 append
+        
+        # Public_id columns should be present and initialized to None
+        assert "target_id" in result.columns
+        assert result["target_id"].isna().all()  # All None after append
+        
+        # Verify data from both sources is present
+        assert set(result.columns) >= {"target_id", "id", "name", "category", "system_id"}
+        assert result["id"].tolist() == ["1", "2", "1", "2"]
