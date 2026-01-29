@@ -43,9 +43,9 @@ import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
 interface Props {
-  modelValue: any[][] // 2D array of values
-  columns: string[] // Column names (includes system_id, public_id, keys, columns)
-  publicId?: string // Name of the public_id column
+  modelValue: any[][] // 2D array of values (includes all columns)
+  columns: string[] // All column names including system_id and public_id
+  publicId?: string // Name of the public_id column (for special styling)
   height?: string
 }
 
@@ -75,6 +75,7 @@ const defaultColDef: ColDef = {
 }
 
 // Generate column definitions from props.columns
+// Detect system_id and public_id columns and apply special behavior
 const columnDefs = computed<ColDef[]>(() => {
   if (!props.columns || props.columns.length === 0) {
     return []
@@ -94,19 +95,35 @@ const columnDefs = computed<ColDef[]>(() => {
       filter: false,
       resizable: false,
     },
-    ...props.columns.map((col, index) => ({
-      field: `col_${index}`,
-      headerName: col,
-      // system_id is read-only and auto-numbered
-      editable: col !== 'system_id',
-      // Highlight system_id and public_id columns
-      cellClass: col === 'system_id' ? 'system-id-column' : (col === props.publicId ? 'public-id-column' : ''),
-      headerClass: col === 'system_id' ? 'system-id-header' : (col === props.publicId ? 'public-id-header' : ''),
-    })),
+    ...props.columns.map((col, index) => {
+      const isSystemId = col === 'system_id'
+      const isPublicId = col === props.publicId
+      
+      return {
+        field: `col_${index}`,
+        headerName: col,
+        // system_id is read-only, others are editable
+        editable: !isSystemId,
+        sortable: true,
+        filter: true,
+        resizable: true,
+        minWidth: 100,
+        flex: 1,
+        // Ensure system_id is always an integer
+        valueParser: isSystemId ? (params: any) => {
+          const val = params.newValue
+          return val !== null && val !== undefined ? parseInt(String(val), 10) : val
+        } : undefined,
+        // Apply special styling
+        cellClass: isSystemId ? 'system-id-column' : (isPublicId ? 'public-id-column' : ''),
+        headerClass: isSystemId ? 'system-id-header' : (isPublicId ? 'public-id-header' : ''),
+      }
+    }),
   ]
 })
 
 // Convert 2D array to row objects for ag-grid
+// Auto-populate system_id column with sequence numbers
 const rowData = computed(() => {
   if (!props.modelValue || props.modelValue.length === 0) {
     return []
@@ -116,9 +133,11 @@ const rowData = computed(() => {
     const rowObj: any = { id: rowIndex }
     row.forEach((value, colIndex) => {
       const columnName = props.columns[colIndex]
-      // Auto-populate system_id with sequential numbers (1-based)
+      // Auto-populate system_id with sequential numbers (1-based) as integer
       if (columnName === 'system_id') {
-        rowObj[`col_${colIndex}`] = rowIndex + 1
+        // Parse existing value as integer, or use rowIndex + 1
+        const existingValue = value !== null && value !== undefined ? parseInt(String(value), 10) : null
+        rowObj[`col_${colIndex}`] = !isNaN(existingValue!) ? existingValue : rowIndex + 1
       } else {
         rowObj[`col_${colIndex}`] = value
       }
@@ -148,6 +167,7 @@ function getAllRows(): any[][] {
   const rows: any[][] = []
   gridApi.value.forEachNode((node) => {
     const row: any[] = []
+    // Include all columns (system_id values are auto-generated, so we save them too)
     for (let i = 0; i < props.columns.length; i++) {
       const value = node.data[`col_${i}`]
       row.push(value ?? null)
@@ -164,13 +184,13 @@ function addRow() {
   let rowCount = 0
   gridApi.value.forEachNode(() => rowCount++)
 
-  // Create a new row with null values
+  // Create a new row with null values for all columns
   const newRow: any = { id: Date.now() }
   for (let i = 0; i < props.columns.length; i++) {
     const columnName = props.columns[i]
-    // Auto-populate system_id with next sequential number
+    // Auto-populate system_id with next sequential number as integer
     if (columnName === 'system_id') {
-      newRow[`col_${i}`] = rowCount + 1
+      newRow[`col_${i}`] = parseInt(String(rowCount + 1), 10)
     } else {
       newRow[`col_${i}`] = null
     }

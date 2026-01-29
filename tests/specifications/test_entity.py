@@ -68,27 +68,27 @@ class TestFixedEntityFieldsSpecification:
         """Sample project configuration."""
         return {
             "entities": {
-                "valid_fixed": {"type": "fixed", "columns": ["col1"], "keys": ["id"], "surrogate_id": "entity_id", "values": [["val1"]]},
+                "valid_fixed": {"type": "fixed", "columns": ["col1"], "keys": ["id"], "public_id": "entity_id", "values": [["val1"]]},
                 "missing_surrogate": {"type": "fixed", "columns": ["col1"], "keys": ["id"], "values": [["val1"]]},
-                "no_columns": {"type": "fixed", "columns": None, "keys": ["id"], "surrogate_id": "entity_id", "values": [["val1"]]},
-                "not_fixed": {"type": "sql", "columns": ["col1"], "keys": ["id"], "surrogate_id": "entity_id", "values": [["val1"]]},
+                "no_columns": {"type": "fixed", "columns": None, "keys": ["id"], "public_id": "entity_id", "values": [["val1"]]},
+                "not_fixed": {"type": "sql", "columns": ["col1"], "keys": ["id"], "public_id": "entity_id", "values": [["val1"]]},
                 # "valid_fixed": {"type": "fixed", "columns": ["col1", "col2"], "values": [["a", "b"], ["c", "d"]]},
                 "mismatched_length": {
                     "type": "fixed",
                     "columns": ["col1", "col2"],
                     "keys": [],
-                    "surrogate_id": "entity_id",
+                    "public_id": "entity_id",
                     "values": [["a"], ["c", "d", "e"]],
                 },
-                "missing_values": {"type": "fixed", "columns": ["col1"], "keys": ["id"], "surrogate_id": "entity_id"},
+                "missing_values": {"type": "fixed", "columns": ["col1"], "keys": ["id"], "public_id": "entity_id"},
                 "sql_entity": {
                     "type": "sql",
                     "query": "SELECT * FROM table",
-                    "surrogate_id": "entity_id",
+                    "public_id": "entity_id",
                     "columns": ["col1"],
                     "keys": ["id"],
                 },
-                "empty_fixed": {"type": "fixed", "columns": [], "keys": [], "surrogate_id": "entity_id", "values": []},
+                "empty_fixed": {"type": "fixed", "columns": [], "keys": [], "public_id": "entity_id", "values": []},
             }
         }
 
@@ -102,7 +102,7 @@ class TestFixedEntityFieldsSpecification:
         assert len(spec.errors) == 0
 
     def test_missing_surrogate_id(self, project_cfg):
-        """Test validation fails when surrogate_id missing."""
+        """Test validation fails when public_id missing."""
         spec = FixedEntityFieldsSpecification(project_cfg)
 
         result = spec.is_satisfied_by(entity_name="missing_surrogate")
@@ -196,7 +196,7 @@ class TestEntityFieldsSpecification:
         """Sample project configuration."""
         return {
             "entities": {
-                "fixed_entity": {"type": "fixed", "columns": ["col1"], "keys": ["id"], "surrogate_id": "entity_id", "values": [["val"]]},
+                "fixed_entity": {"type": "fixed", "columns": ["col1"], "keys": ["id"], "public_id": "entity_id", "values": [["val"]]},
                 "sql_entity": {"type": "sql", "columns": ["col1"], "keys": ["id"], "data_source": "db1", "query": "SELECT *"},
                 "data_entity": {"type": "entity", "columns": ["col1"], "keys": ["id"]},
             }
@@ -668,7 +668,7 @@ class TestEntitySpecification:
                     "keys": ["id"],
                     "data_source": "db1",
                     "query": "SELECT *",
-                    "surrogate_id": "entity_id",
+                    "public_id": "entity_id",
                 }
             }
         }

@@ -10,7 +10,7 @@ class TestAppendConfigurationParsing:
         """Test entity without append configuration."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "keys": ["key1"],
                 "columns": ["key1", "col1"],
                 "depends_on": [],
@@ -27,7 +27,7 @@ class TestAppendConfigurationParsing:
         """Test entity with single append item."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "keys": ["key1"],
                 "columns": ["key1", "col1"],
                 "depends_on": [],
@@ -50,7 +50,7 @@ class TestAppendConfigurationParsing:
         """Test entity with multiple append items."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "keys": ["key1"],
                 "columns": ["key1", "col1"],
                 "depends_on": [],
@@ -71,7 +71,7 @@ class TestAppendConfigurationParsing:
         """Test default append_mode is 'all'."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": [],
                 "depends_on": [],
                 "append": [{"type": "fixed", "values": []}],
@@ -85,7 +85,7 @@ class TestAppendConfigurationParsing:
         """Test explicit append_mode setting."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": [],
                 "depends_on": [],
                 "append": [{"type": "fixed", "values": []}],
@@ -104,7 +104,7 @@ class TestAppendDependencyResolution:
         """Test that append source is added to depends_on."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": [],
                 "depends_on": [],
                 "append": [
@@ -112,7 +112,7 @@ class TestAppendDependencyResolution:
                 ],
             },
             "source_entity": {
-                "surrogate_id": "source_id",
+                "public_id": "source_id",
                 "columns": [],
                 "depends_on": [],
             },
@@ -126,7 +126,7 @@ class TestAppendDependencyResolution:
         """Test multiple append sources are added to depends_on."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": [],
                 "depends_on": ["manual_dep"],
                 "append": [
@@ -148,7 +148,7 @@ class TestAppendDependencyResolution:
         """Test that fixed append doesn't add dependencies."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": [],
                 "depends_on": [],
                 "append": [
@@ -170,7 +170,7 @@ class TestAppendPropertyInheritance:
         """Test that append config inherits keys from parent."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "keys": ["key1", "key2"],
                 "columns": ["key1", "key2", "col1"],
                 "depends_on": [],
@@ -186,10 +186,10 @@ class TestAppendPropertyInheritance:
         assert set(merged["keys"]) == {"key1", "key2"}
 
     def test_create_append_config_inherits_surrogate_id(self):
-        """Test that append config inherits surrogate_id."""
+        """Test that append config inherits public_id."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "keys": [],
                 "columns": [],
                 "depends_on": [],
@@ -201,13 +201,13 @@ class TestAppendPropertyInheritance:
 
         merged = table_cfg.create_append_config(append_data)
 
-        assert merged["surrogate_id"] == "test_id"
+        assert merged["public_id"] == "test_id"
 
     def test_create_append_config_can_override_source(self):
         """Test that append config can override source."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "source": "parent_source",
                 "columns": [],
                 "depends_on": [],
@@ -227,7 +227,7 @@ class TestAppendPropertyInheritance:
         """Test that append config inherits columns by default."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": ["col1", "col2"],
                 "depends_on": [],
             }
@@ -244,7 +244,7 @@ class TestAppendPropertyInheritance:
         """Test that append config can specify different columns."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": ["col1", "col2"],
                 "depends_on": [],
             }
@@ -261,7 +261,7 @@ class TestAppendPropertyInheritance:
         """Test that append config includes values property."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": [],
                 "depends_on": [],
             }
@@ -279,7 +279,7 @@ class TestAppendPropertyInheritance:
         """Test that append config inherits type from parent."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "type": "entity",
                 "columns": [],
                 "depends_on": [],
@@ -297,7 +297,7 @@ class TestAppendPropertyInheritance:
         """Test that append config can override type."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "type": "entity",
                 "columns": [],
                 "depends_on": [],
@@ -319,7 +319,7 @@ class TestAppendEdgeCases:
         """Test entity with empty append list."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": [],
                 "depends_on": [],
                 "append": [],
@@ -335,7 +335,7 @@ class TestAppendEdgeCases:
         """Test that append: null is treated as no append."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": [],
                 "depends_on": [],
                 "append": None,
@@ -355,7 +355,7 @@ class TestGetSubTablesConfigs:
         """Test entity without append returns only base config."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": ["id", "name"],
                 "depends_on": [],
             }
@@ -372,7 +372,7 @@ class TestGetSubTablesConfigs:
         """Test entity with one append returns base + append config."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": ["id", "name"],
                 "depends_on": [],
                 "append": [{"type": "fixed", "values": ["A", "B"]}],
@@ -388,7 +388,7 @@ class TestGetSubTablesConfigs:
 
         assert tables[1].entity_name == "test_entity__append_0"
         assert tables[1].entity_cfg == {
-            "surrogate_id": "test_id",
+            "public_id": "test_id",
             "values": ["A", "B"],
             "type": "fixed",
             "columns": ["id", "name"],
@@ -398,12 +398,12 @@ class TestGetSubTablesConfigs:
         """Test entity with multiple append items."""
         cfg = {
             "source_entity": {
-                "surrogate_id": "src_id",
+                "public_id": "src_id",
                 "columns": ["id", "name"],
                 "depends_on": [],
             },
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": ["id", "name"],
                 "depends_on": [],
                 "append": [
@@ -428,7 +428,7 @@ class TestGetSubTablesConfigs:
         cfg = {
             "test_entity": {
                 "keys": ["parent_key1", "parent_key2"],
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": ["col1", "col2"],
                 "depends_on": [],
                 "append": [{"type": "fixed", "values": ["A"]}],
@@ -443,10 +443,10 @@ class TestGetSubTablesConfigs:
         assert set(append_cfg.keys) == {"parent_key1", "parent_key2"}
 
     def test_append_config_inherits_surrogate_id(self):
-        """Test that append configs inherit surrogate_id from parent."""
+        """Test that append configs inherit public_id from parent."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "parent_surrogate",
+                "public_id": "parent_surrogate",
                 "columns": ["id", "name"],
                 "depends_on": [],
                 "append": [{"type": "fixed", "values": ["A"]}],
@@ -458,13 +458,13 @@ class TestGetSubTablesConfigs:
         tables = list(table_cfg.get_sub_table_configs())
         append_cfg = tables[1]
 
-        assert append_cfg.surrogate_id == "parent_surrogate"
+        assert append_cfg.public_id == "parent_surrogate"
 
     def test_append_config_can_override_columns(self):
         """Test that append configs can override columns."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": ["a", "b", "c"],
                 "depends_on": [],
                 "append": [{"type": "fixed", "values": [1, 2, 3], "columns": ["a", "x", "y"]}],
@@ -482,7 +482,7 @@ class TestGetSubTablesConfigs:
         """Test that append configs inherit type correctly."""
         cfg = {
             "test_entity": {
-                "surrogate_id": "test_id",
+                "public_id": "test_id",
                 "columns": ["id", "name"],
                 "type": "entity",  # Parent type
                 "depends_on": [],
