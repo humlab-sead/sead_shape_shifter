@@ -9,7 +9,7 @@ from src.specifications.base import Specification
 class FunctionalDependencySpecification(Specification):
     """Specification for checking functional dependencies when dropping duplicates.
 
-    This check is needed because droping duplicates is an important step indata normalization.
+    This check is needed because dropping duplicates is an important step in data normalization.
 
     Given a DataFrame with columns [ key-columns..., other-columns...] this specification
     checks that other-columns are functionally dependent on key-columns, i.e., for each unique
