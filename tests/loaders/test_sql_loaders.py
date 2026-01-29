@@ -431,6 +431,7 @@ class TestUCanAccessLoader:
             assert len(result) == 3
             assert "ProductID" in result.columns
             assert "ProductName" in result.columns
+            assert "system_id" in result.columns
 
     @pytest.mark.asyncio
     async def test_get_tables_filters_system_tables(self, loader):

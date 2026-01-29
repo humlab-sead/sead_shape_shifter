@@ -137,7 +137,10 @@ class SqlLoader(DataLoader):
             table_cfg.columns = list(data.columns)
 
         if table_cfg.check_column_names:
-            if set(data.columns) != (set(table_cfg.keys_and_columns) - set(table_cfg.unnest_columns)):
+            # Expected columns are the configured keys/columns excluding any unnest columns,
+            # which are handled separately by the unnesting logic and should not be present in the raw data.
+            expected_columns: set[str] = set(table_cfg.keys_and_columns) - set(table_cfg.unnest_columns)
+            if set(data.columns) != expected_columns:
                 raise ValueError(f"Data for entity '{entity_name}' has different columns compared to configuration")
         else:
             data.columns = table_cfg.keys_and_columns
