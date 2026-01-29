@@ -1,3 +1,15 @@
+# [1.16.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.15.0...v1.16.0) (2026-01-29)
+
+
+### Bug Fixes
+
+* missing fields in entity editor ([439f8c7](https://github.com/humlab-sead/sead_shape_shifter/commit/439f8c7698dc62bc4e5f49c51f4f53a5b9a90e33))
+
+
+### Features
+
+* add rsync script for syncing project files to sead-tools ([0471f1c](https://github.com/humlab-sead/sead_shape_shifter/commit/0471f1c105b86016432be69326fcd3323a8058bd))
+
 # [1.15.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.14.0...v1.15.0) (2026-01-29)
 
 
