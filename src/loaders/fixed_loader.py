@@ -4,7 +4,7 @@ import pandas as pd
 from loguru import logger
 
 from src.loaders.base_loader import ConnectTestResult
-from src.transforms.utility import add_surrogate_id
+from src.transforms.utility import add_system_id
 
 from .base_loader import DataLoader, DataLoaders, LoaderType
 
@@ -37,9 +37,9 @@ class FixedLoader(DataLoader):
 
         data = pd.DataFrame(table_cfg.safe_values, columns=table_cfg.safe_columns)
 
-        if table_cfg.surrogate_id:
-            if table_cfg.surrogate_id not in data.columns:
-                data = add_surrogate_id(data, table_cfg.surrogate_id)
+        # Add system_id if configured (always "system_id" column name)
+        if table_cfg.system_id and table_cfg.system_id not in data.columns:
+            data = add_system_id(data, table_cfg.system_id)
 
         return data
 

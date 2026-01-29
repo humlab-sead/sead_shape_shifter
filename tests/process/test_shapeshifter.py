@@ -466,7 +466,7 @@ class TestShapeShifter:
 
         mock_table_cfg = Mock()
         mock_table_cfg.unnest = True
-        mock_table_cfg.surrogate_id = None
+        mock_table_cfg.system_id = "system_id"  # Standardized
 
         unnested_df = pd.DataFrame({"site_id": [1, 1], "location_type": ["Ort", "Kreis"], "location_name": ["Berlin", "Mitte"]})
 
@@ -684,7 +684,7 @@ class TestShapeShifter:
 
     def test_resolve_loader_with_data_source(self):
         """Test resolve_loader with data_source configured."""
-        entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "data_source": "postgres_db"}}
+        entities: dict[str, dict[str, Any]] = {"site": {"public_id": "site_id", "data_source": "postgres_db"}}
         options = {"data_sources": {"postgres_db": {"driver": "postgresql", "options": {"host": "localhost"}}}}
 
         project = ShapeShiftProject(cfg={"entities": entities, "options": options}, filename="test-config.yml")
@@ -704,7 +704,7 @@ class TestShapeShifter:
 
     def test_resolve_loader_with_type(self):
         """Test resolve_loader with type configured."""
-        entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "type": "fixed"}}
+        entities: dict[str, dict[str, Any]] = {"site": {"public_id": "site_id", "type": "fixed"}}
         options: dict[str, dict[str, Any]] = {}
 
         project = ShapeShiftProject(cfg={"entities": entities, "options": options}, filename="test-config.yml")
@@ -722,7 +722,7 @@ class TestShapeShifter:
 
     def test_resolve_loader_no_loader(self):
         """Test resolve_loader returns None when no loader available."""
-        entities: dict[str, dict[str, str]] = {"site": {"surrogate_id": "site_id"}}
+        entities: dict[str, dict[str, str]] = {"site": {"public_id": "site_id"}}
         options: dict[str, dict[str, Any]] = {}
 
         project = ShapeShiftProject(cfg={"entities": entities, "options": options}, filename="test-config.yml")

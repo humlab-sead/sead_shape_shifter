@@ -843,17 +843,17 @@ class TestTableConfig:
         assert list(result.columns) == list(df.columns)
 
     def test_add_system_id_column(self):
-        """Test add_system_id_column adds system_id and sets surrogate_id to None."""
-        entities: dict[str, dict[str, Any]] = {"site": {"surrogate_id": "site_id", "columns": ["name"]}}
+        """Test add_system_id_column adds system_id column."""
+        entities: dict[str, dict[str, Any]] = {"site": {"public_id": "site_id", "columns": ["name"]}}
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
-        df = pd.DataFrame({"site_id": [1, 2], "name": ["A", "B"]})
+        df = pd.DataFrame({"name": ["A", "B"]})
 
         result = table.add_system_id_column(df)
 
         assert "system_id" in result.columns
         assert result["system_id"].tolist() == [1, 2]
-        assert result["site_id"].isna().all()
+        assert "site_id" not in result.columns  # public_id not added here
 
     def test_add_system_id_column_already_exists(self):
         """Test add_system_id_column doesn't overwrite existing system_id."""

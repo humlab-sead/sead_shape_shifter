@@ -22,7 +22,7 @@ from src.transforms.filter import apply_filters
 from src.transforms.link import ForeignKeyLinker
 from src.transforms.translate import translate
 from src.transforms.unnest import unnest
-from src.transforms.utility import add_surrogate_id
+from src.transforms.utility import add_system_id  # Renamed from add_surrogate_id
 
 # Debug flag to control verbose normalization logging
 # Set to True to see detailed "Normalizing entity..." logs for each entity
@@ -168,9 +168,9 @@ class ShapeShifter:
                     data=self.table_store[entity], entity_name=entity, subset=table_cfg.drop_empty_rows
                 )
 
-            # Add surrogate ID if requested and not present
-            if table_cfg.surrogate_id and table_cfg.surrogate_id not in self.table_store[entity].columns:
-                self.table_store[entity] = add_surrogate_id(self.table_store[entity], table_cfg.surrogate_id)
+            # Add system_id if requested and not present (always uses "system_id" column name)
+            if table_cfg.system_id and table_cfg.system_id not in self.table_store[entity].columns:
+                self.table_store[entity] = add_system_id(self.table_store[entity], table_cfg.system_id)
 
             self.retry_linking()
 
@@ -242,7 +242,7 @@ class ShapeShifter:
         return self
 
     def add_system_id_columns(self) -> Self:
-        """Add "system_id" with same value as surrogate_id. Set surrogate_id to None."""
+        """Add auto-incrementing 'system_id' column to each entity table."""
         for entity_name in self.table_store.keys():
             if entity_name not in self.project.table_names:
                 continue

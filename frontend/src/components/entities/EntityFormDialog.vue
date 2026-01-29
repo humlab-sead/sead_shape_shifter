@@ -190,30 +190,81 @@
                       </v-row>
                     </div>
 
-                    <!-- Surrogate ID and Keys on same row -->
+                    <!-- Identity Section: system_id (info), public_id (required), keys (required) -->
                     <div class="form-row">
                       <v-row no-gutters>
+                        <!-- System ID (info only - always "system_id") -->
                         <v-col cols="4" class="pr-2">
-                          <!-- Surrogate ID -->
                           <v-text-field
-                            v-model="formData.surrogate_id"
-                            label="Surrogate ID"
+                            model-value="system_id"
+                            label="System ID"
                             variant="outlined"
-                            placeholder="e.g., sample_id"
+                            readonly
+                            disabled
+                            bg-color="grey-lighten-3"
                           >
+                            <template #append-inner>
+                              <v-tooltip location="top" max-width="400">
+                                <template #activator="{ props }">
+                                  <v-icon
+                                    v-bind="props"
+                                    icon="mdi-information-outline"
+                                    size="small"
+                                    class="text-medium-emphasis"
+                                  />
+                                </template>
+                                <div class="text-body-2">
+                                  <strong>System ID (Local Scope)</strong><br />
+                                  Auto-incrementing local identifier (1, 2, 3...).<br />
+                                  Always named 'system_id' - not configurable.
+                                </div>
+                              </v-tooltip>
+                            </template>
                             <template #message>
-                              <span class="text-caption">Generated integer ID field name</span>
+                              <span class="text-caption">Local auto-incrementing ID (always "system_id")</span>
                             </template>
                           </v-text-field>
                         </v-col>
 
-                        <v-col cols="8" class="pl-2">
-                          <!-- Keys -->
-                          <!-- :rules="requiredRule"
-                          required -->
+                        <!-- Public ID (target system PK, defines FK columns) -->
+                        <v-col cols="4" class="px-1">
+                          <v-text-field
+                            v-model="formData.public_id"
+                            label="Public ID *"
+                            variant="outlined"
+                            placeholder="e.g., sample_type_id"
+                            :rules="publicIdRules"
+                            required
+                          >
+                            <template #append-inner>
+                              <v-tooltip location="top" max-width="400">
+                                <template #activator="{ props }">
+                                  <v-icon
+                                    v-bind="props"
+                                    icon="mdi-information-outline"
+                                    size="small"
+                                    class="text-medium-emphasis"
+                                  />
+                                </template>
+                                <div class="text-body-2">
+                                  <strong>Public ID (Global Scope)</strong><br />
+                                  1. Target system primary key name<br />
+                                  2. Defines FK column names in child entities<br />
+                                  Must end with '_id' (e.g., 'sample_type_id').
+                                </div>
+                              </v-tooltip>
+                            </template>
+                            <template #message>
+                              <span class="text-caption">Target PK name + FK column name pattern</span>
+                            </template>
+                          </v-text-field>
+                        </v-col>
+
+                        <v-col cols="4" class="pl-2">
+                          <!-- Keys (business keys) -->
                           <v-combobox
                             v-model="formData.keys"
-                            label="Keys *"
+                            label="Business Keys *"
                             variant="outlined"
                             multiple
                             chips
@@ -633,7 +684,9 @@ const yamlValid = ref(true)
 interface FormData {
   name: string
   type: string
-  surrogate_id: string
+  system_id: string  // Always "system_id"
+  public_id: string  // Target system PK name and FK column pattern
+  surrogate_id: string  // Deprecated - for backward compatibility
   keys: string[]
   columns: string[]
   values: any[][] // For fixed type entities
@@ -669,7 +722,9 @@ interface FormData {
 const formData = ref<FormData>({
   name: '',
   type: 'entity',
-  surrogate_id: '',
+  system_id: 'system_id',  // Always "system_id"
+  public_id: '',  // Required field
+  surrogate_id: '',  // Deprecated - kept for backward compat
   keys: [],
   columns: [],
   values: [],
@@ -1140,6 +1195,12 @@ const nameRules = [
   },
 ]
 
+const publicIdRules = [
+  (v: string) => !!v || 'Public ID is required',
+  (v: string) => v.endsWith('_id') || 'Public ID must end with _id',
+  (v: string) => /^[a-z][a-z0-9_]*_id$/.test(v) || 'Public ID must be lowercase snake_case ending with _id',
+]
+
 // YAML Editor Functions
 function formDataToYaml(): string {
   const entityData: Record<string, any> = {
@@ -1147,7 +1208,16 @@ function formDataToYaml(): string {
     type: formData.value.type,
   }
 
-  if (formData.value.surrogate_id) {
+  // Always include system_id (standardized to "system_id")
+  entityData.system_id = 'system_id'
+
+  // Include public_id (required for target system PK and FK naming)
+  if (formData.value.public_id) {
+    entityData.public_id = formData.value.public_id
+  }
+
+  // Legacy: Only include surrogate_id if migrating from old config
+  if (formData.value.surrogate_id && !formData.value.public_id) {
     entityData.surrogate_id = formData.value.surrogate_id
   }
 
@@ -1263,7 +1333,9 @@ function yamlToFormData(yamlString: string): boolean {
     formData.value = {
       name: data.name || formData.value.name,
       type: data.type || 'entity',
-      surrogate_id: data.surrogate_id || '',
+      system_id: 'system_id',  // Always standardized
+      public_id: data.public_id || data.surrogate_id || '',  // Migrate surrogate_id → public_id
+      surrogate_id: data.surrogate_id || '',  // Keep for backward compat
       keys: Array.isArray(data.keys) ? data.keys : [],
       columns: Array.isArray(data.columns) ? data.columns : [],
       values: Array.isArray(data.values) ? data.values : [],
@@ -1456,7 +1528,9 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   return {
     name: entity.name,
     type: (entity.entity_data.type as string) || 'entity',
-    surrogate_id: (entity.entity_data.surrogate_id as string) || '',
+    system_id: 'system_id',  // Always standardized
+    public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '',  // Migrate
+    surrogate_id: (entity.entity_data.surrogate_id as string) || '',  // Backward compat
     keys: (entity.entity_data.keys as string[]) || [],
     columns: (entity.entity_data.columns as string[]) || [],
     values: (entity.entity_data.values as any[][]) || [],
@@ -1494,7 +1568,9 @@ function buildDefaultFormData(): FormData {
   return {
     name: '',
     type: 'entity',
-    surrogate_id: '',
+    system_id: 'system_id',  // Always standardized
+    public_id: '',
+    surrogate_id: '',  // Backward compat
     keys: [],
     columns: [],
     values: [],

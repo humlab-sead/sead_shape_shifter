@@ -86,7 +86,8 @@ class ForeignKeyLinker:
                 continue
 
             remote_cfg: TableConfig = project.get_table(fk.remote_entity)
-            remote_id: str | None = remote_cfg.surrogate_id or f"{fk.remote_entity}_id"
+            # FK columns are named after the parent's public_id
+            remote_id: str | None = remote_cfg.public_id or f"{fk.remote_entity}_id"
             remote_df: pd.DataFrame = self.table_store[fk.remote_entity]
 
             if fk.has_foreign_key_link(remote_id, local_df):

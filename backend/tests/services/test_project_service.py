@@ -624,7 +624,7 @@ options:
         original_entity_count = len(config.entities)
 
         # Modify
-        entity = Entity(name="new_entity", surrogate_id="new_entity_id", keys=["id"])
+        entity = Entity(name="new_entity", public_id="new_entity_id", keys=["id"])
         config = simple_service.add_entity(config, "new_entity", entity)
 
         # Save

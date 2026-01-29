@@ -44,7 +44,7 @@ def sample_project() -> ShapeShiftProject:
                 "type": "sql",
                 "data_source": "test_db",
                 "query": "SELECT * FROM users",
-                "surrogate_id": "user_id",
+                "public_id": "user_id",
                 "keys": ["username"],
                 "columns": ["user_id", "username", "email"],
             },
@@ -54,7 +54,7 @@ def sample_project() -> ShapeShiftProject:
                 "data_source": "test_db",
                 "query": "SELECT * FROM orders",
                 "source": "users",
-                "surrogate_id": "order_id",
+                "public_id": "order_id",
                 "columns": ["order_id", "user_id", "total"],
                 "foreign_keys": [
                     {
@@ -188,7 +188,7 @@ class TestShapeShiftCache:
                 "type": "sql",
                 "data_source": "test_db",
                 "query": "SELECT * FROM users WHERE active = 1",  # Changed query
-                "surrogate_id": "user_id",
+                "public_id": "user_id",
                 "keys": ["username"],
                 "columns": ["user_id", "username", "email"],
             }
@@ -271,7 +271,7 @@ class TestShapeShiftService:
 
             # Check column info
             user_id_col = next(c for c in result.columns if c.name == "user_id")
-            assert user_id_col.is_key is True  # It's the surrogate_id
+            assert user_id_col.is_key is True  # It's the public_id
             assert user_id_col.data_type == "integer"
 
             email_col = next(c for c in result.columns if c.name == "email")
