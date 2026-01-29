@@ -778,18 +778,10 @@ const delimiterOptions = [
 ]
 
 // Computed property for all columns (keys + columns) for fixed values grid
+// Note: system_id and public_id are handled separately as special columns
 const allColumns = computed(() => {
   const keys = formData.value.keys || []
   const columns = formData.value.columns || []
-  // For fixed entities, always include system_id first, then public_id if defined
-  if (formData.value.type === 'fixed') {
-    const result = ['system_id']
-    if (formData.value.public_id) {
-      result.push(formData.value.public_id)
-    }
-    result.push(...keys, ...columns)
-    return result
-  }
   return [...keys, ...columns]
 })
 
