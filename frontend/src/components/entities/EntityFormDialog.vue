@@ -302,6 +302,7 @@
                         v-if="allColumns.length > 0"
                         v-model="formData.values"
                         :columns="allColumns"
+                        :public-id="formData.public_id"
                         height="400px"
                       />
                       <v-alert v-else type="info" variant="tonal" density="compact" class="mb-2">
@@ -780,6 +781,15 @@ const delimiterOptions = [
 const allColumns = computed(() => {
   const keys = formData.value.keys || []
   const columns = formData.value.columns || []
+  // For fixed entities, always include system_id first, then public_id if defined
+  if (formData.value.type === 'fixed') {
+    const result = ['system_id']
+    if (formData.value.public_id) {
+      result.push(formData.value.public_id)
+    }
+    result.push(...keys, ...columns)
+    return result
+  }
   return [...keys, ...columns]
 })
 
