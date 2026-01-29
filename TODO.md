@@ -4,15 +4,13 @@
 ### Bugs
 
  - [] FIXME: Right preview pane doesn't clear values between entities
- - [] FIXME: #116 Intermittent navigation error when opening project
- - [] FIXME: #124 Reconciliation editor complains when "extra_columns" entered in property field
+ - [] FIXME: Update documentation, archive non-relevent documents
 
 ### Tech debts:
 
- - [] FIXME: Update documentation, archive non-relevent documents
- - [] FIXME: Review test code coverage
  - [] FIXME: #169 Initialize Playwright setup (UX E2E tests)
  - [] FIXME: #171 Increade manual testing guide feature coverage
+ - [] FIXME: #188 Syncing issue between entity state (changes not shown when entity re-opened)
 
 ### New features
 
@@ -34,6 +32,7 @@
  - [] TODO: Improve UX suggestions when editing entity (awareness of availiable tables, columns etc)
  - [] TODO: Improve Reconcile user experience
  - [] TODO: Auto-save feature in YAML editing mode (trigger after 2 seconds of inactivity)
+ - [] TODO: #189 Simplify server side caching (remove!) of parsed YAML projects
 
 
 APPENDIX

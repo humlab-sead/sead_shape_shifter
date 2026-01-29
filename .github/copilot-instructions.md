@@ -271,8 +271,78 @@ def resolve_references(data: dict) -> dict:
 
 ### Naming
 - Entity names: `snake_case` (e.g., `sample_type`)
-- Surrogate IDs: Must end with `_id` (e.g., `sample_type_id`)
+- Public IDs: Must end with `_id` (e.g., `sample_type_id`)
 - API endpoints: `/api/v1/{resource}` (plural nouns)
+
+### Three-Tier Identity System ⭐
+
+**Critical architectural principle: All relationships use local `system_id` values.**
+
+**The Three Tiers:**
+
+1. **`system_id`** (Local Sequential Identity)
+   - **Always present**: Auto-generated, column name standardized to `"system_id"`
+   - **Local sequential values**: 1, 2, 3... (reset per entity)
+   - **Used for ALL relationships**: FK values ALWAYS reference parent's `system_id`
+   - Never external IDs - purely local domain
+
+2. **`keys`** (Business Keys)
+   - **Optional**: List of column names used for deduplication and matching
+   - Examples: `["specimen_id", "lab_code"]`, `["location_name"]`
+   - Used by reconciliation to match local data → SEAD entities
+   - Applied in `drop_duplicates` and FK joins
+
+3. **`public_id`** (Target Schema Identity)
+   - **Dual purpose column**:
+     - **Column name**: Matches target system's PK column (e.g., `"location_id"`)
+     - **Column values**: Holds mapped SEAD IDs from `mappings.yml`
+   - **Required for**: Fixed entities, entities with FK children, entities in mappings
+   - **FK column naming**: Child FK column = parent's `public_id` (avoids `system_id` collision)
+
+**Example Workflow:**
+
+```yaml
+# Parent entity
+location:
+  system_id: "system_id"        # Always standardized
+  public_id: "location_id"      # Target schema column
+  keys: ["location_name"]       # Business key
+  
+# Child entity  
+site:
+  system_id: "system_id"
+  public_id: "site_id"
+  keys: ["site_name"]
+  foreign_keys:
+    - entity: location
+      local_keys: ["location_name"]   # Join on business keys
+      remote_keys: ["location_name"]
+```
+
+**Processing Result:**
+
+```python
+# location table after map_to_remote()
+system_id | location_name | location_id  # ← public_id column
+    1     | Norway        | 162          # ← SEAD ID from mappings.yml
+    2     | Sweden        | 205
+
+# site table after FK link
+system_id | site_name | location_name | location_id  # ← FK column
+    1     | Site A    | Norway        | 1            # ← Parent's system_id!
+    2     | Site B    | Sweden        | 2
+```
+
+**Key Principles:**
+- ✅ All FK values are `system_id` references (local domain integrity)
+- ✅ `public_id` defines FK column names (avoids `system_id` collision in child)
+- ✅ SEAD IDs are decoration applied via `map_to_remote()` (separate from FK logic)
+- ✅ Export gets proper column names + mapped external IDs
+
+**Validation Rules:**
+- Fixed entities → `public_id` REQUIRED
+- Entities with FK children → `public_id` REQUIRED (for FK column naming)
+- Entities in `mappings.yml` → `public_id` SHOULD match `mapping.remote_key`
 
 ## Git Commit Conventions
 

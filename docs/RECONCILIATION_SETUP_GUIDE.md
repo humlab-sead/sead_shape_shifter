@@ -6,6 +6,26 @@ This guide explains how to set up and use the entity reconciliation feature in S
 
 The reconciliation feature helps you map source entity values (e.g., "Oak", "Birch") to corresponding SEAD database entity IDs using an OpenRefine-compatible reconciliation service. It supports both automated matching (based on confidence thresholds) and manual review of uncertain matches.
 
+## How Reconciliation Works with Identity System
+
+Shape Shifter uses a **three-tier identity system** where reconciliation fits into the global scope:
+
+1. **`system_id`** (Local): Auto-incrementing sequential IDs (1, 2, 3...) used for all FK relationships
+2. **`keys`** (Business): Source data identifiers used for matching during reconciliation
+3. **`public_id`** (Global): Target SEAD column name; holds reconciled SEAD IDs from `mappings.yml`
+
+**Reconciliation Workflow:**
+```
+Source Data          Reconciliation Service       mappings.yml          Final Export
+─────────────        ─────────────────────        ─────────────         ────────────
+location_name   →    Match to SEAD entities  →    local → remote   →   location_id
+"Norway"             confidence: 0.98             "Norway": 162         162 (SEAD)
+"Sweden"             confidence: 1.00             "Sweden": 205         205 (SEAD)
+
+```
+
+**Key Principle:** Reconciliation creates mappings (`business_key → SEAD_ID`) stored in `mappings.yml`. During processing, `map_to_remote()` applies these mappings to populate the `public_id` column with SEAD IDs. FK relationships always use local `system_id` values.
+
 ## Prerequisites
 
 1. **OpenRefine Reconciliation Service** - You must have a reconciliation service running (default: `http://localhost:8000`)

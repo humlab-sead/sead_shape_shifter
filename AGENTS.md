@@ -59,7 +59,19 @@ project_service.save_project(updated)
 ## Code Conventions
 - Keep line length ≤ 140 characters and rely on Black + isort formatting.
 - Use `loguru.logger` for logging and provide type hints for all functions (including Pydantic models).
-- Follow naming rules: snake_case entities, `_id` suffix for surrogate keys, `/api/v1/{resource}` (plural) for endpoints.
+- Follow naming rules: snake_case entities, `_id` suffix for public IDs, `/api/v1/{resource}` (plural) for endpoints.
+
+## Three-Tier Identity System
+**Critical: All relationships use local `system_id` values.**
+
+1. **`system_id`** - Local sequential (1, 2, 3...), always present, used for ALL FK relationships
+2. **`keys`** - Business keys for deduplication and matching (optional)
+3. **`public_id`** - Target schema column name + holds SEAD IDs from mappings.yml (dual purpose)
+
+**FK Resolution:** Child FK column = parent's `public_id` name, FK values = parent's `system_id` values.
+**Mapping:** `map_to_remote()` decorates `public_id` column with SEAD IDs (separate from FK logic).
+
+See `.github/copilot-instructions.md` for detailed examples.
 
 ## Common Implementation Tasks
 - **Backend endpoint**: add router (`backend/app/api/v1/endpoints/`), define Pydantic models (`backend/app/models/`), implement service (`backend/app/services/`), and register in `backend/app/api/v1/api.py`.
