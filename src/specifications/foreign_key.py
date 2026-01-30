@@ -113,6 +113,15 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
 
         missing_fields: set[str]
 
+        if not fk_cfg.local_entity:
+            raise ValueError("fk_cfg.local_entity must be specified to check foreign key data")
+        
+        if not fk_cfg.remote_entity:
+            raise ValueError("fk_cfg.remote_entity must be specified to check foreign key data")
+
+        if fk_cfg.local_entity not in self.table_store:
+            raise ValueError(f"Local entity '{fk_cfg.local_entity}' not found in table store for linking with '{fk_cfg.remote_entity}'")
+
         if fk_cfg.remote_entity not in self.table_store:
             # Skip if remote entity hasn't been processed yet
             self.add_warning(
@@ -121,9 +130,6 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
             )
             self.deferred = True
             return False
-
-        if fk_cfg.local_entity not in self.table_store:
-            raise ValueError(f"Local entity '{fk_cfg.local_entity}' not found in table store for linking with '{fk_cfg.remote_entity}'")
 
         super().is_satisfied_by(fk_cfg=fk_cfg)
 
