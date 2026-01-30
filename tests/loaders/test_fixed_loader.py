@@ -446,7 +446,13 @@ class TestCreateFixedTable:
                 "surrogate_name": "text",
                 "keys": [],
                 "columns": ["system_id", "id", "text"],
-                "values": [[None, None, "Normal"], [None, None, "With spaces"], [None, None, "With-dash"], [None, None, "With_underscore"], [None, None, "With.dot"]],
+                "values": [
+                    [None, None, "Normal"],
+                    [None, None, "With spaces"],
+                    [None, None, "With-dash"],
+                    [None, None, "With_underscore"],
+                    [None, None, "With.dot"],
+                ],
             }
         }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
@@ -508,8 +514,20 @@ class TestCreateFixedTable:
                 "type": "fixed",
                 "public_id": "coordinate_method_dimension_id",
                 "keys": [],
-                "columns": ["system_id", "coordinate_method_dimension_id", "coordinate_type", "limit_lower", "limit_upper", "dimension_id", "method_id"],
-                "values": [[1, None, "KoordX", None, None, None, None], [2, None, "KoordY", None, None, None, None], [3, None, "KoordZ", None, None, None, None]],
+                "columns": [
+                    "system_id",
+                    "coordinate_method_dimension_id",
+                    "coordinate_type",
+                    "limit_lower",
+                    "limit_upper",
+                    "dimension_id",
+                    "method_id",
+                ],
+                "values": [
+                    [1, None, "KoordX", None, None, None, None],
+                    [2, None, "KoordY", None, None, None, None],
+                    [3, None, "KoordZ", None, None, None, None],
+                ],
             }
         }
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
