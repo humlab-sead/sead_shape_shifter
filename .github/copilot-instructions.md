@@ -182,10 +182,17 @@ class DataSourceMapper:
 ```
 
 **Layer responsibilities:**
-- API Models (`backend/app/models/`) - Raw `${ENV_VARS}` (unresolved)
+- API Models (`backend/app/models/`) - Raw `${ENV_VARS}` and directives (@include:, @value:) preserved
 - Services (`backend/app/services/`) - Work with raw API entities
-- Mappers (`backend/app/mappers/`) - **Resolve env vars + translate layers**
-- Core (`src/`) - Always fully resolved
+- Mappers (`backend/app/mappers/`) - **Resolve env vars + directives at API → Core boundary**
+- Core (`src/`) - Always fully resolved (no directives)
+
+**Directive resolution strategy:**
+- `ProjectMapper.to_core()`: Resolves @include: and @value: directives (API → Core)
+- `ProjectMapper.to_api_config()`: Preserves directives (YAML → API for editing)
+- `ProjectMapper.to_core_dict()`: Preserves directives (API → YAML for saving)
+- Principle: **Directives live in YAML/API layer, resolved values in Core layer**
+- Core layer needs concrete values for processing; API layer keeps references for editing
 
 **2. Domain State Manipulation**
 Always use mapper when working with domain state:
