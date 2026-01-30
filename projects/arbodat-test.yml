@@ -16,27 +16,27 @@ entities:
     extra_columns:
       abundance: "FAnzahl"
     foreign_keys:
-    - entity: analysis_entity
-      local_keys: "@value: entities.analysis_entity.keys"
-      remote_keys: "@value: entities.analysis_entity.keys"
-      constraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-        cardinality: "many-to-one"
-    - entity: taxa
-      local_keys: ["PCODE"]
-      remote_keys: ["PCODE"]
-      constraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-        cardinality: "many-to-one"
-    - entity: abundance_element
-      local_keys: ["RTyp"]
-      remote_keys: ["RTyp"]
-      constraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-        cardinality: "many-to-one"
+      - entity: analysis_entity
+        local_keys: "@value: entities.analysis_entity.keys"
+        remote_keys: "@value: entities.analysis_entity.keys"
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
+      - entity: abundance_element
+        local_keys: ["RTyp"]
+        remote_keys: ["RTyp"]
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
     depends_on: ["analysis_entity"]
   abundance_element:
     source:
@@ -50,9 +50,9 @@ entities:
       element_description: "Resttyp"
     query: "select [RTyp], [Resttyp], [RTypGrup], [RTypNr] from [RTyp];"
     foreign_keys:
-    - entity: abundance_element_group
-      local_keys: ["RTypGrup"]
-      remote_keys: ["RTypGrup"]
+      - entity: abundance_element_group
+        local_keys: ["RTypGrup"]
+        remote_keys: ["RTypGrup"]
     depends_on: ["abundance_element_group"]
   abundance_element_group:
     source:
@@ -71,9 +71,9 @@ entities:
     keys: ["abundance_id"]
     columns: ["Zust"]
     foreign_keys:
-    - entity: modification_type
-      local_keys: ["Zust"]
-      remote_keys: ["Zust"]
+      - entity: modification_type
+        local_keys: ["Zust"]
+        remote_keys: ["Zust"]
     depends_on: ["abundance"]
   abundance_property:
     source: abundance
@@ -86,11 +86,11 @@ entities:
       var_name: abundance_property_type
       value_name: abundance_property_value
     foreign_keys:
-    - entity: abundance_property_type
-      local_keys: ["abundance_property_type"]
-      remote_keys: ["arbodat_code"]
-      # - entity: analysis_entity      #   local_keys: ["arbodat_analysis_entity_id"]
-      #   remote_keys: ["arbodat_analysis_entity_id"]
+      - entity: abundance_property_type
+        local_keys: ["abundance_property_type"]
+        remote_keys: ["arbodat_code"]
+        # - entity: analysis_entity      #   local_keys: ["arbodat_analysis_entity_id"]
+        #   remote_keys: ["arbodat_analysis_entity_id"]
     drop_empty_rows:
       abundance_property_value: [null, ""]
     drop_duplicates: true
@@ -103,16 +103,16 @@ entities:
     surrogate_name: abundance_property_type
     columns: ["system_id", "abundance_property_type_id", "abundance_property_type", "description", "arbodat_code"]
     values:
-    - [1, null, "raw_count", "Number of plant remains of the corresponding taxon", "rAnzahl"]
-    - [2, null, "raw_weight", "Weight of plant remains of the corresponding taxon (mainly charcoal)", "rGewicht"]
-    - [3, null, "estimated_amount", "Semi-quantitatively estimated plant remains of the corresponding taxon", "geschätzt"]
-    - [4, null, "raw_fragments", "Fragments (if present)", "rFrag"]
-    - [5, null, "multiplier", "Total weight / evaluated weight", "Multiplikator"]
-    - [6, null, "extrapolated_count", "Extrapolated count", "FAnzahl"]
-    - [7, null, "extrapolated_fragments", "Extrapolated fragments", "FFragmente"]
-    - [8, null, "extrapolated_weight", "Extrapolated weight", "FGewicht"]
-    - [9, null, "entry_date", "Entry date", "EDatProb"]
-    - [10, null, "note", "Note", "AnmFrakt"]
+      - [1, null, "raw_count", "Number of plant remains of the corresponding taxon", "rAnzahl"]
+      - [2, null, "raw_weight", "Weight of plant remains of the corresponding taxon (mainly charcoal)", "rGewicht"]
+      - [3, null, "estimated_amount", "Semi-quantitatively estimated plant remains of the corresponding taxon", "geschätzt"]
+      - [4, null, "raw_fragments", "Fragments (if present)", "rFrag"]
+      - [5, null, "multiplier", "Total weight / evaluated weight", "Multiplikator"]
+      - [6, null, "extrapolated_count", "Extrapolated count", "FAnzahl"]
+      - [7, null, "extrapolated_fragments", "Extrapolated fragments", "FFragmente"]
+      - [8, null, "extrapolated_weight", "Extrapolated weight", "FGewicht"]
+      - [9, null, "entry_date", "Entry date", "EDatProb"]
+      - [10, null, "note", "Note", "AnmFrakt"]
     arbodat_codes: ["rAnzahl", "rGewicht", "geschätzt", "rFrag", "Multiplikator", "FAnzahl", "FFragmente", "FGewicht", "EDatProb", "AnmFrakt"]
     depends_on: []
   analysis_entity:
@@ -124,28 +124,29 @@ entities:
     columns: []
     query: select [Projekt], [Befu], [ProbNr], [PCODE], [Fraktion], [cf], [RTyp], [Zust] from [Details];
     foreign_keys:
-    - entity: sample
-      local_keys: ["Projekt", "Befu", "ProbNr"]
-      remote_keys: ["Projekt", "Befu", "ProbNr"]
-      constraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-        cardinality: "many-to-one"
-    - entity: taxa
-      local_keys: ["PCODE"]
-      remote_keys: ["PCODE"]
-      how: "left"
-      constraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-    - entity: method
-      local_keys: ["Fraktion"]
-      remote_keys: ["arbodat_code"]
-      how: "left"
-      constraints:
-        allow_unmatched_left: false
-          # allow_null_keys: false
-        cardinality: "many-to-one"
+      - entity: sample
+        local_keys: ["Projekt", "Befu", "ProbNr"]
+        remote_keys: ["Projekt", "Befu", "ProbNr"]
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
+        how: "left"
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+      - entity: method
+        local_keys: ["Fraktion"]
+        remote_keys: ["arbodat_code"]
+        how: "left"
+        constraints:
+          allow_unmatched_left:
+            false
+            # allow_null_keys: false
+          cardinality: "many-to-one"
     depends_on: ["method", "taxa", "sample"] #, "modification_type", "remain_type"]
 
   archaeological_period:
@@ -157,9 +158,9 @@ entities:
     columns: ["ArchDat", "Beschreibung", "Epoche", "Nummer"]
     query: "select distinct [ArchDat], [Beschreibung], [Epoche], [Nummer] from [ArchDat] ;"
     foreign_keys:
-    - entity: epoch
-      local_keys: ["Epoche"]
-      remote_keys: ["Epoche"]
+      - entity: epoch
+        local_keys: ["Epoche"]
+        remote_keys: ["Epoche"]
     depends_on: ["epoch"]
   chronological_period:
     source:
@@ -183,9 +184,9 @@ entities:
       query: |
         select distinct [BotBest], "BotBest" from [Befunde] where [BotBest] is not null ;
     foreign_keys:
-    - entity: contact_type
-      local_keys: ["contact_type"]
-      remote_keys: ["arbodat_code"]
+      - entity: contact_type
+        local_keys: ["contact_type"]
+        remote_keys: ["arbodat_code"]
     drop_duplicates: true
     depends_on: ["contact_type", "_project_contact"]
   contact_type:
@@ -196,11 +197,11 @@ entities:
     columns: ["system_id", "contact_type_id", "contact_type", "description", "arbodat_code"]
     type: fixed
     values:
-    - [1, null, "Archaeologist", "Name of scientist responsible for processing the archaeological material", "ArchBear"]
-    - [2, null, "Botanist", "Name of scientist responsible for the botanical determination (possibly several persons)", "BotBear"]
-    - [3, null, "Author(s) ", "Publication/manuscript/short report", "Aut"]
-    - [4, null, "Bot. Determination", "Name(s) of person(s) responsible for charcoal or seed/fruit determination, etc", "BotBest"]
-    - [5, null, "Site Director/Institution", "Name of site director and/or institution", "ArchAusg"]
+      - [1, null, "Archaeologist", "Name of scientist responsible for processing the archaeological material", "ArchBear"]
+      - [2, null, "Botanist", "Name of scientist responsible for the botanical determination (possibly several persons)", "BotBear"]
+      - [3, null, "Author(s) ", "Publication/manuscript/short report", "Aut"]
+      - [4, null, "Bot. Determination", "Name(s) of person(s) responsible for charcoal or seed/fruit determination, etc", "BotBest"]
+      - [5, null, "Site Director/Institution", "Name of site director and/or institution", "ArchAusg"]
     contact_types: ["ArchAusg", "ArchBear", "BotBear", "Aut", "BotBest"]
   coordinate_method_dimension:
     source:
@@ -209,22 +210,22 @@ entities:
     columns: ["system_id", "coordinate_method_dimension_id", "method_name", "limit_upper", "limit_lower", "arbodat_dimension_code"]
     type: fixed
     values:
-    - [1, null, "Local or unknown grid", null, null, "KoordX"]
-    - [2, null, "Local or unknown grid", null, null, "KoordY"]
-    - [3, null, "Local or unknown grid", null, null, "KoordZ"]
-    - [4, null, "Altitude above sea level", null, null, "Prob_üNN"]
+      - [1, null, "Local or unknown grid", null, null, "KoordX"]
+      - [2, null, "Local or unknown grid", null, null, "KoordY"]
+      - [3, null, "Local or unknown grid", null, null, "KoordZ"]
+      - [4, null, "Altitude above sea level", null, null, "Prob_üNN"]
     foreign_keys:
-    - entity: dimension
-      local_keys: ["arbodat_dimension_code"]
-      remote_keys: ["arbodat_code"]
-      how: "left"
-    - entity: method
-      local_keys: ["method_name"]
-      remote_keys: ["method_name"]
-      constraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-      how: "left"
+      - entity: dimension
+        local_keys: ["arbodat_dimension_code"]
+        remote_keys: ["arbodat_code"]
+        how: "left"
+      - entity: method
+        local_keys: ["method_name"]
+        remote_keys: ["method_name"]
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+        how: "left"
     depends_on: ["dimension", "method"]
   coordinate_system:
     source:
@@ -258,22 +259,23 @@ entities:
       data_type_id:
       biblio_id:
     foreign_keys:
-    - entity: project
-      local_keys: ["Projekt"]
-      remote_keys: ["Projekt"]
-      how: "left"
-      contraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-        cardinality: "many-to-one"
-    - entity: method
-      local_keys: ["Fraktion"]
-      remote_keys: ["arbodat_code"]
-      how: "left"
-      constraints:
-        allow_unmatched_left: false
-          # allow_null_keys: false
-        cardinality: "many-to-one"
+      - entity: project
+        local_keys: ["Projekt"]
+        remote_keys: ["Projekt"]
+        how: "left"
+        contraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
+      - entity: method
+        local_keys: ["Fraktion"]
+        remote_keys: ["arbodat_code"]
+        how: "left"
+        constraints:
+          allow_unmatched_left:
+            false
+            # allow_null_keys: false
+          cardinality: "many-to-one"
     drop_duplicates: true
     depends_on: ["method", "project"]
   dataset_contacts:
@@ -282,14 +284,14 @@ entities:
     keys: ["Projekt", "Fraktion", "contact_id"]
     columns: []
     foreign_keys:
-    - entity: _project_contact
-      local_keys: ["Projekt"]
-      remote_keys: ["Projekt"]
-      extra_columns:
-        contact_name: "contact_name"
-    - entity: contact
-      local_keys: ["contact_name"]
-      remote_keys: ["contact_name"]
+      - entity: _project_contact
+        local_keys: ["Projekt"]
+        remote_keys: ["Projekt"]
+        extra_columns:
+          contact_name: "contact_name"
+      - entity: contact
+        local_keys: ["contact_name"]
+        remote_keys: ["contact_name"]
     drop_duplicates: ["Projekt", "Fraktion", "contact_id"]
     depends_on: ["_project_contact", "contact", "dataset", "project"]
   dataset_submission:
@@ -309,7 +311,7 @@ entities:
     keys: []
     columns: ["system_id", "dataset_submission_type_id"]
     values:
-    - [1, 4]
+      - [1, 4]
     depends_on: []
   dating:
     source:
@@ -317,24 +319,24 @@ entities:
     public_id: dating_id
     keys: ["Projekt", "Befu", "ProbNr"]
     columns:
-    - "Projekt"
-    - "Befu"
-    - "ProbNr"
-    - "Unterprobe"
-    - "Labornummer"
-    - "Material"
-    - "Methode"
-    - "Waldkante"
-    - "C14-Alter BP"
-    - "Standardab C14"
-    - "C14 cal"
-    - "Dendroalter"
-    - "Alter andere"
-    - "13C PDB-Wert"
-    - "Standardab 13C PDB"
-    - "pMC-Wert"
-    - "Standardab PMC"
-    - "Anmerkungen"
+      - "Projekt"
+      - "Befu"
+      - "ProbNr"
+      - "Unterprobe"
+      - "Labornummer"
+      - "Material"
+      - "Methode"
+      - "Waldkante"
+      - "C14-Alter BP"
+      - "Standardab C14"
+      - "C14 cal"
+      - "Dendroalter"
+      - "Alter andere"
+      - "13C PDB-Wert"
+      - "Standardab 13C PDB"
+      - "pMC-Wert"
+      - "Standardab PMC"
+      - "Anmerkungen"
     type: sql
     query: |
       select distinct
@@ -358,9 +360,9 @@ entities:
         [Anmerkungen]
       from [Datierung] ;
     foreign_keys:
-    - entity: sample
-      local_keys: ["Projekt", "Befu", "ProbNr"]
-      remote_keys: ["Projekt", "Befu", "ProbNr"]
+      - entity: sample
+        local_keys: ["Projekt", "Befu", "ProbNr"]
+        remote_keys: ["Projekt", "Befu", "ProbNr"]
     drop_duplicates: true
     depends_on: ["sample"]
   dating_period:
@@ -374,17 +376,17 @@ entities:
       select distinct [Projekt], [Befu], [ProbNr], [ChronoDat], [ArchDat]
       from [Proben] ;
     foreign_keys:
-    - entity: sample
-      local_keys: "@value: entities.sample.keys"
-      remote_keys: "@value: entities.sample.keys"
-    - entity: chronological_period
-      local_keys: ["ChronoDat"]
-      remote_keys: ["ChronoDat"]
-      how: "left"
-    - entity: archaeological_period
-      local_keys: ["ArchDat"]
-      remote_keys: ["ArchDat"]
-      how: "left"
+      - entity: sample
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
+      - entity: chronological_period
+        local_keys: ["ChronoDat"]
+        remote_keys: ["ChronoDat"]
+        how: "left"
+      - entity: archaeological_period
+        local_keys: ["ArchDat"]
+        remote_keys: ["ArchDat"]
+        how: "left"
     drop_empty_rows: ["ChronoDat", "ArchDat"]
     depends_on: ["sample"]
   dimension:
@@ -394,10 +396,10 @@ entities:
     keys: []
     columns: ["system_id", "dimension_id", "dimension_name", "dimension_abbrev", "dimension_description", "method_group_id", "unit_id", "arbodat_code"]
     values:
-    - [1, null, "X/North", "X/N", "X coordinate or Northing in intrinsic units.", 17, 5, "KoordX"]
-    - [2, null, "X/East", "X/E", "X coordinate or Easting in intrinsic units.", 17, 5, "KoordY"]
-    - [3, null, "Z/Altitude", "Z/Alt", "Z coordinate or Altitude in intrinsic units.", 17, 5, "KoordZ"]
-    - [4, null, "Sampling height above sea level", "Sampling ASL", "Sampling height above sea level.", 17, 1, "Prob_üNN"]
+      - [1, null, "X/North", "X/N", "X coordinate or Northing in intrinsic units.", 17, 5, "KoordX"]
+      - [2, null, "X/East", "X/E", "X coordinate or Easting in intrinsic units.", 17, 5, "KoordY"]
+      - [3, null, "Z/Altitude", "Z/Alt", "Z coordinate or Altitude in intrinsic units.", 17, 5, "KoordZ"]
+      - [4, null, "Sampling height above sea level", "Sampling ASL", "Sampling height above sea level.", 17, 1, "Prob_üNN"]
     depends_on: []
   epoch:
     source:
@@ -416,17 +418,17 @@ entities:
     keys: ["Projekt", "Befu"]
     columns: ["FlSchn", "BefuTyp", "FuTypVermut", "gebäud", "okBefu", "okErh", "BotBest", "BestJa", "Anmerkung"]
     query: select [Projekt], [Befu], [FlSchn], [BefuTyp], [FuTypVermut], [gebäud], [okBefu], [okErh], [BotBest], [BestJa], [Anmerkung] from [Befunde]
-    drop_duplicates:  ["Projekt", "Befu"]
+    drop_duplicates: ["Projekt", "Befu"]
     foreign_keys:
-    - entity: project
-      local_keys: ["Projekt"]
-      remote_keys: ["Projekt"]
-      extra_columns:
-        site_id: "site_id"
-    - entity: feature_type
-      local_keys: ["BefuTyp"]
-      remote_keys: ["Befundtyp"]
-      how: "left"
+      - entity: project
+        local_keys: ["Projekt"]
+        remote_keys: ["Projekt"]
+        extra_columns:
+          site_id: "site_id"
+      - entity: feature_type
+        local_keys: ["BefuTyp"]
+        remote_keys: ["Befundtyp"]
+        how: "left"
     depends_on: ["project"]
   feature_property:
     source:
@@ -437,13 +439,13 @@ entities:
     columns: "@value: entities.feature_property_type.values"
     query: select [Projekt], [Befu], [FlSchn], [gebäud], [okBefu], [okErh], [BestJa], [Anmerkung] from [Befunde] ;
     foreign_keys:
-    - entity: feature
-      local_keys: "@value: entities.feature.keys"
-      remote_keys: "@value: entities.feature.keys"
-    - entity: feature_property_type
-      local_keys: ["feature_property_type"]
-      remote_keys: ["arbodat_code"]
-      how: "left"
+      - entity: feature
+        local_keys: "@value: entities.feature.keys"
+        remote_keys: "@value: entities.feature.keys"
+      - entity: feature_property_type
+        local_keys: ["feature_property_type"]
+        remote_keys: ["arbodat_code"]
+        how: "left"
     unnest:
       id_vars: "@value: entities.feature.keys"
       value_vars: "@value: entities.feature_property_type.values"
@@ -501,9 +503,9 @@ entities:
       value_name: location_name
       id_vars: []
     foreign_keys:
-    - entity: location_type
-      local_keys: ["location_type"]
-      remote_keys: ["location_type"]
+      - entity: location_type
+        local_keys: ["location_type"]
+        remote_keys: ["location_type"]
     drop_duplicates: ["location_type", "location_name"]
     depends_on: ["location_type"]
   location_type:
@@ -516,11 +518,11 @@ entities:
     extra_columns:
       arbodat_code: location_type
     values:
-    - [1, null, "Ort"]
-    - [2, null, "Kreis"]
-    - [3, null, "Land"]
-    - [4, null, "Staat"]
-    - [5, null, "FlurStr"]
+      - [1, null, "Ort"]
+      - [2, null, "Kreis"]
+      - [3, null, "Land"]
+      - [4, null, "Staat"]
+      - [5, null, "FlurStr"]
   master_dataset:
     public_id: master_dataset_id
     type: fixed
@@ -547,12 +549,12 @@ entities:
   modification_type:
     type: sql
     keys:
-    - Zust
+      - Zust
     public_id: modification_type_id
     columns:
-    - Zust
-    - Zustand
-    - Nummer
+      - Zust
+      - Zustand
+      - Nummer
     data_source: arbodat_lookup
     query: "select [Zust], [Zustand], [Nummer]\r\nfrom [Zustand];"
     extra_columns:
@@ -567,9 +569,9 @@ entities:
     columns: ["NaturE", "NaturrEinh", "NatHauptNr"]
     query: "select [NaturE], [NaturrEinh], [NatHauptNr] from [NaturE];"
     foreign_keys:
-    - entity: natural_region_group
-      local_keys: ["NatHauptNr"]
-      remote_keys: ["NatHauptNr"]
+      - entity: natural_region_group
+        local_keys: ["NatHauptNr"]
+        remote_keys: ["NatHauptNr"]
     depends_on: ["natural_region_group"]
   natural_region_group:
     source:
@@ -595,9 +597,9 @@ entities:
       description:
     query: select distinct [Projekt], [Fustel] from [Projekte];
     foreign_keys:
-    - entity: site
-      local_keys: ["Fustel"]
-      remote_keys: ["Fustel"]
+      - entity: site
+        local_keys: ["Fustel"]
+        remote_keys: ["Fustel"]
     depends_on: []
   relative_dating:
     source: sample
@@ -623,23 +625,23 @@ entities:
       sample_name: "Befu"
       alt_ref_type_id:
     foreign_keys:
-    - entity: feature
-      local_keys: ["Projekt", "Befu"]
-      remote_keys: ["Projekt", "Befu"]
-      constraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-        cardinality: "many-to-one"
-    - entity: sample_group
-      local_keys: ["Projekt", "Befu"]
-      remote_keys: ["Projekt", "Befu"]
-      constraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-        cardinality: "many-to-one"
-    - entity: sample_type
-      local_keys: ["ProbTyp"]
-      remote_keys: ["ProbTyp"]
+      - entity: feature
+        local_keys: ["Projekt", "Befu"]
+        remote_keys: ["Projekt", "Befu"]
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
+      - entity: sample_group
+        local_keys: ["Projekt", "Befu"]
+        remote_keys: ["Projekt", "Befu"]
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
+      - entity: sample_type
+        local_keys: ["ProbTyp"]
+        remote_keys: ["ProbTyp"]
     drop_duplicates: ["Projekt", "Befu", "ProbNr"]
     depends_on: ["feature", "sample_type", "sample_group"]
   sample_coordinate:
@@ -656,14 +658,14 @@ entities:
       var_name: coordinate_type
       value_name: coordinate_value
     foreign_keys:
-    - entity: sample
-      local_keys: "@value: entities.sample.keys"
-      remote_keys: "@value: entities.sample.keys"
-      how: "left"
-    - entity: coordinate_method_dimension
-      local_keys: ["coordinate_type"]
-      remote_keys: ["arbodat_dimension_code"]
-      how: "left"
+      - entity: sample
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
+        how: "left"
+      - entity: coordinate_method_dimension
+        local_keys: ["coordinate_type"]
+        remote_keys: ["arbodat_dimension_code"]
+        how: "left"
     drop_duplicates: "@value: entities.sample.keys"
     drop_empty_rows: ["coordinate_value"]
     depends_on: ["sample", "dimension", "coordinate_method_dimension"]
@@ -676,15 +678,15 @@ entities:
     columns: ["system_id", "sample_description_type_id", "type_name", "type_description", "arbodat_code"]
     type_names: ["Vorfu", "Trocken", "Strat", "Schi", "Quadr", "Plan", "Prob_üNN", "SedProb", "KultGr"]
     values:
-    - [1, null, "Is mass find?", "Indicates of sample is a mass find.", "Vorfu"]
-    - [2, null, "Wet/dry", "Ablagerungsbedingungen", "Trocken"]
-    - [3, null, "Stratigraphy", "Stratigraphic unit or description.", "Strat"]
-    - [4, null, "Layer", "Layer identifier", "Schi"]
-    - [5, null, "Square/Grid", "Excavation square/grid square.", "Quadr"]
-    - [6, null, "Planum", "Planum", "Plan"]
-    - [7, null, "Elevation ASL", "Elevation of sample above sea level.", "Prob_üNN"]
-    - [8, null, "Sediment", "Indicates whether the sample is sediment.", "SedProb"]
-    - [9, null, "Cultural group", "Cultural group", "KultGr"]
+      - [1, null, "Is mass find?", "Indicates of sample is a mass find.", "Vorfu"]
+      - [2, null, "Wet/dry", "Ablagerungsbedingungen", "Trocken"]
+      - [3, null, "Stratigraphy", "Stratigraphic unit or description.", "Strat"]
+      - [4, null, "Layer", "Layer identifier", "Schi"]
+      - [5, null, "Square/Grid", "Excavation square/grid square.", "Quadr"]
+      - [6, null, "Planum", "Planum", "Plan"]
+      - [7, null, "Elevation ASL", "Elevation of sample above sea level.", "Prob_üNN"]
+      - [8, null, "Sediment", "Indicates whether the sample is sediment.", "SedProb"]
+      - [9, null, "Cultural group", "Cultural group", "KultGr"]
 
   sample_description:
     source:
@@ -699,12 +701,12 @@ entities:
              [Quadr], [Plan], [Prob_üNN], [SedProb], [KultGr]
       from [Proben] ;
     foreign_keys:
-    - entity: sample_description_type
-      local_keys: ["type_name"]
-      remote_keys: ["arbodat_code"]
-    - entity: sample
-      local_keys: "@value: entities.sample.keys"
-      remote_keys: "@value: entities.sample.keys"
+      - entity: sample_description_type
+        local_keys: ["type_name"]
+        remote_keys: ["arbodat_code"]
+      - entity: sample
+        local_keys: "@value: entities.sample.keys"
+        remote_keys: "@value: entities.sample.keys"
     unnest:
       id_vars: "@value: entities.sample.keys"
       value_vars: "@value: entities.sample_description_type.type_names"
@@ -754,14 +756,14 @@ entities:
       altitude: "üNN"
     query: select distinct p.Fustel, p.EVNr, b.FustelTyp, p.KoordSys, p.rWert, p.hWert, p.[üNN] from Projekte as p inner join ( select distinct Projekt, FustelTyp from Befunde ) as b on p.Projekt = b.Projekt;
     foreign_keys:
-    - entity: site_type
-      local_keys: ["FustelTyp"]
-      remote_keys: ["FustelTyp"]
-      constraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-        cardinality: "many-to-one"
-      how: "left"
+      - entity: site_type
+        local_keys: ["FustelTyp"]
+        remote_keys: ["FustelTyp"]
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
+        how: "left"
     drop_duplicates: ["Fustel", "EVNr"]
     check_functional_dependency: true
     strict_functional_dependency: false
@@ -781,12 +783,12 @@ entities:
       var_name: location_type
       value_name: location_name
     foreign_keys:
-    - entity: site
-      local_keys: "@value: entities.site.keys"
-      remote_keys: "@value: entities.site.keys"
-    - entity: location
-      local_keys: ["location_type", "location_name"]
-      remote_keys: ["location_type", "location_name"]
+      - entity: site
+        local_keys: "@value: entities.site.keys"
+        remote_keys: "@value: entities.site.keys"
+      - entity: location
+        local_keys: ["location_type", "location_name"]
+        remote_keys: ["location_type", "location_name"]
     drop_duplicates: "@value: entities.site_location.columns"
     depends_on: ["site", "location"]
   site_natural_region:
@@ -801,12 +803,12 @@ entities:
       from Projekte
       where NaturE is not null ;
     foreign_keys:
-    - entity: natural_region
-      local_keys: "@value: entities.natural_region.keys"
-      remote_keys: "@value: entities.natural_region.keys"
-    - entity: site
-      local_keys: "@value: entities.site.keys"
-      remote_keys: "@value: entities.site.keys"
+      - entity: natural_region
+        local_keys: "@value: entities.natural_region.keys"
+        remote_keys: "@value: entities.natural_region.keys"
+      - entity: site
+        local_keys: "@value: entities.site.keys"
+        remote_keys: "@value: entities.site.keys"
     drop_duplicates: ["Fustel", "EVNr"]
     check_functional_dependency: true
     strict_functional_dependency: true
@@ -819,11 +821,11 @@ entities:
     keys: []
     columns: ["system_id", "site_property_type_id", "site_property_type", "description", "arbodat_code"]
     values:
-    - [1, null, "Limes", "Location relative to the Roman Limes (for Roman Imperial period sites)", "Limes"]
-    - [2, null, "okFustel", "Methodological assessment of the site: adequate or deficient", "okFustel"]
-    - [3, null, "Map sheet", "TK 25 (Topographic Map 1:25,000)", "TK"]
-    - [4, null, "EVNr", "LfD excavation record number, according to the State Office for Monument Preservation (LfD)", "EVNr"]
-    - [5, null, "AnmFustel", "e.g., pollen analysis by NN; soil science by NN; anthropology, etc.", "AnmFustel"]
+      - [1, null, "Limes", "Location relative to the Roman Limes (for Roman Imperial period sites)", "Limes"]
+      - [2, null, "okFustel", "Methodological assessment of the site: adequate or deficient", "okFustel"]
+      - [3, null, "Map sheet", "TK 25 (Topographic Map 1:25,000)", "TK"]
+      - [4, null, "EVNr", "LfD excavation record number, according to the State Office for Monument Preservation (LfD)", "EVNr"]
+      - [5, null, "AnmFustel", "e.g., pollen analysis by NN; soil science by NN; anthropology, etc.", "AnmFustel"]
     depends_on: []
   site_property:
     source:
@@ -835,12 +837,12 @@ entities:
     query: |
       select distinct [Fustel], [EVNr], [okFustel], [Limes], [TK], [AnmFustel] from [Projekte] ;
     foreign_keys:
-    - entity: site
-      local_keys: "@value: entities.site.keys"
-      remote_keys: "@value: entities.site.keys"
-    - entity: site_property_type
-      local_keys: ["@value: entities.site_property_type.surrogate_name"]
-      remote_keys: ["arbodat_code"]
+      - entity: site
+        local_keys: "@value: entities.site.keys"
+        remote_keys: "@value: entities.site.keys"
+      - entity: site_property_type
+        local_keys: ["@value: entities.site_property_type.surrogate_name"]
+        remote_keys: ["arbodat_code"]
     unnest:
       id_vars: ["Fustel", "EVNr"]
       value_vars: "@value: entities.site_property.columns"
@@ -875,13 +877,13 @@ entities:
     query: "select [FustelTyp], [FuTypGrup], [Beschreibung] from [Fundstellentyp];"
     drop_duplicates: "@value: entities.site_type.keys"
     foreign_keys:
-    - entity: site_type_group
-      local_keys: ["FuTypGrup"]
-      remote_keys: ["FuTypGrup"]
-      constraints:
-        allow_unmatched_left: false
-        allow_null_keys: false
-        cardinality: "many-to-one"
+      - entity: site_type_group
+        local_keys: ["FuTypGrup"]
+        remote_keys: ["FuTypGrup"]
+        constraints:
+          allow_unmatched_left: false
+          allow_null_keys: false
+          cardinality: "many-to-one"
     depends_on: ["site_type_group"]
   _pcodes:
     source:
@@ -896,26 +898,26 @@ entities:
   taxa:
     type: sql
     keys:
-    - PCODE
+      - PCODE
     public_id: taxon_id
     columns:
-    - taxon_id
-    - PCODE
-    - BNam
-    - Name_E
-    - Fam
-    - S_Od
-    - TaxAut
-    - Achtung
+      - taxon_id
+      - PCODE
+      - BNam
+      - Name_E
+      - Fam
+      - S_Od
+      - TaxAut
+      - Achtung
     data_source: arbodat_lookup
     query: "select distinct t.[PCODE], t.[BNam], t.[Name_E], t.[Fam], t.[S_Od], t.[TaxAut], t.[Achtung]\r\nfrom [ÖkoSozDaten] t ;"
     depends_on:
-    - _pcodes
+      - _pcodes
     filters:
-    - type: exists_in
-      column: PCODE
-      other_entity: _pcodes
-      other_column: PCODE
+      - type: exists_in
+        column: PCODE
+        other_entity: _pcodes
+        other_column: PCODE
     extra_columns:
       system_id:
       author_id:
@@ -930,9 +932,9 @@ entities:
     columns: ["PCODE", "Ess", "Gar", "Ge", "Hü", "Imp", "Kp", "Med", "Nut", "Öl"]
     query: select [PCODE], [Ess], [Gar], [Ge], [Hü], [Imp], [Kp], [Med], [Nut], [Öl] from [ÖkoSozDaten];
     foreign_keys:
-    - entity: taxa
-      local_keys: ["PCODE"]
-      remote_keys: ["PCODE"]
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
     depends_on: ["taxa"]
   taxa_plant_sociological_behaviour:
     source:
@@ -945,9 +947,9 @@ entities:
       select [PCODE], [G], [G_u], [Kl], [Kl_u], [O], [O_u], [Soz], [Soz_u], [U], [U_u], [V], [V_u], [Ökogruppe], [Ökogruppe_u]
       from [ÖkoSozDaten];
     foreign_keys:
-    - entity: taxa
-      local_keys: ["PCODE"]
-      remote_keys: ["PCODE"]
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
     depends_on: ["taxa"]
   taxa_dominance:
     source:
@@ -960,9 +962,9 @@ entities:
       select [PCODE], [Dom], [Dom_u]
       from [ÖkoSozDaten];
     foreign_keys:
-    - entity: taxa
-      local_keys: ["PCODE"]
-      remote_keys: ["PCODE"]
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
     depends_on: ["taxa"]
   taxa_oberdorfer_characteristics:
     source:
@@ -975,9 +977,9 @@ entities:
       select [PCODE], [Anm], [ARE], [BLA], [BLE], [Pio], [Roh], [SozGrup], [WT], [WUA], [WUE], [Zeig]
       from [ÖkoSozDaten];
     foreign_keys:
-    - entity: taxa
-      local_keys: ["PCODE"]
-      remote_keys: ["PCODE"]
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
     depends_on: ["taxa"]
   taxa_persistence:
     source:
@@ -990,9 +992,9 @@ entities:
       select [PCODE], [Bl], [Bl_u], [Leb]
       from [ÖkoSozDaten];
     foreign_keys:
-    - entity: taxa
-      local_keys: ["PCODE"]
-      remote_keys: ["PCODE"]
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
     depends_on: ["taxa"]
   taxa_briemle_characteristics:
     source:
@@ -1005,9 +1007,9 @@ entities:
       select [PCODE], [FW], [M], [TKG], [W]
       from [ÖkoSozDaten];
     foreign_keys:
-    - entity: taxa
-      local_keys: ["PCODE"]
-      remote_keys: ["PCODE"]
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
     depends_on: ["taxa"]
   taxa_ecological_behaviour:
     source:
@@ -1020,9 +1022,9 @@ entities:
       select [PCODE], [F], [F_s], [F_u], [K], [K_u], [L], [L_u], [N], [N_u], [Re], [Re_u], [S], [S_u], [SMet], [T], [T_u]
       from [ÖkoSozDaten];
     foreign_keys:
-    - entity: taxa
-      local_keys: ["PCODE"]
-      remote_keys: ["PCODE"]
+      - entity: taxa
+        local_keys: ["PCODE"]
+        remote_keys: ["PCODE"]
     depends_on: ["taxa"]
   _project_contact:
     source:
@@ -1044,33 +1046,33 @@ options:
     filename: translations.tsv
     delimiter: "\t"
   data_sources:
-    sead: '@include: sead-options.yml'
-    arbodat_data: '@include: arbodat-data-options.yml'
-    arbodat_lookup: '@include: arbodat-lookup-options.yml'
-  translation: '@load: options.translations'
-  reconciliation: '@include: arbodat-reconciliation.yml'
+    sead: "@include: sead-options.yml"
+    arbodat_data: "@include: arbodat-data-options.yml"
+    arbodat_lookup: "@include: arbodat-lookup-options.yml"
+  translation: "@load: options.translations"
+  reconciliation: "@include: arbodat-reconciliation.yml"
   finally:
     drop:
       tables:
-      - _pcodes
-      - _project_contact
+        - _pcodes
+        - _project_contact
       columns:
-      - site.public_id
-      - project.public_id
-      - feature.public_id
-      - sample.public_id
-      - analysis_entity.public_id
-      - abundance.public_id
-      - location.public_id
+        - site.public_id
+        - project.public_id
+        - feature.public_id
+        - sample.public_id
+        - analysis_entity.public_id
+        - abundance.public_id
+        - location.public_id
   ingesters:
     sead:
       data_source: sead
       options:
         transfer_format: csv
         ignore_columns:
-        - date_updated
-        - '*_uuid'
-        - (*
+          - date_updated
+          - "*_uuid"
+          - (*
       policies:
         if_foreign_key_value_is_missing_add_identity_mapping_to_foreign_key_table:
           priority: 1
@@ -1082,23 +1084,23 @@ options:
             contact_id: 1
         if_lookup_table_is_missing_add_table_using_system_id_as_public_id:
           tables:
-          - tbl_abundance_elements
-          - tbl_contact_types
-          - tbl_dataset_submission_types
-          - tbl_location_types
-          - tbl_project_types
-          - tbl_project_stages
-          - tbl_relative_ages
-          - tbl_sample_group_sampling_contexts
-          - tbl_sample_types
+            - tbl_abundance_elements
+            - tbl_contact_types
+            - tbl_dataset_submission_types
+            - tbl_location_types
+            - tbl_project_types
+            - tbl_project_stages
+            - tbl_relative_ages
+            - tbl_sample_group_sampling_contexts
+            - tbl_sample_types
           preallocated_tables: []
         if_lookup_with_no_new_data_then_keep_only_system_id_public_id:
           priority: 9
         drop_ignored_columns:
           priority: 3
           columns:
-          - date_updated
-          - '*_uuid'
+            - date_updated
+            - "*_uuid"
   layout:
     custom:
       abundance:
@@ -1330,76 +1332,76 @@ options:
         x: 1286.4046344349267
         y: -184.83453313178603
     _metadata:
-      last_updated: '2026-01-14T19:39:51.890309+00:00'
+      last_updated: "2026-01-14T19:39:51.890309+00:00"
       layout_version: 1
 
 task_list:
   required_entities:
-  - abundance_modification
-  - abundance_property
-  - contact
-  - coordinate_system
-  - cultural_group
-  - dataset_contacts
-  - dataset_submission
-  - dataset_submission_type
-  - dating
-  - dating_period
-  - feature_property
-  - identification_level
-  - master_dataset
-  - method_group
-  - relative_dating
-  - sample_coordinate
-  - sample_description
-  - site_location
-  - site_natural_region
-  - site_property
-  - taxa_use_categories
-  - taxa_plant_sociological_behaviour
-  - taxa_dominance
-  - taxa_oberdorfer_characteristics
-  - taxa_persistence
-  - taxa_briemle_characteristics
-  - taxa_ecological_behaviour
-  - modification_type
-  - "abundance"
-  - "abundance_property_type"
-  - "contact_type"
-  - "_project_contact"
-  - "dataset"
-  - archaeological_period
-  - chronological_period
-  - "feature_property_type"
-  - "coordinate_method_dimension"
-  - "sample_description_type"
-  - "location"
-  - "natural_region"
-  - "site_property_type"
-  - abundance_element
-  - analysis_entity
-  - "epoch"
-  - "dimension"
-  - "location_type"
-  - "natural_region_group"
-  - "abundance_element_group"
-  - "method"
-  - "taxa"
-  - "sample"
-  - _pcodes
-  - "sample_type"
-  - "sample_group"
-  - "feature"
-  - feature_type
-  - "project"
-  - site
-  - site_type
-  - "site_type_group"
+    - abundance_modification
+    - abundance_property
+    - contact
+    - coordinate_system
+    - cultural_group
+    - dataset_contacts
+    - dataset_submission
+    - dataset_submission_type
+    - dating
+    - dating_period
+    - feature_property
+    - identification_level
+    - master_dataset
+    - method_group
+    - relative_dating
+    - sample_coordinate
+    - sample_description
+    - site_location
+    - site_natural_region
+    - site_property
+    - taxa_use_categories
+    - taxa_plant_sociological_behaviour
+    - taxa_dominance
+    - taxa_oberdorfer_characteristics
+    - taxa_persistence
+    - taxa_briemle_characteristics
+    - taxa_ecological_behaviour
+    - modification_type
+    - "abundance"
+    - "abundance_property_type"
+    - "contact_type"
+    - "_project_contact"
+    - "dataset"
+    - archaeological_period
+    - chronological_period
+    - "feature_property_type"
+    - "coordinate_method_dimension"
+    - "sample_description_type"
+    - "location"
+    - "natural_region"
+    - "site_property_type"
+    - abundance_element
+    - analysis_entity
+    - "epoch"
+    - "dimension"
+    - "location_type"
+    - "natural_region_group"
+    - "abundance_element_group"
+    - "method"
+    - "taxa"
+    - "sample"
+    - _pcodes
+    - "sample_type"
+    - "sample_group"
+    - "feature"
+    - feature_type
+    - "project"
+    - site
+    - site_type
+    - "site_type_group"
   completed: []
   ignored:
-  - taxa_briemle_characteristics
-  - taxa_ecological_behaviour
-  - taxa_oberdorfer_characteristics
-  - taxa_dominance
-  - taxa_plant_sociological_behaviour
-  - taxa_persistence
+    - taxa_briemle_characteristics
+    - taxa_ecological_behaviour
+    - taxa_oberdorfer_characteristics
+    - taxa_dominance
+    - taxa_plant_sociological_behaviour
+    - taxa_persistence
