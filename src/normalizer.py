@@ -47,7 +47,7 @@ class ShapeShifter:
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
         self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
         self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
-        self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store)
+        self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
 
     def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
         """Resolve the DataLoader, if any, for the given TableConfig."""
@@ -151,11 +151,11 @@ class ShapeShifter:
 
             self.table_store[entity] = data
 
-            self.linker.link_entity(entity_name=entity, project=self.project)
+            self.linker.link_entity(entity_name=entity)
 
             if table_cfg.unnest:
                 self.unnest_entity(entity=entity)
-                self.linker.link_entity(entity_name=entity, project=self.project)
+                self.linker.link_entity(entity_name=entity)
 
             if delay_drop_duplicates and table_cfg.drop_duplicates:
                 self.table_store[entity] = drop_duplicate_rows(
@@ -205,7 +205,7 @@ class ShapeShifter:
     def retry_linking(self) -> None:
         """Retry linking only for entities currently in deferred set."""
         for entity_name in self.linker.deferred_tracker.deferred:
-            self.linker.link_entity(entity_name=entity_name, project=self.project)
+            self.linker.link_entity(entity_name=entity_name)
 
     def store(self, target: str, mode: str) -> Self:
         """Write to specified target based on the specified mode."""
