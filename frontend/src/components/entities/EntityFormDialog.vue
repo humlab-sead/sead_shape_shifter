@@ -580,9 +580,9 @@
 
       <v-card-actions>
         <!-- Materialization buttons (edit mode only, not create) -->
-        <template v-if="mode === 'edit' && entity">
+        <template v-if="mode === 'edit' && currentEntity">
           <v-btn
-            v-if="entity.materialized?.enabled"
+            v-if="currentEntity.materialized?.enabled"
             color="warning"
             variant="text"
             prepend-icon="mdi-database-arrow-up"
@@ -592,7 +592,7 @@
             Unmaterialize
           </v-btn>
           <v-btn
-            v-else-if="entity.type !== 'fixed'"
+            v-else-if="currentEntity.entity_data.type !== 'fixed'"
             color="primary"
             variant="text"
             prepend-icon="mdi-database-arrow-down"
@@ -736,6 +736,9 @@ const yamlValid = ref(true)
 // Materialization dialogs
 const showMaterializeDialog = ref(false)
 const showUnmaterializeDialog = ref(false)
+
+// Store complete entity data (including materialized metadata) for UI checks
+const currentEntity = ref<EntityResponse | null>(null)
 
 interface FormData {
   name: string
@@ -1578,19 +1581,47 @@ function handleClose() {
 }
 
 function handleMaterialized() {
-  // Entity was materialized - emit saved event to refresh parent
+  // Entity was materialized - reload to get updated state
+  showMaterializeDialog.value = false
+  
+  // Reload entity to update currentEntity with materialized flag
+  if (props.entity?.name) {
+    loading.value = true
+    api.entities.get(props.projectName, props.entity.name)
+      .then(freshEntity => {
+        currentEntity.value = freshEntity
+        formData.value = buildFormDataFromEntity(freshEntity)
+        yamlContent.value = formDataToYaml()
+      })
+      .catch(err => console.error('Failed to reload after materialization:', err))
+      .finally(() => loading.value = false)
+  }
+  
+  // Notify parent to refresh entity list
   emit('saved')
-  // Close the form dialog
-  handleClose()
 }
 
 function handleUnmaterialized(unmaterializedEntities: string[]) {
-  // Entities were unmaterialized - emit saved event to refresh parent
-  emit('saved')
-  // Close the form dialog
-  handleClose()
+  // Entities were unmaterialized - reload to get updated state
+  showUnmaterializeDialog.value = false
   
-  // Could show a notification about which entities were unmaterialized
+  // Reload entity to update currentEntity (remove materialized flag)
+  if (props.entity?.name) {
+    loading.value = true
+    api.entities.get(props.projectName, props.entity.name)
+      .then(freshEntity => {
+        currentEntity.value = freshEntity
+        formData.value = buildFormDataFromEntity(freshEntity)
+        yamlContent.value = formDataToYaml()
+      })
+      .catch(err => console.error('Failed to reload after unmaterialization:', err))
+      .finally(() => loading.value = false)
+  }
+  
+  // Notify parent to refresh entity list
+  emit('saved')
+  
+  // Log unmaterialized entities
   if (unmaterializedEntities.length > 1) {
     console.log(`Unmaterialized ${unmaterializedEntities.length} entities:`, unmaterializedEntities)
   }
@@ -1703,6 +1734,7 @@ watch(
         try {
           // Fetch fresh entity data from API (source of truth)
           const freshEntity = await api.entities.get(props.projectName, props.entity.name)
+          currentEntity.value = freshEntity  // Store complete entity for materialized checks
           formData.value = buildFormDataFromEntity(freshEntity)
           yamlContent.value = formDataToYaml()
         } catch (err) {
@@ -1710,6 +1742,7 @@ watch(
           console.error('Failed to fetch fresh entity data:', err)
           // Fallback to prop data if API fails
           if (props.entity) {
+            currentEntity.value = props.entity
             formData.value = buildFormDataFromEntity(props.entity)
             yamlContent.value = formDataToYaml()
           }
@@ -1718,6 +1751,7 @@ watch(
         }
       } else if (props.mode === 'create') {
         // Create mode: use default form data
+        currentEntity.value = null
         formData.value = buildDefaultFormData()
         yamlContent.value = ''
       }
