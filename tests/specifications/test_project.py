@@ -269,7 +269,7 @@ class TestCompositeProjectSpecification:
             "entities": {
                 "entity1": {
                     "type": "sql",
-                    "columns": ["col1"],
+                    "columns": ["id", "col1"],
                     "keys": ["id"],
                     "data_source": "db1",
                     "query": "SELECT *",
