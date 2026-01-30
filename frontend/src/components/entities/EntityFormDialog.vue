@@ -580,6 +580,7 @@
 
       <v-card-actions>
         <!-- Materialization buttons (edit mode only, not create) -->
+        <!-- DEBUG: mode={{ mode }}, currentEntity={{ !!currentEntity }}, materialized={{ currentEntity?.materialized?.enabled }} -->
         <template v-if="mode === 'edit' && currentEntity">
           <v-btn
             v-if="currentEntity.materialized?.enabled"
@@ -1735,6 +1736,12 @@ watch(
           // Fetch fresh entity data from API (source of truth)
           const freshEntity = await api.entities.get(props.projectName, props.entity.name)
           currentEntity.value = freshEntity  // Store complete entity for materialized checks
+          console.log('[EntityFormDialog] Loaded entity:', {
+            name: freshEntity.name,
+            hasMaterialized: !!freshEntity.materialized,
+            materializedEnabled: freshEntity.materialized?.enabled,
+            type: freshEntity.entity_data?.type
+          })
           formData.value = buildFormDataFromEntity(freshEntity)
           yamlContent.value = formDataToYaml()
         } catch (err) {
