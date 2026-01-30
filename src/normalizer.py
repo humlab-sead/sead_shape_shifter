@@ -87,6 +87,9 @@ class ShapeShifter:
                 drop_empty=False,
                 raise_if_missing=False,
             )
+            # Apply column renaming for append items (align_by_position or column_mapping)
+            # Pass parent's columns for align_by_position
+            sub_data = sub_table_cfg.apply_column_renaming(sub_data, parent_columns=table_cfg.columns)
             dfs.append(sub_data)
 
             # Concatenate all dataframes (filter out empty DataFrames to avoid FutureWarning)
