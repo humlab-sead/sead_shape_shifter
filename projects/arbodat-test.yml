@@ -899,6 +899,7 @@ entities:
     - PCODE
     public_id: taxon_id
     columns:
+    - taxon_id
     - PCODE
     - BNam
     - Name_E
