@@ -139,11 +139,16 @@ class SqlLoader(DataLoader):
 
         data: pd.DataFrame = await self.read_sql(sql=table_cfg.query)  # type: ignore[arg-type]
 
-        ignore_columns: set[str] = (set(table_cfg.unnest_columns) | set(table_cfg.identity_columns)) & set(data.columns)
-        expected_columns: list[str] = [col for col in table_cfg.keys_and_columns if col not in ignore_columns]
-
         if not table_cfg.keys_and_columns and table_cfg.auto_detect_columns:
             table_cfg.columns = list(data.columns)
+
+        # expected columns are the configured keys/columns excluding any unnest or identity columns
+        computed_columns: set[str] = (set(table_cfg.unnest_columns) | set(table_cfg.identity_columns)) & set(data.columns)
+        expected_columns: list[str] = [col for col in table_cfg.keys_and_columns if col not in computed_columns]
+
+        # If public_id is in data we need to include it in expected columns
+        if table_cfg.public_id and table_cfg.public_id in data.columns:
+            expected_columns.append(table_cfg.public_id)
 
         if table_cfg.check_column_names:
             # Expected columns are the configured keys/columns excluding any unnest columns,
@@ -152,9 +157,9 @@ class SqlLoader(DataLoader):
             if set(data.columns) != set(expected_columns):
                 raise ValueError(f"Data for entity '{entity_name}' has different columns compared to configuration")
 
-        if data.columns.tolist() != table_cfg.keys_and_columns:
+        if data.columns.tolist() != expected_columns:
             # Reorder columns to match configuration
-            data = data[table_cfg.keys_and_columns]
+            data = data[expected_columns]
 
         # Add system_id if configured (always "system_id" column name)
         if table_cfg.system_id and table_cfg.system_id not in data.columns:
