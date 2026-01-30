@@ -14,6 +14,7 @@ from backend.app.models.materialization import (
 )
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
+from backend.app.utils import convert_ruamel_types
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 
@@ -126,16 +127,22 @@ class MaterializationService:
                     )
 
             # Snapshot current config (exclude identity and structural fields)
-            saved_state: dict[str, Any] = {
-                k: v for k, v in table.entity_cfg.items() if k not in ["public_id", "keys", "columns", "type", "materialized", "values"]
-            }
+            # Convert ruamel.yaml types to plain Python types to avoid serialization issues
+            saved_state: dict[str, Any] = {}
+            for k, v in table.entity_cfg.items():
+                if k not in ["public_id", "keys", "columns", "type", "materialized", "values"]:
+                    # Skip empty/null values
+                    if v is None or v == "" or (isinstance(v, str) and not v.strip()):
+                        continue
+                    # Recursively convert ruamel.yaml types to plain Python types
+                    saved_state[k] = convert_ruamel_types(v)
 
-            # Build new config
+            # Build new config (convert all ruamel.yaml types)
             new_config = {
                 "type": "fixed",
-                "public_id": table.public_id,
-                "keys": list(table.keys),
-                "columns": list(df.columns),
+                "public_id": convert_ruamel_types(table.public_id),
+                "keys": convert_ruamel_types(list(table.keys)),
+                "columns": convert_ruamel_types(list(df.columns)),
                 "materialized": {
                     "enabled": True,
                     "source_state": saved_state,
@@ -146,7 +153,7 @@ class MaterializationService:
             }
 
             if values_inline:
-                new_config["values"] = values_inline
+                new_config["values"] = convert_ruamel_types(values_inline)
             elif data_file:
                 new_config["values"] = f"@file:{data_file}"
 
@@ -173,7 +180,7 @@ class MaterializationService:
             )
 
         except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"Failed to materialize entity '{entity_name}': {e}")
+            logger.exception(f"Failed to materialize entity '{entity_name}': {e}")
             return MaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
 
     async def unmaterialize_entity(self, project_name: str, entity_name: str, cascade: bool = False) -> UnmaterializationResult:
