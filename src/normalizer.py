@@ -131,11 +131,6 @@ class ShapeShifter:
             # Process all configured tables (base + append items)
             data: pd.DataFrame = await self.get_subset(subset_service, entity, table_cfg)
 
-            # Add public_id column if needed (after concatenation, before filters)
-            # For entities with append, public_id is filtered from append sources and added here
-            if table_cfg.has_append:
-                data = table_cfg.add_public_id_column(data)
-
             if table_cfg.filters:
                 data = apply_filters(name=entity, df=data, cfg=table_cfg, data_store=self.table_store)
 
@@ -184,6 +179,12 @@ class ShapeShifter:
 
         if self.linker.deferred_tracker.deferred:
             logger.warning(f"Entities with unresolved deferred links after normalization: {self.linker.deferred_tracker.deferred}")
+
+        # Add identity columns to all entities after normalization
+        # This ensures materialized entities get proper identity columns
+        self.add_system_id_columns()
+        self.add_public_id_columns()
+        self.move_keys_to_front()
 
         return self
 
@@ -256,6 +257,15 @@ class ShapeShifter:
                 continue
             table_cfg: TableConfig = self.project.get_table(entity_name=entity_name)
             self.table_store[entity_name] = table_cfg.add_system_id_column(table=self.table_store[entity_name])
+        return self
+
+    def add_public_id_columns(self) -> Self:
+        """Add 'public_id' column to each entity table that has one configured."""
+        for entity_name in self.table_store.keys():
+            if entity_name not in self.project.table_names:
+                continue
+            table_cfg: TableConfig = self.project.get_table(entity_name=entity_name)
+            self.table_store[entity_name] = table_cfg.add_public_id_column(table=self.table_store[entity_name])
         return self
 
     def move_keys_to_front(self) -> Self:
