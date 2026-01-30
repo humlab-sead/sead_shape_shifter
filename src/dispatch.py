@@ -147,7 +147,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
                 self.set_column_background_color(column, columns, ws, self.column_colors["public_id"])
             elif column in entity_cfg.fk_columns:
                 self.set_column_background_color(column, columns, ws, self.column_colors["foreign_key"])
-            elif column in entity_cfg.safe_columns:
+            elif column in entity_cfg.columns:
                 self.set_column_background_color(column, columns, ws, self.column_colors["source_column"])
 
     def set_column_background_color(self, column_name: str, columns: list[str], ws, color: str = "D3D3D3") -> None:
