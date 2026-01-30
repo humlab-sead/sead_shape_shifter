@@ -8,6 +8,7 @@ from typing import Any
 
 from loguru import logger
 from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedSeq
 
 from backend.app.core.config import settings
 
@@ -31,7 +32,7 @@ class YamlService:
         """Initialize YAML service with ruamel.yaml."""
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
-        self.yaml.default_flow_style = False
+        self.yaml.default_flow_style = False  # Use block style by default
         self.yaml.width = 4096  # Prevent line wrapping
         self.yaml.indent(mapping=2, sequence=2, offset=0)
 
@@ -80,6 +81,7 @@ class YamlService:
         data: dict[str, Any],
         filename: str | Path,
         create_backup: bool = True,
+        flow_style_max_items: int = 5,
     ) -> Path:
         """
         Save data to YAML file with atomic write and optional backup.
@@ -87,10 +89,14 @@ class YamlService:
         Uses atomic write pattern: write to temp file, then rename.
         This ensures the original file is never corrupted.
 
+        Short lists (≤ flow_style_max_items) will be saved in compact flow style:
+        keys: [item1, item2] instead of multi-line block style.
+
         Args:
             data: Data to save
             file_path: Target file path
             create_backup: Whether to create backup before saving
+            flow_style_max_items: Maximum list length for flow style (default 5, 0 to disable)
 
         Returns:
             Path to saved file
@@ -108,6 +114,10 @@ class YamlService:
 
             path.parent.mkdir(parents=True, exist_ok=True)
 
+            # Apply flow style to short lists for compact formatting
+            if flow_style_max_items > 0:
+                self._apply_flow_style(data, flow_style_max_items)
+
             logger.debug(f"Writing to temporary file: {temp_path}")
 
             with temp_path.open("w", encoding="utf-8") as f:
@@ -123,6 +133,35 @@ class YamlService:
             if temp_path.exists():
                 temp_path.unlink()
             raise YamlSaveError(f"Failed to save YAML file {path}: {e}") from e
+
+    def _apply_flow_style(self, obj: Any, max_items: int) -> None:
+        """
+        Recursively mark short lists to use flow style for compact formatting.
+
+        Lists with ≤ max_items will be formatted as [item1, item2] instead of:
+        - item1
+        - item2
+
+        Args:
+            obj: Object to process (dict, list, or other)
+            max_items: Maximum list length for flow style
+        """
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if isinstance(value, list) and 0 < len(value) <= max_items:
+                    # Convert to CommentedSeq and mark for flow style
+                    if not isinstance(value, CommentedSeq):
+                        flow_seq = CommentedSeq(value)
+                        obj[key] = flow_seq
+                    else:
+                        flow_seq = value
+                    flow_seq.fa.set_flow_style()
+                elif isinstance(value, (dict, list)):
+                    self._apply_flow_style(value, max_items)
+        elif isinstance(obj, list):
+            for item in obj:
+                if isinstance(item, (dict, list)):
+                    self._apply_flow_style(item, max_items)
 
     def create_backup(self, file_path: str | Path) -> Path:
         """
