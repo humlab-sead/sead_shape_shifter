@@ -21,9 +21,12 @@ class ForeignKeyConfigSpecification(Specification):
         super().clear()
         self.deferred = False
 
-    def is_satisfied_by(self, *, fk_cfg: ForeignKeyConfig, **kwargs) -> bool:
+    def is_satisfied_by(self, *, fk_cfg: ForeignKeyConfig | None = None, **kwargs) -> bool:
         # self.clear()
         missing_fields: set[str]
+
+        assert fk_cfg is not None, "fk_cfg must be provided to check foreign key configuration"  # keep type checker happy
+
         local_table_cfg: TableConfig = self.project.get_table(fk_cfg.local_entity)
         remote_table_cfg: TableConfig = self.project.get_table(fk_cfg.remote_entity)
 
@@ -102,7 +105,9 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
         super().__init__(cfg)
         self.table_store: dict[str, pd.DataFrame] = table_store
 
-    def is_satisfied_by(self, *, fk_cfg: ForeignKeyConfig, **kwargs) -> bool:
+    def is_satisfied_by(self, *, fk_cfg: ForeignKeyConfig | None = None, **kwargs) -> bool:
+
+        assert fk_cfg is not None, "fk_cfg must be provided to check foreign key data"  # keep type checker happy
 
         self.clear()
 
