@@ -127,11 +127,20 @@ class SqlLoader(DataLoader):
         return self.data_source.options if self.data_source else {}
 
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
+        """Load SQL data entity based on configuration.
+        Note: All columns in "keys" and "columns" must be present in the query result!
+        The "columns" can include identity columns like "system_id" and "public_id" and these are
+        ignored unless they exists in read data.
+        The returned column order will be as defined in columns.
+        """
 
         if table_cfg.type != "sql":
             raise ValueError(f"Entity '{entity_name}' is not configured as fixed SQL data")
 
         data: pd.DataFrame = await self.read_sql(sql=table_cfg.query)  # type: ignore[arg-type]
+
+        ignore_columns: set[str] = (set(table_cfg.unnest_columns) | set(table_cfg.identity_columns)) & set(data.columns)
+        expected_columns: list[str] = [col for col in table_cfg.keys_and_columns if col not in ignore_columns]
 
         if not table_cfg.keys_and_columns and table_cfg.auto_detect_columns:
             table_cfg.columns = list(data.columns)
@@ -139,11 +148,14 @@ class SqlLoader(DataLoader):
         if table_cfg.check_column_names:
             # Expected columns are the configured keys/columns excluding any unnest columns,
             # which are handled separately by the unnesting logic and should not be present in the raw data.
-            expected_columns: set[str] = set(table_cfg.keys_and_columns) - set(table_cfg.unnest_columns)
-            if set(data.columns) != expected_columns:
+
+            if set(data.columns) != set(expected_columns):
                 raise ValueError(f"Data for entity '{entity_name}' has different columns compared to configuration")
-        else:
-            data.columns = table_cfg.keys_and_columns
+        
+        if data.columns.tolist() != table_cfg.keys_and_columns:
+            # Reorder columns to match configuration
+            data = data[table_cfg.keys_and_columns]
+
 
         # Add system_id if configured (always "system_id" column name)
         if table_cfg.system_id and table_cfg.system_id not in data.columns:
