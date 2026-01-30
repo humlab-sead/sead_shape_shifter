@@ -45,6 +45,15 @@ class Settings(BaseSettings):
     # File paths
     PROJECTS_DIR: Path = Path("./projects")
     BACKUPS_DIR: Path = Path("./backups")
+    LOGS_DIR: Path = Path("./logs")
+
+    # Logging configuration
+    LOG_LEVEL: str = "INFO"
+    LOG_FILE_ENABLED: bool = True
+    LOG_CONSOLE_ENABLED: bool = True
+    LOG_ROTATION: str = "10 MB"
+    LOG_RETENTION: str = "30 days"
+    LOG_COMPRESSION: str = "zip"
 
     # Services
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
@@ -58,6 +67,7 @@ class Settings(BaseSettings):
         # Ensure directories exist
         self.PROJECTS_DIR.mkdir(exist_ok=True)
         self.BACKUPS_DIR.mkdir(exist_ok=True)
+        self.LOGS_DIR.mkdir(exist_ok=True)
 
     @property
     def env_prefix(self) -> str:

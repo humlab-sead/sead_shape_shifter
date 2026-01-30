@@ -63,11 +63,19 @@ def filter_once_per_message(record) -> bool:
 
 
 def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
-    """Configure loguru logging with appropriate handlers and filters."""
+    """Configure loguru logging for CLI/scripts.
+    
+    This is for standalone scripts and CLI tools. For the backend API,
+    use backend.app.core.logging_config.configure_logging() instead.
+    
+    Args:
+        verbose: Enable DEBUG level and detailed format
+        log_file: Optional file path for logging
+    """
     global _seen_messages  # pylint: disable=global-statement
 
     format_str: str = (
-        "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
         "<level>{level: <8}</level> | "
         "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
         "<level>{message}</level>"
@@ -80,11 +88,19 @@ def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
         format=format_str if verbose else "<level>{message}</level>",
         filter=filter_once_per_message if not verbose else None,
         colorize=True,
-        enqueue=False,
+        backtrace=True,
+        diagnose=True,
     )
 
     if log_file:
-        logger.add(log_file, level="DEBUG", format=format_str, enqueue=False)
+        logger.add(
+            log_file,
+            level="DEBUG",
+            format=format_str,
+            backtrace=True,
+            diagnose=True,
+            enqueue=True,
+        )
 
     if verbose:
         logger.debug("Verbose logging enabled")
@@ -244,36 +260,6 @@ def env2dict(prefix: str, data: dict[str, str] | None = None, lower_key: bool = 
         if key.startswith(prefix):
             dotset(data, key[len(prefix) + 1 :].replace("_", ":"), value)
     return data
-
-
-def configure_logging(opts: dict[str, Any] | None = None, default_level: str = "INFO") -> None:
-
-    logger.remove()
-    logger.add(
-        sys.stdout,
-        level=default_level,
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
-    )
-    if not opts:
-        return
-
-    if opts.get("handlers"):
-
-        for handler in opts["handlers"]:
-
-            if not handler.get("sink"):
-                continue
-
-            if handler["sink"] == "sys.stdout":
-                handler["sink"] = sys.stdout
-
-            elif isinstance(handler["sink"], str) and handler["sink"].endswith(".log"):
-                handler["sink"] = os.path.join(
-                    opts.get("folder", "logs"),
-                    f"{datetime.now().strftime('%Y%m%d')}_{handler['sink']}",
-                )
-
-        logger.configure(handlers=opts["handlers"])
 
 
 def import_sub_modules(module_name: str, module_folder: str) -> Any:
