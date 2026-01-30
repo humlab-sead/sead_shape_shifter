@@ -494,12 +494,12 @@ class TableConfig:
 
     def add_public_id_column(self, table: pd.DataFrame) -> pd.DataFrame:
         """Add public_id column with None values if not already present.
-        
+
         For entities with append configurations, the public_id column is excluded
         from append source extractions and added after concatenation.
         This allows the entity to have a proper public_id column structure
         even when building from heterogeneous sources.
-        
+
         Returns:
             pd.DataFrame: DataFrame with public_id column added if it was missing.
         """
@@ -522,7 +522,7 @@ class TableConfig:
 
     def create_append_config(self, append_data: dict[str, Any]) -> dict[str, Any]:
         """Create a merged configuration for an append item, inheriting parent properties.
-        
+
         Special handling:
         - Filters out public_id from columns list (will be added after concatenation)
         - Inherits most properties except foreign_keys, unnest, append, append_mode, depends_on

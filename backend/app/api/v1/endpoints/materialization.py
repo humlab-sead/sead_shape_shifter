@@ -35,8 +35,8 @@ async def can_materialize(project_name: str, entity_name: str) -> CanMaterialize
         # Get entity
         try:
             table: TableConfig = core_project.get_table(entity_name)
-        except KeyError:
-            raise HTTPException(status_code=404, detail=f"Entity '{entity_name}' not found")
+        except KeyError as e:
+            raise HTTPException(status_code=404, detail=f"Entity '{entity_name}' not found") from e
 
         # Validate
         can_mat, errors = table.can_materialize(core_project)

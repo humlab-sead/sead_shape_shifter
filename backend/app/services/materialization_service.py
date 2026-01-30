@@ -82,7 +82,7 @@ class MaterializationService:
                 try:
                     values_inline = df.values.tolist()
                     logger.info(f"Storing {len(df)} rows inline in YAML")
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-except
                     return MaterializationResult(
                         success=False,
                         errors=[f"Failed to convert data to inline format: {e}"],
@@ -118,7 +118,7 @@ class MaterializationService:
                         errors=[f"Failed to write data file: {e}"],
                         entity_name=entity_name,
                     )
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-except
                     return MaterializationResult(
                         success=False,
                         errors=[f"Unexpected error saving data: {e}"],
@@ -155,7 +155,7 @@ class MaterializationService:
 
             try:
                 self.project_service.save_project(api_project)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 return MaterializationResult(
                     success=False,
                     errors=[f"Failed to save project configuration: {e}"],
@@ -172,7 +172,7 @@ class MaterializationService:
                 storage_format=storage_format if data_file else "inline",
             )
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.error(f"Failed to materialize entity '{entity_name}': {e}")
             return MaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
 
@@ -236,7 +236,7 @@ class MaterializationService:
 
             try:
                 self.project_service.save_project(api_project)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 return UnmaterializationResult(
                     success=False,
                     errors=[f"Failed to save project configuration: {e}"],
@@ -247,7 +247,7 @@ class MaterializationService:
 
             return UnmaterializationResult(success=True, entity_name=entity_name, unmaterialized_entities=unmaterialized_entities)
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.error(f"Failed to unmaterialize entity '{entity_name}': {e}")
             return UnmaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
 
