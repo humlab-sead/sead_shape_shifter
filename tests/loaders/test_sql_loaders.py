@@ -536,12 +536,11 @@ class TestSqlLoaderCore:
             entity_name="sql_entity",
         )
 
-        with patch("src.loaders.sql_loaders.add_system_id", side_effect=lambda df, col: df.assign(**{col: [10, 20]})):
-            result = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
+        result: pd.DataFrame = await loader.load(entity_name="sql_entity", table_cfg=table_cfg)
 
         assert list(table_cfg.columns) == ["col_a", "col_b"]
-        assert list(result.columns) == ["col_a", "col_b", "system_id"]
-        assert result["system_id"].tolist() == [10, 20]
+        assert list(result.columns) == ["system_id", "col_a", "col_b"]
+        assert result["system_id"].tolist() == [1, 2]
 
     @pytest.mark.asyncio
     async def test_load_rejects_non_sql_entity(self):
@@ -643,7 +642,7 @@ class TestSqlLoaderCore:
 
         result = await loader.load("sql_entity", table_cfg)
         # When public_id is configured, system_id is automatically added
-        assert list(result.columns) == ["a", "b", "system_id"]
+        assert list(result.columns) == ["system_id", "a", "b"]
 
     def test_get_test_query_formats_default(self):
         loader = DummySqlLoader(data_source=Mock())
