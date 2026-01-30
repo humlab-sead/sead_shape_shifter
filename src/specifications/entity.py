@@ -358,6 +358,36 @@ class AppendSpecification(ProjectSpecification):
                 self.check_fields(entity_name, ["source"], "is_existing_entity/E", target_cfg=append_cfg, message=append_id)
                 self.check_fields(entity_name, ["columns"], "exists/W", target_cfg=append_cfg, message=append_id)
 
+            # Validate column renaming options
+            align_by_position = append_cfg.get("align_by_position", False)
+            column_mapping = append_cfg.get("column_mapping")
+
+            if align_by_position and column_mapping:
+                self.add_error(
+                    f"{append_id}: cannot specify both 'align_by_position' and 'column_mapping'",
+                    entity=entity_name,
+                    field="append",
+                )
+
+            if align_by_position:
+                self.check_fields(
+                    entity_name, ["align_by_position"], "of_type/E", expected_types=(bool,), target_cfg=append_cfg, message=append_id
+                )
+
+            if column_mapping:
+                self.check_fields(
+                    entity_name, ["column_mapping"], "of_type/E", expected_types=(dict,), target_cfg=append_cfg, message=append_id
+                )
+                if isinstance(column_mapping, dict):
+                    # Validate that all keys and values are strings
+                    for src_col, tgt_col in column_mapping.items():
+                        if not isinstance(src_col, str) or not isinstance(tgt_col, str):
+                            self.add_error(
+                                f"{append_id}: column_mapping keys and values must be strings",
+                                entity=entity_name,
+                                field="append",
+                            )
+
         return not self.has_errors()
 
 

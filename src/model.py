@@ -512,6 +512,66 @@ class TableConfig:
 
         return table
 
+    def apply_column_renaming(self, table: pd.DataFrame, parent_columns: list[str] | None = None) -> pd.DataFrame:
+        """Apply column renaming based on align_by_position or column_mapping.
+
+        This is used for append items to rename columns from the source entity
+        to match the parent entity's column names.
+
+        Args:
+            table: DataFrame to rename
+            parent_columns: Parent entity's column names (required for align_by_position)
+
+        Supports two strategies:
+        1. align_by_position: Rename columns by position to match parent's columns
+        2. column_mapping: Explicit mapping {source_col: target_col}
+
+        Returns:
+            pd.DataFrame: DataFrame with renamed columns
+        """
+        align_by_position: bool = self.entity_cfg.get("align_by_position", False)
+        column_mapping: dict[str, str] | None = self.entity_cfg.get("column_mapping")
+
+        if not align_by_position and not column_mapping:
+            return table
+
+        table = table.copy()
+
+        if align_by_position:
+            if not parent_columns:
+                raise ValueError(f"parent_columns required for align_by_position in {self.entity_name}")
+
+            # Position-based renaming: map current columns to parent's columns by position
+            current_columns: list[str] = list(table.columns)
+
+            # Filter out system_id and public_id from both lists for alignment
+            system_id_col = self.system_id
+            public_id_col = self.public_id
+            exclude_cols = {system_id_col, public_id_col} if public_id_col else {system_id_col}
+
+            parent_cols_filtered = [c for c in parent_columns if c not in exclude_cols]
+            current_cols_filtered = [c for c in current_columns if c not in exclude_cols]
+
+            if len(parent_cols_filtered) != len(current_cols_filtered):
+                raise ValueError(
+                    f"Column count mismatch for align_by_position in {self.entity_name}: "
+                    f"parent has {len(parent_cols_filtered)} columns {parent_cols_filtered}, "
+                    f"append has {len(current_cols_filtered)} columns {current_cols_filtered}"
+                )
+
+            # Create rename mapping
+            rename_map = dict(zip(current_cols_filtered, parent_cols_filtered))
+            table = table.rename(columns=rename_map)
+
+        elif column_mapping:
+            # Explicit column mapping
+            missing_cols = set(column_mapping.keys()) - set(table.columns)
+            if missing_cols:
+                raise ValueError(f"Columns specified in column_mapping not found in {self.entity_name}: {missing_cols}")
+            table = table.rename(columns=column_mapping)
+
+        return table
+
     def is_drop_duplicate_dependent_on_unnesting(self) -> bool:
         """Check if `drop_duplicates` is dependent on columns created during unnesting."""
         if not self.drop_duplicates or not self.unnest:
@@ -526,18 +586,44 @@ class TableConfig:
         Special handling:
         - Filters out public_id from columns list (will be added after concatenation)
         - Inherits most properties except foreign_keys, unnest, append, append_mode, depends_on
+        - Passes through align_by_position and column_mapping from append item
+        - When using align_by_position or column_mapping with entity source, columns come from source entity
         """
         merged: dict[str, Any] = {}
         non_inheritable_keys: set[str] = {"foreign_keys", "unnest", "append", "append_mode", "depends_on"}
+        append_only_keys: set[str] = {"align_by_position", "column_mapping"}  # Don't inherit from parent
         all_keys: set[str] = set(self.entity_cfg.keys()) | set(append_data.keys())
         special_conversions = {
             "keys": lambda v: list(v) if isinstance(v, set) else v,
         }
 
+        # Check if we're using column renaming with entity source
+        has_source = "source" in append_data
+        has_align = append_data.get("align_by_position", False)
+        has_mapping = "column_mapping" in append_data
+        use_source_columns = has_source and (has_align or has_mapping) and "columns" not in append_data
+        use_source_keys = has_source and (has_align or has_mapping) and "keys" not in append_data
+
         for key in all_keys:
 
             if key in non_inheritable_keys:
                 continue
+
+            # For append-only keys, only use value from append_data, don't inherit
+            if key in append_only_keys:
+                if key in append_data:
+                    merged[key] = append_data[key]
+                continue
+
+            # When using column renaming with entity source and no explicit columns/keys,
+            # get them from the source entity instead of parent
+            if (key == "columns" and use_source_columns) or (key == "keys" and use_source_keys):
+                source_entity = append_data.get("source")
+                if source_entity and source_entity in self.entities_cfg:
+                    source_value = self.entities_cfg[source_entity].get(key, [])
+                    if source_value:
+                        merged[key] = source_value
+                    continue
 
             value = append_data[key] if key in append_data else self.entity_cfg[key]
 
