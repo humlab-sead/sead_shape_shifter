@@ -92,15 +92,24 @@ class OpenpyxlExcelDispatcher(Dispatcher):
 
     def dispatch(self, target: str, data: dict[str, pd.DataFrame]) -> None:
         wb = Workbook(write_only=False)  # Keep False for styling support
-        wb.remove(wb.active)  # type: ignore[attr-defined] ; openpyxl creates a default sheet
 
         # Disable formula calculations for better performance
         wb.calculation.calcMode = "manual"  # type: ignore
 
-        for entity_name in sorted(data):
+        # Process sorted entities
+        sorted_entities = sorted(data)
+        first_entity = True
+
+        for entity_name in sorted_entities:
             table: pd.DataFrame = data[entity_name]
-            sheet_name: str = self._safe_sheet_name(entity_name, existing=wb.sheetnames)
-            ws = wb.create_sheet(title=sheet_name)
+            sheet_name: str = self._safe_sheet_name(entity_name, existing=wb.sheetnames if not first_entity else [])
+            ws = wb.active if first_entity else wb.create_sheet(title=sheet_name)
+
+            assert ws is not None
+
+            if first_entity:
+                ws.title = sheet_name
+                first_entity = False
 
             # Write headers + rows
             for r in dataframe_to_rows(table, index=False, header=True):
@@ -110,6 +119,7 @@ class OpenpyxlExcelDispatcher(Dispatcher):
             self.auto_size_columns(ws)
 
         wb.save(target)
+        wb.close()  # Properly close the workbook to avoid resource leaks
 
     @staticmethod
     def _to_argb(color: str) -> str:
