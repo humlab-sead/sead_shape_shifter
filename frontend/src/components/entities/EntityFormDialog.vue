@@ -333,13 +333,15 @@
                       <v-row no-gutters>
                         <!-- Drop Duplicates -->
                         <v-col cols="6" class="pr-2">
-                          <v-checkbox
-                            v-model="formData.drop_duplicates.enabled"
-                            label="Drop Duplicates"
-                            hide-details
-                            class="mb-2"
-                          >
-                          </v-checkbox>
+                          <v-row no-gutters class="mb-2">
+                            <v-col cols="12">
+                              <v-checkbox
+                                v-model="formData.drop_duplicates.enabled"
+                                label="Drop Duplicates"
+                                hide-details
+                              />
+                            </v-col>
+                          </v-row>
                           <v-combobox
                             v-model="formData.drop_duplicates.columns"
                             label="Deduplication Columns"
@@ -364,8 +366,7 @@
                                 v-model="formData.drop_empty_rows.enabled"
                                 label="Drop Empty Rows"
                                 hide-details
-                              >
-                              </v-checkbox>
+                              />
                             </v-col>
                             <v-col cols="7" class="pl-1">
                               <v-checkbox
@@ -373,8 +374,7 @@
                                 label="Check Functional Dependency"
                                 hide-details
                                 :disabled="!formData.drop_empty_rows.enabled"
-                              >
-                              </v-checkbox>
+                              />
                             </v-col>
                           </v-row>
                           <v-combobox
