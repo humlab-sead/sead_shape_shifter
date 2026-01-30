@@ -629,4 +629,6 @@ entities:
        public_id: system-id to SEAD id mapping for edited vales
     xyz: rest the same ?
 
-    
+[] TODO: #192 Consider adding column-name and improving append
+
+I'm still considering if we need a version of append that ignores the appended column names, i.e. it would basically as if the added table has it's columns renamed to the "parent" table's columns. An vertical column-index based concatenation, ignoring column names, What do you think?
