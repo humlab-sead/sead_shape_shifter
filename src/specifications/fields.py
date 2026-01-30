@@ -227,3 +227,56 @@ class FieldIsAbsentValidator(FieldValidator):
             entity=entity_name,
             column=field,
         )
+
+
+@FIELD_VALIDATORS.register(key="keys_subset_of_columns")
+class KeysSubsetOfColumnsValidator(FieldValidator):
+    """Validator to check that all keys are present in columns.
+    
+    This ensures that keys used for deduplication and FK matching actually exist
+    in the extracted data. Skips validation when:
+    - columns is empty (keys come from source)
+    - keys is empty
+    - values contain @value references (unresolved)
+    """
+
+    def rule_predicate(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> bool:
+        keys: list[str] | str | None = target_cfg.get("keys")
+        columns: list[str] | str | None = target_cfg.get("columns")
+        
+        # Skip validation if keys or columns are unresolved references
+        if isinstance(keys, str) and keys.startswith("@value"):
+            return True
+        if isinstance(columns, str) and columns.startswith("@value"):
+            return True
+            
+        # Skip validation if keys or columns are not proper lists
+        if not isinstance(keys, list) or not isinstance(columns, list):
+            return True
+            
+        # Skip validation if columns is empty (keys come from source query/file)
+        if len(columns) == 0:
+            return True
+            
+        # Skip validation if keys is empty
+        if len(keys) == 0:
+            return True
+        
+        # Check if all keys are in columns
+        keys_set: set[str] = set(keys)
+        columns_set: set[str] = set(columns)
+        
+        return keys_set.issubset(columns_set)
+
+    def rule_fail(self, target_cfg: dict[str, Any], entity_name: str, field: str, **kwargs) -> None:
+        keys: list[str] = target_cfg.get("keys", [])
+        columns: list[str] = target_cfg.get("columns", [])
+        missing_keys: set[str] = set(keys) - set(columns)
+        
+        self.rule_handler(
+            f"Entity '{entity_name}': Keys {sorted(missing_keys)} must be present in 'columns'. "
+            f"Keys are used for deduplication and FK matching, so they must exist in the extracted data. "
+            f"Add {sorted(missing_keys)} to the 'columns' list.",
+            entity=entity_name,
+            column="keys",
+        )
