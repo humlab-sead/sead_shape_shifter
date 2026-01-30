@@ -269,7 +269,7 @@ class ApplicationStateManager:
         return None
 
     def update(self, project: Project) -> None:
-        """Update version tracking for project (for cache invalidation)."""
+        """Update project if it's already known, otherwise ignore."""
         with contextlib.suppress(RuntimeError):
 
             if not project.metadata:
@@ -280,9 +280,12 @@ class ApplicationStateManager:
 
             app_state: ApplicationState = get_app_state()
 
-            # Only update version tracking, don't cache the project object
-            app_state.increment_version(project.metadata.name)
-            logger.debug(f"Updated version tracking for '{project.metadata.name}'")
+            # Only update if the project is already in memory
+            if project.metadata.name in app_state._active_projects:
+                app_state._active_projects[project.metadata.name] = project
+                app_state.increment_version(project.metadata.name)
+                app_state.mark_saved(project.metadata.name)
+                logger.debug(f"Updated version tracking for '{project.metadata.name}'")
 
     def update_version(self, name: str) -> None:
         """Update version tracking for a project (for cache invalidation)."""
