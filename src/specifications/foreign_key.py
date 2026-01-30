@@ -1,7 +1,7 @@
 import pandas as pd
 
-from src.specifications.base import Specification
 from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
+from src.specifications.base import Specification
 
 # pylint: disable=line-too-long
 

@@ -396,7 +396,7 @@ class TableConfig:
     def identity_columns(self) -> list[str]:
         """Get list of identifier columns (system_id + public_id). Business "keys" from source excluded."""
         return ["system_id"] + ([self.public_id] if self.public_id else [])
-    
+
     @property
     def unnest_columns(self) -> set[str]:
         """Get set of columns that are pending (e.g., from unnesting)."""
