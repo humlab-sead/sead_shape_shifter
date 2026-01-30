@@ -1,5 +1,8 @@
 """Tests for append configuration parsing and validation."""
 
+import pandas as pd
+import pytest
+
 from src.model import TableConfig
 
 
@@ -364,6 +367,171 @@ class TestAppendPropertyInheritance:
 
         # Columns should remain unchanged
         assert merged["columns"] == ["id", "name", "value"]
+
+
+class TestColumnRenaming:
+    """Test column renaming functionality for append configurations."""
+
+    def test_apply_column_renaming_align_by_position(self):
+        """Test align_by_position renames columns by position."""
+        cfg = {
+            "test_entity": {
+                "columns": ["id", "name", "type"],
+                "depends_on": [],
+            }
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
+
+        # Simulate append config with different column names
+        table_cfg.entity_cfg["align_by_position"] = True
+
+        df = pd.DataFrame(
+            {
+                "old_id": [1, 2],
+                "legacy_name": ["A", "B"],
+                "category": ["X", "Y"],
+            }
+        )
+
+        # Pass parent columns for alignment
+        result = table_cfg.apply_column_renaming(df, parent_columns=["id", "name", "type"])
+
+        # Columns should be renamed to match parent's columns
+        assert list(result.columns) == ["id", "name", "type"]
+        assert result["id"].tolist() == [1, 2]
+        assert result["name"].tolist() == ["A", "B"]
+        assert result["type"].tolist() == ["X", "Y"]
+
+    def test_apply_column_renaming_column_mapping(self):
+        """Test column_mapping renames specific columns."""
+        cfg = {
+            "test_entity": {
+                "columns": ["id", "name", "type"],
+                "depends_on": [],
+            }
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
+
+        table_cfg.entity_cfg["column_mapping"] = {
+            "old_id": "id",
+            "person": "name",
+            "cat": "type",
+        }
+
+        df = pd.DataFrame(
+            {
+                "old_id": [1, 2],
+                "person": ["A", "B"],
+                "cat": ["X", "Y"],
+            }
+        )
+
+        result = table_cfg.apply_column_renaming(df)
+
+        # Columns should be renamed according to mapping
+        assert list(result.columns) == ["id", "name", "type"]
+        assert result["id"].tolist() == [1, 2]
+
+    def test_apply_column_renaming_no_renaming(self):
+        """Test that no renaming occurs when neither option is set."""
+        cfg = {
+            "test_entity": {
+                "columns": ["id", "name"],
+                "depends_on": [],
+            }
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
+
+        df = pd.DataFrame(
+            {
+                "id": [1, 2],
+                "name": ["A", "B"],
+            }
+        )
+
+        result = table_cfg.apply_column_renaming(df)
+
+        # Columns should remain unchanged
+        assert list(result.columns) == ["id", "name"]
+
+    def test_apply_column_renaming_align_by_position_with_system_id(self):
+        """Test align_by_position excludes system_id and public_id from alignment."""
+        cfg = {
+            "test_entity": {
+                "public_id": "test_id",
+                "columns": ["id", "name"],
+                "depends_on": [],
+            }
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
+        table_cfg.entity_cfg["align_by_position"] = True
+
+        # DataFrame has system_id which should not be aligned
+        df = pd.DataFrame(
+            {
+                "old_id": [1, 2],
+                "legacy_name": ["A", "B"],
+                "system_id": [10, 20],
+            }
+        )
+
+        # Pass parent columns for alignment
+        result = table_cfg.apply_column_renaming(df, parent_columns=["id", "name"])
+
+        # Only old_id and legacy_name should be renamed, system_id preserved
+        assert "id" in result.columns
+        assert "name" in result.columns
+        assert "system_id" in result.columns
+        assert result["system_id"].tolist() == [10, 20]
+
+    def test_apply_column_renaming_column_count_mismatch(self):
+        """Test align_by_position raises error on column count mismatch."""
+        cfg = {
+            "test_entity": {
+                "columns": ["id", "name", "type"],  # 3 columns
+                "depends_on": [],
+            }
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
+        table_cfg.entity_cfg["align_by_position"] = True
+
+        # DataFrame has only 2 columns
+        df = pd.DataFrame(
+            {
+                "old_id": [1, 2],
+                "legacy_name": ["A", "B"],
+            }
+        )
+
+        # Pass parent columns (3 columns) - should raise error
+        with pytest.raises(ValueError, match="Column count mismatch"):
+            table_cfg.apply_column_renaming(df, parent_columns=["id", "name", "type"])
+
+    def test_apply_column_renaming_missing_source_column(self):
+        """Test column_mapping raises error when source column doesn't exist."""
+        cfg = {
+            "test_entity": {
+                "columns": ["id", "name"],
+                "depends_on": [],
+            }
+        }
+
+        table_cfg = TableConfig(entities_cfg=cfg, entity_name="test_entity")
+        table_cfg.entity_cfg["column_mapping"] = {"missing_col": "id"}
+
+        df = pd.DataFrame(
+            {
+                "actual_col": [1, 2],
+            }
+        )
+
+        with pytest.raises(ValueError, match="Columns specified in column_mapping not found"):
+            table_cfg.apply_column_renaming(df)
 
 
 class TestAppendEdgeCases:
