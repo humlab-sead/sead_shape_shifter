@@ -323,7 +323,7 @@ class ForeignKeyConstraintValidator:
 
         if self.fk.how != "cross":
             if self.size_before_merge[0] != self.size_after_merge[0]:
-                message = (
+                message: str = (
                     f"{self.fk.local_entity} -> {self.fk.remote_entity}[linking]: join resulted in change in row count: "
                     f"before={self.size_before_merge[0]}, after={self.size_after_merge[0]}"
                 )
@@ -345,8 +345,8 @@ class ForeignKeyConstraintValidator:
 
         # Calculate expected column increase
         # Start with surrogate ID (1) + extra columns from remote
-        remote_extra_cols = self.fk.get_valid_remote_columns(remote_df)
-        expected_new_columns = 1 + len(remote_extra_cols)
+        remote_extra_cols: Any | list[str] = self.fk.get_valid_remote_columns(remote_df)
+        expected_new_columns: int = 1 + len(remote_extra_cols)
 
         # Add merge indicator if present
         if self.merge_indicator_col:
@@ -354,8 +354,8 @@ class ForeignKeyConstraintValidator:
 
         # Check how many of the remote columns already exist in local_df
         # (pandas merge won't duplicate columns that already exist)
-        existing_cols = set(local_df.columns)
-        remote_cols_to_add = [col for col in remote_extra_cols if col not in existing_cols]
+        existing_cols: set[str] = set(local_df.columns)
+        remote_cols_to_add: list[Any | str] = [col for col in remote_extra_cols if col not in existing_cols]
 
         # Actual expected increase accounts for columns that won't be duplicated
         actual_expected_increase = 1  # surrogate ID always added
