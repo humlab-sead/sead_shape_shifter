@@ -16,7 +16,8 @@ def convert_ruamel_types(obj: Any) -> Any:
         
     Returns:
         The same object structure with all ruamel.yaml types converted to
-        plain Python equivalents (str, dict, list, etc.)
+        plain Python equivalents (str, dict, list, etc.). Empty/whitespace-only
+        strings are preserved (not converted to None) to maintain semantics.
         
     Examples:
         >>> from ruamel.yaml.scalarstring import DoubleQuotedScalarString
@@ -37,9 +38,6 @@ def convert_ruamel_types(obj: Any) -> Any:
     elif isinstance(obj, (list, tuple)):
         # Recursively convert list/tuple items
         return [convert_ruamel_types(item) for item in obj]
-    elif obj is None or (isinstance(obj, str) and not obj.strip()):
-        # Return None for empty values
-        return None
     else:
-        # Return other types as-is (bool, int, float, etc.)
+        # Return other types as-is (bool, int, float, None, etc.)
         return obj
