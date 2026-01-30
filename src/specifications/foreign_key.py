@@ -36,7 +36,7 @@ class ForeignKeyConfigSpecification(Specification):
                     f"{fk_cfg.local_entity} -> {fk_cfg.remote_entity}: " f"'cross' join should not specify local_keys or remote_keys",
                     entity=fk_cfg.local_entity,
                 )
-            return not self.has_errors
+            return not self.has_errors()
 
         if not remote_table_cfg.system_id:
             self.add_error(
@@ -44,7 +44,7 @@ class ForeignKeyConfigSpecification(Specification):
                 f"remote entity '{fk_cfg.remote_entity}' must have a system_id defined",
                 entity=fk_cfg.local_entity,
             )
-            return not self.has_errors
+            return not self.has_errors()
 
         if not remote_table_cfg.public_id:
             self.add_error(
@@ -52,7 +52,7 @@ class ForeignKeyConfigSpecification(Specification):
                 f"remote entity '{fk_cfg.remote_entity}' must have a public_id defined",
                 entity=fk_cfg.local_entity,
             )
-            return not self.has_errors
+            return not self.has_errors()
 
         if len(fk_cfg.local_keys) == 0 or len(fk_cfg.remote_keys) == 0:
             self.add_error(
@@ -91,7 +91,7 @@ class ForeignKeyConfigSpecification(Specification):
                 entity=fk_cfg.local_entity,
             )
 
-        return not self.has_errors
+        return not self.has_errors()
 
     def get_missing_fields(self, *, required_fields: set[str], available_fields: set[str]) -> set[str]:
         """Return the set of required keys that are missing from found keys."""
@@ -147,7 +147,7 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
                 entity=fk_cfg.local_entity,
             )
 
-        return not self.has_errors
+        return not self.has_errors()
 
     def is_already_linked(self, *, fk_cfg: ForeignKeyConfig) -> bool:
         """Check if the foreign key columns already exist in the local entity's data."""
