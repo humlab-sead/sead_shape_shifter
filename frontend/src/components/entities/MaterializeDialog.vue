@@ -81,11 +81,11 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useToast } from 'vuetify-use-dialog'
+import { useNotification } from '@/composables/useNotification'
 import { materializationApi } from '@/api/materialization'
 import type { CanMaterializeResponse } from '@/api/materialization'
 
-const toast = useToast()
+const { success, error } = useNotification()
 
 interface Props {
   modelValue: boolean
@@ -157,7 +157,7 @@ async function checkCanMaterialize() {
       estimated_rows: null,
     }
     canMaterialize.value = false
-    toast.error(`Failed to check materialization: ${errorMessage}`)
+    error(`Failed to check materialization: ${errorMessage}`)
   } finally {
     loading.value = false
   }
@@ -173,14 +173,14 @@ async function materialize() {
     
     const rowCount = result.rows_materialized?.toLocaleString() || 'unknown'
     const storageInfo = result.storage_file ? ` to ${result.storage_file}` : ' inline'
-    toast.success(`Successfully materialized ${rowCount} rows${storageInfo}`)
+    success(`Successfully materialized ${rowCount} rows${storageInfo}`)
     
     emit('materialized')
     close()
-  } catch (error: any) {
-    console.error('Materialization failed:', error)
-    const errorMessage = error.response?.data?.detail || error.message
-    toast.error(`Materialization failed: ${errorMessage}`)
+  } catch (err: any) {
+    console.error('Materialization failed:', err)
+    const errorMessage = err.response?.data?.detail || err.message
+    error(`Materialization failed: ${errorMessage}`)
   } finally {
     loading.value = false
   }

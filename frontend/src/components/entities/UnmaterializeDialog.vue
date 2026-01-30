@@ -62,10 +62,10 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useToast } from 'vuetify-use-dialog'
+import { useNotification } from '@/composables/useNotification'
 import { materializationApi } from '@/api/materialization'
 
-const toast = useToast()
+const { success, error, warning } = useNotification()
 
 interface Props {
   modelValue: boolean
@@ -116,29 +116,29 @@ async function unmaterialize() {
     const entityList = result.unmaterialized_entities?.join(', ') || props.entityName
     
     if (count > 1) {
-      toast.success(`Successfully unmaterialized ${count} entities: ${entityList}`)
+      success(`Successfully unmaterialized ${count} entities: ${entityList}`)
     } else {
-      toast.success(`Successfully unmaterialized entity: ${entityList}`)
+      success(`Successfully unmaterialized entity: ${entityList}`)
     }
     
     emit('unmaterialized', result.unmaterialized_entities || [props.entityName])
     close()
-  } catch (error: any) {
-    console.error('Unmaterialization failed:', error)
+  } catch (err: any) {
+    console.error('Unmaterialization failed:', err)
 
     // Check if cascade is required
-    if (error.response?.status === 409) {
-      const detail = error.response.data.detail
+    if (err.response?.status === 409) {
+      const detail = err.response.data.detail
       if (typeof detail === 'object' && detail.requires_cascade) {
         requiresCascade.value = true
         affectedEntities.value = detail.affected_entities || []
-        toast.warning('Cascade required - dependent entities must be unmaterialized first')
+        warning('Cascade required - dependent entities must be unmaterialized first')
         return
       }
     }
 
-    const errorMessage = error.response?.data?.detail?.message || error.response?.data?.detail || error.message
-    toast.error(`Unmaterialization failed: ${errorMessage}`)
+    const errorMessage = err.response?.data?.detail?.message || err.response?.data?.detail || err.message
+    error(`Unmaterialization failed: ${errorMessage}`)
   } finally {
     loading.value = false
   }
