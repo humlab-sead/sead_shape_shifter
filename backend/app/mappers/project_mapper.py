@@ -10,6 +10,15 @@ Architecture:
 - API (Project/Entity) uses Pydantic models for validation
 - This mapper bridges the two layers, preserving sparse YAML structure
 
+Directive Resolution Strategy:
+- **API → Core (to_core)**: Resolves @include: and @value: directives (processing needs concrete values)
+- **YAML → API (to_api_config)**: Preserves directives (editing layer keeps references)
+- **API → YAML (to_core_dict)**: Preserves directives (saves original structure)
+- **Core → API**: Not needed (processing is one-way, no roundtrip)
+
+Principle: Directives live in YAML/API layer, resolved values in Core layer.
+The API layer is the editing/persistence boundary. Core is the execution/processing boundary.
+
 No hardcoded field lists - all field handling is derived from Pydantic schemas.
 """
 
@@ -22,6 +31,7 @@ from backend.app.models import (
     Project,
     ProjectMetadata,
 )
+from backend.app.utils import convert_ruamel_types
 from src.configuration.config import Config
 from src.model import ShapeShiftProject
 
@@ -116,15 +126,26 @@ class ProjectMapper:
         unresolved: list[str] = Config.find_unresolved_directives(cfg_dict)
         if unresolved:
             extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
-            logger.error(f"Unresolved @value references found in config: {', '.join(unresolved[:5])} {extra}")
+            logger.debug(f"@value references in config (will be resolved on load): {', '.join(unresolved[:5])}{extra}")
 
         return cfg_dict
 
     @staticmethod
     def to_core(api_config: Project) -> ShapeShiftProject:
+        """Convert API Project to core ShapeShiftProject.
+        
+        Conditionally resolves @include: and @value: directives only if needed.
+        """
         cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_config=api_config)
-        shapeshift = ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
-        return shapeshift
+        
+        # Create project
+        project = ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
+        
+        # Only resolve if there are unresolved directives
+        if not project.is_resolved():
+            project = project.resolve(filename=api_config.filename)
+        
+        return project
 
     @staticmethod
     def to_core_config(api_config: Project) -> ShapeShiftProject:
@@ -174,9 +195,10 @@ class ProjectMapper:
         Uses Pydantic model_dump() to eliminate hardcoded field lists.
         The Entity model schema is the single source of truth.
         """
-        # If already a dict, return as-is but remove 'name' (API-only field)
+        # If already a dict, deep convert ruamel types and remove 'name' (API-only field)
         if isinstance(api_entity, dict):
-            entity_dict: dict[str, Any] = api_entity.copy()
+            # Deep convert to avoid ruamel.yaml types in nested structures
+            entity_dict: dict[str, Any] = convert_ruamel_types(api_entity)
             entity_dict.pop("name", None)
             return entity_dict
 
