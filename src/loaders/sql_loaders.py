@@ -151,11 +151,10 @@ class SqlLoader(DataLoader):
 
             if set(data.columns) != set(expected_columns):
                 raise ValueError(f"Data for entity '{entity_name}' has different columns compared to configuration")
-        
+
         if data.columns.tolist() != table_cfg.keys_and_columns:
             # Reorder columns to match configuration
             data = data[table_cfg.keys_and_columns]
-
 
         # Add system_id if configured (always "system_id" column name)
         if table_cfg.system_id and table_cfg.system_id not in data.columns:
