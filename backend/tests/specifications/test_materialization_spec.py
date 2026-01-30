@@ -1,6 +1,5 @@
 """Tests for MaterializationSpecification validator."""
 
-
 from src.specifications.entity import MaterializationSpecification
 
 

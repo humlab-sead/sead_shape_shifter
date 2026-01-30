@@ -1,6 +1,5 @@
 """Tests for entity materialization functionality."""
 
-
 from src.model import ShapeShiftProject
 
 
