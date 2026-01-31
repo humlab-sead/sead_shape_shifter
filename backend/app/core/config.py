@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     # Services
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"
 
+    # Suggestions
+    ENABLE_FK_SUGGESTIONS: bool = False
+
     # Ingester configuration
     INGESTER_PATHS: list[str] = ["ingesters"]
     ENABLED_INGESTERS: list[str] | None = None  # None = all discovered ingesters

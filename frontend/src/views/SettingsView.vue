@@ -133,6 +133,14 @@
               </template> -->
             </v-switch>
 
+            <v-switch
+              v-model="appSettings.enableFkSuggestions.value"
+              label="Enable foreign key suggestions"
+              color="primary"
+              hide-details
+              class="mt-3"
+            />
+
             <v-divider class="my-4" />
 
             <div class="d-flex gap-2">

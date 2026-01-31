@@ -34,3 +34,5 @@ export type { JoinStatistics, CardinalityInfo, UnmatchedRow, JoinTestResult } fr
 export { useSession } from './useSession'
 
 export { useHelp } from './useHelp'
+
+export { useSettings } from './useSettings'
