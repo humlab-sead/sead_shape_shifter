@@ -12,6 +12,7 @@ export * from './sessions'
 export * from './reconciliation'
 export * from './excel-metadata'
 export * from './tasks'
+export * from './logs'
 
 // Convenience re-export of all API services
 import { projectsApi } from './projects'
@@ -23,6 +24,7 @@ import { sessionsApi } from './sessions'
 import { reconciliationSpecApi } from './reconciliation'
 import { excelMetadataApi } from './excel-metadata'
 import { tasksApi } from './tasks'
+import { logsApi } from './logs'
 
 export const api = {
   projects: projectsApi,
@@ -34,4 +36,5 @@ export const api = {
   reconciliationSpec: reconciliationSpecApi,
   excelMetadata: excelMetadataApi,
   tasks: tasksApi,
+  logs: logsApi,
 }

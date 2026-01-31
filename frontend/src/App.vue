@@ -226,11 +226,10 @@ const showHelpDialog = ref(false)
 const commandSearch = ref('')
 
 const currentProject = computed(() => route.params.name as string | undefined)
-
 interface Breadcrumb {
   title: string
   disabled?: boolean
-  href?: string
+  to?: string | { name: string; params?: Record<string, string> }
 }
 
 const breadcrumbs = computed<Breadcrumb[]>(() => {
@@ -238,12 +237,12 @@ const breadcrumbs = computed<Breadcrumb[]>(() => {
 
   if (route.name === 'home') return []
 
-  crumbs.push({ title: 'Home', href: '/' })
+  crumbs.push({ title: 'Home', to: '/' })
 
   if (route.name === 'projects') {
     crumbs.push({ title: 'Projects', disabled: true })
   } else if (route.name === 'project-detail' && route.params.name) {
-    crumbs.push({ title: 'Projects', href: '/projects' })
+    crumbs.push({ title: 'Projects', to: '/projects' })
     crumbs.push({ title: String(route.params.name), disabled: true })
   } else if (route.name === 'graph') {
     crumbs.push({ title: 'Dependency Graph', disabled: true })
