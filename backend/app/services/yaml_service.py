@@ -242,8 +242,7 @@ class YamlService:
         if "entities" in data and isinstance(data["entities"], dict):
             result = dict(data)  # Shallow copy root
             result["entities"] = {
-                entity_name: order_dict_keys(entity_config, ENTITY_KEY_ORDER)
-                for entity_name, entity_config in data["entities"].items()
+                entity_name: order_dict_keys(entity_config, ENTITY_KEY_ORDER) for entity_name, entity_config in data["entities"].items()
             }
             return result
 
@@ -264,6 +263,7 @@ class YamlService:
                 obj: Object to process (dict, list, or other)
                 max_items: Maximum list length for flow style
         """
+
         def needs_flow_quote(value: str) -> bool:
             special_chars: list[str] = [":", "?", ",", "[", "]", "{", "}"]
             if any(ch in value for ch in special_chars):
