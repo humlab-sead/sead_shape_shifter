@@ -8,6 +8,7 @@ from src.specifications.base import Specification
 class CanMaterializeSpecification(Specification):
 
     def __init__(self, project: "ShapeShiftProject"):
+        super().__init__()
         self.project: ShapeShiftProject = project
 
     def is_satisfied_by(self, *, entity: TableConfig, **kwargs) -> bool:

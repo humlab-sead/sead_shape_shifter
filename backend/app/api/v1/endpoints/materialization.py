@@ -37,10 +37,10 @@ async def can_materialize(project_name: str, entity_name: str) -> CanMaterialize
         except KeyError as e:
             raise HTTPException(status_code=404, detail=f"Entity '{entity_name}' not found") from e
 
-        spec: CanMaterializeSpecification = CanMaterializeSpecification(core_project)
-        is_satisfied: bool = spec.is_satisfied_by(entity=table)
+        specification: CanMaterializeSpecification = CanMaterializeSpecification(core_project)
+        is_satisfied: bool = specification.is_satisfied_by(entity=table)
 
-        return CanMaterializeResponse(can_materialize=is_satisfied, errors=[str(issue) for issue in spec.errors])
+        return CanMaterializeResponse(can_materialize=is_satisfied, errors=[str(issue) for issue in specification.errors])
 
     except HTTPException:
         raise

@@ -54,10 +54,13 @@ class MaterializationService:
 
             # Validate
             table: TableConfig = core_project.get_table(entity_name)
-            can_materialize, errors = table.can_materialize(core_project)
-
-            if not can_materialize:
-                return MaterializationResult(success=False, errors=errors, entity_name=entity_name)
+            specification: CanMaterializeSpecification = CanMaterializeSpecification(core_project)
+            if not specification.is_satisfied_by(entity=table):
+                return MaterializationResult(
+                    success=False,
+                    errors=[str(issue) for issue in specification.errors],
+                    entity_name=entity_name,
+                )
 
             # Run normalization (dependencies + target entity)
             logger.info(f"Materializing entity '{entity_name}' in project '{project_name}'")
