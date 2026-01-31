@@ -56,11 +56,6 @@
           />
         </div>
 
-        <div v-if="validationResult && validationResult.estimated_rows !== null" class="mt-4">
-          <v-chip color="primary" size="small">
-            Estimated rows: {{ validationResult.estimated_rows.toLocaleString() }}
-          </v-chip>
-        </div>
       </v-card-text>
 
       <v-card-actions>
@@ -154,7 +149,6 @@ async function checkCanMaterialize() {
     validationResult.value = {
       can_materialize: false,
       errors: [errorMessage],
-      estimated_rows: null,
     }
     canMaterialize.value = false
     error(`Failed to check materialization: ${errorMessage}`)
