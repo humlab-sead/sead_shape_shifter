@@ -8,6 +8,7 @@ export interface AppSettings {
   compactMode: boolean
   animationsEnabled: boolean
   railNavigation: boolean
+  enableFkSuggestions: boolean
 }
 
 const STORAGE_KEY = 'shape-shifter-settings'
@@ -17,6 +18,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   compactMode: false,
   animationsEnabled: true,
   railNavigation: false,
+  enableFkSuggestions: false,
 }
 
 // Load saved settings
@@ -111,6 +113,15 @@ export function useSettings() {
     },
   }
 
+  const enableFkSuggestions = {
+    get value() {
+      return settings.value.enableFkSuggestions
+    },
+    set value(val: boolean) {
+      settings.value.enableFkSuggestions = val
+    },
+  }
+
   // Get density based on compact mode
   const density = {
     get value(): 'default' | 'comfortable' | 'compact' {
@@ -144,6 +155,7 @@ export function useSettings() {
     compactMode,
     animationsEnabled,
     railNavigation,
+    enableFkSuggestions,
     density,
 
     // Methods

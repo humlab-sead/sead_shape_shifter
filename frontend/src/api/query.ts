@@ -3,7 +3,7 @@
  */
 
 import { apiClient } from './client'
-import type { QueryResult, QueryValidation, QueryPlan, QueryExecution } from '@/types/query'
+import type { QueryResult, QueryValidation, QueryExecution } from '@/types/query'
 
 export const queryApi = {
   /**
@@ -22,11 +22,4 @@ export const queryApi = {
     return response.data
   },
 
-  /**
-   * Get execution plan for a SQL query.
-   */
-  async explainQuery(dataSourceName: string, execution: QueryExecution): Promise<QueryPlan> {
-    const response = await apiClient.post<QueryPlan>(`/data-sources/${dataSourceName}/query/explain`, execution)
-    return response.data
-  },
 }

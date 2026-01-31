@@ -114,16 +114,6 @@
             Validate
           </v-btn>
 
-          <v-btn
-            variant="outlined"
-            :loading="explaining"
-            :disabled="!selectedDataSource || !query || explaining"
-            @click="explainQueryPlan"
-          >
-            <v-icon start>mdi-chart-timeline-variant</v-icon>
-            Explain
-          </v-btn>
-
           <v-spacer />
 
           <v-btn variant="text" :disabled="!query" @click="clearQuery">
@@ -151,19 +141,6 @@
         </v-col>
       </v-row>
 
-      <!-- Query Plan -->
-      <v-expand-transition>
-        <v-card v-if="queryPlan" class="mt-4" variant="outlined">
-          <v-card-title class="text-subtitle-1">
-            <v-icon start>mdi-chart-timeline-variant</v-icon>
-            Query Execution Plan
-          </v-card-title>
-          <v-card-text>
-            <pre class="query-plan">{{ queryPlan.plan_text }}</pre>
-          </v-card-text>
-        </v-card>
-      </v-expand-transition>
-
       <!-- Error Display -->
       <v-alert v-if="error" type="error" variant="tonal" closable @click:close="error = null" class="mt-4">
         {{ error }}
@@ -176,7 +153,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
 import { queryApi } from '@/api/query'
-import type { QueryResult, QueryValidation, QueryPlan } from '@/types/query'
+import type { QueryResult, QueryValidation } from '@/types/query'
 
 const props = defineProps<{
   initialQuery?: string
@@ -195,10 +172,8 @@ const query = ref(props.initialQuery || '')
 const selectedDataSource = ref(props.initialDataSource || '')
 const validation = ref<QueryValidation | null>(null)
 const lastResult = ref<QueryResult | null>(null)
-const queryPlan = ref<QueryPlan | null>(null)
 const executing = ref(false)
 const validating = ref(false)
-const explaining = ref(false)
 const error = ref<string | null>(null)
 
 // Computed
@@ -211,7 +186,6 @@ async function executeQuery() {
   executing.value = true
   error.value = null
   lastResult.value = null
-  queryPlan.value = null
 
   try {
     const result = await queryApi.executeQuery(selectedDataSource.value, {
@@ -249,27 +223,11 @@ async function validateQueryOnly() {
   }
 }
 
-async function explainQueryPlan() {
-  if (!selectedDataSource.value || !query.value) return
-
-  explaining.value = true
-  error.value = null
-  queryPlan.value = null
-
-  try {
-    queryPlan.value = await queryApi.explainQuery(selectedDataSource.value, { query: query.value })
-  } catch (err: any) {
-    error.value = err.response?.data?.detail || err.message || 'Failed to get query plan'
-  } finally {
-    explaining.value = false
-  }
-}
 
 function clearQuery() {
   query.value = ''
   validation.value = null
   lastResult.value = null
-  queryPlan.value = null
   error.value = null
 }
 

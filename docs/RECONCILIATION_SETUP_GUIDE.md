@@ -390,7 +390,48 @@ The validation results are cached and automatically revalidated when:
 
 ## Workflow Best Practices
 
-### 1. Iterative Reconciliation
+### 1. Materialize Entities Before Reconciliation
+
+**Best Practice**: Materialize dynamic entities (SQL/entity-derived) before reconciliation to ensure stable, consistent data.
+
+**Why Materialize?**
+- **Stability**: Frozen snapshot won't change during reconciliation
+- **Performance**: No re-execution of complex queries
+- **Versioning**: Captures data at specific point in time
+- **Portability**: Data files can be shared/archived
+
+**How to Materialize:**
+1. Open entity in Entity Form Dialog
+2. Ensure all dependencies are fixed or materialized
+3. Click "Materialize" button
+4. Choose storage format (Parquet recommended)
+5. Entity is now type 'fixed' with frozen values
+
+**Example:**
+```yaml
+# Before materialization (dynamic)
+location:
+  type: sql
+  query: "SELECT * FROM locations WHERE active = true"
+  data_source: project_db
+
+# After materialization (frozen)
+location:
+  type: fixed
+  columns: [location_id, location_name, country]
+  values: "@file:materialized/location.parquet"
+  materialized:
+    enabled: true
+    source_state:  # Original SQL config saved
+      type: sql
+      query: "SELECT * FROM locations WHERE active = true"
+    materialized_at: "2026-01-29T12:00:00Z"
+    materialized_by: "researcher@example.com"
+```
+
+See [Entity Materialization Guide](ENTITY_MATERIALIZATION.md) for full details.
+
+### 2. Iterative Reconciliation
 
 - Start with auto-reconcile to handle high-confidence matches
 - Review yellow-flagged items (medium confidence)

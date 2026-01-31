@@ -50,7 +50,7 @@ class TestForeignKeyConfigSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is True
-        assert spec.error == ""
+        assert not spec.has_errors(), spec.get_report()
 
     def test_cross_join_with_keys_fails(self, mock_project):
         """Test validation fails for cross join with keys."""
@@ -63,7 +63,7 @@ class TestForeignKeyConfigSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is False
-        assert "should not specify local_keys or remote_keys" in spec.error
+        assert "should not specify local_keys or remote_keys" in spec.get_report()
 
     def test_non_cross_join_missing_keys(self, mock_project):
         """Test validation fails when keys missing for non-cross join."""
@@ -76,7 +76,7 @@ class TestForeignKeyConfigSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is False
-        assert "must be specified" in spec.error
+        assert "must be specified" in spec.get_report()
 
     def test_mismatched_key_count(self, mock_project):
         """Test validation fails when key counts don't match."""
@@ -94,7 +94,7 @@ class TestForeignKeyConfigSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is False
-        assert "does not match" in spec.error
+        assert "does not match" in spec.get_report()
 
     def test_valid_join_with_keys(self, mock_project):
         """Test validation passes for valid join with matching keys."""
@@ -107,7 +107,7 @@ class TestForeignKeyConfigSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is True
-        assert spec.error == ""
+        assert not spec.has_errors(), spec.get_report()
 
     def test_missing_local_key(self, mock_project):
         """Test validation fails when local key doesn't exist."""
@@ -125,7 +125,7 @@ class TestForeignKeyConfigSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is False
-        assert "not found in local entity" in spec.error
+        assert "not found in local entity" in spec.get_report()
 
     def test_missing_remote_key(self, mock_project):
         """Test validation fails when remote key doesn't exist."""
@@ -143,7 +143,7 @@ class TestForeignKeyConfigSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is False
-        assert "not found in remote entity" in spec.error
+        assert "not found in remote entity" in spec.get_report()
 
     def test_unnest_column_in_local_keys(self, mock_project):
         """Test validation passes when local key is in unnest_columns."""
@@ -156,16 +156,17 @@ class TestForeignKeyConfigSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is True
+        assert not spec.has_errors(), spec.get_report()
 
     def test_clear_resets_state(self, mock_project):
         """Test that clear() resets error and deferred state."""
         spec = ForeignKeyConfigSpecification(mock_project)
-        spec.error = "test error"
+        spec.add_error("test error", entity="local_entity")
         spec.deferred = True
 
         spec.clear()
 
-        assert spec.error == ""
+        assert not spec.has_errors(), spec.get_report()
         assert spec.deferred is False
 
 
@@ -218,7 +219,7 @@ class TestForeignKeyDataSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is True
-        assert spec.error == ""
+        assert not spec.has_errors(), spec.get_report()
 
     def test_missing_local_key_in_data(self, mock_project, table_store):
         """Test validation fails when local key missing from data."""
@@ -236,7 +237,7 @@ class TestForeignKeyDataSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is False
-        assert "not found in local entity" in spec.error
+        assert "not found in local entity" in spec.get_report()
 
     def test_missing_remote_key_in_data(self, mock_project, table_store):
         """Test validation fails when remote key missing from data."""
@@ -254,7 +255,7 @@ class TestForeignKeyDataSpecification:
         result = spec.is_satisfied_by(fk_cfg=fk_cfg)
 
         assert result is False
-        assert "not found in remote entity" in spec.error
+        assert "not found in remote entity" in spec.get_report()
 
     def test_missing_local_df_assertion(self, mock_project):
         """Test assertion when local DataFrame missing."""
@@ -265,10 +266,10 @@ class TestForeignKeyDataSpecification:
 
         spec = ForeignKeyDataSpecification({}, mock_project)
 
-        with pytest.raises(AssertionError, match="Local DataFrame.*not found"):
+        with pytest.raises(ValueError, match="Local entity.*not found"):
             spec.is_satisfied_by(fk_cfg=fk_cfg)
 
-    def test_missing_remote_df_assertion(self, mock_project):
+    def test_missing_remote_entity_assertion(self, mock_project):
         """Test assertion when remote DataFrame missing."""
         table_store = {"local_entity": pd.DataFrame({"id": [1]})}
 
@@ -279,8 +280,11 @@ class TestForeignKeyDataSpecification:
 
         spec = ForeignKeyDataSpecification(table_store, mock_project)
 
-        with pytest.raises(AssertionError, match="Remote DataFrame.*not found"):
-            spec.is_satisfied_by(fk_cfg=fk_cfg)
+        is_ok: bool = spec.is_satisfied_by(fk_cfg=fk_cfg)
+
+        assert not is_ok
+        assert spec.deferred is True
+        assert "deferring link" in spec.get_report()
 
     def test_deferred_when_missing_unnest_column(self, mock_project, table_store):
         """Test validation is deferred when missing local key is in unnest_columns."""
@@ -372,4 +376,4 @@ class TestForeignKeyDataSpecification:
 
         assert result is False
         # Error should come from config validation
-        assert spec.error != ""
+        assert spec.has_errors()

@@ -48,9 +48,9 @@ def test_access_database_csv_workflow():
     )
 
     translate: bool = False
-    target_type: str = "csv"
+    target_type: str = "openpyxl"
 
-    output_path: Path = Path("tmp/arbodat-test.xlsx") if target_type == "excel" else Path("tmp/arbodat-test")
+    output_path: Path = Path("tmp/arbodat-test.xlsx") if target_type in ("xlsx", "openpyxl") else Path("tmp/arbodat-test")
 
     asyncio.run(asyncio.sleep(0.1))  # type: ignore ; ensure config is fully loaded;
 

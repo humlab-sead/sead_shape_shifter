@@ -47,7 +47,7 @@ class ShapeShifter:
         self.table_store: dict[str, pd.DataFrame] = table_store or {}
         self.project: ShapeShiftProject = ShapeShiftProject.from_source(project)
         self.state: ProcessState = ProcessState(project=self.project, table_store=self.table_store, target_entities=target_entities)
-        self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store)
+        self.linker: ForeignKeyLinker = ForeignKeyLinker(table_store=self.table_store, project=self.project)
 
     def resolve_loader(self, table_cfg: TableConfig) -> DataLoader | None:
         """Resolve the DataLoader, if any, for the given TableConfig."""
@@ -87,6 +87,9 @@ class ShapeShifter:
                 drop_empty=False,
                 raise_if_missing=False,
             )
+            # Apply column renaming for append items (align_by_position or column_mapping)
+            # Pass parent's columns for align_by_position
+            sub_data = sub_table_cfg.apply_column_renaming(sub_data, parent_columns=table_cfg.columns)
             dfs.append(sub_data)
 
             # Concatenate all dataframes (filter out empty DataFrames to avoid FutureWarning)
@@ -146,11 +149,11 @@ class ShapeShifter:
 
             self.table_store[entity] = data
 
-            self.linker.link_entity(entity_name=entity, project=self.project)
+            self.linker.link_entity(entity_name=entity)
 
             if table_cfg.unnest:
                 self.unnest_entity(entity=entity)
-                self.linker.link_entity(entity_name=entity, project=self.project)
+                self.linker.link_entity(entity_name=entity)
 
             if delay_drop_duplicates and table_cfg.drop_duplicates:
                 self.table_store[entity] = drop_duplicate_rows(
@@ -177,6 +180,12 @@ class ShapeShifter:
         if self.linker.deferred_tracker.deferred:
             logger.warning(f"Entities with unresolved deferred links after normalization: {self.linker.deferred_tracker.deferred}")
 
+        # Add identity columns to all entities after normalization
+        # This ensures materialized entities get proper identity columns
+        self.add_system_id_columns()
+        self.add_public_id_columns()
+        self.move_keys_to_front()
+
         return self
 
     def _check_duplicate_keys(self, entity: str, table_cfg: TableConfig) -> None:
@@ -200,7 +209,7 @@ class ShapeShifter:
     def retry_linking(self) -> None:
         """Retry linking only for entities currently in deferred set."""
         for entity_name in self.linker.deferred_tracker.deferred:
-            self.linker.link_entity(entity_name=entity_name, project=self.project)
+            self.linker.link_entity(entity_name=entity_name)
 
     def store(self, target: str, mode: str) -> Self:
         """Write to specified target based on the specified mode."""
@@ -248,6 +257,15 @@ class ShapeShifter:
                 continue
             table_cfg: TableConfig = self.project.get_table(entity_name=entity_name)
             self.table_store[entity_name] = table_cfg.add_system_id_column(table=self.table_store[entity_name])
+        return self
+
+    def add_public_id_columns(self) -> Self:
+        """Add 'public_id' column to each entity table that has one configured."""
+        for entity_name in self.table_store.keys():
+            if entity_name not in self.project.table_names:
+                continue
+            table_cfg: TableConfig = self.project.get_table(entity_name=entity_name)
+            self.table_store[entity_name] = table_cfg.add_public_id_column(table=self.table_store[entity_name])
         return self
 
     def move_keys_to_front(self) -> Self:

@@ -65,8 +65,8 @@ async def workflow(
         translations_map: dict[str, str] = extract_translation_map(fields_metadata=project.options.get("translation") or [])
         shapeshifter.translate(translations_map=translations_map)
 
-    shapeshifter.add_system_id_columns()
-    shapeshifter.move_keys_to_front()
+    # Note: add_system_id_columns, add_public_id_columns, and move_keys_to_front
+    # are now called within normalize() to ensure materialized entities get identity columns
     shapeshifter.map_to_remote(project.mappings)
     shapeshifter.store(target=target, mode=target_type)
     shapeshifter.log_shapes(target=target)

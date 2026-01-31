@@ -28,14 +28,6 @@ class QueryValidation(BaseModel):
     tables: list[str] = Field(default_factory=list, description="Tables referenced in the query")
 
 
-class QueryPlan(BaseModel):
-    """Query execution plan."""
-
-    plan_text: str = Field(..., description="Formatted query execution plan")
-    estimated_cost: Optional[float] = Field(default=None, description="Estimated query cost (if available)")
-    estimated_rows: Optional[int] = Field(default=None, description="Estimated number of rows to be processed")
-
-
 class QueryExecution(BaseModel):
     """Request to execute a query."""
 

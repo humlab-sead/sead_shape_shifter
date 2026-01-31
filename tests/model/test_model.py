@@ -779,9 +779,7 @@ class TestTableConfig:
 
     def test_get_columns_exclude_extra(self):
         """Test get_columns excluding extra columns."""
-        entities: dict[str, dict[str, Any]] = {
-            "site": {"public_id": "site_id", "columns": ["name"], "extra_columns": {"created_at": None}}
-        }
+        entities: dict[str, dict[str, Any]] = {"site": {"public_id": "site_id", "columns": ["name"], "extra_columns": {"created_at": None}}}
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
         cols = table.get_columns(include_extra=False)
@@ -866,6 +864,43 @@ class TestTableConfig:
 
         # system_id should not be overwritten
         assert result["system_id"].tolist() == [100, 200]
+
+    def test_add_public_id_column(self):
+        """Test add_public_id_column adds public_id column with None values."""
+        entities: dict[str, dict[str, Any]] = {"site": {"public_id": "site_id", "columns": ["name"]}}
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        df = pd.DataFrame({"name": ["A", "B"]})
+
+        result = table.add_public_id_column(df)
+
+        assert "site_id" in result.columns
+        assert result["site_id"].isna().all()  # All values should be None
+        assert len(result) == 2
+
+    def test_add_public_id_column_already_exists(self):
+        """Test add_public_id_column doesn't overwrite existing public_id."""
+        entities: dict[str, dict[str, Any]] = {"site": {"public_id": "site_id", "columns": ["name"]}}
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        df = pd.DataFrame({"site_id": [10, 20], "name": ["A", "B"]})
+
+        result = table.add_public_id_column(df)
+
+        # site_id should not be overwritten
+        assert result["site_id"].tolist() == [10, 20]
+
+    def test_add_public_id_column_no_public_id(self):
+        """Test add_public_id_column does nothing when no public_id is defined."""
+        entities: dict[str, dict[str, Any]] = {"site": {"columns": ["name"]}}
+
+        table = TableConfig(entities_cfg=entities, entity_name="site")
+        df = pd.DataFrame({"name": ["A", "B"]})
+
+        result = table.add_public_id_column(df)
+
+        # No column should be added
+        assert list(result.columns) == ["name"]
 
     def test_is_drop_duplicate_dependent_on_unnesting_true(self):
         """Test is_drop_duplicate_dependent_on_unnesting returns True."""

@@ -208,12 +208,14 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
 import { useSettings } from '@/composables/useSettings'
+import { useNotification } from '@/composables/useNotification'
 import ContextHelp from '@/components/ContextHelp.vue'
 
 const router = useRouter()
 const route = useRoute()
 const theme = useTheme()
 const settings = useSettings()
+const { snackbar } = useNotification()
 
 const drawer = ref(true)
 const rail = ref(false)
@@ -292,12 +294,6 @@ function executeCommand(cmd: Command) {
   commandSearch.value = ''
   cmd.action()
 }
-
-const snackbar = ref({
-  show: false,
-  message: '',
-  color: 'success' as 'success' | 'error' | 'info',
-})
 
 function handleNewProject() {
   router.push('/projects')
