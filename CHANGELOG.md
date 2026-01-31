@@ -1,3 +1,18 @@
+# [1.20.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.19.0...v1.20.0) (2026-01-31)
+
+
+### Bug Fixes
+
+* update shape-shifter version to 1.18.0 in uv.lock ([0751a74](https://github.com/humlab-sead/sead_shape_shifter/commit/0751a7409564f74ab7c7f3835c658e24f3421c2b))
+
+
+### Features
+
+* **backend:** add consistent entity key ordering in YAML output ([e5ac919](https://github.com/humlab-sead/sead_shape_shifter/commit/e5ac919ed954bc5f5bb7f1aa3678d04d030f2f9f))
+* add entity type "file" for file-based entities and improve entity editor with columns picklist ([ab6d9d7](https://github.com/humlab-sead/sead_shape_shifter/commit/ab6d9d7a7ad380745728488cc10e180157465ef0))
+* add entity type to various entities in arbodat-test.yml ([6e5628b](https://github.com/humlab-sead/sead_shape_shifter/commit/6e5628b47c9b6a73110022c31e6194a6ea111387))
+* add validation for entity type field in EntityFieldsBaseSpecification ([4bf1140](https://github.com/humlab-sead/sead_shape_shifter/commit/4bf11401da17a949abf144eef9154e59003fe122))
+
 # [1.19.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.18.0...v1.19.0) (2026-01-31)
 
 
