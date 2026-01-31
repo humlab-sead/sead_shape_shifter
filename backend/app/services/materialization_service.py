@@ -15,7 +15,6 @@ from backend.app.models.materialization import (
 )
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
-from backend.app.utils import convert_ruamel_types
 from src.specifications.materialize import CanMaterializeSpecification
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
@@ -132,23 +131,21 @@ class MaterializationService:
                         entity_name=entity_name,
                     )
 
-            # Snapshot current config (exclude identity and structural fields)
-            # Convert ruamel.yaml types to plain Python types to avoid serialization issues
+            # Snapshot current config (save all fields needed for unmaterialization except materialized metadata)
             saved_state: dict[str, Any] = {}
             for k, v in table.entity_cfg.items():
                 if k not in ["materialized", "values"]:
                     # Skip empty/null values
                     if v is None or v == "" or (isinstance(v, str) and not v.strip()):
                         continue
-                    # Recursively convert ruamel.yaml types to plain Python types
-                    saved_state[k] = convert_ruamel_types(v)
+                    saved_state[k] = v
 
-            # Build new config (convert all ruamel.yaml types)
+            # Build new config (all values are POPO from YamlService.load())
             new_config = {
                 "type": "fixed",
-                "public_id": convert_ruamel_types(table.public_id),
-                "keys": convert_ruamel_types(list(table.keys)),
-                "columns": convert_ruamel_types(list(df.columns)),
+                "public_id": table.public_id,
+                "keys": list(table.keys),
+                "columns": list(df.columns),
                 "materialized": {
                     "enabled": True,
                     "source_state": saved_state,
@@ -159,7 +156,7 @@ class MaterializationService:
             }
 
             if values_inline:
-                new_config["values"] = convert_ruamel_types(values_inline)
+                new_config["values"] = values_inline
             elif data_file:
                 new_config["values"] = f"@file:{data_file}"
 
@@ -235,13 +232,9 @@ class MaterializationService:
                         return result
                     unmaterialized_entities.extend(result.unmaterialized_entities)
 
-            # Restore config
-            saved_state = table.materialized.source_state or {}
-            restored_config = {
-                **saved_state,
-                "public_id": table.public_id,
-                "keys": list(table.keys),
-            }
+            # Restore config from saved state (includes original public_id, keys, columns, etc.)
+            saved_state: dict[str, Any] = table.materialized.source_state or {}
+            restored_config: dict[str, Any] = {**saved_state}
 
             # Update project (entities are stored as raw dicts)
             api_project.entities[entity_name] = restored_config
