@@ -366,6 +366,37 @@ class TableConfig:
             ForeignKeyConfig(local_entity=self.entity_name, fk_cfg=fk_data) for fk_data in self.entity_cfg.get("foreign_keys", []) or []
         ]
 
+    def dependent_entities(self) -> Generator[str, None, None]:
+        """Yield names of entities that depend on this entity."""
+        for entity_name, entity_cfg in self.entities_cfg.items():
+            try:
+                # Check source
+                if entity_cfg.get("source") == self.entity_name:
+                    yield entity_name
+                    continue
+
+                # Check depends_on
+                depends_on: list[str] = entity_cfg.get("depends_on", []) or []
+                if self.entity_name in depends_on:
+                    yield entity_name
+                    continue
+
+                # Check foreign keys
+                foreign_keys: list[dict[str, Any]] = entity_cfg.get("foreign_keys", []) or []
+                for fk in foreign_keys:
+                    if fk.get("entity") == self.entity_name:
+                        yield entity_name
+                        break
+
+                # Check append sources
+                append_cfgs: list[dict[str, Any]] = entity_cfg.get("append", []) or []
+                for append_cfg in append_cfgs:
+                    if append_cfg.get("source") == self.entity_name:
+                        yield entity_name
+                        break
+            except KeyError:
+                continue
+            
     @cached_property
     def append_configs(self) -> list[dict[str, Any]]:
         # Parse append configuration for union operations

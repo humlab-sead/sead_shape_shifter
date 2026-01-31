@@ -262,31 +262,5 @@ class MaterializationService:
             logger.error(f"Failed to unmaterialize entity '{entity_name}': {e}")
             return UnmaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
 
-    def _find_materialized_dependents(self, project: ShapeShiftProject, entity_name: str) -> list[str]:
-        """Find all materialized entities that depend on the given entity."""
-        dependents = []
-
-        for name in project.table_names:
-            if name == entity_name:
-                continue
-
-            try:
-                table = project.get_table(name)
-
-                if not table.is_materialized:
-                    continue
-
-                # Check if entity depends on target entity via FK
-                for fk in table.foreign_keys:
-                    if fk.remote_entity == entity_name:
-                        dependents.append(name)
-                        break
-
-                # Check if entity depends via source
-                if entity_name in table.depends_on:
-                    dependents.append(name)
-
-            except KeyError:
-                continue
-
-        return dependents
+    def _find_materialized_dependents(self, core_project, table):
+        return [t for t in table.dependent_entities() if core_project.get_table(t).is_materialized]
