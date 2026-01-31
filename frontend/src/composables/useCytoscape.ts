@@ -75,8 +75,10 @@ export interface UseCytoscapeOptions {
   
   /**
    * Node double-click handler
+   * @param nodeId - ID of the clicked node
+   * @param isCtrlKey - Whether Ctrl/Cmd key was pressed (power user mode)
    */
-  onNodeDoubleClick?: (nodeId: string) => void
+  onNodeDoubleClick?: (nodeId: string, isCtrlKey: boolean) => void
   
   /**
    * Node right-click handler
@@ -138,7 +140,10 @@ export function useCytoscape(options: UseCytoscapeOptions) {
         // Double tap/click - handle FIRST to prevent single-click action
         cy.value.on('dbltap', 'node', (event) => {
           const nodeId = event.target.id()
-          console.debug('[useCytoscape] Node double-click:', nodeId)
+          const originalEvent = event.originalEvent as MouseEvent | undefined
+          const isCtrlClick = originalEvent?.ctrlKey || originalEvent?.metaKey
+          
+          console.debug('[useCytoscape] Node double-click:', nodeId, { ctrlKey: isCtrlClick })
           
           // Cancel any pending single-click action
           if (singleClickTimeout !== null) {
@@ -146,7 +151,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
             singleClickTimeout = null
           }
           
-          onNodeDoubleClick?.(nodeId)
+          onNodeDoubleClick?.(nodeId, isCtrlClick || false)
         })
         
         // Single tap/click - delay to allow double-click to cancel it

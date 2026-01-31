@@ -8,6 +8,7 @@ from backend.app.api.v1.endpoints import (
     execute,
     health,
     ingesters,
+    logs,
     materialization,
     preview,
     projects,
@@ -40,3 +41,4 @@ api_router.include_router(reconciliation.router, tags=["reconciliation"])
 api_router.include_router(execute.router, tags=["execute"])
 api_router.include_router(materialization.router, tags=["materialization"])
 api_router.include_router(ingesters.router, prefix="/ingesters", tags=["ingesters"])
+api_router.include_router(logs.router, tags=["logs"])
