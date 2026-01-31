@@ -10,13 +10,17 @@ class CanMaterializeSpecification(Specification):
         super().__init__()
         self.project: ShapeShiftProject = project
 
-    def is_satisfied_by(self, *, entity: TableConfig, **kwargs) -> bool:
+    def is_satisfied_by(self, *, entity: TableConfig | None = None, **kwargs) -> bool:
         """
         Check if entity can be materialized.
 
         Returns:
             True if entity can be materialized, False otherwise.
         """
+
+        if entity is None:
+            self.add_error("No entity provided", None)
+            return False
 
         # Rule 1: Cannot be fixed
         if entity.type == "fixed":
