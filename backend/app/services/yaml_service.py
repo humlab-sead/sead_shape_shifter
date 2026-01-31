@@ -10,6 +10,7 @@ from typing import Any
 from loguru import logger
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
+from ruamel.yaml.scalarstring import SingleQuotedScalarString
 
 from backend.app.core.config import settings
 
@@ -158,6 +159,18 @@ class YamlService:
                 obj: Object to process (dict, list, or other)
                 max_items: Maximum list length for flow style
         """
+        def needs_flow_quote(value: str) -> bool:
+            special_chars = [":", "?", ",", "[", "]", "{", "}"]
+            if any(ch in value for ch in special_chars):
+                return True
+            if value.startswith(("-", "?", ":")):
+                return True
+            if value.endswith(":"):
+                return True
+            if value.strip() != value:
+                return True
+            return False
+
         if isinstance(obj, dict):
             for key, value in obj.items():
                 # Special case: 'values' should always be formatted as list of rows
@@ -171,6 +184,10 @@ class YamlService:
                     # Inner lists: flow style (columns compact on one line)
                     for i, row in enumerate(block_seq):
                         if isinstance(row, list):
+                            # Quote scalars that are unsafe in flow style
+                            for j, cell in enumerate(row):
+                                if isinstance(cell, str) and needs_flow_quote(cell):
+                                    row[j] = SingleQuotedScalarString(cell)
                             if not isinstance(row, CommentedSeq):
                                 flow_seq = CommentedSeq(row)
                                 block_seq[i] = flow_seq

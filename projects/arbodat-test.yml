@@ -199,8 +199,8 @@ entities:
     source:
     data_source: arbodat_lookup
     public_id: cultural_group_id
-    keys: ["KultGr"]
-    columns: ["KultGr", "Cult_EN"]
+    keys: [KultGr]
+    columns: [KultGr, Cult_EN]
     type: sql
     query: select distinct KultGr, Cult_EN from Kulturgruppen;
     drop_duplicates: true
@@ -597,7 +597,7 @@ entities:
     - SedProb
     - KultGr
     values:
-    - [1, null, Is mass find?, Indicates of sample is a mass find., Vorfu]
+    - [1, null, 'Is mass find?', Indicates of sample is a mass find., Vorfu]
     - [2, null, Wet/dry, Ablagerungsbedingungen, Trocken]
     - [3, null, Stratigraphy, Stratigraphic unit or description., Strat]
     - [4, null, Layer, Layer identifier, Schi]
