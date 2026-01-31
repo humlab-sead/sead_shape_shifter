@@ -22,9 +22,18 @@ class CircularDependencyError(DependencyServiceError):
 class DependencyNode(dict):
     """Dependency graph node representation."""
 
-    def __init__(self, name: str, depends_on: list[str], depth: int = 0, entity_type: str | None = None):
+    def __init__(
+        self,
+        name: str,
+        depends_on: list[str],
+        depth: int = 0,
+        entity_type: str | None = None,
+        materialized: bool = False,
+    ):
         """Initialize dependency node."""
-        super().__init__(name=name, depends_on=depends_on, depth=depth, type=entity_type)
+        super().__init__(
+            name=name, depends_on=depends_on, depth=depth, type=entity_type, materialized=materialized
+        )
 
 
 class SourceNode(dict):
@@ -116,9 +125,26 @@ class DependencyService:
         allowed_entity_types = {"entity", "sql", "fixed", "csv", "xlsx", "openpyxl"}
         nodes: list[DependencyNode] = []
         for name, deps in dependency_map.items():
-            entity_type = api_project.entities.get(name, {}).get("type")
+            entity_config = api_project.entities.get(name, {})
+            entity_type = entity_config.get("type")
             normalized_type = entity_type if entity_type in allowed_entity_types else None
-            nodes.append(DependencyNode(name=name, depends_on=deps, depth=depths.get(name, 0), entity_type=normalized_type))
+            
+            # Check if entity is materialized
+            is_materialized = False
+            if hasattr(entity_config, 'get'):
+                materialized_data = entity_config.get("materialized")
+                if isinstance(materialized_data, dict):
+                    is_materialized = materialized_data.get("enabled", False)
+            
+            nodes.append(
+                DependencyNode(
+                    name=name,
+                    depends_on=deps,
+                    depth=depths.get(name, 0),
+                    entity_type=normalized_type,
+                    materialized=is_materialized,
+                )
+            )
 
         # Build edges with foreign key information
         edges: list[dict[str, Any]] = []
