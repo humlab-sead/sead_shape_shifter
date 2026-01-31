@@ -1,6 +1,6 @@
 [project]
 name = "shape-shifter"
-version = "1.17.0"
+version = "1.18.0"
 description = "Declarative data transformation framework with optional web editor API"
 readme = "README.md"
 requires-python = ">=3.13"
