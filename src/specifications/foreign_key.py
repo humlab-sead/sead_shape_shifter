@@ -115,7 +115,7 @@ class ForeignKeyDataSpecification(ForeignKeyConfigSpecification):
 
         if not fk_cfg.local_entity:
             raise ValueError("fk_cfg.local_entity must be specified to check foreign key data")
-        
+
         if not fk_cfg.remote_entity:
             raise ValueError("fk_cfg.remote_entity must be specified to check foreign key data")
 

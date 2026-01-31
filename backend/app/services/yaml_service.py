@@ -1,11 +1,11 @@
 """YAML Service for loading and saving configuration files with format preservation."""
 
+import json
 import shutil
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from typing import Any
-import json
 
 from loguru import logger
 from ruamel.yaml import YAML
@@ -145,18 +145,18 @@ class YamlService:
 
     def _apply_flow_style(self, obj: Any, max_items: int) -> None:
         """
-        Recursively mark short lists to use flow style for compact formatting.
+            Recursively mark short lists to use flow style for compact formatting.
 
-        Lists with ≤ max_items will be formatted as [item1, item2] instead of:
-        - item1
-        - item2
-        
-    Special handling for 'values' key: Always formats as list of rows where
-    each row is a flow-style list on its own line, regardless of max_items.
+            Lists with ≤ max_items will be formatted as [item1, item2] instead of:
+            - item1
+            - item2
 
-        Args:
-            obj: Object to process (dict, list, or other)
-            max_items: Maximum list length for flow style
+        Special handling for 'values' key: Always formats as list of rows where
+        each row is a flow-style list on its own line, regardless of max_items.
+
+            Args:
+                obj: Object to process (dict, list, or other)
+                max_items: Maximum list length for flow style
         """
         if isinstance(obj, dict):
             for key, value in obj.items():

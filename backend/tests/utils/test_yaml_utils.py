@@ -39,13 +39,7 @@ class TestConvertRuamelTypes:
 
     def test_nested_dict(self):
         """Nested dicts are recursively converted."""
-        obj = {
-            "outer": {
-                "inner": {
-                    "value": "test"
-                }
-            }
-        }
+        obj = {"outer": {"inner": {"value": "test"}}}
         result = convert_ruamel_types(obj)
         assert result == obj
 
@@ -95,12 +89,7 @@ class TestConvertRuamelTypes:
         except ImportError:
             pytest.skip("ruamel.yaml not installed")
 
-        obj = {
-            "key1": DoubleQuotedScalarString("value1"),
-            "key2": {
-                "nested": DoubleQuotedScalarString("value2")
-            }
-        }
+        obj = {"key1": DoubleQuotedScalarString("value1"), "key2": {"nested": DoubleQuotedScalarString("value2")}}
         result = convert_ruamel_types(obj)
         assert result == {"key1": "value1", "key2": {"nested": "value2"}}
         assert type(result["key1"]) is str
@@ -113,11 +102,7 @@ class TestConvertRuamelTypes:
         except ImportError:
             pytest.skip("ruamel.yaml not installed")
 
-        obj = [
-            DoubleQuotedScalarString("a"),
-            {"key": DoubleQuotedScalarString("b")},
-            [DoubleQuotedScalarString("c")]
-        ]
+        obj = [DoubleQuotedScalarString("a"), {"key": DoubleQuotedScalarString("b")}, [DoubleQuotedScalarString("c")]]
         result = convert_ruamel_types(obj)
         assert result == ["a", {"key": "b"}, ["c"]]
         assert type(result[0]) is str

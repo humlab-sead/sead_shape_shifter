@@ -13,8 +13,8 @@ from backend.app.models.materialization import (
 from backend.app.models.project import Project
 from backend.app.services.materialization_service import MaterializationService
 from backend.app.services.project_service import ProjectService
-from src.specifications.materialize import CanMaterializeSpecification
 from src.model import ShapeShiftProject, TableConfig
+from src.specifications.materialize import CanMaterializeSpecification
 
 router = APIRouter()
 project_service = ProjectService()

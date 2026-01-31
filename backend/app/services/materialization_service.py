@@ -15,9 +15,9 @@ from backend.app.models.materialization import (
 )
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
-from src.specifications.materialize import CanMaterializeSpecification
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
+from src.specifications.materialize import CanMaterializeSpecification
 
 STORE_INLINE_THRESHOLD = 20  # Rows below which data is stored inline in YAML
 

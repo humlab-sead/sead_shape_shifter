@@ -1,7 +1,6 @@
 from itertools import chain
-from pyexpat import errors
-from src.model import TableConfig
-from src.model import ShapeShiftProject
+
+from src.model import ShapeShiftProject, TableConfig
 from src.specifications.base import Specification
 
 

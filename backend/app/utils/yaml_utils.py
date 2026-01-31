@@ -15,30 +15,30 @@ from typing import Any
 def convert_ruamel_types(obj: Any) -> Any:
     """
     DEPRECATED: No longer needed. Kept for backward compatibility.
-    
+
     Recursively convert ruamel.yaml types to plain Python types.
-    
+
     This is necessary because ruamel.yaml uses special string subclasses
     like DoubleQuotedScalarString, SingleQuotedScalarString, etc. that can
     cause issues during serialization and when code expects plain Python types.
-    
+
     YamlService.load() now handles this conversion automatically at the I/O boundary,
     so this function should not be needed in new code.
-    
+
     Args:
         obj: Any Python object, potentially containing ruamel.yaml types
-        
+
     Returns:
         The same object structure with all ruamel.yaml types converted to
         plain Python equivalents (str, dict, list, etc.). Empty/whitespace-only
         strings are preserved (not converted to None) to maintain semantics.
-        
+
     Examples:
         >>> from ruamel.yaml.scalarstring import DoubleQuotedScalarString
         >>> obj = {"key": DoubleQuotedScalarString("value")}
         >>> convert_ruamel_types(obj)
         {'key': 'value'}
-        
+
         >>> nested = {"outer": [DoubleQuotedScalarString("a"), {"inner": DoubleQuotedScalarString("b")}]}
         >>> convert_ruamel_types(nested)
         {'outer': ['a', {'inner': 'b'}]}
