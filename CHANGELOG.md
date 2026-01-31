@@ -1,3 +1,21 @@
+# [1.18.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.17.0...v1.18.0) (2026-01-31)
+
+
+### Bug Fixes
+
+* add columns picklist for "entity" type ([0e5a6ed](https://github.com/humlab-sead/sead_shape_shifter/commit/0e5a6ed8de2eb8caf2a4f7220fad4414048e9a2e))
+* Breadcrumb navigation calls API instead of client-side routing ([#196](https://github.com/humlab-sead/sead_shape_shifter/issues/196)) ([fb88764](https://github.com/humlab-sead/sead_shape_shifter/commit/fb88764da0f98dbd02de64074609197bdc51faec))
+* optimize display columns computation in PreviewMatchedDataDialog and allow null for toggleAutoRefresh in SettingsView ([0fc2139](https://github.com/humlab-sead/sead_shape_shifter/commit/0fc2139a5ba17d7c04c66ac57432b97f4e2726e6))
+* remove outdated bug reproduction steps and clean up TODOs in documentation ([756ff1e](https://github.com/humlab-sead/sead_shape_shifter/commit/756ff1e6be4fcfdceca208f7fc7fb4ca813f97e5))
+* service workers not wired up ([40b9feb](https://github.com/humlab-sead/sead_shape_shifter/commit/40b9feb31c8261d9b9b191092fb3ccf4b5504f42))
+* streamline deployment scripts and improve directory handling ([f6975a3](https://github.com/humlab-sead/sead_shape_shifter/commit/f6975a38321777e854d87bf506327f5192322deb))
+
+
+### Features
+
+* add API endpoints for application logs and integrate into frontend settings view ([5dbf1f9](https://github.com/humlab-sead/sead_shape_shifter/commit/5dbf1f945ab13f41846039749467a324a8bd93a0))
+* enhance entity editor overlay with initial tab handling and improve double-click functionality ([49956f8](https://github.com/humlab-sead/sead_shape_shifter/commit/49956f83d3c991ed910236552ee05e8ffc1a4776))
+
 # [1.17.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.16.0...v1.17.0) (2026-01-31)
 
 
