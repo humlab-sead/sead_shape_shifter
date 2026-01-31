@@ -54,6 +54,25 @@ project_service.save_project(updated)
 - Put business logic in API models (they're DTOs)
 - Resolve env vars in services (mapper's job)
 
+**Directive Resolution at Layer Boundaries:**
+
+The mapper enforces a critical architectural principle:
+
+- **API → Core (`to_core`)**: **Always resolves** @include: and @value: directives
+  - Core layer needs concrete values for processing (loaders, validators, normalization)
+  - Resolution is conditional (only if `not project.is_resolved()`)
+  - Processing is one-way; no Core → API roundtrip that would lose directives
+
+- **YAML → API (`to_api_config`)**: **Preserves** directives
+  - API layer is the editing/persistence boundary
+  - Directives (@include:, @value:) are kept for editing and saving
+  
+- **API → YAML (`to_core_dict`)**: **Preserves** directives
+  - Saving back to YAML maintains original structure
+  - Prevents verbose files from expanded includes
+
+**Principle: Directives live in YAML/API layer, resolved values in Core layer.**
+
 **Environment variable resolution**: Happens ONLY in mapper layer (`backend/app/mappers/`). API entities stay raw (`${VAR}`), core entities are always resolved. Never call `resolve_config_env_vars()` in services.
 
 ## Code Conventions

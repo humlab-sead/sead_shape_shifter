@@ -281,7 +281,11 @@ class TestValidationServiceIntegration:
         config = {
             "metadata": {"type": "shapeshifter-project", "name": "test"},
             "entities": {
-                "natural_region": {"type": "entity", "keys": ["region_id"], "columns": ["name"]},
+                "natural_region": {
+                    "type": "entity",
+                    "keys": ["region_id"],
+                    "columns": ["name"],
+                },
                 "site": {
                     "type": "entity",
                     "keys": ["site_id"],

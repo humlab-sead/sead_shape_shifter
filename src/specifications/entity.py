@@ -37,6 +37,9 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
             if self.field_exists(f"entities.{entity_name}.{field}"):
                 self.check_fields(entity_name, [field], "is_string_list/E")
 
+        # Validate that keys are a subset of columns
+        # self.check_fields(entity_name, ["keys"], "keys_subset_of_columns/E")
+
         if self.field_exists(f"entities.{entity_name}.surrogate_name"):
             self.check_fields(entity_name, ["surrogate_name"], "is_in_columns/E")
 
@@ -358,6 +361,36 @@ class AppendSpecification(ProjectSpecification):
                 self.check_fields(entity_name, ["source"], "is_existing_entity/E", target_cfg=append_cfg, message=append_id)
                 self.check_fields(entity_name, ["columns"], "exists/W", target_cfg=append_cfg, message=append_id)
 
+            # Validate column renaming options
+            align_by_position = append_cfg.get("align_by_position", False)
+            column_mapping = append_cfg.get("column_mapping")
+
+            if align_by_position and column_mapping:
+                self.add_error(
+                    f"{append_id}: cannot specify both 'align_by_position' and 'column_mapping'",
+                    entity=entity_name,
+                    field="append",
+                )
+
+            if align_by_position:
+                self.check_fields(
+                    entity_name, ["align_by_position"], "of_type/E", expected_types=(bool,), target_cfg=append_cfg, message=append_id
+                )
+
+            if column_mapping:
+                self.check_fields(
+                    entity_name, ["column_mapping"], "of_type/E", expected_types=(dict,), target_cfg=append_cfg, message=append_id
+                )
+                if isinstance(column_mapping, dict):
+                    # Validate that all keys and values are strings
+                    for src_col, tgt_col in column_mapping.items():
+                        if not isinstance(src_col, str) or not isinstance(tgt_col, str):
+                            self.add_error(
+                                f"{append_id}: column_mapping keys and values must be strings",
+                                entity=entity_name,
+                                field="append",
+                            )
+
         return not self.has_errors()
 
 
@@ -423,6 +456,60 @@ class EntityReferencesExistSpecification(ProjectSpecification):
                     f"Entity '{entity_name}': references non-existent entity '{remote_entity}' in foreign key",
                     entity=entity_name,
                 )
+
+
+@ENTITY_SPECIFICATION.register(key="materialization")
+class MaterializationSpecification(ProjectSpecification):
+    """Validates materialized entity configurations."""
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that materialized entity is properly configured."""
+        self.clear()
+
+        entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
+        materialized_cfg = entity_cfg.get("materialized")
+
+        if materialized_cfg is None or not materialized_cfg.get("enabled"):
+            return True
+
+        # Materialized entities must be fixed type
+        entity_type = entity_cfg.get("type")
+        if entity_type != "fixed":
+            self.add_error(
+                f"Materialized entity '{entity_name}' must have type='fixed', got '{entity_type}'",
+                entity=entity_name,
+                field="type",
+            )
+
+        # Must have values or data_file
+        has_values = bool(entity_cfg.get("values"))
+        has_data_file = bool(materialized_cfg.get("data_file"))
+
+        if not has_values and not has_data_file:
+            self.add_error(
+                "Materialized entity must have either 'values' or 'materialized.data_file'",
+                entity=entity_name,
+                field="materialized",
+            )
+
+        # Must have source_state (snapshot of original config)
+        if not materialized_cfg.get("source_state"):
+            self.add_error(
+                "Materialized entity must have 'materialized.source_state' to allow unmaterialization",
+                entity=entity_name,
+                field="materialized.source_state",
+            )
+
+        # Validate required metadata fields
+        for field in ["materialized_at", "materialized_by"]:
+            if not materialized_cfg.get(field):
+                self.add_warning(
+                    f"Materialized entity should have '{field}' metadata",
+                    entity=entity_name,
+                    field=f"materialized.{field}",
+                )
+
+        return not self.has_errors()
 
 
 class EntitySpecification(ProjectSpecification):
