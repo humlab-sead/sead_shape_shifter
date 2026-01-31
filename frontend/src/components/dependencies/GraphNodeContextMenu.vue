@@ -103,7 +103,7 @@ const isOpen = computed({
 })
 
 const menuStyle = computed(() => ({
-  position: 'fixed',
+  position: 'fixed' as const,
   left: `${props.x}px`,
   top: `${props.y}px`,
   zIndex: 9999,
