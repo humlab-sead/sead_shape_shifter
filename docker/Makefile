@@ -56,20 +56,19 @@ deploy-shell:
 ################################################################################
 
 update-deploy-scripts: guard-user
-	@pushd $(DEPLOY_SOURCE_DIR) && ./deploy-to-sead-tools && popd
+	@./rsync-to-sead-tools
 
 .PHONY: docker-build
-docker-build: deploy-shell guard-user guard-cwd guard-docker-files-exists docker-build-github
+docker-build: guard-user guard-docker-files-exists docker-build-github
 
 .PHONY: docker-build-github
-docker-build-github: guard-user guard-cwd guard-docker-files-exists
-	@pushd $(DEPLOY_DIR) && ./build.sh --git-ref main \
-		--user-uid $(USER_UID) \
-		--user-gid $(USER_GID) \
-		--git-repo $(GIT_REPO) && popd
+docker-build-github: guard-user guard-docker-files-exists
+	@pushd $(DEPLOY_DIR) \
+		&& ./build.sh --git-ref main --user-uid $(USER_UID) --user-gid $(USER_GID) --git-repo $(GIT_REPO) \
+		&& popd
 
 .PHONY: build-and-deploy
-build-and-deploy: deploy-shell docker-build-github docker-restart
+build-and-deploy: docker-build docker-restart
 
 ################################################################################
 # Build from specific GitHub tag/branch (no cache bust needed for tags)
@@ -121,7 +120,7 @@ docker-logs:
 .PHONY: docker-restart
 docker-restart:
 	@echo "Restarting Shape Shifter..."
-	@pushd $(DOCKER_DIR) \
+	@pushd $(DEPLOY_DIR) \
 		&& docker compose down \
 		&& docker rm -f shape-shifter 2>/dev/null || true \
 		&& docker compose up -d \
@@ -129,7 +128,7 @@ docker-restart:
 	@echo "✓ Application restarted at http://localhost:$(BACKEND_PORT)"
 
 # .PHONY: docker-rebuild
-# docker-rebuild: guard-dockerfile-exists
+# docker-rebuild: guard-dockerfisudole-exists
 # 	@echo "Rebuilding and restarting Shape Shifter..."
 # 	@docker compose down && docker compose up -d --build
 # 	@echo "✓ Application rebuilt and started at http://localhost:$(BACKEND_PORT)"
@@ -143,13 +142,15 @@ docker-shell:
 .PHONY: docker-clean
 docker-clean:
 	@echo "Cleaning up Docker resources..."
-	@cd $(DOCKER_DIR) && docker compose down -v
-	@docker image rm shape-shifter:latest 2>/dev/null || true
-	@echo "✓ Cleanup complete"
+	@pushd $(DOCKER_DIR) \
+		&& docker compose down -v \
+		&& docker image rm shape-shifter:latest 2>/dev/null || true @echo  \
+		&& popd  \
+		&& echo "✓ Cleanup complete" \
 
 .PHONY: docker-ps
 docker-ps:
-	@cd $(DOCKER_DIR) && docker compose ps
+	@pushd $(DOCKER_DIR) && docker compose ps && popd
 
 .PHONY: docker-health
 docker-health:
@@ -247,3 +248,8 @@ setup-env:
 	else \
 		echo "✓ .pgpass already exists or template not found"; \
 	fi
+
+setup-permissions:
+	@chmod g+s $(DEPLOY_DIR) \
+		&& setfacl -d -m g::rwX $(DEPLOY_DIR)
+	@echo usermod -aG www-data ${USER}
