@@ -647,7 +647,7 @@ class TableConfig:
         Each item orginates from the base entity and its append configurations.
 
         Yields self first (the base configuration), then creates and yields
-        a TableConfig for each append item with inherited properties.
+        a TableConfig for each append item, if any, with inherited properties.
 
         This allows the shapeshifter to treat the base table and append items
         uniformly through the same processing pipeline.
