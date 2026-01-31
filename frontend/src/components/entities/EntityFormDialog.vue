@@ -396,7 +396,7 @@
                     </div>
 
                     <!-- Smart Suggestions Panel -->
-                    <div class="form-row" v-if="showSuggestions || suggestionsLoading">
+                    <div class="form-row" v-if="(showSuggestions || suggestionsLoading) && fkSuggestionsEnabled">
                       <v-progress-linear v-if="suggestionsLoading" indeterminate color="primary" class="mb-2" />
 
                       <SuggestionsPanel
@@ -642,7 +642,7 @@
  * - Adds minimal overhead (~10-50ms API call) for guaranteed data consistency
  */
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
-import { useEntities, useSuggestions, useEntityPreview } from '@/composables'
+import { useEntities, useSuggestions, useEntityPreview, useSettings } from '@/composables'
 import { useProjectStore } from '@/stores'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
@@ -690,6 +690,9 @@ const { entities, create, update } = useEntities({
 })
 
 const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions()
+
+const appSettings = useSettings()
+const fkSuggestionsEnabled = computed(() => appSettings.enableFkSuggestions.value)
 
 const projectStore = useProjectStore()
 
@@ -1783,6 +1786,14 @@ watch(activeTab, (newTab, oldTab) => {
 // Fetch suggestions when columns change (debounced)
 let suggestionTimeout: NodeJS.Timeout | null = null
 watchEffect(() => {
+  if (!fkSuggestionsEnabled.value) {
+    if (suggestions.value || showSuggestions.value) {
+      suggestions.value = null
+      showSuggestions.value = false
+    }
+    return
+  }
+
   if (props.mode === 'create' && formData.value.name && formData.value.columns.length > 0) {
     // Clear existing timeout
     if (suggestionTimeout) {

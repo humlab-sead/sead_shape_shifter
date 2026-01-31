@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from loguru import logger
 
+from backend.app.core.config import settings
 from backend.app.models.data_source import TableMetadata, TableSchema
 from backend.app.models.suggestion import (
     DependencySuggestion,
@@ -52,8 +53,11 @@ class SuggestionService:
             except Exception as e:  # pylint: disable=broad-except
                 logger.warning(f"Could not load schemas from {data_source_name}: {e}")
 
-        # Generate foreign key suggestions
-        fk_suggestions: list[ForeignKeySuggestion] = await self.suggest_foreign_keys(entity, all_entities, schemas)
+        # Generate foreign key suggestions (can be disabled via settings)
+        if settings.ENABLE_FK_SUGGESTIONS:
+            fk_suggestions: list[ForeignKeySuggestion] = await self.suggest_foreign_keys(entity, all_entities, schemas)
+        else:
+            fk_suggestions = []
 
         # Generate dependency suggestions from foreign keys
         dep_suggestions: list[DependencySuggestion] = self._infer_dependencies_from_foreign_keys(fk_suggestions)
