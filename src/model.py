@@ -642,7 +642,9 @@ class TableConfig:
         return merged
 
     def get_sub_table_configs(self) -> Generator[Self | "TableConfig", Any, None]:
-        """Yield a sequence of TableConfig objects for processing.
+        """Yield a sequence of resolved TableConfig objects.
+
+        Each item orginates from the base entity and its append configurations.
 
         Yields self first (the base configuration), then creates and yields
         a TableConfig for each append item with inherited properties.
