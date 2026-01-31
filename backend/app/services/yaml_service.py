@@ -5,6 +5,7 @@ from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from typing import Any
+import json
 
 from loguru import logger
 from ruamel.yaml import YAML
@@ -40,15 +41,19 @@ class YamlService:
         """
         Load YAML file preserving format and comments.
 
+        Converts ruamel.yaml wrapper types to POPO (Plain Old Python Objects) at the I/O boundary
+        to prevent pollution of service layer code with framework-specific type wrappers.
+
         Args:
             filename: Path to YAML file
 
         Returns:
-            Parsed YAML data as dictionary
+            Parsed YAML data as dictionary with POPO types (no ruamel wrappers)
 
         Raises:
             YamlLoadError: If file cannot be loaded or parsed
         """
+
         path = Path(filename)
 
         if not path.exists():
@@ -69,8 +74,12 @@ class YamlService:
             if not isinstance(data, dict):
                 raise YamlLoadError(f"YAML root must be a dictionary, got {type(data).__name__}")
 
+            # Convert ruamel.yaml wrapper types to POPO at I/O boundary
+            # This prevents ruamel type pollution in service layer code
+            data = json.loads(json.dumps(data))
+
             logger.info(f"Successfully loaded YAML file: {path} ({len(str(data))} bytes)")
-            return dict(data)
+            return data
 
         except Exception as e:
             logger.error(f"Failed to load YAML file {path}: {e}")
@@ -141,6 +150,9 @@ class YamlService:
         Lists with ≤ max_items will be formatted as [item1, item2] instead of:
         - item1
         - item2
+        
+    Special handling for 'values' key: Always formats as list of rows where
+    each row is a flow-style list on its own line, regardless of max_items.
 
         Args:
             obj: Object to process (dict, list, or other)
@@ -148,7 +160,25 @@ class YamlService:
         """
         if isinstance(obj, dict):
             for key, value in obj.items():
-                if isinstance(value, list) and 0 < len(value) <= max_items:
+                # Special case: 'values' should always be formatted as list of rows
+                if key == "values" and isinstance(value, list) and value and isinstance(value[0], list):
+                    # Outer list: block style (each row on its own line)
+                    if not isinstance(value, CommentedSeq):
+                        block_seq = CommentedSeq(value)
+                        obj[key] = block_seq
+                    else:
+                        block_seq = value
+                    # Inner lists: flow style (columns compact on one line)
+                    for i, row in enumerate(block_seq):
+                        if isinstance(row, list):
+                            if not isinstance(row, CommentedSeq):
+                                flow_seq = CommentedSeq(row)
+                                block_seq[i] = flow_seq
+                            else:
+                                flow_seq = row
+                            flow_seq.fa.set_flow_style()
+                # Regular handling for other keys
+                elif isinstance(value, list) and 0 < len(value) <= max_items:
                     # Convert to CommentedSeq and mark for flow style
                     if not isinstance(value, CommentedSeq):
                         flow_seq = CommentedSeq(value)
