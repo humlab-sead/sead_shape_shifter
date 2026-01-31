@@ -15,6 +15,7 @@ from backend.app.models.materialization import (
 from backend.app.models.project import Project
 from backend.app.services.project_service import ProjectService
 from backend.app.utils import convert_ruamel_types
+from src.specifications.materialize import CanMaterializeSpecification
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 
