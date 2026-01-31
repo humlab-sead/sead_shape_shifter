@@ -579,7 +579,12 @@
       v-if="entityStore.overlayEntityName"
       v-model="entityStore.showEditorOverlay"
       :project-name="projectName"
-      :entity="entityStore.entities.find((e) => e.name === entityStore.overlayEntityName) || null"
+      :entity="
+        entityStore.entities.find((e) => e.name === entityStore.overlayEntityName) || {
+          name: entityStore.overlayEntityName,
+          entity_data: {},
+        }
+      "
       :initial-tab="entityStore.overlayInitialTab"
       mode="edit"
       @saved="handleOverlayEntitySaved"
