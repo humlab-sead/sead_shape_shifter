@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from backend.app.models.data_source import ColumnMetadata, TableMetadata, TableSchema
+from backend.app.core.config import settings
 from backend.app.services.suggestion_service import SuggestionService
 
 
@@ -16,6 +17,7 @@ def build_schema(table_name: str, columns: list[ColumnMetadata]) -> TableSchema:
 @pytest.mark.asyncio
 async def test_suggest_foreign_keys_with_schema_types() -> None:
     """High-confidence FK suggestion when names, types, and PK align."""
+    settings.ENABLE_FK_SUGGESTIONS = True
     service = SuggestionService(schema_service=AsyncMock())
 
     entity = {"name": "orders", "columns": ["order_id", "customer_id"]}
@@ -53,6 +55,7 @@ async def test_suggest_foreign_keys_with_schema_types() -> None:
 @pytest.mark.asyncio
 async def test_suggest_for_entity_handles_schema_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     """Schema loading failures fall back to column-based suggestions."""
+    settings.ENABLE_FK_SUGGESTIONS = True
     service = SuggestionService(schema_service=AsyncMock())
     monkeypatch.setattr(service, "_get_table_schemas", AsyncMock(side_effect=Exception("boom")))
 
@@ -69,6 +72,7 @@ async def test_suggest_for_entity_handles_schema_errors(monkeypatch: pytest.Monk
 @pytest.mark.asyncio
 async def test_suggest_foreign_keys_string_type_compatibility() -> None:
     """String type compatibility boosts confidence above threshold."""
+    settings.ENABLE_FK_SUGGESTIONS = True
     service = SuggestionService(schema_service=AsyncMock())
 
     entity = {"name": "users", "columns": ["email", "user_id"]}
@@ -99,6 +103,7 @@ async def test_suggest_foreign_keys_string_type_compatibility() -> None:
 @pytest.mark.asyncio
 async def test_get_table_schemas_matches_tables_case_insensitive() -> None:
     """_get_table_schemas should load schemas for matching entities, respecting case-insensitive table names."""
+    settings.ENABLE_FK_SUGGESTIONS = True
     schema_service = AsyncMock()
     schema_service.get_tables.return_value = [
         TableMetadata(name="users", schema_name="public", **{}),
@@ -122,6 +127,7 @@ async def test_get_table_schemas_matches_tables_case_insensitive() -> None:
 @pytest.mark.asyncio
 async def test_get_table_schemas_handles_listing_failure() -> None:
     """If table listing fails, no schemas are loaded."""
+    settings.ENABLE_FK_SUGGESTIONS = True
     schema_service = AsyncMock()
     schema_service.get_tables.side_effect = Exception("boom")
     schema_service.get_table_schema = AsyncMock()
@@ -135,6 +141,7 @@ async def test_get_table_schemas_handles_listing_failure() -> None:
 
 def test_find_column_matches_runs_all_strategies() -> None:
     """_find_column_matches should return results from all strategies."""
+    settings.ENABLE_FK_SUGGESTIONS = True
     service = SuggestionService(schema_service=AsyncMock())
 
     matches = service._find_column_matches(  # pylint: disable=protected-access
@@ -147,3 +154,18 @@ def test_find_column_matches_runs_all_strategies() -> None:
 
     match_types = {m["match_type"] for m in matches}
     assert {"exact", "fk_pattern", "entity_pattern"} <= match_types
+
+
+@pytest.mark.asyncio
+async def test_suggest_for_entity_respects_disable_fk_setting() -> None:
+    """When FK suggestions are disabled, no FK/dependency suggestions are returned."""
+    settings.ENABLE_FK_SUGGESTIONS = False
+    service = SuggestionService(schema_service=AsyncMock())
+
+    entity = {"name": "orders", "columns": ["order_id", "customer_id"]}
+    all_entities = [entity, {"name": "customers", "columns": ["customer_id", "name"]}]
+
+    result = await service.suggest_for_entity(entity, all_entities)
+
+    assert result.foreign_key_suggestions == []
+    assert result.dependency_suggestions == []
