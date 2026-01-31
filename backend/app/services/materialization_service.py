@@ -7,6 +7,7 @@ from typing import Any, Literal
 from loguru import logger
 from pandas import DataFrame
 
+from backend.app.core.config import Settings
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.materialization import (
     MaterializationResult,
@@ -80,7 +81,7 @@ class MaterializationService:
 
             # Determine storage strategy
             data_file: str = ""
-            values_inline = None
+            values_inline: list[list[Any]] | None = None
 
             if storage_format == "inline" or len(df) < STORE_INLINE_THRESHOLD:
                 # Inline: convert DataFrame to list of lists
@@ -95,7 +96,8 @@ class MaterializationService:
                     )
             else:
                 # External file storage
-                data_dir = Path(f"projects/{project_name}/materialized")
+                folder: Path = Settings().PROJECTS_DIR
+                data_dir: Path = Path(folder) / f"projects/{project_name}/materialized"
 
                 try:
                     data_dir.mkdir(parents=True, exist_ok=True)
@@ -206,15 +208,14 @@ class MaterializationService:
             core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
 
             # Validate
-            table = core_project.get_table(entity_name)
+            table: TableConfig = core_project.get_table(entity_name)
 
             if not table.is_materialized:
                 return UnmaterializationResult(
                     success=False, errors=[f"Entity '{entity_name}' is not materialized"], entity_name=entity_name
                 )
 
-            # Find materialized dependents
-            dependents = self._find_materialized_dependents(core_project, entity_name)
+            dependents: list[str] = self._find_materialized_dependents(core_project, table)
 
             if dependents and not cascade:
                 return UnmaterializationResult(
@@ -226,10 +227,10 @@ class MaterializationService:
                 )
 
             # Cascade unmaterialize
-            unmaterialized_entities = [entity_name]
+            unmaterialized_entities: list[str] = [entity_name]
             if cascade:
                 for dep in dependents:
-                    result = await self.unmaterialize_entity(project_name, dep, cascade=True)
+                    result: UnmaterializationResult = await self.unmaterialize_entity(project_name, dep, cascade=True)
                     if not result.success:
                         return result
                     unmaterialized_entities.extend(result.unmaterialized_entities)
