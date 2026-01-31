@@ -85,6 +85,10 @@ export function toCytoscapeElements(
       classes.push('in-cycle')
     }
 
+    if (node.materialized) {
+      classes.push('materialized')
+    }
+
     return {
       data: {
         id: node.name,

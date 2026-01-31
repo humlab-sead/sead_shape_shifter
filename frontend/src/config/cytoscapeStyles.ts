@@ -198,6 +198,17 @@ const baseStyles: StylesheetCSS[] = [
     },
   },
 
+  // Materialized entities - multi-indicator strategy
+  {
+    selector: 'node.materialized',
+    css: {
+      'border-style': 'double', // Double border = frozen/locked state
+      'border-width': 4,
+      'border-color': '#4CAF50', // Green = stable/cached
+      'background-opacity': 0.85, // Slightly transparent
+    },
+  },
+
   // Cycle highlighting - nodes (must come after node type styles)
   {
     selector: 'node.in-cycle',
