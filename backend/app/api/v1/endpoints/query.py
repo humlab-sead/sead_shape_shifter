@@ -68,7 +68,7 @@ async def execute_query(
         HTTPException: If query is invalid or execution fails
     """
     try:
-        result = await query_service.execute_query(
+        result: QueryResult = await query_service.execute_query(
             data_source_name=data_source_name, query=execution.query, limit=execution.limit, timeout=execution.timeout
         )
         return result

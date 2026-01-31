@@ -19,11 +19,6 @@ export interface QueryValidation {
   tables: string[]
 }
 
-export interface QueryPlan {
-  plan_text: string
-  estimated_cost: number | null
-  estimated_rows: number | null
-}
 
 export interface QueryExecution {
   query: string
