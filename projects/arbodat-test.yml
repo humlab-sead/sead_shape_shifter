@@ -196,12 +196,15 @@ entities:
     drop_duplicates: true
     depends_on: []
   cultural_group:
+    source:
     data_source: arbodat_lookup
+    public_id: cultural_group_id
+    keys: ["KultGr"]
+    columns: ["KultGr", "Cult_EN"]
+    type: sql
     query: select distinct KultGr, Cult_EN from Kulturgruppen;
     drop_duplicates: true
     depends_on: []
-    public_id: cultural_group_id
-    keys: [KultGr]
   dataset:
     source: analysis_entity
     public_id: dataset_id
