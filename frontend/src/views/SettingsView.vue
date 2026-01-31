@@ -7,14 +7,22 @@
       </v-col>
     </v-row>
 
-    <v-row>
-      <!-- Theme Presets -->
-      <v-col cols="12">
-        <v-card>
-          <v-card-title>Theme</v-card-title>
-          <v-card-subtitle> Choose a theme preset </v-card-subtitle>
+    <v-tabs v-model="activeTab" class="mb-4">
+      <v-tab value="general">General</v-tab>
+      <v-tab value="logs">Logs</v-tab>
+    </v-tabs>
 
-          <v-card-text>
+    <v-window v-model="activeTab">
+      <!-- General Settings Tab -->
+      <v-window-item value="general">
+        <v-row>
+          <!-- Theme Presets -->
+          <v-col cols="12">
+            <v-card>
+              <v-card-title>Theme</v-card-title>
+              <v-card-subtitle> Choose a theme preset </v-card-subtitle>
+
+              <v-card-text>
             <v-row>
               <v-col v-for="preset in theme.presets" :key="preset.name" cols="12" sm="6" md="2">
                 <v-card
@@ -174,6 +182,105 @@
         </v-card>
       </v-col>
     </v-row>
+      </v-window-item>
+
+      <!-- Logs Tab -->
+      <v-window-item value="logs">
+        <v-row>
+          <v-col cols="12">
+            <v-card>
+              <v-card-title class="d-flex align-center justify-space-between">
+                <span>Application Logs</span>
+                <div class="d-flex gap-2">
+                  <v-btn
+                    size="small"
+                    variant="tonal"
+                    prepend-icon="mdi-refresh"
+                    :loading="logsLoading"
+                    @click="refreshLogs"
+                  >
+                    Refresh
+                  </v-btn>
+                  <v-btn
+                    size="small"
+                    variant="tonal"
+                    prepend-icon="mdi-download"
+                    @click="downloadLogs"
+                  >
+                    Download
+                  </v-btn>
+                </div>
+              </v-card-title>
+
+              <v-card-text>
+                <v-row dense class="mb-3">
+                  <v-col cols="12" sm="3">
+                    <v-select
+                      v-model="selectedLogType"
+                      :items="logTypes"
+                      label="Log Type"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      @update:model-value="refreshLogs"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="3">
+                    <v-select
+                      v-model="selectedLogLevel"
+                      :items="logLevels"
+                      label="Filter by Level"
+                      variant="outlined"
+                      density="compact"
+                      clearable
+                      hide-details
+                      @update:model-value="refreshLogs"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="3">
+                    <v-select
+                      v-model="selectedLines"
+                      :items="lineOptions"
+                      label="Lines to Show"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      @update:model-value="refreshLogs"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="3">
+                    <v-switch
+                      v-model="autoRefresh"
+                      label="Auto-refresh (30s)"
+                      density="compact"
+                      hide-details
+                      @update:model-value="toggleAutoRefresh"
+                    />
+                  </v-col>
+                </v-row>
+
+                <v-alert v-if="logsError" type="error" density="compact" class="mb-3">
+                  {{ logsError }}
+                </v-alert>
+
+                <div v-if="logLines.length === 0 && !logsLoading" class="text-center text-medium-emphasis py-8">
+                  <v-icon icon="mdi-text-box-outline" size="64" class="mb-2" />
+                  <div>No logs found</div>
+                </div>
+
+                <div v-else class="logs-container">
+                  <pre class="logs-content">{{ logLines.join('\n') }}</pre>
+                </div>
+
+                <div v-if="logLines.length > 0" class="text-caption text-medium-emphasis mt-2">
+                  Showing {{ logLines.length }} lines
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-window-item>
+    </v-window>
 
     <!-- Confirmation Dialog -->
     <v-dialog v-model="showResetDialog" max-width="400">
@@ -206,9 +313,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useTheme } from '@/composables/useTheme'
 import { useSettings } from '@/composables/useSettings'
+import { api } from '@/api'
+import type { LogType, LogLevel } from '@/api/logs'
 
 const theme = useTheme()
 const appSettings = useSettings()
@@ -216,6 +325,89 @@ const appSettings = useSettings()
 const version = ref('0.1.0')
 const showResetDialog = ref(false)
 const showResetSettingsDialog = ref(false)
+
+// Tabs
+const activeTab = ref('general')
+
+// Logs state
+const logLines = ref<string[]>([])
+const logsLoading = ref(false)
+const logsError = ref<string | null>(null)
+const selectedLogType = ref<LogType>('app')
+const selectedLogLevel = ref<LogLevel | null>(null)
+const selectedLines = ref(500)
+const autoRefresh = ref(false)
+let autoRefreshInterval: number | null = null
+
+const logTypes = [
+  { title: 'Application Logs', value: 'app' },
+  { title: 'Error Logs', value: 'error' },
+]
+
+const logLevels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+
+const lineOptions = [
+  { title: '100 lines', value: 100 },
+  { title: '250 lines', value: 250 },
+  { title: '500 lines', value: 500 },
+  { title: '1000 lines', value: 1000 },
+  { title: '2500 lines', value: 2500 },
+]
+
+async function refreshLogs() {
+  logsLoading.value = true
+  logsError.value = null
+  try {
+    const response = await api.logs.getLogs(
+      selectedLogType.value,
+      selectedLines.value,
+      selectedLogLevel.value || undefined
+    )
+    logLines.value = response.lines
+  } catch (err) {
+    logsError.value = err instanceof Error ? err.message : 'Failed to fetch logs'
+    logLines.value = []
+  } finally {
+    logsLoading.value = false
+  }
+}
+
+async function downloadLogs() {
+  try {
+    const response = await api.logs.downloadLogs(selectedLogType.value)
+    const blob = new Blob([response.content], { type: 'text/plain' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = response.filename
+    a.click()
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    logsError.value = err instanceof Error ? err.message : 'Failed to download logs'
+  }
+}
+
+function toggleAutoRefresh(enabled: boolean) {
+  if (enabled) {
+    refreshLogs()
+    autoRefreshInterval = window.setInterval(refreshLogs, 30000)
+  } else {
+    if (autoRefreshInterval !== null) {
+      clearInterval(autoRefreshInterval)
+      autoRefreshInterval = null
+    }
+  }
+}
+
+onMounted(() => {
+  refreshLogs()
+})
+
+onUnmounted(() => {
+  if (autoRefreshInterval !== null) {
+    clearInterval(autoRefreshInterval)
+  }
+})
 
 function selectTheme(themeName: string) {
   theme.setTheme(themeName)
@@ -249,5 +441,27 @@ function confirmResetSettings() {
 .theme-preset-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.logs-container {
+  max-height: 600px;
+  overflow-y: auto;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.logs-content {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Syntax highlighting for log levels */
+.logs-content {
+  color: var(--v-theme-on-surface);
 }
 </style>
