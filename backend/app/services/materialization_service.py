@@ -134,7 +134,7 @@ class MaterializationService:
             # Convert ruamel.yaml types to plain Python types to avoid serialization issues
             saved_state: dict[str, Any] = {}
             for k, v in table.entity_cfg.items():
-                if k not in ["public_id", "keys", "columns", "type", "materialized", "values"]:
+                if k not in ["materialized", "values"]:
                     # Skip empty/null values
                     if v is None or v == "" or (isinstance(v, str) and not v.strip()):
                         continue
