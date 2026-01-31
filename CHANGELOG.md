@@ -1,3 +1,10 @@
+## [1.20.2](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.20.1...v1.20.2) (2026-01-31)
+
+
+### Bug Fixes
+
+* update shape-shifter version to 1.20.0 in uv.lock; reorder imports in test_suggestion_service.py; clean up yaml_service.py ([09d20ce](https://github.com/humlab-sead/sead_shape_shifter/commit/09d20ce5f9a5dce9c51091347798b7f5971286e2))
+
 ## [1.20.1](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.20.0...v1.20.1) (2026-01-31)
 
 
