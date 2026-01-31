@@ -323,6 +323,7 @@
               :y="contextMenuY"
               :entity-name="contextMenuEntity"
               :task-status="taskStatusStore.getEntityStatus(contextMenuEntity || '')"
+              @edit="handleContextMenuEdit"
               @preview="handleContextMenuPreview"
               @duplicate="handleContextMenuDuplicate"
               @delete="handleContextMenuDelete"
@@ -1110,6 +1111,11 @@ function handleOverlayClose(isOpen: boolean) {
 }
 
 // Context menu handlers
+function handleContextMenuEdit(entityName: string) {
+  console.debug('[ProjectDetailView] Context menu edit for entity:', entityName)
+  entityStore.openEditorOverlay(entityName, 'form')
+}
+
 async function handleContextMenuPreview(entityName: string) {
   console.debug('[ProjectDetailView] Preview entity:', entityName)
   // Navigate to test run with this entity selected

@@ -16,6 +16,11 @@
     
     <v-list density="compact" min-width="200">
       <v-list-item
+        prepend-icon="mdi-pencil"
+        title="Edit Entity"
+        @click="handleEdit"
+      />
+      <v-list-item
         prepend-icon="mdi-eye"
         title="Preview Data"
         @click="handlePreview"
@@ -80,6 +85,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
+  (e: 'edit', entityName: string): void
   (e: 'preview', entityName: string): void
   (e: 'duplicate', entityName: string): void
   (e: 'delete', entityName: string): void
@@ -118,6 +124,13 @@ const canMarkComplete = computed(() => {
     props.taskStatus.status !== 'done'
   )
 })
+
+function handleEdit() {
+  if (props.entityName) {
+    emit('edit', props.entityName)
+  }
+  isOpen.value = false
+}
 
 function handlePreview() {
   if (props.entityName) {
