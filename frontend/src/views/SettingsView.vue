@@ -387,7 +387,7 @@ async function downloadLogs() {
   }
 }
 
-function toggleAutoRefresh(enabled: boolean) {
+function toggleAutoRefresh(enabled: boolean | null) {
   if (enabled) {
     refreshLogs()
     autoRefreshInterval = window.setInterval(refreshLogs, 30000)

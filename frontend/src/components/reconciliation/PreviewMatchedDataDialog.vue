@@ -174,16 +174,8 @@ const showOnlyChanged = ref(false)
 const displayColumns = computed(() => {
   if (!props.entitySpec) return []
   
-  // Show keys and additional columns
-  const columns = [...props.entitySpec.keys]
-  
-  // Add property-mapped columns
-  const propertyColumns = new Set(Object.values(props.entitySpec.property_mappings))
-  propertyColumns.forEach(col => {
-    if (!columns.includes(col)) {
-      columns.push(col)
-    }
-  })
+  // Show property-mapped columns (source columns from property_mappings)
+  const columns = Array.from(new Set(Object.values(props.entitySpec.property_mappings)))
   
   return columns
 })
