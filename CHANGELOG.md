@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.18.0...v1.19.0) (2026-01-31)
+
+
+### Features
+
+* add custom item template for breadcrumbs in App.vue ([#199](https://github.com/humlab-sead/sead_shape_shifter/issues/199)) ([7e12199](https://github.com/humlab-sead/sead_shape_shifter/commit/7e121995f40032a127ad5b283821ff3cdddd13a7))
+
 # [1.18.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.17.0...v1.18.0) (2026-01-31)
 
 
