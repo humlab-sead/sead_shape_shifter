@@ -45,4 +45,3 @@ class CanMaterializeResponse(BaseModel):
 
     can_materialize: bool
     errors: list[str] = []
-    estimated_rows: int | None = None

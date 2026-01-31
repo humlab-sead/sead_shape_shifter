@@ -34,7 +34,6 @@ export interface UnmaterializationResult {
 export interface CanMaterializeResponse {
   can_materialize: boolean
   errors: string[]
-  estimated_rows: number | null
 }
 
 export const materializationApi = {
