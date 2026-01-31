@@ -46,12 +46,11 @@ def convert_ruamel_types(obj: Any) -> Any:
     if isinstance(obj, str):
         # Convert any string subclass (including ruamel types) to plain str
         return str(obj)
-    elif isinstance(obj, dict):
+    if isinstance(obj, dict):
         # Recursively convert dict values
         return {k: convert_ruamel_types(v) for k, v in obj.items()}
-    elif isinstance(obj, (list, tuple)):
+    if isinstance(obj, (list, tuple)):
         # Recursively convert list/tuple items
         return [convert_ruamel_types(item) for item in obj]
-    else:
-        # Return other types as-is (bool, int, float, None, etc.)
-        return obj
+    # Return other types as-is (bool, int, float, None, etc.)
+    return obj
