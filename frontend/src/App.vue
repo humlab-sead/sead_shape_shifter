@@ -123,6 +123,15 @@
         <template #divider>
           <v-icon icon="mdi-chevron-right" />
         </template>
+        <template #item="{ item }">
+          <v-breadcrumbs-item
+            :disabled="item.disabled"
+            @click="item.to && !item.disabled ? router.push(item.to) : null"
+            :class="{ 'cursor-pointer': item.to && !item.disabled }"
+          >
+            {{ item.title }}
+          </v-breadcrumbs-item>
+        </template>
       </v-breadcrumbs>
 
       <router-view v-slot="{ Component }">
@@ -395,6 +404,10 @@ watch(
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 
 .resize-handle {
