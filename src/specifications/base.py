@@ -21,7 +21,7 @@ class SpecificationIssue:
 
     def __str__(self) -> str:
         """Return string representation of the issue."""
-        parts = [f"[{self.severity.upper()}]"]
+        parts: list[str] = [f"[{self.severity.upper()}]"]
         if self.entity_name:
             parts.append(f"Entity '{self.entity_name}':")
         parts.append(self.message)

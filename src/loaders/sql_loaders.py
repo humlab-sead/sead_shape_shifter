@@ -127,23 +127,39 @@ class SqlLoader(DataLoader):
         return self.data_source.options if self.data_source else {}
 
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
+        """Load SQL data entity based on configuration.
+        Note: All columns in "keys" and "columns" must be present in the query result!
+              The "columns" can include identity columns like "system_id" and "public_id" and these are
+              ignored unless they exist in read data.
+              The returned column order will be as defined in columns.
+        """
 
         if table_cfg.type != "sql":
             raise ValueError(f"Entity '{entity_name}' is not configured as fixed SQL data")
 
         data: pd.DataFrame = await self.read_sql(sql=table_cfg.query)  # type: ignore[arg-type]
 
+        # auto_detect_columns will populate columns from SQL result if not defined
         if not table_cfg.keys_and_columns and table_cfg.auto_detect_columns:
             table_cfg.columns = list(data.columns)
 
+        # expected columns are the configured keys/columns excluding any unnest or identity columns
+        computed_columns: set[str] = table_cfg.unnest_columns | (set(table_cfg.identity_columns) - set(data.columns))
+        expected_columns: list[str] = [col for col in table_cfg.keys_and_columns if col not in computed_columns]
+
+        # If public_id is in data we need to include it in expected columns
+        if table_cfg.public_id and table_cfg.public_id in data.columns:
+            expected_columns.append(table_cfg.public_id)
+
         if table_cfg.check_column_names:
-            # Expected columns are the configured keys/columns excluding any unnest columns,
-            # which are handled separately by the unnesting logic and should not be present in the raw data.
-            expected_columns: set[str] = set(table_cfg.keys_and_columns) - set(table_cfg.unnest_columns)
-            if set(data.columns) != expected_columns:
+            # Expected columns are the configured keys/columns excluding any computed columns,
+            if set(data.columns) != set(expected_columns):
                 raise ValueError(f"Data for entity '{entity_name}' has different columns compared to configuration")
         else:
-            data.columns = table_cfg.keys_and_columns
+            if len(data.columns.tolist()) != len(expected_columns):
+                raise ValueError(f"Data for entity '{entity_name}' has different number of columns compared to configuration")
+            # Use user-defined columnn names instead of SQL result column names
+            data.columns = expected_columns
 
         # Add system_id if configured (always "system_id" column name)
         if table_cfg.system_id and table_cfg.system_id not in data.columns:
@@ -243,7 +259,7 @@ class SqlLoader(DataLoader):
             test_table_cfg: TableConfig = TableConfig(
                 entities_cfg={
                     "test": {
-                        "surrogate_id": "test_id",
+                        "public_id": "test_id",
                         "type": "sql",
                         "keys": [],
                         "columns": [],

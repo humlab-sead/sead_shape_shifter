@@ -54,12 +54,43 @@ project_service.save_project(updated)
 - Put business logic in API models (they're DTOs)
 - Resolve env vars in services (mapper's job)
 
+**Directive Resolution at Layer Boundaries:**
+
+The mapper enforces a critical architectural principle:
+
+- **API → Core (`to_core`)**: **Always resolves** @include: and @value: directives
+  - Core layer needs concrete values for processing (loaders, validators, normalization)
+  - Resolution is conditional (only if `not project.is_resolved()`)
+  - Processing is one-way; no Core → API roundtrip that would lose directives
+
+- **YAML → API (`to_api_config`)**: **Preserves** directives
+  - API layer is the editing/persistence boundary
+  - Directives (@include:, @value:) are kept for editing and saving
+  
+- **API → YAML (`to_core_dict`)**: **Preserves** directives
+  - Saving back to YAML maintains original structure
+  - Prevents verbose files from expanded includes
+
+**Principle: Directives live in YAML/API layer, resolved values in Core layer.**
+
 **Environment variable resolution**: Happens ONLY in mapper layer (`backend/app/mappers/`). API entities stay raw (`${VAR}`), core entities are always resolved. Never call `resolve_config_env_vars()` in services.
 
 ## Code Conventions
 - Keep line length ≤ 140 characters and rely on Black + isort formatting.
 - Use `loguru.logger` for logging and provide type hints for all functions (including Pydantic models).
-- Follow naming rules: snake_case entities, `_id` suffix for surrogate keys, `/api/v1/{resource}` (plural) for endpoints.
+- Follow naming rules: snake_case entities, `_id` suffix for public IDs, `/api/v1/{resource}` (plural) for endpoints.
+
+## Three-Tier Identity System
+**Critical: All relationships use local `system_id` values.**
+
+1. **`system_id`** - Local sequential (1, 2, 3...), always present, used for ALL FK relationships
+2. **`keys`** - Business keys for deduplication and matching (optional)
+3. **`public_id`** - Target schema column name + holds SEAD IDs from mappings.yml (dual purpose)
+
+**FK Resolution:** Child FK column = parent's `public_id` name, FK values = parent's `system_id` values.
+**Mapping:** `map_to_remote()` decorates `public_id` column with SEAD IDs (separate from FK logic).
+
+See `.github/copilot-instructions.md` for detailed examples.
 
 ## Common Implementation Tasks
 - **Backend endpoint**: add router (`backend/app/api/v1/endpoints/`), define Pydantic models (`backend/app/models/`), implement service (`backend/app/services/`), and register in `backend/app/api/v1/api.py`.

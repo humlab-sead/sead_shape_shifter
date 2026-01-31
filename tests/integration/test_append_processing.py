@@ -32,7 +32,7 @@ def config_with_append():
         "entities": {
             "default": {"source": None, "depends_on": []},
             "site": {
-                "surrogate_id": "site_id",
+                "public_id": "site_id",
                 "keys": ["site_name"],
                 "columns": ["site_name", "latitude", "longitude"],
                 "depends_on": [],
@@ -56,13 +56,13 @@ def config_with_source_append():
     cfg = {
         "entities": {
             "default": {
-                "surrogate_id": "survey_id",
+                "public_id": "survey_id",
                 "keys": ["survey_name"],
                 "columns": ["survey_name", "country"],
                 "depends_on": [],
             },
             "site": {
-                "surrogate_id": "site_id",
+                "public_id": "site_id",
                 "keys": ["site_name"],
                 "columns": ["site_name", "country"],
                 "depends_on": ["default"],
@@ -81,7 +81,7 @@ def config_with_distinct_mode():
         "entities": {
             "default": {"source": None, "depends_on": []},
             "site": {
-                "surrogate_id": "site_id",
+                "public_id": "site_id",
                 "keys": ["site_name"],
                 "columns": ["site_name", "latitude", "longitude"],
                 "depends_on": [],
@@ -169,7 +169,7 @@ class TestAppendProcessingSQL:
                         "depends_on": [],
                     },
                     "site": {
-                        "surrogate_id": "site_id",
+                        "public_id": "site_id",
                         "keys": ["site_name"],
                         "columns": ["site_name", "latitude", "longitude"],
                         "depends_on": [],
@@ -232,7 +232,7 @@ class TestAppendProcessingMultiple:
                     "depends_on": [],
                 },
                 "site": {
-                    "surrogate_id": "site_id",
+                    "public_id": "site_id",
                     "keys": ["site_name"],
                     "columns": ["site_name", "latitude", "longitude"],
                     "depends_on": [],
@@ -278,7 +278,7 @@ class TestAppendProcessingEdgeCases:
                 "site": {
                     "source": "default",
                     "type": "fixed",
-                    "surrogate_id": "site_id",
+                    "public_id": "site_id",
                     "keys": ["site_name"],
                     "columns": ["site_name", "latitude"],
                     "values": [],
@@ -313,7 +313,7 @@ class TestAppendProcessingEdgeCases:
                     "depends_on": [],
                 },
                 "site": {
-                    "surrogate_id": "site_id",
+                    "public_id": "site_id",
                     "keys": ["site_name"],
                     "columns": ["site_name", "latitude", "longitude", "country"],
                     "depends_on": [],

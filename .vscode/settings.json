@@ -25,6 +25,17 @@
         "titleBar.inactiveForeground": "#e7e7e799"
     },
     "yaml.keyOrdering": false,
+    "yaml.format.enable": true,
+    "yaml.format.singleQuote": false,
+    "yaml.format.bracketSpacing": false,
+    "yaml.format.proseWrap": "preserve",
+    "yaml.format.printWidth": 4096,
+    "[yaml]": {
+        "editor.defaultFormatter": "redhat.vscode-yaml",
+        "editor.formatOnSave": false,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
     "python.analysis.exclude": [
         "**/node_modules",
         "**/__pycache__",

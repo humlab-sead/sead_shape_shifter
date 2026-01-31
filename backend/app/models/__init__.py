@@ -46,7 +46,6 @@ from backend.app.models.project import (
 )
 from backend.app.models.query import (
     QueryExecution,
-    QueryPlan,
     QueryResult,
     QueryValidation,
 )

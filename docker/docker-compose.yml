@@ -1,8 +1,8 @@
 services:
   shape-shifter:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: .
+      dockerfile: Dockerfile
       args:
         # User ID settings (defaults to 1000:1000, override via environment)
         - USER_UID=${USER_UID:-1002}  # Use 1002 for 'shapeshifter' user, maps to "sead" on host

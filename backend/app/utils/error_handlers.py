@@ -1,9 +1,7 @@
 """Centralized error handling utilities for API endpoints."""
 
 import inspect
-import sys
 from functools import wraps
-from pathlib import Path
 from typing import Any, Callable, TypeVar
 
 from fastapi import HTTPException
@@ -25,27 +23,8 @@ from backend.app.utils.exceptions import BadRequestError, BaseAPIException, NotF
 
 T = TypeVar("T")
 
-# Configure file logging for endpoint errors
-_ERROR_LOG_FILE = Path("logs/endpoint_errors.log")
-_ERROR_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-
-# Add file handler for error logging (if not already added)
-_error_logger_id = None
-try:
-    _error_logger_id = logger.add(
-        _ERROR_LOG_FILE,
-        level="WARNING",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
-        rotation="10 MB",
-        retention="30 days",
-        compression="zip",
-        enqueue=True,
-        backtrace=True,
-        diagnose=True,
-    )
-except Exception as e:  # pylint: disable=broad-except
-    # If logger.add fails (e.g., already added), log to stderr but continue
-    print(f"Warning: Could not add error log file handler: {e}", file=sys.stderr)
+# Note: Error logging is configured centrally in backend.app.core.logging_config
+# All errors are automatically logged to logs/app.log and logs/error.log
 
 
 def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:

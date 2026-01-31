@@ -4,7 +4,7 @@ import dotenv
 import psycopg
 from loguru import logger
 
-from src.utility import configure_logging, create_db_uri
+from src.utility import create_db_uri, setup_logging
 
 from .interface import ConfigLike
 from .provider import ConfigStore, get_config_provider
@@ -36,8 +36,10 @@ async def setup_config_store(
 
     cfg.update({"runtime:config_file": config_file, "runtime:env_file": env_filename})
 
-    # FIXME: This should be done elsewhere  #  pylint: disable=fixme
-    configure_logging(cfg.get("logging") or {})
+    # Configure logging with defaults (override with verbose=True if needed)
+    log_config = cfg.get("logging") or {}
+    verbose = log_config.get("level") == "DEBUG" if isinstance(log_config, dict) else False
+    setup_logging(verbose=verbose)
 
     if db_opts_path:
         if not cfg.get(db_opts_path):

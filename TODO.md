@@ -4,15 +4,13 @@
 ### Bugs
 
  - [] FIXME: Right preview pane doesn't clear values between entities
- - [] FIXME: #116 Intermittent navigation error when opening project
- - [] FIXME: #124 Reconciliation editor complains when "extra_columns" entered in property field
+ - [] FIXME: Update documentation, archive non-relevent documents
 
 ### Tech debts:
 
- - [] FIXME: Update documentation, archive non-relevent documents
- - [] FIXME: Review test code coverage
  - [] FIXME: #169 Initialize Playwright setup (UX E2E tests)
  - [] FIXME: #171 Increade manual testing guide feature coverage
+ - [] FIXME: #188 Syncing issue between entity state (changes not shown when entity re-opened)
 
 ### New features
 
@@ -34,6 +32,7 @@
  - [] TODO: Improve UX suggestions when editing entity (awareness of availiable tables, columns etc)
  - [] TODO: Improve Reconcile user experience
  - [] TODO: Auto-save feature in YAML editing mode (trigger after 2 seconds of inactivity)
+ - [] TODO: #189 Simplify server side caching (remove!) of parsed YAML projects
 
 
 APPENDIX
@@ -584,3 +583,52 @@ After normalizing "site_location", it would have the following columns:
  
 That would give a behaviour consistent with current use of "surrogate_id".
 
+
+
+TODO: #191 Materialized of entities
+
+Please assess how an entity materialization feature could be defined and implemented. 
+
+An materialized entity should be "frozen" to the output of a full normalization workflow, and hence in all respect act as a fixed valued entity.
+
+For an entity to be materialized the following must be true:
+1. It cannot be a fixed valued entity (obvisously)
+2. It must be fully validated
+3. It cannot be dependent on another "dynamic" non-materialized entity (sql, entity based, file based). This is a constraint. But in the future we might allow cascading materialization.
+4.  The entity's columns should be the same as the materialized dataframes columns
+
+I don't think 3. is a big constraint, since we most often want's to materialize and reconcile lookups and metadata.
+
+We need to be able to un-freeze the entity i.e. make it "dynamic" again. This means that when we materialize an entity we need to store overridden key/values so that they can be restored.
+
+Un-freezing an entity should unfreeze all other entities that depends on this entity. User must be informed of consequence of materialization and un-freezing, especially of they have manually  entered values in the public id values which will be lost.
+
+It might be a good idea to disable editing of frozen entities for all columns except the public id.
+
+The data should  be store outside of the project file. On the other hand it is nice with a contained package. Feel free to suggest alternatives. Storing it outside the project probably limit's what could be edited without a construct for updating the data. An option is perhaps to store materialized data in a single file. On the other hand it might be good to be able to edit materialized data.
+
+A tentative YAML syntax:
+
+```
+entities:
+  site:
+    public_id: site_id
+    type: fixed
+    materialized: true
+    saved_state:
+      type: sql
+      columns: [.... old columns ... ]
+      unnest:
+        ....
+      foreign_keys:
+        ...
+      ... more?
+
+    values: 
+       filename: path-to-file-relative-project-with-deterministict-name
+       public_id: system-id to SEAD id mapping for edited vales
+    xyz: rest the same ?
+
+[] TODO: #192 Consider adding column-name and improving append
+
+I'm still considering if we need a version of append that ignores the appended column names, i.e. it would basically as if the added table has it's columns renamed to the "parent" table's columns. An vertical column-index based concatenation, ignoring column names, What do you think?

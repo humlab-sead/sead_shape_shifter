@@ -29,13 +29,13 @@ class FixedLoader(DataLoader):
         data: pd.DataFrame
 
         values: list[list[Any]] = table_cfg.safe_values
-        columns: list[str] = table_cfg.safe_columns
+        columns: list[str] = table_cfg.columns
 
         if len(columns) == 0 and len(values) == 0:
             logger.warning(f"Fixed data entity '{entity_name}' has no columns or values defined, returning empty DataFrame")
             return pd.DataFrame()
 
-        data = pd.DataFrame(table_cfg.safe_values, columns=table_cfg.safe_columns)
+        data = pd.DataFrame(table_cfg.safe_values, columns=table_cfg.columns)
 
         # Add system_id if configured (always "system_id" column name)
         if table_cfg.system_id and table_cfg.system_id not in data.columns:

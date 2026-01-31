@@ -99,7 +99,7 @@ class TestTableConfig:
 
     def test_table_drop_duplicates_default(self):
         """Test drop_duplicates defaults to False."""
-        entities = {"site": {"surrogate_id": "site_id"}}
+        entities = {"site": {"public_id": "site_id"}}
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
         assert table.drop_duplicates is False
@@ -115,7 +115,7 @@ class TestTableConfig:
         """Test drop_duplicates as dict with functional dependency settings."""
         entities = {
             "site": {
-                "surrogate_id": "site_id",
+                "public_id": "site_id",
                 "drop_duplicates": {
                     "columns": ["col1"],
                     "check_functional_dependency": False,
@@ -133,7 +133,7 @@ class TestTableConfig:
         """Test table configuration with unnest."""
         entities = {
             "location": {
-                "surrogate_id": "location_id",
+                "public_id": "location_id",
                 "unnest": {
                     "id_vars": ["site_id"],
                     "value_vars": ["Ort", "Kreis"],
@@ -165,7 +165,7 @@ class TestTableConfig:
 
     def test_empty_lists_default_correctly(self):
         """Test that empty lists in config return as empty lists."""
-        entities = {"site": {"surrogate_id": "site_id", "keys": [], "columns": [], "depends_on": []}}
+        entities = {"site": {"public_id": "site_id", "keys": [], "columns": [], "depends_on": []}}
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
         assert not table.keys
@@ -176,15 +176,15 @@ class TestTableConfig:
         """Test fk_column_set returns all foreign key columns."""
         entities = {
             "site": {
-                "surrogate_id": "site_id",
+                "public_id": "site_id",
                 "columns": ["site_name"],
                 "foreign_keys": [
                     {"entity": "location", "local_keys": ["location_id", "location_type"], "remote_keys": ["location_id", "location_type"]},
                     {"entity": "region", "local_keys": ["region_id"], "remote_keys": ["region_id"]},
                 ],
             },
-            "location": {"surrogate_id": "location_id"},
-            "region": {"surrogate_id": "region_id"},
+            "location": {"public_id": "location_id"},
+            "region": {"public_id": "region_id"},
         }
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
@@ -199,14 +199,14 @@ class TestTableConfig:
         """Test extra_fk_columns returns FK columns not in keys or columns."""
         entities = {
             "site": {
-                "surrogate_id": "site_id",
+                "public_id": "site_id",
                 "keys": ["site_name"],
                 "columns": ["site_name", "description", "location_id"],
                 "foreign_keys": [
                     {"entity": "location", "local_keys": ["location_id", "location_type"], "remote_keys": ["location_id", "location_type"]}
                 ],
             },
-            "location": {"surrogate_id": "location_id"},
+            "location": {"public_id": "location_id"},
         }
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
@@ -220,12 +220,12 @@ class TestTableConfig:
         """Test usage_columns returns union of columns2 and fk_column_set."""
         entities = {
             "site": {
-                "surrogate_id": "site_id",
+                "public_id": "site_id",
                 "keys": ["site_name"],
                 "columns": ["site_name", "description"],
                 "foreign_keys": [{"entity": "location", "local_keys": ["location_id"], "remote_keys": ["location_id"]}],
             },
-            "location": {"surrogate_id": "location_id"},
+            "location": {"public_id": "location_id"},
         }
 
         table = TableConfig(entities_cfg=entities, entity_name="site")
@@ -243,8 +243,8 @@ class TestShapeShiftProject:
     def test_shape_shift_config_with_provided_config(self):
         """Test ShapeShiftProject with provided configuration."""
         entities = {
-            "site": {"surrogate_id": "site_id", "columns": ["site_name"]},
-            "location": {"surrogate_id": "location_id", "columns": ["location_name"]},
+            "site": {"public_id": "site_id", "columns": ["site_name"]},
+            "location": {"public_id": "location_id", "columns": ["location_name"]},
         }
 
         config = ShapeShiftProject(cfg={"entities": entities})
@@ -252,21 +252,21 @@ class TestShapeShiftProject:
         assert len(config.tables) == 2
         assert "site" in config.tables
         assert "location" in config.tables
-        assert config.get_table("site").surrogate_id == "site_id"
+        assert config.get_table("site").public_id == "site_id"
 
     def test_get_table(self):
         """Test getting a specific table configuration."""
-        entities = {"site": {"surrogate_id": "site_id", "columns": ["site_name"]}}
+        entities = {"site": {"public_id": "site_id", "columns": ["site_name"]}}
 
         config = ShapeShiftProject(cfg={"entities": entities})
         site_table: TableConfig = config.get_table("site")
 
         assert site_table.entity_name == "site"
-        assert site_table.surrogate_id == "site_id"
+        assert site_table.public_id == "site_id"
 
     def test_get_nonexistent_table_raises_error(self):
         """Test that getting nonexistent table raises KeyError."""
-        entities = {"site": {"surrogate_id": "site_id"}}
+        entities = {"site": {"public_id": "site_id"}}
 
         config = ShapeShiftProject(cfg={"entities": entities})
 
@@ -277,7 +277,7 @@ class TestShapeShiftProject:
         """Test ShapeShiftProject with empty configuration."""
         # Note: ShapeShiftProject uses 'or' logic, so empty dict will try to load from ConfigValue
         # We need to provide a dict with at least one entity or use None to avoid the config loader
-        entities = {"dummy": {"surrogate_id": "id"}}
+        entities = {"dummy": {"public_id": "id"}}
         config = ShapeShiftProject(cfg={"entities": entities})
 
         assert len(config.tables) == 1
@@ -285,7 +285,7 @@ class TestShapeShiftProject:
 
     def test_has_table(self):
         """Test has_table method."""
-        entities = {"site": {"surrogate_id": "site_id"}, "location": {"surrogate_id": "location_id"}}
+        entities = {"site": {"public_id": "site_id"}, "location": {"public_id": "location_id"}}
 
         config = ShapeShiftProject(cfg={"entities": entities})
 
@@ -296,9 +296,9 @@ class TestShapeShiftProject:
     def test_table_names(self):
         """Test table_names property."""
         entities = {
-            "site": {"surrogate_id": "site_id"},
-            "location": {"surrogate_id": "location_id"},
-            "region": {"surrogate_id": "region_id"},
+            "site": {"public_id": "site_id"},
+            "location": {"public_id": "location_id"},
+            "region": {"public_id": "region_id"},
         }
 
         config = ShapeShiftProject(cfg={"entities": entities})
@@ -313,14 +313,14 @@ class TestShapeShiftProject:
         """Test with complex nested configuration."""
         entities = {
             "site": {
-                "surrogate_id": "site_id",
+                "public_id": "site_id",
                 "keys": ["ProjektNr", "Fustel"],
                 "columns": ["ProjektNr", "Fustel", "EVNr"],
                 "drop_duplicates": ["ProjektNr", "Fustel"],
                 "foreign_keys": [{"entity": "natural_region", "local_keys": ["NaturE"], "remote_keys": ["NaturE"]}],
                 "depends_on": ["natural_region"],
             },
-            "natural_region": {"surrogate_id": "natural_region_id", "columns": ["NaturE", "NaturrEinh"], "drop_duplicates": True},
+            "natural_region": {"public_id": "natural_region_id", "columns": ["NaturE", "NaturrEinh"], "drop_duplicates": True},
         }
 
         config = ShapeShiftProject(cfg={"entities": entities})
@@ -343,7 +343,7 @@ class TestIntegration:
         """Test a full configuration workflow with all features."""
         entities = {
             "location": {
-                "surrogate_id": "location_id",
+                "public_id": "location_id",
                 "keys": ["Ort", "Kreis", "Land"],
                 "columns": ["Ort", "Kreis", "Land"],
                 "unnest": {
@@ -356,7 +356,7 @@ class TestIntegration:
                 "depends_on": [],
             },
             "site": {
-                "surrogate_id": "site_id",
+                "public_id": "site_id",
                 "keys": ["ProjektNr", "Fustel"],
                 "columns": ["ProjektNr", "Fustel", "EVNr"],
                 "drop_duplicates": ["ProjektNr", "Fustel"],

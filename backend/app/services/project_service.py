@@ -105,8 +105,8 @@ class ProjectService:
         """
         Load project by name.
 
-        If the project is currently active in ApplicationState,
-        loads from there to ensure consistency with editing session.
+        Always reads from disk to ensure data freshness (YAML is source of truth).
+        Updates version tracking in ApplicationState for cache invalidation.
 
         Args:
             name: Project name (without .yml extension)
@@ -118,12 +118,7 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             InvalidProjectError: If project is invalid
         """
-        # Check application state if this is the active project
-        active_project: Project | None = self.state.get(name)
-        if active_project:
-            logger.debug(f"Loaded active project '{name}' from ApplicationState")
-            return active_project
-
+        # Always read from disk - YAML file is source of truth
         filename: Path = self.projects_dir / (f"{name.removesuffix('.yml')}.yml")
         if not filename.exists():
             raise ProjectNotFoundError(f"Project not found: {name}")
@@ -143,6 +138,9 @@ class ProjectService:
             project.metadata.modified_at = filename.stat().st_mtime
             project.metadata.entity_count = len(project.entities or {})
             project.metadata.is_valid = True
+
+            # Update version tracking for cache invalidation (but don't cache the project)
+            self.state.update_version(name)
 
             logger.info(f"Loaded project '{name}' with {len(project.entities)} entities")
             return project

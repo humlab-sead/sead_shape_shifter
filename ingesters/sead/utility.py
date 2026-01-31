@@ -19,33 +19,11 @@ from jinja2 import Environment, Template
 from loguru import logger
 from sqlalchemy import Engine, create_engine
 
+# Import centralized logging setup from src.utility
+from src.utility import setup_logging
+
 if TYPE_CHECKING:
     from .submission import Submission
-
-
-def configure_logging(opts: dict[str, dict]) -> None:
-
-    logger.remove()
-    logger.add(sys.stdout, level="INFO", format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}")
-    if not opts:
-        return
-
-    if opts.get("handlers"):
-
-        for handler in opts["handlers"]:
-
-            if not handler.get("sink"):
-                continue
-
-            if handler["sink"] == "sys.stdout":
-                handler["sink"] = sys.stdout
-
-            elif isinstance(handler["sink"], str) and handler["sink"].endswith(".log"):
-                handler["sink"] = join(
-                    opts.get("folder", "logs"), f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{handler['sink']}"  # type: ignore[arg-type]
-                )
-
-        logger.configure(handlers=opts["handlers"])  # type: ignore[arg-type]
 
 
 def pascal_to_snake_case(s: str) -> str:
