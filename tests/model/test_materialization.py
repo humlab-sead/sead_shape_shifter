@@ -1,7 +1,6 @@
 """Tests for entity materialization functionality."""
 
-from src.model import TableConfig
-from src.model import ShapeShiftProject
+from src.model import ShapeShiftProject, TableConfig
 
 
 class TestMaterializationConfig:

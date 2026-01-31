@@ -133,18 +133,18 @@ class ProjectMapper:
     @staticmethod
     def to_core(api_config: Project) -> ShapeShiftProject:
         """Convert API Project to core ShapeShiftProject.
-        
+
         Conditionally resolves @include: and @value: directives only if needed.
         """
         cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_config=api_config)
-        
+
         # Create project
         project = ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
-        
+
         # Only resolve if there are unresolved directives
         if not project.is_resolved():
             project = project.resolve(filename=api_config.filename)
-        
+
         return project
 
     @staticmethod

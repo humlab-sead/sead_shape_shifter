@@ -56,11 +56,7 @@ async def list_entities(project_name: str) -> list[EntityResponse]:
     project_service: ProjectService = get_project_service()
     config: Project = project_service.load_project(project_name)
     entities = [
-        EntityResponse(
-            name=name, 
-            entity_data=data,
-            materialized=data.get("materialized")  # Extract materialized field
-        ) 
+        EntityResponse(name=name, entity_data=data, materialized=data.get("materialized"))  # Extract materialized field
         for name, data in config.entities.items()
     ]
     logger.debug(f"Listed {len(entities)} entities in '{project_name}'")
@@ -84,9 +80,7 @@ async def get_entity(project_name: str, entity_name: str) -> EntityResponse:
     entity_data: dict[str, Any] = project_service.get_entity_by_name(project_name, entity_name)
     logger.info(f"Retrieved entity '{entity_name}' from '{project_name}'")
     return EntityResponse(
-        name=entity_name, 
-        entity_data=entity_data,
-        materialized=entity_data.get("materialized")  # Extract materialized field
+        name=entity_name, entity_data=entity_data, materialized=entity_data.get("materialized")  # Extract materialized field
     )
 
 

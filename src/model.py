@@ -396,7 +396,7 @@ class TableConfig:
                         break
             except KeyError:
                 continue
-            
+
     @cached_property
     def append_configs(self) -> list[dict[str, Any]]:
         # Parse append configuration for union operations

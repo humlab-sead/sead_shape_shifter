@@ -3,7 +3,6 @@ import os
 import pkgutil
 import sys
 import unicodedata
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Generic, Literal, Self, TypeVar
 
@@ -64,10 +63,10 @@ def filter_once_per_message(record) -> bool:
 
 def setup_logging(verbose: bool = False, log_file: str | None = None) -> None:
     """Configure loguru logging for CLI/scripts.
-    
+
     This is for standalone scripts and CLI tools. For the backend API,
     use backend.app.core.logging_config.configure_logging() instead.
-    
+
     Args:
         verbose: Enable DEBUG level and detailed format
         log_file: Optional file path for logging

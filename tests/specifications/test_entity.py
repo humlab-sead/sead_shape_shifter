@@ -68,10 +68,22 @@ class TestFixedEntityFieldsSpecification:
         """Sample project configuration."""
         return {
             "entities": {
-                "valid_fixed": {"type": "fixed", "columns": ["id", "col1"], "keys": ["id"], "public_id": "entity_id", "values": [["id1", "val1"]]},
+                "valid_fixed": {
+                    "type": "fixed",
+                    "columns": ["id", "col1"],
+                    "keys": ["id"],
+                    "public_id": "entity_id",
+                    "values": [["id1", "val1"]],
+                },
                 "missing_surrogate": {"type": "fixed", "columns": ["id", "col1"], "keys": ["id"], "values": [["id1", "val1"]]},
                 "no_columns": {"type": "fixed", "columns": None, "keys": ["id"], "public_id": "entity_id", "values": [["val1"]]},
-                "not_fixed": {"type": "sql", "columns": ["id", "col1"], "keys": ["id"], "public_id": "entity_id", "values": [["id1", "val1"]]},
+                "not_fixed": {
+                    "type": "sql",
+                    "columns": ["id", "col1"],
+                    "keys": ["id"],
+                    "public_id": "entity_id",
+                    "values": [["id1", "val1"]],
+                },
                 # "valid_fixed": {"type": "fixed", "columns": ["col1", "col2"], "values": [["a", "b"], ["c", "d"]]},
                 "mismatched_length": {
                     "type": "fixed",
@@ -196,7 +208,13 @@ class TestEntityFieldsSpecification:
         """Sample project configuration."""
         return {
             "entities": {
-                "fixed_entity": {"type": "fixed", "columns": ["id", "col1"], "keys": ["id"], "public_id": "entity_id", "values": [["id1", "val"]]},
+                "fixed_entity": {
+                    "type": "fixed",
+                    "columns": ["id", "col1"],
+                    "keys": ["id"],
+                    "public_id": "entity_id",
+                    "values": [["id1", "val"]],
+                },
                 "sql_entity": {"type": "sql", "columns": ["id", "col1"], "keys": ["id"], "data_source": "db1", "query": "SELECT *"},
                 "data_entity": {"type": "entity", "columns": ["id", "col1"], "keys": ["id"]},
             }
