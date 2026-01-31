@@ -193,6 +193,12 @@ class ApplicationState:
         """Get project version for cache invalidation."""
         return self._project_versions.get(name, 0)
 
+    def increment_version(self, name: str) -> int:
+        """Increment and return the version number for a project."""
+        self._project_versions[name] = self._project_versions.get(name, 0) + 1
+        logger.debug(f"Incremented version for '{name}' to {self._project_versions[name]}")
+        return self._project_versions[name]
+
     async def _cleanup_stale_sessions(self) -> None:
         """Periodically cleanup inactive sessions (30min timeout)."""
         while True:
@@ -263,7 +269,7 @@ class ApplicationStateManager:
         return None
 
     def update(self, project: Project) -> None:
-        """Update active project in ApplicationState if initialized."""
+        """Update project if it's already known, otherwise ignore."""
         with contextlib.suppress(RuntimeError):
 
             if not project.metadata:
@@ -274,10 +280,18 @@ class ApplicationStateManager:
 
             app_state: ApplicationState = get_app_state()
 
-            if app_state.get_project(project.metadata.name):
-                app_state.set_active_project(project)
+            # Only update if the project is already in memory
+            if project.metadata.name in app_state._active_projects:
+                app_state._active_projects[project.metadata.name] = project
+                app_state.increment_version(project.metadata.name)
                 app_state.mark_saved(project.metadata.name)
-                logger.debug(f"Updated ApplicationState for '{project.metadata.name}'")
+                logger.debug(f"Updated version tracking for '{project.metadata.name}'")
+
+    def update_version(self, name: str) -> None:
+        """Update version tracking for a project (for cache invalidation)."""
+        with contextlib.suppress(RuntimeError):
+            if get_app_state():
+                get_app_state().increment_version(name)
 
     def activate(self, project: Project, name: str | None = None) -> None:
         """Set active project in ApplicationState if initialized."""

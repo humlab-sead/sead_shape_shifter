@@ -5,10 +5,10 @@ SOURCE_DIR=$(realpath "$(dirname "$(realpath "$0")")")
 TARGET_DIR=/home/sead/sead-tools/sead_shape_shifter
 
 echo "Syncing files from $SOURCE_DIR to $TARGET_DIR..."
-echo "  ignored: docker-compose.yml (copy manually if needed)"
 
 rsync -av --checksum --chown=sead:www-data --itemize-changes \
   --include='Dockerfile' \
+  --include='docker-compose.yml' \
   --include='Makefile' \
   --include='BUILD_SCRIPT_GUIDE.md' \
   --include='build.sh' \

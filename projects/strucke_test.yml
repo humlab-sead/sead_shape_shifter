@@ -10,6 +10,7 @@ entities:
     keys: []
     columns:
     - system_id
+    - excel_sheet_id
     - socken
     - by_gard
     - raa_nummer
@@ -42,7 +43,7 @@ entities:
     - linked_lan
     - linked_kommun
     - linked_socken
-    surrogate_id: excel_sheet_id
+    public_id: excel_sheet_id
     options:
       filename: projects/strukke_allaC14_230316_v4_clean.xlsx
       sheet_name: samples_with_coords
@@ -50,10 +51,12 @@ entities:
     type: entity
     keys: []
     columns:
+    - system_id
+    - public_id
     - by_gard
     - raa_nummer
     - socken
-    surrogate_id: site_id
+    public_id: site_id
     source: excel_sheet
     depends_on:
     - excel_sheet
@@ -62,15 +65,28 @@ entities:
     type: entity
     keys: []
     columns:
+    - system_id
+    - location_id
     - by_gard
     - landskap_id
     - linked_kommun
     - linked_socken
-    surrogate_id: location_id
+    public_id: location_id
     source: excel_sheet
+    foreign_keys:
+    - entity: location_type
+      local_keys:
+      - location_type
+      remote_keys:
+      - location_type
+      how: inner
+      constraints:
+        cardinality: many_to_one
+        require_unique_left: false
+        allow_null_keys: false
     drop_duplicates: true
     unnest:
-      id_vars: []
+      id_vars: [system_id, location_id]
       value_vars:
       - by_gard
       - landskap_id
@@ -82,16 +98,21 @@ entities:
     type: fixed
     keys: []
     columns:
+    - system_id
+    - location_type_id
     - location_type
-    - sead_id
-    surrogate_id: location_type_id
+    public_id: location_type_id
     values:
-    - - by_gard
-      - '1'
-    - - linked_socken
-      - '2'
-    - - linked_kommun
-      - '3'
-    - - landskap_id
-      - '4'
+    - - 1
+      - 
+      - by_gard
+    - - 2
+      - 
+      - linked_socken
+    - - 3
+      - 
+      - linked_kommun
+    - - 4
+      - 
+      - landskap_id
 options: {}

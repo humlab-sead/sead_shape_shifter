@@ -200,8 +200,7 @@
                             label="System ID"
                             variant="outlined"
                             readonly
-                            disabled
-                            bg-color="grey-lighten-3"
+                            class="system-id-field"
                           >
                             <template #append-inner>
                               <v-tooltip location="top" max-width="400">
@@ -334,13 +333,15 @@
                       <v-row no-gutters>
                         <!-- Drop Duplicates -->
                         <v-col cols="6" class="pr-2">
-                          <v-checkbox
-                            v-model="formData.drop_duplicates.enabled"
-                            label="Drop Duplicates"
-                            hide-details
-                            class="mb-2"
-                          >
-                          </v-checkbox>
+                          <v-row no-gutters class="mb-2">
+                            <v-col cols="12">
+                              <v-checkbox
+                                v-model="formData.drop_duplicates.enabled"
+                                label="Drop Duplicates"
+                                hide-details
+                              />
+                            </v-col>
+                          </v-row>
                           <v-combobox
                             v-model="formData.drop_duplicates.columns"
                             label="Deduplication Columns"
@@ -365,8 +366,7 @@
                                 v-model="formData.drop_empty_rows.enabled"
                                 label="Drop Empty Rows"
                                 hide-details
-                              >
-                              </v-checkbox>
+                              />
                             </v-col>
                             <v-col cols="7" class="pl-1">
                               <v-checkbox
@@ -374,8 +374,7 @@
                                 label="Check Functional Dependency"
                                 hide-details
                                 :disabled="!formData.drop_empty_rows.enabled"
-                              >
-                              </v-checkbox>
+                              />
                             </v-col>
                           </v-row>
                           <v-combobox
@@ -397,7 +396,7 @@
                     </div>
 
                     <!-- Smart Suggestions Panel -->
-                    <div class="form-row" v-if="showSuggestions || suggestionsLoading">
+                    <div class="form-row" v-if="(showSuggestions || suggestionsLoading) && fkSuggestionsEnabled">
                       <v-progress-linear v-if="suggestionsLoading" indeterminate color="primary" class="mb-2" />
 
                       <SuggestionsPanel
@@ -580,19 +579,70 @@
       </v-card-text>
 
       <v-card-actions>
+        <!-- Materialization buttons (edit mode only, not create) -->
+        <!-- DEBUG: mode={{ mode }}, currentEntity={{ !!currentEntity }}, materialized={{ currentEntity?.materialized?.enabled }} -->
+        <template v-if="mode === 'edit' && currentEntity">
+          <v-btn
+            v-if="currentEntity.materialized?.enabled"
+            color="warning"
+            variant="text"
+            prepend-icon="mdi-database-arrow-up"
+            @click="showUnmaterializeDialog = true"
+            :disabled="loading"
+          >
+            Unmaterialize
+          </v-btn>
+          <v-btn
+            v-else-if="currentEntity.entity_data.type !== 'fixed'"
+            color="primary"
+            variant="text"
+            prepend-icon="mdi-database-arrow-down"
+            @click="showMaterializeDialog = true"
+            :disabled="loading"
+          >
+            Materialize
+          </v-btn>
+        </template>
+
         <v-spacer />
         <v-btn variant="text" @click="handleCancel" :disabled="loading"> Cancel </v-btn>
         <v-btn color="primary" variant="flat" :loading="loading" :disabled="!formValid" @click="handleSubmit">
           {{ mode === 'create' ? 'Create' : 'Save' }}
         </v-btn>
       </v-card-actions>
+
+      <!-- Materialization Dialogs -->
+      <MaterializeDialog
+        v-model="showMaterializeDialog"
+        :project-name="projectName"
+        :entity-name="entity?.name || ''"
+        @materialized="handleMaterialized"
+      />
+      <UnmaterializeDialog
+        v-model="showUnmaterializeDialog"
+        :project-name="projectName"
+        :entity-name="entity?.name || ''"
+        @unmaterialized="handleUnmaterialized"
+      />
     </v-card>
   </v-dialog>
 </template>
 
 <script setup lang="ts">
+/**
+ * EntityFormDialog - Create and edit entities
+ *
+ * Supports dual-mode editing: visual form and raw YAML
+ * Includes live preview panel for saved entities
+ * 
+ * STATE MANAGEMENT STRATEGY:
+ * - On dialog open, ALWAYS fetches fresh entity data from API (edit mode)
+ * - This ensures we display the latest data from the YAML file (source of truth)
+ * - Avoids issues with stale state in Pinia store or reactive prop chains
+ * - Adds minimal overhead (~10-50ms API call) for guaranteed data consistency
+ */
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
-import { useEntities, useSuggestions, useEntityPreview } from '@/composables'
+import { useEntities, useSuggestions, useEntityPreview, useSettings } from '@/composables'
 import { useProjectStore } from '@/stores'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
@@ -610,6 +660,8 @@ import SuggestionsPanel from './SuggestionsPanel.vue'
 // import EntityPreviewPanel from './EntityPreviewPanel.vue'
 import YamlEditor from '../common/YamlEditor.vue'
 import SqlEditor from '../common/SqlEditor.vue'
+import MaterializeDialog from './MaterializeDialog.vue'
+import UnmaterializeDialog from './UnmaterializeDialog.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent } from 'vue'
 import { api } from '@/api'
@@ -638,6 +690,9 @@ const { entities, create, update } = useEntities({
 })
 
 const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions()
+
+const appSettings = useSettings()
+const fkSuggestionsEnabled = computed(() => appSettings.enableFkSuggestions.value)
 
 const projectStore = useProjectStore()
 
@@ -681,6 +736,13 @@ const showSuggestions = ref(false)
 const yamlContent = ref('')
 const yamlError = ref<string | null>(null)
 const yamlValid = ref(true)
+
+// Materialization dialogs
+const showMaterializeDialog = ref(false)
+const showUnmaterializeDialog = ref(false)
+
+// Store complete entity data (including materialized metadata) for UI checks
+const currentEntity = ref<EntityResponse | null>(null)
 
 interface FormData {
   name: string
@@ -778,18 +840,10 @@ const delimiterOptions = [
 ]
 
 // Computed property for all columns (keys + columns) for fixed values grid
+// Note: system_id and public_id are handled separately as special columns
 const allColumns = computed(() => {
   const keys = formData.value.keys || []
   const columns = formData.value.columns || []
-  // For fixed entities, always include system_id first, then public_id if defined
-  if (formData.value.type === 'fixed') {
-    const result = ['system_id']
-    if (formData.value.public_id) {
-      result.push(formData.value.public_id)
-    }
-    result.push(...keys, ...columns)
-    return result
-  }
   return [...keys, ...columns]
 })
 
@@ -1231,13 +1285,12 @@ function formDataToYaml(): string {
     entityData.surrogate_id = formData.value.surrogate_id
   }
 
-  if (formData.value.keys.length > 0) {
-    entityData.keys = formData.value.keys
-  }
+  // Always include keys (even if empty array) for consistency with project YAML
+  entityData.keys = formData.value.keys
 
-  if (formData.value.columns.length > 0) {
-    entityData.columns = formData.value.columns
-  }
+  // Always include columns (even if empty array) for consistency with project YAML
+  // Note: columns should contain ALL columns including identity columns (system_id, public_id)
+  entityData.columns = formData.value.columns
 
   if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
     entityData.values = formData.value.values
@@ -1531,6 +1584,53 @@ function handleClose() {
   dialogModel.value = false
 }
 
+function handleMaterialized() {
+  // Entity was materialized - reload to get updated state
+  showMaterializeDialog.value = false
+  
+  // Reload entity to update currentEntity with materialized flag
+  if (props.entity?.name) {
+    loading.value = true
+    api.entities.get(props.projectName, props.entity.name)
+      .then(freshEntity => {
+        currentEntity.value = freshEntity
+        formData.value = buildFormDataFromEntity(freshEntity)
+        yamlContent.value = formDataToYaml()
+      })
+      .catch(err => console.error('Failed to reload after materialization:', err))
+      .finally(() => loading.value = false)
+  }
+  
+  // Notify parent to refresh entity list
+  emit('saved')
+}
+
+function handleUnmaterialized(unmaterializedEntities: string[]) {
+  // Entities were unmaterialized - reload to get updated state
+  showUnmaterializeDialog.value = false
+  
+  // Reload entity to update currentEntity (remove materialized flag)
+  if (props.entity?.name) {
+    loading.value = true
+    api.entities.get(props.projectName, props.entity.name)
+      .then(freshEntity => {
+        currentEntity.value = freshEntity
+        formData.value = buildFormDataFromEntity(freshEntity)
+        yamlContent.value = formDataToYaml()
+      })
+      .catch(err => console.error('Failed to reload after unmaterialization:', err))
+      .finally(() => loading.value = false)
+  }
+  
+  // Notify parent to refresh entity list
+  emit('saved')
+  
+  // Log unmaterialized entities
+  if (unmaterializedEntities.length > 1) {
+    console.log(`Unmaterialized ${unmaterializedEntities.length} entities:`, unmaterializedEntities)
+  }
+}
+
 function buildFormDataFromEntity(entity: EntityResponse): FormData {
   const dropDuplicates = entity.entity_data.drop_duplicates
   const dropEmptyRows = entity.entity_data.drop_empty_rows
@@ -1614,47 +1714,55 @@ function buildDefaultFormData(): FormData {
   }
 }
 
-// Load entity data when editing
-watch(
-  () => props.entity,
-  (newEntity) => {
-    if (newEntity && props.mode === 'edit') {
-      formData.value = buildFormDataFromEntity(newEntity)
-    } else if (props.mode === 'create') {
-      formData.value = buildDefaultFormData()
-    }
-  },
-  { immediate: true }
-)
+// Note: Entity loading now handled in modelValue watcher below
+// This ensures we always fetch fresh data from the API when opening the dialog
 
-// Reset form when dialog opens
+// Reset form and fetch fresh entity data when dialog opens
 watch(
   () => props.modelValue,
-  (newValue) => {
-    if (newValue) {
+  async (isOpen) => {
+    if (isOpen) {
+      // Reset UI state
       error.value = null
       formRef.value?.resetValidation()
       suggestions.value = null
       showSuggestions.value = false
       yamlError.value = null
-      
-      // Clear preview data to avoid showing stale data from previous entity
       clearPreview()
       previewError.value = null
-      
-      // Reset to form-only view to avoid confusing users with empty preview
       viewMode.value = 'form'
 
-      if (props.mode === 'edit' && props.entity) {
-        formData.value = buildFormDataFromEntity(props.entity)
+      // Load entity data - ALWAYS fetch fresh from API for edit mode
+      if (props.mode === 'edit' && props.entity?.name) {
+        loading.value = true
+        try {
+          // Fetch fresh entity data from API (source of truth)
+          const freshEntity = await api.entities.get(props.projectName, props.entity.name)
+          currentEntity.value = freshEntity  // Store complete entity for materialized checks
+          console.log('[EntityFormDialog] Loaded entity:', {
+            name: freshEntity.name,
+            hasMaterialized: !!freshEntity.materialized,
+            materializedEnabled: freshEntity.materialized?.enabled,
+            type: freshEntity.entity_data?.type
+          })
+          formData.value = buildFormDataFromEntity(freshEntity)
+          yamlContent.value = formDataToYaml()
+        } catch (err) {
+          error.value = err instanceof Error ? err.message : 'Failed to load entity data'
+          console.error('Failed to fetch fresh entity data:', err)
+          // Fallback to prop data if API fails
+          if (props.entity) {
+            currentEntity.value = props.entity
+            formData.value = buildFormDataFromEntity(props.entity)
+            yamlContent.value = formDataToYaml()
+          }
+        } finally {
+          loading.value = false
+        }
       } else if (props.mode === 'create') {
+        // Create mode: use default form data
+        currentEntity.value = null
         formData.value = buildDefaultFormData()
-      }
-
-      // Initialize YAML content from form data
-      if (props.mode === 'edit') {
-        yamlContent.value = formDataToYaml()
-      } else {
         yamlContent.value = ''
       }
     }
@@ -1678,6 +1786,14 @@ watch(activeTab, (newTab, oldTab) => {
 // Fetch suggestions when columns change (debounced)
 let suggestionTimeout: NodeJS.Timeout | null = null
 watchEffect(() => {
+  if (!fkSuggestionsEnabled.value) {
+    if (suggestions.value || showSuggestions.value) {
+      suggestions.value = null
+      showSuggestions.value = false
+    }
+    return
+  }
+
   if (props.mode === 'create' && formData.value.name && formData.value.columns.length > 0) {
     // Clear existing timeout
     if (suggestionTimeout) {
@@ -1753,6 +1869,21 @@ function handleRejectDependency(dep: DependencySuggestion) {
 </script>
 
 <style scoped>
+/* System ID field - read-only with dimmed text and subtle background */
+.system-id-field :deep(input) {
+  color: rgba(var(--v-theme-on-surface), 0.5) !important;
+  cursor: not-allowed;
+}
+
+.system-id-field :deep(.v-field) {
+  pointer-events: none;
+  background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
+}
+
+.system-id-field :deep(.v-field__outline) {
+  opacity: 0.5;
+}
+
 /* Dialog content height management */
 .dialog-content {
   min-height: 600px;

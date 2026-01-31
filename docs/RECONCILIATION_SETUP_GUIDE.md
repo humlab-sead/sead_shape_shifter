@@ -6,6 +6,26 @@ This guide explains how to set up and use the entity reconciliation feature in S
 
 The reconciliation feature helps you map source entity values (e.g., "Oak", "Birch") to corresponding SEAD database entity IDs using an OpenRefine-compatible reconciliation service. It supports both automated matching (based on confidence thresholds) and manual review of uncertain matches.
 
+## How Reconciliation Works with Identity System
+
+Shape Shifter uses a **three-tier identity system** where reconciliation fits into the global scope:
+
+1. **`system_id`** (Local): Auto-incrementing sequential IDs (1, 2, 3...) used for all FK relationships
+2. **`keys`** (Business): Source data identifiers used for matching during reconciliation
+3. **`public_id`** (Global): Target SEAD column name; holds reconciled SEAD IDs from `mappings.yml`
+
+**Reconciliation Workflow:**
+```
+Source Data          Reconciliation Service       mappings.yml          Final Export
+─────────────        ─────────────────────        ─────────────         ────────────
+location_name   →    Match to SEAD entities  →    local → remote   →   location_id
+"Norway"             confidence: 0.98             "Norway": 162         162 (SEAD)
+"Sweden"             confidence: 1.00             "Sweden": 205         205 (SEAD)
+
+```
+
+**Key Principle:** Reconciliation creates mappings (`business_key → SEAD_ID`) stored in `mappings.yml`. During processing, `map_to_remote()` applies these mappings to populate the `public_id` column with SEAD IDs. FK relationships always use local `system_id` values.
+
 ## Prerequisites
 
 1. **OpenRefine Reconciliation Service** - You must have a reconciliation service running (default: `http://localhost:8000`)
@@ -370,7 +390,48 @@ The validation results are cached and automatically revalidated when:
 
 ## Workflow Best Practices
 
-### 1. Iterative Reconciliation
+### 1. Materialize Entities Before Reconciliation
+
+**Best Practice**: Materialize dynamic entities (SQL/entity-derived) before reconciliation to ensure stable, consistent data.
+
+**Why Materialize?**
+- **Stability**: Frozen snapshot won't change during reconciliation
+- **Performance**: No re-execution of complex queries
+- **Versioning**: Captures data at specific point in time
+- **Portability**: Data files can be shared/archived
+
+**How to Materialize:**
+1. Open entity in Entity Form Dialog
+2. Ensure all dependencies are fixed or materialized
+3. Click "Materialize" button
+4. Choose storage format (Parquet recommended)
+5. Entity is now type 'fixed' with frozen values
+
+**Example:**
+```yaml
+# Before materialization (dynamic)
+location:
+  type: sql
+  query: "SELECT * FROM locations WHERE active = true"
+  data_source: project_db
+
+# After materialization (frozen)
+location:
+  type: fixed
+  columns: [location_id, location_name, country]
+  values: "@file:materialized/location.parquet"
+  materialized:
+    enabled: true
+    source_state:  # Original SQL config saved
+      type: sql
+      query: "SELECT * FROM locations WHERE active = true"
+    materialized_at: "2026-01-29T12:00:00Z"
+    materialized_by: "researcher@example.com"
+```
+
+See [Entity Materialization Guide](ENTITY_MATERIALIZATION.md) for full details.
+
+### 2. Iterative Reconciliation
 
 - Start with auto-reconcile to handle high-confidence matches
 - Review yellow-flagged items (medium confidence)

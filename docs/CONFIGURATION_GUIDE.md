@@ -132,6 +132,8 @@ This architecture separates concerns between:
 - **Business logic**: `keys` for entity identification in source data
 - **Global scope**: `public_id` for target system integration and FK relationships
 
+**Critical Principle**: All relationships in ShapeShifter use local `system_id` values. FK columns always contain parent's `system_id` (sequential integers), never external IDs. External IDs (e.g., SEAD IDs) are applied as a decoration step via `mappings.yml` → `map_to_remote()`.
+
 #### `system_id` (Auto-Managed)
 - **Type**: `string` (always "system_id")
 - **Required**: Automatically managed by system
@@ -147,9 +149,27 @@ This architecture separates concerns between:
 #### `public_id`
 - **Type**: `string`
 - **Required**: **Yes** (error if missing for fixed entities, warning for others)
-- **Description**: Name of the primary key column in the target system. This field serves two critical purposes:
-  1. Defines the column name that will be used when data is exported to the target system
-  2. Determines FK column names in child entities (FK column = parent's `public_id`)
+- **Description**: Serves dual purpose in the identity system:
+  1. **Column Name**: Specifies the target system's PK column name (e.g., "location_id" in SEAD schema)
+  2. **Column Values**: Holds mapped external IDs from `mappings.yml` (local business key → SEAD ID)
+  
+  Additionally, `public_id` determines FK column names in child entities to avoid `system_id` collision.
+  
+- **FK Linking Process**:
+  ```
+  Parent (location):
+    system_id: [1, 2, 3]           ← Local sequential
+    location_name: ["Norway", ...]  ← Business key
+    location_id: [162, 205, ...]    ← SEAD IDs from mappings.yml
+                 ↑ public_id column
+  
+  Child (site) after FK link:
+    system_id: [1, 2, 3]           ← Local sequential
+    location_name: ["Norway", ...]  ← Join key
+    location_id: [1, 2, ...]        ← FK = parent's system_id values!
+                 ↑ FK column name from parent's public_id
+  ```
+  
 - **Example**:
   ```yaml
   public_id: site_id
@@ -295,7 +315,11 @@ entities:
    - `site`: `system_id` column renamed to `site_id`
    - `sample`: `system_id` renamed to `sample_id`, FK `site_id` preserved
 
-**Critical Rule**: FK column names come from parent's `public_id`, FK values are parent's `system_id`.
+**Critical Architectural Principle**: 
+- **All relationships use local `system_id` values** - FK columns contain parent's `system_id` (1, 2, 3...), never external IDs
+- **FK column naming**: Child FK column = parent's `public_id` (avoids `system_id` collision)
+- **SEAD ID mapping**: Applied separately via `mappings.yml` → `map_to_remote()` (decoration step)
+- **Local domain integrity**: All processing happens with sequential integer references
 ---
 
 ### Data Source Properties

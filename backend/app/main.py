@@ -4,13 +4,15 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 from backend.app.api.v1.api import api_router
 from backend.app.core.config import settings
+from backend.app.core.logging_config import configure_logging
 from backend.app.core.state_manager import ApplicationState, init_app_state
 from backend.app.ingesters.registry import Ingesters
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
@@ -19,6 +21,17 @@ from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-argument, redefined-outer-name
     """Application lifespan events."""
+    # Configure logging first
+    configure_logging(
+        log_dir=settings.LOGS_DIR,
+        log_level=settings.LOG_LEVEL,
+        enable_file_logging=settings.LOG_FILE_ENABLED,
+        enable_console_logging=settings.LOG_CONSOLE_ENABLED,
+        rotation=settings.LOG_ROTATION,
+        retention=settings.LOG_RETENTION,
+        compression=settings.LOG_COMPRESSION,
+    )
+
     logger.info("")
     logger.info("Starting Shape Shifter Project Editor API")
     logger.info(f"Version: {settings.VERSION}")
@@ -58,6 +71,18 @@ app = FastAPI(
 # logger.debug("Configuring FastAPI application")
 # logger.debug(f"Allowed CORS origins: {settings.ALLOWED_ORIGINS}")
 # logger.debug(f"Allowed CORS origin regex: {settings.ALLOWED_ORIGIN_REGEX}")
+
+
+# Exception handler for unhandled exceptions
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Catch all unhandled exceptions and log with full traceback."""
+    logger.exception(f"Unhandled exception during {request.method} {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "error": str(exc)},
+    )
+
 
 # Configure CORS
 app.add_middleware(

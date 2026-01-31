@@ -184,6 +184,39 @@ class ForeignKeyConfig:
         return False
 
 
+class MaterializationConfig:
+    """Configuration for materialized entity state. Read-Only."""
+
+    def __init__(self, data: dict[str, Any] | None = None) -> None:
+        """Initialize materialization config from data."""
+        self.data: dict[str, Any] = data or {}
+
+    @property
+    def enabled(self) -> bool:
+        """Check if entity is materialized."""
+        return self.data.get("enabled", False)
+
+    @property
+    def source_state(self) -> dict[str, Any] | None:
+        """Get saved pre-materialization entity config."""
+        return self.data.get("source_state")
+
+    @property
+    def materialized_at(self) -> str | None:
+        """Get materialization timestamp (ISO format)."""
+        return self.data.get("materialized_at")
+
+    @property
+    def materialized_by(self) -> str | None:
+        """Get user email who materialized the entity."""
+        return self.data.get("materialized_by")
+
+    @property
+    def data_file(self) -> str | None:
+        """Get relative path to materialized data file (parquet/csv)."""
+        return self.data.get("data_file")
+
+
 class TableConfig:
     """Configuration for a database table. Read-Only. Wraps table setting from entities config."""
 
@@ -230,16 +263,23 @@ class TableConfig:
 
     @property
     def system_id(self) -> str:
-        """Get system_id column name (always 'system_id', or from legacy surrogate_id)."""
-        # Support both new system_id and legacy surrogate_id for backward compatibility
-        return self.entity_cfg.get("system_id") or self.entity_cfg.get("surrogate_id") or "system_id"
+        """Get system_id column name (always 'system_id')."""
+        return self.entity_cfg.get("system_id") or "system_id"
 
     @property
     def public_id(self) -> str:
-        """Get public_id column name (defines FK column names in child tables).
-        Falls back to surrogate_id for backward compatibility.
-        """
-        return self.entity_cfg.get("public_id") or self.entity_cfg.get("surrogate_id") or ""
+        """Get public_id column name (defines FK column names in child tables)."""
+        return self.entity_cfg.get("public_id") or ""
+
+    @property
+    def materialized(self) -> MaterializationConfig:
+        """Get materialization configuration."""
+        return MaterializationConfig(self.entity_cfg.get("materialized", {}))
+
+    @property
+    def is_materialized(self) -> bool:
+        """Check if entity is materialized."""
+        return self.materialized.enabled
 
     @property
     def check_column_names(self) -> bool:
@@ -326,6 +366,37 @@ class TableConfig:
             ForeignKeyConfig(local_entity=self.entity_name, fk_cfg=fk_data) for fk_data in self.entity_cfg.get("foreign_keys", []) or []
         ]
 
+    def dependent_entities(self) -> Generator[str, None, None]:
+        """Yield names of entities that depend on this entity."""
+        for entity_name, entity_cfg in self.entities_cfg.items():
+            try:
+                # Check source
+                if entity_cfg.get("source") == self.entity_name:
+                    yield entity_name
+                    continue
+
+                # Check depends_on
+                depends_on: list[str] = entity_cfg.get("depends_on", []) or []
+                if self.entity_name in depends_on:
+                    yield entity_name
+                    continue
+
+                # Check foreign keys
+                foreign_keys: list[dict[str, Any]] = entity_cfg.get("foreign_keys", []) or []
+                for fk in foreign_keys:
+                    if fk.get("entity") == self.entity_name:
+                        yield entity_name
+                        break
+
+                # Check append sources
+                append_cfgs: list[dict[str, Any]] = entity_cfg.get("append", []) or []
+                for append_cfg in append_cfgs:
+                    if append_cfg.get("source") == self.entity_name:
+                        yield entity_name
+                        break
+            except KeyError:
+                continue
+
     @cached_property
     def append_configs(self) -> list[dict[str, Any]]:
         # Parse append configuration for union operations
@@ -351,6 +422,11 @@ class TableConfig:
     def keys_and_columns(self) -> list[str]:
         """Get columns with keys first, followed by other columns."""
         return list(self.keys) + [col for col in self.columns if col not in self.keys]
+
+    @property
+    def identity_columns(self) -> list[str]:
+        """Get list of identifier columns (system_id + public_id). Business "keys" from source excluded."""
+        return ["system_id"] + ([self.public_id] if self.public_id else [])
 
     @property
     def unnest_columns(self) -> set[str]:
@@ -447,6 +523,86 @@ class TableConfig:
 
         return table
 
+    def add_public_id_column(self, table: pd.DataFrame) -> pd.DataFrame:
+        """Add public_id column with None values if not already present.
+
+        For entities with append configurations, the public_id column is excluded
+        from append source extractions and added after concatenation.
+        This allows the entity to have a proper public_id column structure
+        even when building from heterogeneous sources.
+
+        Returns:
+            pd.DataFrame: DataFrame with public_id column added if it was missing.
+        """
+        public_id_col: str = self.public_id
+
+        if public_id_col and public_id_col not in table.columns:
+            # Add public_id column initialized to None
+            table = table.copy()
+            table[public_id_col] = None
+
+        return table
+
+    def apply_column_renaming(self, table: pd.DataFrame, parent_columns: list[str] | None = None) -> pd.DataFrame:
+        """Apply column renaming based on align_by_position or column_mapping.
+
+        This is used for append items to rename columns from the source entity
+        to match the parent entity's column names.
+
+        Args:
+            table: DataFrame to rename
+            parent_columns: Parent entity's column names (required for align_by_position)
+
+        Supports two strategies:
+        1. align_by_position: Rename columns by position to match parent's columns
+        2. column_mapping: Explicit mapping {source_col: target_col}
+
+        Returns:
+            pd.DataFrame: DataFrame with renamed columns
+        """
+        align_by_position: bool = self.entity_cfg.get("align_by_position", False)
+        column_mapping: dict[str, str] | None = self.entity_cfg.get("column_mapping")
+
+        if not align_by_position and not column_mapping:
+            return table
+
+        table = table.copy()
+
+        if align_by_position:
+            if not parent_columns:
+                raise ValueError(f"parent_columns required for align_by_position in {self.entity_name}")
+
+            # Position-based renaming: map current columns to parent's columns by position
+            current_columns: list[str] = list(table.columns)
+
+            # Filter out system_id and public_id from both lists for alignment
+            system_id_col = self.system_id
+            public_id_col = self.public_id
+            exclude_cols = {system_id_col, public_id_col} if public_id_col else {system_id_col}
+
+            parent_cols_filtered = [c for c in parent_columns if c not in exclude_cols]
+            current_cols_filtered = [c for c in current_columns if c not in exclude_cols]
+
+            if len(parent_cols_filtered) != len(current_cols_filtered):
+                raise ValueError(
+                    f"Column count mismatch for align_by_position in {self.entity_name}: "
+                    f"parent has {len(parent_cols_filtered)} columns {parent_cols_filtered}, "
+                    f"append has {len(current_cols_filtered)} columns {current_cols_filtered}"
+                )
+
+            # Create rename mapping
+            rename_map = dict(zip(current_cols_filtered, parent_cols_filtered))
+            table = table.rename(columns=rename_map)
+
+        elif column_mapping:
+            # Explicit column mapping
+            missing_cols = set(column_mapping.keys()) - set(table.columns)
+            if missing_cols:
+                raise ValueError(f"Columns specified in column_mapping not found in {self.entity_name}: {missing_cols}")
+            table = table.rename(columns=column_mapping)
+
+        return table
+
     def is_drop_duplicate_dependent_on_unnesting(self) -> bool:
         """Check if `drop_duplicates` is dependent on columns created during unnesting."""
         if not self.drop_duplicates or not self.unnest:
@@ -456,18 +612,49 @@ class TableConfig:
         return False
 
     def create_append_config(self, append_data: dict[str, Any]) -> dict[str, Any]:
-        """Create a merged configuration for an append item, inheriting parent properties."""
+        """Create a merged configuration for an append item, inheriting parent properties.
+
+        Special handling:
+        - Filters out public_id from columns list (will be added after concatenation)
+        - Inherits most properties except foreign_keys, unnest, append, append_mode, depends_on
+        - Passes through align_by_position and column_mapping from append item
+        - When using align_by_position or column_mapping with entity source, columns come from source entity
+        """
         merged: dict[str, Any] = {}
         non_inheritable_keys: set[str] = {"foreign_keys", "unnest", "append", "append_mode", "depends_on"}
+        append_only_keys: set[str] = {"align_by_position", "column_mapping"}  # Don't inherit from parent
         all_keys: set[str] = set(self.entity_cfg.keys()) | set(append_data.keys())
         special_conversions = {
             "keys": lambda v: list(v) if isinstance(v, set) else v,
         }
 
+        # Check if we're using column renaming with entity source
+        has_source = "source" in append_data
+        has_align = append_data.get("align_by_position", False)
+        has_mapping = "column_mapping" in append_data
+        use_source_columns = has_source and (has_align or has_mapping) and "columns" not in append_data
+        use_source_keys = has_source and (has_align or has_mapping) and "keys" not in append_data
+
         for key in all_keys:
 
             if key in non_inheritable_keys:
                 continue
+
+            # For append-only keys, only use value from append_data, don't inherit
+            if key in append_only_keys:
+                if key in append_data:
+                    merged[key] = append_data[key]
+                continue
+
+            # When using column renaming with entity source and no explicit columns/keys,
+            # get them from the source entity instead of parent
+            if (key == "columns" and use_source_columns) or (key == "keys" and use_source_keys):
+                source_entity = append_data.get("source")
+                if source_entity and source_entity in self.entities_cfg:
+                    source_value = self.entities_cfg[source_entity].get(key, [])
+                    if source_value:
+                        merged[key] = source_value
+                    continue
 
             value = append_data[key] if key in append_data else self.entity_cfg[key]
 
@@ -476,13 +663,22 @@ class TableConfig:
 
             merged[key] = value
 
+        # Filter out public_id from columns list for append sources
+        # The public_id column will be added after concatenation with None values
+        if "columns" in merged and self.public_id:
+            columns = merged["columns"]
+            if isinstance(columns, list) and self.public_id in columns:
+                merged["columns"] = [col for col in columns if col != self.public_id]
+
         return merged
 
     def get_sub_table_configs(self) -> Generator[Self | "TableConfig", Any, None]:
-        """Yield a sequence of TableConfig objects for processing.
+        """Yield a sequence of resolved TableConfig objects.
+
+        Each item orginates from the base entity and its append configurations.
 
         Yields self first (the base configuration), then creates and yields
-        a TableConfig for each append item with inherited properties.
+        a TableConfig for each append item, if any, with inherited properties.
 
         This allows the shapeshifter to treat the base table and append items
         uniformly through the same processing pipeline.
@@ -891,8 +1087,12 @@ class ShapeShiftProject:
         FK columns are named after the parent entity's public_id.
         """
         table: TableConfig = self.get_table(entity_name)
-        # Start with system_id, then add FK columns (named after parent's public_id)
-        cols_to_move: list[str] = [table.system_id] + [self.get_table(fk.remote_entity).public_id for fk in table.foreign_keys]
+        # Start with system_id and public_id, then add FK columns (named after parent's public_id)
+        cols_to_move: list[str] = (
+            [table.system_id]
+            + ([table.public_id] if table.public_id else [])
+            + [self.get_table(fk.remote_entity).public_id for fk in table.foreign_keys]
+        )
         existing_cols_to_move: list[str] = [col for col in cols_to_move if col in table.columns]
         other_cols: list[str] = [col for col in table.columns if col not in existing_cols_to_move]
         new_column_order: list[str] = existing_cols_to_move + other_cols
