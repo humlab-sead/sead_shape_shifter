@@ -1,3 +1,10 @@
+## [1.20.1](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.20.0...v1.20.1) (2026-01-31)
+
+
+### Bug Fixes
+
+* update shape-shifter version to 1.19.0 in uv.lock ([7764baf](https://github.com/humlab-sead/sead_shape_shifter/commit/7764baf870ad7e2e72172e0ab40772e35fb3ec7f))
+
 # [1.20.0](https://github.com/humlab-sead/sead_shape_shifter/compare/v1.19.0...v1.20.0) (2026-01-31)
 
 
