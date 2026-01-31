@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from backend.app.models.data_source import ColumnMetadata, TableMetadata, TableSchema
 from backend.app.core.config import settings
+from backend.app.models.data_source import ColumnMetadata, TableMetadata, TableSchema
 from backend.app.services.suggestion_service import SuggestionService
 
 
