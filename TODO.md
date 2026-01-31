@@ -375,6 +375,10 @@ entities:
 
 [] TODO: #192 Consider adding column-name and improving append
 
-I'm still considering if we need a version of append that ignores the appended column names, i.e. it would basically as if the added table has it's columns renamed to the "parent" table's columns. An vertical column-index based concatenation, ignoring column names, What do you think?
+I'm still considering if we need a version of append that ignores the appended column names, i.e. it would basically as if the added table has it's columns renamed to the "paren t" table's columns. An vertical column-index based concatenation, ignoring column names, What do you think?
 
-[] TODO: #195 Add picklist for "entity" type in entity editor
+[] TODO: #195 Add "columns" picklist for type "entity" in entity editor
+[] TODO: Introduce entity type "file" for entities based on files,
+Type of files could be csv, excel, json, xml etc, and specified in e.g a "file_type" field.
+This would give a more plugin friendly way of adding file based entities.
+
