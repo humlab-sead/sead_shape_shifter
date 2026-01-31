@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     PROJECTS_DIR: Path = Path("./projects")
     BACKUPS_DIR: Path = Path("./backups")
     LOGS_DIR: Path = Path("./logs")
+    LOG_DIR: Path = LOGS_DIR  # Alias for backward compatibility
 
     # Logging configuration
     LOG_LEVEL: str = "INFO"

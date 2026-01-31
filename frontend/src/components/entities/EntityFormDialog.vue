@@ -643,7 +643,7 @@
  */
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useEntities, useSuggestions, useEntityPreview, useSettings } from '@/composables'
-import { useProjectStore } from '@/stores'
+import { useProjectStore, useEntityStore } from '@/stores'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
 import * as yaml from 'js-yaml'
@@ -674,6 +674,7 @@ interface Props {
   projectName: string
   entity?: EntityResponse | null
   mode: 'create' | 'edit'
+  initialTab?: 'form' | 'yaml'
 }
 
 interface Emits {
@@ -821,6 +822,33 @@ const formData = ref<FormData>({
 })
 
 const activeTab = ref('basic')
+
+// Watch for initial tab from entity store overlay
+const entityStore = useEntityStore()
+watch(
+  () => entityStore.overlayInitialTab,
+  (tab) => {
+    if (tab === 'yaml') {
+      activeTab.value = 'yaml'
+    } else {
+      activeTab.value = 'basic'
+    }
+  },
+  { immediate: true }
+)
+
+// Also watch props.initialTab for direct usage
+watch(
+  () => props.initialTab,
+  (tab) => {
+    if (tab === 'yaml') {
+      activeTab.value = 'yaml'
+    } else if (tab === 'form') {
+      activeTab.value = 'basic'
+    }
+  },
+  { immediate: true }
+)
 
 // File handling state
 const availableProjectFiles = ref<string[]>([])
@@ -1023,6 +1051,12 @@ function hydrateColumnsFromSource() {
   const existing = formData.value.columns || []
   // Ensure saved selections stay visible even if source metadata is not yet available
   columnsOptions.value = Array.from(new Set([...existing, ...colsFromSource]))
+  console.debug('[EntityFormDialog] Hydrated columns from source:', {
+    source: formData.value.source,
+    colsFromSource,
+    existing,
+    columnsOptions: columnsOptions.value
+  })
 }
 
 function getFileExtensions(): string[] {
@@ -1747,6 +1781,11 @@ watch(
           })
           formData.value = buildFormDataFromEntity(freshEntity)
           yamlContent.value = formDataToYaml()
+          
+          // Hydrate columns for entity type after form data is loaded
+          if (formData.value.type === 'entity') {
+            hydrateColumnsFromSource()
+          }
         } catch (err) {
           error.value = err instanceof Error ? err.message : 'Failed to load entity data'
           console.error('Failed to fetch fresh entity data:', err)
@@ -1755,6 +1794,11 @@ watch(
             currentEntity.value = props.entity
             formData.value = buildFormDataFromEntity(props.entity)
             yamlContent.value = formDataToYaml()
+            
+            // Hydrate columns for entity type after form data is loaded
+            if (formData.value.type === 'entity') {
+              hydrateColumnsFromSource()
+            }
           }
         } finally {
           loading.value = false
