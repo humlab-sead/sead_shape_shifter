@@ -51,6 +51,7 @@ entities:
     depends_on: []
   abundance_modification:
     source: abundance
+    type: entity
     public_id: abundance_modification_id
     keys: [abundance_id]
     columns: [Zust]
@@ -58,6 +59,7 @@ entities:
     depends_on: [abundance]
   abundance_property:
     source: abundance
+    type: entity
     public_id: abundance_property_id
     keys: []
     columns: "@value: entities.abundance_property_type.arbodat_codes + ['abundance_id']"
@@ -140,6 +142,7 @@ entities:
     depends_on: []
   contact:
     source: _project_contact
+    type: entity
     public_id: contact_id
     keys: []
     columns: [contact_name, contact_type]
@@ -207,6 +210,7 @@ entities:
     depends_on: []
   dataset:
     source: analysis_entity
+    type: entity
     public_id: dataset_id
     keys: [Projekt, Fraktion]
     columns: []
@@ -221,6 +225,7 @@ entities:
     depends_on: [method, project]
   dataset_contacts:
     source: dataset
+    type: entity
     public_id: dataset_contact_id
     keys: [Projekt, Fraktion, contact_id]
     columns: []
@@ -229,6 +234,7 @@ entities:
     depends_on: [_project_contact, contact, dataset, project]
   dataset_submission:
     source: dataset
+    type: entity
     public_id: dataset_submission_id
     keys: []
     columns: [dataset_id]
@@ -526,6 +532,7 @@ entities:
     depends_on: []
   relative_dating:
     source: sample
+    type: entity
     public_id: relative_age_id
     keys: [Projekt, Befu, ProbNr]
     columns: [Projekt, Befu, ProbNr, ArchDat]
@@ -625,6 +632,7 @@ entities:
     depends_on: [sample, sample_description_type]
   sample_group:
     source: feature
+    type: entity
     public_id: sample_group_id
     keys: [site_id, Projekt, Befu]
     columns: [Projekt, Befu]
