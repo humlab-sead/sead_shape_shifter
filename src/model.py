@@ -670,43 +670,6 @@ class TableConfig:
             key_columns.add(self.public_id)
         return key_columns
 
-    def can_materialize(self, project: "ShapeShiftProject") -> tuple[bool, list[str]]:
-        """
-        Check if entity can be materialized.
-
-        Returns:
-            (can_materialize, [error_messages])
-        """
-        errors = []
-
-        # Rule 1: Cannot be fixed
-        if self.type == "fixed":
-            errors.append("Entity is already type 'fixed'")
-
-        # Rule 2: Cannot already be materialized
-        if self.is_materialized:
-            errors.append("Entity is already materialized")
-
-        # Rule 3: Cannot depend on non-materialized dynamic entities
-        for fk in self.foreign_keys:
-            try:
-                parent = project.get_table(fk.remote_entity)
-                if parent.type != "fixed" and not parent.is_materialized:
-                    errors.append(f"Depends on non-materialized entity '{fk.remote_entity}'")
-            except KeyError:
-                errors.append(f"Foreign key references non-existent entity '{fk.remote_entity}'")
-
-        # Check depends_on (source dependencies)
-        for dep in self.depends_on:
-            try:
-                dep_entity = project.get_table(dep)
-                if dep_entity.type != "fixed" and not dep_entity.is_materialized:
-                    errors.append(f"Depends on non-materialized entity '{dep}'")
-            except KeyError:
-                errors.append(f"Depends on non-existent entity '{dep}'")
-
-        return (len(errors) == 0, errors)
-
     def hash(self) -> str:
         """Compute a hash of the metadata for change detection."""
         metadata_str = str(sorted(self.entity_cfg.items()))
