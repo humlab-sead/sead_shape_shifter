@@ -1,4 +1,24 @@
-"""YAML Service for loading and saving configuration files with format preservation."""
+"""YAML Service for loading and saving configuration files with format preservation.
+
+Features:
+- Preserves comments and formatting when loading/saving YAML files
+- Applies flow style to short lists for compact formatting (e.g., [item1, item2])
+- Special handling for 'values' key: formats as list of rows (each row flow-style)
+- Orders entity configuration keys for better readability
+- Atomic writes with backup support
+- Converts ruamel.yaml types to POPO at I/O boundary
+
+Entity Key Ordering:
+    Entity configurations are saved with consistent key ordering:
+    1. Core identity: type, source, system_id, public_id
+    2. Business keys: keys
+    3. Schema: columns
+    4. Data: values
+    5. Relationships: foreign_keys, depends_on
+    6. Operations: drop_duplicates, drop_empty_rows, check_functional_dependency
+    7. Transformations: filters, unnest, append, extra_columns
+    8. Custom keys (alphabetically sorted at end)
+"""
 
 import json
 import shutil
@@ -102,6 +122,8 @@ class YamlService:
         Short lists (≤ flow_style_max_items) will be saved in compact flow style:
         keys: [item1, item2] instead of multi-line block style.
 
+        Entity keys are ordered for better readability (type, source, system_id, etc.).
+
         Args:
             data: Data to save
             file_path: Target file path
@@ -124,6 +146,9 @@ class YamlService:
 
             path.parent.mkdir(parents=True, exist_ok=True)
 
+            # Order entity keys for better readability
+            data = self._order_entity_keys(data)
+
             # Apply flow style to short lists for compact formatting
             if flow_style_max_items > 0:
                 self._apply_flow_style(data, flow_style_max_items)
@@ -144,6 +169,86 @@ class YamlService:
                 temp_path.unlink()
             raise YamlSaveError(f"Failed to save YAML file {path}: {e}") from e
 
+    def _order_entity_keys(self, data: dict[str, Any]) -> dict[str, Any]:
+        """
+        Order entity configuration keys for better readability.
+
+        Canonical order for entity keys:
+        1. Core identity: type, source, system_id, public_id
+        2. Business keys: keys
+        3. Schema: columns
+        4. Data: values
+        5. Relationships: foreign_keys, depends_on
+        6. Operations: drop_duplicates, drop_empty_rows, check_functional_dependency
+        7. Transformations: filters, unnest, append, extra_columns
+        8. All other keys (preserved in alphabetical order)
+
+        Args:
+            data: Configuration dictionary (may contain 'entities')
+
+        Returns:
+            New dictionary with ordered keys
+        """
+        # Canonical order for entity configuration keys
+        ENTITY_KEY_ORDER = [
+            # Core identity
+            "type",
+            "source",
+            "system_id",
+            "public_id",
+            # Business keys
+            "keys",
+            # Schema
+            "columns",
+            # Data
+            "values",
+            # Relationships
+            "foreign_keys",
+            "depends_on",
+            # Operations
+            "drop_duplicates",
+            "drop_empty_rows",
+            "check_functional_dependency",
+            # Transformations
+            "filters",
+            "unnest",
+            "append",
+            "extra_columns",
+        ]
+
+        def order_dict_keys(d: dict[str, Any], key_order: list[str] | None = None) -> dict[str, Any]:
+            """
+            Reorder dictionary keys according to specified order.
+
+            Args:
+                d: Dictionary to reorder
+                key_order: Preferred key order (None = preserve original order)
+
+            Returns:
+                New dictionary with ordered keys
+            """
+            if key_order is None:
+                return d
+
+            # Start with ordered keys that exist in dict
+            ordered = {k: d[k] for k in key_order if k in d}
+
+            # Append remaining keys in alphabetical order
+            remaining = {k: d[k] for k in sorted(d.keys()) if k not in ordered}
+
+            return {**ordered, **remaining}
+
+        # If root level has 'entities', order each entity config
+        if "entities" in data and isinstance(data["entities"], dict):
+            result = dict(data)  # Shallow copy root
+            result["entities"] = {
+                entity_name: order_dict_keys(entity_config, ENTITY_KEY_ORDER)
+                for entity_name, entity_config in data["entities"].items()
+            }
+            return result
+
+        return data
+
     def _apply_flow_style(self, obj: Any, max_items: int) -> None:
         """
             Recursively mark short lists to use flow style for compact formatting.
@@ -160,7 +265,7 @@ class YamlService:
                 max_items: Maximum list length for flow style
         """
         def needs_flow_quote(value: str) -> bool:
-            special_chars = [":", "?", ",", "[", "]", "{", "}"]
+            special_chars: list[str] = [":", "?", ",", "[", "]", "{", "}"]
             if any(ch in value for ch in special_chars):
                 return True
             if value.startswith(("-", "?", ":")):
