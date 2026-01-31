@@ -580,6 +580,7 @@
       v-model="entityStore.showEditorOverlay"
       :project-name="projectName"
       :entity="entityStore.entities.find((e) => e.name === entityStore.overlayEntityName) || null"
+      :initial-tab="entityStore.overlayInitialTab"
       mode="edit"
       @saved="handleOverlayEntitySaved"
       @update:modelValue="handleOverlayClose"
@@ -851,10 +852,12 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
     await loadEntityYamlForDrawer(nodeId)
     showDetailsDrawer.value = true
   },
-  onNodeDoubleClick: (nodeId: string) => {
+  onNodeDoubleClick: (nodeId: string, isCtrlKey: boolean) => {
     // Open entity editor overlay on double-click
-    console.debug('[ProjectDetailView] Opening overlay for entity:', nodeId)
-    entityStore.openEditorOverlay(nodeId)
+    // Ctrl/Cmd+double-click opens YAML tab directly (power user shortcut)
+    const initialTab = isCtrlKey ? 'yaml' : 'form'
+    console.debug('[ProjectDetailView] Opening overlay for entity:', nodeId, { initialTab })
+    entityStore.openEditorOverlay(nodeId, initialTab)
   },
   onNodeRightClick: (nodeId: string, x: number, y: number) => {
     // Open context menu on right-click
