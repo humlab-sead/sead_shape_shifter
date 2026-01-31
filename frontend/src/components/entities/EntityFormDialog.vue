@@ -643,7 +643,7 @@
  */
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useEntities, useSuggestions, useEntityPreview, useSettings } from '@/composables'
-import { useProjectStore } from '@/stores'
+import { useProjectStore, useEntityStore } from '@/stores'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
 import * as yaml from 'js-yaml'
@@ -674,6 +674,7 @@ interface Props {
   projectName: string
   entity?: EntityResponse | null
   mode: 'create' | 'edit'
+  initialTab?: 'form' | 'yaml'
 }
 
 interface Emits {
@@ -821,6 +822,33 @@ const formData = ref<FormData>({
 })
 
 const activeTab = ref('basic')
+
+// Watch for initial tab from entity store overlay
+const entityStore = useEntityStore()
+watch(
+  () => entityStore.overlayInitialTab,
+  (tab) => {
+    if (tab === 'yaml') {
+      activeTab.value = 'yaml'
+    } else {
+      activeTab.value = 'basic'
+    }
+  },
+  { immediate: true }
+)
+
+// Also watch props.initialTab for direct usage
+watch(
+  () => props.initialTab,
+  (tab) => {
+    if (tab === 'yaml') {
+      activeTab.value = 'yaml'
+    } else if (tab === 'form') {
+      activeTab.value = 'basic'
+    }
+  },
+  { immediate: true }
+)
 
 // File handling state
 const availableProjectFiles = ref<string[]>([])

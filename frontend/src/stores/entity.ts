@@ -16,6 +16,7 @@ export const useEntityStore = defineStore('entity', () => {
   // Overlay state
   const showEditorOverlay = ref(false)
   const overlayEntityName = ref<string | null>(null)
+  const overlayInitialTab = ref<'form' | 'yaml'>('form')
 
   // Cross-store access
   const projectStore = useProjectStore()
@@ -23,7 +24,7 @@ export const useEntityStore = defineStore('entity', () => {
   function syncProjectEntity(projectName: string, entity: EntityResponse) {
     if (projectStore.selectedProject?.metadata?.name !== projectName) return
 
-    const nextEntities = {
+    const nextEntities: Record<string, Record<string, unknown>> = {
       ...(projectStore.selectedProject.entities || {}),
       [entity.name]: entity.entity_data,
     }
@@ -199,14 +200,16 @@ export const useEntityStore = defineStore('entity', () => {
   }
   
   // Overlay management
-  function openEditorOverlay(entityName: string) {
+  function openEditorOverlay(entityName: string, initialTab: 'form' | 'yaml' = 'form') {
     overlayEntityName.value = entityName
+    overlayInitialTab.value = initialTab
     showEditorOverlay.value = true
   }
   
   function closeEditorOverlay() {
     showEditorOverlay.value = false
     overlayEntityName.value = null
+    overlayInitialTab.value = 'form'
   }
 
   return {
@@ -219,6 +222,7 @@ export const useEntityStore = defineStore('entity', () => {
     hasUnsavedChanges,
     showEditorOverlay,
     overlayEntityName,
+    overlayInitialTab,
     // Getters
     entitiesByType,
     entityCount,
