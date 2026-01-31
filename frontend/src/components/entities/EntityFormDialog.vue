@@ -1051,6 +1051,12 @@ function hydrateColumnsFromSource() {
   const existing = formData.value.columns || []
   // Ensure saved selections stay visible even if source metadata is not yet available
   columnsOptions.value = Array.from(new Set([...existing, ...colsFromSource]))
+  console.debug('[EntityFormDialog] Hydrated columns from source:', {
+    source: formData.value.source,
+    colsFromSource,
+    existing,
+    columnsOptions: columnsOptions.value
+  })
 }
 
 function getFileExtensions(): string[] {
@@ -1775,6 +1781,11 @@ watch(
           })
           formData.value = buildFormDataFromEntity(freshEntity)
           yamlContent.value = formDataToYaml()
+          
+          // Hydrate columns for entity type after form data is loaded
+          if (formData.value.type === 'entity') {
+            hydrateColumnsFromSource()
+          }
         } catch (err) {
           error.value = err instanceof Error ? err.message : 'Failed to load entity data'
           console.error('Failed to fetch fresh entity data:', err)
@@ -1783,6 +1794,11 @@ watch(
             currentEntity.value = props.entity
             formData.value = buildFormDataFromEntity(props.entity)
             yamlContent.value = formDataToYaml()
+            
+            // Hydrate columns for entity type after form data is loaded
+            if (formData.value.type === 'entity') {
+              hydrateColumnsFromSource()
+            }
           }
         } finally {
           loading.value = false
