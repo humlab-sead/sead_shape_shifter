@@ -13,6 +13,7 @@ from backend.app.models.materialization import (
 from backend.app.models.project import Project
 from backend.app.services.materialization_service import MaterializationService
 from backend.app.services.project_service import ProjectService
+from src.specifications.materialize import CanMaterializeSpecification
 from src.model import ShapeShiftProject, TableConfig
 
 router = APIRouter()
@@ -28,24 +29,18 @@ async def can_materialize(project_name: str, entity_name: str) -> CanMaterialize
     Returns validation errors and estimated row count.
     """
     try:
-        # Load project
         api_project: Project = project_service.load_project(project_name)
         core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
 
-        # Get entity
         try:
             table: TableConfig = core_project.get_table(entity_name)
         except KeyError as e:
             raise HTTPException(status_code=404, detail=f"Entity '{entity_name}' not found") from e
 
-        # Validate
-        can_mat, errors = table.can_materialize(core_project)
+        spec: CanMaterializeSpecification = CanMaterializeSpecification(core_project)
+        is_satisfied: bool = spec.is_satisfied_by(entity=table)
 
-        # TODO: Estimate row count (would require running normalization)
-        # For now, return None
-        estimated_rows = None
-
-        return CanMaterializeResponse(can_materialize=can_mat, errors=errors, estimated_rows=estimated_rows)
+        return CanMaterializeResponse(can_materialize=is_satisfied, errors=[str(issue) for issue in spec.errors])
 
     except HTTPException:
         raise
