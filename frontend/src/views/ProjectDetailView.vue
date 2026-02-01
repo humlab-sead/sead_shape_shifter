@@ -32,10 +32,6 @@
           </div>
 
           <div class="d-flex gap-2">
-            <v-btn variant="outlined" prepend-icon="mdi-play-circle-outline" color="success" @click="handleTestRun">
-              Test Run
-              <v-tooltip activator="parent">Preview transformation results for selected entities</v-tooltip>
-            </v-btn>
             <v-btn
               variant="outlined"
               prepend-icon="mdi-check-circle-outline" color="success"
@@ -965,10 +961,6 @@ async function handleClearCustomLayout() {
 }
 
 // Methods
-function handleTestRun() {
-  router.push({ name: 'test-run', params: { name: projectName.value } })
-}
-
 async function handleValidate() {
   try {
     await validate(projectName.value)
@@ -1126,12 +1118,8 @@ function handleContextMenuEdit(entityName: string) {
 
 async function handleContextMenuPreview(entityName: string) {
   console.debug('[ProjectDetailView] Preview entity:', entityName)
-  // Navigate to test run with this entity selected
-  router.push({ 
-    name: 'test-run', 
-    params: { name: projectName.value },
-    query: { entity: entityName }
-  })
+  // Open entity editor to preview data
+  entityStore.openEditorOverlay(entityName, 'form')
 }
 
 async function handleContextMenuDuplicate(entityName: string) {
