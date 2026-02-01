@@ -190,7 +190,7 @@ class YamlService:
             New dictionary with ordered keys
         """
         # Canonical order for entity configuration keys
-        ENTITY_KEY_ORDER = [
+        ENTITY_KEY_ORDER = [  # pylint: disable=invalid-name
             # Core identity
             "type",
             "source",
