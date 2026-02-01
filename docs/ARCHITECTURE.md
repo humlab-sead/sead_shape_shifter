@@ -1,930 +1,522 @@
-# Project Editor - Software Architecture
+# Shape Shifter - Architecture
 
-## 1. Executive Summary
+## Overview
 
-This document defines the software architecture for the Shape Shifter Project Editor, a web-based application for managing data transformation configurations. The architecture supports a phased rollout from basic entity management to advanced data-aware features with intelligent suggestions.
+Shape Shifter is a data transformation system that harmonizes heterogeneous input data into a target schema through declarative configuration. The system consists of three loosely-coupled components:
 
-**Architecture Goals**:
-- Leverage existing Python transformation engine
-- Modern, responsive web UI with professional UX
-- Extensible for future enhancements
-- Simple deployment and maintenance
-- 90%+ test coverage
-
----
-
-## 2. System Overview
-
-### 2.1 High-Level Architecture
+1. **Core** - Python-based transformation engine executing declarative pipelines
+2. **Backend** - REST API providing configuration management and preview services
+3. **Frontend** - Web-based configuration editor with validation and visualization
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      Web Browser (Client)                   │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │          Vue3/TypeScript Frontend                      │ │
-│  │  ┌──────────┐  ┌──────────┐  ┌────────────────────┐    │ │
-│  │  │ Monaco   │  │  Entity  │  │    Validation      │    │ │
-│  │  │ Editor   │  │  Tree    │  │    Panel           │    │ │
-│  │  └──────────┘  └──────────┘  └────────────────────┘    │ │
-│  │  ┌────────────────────────────────────────────────┐    │ │
-│  │  │             State Management (Pinia)           │    │ │
-│  │  └────────────────────────────────────────────────┘    │ │
-│  └────────────────────────────────────────────────────────┘ │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ REST/JSON API
-┌──────────────────────────┴──────────────────────────────────┐
-│                    Python Backend (Server)                  │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │                FastAPI Application                     │ │
-│  │  ┌──────────────┐  ┌───────────────┐  ┌────────────┐   │ │
-│  │  │ Project│  │  Validation   │  │  Auto-Fix  │   │ │
-│  │  │   Service    │  │   Service     │  │  Service   │   │ │
-│  │  └──────────────┘  └───────────────┘  └────────────┘   │ │
-│  └────────────────────────────────────────────────────────┘ │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │           Shape Shifter Transformation Engine          │ │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐   │ │
-│  │  │     model    │  │specifications│  │  normalizer │   │ │
-│  │  │     .py      │  │    .py       │  │     .py     │   │ │
-│  │  └──────────────┘  └──────────────┘  └─────────────┘   │ │
-│  └────────────────────────────────────────────────────────┘ │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-┌──────────────────────────┴──────────────────────────────────┐
-│                      File System                            │
-│  ┌───────────────┐  ┌───────────────┐  ┌─────────────────┐  │
-│  │ Project │  │   Backups     │  │      Logs       │  │
-│  │   (YAML)      │  │   (YAML)      │  │  (Application)  │  │
-│  └───────────────┘  └───────────────┘  └─────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 2.2 Architecture Principles
-
-1. **Separation of Concerns**: Clear boundaries between UI, API, and business logic
-2. **Service Layer Pattern**: Business logic encapsulated in services
-3. **Dependency Injection**: Testable, flexible component composition
-4. **Type Safety**: TypeScript (frontend) and Pydantic (backend)
-5. **API-First**: Well-defined REST API with OpenAPI documentation
-6. **Stateless Backend**: All state managed client-side or in persistent storage
-7. **Caching Strategy**: Reduce API calls and improve performance
-8. **Error Handling**: Comprehensive error handling at all layers
-
----
-
-## 3. Technology Stack
-
-### 3.1 Frontend
-
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **Framework** | Vue3 | UI frontend framework (Composition API) |
-| **Language** | TypeScript | Type-safe JavaScript |
-| **Editor** | Monaco Editor | VS Code's editor for YAML editing |
-| **UI Components** | Vuetify | Component library and theming |
-| **State Management** | Pinia | Client/UI state management |
-| **Build Tool** | Vite | Fast build tool and dev server |
-| **Testing** | Vitest + @vue/test-utils | Unit, component, and composable tests |
-| **Styling** | SCSS + Vuetify theme tokens | Component styling |
-
-### 3.2 Backend
-
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **Framework** | FastAPI | Modern async Python web framework |
-| **Language** | Python 3.11+ | Backend logic |
-| **Validation** | Pydantic | Data validation and settings |
-| **ASGI Server** | Uvicorn | Production ASGI server |
-| **Testing** | pytest + pytest-asyncio | Unit and integration tests |
-| **Linting** | Ruff | Fast Python linter |
-| **Package Manager** | uv | Fast Python package manager |
-
-### 3.3 Integration
-
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **API Protocol** | REST/JSON | Client-server communication |
-| **API Documentation** | OpenAPI/Swagger | Auto-generated API docs |
-| **CORS** | FastAPI middleware | Cross-origin requests |
-| **File Format** | YAML | Project storage |
-
----
-
-## 4. Frontend Architecture
-
-### 4.1 Directory Structure
-
-```
-frontend/
-├── src/
-│   ├── api/                    # Axios client + per-resource modules
-│   ├── components/             # Vue components (common, validation, entities, data sources, etc.)
-│   ├── composables/            # Reusable Composition API helpers
-│   ├── stores/                 # Pinia stores
-│   ├── views/                  # Route-level screens
-│   ├── router/                 # Vue Router configuration
-│   ├── plugins/                # Vuetify and other plugin setup
-│   ├── styles/                 # Global SCSS and theme variables
-│   ├── types/                  # Shared TypeScript types
-│   ├── App.vue                 # Root component
-│   └── main.ts                 # Entry point
-├── public/                     # Static assets
-├── docs/                       # Frontend-specific notes
-├── package.json
-├── tsconfig.json
-└── vite.config.ts
-```
-
-### 4.2 Component Architecture
-
-#### Layout Components
-
-```typescript
-// Main layout with panels
-<ProjectEditor>
-  <EntityTreePanel />      // Left: entity navigation
-  <MonacoEditor />         // Center: YAML editor
-  <ValidationPanel />      // Right: validation results
-  <PropertiesPanel />      // Right: entity properties
-</ProjectEditor>
-```
-
-#### Component Hierarchy
-
-```
-App
-├── ProjectEditor (main container)
-│   ├── Header
-│   │   ├── ConfigSelector
-│   │   ├── SaveButton
-│   │   └── ValidateButton
-│   ├── Layout (3-panel)
-│   │   ├── EntityTreePanel
-│   │   │   ├── EntityTree
-│   │   │   ├── EntitySearch
-│   │   │   └── EntityFilter
-│   │   ├── EditorPanel
-│   │   │   ├── MonacoEditor
-│   │   │   └── EditorToolbar
-│   │   └── RightPanel (tabbed)
-│   │       ├── ValidationPanel
-│   │       │   ├── ValidationTabs
-│   │       │   ├── IssueList
-│   │       │   └── AutoFixSuggestions
-│   │       └── PropertiesPanel
-│   │           ├── PropertyForm
-│   │           └── ForeignKeyEditor
-│   └── Dialogs
-│       ├── PreviewDialog
-│       ├── ConfirmDialog
-│       ├── ErrorDialog
-│       └── EntityFormDialog (with YAML editor)
-```
-
-#### YAML Editor Component
-
-The **YamlEditor** component provides a dual-mode editing experience for entities, similar to VS Code's settings editor:
-
-**Location:** `frontend/src/components/common/YamlEditor.vue`
-
-**Features:**
-- Monaco Editor integration for professional code editing
-- Real-time YAML syntax validation
-- Error display with line numbers
-- Configurable height and read-only mode
-- Auto-completion and syntax highlighting
-
-**Props:**
-```typescript
-interface YamlEditorProps {
-  modelValue: string;           // YAML content to edit
-  height?: string;              // Editor height (default: '400px')
-  readonly?: boolean;           // Read-only mode (default: false)
-  validateOnChange?: boolean;   // Validate as user types (default: true)
-}
-```
-
-**Events:**
-```typescript
-interface YamlEditorEvents {
-  'update:modelValue': (value: string) => void;  // Content changed
-  'validate': (result: ValidationResult) => void; // Validation result
-  'change': (value: string) => void;             // Content changed (alias)
-}
-
-interface ValidationResult {
-  valid: boolean;
-  error: string | null;
-}
-```
-
-**Usage Example:**
-```vue
-<template>
-  <YamlEditor
-    v-model="yamlContent"
-    height="500px"
-    :readonly="false"
-    @validate="handleValidation"
-  />
-</template>
-
-<script setup lang="ts">
-import YamlEditor from '@/components/common/YamlEditor.vue'
-import { ref } from 'vue'
-
-const yamlContent = ref('entity:\n  type: entity')
-
-function handleValidation(result: { valid: boolean; error: string | null }) {
-  if (!result.valid) {
-    console.error('YAML Error:', result.error)
-  }
-}
-</script>
-```
-
-#### EntityFormDialog Component
-
-The **EntityFormDialog** has been enhanced with a tabbed interface for dual-mode editing:
-
-**Location:** `frontend/src/components/entities/EntityFormDialog.vue`
-
-**Tabs:**
-1. **Form Tab** - Visual form editor with input fields
-2. **YAML Tab** - Raw YAML editor with syntax highlighting
-
-**Bidirectional Synchronization:**
-```typescript
-// Form → YAML conversion
-function formDataToYaml(): string {
-  const entityData = {
-    [entityName.value]: {
-      type: entityType.value,
-      keys: naturalKeys.value?.split(',').map(k => k.trim()) || [],
-      surrogate_id: surrogateId.value || undefined,
-      // ... other fields
-    }
-  }
-  return yaml.dump(entityData, { indent: 2, lineWidth: 100 })
-}
-
-// YAML → Form conversion
-function yamlToFormData(yamlString: string): void {
-  try {
-    const parsed = yaml.load(yamlString)
-    const entityKey = Object.keys(parsed)[0]
-    const entity = parsed[entityKey]
-    
-    entityName.value = entityKey
-    entityType.value = entity.type
-    naturalKeys.value = entity.keys?.join(', ') || ''
-    // ... update other fields
-  } catch (error) {
-    yamlError.value = error.message
-  }
-}
-```
-
-**Tab Switching Behavior:**
-```typescript
-// Watch for tab changes to sync data
-watch(activeTab, (newTab, oldTab) => {
-  if (newTab === 'yaml' && oldTab !== 'yaml') {
-    // Switching TO yaml tab - convert form to YAML
-    yamlContent.value = formDataToYaml()
-    yamlError.value = null
-  } else if (oldTab === 'yaml' && newTab !== 'yaml') {
-    // Switching FROM yaml tab - validate and sync to form
-    if (yamlValid.value) {
-      yamlToFormData(yamlContent.value)
-    }
-  }
-})
-```
-
-**Validation Rules:**
-- YAML syntax must be valid before switching from YAML tab
-- Form validation occurs on Save/OK button click
-- Invalid YAML shows error banner with details
-- Cannot save entity until all validation passes
-
-**Dependencies:**
-```json
-{
-  "dependencies": {
-    "monaco-editor": "^0.52.0",
-    "@guolao/vue-monaco-editor": "^1.5.6",
-    "js-yaml": "^4.1.0"
-  },
-  "devDependencies": {
-    "@types/js-yaml": "^4.0.9"
-  }
-}
-```
-
-### 4.3 State Management
-
-#### Server State
-
-- Fetch via `frontend/src/api` modules (axios client with interceptors).
-- Wrap calls in composables (e.g., `useProjects`, `useValidation`) that expose `loading`, `error`, `data`, and `refresh`.
-- Cache per-configuration responses in Pinia or composable-level refs; invalidate after save/auto-fix actions.
-
-```typescript
-// frontend/src/composables/useValidation.ts
-import { ref } from 'vue';
-import { getValidation } from '@/api/validation';
-
-export function useValidation() {
-  const loading = ref(false);
-  const error = ref<string | null>(null);
-  const result = ref(null);
-
-  const run = async (configName: string, type: string) => {
-    loading.value = true;
-    error.value = null;
-    try {
-      result.value = await getValidation(configName, type);
-    } catch (err) {
-      error.value = (err as Error).message;
-    } finally {
-      loading.value = false;
-    }
-  };
-
-  return { loading, error, result, run };
-}
-```
-
-#### Client State (Pinia)
-
-```typescript
-// frontend/src/stores/configurationStore.ts
-import { defineStore } from 'pinia';
-
-export const useProjectStore = defineStore('configuration', {
-  state: () => ({
-    currentConfig: null as string | null,
-    selectedEntity: null as string | null,
-    activeTab: 'validation' as 'validation' | 'properties',
-  }),
-  actions: {
-    setCurrentConfig(name: string) {
-      this.currentConfig = name;
-    },
-    setSelectedEntity(entity: string | null) {
-      this.selectedEntity = entity;
-    },
-    setActiveTab(tab: 'validation' | 'properties') {
-      this.activeTab = tab;
-    },
-  },
-});
-```
-
-- Derive store refs with `storeToRefs` inside components.
-- Keep derived/computed UI-only state inside components; persist long-lived app state in stores.
-
-### 4.4 Composables
-
-#### useDebounceFn
-
-```typescript
-// Debounce rapidly changing values (via VueUse)
-import { ref } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
-
-export function useDebouncedSearch(delay = 300) {
-  const term = ref('');
-  const run = useDebounceFn((value: string, cb: (value: string) => void) => cb(value), delay);
-
-  const update = (value: string, cb: (value: string) => void) => {
-    term.value = value;
-    run(value, cb);
-  };
-
-  return { term, update };
-}
-```
-
-#### useValidation
-
-```typescript
-import { computed } from 'vue';
-import { storeToRefs } from 'pinia';
-import { useValidationStore } from '@/stores/validation';
-
-export function useValidationSummary() {
-  const store = useValidationStore();
-  const { validationResult, loading } = storeToRefs(store);
-
-  const errorCount = computed(() => validationResult.value?.error_count ?? 0);
-  const warningCount = computed(() => validationResult.value?.warning_count ?? 0);
-
-  return {
-    validationResult,
-    loading,
-    errorCount,
-    warningCount,
-    refresh: store.validateProject,
-  };
-}
-```
-
-### 4.5 Performance Optimizations
-
-#### Code Splitting
-
-```vue
-<script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
-
-const ProjectEditor = defineAsyncComponent(() =>
-  import('@/components/projects/ProjectEditor.vue')
-);
-</script>
-
-<template>
-  <Suspense>
-    <ProjectEditor />
-    <template #fallback>
-      <LoadingSkeleton />
-    </template>
-  </Suspense>
-</template>
-```
-
-#### Derived State
-
-```typescript
-// Prevent unnecessary recomputation
-import { computed } from 'vue';
-
-const sortedIssues = computed(() =>
-  [...issues.value].sort((a, b) => a.severity.localeCompare(b.severity))
-);
-```
-
-#### Virtual Scrolling
-
-```vue
-<VVirtualScroll
-  :items="entities"
-  height="600"
-  item-height="44"
-  v-slot="{ item }"
->
-  <EntityNode :entity="item" />
-</VVirtualScroll>
+┌──────────────────────────────────────────────────────────┐
+│                    Web Browser                           │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │              Frontend (Vue 3)                      │  │
+│  │   Configuration Editor • Validation • Preview      │  │
+│  └────────────────┬───────────────────────────────────┘  │
+└───────────────────┼──────────────────────────────────────┘
+                    │ REST/JSON
+┌───────────────────┼──────────────────────────────────────┐
+│  ┌────────────────┴───────────────────────────────────┐  │
+│  │            Backend (FastAPI)                       │  │
+│  │   API Layer • Services • Mappers                   │  │
+│  ├────────────────────────────────────────────────────┤  │
+│  │              Core (Python)                         │  │
+│  │   Pipeline • Loaders • Validators • Dispatchers    │  │
+│  └────────────────┬───────────────────────────────────┘  │
+└───────────────────┼──────────────────────────────────────┘
+                    │
+              ┌─────┴─────┐
+              │ File I/O  │  YAML • CSV • Excel
+              │ Database  │  PostgreSQL • SQLite
+              └───────────┘
 ```
 
 ---
 
-## 5. Backend Architecture
+## Architectural Goals
 
-### 5.1 Directory Structure
+### Primary Goals
 
-```
-backend/
-├── app/
-│   ├── api/
-│   │   └── v1/
-│   │       ├── endpoints/
-│   │       │   ├── configurations.py
-│   │       │   ├── validation.py
-│   │       │   └── auto_fix.py
-│   │       └── router.py
-│   ├── core/
-│   │   ├── config.py          # Settings management
-│   │   ├── cache.py           # Caching service
-│   │   └── errors.py          # Custom exceptions
-│   ├── models/
-│   │   ├── configuration.py   # API Pydantic models (raw ${ENV_VARS})
-│   │   ├── validation.py
-│   │   └── auto_fix.py
-│   ├── mappers/              # Layer boundary translators
-│   │   ├── data_source_mapper.py  # Resolves env vars here
-│   │   └── table_schema_mapper.py
-│   ├── services/
-│   │   ├── yaml_service.py
-│   │   ├── validation_service.py
-│   │   └── auto_fix_service.py
-│   └── main.py                # FastAPI app
-└── tests/
-    ├── unit/
-    ├── integration/
-    └── conftest.py
-```
+- **Separation of Concerns**: Core transformation logic independent of API/UI
+- **Pluggability**: Extension points for loaders, validators, dispatchers, and filters
+- **Declarative Configuration**: Behavior defined in YAML, not code
+- **Layer Isolation**: Clear boundaries between API (unresolved), Mapper (resolution), and Core (resolved)
+- **Testability**: Components testable in isolation
 
-### 5.2 Design Patterns
+### Non-Goals
 
-#### Mapper Pattern (Layer Boundary)
-
-```python
-# Translates between API and Core layers, resolving env vars
-class DataSourceMapper:
-    """Maps between API and Core data sources.
-    
-    Environment variable resolution happens at this layer boundary.
-    """
-    
-    @staticmethod
-    def to_core_config(
-        api_config: ApiDataSourceConfig
-    ) -> CoreDataSourceConfig:
-        """Convert API config to Core config.
-        
-        IMPORTANT: Resolves environment variables during mapping.
-        API entities remain raw (${ENV_VAR}), core entities are resolved.
-        """
-        # Resolution at the boundary
-        api_config = api_config.resolve_config_env_vars()
-        
-        return CoreDataSourceConfig(
-            name=api_config.name,
-            cfg={...}  # Fully resolved
-        )
-```
-
-**Layer Responsibilities:**
-- **API Models**: Raw data with `${ENV_VARS}` (unresolved)
-- **Mappers**: Translation + environment variable resolution
-- **Core Models**: Fully resolved, ready for execution
-
-#### Service Layer Pattern
-
-```python
-# Business logic in services
-class ValidationService:
-    def __init__(
-        self,
-        yaml_service: YAMLService,
-        cache_service: CacheService
-    ):
-        self.yaml_service = yaml_service
-        self.cache_service = cache_service
-    
-    async def validate_configuration(
-        self,
-        project_name: str,
-        validation_type: ValidationType
-    ) -> ValidationResult:
-        # Business logic here
-        pass
-```
-
-#### Dependency Injection
-
-```python
-# FastAPI dependencies
-def get_validation_service() -> ValidationService:
-    yaml_service = get_yaml_service()
-    cache_service = get_cache_service()
-    return ValidationService(yaml_service, cache_service)
-
-@router.post("/validate")
-async def validate_configuration(
-    request: ValidationRequest,
-    service: ValidationService = Depends(get_validation_service)
-):
-    return await service.validate_configuration(
-        request.project_name,
-        request.validation_type
-    )
-```
-
-#### Strategy Pattern
-
-```python
-# Different validation strategies
-class ValidationStrategy(ABC):
-    @abstractmethod
-    async def validate(self, config: dict) -> list[ValidationIssue]:
-        pass
-
-class StructuralValidator(ValidationStrategy):
-    async def validate(self, config: dict) -> list[ValidationIssue]:
-        # Structural validation
-        pass
-
-class DataValidator(ValidationStrategy):
-    async def validate(self, config: dict) -> list[ValidationIssue]:
-        # Data validation
-        pass
-```
-
-#### Repository Pattern
-
-```python
-# Data access abstraction
-class YAMLRepository:
-    def __init__(self, config_dir: Path):
-        self.config_dir = config_dir
-    
-    async def load(self, name: str) -> dict:
-        # File I/O
-        pass
-    
-    def save(self, name: str, data: dict) -> None:
-        # File I/O
-        pass
-```
-
-### 5.3 Caching Architecture
-
-#### Cache Service
-
-```python
-class CacheService:
-    def __init__(self, ttl: int = 300):  # 5 minutes
-        self._cache: dict[str, CacheEntry] = {}
-        self._ttl = ttl
-    
-    def get(self, key: str) -> Optional[Any]:
-        entry = self._cache.get(key)
-        if entry and not entry.is_expired():
-            return entry.value
-        self._cache.pop(key, None)
-        return None
-    
-    def set(self, key: str, value: Any) -> None:
-        self._cache[key] = CacheEntry(
-            value=value,
-            expires_at=datetime.now() + timedelta(seconds=self._ttl)
-        )
-    
-    def invalidate(self, pattern: str) -> None:
-        keys = [k for k in self._cache if k.startswith(pattern)]
-        for key in keys:
-            self._cache.pop(key)
-```
-
-#### Cache Keys
-
-```python
-def make_cache_key(project_name: str, type: str) -> str:
-    return f"validation:{project_name}:{type}"
-```
-
-**Examples**:
-- `validation:arbodat:all`
-- `validation:arbodat:structural`
-- `validation:sample_entity:entity`
-
-### 5.4 Error Handling
-
-```python
-# Custom exceptions
-class BaseAPIException(Exception):
-    def __init__(self, message: str, status_code: int = 500):
-        self.message = message
-        self.status_code = status_code
-
-class ProjectNotFoundError(BaseAPIException):
-    def __init__(self, project_name: str):
-        super().__init__(
-            f"Project '{project_name}' not found",
-            status_code=404
-        )
-
-# Exception handler
-@app.exception_handler(BaseAPIException)
-async def api_exception_handler(request: Request, exc: BaseAPIException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error": exc.message,
-            "type": exc.__class__.__name__,
-            "timestamp": datetime.now().isoformat()
-        }
-    )
-```
+- Real-time collaborative editing
+- Native mobile applications
+- Streaming data processing
+- Built-in version control (delegated to file system)
 
 ---
 
-## 6. API Design
+## System Components
 
-### 6.1 RESTful Endpoints
+### Core (Transformation Engine)
 
-```
-# Projects
-GET    /api/v1/projects           # List all configs
-GET    /api/v1/projects/{name}    # Get specific config
-POST   /api/v1/projects           # Create config
-PUT    /api/v1/projects/{name}    # Update config
-DELETE /api/v1/projects/{name}    # Delete config
+**Responsibility**: Execute declarative transformation pipelines from configuration to output.
 
-# Validation
-POST   /api/v1/validate                 # Validate config
-GET    /api/v1/validate/{name}/results  # Get cached results
+**Key Abstractions**:
+- **Pipeline**: Multi-phase processing (Extract → Filter → Link → Unnest → Translate → Store)
+- **Entities**: Logical datasets with identity, relationships, and transformations
+- **Loaders**: Pluggable data source connectors (SQL, CSV, Excel, fixed values)
+- **Validators**: Constraint checking (cardinality, foreign keys, functional dependencies)
+- **Dispatchers**: Output format handlers (Excel, CSV, database)
 
-# Auto-Fix
-POST   /api/v1/auto-fix/preview         # Preview fixes
-POST   /api/v1/auto-fix/apply           # Apply fixes
-POST   /api/v1/auto-fix/rollback        # Rollback changes
-```
+**Architectural Patterns**:
+- **Registry Pattern**: Dynamic discovery of loaders/validators/dispatchers via decorators
+- **Topological Sorting**: Dependency-aware entity processing order
+- **Immutable Configuration**: Deep copy on read to prevent mutations
 
-### 6.2 Request/Response Models
-
+**Extension Points**:
 ```python
-# Request
-class ValidationRequest(BaseModel):
-    project_name: str
-    validation_type: ValidationType = ValidationType.ALL
-    entity_name: Optional[str] = None
+# Register custom loader
+@DataLoaders.register(key="custom_source")
+class CustomLoader(DataLoader):
+    async def load(self) -> pd.DataFrame:
+        ...
 
-# Response
-class ValidationResponse(BaseModel):
-    project_name: str
-    validation_type: ValidationType
-    timestamp: datetime
-    issues: list[ValidationIssue]
-    summary: ValidationSummary
-    cache_hit: bool = False
+# Register custom validator
+@Validators.register(key="custom_check", stage="pre-merge")
+class CustomValidator(ConstraintValidator):
+    ...
 ```
 
-### 6.3 Error Responses
-
-```json
-{
-  "error": "Project 'invalid' not found",
-  "type": "ProjectNotFoundError",
-  "timestamp": "2025-12-14T10:30:00Z",
-  "path": "/api/v1/projects/invalid",
-  "method": "GET"
-}
-```
+**Core Invariants**:
+- All entity processing respects dependency order (no cycles)
+- Foreign key relationships use local `system_id` values
+- Environment variables always resolved before Core execution
+- Configuration files are immutable during execution
 
 ---
 
-## 7. Data Flow
+### Backend (API Layer)
 
-### 7.1 Project Load Flow
+**Responsibility**: Expose Core capabilities via REST API, manage project lifecycle, provide editor services.
+
+**Key Abstractions**:
+- **Services**: Business logic for validation, auto-fix, entity preview, schema introspection
+- **Mappers**: Translate between API models (raw `${ENV_VARS}`) and Core models (resolved)
+- **Models**: Pydantic schemas for request/response validation
+
+**Architectural Patterns**:
+- **Layer Boundary**: API → Mapper → Core (environment variable resolution at mapper)
+- **Service Layer**: Business logic isolated from HTTP concerns
+- **Dependency Injection**: Services injected via FastAPI dependencies
+- **3-Tier Cache**: TTL → Project Version → Entity Hash (xxhash for invalidation)
+
+**Layer Responsibilities**:
+```
+API Layer (models/)
+  ↓ Raw data with ${ENV_VARS}
+Mapper Layer (mappers/)
+  ↓ Resolve env vars + directives (@include:, @value:)
+Core Layer (src/)
+  ↓ Fully resolved entities
+```
+
+**Extension Points**:
+- Add services for new features
+- Register custom validators
+- Extend auto-fix suggestion logic
+
+**Backend Invariants**:
+- API models never contain resolved environment variables
+- Core always receives fully resolved configuration
+- Mappers are the only layer performing resolution
+- Services remain stateless (state in cache or filesystem)
+
+---
+
+### Frontend (Configuration Editor)
+
+**Responsibility**: Provide intuitive UI for project configuration, validation, and preview.
+
+**Key Abstractions**:
+- **Stores (Pinia)**: Client-side state management for projects, entities, validation
+- **Composables**: Reusable logic for validation, auto-fix, entity preview
+- **Components**: Entity editor, dependency graph, validation panel, Monaco YAML editor
+
+**Architectural Patterns**:
+- **Composition API**: Reusable logic via composables, not mixins
+- **Unidirectional Data Flow**: User action → API call → State update → UI update
+- **Optimistic Updates**: Immediate UI feedback with rollback on failure
+- **Debounced Validation**: Reduce API calls during typing (300ms delay)
+
+**Extension Points**:
+- Register custom entity types in form builder
+- Add visualization components to graph
+- Extend validation display with custom renderers
+
+**Frontend Invariants**:
+- State managed in Pinia stores, not component state
+- API calls isolated in `api/` layer, never in components
+- Validation state synchronized with backend
+- Monaco Editor used for all YAML editing
+
+---
+
+## Data Flow
+
+### Configuration Loading
 
 ```
-User clicks "Open Config"
+User selects project
   ↓
-Frontend: Send GET /api/v1/projects/{name}
+Frontend: GET /api/v1/projects/{name}
   ↓
-Backend: YAMLService.load_project()
+Backend: ProjectMapper.to_api_config()
+  ├─ Load YAML from filesystem
+  ├─ Preserve ${ENV_VARS} and @directives
+  └─ Return API model (unresolved)
   ↓
-Backend: Parse YAML, validate structure
+Frontend: Store in Pinia (projectStore)
   ↓
-Backend: Return configuration JSON
-  ↓
-Frontend: Display in Monaco Editor
-  ↓
-Frontend: Populate entity tree
+Frontend: Render entities in editor
 ```
 
-### 7.2 Validation Flow
+### Entity Preview
 
 ```
-User clicks "Validate All"
+User edits entity in Monaco
   ↓
-Frontend: Check cache (5-min TTL)
+Frontend: Debounced preview (300ms)
   ↓
-Cache hit? → Display cached results
+Backend: POST /api/v1/preview
+  ├─ Check 3-tier cache (TTL/version/hash)
+  ├─ ProjectMapper.to_core() [resolve env vars]
+  ├─ Core: ShapeShifter.preview(entity, limit)
+  └─ Return preview data
   ↓
-Cache miss: Send POST /api/v1/validate
+Frontend: Display in split-view grid
+```
+
+### Validation Flow
+
+```
+User clicks "Check Project"
   ↓
-Backend: Check cache
+Frontend: POST /api/v1/validate
   ↓
-Cache miss: Run validation
-  ↓
-Backend: Return validation results
-  ↓
-Backend: Cache results (5 min)
+Backend: ValidationService.validate()
+  ├─ Structural validation (schema, refs)
+  ├─ Constraint validation (FKs, cycles)
+  ├─ Optional: Data validation (sample rows)
+  └─ Return ValidationResult
   ↓
 Frontend: Display in validation panel
-  ↓
-Frontend: Cache results (5 min)
+  ├─ Group by severity (error/warning/info)
+  └─ Show entity badges in list
 ```
 
-### 7.3 Auto-Fix Flow
+### Execution Flow
 
 ```
-User clicks "Apply Fix"
+User clicks "Execute"
   ↓
-Frontend: Send POST /api/v1/auto-fix/preview
+Frontend: POST /api/v1/execute
   ↓
-Backend: Generate fix preview
+Backend: ProjectMapper.to_core() [resolve]
   ↓
-Frontend: Display before/after comparison
+Core: ShapeShifter.normalize()
+  ├─ ProcessState: Topological sort
+  ├─ For each entity (dependency order):
+  │   ├─ Extract (via DataLoader)
+  │   ├─ Filter (post-load filters)
+  │   ├─ Link (FK relationships)
+  │   ├─ Unnest (wide → long)
+  │   └─ Translate (column mapping)
+  └─ Store (via Dispatcher)
   ↓
-User confirms
+Backend: Return execution result
   ↓
-Frontend: Send POST /api/v1/auto-fix/apply
-  ↓
-Backend: Create backup
-  ↓
-Backend: Apply fix to config
-  ↓
-Backend: Save configuration
-  ↓
-Backend: Revalidate
-  ↓
-Frontend: Update editor
-  ↓
-Frontend: Show success message
-  ↓
-Frontend: Invalidate validation cache
+Frontend: Show completion status
 ```
 
 ---
 
-## 8. Security
+## Control Flow
 
-### 8.1 Input Validation
+### Dependency Resolution
 
-- All inputs validated with Pydantic models
-- YAML parsing with safe loaders only
-- File path validation (prevent traversal)
-- Content type validation
+Entities form a directed acyclic graph (DAG). Processing order determined by:
 
-### 8.2 CORS Project
+1. **Explicit**: `depends_on: [parent_entity]`
+2. **Implicit**: Foreign key references (`entity: parent`)
+3. **Source**: `source: parent_entity` (data type entities)
 
+**Topological Sort**:
+```
+1. Build dependency graph
+2. Detect cycles (error if found)
+3. Compute depths (distance from roots)
+4. Sort by depth (parents before children)
+5. Process in sorted order
+```
+
+### Environment Variable Resolution
+
+**Two-Phase Strategy**:
+
+1. **API → Core (Mapper)**:
+   - Resolve `${ENV_VARS}` to actual values
+   - Resolve `@include:` directives to embedded content
+   - Resolve `@value:` directives to runtime values
+   - Result: Fully resolved configuration for Core
+
+2. **API → YAML (Save)**:
+   - Preserve `${ENV_VARS}` and directives
+   - Maintain original structure for editing
+   - Result: Unchanged configuration file
+
+**Principle**: Directives live in YAML/API layer, resolved values in Core layer.
+
+---
+
+## Extension and Customization
+
+### Adding Data Sources
+
+1. Create loader class inheriting `DataLoader`
+2. Define schema using `ClassVar[DriverSchema]`
+3. Register with `@DataLoaders.register(key="driver_name")`
+4. Implement `async load() -> DataFrame`
+
+**Schema introspection**: `DriverSchemaRegistry` loads schemas from registered loaders.
+
+### Adding Validators
+
+1. Create validator inheriting `ConstraintValidator`
+2. Register with `@Validators.register(key="name", stage="pre-merge|post-merge")`
+3. Implement `validate(entity) -> ConstraintViolation | None`
+
+**Stages**:
+- `pre-merge`: Before combining with parent data
+- `post-merge`: After foreign key joins
+
+### Adding Output Formats
+
+1. Create dispatcher inheriting `Dispatcher`
+2. Register with `@Dispatchers.register(key="format")`
+3. Implement `dispatch(entities) -> None`
+
+### Adding Ingesters
+
+1. Create directory `ingesters/<name>/`
+2. Implement `Ingester` protocol with `validate()` and `ingest()`
+3. Register with `@Ingesters.register(key="<name>")`
+4. Auto-discovered at startup via `IngesterRegistry.discover()`
+
+---
+
+## Architectural Constraints
+
+### Three-Tier Identity System
+
+**Critical Principle**: All relationships use local `system_id` values.
+
+1. **`system_id`** - Local sequential identity (1, 2, 3...)
+   - Always present, standardized column name
+   - Used for ALL foreign key relationships
+   
+2. **`keys`** - Business keys for deduplication
+   - Optional list of column names
+   - Used in reconciliation and FK joins
+   
+3. **`public_id`** - Target schema identity
+   - Dual purpose: column name + holds mapped external IDs
+   - Required for: fixed entities, entities with FK children
+
+**FK Resolution**: Child FK column name = parent's `public_id`, FK values = parent's `system_id`.
+
+### Layer Boundary Rules
+
+1. **API Models**:
+   - Raw configuration with `${ENV_VARS}`
+   - Never perform resolution
+   
+2. **Mappers**:
+   - Single responsibility: API ↔ Core translation
+   - ONLY layer that resolves environment variables
+   
+3. **Core Models**:
+   - Always fully resolved
+   - Never see directives or placeholders
+
+### Immutability Requirements
+
+Configuration processing functions must prevent mutations:
 ```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Dev
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def resolve_references(data: dict) -> dict:
+    data = copy.deepcopy(data)  # Prevent mutations
+    # ... process
+    return data
 ```
 
-### 8.3 Future Security (Phase 3)
+**Reason**: Multiple components may hold references to same configuration. Mutations cause unpredictable side effects.
 
-- Authentication (JWT tokens)
-- Authorization (RBAC)
-- Rate limiting
-- Audit logging
-- HTTPS enforcement
+### Asynchronous Constraints
+
+- Data loaders are async (database I/O)
+- Backend services mix sync/async (check signatures)
+- Tests use `@pytest.mark.asyncio` for async functions
 
 ---
 
-## 9. Deployment
+## Integration Contracts
 
-### 9.1 Development
+### API Layer Contract
 
-```bash
-# Backend
-cd backend
-uv run uvicorn app.main:app --reload
-
-# Frontend
-cd frontend
-npm run dev
+**Endpoint Pattern**:
+```
+GET    /api/v1/{resource}           # List/query
+GET    /api/v1/{resource}/{id}      # Get one
+POST   /api/v1/{resource}           # Create
+PUT    /api/v1/{resource}/{id}      # Update
+DELETE /api/v1/{resource}/{id}      # Delete
+POST   /api/v1/{resource}/{action}  # Action verb
 ```
 
-### 9.2 Production (Future)
-
-```bash
-# Docker Compose
-docker-compose up -d
-
-# Services:
-# - Backend: Gunicorn + Uvicorn workers
-# - Frontend: Nginx serving static files
-# - Database: PostgreSQL (future)
-# - Cache: Redis (future)
+**Response Format**:
+```json
+{
+  "data": {...},          // Success payload
+  "error": "message",     // Error message (if failed)
+  "meta": {               // Optional metadata
+    "timestamp": "...",
+    "version": "..."
+  }
+}
 ```
 
----
+### Core Interface Contract
 
-## 10. Testing Strategy
+**Configuration Requirements**:
+- Valid `metadata.type: 'shapeshifter-project'`
+- All entities have defined `type`
+- No circular dependencies
+- All referenced entities exist
 
-### 10.1 Frontend Testing
+**Execution Contract**:
+```python
+project = ShapeShiftProject.from_file("config.yml")
+normalizer = ShapeShifter(project)
+await normalizer.normalize()  # Returns processed entities
+normalizer.store(target="output.xlsx", mode="xlsx")
+```
 
-- **Unit Tests**: Components, composables, utilities (Vitest)
-- **Integration Tests**: User workflows
-- **E2E Tests**: Critical paths (Playwright, future)
+### Mapper Resolution Contract
 
-### 10.2 Backend Testing
+**Environment Variable Resolution**:
+- Input: `{"host": "${DB_HOST}"}`
+- Output: `{"host": "localhost"}`
+- Fallback: Raise error if variable undefined
 
-- **Unit Tests**: Services, models (pytest)
-- **Integration Tests**: API endpoints (pytest + httpx)
-- **E2E Tests**: Full workflows (pytest)
-
-### 10.3 Coverage Targets
-
-- Backend: 90%+ (achieved: 91%)
-- Frontend: 85%+ (achieved: 88%)
-- Overall: 90%+ (achieved: 90%)
-
----
-
-## 11. Related Documentation
-
-- [Requirements](REQUIREMENTS.md) - Functional requirements
-- [User Guide](USER_GUIDE.md) - User documentation
-- [Developer Guide](DEVELOPER_GUIDE.md) - Development guide
-- [Testing Guide](TESTING_GUIDE.md) - Testing documentation
-- [Project Guide](CONFIGURATION_GUIDE.md) - Config syntax
+**Directive Resolution**:
+- `@include:path.yml` → Embed file content
+- `@value:expression` → Evaluate runtime value
+- Applied recursively until no directives remain
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: December 14, 2025  
-**Status**: Implemented and Deployed
+## Performance Characteristics
+
+### Caching Strategy
+
+**3-Tier Cache Validation**:
+1. **TTL Check** (300s): Timestamp comparison
+2. **Version Check**: Project file modification time
+3. **Hash Check**: xxhash.xxh64 of entity configuration
+
+**Cache Invalidation**:
+- Entity edit → Invalidate entity hash
+- Project save → Invalidate version
+- TTL expiry → Invalidate all
+
+### Dependency Processing
+
+**Topological Sort Complexity**: O(V + E) where V = entities, E = dependencies
+
+**Processing Parallelization**: Not implemented (single-threaded pipeline)
+
+**Memory Footprint**: All entities loaded into memory (pandas DataFrames)
+
+---
+
+## Deployment Considerations
+
+### Single Worker Requirement
+
+**Constraint**: Backend must run with single uvicorn worker.
+
+**Reason**: In-memory state (singletons, caches) incompatible with multi-process workers.
+
+**Production Alternative**: Use Redis/database for shared state if multiple workers needed.
+
+### File System Requirements
+
+- **Projects Directory**: YAML configurations
+- **Backups Directory**: Automatic backups before edits
+- **Output Directory**: Execution results
+- **Logs Directory**: Application logs
+
+### Database Connectivity
+
+**Optional Dependencies**:
+- PostgreSQL: Install `psycopg2-binary`
+- MS Access: Requires Java JRE + UCanAccess (JDBC)
+
+---
+
+## Security Considerations
+
+### Environment Variable Handling
+
+- Never log resolved values (may contain credentials)
+- Use `.pgpass` for PostgreSQL passwords
+- Validate resolution before Core execution
+
+### YAML Processing
+
+- No arbitrary code execution (safe YAML parsing)
+- Schema validation via Pydantic
+- Backup before save (auto-rollback capability)
+
+---
+
+## Evolution and Stability
+
+### Stable Interfaces
+
+- Core pipeline phases (Extract → Filter → Link → Unnest → Translate → Store)
+- Registry pattern for extensibility
+- Three-tier identity system
+- Layer boundary architecture (API → Mapper → Core)
+
+### Planned Enhancements
+
+- Row count estimation in validation
+- FK data integrity checks (sample-based)
+- Validation summary dashboard
+- Incremental validation (debounced)
+
+### Deprecated Patterns
+
+- **Test Run feature**: Removed (redundant with validation + preview)
+- **Multiple workers**: Not supported (in-memory state)
+
+---
+
+## References
+
+For implementation details, configuration syntax, and usage instructions, consult:
+
+- **CONFIGURATION_GUIDE.md** - Complete YAML reference
+- **DEVELOPER_GUIDE.md** - Development setup and patterns
+- **USER_GUIDE.md** - End-user workflows
+- **REQUIREMENTS.md** - Feature specifications
+- **TESTING_GUIDE.md** - Testing procedures
