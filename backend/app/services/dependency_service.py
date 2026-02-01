@@ -31,9 +31,7 @@ class DependencyNode(dict):
         materialized: bool = False,
     ):
         """Initialize dependency node."""
-        super().__init__(
-            name=name, depends_on=depends_on, depth=depth, type=entity_type, materialized=materialized
-        )
+        super().__init__(name=name, depends_on=depends_on, depth=depth, type=entity_type, materialized=materialized)
 
 
 class SourceNode(dict):
@@ -128,14 +126,14 @@ class DependencyService:
             entity_config = api_project.entities.get(name, {})
             entity_type = entity_config.get("type")
             normalized_type = entity_type if entity_type in allowed_entity_types else None
-            
+
             # Check if entity is materialized
             is_materialized = False
-            if hasattr(entity_config, 'get'):
+            if hasattr(entity_config, "get"):
                 materialized_data = entity_config.get("materialized")
                 if isinstance(materialized_data, dict):
                     is_materialized = materialized_data.get("enabled", False)
-            
+
             nodes.append(
                 DependencyNode(
                     name=name,
