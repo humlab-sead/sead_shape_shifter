@@ -47,10 +47,10 @@ class DirectiveValidator:
             )
 
         path = directive[7:]  # Remove "@value:" prefix
-        
+
         # Split path into parts
         parts = path.split(".")
-        
+
         if len(parts) < 2:
             return DirectiveValidationResult(
                 is_valid=False,
@@ -106,12 +106,12 @@ class DirectiveValidator:
     def _get_root_suggestions(self) -> list[str]:
         """Get suggestions for root-level paths."""
         suggestions = ["entities", "options"]
-        
+
         # Add common entity paths
         for entity_name in self.project.entity_names[:5]:  # First 5 entities
             suggestions.append(f"entities.{entity_name}.keys")
             suggestions.append(f"entities.{entity_name}.columns")
-            
+
         return suggestions
 
     def _get_suggestions_for_path(self, parts: list[str]) -> list[str]:
@@ -125,24 +125,24 @@ class DirectiveValidator:
             List of suggested valid paths
         """
         suggestions = []
-        
+
         # Try to navigate as far as possible
         try:
             current = {"entities": self.project.entities, "options": self.project.options}
             valid_parts = []
-            
+
             for part in parts[:-1]:  # All parts except the last
                 if isinstance(current, dict) and part in current:
                     current = current[part]
                     valid_parts.append(part)
                 else:
                     break
-            
+
             # If we're at a dict, suggest its keys
             if isinstance(current, dict):
                 base_path = ".".join(valid_parts) if valid_parts else ""
                 keys = list(current.keys())[:10]  # Max 10 suggestions
-                
+
                 if keys:
                     for key in keys:
                         suggestion = f"{base_path}.{key}" if base_path else key
@@ -150,12 +150,12 @@ class DirectiveValidator:
                 else:
                     # No keys available, suggest root paths
                     suggestions = self._get_root_suggestions()
-                    
+
         except Exception as e:
             logger.debug(f"Error generating suggestions: {e}")
             # Fallback to root suggestions on error
             suggestions = self._get_root_suggestions()
-        
+
         return suggestions
 
     def validate_foreign_key_directive(
@@ -174,14 +174,14 @@ class DirectiveValidator:
             DirectiveValidationResult with context-aware validation
         """
         result = self.validate_directive(directive)
-        
+
         # Add context-specific validation
         if result.is_valid:
             # Check if resolved value is a list (appropriate for FK keys)
             if not isinstance(result.resolved_value, list):
                 result.is_valid = False
                 result.error = f"FK keys must resolve to a list, got {type(result.resolved_value).__name__}"
-                
+
         # Add context-specific suggestions
         if not result.is_valid:
             entity_name = local_entity if is_local else remote_entity
@@ -190,7 +190,7 @@ class DirectiveValidator:
                     f"@value:entities.{entity_name}.keys",
                     f"@value:entities.{entity_name}.columns",
                 ]
-                
+
         return result
 
     def get_all_valid_paths(self, max_depth: int = 3) -> list[str]:
@@ -204,17 +204,17 @@ class DirectiveValidator:
             List of valid @value directive paths
         """
         paths = []
-        
+
         # Traverse entities
         for entity_name in self.project.entity_names:
             entity = self.project.entities[entity_name]
             paths.append(f"@value:entities.{entity_name}.keys")
             paths.append(f"@value:entities.{entity_name}.columns")
-            
+
             if isinstance(entity, dict):
                 # Add paths for common fields
                 for field in ["public_id", "system_id", "extra_columns"]:
                     if field in entity:
                         paths.append(f"@value:entities.{entity_name}.{field}")
-                        
+
         return paths
