@@ -36,7 +36,7 @@ This guide is for developers who are:
 
 ### Related Documentation
 
-- [UI Architecture](UI_ARCHITECTURE.md) - Detailed architecture
+- [Architecture](ARCHITECTURE.md) - Detailed architecture
 - [User Guide](USER_GUIDE.md) - End-user documentation
 - [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures
@@ -1946,7 +1946,7 @@ For complete details, see the **Conventional Commit Messages** section in [TODO.
 
 ## Related Documentation
 
-- [UI Architecture](UI_ARCHITECTURE.md) - Detailed architecture
+- [Architecture](ARCHITECTURE.md) - Detailed architecture
 - [User Guide](USER_GUIDE.md) - End-user documentation
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures
 - [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax
