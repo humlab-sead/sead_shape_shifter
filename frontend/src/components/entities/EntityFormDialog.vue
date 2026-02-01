@@ -1757,11 +1757,18 @@ function buildDefaultFormData(): FormData {
 // Note: Entity loading now handled in modelValue watcher below
 // This ensures we always fetch fresh data from the API when opening the dialog
 
-// Reset form and fetch fresh entity data when dialog opens
+// Reset form and fetch fresh entity data when dialog opens or entity changes
 watch(
-  () => props.modelValue,
-  async (isOpen) => {
-    if (isOpen) {
+  [() => props.modelValue, () => props.entity?.name],
+  async ([isOpen, entityName]) => {
+    if (isOpen && entityName) {
+      console.log('[EntityFormDialog] Dialog opening/entity changed, props:', {
+        mode: props.mode,
+        entityName: entityName,
+        hasEntity: !!props.entity,
+        projectName: props.projectName
+      })
+      
       // Reset UI state
       error.value = null
       formRef.value?.resetValidation()
@@ -1773,11 +1780,13 @@ watch(
       viewMode.value = 'form'
 
       // Load entity data - ALWAYS fetch fresh from API for edit mode
-      if (props.mode === 'edit' && props.entity?.name) {
+      if (props.mode === 'edit') {
         loading.value = true
+        console.log('[EntityFormDialog] Fetching entity from API:', entityName)
         try {
           // Fetch fresh entity data from API (source of truth)
-          const freshEntity = await api.entities.get(props.projectName, props.entity.name)
+          const freshEntity = await api.entities.get(props.projectName, entityName)
+          console.log('[EntityFormDialog] API response received for:', freshEntity.name)
           currentEntity.value = freshEntity  // Store complete entity for materialized checks
           console.log('[EntityFormDialog] Loaded entity:', {
             name: freshEntity.name,
@@ -1816,7 +1825,8 @@ watch(
         yamlContent.value = ''
       }
     }
-  }
+  },
+  { immediate: true }
 )
 
 // Sync form to YAML when switching to YAML tab
