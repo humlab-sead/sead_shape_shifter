@@ -15,13 +15,17 @@ from backend.app.services.test_run_service import TestRunService
 
 router = APIRouter()
 
-# Singleton instance to persist test runs across requests
+# Singleton instances to persist across requests
 _test_run_service_instance: Optional[TestRunService] = None  # pylint: disable=invalid-name
+_project_service_instance: Optional[ProjectService] = None  # pylint: disable=invalid-name
 
 
 def get_project_service() -> ProjectService:
-    """Dependency to get config service instance."""
-    return ProjectService()
+    """Dependency to get config service instance (singleton)."""
+    global _project_service_instance  # pylint: disable=global-statement
+    if _project_service_instance is None:
+        _project_service_instance = ProjectService()
+    return _project_service_instance
 
 
 def get_test_run_service(

@@ -213,11 +213,17 @@ const pollTestResult = async () => {
         error.value = result.error_message || 'Test run failed'
       }
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to poll test result:', err)
     stopPolling()
     isRunning.value = false
-    error.value = err instanceof Error ? err.message : String(err)
+    
+    // Provide more helpful error message for 404
+    if (err?.response?.status === 404 || err?.message?.includes('404')) {
+      error.value = 'Test run not found. The server may have been restarted. Please start a new test run.'
+    } else {
+      error.value = err instanceof Error ? err.message : String(err)
+    }
   }
 }
 
