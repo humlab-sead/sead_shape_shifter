@@ -130,6 +130,12 @@ const error = ref<string | null>(null)
 const pollInterval = ref<number | null>(null)
 const currentRunId = ref<string | null>(null)
 
+// Initialize selected entity from query parameter if provided
+const initialEntity = route.query.entity as string | undefined
+if (initialEntity) {
+  selectedEntities.value = [initialEntity]
+}
+
 // Load project and available entities
 onMounted(async () => {
   if (!projectName.value) {
