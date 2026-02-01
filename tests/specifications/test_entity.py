@@ -26,7 +26,7 @@ class TestEntityFieldsBaseSpecification:
         """Sample project configuration."""
         return {
             "entities": {
-                "valid_entity": {"columns": ["id", "col1", "col2"], "keys": ["id"]},  # id added to columns
+                "valid_entity": {"type": "entity", "columns": ["id", "col1", "col2"], "keys": ["id"]},  # id added to columns
                 "missing_columns": {"keys": ["id"]},
                 "non_list_columns": {"columns": "not_a_list", "keys": ["id"]},
             }
@@ -176,8 +176,8 @@ class TestSqlEntityFieldsSpecification:
         """Sample project configuration."""
         return {
             "entities": {
-                "valid_sql": {"columns": ["id", "col1"], "keys": ["id"], "data_source": "db1", "query": "SELECT * FROM table"},
-                "missing_query": {"columns": ["id", "col1"], "keys": ["id"], "data_source": "db1"},
+                "valid_sql": {"type": "sql", "columns": ["id", "col1"], "keys": ["id"], "data_source": "db1", "query": "SELECT * FROM table"},
+                "missing_query": {"type": "sql", "columns": ["id", "col1"], "keys": ["id"], "data_source": "db1"},
             }
         }
 
