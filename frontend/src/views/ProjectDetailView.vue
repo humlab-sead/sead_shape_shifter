@@ -232,7 +232,7 @@
                       </div>
                       
                       <!-- Node/Edge Counts -->
-                      <div class="d-flex gap-1">
+                      <div class="d-flex gap-1 mb-2">
                         <v-chip size="x-small" variant="flat" color="primary">
                           <v-icon icon="mdi-cube-outline" size="x-small" class="mr-1" />
                           {{ depStatistics.nodeCount }}
@@ -241,6 +241,14 @@
                           <v-icon icon="mdi-arrow-right" size="x-small" class="mr-1" />
                           {{ depStatistics.edgeCount }}
                         </v-chip>
+                      </div>
+                      
+                      <!-- Visual Indicators Legend -->
+                      <div class="text-caption text-medium-emphasis">
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <div style="width: 12px; height: 12px; border: 2px double #4CAF50; border-radius: 50%;" />
+                          <span style="font-size: 10px;">Materialized</span>
+                        </div>
                       </div>
                     </v-card-text>
                   </v-card>
@@ -323,6 +331,7 @@
               :y="contextMenuY"
               :entity-name="contextMenuEntity"
               :task-status="taskStatusStore.getEntityStatus(contextMenuEntity || '')"
+              @edit="handleContextMenuEdit"
               @preview="handleContextMenuPreview"
               @duplicate="handleContextMenuDuplicate"
               @delete="handleContextMenuDelete"
@@ -579,7 +588,12 @@
       v-if="entityStore.overlayEntityName"
       v-model="entityStore.showEditorOverlay"
       :project-name="projectName"
-      :entity="entityStore.entities.find((e) => e.name === entityStore.overlayEntityName) || null"
+      :entity="
+        entityStore.entities.find((e) => e.name === entityStore.overlayEntityName) || {
+          name: entityStore.overlayEntityName,
+          entity_data: {},
+        }
+      "
       :initial-tab="entityStore.overlayInitialTab"
       mode="edit"
       @saved="handleOverlayEntitySaved"
@@ -1105,6 +1119,11 @@ function handleOverlayClose(isOpen: boolean) {
 }
 
 // Context menu handlers
+function handleContextMenuEdit(entityName: string) {
+  console.debug('[ProjectDetailView] Context menu edit for entity:', entityName)
+  entityStore.openEditorOverlay(entityName, 'form')
+}
+
 async function handleContextMenuPreview(entityName: string) {
   console.debug('[ProjectDetailView] Preview entity:', entityName)
   // Navigate to test run with this entity selected
