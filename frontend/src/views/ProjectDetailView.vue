@@ -38,7 +38,7 @@
               :loading="validationLoading"
               @click="handleValidate"
             >
-              Validate
+              Check Project
               <v-tooltip activator="parent">Run validation checks on the entire project</v-tooltip>
             </v-btn>
             <v-btn variant="outlined" prepend-icon="mdi-play-circle" color="success" @click="showExecuteDialog = true">
