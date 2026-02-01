@@ -64,9 +64,9 @@ async def validate_directive(project_name: str, request: ValidateDirectiveReques
         )
 
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")  # pylint: disable=raise-missing-from
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/projects/{project_name}/valid-directives", response_model=list[str])
@@ -89,6 +89,6 @@ async def get_valid_directives(project_name: str, max_depth: int = 3):
         return validator.get_all_valid_paths(max_depth)
 
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")  # pylint: disable=raise-missing-from
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
