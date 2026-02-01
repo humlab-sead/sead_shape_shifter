@@ -108,8 +108,8 @@ class TestDependencies:
         expected_graph = {
             "nodes": [
                 # Two nodes: base and derived
-                {"name": "base", "depends_on": [], "depth": 1, "type": "sql"},
-                {"name": "derived", "depends_on": ["base"], "depth": 0, "type": "sql"},
+                {"name": "base", "depends_on": [], "depth": 1, "type": "sql", "materialized": False},
+                {"name": "derived", "depends_on": ["base"], "depth": 0, "type": "sql", "materialized": False},
             ],
             "edges": [
                 # FK dependency from derived to base

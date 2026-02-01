@@ -58,7 +58,7 @@ class ProjectService:
     def __init__(self, projects_dir: Path | None = None, state: ApplicationStateManager | None = None) -> None:
         """Initialize project service."""
         self.yaml_service: YamlService = get_yaml_service()
-        self.projects_dir: Path = projects_dir or settings.PROJECTS_DIR
+        self.projects_dir: Path = Path(projects_dir or settings.PROJECTS_DIR)
         self.specification = ProjectYamlSpecification()
         self.state: ApplicationStateManager = state or get_app_state_manager()
 
