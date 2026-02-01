@@ -96,9 +96,6 @@ from backend.app.services.shapeshift_service import ShapeShiftCache, ShapeShiftS
 # Suggestion service
 from backend.app.services.suggestion_service import SuggestionService
 
-# Test run service
-from backend.app.services.test_run_service import TestRunService
-
 # Type mapping service
 from backend.app.services.type_mapping_service import TypeMapping, TypeMappingService
 
@@ -123,7 +120,6 @@ __all__ = [
     "QueryService",
     "SchemaIntrospectionService",
     "SuggestionService",
-    "TestRunService",
     "TypeMappingService",
     "ValidationService",
     "YamlService",

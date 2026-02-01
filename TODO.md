@@ -382,3 +382,5 @@ I'm still considering if we need a version of append that ignores the appended c
 Type of files could be csv, excel, json, xml etc, and specified in e.g a "file_type" field.
 This would give a more plugin friendly way of adding file based entities.
 
+[] TODO: #201 Remove "TEST RUN" feature completely, currently it overlaps with the validate feature, 
+and gives not further value. It's better to foxus on the validate and execute feature.
