@@ -29,7 +29,7 @@ These are the primary system documentation files:
   - Success criteria and constraints
   - Comprehensive glossary
 
-- **[UI_ARCHITECTURE.md](UI_ARCHITECTURE.md)** (1,000+ lines)
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** (1,000+ lines)
   - System architecture (Vue3 + FastAPI)
   - Backend and frontend architecture details
   - Design patterns and best practices
@@ -134,7 +134,7 @@ Previously consolidated source documents are available in the [archive/](archive
 
 **Develop on Shape Shifter:**
 - Start here: [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)
-- Architecture overview: [UI_ARCHITECTURE.md](UI_ARCHITECTURE.md)
+- Architecture overview: [ARCHITECTURE.md](ARCHITECTURE.md)
 - Backend integration: [BACKEND_INTEGRATION.md](BACKEND_INTEGRATION.md)
 
 **Test Shape Shifter:**
@@ -143,7 +143,7 @@ Previously consolidated source documents are available in the [archive/](archive
 
 **Understand Requirements:**
 - Feature requirements: [UI_REQUIREMENTS.md](UI_REQUIREMENTS.md)
-- System architecture: [UI_ARCHITECTURE.md](UI_ARCHITECTURE.md)
+- System architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
 
 **Configure Relationships:**
 - Foreign keys & constraints: [CONFIGURATION_GUIDE.md - Foreign Key Constraints section](CONFIGURATION_GUIDE.md#foreign-key-constraints)

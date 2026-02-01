@@ -1524,7 +1524,7 @@ A: In `/backups/` directory with timestamp in filename.
 ## Related Documentation
 
 - [UI Requirements](UI_REQUIREMENTS.md) - Feature specifications
-- [UI Architecture](UI_ARCHITECTURE.md) - Technical architecture
+- [Architecture](ARCHITECTURE.md) - Technical architecture
 - [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax guide
 - [Developer Guide](DEVELOPER_GUIDE.md) - Development information
 - [Testing Guide](TESTING_GUIDE.md) - Testing procedures

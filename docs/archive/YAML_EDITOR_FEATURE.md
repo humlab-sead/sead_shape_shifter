@@ -484,7 +484,7 @@ Response:
 ## Related Documentation
 
 - [User Guide](./USER_GUIDE.md) - General entity editing workflows
-- [UI Architecture](./UI_ARCHITECTURE.md) - Frontend architecture details
+- [Architecture](./ARCHITECTURE.md) - Frontend architecture details
 - [Entity State Management](./ENTITY_STATE_MANAGEMENT.md) - State management patterns
 - [Project Guide](./CONFIGURATION_GUIDE.md) - YAML configuration reference
 
