@@ -30,6 +30,7 @@ export interface DependencyNode {
   depends_on: string[]
   depth: number
   type?: 'entity' | 'sql' | 'fixed' | 'csv' | 'xlsx' | 'openpyxl'
+  materialized?: boolean
 }
 
 export interface DependencyEdge {
