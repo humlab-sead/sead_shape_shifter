@@ -39,6 +39,6 @@ async def get_available_columns(
         return result
 
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
+        raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")  # pylint: disable=raise-missing-from
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

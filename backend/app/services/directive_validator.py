@@ -124,11 +124,11 @@ class DirectiveValidator:
         Returns:
             List of suggested valid paths
         """
-        suggestions = []
+        suggestions: list[str] = []
 
         # Try to navigate as far as possible
         try:
-            current = {"entities": self.project.entities, "options": self.project.options}
+            current: dict[str, Any] = {"entities": self.project.entities, "options": self.project.options}
             valid_parts = []
 
             for part in parts[:-1]:  # All parts except the last
@@ -151,7 +151,7 @@ class DirectiveValidator:
                     # No keys available, suggest root paths
                     suggestions = self._get_root_suggestions()
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.debug(f"Error generating suggestions: {e}")
             # Fallback to root suggestions on error
             suggestions = self._get_root_suggestions()
@@ -184,7 +184,7 @@ class DirectiveValidator:
 
         # Add context-specific suggestions
         if not result.is_valid:
-            entity_name = local_entity if is_local else remote_entity
+            entity_name: str = local_entity if is_local else remote_entity
             if entity_name in self.project.entities:
                 result.suggestions = [
                     f"@value:entities.{entity_name}.keys",
@@ -193,7 +193,7 @@ class DirectiveValidator:
 
         return result
 
-    def get_all_valid_paths(self, max_depth: int = 3) -> list[str]:
+    def get_all_valid_paths(self, max_depth: int = 3) -> list[str]:  # pylint: disable=unused-argument
         """
         Get all valid @value paths in the project.
 
