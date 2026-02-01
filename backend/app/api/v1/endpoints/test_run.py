@@ -34,7 +34,10 @@ def get_test_run_service(
     """Dependency to get test run service instance (singleton)."""
     global _test_run_service_instance  # pylint: disable=global-statement
     if _test_run_service_instance is None:
+        logger.info("[SINGLETON] Creating new TestRunService instance")
         _test_run_service_instance = TestRunService(project_service)
+    else:
+        logger.debug(f"[SINGLETON] Reusing existing TestRunService instance (id: {id(_test_run_service_instance)})")
     return _test_run_service_instance
 
 

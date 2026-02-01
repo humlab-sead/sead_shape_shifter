@@ -191,4 +191,6 @@ EXPOSE 8012
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8012/api/v1/health').read()"
 
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8012", "--workers", "4"]
+# Use single worker to maintain in-memory state (test runs, sessions, etc.)
+# For production with multiple workers, implement shared storage (Redis/DB)
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8012", "--workers", "1"]
