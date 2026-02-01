@@ -226,7 +226,7 @@ Before starting tests, verify:
 - [ ] Syntax highlighting active
 - [ ] Line numbers visible
 - [ ] Entity list panel visible
-- [ ] Toolbar buttons enabled (Test Run, Validate, Execute, Backups, Save)
+- [ ] Toolbar buttons enabled (Check Project, Execute, Backups, Save)
 
 **Test: Edit YAML Content**
 

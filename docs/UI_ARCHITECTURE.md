@@ -492,8 +492,7 @@ backend/
 │   │       ├── endpoints/
 │   │       │   ├── configurations.py
 │   │       │   ├── validation.py
-│   │       │   ├── auto_fix.py
-│   │       │   └── test_runs.py
+│   │       │   └── auto_fix.py
 │   │       └── router.py
 │   ├── core/
 │   │   ├── config.py          # Settings management
@@ -502,16 +501,14 @@ backend/
 │   ├── models/
 │   │   ├── configuration.py   # API Pydantic models (raw ${ENV_VARS})
 │   │   ├── validation.py
-│   │   ├── auto_fix.py
-│   │   └── test_run.py
+│   │   └── auto_fix.py
 │   ├── mappers/              # Layer boundary translators
 │   │   ├── data_source_mapper.py  # Resolves env vars here
 │   │   └── table_schema_mapper.py
 │   ├── services/
 │   │   ├── yaml_service.py
 │   │   ├── validation_service.py
-│   │   ├── auto_fix_service.py
-│   │   └── test_runner.py
+│   │   └── auto_fix_service.py
 │   └── main.py                # FastAPI app
 └── tests/
     ├── unit/
@@ -725,11 +722,6 @@ GET    /api/v1/validate/{name}/results  # Get cached results
 POST   /api/v1/auto-fix/preview         # Preview fixes
 POST   /api/v1/auto-fix/apply           # Apply fixes
 POST   /api/v1/auto-fix/rollback        # Rollback changes
-
-# Test Execution
-POST   /api/v1/test-runs                # Start test run
-GET    /api/v1/test-runs/{id}           # Get test status
-GET    /api/v1/test-runs/{id}/results   # Get test results
 ```
 
 ### 6.2 Request/Response Models
