@@ -1123,7 +1123,7 @@ Processed 12 entities to ./output/my_project.xlsx
 **Before Execution:**
 - ✅ Run full validation
 - ✅ Fix all errors
-- ✅ Test with Test Run first
+- ✅ Preview entity data to verify transformations
 - ✅ Verify data sources connected
 - ✅ Check disk space available
 - ✅ Backup existing output files
@@ -1139,7 +1139,7 @@ Processed 12 entities to ./output/my_project.xlsx
 - Large datasets take longer
 - Database output fastest for large data
 - File outputs easier for small datasets
-- Test with subset first (Test Run)
+- Use entity preview to validate transformations before full execution
 
 **Troubleshooting:**
 - Check backend logs if execution fails

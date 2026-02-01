@@ -200,7 +200,7 @@ Before starting tests, verify:
 - [x] Syntax highlighting active
 - [x] Line numbers visible
 - [x] Entity list panel visible
-- [x] Toolbar buttons enabled (Test Run, Validate, Execute, Backups, Save)
+- [x] Toolbar buttons enabled (Check Project, Execute, Backups, Save)
 
 **Test: Edit YAML Content**
 
