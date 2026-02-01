@@ -22,7 +22,7 @@ These are the primary system documentation files:
 
 ### System Requirements & Architecture
 
-- **[UI_REQUIREMENTS.md](UI_REQUIREMENTS.md)** (5,900+ lines)
+- **[REQUIREMENTS.md](REQUIREMENTS.md)** (5,900+ lines)
   - 33 functional requirements (FR-1 to FR-33)
   - 15 non-functional requirements (NFR-1 to NFR-15)
   - User personas and use cases
@@ -142,7 +142,7 @@ Previously consolidated source documents are available in the [archive/](archive
 - Project validation: [CONFIGURATION_GUIDE.md - Project Validation section](CONFIGURATION_GUIDE.md#project-validation)
 
 **Understand Requirements:**
-- Feature requirements: [UI_REQUIREMENTS.md](UI_REQUIREMENTS.md)
+- Feature requirements: [REQUIREMENTS.md](REQUIREMENTS.md)
 - System architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
 
 **Configure Relationships:**

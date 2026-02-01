@@ -1599,7 +1599,7 @@ A: In `/backups/` directory with timestamp in filename.
 
 ## Related Documentation
 
-- [UI Requirements](UI_REQUIREMENTS.md) - Feature specifications
+- [Requirements](REQUIREMENTS.md) - Feature specifications
 - [Architecture](ARCHITECTURE.md) - Technical architecture
 - [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax guide
 - [Developer Guide](DEVELOPER_GUIDE.md) - Development information
