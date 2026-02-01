@@ -12,7 +12,7 @@ services:
         - VITE_ENV=${VITE_ENV:-production}
         - VITE_ENABLE_ANALYTICS=${VITE_ENABLE_ANALYTICS:-false}
         - VITE_ENABLE_DEBUG=${VITE_ENABLE_DEBUG:-false}
-    image: shape-shifter:latest
+    image: shape-shifter:dev
     container_name: shape-shifter
     user: "${USER_UID:-1002}:${USER_GID:-33}"  # Run as shapeshifter user (matches build args)
     ports:
