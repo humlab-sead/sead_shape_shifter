@@ -39,6 +39,12 @@
       </v-tabs>
 
       <v-card-text class="pa-0 dialog-content" :class="{ 'split-container': viewMode !== 'form' }">
+        <!-- Loading overlay while fetching entity data -->
+        <v-overlay v-model="loading" contained persistent class="align-center justify-center">
+          <v-progress-circular indeterminate size="64" color="primary" />
+          <div class="mt-4 text-h6">Loading entity data...</div>
+        </v-overlay>
+
         <div :class="viewMode !== 'form' ? 'split-layout' : ''" :data-view-mode="viewMode">
           <!-- Left: Entity Form -->
           <div v-show="viewMode === 'form' || viewMode === 'both'" :class="viewMode === 'both' ? 'form-panel' : 'pt-6 px-4 form-content'">
