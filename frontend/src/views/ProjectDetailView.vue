@@ -966,7 +966,7 @@ async function handleClearCustomLayout() {
 
 // Methods
 function handleTestRun() {
-  window.location.href = `/test-run/${projectName.value}`
+  router.push({ name: 'test-run', params: { name: projectName.value } })
 }
 
 async function handleValidate() {
@@ -1127,7 +1127,11 @@ function handleContextMenuEdit(entityName: string) {
 async function handleContextMenuPreview(entityName: string) {
   console.debug('[ProjectDetailView] Preview entity:', entityName)
   // Navigate to test run with this entity selected
-  window.location.href = `/test-run/${projectName.value}?entity=${entityName}`
+  router.push({ 
+    name: 'test-run', 
+    params: { name: projectName.value },
+    query: { entity: entityName }
+  })
 }
 
 async function handleContextMenuDuplicate(entityName: string) {
