@@ -81,15 +81,6 @@ These are the primary system documentation files:
 
 ## Supplementary Documentation
 
-### Core Framework Features
-
-- **[METADATA_GUIDE.md](METADATA_GUIDE.md)** 
-  - Project metadata specifications  
-  - Entity metadata management
-  - Version tracking
-  - Validation status
-  - Best practices
-  
 ### Reconciliation Features
 
 - **[RECONCILIATION_SETUP_GUIDE.md](RECONCILIATION_SETUP_GUIDE.md)**
@@ -97,13 +88,6 @@ These are the primary system documentation files:
   - Source configuration
   - Mapping and matching strategies
   - API integration
-
-### Environment
-
-- **[ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)**
-  - Environment variable configuration
-  - Data source setup
-  - Security best practices
 
 ## Archived Documentation
 

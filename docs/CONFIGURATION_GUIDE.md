@@ -54,21 +54,95 @@ options:           # Global options (optional)
 
 ## Metadata Section
 
-```yaml
-metadata:                             # metadata definitions (required)
-  type: 'shapeshifter-project'        # Project file tag (required)
-  name:                               # identifier (pending removal)
-  description:                        # description
-  default_entity:                     # project's default entity for `data` entities
+The metadata section identifies the file as a Shape Shifter project and provides descriptive information about the configuration.
 
+### Structure
+
+```yaml
+metadata:                             # Metadata definitions (required)
+  type: 'shapeshifter-project'        # Project file tag (required)
+  name: string                        # Human-readable project name (optional)
+  description: string                 # Detailed project description (optional)
+  version: string                     # Semantic version (e.g., "1.0.0") (optional)
+  default_entity: string              # Default entity for `data` entities (optional)
 ```
 
-**Validation Rules**:
+### Fields
+
+#### Required
+- **type**: Must be `"shapeshifter-project"` to identify the file as a Shape Shifter configuration
+
+#### Optional
+- **name**: A human-readable name for the project (if omitted, derived from filename)
+- **description**: Detailed description of what this configuration does (supports multi-line strings using `|`)
+- **version**: Semantic version string (e.g., "1.0.0", "2.1.3") for tracking configuration changes
+- **default_entity**: Reference to an existing entity used as the default source for `data` type entities
+
+### Examples
+
+**Minimal Metadata:**
+```yaml
+metadata:
+  type: 'shapeshifter-project'
+```
+
+**Full Metadata:**
+```yaml
+metadata:
+  type: 'shapeshifter-project'
+  name: "Archaeological Site Data Import"
+  description: |
+    Imports archaeological site data from multiple sources including
+    field surveys, laboratory analyses, and historical records.
+    Transforms data to match SEAD Clearinghouse schema.
+  version: "2.1.0"
+  default_entity: sample_data
+```
+
+### Validation Rules
+
 - **metadata section**: Required (error if missing)
 - **metadata.type**: Required, must be `"shapeshifter-project"` (error if missing or incorrect)
 - **metadata.name**: Optional string
 - **metadata.description**: Optional string  
+- **metadata.version**: Optional string (recommended to follow semantic versioning)
 - **metadata.default_entity**: Optional, must reference existing entity if provided
+
+### API Integration
+
+When loaded via the API, metadata is accessible through the `Project.metadata` property:
+
+```python
+from backend.app.mappers.project_mapper import ProjectMapper
+
+# Load configuration
+cfg_dict = load_yaml("my_config.yml")
+api_config = ProjectMapper.to_api_config(cfg_dict, "my-config")
+
+# Access metadata
+print(api_config.metadata.name)         # "Archaeological Site Data Import"
+print(api_config.metadata.description)  # "Imports archaeological site data..."
+print(api_config.metadata.version)      # "2.1.0"
+```
+
+### Core Model Integration
+
+In the core `ShapeShiftProject`, metadata is accessible via the `metadata` property:
+
+```python
+from src.model import ShapeShiftProject
+
+project = ShapeShiftProject.from_file("my_config.yml")
+
+# Access metadata
+print(project.metadata.name)         # "Archaeological Site Data Import"
+print(project.metadata.description)  # "Imports archaeological site data..."
+print(project.metadata.version)      # "2.1.0"
+```
+
+### Backward Compatibility
+
+The metadata section's optional fields maintain backward compatibility. Projects with minimal metadata (only `type` specified) continue to work, with the project name derived from the filename.
 
 ## Entity Section
 
