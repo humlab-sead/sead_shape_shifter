@@ -1,5 +1,16 @@
 # Shape Shifter - AI Coding Agent Instructions
 
+## Documentation Scope
+
+When referencing project documentation, **ignore all files in `docs/archive/`**. These are historical implementation notes and deprecated documentation. Refer only to current documentation in the main `docs/` directory:
+
+- **CONFIGURATION_GUIDE.md** - Complete YAML configuration reference
+- **ARCHITECTURE.md** - System architecture and component overview
+- **DEVELOPER_GUIDE.md** - Development setup and contribution guidelines
+- **USER_GUIDE.md** - End-user documentation
+- **REQUIREMENTS.md** - Feature specifications
+- **TESTING_GUIDE.md** - Testing procedures
+
 ## Project Architecture
 
 **Shape Shifter** is a mono-repo with three components:
