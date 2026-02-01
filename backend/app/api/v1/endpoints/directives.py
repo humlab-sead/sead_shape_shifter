@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from backend.app.services.directive_validator import DirectiveValidationResult, DirectiveValidator
+from backend.app.services.directive_validator import DirectiveValidator
 from backend.app.services.project_service import ProjectService
 
 router = APIRouter()
@@ -42,9 +42,9 @@ async def validate_directive(project_name: str, request: ValidateDirectiveReques
     try:
         project_service = ProjectService()
         project = project_service.load_project(project_name)
-        
+
         validator = DirectiveValidator(project)
-        
+
         # Use FK-specific validation if context provided
         if request.local_entity and request.remote_entity and request.is_local_keys is not None:
             result = validator.validate_foreign_key_directive(
@@ -55,14 +55,14 @@ async def validate_directive(project_name: str, request: ValidateDirectiveReques
             )
         else:
             result = validator.validate_directive(request.directive)
-        
+
         return ValidateDirectiveResponse(
             is_valid=result.is_valid,
             path=result.path,
             error=result.error,
             suggestions=result.suggestions,
         )
-        
+
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
     except Exception as e:
@@ -84,10 +84,10 @@ async def get_valid_directives(project_name: str, max_depth: int = 3):
     try:
         project_service = ProjectService()
         project = project_service.load_project(project_name)
-        
+
         validator = DirectiveValidator(project)
         return validator.get_all_valid_paths(max_depth)
-        
+
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Project '{project_name}' not found")
     except Exception as e:
