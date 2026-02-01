@@ -4,6 +4,7 @@ from functools import lru_cache
 from typing import Any
 
 from loguru import logger
+import pandas as pd
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
@@ -115,12 +116,29 @@ class TaskService:
         preview_available = False
         if exists and validation_passed:
             try:
-                # Try to generate preview (with limit=1 for speed)
-                await self.shapeshift_service.preview_entity(project_name=project.filename, entity_name=entity_name, limit=1)
-                preview_available = True
+                # Check if preview is cached (fast check without triggering normalization)
+                # Use get_dataframe which does TTL + version + hash validation but doesn't generate data
+                table_cfg: TableConfig = project.get_table(entity_name)
+                project_version: int = self.shapeshift_service.get_project_version(project.filename)
+                cached_df: pd.DataFrame | None = self.shapeshift_service.cache.get_dataframe(
+                    project_name=project.filename,
+                    entity_name=entity_name,
+                    project_version=project_version,
+                    entity_config=table_cfg,
+                )
+                
+                if cached_df is not None:
+                    # Cache exists and is valid
+                    preview_available = True
+                    logger.debug(f"Preview available for {entity_name} (from cache)")
+                else:
+                    # Cache miss or stale - skip expensive preview generation for task status
+                    # Task status endpoint should be fast; preview will be generated on-demand when user views entity
+                    preview_available = False
+                    logger.debug(f"Skipping preview generation for {entity_name} in task status (cache miss)")
             except Exception as e:  # pylint: disable=broad-except
-                logger.debug(f"Preview failed for {entity_name}: {e}")
-                validation_issues.append(f"Preview generation failed: {str(e)}")
+                logger.debug(f"Preview check failed for {entity_name}: {e}")
+                preview_available = False
 
         # Determine blocked_by (dependencies that aren't done)
         blocked_by: list[str] = []
