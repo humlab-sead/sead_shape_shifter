@@ -55,6 +55,13 @@ class TestRunService:
 
         self._active_runs[run_id] = result
         self._cancel_flags[run_id] = False
+        
+        logger.info(
+            f"[INIT] Test run {run_id} created and stored. "
+            f"Service instance: {id(self)}, "
+            f"Active runs: {len(self._active_runs)}, "
+            f"Run IDs: {list(self._active_runs.keys())}"
+        )
 
         return result
 
@@ -327,7 +334,9 @@ class TestRunService:
         """
         logger.info(
             f"[RETRIEVE] Getting test run {run_id}, "
-            f"active_runs contains {len(self._active_runs)} runs: {list(self._active_runs.keys())}"
+            f"Service instance: {id(self)}, "
+            f"Active runs: {len(self._active_runs)}, "
+            f"Run IDs: {list(self._active_runs.keys())}"
         )
         result: TestRunResult | None = self._active_runs.get(run_id)
         if result:
