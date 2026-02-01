@@ -53,8 +53,35 @@
 
             <v-row dense class="mb-2">
               <v-col cols="12" md="5">
-                <v-combobox v-model="fk.local_keys" label="Local Keys" chips multiple variant="outlined"
-                  density="compact" hide-details />
+                <v-combobox 
+                  v-model="fk.local_keys" 
+                  label="Local Keys" 
+                  chips 
+                  multiple 
+                  variant="outlined"
+                  density="compact" 
+                  :items="localColumnItems[index]"
+                  :error="localKeyErrors[index] !== undefined"
+                  :messages="localKeyErrors[index]"
+                  @focus="loadLocalColumns(index)"
+                  @update:model-value="validateLocalKeys(index)"
+                >
+                  <template v-slot:chip="{ item, props: chipProps }">
+                    <v-chip v-bind="chipProps" size="x-small" closable>
+                      {{ item.value }}
+                    </v-chip>
+                  </template>
+                  <template v-slot:item="{ item, props: itemProps }">
+                    <v-list-item v-bind="itemProps">
+                      <template v-slot:title>
+                        {{ item.raw.value }}
+                      </template>
+                      <template v-slot:subtitle>
+                        <span class="text-caption text-grey">{{ item.raw.category }}</span>
+                      </template>
+                    </v-list-item>
+                  </template>
+                </v-combobox>
               </v-col>
 
               <v-col cols="12" md="2" class="d-flex align-center justify-center">
@@ -62,8 +89,35 @@
               </v-col>
 
               <v-col cols="12" md="5">
-                <v-combobox v-model="fk.remote_keys" label="Remote Keys" chips multiple variant="outlined"
-                  density="compact" hide-details />
+                <v-combobox 
+                  v-model="fk.remote_keys" 
+                  label="Remote Keys" 
+                  chips 
+                  multiple 
+                  variant="outlined"
+                  density="compact" 
+                  :items="remoteColumnItems[index]"
+                  :error="remoteKeyErrors[index] !== undefined"
+                  :messages="remoteKeyErrors[index]"
+                  @focus="loadRemoteColumns(index)"
+                  @update:model-value="validateRemoteKeys(index)"
+                >
+                  <template v-slot:chip="{ item, props: chipProps }">
+                    <v-chip v-bind="chipProps" size="x-small" closable>
+                      {{ item.value }}
+                    </v-chip>
+                  </template>
+                  <template v-slot:item="{ item, props: itemProps }">
+                    <v-list-item v-bind="itemProps">
+                      <template v-slot:title>
+                        {{ item.raw.value }}
+                      </template>
+                      <template v-slot:subtitle>
+                        <span class="text-caption text-grey">{{ item.raw.category }}</span>
+                      </template>
+                    </v-list-item>
+                  </template>
+                </v-combobox>
               </v-col>
             </v-row>
 
@@ -86,9 +140,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import type { ForeignKeyConfig } from '@/types'
 import ForeignKeyTester from './ForeignKeyTester.vue'
+import { useColumnIntrospection } from '@/composables/useColumnIntrospection'
+import { useDirectiveValidation } from '@/composables/useDirectiveValidation'
 
 interface Props {
   modelValue: ForeignKeyConfig[]
@@ -108,6 +164,159 @@ const emit = defineEmits<{
 }>()
 
 const foreignKeys = ref<ForeignKeyConfig[]>([...props.modelValue])
+const { getAvailableColumns, flattenColumns } = useColumnIntrospection()
+const { validateDirective, isDirective } = useDirectiveValidation()
+
+// Cache for column suggestions per entity
+const columnCache = ref<Map<string, Array<{ value: string; category: string }>>>(new Map())
+
+// Items for comboboxes (indexed by FK index)
+const localColumnItems = ref<Array<Array<{ title: string; value: string; category: string }>>>([])
+const remoteColumnItems = ref<Array<Array<{ title: string; value: string; category: string }>>>([])
+
+// Validation errors for directive values (indexed by FK index)
+const localKeyErrors = ref<Array<string | undefined>>([])
+const remoteKeyErrors = ref<Array<string | undefined>>([])
+
+/**
+ * Validate local keys for directive references.
+ */
+async function validateLocalKeys(fkIndex: number) {
+  const fk = foreignKeys.value[fkIndex]
+  if (!fk.local_keys || fk.local_keys.length === 0) {
+    localKeyErrors.value[fkIndex] = undefined
+    return
+  }
+
+  // Check if any key is a directive
+  const directiveKey = fk.local_keys.find(key => isDirective(key))
+  if (!directiveKey) {
+    localKeyErrors.value[fkIndex] = undefined
+    return
+  }
+
+  // Validate the directive
+  const result = await validateDirective(props.projectName, directiveKey as string, {
+    localEntity: props.entityName,
+    remoteEntity: fk.entity,
+    isLocalKeys: true,
+  })
+
+  if (result && !result.is_valid) {
+    let errorMsg = result.error || 'Invalid @value directive'
+    if (result.suggestions.length > 0) {
+      errorMsg += `. Try: ${result.suggestions.slice(0, 2).join(', ')}`
+    }
+    localKeyErrors.value[fkIndex] = errorMsg
+  } else {
+    localKeyErrors.value[fkIndex] = undefined
+  }
+}
+
+/**
+ * Validate remote keys for directive references.
+ */
+async function validateRemoteKeys(fkIndex: number) {
+  const fk = foreignKeys.value[fkIndex]
+  if (!fk.remote_keys || fk.remote_keys.length === 0) {
+    remoteKeyErrors.value[fkIndex] = undefined
+    return
+  }
+
+  // Check if any key is a directive
+  const directiveKey = fk.remote_keys.find(key => isDirective(key))
+  if (!directiveKey) {
+    remoteKeyErrors.value[fkIndex] = undefined
+    return
+  }
+
+  // Validate the directive
+  const result = await validateDirective(props.projectName, directiveKey as string, {
+    localEntity: props.entityName,
+    remoteEntity: fk.entity,
+    isLocalKeys: false,
+  })
+
+  if (result && !result.is_valid) {
+    let errorMsg = result.error || 'Invalid @value directive'
+    if (result.suggestions.length > 0) {
+      errorMsg += `. Try: ${result.suggestions.slice(0, 2).join(', ')}`
+    }
+    remoteKeyErrors.value[fkIndex] = errorMsg
+  } else {
+    remoteKeyErrors.value[fkIndex] = undefined
+  }
+}
+
+/**
+ * Get column suggestions for an entity.
+ */
+async function getColumnSuggestions(entityName: string): Promise<Array<{ value: string; category: string }>> {
+  if (columnCache.value.has(entityName)) {
+    return columnCache.value.get(entityName)!
+  }
+
+  const result = await getAvailableColumns(props.projectName, entityName)
+  if (!result) {
+    return []
+  }
+
+  const suggestions = flattenColumns(result.local_columns)
+  columnCache.value.set(entityName, suggestions)
+  return suggestions
+}
+
+/**
+ * Load local columns for a specific FK.
+ */
+async function loadLocalColumns(fkIndex: number) {
+  if (localColumnItems.value[fkIndex]?.length > 0) {
+    return // Already loaded
+  }
+
+  const suggestions = await getColumnSuggestions(props.entityName)
+  localColumnItems.value[fkIndex] = suggestions.map(s => ({
+    title: s.value,
+    value: s.value,
+    category: s.category,
+  }))
+}
+
+/**
+ * Load remote columns for a specific FK.
+ */
+async function loadRemoteColumns(fkIndex: number) {
+  const fk = foreignKeys.value[fkIndex]
+  if (!fk.entity) {
+    remoteColumnItems.value[fkIndex] = []
+    return
+  }
+
+  if (remoteColumnItems.value[fkIndex]?.length > 0) {
+    return // Already loaded
+  }
+
+  const suggestions = await getColumnSuggestions(fk.entity)
+  remoteColumnItems.value[fkIndex] = suggestions.map(s => ({
+    title: s.value,
+    value: s.value,
+    category: s.category,
+  }))
+}
+
+// Watch for entity changes to reload remote columns
+watch(
+  () => foreignKeys.value.map(fk => fk.entity),
+  (newEntities, oldEntities) => {
+    newEntities.forEach((entity, index) => {
+      if (entity !== oldEntities[index]) {
+        // Entity changed, clear remote columns cache for this FK
+        remoteColumnItems.value[index] = []
+      }
+    })
+  },
+  { deep: true }
+)
 
 const joinTypes = [
   { title: 'Inner Join', value: 'inner' },

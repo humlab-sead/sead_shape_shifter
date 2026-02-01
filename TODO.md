@@ -413,4 +413,31 @@ Structure the document with clear sections such as:
  - Architectural constraints and invariants
 
  You can take the existing ARCHITECTURE.md as a starting point, but significantly condense and refocus it to meet these criteria.
- 
+
+ - [x] TODO: #202 Improve FK editing user experience
+
+ We can improve the user experience when editing FKs. Currently, thw system offers no assistance when entering local and remote FK. 
+
+ I think the system could offer picklists of available local and remote columns. This picklist should include all columns from each entity that is a candidate for the FK relationship, i.e. all columns in columns, keys and extra_columns, any columns that are generated during normalization (e.g. result of unnesting unnested columns (value id, value vars, id_vars), FK-columns and FK's extra columns etc), system_id, public_id.
+
+ The candidate columns can be computed without doing the full normalization, by analyzing the entity definitions and their relationships.
+
+A special case is if the user wants to use a "@value"-directive to point to e.g. another YAML-key in the project. To keep it aimple "@value: entities.**local/remote-entity-name**.keys" could be added to the picklist.
+
+One could also for flexibility allow the user to enter arbitrary YAML-path i.e. a åath that doesn't exist in the picklist.
+
+If a "@value" is used, that can be the only value, and should be a string (not a list). This will be resolved at runtime to the actual column(s).
+
+**Status**: ✅ IMPLEMENTED (Phase 1 & 2 complete)
+- Backend column introspection service with categorized column discovery
+- API endpoint for fetching available columns  
+- Frontend composable with caching
+- Enhanced FK editor with categorized comboboxes
+- @value directive validation service (Phase 2)
+- Real-time validation feedback with suggestions (Phase 2)
+- Full test coverage (10/10 + 14/14 tests passing)
+- Documentation: docs/FK_EDITING_UX.md
+
+**Future Enhancements**:
+- Phase 3: UI polish with visual indicators (1 day)
+- Phase 4: Smart defaults based on naming conventions (2 days)
