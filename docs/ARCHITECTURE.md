@@ -917,7 +917,7 @@ docker-compose up -d
 
 ## 11. Related Documentation
 
-- [UI Requirements](UI_REQUIREMENTS.md) - Functional requirements
+- [Requirements](REQUIREMENTS.md) - Functional requirements
 - [User Guide](USER_GUIDE.md) - User documentation
 - [Developer Guide](DEVELOPER_GUIDE.md) - Development guide
 - [Testing Guide](TESTING_GUIDE.md) - Testing documentation

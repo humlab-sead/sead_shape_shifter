@@ -477,7 +477,7 @@ This document outlines the step-by-step plan to rename "configuration" to "proje
 **Other docs files:**
 - [ ] `docs/STATE_MANAGEMENT_IMPLEMENTATION.md`
 - [ ] `docs/SPLIT_PANE_IMPLEMENTATION.md`
-- [ ] `docs/UI_REQUIREMENTS.md`
+- [ ] `docs/REQUIREMENTS.md`
 - [ ] `docs/USER_GUIDE.md`
 
 ---
