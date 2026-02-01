@@ -9,6 +9,9 @@ export interface YamlIntelligenceOptions {
   context?: ValidationContext
 }
 
+// Track if YAML has been configured globally
+let yamlConfigured = false
+
 /**
  * Setup YAML intelligence features for Monaco editor
  * @param monacoInstance - Monaco editor instance
@@ -18,6 +21,11 @@ export function setupYamlIntelligence(
   monacoInstance: typeof monaco,
   options: YamlIntelligenceOptions
 ) {
+  // Only configure monaco-yaml once globally to avoid worker conflicts
+  if (yamlConfigured) {
+    return
+  }
+
   const schema = options.mode === 'project' ? projectSchema : entitySchema
 
   configureMonacoYaml(monacoInstance, {
@@ -34,4 +42,6 @@ export function setupYamlIntelligence(
       }
     ]
   })
+  
+  yamlConfigured = true
 }
