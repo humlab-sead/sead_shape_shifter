@@ -176,7 +176,13 @@ class TestSqlEntityFieldsSpecification:
         """Sample project configuration."""
         return {
             "entities": {
-                "valid_sql": {"type": "sql", "columns": ["id", "col1"], "keys": ["id"], "data_source": "db1", "query": "SELECT * FROM table"},
+                "valid_sql": {
+                    "type": "sql",
+                    "columns": ["id", "col1"],
+                    "keys": ["id"],
+                    "data_source": "db1",
+                    "query": "SELECT * FROM table",
+                },
                 "missing_query": {"type": "sql", "columns": ["id", "col1"], "keys": ["id"], "data_source": "db1"},
             }
         }

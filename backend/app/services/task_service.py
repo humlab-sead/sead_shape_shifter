@@ -3,8 +3,8 @@
 from functools import lru_cache
 from typing import Any
 
-from loguru import logger
 import pandas as pd
+from loguru import logger
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project
@@ -126,7 +126,7 @@ class TaskService:
                     project_version=project_version,
                     entity_config=table_cfg,
                 )
-                
+
                 if cached_df is not None:
                     # Cache exists and is valid
                     preview_available = True

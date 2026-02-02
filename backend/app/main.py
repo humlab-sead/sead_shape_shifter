@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
@@ -104,7 +104,7 @@ if frontend_dist.exists() and frontend_dist.is_dir():
     logger.info(f"Serving frontend from: {frontend_dist}")
     # Mount static files (JS, CSS, assets)
     app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="assets")
-    
+
     # SPA catch-all route - serve index.html for all non-API routes
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
@@ -115,6 +115,7 @@ if frontend_dist.exists() and frontend_dist.is_dir():
             return FileResponse(file_path)
         # Otherwise serve index.html for client-side routing
         return FileResponse(frontend_dist / "index.html")
+
 else:
     logger.info(f"Frontend dist directory not found: {frontend_dist}")
     logger.info("Running in API-only mode. Build frontend with 'cd frontend && pnpm run build'")
