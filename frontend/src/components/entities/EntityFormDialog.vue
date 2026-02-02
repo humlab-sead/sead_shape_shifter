@@ -1328,10 +1328,7 @@ function formDataToYaml(): string {
   // Always include system_id (standardized to "system_id")
   entityData.system_id = 'system_id'
 
-  // Include public_id (required for target system PK and FK naming)
-  if (formData.value.public_id) {
-    entityData.public_id = formData.value.public_id
-  }
+  entityData.public_id = formData.value.public_id || null
 
   // Legacy: Only include surrogate_id if migrating from old config
   if (formData.value.surrogate_id && !formData.value.public_id) {
