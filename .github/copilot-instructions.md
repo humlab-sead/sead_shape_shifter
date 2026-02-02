@@ -9,7 +9,13 @@ When referencing project documentation, **ignore all files in `docs/archive/`**.
 - **DEVELOPER_GUIDE.md** - Development setup and contribution guidelines
 - **USER_GUIDE.md** - End-user documentation
 - **REQUIREMENTS.md** - Feature specifications
-- **TESTING_GUIDE.md** - Testing procedures
+- **TESTING_GUIDE.md** - Concise functional testing procedures (core workflows only)
+- **testing/** - Testing resources subfolder:
+  - **ERROR_SCENARIO_TESTING.md** - Error handling and recovery tests
+  - **TEST_RESULTS_TEMPLATE.md** - Templates and quick test checklists
+  - **APPENDIX.md** - Shortcuts, troubleshooting, tools
+  - **NON_FUNCTIONAL_TESTING_GUIDE.md** - Browser compatibility, performance
+  - **ACCESSIBILITY_TESTING_GUIDE.md** - WCAG compliance testing
 
 ## Project Architecture
 
@@ -599,6 +605,8 @@ See `ingesters/README.md` for detailed guide. Basic steps:
 - [docs/SYSTEM_DOCUMENTATION.md](docs/SYSTEM_DOCUMENTATION.md) - Architecture and component overview
 - [docs/BACKEND_API.md](docs/BACKEND_API.md) - REST API endpoint reference
 - [docs/DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md) - Setup and contribution guidelines
+- [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) - Concise functional testing procedures
+- [docs/testing/](docs/testing/) - Testing resources (error scenarios, templates, non-functional, accessibility)
 
 ## External Dependencies
 - **UCanAccess**: MS Access via JDBC (install: `scripts/install-uncanccess.sh`)
