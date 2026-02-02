@@ -1,6 +1,5 @@
 """Tests for @value directive validator."""
 
-
 import pytest
 
 from backend.app.models.project import Project

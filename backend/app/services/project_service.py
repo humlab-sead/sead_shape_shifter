@@ -323,15 +323,11 @@ class ProjectService:
             Entity dict with public_id preserved
         """
         # Exclude None fields to avoid YAML bloat, but preserve public_id separately
-        entity_dict = entity.model_dump(
-            exclude_none=True,
-            exclude={'surrogate_id'},  # Exclude deprecated field
-            mode="json"
-        )
+        entity_dict = entity.model_dump(exclude_none=True, exclude={"surrogate_id"}, mode="json")  # Exclude deprecated field
 
         # Ensure public_id is always present (even if None) for three-tier identity model
-        if 'public_id' not in entity_dict:
-            entity_dict['public_id'] = entity.public_id
+        if "public_id" not in entity_dict:
+            entity_dict["public_id"] = entity.public_id
 
         return entity_dict
 
