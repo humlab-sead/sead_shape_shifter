@@ -520,3 +520,37 @@ For implementation details, configuration syntax, and usage instructions, consul
 - **USER_GUIDE.md** - End-user workflows
 - **REQUIREMENTS.md** - Feature specifications
 - **TESTING_GUIDE.md** - Testing procedures
+
+# Copilot ML Instructions for this document
+
+Write a new concise ARCHITECTURE.md for this application taking into account that the system has three main parts:
+ - core (Python),
+ - backend (Vue 3),
+ - frontend (Python components).
+
+The document should:
+
+ - describe high-level architecture and structural patterns, not implementation details
+ - focus on component boundaries, responsibilities, and interactions
+ - emphasize pluggability, extension points, and replaceable parts
+ - describe data flow, control flow, and integration contracts at a conceptual level
+ - avoid configuration, usage instructions, APIs, or developer workflows (covered elsewhere)
+
+Style and maintenance requirements:
+
+ - matter-of-fact, neutral tone
+ - stable over time; avoid volatile details (file paths, class names, concrete libraries)
+ - use diagrams-as-text (ASCII or Mermaid) where helpful
+ - assume USER, DEVELOPER, and CONFIGURATION guides exist and do not repeat them
+ - be restrictive about adding code snippets; focus on architecture, not implementation
+
+Structure the document with clear sections such as:
+
+ - Architectural goals and non-goals
+ - System overview
+ - Major components and responsibilities
+ - Interaction patterns and data flow
+ - Extension and customization points
+ - Architectural constraints and invariants
+
+ You can take the existing ARCHITECTURE.md as a starting point, but significantly condense and refocus it to meet these criteria.
