@@ -1515,6 +1515,9 @@ async function handleSubmit() {
       columns: formData.value.columns,
     }
 
+    // Always include public_id (even if null) to prevent field from being omitted
+    entityData.public_id = formData.value.public_id || null
+
     if (formData.value.surrogate_id) {
       entityData.surrogate_id = formData.value.surrogate_id
     }
