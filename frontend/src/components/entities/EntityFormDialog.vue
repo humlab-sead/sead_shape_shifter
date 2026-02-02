@@ -669,7 +669,7 @@ import SqlEditor from '../common/SqlEditor.vue'
 import MaterializeDialog from './MaterializeDialog.vue'
 import UnmaterializeDialog from './UnmaterializeDialog.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
 
 // Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
@@ -1148,6 +1148,19 @@ watch(
       columnsOptions.value = []
     }
   }
+)
+
+// Watch for formData changes to trigger validation (handles FK editor changes)
+watch(
+  formData,
+  () => {
+    // Trigger form validation when any formData changes
+    // This ensures the save button is enabled when FKs or other non-form fields change
+    nextTick(() => {
+      formRef.value?.validate()
+    })
+  },
+  { deep: true }
 )
 
 // Watch for entity type changes to fetch appropriate files
