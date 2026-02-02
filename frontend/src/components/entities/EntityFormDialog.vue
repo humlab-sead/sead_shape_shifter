@@ -1156,8 +1156,12 @@ watch(
   () => {
     // Trigger form validation when any formData changes
     // This ensures the save button is enabled when FKs or other non-form fields change
-    nextTick(() => {
-      formRef.value?.validate()
+    nextTick(async () => {
+      const result = await formRef.value?.validate()
+      // Explicitly update formValid to enable save button for changes outside v-form
+      if (result?.valid) {
+        formValid.value = true
+      }
     })
   },
   { deep: true }
