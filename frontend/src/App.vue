@@ -220,22 +220,22 @@
     <log-viewer-overlay v-model="showLogViewer" />
 
     <!-- Floating Action Button for Log Viewer (hidden on Settings page) -->
-    <v-fab
+    <v-btn
       v-if="route.name !== 'settings'"
-      :active="showLogViewer"
       icon="mdi-console-line"
-      location="bottom end"
-      size="default"
       color="primary"
-      app
-      appear
+      size="large"
+      position="fixed"
+      location="bottom end"
+      class="ma-4"
       @click="showLogViewer = !showLogViewer"
     >
+      <v-icon>mdi-console-line</v-icon>
       <v-tooltip activator="parent" location="left">
         <div>View Logs</div>
         <div class="text-caption">Ctrl+Shift+L</div>
       </v-tooltip>
-    </v-fab>
+    </v-btn>
   </v-app>
 </template>
 
