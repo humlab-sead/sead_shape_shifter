@@ -4,7 +4,29 @@
 
 This guide provides comprehensive step-by-step manual testing procedures for the Shape Shifter Project Editor frontend application. Use this guide to ensure all UI features work correctly across different browsers and scenarios.
 
-### Recent Updates: Three-Tier Identity System
+### Recent Updates
+
+#### February 2026: Foreign Key Editor Enhancements
+
+**What Changed:**
+
+- Foreign key local/remote key fields now show **categorized column suggestions**
+- Columns are organized by source: Keys, Explicit, Extra, FK, System, Directives
+- Added `item-value="value"` to comboboxes to store strings instead of objects
+- Fixed save button not enabling when FK changes made
+- Added deep watcher on formData to trigger validation for all tabs
+- Fixed SPA routing for page refresh (no more 404 on /projects/xxx)
+
+**Testing Focus:**
+
+- ✅ FK key fields show categorized suggestions on focus
+- ✅ Categories appear as subtitles in dropdown
+- ✅ Selected columns stored as plain strings (not objects with title/value/category)
+- ✅ Save button enables immediately after FK add/delete
+- ✅ Changes in all tabs (FK, Filters, Unnest, Append, Extra Columns) enable save
+- ✅ Page refresh on any route loads correctly (no 404)
+
+#### January 2026: Three-Tier Identity System
 
 **What Changed:**
 
@@ -125,6 +147,21 @@ Before starting tests, verify:
 - [ ] Browser history works correctly
 - [ ] No console errors during navigation
 
+**Test: Page Refresh on Client-Side Routes**
+
+1. Navigate to project details (e.g., /projects/arbodat-test)
+2. Press F5 or Ctrl+R to refresh page
+3. Observe page loads correctly
+
+**Expected Results:**
+
+- [ ] Page loads without 404 error
+- [ ] Vue Router takes over after page load
+- [ ] Correct component renders
+- [ ] Project data loads correctly
+- [ ] URL remains correct
+- [ ] Works on all client-side routes
+
 ### Theme Toggle
 
 **Test: Light/Dark Mode Switch**
@@ -242,8 +279,7 @@ Before starting tests, verify:
 - [ ] Error details shown on hover
 - [ ] Save button enabled when changes exist
 - [ ] Save button state reflects save status
-
-**Note:** Auto-save is not currently implemented. Changes must be saved manually using the "Save" button.
+- [ ] Changes must be saved manually using the "Save" button
 
 ### Save Project
 
@@ -481,8 +517,8 @@ Before creating entities, verify understanding of three-tier identity:
 2. Click "Add" button
 3. Fill in foreign key:
    - Target Entity: select entity
-   - Local Keys: add column(s)
-   - Remote Keys: add column(s)
+   - Local Keys: click field to see categorized column suggestions
+   - Remote Keys: click field to see categorized column suggestions
    - Join Type: select `inner`
 4. Expand "Constraints"
 5. Set cardinality: `many_to_one`
@@ -493,11 +529,17 @@ Before creating entities, verify understanding of three-tier identity:
 - [ ] Tab disabled for new entities
 - [ ] Add button creates new FK card
 - [ ] All fields functional
+- [ ] Column suggestions show categories (Keys, Explicit, Extra, FK, System)
+- [ ] Categories displayed as subtitles in dropdowns
+- [ ] Can select columns from suggestions or type manually
+- [ ] Selected columns stored as strings (not objects)
 - [ ] Join type dropdown works
 - [ ] Constraints panel collapses/expands
 - [ ] Delete button removes FK
+- [ ] Save button enabled after FK changes
+- [ ] Delete button enables save
 - [ ] Test Join button appears (if entity saved)
-- [ ] FK saves to YAML correctly
+- [ ] FK saves to YAML correctly with string arrays
 
 **Test: Test Foreign Key Join**
 
@@ -517,24 +559,25 @@ Before creating entities, verify understanding of three-tier identity:
 
 ### Entity Editor - Advanced Tab
 
-**Test: Filters Project**
+**Test: Filters (Advanced Tab)**
 
-1. Switch to "Advanced" tab
-2. Expand "Filters" panel
-3. Click "Add Filter"
-4. Configure `exists_in` filter:
+1. Switch to "Advanced" tab (or "Filters" tab if separate)
+2. Click "Add Filter"
+3. Configure `exists_in` filter:
    - Entity: select entity
    - Column: enter column
    - Remote Column: enter column
-5. Click "Save"
+4. Click "Save"
 
 **Expected Results:**
 
+- [ ] Tab disabled for new entities
 - [ ] Filter card appears
 - [ ] Type selector shows filter types
 - [ ] Entity autocomplete works
 - [ ] All fields editable
 - [ ] Remove button works
+- [ ] Save button enabled after changes
 - [ ] Multiple filters supported
 - [ ] Saves to YAML under `filters`
 
@@ -1352,28 +1395,32 @@ Before creating entities, verify understanding of three-tier identity:
 
 **Expected Results:**
 
-- [ ] Cache invalidated on edit
-- [ ] New API request made
+- [ ] Cache invalidated on save
+- [ ] New API request made (check Network tab)
 - [ ] New results reflect changes
 - [ ] Execution time normal (not cached)
+- [ ] Version-based cache invalidation works
+- [ ] Entity-specific changes invalidate full project cache
 
 ### Auto-Fix Suggestions
 
 **Test: Apply Auto-Fix**
 
 1. Run validation with fixable errors
-2. Find validation with "Apply Fix" button
+2. Find validation error with "Apply Fix" button
 3. Click "Apply Fix"
-4. Observe changes
+4. Observe changes in YAML editor
+5. Save project
 
 **Expected Results:**
 
 - [ ] Fix applied to YAML immediately
-- [ ] YAML editor updates
+- [ ] YAML editor updates in real-time
 - [ ] Success notification shown
+- [ ] Unsaved changes indicator appears (*)
 - [ ] Re-validation shows error resolved
-- [ ] Backup created before fix
-- [ ] Can undo via backup
+- [ ] Backup created when project is saved
+- [ ] Can undo via backup or browser undo (Ctrl+Z)
 
 **Test: Multiple Auto-Fixes**
 
@@ -1419,8 +1466,9 @@ Before creating entities, verify understanding of three-tier identity:
 **Expected Results:**
 
 - [ ] Dialog opens with "Execute Workflow" title
-- [ ] Dispatcher selection dropdown visible
+- [ ] Output Format (dispatcher) dropdown visible
 - [ ] Form fields appropriate for selected dispatcher
+- [ ] Execution options toggles visible (validation, translations, drop FKs)
 - [ ] Cancel button available
 - [ ] Execute button disabled until form valid
 
