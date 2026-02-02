@@ -122,6 +122,78 @@ This guide provides step-by-step functional testing procedures for the Shape Shi
 - [ ] Touch targets ≥ 44x44px on mobile
 - [ ] Text remains readable at all sizes
 
+### Log Viewer Overlay
+
+**Test: Open Log Viewer with FAB**
+
+1. Navigate to any page (except Settings)
+2. Observe floating action button (FAB) in bottom-right corner
+3. Click FAB or press `Ctrl+Shift+L`
+4. Observe log viewer overlay appears
+
+**Expected Results:**
+
+- [ ] FAB visible on all pages except Settings
+- [ ] FAB shows console icon (mdi-console-line)
+- [ ] Tooltip appears on hover showing "View Logs" and "Ctrl+Shift+L"
+- [ ] Clicking FAB opens log viewer overlay
+- [ ] Keyboard shortcut `Ctrl+Shift+L` toggles overlay
+- [ ] FAB hidden when on Settings page (logs already available there)
+
+**Test: Log Viewer Functionality**
+
+1. Open log viewer overlay
+2. Test log type filter (Application/Error)
+3. Test level filter (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+4. Test line count selector (100-2500)
+5. Test auto-refresh toggle (30s interval)
+6. Test download button
+7. Test refresh button
+
+**Expected Results:**
+
+- [ ] Logs load on first open
+- [ ] Changing log type updates logs
+- [ ] Level filter shows only selected levels
+- [ ] Line count selector limits displayed lines
+- [ ] Auto-refresh toggles correctly (visual indicator when active)
+- [ ] Download saves logs as text file with correct filename
+- [ ] Refresh button reloads current logs
+- [ ] Loading states display correctly
+- [ ] Error messages shown if logs fail to load
+
+**Test: Overlay Window Controls**
+
+1. Open log viewer overlay
+2. Test minimize button
+3. Test maximize button
+4. Test close button
+5. Press `Esc` key
+6. Press `Ctrl+Shift+L` again
+
+**Expected Results:**
+
+- [ ] Minimize button collapses content (keeps title bar)
+- [ ] Maximize button fills viewport
+- [ ] Restore button (when maximized) returns to normal size
+- [ ] Close button closes overlay
+- [ ] `Esc` key closes overlay
+- [ ] `Ctrl+Shift+L` toggles overlay closed when open
+- [ ] Overlay state resets when reopened
+
+**Test: Command Palette Integration**
+
+1. Press `Ctrl+K` to open command palette
+2. Type "log" in search
+3. Select "Open Log Viewer" command
+
+**Expected Results:**
+
+- [ ] "Open Log Viewer" appears in filtered results
+- [ ] Shows icon and shortcut (Ctrl+Shift+L)
+- [ ] Selecting command opens log viewer
+- [ ] Command palette closes after selection
+
 ---
 
 ## Project Editor Testing
