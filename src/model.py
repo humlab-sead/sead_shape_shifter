@@ -353,11 +353,18 @@ class TableConfig:
             if isinstance(append_cfg.get("source"), str):
                 append_sources.add(append_cfg["source"])
 
+        # Collect entities referenced in filters via 'other_entity'
+        filter_dependencies: set[str] = set()
+        for filter_cfg in self.filters:
+            if isinstance(filter_cfg.get("other_entity"), str):
+                filter_dependencies.add(filter_cfg["other_entity"])
+
         return (
             set(self.entity_cfg.get("depends_on", []) or [])
             | ({self.source} if self.source else set())
             | {fk.remote_entity for fk in self.foreign_keys}
             | append_sources
+            | filter_dependencies
         )
 
     @cached_property
