@@ -74,11 +74,19 @@ class ColumnIntrospectionService:
 
         # Explicit columns from 'columns' field
         if "columns" in entity_config and entity_config["columns"]:
-            availability.explicit = list(entity_config["columns"])
+            columns = entity_config["columns"]
+            # Only convert to list if it's already a list (not a string directive)
+            if isinstance(columns, list):
+                availability.explicit = list(columns)
+            elif isinstance(columns, str):
+                # String directive - add to directives instead
+                availability.directives.append(columns)
 
         # Business keys from 'keys' field
         if "keys" in entity_config and entity_config["keys"]:
-            availability.keys = list(entity_config["keys"])
+            keys = entity_config["keys"]
+            if isinstance(keys, list):
+                availability.keys = list(keys)
 
         # Extra columns from 'extra_columns' dict
         if "extra_columns" in entity_config and entity_config["extra_columns"]:
@@ -96,8 +104,8 @@ class ColumnIntrospectionService:
         if "public_id" in entity_config and entity_config["public_id"]:
             availability.system.append(entity_config["public_id"])
 
-        # Generate @value directive suggestions
-        availability.directives = self._generate_directive_options(entity_name)
+        # Generate @value directive suggestions and add to existing directives
+        availability.directives.extend(self._generate_directive_options(entity_name))
 
         return availability
 
@@ -122,14 +130,24 @@ class ColumnIntrospectionService:
             columns.append("value_name")
 
         # Variable name column (if var_name specified)
-        if "var_name" in unnest_config:
-            columns.append(unnest_config["var_name"])
+        if "var_name" in unnest_config and unnest_config["var_name"]:
+            var_name = unnest_config["var_name"]
+            if isinstance(var_name, str) and not var_name.startswith("@"):
+                columns.append(var_name)
 
         # ID variables (if id_vars specified)
-        if "id_vars" in unnest_config:
+        if "id_vars" in unnest_config and unnest_config["id_vars"]:
             id_vars = unnest_config["id_vars"]
+            # Only extend if it's a list, not a string directive
             if isinstance(id_vars, list):
                 columns.extend(id_vars)
+
+        # Value variables (if value_vars specified and not a directive)
+        if "value_vars" in unnest_config and unnest_config["value_vars"]:
+            value_vars = unnest_config["value_vars"]
+            # Only extend if it's a list, not a string directive
+            if isinstance(value_vars, list):
+                columns.extend(value_vars)
 
         return columns
 

@@ -165,3 +165,75 @@ class TestColumnIntrospectionService:
         assert result.explicit == []
         assert result.keys == []
         assert result.extra == []
+    def test_analyze_entity_with_directive_columns(self, service, mock_project_service):
+        """Test that string directives in columns field are not split into characters."""
+        project = Project(
+            entities={
+                "abundance_property_type": {
+                    "type": "fixed",
+                    "public_id": "arbodat_code",
+                    "keys": ["arbodat_code"],
+                    "values": {"abundance_property_type.xlsx": {}},
+                },
+                "abundance_property": {
+                    "type": "entity",
+                    "source": "abundance",
+                    "public_id": "abundance_property_id",
+                    "keys": [],
+                    "columns": "@value: entities.abundance_property_type.arbodat_codes + ['abundance_id']",
+                    "foreign_keys": [
+                        {
+                            "entity": "abundance_property_type",
+                            "local_keys": ["abundance_property_type"],
+                            "remote_keys": ["arbodat_code"],
+                        }
+                    ],
+                    "unnest": {
+                        "id_vars": ["abundance_id"],
+                        "value_vars": "@value: entities.abundance_property_type.arbodat_codes",
+                        "var_name": "abundance_property_type",
+                        "value_name": "abundance_property_value",
+                    },
+                },
+            },
+        )
+        mock_project_service.load_project.return_value = project
+
+        result = service._analyze_entity(project, "abundance_property")
+
+        # String directive should be added to directives, not split into characters
+        assert len(result.explicit) == 0  # No explicit columns
+        assert "@value: entities.abundance_property_type.arbodat_codes + ['abundance_id']" in result.directives
+        
+        # Verify no individual characters from the directive string
+        assert "@" not in result.explicit
+        assert "v" not in result.explicit
+        assert "a" not in result.explicit
+        
+        # unnest value_vars directive should not be split either
+        assert "abundance_id" in result.unnested  # id_vars is still added
+        assert "abundance_property_type" in result.unnested  # var_name is still added
+        # But value_vars should not be split into characters
+
+    def test_analyze_entity_with_directive_keys(self, service, mock_project_service):
+        """Test that string directives in keys field are not split into characters."""
+        project = Project(
+            entities={
+                "test_entity": {
+                    "type": "entity",
+                    "source": "test",
+                    "public_id": "test_id",
+                    "keys": "@value: entities.other.keys",
+                    "columns": ["col1", "col2"],
+                },
+            },
+        )
+        mock_project_service.load_project.return_value = project
+
+        result = service._analyze_entity(project, "test_entity")
+
+        # String directive in keys should not be split into characters
+        assert len(result.keys) == 0  # No actual keys
+        # Verify no individual characters
+        assert "@" not in result.keys
+        assert "v" not in result.keys
