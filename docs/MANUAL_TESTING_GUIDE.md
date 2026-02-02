@@ -6,31 +6,11 @@ This guide provides comprehensive step-by-step manual testing procedures for the
 
 ### Recent Updates
 
-#### February 2026: Foreign Key Editor Enhancements
+#### Three-Tier Identity System
 
 **What Changed:**
 
-- Foreign key local/remote key fields now show **categorized column suggestions**
-- Columns are organized by source: Keys, Explicit, Extra, FK, System, Directives
-- Added `item-value="value"` to comboboxes to store strings instead of objects
-- Fixed save button not enabling when FK changes made
-- Added deep watcher on formData to trigger validation for all tabs
-- Fixed SPA routing for page refresh (no more 404 on /projects/xxx)
-
-**Testing Focus:**
-
-- ✅ FK key fields show categorized suggestions on focus
-- ✅ Categories appear as subtitles in dropdown
-- ✅ Selected columns stored as plain strings (not objects with title/value/category)
-- ✅ Save button enables immediately after FK add/delete
-- ✅ Changes in all tabs (FK, Filters, Unnest, Append, Extra Columns) enable save
-- ✅ Page refresh on any route loads correctly (no 404)
-
-#### January 2026: Three-Tier Identity System
-
-**What Changed:**
-
-Shape Shifter now uses a three-tier identity system to replace the ambiguous `surrogate_id` field:
+Shape Shifter uses a three-tier identity system:
 
 1. **System ID** - Auto-managed local identity (always `system_id`, read-only)
 2. **Business Keys** - Source domain keys for deduplication (multi-select, from `keys` field)
@@ -41,16 +21,32 @@ Shape Shifter now uses a three-tier identity system to replace the ambiguous `su
 - ✅ System ID field is read-only/disabled and always shows `system_id`
 - ✅ Business Keys support multiple column selections
 - ✅ Public ID is required and validates `_id` suffix
-- ✅ Legacy `surrogate_id` configs automatically migrate to `public_id`
 - ✅ Foreign key column names match parent entity's `public_id`
-- ✅ Fixed values grid auto-populates `system_id` column (1, 2, 3...)
+- ✅ System ID column auto-populates in fixed values grid (1, 2, 3...)
 
 **Key UI Changes:**
 
-- Entity editor Basic tab now shows three identity sections with tooltips
+- Entity editor Basic tab shows three identity sections with tooltips
 - System ID field is disabled (cannot be changed from default `system_id`)
 - Public ID field has validation (required, must end with `_id`)
 - Business Keys renamed from "Natural Keys" with clearer description
+
+#### Foreign Key Editor Enhancements
+
+**What Changed:**
+
+- Foreign key local/remote key fields show **categorized column suggestions**
+- Columns are organized by source: Keys, Explicit, Extra, FK, System, Directives
+- Categories displayed as subtitles in dropdown lists
+
+**Testing Focus:**
+
+- ✅ FK key fields show categorized suggestions on focus
+- ✅ Categories appear as subtitles in dropdown
+- ✅ Selected columns stored as plain strings
+- ✅ Save button enables immediately after FK add/delete/edit
+- ✅ Changes in all tabs (FK, Filters, Unnest, Append, Extra Columns) enable save
+- ✅ Page refresh on any route loads correctly
 
 ## Table of Contents
 
@@ -689,22 +685,6 @@ Before creating entities, verify understanding of three-tier identity:
 - [ ] public_id ends with `_id`
 - [ ] Editing system_id in YAML may be allowed but form shows read-only
 - [ ] Form correctly displays identity fields from YAML
-- [ ] Legacy `surrogate_id` field automatically migrates to `public_id`
-
-**Test: Backward Compatibility with Legacy YAML**
-
-1. Switch to YAML tab
-2. Replace `public_id:` with `surrogate_id:` 
-3. Remove `system_id:` line
-4. Switch to Basic tab
-
-**Expected Results:**
-
-- [ ] Form automatically migrates `surrogate_id` to `public_id`
-- [ ] Public ID field shows value from `surrogate_id`
-- [ ] System ID defaults to `system_id`
-- [ ] No errors during migration
-- [ ] Saving converts YAML to new format
 
 ### Entity Editor - Preview Tab
 
