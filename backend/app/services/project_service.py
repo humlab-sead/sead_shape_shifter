@@ -459,6 +459,11 @@ class ProjectService:
         if entity_name not in project.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
+        # Ensure public_id is preserved (three-tier identity model)
+        # If not in incoming data, keep existing value (even if None)
+        if "public_id" not in entity_data and "public_id" in project.entities[entity_name]:
+            entity_data["public_id"] = project.entities[entity_name]["public_id"]
+
         # Use the model's add_entity method to ensure proper handling
         project.add_entity(entity_name, entity_data)
         self.save_project(project)
