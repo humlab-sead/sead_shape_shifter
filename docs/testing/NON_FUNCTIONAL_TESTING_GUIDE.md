@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers non-functional testing requirements for Shape Shifter, including browser compatibility, performance benchmarks, and accessibility compliance. Use this guide in conjunction with the [Manual Testing Guide](../MANUAL_TESTING_GUIDE.md) for comprehensive coverage.
+This guide covers non-functional testing requirements for Shape Shifter, including browser compatibility, performance benchmarks, and accessibility compliance. Use this guide in conjunction with the [Testing Guide](../TESTING_GUIDE.md) for comprehensive coverage.
 
 ## Table of Contents
 

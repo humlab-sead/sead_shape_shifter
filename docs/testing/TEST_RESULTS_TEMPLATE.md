@@ -117,7 +117,7 @@ After code changes, verify core features:
 
 Comprehensive functional test:
 
-- [ ] Complete all core sections in [Manual Testing Guide](../MANUAL_TESTING_GUIDE.md)
+- [ ] Complete all core sections in [Testing Guide](../TESTING_GUIDE.md)
 - [ ] Test error scenarios (see [Error Scenario Testing](ERROR_SCENARIO_TESTING.md))
 - [ ] Verify all features work correctly
 - [ ] Document any issues
