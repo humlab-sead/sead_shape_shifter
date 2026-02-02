@@ -1,13 +1,18 @@
 <template>
   <v-dialog
     v-model="isOpen"
-    :max-width="dialogWidth"
+    :max-width="isMaximized ? '100vw' : dialogWidth"
     :persistent="false"
     scrollable
-    :style="dialogStyle"
+    :scrim="false"
+    :style="dialogPositionStyle"
+    content-class="log-viewer-dialog"
   >
-    <v-card>
-      <v-card-title class="d-flex align-center justify-space-between pa-2 drag-handle" style="cursor: move">
+    <v-card :style="cardStyle">
+      <v-card-title 
+        class="d-flex align-center justify-space-between pa-2 drag-handle" 
+        @mousedown="startDrag"
+      >
         <div class="d-flex align-center">
           <v-icon icon="mdi-console-line" class="mr-2" />
           <span>Application Logs</span>
@@ -18,21 +23,21 @@
             variant="text"
             size="small"
             density="compact"
-            @click="toggleMinimize"
+            @click.stop="toggleMinimize"
           />
           <v-btn
             :icon="isMaximized ? 'mdi-window-restore' : 'mdi-window-maximize'"
             variant="text"
             size="small"
             density="compact"
-            @click="toggleMaximize"
+            @click.stop="toggleMaximize"
           />
           <v-btn
             icon="mdi-close"
             variant="text"
             size="small"
             density="compact"
-            @click="close"
+            @click.stop="close"
           />
         </div>
       </v-card-title>
@@ -156,6 +161,12 @@ const isMaximized = ref(false)
 const dialogWidth = ref('800px')
 const contentHeight = ref('500px')
 
+// Drag state
+const isDragging = ref(false)
+const dialogPosition = ref({ x: 0, y: 0 })
+const dragOffset = ref({ x: 0, y: 0 })
+const isPositioned = ref(false)
+
 // Logs state
 const logLines = ref<string[]>([])
 const logsLoading = ref(false)
@@ -181,16 +192,24 @@ const lineOptions = [
   { title: '2500 lines', value: 2500 },
 ]
 
-const dialogStyle = computed(() => {
+const dialogPositionStyle = computed(() => {
+  if (!isPositioned.value || isMaximized.value) {
+    return {}
+  }
+  return {
+    position: 'fixed' as const,
+    top: `${dialogPosition.value.y}px`,
+    left: `${dialogPosition.value.x}px`,
+    margin: '0',
+  }
+})
+
+const cardStyle = computed(() => {
   if (isMaximized.value) {
     return {
-      position: 'fixed' as const,
-      top: '0',
-      left: '0',
-      width: '100vw !important',
-      height: '100vh !important',
+      width: '100vw',
+      height: '100vh',
       maxWidth: '100vw !important',
-      margin: '0',
     }
   }
   return {}
@@ -259,10 +278,57 @@ function close() {
   isOpen.value = false
 }
 
+// Drag functionality
+function startDrag(event: MouseEvent) {
+  if (isMaximized.value) return
+  
+  isDragging.value = true
+  const dialog = (event.target as HTMLElement).closest('.v-overlay__content') as HTMLElement
+  
+  if (dialog) {
+    const rect = dialog.getBoundingClientRect()
+    dragOffset.value = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    }
+    
+    if (!isPositioned.value) {
+      dialogPosition.value = {
+        x: rect.left,
+        y: rect.top
+      }
+      isPositioned.value = true
+    }
+  }
+  
+  document.addEventListener('mousemove', onDrag)
+  document.addEventListener('mouseup', stopDrag)
+  event.preventDefault()
+}
+
+function onDrag(event: MouseEvent) {
+  if (!isDragging.value) return
+  
+  dialogPosition.value = {
+    x: event.clientX - dragOffset.value.x,
+    y: event.clientY - dragOffset.value.y
+  }
+}
+
+function stopDrag() {
+  isDragging.value = false
+  document.removeEventListener('mousemove', onDrag)
+  document.removeEventListener('mouseup', stopDrag)
+}
+
 // Load logs when dialog opens
 watch(isOpen, (newValue) => {
   if (newValue && logLines.value.length === 0) {
     refreshLogs()
+  }
+  if (!newValue) {
+    // Reset position when dialog closes
+    isPositioned.value = false
   }
 })
 
@@ -270,12 +336,23 @@ onUnmounted(() => {
   if (autoRefreshInterval !== null) {
     clearInterval(autoRefreshInterval)
   }
+  stopDrag()
 })
 </script>
 
 <style scoped>
 .drag-handle {
   background-color: rgba(var(--v-theme-surface-variant), 0.5);
+  cursor: move;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+:deep(.log-viewer-dialog) {
+  position: fixed !important;
 }
 
 .logs-container {
