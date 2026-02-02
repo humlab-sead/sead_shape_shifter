@@ -17,7 +17,7 @@ def build_schema(table_name: str, columns: list[ColumnMetadata]) -> TableSchema:
 @pytest.mark.asyncio
 async def test_suggest_foreign_keys_with_schema_types() -> None:
     """High-confidence FK suggestion when names, types, and PK align."""
-    settings.ENABLE_FK_SUGGESTIONS = True  # type: ignore  # pylint: disable=invalid-name
+    settings.ENABLE_FK_SUGGESTIONS = True  # type: ignore ; pylint: disable=invalid-name
     service = SuggestionService(schema_service=AsyncMock())
 
     entity = {"name": "orders", "columns": ["order_id", "customer_id"]}
