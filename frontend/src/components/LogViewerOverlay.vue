@@ -164,8 +164,8 @@ const contentHeight = ref('500px')
 // Drag state
 const isDragging = ref(false)
 const dialogPosition = ref({ x: 0, y: 0 })
-const dragOffset = ref({ x: 0, y: 0 })
-const isPositioned = ref(false)
+const initialMousePos = ref({ x: 0, y: 0 })
+const initialDialogPos = ref({ x: 0, y: 0 })
 
 // Logs state
 const logLines = ref<string[]>([])
@@ -193,13 +193,17 @@ const lineOptions = [
 ]
 
 const dialogPositionStyle = computed(() => {
-  if (!isPositioned.value || isMaximized.value) {
+  if (isMaximized.value) {
     return {}
+  }
+  if (dialogPosition.value.x === 0 && dialogPosition.value.y === 0) {
+    return {} // Let dialog center itself initially
   }
   return {
     position: 'fixed' as const,
     top: `${dialogPosition.value.y}px`,
     left: `${dialogPosition.value.x}px`,
+    transform: 'none', // Override default centering
     margin: '0',
   }
 })
@@ -282,36 +286,41 @@ function close() {
 function startDrag(event: MouseEvent) {
   if (isMaximized.value) return
   
-  isDragging.value = true
   const dialog = (event.target as HTMLElement).closest('.v-overlay__content') as HTMLElement
   
   if (dialog) {
     const rect = dialog.getBoundingClientRect()
-    dragOffset.value = {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
+    
+    // Store initial mouse position
+    initialMousePos.value = {
+      x: event.clientX,
+      y: event.clientY
     }
     
-    if (!isPositioned.value) {
-      dialogPosition.value = {
-        x: rect.left,
-        y: rect.top
-      }
-      isPositioned.value = true
+    // Store current dialog position (or use rect if not yet positioned)
+    initialDialogPos.value = {
+      x: dialogPosition.value.x || rect.left,
+      y: dialogPosition.value.y || rect.top
     }
+    
+    isDragging.value = true
+    document.addEventListener('mousemove', onDrag)
+    document.addEventListener('mouseup', stopDrag)
+    event.preventDefault()
   }
-  
-  document.addEventListener('mousemove', onDrag)
-  document.addEventListener('mouseup', stopDrag)
-  event.preventDefault()
 }
 
 function onDrag(event: MouseEvent) {
   if (!isDragging.value) return
   
+  // Calculate how far the mouse has moved
+  const deltaX = event.clientX - initialMousePos.value.x
+  const deltaY = event.clientY - initialMousePos.value.y
+  
+  // Apply delta to initial dialog position
   dialogPosition.value = {
-    x: event.clientX - dragOffset.value.x,
-    y: event.clientY - dragOffset.value.y
+    x: initialDialogPos.value.x + deltaX,
+    y: initialDialogPos.value.y + deltaY
   }
 }
 
@@ -328,7 +337,7 @@ watch(isOpen, (newValue) => {
   }
   if (!newValue) {
     // Reset position when dialog closes
-    isPositioned.value = false
+    dialogPosition.value = { x: 0, y: 0 }
   }
 })
 
