@@ -5,8 +5,12 @@
 ### Application Shortcuts
 
 - `Ctrl/Cmd + S` - Save project
-- `Ctrl/Cmd + K` - Open command palette (if implemented)
+- `Ctrl/Cmd + K` - Open command palette
+- `Ctrl/Cmd + Shift + L` - Toggle log viewer overlay
+- `Ctrl/Cmd + H` - Go to home
+- `Ctrl/Cmd + Shift + C` - Go to projects
 - `Ctrl/Cmd + /` - Toggle comments in YAML editor
+- `Esc` - Close dialogs/overlays
 
 ### DevTools Shortcuts
 
