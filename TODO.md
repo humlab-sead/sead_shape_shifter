@@ -33,6 +33,7 @@
  - [] TODO: Improve Reconcile user experience
  - [] TODO: Auto-save feature in YAML editing mode (trigger after 2 seconds of inactivity)
  - [] TODO: #189 Simplify server side caching (remove!) of parsed YAML projects
+ - [] TODO: Consider limiting "@value:" directive usage to only refer to non-directive keys.
 
 
 APPENDIX
