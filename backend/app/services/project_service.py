@@ -308,6 +308,33 @@ class ProjectService:
 
         return saved_config
 
+    @staticmethod
+    def _serialize_entity(entity: Entity) -> dict[str, Any]:
+        """
+        Serialize entity to dict, preserving public_id field even when None.
+
+        This ensures the three-tier identity model (system_id, keys, public_id)
+        is always complete in YAML files, while avoiding bloat from other None fields.
+
+        Args:
+            entity: Entity to serialize
+
+        Returns:
+            Entity dict with public_id preserved
+        """
+        # Exclude None fields to avoid YAML bloat, but preserve public_id separately
+        entity_dict = entity.model_dump(
+            exclude_none=True,
+            exclude={'surrogate_id'},  # Exclude deprecated field
+            mode="json"
+        )
+
+        # Ensure public_id is always present (even if None) for three-tier identity model
+        if 'public_id' not in entity_dict:
+            entity_dict['public_id'] = entity.public_id
+
+        return entity_dict
+
     def add_entity(self, project: Project, entity_name: str, entity: Entity) -> Project:
         """
         Add entity to project.
@@ -326,8 +353,7 @@ class ProjectService:
         if entity_name in project.entities:
             raise EntityAlreadyExistsError(f"Entity '{entity_name}' already exists")
 
-        project.entities[entity_name] = entity.model_dump(exclude_none=True, mode="json")
-
+        project.entities[entity_name] = self._serialize_entity(entity)
         logger.debug(f"Added entity '{entity_name}'")
         return project
 
@@ -349,8 +375,7 @@ class ProjectService:
         if entity_name not in project.entities:
             raise EntityNotFoundError(f"Entity '{entity_name}' not found")
 
-        project.entities[entity_name] = entity.model_dump(exclude_none=True, mode="json")
-
+        project.entities[entity_name] = self._serialize_entity(entity)
         logger.debug(f"Updated entity '{entity_name}'")
         return project
 
