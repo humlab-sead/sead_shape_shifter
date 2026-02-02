@@ -1381,7 +1381,16 @@ function formDataToYaml(): string {
   }
 
   if (formData.value.foreign_keys.length > 0) {
-    entityData.foreign_keys = formData.value.foreign_keys
+    // Transform foreign keys: extract just column values from column picker objects
+    entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => ({
+      entity: fk.entity,
+      local_keys: Array.isArray(fk.local_keys)
+        ? fk.local_keys.map((col: any) => typeof col === 'string' ? col : col.value)
+        : [],
+      remote_keys: Array.isArray(fk.remote_keys)
+        ? fk.remote_keys.map((col: any) => typeof col === 'string' ? col : col.value)
+        : [],
+    }))
   }
 
   if (formData.value.advanced.filters?.length) {
@@ -1562,7 +1571,16 @@ async function handleSubmit() {
 
     // Include foreign keys if any
     if (formData.value.foreign_keys.length > 0) {
-      entityData.foreign_keys = formData.value.foreign_keys
+      // Transform foreign keys: extract just column values from column picker objects
+      entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => ({
+        entity: fk.entity,
+        local_keys: Array.isArray(fk.local_keys)
+          ? fk.local_keys.map((col: any) => typeof col === 'string' ? col : col.value)
+          : [],
+        remote_keys: Array.isArray(fk.remote_keys)
+          ? fk.remote_keys.map((col: any) => typeof col === 'string' ? col : col.value)
+          : [],
+      }))
     }
 
     // Include depends_on if specified
