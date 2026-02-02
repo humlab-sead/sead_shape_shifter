@@ -77,12 +77,18 @@ class ValidationService:
         Validate project using CompositeConfigSpecification.
 
         Args:
-            config_data: Configuration dictionary with entities and options
+            project_cfg: Configuration dictionary with entities and options (will be resolved)
 
         Returns:
             ValidationResult with errors and warnings
         """
         logger.debug("Validating project")
+
+        # Resolve directives before validation (Core layer requirement)
+        # Specifications expect fully resolved config
+        from src.configuration.config import Config
+
+        project_cfg = Config.resolve_references(project_cfg)
 
         specification = CompositeProjectSpecification(project_cfg)
         is_valid: bool = specification.is_satisfied_by()
