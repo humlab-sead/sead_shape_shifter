@@ -1221,145 +1221,6 @@ Before creating entities, verify understanding of three-tier identity:
 
 ---
 
-## Optioonal: Validation Testing
-
-### Full Project Validation
-
-**Test: Validate All**
-
-1. Open project
-2. Click "Validate All" button in toolbar
-3. Wait for results
-
-**Expected Results:**
-
-- [ ] Button shows loading state
-- [ ] Validation runs on all entities
-- [ ] Results panel appears/updates
-- [ ] Error count badge displayed
-- [ ] Warning count badge displayed
-- [ ] Execution time shown
-- [ ] Results categorized by type
-
-### Validation Result Categories
-
-**Test: Navigate Validation Tabs**
-
-1. After validation, click each tab:
-   - Summary
-   - Structural
-   - Data
-   - Entities
-2. Observe content in each
-
-**Expected Results:**
-
-- [ ] Summary tab shows overview
-- [ ] Structural tab shows project structure issues
-- [ ] Data tab shows data quality issues
-- [ ] Entities tab lists entity-specific validations
-- [ ] Counts accurate in each tab
-- [ ] Can expand/collapse validation items
-
-### Entity-Specific Validation
-
-**Test: Validate Single Entity**
-
-1. Select entity in entity list
-2. Click "Validate" icon/button for entity
-3. Observe results
-
-**Expected Results:**
-
-- [ ] Only that entity validated
-- [ ] Results filtered to entity
-- [ ] Faster than full validation
-- [ ] Error count specific to entity
-- [ ] Can run on multiple entities sequentially
-
-### Validation Caching
-
-**Test: Cache Behavior**
-
-1. Click "Validate All"
-2. Note request time in Network tab (DevTools)
-3. Immediately click "Validate All" again
-4. Note request time
-
-**Expected Results:**
-
-- [ ] Second validation near-instant (cached)
-- [ ] No new API request in Network tab
-- [ ] Cache hit indicator shown (optional)
-- [ ] Results identical
-
-**Test: Cache Invalidation**
-
-1. Run validation (cache results)
-2. Edit project (modify entity)
-3. Save project
-4. Run validation again
-
-**Expected Results:**
-
-- [ ] Cache invalidated on save
-- [ ] New API request made (check Network tab)
-- [ ] New results reflect changes
-- [ ] Execution time normal (not cached)
-- [ ] Version-based cache invalidation works
-- [ ] Entity-specific changes invalidate full project cache
-
-### Auto-Fix Suggestions
-
-**Test: Apply Auto-Fix**
-
-1. Run validation with fixable errors
-2. Find validation error with "Apply Fix" button
-3. Click "Apply Fix"
-4. Observe changes in YAML editor
-5. Save project
-
-**Expected Results:**
-
-- [ ] Fix applied to YAML immediately
-- [ ] YAML editor updates in real-time
-- [ ] Success notification shown
-- [ ] Unsaved changes indicator appears (*)
-- [ ] Re-validation shows error resolved
-- [ ] Backup created when project is saved
-- [ ] Can undo via backup or browser undo (Ctrl+Z)
-
-**Test: Multiple Auto-Fixes**
-
-1. Apply one fix
-2. Apply another fix
-3. Run validation
-
-**Expected Results:**
-
-- [ ] Each fix applies independently
-- [ ] No conflicts between fixes
-- [ ] All fixes persist
-- [ ] Validation shows improvements
-
-### Validation Error Details
-
-**Test: Expand Error Details**
-
-1. Find validation error in results
-2. Click to expand details
-
-**Expected Results:**
-
-- [ ] Details panel expands
-- [ ] Error message clear and descriptive
-- [ ] Location information shown (entity, field)
-- [ ] Suggested fix shown (if available)
-- [ ] Can click entity name to jump to it
-- [ ] Can copy error message
-
----
-
 ## Execute Workflow Testing
 
 ### Execute Dialog
@@ -1703,3 +1564,142 @@ For comprehensive testing coverage, see:
 - **[Testing Appendix](testing/APPENDIX.md)** - Keyboard shortcuts, common issues, troubleshooting, DevTools tips
 - **[Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md)** - Browser compatibility, performance metrics, feature-specific behavior
 - **[Accessibility Testing Guide](testing/ACCESSIBILITY_TESTING_GUIDE.md)** - WCAG compliance, screen readers, keyboard navigation
+
+## Optioonal: Validation Testing
+
+### Full Project Validation
+
+**Test: Validate All**
+
+1. Open project
+2. Click "Validate All" button in toolbar
+3. Wait for results
+
+**Expected Results:**
+
+- [ ] Button shows loading state
+- [ ] Validation runs on all entities
+- [ ] Results panel appears/updates
+- [ ] Error count badge displayed
+- [ ] Warning count badge displayed
+- [ ] Execution time shown
+- [ ] Results categorized by type
+
+### Validation Result Categories
+
+**Test: Navigate Validation Tabs**
+
+1. After validation, click each tab:
+   - Summary
+   - Structural
+   - Data
+   - Entities
+2. Observe content in each
+
+**Expected Results:**
+
+- [ ] Summary tab shows overview
+- [ ] Structural tab shows project structure issues
+- [ ] Data tab shows data quality issues
+- [ ] Entities tab lists entity-specific validations
+- [ ] Counts accurate in each tab
+- [ ] Can expand/collapse validation items
+
+### Entity-Specific Validation
+
+**Test: Validate Single Entity**
+
+1. Select entity in entity list
+2. Click "Validate" icon/button for entity
+3. Observe results
+
+**Expected Results:**
+
+- [ ] Only that entity validated
+- [ ] Results filtered to entity
+- [ ] Faster than full validation
+- [ ] Error count specific to entity
+- [ ] Can run on multiple entities sequentially
+
+### Validation Caching
+
+**Test: Cache Behavior**
+
+1. Click "Validate All"
+2. Note request time in Network tab (DevTools)
+3. Immediately click "Validate All" again
+4. Note request time
+
+**Expected Results:**
+
+- [ ] Second validation near-instant (cached)
+- [ ] No new API request in Network tab
+- [ ] Cache hit indicator shown (optional)
+- [ ] Results identical
+
+**Test: Cache Invalidation**
+
+1. Run validation (cache results)
+2. Edit project (modify entity)
+3. Save project
+4. Run validation again
+
+**Expected Results:**
+
+- [ ] Cache invalidated on save
+- [ ] New API request made (check Network tab)
+- [ ] New results reflect changes
+- [ ] Execution time normal (not cached)
+- [ ] Version-based cache invalidation works
+- [ ] Entity-specific changes invalidate full project cache
+
+### Auto-Fix Suggestions
+
+**Test: Apply Auto-Fix**
+
+1. Run validation with fixable errors
+2. Find validation error with "Apply Fix" button
+3. Click "Apply Fix"
+4. Observe changes in YAML editor
+5. Save project
+
+**Expected Results:**
+
+- [ ] Fix applied to YAML immediately
+- [ ] YAML editor updates in real-time
+- [ ] Success notification shown
+- [ ] Unsaved changes indicator appears (*)
+- [ ] Re-validation shows error resolved
+- [ ] Backup created when project is saved
+- [ ] Can undo via backup or browser undo (Ctrl+Z)
+
+**Test: Multiple Auto-Fixes**
+
+1. Apply one fix
+2. Apply another fix
+3. Run validation
+
+**Expected Results:**
+
+- [ ] Each fix applies independently
+- [ ] No conflicts between fixes
+- [ ] All fixes persist
+- [ ] Validation shows improvements
+
+### Validation Error Details
+
+**Test: Expand Error Details**
+
+1. Find validation error in results
+2. Click to expand details
+
+**Expected Results:**
+
+- [ ] Details panel expands
+- [ ] Error message clear and descriptive
+- [ ] Location information shown (entity, field)
+- [ ] Suggested fix shown (if available)
+- [ ] Can click entity name to jump to it
+- [ ] Can copy error message
+
+---
