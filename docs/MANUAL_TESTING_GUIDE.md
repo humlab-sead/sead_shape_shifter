@@ -1,52 +1,24 @@
-# Frontend Manual Testing Guide - Shape Shifter Project Editor
+# Manual Testing Guide - Shape Shifter
 
 ## Overview
 
-This guide provides comprehensive step-by-step manual testing procedures for the Shape Shifter Project Editor frontend application. Use this guide to ensure all UI features work correctly across different browsers and scenarios.
+This guide provides step-by-step functional testing procedures for the Shape Shifter Project Editor frontend. Focus is on core features and workflows.
 
-### Recent Updates
+**Related Guides:**
+- [Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md) - Browser compatibility, performance, accessibility
+- [Accessibility Testing Guide](testing/ACCESSIBILITY_TESTING_GUIDE.md) - WCAG compliance, screen readers, keyboard navigation
 
-#### Three-Tier Identity System
+### Key Testing Focus
 
-**What Changed:**
+**Three-Tier Identity System:**
+- System ID (always `system_id`, read-only)
+- Business Keys (multi-select from `keys` field)
+- Public ID (required, must end with `_id`)
 
-Shape Shifter uses a three-tier identity system:
-
-1. **System ID** - Auto-managed local identity (always `system_id`, read-only)
-2. **Business Keys** - Source domain keys for deduplication (multi-select, from `keys` field)
-3. **Public ID** - Target system PK name that defines FK column naming (required, must end with `_id`)
-
-**Testing Focus Areas:**
-
-- ✅ System ID field is read-only/disabled and always shows `system_id`
-- ✅ Business Keys support multiple column selections
-- ✅ Public ID is required and validates `_id` suffix
-- ✅ Foreign key column names match parent entity's `public_id`
-- ✅ System ID column auto-populates in fixed values grid (1, 2, 3...)
-
-**Key UI Changes:**
-
-- Entity editor Basic tab shows three identity sections with tooltips
-- System ID field is disabled (cannot be changed from default `system_id`)
-- Public ID field has validation (required, must end with `_id`)
-- Business Keys renamed from "Natural Keys" with clearer description
-
-#### Foreign Key Editor Enhancements
-
-**What Changed:**
-
-- Foreign key local/remote key fields show **categorized column suggestions**
-- Columns are organized by source: Keys, Explicit, Extra, FK, System, Directives
-- Categories displayed as subtitles in dropdown lists
-
-**Testing Focus:**
-
-- ✅ FK key fields show categorized suggestions on focus
-- ✅ Categories appear as subtitles in dropdown
-- ✅ Selected columns stored as plain strings
-- ✅ Save button enables immediately after FK add/delete/edit
-- ✅ Changes in all tabs (FK, Filters, Unnest, Append, Extra Columns) enable save
-- ✅ Page refresh on any route loads correctly
+**Foreign Key Editor:**
+- Categorized column suggestions (Keys, Explicit, Extra, FK, System, Directives)
+- Save button enables on any change in FK/Filters/Unnest/Append/Extra Columns tabs
+- Selected values stored as plain strings
 
 ## Table of Contents
 
@@ -61,12 +33,11 @@ Shape Shifter uses a three-tier identity system:
 - [Execute Workflow Testing](#execute-workflow-testing)
 - [Ingester Testing](#ingester-testing)
 - [Data Source Testing](#data-source-testing)
-- [Cross-Browser Testing](#cross-browser-testing)
-- [Feature-Specific Testing](#feature-specific-testing)
 - [Error Scenario Testing](#error-scenario-testing)
-- [Performance Testing](#performance-testing)
-- [Accessibility Testing](#accessibility-testing)
 - [Test Results Template](#test-results-template)
+- [Quick Test Checklists](#quick-test-checklists)
+
+**For non-functional testing** (browser compatibility, performance, accessibility), see **[Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md)**.
 
 ---
 
@@ -2077,239 +2048,6 @@ Before creating entities, verify understanding of three-tier identity:
 
 ---
 
-## Cross-Browser Testing
-
-### Supported Browsers
-
-Test in each of these browsers:
-
-- **Chrome 120+** (primary)
-- **Firefox 115+**
-- **Edge 120+**
-- **Safari 16+** (if on macOS)
-
-### Core Functionality Checklist
-
-For each browser, verify:
-
-**Application Loading:**
-- [ ] Application loads within 2 seconds
-- [ ] No console errors
-- [ ] Navigation works
-- [ ] Theme toggle works
-
-**Project Editor:**
-- [ ] YAML editor displays correctly
-- [ ] Syntax highlighting works
-- [ ] Can edit and save
-- [ ] Validation runs
-- [ ] Execute dialog opens
-
-**Entity Editor:**
-- [ ] Dialog opens and closes
-- [ ] All tabs functional
-- [ ] Forms submit correctly
-- [ ] Preview loads
-
-**Execute Workflow:**
-- [ ] Dialog opens correctly
-- [ ] Dispatcher selection works
-- [ ] Can execute workflow
-- [ ] Download button functional
-- [ ] Success/error messages display
-
-**Visual Elements:**
-- [ ] Fonts render correctly
-- [ ] Icons display
-- [ ] Colors appropriate (light/dark)
-- [ ] Spacing consistent
-
-### Browser-Specific Testing
-
-#### Chrome DevTools
-
-**Steps:**
-1. Open DevTools (F12)
-2. Check Console for errors
-3. Monitor Network tab during operations
-4. Use Performance tab for profiling
-
-**Expected:**
-- [ ] No errors or warnings
-- [ ] API requests < 500ms
-- [ ] UI interactions < 50ms
-- [ ] 60 FPS animations
-
-#### Firefox DevTools
-
-**Steps:**
-1. Open DevTools (F12)
-2. Use CSS Grid Inspector on layout
-3. Check Accessibility inspector
-4. Monitor Storage tab for caching
-
-**Expected:**
-- [ ] CSS Grid layout correct
-- [ ] Accessibility tree valid
-- [ ] LocalStorage/SessionStorage working
-- [ ] No CSS variable issues
-
-#### Safari (macOS)
-
-**Steps:**
-1. Enable Develop menu: Safari → Settings → Advanced
-2. Open Web Inspector (Cmd+Option+I)
-3. Test touch gestures (if trackpad)
-4. Check WebKit-specific rendering
-
-**Expected:**
-- [ ] Flexbox/Grid rendering correct
-- [ ] Backdrop filters work (if used)
-- [ ] Scrollbar styling acceptable
-- [ ] Touch gestures responsive
-
-### Performance Metrics
-
-**Target Metrics (All Browsers):**
-
-1. **Initial Page Load**: < 2 seconds
-2. **Validation Response**: < 5 seconds
-3. **UI Responsiveness**: 60 FPS
-4. **Memory Usage**: < 100MB after 10 minutes
-
-**Measuring Performance:**
-
-```javascript
-// In DevTools Console
-performance.mark('validation-start');
-// Click "Validate All"
-performance.mark('validation-end');
-performance.measure('validation', 'validation-start', 'validation-end');
-console.table(performance.getEntriesByType('measure'));
-```
-
----
-
-## Feature-Specific Testing
-
-### Validation Result Caching
-
-**Test Steps:**
-
-1. Open project
-2. Click "Validate All"
-3. Note request time in Network tab
-4. Click "Validate All" again immediately
-5. **Expected**: No new API request (cached)
-6. Wait 5+ minutes
-7. Click "Validate All" again
-8. **Expected**: New API request (cache expired)
-
-**Browser Notes:**
-- Chrome: Check "Preserve log" in Network tab
-- Firefox: Network tab auto-clears on reload
-- Safari: Network tab under "Develop" menu
-
-### Tooltips
-
-**Test Steps:**
-
-1. Hover over "Validate All" button
-2. Hover over validation tabs
-3. Hover over entity validation buttons
-4. Hover over "Apply Fix" buttons
-
-**Expected Results:**
-- [ ] Tooltip appears within 500ms
-- [ ] Text is readable
-- [ ] Tooltip disappears on mouse-out
-- [ ] No overlapping elements
-
-**Safari Note**: Tooltips may appear slower
-
-### Loading Indicators
-
-**Test Steps:**
-
-1. Click "Validate All"
-2. Observe loading skeleton
-
-**Expected Results:**
-- [ ] Skeleton appears immediately
-- [ ] Realistic multi-line structure
-- [ ] Smooth pulsing animation
-- [ ] Instant replacement when data loads
-- [ ] No flash of empty content
-
-**Performance Tip**: Throttle to "Slow 3G" in DevTools to see skeleton longer
-
-### Success Animations
-
-**Test Steps:**
-
-1. Make YAML change
-2. Save project
-3. Observe success notification
-
-**Expected Results:**
-- [ ] Smooth scale-in transition (~300ms)
-- [ ] No stuttering
-- [ ] Auto-dismiss after 3 seconds
-- [ ] GPU-accelerated (no jank)
-
-### Debounced Validation
-
-**Test Steps:**
-
-1. Type rapidly in YAML editor
-2. Monitor Network tab
-
-**Expected Results:**
-- [ ] Validation waits 500ms after last keystroke
-- [ ] Only one request after typing stops
-- [ ] No "validation storm"
-- [ ] Typing remains responsive
-
-### ag-Grid Data Preview
-
-**Test Steps:**
-
-1. Load entity preview (Preview tab or split view)
-2. Observe ag-grid
-
-**Expected Results:**
-- [ ] Grid renders with proper styling
-- [ ] Text color has good contrast
-- [ ] Row height appropriate (compact)
-- [ ] Header height appropriate
-- [ ] Font size readable (10-11px)
-- [ ] Scrolling smooth
-- [ ] Columns resizable
-- [ ] Sorting works (if enabled)
-
-### Fixed Values Grid
-
-**Test Steps:**
-
-1. Create entity with type `fixed`
-2. Add keys and columns
-3. Interact with Fixed Values Grid:
-   - Add row
-   - Edit cells
-   - Delete selected rows
-   - Select multiple rows
-
-**Expected Results:**
-- [ ] Grid displays with columns from keys + columns
-- [ ] Rows addable
-- [ ] Cells editable (click to edit)
-- [ ] Checkbox selection works
-- [ ] Delete removes selected rows
-- [ ] Data saves to YAML as 2D array
-- [ ] Grid compact (small fonts, padding)
-
----
-
 ## Error Scenario Testing
 
 ### Syntax Errors
@@ -2410,178 +2148,6 @@ console.table(performance.getEntriesByType('measure'));
 
 ---
 
-## Performance Testing
-
-### Frontend Performance Metrics
-
-**Test: Initial Load Time**
-
-1. Open DevTools Performance tab
-2. Clear cache and hard reload (Ctrl+Shift+R)
-3. Record load time
-
-**Expected Results:**
-- [ ] First Contentful Paint < 1 second
-- [ ] Time to Interactive < 2 seconds
-- [ ] Total load time < 2 seconds
-- [ ] No render-blocking resources
-
-**Test: Component Render Performance**
-
-1. Open large project (10+ entities)
-2. Open DevTools Performance tab
-3. Start recording
-4. Perform actions (open entity editor, switch tabs)
-5. Stop recording
-6. Analyze
-
-**Expected Results:**
-- [ ] Component render < 100ms
-- [ ] 60 FPS during animations
-- [ ] No long tasks (> 50ms)
-- [ ] Smooth scrolling
-
-**Test: Memory Usage**
-
-1. Open DevTools Memory tab
-2. Take heap snapshot (baseline)
-3. Use app for 10 minutes (navigate, edit, validate)
-4. Take another heap snapshot
-5. Compare
-
-**Expected Results:**
-- [ ] Memory usage < 100MB
-- [ ] No detached DOM nodes
-- [ ] No memory leaks
-- [ ] Memory released after closing dialogs
-
-### API Response Times
-
-**Test: Measure API Calls**
-
-1. Open DevTools Network tab
-2. Perform actions that trigger API calls:
-   - Load project
-   - Validate
-   - Preview entity
-   - Execute workflow
-   - Load data source schema
-   - Download execution result
-
-**Expected Results:**
-- [ ] Health check < 50ms
-- [ ] Load project < 500ms
-- [ ] Validate < 5 seconds
-- [ ] Preview < 2 seconds
-- [ ] Execute < 15 seconds (depends on data size)
-- [ ] Schema < 500ms
-- [ ] Download initiates immediately
-
----
-
-## Accessibility Testing
-
-### Keyboard Navigation
-
-**Test: Tab Through Interface**
-
-1. Tab through all interactive elements
-2. Note tab order
-
-**Expected Results:**
-- [ ] All buttons/links reachable via Tab
-- [ ] Tab order logical (top-to-bottom, left-to-right)
-- [ ] Focus indicators clearly visible
-- [ ] Can activate with Enter/Space
-- [ ] Can close dialogs with Escape
-- [ ] No keyboard traps
-
-**Test: Form Navigation**
-
-1. Open entity editor
-2. Tab through all form fields
-3. Use arrow keys in dropdowns
-
-**Expected Results:**
-- [ ] Tab moves between fields logically
-- [ ] Arrow keys navigate dropdowns
-- [ ] Can submit form with Enter
-- [ ] Can cancel with Escape
-
-### Screen Reader Testing
-
-**Tools:**
-- **Windows**: NVDA (free)
-- **macOS**: VoiceOver (built-in)
-- **Linux**: Orca
-
-**Test: Screen Reader Compatibility**
-
-1. Enable screen reader
-2. Navigate application
-3. Fill out forms
-4. Trigger notifications
-
-**Expected Results:**
-- [ ] All buttons have accessible labels
-- [ ] Form fields have labels
-- [ ] Errors announced
-- [ ] Notifications announced
-- [ ] Landmarks defined (nav, main, etc.)
-- [ ] ARIA attributes appropriate
-
-### Color Contrast
-
-**Test: Contrast Ratios**
-
-1. Install WAVE or axe DevTools extension
-2. Run accessibility audit
-3. Check color contrast
-
-**Expected Results:**
-- [ ] Normal text: 4.5:1 minimum
-- [ ] Large text: 3:1 minimum
-- [ ] UI components: 3:1 minimum
-- [ ] No contrast failures
-
-**Test: Color Blindness**
-
-1. Use browser extension (e.g., "Colorblinding")
-2. Simulate different types of color blindness
-3. Verify UI still usable
-
-**Expected Results:**
-- [ ] Information not conveyed by color alone
-- [ ] Icons/text labels used with colors
-- [ ] Error/success states distinguishable
-
-### Focus Management
-
-**Test: Focus Indicators**
-
-1. Tab through interface
-2. Observe focus rings/outlines
-
-**Expected Results:**
-- [ ] Focus indicator visible on all elements
-- [ ] Focus indicator high contrast
-- [ ] Custom focus styles maintain visibility
-- [ ] Focus not hidden by CSS
-
-**Test: Modal Focus Trap**
-
-1. Open entity editor dialog
-2. Tab through dialog
-3. Try to tab outside dialog
-
-**Expected Results:**
-- [ ] Focus trapped within dialog
-- [ ] Tab cycles through dialog elements
-- [ ] Focus returns to trigger on close
-- [ ] Can close with Escape
-
----
-
 ## Test Results Template
 
 ### Test Session Template
@@ -2603,9 +2169,7 @@ console.table(performance.getEntriesByType('measure'));
 | Entity Editor | 15/15 | 0 | All passed |
 | Validation | 6/7 | 1 | Cache not invalidating |
 | Execute Workflow | 9/9 | 0 | All passed |
-| Cross-Browser | 4/4 | 0 | All browsers tested |
-| Performance | 4/5 | 1 | Memory usage high |
-| Accessibility | 6/6 | 0 | All passed |
+| Error Handling | 5/5 | 0 | All passed |
 
 ### Detailed Results
 
@@ -2642,54 +2206,22 @@ console.table(performance.getEntriesByType('measure'));
 **Browser**: All
 **Priority**: P1
 
-### Browser Compatibility Matrix
-
-| Feature | Chrome 121 | Firefox 115 | Edge 121 | Safari 16 |
-|---------|-----------|-------------|----------|-----------|
-| Project List | ✅ | ✅ | ✅ | ⚠️ Slow |
-| YAML Editor | ✅ | ✅ | ✅ | ✅ |
-| Entity Editor | ✅ | ✅ | ✅ | ✅ |
-| Validation | ✅ | ✅ | ✅ | ❌ Cache |
-| Execute Workflow | ✅ | ✅ | ✅ | ✅ |
-| Download Results | ✅ | ✅ | ✅ | ✅ |
-| Data Sources | ✅ | ✅ | ✅ | ✅ |
-| Animations | ✅ | ✅ | ✅ | ⚠️ Jank |
-
-**Legend:**
-- ✅ Pass - Works as expected
-- ⚠️ Minor Issue - Works with minor problems
-- ❌ Fail - Does not work
-- ⏸️ Blocked - Cannot test
-
-### Performance Metrics
-
-| Metric | Chrome | Firefox | Edge | Safari | Target |
-|--------|--------|---------|------|--------|--------|
-| Initial Load | 1.2s | 1.5s | 1.3s | 1.8s | < 2s |
-| Project Load | 450ms | 500ms | 480ms | 600ms | < 500ms |
-| Validation | 3.2s | 3.5s | 3.3s | 4.1s | < 5s |
-| Execute Workflow | 8.5s | 9.1s | 8.7s | 10.2s | < 15s |
-| Memory (10min) | 85MB | 92MB | 87MB | 105MB | < 100MB |
-
 ### Issues Found
 
 1. **[P1] Validation cache not invalidating** - See details above
 2. **[P2] Save performance degradation** - See details above
-3. **[P3] Safari animation jank** - Minor stuttering in theme transitions
 
 ### Recommendations
 
 1. Investigate validation cache invalidation logic
 2. Profile save operation for large configurations
-3. Optimize Safari-specific CSS animations
-4. Add performance monitoring to catch regressions
+3. Add integration tests for critical workflows
 
 ### Notes
 
-- All critical paths working correctly
+- All critical functional paths working
 - No blocking issues found
-- Minor performance concerns in specific scenarios
-- Overall stability good across browsers
+- Minor performance degradation in large projects
 ```
 
 ---
@@ -2727,21 +2259,19 @@ After code changes, verify core features:
 - [ ] Apply auto-fix
 - [ ] Execute workflow (Excel output)
 - [ ] Download execution result
-- [ ] Switch themes
-- [ ] Test in two browsers
-
-### 1-Hour Full Test
-
-Comprehensive test before release:
-
-- [ ] Complete all sections in this guide
-- [ ] Test in all supported browsers
-- [ ] Run accessibility audit
-- [ ] Measure performance metrics
 - [ ] Test error scenarios
-- [ ] Verify all features
+
+### 45-Minute Full Functional Test
+
+Comprehensive functional test:
+
+- [ ] Complete all core sections in this guide
+- [ ] Test error scenarios
+- [ ] Verify all features work correctly
 - [ ] Document any issues
 - [ ] Fill out test results template
+
+**For browser compatibility, performance, and accessibility testing, see [Non-Functional Testing Guide](testing/NON_FUNCTIONAL_TESTING_GUIDE.md).**
 
 ---
 
