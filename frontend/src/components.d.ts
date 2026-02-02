@@ -36,6 +36,7 @@ declare module 'vue' {
     IngesterForm: typeof import('./components/ingester/IngesterForm.vue')['default']
     IngesterList: typeof import('./components/ingester/IngesterList.vue')['default']
     LoadingSkeleton: typeof import('./components/common/LoadingSkeleton.vue')['default']
+    LogViewerOverlay: typeof import('./components/LogViewerOverlay.vue')['default']
     MaterializeDialog: typeof import('./components/entities/MaterializeDialog.vue')['default']
     MetadataEditor: typeof import('./components/MetadataEditor.vue')['default']
     NodeLegend: typeof import('./components/dependencies/NodeLegend.vue')['default']
