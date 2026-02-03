@@ -10,9 +10,9 @@ from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.validators.data_validators import DataValidationService
+from src.configuration.config import Config
 from src.model import ShapeShiftProject
 from src.specifications import CompositeProjectSpecification, SpecificationIssue
-from src.configuration.config import Config
 
 
 class ValidationService:

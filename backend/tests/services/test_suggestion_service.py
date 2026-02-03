@@ -13,7 +13,9 @@ def build_schema(table_name: str, columns: list[ColumnMetadata]) -> TableSchema:
     """Helper to build a TableSchema."""
     return TableSchema(table_name=table_name, columns=columns, primary_keys=[c.name for c in columns if c.is_primary_key], **{})
 
+
 # type: ignore ; pylint: disable=invalid-name
+
 
 @pytest.mark.asyncio
 async def test_suggest_foreign_keys_with_schema_types() -> None:
