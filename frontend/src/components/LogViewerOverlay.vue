@@ -246,13 +246,13 @@ const cardStyle = computed(() => {
 
 const cardTextStyle = computed(() => {
   if (isMinimized.value) {
-    return { height: '0px', overflow: 'hidden' }
+    return { height: '0px', overflow: 'hidden' as const }
   }
   // Make content area flexible - it will fill available space
   return { 
     display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
+    flexDirection: 'column' as const,
+    overflow: 'hidden' as const,
   }
 })
 
