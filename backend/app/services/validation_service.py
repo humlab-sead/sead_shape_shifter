@@ -12,6 +12,7 @@ from backend.app.services.shapeshift_service import ShapeShiftService
 from backend.app.validators.data_validators import DataValidationService
 from src.model import ShapeShiftProject
 from src.specifications import CompositeProjectSpecification, SpecificationIssue
+from src.configuration.config import Config
 
 
 class ValidationService:
@@ -86,7 +87,6 @@ class ValidationService:
 
         # Resolve directives before validation (Core layer requirement)
         # Specifications expect fully resolved config
-        from src.configuration.config import Config
 
         project_cfg = Config.resolve_references(project_cfg)
 
