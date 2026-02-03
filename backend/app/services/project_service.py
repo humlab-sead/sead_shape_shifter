@@ -1,5 +1,6 @@
 """Project service for managing entities."""
 
+import shutil
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -255,6 +256,94 @@ class ProjectService:
         except Exception as e:
             logger.error(f"Failed to delete project '{name}': {e}")
             raise ProjectServiceError(f"Failed to delete project: {e}") from e
+
+    def copy_project(self, source_name: str, target_name: str) -> Project:
+        """
+        Copy a project and its associated files to a new name.
+        
+        Copies:
+        - Project YAML file with updated metadata.name
+        - Materialized files directory (if exists)
+        - Reconciliation file (if exists)
+        
+        Args:
+            source_name: Source project name (without .yml extension)
+            target_name: Target project name (without .yml extension)
+            
+        Returns:
+            New project with updated metadata
+            
+        Raises:
+            ProjectNotFoundError: If source project not found
+            ProjectConflictError: If target project already exists
+            ProjectServiceError: If copy fails
+        """
+        # Normalize names (remove .yml if present)
+        source_name = source_name.removesuffix('.yml')
+        target_name = target_name.removesuffix('.yml')
+        
+        source_file: Path = self.projects_dir / f"{source_name}.yml"
+        target_file: Path = self.projects_dir / f"{target_name}.yml"
+        
+        # Validate source exists
+        if not source_file.exists():
+            raise ProjectNotFoundError(f"Source project not found: {source_name}")
+        
+        # Validate target doesn't exist
+        if target_file.exists():
+            raise ProjectConflictError(f"Target project already exists: {target_name}")
+        
+        # Define paths for cleanup
+        source_materialized_dir: Path = self.projects_dir / f"projects/{source_name}/materialized"
+        target_materialized_dir: Path = self.projects_dir / f"projects/{target_name}/materialized"
+        source_recon_file: Path = self.projects_dir / f"{source_name}-reconciliation.yml"
+        target_recon_file: Path = self.projects_dir / f"{target_name}-reconciliation.yml"
+        
+        try:
+            # Load source project
+            source_project: Project = self.load_project(source_name)
+            
+            # Update metadata for target
+            if source_project.metadata:
+                source_project.metadata.name = target_name
+                if source_project.metadata.description:
+                    source_project.metadata.description = source_project.metadata.description.replace(
+                        source_name, target_name
+                    )
+            
+            # Copy materialized files directory if exists
+            if source_materialized_dir.exists():
+                logger.info(f"Copying materialized directory from {source_materialized_dir} to {target_materialized_dir}")
+                shutil.copytree(source_materialized_dir, target_materialized_dir)
+            
+            # Copy reconciliation file if exists
+            if source_recon_file.exists():
+                logger.info(f"Copying reconciliation file from {source_recon_file} to {target_recon_file}")
+                shutil.copy2(source_recon_file, target_recon_file)
+            
+            # Save target project (this creates the new YAML file)
+            logger.info(f"Saving copied project '{target_name}'")
+            new_project: Project = self.save_project(source_project, create_backup=False)
+            
+            logger.info(f"Successfully copied project '{source_name}' to '{target_name}'")
+            return new_project
+            
+        except (ProjectNotFoundError, ProjectConflictError):
+            raise
+        except Exception as e:
+            # Clean up partial copies on failure
+            logger.error(f"Failed to copy project '{source_name}' to '{target_name}': {e}")
+            
+            if target_file.exists():
+                target_file.unlink()
+            
+            if target_materialized_dir.exists():
+                shutil.rmtree(target_materialized_dir)
+            
+            if target_recon_file.exists():
+                target_recon_file.unlink()
+            
+            raise ProjectServiceError(f"Failed to copy project: {e}") from e
 
     def update_metadata(
         self,

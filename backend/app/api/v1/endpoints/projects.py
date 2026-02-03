@@ -5,7 +5,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Body, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -196,6 +196,33 @@ async def delete_project(name: str) -> None:
     project_service: ProjectService = get_project_service()
     project_service.delete_project(name)
     logger.info(f"Deleted project '{name}'")
+
+
+@router.post("/projects/{name}/copy", response_model=Project, status_code=status.HTTP_201_CREATED)
+@handle_endpoint_errors
+async def copy_project(name: str, target_name: str = Body(..., embed=True)) -> Project:
+    """
+    Copy project and its associated files to a new name.
+    
+    Copies:
+    - Project YAML file with updated metadata
+    - Materialized files directory (if exists)
+    - Reconciliation file (if exists)
+    
+    Args:
+        name: Source project name
+        target_name: Target project name (with or without .yml extension)
+        
+    Returns:
+        Newly created project
+        
+    Raises:
+        HTTPException: If source not found or target already exists
+    """
+    project_service: ProjectService = get_project_service()
+    new_project: Project = project_service.copy_project(name, target_name)
+    logger.info(f"Copied project '{name}' to '{target_name}'")
+    return new_project
 
 
 @router.post("/projects/{name}/validate", response_model=ValidationResult)

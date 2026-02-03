@@ -99,6 +99,14 @@
             <v-btn
               variant="text"
               size="small"
+              prepend-icon="mdi-content-copy"
+              @click.stop="handleCopyClick(project)"
+            >
+              Copy
+            </v-btn>
+            <v-btn
+              variant="text"
+              size="small"
               prepend-icon="mdi-check-circle-outline"
               @click.stop="handleValidate(project.name)"
             >
@@ -119,6 +127,13 @@
 
     <!-- Create Dialog -->
     <create-project-dialog v-model="showCreateDialog" @created="handleProjectCreated" />
+
+    <!-- Copy Dialog -->
+    <copy-project-dialog
+      v-model="showCopyDialog"
+      :source-name="projectToCopy?.name ?? null"
+      @copied="handleProjectCopied"
+    />
 
     <!-- Delete Confirmation Dialog -->
     <delete-confirmation-dialog
@@ -146,6 +161,7 @@ import { useRouter } from 'vue-router'
 import { useProjects } from '@/composables'
 import type { ProjectMetadata } from '@/types'
 import CreateProjectDialog from '@/components/projects/CreateProjectDialog.vue'
+import CopyProjectDialog from '@/components/projects/CopyProjectDialog.vue'
 import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDialog.vue'
 
 const router = useRouter()
@@ -159,7 +175,9 @@ const { projects, loading, error, isEmpty, select, remove, validate, fetch, clea
 const searchQuery = ref('')
 const sortBy = ref('name')
 const showCreateDialog = ref(false)
+const showCopyDialog = ref(false)
 const showDeleteDialog = ref(false)
+const projectToCopy = ref<ProjectMetadata | null>(null)
 const projectToDelete = ref<ProjectMetadata | null>(null)
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
@@ -241,6 +259,19 @@ async function handleValidate(name: string) {
   } catch (err) {
     console.error('Failed to validate project:', err)
   }
+}
+
+function handleCopyClick(project: ProjectMetadata) {
+  projectToCopy.value = project
+  showCopyDialog.value = true
+}
+
+async function handleProjectCopied(targetName: string) {
+  successMessage.value = `Project "${projectToCopy.value?.name}" copied to "${targetName}"`
+  showSuccessSnackbar.value = true
+  projectToCopy.value = null
+  // Refresh project list to show new copy
+  await fetch()
 }
 
 function handleDeleteClick(project: ProjectMetadata) {

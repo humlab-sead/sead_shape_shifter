@@ -100,6 +100,17 @@ export const projectsApi = {
   },
 
   /**
+   * Copy project to new name
+   */
+  copy: async (sourceName: string, targetName: string): Promise<Project> => {
+    return apiRequest<Project>({
+      method: 'POST',
+      url: `/projects/${sourceName}/copy`,
+      data: { target_name: targetName },
+    })
+  },
+
+  /**
    * Validate project
    */
   validate: async (name: string): Promise<ValidationResult> => {
