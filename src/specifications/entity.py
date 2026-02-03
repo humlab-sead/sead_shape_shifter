@@ -539,48 +539,6 @@ class UnnestColumnsSpecification(ProjectSpecification):
     - FK-added columns (remote entity's public_id + FK extra_columns)
     """
 
-    def _get_columns_available_at_unnest(self, entity_name: str, entity_cfg: dict[str, Any]) -> set[str]:
-        """Get all columns available when unnest runs (after FK linking)."""
-        all_columns: set[str] = set()
-
-        # Static columns
-        columns: list[str] | None = entity_cfg.get("columns")
-        if columns:
-            all_columns.update(columns)
-
-        # Keys
-        keys: list[str] | None = entity_cfg.get("keys")
-        if keys:
-            all_columns.update(keys)
-
-        # Extra columns (added during load)
-        extra_columns: dict[str, Any] | None = entity_cfg.get("extra_columns")
-        if extra_columns:
-            all_columns.update(extra_columns.keys())
-
-        # FK-added columns (remote entity's public_id + FK extra_columns)
-        foreign_keys: list[dict[str, Any]] | None = entity_cfg.get("foreign_keys")
-        if foreign_keys:
-            for fk_cfg in foreign_keys:
-                remote_entity: str | None = fk_cfg.get("entity")
-                if remote_entity and remote_entity in self.project_cfg.get("entities", {}):
-                    # Remote entity's public_id gets added
-                    remote_cfg: dict[str, Any] = self.project_cfg["entities"][remote_entity]
-                    public_id: str | None = remote_cfg.get("public_id")
-                    if public_id:
-                        all_columns.add(public_id)
-
-                # FK's extra_columns
-                fk_extra: dict[str, Any] | None = fk_cfg.get("extra_columns")
-                if fk_extra:
-                    # extra_columns values are the column names added
-                    if isinstance(fk_extra, dict):
-                        all_columns.update(fk_extra.values())
-                    elif isinstance(fk_extra, list):
-                        all_columns.update(fk_extra)
-
-        return all_columns
-
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that unnest configuration is valid."""
         self.clear()
@@ -599,7 +557,7 @@ class UnnestColumnsSpecification(ProjectSpecification):
         value_vars: list[str] | None = unnest_cfg.get("value_vars")
 
         # Get all columns available when unnest runs (after FK linking)
-        all_columns: set[str] = self._get_columns_available_at_unnest(entity_name, entity_cfg)
+        all_columns: set[str] = self.get_entity_columns(entity_name, exclude_types={"unnest"})
 
         # Check that id_vars exist
         if id_vars and isinstance(id_vars, list):
@@ -638,32 +596,6 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
     columns added by a previous FK (if dependencies are correct).
     """
 
-    def _get_columns_available_at_fk_linking(self, entity_name: str, entity_cfg: dict[str, Any]) -> set[str]:
-        """Get all columns available when FK linking runs."""
-        all_columns: set[str] = set()
-
-        # Static columns
-        columns: list[str] | None = entity_cfg.get("columns")
-        if columns:
-            all_columns.update(columns)
-
-        # Keys
-        keys: list[str] | None = entity_cfg.get("keys")
-        if keys:
-            all_columns.update(keys)
-
-        # Extra columns (added during load)
-        extra_columns: dict[str, Any] | None = entity_cfg.get("extra_columns")
-        if extra_columns:
-            all_columns.update(extra_columns.keys())
-
-        for column in ["var_name", "value_name"]:
-            col_name: str | None = entity_cfg.get("unnest", {}).get(column)
-            if col_name:
-                all_columns.add(col_name)
-
-        return all_columns
-
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that foreign key configurations reference valid columns."""
         self.clear()
@@ -678,7 +610,7 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
             return True
 
         # Get columns available when FK linking happens
-        all_columns: set[str] = self._get_columns_available_at_fk_linking(entity_name, entity_cfg)
+        all_columns: set[str] = self.get_entity_columns(entity_name, exclude_types={"foreign_keys"})
 
         # Check each foreign key
         for idx, fk_cfg in enumerate(foreign_keys):
@@ -687,7 +619,7 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
 
             if not local_keys:
                 self.add_error(
-                    f"Foreign key configuration is missing 'local_keys'",
+                    "Foreign key configuration is missing 'local_keys'",
                     entity=entity_name,
                     field=f"foreign_keys[{idx}].local_keys",
                 )

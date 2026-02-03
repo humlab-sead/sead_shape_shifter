@@ -229,7 +229,7 @@ class TableConfig:
         assert self.entity_cfg, f"No configuration found for entity '{entity_name}'"
 
     @property
-    def type(self) -> Literal["entity", "sql", "fixed", "csv", "xlsx", "openpyxl"]  | None:
+    def type(self) -> Literal["entity", "sql", "fixed", "csv", "xlsx", "openpyxl"] | None:
         return self.entity_cfg.get("type", None)
 
     @property
