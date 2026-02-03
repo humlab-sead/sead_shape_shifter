@@ -25,7 +25,8 @@
  - [] TODO: Improve UX suggestions when editing entity (awareness of availiable tables, columns etc)
  - [] TODO: Auto-save feature in YAML editing mode (trigger after 2 seconds of inactivity)
  - [] TODO: Consider limiting "@value:" directive usage to only refer to non-directive keys.
-
+ - [] TODO: Consnider moving specifications/base/get_entity_columns it to TableConfig
+            Note that columns avaliable at a specifik FK's linking includes result columns from previous linked FKs.
 
 APPENDIX
 
