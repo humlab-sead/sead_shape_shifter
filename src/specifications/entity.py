@@ -132,8 +132,8 @@ class EntityFieldsSpecification(ProjectSpecification):
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
         """Check that entity's fields are valid (based on entity type)."""
         self.clear()
-        entity_type: str = self.get_entity_cfg(entity_name).get("type", "entity")
-        specification: ProjectSpecification = self.get_specification(entity_type=entity_type)
+        entity: TableConfig = self.get_entity(entity_name)
+        specification: ProjectSpecification = self.get_specification(entity_type=str(entity.type))
         specification.is_satisfied_by(entity_name=entity_name)
         self.merge(specification)
         return not self.has_errors()
@@ -515,7 +515,7 @@ class MaterializationSpecification(ProjectSpecification):
 @ENTITY_SPECIFICATION.register(key="unnest_columns")
 class UnnestColumnsSpecification(ProjectSpecification):
     """Validates that unnest configuration references existing columns.
-    
+
     Unnest happens after FK linking, so id_vars can reference:
     - Static columns (columns, keys)
     - Extra columns (extra_columns)
@@ -525,22 +525,22 @@ class UnnestColumnsSpecification(ProjectSpecification):
     def _get_columns_available_at_unnest(self, entity_name: str, entity_cfg: dict[str, Any]) -> set[str]:
         """Get all columns available when unnest runs (after FK linking)."""
         all_columns: set[str] = set()
-        
+
         # Static columns
         columns: list[str] | None = entity_cfg.get("columns")
         if columns:
             all_columns.update(columns)
-        
+
         # Keys
         keys: list[str] | None = entity_cfg.get("keys")
         if keys:
             all_columns.update(keys)
-        
+
         # Extra columns (added during load)
         extra_columns: dict[str, Any] | None = entity_cfg.get("extra_columns")
         if extra_columns:
             all_columns.update(extra_columns.keys())
-        
+
         # FK-added columns (remote entity's public_id + FK extra_columns)
         foreign_keys: list[dict[str, Any]] | None = entity_cfg.get("foreign_keys")
         if foreign_keys:
@@ -552,7 +552,7 @@ class UnnestColumnsSpecification(ProjectSpecification):
                     public_id: str | None = remote_cfg.get("public_id")
                     if public_id:
                         all_columns.add(public_id)
-                
+
                 # FK's extra_columns
                 fk_extra: dict[str, Any] | None = fk_cfg.get("extra_columns")
                 if fk_extra:
@@ -561,7 +561,7 @@ class UnnestColumnsSpecification(ProjectSpecification):
                         all_columns.update(fk_extra.values())
                     elif isinstance(fk_extra, list):
                         all_columns.update(fk_extra)
-        
+
         return all_columns
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
@@ -612,11 +612,11 @@ class UnnestColumnsSpecification(ProjectSpecification):
 @ENTITY_SPECIFICATION.register(key="foreign_key_columns")
 class ForeignKeyColumnsSpecification(ProjectSpecification):
     """Validates that foreign key local_keys exist in entity columns.
-    
+
     FK linking happens after load, so local_keys can reference:
     - Static columns (columns, keys)
     - Extra columns (extra_columns)
-    
+
     Note: FK linking happens in dependency order, so one FK can reference
     columns added by a previous FK (if dependencies are correct).
     """
@@ -624,22 +624,22 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
     def _get_columns_available_at_fk_linking(self, entity_name: str, entity_cfg: dict[str, Any]) -> set[str]:
         """Get all columns available when FK linking runs (after load, before unnest)."""
         all_columns: set[str] = set()
-        
+
         # Static columns
         columns: list[str] | None = entity_cfg.get("columns")
         if columns:
             all_columns.update(columns)
-        
+
         # Keys
         keys: list[str] | None = entity_cfg.get("keys")
         if keys:
             all_columns.update(keys)
-        
+
         # Extra columns (added during load)
         extra_columns: dict[str, Any] | None = entity_cfg.get("extra_columns")
         if extra_columns:
             all_columns.update(extra_columns.keys())
-        
+
         return all_columns
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
