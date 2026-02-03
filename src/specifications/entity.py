@@ -417,6 +417,23 @@ class DependsOnSpecification(ProjectSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="depends_on_resolved")
+class DependsOnResolvedSpecification(ProjectSpecification):
+    """Validates that all dependent entities exist in the project."""
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that depends_on references are valid."""
+        self.clear()
+
+        entity: TableConfig = self.get_entity(entity_name)
+
+        for dep in entity.depends_on:
+            if not self.entity_exists(dep):
+                self.add_error(f"Entity '{entity_name}': depends on non-existent entity '{dep}'", entity=entity_name, depends_on=dep)
+
+        return not self.has_errors()
+
+
 @ENTITY_SPECIFICATION.register(key="entity_references_exist")
 class EntityReferencesExistSpecification(ProjectSpecification):
     """Validates that all referenced entities exist in the configuration.
