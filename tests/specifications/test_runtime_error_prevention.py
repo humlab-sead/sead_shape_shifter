@@ -4,8 +4,6 @@ These validators catch configuration errors that would only manifest as
 runtime errors during normalization, providing early feedback to users.
 """
 
-import pytest
-
 from src.specifications.entity import (
     ForeignKeyColumnsSpecification,
     UnnestColumnsSpecification,
@@ -134,9 +132,7 @@ class TestUnnestColumnsSpecification:
                 "test_entity": {
                     "type": "sql",
                     "columns": ["measure1"],
-                    "extra_columns": {
-                        "id": 1  # Computed column
-                    },
+                    "extra_columns": {"id": 1},  # Computed column
                     "unnest": {
                         "id_vars": ["id"],  # References extra_column
                         "value_vars": ["measure1"],
@@ -317,9 +313,7 @@ class TestForeignKeyColumnsSpecification:
                 "test_entity": {
                     "type": "sql",
                     "columns": ["id"],
-                    "extra_columns": {
-                        "location_name": "Default Location"  # Computed column
-                    },
+                    "extra_columns": {"location_name": "Default Location"},  # Computed column
                     "foreign_keys": [
                         {
                             "entity": "location",
@@ -337,4 +331,40 @@ class TestForeignKeyColumnsSpecification:
         assert result is True
         assert len(spec.errors) == 0
 
+    def test_fk_references_unnest_result_columns(self):
+        """Test that FK can reference unnest result columns (deferred linking)."""
+        project_cfg = {
+            "entities": {
+                "site_location": {
+                    "type": "sql",
+                    "keys": ["site_id"],
+                    "columns": ["Ort", "Kreis", "Land"],  # Will be unnested
+                    "unnest": {
+                        "id_vars": ["site_id"],
+                        "value_vars": ["Ort", "Kreis", "Land"],
+                        "var_name": "location_type",
+                        "value_name": "location_name",
+                    },
+                    "foreign_keys": [
+                        {
+                            "entity": "site",
+                            "local_keys": ["site_id"],  # Available at FK link time
+                            "remote_keys": ["site_id"],
+                        },
+                        {
+                            "entity": "location",
+                            # These columns created by unnest - deferred linking handles this
+                            "local_keys": ["location_type", "location_name"],
+                            "remote_keys": ["location_type", "location_name"],
+                        },
+                    ],
+                }
+            }
+        }
 
+        spec = ForeignKeyColumnsSpecification(project_cfg)
+        result = spec.is_satisfied_by(entity_name="site_location")
+
+        # Should pass - unnest result columns are allowed (deferred linking)
+        assert result is True
+        assert len(spec.errors) == 0

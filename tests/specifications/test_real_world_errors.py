@@ -1,7 +1,5 @@
 """Integration test using real-world error scenarios from a.log."""
 
-import pytest
-
 from src.specifications.project import CompositeProjectSpecification
 
 
