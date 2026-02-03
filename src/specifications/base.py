@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Literal
 
 from loguru import logger
 
@@ -98,6 +98,9 @@ class Specification(ABC):
         return "\n".join(lines)
 
 
+ColumnType = Literal["columns", "keys", "extra_columns", "unnest", "foreign_keys"]
+
+
 class ProjectSpecification(Specification):
     """Base specification for project validation."""
 
@@ -147,6 +150,68 @@ class ProjectSpecification(Specification):
             specification = FIELD_VALIDATORS.get(key.strip())(self.project_cfg, severity=severity)
             specification.is_satisfied_by(entity_name=entity_name, fields=fields, message=message, **kwargs)
             self.merge(specification)
+
+    def get_entity_columns(
+        self,
+        entity_name: str,
+        include_types: set[ColumnType] | None = None,
+        exclude_types: set[ColumnType] | None = None,
+    ) -> set[str]:
+        """Get specified types of result columns available.
+        FIXME: consider moving it TableConfig
+               Note that columns available at a specific FK's linking includes result columns from previous linked FKs.
+        """
+        avaliable_types: set[ColumnType] = {"columns", "keys", "extra_columns", "unnest", "foreign_keys"}
+        exclude_types = exclude_types or set()
+        include_types = (include_types or avaliable_types) - exclude_types
+
+        all_columns: set[str] = set()
+
+        entity_cfg: dict[str, Any] = self.get_entity_cfg(entity_name)
+
+        all_columns.add("system_id")
+        public_id: str | None = entity_cfg.get("public_id")
+        if public_id:
+            all_columns.add(public_id)
+
+        if "columns" in include_types:
+            columns: list[str] | None = entity_cfg.get("columns")
+            if columns:
+                all_columns.update(columns)
+
+        if "keys" in include_types:
+            keys: list[str] | None = entity_cfg.get("keys")
+            if keys:
+                all_columns.update(keys)
+
+        if "extra_columns" in include_types:
+            extra_columns: dict[str, Any] | None = entity_cfg.get("extra_columns")
+            if extra_columns:
+                all_columns.update(extra_columns.keys())
+
+        if "unnest" in include_types:
+            for column in ["var_name", "value_name"]:
+                col_name: str | None = entity_cfg.get("unnest", {}).get(column)
+                if col_name:
+                    all_columns.add(col_name)
+
+        if "foreign_keys" in include_types:
+            foreign_keys: list[dict[str, Any]] | None = entity_cfg.get("foreign_keys")
+            if foreign_keys:
+                for fk in foreign_keys:
+                    remote_entity_cfg: dict[str, Any] = self.get_entity_cfg(fk.get("entity", "")).get("entity") or {}
+                    remote_public_id: str | None = remote_entity_cfg.get("public_id")
+                    if remote_public_id:
+                        all_columns.add(remote_public_id)
+                    additional_columns: dict[str, Any] | list[str] | str | None = fk.get("extra_columns")
+                    if isinstance(additional_columns, dict):
+                        all_columns.update(additional_columns.keys())
+                    elif isinstance(additional_columns, list):
+                        all_columns.update(additional_columns)
+                    elif isinstance(additional_columns, str):
+                        all_columns.add(additional_columns)
+
+        return all_columns
 
 
 class FieldValidator(ProjectSpecification):
