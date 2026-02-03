@@ -199,7 +199,7 @@ class ProjectSpecification(Specification):
             foreign_keys: list[dict[str, Any]] | None = entity_cfg.get("foreign_keys")
             if foreign_keys:
                 for fk in foreign_keys:
-                    remote_entity_cfg: dict[str, Any] = self.get_entity_cfg(fk.get("entity", "")).get("entity") or {}
+                    remote_entity_cfg: dict[str, Any] = self.get_entity_cfg(fk.get("entity", "")) or {}
                     remote_public_id: str | None = remote_entity_cfg.get("public_id")
                     if remote_public_id:
                         all_columns.add(remote_public_id)
