@@ -639,7 +639,7 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
     """
 
     def _get_columns_available_at_fk_linking(self, entity_name: str, entity_cfg: dict[str, Any]) -> set[str]:
-        """Get all columns available when FK linking runs (after load, before unnest)."""
+        """Get all columns available when FK linking runs."""
         all_columns: set[str] = set()
 
         # Static columns
@@ -656,6 +656,11 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
         extra_columns: dict[str, Any] | None = entity_cfg.get("extra_columns")
         if extra_columns:
             all_columns.update(extra_columns.keys())
+
+        for column in ["var_name", "value_name"]:
+            col_name: str | None = entity_cfg.get("unnest", {}).get(column)
+            if col_name:
+                all_columns.add(col_name)
 
         return all_columns
 
