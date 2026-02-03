@@ -3,6 +3,7 @@ from typing import Any
 
 from loguru import logger
 
+from src.model import TableConfig
 from src.utility import Registry, dotexists, dotget
 
 # pylint: disable=line-too-long
@@ -107,6 +108,10 @@ class ProjectSpecification(Specification):
     def get_entity_cfg(self, entity_name: str) -> dict[str, Any]:
         """Get the configuration for a specific entity."""
         return dotget(self.project_cfg, f"entities.{entity_name}", {})
+
+    def get_entity(self, entity_name: str) -> TableConfig:
+        """Get the TableConfig for the specified entity."""
+        return TableConfig(entity_name=entity_name, entities_cfg=self.project_cfg.get("entities", {}))
 
     def entity_exists(self, entity_name: str) -> bool:
         """Check if a specific entity exists in the configuration."""

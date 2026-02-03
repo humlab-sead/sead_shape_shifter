@@ -49,10 +49,6 @@ class EntityFieldsBaseSpecification(ProjectSpecification):
 
         return not self.has_errors()
 
-    def get_entity(self, entity_name: str) -> TableConfig:
-        """Get the TableConfig for the specified entity."""
-        return TableConfig(entity_name=entity_name, entities_cfg=self.project_cfg.get("entities", {}))
-
 
 @ENTITY_TYPE_SPECIFICATION.register(key="entity")
 class DataEntityFieldsSpecification(EntityFieldsBaseSpecification):
