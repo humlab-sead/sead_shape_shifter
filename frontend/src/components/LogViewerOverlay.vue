@@ -1,14 +1,14 @@
 <template>
   <v-dialog
     v-model="isOpen"
-    :max-width="isMaximized ? '100vw' : dialogWidth"
+    :max-width="isMaximized ? '100vw' : dialogWidth + 'px'"
     :persistent="false"
     scrollable
     :scrim="false"
     :style="dialogPositionStyle"
     content-class="log-viewer-dialog"
   >
-    <v-card :style="cardStyle">
+    <v-card :style="cardStyle" class="resizable-card">
       <v-card-title 
         class="d-flex align-center justify-space-between pa-2 drag-handle" 
         @mousedown="startDrag"
@@ -44,7 +44,7 @@
 
       <v-divider />
 
-      <v-card-text class="pa-3" :style="{ height: isMinimized ? '0px' : contentHeight }">
+      <v-card-text class="pa-3 log-card-content" :style="cardTextStyle">
         <v-row dense class="mb-3">
           <v-col cols="12" sm="3">
             <v-select
@@ -133,6 +133,23 @@
           </span>
         </div>
       </v-card-text>
+
+      <!-- Resize handles -->
+      <div 
+        v-if="!isMaximized"
+        class="resize-handle resize-handle-right"
+        @mousedown="startResize($event, 'right')"
+      />
+      <div 
+        v-if="!isMaximized"
+        class="resize-handle resize-handle-bottom"
+        @mousedown="startResize($event, 'bottom')"
+      />
+      <div 
+        v-if="!isMaximized"
+        class="resize-handle resize-handle-corner"
+        @mousedown="startResize($event, 'corner')"
+      />
     </v-card>
   </v-dialog>
 </template>
@@ -158,14 +175,19 @@ const isOpen = computed({
 // Dialog state
 const isMinimized = ref(false)
 const isMaximized = ref(false)
-const dialogWidth = ref('800px')
-const contentHeight = ref('500px')
+const dialogWidth = ref(800)
+const dialogHeight = ref(600)
 
 // Drag state
 const isDragging = ref(false)
 const dialogPosition = ref({ x: 0, y: 0 })
 const initialMousePos = ref({ x: 0, y: 0 })
 const initialDialogPos = ref({ x: 0, y: 0 })
+
+// Resize state
+const isResizing = ref(false)
+const resizeDirection = ref<'right' | 'bottom' | 'corner'>('corner')
+const initialSize = ref({ width: 0, height: 0 })
 
 // Logs state
 const logLines = ref<string[]>([])
@@ -216,7 +238,22 @@ const cardStyle = computed(() => {
       maxWidth: '100vw !important',
     }
   }
-  return {}
+  return {
+    width: `${dialogWidth.value}px`,
+    height: `${dialogHeight.value}px`,
+  }
+})
+
+const cardTextStyle = computed(() => {
+  if (isMinimized.value) {
+    return { height: '0px', overflow: 'hidden' }
+  }
+  // Make content area flexible - it will fill available space
+  return { 
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  }
 })
 
 async function refreshLogs() {
@@ -271,11 +308,6 @@ function toggleMinimize() {
 
 function toggleMaximize() {
   isMaximized.value = !isMaximized.value
-  if (isMaximized.value) {
-    contentHeight.value = 'calc(100vh - 120px)'
-  } else {
-    contentHeight.value = '500px'
-  }
 }
 
 function close() {
@@ -330,6 +362,52 @@ function stopDrag() {
   document.removeEventListener('mouseup', stopDrag)
 }
 
+// Resize functionality
+function startResize(event: MouseEvent, direction: 'right' | 'bottom' | 'corner') {
+  if (isMaximized.value) return
+  
+  resizeDirection.value = direction
+  
+  // Store initial mouse position
+  initialMousePos.value = {
+    x: event.clientX,
+    y: event.clientY
+  }
+  
+  // Store current dialog size
+  initialSize.value = {
+    width: dialogWidth.value,
+    height: dialogHeight.value
+  }
+  
+  isResizing.value = true
+  document.addEventListener('mousemove', onResize)
+  document.addEventListener('mouseup', stopResize)
+  event.preventDefault()
+  event.stopPropagation()
+}
+
+function onResize(event: MouseEvent) {
+  if (!isResizing.value) return
+  
+  const deltaX = event.clientX - initialMousePos.value.x
+  const deltaY = event.clientY - initialMousePos.value.y
+  
+  if (resizeDirection.value === 'right' || resizeDirection.value === 'corner') {
+    dialogWidth.value = Math.max(400, initialSize.value.width + deltaX)
+  }
+  
+  if (resizeDirection.value === 'bottom' || resizeDirection.value === 'corner') {
+    dialogHeight.value = Math.max(300, initialSize.value.height + deltaY)
+  }
+}
+
+function stopResize() {
+  isResizing.value = false
+  document.removeEventListener('mousemove', onResize)
+  document.removeEventListener('mouseup', stopResize)
+}
+
 // Load logs when dialog opens
 watch(isOpen, (newValue) => {
   if (newValue && logLines.value.length === 0) {
@@ -346,6 +424,7 @@ onUnmounted(() => {
     clearInterval(autoRefreshInterval)
   }
   stopDrag()
+  stopResize()
 })
 </script>
 
@@ -364,12 +443,24 @@ onUnmounted(() => {
   position: fixed !important;
 }
 
+.resizable-card {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.log-card-content {
+  flex: 1;
+  min-height: 0; /* Important for flexbox scrolling */
+}
+
 .logs-container {
-  max-height: 600px;
+  flex: 1;
   overflow-y: auto;
   background-color: rgba(0, 0, 0, 0.05);
   border-radius: 4px;
   padding: 12px;
+  min-height: 0; /* Important for flexbox scrolling */
 }
 
 .logs-content {
@@ -380,5 +471,48 @@ onUnmounted(() => {
   white-space: pre-wrap;
   word-wrap: break-word;
   color: var(--v-theme-on-surface);
+}
+
+/* Resize handles */
+.resize-handle {
+  position: absolute;
+  background-color: transparent;
+  z-index: 10;
+}
+
+.resize-handle-right {
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+}
+
+.resize-handle-bottom {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.resize-handle-corner {
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+}
+
+.resize-handle-corner::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 12px 12px;
+  border-color: transparent transparent rgba(var(--v-theme-on-surface), 0.3) transparent;
 }
 </style>
