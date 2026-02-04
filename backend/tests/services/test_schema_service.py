@@ -106,7 +106,7 @@ class TestSchemaIntrospectionService:
 
         with pytest.raises(SchemaIntrospectionError) as exc_info:
             await service.get_tables("nonexistent")
-        
+
         error = exc_info.value
         assert "not found" in error.message.lower()
         assert error.context.get("data_source") == "nonexistent"

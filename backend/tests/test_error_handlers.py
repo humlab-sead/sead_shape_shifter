@@ -51,11 +51,7 @@ class TestErrorHandlerDecorator:
 
         @handle_endpoint_errors
         async def config_not_found_endpoint():
-            raise ResourceNotFoundError(
-                resource_type="project",
-                resource_id="test",
-                message="Configuration 'test' not found"
-            )
+            raise ResourceNotFoundError(resource_type="project", resource_id="test", message="Configuration 'test' not found")
 
         with pytest.raises(HTTPException) as exc_info:
             await config_not_found_endpoint()
@@ -72,11 +68,7 @@ class TestErrorHandlerDecorator:
 
         @handle_endpoint_errors
         async def entity_not_found_endpoint():
-            raise ResourceNotFoundError(
-                resource_type="entity",
-                resource_id="sample",
-                message="Entity 'sample' not found"
-            )
+            raise ResourceNotFoundError(resource_type="entity", resource_id="sample", message="Entity 'sample' not found")
 
         with pytest.raises(HTTPException) as exc_info:
             await entity_not_found_endpoint()
@@ -107,11 +99,7 @@ class TestErrorHandlerDecorator:
 
         @handle_endpoint_errors
         async def conflict_endpoint():
-            raise ResourceConflictError(
-                resource_type="entity",
-                resource_id="sample",
-                message="Entity 'sample' already exists"
-            )
+            raise ResourceConflictError(resource_type="entity", resource_id="sample", message="Entity 'sample' already exists")
 
         with pytest.raises(HTTPException) as exc_info:
             await conflict_endpoint()
@@ -128,11 +116,7 @@ class TestErrorHandlerDecorator:
 
         @handle_endpoint_errors
         async def config_conflict_endpoint():
-            raise ResourceConflictError(
-                resource_type="project",
-                resource_id="test",
-                message="Configuration was modified by another user"
-            )
+            raise ResourceConflictError(resource_type="project", resource_id="test", message="Configuration was modified by another user")
 
         with pytest.raises(HTTPException) as exc_info:
             await config_conflict_endpoint()
@@ -189,11 +173,7 @@ class TestErrorHandlerDecorator:
             if error_type == "bad_request":
                 raise BadRequestError("Bad request")
             if error_type == "conflict":
-                raise ResourceConflictError(
-                    resource_type="entity",
-                    resource_id="test",
-                    message="Already exists"
-                )
+                raise ResourceConflictError(resource_type="entity", resource_id="test", message="Already exists")
             return "success"
 
         # Test 404

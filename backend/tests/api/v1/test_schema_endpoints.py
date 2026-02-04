@@ -9,11 +9,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.api.dependencies import get_schema_service
-from backend.app.exceptions import SchemaIntrospectionError
+from backend.app.exceptions import ConfigurationError, ResourceNotFoundError, SchemaIntrospectionError
 from backend.app.main import app
 from backend.app.models.data_source import ColumnMetadata, TableMetadata, TableSchema
 from backend.app.services.schema_service import SchemaIntrospectionService
-from backend.app.exceptions import ResourceNotFoundError, ConfigurationError
 
 # pylint: disable=redefined-outer-name
 
