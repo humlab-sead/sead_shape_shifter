@@ -33,7 +33,6 @@ Tips can use template variables that will be replaced with context values:
 
 from typing import Any
 
-
 ERROR_TIPS: dict[str, list[str]] = {
     # =========================================================================
     # Resource Errors (RESOURCE_*)
@@ -223,10 +222,10 @@ def get_tips(error_code: str, context: dict[str, Any] | None = None) -> list[str
         List of actionable tips (formatted if context provided), or empty list if code not found
     """
     tips = ERROR_TIPS.get(error_code, [])
-    
+
     if not context:
         return tips
-    
+
     # Format tips with context values
     formatted_tips = []
     for tip in tips:
@@ -235,7 +234,7 @@ def get_tips(error_code: str, context: dict[str, Any] | None = None) -> list[str
         except (KeyError, ValueError):
             # If template variable missing, use unformatted tip
             formatted_tips.append(tip)
-    
+
     return formatted_tips
 
 

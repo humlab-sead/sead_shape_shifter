@@ -265,7 +265,6 @@ async def import_entity_from_table(
     return EntityImportResult(**result)
 
 
-
 @router.post("/{name}/cache/invalidate", status_code=status.HTTP_204_NO_CONTENT, summary="Invalidate schema cache")
 @handle_endpoint_errors
 async def invalidate_cache(

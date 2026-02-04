@@ -203,19 +203,19 @@ async def delete_project(name: str) -> None:
 async def copy_project(name: str, target_name: str = Body(..., embed=True)) -> Project:
     """
     Copy project and its associated files to a new name.
-    
+
     Copies:
     - Project YAML file with updated metadata
     - Materialized files directory (if exists)
     - Reconciliation file (if exists)
-    
+
     Args:
         name: Source project name
         target_name: Target project name (with or without .yml extension)
-        
+
     Returns:
         Newly created project
-        
+
     Raises:
         HTTPException: If source not found or target already exists
     """

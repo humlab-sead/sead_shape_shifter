@@ -510,7 +510,7 @@ class TestQueryService:
 
         with pytest.raises(QueryExecutionError) as exc_info:
             await service.execute_query(data_source_name="nonexistent", query="SELECT 1")
-        
+
         error = exc_info.value
         assert "not found" in error.message.lower()
         assert error.context.get("data_source") == "nonexistent"
@@ -540,7 +540,7 @@ class TestQueryService:
 
             with pytest.raises(QueryExecutionError) as exc_info:
                 await service.execute_query(data_source_name="test_source", query=query, timeout=1)
-            
+
             error = exc_info.value
             assert "timed out" in error.message.lower() or "timeout" in error.message.lower()
             assert error.context.get("data_source") == "test_source"
@@ -565,7 +565,7 @@ class TestQueryService:
 
             with pytest.raises(QueryExecutionError) as exc_info:
                 await service.execute_query(data_source_name="test_source", query=query)
-            
+
             error = exc_info.value
             assert "database error" in error.message.lower() or "failed" in error.message.lower()
             assert error.context.get("data_source") == "test_source"

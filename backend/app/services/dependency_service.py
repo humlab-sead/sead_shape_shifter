@@ -119,10 +119,7 @@ class DependencyService:
         has_cycles: bool = len(cycles) > 0
 
         if raise_on_cycle and has_cycles and cycles:
-            raise CircularDependencyError(
-                message=f"Circular dependency detected involving {len(cycles[0])} entities",
-                cycle=cycles[0]
-            )
+            raise CircularDependencyError(message=f"Circular dependency detected involving {len(cycles[0])} entities", cycle=cycles[0])
 
         # Calculate topological order if no cycles
         topological_order: None | list[str] = None if has_cycles else topological_sort(dependency_map)
