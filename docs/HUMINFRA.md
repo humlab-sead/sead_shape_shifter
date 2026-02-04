@@ -4,9 +4,11 @@
 ## Node: Humlab Umeå university
 
 ## Abstract (200-300 words)
-Shape Shifter is an open-source, tool for cleaning, restructuring, and documenting tabular research datasets in a transparent, reproducible way. It was initially developed within the Swedigarch infrastructure. It targets a common pain point in humanities research workflows: data are often assembled from heterogeneous sources (spreadsheets, exports from catalogues/databases, CSV files), then repeatedly transformed in ad-hoc ways that are hard to review, reproduce, or share. Shape Shifter provides a configuration-driven transformation pipeline (extract → filter → link/join → reshape/unnest → map → export) and an editor UI for building and validating that configuration.
+Shape Shifter is an open-source tool for cleaning, restructuring, and documenting tabular research datasets in a transparent, reproducible way. It was initially developed within the Swedigarch infrastructure. It targets a common pain point in humanities research workflows: data are often assembled from heterogeneous sources (spreadsheets, exports from catalogues/databases, CSV files), then repeatedly transformed in ad-hoc ways that are hard to review, reproduce, or share. Shape Shifter provides a configuration-driven transformation pipeline (extract → filter → link/join → reshape/unnest → map → export) and an editor UI for building and validating that configuration.
 
-The system can be viewed as a lightweight alternative or complement to tools like OpenRefine, emphasizing explicit, versionable project files (YAML) that capture decisions, amd validation and error guidance aimed at improving user experience. The system includes a UX for editing the YAML files (they calso be edited in a text editor), and components for loading data from various source and dispatching the data to target database, Excel or other formats.The architecture is pluggable, meaning that tailor-made modules for loading and dispatching data can be added without changing exisitng codebase. The API/editor can afford collaborative editing, but this function is yet be implemented. The system supports OpenRefine-like reconciliation of data to external resources, or target databases.
+The system can be viewed as a lightweight alternative or complement to tools like OpenRefine, emphasizing explicit, versionable project files (YAML) that capture decisions, and validation and error guidance aimed at reducing user friction. The system includes a UI for editing project configuration (which can also be edited in a text editor), and components for loading data from various sources and exporting to common targets (CSV/Excel and databases).
+
+The architecture is extensible: new loaders and export targets can be added following established patterns. The configuration-first approach supports collaboration via version control and sharing of project files; real-time collaborative editing could be explored in the future. The system also supports OpenRefine-like reconciliation of data to external resources or target databases, when such services are available.
 
 The expected contribution to Huminfra is a maintainable component in the broader Huminfra toolset: a shared service that can be deployed by participating nodes, used in training, and integrated into local infrastructures. The innovation is not a novel algorithm, but a practical “configuration as scholarship” approach—making transformation steps inspectable and auditable—while keeping the system lightweight enough for institutional adoption and long-term maintenance.
 
@@ -15,9 +17,9 @@ Work will focus on maintainability, usability, and interoperability rather than 
 
 Planned implementation activities:
 - Quality and reliability: tighten automated tests for critical user flows and add regression tests for known error scenarios.
-- Error and validation handling: improve handling of validation issues into actionable user-facing tips and instructions.
-- Editor UX improvements: improve change tracking, schema-guided editors, collaborative editing, and clearer feedback for validation.
-- Interoperability: document and stabilize the project file format; keep export targets and integration points (CSV/Excel/DB) predictable
+- Error and validation handling: make validation issues actionable with clear user-facing guidance and consistent error reporting.
+- Editor UX improvements: improve change tracking, schema-guided editors, and clearer feedback during validation and preview.
+- Interoperability: document and stabilize the project file format; keep export targets and integration points (CSV/Excel/DB) predictable.
 - Deployment and operations: provide reproducible deployment guidance (Docker) suitable for node-level hosting.
 
 ## Target Audience
@@ -27,7 +29,7 @@ Primary users are humanities researchers, research engineers, and data stewards 
 A practical collaboration model would involve:
 - One node leading core maintenance (testing, releases, architecture decisions)
 - One or more nodes contributing usability and testing (user studies with researchers, training feedback, validation requirements)
-- One or more nodes contributing  deployment guidance, packaging, and training
+- One or more nodes contributing deployment guidance, packaging, and training materials
 
 ## Timeline and Project Scope
 A realistic scope is a short-to-mid-term maintenance and consolidation phase (12–18 months), with milestones:
