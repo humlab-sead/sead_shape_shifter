@@ -7,17 +7,17 @@ from typing import Any, Callable, TypeVar
 from fastapi import HTTPException
 from loguru import logger
 
-from backend.app.services.dependency_service import DependencyServiceError
+from backend.app.exceptions import (
+    DataIntegrityError,
+    DependencyError,
+    DomainException,
+    ResourceConflictError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from backend.app.services.project_service import (
-    EntityAlreadyExistsError,
-    EntityNotFoundError,
-    InvalidProjectError,
-    ProjectConflictError,
-    ProjectNotFoundError,
     ProjectServiceError,
 )
-from backend.app.services.query_service import QueryExecutionError, QuerySecurityError
-from backend.app.services.schema_service import SchemaServiceError
 from backend.app.services.yaml_service import YamlServiceError
 from backend.app.utils.exceptions import BadRequestError, BaseAPIException, NotFoundError
 
@@ -31,11 +31,18 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
     """
     Decorator to handle common endpoint errors and convert them to HTTPException.
 
-    Maps service-level exceptions to appropriate HTTP status codes:
-    - 404: NotFoundError, ProjectNotFoundError, EntityNotFoundError
-    - 400: BadRequestError, InvalidProjectError, QuerySecurityError
-    - 409: ConflictError, EntityAlreadyExistsError, ProjectConflictError
-    - 500: All other exceptions
+    Maps domain exceptions to appropriate HTTP status codes with structured responses:
+    - 404: ResourceNotFoundError (and legacy exceptions)
+    - 400: DataIntegrityError, ValidationError (and legacy exceptions)
+    - 409: ResourceConflictError (and legacy exceptions)
+    - 500: DependencyError, unexpected exceptions
+
+    Domain exceptions return structured responses with:
+    - error_type: Exception class name
+    - message: Human-readable error description
+    - tips: List of actionable troubleshooting steps
+    - recoverable: Whether user can fix without developer help
+    - context: Additional debugging information
 
     Args:
         func: Async endpoint function to wrap
@@ -56,40 +63,63 @@ def handle_endpoint_errors(func: Callable[..., T]) -> Callable[..., T]:
         except HTTPException:
             raise
 
-        # Handle 404 Not Found errors
-        except (NotFoundError, ProjectNotFoundError, EntityNotFoundError) as e:
-            logger.debug(f"Resource not found in {func.__name__}: {e}")
-            raise HTTPException(status_code=404, detail=str(e)) from e
+        # === Domain Exception Handling (Structured Responses) ===
 
-        # Handle 400 Bad Request errors
-        except (BadRequestError, InvalidProjectError, QuerySecurityError) as e:
-            logger.warning(f"Bad request in {func.__name__}: {e}")
-            raise HTTPException(status_code=400, detail=str(e)) from e
+        # Handle 404 Not Found errors
+        except ResourceNotFoundError as e:
+            logger.debug(f"Resource not found in {func.__name__}: {e}")
+            raise HTTPException(status_code=404, detail=e.to_dict()) from e
+
+        # Handle 400 Bad Request errors (data integrity and validation)
+        except (DataIntegrityError, ValidationError) as e:
+            logger.warning(f"Validation error in {func.__name__}: {e}")
+            raise HTTPException(status_code=400, detail=e.to_dict()) from e
 
         # Handle 409 Conflict errors
-        except (EntityAlreadyExistsError, ProjectConflictError) as e:
-            logger.warning(f"Conflict in {func.__name__}: {e}")
-            raise HTTPException(status_code=409, detail=str(e)) from e
+        except ResourceConflictError as e:
+            logger.warning(f"Resource conflict in {func.__name__}: {e}")
+            raise HTTPException(status_code=409, detail=e.to_dict()) from e
 
-        # Handle custom API exceptions with status codes
+        # Handle 500 Dependency errors
+        except DependencyError as e:
+            logger.error(f"Dependency error in {func.__name__}: {e}")
+            raise HTTPException(status_code=500, detail=e.to_dict()) from e
+
+        # Handle any other domain exceptions (500 with structured response)
+        except DomainException as e:
+            logger.exception(f"Domain error in {func.__name__}: {e}")
+            raise HTTPException(status_code=500, detail=e.to_dict()) from e
+
+        # === Legacy Exception Handling (String Responses) ===
+        # Note: Most domain exceptions now inherit from DomainException (handled above)
+        # These handlers remain for backward compatibility and non-domain exceptions
+
+        # Handle custom API exceptions with status codes (legacy)
         except BaseAPIException as e:
             logger.exception(f"API error in {func.__name__}: {e}")
             raise HTTPException(status_code=e.status_code, detail=str(e)) from e
 
-        # Handle service-level errors (generic 500)
-        except (
-            ProjectServiceError,
-            YamlServiceError,
-            QueryExecutionError,
-            SchemaServiceError,
-            DependencyServiceError,
-        ) as e:
+        # Handle service-level errors (legacy - generic 500)
+        except (ProjectServiceError, YamlServiceError) as e:
             logger.exception(f"Service error in {func.__name__}: {e}")
             raise HTTPException(status_code=500, detail=str(e)) from e
 
-        # Handle unexpected errors
+        # Handle unexpected errors (structured response)
         except Exception as e:
             logger.exception(f"Unexpected error in {func.__name__}: {e}")
-            raise HTTPException(status_code=500, detail=str(e)) from e
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error_type": "InternalServerError",
+                    "message": str(e) or "An unexpected error occurred",
+                    "tips": [
+                        "Check server logs for details",
+                        "Verify your request parameters are valid",
+                        "Try again in a few moments",
+                    ],
+                    "recoverable": False,
+                    "context": {},
+                },
+            ) from e
 
     return wrapper  # type: ignore

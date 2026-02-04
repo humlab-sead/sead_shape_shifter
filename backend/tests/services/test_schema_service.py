@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from backend.app.core.config import Settings
+from backend.app.exceptions import SchemaIntrospectionError
 from backend.app.models.data_source import (
     ColumnMetadata,
     DataSourceConfig,
@@ -19,7 +20,6 @@ from backend.app.models.data_source import (
 from backend.app.services.schema_service import (
     SchemaCache,
     SchemaIntrospectionService,
-    SchemaServiceError,
 )
 from src.loaders.sql_loaders import CoreSchema
 
@@ -104,8 +104,13 @@ class TestSchemaIntrospectionService:
         """Should raise error when data source not found."""
         service.data_source_service.get_data_source = Mock(return_value=None)
 
-        with pytest.raises(SchemaServiceError, match="not found"):
+        with pytest.raises(SchemaIntrospectionError) as exc_info:
             await service.get_tables("nonexistent")
+        
+        error = exc_info.value
+        assert "not found" in error.message.lower()
+        assert error.context.get("data_source") == "nonexistent"
+        assert len(error.tips) > 0
 
     @pytest.mark.asyncio
     async def test_get_tables_unsupported_driver(self, service):
@@ -113,7 +118,7 @@ class TestSchemaIntrospectionService:
         csv_config = DataSourceConfig(name="test_csv", driver="csv", filename="test.csv", **{})
         service.data_source_service.get_data_source = Mock(return_value=csv_config)
 
-        with pytest.raises(SchemaServiceError, match="not supported"):
+        with pytest.raises(SchemaIntrospectionError, match="not supported"):
             await service.get_tables("test_csv")
 
     def mock_read_sql(self, test_df: pd.DataFrame, mock_get_loader: Mock) -> AsyncMock:
@@ -273,7 +278,7 @@ class TestSchemaIntrospectionService:
     ):
         """Non-SqlLoader implementations are rejected with a clear error."""
         with patch("backend.app.services.schema_service.DataLoaders.get", return_value=lambda data_source: object()):
-            with pytest.raises(SchemaServiceError, match="not supported"):
+            with pytest.raises(SchemaIntrospectionError, match="not supported"):
                 service.create_loader_for_data_source(postgres_config)
 
 

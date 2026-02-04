@@ -8,14 +8,10 @@ import pytest
 import yaml
 
 from backend.app.core.config import settings
+from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.services.project_service import (
-    EntityAlreadyExistsError,
-    EntityNotFoundError,
-    InvalidProjectError,
-    ProjectConflictError,
-    ProjectNotFoundError,
     ProjectService,
     get_project_service,
 )
@@ -178,7 +174,7 @@ options:
         """Test loading non-existent configuration raises error."""
         with patch.object(service, "state") as mock_state:
             mock_state.get.return_value = None
-            with pytest.raises(ProjectNotFoundError, match="not found"):
+            with pytest.raises(ResourceNotFoundError, match="not found"):
                 service.load_project("nonexistent")
 
     def test_load_configuration_with_yml_extension(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
@@ -194,7 +190,7 @@ options:
         (temp_config_dir / "invalid.yml").write_text("{ invalid yaml")
         with patch.object(service, "state") as mock_state:
             mock_state.get.return_value = None
-            with pytest.raises(InvalidProjectError):
+            with pytest.raises(ConfigurationError):
                 service.load_project("invalid")
 
     def test_load_configuration_sets_metadata(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
@@ -244,7 +240,7 @@ options:
         """Test save without metadata raises error."""
         config = Project(entities={}, options={})
 
-        with pytest.raises(InvalidProjectError, match="must have metadata"):
+        with pytest.raises(ConfigurationError, match="must have metadata"):
             service.save_project(config, create_backup=False)
 
     def test_save_configuration_without_name(self, service: ProjectService):
@@ -264,7 +260,7 @@ options:
             ),
         )
 
-        with pytest.raises(InvalidProjectError, match="must have metadata"):
+        with pytest.raises(ConfigurationError, match="must have metadata"):
             service.save_project(config, create_backup=False)
 
     def test_save_configuration_creates_backup(self, service: ProjectService, temp_config_dir: Path, sample_config: Project):
@@ -320,7 +316,7 @@ options:
         """Test creating configuration that already exists raises error."""
         (temp_config_dir / "existing.yml").touch()
 
-        with pytest.raises(ProjectConflictError, match="already exists"):
+        with pytest.raises(ResourceConflictError, match="already exists"):
             service.create_project("existing")
 
     def test_create_configuration_sets_metadata(self, service: ProjectService):
@@ -380,7 +376,7 @@ options:
 
     def test_delete_configuration_not_found(self, service: ProjectService):
         """Test deleting non-existent configuration raises error."""
-        with pytest.raises(ProjectNotFoundError, match="not found"):
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             service.delete_project("nonexistent")
 
     def test_delete_configuration_creates_backup(self, service: ProjectService, temp_config_dir: Path):
@@ -411,7 +407,7 @@ options:
         """Test adding duplicate entity raises error."""
         entity = Entity(source="table", name="sample", type="entity")
 
-        with pytest.raises(EntityAlreadyExistsError, match="already exists"):
+        with pytest.raises(ResourceConflictError, match="already exists"):
             service.add_entity(sample_config, "sample", entity)
 
     def test_add_entity_serializes_model(self, service: ProjectService, sample_config: Project):
@@ -435,7 +431,7 @@ options:
         """Test updating non-existent entity raises error."""
         entity = Entity(source="table", name="new", type="entity", columns=[])
 
-        with pytest.raises(EntityNotFoundError, match="not found"):
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             service.update_entity(sample_config, "nonexistent", entity)
 
     # Delete entity tests
@@ -448,7 +444,7 @@ options:
 
     def test_delete_entity_not_found(self, service: ProjectService, sample_config: Project):
         """Test deleting non-existent entity raises error."""
-        with pytest.raises(EntityNotFoundError, match="not found"):
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             service.delete_entity(sample_config, "nonexistent")
 
     # Get entity tests
@@ -462,7 +458,7 @@ options:
 
     def test_get_entity_not_found(self, service: ProjectService, sample_config: Project):
         """Test getting non-existent entity raises error."""
-        with pytest.raises(EntityNotFoundError, match="not found"):
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             service.get_entity(sample_config, "nonexistent")
 
     # Entity operations by name tests
@@ -489,7 +485,7 @@ options:
         mock_state.get.return_value = None
         service.state = mock_state
 
-        with pytest.raises(EntityAlreadyExistsError):
+        with pytest.raises(ResourceConflictError):
             service.add_entity_by_name("test", "sample", {"source": "table"})
 
     def test_update_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
@@ -510,7 +506,7 @@ options:
         """Test updating non-existent entity by name raises error."""
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
 
-        with pytest.raises(EntityNotFoundError):
+        with pytest.raises(ResourceNotFoundError):
             service.update_entity_by_name("test", "nonexistent", {"source": "table"})
 
     def test_delete_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
@@ -530,7 +526,7 @@ options:
         """Test deleting non-existent entity by name raises error."""
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
 
-        with pytest.raises(EntityNotFoundError):
+        with pytest.raises(ResourceNotFoundError):
             service.delete_entity_by_name("test", "nonexistent")
 
     def test_get_entity_by_name(self, service: ProjectService, temp_config_dir: Path, sample_yaml_dict: dict):
@@ -548,7 +544,7 @@ options:
         """Test getting non-existent entity by name raises error."""
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
 
-        with pytest.raises(EntityNotFoundError):
+        with pytest.raises(ResourceNotFoundError):
             service.get_entity_by_name("test", "nonexistent")
 
     # Activate configuration tests
@@ -573,7 +569,7 @@ options:
         mock_state.get.return_value = None
         service.state = mock_state
 
-        with pytest.raises(ProjectNotFoundError):
+        with pytest.raises(ResourceNotFoundError):
             service.activate_project("nonexistent")
 
     # Version check tests
@@ -612,7 +608,7 @@ options:
         )
         service.state = mock_state
 
-        with pytest.raises(ProjectConflictError, match="modified by another user"):
+        with pytest.raises(ResourceConflictError, match="modified by another user"):
             service.save_with_version_check(sample_config, "1.0.0")
 
     # Roundtrip tests

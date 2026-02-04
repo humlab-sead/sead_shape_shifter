@@ -13,19 +13,12 @@ from sqlparse.tokens import DDL, DML, Keyword
 
 import backend.app.models.data_source as api
 import src.model as core
+from backend.app.exceptions import QueryExecutionError, QuerySecurityError
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.models.query import QueryResult, QueryValidation
 from backend.app.services.data_source_service import DataSourceService
 from src.loaders.base_loader import DataLoaders
 from src.loaders.sql_loaders import SqlLoader
-
-
-class QueryExecutionError(Exception):
-    """Raised when query execution fails."""
-
-
-class QuerySecurityError(Exception):
-    """Raised when query contains destructive operations."""
 
 
 class QueryService:
@@ -122,14 +115,14 @@ class QueryService:
 
         validation: QueryValidation = self.validate_query(query, data_source_name)
         if not validation.is_valid:
-            raise QuerySecurityError(f"Query validation failed: {', '.join(validation.errors)}")
+            raise QuerySecurityError(message="Query contains prohibited operations", query=query, violations=validation.errors)
 
         timeout = min(timeout, 300)  # Max 5 minutes
 
         ds_cfg: api.DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
 
         if ds_cfg is None:
-            raise QueryExecutionError(f"Data source '{data_source_name}' does not exist")
+            raise QueryExecutionError(message=f"Data source '{data_source_name}' not found", data_source=data_source_name)
 
         core_config: core.DataSourceConfig = DataSourceMapper.to_core_config(ds_cfg)
         loader_cls: type[SqlLoader] = DataLoaders.get(core_config.driver)
@@ -166,11 +159,15 @@ class QueryService:
                 total_rows=len(rows) if not is_truncated else None,
             )
         except KeyError as e:
-            raise QueryExecutionError(f"Query execution failed due to missing: {str(e)}") from e
+            raise QueryExecutionError(
+                message=f"Query execution failed due to missing configuration: {str(e)}", data_source=data_source_name, query=query
+            ) from e
         except asyncio.TimeoutError as e:
-            raise QueryExecutionError(f"Query execution timed out after {timeout} seconds") from e
+            raise QueryExecutionError(
+                message=f"Query execution timed out after {timeout} seconds", data_source=data_source_name, query=query
+            ) from e
         except Exception as e:
-            raise QueryExecutionError(f"Query execution failed: {str(e)}") from e
+            raise QueryExecutionError(message=f"Query execution failed: {str(e)}", data_source=data_source_name, query=query) from e
 
     def _get_statement_type(self, statement: Statement) -> Optional[str]:
         """Extract the statement type (SELECT, INSERT, etc.) from parsed SQL."""

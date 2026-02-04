@@ -5,18 +5,14 @@ from typing import Any
 
 from loguru import logger
 
+from backend.app.exceptions import (
+    CircularDependencyError,
+    DataIntegrityError,
+)
 from backend.app.models.project import Project
 from backend.app.utils.graph import calculate_depths, find_cycles, topological_sort
 from backend.app.utils.sql import extract_tables
 from src.model import ShapeShiftProject
-
-
-class DependencyServiceError(Exception):
-    """Base exception for dependency service errors."""
-
-
-class CircularDependencyError(DependencyServiceError):
-    """Raised when circular dependencies are detected."""
 
 
 class DependencyNode(dict):
@@ -83,19 +79,27 @@ class DependencyGraph(dict):
 class DependencyService:
     """Service for analyzing entity dependencies."""
 
-    def analyze_dependencies(self, api_project: Project) -> DependencyGraph:
+    def analyze_dependencies(self, api_project: Project, raise_on_cycle: bool = False) -> DependencyGraph:
         """
-        Analyze dependencies in project.
-
+         Analyze dependencies in project.
         Args:
-            api_project: Project to analyze
+             api_project: Project to analyze
+             raise_on_cycle: If True, raise CircularDependencyError when cycles detected
+                           If False, return graph with cycle information (default)
 
-        Returns:
-            Dependency graph with nodes, edges, and cycle information
+         Returns:
+             Dependency graph with nodes, edges, and cycle information
+
+         Raises:
+             CircularDependencyError: If raise_on_cycle=True and cycles detected
+             DataIntegrityError: If project initialization fails
         """
-        project = ShapeShiftProject(
-            cfg={"entities": api_project.entities, "options": api_project.options}, filename=api_project.filename or ""
-        )
+        try:
+            project = ShapeShiftProject(
+                cfg={"entities": api_project.entities, "options": api_project.options}, filename=api_project.filename or ""
+            )
+        except Exception as e:
+            raise DataIntegrityError(message=f"Failed to initialize project: {e}") from e
 
         dependency_map: dict[str, list[str]] = {}
         for entity_name in api_project.entities:
@@ -113,6 +117,12 @@ class DependencyService:
         # Detect cycles
         cycles: list[list[str]] = find_cycles(dependency_map)
         has_cycles: bool = len(cycles) > 0
+
+        if raise_on_cycle and has_cycles and cycles:
+            raise CircularDependencyError(
+                message=f"Circular dependency detected involving {len(cycles[0])} entities",
+                cycle=cycles[0]
+            )
 
         # Calculate topological order if no cycles
         topological_order: None | list[str] = None if has_cycles else topological_sort(dependency_map)
