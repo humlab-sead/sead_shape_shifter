@@ -123,6 +123,92 @@
               </v-col>
             </v-row>
 
+            <!-- Extra Columns Section -->
+            <v-row dense class="mb-2">
+              <v-col cols="12">
+                <v-expansion-panels variant="accordion" density="compact">
+                  <v-expansion-panel>
+                    <v-expansion-panel-title class="py-1 text-caption">
+                      <v-icon size="small" class="mr-1">mdi-table-column-plus-after</v-icon>
+                      Extra Columns
+                      <v-chip v-if="getExtraColumnsCount(fk) > 0" size="x-small" class="ml-2">
+                        {{ getExtraColumnsCount(fk) }}
+                      </v-chip>
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text class="pt-2">
+                      <div v-if="getExtraColumnsArray(fk).length > 0" class="mb-2">
+                        <v-row
+                          v-for="(extraCol, colIndex) in getExtraColumnsArray(fk)"
+                          :key="colIndex"
+                          dense
+                          class="mb-2"
+                        >
+                          <v-col cols="5">
+                            <v-text-field
+                              v-model="extraCol.local"
+                              label="Local Name"
+                              variant="outlined"
+                              density="compact"
+                              hide-details
+                              @update:model-value="updateExtraColumn(index, colIndex, extraCol.local, extraCol.remote)"
+                            />
+                          </v-col>
+                          <v-col cols="1" class="d-flex align-center justify-center">
+                            <v-icon size="small">mdi-arrow-left</v-icon>
+                          </v-col>
+                          <v-col cols="5">
+                            <v-combobox
+                              v-model="extraCol.remote"
+                              label="Remote Column"
+                              variant="outlined"
+                              density="compact"
+                              :items="remoteColumnItems[index]"
+                              item-value="value"
+                              hide-details
+                              @focus="loadRemoteColumns(index)"
+                              @update:model-value="updateExtraColumn(index, colIndex, extraCol.local, extraCol.remote)"
+                            >
+                              <template v-slot:item="{ item, props: itemProps }">
+                                <v-list-item v-bind="itemProps">
+                                  <template v-slot:title>
+                                    {{ item.raw.value }}
+                                  </template>
+                                  <template v-slot:subtitle>
+                                    <span class="text-caption text-grey">{{ item.raw.category }}</span>
+                                  </template>
+                                </v-list-item>
+                              </template>
+                            </v-combobox>
+                          </v-col>
+                          <v-col cols="1" class="d-flex align-center">
+                            <v-btn
+                              icon="mdi-delete"
+                              variant="text"
+                              size="x-small"
+                              color="error"
+                              @click="removeExtraColumn(index, colIndex)"
+                            />
+                          </v-col>
+                        </v-row>
+                      </div>
+                      <v-btn
+                        variant="outlined"
+                        size="small"
+                        prepend-icon="mdi-plus"
+                        @click="addExtraColumn(index)"
+                        block
+                      >
+                        Add Extra Column
+                      </v-btn>
+                      <div class="text-caption text-grey mt-2">
+                        Extra columns are pulled from the remote entity during the join
+                      </div>
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+                </v-expansion-panels>
+              </v-col>
+            </v-row>
+
             <!-- Test Join Button -->
             <v-row dense>
               <v-col cols="12">
@@ -142,7 +228,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import type { ForeignKeyConfig } from '@/types'
 import ForeignKeyTester from './ForeignKeyTester.vue'
 import { useColumnIntrospection } from '@/composables/useColumnIntrospection'
@@ -185,6 +271,7 @@ const remoteKeyErrors = ref<Array<string | undefined>>([])
  */
 async function validateLocalKeys(fkIndex: number) {
   const fk = foreignKeys.value[fkIndex]
+  if (!fk) return
   if (!fk.local_keys || fk.local_keys.length === 0) {
     localKeyErrors.value[fkIndex] = undefined
     return
@@ -220,6 +307,7 @@ async function validateLocalKeys(fkIndex: number) {
  */
 async function validateRemoteKeys(fkIndex: number) {
   const fk = foreignKeys.value[fkIndex]
+  if (!fk) return
   if (!fk.remote_keys || fk.remote_keys.length === 0) {
     remoteKeyErrors.value[fkIndex] = undefined
     return
@@ -272,7 +360,8 @@ async function getColumnSuggestions(entityName: string): Promise<Array<{ value: 
  * Load local columns for a specific FK.
  */
 async function loadLocalColumns(fkIndex: number) {
-  if (localColumnItems.value[fkIndex]?.length > 0) {
+  const existingItems = localColumnItems.value[fkIndex]
+  if (existingItems && existingItems.length > 0) {
     return // Already loaded
   }
 
@@ -289,12 +378,14 @@ async function loadLocalColumns(fkIndex: number) {
  */
 async function loadRemoteColumns(fkIndex: number) {
   const fk = foreignKeys.value[fkIndex]
+  if (!fk) return
   if (!fk.entity) {
     remoteColumnItems.value[fkIndex] = []
     return
   }
 
-  if (remoteColumnItems.value[fkIndex]?.length > 0) {
+  const existingItems = remoteColumnItems.value[fkIndex]
+  if (existingItems && existingItems.length > 0) {
     return // Already loaded
   }
 
@@ -362,6 +453,113 @@ function handleAddForeignKey() {
 
 function handleRemoveForeignKey(index: number) {
   foreignKeys.value.splice(index, 1)
+}
+
+/**
+ * Get count of extra columns for a foreign key.
+ */
+function getExtraColumnsCount(fk: ForeignKeyConfig): number {
+  if (!fk.extra_columns) return 0
+  if (Array.isArray(fk.extra_columns)) return fk.extra_columns.length
+  if (typeof fk.extra_columns === 'object') return Object.keys(fk.extra_columns).length
+  return 0
+}
+
+/**
+ * Convert extra_columns to array format for editing.
+ */
+function getExtraColumnsArray(fk: ForeignKeyConfig): Array<{ local: string; remote: string }> {
+  if (!fk.extra_columns) return []
+  
+  if (Array.isArray(fk.extra_columns)) {
+    // If it's an array of strings, assume they map to themselves
+    return fk.extra_columns.map(col => ({ local: col, remote: col }))
+  }
+  
+  if (typeof fk.extra_columns === 'object' && fk.extra_columns !== null) {
+    // Convert object to array of { local, remote } pairs
+    return Object.entries(fk.extra_columns).map(([local, remote]) => ({
+      local,
+      remote: remote as string,
+    }))
+  }
+  
+  return []
+}
+
+/**
+ * Add a new extra column entry.
+ */
+function addExtraColumn(fkIndex: number) {
+  const fk = foreignKeys.value[fkIndex]
+  if (!fk) return
+  
+  // Initialize as object if not exists
+  if (!fk.extra_columns || typeof fk.extra_columns !== 'object' || Array.isArray(fk.extra_columns)) {
+    fk.extra_columns = {}
+  }
+  
+  // Add new empty entry
+  const newKey = `column_${Object.keys(fk.extra_columns).length + 1}`
+  fk.extra_columns[newKey] = ''
+}
+
+/**
+ * Update an extra column entry.
+ */
+function updateExtraColumn(fkIndex: number, colIndex: number, localName: string, remoteName: string) {
+  const fk = foreignKeys.value[fkIndex]
+  if (!fk) return
+  
+  // Ensure extra_columns is an object
+  if (!fk.extra_columns || typeof fk.extra_columns !== 'object' || Array.isArray(fk.extra_columns)) {
+    fk.extra_columns = {}
+  }
+  
+  // Get current entries
+  const entries = Object.entries(fk.extra_columns)
+  
+  if (colIndex >= 0 && colIndex < entries.length) {
+    const entry = entries[colIndex]
+    if (!entry) return
+    
+    const [oldKey] = entry
+    
+    // If local name changed, remove old key and add new one
+    if (oldKey !== localName) {
+      delete fk.extra_columns[oldKey]
+    }
+    
+    // Set new/updated mapping
+    if (localName && remoteName) {
+      fk.extra_columns[localName] = remoteName
+    }
+  }
+}
+
+/**
+ * Remove an extra column entry.
+ */
+function removeExtraColumn(fkIndex: number, colIndex: number) {
+  const fk = foreignKeys.value[fkIndex]
+  if (!fk) return
+  
+  if (!fk.extra_columns || typeof fk.extra_columns !== 'object' || Array.isArray(fk.extra_columns)) return
+  
+  const entries = Object.entries(fk.extra_columns)
+  
+  if (colIndex >= 0 && colIndex < entries.length) {
+    const entry = entries[colIndex]
+    if (!entry) return
+    
+    const [key] = entry
+    delete fk.extra_columns[key]
+    
+    // Clean up if empty
+    if (Object.keys(fk.extra_columns).length === 0) {
+      fk.extra_columns = undefined
+    }
+  }
 }
 
 // Emit changes

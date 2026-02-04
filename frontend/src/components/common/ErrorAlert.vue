@@ -82,7 +82,16 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { FormattedError } from '@/types'
+
+// Local type definition to avoid import issues
+interface FormattedError {
+  message: string
+  detail?: string
+  errorType?: string
+  tips?: string[]
+  context?: Record<string, any>
+  recoverable?: boolean
+}
 
 interface Props {
   /** Alert type - auto-determined from recoverable if not set */
