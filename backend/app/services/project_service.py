@@ -296,9 +296,14 @@ class ProjectService:
 
             # Update metadata for target
             if source_project.metadata:
-                source_project.metadata.name = target_name
-                if source_project.metadata.description:
-                    source_project.metadata.description = source_project.metadata.description.replace(source_name, target_name)
+                updated_description = (
+                    source_project.metadata.description.replace(source_name, target_name)
+                    if source_project.metadata.description
+                    else None
+                )
+                source_project.metadata = source_project.metadata.model_copy(
+                    update={"name": target_name, "description": updated_description}
+                )
 
             # Copy materialized files directory if exists
             if source_materialized_dir.exists():
