@@ -19,7 +19,7 @@ from backend.app.services.project_service import (
     ProjectServiceError,
 )
 from backend.app.services.yaml_service import YamlServiceError
-from backend.app.utils.exceptions import BadRequestError, BaseAPIException, NotFoundError
+from backend.app.utils.exceptions import BaseAPIException
 
 T = TypeVar("T")
 

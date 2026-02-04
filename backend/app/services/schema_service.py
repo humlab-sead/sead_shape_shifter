@@ -125,7 +125,7 @@ class SchemaIntrospectionService:
         except Exception as e:
             logger.error(f"Error getting tables for {data_source_name}: {e}")
             raise SchemaIntrospectionError(
-                message=f"Failed to get tables from data source", data_source=data_source_name, operation="get_tables"
+                message="Failed to get tables from data source", data_source=data_source_name, operation="get_tables"
             ) from e
 
     async def get_table_schema(self, data_source_name: str, table_name: str, schema: Optional[str] = None) -> api.TableSchema:
