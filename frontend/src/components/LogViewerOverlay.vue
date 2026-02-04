@@ -3,9 +3,10 @@
     v-model="isOpen"
     :max-width="isMaximized ? '100vw' : dialogWidth + 'px'"
     :persistent="false"
-    scrollable
     :scrim="false"
-    :style="dialogPositionStyle"
+    :location="isMaximized ? 'center' : 'top left'"
+    :origin="isMaximized ? 'center' : 'top left'"
+    transition="none"
     content-class="log-viewer-dialog"
   >
     <v-card :style="cardStyle" class="resizable-card">
@@ -214,33 +215,21 @@ const lineOptions = [
   { title: '2500 lines', value: 2500 },
 ]
 
-const dialogPositionStyle = computed(() => {
-  if (isMaximized.value) {
-    return {}
-  }
-  if (dialogPosition.value.x === 0 && dialogPosition.value.y === 0) {
-    return {} // Let dialog center itself initially
-  }
-  return {
-    position: 'fixed' as const,
-    top: `${dialogPosition.value.y}px`,
-    left: `${dialogPosition.value.x}px`,
-    transform: 'none', // Override default centering
-    margin: '0',
-  }
-})
-
 const cardStyle = computed(() => {
   if (isMaximized.value) {
     return {
       width: '100vw',
       height: '100vh',
       maxWidth: '100vw !important',
+      transform: 'none',
     }
   }
   return {
     width: `${dialogWidth.value}px`,
     height: `${dialogHeight.value}px`,
+    minHeight: `${dialogHeight.value}px`,
+    transform: `translate(${dialogPosition.value.x}px, ${dialogPosition.value.y}px)`,
+    transformOrigin: 'top left',
   }
 })
 
@@ -317,43 +306,39 @@ function close() {
 // Drag functionality
 function startDrag(event: MouseEvent) {
   if (isMaximized.value) return
-  
-  const dialog = (event.target as HTMLElement).closest('.v-overlay__content') as HTMLElement
-  
-  if (dialog) {
-    const rect = dialog.getBoundingClientRect()
-    
-    // Store initial mouse position
-    initialMousePos.value = {
-      x: event.clientX,
-      y: event.clientY
-    }
-    
-    // Store current dialog position (or use rect if not yet positioned)
-    initialDialogPos.value = {
-      x: dialogPosition.value.x || rect.left,
-      y: dialogPosition.value.y || rect.top
-    }
-    
-    isDragging.value = true
-    document.addEventListener('mousemove', onDrag)
-    document.addEventListener('mouseup', stopDrag)
-    event.preventDefault()
+
+  // Store initial mouse position
+  initialMousePos.value = {
+    x: event.clientX,
+    y: event.clientY
   }
+
+  // Store current dialog position
+  initialDialogPos.value = {
+    x: dialogPosition.value.x,
+    y: dialogPosition.value.y
+  }
+
+  isDragging.value = true
+  document.addEventListener('mousemove', onDrag)
+  document.addEventListener('mouseup', stopDrag)
+  event.preventDefault()
 }
 
 function onDrag(event: MouseEvent) {
   if (!isDragging.value) return
   
-  // Calculate how far the mouse has moved
-  const deltaX = event.clientX - initialMousePos.value.x
-  const deltaY = event.clientY - initialMousePos.value.y
-  
-  // Apply delta to initial dialog position
-  dialogPosition.value = {
-    x: initialDialogPos.value.x + deltaX,
-    y: initialDialogPos.value.y + deltaY
-  }
+  requestAnimationFrame(() => {
+    // Calculate how far the mouse has moved
+    const deltaX = event.clientX - initialMousePos.value.x
+    const deltaY = event.clientY - initialMousePos.value.y
+    
+    // Apply delta to initial dialog position
+    dialogPosition.value = {
+      x: initialDialogPos.value.x + deltaX,
+      y: initialDialogPos.value.y + deltaY
+    }
+  })
 }
 
 function stopDrag() {
@@ -440,7 +425,9 @@ onUnmounted(() => {
 }
 
 :deep(.log-viewer-dialog) {
-  position: fixed !important;
+  margin: 0 !important;
+  transition: none !important;
+  align-self: flex-start !important;
 }
 
 .resizable-card {
