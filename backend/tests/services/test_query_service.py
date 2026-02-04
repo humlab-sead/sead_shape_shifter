@@ -527,7 +527,7 @@ class TestQueryService:
 
         slow_loader = AsyncMock()
         slow_loader.read_sql = slow_read_sql
-        slow_loader.inject_limit = MagicMock(side_effect=lambda q, l: q)  # Return query as-is
+        slow_loader.inject_limit = MagicMock(side_effect=lambda q, l: q)  # noqa: E741
 
         with (
             patch("backend.app.services.query_service.DataSourceService") as mock_ds,
@@ -552,7 +552,7 @@ class TestQueryService:
         query = "SELECT * FROM users"
         error_loader = AsyncMock()
         error_loader.read_sql = AsyncMock(side_effect=RuntimeError("Database error"))
-        error_loader.inject_limit = MagicMock(side_effect=lambda q, l: q)  # Return query as-is
+        error_loader.inject_limit = MagicMock(side_effect=lambda q, l: q)  # noqa: E741
 
         with (
             patch("backend.app.services.query_service.DataSourceService") as mock_ds,

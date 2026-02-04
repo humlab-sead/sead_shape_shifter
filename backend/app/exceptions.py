@@ -98,8 +98,6 @@ class DataIntegrityError(DomainException):
 
     error_code = "DATA_INTEGRITY_VIOLATION"
 
-    pass
-
 
 class ForeignKeyError(DataIntegrityError):
     """
