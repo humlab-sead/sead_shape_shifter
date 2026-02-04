@@ -7,7 +7,7 @@ construction, cycle detection, and graph analysis logic.
 
 import pytest
 
-from backend.app.exceptions import CircularDependencyError, DataIntegrityError
+from backend.app.exceptions import CircularDependencyError
 from backend.app.models.project import Project
 from backend.app.services.dependency_service import DependencyService
 
