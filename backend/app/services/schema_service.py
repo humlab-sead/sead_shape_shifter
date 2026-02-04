@@ -14,6 +14,7 @@ import pandas as pd
 from loguru import logger
 
 import backend.app.models.data_source as api
+from backend.app.exceptions import SchemaIntrospectionError
 from backend.app.mappers.data_source_mapper import DataSourceMapper
 from backend.app.mappers.table_schema_mapper import TableSchemaMapper
 from backend.app.models.entity_import import KeySuggestion
@@ -21,10 +22,6 @@ from backend.app.services.data_source_service import DataSourceService
 from src.loaders.base_loader import DataLoaders
 from src.loaders.sql_loaders import CoreSchema, SqlLoader
 from src.model import DataSourceConfig as CoreDataSourceConfig
-
-
-class SchemaServiceError(Exception):
-    """Base exception for schema service errors."""
 
 
 class SchemaCache:
@@ -71,10 +68,10 @@ class SchemaIntrospectionService:
 
         loader_cls: type[SqlLoader] | None = DataLoaders.get(core_config.driver)
         if not loader_cls:
-            raise SchemaServiceError(f"Schema introspection not supported for driver: {core_config.driver}")
+            raise SchemaIntrospectionError(f"Schema introspection not supported for driver: {core_config.driver}")
         loader: SqlLoader = loader_cls(data_source=core_config)
         if not isinstance(loader, SqlLoader):
-            raise SchemaServiceError(f"Schema introspection not supported for driver: {core_config.driver}")
+            raise SchemaIntrospectionError(f"Schema introspection not supported for driver: {core_config.driver}")
 
         return loader
 
@@ -90,7 +87,7 @@ class SchemaIntrospectionService:
             List of table metadata
 
         Raises:
-            SchemaServiceError: If introspection fails
+            SchemaIntrospectionError: If introspection fails
         """
         cache_key: str = f"tables:{data_source_name}:{schema or 'default'}"
         cached = self.cache.get(cache_key)
@@ -102,7 +99,9 @@ class SchemaIntrospectionService:
             # Get data source config
             ds_config: api.DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
             if ds_config is None:
-                raise SchemaServiceError(f"Data source '{data_source_name}' not found")
+                raise SchemaIntrospectionError(
+                    message=f"Data source '{data_source_name}' not found", data_source=data_source_name, operation="get_tables"
+                )
 
             # Resolve environment variables before creating loader
             ds_config = ds_config.resolve_config_env_vars()
@@ -120,9 +119,14 @@ class SchemaIntrospectionService:
             self.cache.set(cache_key, tables)
             return tables
 
+        except SchemaIntrospectionError:
+            # Re-raise domain exceptions as-is
+            raise
         except Exception as e:
             logger.error(f"Error getting tables for {data_source_name}: {e}")
-            raise SchemaServiceError(f"Failed to get tables: {str(e)}") from e
+            raise SchemaIntrospectionError(
+                message=f"Failed to get tables from data source", data_source=data_source_name, operation="get_tables"
+            ) from e
 
     async def get_table_schema(self, data_source_name: str, table_name: str, schema: Optional[str] = None) -> api.TableSchema:
         """
@@ -137,7 +141,7 @@ class SchemaIntrospectionService:
             Detailed table schema
 
         Raises:
-            SchemaServiceError: If introspection fails
+            SchemaIntrospectionError: If introspection fails
         """
         cache_key = f"schema:{data_source_name}:{schema or 'default'}:{table_name}"
         cached = self.cache.get(cache_key)
@@ -149,7 +153,9 @@ class SchemaIntrospectionService:
             # Get data source config
             ds_config: api.DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
             if ds_config is None:
-                raise SchemaServiceError(f"Data source '{data_source_name}' not found")
+                raise SchemaIntrospectionError(
+                    message=f"Data source '{data_source_name}' not found", data_source=data_source_name, operation="get_columns"
+                )
 
             # Environment variable resolution happens in the mapper
             loader: SqlLoader = self.create_loader_for_data_source(ds_config)
@@ -160,9 +166,14 @@ class SchemaIntrospectionService:
             self.cache.set(cache_key, api_schema)
             return api_schema
 
+        except SchemaIntrospectionError:
+            # Re-raise domain exceptions as-is
+            raise
         except Exception as e:
             logger.error(f"Error getting schema for {table_name}: {e}")
-            raise SchemaServiceError(f"Failed to get table schema: {str(e)}") from e
+            raise SchemaIntrospectionError(
+                message=f"Failed to get schema for table '{table_name}'", data_source=data_source_name, operation="get_columns"
+            ) from e
 
     async def preview_table_data(
         self,
@@ -186,7 +197,7 @@ class SchemaIntrospectionService:
             dict with 'columns' (list of column names) and 'rows' (list of row dicts)
 
         Raises:
-            SchemaServiceError: If preview fails
+            SchemaIntrospectionError: If preview fails
         """
 
         limit = min(limit, 100)
@@ -195,7 +206,9 @@ class SchemaIntrospectionService:
         try:
             ds_config: api.DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
             if ds_config is None:
-                raise SchemaServiceError(f"Data source '{data_source_name}' not found")
+                raise SchemaIntrospectionError(
+                    message=f"Data source '{data_source_name}' not found", data_source=data_source_name, operation="preview_table"
+                )
 
             data_source: CoreDataSourceConfig = DataSourceMapper.to_core_config(ds_config)
 
@@ -218,10 +231,14 @@ class SchemaIntrospectionService:
             }
 
         except asyncio.TimeoutError as e:
-            raise SchemaServiceError("Query execution timed out after 30 seconds") from e
+            raise SchemaIntrospectionError(
+                message="Query execution timed out after 30 seconds", data_source=data_source_name, operation="preview_table"
+            ) from e
         except Exception as e:
             logger.error(f"Error previewing table {table_name}: {e}")
-            raise SchemaServiceError(f"Failed to preview table data: {str(e)}") from e
+            raise SchemaIntrospectionError(
+                message=f"Failed to preview table data: {str(e)}", data_source=data_source_name, operation="preview_table"
+            ) from e
 
     def invalidate_cache(self, data_source_name: str) -> None:
         """Invalidate all cached data for a data source."""

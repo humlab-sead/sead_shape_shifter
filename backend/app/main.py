@@ -76,11 +76,25 @@ app = FastAPI(
 # Exception handler for unhandled exceptions
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Catch all unhandled exceptions and log with full traceback."""
+    """
+    Catch all unhandled exceptions and log with full traceback.
+
+    This is a last-resort handler. Most errors should be caught by the
+    @handle_endpoint_errors decorator which provides better context.
+    """
     logger.exception(f"Unhandled exception during {request.method} {request.url.path}: {exc}")
+
+    # Get the exception type name for better error context
+    exc_type: str = type(exc).__name__
+    error_detail: str = str(exc) or "An unexpected error occurred"
+
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error", "error": str(exc)},
+        content={
+            "detail": error_detail,
+            "error_type": exc_type,
+            "message": "An unexpected error occurred. The error has been logged.",
+        },
     )
 
 
