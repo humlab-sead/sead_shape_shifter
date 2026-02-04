@@ -83,16 +83,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
-// Local type definition to avoid import issues
-interface FormattedError {
-  message: string
-  detail?: string
-  errorType?: string
-  tips?: string[]
-  context?: Record<string, any>
-  recoverable?: boolean
-}
-
 interface Props {
   /** Alert type - auto-determined from recoverable if not set */
   type?: 'error' | 'warning' | 'success' | 'info'
@@ -123,6 +113,11 @@ interface Props {
   /** Maximum tips to show before collapsing */
   maxVisibleTips?: number
 }
+
+// Helper (kept in a separate module because <script setup> cannot export)
+// Usage:
+//   import { fromFormattedError } from '@/components/common/errorAlert'
+//   <ErrorAlert v-bind="fromFormattedError(error)" />
 
 const props = withDefaults(defineProps<Props>(), {
   type: undefined,
@@ -180,21 +175,6 @@ function formatContext(ctx: Record<string, any>): string {
 
 function handleClose() {
   emit('close')
-}
-
-/**
- * Create props from a FormattedError object
- * Usage: <ErrorAlert v-bind="ErrorAlert.fromFormattedError(error)" />
- */
-export function fromFormattedError(error: FormattedError): Partial<Props> {
-  return {
-    message: error.message,
-    details: error.detail,
-    tips: error.tips,
-    errorType: error.errorType,
-    context: error.context,
-    recoverable: error.recoverable,
-  }
 }
 </script>
 
