@@ -10,12 +10,13 @@ from fastapi import APIRouter, Depends, Query, status
 from loguru import logger
 
 from backend.app.api.dependencies import get_schema_service
+from backend.app.exceptions import SchemaIntrospectionError
 from backend.app.models.data_source import TableMetadata, TableSchema
 from backend.app.models.entity_import import EntityImportRequest, EntityImportResult
-from backend.app.services.schema_service import SchemaIntrospectionService, SchemaServiceError
+from backend.app.services.schema_service import SchemaIntrospectionService
 from backend.app.services.type_mapping_service import TypeMappingService
 from backend.app.utils.error_handlers import handle_endpoint_errors
-from backend.app.utils.exceptions import BadRequestError, NotFoundError
+from backend.app.utils.exceptions import NotFoundError
 
 router = APIRouter(prefix="/data-sources", tags=["schema"])
 
@@ -43,17 +44,10 @@ async def list_tables(
     - 400: Schema introspection not supported for this driver
     - 500: Database query failed
     """
-    try:
-        logger.info(f"Listing tables for data source: {name} (schema: {schema or 'default'})")
-        tables = await service.get_tables(name, schema)
-        logger.info(f"Found {len(tables)} tables in {name}")
-        return tables
-    except SchemaServiceError as e:
-        if "not found" in str(e).lower():
-            raise NotFoundError(str(e)) from e
-        if "not supported" in str(e).lower():
-            raise BadRequestError(str(e)) from e
-        raise
+    logger.info(f"Listing tables for data source: {name} (schema: {schema or 'default'})")
+    tables = await service.get_tables(name, schema)
+    logger.info(f"Found {len(tables)} tables in {name}")
+    return tables
 
 
 @router.get("/{name}/tables/{table_name}/schema", response_model=TableSchema, summary="Get table schema")
@@ -96,17 +90,10 @@ async def get_table_schema(
     - 400: Schema introspection not supported
     - 500: Database query failed
     """
-    try:
-        logger.info(f"Getting schema for table {table_name} in {name}")
-        table_schema = await service.get_table_schema(name, table_name, schema)
-        logger.info(f"Retrieved schema for {table_name} with {len(table_schema.columns)} columns")
-        return table_schema
-    except SchemaServiceError as e:
-        if "not found" in str(e).lower():
-            raise NotFoundError(str(e)) from e
-        if "not supported" in str(e).lower():
-            raise BadRequestError(str(e)) from e
-        raise
+    logger.info(f"Getting schema for table {table_name} in {name}")
+    table_schema = await service.get_table_schema(name, table_name, schema)
+    logger.info(f"Retrieved schema for {table_name} with {len(table_schema.columns)} columns")
+    return table_schema
 
 
 @router.get("/{name}/tables/{table_name}/preview", summary="Preview table data")
@@ -154,17 +141,10 @@ async def preview_table_data(
     - 400: Invalid parameters or unsupported driver
     - 500: Query execution failed or timeout
     """
-    try:
-        logger.info(f"Previewing table {table_name} in {name} (limit={limit}, offset={offset})")
-        preview: dict[str, Any] = await service.preview_table_data(name, table_name, schema, limit, offset)
-        logger.info(f"Retrieved {len(preview['rows'])} rows from {table_name}")
-        return preview
-    except SchemaServiceError as e:
-        if "not found" in str(e).lower():
-            raise NotFoundError(str(e)) from e
-        if "not supported" in str(e).lower() or "timed out" in str(e).lower():
-            raise BadRequestError(str(e)) from e
-        raise
+    logger.info(f"Previewing table {table_name} in {name} (limit={limit}, offset={offset})")
+    preview: dict[str, Any] = await service.preview_table_data(name, table_name, schema, limit, offset)
+    logger.info(f"Retrieved {len(preview['rows'])} rows from {table_name}")
+    return preview
 
 
 @router.get("/{name}/tables/{table_name}/type-mappings", response_model=dict[str, dict[str, Any]], summary="Get type mapping suggestions")
@@ -239,7 +219,7 @@ async def get_type_mappings(
         logger.info(f"Generated {len(result)} type mappings for {table_name}")
         return result
 
-    except SchemaServiceError as e:
+    except SchemaIntrospectionError as e:
         if "not found" in str(e).lower():
             raise NotFoundError(str(e)) from e
         raise
@@ -276,20 +256,13 @@ async def import_entity_from_table(
     if request is None:
         request = EntityImportRequest(**{})
 
-    try:
-        logger.info(f"Importing entity from table {table_name} in {name}")
+    logger.info(f"Importing entity from table {table_name} in {name}")
 
-        result = await service.import_entity_from_table(
-            data_source_name=name, table_name=table_name, entity_name=request.entity_name, selected_columns=request.selected_columns
-        )
+    result = await service.import_entity_from_table(
+        data_source_name=name, table_name=table_name, entity_name=request.entity_name, selected_columns=request.selected_columns
+    )
 
-        return EntityImportResult(**result)
-
-    except SchemaServiceError as e:
-        logger.error(f"Error importing entity from {table_name}: {e}")
-        if "not found" in str(e).lower():
-            raise NotFoundError(str(e)) from e
-        raise
+    return EntityImportResult(**result)
 
 
 @router.post("/{name}/cache/invalidate", status_code=status.HTTP_204_NO_CONTENT, summary="Invalidate schema cache")

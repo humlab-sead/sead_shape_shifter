@@ -25,6 +25,31 @@ export interface ApiError {
   timestamp: string
 }
 
+/**
+ * Structured error response from backend domain exceptions
+ * Matches backend/app/exceptions.py DomainException.to_dict() format
+ */
+export interface StructuredError {
+  error_type: string
+  message: string
+  tips?: string[]
+  context?: Record<string, any>
+  recoverable: boolean
+}
+
+/**
+ * Unified error format for frontend display
+ * Can represent both legacy string errors and structured errors
+ */
+export interface FormattedError {
+  message: string
+  detail?: string
+  errorType?: string
+  tips?: string[]
+  context?: Record<string, any>
+  recoverable?: boolean
+}
+
 export interface PaginationParams {
   page?: number
   per_page?: number

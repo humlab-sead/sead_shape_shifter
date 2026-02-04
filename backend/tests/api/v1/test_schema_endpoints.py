@@ -9,9 +9,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.api.dependencies import get_schema_service
+from backend.app.exceptions import ConfigurationError, ResourceNotFoundError, SchemaIntrospectionError
 from backend.app.main import app
 from backend.app.models.data_source import ColumnMetadata, TableMetadata, TableSchema
-from backend.app.services.schema_service import SchemaIntrospectionService, SchemaServiceError
+from backend.app.services.schema_service import SchemaIntrospectionService
 
 # pylint: disable=redefined-outer-name
 
@@ -103,32 +104,54 @@ class TestListTablesEndpoint:
     @pytest.mark.asyncio
     async def test_list_tables_not_found(self, client, mock_schema_service):
         """Test with non-existent data source."""
-        mock_schema_service.get_tables = AsyncMock(side_effect=SchemaServiceError("Data source 'invalid' not found"))
+        mock_schema_service.get_tables = AsyncMock(
+            side_effect=ResourceNotFoundError(
+                resource_type="data_source",
+                resource_id="invalid",
+                message="Data source 'invalid' not found",
+            )
+        )
 
         response = client.get("/api/v1/data-sources/invalid/tables")
 
         assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
+        data = response.json()["detail"]
+        assert isinstance(data, dict)
+        assert "not found" in data["message"].lower()
 
     @pytest.mark.asyncio
     async def test_list_tables_not_supported(self, client, mock_schema_service):
         """Test with unsupported driver."""
-        mock_schema_service.get_tables = AsyncMock(side_effect=SchemaServiceError("Schema introspection not supported for this driver"))
+        mock_schema_service.get_tables = AsyncMock(
+            side_effect=ConfigurationError(
+                message="Schema introspection not supported for this driver",
+            )
+        )
 
         response = client.get("/api/v1/data-sources/sead/tables")
 
         assert response.status_code == 400
-        assert "not supported" in response.json()["detail"].lower()
+        data = response.json()["detail"]
+        assert isinstance(data, dict)
+        assert "not supported" in data["message"].lower()
 
     @pytest.mark.asyncio
     async def test_list_tables_database_error(self, client, mock_schema_service):
         """Test with database error."""
-        mock_schema_service.get_tables = AsyncMock(side_effect=SchemaServiceError("Database connection failed"))
+        mock_schema_service.get_tables = AsyncMock(
+            side_effect=SchemaIntrospectionError(
+                message="Database connection failed",
+                data_source="sead",
+                operation="get_tables",
+            )
+        )
 
         response = client.get("/api/v1/data-sources/sead/tables")
 
         assert response.status_code == 500
-        assert "failed" in response.json()["detail"].lower()
+        data = response.json()["detail"]
+        assert isinstance(data, dict)
+        assert "connection failed" in data["message"].lower()
 
 
 class TestGetTableSchemaEndpoint:
