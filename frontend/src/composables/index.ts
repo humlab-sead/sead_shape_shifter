@@ -36,3 +36,6 @@ export { useSession } from './useSession'
 export { useHelp } from './useHelp'
 
 export { useSettings } from './useSettings'
+
+export { useErrorHandler, useSimpleError } from './useErrorHandler'
+export type { UseErrorHandlerOptions, UseErrorHandlerReturn } from './useErrorHandler'

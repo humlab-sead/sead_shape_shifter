@@ -10,6 +10,7 @@ from loguru import logger
 
 from backend.app.core.config import settings
 from backend.app.core.state_manager import ApplicationStateManager, get_app_state_manager
+from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
@@ -18,27 +19,7 @@ from backend.app.utils.exceptions import BadRequestError
 
 
 class ProjectServiceError(Exception):
-    """Base exception for project service errors."""
-
-
-class ProjectNotFoundError(ProjectServiceError):
-    """Raised when project file is not found."""
-
-
-class EntityNotFoundError(ProjectServiceError):
-    """Raised when entity is not found."""
-
-
-class EntityAlreadyExistsError(ProjectServiceError):
-    """Raised when trying to add entity that already exists."""
-
-
-class InvalidProjectError(ProjectServiceError):
-    """Raised when project is invalid."""
-
-
-class ProjectConflictError(ProjectServiceError):
-    """Raised when optimistic lock fails due to concurrent modification."""
+    """Generic exception for unexpected project service errors."""
 
 
 DEFAULT_ALLOWED_UPLOAD_EXTENSIONS: set[str] = {".xlsx", ".xls"}
@@ -116,19 +97,21 @@ class ProjectService:
             Project object
 
         Raises:
-            ProjectNotFoundError: If project not found
-            InvalidProjectError: If project is invalid
+            ResourceNotFoundError: If project not found
+            ConfigurationError: If project is invalid
         """
         # Always read from disk - YAML file is source of truth
         filename: Path = self.projects_dir / (f"{name.removesuffix('.yml')}.yml")
         if not filename.exists():
-            raise ProjectNotFoundError(f"Project not found: {name}")
+            raise ResourceNotFoundError(resource_type="project", resource_id=name, message=f"Project not found: {name}")
 
         try:
             data: dict[str, Any] = self.yaml_service.load(filename)
 
             if not self.specification.is_satisfied_by(data):
-                raise InvalidProjectError(f"Invalid project file '{name}': missing required 'entities' key")
+                raise ConfigurationError(
+                    message=f"Invalid project file '{name}': missing required 'entities' key",
+                )
 
             project: Project = ProjectMapper.to_api_config(data, name)
 
@@ -146,11 +129,13 @@ class ProjectService:
             logger.info(f"Loaded project '{name}' with {len(project.entities)} entities")
             return project
 
+        except ConfigurationError:
+            raise
         except YamlLoadError as e:
-            raise InvalidProjectError(f"Invalid YAML in project '{name}': {e}") from e
+            raise ConfigurationError(message=f"Invalid YAML in project '{name}': {e}") from e
         except Exception as e:
             logger.error(f"Failed to load project '{name}': {e}")
-            raise InvalidProjectError(f"Failed to load project '{name}': {e}") from e
+            raise ConfigurationError(message=f"Failed to load project '{name}': {e}") from e
 
     def save_project(self, project: Project, *, create_backup: bool = True, original_file_path: Path | None = None) -> Project:
         """
@@ -167,10 +152,10 @@ class ProjectService:
             Updated project with new metadata
 
         Raises:
-            InvalidProjectError: If save fails
+            ConfigurationError: If save fails
         """
         if not project.metadata or not project.metadata.name:
-            raise InvalidProjectError("Project must have metadata with name")
+            raise ConfigurationError(message="Project must have metadata with name")
         # Use original file path if provided, otherwise derive from metadata.name
         file_path: Path = original_file_path or (self.projects_dir / f"{project.metadata.name.removesuffix('.yml')}.yml")
 
@@ -191,11 +176,13 @@ class ProjectService:
 
             return project
 
+        except ConfigurationError:
+            raise
         except YamlSaveError as e:
-            raise InvalidProjectError(f"Failed to save project: {e}") from e
+            raise ConfigurationError(message=f"Failed to save project: {e}") from e
         except Exception as e:
             logger.error(f"Failed to save project: {e}")
-            raise InvalidProjectError(f"Failed to save project: {e}") from e
+            raise ConfigurationError(message=f"Failed to save project: {e}") from e
 
     def create_project(self, name: str, entities: dict[str, Any] | None = None, task_list: dict[str, Any] | None = None) -> Project:
         """
@@ -210,12 +197,12 @@ class ProjectService:
             New project
 
         Raises:
-            ProjectConflictError: If project already exists
+            ResourceConflictError: If project already exists
         """
         file_path: Path = self.projects_dir / f"{name}.yml"
 
         if file_path.exists():
-            raise ProjectConflictError(f"Project '{name}' already exists")
+            raise ResourceConflictError(resource_type="project", resource_id=name, message=f"Project '{name}' already exists")
 
         metadata: ProjectMetadata = ProjectMetadata(
             name=name,
@@ -241,12 +228,12 @@ class ProjectService:
             name: Project name
 
         Raises:
-            ProjectNotFoundError: If project not found
+            ResourceNotFoundError: If project not found
         """
         file_path: Path = self.projects_dir / f"{name}.yml"
 
         if not file_path.exists():
-            raise ProjectNotFoundError(f"Project not found: {name}")
+            raise ResourceNotFoundError(resource_type="project", resource_id=name, message=f"Project not found: {name}")
 
         try:
             self.yaml_service.create_backup(file_path)
@@ -260,89 +247,97 @@ class ProjectService:
     def copy_project(self, source_name: str, target_name: str) -> Project:
         """
         Copy a project and its associated files to a new name.
-        
+
         Copies:
         - Project YAML file with updated metadata.name
         - Materialized files directory (if exists)
         - Reconciliation file (if exists)
-        
+
         Args:
             source_name: Source project name (without .yml extension)
             target_name: Target project name (without .yml extension)
-            
+
         Returns:
             New project with updated metadata
-            
+
         Raises:
-            ProjectNotFoundError: If source project not found
-            ProjectConflictError: If target project already exists
+            ResourceNotFoundError: If source project not found
+            ResourceConflictError: If target project already exists
             ProjectServiceError: If copy fails
         """
         # Normalize names (remove .yml if present)
-        source_name = source_name.removesuffix('.yml')
-        target_name = target_name.removesuffix('.yml')
-        
+        source_name = source_name.removesuffix(".yml")
+        target_name = target_name.removesuffix(".yml")
+
         source_file: Path = self.projects_dir / f"{source_name}.yml"
         target_file: Path = self.projects_dir / f"{target_name}.yml"
-        
+
         # Validate source exists
         if not source_file.exists():
-            raise ProjectNotFoundError(f"Source project not found: {source_name}")
-        
+            raise ResourceNotFoundError(
+                resource_type="project", resource_id=source_name, message=f"Source project not found: {source_name}"
+            )
+
         # Validate target doesn't exist
         if target_file.exists():
-            raise ProjectConflictError(f"Target project already exists: {target_name}")
-        
+            raise ResourceConflictError(
+                resource_type="project", resource_id=target_name, message=f"Target project already exists: {target_name}"
+            )
+
         # Define paths for cleanup
         source_materialized_dir: Path = self.projects_dir / f"projects/{source_name}/materialized"
         target_materialized_dir: Path = self.projects_dir / f"projects/{target_name}/materialized"
         source_recon_file: Path = self.projects_dir / f"{source_name}-reconciliation.yml"
         target_recon_file: Path = self.projects_dir / f"{target_name}-reconciliation.yml"
-        
+
         try:
             # Load source project
             source_project: Project = self.load_project(source_name)
-            
+
             # Update metadata for target
             if source_project.metadata:
-                source_project.metadata.name = target_name
-                if source_project.metadata.description:
-                    source_project.metadata.description = source_project.metadata.description.replace(
-                        source_name, target_name
-                    )
-            
+                updated_description = (
+                    source_project.metadata.description.replace(source_name, target_name)
+                    if source_project.metadata.description
+                    else None
+                )
+                source_project.metadata = source_project.metadata.model_copy(
+                    update={"name": target_name, "description": updated_description}
+                )
+
             # Copy materialized files directory if exists
             if source_materialized_dir.exists():
                 logger.info(f"Copying materialized directory from {source_materialized_dir} to {target_materialized_dir}")
                 shutil.copytree(source_materialized_dir, target_materialized_dir)
-            
+
             # Copy reconciliation file if exists
             if source_recon_file.exists():
                 logger.info(f"Copying reconciliation file from {source_recon_file} to {target_recon_file}")
                 shutil.copy2(source_recon_file, target_recon_file)
-            
+
             # Save target project (this creates the new YAML file)
             logger.info(f"Saving copied project '{target_name}'")
             new_project: Project = self.save_project(source_project, create_backup=False)
-            
+
             logger.info(f"Successfully copied project '{source_name}' to '{target_name}'")
             return new_project
-            
-        except (ProjectNotFoundError, ProjectConflictError):
+
+        except (ResourceNotFoundError, ResourceConflictError, ConfigurationError):
+            # Re-raise domain exceptions as-is
             raise
         except Exception as e:
             # Clean up partial copies on failure
             logger.error(f"Failed to copy project '{source_name}' to '{target_name}': {e}")
-            
+
             if target_file.exists():
                 target_file.unlink()
-            
+
             if target_materialized_dir.exists():
                 shutil.rmtree(target_materialized_dir)
-            
+
             if target_recon_file.exists():
                 target_recon_file.unlink()
-            
+
             raise ProjectServiceError(f"Failed to copy project: {e}") from e
 
     def update_metadata(
@@ -376,7 +371,7 @@ class ProjectService:
         project: Project = self.load_project(name)
 
         if not project.metadata:
-            raise InvalidProjectError(f"Project '{name}' has no metadata")
+            raise ConfigurationError(message=f"Project '{name}' has no metadata")
 
         # Determine original file path to preserve filename
         original_file_path: Path = self.projects_dir / f"{name}.yml"
@@ -433,10 +428,10 @@ class ProjectService:
             Updated project
 
         Raises:
-            EntityAlreadyExistsError: If entity already exists
+            ResourceConflictError: If entity already exists
         """
         if entity_name in project.entities:
-            raise EntityAlreadyExistsError(f"Entity '{entity_name}' already exists")
+            raise ResourceConflictError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists")
 
         project.entities[entity_name] = self._serialize_entity(entity)
         logger.debug(f"Added entity '{entity_name}'")
@@ -455,10 +450,10 @@ class ProjectService:
             Updated project
 
         Raises:
-            EntityNotFoundError: If entity not found
+            ResourceNotFoundError: If entity not found
         """
         if entity_name not in project.entities:
-            raise EntityNotFoundError(f"Entity '{entity_name}' not found")
+            raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
 
         project.entities[entity_name] = self._serialize_entity(entity)
         logger.debug(f"Updated entity '{entity_name}'")
@@ -476,10 +471,10 @@ class ProjectService:
             Updated project
 
         Raises:
-            EntityNotFoundError: If entity not found
+            ResourceNotFoundError: If entity not found
         """
         if entity_name not in project.entities:
-            raise EntityNotFoundError(f"Entity '{entity_name}' not found")
+            raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
 
         del project.entities[entity_name]
 
@@ -498,10 +493,10 @@ class ProjectService:
             Entity data
 
         Raises:
-            EntityNotFoundError: If entity not found
+            ResourceNotFoundError: If entity not found
         """
         if entity_name not in project.entities:
-            raise EntityNotFoundError(f"Entity '{entity_name}' not found")
+            raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
 
         return project.entities[entity_name]
 
@@ -518,12 +513,12 @@ class ProjectService:
 
         Raises:
             ProjectNotFoundError: If project not found
-            EntityAlreadyExistsError: If entity already exists
+            ResourceConflictError: If entity already exists
         """
         project: Project = self.load_project(project_name)
 
         if entity_name in project.entities:
-            raise EntityAlreadyExistsError(f"Entity '{entity_name}' already exists")
+            raise ResourceConflictError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists")
 
         # Use the model's add_entity method to ensure proper handling
         project.add_entity(entity_name, entity_data)
@@ -541,12 +536,12 @@ class ProjectService:
 
         Raises:
             ProjectNotFoundError: If project not found
-            EntityNotFoundError: If entity not found
+            ResourceNotFoundError: If entity not found
         """
         project: Project = self.load_project(project_name)
 
         if entity_name not in project.entities:
-            raise EntityNotFoundError(f"Entity '{entity_name}' not found")
+            raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
 
         # Ensure public_id is preserved (three-tier identity model)
         # If not in incoming data, keep existing value (even if None)
@@ -568,12 +563,12 @@ class ProjectService:
 
         Raises:
             ProjectNotFoundError: If project not found
-            EntityNotFoundError: If entity not found
+            ResourceNotFoundError: If entity not found
         """
         project: Project = self.load_project(project_name)
 
         if entity_name not in project.entities:
-            raise EntityNotFoundError(f"Entity '{entity_name}' not found")
+            raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
 
         del project.entities[entity_name]
         self.save_project(project)
@@ -592,12 +587,12 @@ class ProjectService:
 
         Raises:
             ProjectNotFoundError: If project not found
-            EntityNotFoundError: If entity not found
+            ResourceNotFoundError: If entity not found
         """
         project: Project = self.load_project(project_name)
 
         if entity_name not in project.entities:
-            raise EntityNotFoundError(f"Entity '{entity_name}' not found")
+            raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
 
         return project.entities[entity_name]
 
@@ -651,16 +646,20 @@ class ProjectService:
             Updated project
 
         Raises:
-            ProjectConflictError: If version mismatch (concurrent edit detected)
-            InvalidProjectError: If save fails
+            ResourceConflictError: If version mismatch (concurrent edit detected)
+            ConfigurationError: If save fails
         """
 
         current_version: str = self.state.get_active_metadata().version or expected_version
         if expected_version != current_version:
-            raise ProjectConflictError(
-                f"Project was modified by another user. "
-                f"Expected version {expected_version}, current version {current_version}. "
-                f"Reload and merge changes."
+            raise ResourceConflictError(
+                resource_type="project",
+                resource_id=project.metadata.name if project.metadata else "unknown",
+                message=(
+                    f"Project was modified by another user. "
+                    f"Expected version {expected_version}, current version {current_version}. "
+                    f"Reload and merge changes."
+                ),
             )
 
         return self.save_project(project, create_backup=create_backup)
@@ -677,7 +676,7 @@ class ProjectService:
         safe_name = self._sanitize_project_name(name)
         project_file = self.projects_dir / f"{safe_name}.yml"
         if not project_file.exists():
-            raise ProjectNotFoundError(f"Project not found: {name}")
+            raise ResourceNotFoundError(resource_type="project", resource_id=name, message=f"Project not found: {name}")
         return project_file
 
     def _get_project_upload_dir(self, project_name: str) -> Path:  # pylint: disable=unused-argument

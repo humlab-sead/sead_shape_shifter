@@ -142,9 +142,15 @@
       </v-row>
 
       <!-- Error Display -->
-      <v-alert v-if="error" type="error" variant="tonal" closable @click:close="error = null" class="mt-4">
-        {{ error }}
-      </v-alert>
+      <!-- @ts-ignore -->
+      <ErrorAlert
+        v-if="error"
+        v-bind="errorProps"
+        closable
+        show-context
+        @close="clearError"
+        class="mt-4"
+      />
     </v-card-text>
   </v-card>
 </template>
@@ -153,6 +159,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
 import { queryApi } from '@/api/query'
+import { useErrorHandler } from '@/composables'
+import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import type { QueryResult, QueryValidation } from '@/types/query'
 
 const props = defineProps<{
@@ -167,6 +175,11 @@ const emit = defineEmits<{
 
 const dataSourceStore = useDataSourceStore()
 
+// Error handling
+const { error, errorProps, handleError, clearError } = useErrorHandler({
+  showContext: true,
+})
+
 // State
 const query = ref(props.initialQuery || '')
 const selectedDataSource = ref(props.initialDataSource || '')
@@ -174,7 +187,6 @@ const validation = ref<QueryValidation | null>(null)
 const lastResult = ref<QueryResult | null>(null)
 const executing = ref(false)
 const validating = ref(false)
-const error = ref<string | null>(null)
 
 // Computed
 const dataSourceNames = computed(() => dataSourceStore.dataSources.map((ds) => ds.name))
@@ -184,7 +196,7 @@ async function executeQuery() {
   if (!selectedDataSource.value || !query.value) return
 
   executing.value = true
-  error.value = null
+  clearError()
   lastResult.value = null
 
   try {
@@ -200,9 +212,8 @@ async function executeQuery() {
     // Auto-validate on successful execution
     await validateQueryOnly()
   } catch (err: any) {
-    const errorMessage = err.response?.data?.detail || err.message || 'Query execution failed'
-    error.value = errorMessage
-    emit('error', errorMessage)
+    handleError(err)
+    emit('error', err.response?.data?.message || err.message || 'Query execution failed')
   } finally {
     executing.value = false
   }
@@ -212,12 +223,12 @@ async function validateQueryOnly() {
   if (!selectedDataSource.value || !query.value) return
 
   validating.value = true
-  error.value = null
+  clearError()
 
   try {
     validation.value = await queryApi.validateQuery(selectedDataSource.value, { query: query.value })
   } catch (err: any) {
-    error.value = err.response?.data?.detail || err.message || 'Query validation failed'
+    handleError(err)
   } finally {
     validating.value = false
   }
@@ -228,7 +239,7 @@ function clearQuery() {
   query.value = ''
   validation.value = null
   lastResult.value = null
-  error.value = null
+  clearError()
 }
 
 // Load data sources on mount
