@@ -193,4 +193,15 @@ The "auto_detect_columns", i believe, is the only attibute in the entity workflo
 
 FIXME: #212 FK validations doesn't consider columns added by prior FKs
 
+FIXME: Data Source in Schema Explorer is empty
+Data Source in Schema Explorer is empty unless Data Sources tab is visited first. This is because the data sources are only loaded into the store when visiting the Data Sources tab. We should consider loading data sources on app startup to avoid this issue.
 
+TODO: #213 Add a convenience function for copying an SQL select statement to the clipboard for selected entity in schema explorer. This is useful when a user want to create an SQL select in the entity editor based on a table in the specified data source. This could also possibly be extended to a "picker" in the entity editor that allows users to select a table from the data source and automatically generate a select statement for that table.
+
+TODO: #215 Use Monaco Editor for SQL editing in the Query Tester.
+
+TODO: Add a "Test Query" button in the entity editor that opens a modal with a Monaco Editor for SQL editing, allowing users to test SQL queries against the data source directly from the entity editor. This would provide a more integrated experience for users working with SQL entities.
+
+TODO: Consider not closing the entity editor modal when clicking "Save" to allow users to make multiple edits without having to reopen the editor each time. This could be implemented as a user preference or a toggle in the UI.
+
+TODO: #214 Improve REPL experience by modifying the preview feature to accept an unsaved entity config. Currently, the preview feature only works with saved entity configurations, which is very limiting. Allowing the preview to accept client's entity state, and overiding the server state gives a smoother and faster REPL. The backend must be changed to accept an entity configurations from the frontend without requiring it to be saved in the project configuration first.
