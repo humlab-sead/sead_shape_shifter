@@ -185,7 +185,7 @@ const validating = ref(false)
 const dataSourceNames = computed(() => dataSourceStore.dataSources.map((ds) => ds.name))
 
 // Monaco editor configuration
-const editorOptions = {
+const editorOptions = computed(() => ({
   automaticLayout: true,
   minimap: { enabled: false },
   scrollBeyondLastLine: false,
@@ -204,8 +204,7 @@ const editorOptions = {
   },
   suggestOnTriggerCharacters: true,
   quickSuggestions: true,
-  model: null,
-}
+}))
 
 function handleEditorMount(editorInstance: monacoType.editor.IStandaloneCodeEditor, monacoRef: typeof monacoType) {
   // Add keyboard shortcut for executing query (Ctrl+Enter or Cmd+Enter)
