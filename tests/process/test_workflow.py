@@ -48,7 +48,7 @@ def test_access_database_csv_workflow():
     )
 
     translate: bool = False
-    target_type: str = "openpyxl"
+    target_type: str = "csv"
 
     output_path: Path = Path("tmp/arbodat-test.xlsx") if target_type in ("xlsx", "openpyxl") else Path("tmp/arbodat-test")
 
