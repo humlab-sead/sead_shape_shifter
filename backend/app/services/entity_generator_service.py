@@ -11,6 +11,7 @@ from loguru import logger
 
 from backend.app.core.config import settings
 from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError
+from backend.app.models.data_source import TableSchema
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.schema_service import SchemaIntrospectionService
 
@@ -20,8 +21,8 @@ class EntityGeneratorService:
 
     def __init__(self, schema_service: SchemaIntrospectionService | None = None, project_service: ProjectService | None = None):
         """Initialize entity generator service."""
-        self.schema_service = schema_service or SchemaIntrospectionService(settings.DATA_SOURCE_FILES_DIR)
-        self.project_service = project_service or get_project_service()
+        self.schema_service: SchemaIntrospectionService = schema_service or SchemaIntrospectionService(settings.PROJECTS_DIR)
+        self.project_service: ProjectService = project_service or get_project_service()
 
     async def generate_from_table(
         self, project_name: str, data_source: str, table_name: str, entity_name: str | None = None, schema: str | None = None
@@ -58,15 +59,15 @@ class EntityGeneratorService:
 
         # 4. Get table schema metadata
         logger.info(f"Fetching schema for table '{table_name}' from data source '{data_source}'")
-        table_schema = await self.schema_service.get_table_schema(data_source, table_name, schema=schema)
+        table_schema: TableSchema = await self.schema_service.get_table_schema(data_source, table_name, schema=schema)
 
         # 5. Extract primary keys
         primary_keys = [col.name for col in table_schema.columns if col.is_primary_key]
         logger.debug(f"Detected primary keys for '{table_name}': {primary_keys}")
 
         # 6. Build query (preserve schema prefix if present)
-        full_table_name = f"{schema}.{table_name}" if schema else table_name
-        query = f"SELECT * FROM {full_table_name}"
+        full_table_name: str = f"{schema}.{table_name}" if schema else table_name
+        query: str = f"SELECT * FROM {full_table_name}"
 
         # 7. Generate entity configuration
         entity_config = {
