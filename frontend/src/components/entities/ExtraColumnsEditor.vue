@@ -63,6 +63,16 @@ const emit = defineEmits<{
   'update:modelValue': [value: Record<string, string | null> | undefined]
 }>()
 
+function toModelValue(value: ExtraColumnConfig[]): Record<string, string | null> | undefined {
+  const entries = value
+    .map((item) => ({ column: item.column?.trim() || '', source: item.source ?? null }))
+    .filter((item) => item.column.length > 0)
+    .map((item) => [item.column, item.source] as const)
+
+  if (entries.length === 0) return undefined
+  return Object.fromEntries(entries)
+}
+
 // Convert extra_columns from object to array for editing
 const extraColumns = ref<ExtraColumnConfig[]>(
   props.modelValue
@@ -87,13 +97,7 @@ function handleRemoveExtraColumn(index: number) {
 watch(
   extraColumns,
   (newValue) => {
-    // Convert extra_columns array back to object
-    const extraColumnsObj =
-      newValue.length > 0
-        ? Object.fromEntries(newValue.filter((item) => item.column).map((item) => [item.column, item.source || null]))
-        : undefined
-
-    emit('update:modelValue', extraColumnsObj)
+    emit('update:modelValue', toModelValue(newValue))
   },
   { deep: true }
 )
@@ -101,12 +105,18 @@ watch(
 watch(
   () => props.modelValue,
   (newValue) => {
-    if (newValue) {
-      extraColumns.value = Object.entries(newValue).map(([column, source]) => ({
-        column,
-        source: source || null,
-      }))
+    // Avoid overwriting local edits if this prop update matches what we'd emit ourselves.
+    const currentAsModel = toModelValue(extraColumns.value)
+    if (JSON.stringify(newValue) === JSON.stringify(currentAsModel)) {
+      return
     }
+
+    extraColumns.value = newValue
+      ? Object.entries(newValue).map(([column, source]) => ({
+          column,
+          source: source || null,
+        }))
+      : []
   },
   { deep: true }
 )
