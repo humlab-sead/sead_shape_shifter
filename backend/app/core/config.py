@@ -9,6 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Import version from package
 from backend.app import __version__
 
+# pylint: disable=invalid-name
+
 
 class Settings(BaseSettings):
     """Application settings."""
@@ -102,6 +104,14 @@ class Settings(BaseSettings):
     def reconciliation_service_url(self) -> str:
         """Get reconciliation service URL."""
         return self.RECONCILIATION_SERVICE_URL
+
+    def enable_fk_suggestions(self) -> None:
+        """Check if foreign key suggestions are enabled."""
+        self.ENABLE_FK_SUGGESTIONS = True
+
+    def disable_fk_suggestions(self) -> None:
+        """Disable foreign key suggestions."""
+        self.ENABLE_FK_SUGGESTIONS = False
 
 
 @lru_cache
