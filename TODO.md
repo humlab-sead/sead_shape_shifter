@@ -183,3 +183,13 @@ A special case is if the user wants to use a "@value"-directive to point to e.g.
 One could also for flexibility allow the user to enter arbitrary YAML-path i.e. a åath that doesn't exist in the picklist.
 If a "@value" is used, that can be the only value, and should be a string (not a list). This will be resolved at runtime to the actual column(s).
 
+
+- [] TODO: Rethink the auto-detect-columns feature.
+
+Currently the SQL entity type implicitly uses a "auto-detect-columns" feature. Currently the UX doesn't show the columns field, so "auto_detect_columns" is effectively True for all SQL loaders.
+I have made that more explicit in code as well, by only considering the table_cfg.auto_detect_columns if explicitly set in the entity configuration. If the entity doesn't have any columns then the "auto_detect_columns" is set to True. Currently setting "auto_detect_columns" to False raises a NotImplementedError (which is filne for now)
+
+The "auto_detect_columns", i believe, is the only attibute in the entity workflow that is changed during the normalization. 
+
+Pleasde review this logic. 
+
