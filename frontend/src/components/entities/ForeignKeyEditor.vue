@@ -251,7 +251,23 @@ const emit = defineEmits<{
   'update:modelValue': [value: ForeignKeyConfig[]]
 }>()
 
-const foreignKeys = ref<ForeignKeyConfig[]>([...props.modelValue])
+function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
+  return {
+    ...fk,
+    local_keys: Array.isArray(fk.local_keys) ? [...fk.local_keys] : [],
+    remote_keys: Array.isArray(fk.remote_keys) ? [...fk.remote_keys] : [],
+    constraints: fk.constraints || {
+      cardinality: 'many_to_one',
+      require_unique_left: false,
+      allow_null_keys: false,
+    },
+    extra_columns: fk.extra_columns
+      ? (Array.isArray(fk.extra_columns) ? [...fk.extra_columns] : { ...(fk.extra_columns as Record<string, string>) })
+      : undefined,
+  }
+}
+
+const foreignKeys = ref<ForeignKeyConfig[]>(props.modelValue.map(cloneForeignKey))
 const { getAvailableColumns, flattenColumns } = useColumnIntrospection()
 const { validateDirective, isDirective } = useDirectiveValidation()
 
@@ -577,14 +593,7 @@ watch(
   (newValue) => {
     // Deep comparison to avoid overwriting user edits
     if (JSON.stringify(foreignKeys.value) !== JSON.stringify(newValue)) {
-      foreignKeys.value = newValue.map((fk) => ({
-        ...fk,
-        constraints: fk.constraints || {
-          cardinality: 'many_to_one',
-          require_unique_left: false,
-          allow_null_keys: false,
-        },
-      }))
+      foreignKeys.value = newValue.map(cloneForeignKey)
     }
   }
 )
