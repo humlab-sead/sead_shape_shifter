@@ -156,7 +156,7 @@ class ValidationService:
 
         core_project: ShapeShiftProject = ProjectMapper.to_core(project)
 
-        result: ValidationResult = self.validate_project(core_project.cfg)
+        result: ValidationResult = self.validate_project(core_project.cfg, source_path=project.filename)
 
         # Filter to only errors/warnings for this entity
         entity_errors: list[ValidationError] = [e for e in result.errors if e.entity == entity_name or e.entity is None]
