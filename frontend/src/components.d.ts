@@ -12,6 +12,7 @@ declare module 'vue' {
     CircularDependencyAlert: typeof import('./components/dependencies/CircularDependencyAlert.vue')['default']
     ContextHelp: typeof import('./components/ContextHelp.vue')['default']
     CopyProjectDialog: typeof import('./components/projects/CopyProjectDialog.vue')['default']
+    CreateEntityFromTableDialog: typeof import('./components/entities/CreateEntityFromTableDialog.vue')['default']
     CreateProjectDialog: typeof import('./components/projects/CreateProjectDialog.vue')['default']
     DataPreviewTable: typeof import('./components/DataPreviewTable.vue')['default']
     DataSourceFormDialog: typeof import('./components/DataSourceFormDialog.vue')['default']

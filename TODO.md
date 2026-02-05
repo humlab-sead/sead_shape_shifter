@@ -184,24 +184,47 @@ One could also for flexibility allow the user to enter arbitrary YAML-path i.e. 
 If a "@value" is used, that can be the only value, and should be a string (not a list). This will be resolved at runtime to the actual column(s).
 
 
-- [] TODO: Rethink the auto-detect-columns feature.
-
-Currently the SQL entity type implicitly uses a "auto-detect-columns" feature. Currently the UX doesn't show the columns field, so "auto_detect_columns" is effectively True for all SQL loaders.
-I have made that more explicit in code as well, by only considering the table_cfg.auto_detect_columns if explicitly set in the entity configuration. If the entity doesn't have any columns then the "auto_detect_columns" is set to True. Currently setting "auto_detect_columns" to False raises a NotImplementedError (which is filne for now)
-
 The "auto_detect_columns", i believe, is the only attibute in the entity workflow that is changed during the normalization. 
-
-FIXME: #212 FK validations doesn't consider columns added by prior FKs
 
 FIXME: Data Source in Schema Explorer is empty
 Data Source in Schema Explorer is empty unless Data Sources tab is visited first. This is because the data sources are only loaded into the store when visiting the Data Sources tab. We should consider loading data sources on app startup to avoid this issue.
 
 TODO: #213 Add a convenience function for copying an SQL select statement to the clipboard for selected entity in schema explorer. This is useful when a user want to create an SQL select in the entity editor based on a table in the specified data source. This could also possibly be extended to a "picker" in the entity editor that allows users to select a table from the data source and automatically generate a select statement for that table.
 
-TODO: #215 Use Monaco Editor for SQL editing in the Query Tester.
-
 TODO: Add a "Test Query" button in the entity editor that opens a modal with a Monaco Editor for SQL editing, allowing users to test SQL queries against the data source directly from the entity editor. This would provide a more integrated experience for users working with SQL entities.
 
 TODO: Consider not closing the entity editor modal when clicking "Save" to allow users to make multiple edits without having to reopen the editor each time. This could be implemented as a user preference or a toggle in the UI.
 
-TODO: #214 Improve REPL experience by modifying the preview feature to accept an unsaved entity config. Currently, the preview feature only works with saved entity configurations, which is very limiting. Allowing the preview to accept client's entity state, and overiding the server state gives a smoother and faster REPL. The backend must be changed to accept an entity configurations from the frontend without requiring it to be saved in the project configuration first.
+TODO:Allow #217 a user to create an entity of type "sql" by specifying a data source, a table in that data source, and an entity name. The new entity would be initialized with:
+- type: sql
+- data_source: data-source
+- query: select * from table-name
+- keys: tables PKs in data source (as is seen in schema explorer)
+- public_id: table-name + "_id"
+
+I guess one option is to add the feature to Schema Explorer, where we have all the information when data source, a table and a columns are displayed. But this feature is outside of a project. We could allow for opening be opening schema explorer from within the project (e.g. from the "data sources" tab), or ask for which project to put it in (and add data source to project if missing). Another option whould be a button next to each data source in the "data source" tab, thet would show a create dialog with asking for name and a table picker.
+
+What do you think, would this feature be worthwhile?
+
+Auto-Detection Logic:
+
+Table name → entity name (with sanitization: my_table ✓, my-table → my_table)
+Primary keys → keys field
+If no PKs → empty keys: [] (user can add manually)
+public_id = {table_name}_id (follows convention)
+Smart Defaults:
+
+Query: SELECT * FROM {table_name} (user can customize later)
+If table has composite PK → all PK columns in keys
+Preserve schema prefix if present: public.sites → SELECT * FROM public.sites
+Validation:
+
+Entity name uniqueness in project
+Data source connectivity (test before showing tables)
+Table existence (cached from schema service)
+Error Handling:
+
+Data source not connected → "Please test connection first"
+No tables found → "No tables available in this data source"
+Entity name conflict → "Entity 'X' already exists. Choose different name."
+
