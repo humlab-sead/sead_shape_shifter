@@ -252,7 +252,12 @@ async def validate_project(name: str) -> ValidationResult:
         "entities": project.entities,
         "options": project.options,
     }
-    result: ValidationResult = validation_service.validate_project(config_data)
+    source_path: str = (
+        project.metadata.file_path
+        if project.metadata and project.metadata.file_path
+        else str(settings.PROJECTS_DIR / f"{name}.yml")
+    )
+    result: ValidationResult = validation_service.validate_project(config_data, source_path=source_path)
     logger.info(f"Validated project '{name}': {'valid' if result.is_valid else 'invalid'}")
     return result
 
