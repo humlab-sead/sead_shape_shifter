@@ -788,6 +788,11 @@ class TestPreviewBuilder:
 
     def test_build_preview_result(self, sample_dataframe: pd.DataFrame, sample_project: ShapeShiftProject):
         """Test _build_preview_result correctly builds PreviewResult from table_store."""
+        entity_cfg: TableConfig = sample_project.get_table("users")
+        table_store: dict[str, pd.DataFrame] = {
+            "users": sample_dataframe,
+        }
+        builder: PreviewResultBuilder = PreviewResultBuilder()
         result: PreviewResult = builder.build(
             entity_name="users", entity_cfg=entity_cfg, table_store=table_store, limit=50, cache_hit=False
         )
@@ -810,6 +815,5 @@ class TestPreviewBuilder:
         assert email_col.is_key is False
         assert email_col.nullable is True
 
-        # Check dependencies
-        assert result.has_dependencies is True
-        assert "orders" in result.dependencies_loaded
+        # Check dependencies - users has no dependencies
+        assert result.has_dependencies is False
