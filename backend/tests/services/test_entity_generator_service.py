@@ -1,14 +1,13 @@
 """Tests for EntityGeneratorService."""
 
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError
+from backend.app.models.data_source import ColumnMetadata, TableSchema
 from backend.app.models.project import Project
 from backend.app.services.entity_generator_service import EntityGeneratorService
-from backend.app.models.data_source import ColumnMetadata, TableSchema
 
 
 class TestEntityGeneratorService:

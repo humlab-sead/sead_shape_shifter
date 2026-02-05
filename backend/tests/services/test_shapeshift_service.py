@@ -627,9 +627,7 @@ class TestShapeShiftService:
             mock_shifter.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_preview_entity_override_bypasses_cache(
-        self, shapeshift_service: ShapeShiftService, sample_project: ShapeShiftProject
-    ):
+    async def test_preview_entity_override_bypasses_cache(self, shapeshift_service: ShapeShiftService, sample_project: ShapeShiftProject):
         """Test that override_config bypasses cache."""
 
         override_config = {

@@ -66,7 +66,7 @@ async def preview_entity(
 
     Set limit=null to retrieve all rows (use with caution for large datasets).
     If no limit is specified in the request, defaults to 50 rows.
-    
+
     To preview unsaved changes, include entity_config in the request body:
     - The entity_config parameter allows previewing entities before saving
     - Cache is bypassed when entity_config is provided
