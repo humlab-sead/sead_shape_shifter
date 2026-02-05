@@ -54,6 +54,7 @@ class PandasLoader(ExcelLoader):
                 description="Path to .xlsx or .xls file",
                 placeholder="./data/file.xlsx",
                 aliases=["file", "filepath", "path"],
+                extensions=["xlsx", "xls"],
             ),
             FieldMetadata(
                 name="sheet_name",
@@ -98,6 +99,7 @@ class OpenPyxlLoader(ExcelLoader):
                 description="Path to .xlsx file",
                 placeholder="./data/file.xlsx",
                 aliases=["file", "filepath", "path"],
+                extensions=["xlsx", "xls"],
             ),
             FieldMetadata(
                 name="sheet_name",

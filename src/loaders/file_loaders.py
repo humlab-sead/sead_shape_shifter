@@ -63,6 +63,7 @@ class CsvLoader(FileLoader):
                 description="Path to .csv file",
                 placeholder="./data/file.csv",
                 aliases=["file", "filepath", "path"],
+                extensions=["csv", "tsv"],
             ),
             FieldMetadata(
                 name="encoding", type="string", required=False, default="utf-8", description="File encoding", placeholder="utf-8"
