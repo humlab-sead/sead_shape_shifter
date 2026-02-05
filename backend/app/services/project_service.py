@@ -297,9 +297,7 @@ class ProjectService:
             # Update metadata for target
             if source_project.metadata:
                 updated_description = (
-                    source_project.metadata.description.replace(source_name, target_name)
-                    if source_project.metadata.description
-                    else None
+                    source_project.metadata.description.replace(source_name, target_name) if source_project.metadata.description else None
                 )
                 source_project.metadata = source_project.metadata.model_copy(
                     update={"name": target_name, "description": updated_description}
