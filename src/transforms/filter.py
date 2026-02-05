@@ -65,3 +65,32 @@ class ExistsInFilter:
             filtered_df: pd.DataFrame = filtered_df.drop_duplicates(subset=drop_duplicates_cols)
 
         return filtered_df
+
+
+@Filters.register(key="query")
+class QueryFilter:
+    """Filter to keep rows using Pandas query method.
+    See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html
+    """
+
+    key: str = "query"
+
+    def apply(
+        self,
+        df: pd.DataFrame,
+        filter_cfg: dict[str, Any],
+        data_store: dict[str, pd.DataFrame],  # pylint: disable=unused-argument
+    ) -> pd.DataFrame:
+
+        if not filter_cfg.get("query"):
+            logger.warning("no query defined, ignoring filter")
+            return df
+
+        query: str = filter_cfg["query"]
+
+        try:
+            filtered_df: pd.DataFrame = df.query(query)
+        except Exception as e:
+            raise ValueError(f"Invalid query in filter: {query!r}") from e
+
+        return filtered_df
