@@ -255,7 +255,6 @@ class SqlLoader(DataLoader):
         Returns:
             Test result
         """
-        from src.model import TableConfig  # Avoid circular import;  pylint: disable=import-outside-toplevel
 
         start_time: float = time.time()
         result: ConnectTestResult = ConnectTestResult.create_empty()
