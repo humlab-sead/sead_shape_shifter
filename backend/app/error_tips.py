@@ -4,16 +4,6 @@ Centralized error tips registry.
 Maps error codes to actionable recovery tips for users.
 Keeps tips out of business logic while maintaining discoverability.
 
-Error Code Categories:
-- RESOURCE_*: Resource access/availability issues (projects, entities, files)
-- CONFIG_*: Configuration and YAML structure errors
-- VALIDATION_*: Business rule and schema validation failures
-- FOREIGN_KEY_*, FK_*: Foreign key definition and reference errors
-- DEPENDENCY_*: Entity dependency graph issues
-- QUERY_*: SQL query execution and security errors
-- SCHEMA_*: Database schema introspection errors
-- DATA_*: Data integrity and constraint violations
-
 Tips can use template variables that will be replaced with context values:
 - {entity} - Entity name from context
 - {target_entity} - Referenced entity name
@@ -34,9 +24,7 @@ Tips can use template variables that will be replaced with context values:
 from typing import Any
 
 ERROR_TIPS: dict[str, list[str]] = {
-    # =========================================================================
-    # Resource Errors (RESOURCE_*)
-    # =========================================================================
+    # Resource errors
     "RESOURCE_NOT_FOUND": [
         "Check resource name for typos",
         "Verify resource exists in the system",
@@ -52,9 +40,7 @@ ERROR_TIPS: dict[str, list[str]] = {
         "Verify permissions to access resource",
         "Review resource configuration",
     ],
-    # =========================================================================
     # Configuration Errors (CONFIG_*)
-    # =========================================================================
     "CONFIG_INVALID": [
         "Check configuration syntax",
         "Verify all required fields are present",
@@ -65,23 +51,12 @@ ERROR_TIPS: dict[str, list[str]] = {
         "Validate indentation and special characters",
         "Restore from backup if syntax is corrupted",
     ],
-    # =========================================================================
-    # Validation Errors (VALIDATION_*)
-    # =========================================================================
+    # Validation errors
     "VALIDATION_FAILED": [
         "Review validation error details",
         "Check data types and formats",
         "Ensure required fields are present",
     ],
-    "SCHEMA_VALIDATION_FAILED": [
-        "Review entity definition in YAML editor",
-        "Check for missing required fields",
-        "Validate YAML syntax (no tabs, proper indentation)",
-        "Compare with working entity examples",
-    ],
-    # =========================================================================
-    # Foreign Key Errors (FOREIGN_KEY_*, FK_*)
-    # =========================================================================
     "FOREIGN_KEY_INVALID": [
         "Verify referenced entity exists",
         "Check foreign key column names match",
@@ -133,9 +108,7 @@ ERROR_TIPS: dict[str, list[str]] = {
         "Each local key should map to exactly one remote key",
         "For composite keys, both lists must have same length",
     ],
-    # =========================================================================
     # Dependency Errors (DEPENDENCY_*, CIRCULAR_*)
-    # =========================================================================
     "DEPENDENCY_ERROR": [
         "Review entity dependencies",
         "Check for circular references",
@@ -152,23 +125,13 @@ ERROR_TIPS: dict[str, list[str]] = {
         "Remove circular references",
         "Reorganize entity relationships",
     ],
-    # =========================================================================
-    # Data Integrity Errors (DATA_*)
-    # =========================================================================
+    # Data integrity errors
     "DATA_INTEGRITY_VIOLATION": [
         "Check for duplicate values in unique columns",
         "Verify foreign key relationships",
         "Review data constraints",
     ],
-    "CONSTRAINT_VIOLATION": [
-        "Review constraint definition in entity config",
-        "Check data source for constraint violations",
-        "Consider relaxing constraint if business rules changed",
-        "Use validation report to see all violations",
-    ],
-    # =========================================================================
-    # Query Errors (QUERY_*)
-    # =========================================================================
+    # Query errors
     "QUERY_EXEC_FAILED": [
         "Check data source connection is active",
         "Verify SQL syntax is valid for the database type",
@@ -193,9 +156,7 @@ ERROR_TIPS: dict[str, list[str]] = {
         "Use read-only database connections",
         "Contact administrator for write access",
     ],
-    # =========================================================================
-    # Schema Errors (SCHEMA_*)
-    # =========================================================================
+    # Schema introspection errors
     "SCHEMA_INTROSPECT_FAILED": [
         "Verify data source connection is active",
         "Check driver supports schema introspection",
@@ -206,6 +167,12 @@ ERROR_TIPS: dict[str, list[str]] = {
         "Use a database driver that supports schema introspection",
         "Check driver compatibility",
         "Consider using a different data source type",
+    ],
+    # Dependency errors
+    "DEPENDENCY_ERROR": [
+        "Review entity dependencies",
+        "Check for circular references",
+        "Ensure required entities are defined",
     ],
 }
 
