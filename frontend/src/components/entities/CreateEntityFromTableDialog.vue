@@ -42,7 +42,7 @@
               </template>
               <template #subtitle>
                 <span v-if="item.raw.row_count !== null" class="text-caption">
-                  {{ formatRowCount(item.raw.row_count) }} rows
+                  {{ formatRowCount(item.raw.row_count || 0) }} rows
                 </span>
                 <span v-if="item.raw.schema_name" class="text-caption ml-2"> • {{ item.raw.schema_name }} </span>
               </template>

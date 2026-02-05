@@ -89,8 +89,8 @@
                     :rules="field.required ? [rules.required] : []"
                     @focus="fetchProjectFiles"
                   >
-                    <template #item="{ props: itemProps, item }">
-                      <v-list-item v-bind="itemProps">
+                    <template #item="{ props, item }">
+                      <v-list-item v-bind="props">
                         <v-list-item-title>{{ item.title }}</v-list-item-title>
                         <v-list-item-subtitle class="text-caption">{{ item.raw.subtitle }}</v-list-item-subtitle>
                       </v-list-item>

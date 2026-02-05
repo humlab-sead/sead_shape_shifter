@@ -34,8 +34,8 @@
         :loading="loadingTables"
         @update:model-value="onTableChange"
       >
-        <template #item="{ props: itemProps, item }">
-          <v-list-item v-bind="itemProps">
+        <template #item="{ props, item }">
+          <v-list-item v-bind="props">
             <template #prepend>
               <v-icon>mdi-table</v-icon>
             </template>
