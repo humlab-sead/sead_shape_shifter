@@ -240,13 +240,13 @@
                         <!-- Drop Duplicates -->
                         <v-col cols="6" class="pr-2">
                           <v-row no-gutters class="mb-2">
-                            <v-col cols="5">
+                            <v-col cols="4">
                               <v-checkbox v-model="formData.drop_duplicates.enabled" label="Drop Duplicates"
                                 hide-details />
                             </v-col>
-                            <v-col cols="7" class="pl-1">
+                            <v-col cols="8" class="pl-1">
                               <v-checkbox v-model="formData.check_functional_dependency"
-                                label="Check FD" hide-details
+                                label="Check Functional Dependency" hide-details
                                 :disabled="!formData.drop_duplicates.enabled" />
                             </v-col> </v-row>
 
