@@ -22,26 +22,17 @@
       />
 
       <!-- SQL Editor -->
-      <div class="sql-editor-container">
-        <v-textarea
-          v-model="query"
-          label="SQL Query"
-          placeholder="SELECT * FROM table_name WHERE ..."
-          rows="10"
-          variant="outlined"
-          :disabled="executing"
-          @keydown.ctrl.enter.prevent="executeQuery"
-          @keydown.meta.enter.prevent="executeQuery"
-          class="sql-editor"
-          auto-grow
-        >
-          <template #prepend-inner>
-            <v-icon size="small" color="grey">mdi-code-tags</v-icon>
-          </template>
-        </v-textarea>
-
+      <div class="sql-editor-container mb-4">
+        <div class="text-caption text-grey mb-2">SQL Query</div>
+        <vue-monaco-editor
+          v-model:value="query"
+          language="sql"
+          :options="editorOptions"
+          height="300px"
+          @mount="handleEditorMount"
+        />
         <!-- Line numbers hint -->
-        <div class="text-caption text-grey mt-n2 mb-2">Press Ctrl+Enter (⌘+Enter on Mac) to execute query</div>
+        <div class="text-caption text-grey mt-2">Press Ctrl+Enter (⌘+Enter on Mac) to execute query</div>
       </div>
 
       <!-- Validation Messages -->
@@ -157,11 +148,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { useDataSourceStore } from '@/stores/data-source'
 import { queryApi } from '@/api/query'
 import { useErrorHandler } from '@/composables'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import type { QueryResult, QueryValidation } from '@/types/query'
+import type * as monacoType from 'monaco-editor'
 
 const props = defineProps<{
   initialQuery?: string
@@ -190,6 +183,36 @@ const validating = ref(false)
 
 // Computed
 const dataSourceNames = computed(() => dataSourceStore.dataSources.map((ds) => ds.name))
+
+// Monaco editor configuration
+const editorOptions = {
+  automaticLayout: true,
+  minimap: { enabled: false },
+  scrollBeyondLastLine: false,
+  fontSize: 14,
+  lineNumbers: 'on' as const,
+  roundedSelection: false,
+  readOnly: false,
+  theme: 'vs-dark',
+  wordWrap: 'on' as const,
+  folding: true,
+  tabSize: 2,
+  insertSpaces: true,
+  scrollbar: {
+    vertical: 'auto' as const,
+    horizontal: 'auto' as const,
+  },
+  suggestOnTriggerCharacters: true,
+  quickSuggestions: true,
+  model: null,
+}
+
+function handleEditorMount(editorInstance: monacoType.editor.IStandaloneCodeEditor, monacoRef: typeof monacoType) {
+  // Add keyboard shortcut for executing query (Ctrl+Enter or Cmd+Enter)
+  editorInstance.addCommand(monacoRef.KeyMod.CtrlCmd | monacoRef.KeyCode.Enter, () => {
+    executeQuery()
+  })
+}
 
 // Methods
 async function executeQuery() {
@@ -261,12 +284,9 @@ onMounted(async () => {
 <style scoped>
 .sql-editor-container {
   position: relative;
-}
-
-.sql-editor :deep(textarea) {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 14px;
-  line-height: 1.5;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .query-plan {
