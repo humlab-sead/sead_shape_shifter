@@ -128,6 +128,10 @@ class SqlLoader(DataLoader):
 
     def _validate_columns(self, table_cfg: TableConfig, data: pd.DataFrame, auto_detect_columns: bool) -> None:
 
+        if table_cfg.unnest:
+            logger.warning(f"[{table_cfg.entity_name}] NOT IMPLEMENTED VALIDATION: Unnesting of SQL data, skipping column validation.")
+            return
+        
         if auto_detect_columns:
 
             if table_cfg.columns:
