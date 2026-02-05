@@ -191,5 +191,6 @@ I have made that more explicit in code as well, by only considering the table_cf
 
 The "auto_detect_columns", i believe, is the only attibute in the entity workflow that is changed during the normalization. 
 
-Pleasde review this logic. 
+FIXME: #212 FK validations doesn't consider columns added by prior FKs
+
 
