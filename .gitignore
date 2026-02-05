@@ -117,6 +117,7 @@ bin
 deprecated
 output*.xlsx
 **/*.mdb
+**/*.accdb
 backups
 .vite
 coverage
