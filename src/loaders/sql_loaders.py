@@ -18,8 +18,7 @@ from src.utility import dotget
 
 from .base_loader import ConnectTestResult, DataLoader, DataLoaders, LoaderType
 
-if TYPE_CHECKING:
-    from src.model import DataSourceConfig, TableConfig
+from src.model import DataSourceConfig, TableConfig
 
 
 def init_jvm_for_ucanaccess(ucanaccess_dir: str = "lib/ucanaccess") -> None:
@@ -126,11 +125,46 @@ class SqlLoader(DataLoader):
     def options(self) -> dict[str, Any]:
         return self.data_source.options if self.data_source else {}
 
+
+    def _validate_columns(self, table_cfg: TableConfig, data: pd.DataFrame, auto_detect_columns: bool) -> None:
+
+        if auto_detect_columns:
+
+            if table_cfg.columns:
+                logger.warning("Auto-detect columns is enabled, but found configured columns. Overriding configured columns.")
+
+            missing_keys: list[str] = [k for k in table_cfg.keys if k not in data.columns]
+
+            if missing_keys:
+                raise ValueError(f"Auto-detect columns is enabled, but key column(s) {missing_keys} are missing in the data.")
+
+            return
+
+        if not table_cfg.columns:
+            raise ValueError(f"[{table_cfg.entity_name}] No columns specified in configuration, and auto-detect is disabled.")
+
+        if len(table_cfg.columns) != len(data.columns):
+            raise ValueError(
+                f"[{table_cfg.entity_name}] Configured columns length ({len(table_cfg.columns)}) does not match "
+                f"query result columns length ({len(data.columns)})."
+            )
+
+        if len(set(table_cfg.columns)) != len(table_cfg.columns):
+            raise ValueError(f"[{table_cfg.entity_name}] Configured columns contain duplicates, which is not allowed.")
+
+        missing_keys: list[str] = [k for k in table_cfg.keys if k not in table_cfg.columns]
+        if missing_keys:
+            raise ValueError(
+                f"Key column(s) {missing_keys} must be included in the specified columns for entity '{table_cfg.entity_name}'."
+            )
+
+        # Note: In manual mode we rename by position (data.columns = table_cfg.columns).
+        # We only need to ensure counts match (validated above) and that required key columns
+        # are included in the configured names.
+
     async def load(self, entity_name: str, table_cfg: "TableConfig") -> pd.DataFrame:
         """Load SQL data entity based on configuration.
-        Note: All columns in "keys" and "columns" must be present in the query result!
-              The "columns" can include identity columns like "system_id" and "public_id" and these are
-              ignored unless they exist in read data.
+        Note: Columns are auto-detected from the query result if not specified in configuration.
               The returned column order will be as defined in columns.
         """
 
@@ -139,29 +173,17 @@ class SqlLoader(DataLoader):
 
         data: pd.DataFrame = await self.read_sql(sql=table_cfg.query)  # type: ignore[arg-type]
 
-        # auto_detect_columns will populate columns from SQL result if not defined
-        if not table_cfg.keys_and_columns and table_cfg.auto_detect_columns:
+        auto_detect_columns: bool = True
+        if table_cfg.auto_detect_columns is not None:
+            auto_detect_columns = bool(table_cfg.auto_detect_columns)
+
+        self._validate_columns(table_cfg, data, auto_detect_columns)
+
+        if auto_detect_columns:
             table_cfg.columns = list(data.columns)
-
-        # expected columns are the configured keys/columns excluding any unnest or identity columns
-        computed_columns: set[str] = table_cfg.unnest_columns | (set(table_cfg.identity_columns) - set(data.columns))
-        expected_columns: list[str] = [col for col in table_cfg.keys_and_columns if col not in computed_columns]
-
-        # If public_id is in data we need to include it in expected columns
-        if table_cfg.public_id and table_cfg.public_id in data.columns:
-            expected_columns.append(table_cfg.public_id)
-
-        if table_cfg.check_column_names:
-            # Expected columns are the configured keys/columns excluding any computed columns,
-            if set(data.columns) != set(expected_columns):
-                raise ValueError(f"Data for entity '{entity_name}' has different columns compared to configuration")
         else:
-            if len(data.columns.tolist()) != len(expected_columns):
-                raise ValueError(f"Data for entity '{entity_name}' has different number of columns compared to configuration")
-            # Use user-defined columnn names instead of SQL result column names
-            data.columns = expected_columns
+            data.columns = table_cfg.columns
 
-        # Add system_id if configured (always "system_id" column name)
         if table_cfg.system_id and table_cfg.system_id not in data.columns:
             data = add_system_id(data, table_cfg.system_id)
 
