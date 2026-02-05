@@ -216,7 +216,7 @@
                     </div>
                     <!-- Fixed Values Grid (only for fixed type) -->
                     <div class="form-row" v-if="formData.type === 'fixed'">
-                      <FixedValuesGrid v-if="allColumns.length > 0" v-model="formData.values" :columns="allColumns"
+                      <FixedValuesGrid v-if="fixedValuesColumns.length > 0" v-model="formData.values" :columns="fixedValuesColumns"
                         :public-id="formData.public_id" height="400px" />
                       <v-alert v-else type="info" variant="tonal" density="compact" class="mb-2">
                         <v-alert-title>No Columns Defined</v-alert-title>
@@ -672,12 +672,15 @@ const delimiterOptions = [
   { title: 'Space', value: ' ' },
 ]
 
-// Computed property for all columns (keys + columns) for fixed values grid
-// Note: system_id and public_id are handled separately as special columns
-const allColumns = computed(() => {
-  const keys = formData.value.keys || []
-  const columns = formData.value.columns || []
-  return [...keys, ...columns]
+// Important: `values` is a positional 2D array, so the grid column order must match `formData.columns` exactly.
+// Keys are metadata and may already be included in `columns` (common after materialization).
+const fixedValuesColumns = computed(() => {
+  const columns = (formData.value.columns || []).filter((c) => typeof c === 'string' && c.trim().length > 0)
+  if (columns.length > 0) return columns
+
+  // Fallback for incomplete configs (avoid duplicating keys + columns).
+  const keys = (formData.value.keys || []).filter((k) => typeof k === 'string' && k.trim().length > 0)
+  return keys
 })
 
 // Can preview only in edit mode
