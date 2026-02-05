@@ -168,12 +168,6 @@ ERROR_TIPS: dict[str, list[str]] = {
         "Check driver compatibility",
         "Consider using a different data source type",
     ],
-    # Dependency errors
-    "DEPENDENCY_ERROR": [
-        "Review entity dependencies",
-        "Check for circular references",
-        "Ensure required entities are defined",
-    ],
 }
 
 
