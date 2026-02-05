@@ -628,6 +628,7 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
             # Check that local_keys exist in available columns
             missing_local_keys: set[str] = set(local_keys) - all_columns
             if missing_local_keys:
+                # FIXME: We need to take into account all FK-added columns from FK prior to this one
                 self.add_error(
                     f"Foreign key to '{remote_entity}' references missing local_keys: {missing_local_keys}. "
                     f"These columns must be in 'columns', 'keys', or 'extra_columns' before linking can occur.",
