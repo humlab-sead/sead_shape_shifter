@@ -187,9 +187,9 @@
                                 </div>
                               </v-tooltip>
                             </template>
-                            <template #message>
+                            <!-- <template #message>
                               <span class="text-caption">Target PK name + FK column name pattern</span>
-                            </template>
+                            </template> -->
                           </v-text-field>
                         </v-col>
 
@@ -739,7 +739,9 @@ async function refreshPreview() {
   if (!canPreview.value) return
 
   previewError.value = null
-  await previewEntity(props.projectName, formData.value.name, previewLimit.value)
+  
+  // Pass current form data to preview unsaved changes
+  await previewEntity(props.projectName, formData.value.name, previewLimit.value, formData.value)
 
   if (livePreviewError.value) {
     previewError.value = livePreviewError.value
@@ -879,7 +881,8 @@ watch(
   formData,
   () => {
     if (autoRefreshEnabled.value && viewMode.value !== 'form' && canPreview.value) {
-      debouncedPreviewEntity(props.projectName, formData.value.name, 100)
+      // Pass current form data to preview unsaved changes
+      debouncedPreviewEntity(props.projectName, formData.value.name, 100, formData.value)
     }
   },
   { deep: true }

@@ -40,7 +40,8 @@ export function useEntityPreview() {
   async function previewEntity(
     projectName: string,
     entityName: string,
-    limit: number | null = 50
+    limit: number | null = 50,
+    entityConfig?: Record<string, any>
   ): Promise<PreviewResult | null> {
     if (!projectName || !entityName) {
       error.value = 'Project and entity name are required'
@@ -57,9 +58,12 @@ export function useEntityPreview() {
         params.limit = limit
       }
 
+      // Build request body - include entity_config if provided
+      const body = entityConfig ? { entity_config: entityConfig } : {}
+
       const response = await axios.post<PreviewResult>(
         `/api/v1/projects/${projectName}/entities/${entityName}/preview`,
-        {},
+        body,
         { params }
       )
 
@@ -79,9 +83,12 @@ export function useEntityPreview() {
   /**
    * Debounced preview entity - waits 1000ms after last call
    */
-  const debouncedPreviewEntity = useDebounceFn((projectName: string, entityName: string, limit?: number | null) => {
-    return previewEntity(projectName, entityName, limit)
-  }, 1000)
+  const debouncedPreviewEntity = useDebounceFn(
+    (projectName: string, entityName: string, limit?: number | null, entityConfig?: Record<string, any>) => {
+      return previewEntity(projectName, entityName, limit, entityConfig)
+    },
+    1000
+  )
 
   /**
    * Get entity sample (larger dataset)
