@@ -3,7 +3,7 @@ import os
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar, Generator, Optional
+from typing import Any, ClassVar, Generator, Optional
 
 import jaydebeapi
 import jpype
@@ -12,13 +12,12 @@ from loguru import logger
 from sqlalchemy import create_engine
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
+from src.model import DataSourceConfig, TableConfig
 from src.transforms.utility import add_system_id
 from src.utility import create_db_uri as create_pg_uri
 from src.utility import dotget
 
 from .base_loader import ConnectTestResult, DataLoader, DataLoaders, LoaderType
-
-from src.model import DataSourceConfig, TableConfig
 
 
 def init_jvm_for_ucanaccess(ucanaccess_dir: str = "lib/ucanaccess") -> None:
@@ -125,13 +124,12 @@ class SqlLoader(DataLoader):
     def options(self) -> dict[str, Any]:
         return self.data_source.options if self.data_source else {}
 
-
     def _validate_columns(self, table_cfg: TableConfig, data: pd.DataFrame, auto_detect_columns: bool) -> None:
 
         if table_cfg.unnest:
             logger.warning(f"[{table_cfg.entity_name}] NOT IMPLEMENTED VALIDATION: Unnesting of SQL data, skipping column validation.")
             return
-        
+
         if auto_detect_columns:
 
             if table_cfg.columns:

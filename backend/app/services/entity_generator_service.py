@@ -9,10 +9,10 @@ from typing import Any
 
 from loguru import logger
 
+from backend.app.core.config import settings
 from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.schema_service import SchemaIntrospectionService
-from backend.app.core.config import settings
 
 
 class EntityGeneratorService:
