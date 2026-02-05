@@ -1,9 +1,10 @@
-from typing import Any
+from typing import Any, ClassVar
 from venv import logger
 
 import pandas as pd
 
 from src.model import TableConfig
+from src.transforms.filter_metadata import FilterFieldMetadata, FilterSchema
 from src.utility import Registry
 
 
@@ -42,6 +43,43 @@ class ExistsInFilter:
 
     key: str = "exists_in"
 
+    schema: ClassVar[FilterSchema] = FilterSchema(
+        key="exists_in",
+        display_name="Exists In",
+        description="Keep rows where column value exists in another entity",
+        fields=[
+            FilterFieldMetadata(
+                name="other_entity",
+                type="entity",
+                required=True,
+                description="Entity to check against",
+                placeholder="Select entity",
+                options_source="entities",
+            ),
+            FilterFieldMetadata(
+                name="column",
+                type="column",
+                required=True,
+                description="Column in current entity",
+                placeholder="column_name",
+            ),
+            FilterFieldMetadata(
+                name="other_column",
+                type="column",
+                required=False,
+                description="Column in other entity (defaults to same column name)",
+                placeholder="column_name",
+            ),
+            FilterFieldMetadata(
+                name="drop_duplicates",
+                type="string",
+                required=False,
+                description="Columns to use for deduplication (comma-separated)",
+                placeholder="column1,column2",
+            ),
+        ],
+    )
+
     def apply(self, df: pd.DataFrame, filter_cfg: dict[str, Any], data_store: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
         if any(k not in filter_cfg for k in ("column", "other_entity")):
@@ -74,6 +112,21 @@ class QueryFilter:
     """
 
     key: str = "query"
+
+    schema: ClassVar[FilterSchema] = FilterSchema(
+        key="query",
+        display_name="Pandas Query",
+        description="Filter rows using Pandas query syntax",
+        fields=[
+            FilterFieldMetadata(
+                name="query",
+                type="string",
+                required=True,
+                description="Pandas query expression",
+                placeholder="column_name > 100",
+            ),
+        ],
+    )
 
     def apply(
         self,

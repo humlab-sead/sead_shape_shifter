@@ -11,29 +11,43 @@
                 label="Filter Type"
                 variant="outlined"
                 density="compact"
-                style="max-width: 200px"
+                style="max-width: 250px"
+                @update:model-value="handleFilterTypeChange(index)"
               />
               <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="handleRemoveFilter(index)" />
             </div>
 
-            <v-row dense v-if="filter.type === 'exists_in'">
-              <v-col cols="12" md="4">
+            <!-- Dynamic fields based on filter schema -->
+            <v-row dense v-if="filter.type">
+              <v-col v-for="field in getFieldsForFilter(filter.type)" :key="field.name" cols="12" :md="getColumnWidth(filter.type)">
+                <!-- Entity autocomplete -->
                 <v-autocomplete
-                  v-model="filter.entity"
+                  v-if="field.type === 'entity'"
+                  v-model="filter[field.name]"
                   :items="availableEntities"
-                  label="Entity"
+                  :label="field.description || field.name"
+                  :placeholder="field.placeholder"
+                  :rules="field.required ? [required] : []"
                   variant="outlined"
                   density="compact"
                 />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field v-model="filter.column" label="Column" variant="outlined" density="compact" />
-              </v-col>
-              <v-col cols="12" md="4">
+
+                <!-- String/Column text field -->
                 <v-text-field
-                  v-model="filter.remote_column"
-                  label="Remote Column"
+                  v-else-if="field.type === 'string' || field.type === 'column'"
+                  v-model="filter[field.name]"
+                  :label="field.description || field.name"
+                  :placeholder="field.placeholder"
+                  :rules="field.required ? [required] : []"
                   variant="outlined"
+                  density="compact"
+                />
+
+                <!-- Boolean checkbox -->
+                <v-checkbox
+                  v-else-if="field.type === 'boolean'"
+                  v-model="filter[field.name]"
+                  :label="field.description || field.name"
                   density="compact"
                 />
               </v-col>
@@ -50,14 +64,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-
-interface FilterConfig {
-  type: string
-  entity?: string
-  column?: string
-  remote_column?: string
-}
+import { ref, watch, onMounted } from 'vue'
+import { useFilterSchema } from '@/composables/useFilterSchema'
+import type { FilterConfig } from '@/types/filter-schema'
 
 interface Props {
   modelValue?: FilterConfig[]
@@ -73,17 +82,64 @@ const emit = defineEmits<{
   'update:modelValue': [value: FilterConfig[] | undefined]
 }>()
 
-const filters = ref<FilterConfig[]>(props.modelValue || [])
+const { loadFilterSchemas, getFilterSchema, getFilterTypes } = useFilterSchema()
 
-const filterTypes = [{ title: 'Exists In', value: 'exists_in' }]
+const filters = ref<FilterConfig[]>(props.modelValue || [])
+const filterTypes = ref<Array<{ title: string; value: string }>>([])
+
+// Validation rule
+const required = (v: any) => !!v || 'This field is required'
+
+onMounted(async () => {
+  await loadFilterSchemas()
+  filterTypes.value = getFilterTypes()
+})
+
+function getFieldsForFilter(filterType: string) {
+  const schema = getFilterSchema(filterType)
+  return schema?.fields || []
+}
+
+function getColumnWidth(filterType: string): number {
+  // Distribute fields across 12 columns
+  const fieldsCount = getFieldsForFilter(filterType).length
+  if (fieldsCount === 1) return 12
+  if (fieldsCount === 2) return 6
+  if (fieldsCount === 3) return 4
+  return 3 // 4+ fields get 3 columns each
+}
+
+function handleFilterTypeChange(index: number) {
+  // Reset filter config when type changes, keeping only the type
+  const currentType = filters.value[index].type
+  const schema = getFilterSchema(currentType)
+  
+  const newConfig: FilterConfig = { type: currentType }
+  
+  // Initialize fields with defaults
+  schema?.fields.forEach((field) => {
+    if (field.default !== undefined) {
+      newConfig[field.name] = field.default
+    }
+  })
+  
+  filters.value[index] = newConfig
+}
 
 function handleAddFilter() {
-  filters.value.push({
-    type: 'exists_in',
-    entity: '',
-    column: '',
-    remote_column: '',
+  const firstFilterType = filterTypes.value[0]?.value || 'query'
+  const schema = getFilterSchema(firstFilterType)
+  
+  const newFilter: FilterConfig = { type: firstFilterType }
+  
+  // Initialize with defaults
+  schema?.fields.forEach((field) => {
+    if (field.default !== undefined) {
+      newFilter[field.name] = field.default
+    }
   })
+  
+  filters.value.push(newFilter)
 }
 
 function handleRemoveFilter(index: number) {
