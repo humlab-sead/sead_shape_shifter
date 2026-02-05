@@ -591,9 +591,10 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
     FK linking happens after load, so local_keys can reference:
     - Static columns (columns, keys)
     - Extra columns (extra_columns)
+    - Columns added by previous FKs in the chain (public_id + extra_columns)
 
-    Note: FK linking happens in dependency order, so one FK can reference
-    columns added by a previous FK (if dependencies are correct).
+    FKs are processed sequentially, so each FK can reference columns added
+    by any FK that appears before it in the foreign_keys list.
     """
 
     def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
@@ -609,10 +610,11 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
             # No foreign keys
             return True
 
-        # Get columns available when FK linking happens
-        all_columns: set[str] = self.get_entity_columns(entity_name, exclude_types={"foreign_keys"})
+        # Start with columns available before any FK linking
+        # (columns, keys, extra_columns, system_id, public_id, unnest result columns)
+        available_columns: set[str] = self.get_entity_columns(entity_name, exclude_types={"foreign_keys"})
 
-        # Check each foreign key
+        # Check each foreign key sequentially, accumulating columns as we go
         for idx, fk_cfg in enumerate(foreign_keys):
             local_keys: list[str] | str | None = fk_cfg.get("local_keys")
             remote_entity: str | None = fk_cfg.get("entity")
@@ -625,15 +627,32 @@ class ForeignKeyColumnsSpecification(ProjectSpecification):
                 )
                 continue
 
-            # Check that local_keys exist in available columns
-            missing_local_keys: set[str] = set(local_keys) - all_columns
+            # Check that local_keys exist in columns available at this FK's processing time
+            missing_local_keys: set[str] = set(local_keys) - available_columns
             if missing_local_keys:
                 self.add_error(
                     f"Foreign key to '{remote_entity}' references missing local_keys: {missing_local_keys}. "
-                    f"These columns must be in 'columns', 'keys', or 'extra_columns' before linking can occur.",
+                    f"These columns must be in 'columns', 'keys', 'extra_columns', or added by prior foreign keys.",
                     entity=entity_name,
                     field=f"foreign_keys[{idx}].local_keys",
                 )
+
+            # After validating this FK, add columns it will contribute for subsequent FKs
+            # 1. Add the remote entity's public_id (FK column)
+            if remote_entity:
+                remote_entity_cfg: dict[str, Any] = self.get_entity_cfg(remote_entity) or {}
+                remote_public_id: str | None = remote_entity_cfg.get("public_id")
+                if remote_public_id:
+                    available_columns.add(remote_public_id)
+
+            # 2. Add any extra_columns from this FK
+            extra_columns: dict[str, Any] | list[str] | str | None = fk_cfg.get("extra_columns")
+            if isinstance(extra_columns, dict):
+                available_columns.update(extra_columns.keys())
+            elif isinstance(extra_columns, list):
+                available_columns.update(extra_columns)
+            elif isinstance(extra_columns, str):
+                available_columns.add(extra_columns)
 
         return not self.has_errors()
 
