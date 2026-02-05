@@ -1,8 +1,8 @@
 """API endpoints for entity data preview."""
 
-from typing import Optional
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Body, Depends, Path, Query
 from loguru import logger
 
 from backend.app.models.join_test import JoinTestResult
@@ -50,6 +50,7 @@ def get_validate_fk_service(
 async def preview_entity(
     project_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity to preview"),
+    entity_config: Optional[dict[str, Any]] = Body(None, description="Optional entity configuration to preview (unsaved changes)"),
     limit: Optional[int] = Query(None, ge=1, le=10000, description="Maximum number of rows to return. None for all rows."),
     preview_service: ShapeShiftService = Depends(get_preview_service),
 ) -> PreviewResult:
@@ -61,12 +62,18 @@ async def preview_entity(
     - Applies all configured transformations (filters, unnest, foreign keys)
     - Returns a limited number of rows with metadata
     - Caches results for 5 minutes
+    - Optionally accepts unsaved entity configuration to preview changes
 
     Set limit=null to retrieve all rows (use with caution for large datasets).
     If no limit is specified in the request, defaults to 50 rows.
+    
+    To preview unsaved changes, include entity_config in the request body:
+    - The entity_config parameter allows previewing entities before saving
+    - Cache is bypassed when entity_config is provided
+    - Useful for iterative development and immediate feedback
     """
     try:
-        result = await preview_service.preview_entity(project_name, entity_name, limit)
+        result: PreviewResult = await preview_service.preview_entity(project_name, entity_name, limit, override_config=entity_config)
         return result
     except ValueError as e:
         logger.warning(f"Preview request failed: {e}")
