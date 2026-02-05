@@ -368,3 +368,98 @@ class TestForeignKeyColumnsSpecification:
         # Should pass - unnest result columns are allowed (deferred linking)
         assert result is True
         assert len(spec.errors) == 0
+
+    def test_fk_references_columns_added_by_prior_fk(self):
+        """Test that FK can reference columns added by previous FK in the chain."""
+        project_cfg = {
+            "entities": {
+                "sample": {
+                    "type": "sql",
+                    "columns": ["sample_name", "site_name"],
+                    "keys": ["sample_name"],
+                    "foreign_keys": [
+                        {
+                            # First FK adds site_id column
+                            "entity": "site",
+                            "local_keys": ["site_name"],
+                            "remote_keys": ["site_name"],
+                        },
+                        {
+                            # Second FK references site_id added by first FK
+                            "entity": "location",
+                            "local_keys": ["site_id"],  # Added by previous FK!
+                            "remote_keys": ["location_id"],
+                        },
+                    ],
+                },
+                "site": {
+                    "type": "fixed",
+                    "columns": ["site_name"],
+                    "keys": ["site_name"],
+                    "public_id": "site_id",  # This gets added to sample by first FK
+                    "values": [["Site A"], ["Site B"]],
+                },
+                "location": {
+                    "type": "fixed",
+                    "columns": ["location_name"],
+                    "keys": ["location_name"],
+                    "public_id": "location_id",
+                    "values": [["Location 1"], ["Location 2"]],
+                },
+            }
+        }
+
+        spec = ForeignKeyColumnsSpecification(project_cfg)
+        result = spec.is_satisfied_by(entity_name="sample")
+
+        # Should pass - site_id was added by the first FK
+        assert result is True, f"Expected no errors but got: {spec.get_report()}"
+        assert len(spec.errors) == 0
+
+    def test_fk_references_extra_columns_added_by_prior_fk(self):
+        """Test that FK can reference extra_columns added by previous FK."""
+        project_cfg = {
+            "entities": {
+                "measurement": {
+                    "type": "sql",
+                    "columns": ["measurement_name", "sample_name"],
+                    "keys": ["measurement_name"],
+                    "foreign_keys": [
+                        {
+                            # First FK adds sample_id and sample_type columns
+                            "entity": "sample",
+                            "local_keys": ["sample_name"],
+                            "remote_keys": ["sample_name"],
+                            "extra_columns": {"sample_type": "sample_type"},
+                        },
+                        {
+                            # Second FK references sample_type added by first FK's extra_columns
+                            "entity": "sample_type_lookup",
+                            "local_keys": ["sample_type"],  # Added by previous FK's extra_columns!
+                            "remote_keys": ["type_name"],
+                        },
+                    ],
+                },
+                "sample": {
+                    "type": "fixed",
+                    "columns": ["sample_name", "sample_type"],
+                    "keys": ["sample_name"],
+                    "public_id": "sample_id",
+                    "values": [["Sample 1", "soil"], ["Sample 2", "water"]],
+                },
+                "sample_type_lookup": {
+                    "type": "fixed",
+                    "columns": ["type_name"],
+                    "keys": ["type_name"],
+                    "public_id": "type_id",
+                    "values": [["soil"], ["water"]],
+                },
+            }
+        }
+
+        spec = ForeignKeyColumnsSpecification(project_cfg)
+        result = spec.is_satisfied_by(entity_name="measurement")
+
+        # Should pass - sample_type was added by the first FK's extra_columns
+        assert result is True, f"Expected no errors but got: {spec.get_report()}"
+        assert len(spec.errors) == 0
