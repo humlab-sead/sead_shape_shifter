@@ -286,8 +286,8 @@ class TableConfig:
         return self.entity_cfg.get("check_column_names", True)
 
     @property
-    def auto_detect_columns(self) -> bool:
-        return self.entity_cfg.get("auto_detect_columns", False)
+    def auto_detect_columns(self) -> None | bool:
+        return self.entity_cfg.get("auto_detect_columns")
 
     @property
     def data_source(self) -> str | None:
