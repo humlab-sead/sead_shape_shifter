@@ -73,7 +73,7 @@ class ValidationService:
 
         return result
 
-    def validate_project(self, project_cfg: dict[str, Any]) -> ValidationResult:
+    def validate_project(self, project_cfg: dict[str, Any], *, source_path: str | None = None) -> ValidationResult:
         """
         Validate project using CompositeConfigSpecification.
 
@@ -88,7 +88,24 @@ class ValidationService:
         # Resolve directives before validation (Core layer requirement)
         # Specifications expect fully resolved config
 
-        project_cfg = Config.resolve_references(project_cfg)
+        try:
+            project_cfg = Config.resolve_references(project_cfg, source_path=source_path)
+        except FileNotFoundError as e:
+            # Missing @include file should be reported as a normal validation error,
+            # not as a 500 internal server error.
+            return ValidationResult(
+                is_valid=False,
+                errors=[
+                    ValidationError(
+                        severity="error",
+                        entity=None,
+                        field=None,
+                        message=str(e),
+                        code="CONFIG_INCLUDE_NOT_FOUND",
+                        suggestion="Ensure the referenced include file exists and the path is relative to the project YAML file.",
+                    )
+                ],
+            )
 
         specification = CompositeProjectSpecification(project_cfg)
         is_valid: bool = specification.is_satisfied_by()
