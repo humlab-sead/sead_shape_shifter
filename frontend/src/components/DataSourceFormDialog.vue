@@ -205,6 +205,7 @@ const {
   getSchema,
   getDefaultFormValues,
   getCanonicalDriver,
+  getExtensionsForDriver,
   loading: schemaLoading,
   loadSchemas,
 } = useDriverSchema()
@@ -244,7 +245,7 @@ const projectFileItems = computed(() =>
   }))
 )
 const fileAccept = computed(() => {
-  const extensions = getExtensionsForDriver(form.value.driver || currentSchema.value?.driver)
+  const extensions = getExtensionsForDriver(form.value.driver)
   return extensions ? extensions.map((ext) => `.${ext}`).join(',') : undefined
 })
 
@@ -265,20 +266,6 @@ const rules = {
   },
 }
 
-const driverExtensionMap: Record<string, string[]> = {
-  csv: ['csv', 'tsv'],
-  tsv: ['csv', 'tsv'],
-  access: ['mdb', 'accdb'],
-  ucanaccess: ['mdb', 'accdb'],
-  xlsx: ['xlsx', 'xls'],
-  openpyxl: ['xlsx', 'xls'],
-}
-
-function getExtensionsForDriver(driver?: string | null): string[] | undefined {
-  if (!driver) return undefined
-  return driverExtensionMap[driver] || undefined
-}
-
 function formatProjectFileSubtitle(file: ProjectFileInfo): string {
   const kb = Math.max(1, Math.round(file.size_bytes / 1024))
   return `${kb} KB${file.modified_at ? ` • ${file.modified_at}` : ''}`
@@ -294,7 +281,7 @@ async function fetchProjectFiles() {
   projectFilesError.value = null
 
   try {
-    const extensions = getExtensionsForDriver(form.value.driver || currentSchema.value?.driver)
+    const extensions = getExtensionsForDriver(form.value.driver)
     projectFiles.value = await dataSourceFilesApi.listFiles(extensions)
   } catch (e) {
     projectFilesError.value = e instanceof Error ? e.message : 'Failed to load data source files'

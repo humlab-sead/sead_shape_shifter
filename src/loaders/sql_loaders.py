@@ -307,6 +307,7 @@ class SqliteLoader(SqlLoader):
                 description="Path to .db or .sqlite file",
                 placeholder="./data/database.db",
                 aliases=["file", "filepath", "path"],
+                extensions=["db", "sqlite", "sqlite3"],
             ),
         ],
     )
@@ -614,6 +615,7 @@ class UCanAccessSqlLoader(SqlLoader):
                 description="Path to .mdb or .accdb file",
                 placeholder="./projects/database.mdb",
                 aliases=["file", "filepath", "path"],
+                extensions=["mdb", "accdb"],
             ),
             FieldMetadata(
                 name="ucanaccess_dir",
