@@ -6,7 +6,7 @@ import pytest
 
 from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError
 from backend.app.models.data_source import ColumnMetadata, TableSchema
-from backend.app.models.project import Project
+from backend.app.models.project import Project, ProjectMetadata
 from backend.app.services.entity_generator_service import EntityGeneratorService
 
 
@@ -37,15 +37,15 @@ class TestEntityGeneratorService:
     def mock_project(self):
         """Create mock project."""
         return Project(
-            metadata={
-                "type": "shapeshifter-project",
-                "name": "test_project",
-                "version": "1.0.0",
-                "entity_count": 1,
-                "created_at": 0,
-                "modified_at": 0,
-                "is_valid": True,
-            },
+            metadata=ProjectMetadata(
+                type="shapeshifter-project",
+                name="test_project",
+                version="1.0.0",
+                entity_count=1,
+                created_at=0,
+                modified_at=0,
+                is_valid=True,
+            ),
             entities={
                 "existing_entity": {
                     "type": "sql",
@@ -60,27 +60,33 @@ class TestEntityGeneratorService:
         """Create mock table schema with primary keys."""
         return TableSchema(
             table_name="users",
-            schema_name="public",
             columns=[
                 ColumnMetadata(
                     name="user_id",
                     data_type="integer",
                     nullable=False,
                     is_primary_key=True,
+                    default=None,
+                    max_length=None,
                 ),
                 ColumnMetadata(
                     name="username",
                     data_type="varchar",
                     nullable=False,
                     is_primary_key=False,
+                    default=None,
+                    max_length=255,
                 ),
                 ColumnMetadata(
                     name="email",
                     data_type="varchar",
                     nullable=True,
                     is_primary_key=False,
+                    default=None,
+                    max_length=255,
                 ),
             ],
+            row_count=1000,
         )
 
     @pytest.mark.asyncio
@@ -159,21 +165,25 @@ class TestEntityGeneratorService:
         # Table schema with no primary keys
         table_schema = TableSchema(
             table_name="logs",
-            schema_name=None,
             columns=[
                 ColumnMetadata(
                     name="log_id",
                     data_type="integer",
                     nullable=False,
                     is_primary_key=False,  # Not a PK
+                    default=None,
+                    max_length=None,
                 ),
                 ColumnMetadata(
                     name="message",
                     data_type="text",
                     nullable=True,
                     is_primary_key=False,
+                    default=None,
+                    max_length=None,
                 ),
             ],
+            row_count=10000,
         )
         mock_schema_service.get_table_schema.return_value = table_schema
 
@@ -192,21 +202,25 @@ class TestEntityGeneratorService:
         # Table schema with composite PK
         table_schema = TableSchema(
             table_name="user_roles",
-            schema_name=None,
             columns=[
                 ColumnMetadata(
                     name="user_id",
                     data_type="integer",
                     nullable=False,
                     is_primary_key=True,  # Part of composite PK
+                    default=None,
+                    max_length=None,
                 ),
                 ColumnMetadata(
                     name="role_id",
                     data_type="integer",
                     nullable=False,
                     is_primary_key=True,  # Part of composite PK
+                    default=None,
+                    max_length=None,
                 ),
             ],
+            row_count=1000,
         )
         mock_schema_service.get_table_schema.return_value = table_schema
 
@@ -216,7 +230,7 @@ class TestEntityGeneratorService:
         assert result["keys"] == ["user_id", "role_id"]
 
     @pytest.mark.asyncio
-    async def test_generate_from_table_project_not_found(self, generator_service, mock_project_service, mock_schema_service):
+    async def test_generate_from_table_project_not_found(self, generator_service, mock_project_service):
         """Test error handling when project not found."""
         mock_project_service.load_project.side_effect = ResourceNotFoundError("Project 'nonexistent' not found")
 
