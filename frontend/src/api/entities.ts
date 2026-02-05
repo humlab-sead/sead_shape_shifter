@@ -27,6 +27,13 @@ export interface EntityUpdateRequest {
   entity_data: Record<string, unknown>
 }
 
+export interface GenerateFromTableRequest {
+  data_source: string
+  table_name: string
+  entity_name?: string
+  schema?: string
+}
+
 /**
  * Entity API service
  */
@@ -80,6 +87,17 @@ export const entitiesApi = {
     return apiRequest<void>({
       method: 'DELETE',
       url: `/projects/${projectName}/entities/${entityName}`,
+    })
+  },
+
+  /**
+   * Generate entity from database table
+   */
+  generateFromTable: async (projectName: string, data: GenerateFromTableRequest): Promise<EntityResponse> => {
+    return apiRequest<EntityResponse>({
+      method: 'POST',
+      url: `/projects/${projectName}/entities/generate-from-table`,
+      data,
     })
   },
 }
