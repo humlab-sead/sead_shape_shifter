@@ -65,6 +65,7 @@ class TestEntityGeneratorService:
         """Create mock table schema with primary keys."""
         return TableSchema(
             table_name="users",
+            schema_name=None,
             columns=[
                 ColumnMetadata(
                     name="user_id",
@@ -170,6 +171,7 @@ class TestEntityGeneratorService:
         # Table schema with no primary keys
         table_schema = TableSchema(
             table_name="logs",
+            schema_name=None,
             columns=[
                 ColumnMetadata(
                     name="log_id",
@@ -207,6 +209,7 @@ class TestEntityGeneratorService:
         # Table schema with composite PK
         table_schema = TableSchema(
             table_name="user_roles",
+            schema_name=None,
             columns=[
                 ColumnMetadata(
                     name="user_id",

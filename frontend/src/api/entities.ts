@@ -31,7 +31,7 @@ export interface GenerateFromTableRequest {
   data_source: string
   table_name: string
   entity_name?: string
-  schema?: string
+  schema_name?: string
 }
 
 /**

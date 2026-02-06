@@ -134,6 +134,7 @@ class TableSchema(BaseModel):
     """Complete schema information for a table."""
 
     table_name: str = Field(..., description="Table name")
+    schema_name: Optional[str] = Field(None, description="Schema name (for databases that support schemas)")
     columns: list[ColumnMetadata] = Field(..., description="Column definitions")
     primary_keys: list[str] = Field(default_factory=list, description="Primary key column names")
     indexes: list[str] = Field(default_factory=list, description="Index names")

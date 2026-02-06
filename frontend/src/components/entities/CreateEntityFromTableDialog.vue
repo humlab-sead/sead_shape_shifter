@@ -236,7 +236,7 @@ async function handleCreate() {
       data_source: props.dataSource,
       table_name: selectedTable.value,
       entity_name: entityName.value || undefined,
-      schema: schema || undefined,
+      schema_name: schema || undefined,
     })
 
     const createdEntityName = entityName.value || selectedTable.value

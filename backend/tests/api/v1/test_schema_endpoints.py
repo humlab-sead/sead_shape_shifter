@@ -50,6 +50,7 @@ def sample_table_schema():
     """Sample table schema for testing."""
     return TableSchema(
         table_name="table1",
+        schema_name="public",
         columns=[
             ColumnMetadata(
                 name="id",
