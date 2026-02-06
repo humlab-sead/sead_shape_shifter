@@ -50,7 +50,7 @@ def get_validate_fk_service(
 async def preview_entity(
     project_name: str = Path(..., description="Name of the configuration"),
     entity_name: str = Path(..., description="Name of the entity to preview"),
-    entity_config: Optional[dict[str, Any]] = Body(None, description="Optional entity configuration to preview (unsaved changes)"),
+    body: Optional[dict[str, Any]] = Body(None, description="Request body with optional entity_config"),
     limit: Optional[int] = Query(None, ge=1, le=10000, description="Maximum number of rows to return. None for all rows."),
     preview_service: ShapeShiftService = Depends(get_preview_service),
 ) -> PreviewResult:
@@ -73,6 +73,10 @@ async def preview_entity(
     - Useful for iterative development and immediate feedback
     """
     try:
+        # Extract entity_config from body if present
+        # Frontend sends: {"entity_config": {...}}
+        entity_config = body.get("entity_config") if body else None
+        
         result: PreviewResult = await preview_service.preview_entity(project_name, entity_name, limit, override_config=entity_config)
         return result
     except ValueError as e:
