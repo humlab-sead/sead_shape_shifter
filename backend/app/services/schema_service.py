@@ -135,7 +135,7 @@ class SchemaIntrospectionService:
             return cached_table
 
         try:
-            ds_config: api.DataSourceConfig | None = self._resolve_data_source_config(data_source)
+            ds_config: api.DataSourceConfig | None = self.data_source_service.load_data_source(data_source)
             if ds_config is None:
                 raise SchemaIntrospectionError(message=f"Data source '{ds_name}'not found", data_source=ds_name, operation="get_tables")
 
@@ -180,7 +180,7 @@ class SchemaIntrospectionService:
             return cached_schema
 
         try:
-            ds_config: api.DataSourceConfig | None = self._resolve_data_source_config(data_source)
+            ds_config: api.DataSourceConfig | None = self.data_source_service.load_data_source(data_source)
             if ds_config is None:
                 raise SchemaIntrospectionError(message=f"Data source '{ds_name}' not found", data_source=ds_name, operation="get_columns")
 
@@ -231,7 +231,7 @@ class SchemaIntrospectionService:
         ds_name: str = data_source_cfg if isinstance(data_source_cfg, str) else data_source_cfg.get("name", "unknown")
 
         try:
-            ds_config: api.DataSourceConfig | None = self._resolve_data_source_config(data_source_cfg)
+            ds_config: api.DataSourceConfig | None = self.data_source_service.load_data_source(data_source_cfg)
             if ds_config is None:
                 raise SchemaIntrospectionError(message=f"Data source '{ds_name}' not found", data_source=ds_name, operation="preview_table")
 
