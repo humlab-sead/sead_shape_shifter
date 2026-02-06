@@ -102,3 +102,9 @@ class Project(BaseModel):
     def unresolved_directives(self) -> list[str]:
         """Check if the project has any unresolved references."""
         return Config.find_unresolved_directives(self.entities) + Config.find_unresolved_directives(self.options)
+
+    @property
+    def data_sources(self) -> dict[str, Any]:
+        """Get data source configurations from options."""
+        return self.options.get("data_sources", {}) or {}
+    

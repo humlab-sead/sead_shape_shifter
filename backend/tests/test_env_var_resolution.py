@@ -182,7 +182,7 @@ class TestEnvironmentVariableResolution:
 
                 # Mock config to return data source with env vars
 
-                ds_cfg2: DataSourceConfig | None = service.get_data_source("dummy_file.yml")
+                ds_cfg2: DataSourceConfig | None = service.load_data_source("dummy_file.yml")
 
                 assert ds_cfg2 is not None
                 assert ds_cfg2.name == "prod_db"

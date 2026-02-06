@@ -195,7 +195,7 @@ async def get_data_source(
     """
     try:
         logger.info(f"Getting data source: {filename}")
-        data_source: DataSourceConfig | None = service.get_data_source(Path(filename))
+        data_source: DataSourceConfig | None = service.load_data_source(Path(filename))
 
         if data_source is None:
             raise HTTPException(
@@ -242,7 +242,7 @@ async def create_data_source(
         logger.info(f"Creating data source file: {filename}")
 
         # Check if already exists
-        existing: DataSourceConfig | None = service.get_data_source(Path(filename))
+        existing: DataSourceConfig | None = service.load_data_source(Path(filename))
         if existing is not None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -288,7 +288,7 @@ async def update_data_source(
         logger.info(f"Updating data source file: {filename}")
 
         # Check if exists
-        existing: DataSourceConfig | None = service.get_data_source(Path(filename))
+        existing: DataSourceConfig | None = service.load_data_source(Path(filename))
         if existing is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -331,7 +331,7 @@ async def delete_data_source(
         logger.info(f"Deleting data source file: {filename}")
 
         # Check if exists
-        existing: DataSourceConfig | None = service.get_data_source(Path(filename))
+        existing: DataSourceConfig | None = service.load_data_source(Path(filename))
         if existing is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -381,7 +381,7 @@ async def test_data_source_connection(
         logger.info(f"Testing connection to data source: {filename}")
 
         # Get data source config
-        config: DataSourceConfig | None = service.get_data_source(Path(filename))
+        config: DataSourceConfig | None = service.load_data_source(Path(filename))
         if config is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -431,7 +431,7 @@ async def get_data_source_status(
         logger.info(f"Getting status for data source: {name}")
 
         # Check if exists
-        config: DataSourceConfig | None = service.get_data_source(Path(name))
+        config: DataSourceConfig | None = service.load_data_source(Path(name))
         if config is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
