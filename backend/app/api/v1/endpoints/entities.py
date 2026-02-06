@@ -50,7 +50,7 @@ class GenerateFromTableRequest(BaseModel):
     data_source: str = Field(..., description="Name of the data source")
     table_name: str = Field(..., description="Name of the table in the database")
     entity_name: str | None = Field(None, description="Entity name (defaults to table_name if not provided)")
-    schema: str | None = Field(None, description="Optional schema name (for PostgreSQL)")
+    schema_name: str | None = Field(None, alias="schema", description="Optional schema name (if database supports schemas, e.g. PostgreSQL)")
 
 
 # Endpoints
@@ -184,10 +184,10 @@ async def generate_entity_from_table(project_name: str, request: GenerateFromTab
     generator_service: EntityGeneratorService = get_entity_generator_service()
     entity_config = await generator_service.generate_from_table(
         project_name=project_name,
-        data_source=request.data_source,
+        data_source_key=request.data_source,
         table_name=request.table_name,
         entity_name=request.entity_name,
-        schema=request.schema,
+        schema=request.schema_name,
     )
 
     entity_name = request.entity_name or request.table_name

@@ -8,6 +8,7 @@ class TableSchemaMapper:
         # Convert CoreSchema.TableSchema to API TableSchema
         api_schema: api.TableSchema = api.TableSchema(
             table_name=core_schema.table_name,
+            schema_name=core_schema.schema_name,
             columns=[
                 api.ColumnMetadata(
                     name=col.name,

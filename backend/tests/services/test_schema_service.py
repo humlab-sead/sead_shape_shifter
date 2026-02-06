@@ -238,6 +238,7 @@ class TestSchemaIntrospectionService:
         """Schema retrieval caches result and reuses mapped object."""
         core_schema = CoreSchema.TableSchema(
             table_name="users",
+            schema_name="public",
             columns=[
                 CoreSchema.ColumnMetadata(
                     name="id", data_type="INTEGER", nullable=False, default=None, is_primary_key=True, max_length=None
@@ -252,6 +253,7 @@ class TestSchemaIntrospectionService:
         loader = AsyncMock(get_table_schema=AsyncMock(return_value=core_schema))
         mapped_schema = TableSchema(
             table_name="users",
+            schema_name="public",
             columns=[ColumnMetadata(name="id", data_type="INTEGER", nullable=False, default=None, is_primary_key=True, max_length=None)],
             primary_keys=["id"],
             indexes=[],
@@ -324,6 +326,7 @@ class TestSchemaEndpoints:
 
         schema = TableSchema(
             table_name="users",
+            schema_name="public",
             columns=columns,
             primary_keys=["id"],
             indexes=["idx_name"],

@@ -92,6 +92,7 @@ class CoreSchema:
     @dataclass
     class TableSchema:
         table_name: str
+        schema_name: Optional[str]
         columns: list["CoreSchema.ColumnMetadata"]
         primary_keys: list[str]
         indexes: list[str]
@@ -391,6 +392,7 @@ class SqliteLoader(SqlLoader):
 
         return CoreSchema.TableSchema(
             table_name=table_name,
+            schema_name=None,
             columns=columns,
             primary_keys=primary_keys,
             row_count=row_count,
@@ -611,6 +613,7 @@ class PostgresSqlLoader(SqlLoader):
 
         return CoreSchema.TableSchema(
             table_name=table_name,
+            schema_name=schema,
             columns=columns,
             primary_keys=primary_keys,
             foreign_keys=foreign_keys,
@@ -798,6 +801,7 @@ class UCanAccessSqlLoader(SqlLoader):
             row_count: int | None = await self.get_table_row_count(table_name, None)
             return CoreSchema.TableSchema(
                 table_name=table_name,
+                schema_name=None,
                 columns=columns,
                 primary_keys=primary_keys,
                 row_count=row_count,

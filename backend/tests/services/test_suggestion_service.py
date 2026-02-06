@@ -11,7 +11,7 @@ from backend.app.services.suggestion_service import SuggestionService
 
 def build_schema(table_name: str, columns: list[ColumnMetadata]) -> TableSchema:
     """Helper to build a TableSchema."""
-    return TableSchema(table_name=table_name, columns=columns, primary_keys=[c.name for c in columns if c.is_primary_key], **{})
+    return TableSchema(table_name=table_name, schema_name=None, columns=columns, primary_keys=[c.name for c in columns if c.is_primary_key], **{})
 
 
 # type: ignore ; pylint: disable=invalid-name
