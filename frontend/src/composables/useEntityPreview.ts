@@ -26,7 +26,7 @@ export interface PreviewResult {
 
 export function useEntityPreview() {
   const loading = ref(false)
-  const error = ref<string | null>(null)
+  const error = ref<string | any | null>(null)
   const previewData = ref<PreviewResult | null>(null)
   const lastRefresh = ref<Date | null>(null)
 
@@ -71,8 +71,14 @@ export function useEntityPreview() {
       lastRefresh.value = new Date()
       return response.data
     } catch (err: any) {
-      const message = err.response?.data?.detail || err.message || 'Failed to load preview'
-      error.value = message
+      // Preserve full error object for better error display
+      if (err.response?.data) {
+        error.value = err.response.data
+      } else if (err.message) {
+        error.value = { message: err.message, type: err.name || 'Error' }
+      } else {
+        error.value = 'Failed to load preview'
+      }
       console.error('Preview error:', err)
       return null
     } finally {
@@ -116,8 +122,14 @@ export function useEntityPreview() {
       previewData.value = response.data
       return response.data
     } catch (err: any) {
-      const message = err.response?.data?.detail || err.message || 'Failed to load sample'
-      error.value = message
+      // Preserve full error object for better error display
+      if (err.response?.data) {
+        error.value = err.response.data
+      } else if (err.message) {
+        error.value = { message: err.message, type: err.name || 'Error' }
+      } else {
+        error.value = 'Failed to load sample'
+      }
       console.error('Sample error:', err)
       return null
     } finally {

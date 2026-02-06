@@ -30,9 +30,9 @@
       </div>
 
       <!-- Error Display -->
-      <v-alert v-else-if="error" type="error" variant="tonal" density="compact" class="ma-4">
-        {{ error }}
-      </v-alert>
+      <div v-else-if="error" class="ma-4">
+        <preview-error :error="error" />
+      </div>
 
       <!-- Empty State -->
       <v-alert
@@ -152,11 +152,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { PreviewResult } from '@/composables/useEntityPreview'
+import PreviewError from './PreviewError.vue'
 
 interface Props {
   previewData: PreviewResult | null
   loading?: boolean
-  error?: string | null
+  error?: string | any | null
 }
 
 const props = withDefaults(defineProps<Props>(), {

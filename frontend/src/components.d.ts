@@ -42,6 +42,7 @@ declare module 'vue' {
     MaterializeDialog: typeof import('./components/entities/MaterializeDialog.vue')['default']
     MetadataEditor: typeof import('./components/MetadataEditor.vue')['default']
     NodeLegend: typeof import('./components/dependencies/NodeLegend.vue')['default']
+    PreviewError: typeof import('./components/entities/PreviewError.vue')['default']
     PreviewFixesModal: typeof import('./components/validation/PreviewFixesModal.vue')['default']
     PreviewMatchedDataDialog: typeof import('./components/reconciliation/PreviewMatchedDataDialog.vue')['default']
     ProjectDataSources: typeof import('./components/ProjectDataSources.vue')['default']
