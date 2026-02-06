@@ -256,5 +256,6 @@ watch(
   margin: 0;
   white-space: pre-wrap;
   word-wrap: break-word;
+  color: rgb(var(--v-theme-on-surface-variant));
 }
 </style>
