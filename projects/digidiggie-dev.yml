@@ -21,6 +21,13 @@ entities:
     columns: [land_use_id, type]
     data_source: digidiggie-options
     query: "select *\r\nfrom land_use;"
+  communities:
+    type: sql
+    system_id: system_id
+    public_id: communities_id
+    keys: [community_id]
+    data_source: digidiggie-options
+    query: SELECT * FROM communities
 options:
   data_sources:
     digidiggie-options: '@include: digidiggie-options.yml'
