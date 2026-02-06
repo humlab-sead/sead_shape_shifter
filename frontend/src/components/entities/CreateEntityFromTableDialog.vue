@@ -35,8 +35,8 @@
           auto-select-first
           @update:model-value="onTableSelected"
         >
-          <template #item="{ props: itemProps, item }">
-            <v-list-item v-bind="itemProps">
+          <template #item="{ props, item }">
+            <v-list-item v-bind="props">
               <template #prepend>
                 <v-icon icon="mdi-table" />
               </template>
