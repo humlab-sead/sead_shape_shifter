@@ -155,7 +155,7 @@ const dataSourceConfig = computed(() => {
     // Check for @include: directive
     const includeMatch = dsConfig.match(/^@include:\s*(.+)$/)
     if (includeMatch) {
-      return includeMatch[1].trim() // Return filename
+      return (includeMatch[1] || '').trim() // Return filename
     }
     return dsConfig
   }
