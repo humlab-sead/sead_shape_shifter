@@ -72,6 +72,7 @@ class EntityGeneratorService:
         # 7. Generate entity configuration
         entity_config = {
             "type": "sql",
+            "system_id": "system_id",
             "data_source": data_source,
             "query": query,
             "keys": primary_keys,  # Empty list if no PKs

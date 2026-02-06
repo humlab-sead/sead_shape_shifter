@@ -735,13 +735,132 @@ function toggleSplitView() {
   }
 }
 
+function buildEntityConfigFromFormData(): Record<string, unknown> {
+  /**
+   * Convert form data to entity config format.
+   * Shared by both handleSubmit and refreshPreview to ensure consistency.
+   */
+  const entityData: Record<string, unknown> = {
+    type: formData.value.type,
+    keys: formData.value.keys,
+    // Always include columns so new entities default to an empty list instead of omitting the field
+    columns: formData.value.columns,
+  }
+
+  // Always include public_id (even if null) to prevent field from being omitted
+  entityData.public_id = formData.value.public_id || null
+
+  if (formData.value.surrogate_id) {
+    entityData.surrogate_id = formData.value.surrogate_id
+  }
+
+  if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
+    entityData.values = formData.value.values
+  }
+
+  if (formData.value.source) {
+    entityData.source = formData.value.source
+  }
+
+  if (formData.value.type === 'sql') {
+    entityData.data_source = formData.value.data_source
+    entityData.query = formData.value.query
+  }
+
+  // Include file options for CSV and Excel types
+  if (isFileType.value && formData.value.options.filename) {
+    const options: Record<string, unknown> = {
+      filename: formData.value.options.filename,
+    }
+
+    if (formData.value.type === 'csv') {
+      if (formData.value.options.sep) {
+        options.sep = formData.value.options.sep
+      }
+      if (formData.value.options.encoding) {
+        options.encoding = formData.value.options.encoding
+      }
+    } else if (isExcelType.value) {
+      if (formData.value.options.sheet_name) {
+        options.sheet_name = formData.value.options.sheet_name
+      }
+      if (formData.value.options.range) {
+        options.range = formData.value.options.range
+      }
+    }
+
+    entityData.options = options
+  }
+
+  // Include foreign keys if any
+  if (formData.value.foreign_keys.length > 0) {
+    // Transform foreign keys: extract just column values from column picker objects
+    entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => ({
+      entity: fk.entity,
+      local_keys: Array.isArray(fk.local_keys)
+        ? fk.local_keys.map((col: any) => typeof col === 'string' ? col : col.value)
+        : [],
+      remote_keys: Array.isArray(fk.remote_keys)
+        ? fk.remote_keys.map((col: any) => typeof col === 'string' ? col : col.value)
+        : [],
+    }))
+  }
+
+  // Include depends_on if specified
+  if (formData.value.depends_on.length > 0) {
+    entityData.depends_on = formData.value.depends_on
+  }
+
+  // Include drop_duplicates if enabled
+  if (formData.value.drop_duplicates.enabled) {
+    if (formData.value.drop_duplicates.columns.length > 0) {
+      entityData.drop_duplicates = formData.value.drop_duplicates.columns
+    } else {
+      entityData.drop_duplicates = true
+    }
+  }
+
+  // Include drop_empty_rows if enabled
+  if (formData.value.drop_empty_rows.enabled) {
+    if (formData.value.drop_empty_rows.columns.length > 0) {
+      entityData.drop_empty_rows = formData.value.drop_empty_rows.columns
+    } else {
+      entityData.drop_empty_rows = true
+    }
+  }
+
+  // Include check_functional_dependency if enabled
+  if (formData.value.check_functional_dependency) {
+    entityData.check_functional_dependency = true
+  }
+
+  // Include advanced configuration
+  if (formData.value.advanced.filters?.length) {
+    entityData.filters = formData.value.advanced.filters
+  }
+  if (formData.value.advanced.unnest) {
+    entityData.unnest = formData.value.advanced.unnest
+  }
+  if (formData.value.advanced.append?.length) {
+    entityData.append = formData.value.advanced.append
+  }
+  if (formData.value.advanced.extra_columns) {
+    entityData.extra_columns = formData.value.advanced.extra_columns
+  }
+
+  return entityData
+}
+
 async function refreshPreview() {
   if (!canPreview.value) return
 
   previewError.value = null
   
-  // Pass current form data to preview unsaved changes
-  await previewEntity(props.projectName, formData.value.name, previewLimit.value, formData.value)
+  // Convert form data to entity config format (same as handleSubmit)
+  const entityConfig = buildEntityConfigFromFormData()
+  
+  // Pass converted entity config to preview unsaved changes
+  await previewEntity(props.projectName, formData.value.name, previewLimit.value, entityConfig)
 
   if (livePreviewError.value) {
     previewError.value = livePreviewError.value
@@ -881,8 +1000,9 @@ watch(
   formData,
   () => {
     if (autoRefreshEnabled.value && viewMode.value !== 'form' && canPreview.value) {
-      // Pass current form data to preview unsaved changes
-      debouncedPreviewEntity(props.projectName, formData.value.name, 100, formData.value)
+      // Convert form data to entity config before previewing
+      const entityConfig = buildEntityConfigFromFormData()
+      debouncedPreviewEntity(props.projectName, formData.value.name, 100, entityConfig)
     }
   },
   { deep: true }
@@ -1129,120 +1249,33 @@ const publicIdRules = [
 
 // YAML Editor Functions
 function formDataToYaml(): string {
-  const entityData: Record<string, any> = {
+  // Reuse the shared conversion logic
+  const entityData = buildEntityConfigFromFormData()
+  
+  // Add fields that are needed for YAML display but not API calls
+  const yamlData: Record<string, any> = {
     name: formData.value.name,
-    type: formData.value.type,
+    ...entityData,
   }
-
-  // Always include system_id (standardized to "system_id")
-  entityData.system_id = 'system_id'
-
-  entityData.public_id = formData.value.public_id || null
-
-  // Legacy: Only include surrogate_id if migrating from old config
-  if (formData.value.surrogate_id && !formData.value.public_id) {
-    entityData.surrogate_id = formData.value.surrogate_id
+  
+  // Always show system_id in YAML for user visibility (even though it's implicit in backend)
+  yamlData.system_id = 'system_id'
+  
+  // Move name to the top for better YAML readability
+  const orderedData: Record<string, any> = {
+    name: yamlData.name,
+    type: yamlData.type,
+    system_id: yamlData.system_id,
   }
-
-  // Always include keys (even if empty array) for consistency with project YAML
-  entityData.keys = formData.value.keys
-
-  // Always include columns (even if empty array) for consistency with project YAML
-  // Note: columns should contain ALL columns including identity columns (system_id, public_id)
-  entityData.columns = formData.value.columns
-
-  if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
-    entityData.values = formData.value.values
-  }
-
-  if (formData.value.source) {
-    entityData.source = formData.value.source
-  }
-
-  if (formData.value.type === 'sql') {
-    if (formData.value.data_source) {
-      entityData.data_source = formData.value.data_source
+  
+  // Copy remaining fields
+  Object.keys(yamlData).forEach(key => {
+    if (key !== 'name' && key !== 'type' && key !== 'system_id') {
+      orderedData[key] = yamlData[key]
     }
-    if (formData.value.query) {
-      entityData.query = formData.value.query
-    }
-  }
+  })
 
-  // Add file options for CSV and Excel types
-  if (isFileType.value && formData.value.options.filename) {
-    entityData.options = {} as Record<string, any>
-
-    if (formData.value.type === 'csv') {
-      entityData.options.filename = formData.value.options.filename
-      entityData.options.sep = formData.value.options.sep
-      if (formData.value.options.encoding && formData.value.options.encoding !== 'utf-8') {
-        entityData.options.encoding = formData.value.options.encoding
-      }
-    } else if (formData.value.type === 'xlsx' || formData.value.type === 'openpyxl') {
-      entityData.options.filename = formData.value.options.filename
-      if (formData.value.options.sheet_name) {
-        entityData.options.sheet_name = formData.value.options.sheet_name
-      }
-      if (formData.value.type === 'openpyxl' && formData.value.options.range) {
-        entityData.options.range = formData.value.options.range
-      }
-    }
-  }
-
-  if (formData.value.foreign_keys.length > 0) {
-    // Transform foreign keys: extract just column values from column picker objects
-    entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => ({
-      entity: fk.entity,
-      local_keys: Array.isArray(fk.local_keys)
-        ? fk.local_keys.map((col: any) => typeof col === 'string' ? col : col.value)
-        : [],
-      remote_keys: Array.isArray(fk.remote_keys)
-        ? fk.remote_keys.map((col: any) => typeof col === 'string' ? col : col.value)
-        : [],
-    }))
-  }
-
-  if (formData.value.advanced.filters?.length) {
-    entityData.filters = formData.value.advanced.filters
-  }
-
-  if (formData.value.advanced.unnest) {
-    entityData.unnest = formData.value.advanced.unnest
-  }
-
-  if (formData.value.advanced.append?.length) {
-    entityData.append = formData.value.advanced.append
-  }
-
-  if (formData.value.advanced.extra_columns) {
-    entityData.extra_columns = formData.value.advanced.extra_columns
-  }
-
-  if (formData.value.depends_on.length > 0) {
-    entityData.depends_on = formData.value.depends_on
-  }
-
-  if (formData.value.drop_duplicates.enabled) {
-    if (formData.value.drop_duplicates.columns.length > 0) {
-      entityData.drop_duplicates = formData.value.drop_duplicates.columns
-    } else {
-      entityData.drop_duplicates = true
-    }
-  }
-
-  if (formData.value.drop_empty_rows.enabled) {
-    if (formData.value.drop_empty_rows.columns.length > 0) {
-      entityData.drop_empty_rows = formData.value.drop_empty_rows.columns
-    } else {
-      entityData.drop_empty_rows = true
-    }
-  }
-
-  if (formData.value.check_functional_dependency) {
-    entityData.check_functional_dependency = true
-  }
-
-  return yaml.dump(entityData, { indent: 2, lineWidth: -1 })
+  return yaml.dump(orderedData, { indent: 2, lineWidth: -1 })
 }
 
 function yamlToFormData(yamlString: string): boolean {
@@ -1326,113 +1359,8 @@ async function handleSubmit() {
   error.value = null
 
   try {
-    const entityData: Record<string, unknown> = {
-      type: formData.value.type,
-      keys: formData.value.keys,
-      // Always include columns so new entities default to an empty list instead of omitting the field
-      columns: formData.value.columns,
-    }
-
-    // Always include public_id (even if null) to prevent field from being omitted
-    entityData.public_id = formData.value.public_id || null
-
-    if (formData.value.surrogate_id) {
-      entityData.surrogate_id = formData.value.surrogate_id
-    }
-
-    if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
-      entityData.values = formData.value.values
-    }
-
-    if (formData.value.source) {
-      entityData.source = formData.value.source
-    }
-
-    if (formData.value.type === 'sql') {
-      entityData.data_source = formData.value.data_source
-      entityData.query = formData.value.query
-    }
-
-    // Include file options for CSV and Excel types
-    if (isFileType.value && formData.value.options.filename) {
-      const options: Record<string, unknown> = {
-        filename: formData.value.options.filename,
-      }
-
-      if (formData.value.type === 'csv') {
-        if (formData.value.options.sep) {
-          options.sep = formData.value.options.sep
-        }
-        if (formData.value.options.encoding) {
-          options.encoding = formData.value.options.encoding
-        }
-      } else if (isExcelType.value) {
-        if (formData.value.options.sheet_name) {
-          options.sheet_name = formData.value.options.sheet_name
-        }
-        if (formData.value.options.range) {
-          options.range = formData.value.options.range
-        }
-      }
-
-      entityData.options = options
-    }
-
-    // Include foreign keys if any
-    if (formData.value.foreign_keys.length > 0) {
-      // Transform foreign keys: extract just column values from column picker objects
-      entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => ({
-        entity: fk.entity,
-        local_keys: Array.isArray(fk.local_keys)
-          ? fk.local_keys.map((col: any) => typeof col === 'string' ? col : col.value)
-          : [],
-        remote_keys: Array.isArray(fk.remote_keys)
-          ? fk.remote_keys.map((col: any) => typeof col === 'string' ? col : col.value)
-          : [],
-      }))
-    }
-
-    // Include depends_on if specified
-    if (formData.value.depends_on.length > 0) {
-      entityData.depends_on = formData.value.depends_on
-    }
-
-    // Include drop_duplicates if enabled
-    if (formData.value.drop_duplicates.enabled) {
-      if (formData.value.drop_duplicates.columns.length > 0) {
-        entityData.drop_duplicates = formData.value.drop_duplicates.columns
-      } else {
-        entityData.drop_duplicates = true
-      }
-    }
-
-    // Include drop_empty_rows if enabled
-    if (formData.value.drop_empty_rows.enabled) {
-      if (formData.value.drop_empty_rows.columns.length > 0) {
-        entityData.drop_empty_rows = formData.value.drop_empty_rows.columns
-      } else {
-        entityData.drop_empty_rows = true
-      }
-    }
-
-    // Include check_functional_dependency if enabled
-    if (formData.value.check_functional_dependency) {
-      entityData.check_functional_dependency = true
-    }
-
-    // Include advanced configuration
-    if (formData.value.advanced.filters?.length) {
-      entityData.filters = formData.value.advanced.filters
-    }
-    if (formData.value.advanced.unnest) {
-      entityData.unnest = formData.value.advanced.unnest
-    }
-    if (formData.value.advanced.append?.length) {
-      entityData.append = formData.value.advanced.append
-    }
-    if (formData.value.advanced.extra_columns) {
-      entityData.extra_columns = formData.value.advanced.extra_columns
-    }
+    // Use shared function to build entity config
+    const entityData = buildEntityConfigFromFormData()
 
     if (props.mode === 'create') {
       await create({
