@@ -16,7 +16,7 @@ from backend.app.models.project import Project
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.schema_service import SchemaIntrospectionService
-from loaders.sql_loaders import SqlLoader
+from src.loaders.sql_loaders import SqlLoader
 
 
 class EntityGeneratorService:
