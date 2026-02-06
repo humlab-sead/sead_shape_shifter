@@ -209,9 +209,7 @@ class SqlLoader(DataLoader):
         qualified_table_name: str = self.qualify_name(schema=kwargs.get("schema"), table=table_name)
         limit_clause: str = f"LIMIT {limit}" if limit else ""
         offset_clause: str = f"OFFSET {offset}" if offset else ""
-        sql: str = (
-            f"select * from {qualified_table_name} {limit_clause} {offset_clause} ;"
-        )
+        sql: str = f"select * from {qualified_table_name} {limit_clause} {offset_clause} ;"
         data: pd.DataFrame = await self.read_sql(sql=sql)
         return data
 
