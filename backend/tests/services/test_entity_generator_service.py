@@ -18,6 +18,15 @@ class TestEntityGeneratorService:
         """Create mock schema introspection service."""
         service = MagicMock()
         service.get_table_schema = AsyncMock()
+        service.data_source_service = MagicMock()
+        service.data_source_service.load_data_source = MagicMock()
+        
+        # Mock the loader with quote_name and qualify_name methods
+        mock_loader = MagicMock()
+        mock_loader.quote_name = MagicMock(side_effect=lambda name: name)  # Return name as-is for simplicity
+        mock_loader.qualify_name = MagicMock(side_effect=lambda schema=None, table=None: f"{schema}.{table}" if schema else table)
+        service.create_loader_for_data_source = MagicMock(return_value=mock_loader)
+        
         return service
 
     @pytest.fixture
@@ -97,15 +106,16 @@ class TestEntityGeneratorService:
 
     @pytest.mark.asyncio
     async def test_generate_from_table_basic(
-        self, generator_service, mock_project_service, mock_schema_service, mock_project, mock_table_schema
+        self, generator_service: EntityGeneratorService, mock_project_service, mock_schema_service, mock_project, mock_table_schema
     ):
         """Test basic entity generation from table."""
         # Setup mocks
         mock_project_service.load_project.return_value = mock_project
         mock_schema_service.get_table_schema.return_value = mock_table_schema
+        mock_schema_service.data_source_service.load_data_source.return_value = MagicMock()  # Return a mock DataSourceConfig
 
         # Execute
-        result = await generator_service.generate_from_table(project_name="test_project", data_source="test_db", table_name="users")
+        result = await generator_service.generate_from_table(project_name="test_project", data_source_key="test_db", table_name="users")
 
         # Verify project was loaded
         mock_project_service.load_project.assert_called_once_with("test_project")
@@ -122,7 +132,7 @@ class TestEntityGeneratorService:
         # Verify generated config
         assert result["type"] == "sql"
         assert result["data_source"] == "test_db"
-        assert result["query"] == "SELECT * FROM users"
+        assert result["query"] == "SELECT user_id, username, email FROM users"  # Updated to match actual query generation
         assert result["keys"] == ["user_id"]  # Primary key detected
         assert result["public_id"] == "users_id"
 
@@ -133,9 +143,10 @@ class TestEntityGeneratorService:
         """Test entity generation with custom entity name."""
         mock_project_service.load_project.return_value = mock_project
         mock_schema_service.get_table_schema.return_value = mock_table_schema
+        mock_schema_service.data_source_service.load_data_source.return_value = MagicMock()  # Return a mock DataSourceConfig
 
         result = await generator_service.generate_from_table(
-            project_name="test_project", data_source="test_db", table_name="users", entity_name="app_users"
+            project_name="test_project", data_source_key="test_db", table_name="users", entity_name="app_users"
         )
 
         # Verify custom entity name was used
@@ -147,26 +158,31 @@ class TestEntityGeneratorService:
 
     @pytest.mark.asyncio
     async def test_generate_from_table_with_schema_prefix(
-        self, generator_service, mock_project_service, mock_schema_service, mock_project, mock_table_schema
+        self, generator_service: EntityGeneratorService, mock_project_service, mock_schema_service, mock_project, mock_table_schema
     ):
         """Test entity generation with PostgreSQL schema prefix."""
         mock_project_service.load_project.return_value = mock_project
+        
+        # Update mock_table_schema to include schema_name
+        mock_table_schema.schema_name = "public"
         mock_schema_service.get_table_schema.return_value = mock_table_schema
+        mock_schema_service.data_source_service.load_data_source.return_value = MagicMock()  # Return a mock DataSourceConfig
 
         result = await generator_service.generate_from_table(
-            project_name="test_project", data_source="test_db", table_name="users", schema="public"
+            project_name="test_project", data_source_key="test_db", table_name="users", schema="public"
         )
 
         # Verify schema was passed to get_table_schema
         mock_schema_service.get_table_schema.assert_called_once_with("test_db.yml", "users", schema="public")
 
-        # Query should include schema prefix
-        assert result["query"] == "SELECT * FROM public.users"
+        # Query should include schema prefix (using the mocked qualify_name which returns "schema.table")
+        assert result["query"] == "SELECT user_id, username, email FROM public.users"
 
     @pytest.mark.asyncio
-    async def test_generate_from_table_no_primary_keys(self, generator_service, mock_project_service, mock_schema_service, mock_project):
+    async def test_generate_from_table_no_primary_keys(self, generator_service: EntityGeneratorService, mock_project_service, mock_schema_service, mock_project):
         """Test entity generation for table without primary keys."""
         mock_project_service.load_project.return_value = mock_project
+        mock_schema_service.data_source_service.load_data_source.return_value = MagicMock()  # Return a mock DataSourceConfig
 
         # Table schema with no primary keys
         table_schema = TableSchema(
@@ -194,17 +210,18 @@ class TestEntityGeneratorService:
         )
         mock_schema_service.get_table_schema.return_value = table_schema
 
-        result = await generator_service.generate_from_table(project_name="test_project", data_source="test_db", table_name="logs")
+        result = await generator_service.generate_from_table(project_name="test_project", data_source_key="test_db", table_name="logs")
 
         # Keys should be empty list
         assert result["keys"] == []
 
     @pytest.mark.asyncio
     async def test_generate_from_table_composite_primary_key(
-        self, generator_service, mock_project_service, mock_schema_service, mock_project
+        self, generator_service: EntityGeneratorService, mock_project_service, mock_schema_service, mock_project
     ):
         """Test entity generation for table with composite primary key."""
         mock_project_service.load_project.return_value = mock_project
+        mock_schema_service.data_source_service.load_data_source.return_value = MagicMock()  # Return a mock DataSourceConfig
 
         # Table schema with composite PK
         table_schema = TableSchema(
@@ -232,39 +249,41 @@ class TestEntityGeneratorService:
         )
         mock_schema_service.get_table_schema.return_value = table_schema
 
-        result = await generator_service.generate_from_table(project_name="test_project", data_source="test_db", table_name="user_roles")
+        result = await generator_service.generate_from_table(project_name="test_project", data_source_key="test_db", table_name="user_roles")
 
         # Both keys should be included
         assert result["keys"] == ["user_id", "role_id"]
 
     @pytest.mark.asyncio
-    async def test_generate_from_table_project_not_found(self, generator_service, mock_project_service):
+    async def test_generate_from_table_project_not_found(self, generator_service: EntityGeneratorService, mock_project_service):
         """Test error handling when project not found."""
         mock_project_service.load_project.side_effect = ResourceNotFoundError("Project 'nonexistent' not found")
 
         with pytest.raises(ResourceNotFoundError, match="Project 'nonexistent' not found"):
-            await generator_service.generate_from_table(project_name="nonexistent", data_source="test_db", table_name="users")
+            await generator_service.generate_from_table(project_name="nonexistent", data_source_key="test_db", table_name="users")
 
     @pytest.mark.asyncio
     async def test_generate_from_table_duplicate_entity_name(
-        self, generator_service, mock_project_service, mock_schema_service, mock_project, mock_table_schema
+        self, generator_service: EntityGeneratorService, mock_project_service, mock_schema_service, mock_project, mock_table_schema
     ):
         """Test error handling when entity name already exists."""
         mock_project_service.load_project.return_value = mock_project
         mock_schema_service.get_table_schema.return_value = mock_table_schema
+        mock_schema_service.data_source_service.load_data_source.return_value = MagicMock()  # Return a mock DataSourceConfig
 
         with pytest.raises(ResourceConflictError, match="Entity 'existing_entity' already exists"):
             await generator_service.generate_from_table(
-                project_name="test_project", data_source="test_db", table_name="users", entity_name="existing_entity"
+                project_name="test_project", data_source_key="test_db", table_name="users", entity_name="existing_entity"
             )
 
     @pytest.mark.asyncio
     async def test_generate_from_table_resolves_inline_data_source_dict(
-        self, generator_service, mock_project_service, mock_schema_service, mock_project, mock_table_schema
+        self, generator_service: EntityGeneratorService, mock_project_service, mock_schema_service, mock_project, mock_table_schema
     ):
         """Inline dict data sources should be passed through to schema introspection."""
         mock_project_service.load_project.return_value = mock_project
         mock_schema_service.get_table_schema.return_value = mock_table_schema
+        mock_schema_service.data_source_service.load_data_source.return_value = MagicMock()  # Return a mock DataSourceConfig
 
         # Inline dict config for the project data source
         mock_project.options["data_sources"]["test_db"] = {
@@ -276,7 +295,7 @@ class TestEntityGeneratorService:
             "user": "user",
         }
 
-        await generator_service.generate_from_table(project_name="test_project", data_source="test_db", table_name="users")
+        await generator_service.generate_from_table(project_name="test_project", data_source_key="test_db", table_name="users")
 
         mock_schema_service.get_table_schema.assert_called_once()
         args, kwargs = mock_schema_service.get_table_schema.call_args
@@ -287,13 +306,13 @@ class TestEntityGeneratorService:
 
     @pytest.mark.asyncio
     async def test_generate_from_table_missing_project_data_source_key_raises(
-        self, generator_service, mock_project_service, mock_schema_service, mock_project
+        self, generator_service: EntityGeneratorService, mock_project_service, mock_schema_service, mock_project
     ):
         """If the project does not define the requested data source key, raise a ResourceNotFoundError."""
         mock_project_service.load_project.return_value = mock_project
         mock_project.options["data_sources"].pop("test_db")
 
         with pytest.raises(ResourceNotFoundError, match="Data source 'test_db' not found"):
-            await generator_service.generate_from_table(project_name="test_project", data_source="test_db", table_name="users")
+            await generator_service.generate_from_table(project_name="test_project", data_source_key="test_db", table_name="users")
 
         mock_schema_service.get_table_schema.assert_not_called()

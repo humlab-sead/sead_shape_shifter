@@ -116,7 +116,7 @@ class TestSchemaIntrospectionService:
     async def test_get_tables_unsupported_driver(self, service):
         """Should raise error for unsupported driver."""
         csv_config = DataSourceConfig(name="test_csv", driver="csv", filename="test.csv", **{})
-        service.data_source_service.get_data_source = Mock(return_value=csv_config)
+        service.data_source_service.load_data_source = Mock(return_value=csv_config)
 
         with pytest.raises(SchemaIntrospectionError, match="not supported"):
             await service.get_tables("test_csv")
@@ -182,7 +182,7 @@ class TestSchemaIntrospectionService:
     async def test_cache_hit(self, service, postgres_config):
         """Should return cached results on subsequent calls."""
 
-        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
+        service.data_source_service.load_data_source = Mock(return_value=postgres_config)
 
         # Mock core tables response
         core_tables = {
