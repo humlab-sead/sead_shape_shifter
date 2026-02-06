@@ -102,7 +102,7 @@ class TestSchemaIntrospectionService:
     @pytest.mark.asyncio
     async def test_get_tables_not_found(self, service: SchemaIntrospectionService):
         """Should raise error when data source not found."""
-        service.data_source_service.get_data_source = Mock(return_value=None)
+        service.data_source_service.load_data_source = Mock(return_value=None)
 
         with pytest.raises(SchemaIntrospectionError) as exc_info:
             await service.get_tables("nonexistent")
@@ -143,7 +143,7 @@ class TestSchemaIntrospectionService:
             }
         )
 
-        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
+        service.data_source_service.load_data_source = Mock(return_value=postgres_config)
 
         # Mock the loader with both read_sql and get_table_row_count methods
         mock_loader_instance = Mock()
@@ -166,7 +166,7 @@ class TestSchemaIntrospectionService:
     @pytest.mark.asyncio
     async def test_preview_table_data_limit_constraint(self, service: SchemaIntrospectionService, postgres_config: DataSourceConfig):
         """Should enforce maximum limit of 100 rows."""
-        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
+        service.data_source_service.load_data_source = Mock(return_value=postgres_config)
 
         mock_loader_instance = Mock(load_table=AsyncMock(return_value=pd.DataFrame()), get_table_row_count=AsyncMock(return_value=100))
         mock_loader_class = Mock(return_value=mock_loader_instance)
@@ -258,7 +258,7 @@ class TestSchemaIntrospectionService:
             row_count=10,
         )
 
-        service.data_source_service.get_data_source = Mock(return_value=postgres_config)
+        service.data_source_service.load_data_source = Mock(return_value=postgres_config)
 
         with (
             patch.object(service, "create_loader_for_data_source", return_value=loader) as mock_create_loader,

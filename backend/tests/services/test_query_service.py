@@ -506,7 +506,7 @@ class TestQueryService:
     async def test_execute_query_data_source_not_found(self, service: QueryService):
         """Test execution with non-existent data source."""
         # Patch the service's data_source_service directly
-        service.data_source_service.get_data_source = MagicMock(return_value=None)
+        service.data_source_service.load_data_source = MagicMock(return_value=None)
 
         with pytest.raises(QueryExecutionError) as exc_info:
             await service.execute_query(data_source_name="nonexistent", query="SELECT 1")

@@ -53,6 +53,11 @@ class TestEntityGeneratorService:
                     "query": "SELECT * FROM existing",
                 }
             },
+            options={
+                "data_sources": {
+                    "test_db": "@include: test_db.yml",
+                }
+            },
         )
 
     @pytest.fixture
@@ -105,7 +110,7 @@ class TestEntityGeneratorService:
         mock_project_service.load_project.assert_called_once_with("test_project")
 
         # Verify schema was fetched
-        mock_schema_service.get_table_schema.assert_called_once_with("test_db", "users", schema=None)
+        mock_schema_service.get_table_schema.assert_called_once_with("test_db.yml", "users", schema=None)
 
         # Verify entity was added
         mock_project_service.add_entity_by_name.assert_called_once()
@@ -152,7 +157,7 @@ class TestEntityGeneratorService:
         )
 
         # Verify schema was passed to get_table_schema
-        mock_schema_service.get_table_schema.assert_called_once_with("test_db", "users", schema="public")
+        mock_schema_service.get_table_schema.assert_called_once_with("test_db.yml", "users", schema="public")
 
         # Query should include schema prefix
         assert result["query"] == "SELECT * FROM public.users"
@@ -249,3 +254,43 @@ class TestEntityGeneratorService:
             await generator_service.generate_from_table(
                 project_name="test_project", data_source="test_db", table_name="users", entity_name="existing_entity"
             )
+
+    @pytest.mark.asyncio
+    async def test_generate_from_table_resolves_inline_data_source_dict(
+        self, generator_service, mock_project_service, mock_schema_service, mock_project, mock_table_schema
+    ):
+        """Inline dict data sources should be passed through to schema introspection."""
+        mock_project_service.load_project.return_value = mock_project
+        mock_schema_service.get_table_schema.return_value = mock_table_schema
+
+        # Inline dict config for the project data source
+        mock_project.options["data_sources"]["test_db"] = {
+            "name": "inline_ds",
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "database": "db",
+            "user": "user",
+        }
+
+        await generator_service.generate_from_table(project_name="test_project", data_source="test_db", table_name="users")
+
+        mock_schema_service.get_table_schema.assert_called_once()
+        args, kwargs = mock_schema_service.get_table_schema.call_args
+        assert isinstance(args[0], dict)
+        assert args[0]["driver"] == "postgresql"
+        assert args[1] == "users"
+        assert kwargs.get("schema") is None
+
+    @pytest.mark.asyncio
+    async def test_generate_from_table_missing_project_data_source_key_raises(
+        self, generator_service, mock_project_service, mock_schema_service, mock_project
+    ):
+        """If the project does not define the requested data source key, raise a ResourceNotFoundError."""
+        mock_project_service.load_project.return_value = mock_project
+        mock_project.options["data_sources"].pop("test_db")
+
+        with pytest.raises(ResourceNotFoundError, match="Data source 'test_db' not found"):
+            await generator_service.generate_from_table(project_name="test_project", data_source="test_db", table_name="users")
+
+        mock_schema_service.get_table_schema.assert_not_called()

@@ -119,7 +119,7 @@ class QueryService:
 
         timeout = min(timeout, 300)  # Max 5 minutes
 
-        ds_cfg: api.DataSourceConfig | None = self.data_source_service.get_data_source(data_source_name)
+        ds_cfg: api.DataSourceConfig | None = self.data_source_service.load_data_source(data_source_name)
 
         if ds_cfg is None:
             raise QueryExecutionError(message=f"Data source '{data_source_name}' not found", data_source=data_source_name)
