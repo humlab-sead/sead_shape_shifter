@@ -1,0 +1,10 @@
+metadata:
+  name: bugs-test
+  type: shapeshifter-project
+  description: Project for bugs-test
+  version: 1.0.0
+  default_entity:
+entities: {}
+options:
+  data_sources:
+    bugsdata: '@include: bugscep-options.yml'
