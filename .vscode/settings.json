@@ -24,7 +24,7 @@
         "titleBar.inactiveBackground": "#44574099",
         "titleBar.inactiveForeground": "#e7e7e799",
         "editor.lineHighlightBackground": "#3a3a0a80",
-        "editor.lineHighlightBorder": "#ffcc0080"
+        // "editor.lineHighlightBorder": "#ffcc0080"
     },
     "yaml.keyOrdering": false,
     "yaml.format.enable": true,

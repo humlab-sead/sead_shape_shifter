@@ -107,4 +107,3 @@ class Project(BaseModel):
     def data_sources(self) -> dict[str, Any]:
         """Get data source configurations from options."""
         return self.options.get("data_sources", {}) or {}
-    

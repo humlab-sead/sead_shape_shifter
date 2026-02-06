@@ -76,7 +76,7 @@ async def preview_entity(
         # Extract entity_config from body if present
         # Frontend sends: {"entity_config": {...}}
         entity_config = body.get("entity_config") if body else None
-        
+
         result: PreviewResult = await preview_service.preview_entity(project_name, entity_name, limit, override_config=entity_config)
         return result
     except ValueError as e:
