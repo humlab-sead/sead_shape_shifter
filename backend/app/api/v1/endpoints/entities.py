@@ -50,7 +50,9 @@ class GenerateFromTableRequest(BaseModel):
     data_source: str = Field(..., description="Name of the data source")
     table_name: str = Field(..., description="Name of the table in the database")
     entity_name: str | None = Field(None, description="Entity name (defaults to table_name if not provided)")
-    schema_name: str | None = Field(None, alias="schema", description="Optional schema name (if database supports schemas, e.g. PostgreSQL)")
+    schema_name: str | None = Field(
+        None, alias="schema", description="Optional schema name (if database supports schemas, e.g. PostgreSQL)"
+    )
 
 
 # Endpoints

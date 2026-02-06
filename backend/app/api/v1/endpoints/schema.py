@@ -24,6 +24,7 @@ router = APIRouter(prefix="/data-sources", tags=["schema"])
 
 class DataSourceConfigRequest(BaseModel):
     """Request body for data source configuration."""
+
     config: dict[str, Any] = Field(..., description="Data source configuration dict")
 
 
@@ -65,13 +66,13 @@ async def list_tables_with_config(
 ) -> list[TableMetadata]:
     """
     List all tables in a data source using a resolved config dict.
-   
+
     This endpoint accepts a fully resolved data source configuration,
     useful when the config comes from a project with @include: directives.
 
     **Request Body**:
     - `config`: Data source configuration dictionary
-    
+
     **Query Parameters**:
     - `schema`: Optional schema name (if applicable)
 
@@ -131,6 +132,7 @@ async def get_table_schema(
 
 class TableSchemaRequest(BaseModel):
     """Request body for table schema with config."""
+
     config: dict[str, Any] = Field(..., description="Data source configuration dict")
     table_name: str = Field(..., description="Name of the table")
 
@@ -144,14 +146,14 @@ async def get_table_schema_with_config(
 ) -> TableSchema:
     """
     Get detailed schema for a table using a resolved config dict.
-    
+
     **Request Body**:
-    - `config`: Data source configuration dictionary  
+    - `config`: Data source configuration dictionary
     - `table_name`: Name of the table
-    
+
     **Query Parameters**:
     - `schema`: Optional schema name (if applicable)
-    
+
     **Returns**: Table schema with columns and metadata
     """
     logger.info(f"Getting schema for table {request.table_name} using provided config")

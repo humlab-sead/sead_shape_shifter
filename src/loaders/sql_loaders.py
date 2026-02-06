@@ -195,14 +195,20 @@ class SqlLoader(DataLoader):
     def qualify_name(self, *, schema: str | None, table: str) -> str:
         """Return fully qualified table name."""
         if schema:
-            return f'"{schema}"."{table}"'
-        return f'"{table}"'
+            return f"{self.quote_name(schema)}.{self.quote_name(table)}"
+        return self.quote_name(table)
+
+    def quote_name(self, name: str) -> str:
+        """Return quoted identifier."""
+        return f'"{name}"'
 
     async def load_table(
         self, *, table_name: str, limit: int | None = None, offset: int | None = None, **kwargs  # pylint: disable=unused-argument
     ) -> pd.DataFrame:
         """Load entire table as DataFrame."""
-        sql: str = f"select * from {table_name} {f'limit {limit}' if limit else ''} {f'offset {offset}' if offset else ''} ;"
+        sql: str = (
+            f"select * from {self.qualify_name(schema=None, table=table_name)} {f'limit {limit}' if limit else ''} {f'offset {offset}' if offset else ''} ;"
+        )
         data: pd.DataFrame = await self.read_sql(sql=sql)
         return data
 
@@ -713,12 +719,15 @@ class UCanAccessSqlLoader(SqlLoader):
         **kwargs,  # pylint: disable=unused-argument
     ) -> pd.DataFrame:
         """Load entire table as DataFrame."""
-        sql: str = f"select {f'top {limit}' if limit else ''} * from {table_name};"
+        sql: str = f"select {f'top {limit}' if limit else ''} * from {self.quote_name(table_name)};"
         data: pd.DataFrame = await self.read_sql(sql=sql)
         return data
 
     def qualify_name(self, *, schema: str | None, table: str) -> str:  # pylint: disable=unused-argument
         return f"[{table}]"
+
+    def quote_name(self, name: str) -> str:
+        return f"[{name}]"
 
     @contextmanager
     def _cursor(self, conn: jaydebeapi.Connection) -> Generator[Any, Any, None]:
@@ -869,4 +878,4 @@ class UCanAccessSqlLoader(SqlLoader):
 
     def get_test_query(self, table_name: str, limit: int) -> str:
         """Get a test query for the data source, if applicable."""
-        return f"SELECT TOP {limit} * FROM {table_name};"
+        return f"SELECT TOP {limit} * FROM {self.quote_name(table_name)};"

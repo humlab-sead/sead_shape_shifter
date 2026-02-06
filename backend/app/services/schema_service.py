@@ -83,22 +83,6 @@ class SchemaIntrospectionService:
         self.data_source_service: DataSourceService = DataSourceService(data_source_dir)
         self.cache: SchemaCache = SchemaCache(ttl_seconds=300)  # 5 minute cache
 
-    def _resolve_data_source_config(self, data_source_identifier: str | dict[str, Any]) -> api.DataSourceConfig | None:
-        """Resolve data source configuration from filename or dict.
-           If it's a dict, then assume it's already the config.
-           If it's a string, treat it as a filename and load from file.
-
-        Args:
-            data_source_identifier: Either a filename/name string or a resolved config dict
-
-        Returns:
-            DataSourceConfig or None if not found
-        """
-        if isinstance(data_source_identifier, dict):
-            return api.DataSourceConfig(name=data_source_identifier.get("name", "inline"), **data_source_identifier)
-
-        return self.data_source_service.get_data_source(data_source_identifier)
-
     def create_loader_for_data_source(self, ds_config: api.DataSourceConfig) -> SqlLoader:
         core_config: CoreDataSourceConfig = DataSourceMapper.to_core_config(ds_config)
 
