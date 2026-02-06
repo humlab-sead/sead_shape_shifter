@@ -86,7 +86,7 @@ class TestPreviewOverrideBug:
                 project_name="digidiggie-dev", entity_name="entries", limit=50, override_config=old_payload
             )
             print(f"Old payload succeeded unexpectedly: {result.total_rows_in_preview} rows")
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             print(f"Old payload failed as expected: {type(e).__name__}: {e}")
 
         # The NEW payload (after fix) - what buildEntityConfigFromFormData() produces
