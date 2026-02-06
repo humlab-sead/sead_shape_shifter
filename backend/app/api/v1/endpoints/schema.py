@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Query, status
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from backend.app.api.dependencies import get_schema_service
 from backend.app.exceptions import SchemaIntrospectionError
@@ -21,6 +22,11 @@ from backend.app.utils.exceptions import NotFoundError
 router = APIRouter(prefix="/data-sources", tags=["schema"])
 
 
+class DataSourceConfigRequest(BaseModel):
+    """Request body for data source configuration."""
+    config: dict[str, Any] = Field(..., description="Data source configuration dict")
+
+
 @router.get("/{name}/tables", response_model=list[TableMetadata], summary="List tables in data source")
 @handle_endpoint_errors
 async def list_tables(
@@ -32,7 +38,7 @@ async def list_tables(
     List all tables in a data source.
 
     **Path Parameters**:
-    - `name`: Data source identifier
+    - `name`: Data source filename or identifier
 
     **Query Parameters**:
     - `schema`: Optional schema name (PostgreSQL only, defaults to 'public')
@@ -50,23 +56,50 @@ async def list_tables(
     return tables
 
 
+@router.post("/tables", response_model=list[TableMetadata], summary="List tables using data source config")
+@handle_endpoint_errors
+async def list_tables_with_config(
+    request: DataSourceConfigRequest,
+    schema: Optional[str] = Query(None, description="Schema name (if applicable)"),
+    service: SchemaIntrospectionService = Depends(get_schema_service),
+) -> list[TableMetadata]:
+    """
+    List all tables in a data source using a resolved config dict.
+   
+    This endpoint accepts a fully resolved data source configuration,
+    useful when the config comes from a project with @include: directives.
+
+    **Request Body**:
+    - `config`: Data source configuration dictionary
+    
+    **Query Parameters**:
+    - `schema`: Optional schema name (if applicable)
+
+    **Returns**: List of table metadata
+    """
+    logger.info(f"Listing tables using provided config (driver: {request.config.get('driver')})")
+    tables: list[TableMetadata] = await service.get_tables(request.config, schema)
+    logger.info(f"Found {len(tables)} tables")
+    return tables
+
+
 @router.get("/{name}/tables/{table_name}/schema", response_model=TableSchema, summary="Get table schema")
 @handle_endpoint_errors
 async def get_table_schema(
     name: str,
     table_name: str,
-    schema: Optional[str] = Query(None, description="Schema name (PostgreSQL only)"),
+    schema: Optional[str] = Query(None, description="Schema name (if applicable)"),
     service: SchemaIntrospectionService = Depends(get_schema_service),
 ) -> TableSchema:
     """
     Get detailed schema information for a specific table.
 
     **Path Parameters**:
-    - `name`: Data source identifier
+    - `name`: Data source filename or identifier
     - `table_name`: Name of the table
 
     **Query Parameters**:
-    - `schema`: Optional schema name (PostgreSQL only, defaults to 'public')
+    - `schema`: Optional schema name (if applicable)
 
     **Returns**:
     - `table_name`: Table name
@@ -91,8 +124,39 @@ async def get_table_schema(
     - 500: Database query failed
     """
     logger.info(f"Getting schema for table {table_name} in {name}")
-    table_schema = await service.get_table_schema(name, table_name, schema)
+    table_schema: TableSchema = await service.get_table_schema(name, table_name, schema)
     logger.info(f"Retrieved schema for {table_name} with {len(table_schema.columns)} columns")
+    return table_schema
+
+
+class TableSchemaRequest(BaseModel):
+    """Request body for table schema with config."""
+    config: dict[str, Any] = Field(..., description="Data source configuration dict")
+    table_name: str = Field(..., description="Name of the table")
+
+
+@router.post("/tables/schema", response_model=TableSchema, summary="Get table schema using config")
+@handle_endpoint_errors
+async def get_table_schema_with_config(
+    request: TableSchemaRequest,
+    schema: Optional[str] = Query(None, description="Schema name (if applicable)"),
+    service: SchemaIntrospectionService = Depends(get_schema_service),
+) -> TableSchema:
+    """
+    Get detailed schema for a table using a resolved config dict.
+    
+    **Request Body**:
+    - `config`: Data source configuration dictionary  
+    - `table_name`: Name of the table
+    
+    **Query Parameters**:
+    - `schema`: Optional schema name (if applicable)
+    
+    **Returns**: Table schema with columns and metadata
+    """
+    logger.info(f"Getting schema for table {request.table_name} using provided config")
+    table_schema: TableSchema = await service.get_table_schema(request.config, request.table_name, schema)
+    logger.info(f"Retrieved schema for {request.table_name} with {len(table_schema.columns)} columns")
     return table_schema
 
 
@@ -101,7 +165,7 @@ async def get_table_schema(
 async def preview_table_data(
     name: str,
     table_name: str,
-    schema: Optional[str] = Query(None, description="Schema name (PostgreSQL only)"),
+    schema: Optional[str] = Query(None, description="Schema name (if applicable)"),
     limit: int = Query(50, ge=1, le=100, description="Maximum rows to return (1-100)"),
     offset: int = Query(0, ge=0, description="Number of rows to skip"),
     service: SchemaIntrospectionService = Depends(get_schema_service),
@@ -114,7 +178,7 @@ async def preview_table_data(
     - `table_name`: Name of the table
 
     **Query Parameters**:
-    - `schema`: Optional schema name (PostgreSQL only)
+    - `schema`: Optional schema name (if applicable)
     - `limit`: Maximum rows to return (1-100, default 50)
     - `offset`: Number of rows to skip (default 0)
 
@@ -163,7 +227,7 @@ async def get_type_mappings(
     - `table_name`: Table name
 
     **Query Parameters**:
-    - `schema`: PostgreSQL schema name (defaults to 'public')
+    - `schema`: Optional schema name (if applicable)
 
     **Returns**: Dictionary mapping column names to type suggestions with:
     - `suggested_type`: Recommended Shape Shifter type

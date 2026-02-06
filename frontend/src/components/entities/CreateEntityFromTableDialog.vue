@@ -102,6 +102,7 @@ import { ref, computed, watch } from 'vue'
 import yaml from 'js-yaml'
 import { schemaApi } from '@/api/schema'
 import { entitiesApi } from '@/api/entities'
+import { useProjectStore } from '@/stores/project'
 import type { TableMetadata, TableSchema } from '@/types/schema'
 
 const props = defineProps<{
@@ -114,6 +115,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   created: [entityName: string]
 }>()
+
+const projectStore = useProjectStore()
 
 // State
 const loadingTables = ref(false)
@@ -128,6 +131,36 @@ const selectedTableSchema = ref<TableSchema | null>(null)
 const internalDialog = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value),
+})
+
+// Resolve data source config from project
+const dataSourceConfig = computed(() => {
+  const project = projectStore.selectedProject
+  if (!project?.options?.data_sources) {
+    return props.dataSource // Fallback to name
+  }
+  
+  const dsConfig = project.options.data_sources[props.dataSource]
+  if (!dsConfig) {
+    return props.dataSource // Fallback to name
+  }
+  
+  // If it's already a resolved dict, return it
+  if (typeof dsConfig === 'object') {
+    return { ...dsConfig, name: props.dataSource }
+  }
+  
+  // If it's a string like "@include: file.yml", extract filename
+  if (typeof dsConfig === 'string') {
+    // Check for @include: directive
+    const includeMatch = dsConfig.match(/^@include:\s*(.+)$/)
+    if (includeMatch) {
+      return includeMatch[1].trim() // Return filename
+    }
+    return dsConfig
+  }
+  
+  return props.dataSource
 })
 
 const previewConfig = computed(() => {
@@ -155,7 +188,7 @@ async function loadTables() {
   error.value = null
 
   try {
-    tables.value = await schemaApi.listTables(props.dataSource)
+    tables.value = await schemaApi.listTables(dataSourceConfig.value)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load tables'
     tables.value = []
@@ -179,7 +212,11 @@ async function onTableSelected(tableName: string | null) {
   // Fetch table schema to get primary keys
   try {
     const schema = tables.value.find((t) => t.name === tableName)?.schema_name
-    selectedTableSchema.value = await schemaApi.getTableSchema(props.dataSource, tableName, schema ? { schema } : undefined)
+    selectedTableSchema.value = await schemaApi.getTableSchema(
+      dataSourceConfig.value,
+      tableName,
+      schema ? { schema } : undefined
+    )
   } catch (e) {
     console.warn('Failed to fetch table schema:', e)
     selectedTableSchema.value = null

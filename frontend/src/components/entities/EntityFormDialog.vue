@@ -417,10 +417,24 @@
           </v-btn>
         </template>
 
+        <!-- Save success indicator -->
+        <v-fade-transition>
+          <v-chip v-if="showSaveSuccess" color="success" size="small" prepend-icon="mdi-check-circle" class="ml-2">
+            Saved successfully
+          </v-chip>
+        </v-fade-transition>
+
         <v-spacer />
-        <v-btn variant="text" @click="handleCancel" :disabled="loading"> Cancel </v-btn>
-        <v-btn color="primary" variant="flat" :loading="loading" :disabled="!formValid" @click="handleSubmit">
-          {{ mode === 'create' ? 'Create' : 'Save' }}
+        <v-btn variant="text" @click="handleCancel" :disabled="loading"> Close </v-btn>
+        <v-btn v-if="mode === 'edit'" color="primary" variant="flat" :loading="loading" :disabled="!formValid" @click="handleSubmit">
+          <v-icon start>mdi-content-save</v-icon>
+          Save
+        </v-btn>
+        <v-btn v-if="mode === 'create'" color="primary" variant="flat" :loading="loading" :disabled="!formValid" @click="handleSubmit">
+          Create
+        </v-btn>
+        <v-btn v-if="mode === 'edit'" color="primary" variant="outlined" :loading="loading" :disabled="!formValid" @click="handleSubmitAndClose">
+          Save & Close
         </v-btn>
       </v-card-actions>
 
@@ -537,6 +551,8 @@ const formRef = ref()
 const formValid = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const showSaveSuccess = ref(false)
+let saveSuccessTimeout: ReturnType<typeof setTimeout> | null = null
 const suggestions = ref<any>(null)
 const showSuggestions = ref(false)
 const yamlContent = ref('')
@@ -1367,12 +1383,39 @@ async function handleSubmit() {
         name: formData.value.name,
         entity_data: entityData,
       })
+      // Close dialog after creating
+      emit('saved')
+      handleClose()
     } else {
       await update(formData.value.name, {
         entity_data: entityData,
       })
+      // Keep dialog open after saving in edit mode
+      emit('saved')
+      
+      // Show success indicator
+      showSaveSuccess.value = true
+      if (saveSuccessTimeout) clearTimeout(saveSuccessTimeout)
+      saveSuccessTimeout = setTimeout(() => {
+        showSaveSuccess.value = false
+      }, 3000)
     }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to save entity'
+  } finally {
+    loading.value = false
+  }
+}
 
+async function handleSubmitAndClose() {
+  loading.value = true
+  error.value = null
+
+  try {
+    const entityData = buildEntityConfigFromFormData()
+    await update(formData.value.name, {
+      entity_data: entityData,
+    })
     emit('saved')
     handleClose()
   } catch (err) {
@@ -1388,6 +1431,11 @@ function handleCancel() {
 
 function handleClose() {
   error.value = null
+  showSaveSuccess.value = false
+  if (saveSuccessTimeout) {
+    clearTimeout(saveSuccessTimeout)
+    saveSuccessTimeout = null
+  }
   formRef.value?.reset()
   dialogModel.value = false
 }
