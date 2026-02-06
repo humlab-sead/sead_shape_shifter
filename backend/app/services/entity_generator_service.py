@@ -9,7 +9,6 @@ from typing import Any
 
 from loguru import logger
 
-from backend.app.api.v1.endpoints import columns
 from backend.app.core.config import settings
 from backend.app.exceptions import ResourceConflictError, ResourceNotFoundError
 from backend.app.models.data_source import DataSourceConfig, TableSchema

@@ -206,8 +206,11 @@ class SqlLoader(DataLoader):
         self, *, table_name: str, limit: int | None = None, offset: int | None = None, **kwargs  # pylint: disable=unused-argument
     ) -> pd.DataFrame:
         """Load entire table as DataFrame."""
+        qualified_table_name: str = self.qualify_name(schema=kwargs.get("schema"), table=table_name)
+        limit_clause: str = f"LIMIT {limit}" if limit else ""
+        offset_clause: str = f"OFFSET {offset}" if offset else ""
         sql: str = (
-            f"select * from {self.qualify_name(schema=None, table=table_name)} {f'limit {limit}' if limit else ''} {f'offset {offset}' if offset else ''} ;"
+            f"select * from {qualified_table_name} {limit_clause} {offset_clause} ;"
         )
         data: pd.DataFrame = await self.read_sql(sql=sql)
         return data
