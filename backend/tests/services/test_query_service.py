@@ -134,7 +134,7 @@ class TestQueryExecution:
         mock_ds_config = DataSourceConfig(
             name="test_db", driver="postgresql", host="localhost", port=5432, database="testdb", username="testuser", **{}
         )
-        mock_ds_service = Mock(get_data_source=Mock(return_value=mock_ds_config))
+        mock_ds_service = Mock(load_data_source=Mock(return_value=mock_ds_config))
         return mock_ds_service
 
     def mock_read_sql(self, test_df: pd.DataFrame, mock_get_loader: Mock) -> AsyncMock:
@@ -322,7 +322,7 @@ class TestQueryService:
     def service(self) -> QueryService:
         """Create QueryService instance."""
         with patch("backend.app.services.query_service.DataSourceService") as mock_ds_service:
-            mock_ds_service.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds_service.return_value.load_data_source = MagicMock(return_value=MagicMock())
             return QueryService(data_source_service=mock_ds_service)
 
     @pytest.fixture
@@ -446,7 +446,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
@@ -468,7 +468,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
             mock_loader.inject_limit = MagicMock(side_effect=lambda q, w: f"{q} LIMIT {w}")
@@ -490,7 +490,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
             mock_loader.inject_limit = MagicMock(side_effect=lambda q, w: q)
@@ -534,7 +534,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: slow_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
@@ -559,7 +559,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: error_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
@@ -583,7 +583,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: empty_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
@@ -605,7 +605,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: null_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
@@ -625,7 +625,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: ts_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
@@ -647,7 +647,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: large_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 
@@ -668,7 +668,7 @@ class TestQueryService:
             patch("backend.app.services.query_service.DataLoaders.get") as mock_get_loader,
             patch("backend.app.services.query_service.DataSourceMapper") as mock_mapper,
         ):
-            mock_ds.return_value.get_data_source = MagicMock(return_value=MagicMock())
+            mock_ds.return_value.load_data_source = MagicMock(return_value=MagicMock())
             mock_get_loader.return_value = lambda data_source: mock_loader
             mock_mapper.to_core_config = MagicMock(return_value=MagicMock())
 

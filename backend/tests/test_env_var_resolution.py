@@ -178,7 +178,7 @@ class TestEnvironmentVariableResolution:
                 username="produser",
                 port=5432,
             )
-            with patch.object(service, "get_data_source", return_value=ds_cfg) as _:
+            with patch.object(service, "load_data_source", return_value=ds_cfg) as _:
 
                 # Mock config to return data source with env vars
 
