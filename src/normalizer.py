@@ -62,7 +62,7 @@ class ShapeShifter:
 
     async def resolve_source(self, table_cfg: TableConfig) -> pd.DataFrame:
         """Resolve the source DataFrame for the given entity based on its configuration."""
-
+        logger.debug(f"Resolving source for entity '{table_cfg.entity_name}' with config: {table_cfg}")
         loader: DataLoader | None = self.resolve_loader(table_cfg=table_cfg)
         if loader:
             # logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
