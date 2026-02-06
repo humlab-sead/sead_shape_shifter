@@ -372,19 +372,22 @@ class DataSourceConnectionRequest(BaseModel):
     source_filename: str = Field(..., description="Filename of the data source file (e.g., 'sead-options.yml')")
 
 
-@router.get("/projects/{name}/data-sources", response_model=dict[str, str])
+@router.get("/projects/{name}/data-sources", response_model=dict[str, str | dict[str, Any]])
 @handle_endpoint_errors
-async def get_project_data_sources(name: str) -> dict[str, str]:
+async def get_project_data_sources(name: str) -> dict[str, str | dict[str, Any]]:
     """
     Get all data sources connected to a project.
 
-    Returns a dict mapping data source names to their filenames (or inline project).
+    Returns a dict mapping data source names to their configurations.
+    Configurations can be either:
+    - String references: "@include: filename.yml"
+    - Inline objects: {"driver": "postgresql", "options": {...}}
 
     Args:
         name: Project name
 
     Returns:
-        Dict of source_name -> "@include: filename.yml" or inline project
+        Dict of source_name -> "@include: filename.yml" or inline configuration object
     """
     project: Project = get_project_service().load_project(name)
     data_sources = project.options.get("data_sources", {})

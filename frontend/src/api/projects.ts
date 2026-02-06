@@ -163,9 +163,13 @@ export const projectsApi = {
 
   /**
    * Get data sources connected to a project
+   * Returns a map of data source names to their configurations.
+   * Configurations can be either:
+   * - String references: "@include: filename.yml"
+   * - Inline objects: {driver: "postgresql", options: {...}}
    */
-  getDataSources: async (name: string): Promise<Record<string, string>> => {
-    return apiRequest<Record<string, string>>({
+  getDataSources: async (name: string): Promise<Record<string, string | Record<string, any>>> => {
+    return apiRequest<Record<string, string | Record<string, any>>>({
       method: 'GET',
       url: `/projects/${name}/data-sources`,
     })

@@ -481,10 +481,10 @@ describe('projectsApi', () => {
   })
 
   describe('getDataSources', () => {
-    it('should get data sources connected to a project', async () => {
+    it('should get data sources connected to a project with string references', async () => {
       const mockDataSources: Record<string, string> = {
-        'postgres-main': 'postgres-main.yml',
-        'csv-imports': 'csv-imports.yml',
+        'postgres-main': '@include: postgres-main.yml',
+        'csv-imports': '@include: csv-imports.yml',
       }
 
       vi.mocked(apiRequest).mockResolvedValue(mockDataSources)
@@ -495,6 +495,27 @@ describe('projectsApi', () => {
         method: 'GET',
         url: '/projects/test-project/data-sources',
       })
+      expect(result).toEqual(mockDataSources)
+      expect(Object.keys(result)).toHaveLength(2)
+    })
+
+    it('should get data sources with inline configurations', async () => {
+      const mockDataSources: Record<string, string | Record<string, any>> = {
+        'postgres-main': {
+          driver: 'postgresql',
+          options: {
+            host: 'localhost',
+            port: 5432,
+            dbname: 'testdb'
+          }
+        },
+        'csv-imports': '@include: csv-imports.yml',
+      }
+
+      vi.mocked(apiRequest).mockResolvedValue(mockDataSources)
+
+      const result = await projectsApi.getDataSources('test-project')
+
       expect(result).toEqual(mockDataSources)
       expect(Object.keys(result)).toHaveLength(2)
     })
