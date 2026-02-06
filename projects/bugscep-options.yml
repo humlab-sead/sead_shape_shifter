@@ -1,0 +1,4 @@
+driver: ucanaccess
+options:
+  filename: ./projects/bugsdata_20250608.mdb
+  ucanaccess_dir: lib/ucanaccess
