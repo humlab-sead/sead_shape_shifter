@@ -28,9 +28,7 @@
  - [] TODO: Consnider moving specifications/base/get_entity_columns it to TableConfig
             Note that columns avaliable at a specifik FK's linking includes result columns from previous linked FKs.
 
-APPENDIX
-
-# TODO: #108 Tiny DSL Expression Support in extra_columns DETAILS
+### TODO: #108 Tiny DSL Expression Support in extra_columns DETAILS
 
 The "extra_colums" key in an entity's specification provides a way of adding new columns to the resulting DataFrame. The extra_columns value is a dict, where each key is the name of the new column, and the value is the initial value of the new column. The value can be a constant, or anoother column in the source or DataFrame.
 
@@ -39,7 +37,7 @@ It would be useful to support simple expressions in the key's value, e.g. create
 Please suggest a YAML-notation for the expression in the extra-columns section for this feature, and how it could be implemented.. Try to make this feature simple but useful.
 
 
-## Feature Idea
+Feature Idea
 
 Add expressions under extra_columns using a tiny DSL in YAML, e.g.
 ```yml
@@ -49,13 +47,13 @@ extra_columns:
 ```
 where {row.X} refers to source/df fields and helpers (like concat or slicing) map to Pandas-friendly Python.
 
-## Implementation path:
+Implementation path:
  - Interpret the string by formatting it inside a sandboxed helper that injects the current pandas.Series (row) or even the whole DataFrame.
  - For column-wise expressions, leverage df.eval/df.assign after prepping a safe namespace with allowed functions (concat, upper, etc.).
  - For more complex transformations, allow users to specify "lambda df: df['a'] + df['b']" (evaluated via eval with a restricted globals containing only helpers and pd).
 - Keep simple by defaulting to expressions evaluated per-row via df.eval or df.assign, with ability to refer to any existing column.
 
-## Next steps:
+Next steps:
 
 1. Decide whether expressions should be evaluated row-by-row (via df.assign(extra=...)) or on the whole DataFrame.
 2. Implement parsing/evaluation in the pipeline step where extra_columns currently get applied (likely near the Filter/Link stage).
@@ -82,78 +80,61 @@ Backend implementation: parse the string when it’s added to the DataFrame. If 
 
 Keep helper mappings simple so non-technical users can combine columns with string functions; expose more via extending the compiler (e.g., additional helpers for dates or math).
 
----
 
-# AI Assessment of TODO Items (Generated 2026-01-16)
-
----
-
-## 🔥 HIGH PRIORITY - Quick Wins
-
-### #124 Reconciliation editor extra_columns complaint - **Easy Fix**
+### TODO: #124 Reconciliation editor extra_columns complaint - **Easy Fix**
 - The reconciliation editor validation is likely too strict
 - Simple fix: Update schema/validation to allow `extra_columns` property
 - **Effort: 1-2 hours** | **Value: High** (removes user friction)
 ---
 
-## 💡 MEDIUM PRIORITY - Moderate Value
-
-### Generate default reconciliation YAML from manifest - **Smart Feature**
+### TODO: Generate default reconciliation YAML from manifest - **Smart Feature**
 - Calls `/reconcile` endpoint and scaffolds YAML
 - **Effort: 6-8 hours** | **Value: High** (user productivity)
 - Reconciliation system already exists with full implementation
 
-### #68 Add "finally" cleanup step - **Pipeline Feature**
+### TODO: #68 Add "finally" cleanup step - **Pipeline Feature**
 - Drops intermediate tables/columns after processing
 - **Effort: 8-12 hours** | **Value: Medium** (clean output)
 - Fits naturally after Store phase
 
----
-
-## 🎯 WORTH CONSIDERING - Strategic Features
-
-### #108 Tiny DSL for extra_columns - **HIGH VALUE but Complex**
+### TODO: #108 Tiny DSL for extra_columns - **HIGH VALUE but Complex**
 - Detailed spec already exists in TODO.md
 - Two-tier approach is smart: `=concat(...)` for users, `expr:...` for power users
 - **Effort: 2-3 weeks** | **Value: Very High** (major feature)
 - **Recommendation: Phase 1 = Just `expr:` support (1 week), Phase 2 = DSL compiler (2 weeks)**
 
-### #66 Transformations section (toWGS84, etc.) - **Data Quality Feature**
+### TODO: #66 Transformations section (toWGS84, etc.) - **Data Quality Feature**
 - Coordinate transformations, case normalization, etc.
 - **Effort: 2-3 weeks** | **Value: High for geo data**
 - Consider using existing libraries (pyproj for coords)
 
-### #69 Add "parent" property to entities - **Hierarchical Data**
+### TODO: #69 Add "parent" property to entities - **Hierarchical Data**
 - Useful for nested structures (site → feature → sample)
 - **Effort: 1-2 weeks** | **Value: Medium** (depends on use cases)
 
-### #67 String concatenation in extra_columns - **Subset of #108**
+### TODO: #67 String concatenation in extra_columns - **Subset of #108**
 - **Recommendation: Skip if doing #108 DSL, otherwise quick win**
 - **Effort: 2-3 days** | **Value: Medium**
 
-### Duplicate existing configuration - **User Convenience**
+### TODO: Duplicate existing configuration - **User Convenience**
 - Copy project with new name
 - **Effort: 2-3 hours** | **Value: Medium**
 
-### Add optional types for entity fields - **Type Safety**
+### TODO: Add optional types for entity fields - **Type Safety**
 - Schema validation + conversions in extra_columns
 - **Effort: 1-2 weeks** | **Value: Medium** (better error messages)
 
----
-
-## ⚠️ LOW PRIORITY / DEFER
-
-### Improve multiuser support - **Complex Feature**
+### TODO: Improve multiuser support - **Complex Feature**
 - Requires conflict resolution, locking, real-time sync
 - **Effort: 4-6 weeks** | **Value: Low** (unless multiple concurrent users)
 - **Recommendation: Defer unless actual need arises**
 
-### Add more reconciliation entity types - **Domain-Specific**
+### TODO: Add more reconciliation entity types - **Domain-Specific**
 - Geonames, RAÄ, etc.
 - **Effort: Varies** | **Value: Depends on user base**
 - **Recommendation: Add on demand, not preemptively**
 
-### Improve UX suggestions when editing entity - **Context-Aware Editor**
+### TODO: Improve UX suggestions when editing entity - **Context-Aware Editor**
 - Show available tables/columns from data source
 - **Effort: 2-3 weeks** | **Value: High for new users**
 - Could integrate with existing YAML intelligence
@@ -161,18 +142,15 @@ Keep helper mappings simple so non-technical users can combine columns with stri
 
 **Bottom line:** Focus on Phase 1 (bugs), then tackle #108 DSL in two phases. The extra_columns DSL is your highest-value unimplemented feature based on the detailed spec you've already written.
 
-# TODO: #174 Upload Excel files to data source directory
-
 Add capability to upload Excel files (.xls, .xlsx) to the data source files directory defined by SHAPE_SHIFTER_DATA_SOURCE_FILES_DIR in the .env file. The uploaded Excel files should be accessible for use in entity configurations within the Shape Shifter application.
 
-TODO: #181 Drop duplicates of "site" entity fails FD validation
+### TODO: #181 Drop duplicates of "site" entity fails FD validation
 
-
-[] TODO: Introduce entity type "file" for entities based on files,
+### TODO: Introduce entity type "file" for entities based on files,
 Type of files could be csv, excel, json, xml etc, and specified in e.g a "file_type" field.
 This would give a more plugin friendly way of adding file based entities.
 
-- [x] TODO: #202 Improve FK editing user experience
+### TODO: #202 Improve FK editing user experience
 
 We can improve the user experience when editing FKs. Currently, thw system offers no assistance when entering local and remote FK. 
 
@@ -183,19 +161,22 @@ A special case is if the user wants to use a "@value"-directive to point to e.g.
 One could also for flexibility allow the user to enter arbitrary YAML-path i.e. a åath that doesn't exist in the picklist.
 If a "@value" is used, that can be the only value, and should be a string (not a list). This will be resolved at runtime to the actual column(s).
 
-
 The "auto_detect_columns", i believe, is the only attibute in the entity workflow that is changed during the normalization. 
 
-FIXME: Data Source in Schema Explorer is empty
+### FIXME: Data Source in Schema Explorer is empty
 Data Source in Schema Explorer is empty unless Data Sources tab is visited first. This is because the data sources are only loaded into the store when visiting the Data Sources tab. We should consider loading data sources on app startup to avoid this issue.
 
-TODO: #213 Add a convenience function for copying an SQL select statement to the clipboard for selected entity in schema explorer. This is useful when a user want to create an SQL select in the entity editor based on a table in the specified data source. This could also possibly be extended to a "picker" in the entity editor that allows users to select a table from the data source and automatically generate a select statement for that table.
+### TODO: #213 Copy SQL feature from Schema Explorer.
+Add a convenience function for copying an SQL select statement to the clipboard for selected entity in schema explorer. This is useful when a user want to create an SQL select in the entity editor based on a table in the specified data source. This could also possibly be extended to a "picker" in the entity editor that allows users to select a table from the data source and automatically generate a select statement for that table.
 
-TODO: Add a "Test Query" button in the entity editor that opens a modal with a Monaco Editor for SQL editing, allowing users to test SQL queries against the data source directly from the entity editor. This would provide a more integrated experience for users working with SQL entities.
+### TODO: Add a "Test Query" button in the entity editor.
+Should open a modal with a Monaco Editor for SQL editing, allowing users to test SQL queries against the data source directly from the entity editor. This would provide a more integrated experience for users working with SQL entities.
 
-TODO: Consider not closing the entity editor modal when clicking "Save" to allow users to make multiple edits without having to reopen the editor each time. This could be implemented as a user preference or a toggle in the UI.
+### TODO: Do not close Entity Editor on Save
 
-TODO:Allow #217 a user to create an entity of type "sql" by specifying a data source, a table in that data source, and an entity name. The new entity would be initialized with:
+Consider not closing the entity editor modal when clicking "Save" to allow users to make multiple edits without having to reopen the editor each time. This could be implemented as a user preference or a toggle in the UI.
+
+### TODO: #217 Allow a user to create an entity of type "sql" by specifying a data source, a table in that data source, and an entity name. The new entity would be initialized with:
 - type: sql
 - data_source: data-source
 - query: select * from table-name
