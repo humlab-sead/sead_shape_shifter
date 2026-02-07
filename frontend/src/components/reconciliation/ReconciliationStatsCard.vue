@@ -221,11 +221,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ReconciliationPreviewRow, EntityReconciliationSpec } from '@/types'
+import type { ReconciliationPreviewRow, EntityMapping } from '@/types'
 
 interface Props {
   previewData: ReconciliationPreviewRow[]
-  entitySpec: EntityReconciliationSpec | null
+  entitySpec: EntityMapping | null
 }
 
 const props = defineProps<Props>()

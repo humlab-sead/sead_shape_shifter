@@ -22,7 +22,7 @@ class ReconciliationRemote(BaseModel):
     columns: list[str] = Field(default_factory=list, description="Additional columns for display/matching")
 
 
-class ReconciliationMapping(BaseModel):
+class EntityMappingItem(BaseModel):
     """Single reconciliation mapping entry linking source value to SEAD ID."""
 
     source_value: Any = Field(..., description="Source field value")
@@ -35,8 +35,12 @@ class ReconciliationMapping(BaseModel):
     last_modified: str | None = Field(None, description="Last modification timestamp")
 
 
-class EntityReconciliationSpec(BaseModel):
-    """Reconciliation specification for a single target field."""
+class EntityMapping(BaseModel):
+    """Reconciliation specification and mappings for a single target field within a project.
+    Source is the data used for reconciliation (either entity preview or custom query),
+    Property_mappings define how to map remote (OpenRefine) service properties to columns in `source`
+    Remote specifies the OpenRefine entity type and additional columns, and mapping contains the individual reconciled items.
+    """
 
     source: str | ReconciliationSource | None = Field(
         None, description="Data source: None (entity preview), entity name (string), or custom query (ReconciliationSource)"
@@ -45,7 +49,7 @@ class EntityReconciliationSpec(BaseModel):
         default_factory=dict,
         description="Service property ID -> source column name mapping (e.g., {'latitude': 'lat', 'longitude': 'lon'})",
     )
-    remote: ReconciliationRemote = Field(..., description="Remote SEAD entity specification")
+    remote: ReconciliationRemote = Field(..., description="Remote OpenRefine entity specification")
     auto_accept_threshold: float = Field(
         0.95,
         ge=0.0,
@@ -58,17 +62,47 @@ class EntityReconciliationSpec(BaseModel):
         le=1.0,
         description="Score threshold for flagging review needed (default 70%)",
     )
-    mapping: list[ReconciliationMapping] = Field(default_factory=list, description="Manual and auto-generated mappings")
+    mapping: list[EntityMappingItem] = Field(default_factory=list, description="Manual and auto-generated mappings")
 
 
-class ReconciliationConfig(BaseModel):
-    """Complete reconciliation configuration for all entities."""
+class EntityMappingRegistry(BaseModel):
+    """Complete entity mapping registry for all entities."""
 
     version: str = Field("2.0", description="Reconciliation format version")
     service_url: str = Field(..., description="Base URL of OpenRefine reconciliation service")
-    entities: dict[str, dict[str, EntityReconciliationSpec]] = Field(
-        default_factory=dict, description="Entity name -> target field -> reconciliation spec"
-    )
+    entities: dict[str, dict[str, EntityMapping]] = Field(default_factory=dict, description="Entity name -> target field -> mapping spec")
+
+
+class EntityMappingListItem(BaseModel):
+    """Flattened specification for list view."""
+
+    entity_name: str = Field(..., description="Entity name")
+    target_field: str = Field(..., description="Target field name")
+    source: str | ReconciliationSource | None = Field(None, description="Data source specification")
+    property_mappings: dict[str, str] = Field(default_factory=dict, description="Property mappings")
+    remote: ReconciliationRemote = Field(..., description="Remote entity configuration")
+    auto_accept_threshold: float = Field(..., description="Auto-accept threshold")
+    review_threshold: float = Field(..., description="Review threshold")
+    mapping_count: int = Field(..., description="Number of mappings")
+    property_mapping_count: int = Field(..., description="Number of property mappings")
+
+
+class EntityMappingCreateRequest(BaseModel):
+    """Request to create new specification."""
+
+    entity_name: str = Field(..., description="Entity name (must exist in project)")
+    target_field: str = Field(..., description="Target field name")
+    spec: EntityMapping = Field(..., description="Reconciliation specification")
+
+
+class EntityMappingUpdateRequest(BaseModel):
+    """Request to update specification (excludes entity/target/mapping)."""
+
+    source: str | ReconciliationSource | None = Field(None, description="Data source specification")
+    property_mappings: dict[str, str] = Field(default_factory=dict, description="Property mappings")
+    remote: ReconciliationRemote = Field(..., description="Remote entity configuration")
+    auto_accept_threshold: float = Field(0.95, ge=0.0, le=1.0, description="Auto-accept threshold")
+    review_threshold: float = Field(0.70, ge=0.0, le=1.0, description="Review threshold")
 
 
 # OpenRefine API response models
@@ -106,38 +140,3 @@ class AutoReconcileResult(BaseModel):
     unmatched: int = Field(..., description="Count with no good matches")
     total: int = Field(..., description="Total entities processed")
     candidates: dict[str, list[ReconciliationCandidate]] = Field(default_factory=dict, description="Source key -> candidates mapping")
-
-
-# Specification management models
-
-
-class SpecificationListItem(BaseModel):
-    """Flattened specification for list view."""
-
-    entity_name: str = Field(..., description="Entity name")
-    target_field: str = Field(..., description="Target field name")
-    source: str | ReconciliationSource | None = Field(None, description="Data source specification")
-    property_mappings: dict[str, str] = Field(default_factory=dict, description="Property mappings")
-    remote: ReconciliationRemote = Field(..., description="Remote entity configuration")
-    auto_accept_threshold: float = Field(..., description="Auto-accept threshold")
-    review_threshold: float = Field(..., description="Review threshold")
-    mapping_count: int = Field(..., description="Number of mappings")
-    property_mapping_count: int = Field(..., description="Number of property mappings")
-
-
-class SpecificationCreateRequest(BaseModel):
-    """Request to create new specification."""
-
-    entity_name: str = Field(..., description="Entity name (must exist in project)")
-    target_field: str = Field(..., description="Target field name")
-    spec: EntityReconciliationSpec = Field(..., description="Reconciliation specification")
-
-
-class SpecificationUpdateRequest(BaseModel):
-    """Request to update specification (excludes entity/target/mapping)."""
-
-    source: str | ReconciliationSource | None = Field(None, description="Data source specification")
-    property_mappings: dict[str, str] = Field(default_factory=dict, description="Property mappings")
-    remote: ReconciliationRemote = Field(..., description="Remote entity configuration")
-    auto_accept_threshold: float = Field(0.95, ge=0.0, le=1.0, description="Auto-accept threshold")
-    review_threshold: float = Field(0.70, ge=0.0, le=1.0, description="Review threshold")

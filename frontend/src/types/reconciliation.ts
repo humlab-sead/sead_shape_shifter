@@ -13,7 +13,7 @@ export interface ReconciliationRemote {
   columns?: string[] // Additional columns for display/matching
 }
 
-export interface ReconciliationMapping {
+export interface EntityMappingItem {
   source_value: any // Single value instead of array
   sead_id: number
   confidence?: number
@@ -23,19 +23,19 @@ export interface ReconciliationMapping {
   will_not_match?: boolean
 }
 
-export interface EntityReconciliationSpec {
+export interface EntityMapping {
   source?: string | ReconciliationSource | null // Entity name, custom query, or null for default
   property_mappings: Record<string, string> // property_id -> source_column
   remote: ReconciliationRemote
   auto_accept_threshold: number
   review_threshold: number
-  mapping: ReconciliationMapping[]
+  mapping: EntityMappingItem[]
 }
 
-export interface ReconciliationConfig {
+export interface EntityMappingRegistry {
   version: string // Format version (e.g., "2.0")
   service_url: string
-  entities: Record<string, Record<string, EntityReconciliationSpec>> // entity_name -> target_field -> spec
+  entities: Record<string, Record<string, EntityMapping>> // entity_name -> target_field -> spec
 }
 
 export interface ReconciliationCandidate {
@@ -67,7 +67,7 @@ export interface ReconciliationPreviewRow {
 
 // Specification management types
 
-export interface SpecificationListItem {
+export interface EntityMappingListItem {
   entity_name: string
   target_field: string
   source?: string | ReconciliationSource | null
@@ -79,13 +79,13 @@ export interface SpecificationListItem {
   property_mapping_count: number
 }
 
-export interface SpecificationCreateRequest {
+export interface EntityMappingCreateRequest {
   entity_name: string
   target_field: string
-  spec: EntityReconciliationSpec
+  spec: EntityMapping
 }
 
-export interface SpecificationUpdateRequest {
+export interface EntityMappingUpdateRequest {
   source?: string | ReconciliationSource | null
   property_mappings: Record<string, string>
   remote: ReconciliationRemote

@@ -13,18 +13,18 @@ from pydantic import ValidationError
 
 from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
-from backend.app.core.operation_manager import operation_manager
+from backend.app.core.operation_manager import OperationProgress, operation_manager
 from backend.app.core.state_manager import get_app_state_manager
 from backend.app.models.reconciliation import (
     AutoReconcileResult,
-    EntityReconciliationSpec,
+    EntityMapping,
     ReconciliationCandidate,
-    ReconciliationConfig,
-    SpecificationCreateRequest,
-    SpecificationListItem,
-    SpecificationUpdateRequest,
+    EntityMappingRegistry,
+    EntityMappingCreateRequest,
+    EntityMappingListItem,
+    EntityMappingUpdateRequest,
 )
-from backend.app.services.reconciliation_service import ReconciliationService
+from backend.app.services.reconciliation import ReconciliationService
 from backend.app.utils.error_handlers import handle_endpoint_errors
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 
@@ -68,38 +68,38 @@ async def get_reconciliation_service_manifest(service: ReconciliationService = D
 
 @router.get("/projects/{project_name}/reconciliation")
 @handle_endpoint_errors
-async def get_reconciliation_config(
+async def get_entity_mapping_registry(
     project_name: str, service: ReconciliationService = Depends(get_reconciliation_service)
-) -> ReconciliationConfig:
+) -> EntityMappingRegistry:
     """
-    Get reconciliation configuration for a project.
+    Get entity mapping registry for a project.
 
-    Returns the reconciliation spec including entity mappings and settings.
+    Returns the entity mapping registry including entity mappings and settings.
     """
-    return service.load_reconciliation_config(project_name)
+    return service.mapping_manager.load_registry(project_name)
 
 
 @router.put("/projects/{project_name}/reconciliation")
 @handle_endpoint_errors
-async def update_reconciliation_config(
+async def update_entity_mapping_registry(
     project_name: str,
-    recon_config: ReconciliationConfig,
+    recon_config: EntityMappingRegistry,
     service: ReconciliationService = Depends(get_reconciliation_service),
-) -> ReconciliationConfig:
-    """Update entire reconciliation configuration."""
-    service.save_reconciliation_config(project_name, recon_config)
+) -> EntityMappingRegistry:
+    """Update entire entity mapping registry."""
+    service.mapping_manager.save_registry(project_name, recon_config)
     return recon_config
 
 
 @router.put("/projects/{project_name}/reconciliation/raw")
 @handle_endpoint_errors
-async def update_reconciliation_config_raw(
+async def update_entity_mapping_registry_raw(
     project_name: str,
     yaml_content: str = Body(..., media_type="text/plain"),
     service: ReconciliationService = Depends(get_reconciliation_service),
-) -> ReconciliationConfig:
+) -> EntityMappingRegistry:
     """
-    Update reconciliation configuration from raw YAML content.
+    Update entity mapping registry from raw YAML content.
 
     Parses the YAML content, validates it, and saves to the project's reconciliation file.
     """
@@ -109,16 +109,16 @@ async def update_reconciliation_config_raw(
         config_dict = pyyaml.safe_load(yaml_content)
 
         # Validate against model
-        recon_config = ReconciliationConfig(**config_dict)
+        recon_config = EntityMappingRegistry(**config_dict)
 
         # Save
-        service.save_reconciliation_config(project_name, recon_config)
+        service.mapping_manager.save_registry(project_name, recon_config)
 
         return recon_config
     except pyyaml.YAMLError as e:
         raise BadRequestError(f"Invalid YAML: {str(e)}") from e
     except ValidationError as e:
-        raise BadRequestError(f"Invalid reconciliation configuration: {str(e)}") from e
+        raise BadRequestError(f"Invalid entity mapping registry: {str(e)}") from e
 
 
 @router.get("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/preview")
@@ -163,21 +163,21 @@ async def auto_reconcile_entity(
         Dictionary with operation_id for tracking progress
     """
     # Load reconciliation config
-    recon_config: ReconciliationConfig = service.load_reconciliation_config(project_name)
+    mapping_registry: EntityMappingRegistry = service.mapping_manager.load_registry(project_name)
 
-    if entity_name not in recon_config.entities or target_field not in recon_config.entities[entity_name]:
-        raise NotFoundError(f"No reconciliation spec for entity '{entity_name}' target '{target_field}'")
+    if entity_name not in mapping_registry.entities or target_field not in mapping_registry.entities[entity_name]:
+        raise NotFoundError(f"No reconciliation registry for entity '{entity_name}' target '{target_field}'")
 
-    entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name][target_field]
+    entity_mapping: EntityMapping = mapping_registry.entities[entity_name][target_field]
 
     # Update threshold if provided
-    if threshold != entity_spec.auto_accept_threshold:
-        entity_spec.auto_accept_threshold = threshold
-    if review_threshold is not None and review_threshold != entity_spec.review_threshold:
-        entity_spec.review_threshold = review_threshold
+    if threshold != entity_mapping.auto_accept_threshold:
+        entity_mapping.auto_accept_threshold = threshold
+    if review_threshold is not None and review_threshold != entity_mapping.review_threshold:
+        entity_mapping.review_threshold = review_threshold
 
     # Persist updated thresholds even if reconciliation is blocked/fails.
-    service.save_reconciliation_config(project_name, recon_config)
+    service.mapping_manager.save_registry(project_name, mapping_registry)
 
     if get_app_state_manager().is_dirty(project_name):
         raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
@@ -197,7 +197,7 @@ async def auto_reconcile_entity(
                 project_name=project_name,
                 entity_name=entity_name,
                 target_field=target_field,
-                entity_spec=entity_spec,
+                entity_mapping=entity_mapping,
                 operation_id=operation_id,
             )
         except Exception as e:  # pylint: disable=broad-except
@@ -222,7 +222,7 @@ async def get_operation_progress(operation_id: str) -> dict[str, Any]:
     Returns:
         Progress information
     """
-    progress = operation_manager.get_progress(operation_id)
+    progress: OperationProgress | None = operation_manager.get_progress(operation_id)
     if not progress:
         raise NotFoundError(f"Operation {operation_id} not found")
 
@@ -240,7 +240,7 @@ async def stream_operation_progress(operation_id: str) -> StreamingResponse:
     Returns:
         SSE stream of progress updates
     """
-    progress = operation_manager.get_progress(operation_id)
+    progress: OperationProgress | None = operation_manager.get_progress(operation_id)
     if not progress:
         raise NotFoundError(f"Operation {operation_id} not found")
 
@@ -248,7 +248,7 @@ async def stream_operation_progress(operation_id: str) -> StreamingResponse:
         """Generate SSE events for operation progress."""
         try:
             while True:
-                progress = operation_manager.get_progress(operation_id)
+                progress: OperationProgress | None = operation_manager.get_progress(operation_id)
                 if not progress:
                     break
 
@@ -292,7 +292,7 @@ async def cancel_operation(operation_id: str) -> dict[str, str]:
     Returns:
         Cancellation status
     """
-    success = operation_manager.cancel_operation(operation_id)
+    success: bool = operation_manager.cancel_operation(operation_id)
     if not success:
         raise NotFoundError(f"Operation {operation_id} not found")
 
@@ -327,21 +327,21 @@ async def auto_reconcile_entity_sync(
         AutoReconcileResult with counts and candidates
     """
     # Load reconciliation config
-    recon_config: ReconciliationConfig = service.load_reconciliation_config(project_name)
+    mapping_registry: EntityMappingRegistry = service.mapping_manager.load_registry(project_name)
 
-    if entity_name not in recon_config.entities or target_field not in recon_config.entities[entity_name]:
-        raise NotFoundError(f"No reconciliation spec for entity '{entity_name}' target '{target_field}'")
+    if entity_name not in mapping_registry.entities or target_field not in mapping_registry.entities[entity_name]:
+        raise NotFoundError(f"No reconciliation registry for entity '{entity_name}' target '{target_field}'")
 
-    entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name][target_field]
+    entity_mapping: EntityMapping = mapping_registry.entities[entity_name][target_field]
 
     # Update threshold if provided
-    if threshold != entity_spec.auto_accept_threshold:
-        entity_spec.auto_accept_threshold = threshold
-    if review_threshold is not None and review_threshold != entity_spec.review_threshold:
-        entity_spec.review_threshold = review_threshold
+    if threshold != entity_mapping.auto_accept_threshold:
+        entity_mapping.auto_accept_threshold = threshold
+    if review_threshold is not None and review_threshold != entity_mapping.review_threshold:
+        entity_mapping.review_threshold = review_threshold
 
     # Persist updated thresholds even if reconciliation is blocked/fails.
-    service.save_reconciliation_config(project_name, recon_config)
+    service.mapping_manager.save_registry(project_name, mapping_registry)
 
     if get_app_state_manager().is_dirty(project_name):
         raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
@@ -351,7 +351,7 @@ async def auto_reconcile_entity_sync(
         project_name=project_name,
         entity_name=entity_name,
         target_field=target_field,
-        entity_spec=entity_spec,
+        entity_mapping=entity_mapping,
         operation_id=None,  # No progress tracking for sync version
     )
 
@@ -380,19 +380,19 @@ async def suggest_entities(
         list of matching candidates with scores
     """
     # Get entity spec to resolve service type
-    recon_config: ReconciliationConfig = service.load_reconciliation_config(project_name)
+    mapping_registry: EntityMappingRegistry = service.mapping_manager.load_registry(project_name)
 
-    if entity_name not in recon_config.entities or target_field not in recon_config.entities[entity_name]:
-        raise NotFoundError(f"No reconciliation spec for entity '{entity_name}' target '{target_field}'")
+    if entity_name not in mapping_registry.entities or target_field not in mapping_registry.entities[entity_name]:
+        raise NotFoundError(f"No reconciliation registry for entity '{entity_name}' target '{target_field}'")
 
-    entity_spec: EntityReconciliationSpec = recon_config.entities[entity_name][target_field]
+    entity_mapping: EntityMapping = mapping_registry.entities[entity_name][target_field]
 
     # Get service type from entity spec
-    if not entity_spec.remote.service_type:
+    if not entity_mapping.remote.service_type:
         raise BadRequestError(f"Entity '{entity_name}' has no service_type configured")
 
     candidates: list[ReconciliationCandidate] = await service.recon_client.suggest_entities(
-        prefix=query, entity_type=entity_spec.remote.service_type.lower(), limit=10
+        prefix=query, entity_type=entity_mapping.remote.service_type.lower(), limit=10
     )
 
     return candidates
@@ -408,7 +408,7 @@ async def update_mapping(
     sead_id: int | None = None,
     notes: str | None = None,
     service: ReconciliationService = Depends(get_reconciliation_service),
-) -> ReconciliationConfig:
+) -> EntityMappingRegistry:
     """
     Update or remove a single mapping entry.
 
@@ -421,7 +421,7 @@ async def update_mapping(
         notes: Optional notes
 
     Returns:
-        Updated reconciliation configuration
+        Updated entity mapping in reconciliation registry
     """
     return service.update_mapping(
         project_name=project_name,
@@ -441,7 +441,7 @@ async def delete_mapping(
     target_field: str,
     source_value: Any = Query(...),
     service: ReconciliationService = Depends(get_reconciliation_service),
-) -> ReconciliationConfig:
+) -> EntityMappingRegistry:
     """
     Delete a mapping entry.
 
@@ -472,7 +472,7 @@ async def mark_as_unmatched(
     source_value: Any,
     notes: str | None = None,
     service: ReconciliationService = Depends(get_reconciliation_service),
-) -> ReconciliationConfig:
+) -> EntityMappingRegistry:
     """
     Mark an entity as "will not match" - local-only entity with no SEAD mapping.
 
@@ -498,14 +498,14 @@ async def mark_as_unmatched(
 # Specification management endpoints
 
 
-@router.get("/projects/{project_name}/reconciliation/specifications")
+@router.get("/projects/{project_name}/reconciliation/mapping-registry")
 @handle_endpoint_errors
-async def list_specifications(
+async def list_entity_mappings(
     project_name: str,
     service: ReconciliationService = Depends(get_reconciliation_service),
-) -> list[SpecificationListItem]:
+) -> list[EntityMappingListItem]:
     """
-    List all reconciliation specifications for a project.
+    List all entity mappings for a project.
 
     Returns a flattened list where each item represents an entity + target field combination.
 
@@ -513,34 +513,34 @@ async def list_specifications(
         project_name: Project name
 
     Returns:
-        List of specification items with metadata
+        List of entity mapping items with metadata
     """
 
-    return service.list_specifications(project_name)
+    return service.mapping_manager.list_entity_mappings(project_name)
 
 
-@router.post("/projects/{project_name}/reconciliation/specifications", status_code=201)
+@router.post("/projects/{project_name}/reconciliation/mapping-registry", status_code=201)
 @handle_endpoint_errors
-async def create_specification(
+async def create_registry(
     project_name: str,
-    request: "SpecificationCreateRequest",
+    request: EntityMappingCreateRequest,
     service: ReconciliationService = Depends(get_reconciliation_service),
-) -> ReconciliationConfig:
+) -> EntityMappingRegistry:
     """
-    Create a new reconciliation specification.
+    Create a new entity mapping registry for this project.
 
     Args:
         project_name: Project name
-        request: Specification create request containing entity, target field, and spec
+        request: Mapping registry create request containing entity, target field, and spec
 
     Returns:
-        Updated reconciliation configuration
+        Updated reconciliation registry
 
     Raises:
-        BadRequestError: If specification already exists or entity doesn't exist
+        BadRequestError: If mapping registry already exists or entity doesn't exist
     """
 
-    return service.create_specification(
+    return service.mapping_manager.create_registry(
         project_name=project_name,
         entity_name=request.entity_name,
         target_field=request.target_field,
@@ -548,17 +548,17 @@ async def create_specification(
     )
 
 
-@router.put("/projects/{project_name}/reconciliation/specifications/{entity_name}/{target_field}")
+@router.put("/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}")
 @handle_endpoint_errors
-async def update_specification(
+async def update_registry(
     project_name: str,
     entity_name: str,
     target_field: str,
-    request: "SpecificationUpdateRequest",
+    request: "EntityMappingUpdateRequest",
     service: ReconciliationService = Depends(get_reconciliation_service),
-) -> ReconciliationConfig:
+) -> EntityMappingRegistry:
     """
-    Update an existing reconciliation specification.
+    Update an existing reconciliation registry.
 
     Note: Entity name, target field, and existing mappings are preserved.
 
@@ -566,16 +566,16 @@ async def update_specification(
         project_name: Project name
         entity_name: Entity name (from URL, cannot be changed)
         target_field: Target field name (from URL, cannot be changed)
-        request: Specification update request with editable fields
+        request: Entity mapping registry update request with editable fields
 
     Returns:
-        Updated reconciliation configuration
+        Updated reconciliation registry
 
     Raises:
-        NotFoundError: If specification doesn't exist
+        NotFoundError: If registry doesn't exist
     """
 
-    return service.update_specification(
+    return service.mapping_manager.update_registry(
         project_name=project_name,
         entity_name=entity_name,
         target_field=target_field,
@@ -587,32 +587,32 @@ async def update_specification(
     )
 
 
-@router.delete("/projects/{project_name}/reconciliation/specifications/{entity_name}/{target_field}")
+@router.delete("/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}")
 @handle_endpoint_errors
-async def delete_specification(
+async def delete_registry(
     project_name: str,
     entity_name: str,
     target_field: str,
     force: bool = Query(False, description="Force delete even if mappings exist"),
     service: ReconciliationService = Depends(get_reconciliation_service),
-) -> ReconciliationConfig:
+) -> EntityMappingRegistry:
     """
-    Delete a reconciliation specification.
+    Delete a entity mappings from reconciliation registry.
 
     Args:
         project_name: Project name
         entity_name: Entity name
         target_field: Target field name
-        force: If True, delete even if specification has mappings
+        force: If True, delete even if registry has mappings for entity
 
     Returns:
-        Updated reconciliation configuration
+        Updated reconciliation registry
 
     Raises:
-        NotFoundError: If specification doesn't exist
-        BadRequestError: If specification has mappings and force=False
+        NotFoundError: If registry doesn't exist
+        BadRequestError: If registry has mappings and force=False
     """
-    return service.delete_specification(
+    return service.mapping_manager.delete_registry(
         project_name=project_name,
         entity_name=entity_name,
         target_field=target_field,
@@ -643,7 +643,7 @@ async def get_available_target_fields(
     return await service.get_available_target_fields(project_name, entity_name)
 
 
-@router.get("/projects/{project_name}/reconciliation/specifications/{entity_name}/{target_field}/mapping-count")
+@router.get("/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}/mapping-count")
 @handle_endpoint_errors
 async def get_mapping_count(
     project_name: str,
@@ -652,7 +652,7 @@ async def get_mapping_count(
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> dict[str, int]:
     """
-    Get the number of mappings for a specification.
+    Get the number of mappings for an entity in the mapping registry.
 
     Args:
         project_name: Project name
@@ -663,7 +663,7 @@ async def get_mapping_count(
         Dictionary with mapping count
 
     Raises:
-        NotFoundError: If specification doesn't exist
+        NotFoundError: If registry doesn't exist
     """
-    count = service.get_mapping_count(project_name, entity_name, target_field)
+    count: int = service.get_mapping_count(project_name, entity_name, target_field)
     return {"count": count}
