@@ -6,23 +6,33 @@ services:
       args:
         # User ID settings (defaults to 1000:1000, override via environment)
         - USER_UID=${USER_UID:-1002}  # Use 1002 for 'shapeshifter' user, maps to "sead" on host
-        - USER_GID=${USER_GID:-33}  # Use 33 for 'shapeshifter' group, maps to "www-data" on host
+        - USER_GID=${USER_GID:-33}    # Use 33 for 'shapeshifter' group, maps to "www-data" on host
+
         # Build-time arguments for frontend (served via backend, so API URL is blank)
         - VITE_API_BASE_URL=${VITE_API_BASE_URL:-""}
         - VITE_ENV=${VITE_ENV:-production}
         - VITE_ENABLE_ANALYTICS=${VITE_ENABLE_ANALYTICS:-false}
         - VITE_ENABLE_DEBUG=${VITE_ENABLE_DEBUG:-false}
+
     image: shape-shifter:dev
     container_name: shape-shifter
     user: "${USER_UID:-1002}:${USER_GID:-33}"  # Run as shapeshifter user (matches build args)
+
     ports:
       - "${HOST_PORT:-8012}:8012"
+
     env_file:
       # Load all environment variables from backend.env
       - ./data/backend.env
+
+    # Allows calling host-published ports as http://host.docker.internal:<port>
+    # Works on Linux (Docker 20.10+).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     networks:
       - shape-shifter-network
-      
+
     volumes:
       # Mount local data directories from docker/data/
       - ./data/projects:/app/projects
@@ -30,18 +40,18 @@ services:
       - ./data/output:/app/output
       - ./data/backups:/app/backups
       - ./data/tmp:/app/tmp
-      
+
       # Mount .pgpass for PostgreSQL authentication (if exists)
       - ./data/.pgpass/.pgpass:/app/.pgpass:ro
-      
+
     restart: unless-stopped
-    
+
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-    
+
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8012/api/v1/health').read()"]
       interval: 30s
