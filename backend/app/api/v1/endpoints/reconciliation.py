@@ -15,6 +15,7 @@ from backend.app.clients.reconciliation_client import ReconciliationClient
 from backend.app.core.config import settings
 from backend.app.core.operation_manager import OperationProgress, operation_manager
 from backend.app.core.state_manager import get_app_state_manager
+from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
 from backend.app.models.reconciliation import (
     AutoReconcileResult,
     EntityMapping,
@@ -51,7 +52,7 @@ async def check_reconciliation_service_health(service: ReconciliationService = D
     Returns:
         Status information about the reconciliation service
     """
-    return await service.recon_client.check_health()
+    return await service.reconciliation_client.check_health()
 
 
 @router.get("/reconciliation/manifest")
@@ -63,7 +64,7 @@ async def get_reconciliation_service_manifest(service: ReconciliationService = D
     Returns:
         Full service manifest including available entity types, properties, and configuration
     """
-    return await service.recon_client.get_service_manifest()
+    return await service.reconciliation_client.get_service_manifest()
 
 
 @router.get("/projects/{project_name}/reconciliation")
@@ -75,8 +76,13 @@ async def get_entity_mapping_registry(
     Get entity mapping registry for a project.
 
     Returns the entity mapping registry including entity mappings and settings.
+    Maps domain model to DTO at API boundary.
     """
-    return service.mapping_manager.load_registry(project_name)
+    # Service returns domain model
+    domain_registry = service.mapping_manager.load_registry(project_name)
+    
+    # Map to DTO for API response
+    return ReconciliationMapper.registry_to_dto(domain_registry)
 
 
 @router.put("/projects/{project_name}/reconciliation")
@@ -86,8 +92,18 @@ async def update_entity_mapping_registry(
     recon_config: EntityMappingRegistry,
     service: ReconciliationService = Depends(get_reconciliation_service),
 ) -> EntityMappingRegistry:
-    """Update entire entity mapping registry."""
-    service.mapping_manager.save_registry(project_name, recon_config)
+    """
+    Update entire entity mapping registry.
+    
+    Maps DTO to domain model at API boundary.
+    """
+    # Map DTO to domain model
+    domain_config = ReconciliationMapper.registry_to_domain(recon_config)
+    
+    # Service works with domain model
+    service.mapping_manager.save_registry(project_name, domain_config)
+    
+    # Return original DTO (unchanged)
     return recon_config
 
 
@@ -102,17 +118,21 @@ async def update_entity_mapping_registry_raw(
     Update entity mapping registry from raw YAML content.
 
     Parses the YAML content, validates it, and saves to the project's reconciliation file.
+    Maps between DTO and domain at API boundary.
     """
 
     try:
         # Parse YAML
         config_dict = pyyaml.safe_load(yaml_content)
 
-        # Validate against model
+        # Validate against model (DTO)
         recon_config = EntityMappingRegistry(**config_dict)
 
+        # Map DTO → Domain for service
+        domain_config = ReconciliationMapper.registry_to_domain(recon_config)
+
         # Save
-        service.mapping_manager.save_registry(project_name, recon_config)
+        service.mapping_manager.save_registry(project_name, domain_config)
 
         return recon_config
     except pyyaml.YAMLError as e:
@@ -162,22 +182,22 @@ async def auto_reconcile_entity(
     Returns:
         Dictionary with operation_id for tracking progress
     """
-    # Load reconciliation config
-    mapping_registry: EntityMappingRegistry = service.mapping_manager.load_registry(project_name)
+    # Load reconciliation config (service returns domain model)
+    mapping_registry_domain = service.mapping_manager.load_registry(project_name)
 
-    if entity_name not in mapping_registry.entities or target_field not in mapping_registry.entities[entity_name]:
+    # Get entity mapping using domain model method
+    entity_mapping_domain = mapping_registry_domain.get_mapping(entity_name, target_field)
+    if entity_mapping_domain is None:
         raise NotFoundError(f"No reconciliation registry for entity '{entity_name}' target '{target_field}'")
 
-    entity_mapping: EntityMapping = mapping_registry.entities[entity_name][target_field]
-
     # Update threshold if provided
-    if threshold != entity_mapping.auto_accept_threshold:
-        entity_mapping.auto_accept_threshold = threshold
-    if review_threshold is not None and review_threshold != entity_mapping.review_threshold:
-        entity_mapping.review_threshold = review_threshold
+    if threshold != entity_mapping_domain.auto_accept_threshold:
+        entity_mapping_domain.auto_accept_threshold = threshold
+    if review_threshold is not None and review_threshold != entity_mapping_domain.review_threshold:
+        entity_mapping_domain.review_threshold = review_threshold
 
     # Persist updated thresholds even if reconciliation is blocked/fails.
-    service.mapping_manager.save_registry(project_name, mapping_registry)
+    service.mapping_manager.save_registry(project_name, mapping_registry_domain)
 
     if get_app_state_manager().is_dirty(project_name):
         raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
@@ -197,7 +217,7 @@ async def auto_reconcile_entity(
                 project_name=project_name,
                 entity_name=entity_name,
                 target_field=target_field,
-                entity_mapping=entity_mapping,
+                entity_mapping=entity_mapping_domain,  # Pass domain model
                 operation_id=operation_id,
             )
         except Exception as e:  # pylint: disable=broad-except
@@ -326,22 +346,22 @@ async def auto_reconcile_entity_sync(
     Returns:
         AutoReconcileResult with counts and candidates
     """
-    # Load reconciliation config
-    mapping_registry: EntityMappingRegistry = service.mapping_manager.load_registry(project_name)
+    # Load reconciliation config (service returns domain model)
+    mapping_registry_domain = service.mapping_manager.load_registry(project_name)
 
-    if entity_name not in mapping_registry.entities or target_field not in mapping_registry.entities[entity_name]:
+    # Get entity mapping using domain model method
+    entity_mapping_domain = mapping_registry_domain.get_mapping(entity_name, target_field)
+    if entity_mapping_domain is None:
         raise NotFoundError(f"No reconciliation registry for entity '{entity_name}' target '{target_field}'")
 
-    entity_mapping: EntityMapping = mapping_registry.entities[entity_name][target_field]
-
     # Update threshold if provided
-    if threshold != entity_mapping.auto_accept_threshold:
-        entity_mapping.auto_accept_threshold = threshold
-    if review_threshold is not None and review_threshold != entity_mapping.review_threshold:
-        entity_mapping.review_threshold = review_threshold
+    if threshold != entity_mapping_domain.auto_accept_threshold:
+        entity_mapping_domain.auto_accept_threshold = threshold
+    if review_threshold is not None and review_threshold != entity_mapping_domain.review_threshold:
+        entity_mapping_domain.review_threshold = review_threshold
 
     # Persist updated thresholds even if reconciliation is blocked/fails.
-    service.mapping_manager.save_registry(project_name, mapping_registry)
+    service.mapping_manager.save_registry(project_name, mapping_registry_domain)
 
     if get_app_state_manager().is_dirty(project_name):
         raise BadRequestError(f"Project '{project_name}' has unsaved changes. Save or discard changes before starting reconciliation.")
@@ -351,7 +371,7 @@ async def auto_reconcile_entity_sync(
         project_name=project_name,
         entity_name=entity_name,
         target_field=target_field,
-        entity_mapping=entity_mapping,
+        entity_mapping=entity_mapping_domain,  # Pass domain model
         operation_id=None,  # No progress tracking for sync version
     )
 
@@ -379,20 +399,20 @@ async def suggest_entities(
     Returns:
         list of matching candidates with scores
     """
-    # Get entity spec to resolve service type
-    mapping_registry: EntityMappingRegistry = service.mapping_manager.load_registry(project_name)
+    # Get entity spec to resolve service type (service returns domain model)
+    mapping_registry_domain = service.mapping_manager.load_registry(project_name)
 
-    if entity_name not in mapping_registry.entities or target_field not in mapping_registry.entities[entity_name]:
+    # Use domain model method
+    entity_mapping_domain = mapping_registry_domain.get_mapping(entity_name, target_field)
+    if entity_mapping_domain is None:
         raise NotFoundError(f"No reconciliation registry for entity '{entity_name}' target '{target_field}'")
 
-    entity_mapping: EntityMapping = mapping_registry.entities[entity_name][target_field]
-
     # Get service type from entity spec
-    if not entity_mapping.remote.service_type:
+    if not entity_mapping_domain.remote.service_type:
         raise BadRequestError(f"Entity '{entity_name}' has no service_type configured")
 
-    candidates: list[ReconciliationCandidate] = await service.recon_client.suggest_entities(
-        prefix=query, entity_type=entity_mapping.remote.service_type.lower(), limit=10
+    candidates: list[ReconciliationCandidate] = await service.reconciliation_client.suggest_entities(
+        prefix=query, entity_type=entity_mapping_domain.remote.service_type.lower(), limit=10
     )
 
     return candidates
@@ -423,7 +443,8 @@ async def update_mapping(
     Returns:
         Updated entity mapping in reconciliation registry
     """
-    return service.update_mapping(
+    # Service returns domain model
+    domain_registry = service.update_mapping(
         project_name=project_name,
         entity_name=entity_name,
         target_field=target_field,
@@ -431,6 +452,9 @@ async def update_mapping(
         sead_id=sead_id,
         notes=notes,
     )
+    
+    # Map to DTO for API response
+    return ReconciliationMapper.registry_to_dto(domain_registry)
 
 
 @router.delete("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mapping")
@@ -454,13 +478,17 @@ async def delete_mapping(
     Returns:
         Updated reconciliation configuration
     """
-    return service.update_mapping(
+    # Service returns domain model
+    domain_registry = service.update_mapping(
         project_name=project_name,
         entity_name=entity_name,
         target_field=target_field,
         source_value=source_value,
         sead_id=None,  # None = delete
     )
+    
+    # Map to DTO for API response
+    return ReconciliationMapper.registry_to_dto(domain_registry)
 
 
 @router.post("/projects/{project_name}/reconciliation/{entity_name}/{target_field}/mark-unmatched")
@@ -486,13 +514,17 @@ async def mark_as_unmatched(
     Returns:
         Updated reconciliation configuration
     """
-    return service.mark_as_unmatched(
+    # Service returns domain model
+    domain_registry = service.mark_as_unmatched(
         project_name=project_name,
         entity_name=entity_name,
         target_field=target_field,
         source_value=source_value,
         notes=notes,
     )
+    
+    # Map to DTO for API response
+    return ReconciliationMapper.registry_to_dto(domain_registry)
 
 
 # Specification management endpoints
@@ -539,13 +571,19 @@ async def create_registry(
     Raises:
         BadRequestError: If mapping registry already exists or entity doesn't exist
     """
-
-    return service.mapping_manager.create_registry(
+    # Map DTO → Domain for service
+    entity_mapping_domain = ReconciliationMapper.entity_mapping_to_domain(request.spec)
+    
+    # Service returns domain model
+    domain_registry = service.mapping_manager.create_registry(
         project_name=project_name,
         entity_name=request.entity_name,
         target_field=request.target_field,
-        entity_mapping=request.spec,
+        entity_mapping=entity_mapping_domain,
     )
+    
+    # Map to DTO for API response
+    return ReconciliationMapper.registry_to_dto(domain_registry)
 
 
 @router.put("/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}")
@@ -574,17 +612,32 @@ async def update_registry(
     Raises:
         NotFoundError: If registry doesn't exist
     """
-
-    return service.mapping_manager.update_registry(
+    # Map DTO → Domain for service
+    # Source can be: None, str (entity name), or ReconciliationSource (SQL query)
+    source_domain: str | ReconciliationSourceDomain | None = None
+    if request.source is not None:
+        if isinstance(request.source, str):
+            source_domain = request.source  # Entity name stays as string
+        else:
+            # It's ReconciliationSource, map to domain
+            source_domain = ReconciliationMapper.source_to_domain(request.source)
+    
+    remote_domain = ReconciliationMapper.remote_to_domain(request.remote)
+    
+    # Service returns domain model
+    domain_registry = service.mapping_manager.update_registry(
         project_name=project_name,
         entity_name=entity_name,
         target_field=target_field,
-        source=request.source,
+        source=source_domain,
         property_mappings=request.property_mappings,
-        remote=request.remote,
+        remote=remote_domain,
         auto_accept_threshold=request.auto_accept_threshold,
         review_threshold=request.review_threshold,
     )
+    
+    # Map to DTO for API response
+    return ReconciliationMapper.registry_to_dto(domain_registry)
 
 
 @router.delete("/projects/{project_name}/reconciliation/mapping-registry/{entity_name}/{target_field}")
@@ -612,12 +665,16 @@ async def delete_registry(
         NotFoundError: If registry doesn't exist
         BadRequestError: If registry has mappings and force=False
     """
-    return service.mapping_manager.delete_registry(
+    # Service returns domain model
+    domain_registry = service.mapping_manager.delete_registry(
         project_name=project_name,
         entity_name=entity_name,
         target_field=target_field,
         force=force,
     )
+    
+    # Map to DTO for API response
+    return ReconciliationMapper.registry_to_dto(domain_registry)
 
 
 @router.get("/projects/{project_name}/reconciliation/available-fields/{entity_name}")

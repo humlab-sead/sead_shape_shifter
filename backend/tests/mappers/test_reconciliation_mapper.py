@@ -161,6 +161,10 @@ class TestEntityMappingItemMapper:
             sead_id=123,
             confidence=0.95,
             notes="Auto-matched",
+            will_not_match=False,
+            created_at="2024-01-01T00:00:00Z",
+            created_by="system",
+            last_modified="2024-01-01T00:00:00Z",
         )
 
         domain = ReconciliationMapper.mapping_item_to_domain(original)
@@ -181,7 +185,16 @@ class TestEntityMappingMapper:
             auto_accept_threshold=0.95,
             review_threshold=0.70,
             mapping=[
-                EntityMappingItem(source_value="Test", sead_id=123, confidence=0.98)
+                EntityMappingItem(
+                    source_value="Test",
+                    sead_id=123,
+                    confidence=0.98,
+                    notes="Auto-matched",
+                    will_not_match=False,
+                    created_at="2024-01-01T00:00:00Z",
+                    created_by="system",
+                    last_modified="2024-01-01T00:00:00Z",
+                )
             ],
         )
 
@@ -203,6 +216,8 @@ class TestEntityMappingMapper:
             ),
             property_mappings={},
             remote=ReconciliationRemote(service_type="site"),
+            auto_accept_threshold=0.95,
+            review_threshold=0.70,
         )
 
         domain = ReconciliationMapper.entity_mapping_to_domain(dto)
@@ -219,9 +234,7 @@ class TestEntityMappingMapper:
             remote=ReconciliationRemoteDomain(service_type="site"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
-            mapping=[
-                EntityMappingItemDomain(source_value="Test", sead_id=123, confidence=0.98)
-            ],
+            mapping=[EntityMappingItemDomain(source_value="Test", sead_id=123, confidence=0.98)],
         )
 
         dto = ReconciliationMapper.entity_mapping_to_dto(domain)
@@ -240,7 +253,16 @@ class TestEntityMappingMapper:
             auto_accept_threshold=0.95,
             review_threshold=0.70,
             mapping=[
-                EntityMappingItem(source_value="Test", sead_id=123, confidence=0.98)
+                EntityMappingItem(
+                    source_value="Test",
+                    sead_id=123,
+                    confidence=0.98,
+                    notes="Auto-matched",
+                    will_not_match=False,
+                    created_at="2024-01-01T00:00:00Z",
+                    created_by="system",
+                    last_modified="2024-01-01T00:00:00Z",
+                )
             ],
         )
 
@@ -261,10 +283,27 @@ class TestEntityMappingRegistryMapper:
             entities={
                 "site": {
                     "site_name": EntityMapping(
-                        remote=ReconciliationRemote(service_type="site"),
+                        remote=ReconciliationRemote(service_type="site", columns=["latitude", "longitude"]),
                         mapping=[
-                            EntityMappingItem(source_value="Test", sead_id=123)
+                            EntityMappingItem(
+                                source_value="Test",
+                                sead_id=123,
+                                confidence=0.98,
+                                notes="Auto-matched",
+                                will_not_match=False,
+                                created_at="2024-01-01T00:00:00Z",
+                                created_by="system",
+                                last_modified="2024-01-01T00:00:00Z",
+                            )
                         ],
+                        source=ReconciliationSource(
+                            data_source="test_db",
+                            type="sql",
+                            query="SELECT * FROM test",
+                        ),
+                        property_mappings={"lat": "latitude", "lon": "longitude"},
+                        auto_accept_threshold=0.95,
+                        review_threshold=0.70,
                     )
                 }
             },
@@ -288,9 +327,7 @@ class TestEntityMappingRegistryMapper:
                 "site": {
                     "site_name": EntityMappingDomain(
                         remote=ReconciliationRemoteDomain(service_type="site"),
-                        mapping=[
-                            EntityMappingItemDomain(source_value="Test", sead_id=123)
-                        ],
+                        mapping=[EntityMappingItemDomain(source_value="Test", sead_id=123)],
                     )
                 }
             },
@@ -315,8 +352,25 @@ class TestEntityMappingRegistryMapper:
                     "site_name": EntityMapping(
                         remote=ReconciliationRemote(service_type="site"),
                         mapping=[
-                            EntityMappingItem(source_value="Test", sead_id=123, confidence=0.98)
+                            EntityMappingItem(
+                                source_value="Test",
+                                sead_id=123,
+                                confidence=0.98,
+                                notes="Auto-matched",
+                                will_not_match=False,
+                                created_at="2024-01-01T00:00:00Z",
+                                created_by="system",
+                                last_modified="2024-01-01T00:00:00Z",
+                            )
                         ],
+                        source=ReconciliationSource(
+                            data_source="test_db",
+                            type="sql",
+                            query="SELECT * FROM test",
+                        ),
+                        property_mappings={"lat": "latitude", "lon": "longitude"},
+                        auto_accept_threshold=0.95,
+                        review_threshold=0.70,
                     )
                 }
             },
@@ -408,15 +462,11 @@ class TestDomainModelMethods:
         mapping = EntityMappingDomain(
             remote=ReconciliationRemoteDomain(service_type="site"),
         )
-        
+
         registry = EntityMappingRegistryDomain(
             version="2.0",
             service_url="http://localhost:8000",
-            entities={
-                "site": {
-                    "site_name": mapping
-                }
-            },
+            entities={"site": {"site_name": mapping}},
         )
 
         result = registry.remove_mapping("site", "site_name")
