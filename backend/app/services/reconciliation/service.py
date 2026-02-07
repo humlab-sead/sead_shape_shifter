@@ -25,6 +25,10 @@ from src.reconciliation.model import (
     EntityMappingRegistryDomain,
     ReconciliationSourceDomain,
 )
+from src.reconciliation.source_strategy import (
+    ReconciliationSourceStrategy,
+    SourceStrategyType,
+)
 
 if TYPE_CHECKING:
     from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
@@ -33,7 +37,7 @@ if TYPE_CHECKING:
 class ReconciliationSourceResolver(abc.ABC):
     """Base resolver for reconciliation source data.
     
-    Operates on core domain objects (ShapeShiftProject) without framework dependencies.
+    Application-layer implementations of domain data loading strategy.
     """
 
     def __init__(self, project_name: str, project: ShapeShiftProject, project_service: ProjectService):
@@ -53,24 +57,23 @@ class ReconciliationSourceResolver(abc.ABC):
         """Resolve source data based on entity spec source project."""
 
     @staticmethod
-    def get_resolver_cls_for_source(
-        entity_name: str, source: str | ReconciliationSourceDomain | None
+    def get_resolver_cls_for_strategy(
+        strategy: SourceStrategyType,
     ) -> "type[ReconciliationSourceResolver]":
-        """Get appropriate resolver class for the given source specification."""
-        if not source or (isinstance(source, str) and source == entity_name):
-            return TargetEntityReconciliationSourceResolver
-
-        if isinstance(source, str):
-            return AnotherEntityReconciliationSourceResolver
-
-        if isinstance(source, ReconciliationSourceDomain):
-            return SqlQueryReconciliationSourceResolver
-
-        raise BadRequestError(f"Invalid source specification: {source}")
+        """Get resolver class for the given strategy type.
+        
+        Maps domain strategy to application-layer resolver implementation.
+        """
+        resolver_map = {
+            SourceStrategyType.TARGET_ENTITY: TargetEntityReconciliationSourceResolver,
+            SourceStrategyType.ANOTHER_ENTITY: AnotherEntityReconciliationSourceResolver,
+            SourceStrategyType.SQL_QUERY: SqlQueryReconciliationSourceResolver,
+        }
+        return resolver_map[strategy]
 
 
 class TargetEntityReconciliationSourceResolver(ReconciliationSourceResolver):
-    """Case 1: No source, empty, or same as entity name -> use entity pource == entity_name)"""
+    """Loads data from the target entity itself (implements SourceStrategyType.TARGET_ENTITY)."""
 
     async def resolve(self, entity_name: str, entity_mapping: EntityMappingDomain) -> list[dict]:
         logger.debug(f"Using preview data from entity '{entity_name}'")
@@ -79,7 +82,7 @@ class TargetEntityReconciliationSourceResolver(ReconciliationSourceResolver):
 
 
 class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
-    """Case 2: Reconciliation source is the the result of another entity's data."""
+    """Loads data from a different entity (implements SourceStrategyType.ANOTHER_ENTITY)."""
 
     async def resolve(self, entity_name: str, entity_mapping: EntityMappingDomain) -> list[dict]:
 
@@ -100,7 +103,7 @@ class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
 
 
 class SqlQueryReconciliationSourceResolver(ReconciliationSourceResolver):
-    """Case 3: Reconciliation source is a custom SQL query."""
+    """Executes custom SQL query (implements SourceStrategyType.SQL_QUERY)."""
 
     async def resolve(self, entity_name: str, entity_mapping: EntityMappingDomain) -> list[dict]:
 
@@ -297,9 +300,12 @@ class ReconciliationService:
         api_config: Project = self.project_service.load_project(project_name)
         project: ShapeShiftProject = ProjectMapper.to_core(api_config)
         
-        resolver_cls: type[ReconciliationSourceResolver] = ReconciliationSourceResolver.get_resolver_cls_for_source(
+        # Use domain strategy to determine which resolver to use
+        strategy: SourceStrategyType = ReconciliationSourceStrategy.determine_strategy(
             entity_name, entity_mapping.source
         )
+        
+        resolver_cls: type[ReconciliationSourceResolver] = ReconciliationSourceResolver.get_resolver_cls_for_strategy(strategy)
         resolver: ReconciliationSourceResolver = resolver_cls(project_name, project, self.project_service)
         data = await resolver.resolve(entity_name, entity_mapping)
         return data
