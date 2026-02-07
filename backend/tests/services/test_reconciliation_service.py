@@ -16,9 +16,11 @@ from backend.app.models import (
 from backend.app.models.reconciliation import ReconciliationRemote
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.reconciliation import (
-    AnotherEntityReconciliationSourceResolver,
     ReconciliationQueryService,
     ReconciliationService,
+)
+from backend.app.services.reconciliation.resolvers import (
+    AnotherEntityReconciliationSourceResolver,
     ReconciliationSourceResolver,
     SqlQueryReconciliationSourceResolver,
     TargetEntityReconciliationSourceResolver,
@@ -500,11 +502,14 @@ class TestReconciliationService:
                 with patch("backend.app.services.reconciliation.service.ReconciliationSourceStrategy") as mock_strategy:
                     mock_strategy.determine_strategy.return_value = SourceStrategyType.TARGET_ENTITY
                     
-                    # Mock the resolver
-                    with patch("backend.app.services.reconciliation.service.TargetEntityReconciliationSourceResolver") as mock_resolver_cls:
-                        mock_resolver = AsyncMock()
-                        mock_resolver.resolve.return_value = [{"key": "value"}]
-                        mock_resolver_cls.return_value = mock_resolver
+                    # Mock the resolver class and instance
+                    mock_resolver = AsyncMock()
+                    mock_resolver.resolve.return_value = [{"key": "value"}]
+                    mock_resolver_cls = MagicMock(return_value=mock_resolver)
+                    
+                    # Mock get_resolver_cls_for_strategy to return our mock class
+                    with patch("backend.app.services.reconciliation.service.ReconciliationSourceResolver.get_resolver_cls_for_strategy") as mock_get_cls:
+                        mock_get_cls.return_value = mock_resolver_cls
 
                         result = await reconciliation_service.get_resolved_source_data("test_project", "site", sample_entity_spec)
 
@@ -512,6 +517,9 @@ class TestReconciliationService:
                         
                         # Verify domain strategy was used
                         mock_strategy.determine_strategy.assert_called_once_with("site", sample_entity_spec.source)
+                        
+                        # Verify get_resolver_cls_for_strategy was called with correct strategy
+                        mock_get_cls.assert_called_once_with(SourceStrategyType.TARGET_ENTITY)
                         
                         # Verify resolver was created with correct parameters
                         mock_resolver_cls.assert_called_once_with("test_project", mock_core_project, reconciliation_service.project_service)

@@ -14,9 +14,11 @@ Classes:
 """
 
 from backend.app.services.reconciliation.service import (
-    AnotherEntityReconciliationSourceResolver,
     ReconciliationQueryService,
     ReconciliationService,
+)
+from backend.app.services.reconciliation.resolvers import (
+    AnotherEntityReconciliationSourceResolver,
     ReconciliationSourceResolver,
     SqlQueryReconciliationSourceResolver,
     TargetEntityReconciliationSourceResolver,
