@@ -544,7 +544,7 @@ async def create_registry(
         project_name=project_name,
         entity_name=request.entity_name,
         target_field=request.target_field,
-        spec=request.spec,
+        entity_mapping=request.spec,
     )
 
 
