@@ -146,12 +146,12 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { ReconciliationPreviewRow, EntityReconciliationSpec } from '@/types'
+import type { ReconciliationPreviewRow, EntityMapping } from '@/types'
 
 interface Props {
   modelValue: boolean
   previewData: ReconciliationPreviewRow[]
-  entitySpec: EntityReconciliationSpec | null
+  entitySpec: EntityMapping | null
 }
 
 const props = defineProps<Props>()

@@ -6,15 +6,15 @@ import pytest
 import yaml
 
 from backend.app.models import (
-    EntityReconciliationSpec,
+    EntityMapping,
     ReconciliationCandidate,
-    ReconciliationConfig,
-    ReconciliationMapping,
+    EntityMappingRegistry,
+    EntityMappingItem,
     ReconciliationSource,
 )
 from backend.app.models.reconciliation import ReconciliationRemote
 from backend.app.models.shapeshift import PreviewResult
-from backend.app.services.reconciliation_service import (
+from backend.app.services.reconciliation import (
     AnotherEntityReconciliationSourceResolver,
     ReconciliationQueryService,
     ReconciliationService,
@@ -72,8 +72,8 @@ def reconciliation_service(tmp_path, mock_recon_client):
 
 @pytest.fixture
 def sample_entity_spec():
-    """Create sample EntityReconciliationSpec (v2 format)."""
-    return EntityReconciliationSpec(
+    """Create sample EntityMapping (v2 format)."""
+    return EntityMapping(
         source=None,
         property_mappings={"latitude": "latitude", "longitude": "longitude"},
         remote=ReconciliationRemote(service_type="site"),
@@ -85,8 +85,8 @@ def sample_entity_spec():
 
 @pytest.fixture
 def sample_recon_config(sample_entity_spec):
-    """Create sample ReconciliationConfig (v2 format)."""
-    return ReconciliationConfig(
+    """Create sample EntityMappingRegistry (v2 format)."""
+    return EntityMappingRegistry(
         version="2.0",
         service_url=RECONCILIATION_SERVICE_URL,
         entities={"site": {"site_code": sample_entity_spec}},  # Nested: entity -> target -> spec
@@ -166,7 +166,7 @@ class TestAnotherEntityReconciliationSourceResolver:
         resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_config_service)
 
         # Entity spec with source pointing to another entity
-        entity_spec = EntityReconciliationSpec(
+        entity_spec = EntityMapping(
             source="site",
             remote=ReconciliationRemote(service_type="sample"),
             auto_accept_threshold=0.95,
@@ -190,7 +190,7 @@ class TestAnotherEntityReconciliationSourceResolver:
         """Test resolve raises if source entity not found."""
         resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_config_service)
 
-        entity_spec = EntityReconciliationSpec(
+        entity_spec = EntityMapping(
             source="nonexistent",
             remote=ReconciliationRemote(service_type="test"),
             auto_accept_threshold=0.95,
@@ -220,7 +220,7 @@ class TestSqlQueryReconciliationSourceResolver:
             }
         }
 
-        entity_spec = EntityReconciliationSpec(
+        entity_spec = EntityMapping(
             source=ReconciliationSource(type="sql", data_source="test_db", query="SELECT * FROM custom_view"),
             remote=ReconciliationRemote(service_type="test"),
             auto_accept_threshold=0.95,
@@ -239,7 +239,7 @@ class TestSqlQueryReconciliationSourceResolver:
         """Test resolve raises if data source not found."""
         resolver = SqlQueryReconciliationSourceResolver("test_project", mock_config_service)
 
-        entity_spec = EntityReconciliationSpec(
+        entity_spec = EntityMapping(
             source=ReconciliationSource(type="sql", data_source="nonexistent_db", query="SELECT * FROM test"),
             remote=ReconciliationRemote(service_type="test"),
             auto_accept_threshold=0.95,
@@ -352,16 +352,16 @@ class TestReconciliationQueryService:
 class TestReconciliationService:
     """Tests for ReconciliationService main class."""
 
-    def test_get_default_recon_config_filename(self, reconciliation_service):
+    def test_get_default_registry_filename(self, reconciliation_service):
         """Test default reconciliation config filename generation."""
-        path = reconciliation_service._get_default_recon_config_filename("my_config")
+        path = reconciliation_service.mapping_manager._get_default_registry_filename("my_config")
         assert path.name == "my_config-reconciliation.yml"
 
     def test_load_reconciliation_config_creates_empty_if_missing(self, reconciliation_service):
         """Test load creates empty config if file doesn't exist."""
-        config = reconciliation_service.load_reconciliation_config("nonexistent")
+        config = reconciliation_service.mapping_manager.load_registry("nonexistent")
 
-        assert config.service_url == RECONCILIATION_SERVICE_URL
+        assert config.service_url == "http://host.docker.internal:8000"
         assert config.entities == {}
 
     def test_load_reconciliation_config_reads_yaml(self, reconciliation_service, tmp_path, sample_recon_config):
@@ -370,7 +370,7 @@ class TestReconciliationService:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
-        loaded = reconciliation_service.load_reconciliation_config("test", recon_config_filename=config_file)
+        loaded = reconciliation_service.mapping_manager.load_registry("test", filename=config_file)
 
         assert loaded.service_url == sample_recon_config.service_url
         assert "site" in loaded.entities
@@ -379,7 +379,7 @@ class TestReconciliationService:
         """Test save writes config to YAML file."""
         config_file = tmp_path / "test-reconciliation.yml"
 
-        reconciliation_service.save_reconciliation_config("test", sample_recon_config, recon_config_filename=config_file)
+        reconciliation_service.mapping_manager.save_registry("test", sample_recon_config, filename=config_file)
 
         assert config_file.exists()
         with open(config_file, "r", encoding="utf-8") as f:
@@ -391,7 +391,7 @@ class TestReconciliationService:
     @pytest.mark.asyncio
     async def test_get_resolved_source_data_uses_correct_resolver(self, reconciliation_service, sample_entity_spec):
         """Test get_resolved_source_data selects and uses correct resolver."""
-        with patch("backend.app.services.reconciliation_service.TargetEntityReconciliationSourceResolver") as mock_resolver_cls:
+        with patch("backend.app.services.reconciliation.service.TargetEntityReconciliationSourceResolver") as mock_resolver_cls:
             mock_resolver = AsyncMock()
             mock_resolver.resolve.return_value = [{"key": "value"}]
             mock_resolver_cls.return_value = mock_resolver
@@ -498,7 +498,7 @@ class TestReconciliationService:
             assert result.total == 1
 
             # Check mapping was created in nested structure
-            loaded_config = reconciliation_service.load_reconciliation_config("test", recon_config_filename=config_file)
+            loaded_config = reconciliation_service.mapping_manager.load_registry("test", filename=config_file)
             assert len(loaded_config.entities["site"]["site_code"].mapping) == 1
             mapping = loaded_config.entities["site"]["site_code"].mapping[0]
             assert mapping.sead_id == 123
@@ -657,7 +657,7 @@ class TestReconciliationService:
     def test_update_mapping_updates_existing(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test update_mapping updates existing mapping."""
         # Add existing mapping
-        existing_mapping = ReconciliationMapping(
+        existing_mapping = EntityMappingItem(
             source_value="SITE001",
             sead_id=100,
             confidence=0.8,
@@ -689,7 +689,7 @@ class TestReconciliationService:
 
     def test_update_mapping_removes_mapping(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test update_mapping removes mapping when sead_id is None."""
-        existing_mapping = ReconciliationMapping(
+        existing_mapping = EntityMappingItem(
             source_value="SITE001",
             sead_id=100,
             confidence=0.8,
@@ -710,11 +710,11 @@ class TestReconciliationService:
         assert len(updated.entities["site"]["site_code"].mapping) == 0
 
     def test_update_mapping_raises_for_missing_entity(self, reconciliation_service, tmp_path):
-        """Test update_mapping raises if entity not in config."""
+        """Test update_mapping raises if entity not in registry."""
         config_file = tmp_path / "test-reconciliation.yml"
         config_file.write_text(yaml.dump({"version": "2.0", "service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
 
-        with pytest.raises(NotFoundError, match="Entity 'nonexistent' not in reconciliation config"):
+        with pytest.raises(NotFoundError, match="Entity 'nonexistent' not in entity mapping registry"):
             reconciliation_service.update_mapping("test", "nonexistent", "field", source_value="KEY", sead_id=123)
 
     def test_mark_as_unmatched(self, reconciliation_service, tmp_path, sample_recon_config):
@@ -743,7 +743,7 @@ class TestReconciliationService:
     def test_mark_as_unmatched_updates_existing(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test mark_as_unmatched can convert existing mapping to unmatched."""
         # Add existing matched mapping
-        existing_mapping = ReconciliationMapping(
+        existing_mapping = EntityMappingItem(
             source_value="SITE001",
             sead_id=100,
             confidence=0.8,
@@ -779,31 +779,31 @@ class TestSpecificationManagement:
 
     def test_list_specifications_empty(self, reconciliation_service, tmp_path):
         """Test listing specifications when config has no entities."""
-        config = ReconciliationConfig(version="2.0", service_url=RECONCILIATION_SERVICE_URL, entities={})
+        config = EntityMappingRegistry(version="2.0", service_url=RECONCILIATION_SERVICE_URL, entities={})
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)
 
-        specs = reconciliation_service.list_specifications("test")
+        specs = reconciliation_service.mapping_manager.list_entity_mappings("test")
         assert specs == []
 
     def test_list_specifications_multiple(self, reconciliation_service, tmp_path, sample_entity_spec):
         """Test listing multiple specifications."""
-        config = ReconciliationConfig(
+        config = EntityMappingRegistry(
             version="2.0",
             service_url=RECONCILIATION_SERVICE_URL,
             entities={
                 "site": {
                     "site_code": sample_entity_spec,
-                    "site_name": EntityReconciliationSpec(
+                    "site_name": EntityMapping(
                         source="another_entity",
                         property_mappings={},
                         remote=ReconciliationRemote(service_type="taxon"),
                         auto_accept_threshold=0.85,
                         review_threshold=0.60,
                         mapping=[
-                            ReconciliationMapping(
+                            EntityMappingItem(
                                 source_value="test",
                                 sead_id=1,
                                 confidence=0.9,
@@ -813,7 +813,7 @@ class TestSpecificationManagement:
                                 will_not_match=False,
                                 last_modified="2024-01-02T00:00:00Z",
                             ),
-                            ReconciliationMapping(
+                            EntityMappingItem(
                                 source_value="test2",
                                 sead_id=2,
                                 confidence=0.8,
@@ -827,7 +827,7 @@ class TestSpecificationManagement:
                     ),
                 },
                 "sample": {
-                    "sample_type": EntityReconciliationSpec(
+                    "sample_type": EntityMapping(
                         source=None,
                         property_mappings={"name": "type_name"},
                         remote=ReconciliationRemote(service_type="location"),
@@ -843,7 +843,7 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)
 
-        specs = reconciliation_service.list_specifications("test")
+        specs = reconciliation_service.mapping_manager.list_entity_mappings("test")
 
         assert len(specs) == 3
         # Check site.site_code
@@ -863,8 +863,8 @@ class TestSpecificationManagement:
         assert sample_spec.mapping_count == 0
         assert sample_spec.property_mapping_count == 1
 
-    @patch("backend.app.services.reconciliation_service.ProjectMapper")
-    @patch("backend.app.services.reconciliation_service.ProjectService")
+    @patch("backend.app.services.reconciliation.service.ProjectMapper")
+    @patch("backend.app.services.reconciliation.service.ProjectService")
     def test_create_specification_success(self, mock_project_service, mock_mapper, reconciliation_service, tmp_path, sample_recon_config):
         """Test creating new specification."""
         # Mock project service to return a project
@@ -886,7 +886,7 @@ class TestSpecificationManagement:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
         # Create new spec
-        new_spec = EntityReconciliationSpec(
+        new_spec = EntityMapping(
             source=None,
             property_mappings={"lat": "latitude"},
             remote=ReconciliationRemote(service_type="location"),
@@ -895,14 +895,14 @@ class TestSpecificationManagement:
             mapping=[],
         )
 
-        updated_config = reconciliation_service.create_specification("test", "sample", "sample_code", new_spec)
+        updated_config = reconciliation_service.mapping_manager.create_registry("test", "sample", "sample_code", new_spec)
 
         assert "sample" in updated_config.entities
         assert "sample_code" in updated_config.entities["sample"]
         assert updated_config.entities["sample"]["sample_code"] == new_spec
 
-    @patch("backend.app.services.reconciliation_service.ProjectMapper")
-    @patch("backend.app.services.reconciliation_service.ProjectService")
+    @patch("backend.app.services.reconciliation.service.ProjectMapper")
+    @patch("backend.app.services.reconciliation.service.ProjectService")
     def test_create_specification_duplicate(self, mock_project_service, mock_mapper, reconciliation_service, tmp_path, sample_recon_config):
         """Test creating duplicate specification raises error."""
         # Mock project service
@@ -921,7 +921,7 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
-        new_spec = EntityReconciliationSpec(
+        new_spec = EntityMapping(
             source=None,
             property_mappings={},
             remote=ReconciliationRemote(service_type="site"),
@@ -931,10 +931,10 @@ class TestSpecificationManagement:
         )
 
         with pytest.raises(BadRequestError, match="already exists"):
-            reconciliation_service.create_specification("test", "site", "site_code", new_spec)
+            reconciliation_service.mapping_manager.create_registry("test", "site", "site_code", new_spec)
 
-    @patch("backend.app.services.reconciliation_service.ProjectMapper")
-    @patch("backend.app.services.reconciliation_service.ProjectService")
+    @patch("backend.app.services.reconciliation.service.ProjectMapper")
+    @patch("backend.app.services.reconciliation.service.ProjectService")
     def test_create_specification_invalid_entity(
         self, mock_project_service, mock_mapper, reconciliation_service, tmp_path, sample_recon_config
     ):
@@ -955,7 +955,7 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
-        new_spec = EntityReconciliationSpec(
+        new_spec = EntityMapping(
             source=None,
             property_mappings={},
             remote=ReconciliationRemote(service_type="site"),
@@ -965,13 +965,13 @@ class TestSpecificationManagement:
         )
 
         with pytest.raises(BadRequestError, match="Entity 'invalid_entity' does not exist"):
-            reconciliation_service.create_specification("test", "invalid_entity", "some_field", new_spec)
+            reconciliation_service.mapping_manager.create_registry("test", "invalid_entity", "some_field", new_spec)
 
     def test_update_specification_success(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test updating specification preserves mapping."""
         # Add mapping to original spec
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            ReconciliationMapping(
+            EntityMappingItem(
                 source_value="SITE001",
                 sead_id=100,
                 confidence=0.95,
@@ -988,7 +988,7 @@ class TestSpecificationManagement:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
         # Update thresholds and property mappings
-        updated_config = reconciliation_service.update_specification(
+        updated_config = reconciliation_service.mapping_manager.update_registry(
             project_name="test",
             entity_name="site",
             target_field="site_code",
@@ -1015,7 +1015,7 @@ class TestSpecificationManagement:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
         with pytest.raises(NotFoundError, match="not found"):
-            reconciliation_service.update_specification(
+            reconciliation_service.mapping_manager.update_registry(
                 project_name="test",
                 entity_name="site",
                 target_field="nonexistent_field",
@@ -1032,14 +1032,14 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
-        updated_config = reconciliation_service.delete_specification("test", "site", "site_code", force=False)
+        updated_config = reconciliation_service.mapping_manager.delete_registry("test", "site", "site_code", force=False)
 
         assert "site_code" not in updated_config.entities.get("site", {})
 
     def test_delete_specification_with_mappings_no_force(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test deleting specification with mappings raises error without force."""
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            ReconciliationMapping(
+            EntityMappingItem(
                 source_value="SITE001",
                 sead_id=100,
                 confidence=0.95,
@@ -1055,13 +1055,13 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
-        with pytest.raises(BadRequestError, match="with 1 existing mappings"):
-            reconciliation_service.delete_specification("test", "site", "site_code", force=False)
+        with pytest.raises(BadRequestError, match="Cannot delete existing mapping.*from registry"):
+            reconciliation_service.mapping_manager.delete_registry("test", "site", "site_code", force=False)
 
     def test_delete_specification_with_mappings_force(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test force deleting specification with mappings succeeds."""
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            ReconciliationMapping(
+            EntityMappingItem(
                 source_value="SITE001",
                 sead_id=100,
                 confidence=0.95,
@@ -1071,7 +1071,7 @@ class TestSpecificationManagement:
                 will_not_match=False,
                 last_modified="2024-01-02T00:00:00Z",
             ),
-            ReconciliationMapping(
+            EntityMappingItem(
                 source_value="SITE002",
                 sead_id=101,
                 confidence=0.90,
@@ -1087,7 +1087,7 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
-        updated_config = reconciliation_service.delete_specification("test", "site", "site_code", force=True)
+        updated_config = reconciliation_service.mapping_manager.delete_registry("test", "site", "site_code", force=True)
 
         assert "site_code" not in updated_config.entities.get("site", {})
 
@@ -1098,7 +1098,7 @@ class TestSpecificationManagement:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
         with pytest.raises(NotFoundError, match="not found"):
-            reconciliation_service.delete_specification("test", "site", "nonexistent_field")
+            reconciliation_service.mapping_manager.delete_registry("test", "site", "nonexistent_field")
 
     def test_delete_last_specification_removes_entity(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test deleting last specification removes entity from config."""
@@ -1106,7 +1106,7 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
-        updated_config = reconciliation_service.delete_specification("test", "site", "site_code")
+        updated_config = reconciliation_service.mapping_manager.delete_registry("test", "site", "site_code")
 
         # Entity should be removed entirely
         assert "site" not in updated_config.entities
@@ -1138,7 +1138,7 @@ class TestSpecificationManagement:
     def test_get_mapping_count_success(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test getting mapping count."""
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            ReconciliationMapping(
+            EntityMappingItem(
                 source_value="SITE001",
                 sead_id=100,
                 confidence=0.99,
@@ -1148,7 +1148,7 @@ class TestSpecificationManagement:
                 created_at="2024-01-01T00:00:00Z",
                 last_modified="2024-01-02T00:00:00Z",
             ),
-            ReconciliationMapping(
+            EntityMappingItem(
                 source_value="SITE002",
                 sead_id=101,
                 confidence=0.95,
@@ -1158,7 +1158,7 @@ class TestSpecificationManagement:
                 created_at="2024-01-03T00:00:00Z",
                 last_modified="2024-01-04T00:00:00Z",
             ),
-            ReconciliationMapping(
+            EntityMappingItem(
                 source_value="SITE003",
                 sead_id=None,
                 confidence=None,

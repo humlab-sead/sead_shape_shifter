@@ -308,7 +308,7 @@
 import { ref, computed, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import type { GridApi, ColDef, CellValueChangedEvent } from 'ag-grid-community'
-import type { EntityReconciliationSpec, ReconciliationPreviewRow, ReconciliationCandidate } from '@/types'
+import type { EntityMapping, ReconciliationPreviewRow, ReconciliationCandidate } from '@/types'
 import AlternativeSearchDialog from './AlternativeSearchDialog.vue'
 import PreviewMatchedDataDialog from './PreviewMatchedDataDialog.vue'
 
@@ -317,7 +317,7 @@ import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-material.css'
 
 interface Props {
-  entitySpec: EntityReconciliationSpec | null
+  entitySpec: EntityMapping | null
   previewData: ReconciliationPreviewRow[]
   loading?: boolean
   projectName: string
