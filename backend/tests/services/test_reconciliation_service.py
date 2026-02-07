@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import yaml
 
+from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
 from backend.app.models import (
     EntityMapping,
     ReconciliationCandidate,
@@ -24,6 +25,12 @@ from backend.app.services.reconciliation import (
 )
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from backend.tests.test_reconciliation_client import RECONCILIATION_SERVICE_URL
+from src.reconciliation.model import (
+    EntityMappingDomain,
+    EntityMappingItemDomain,
+    ReconciliationRemoteDomain,
+    ReconciliationSourceDomain,
+)
 
 # pylint: disable=redefined-outer-name,unused-argument,protected-access
 
@@ -72,11 +79,11 @@ def reconciliation_service(tmp_path, mock_recon_client):
 
 @pytest.fixture
 def sample_entity_spec():
-    """Create sample EntityMapping (v2 format)."""
-    return EntityMapping(
+    """Create sample EntityMappingDomain (domain model)."""
+    return EntityMappingDomain(
         source=None,
         property_mappings={"latitude": "latitude", "longitude": "longitude"},
-        remote=ReconciliationRemote(service_type="site"),
+        remote=ReconciliationRemoteDomain(service_type="site"),
         auto_accept_threshold=0.95,
         review_threshold=0.70,
         mapping=[],
@@ -117,8 +124,8 @@ class TestReconciliationSourceResolver:
         assert resolver_cls == AnotherEntityReconciliationSourceResolver
 
     def test_get_resolver_cls_for_custom_query(self):
-        """Test resolver class selection for ReconciliationSource."""
-        source = ReconciliationSource(type="sql", data_source="test_db", query="SELECT * FROM sites")
+        """Test resolver class selection for ReconciliationSourceDomain."""
+        source = ReconciliationSourceDomain(type="sql", data_source="test_db", query="SELECT * FROM sites")
         resolver_cls = ReconciliationSourceResolver.get_resolver_cls_for_source("site", source)
         assert resolver_cls == SqlQueryReconciliationSourceResolver
 
@@ -165,10 +172,10 @@ class TestAnotherEntityReconciliationSourceResolver:
         """Test resolve uses preview data from source entity."""
         resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_config_service)
 
-        # Entity spec with source pointing to another entity
-        entity_spec = EntityMapping(
+        # Entity spec domain model with source pointing to another entity
+        entity_spec = EntityMappingDomain(
             source="site",
-            remote=ReconciliationRemote(service_type="sample"),
+            remote=ReconciliationRemoteDomain(service_type="sample"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -190,9 +197,9 @@ class TestAnotherEntityReconciliationSourceResolver:
         """Test resolve raises if source entity not found."""
         resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_config_service)
 
-        entity_spec = EntityMapping(
+        entity_spec = EntityMappingDomain(
             source="nonexistent",
-            remote=ReconciliationRemote(service_type="test"),
+            remote=ReconciliationRemoteDomain(service_type="test"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -220,9 +227,9 @@ class TestSqlQueryReconciliationSourceResolver:
             }
         }
 
-        entity_spec = EntityMapping(
-            source=ReconciliationSource(type="sql", data_source="test_db", query="SELECT * FROM custom_view"),
-            remote=ReconciliationRemote(service_type="test"),
+        entity_spec = EntityMappingDomain(
+            source=ReconciliationSourceDomain(type="sql", data_source="test_db", query="SELECT * FROM custom_view"),
+            remote=ReconciliationRemoteDomain(service_type="test"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -239,9 +246,9 @@ class TestSqlQueryReconciliationSourceResolver:
         """Test resolve raises if data source not found."""
         resolver = SqlQueryReconciliationSourceResolver("test_project", mock_config_service)
 
-        entity_spec = EntityMapping(
-            source=ReconciliationSource(type="sql", data_source="nonexistent_db", query="SELECT * FROM test"),
-            remote=ReconciliationRemote(service_type="test"),
+        entity_spec = EntityMappingDomain(
+            source=ReconciliationSourceDomain(type="sql", data_source="nonexistent_db", query="SELECT * FROM test"),
+            remote=ReconciliationRemoteDomain(service_type="test"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
         )
@@ -714,7 +721,7 @@ class TestReconciliationService:
         config_file = tmp_path / "test-reconciliation.yml"
         config_file.write_text(yaml.dump({"version": "2.0", "service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
 
-        with pytest.raises(NotFoundError, match="Entity 'nonexistent' not in entity mapping registry"):
+        with pytest.raises(NotFoundError, match="Entity mapping for entity 'nonexistent' and target field 'field' not found"):
             reconciliation_service.update_mapping("test", "nonexistent", "field", source_value="KEY", sead_id=123)
 
     def test_mark_as_unmatched(self, reconciliation_service, tmp_path, sample_recon_config):
