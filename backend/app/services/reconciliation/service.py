@@ -18,13 +18,11 @@ from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import ProjectService, ShapeShiftService
 from backend.app.services.reconciliation.resolvers import ReconciliationSourceResolver
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
-from src.loaders import DataLoader, DataLoaders
-from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
+from src.model import ShapeShiftProject
 from src.reconciliation.model import (
     EntityMappingDomain,
     EntityMappingItemDomain,
     EntityMappingRegistryDomain,
-    ReconciliationSourceDomain,
 )
 from src.reconciliation.source_strategy import (
     ReconciliationSourceStrategy,
@@ -152,10 +150,10 @@ class ReconciliationService:
             List of rows with source data + reconciliation status (sead_id, confidence, etc.)
         """
         # Load entity mapping registry (now returns domain model)
-        recon_config: EntityMappingRegistryDomain = self.mapping_manager.load_registry(project_name)
+        registry: EntityMappingRegistryDomain = self.mapping_manager.load_registry(project_name)
 
         # Use domain model method
-        entity_mapping: EntityMappingDomain | None = recon_config.get_mapping(entity_name, target_field)
+        entity_mapping: EntityMappingDomain | None = registry.get_mapping(entity_name, target_field)
         if entity_mapping is None:
             raise NotFoundError(f"No reconciliation spec for entity '{entity_name}' with target field '{target_field}'")
 

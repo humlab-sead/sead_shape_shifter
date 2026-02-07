@@ -10,13 +10,11 @@ import yaml
 from loguru import logger
 
 from backend.app.core.config import settings
-from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
-from backend.app.models import EntityMappingRegistry, EntityMapping, ReconciliationRemote, EntityMappingListItem
+from backend.app.models import EntityMappingRegistry, EntityMappingListItem
 from backend.app.models.project import Project
 from backend.app.services import ProjectService
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
-from src.model import ShapeShiftProject
 from src.reconciliation.model import (
     EntityMappingRegistryDomain,
     EntityMappingDomain,
@@ -103,7 +101,7 @@ class EntityMappingManager:
         filename = filename or self._get_default_registry_filename(project_name)
 
         # Map: Domain → DTO → YAML dict
-        dto = ReconciliationMapper.registry_to_dto(mapping_registry)
+        dto: EntityMappingRegistry = ReconciliationMapper.registry_to_dto(mapping_registry)
 
         logger.info(f"Saving reconciliation config to {filename}")
         with open(filename, "w", encoding="utf-8") as f:
