@@ -31,6 +31,10 @@ from src.reconciliation.model import (
     ReconciliationRemoteDomain,
     ReconciliationSourceDomain,
 )
+from src.reconciliation.source_strategy import (
+    ReconciliationSourceStrategy,
+    SourceStrategyType,
+)
 
 # pylint: disable=redefined-outer-name,unused-argument,protected-access
 
@@ -128,40 +132,91 @@ def sample_recon_config(sample_entity_spec_dto):
     )
 
 
+class TestReconciliationSourceStrategy:
+    """Tests for ReconciliationSourceStrategy (domain logic)."""
+
+    def test_determine_strategy_for_none_source(self):
+        """Test strategy determination for None source."""
+        strategy = ReconciliationSourceStrategy.determine_strategy("site", None)
+        assert strategy == SourceStrategyType.TARGET_ENTITY
+
+    def test_determine_strategy_for_empty_source(self):
+        """Test strategy determination for empty source."""
+        strategy = ReconciliationSourceStrategy.determine_strategy("site", "")
+        assert strategy == SourceStrategyType.TARGET_ENTITY
+
+    def test_determine_strategy_for_same_entity(self):
+        """Test strategy determination when source equals entity name."""
+        strategy = ReconciliationSourceStrategy.determine_strategy("site", "site")
+        assert strategy == SourceStrategyType.TARGET_ENTITY
+
+    def test_determine_strategy_for_another_entity(self):
+        """Test strategy determination for another entity."""
+        strategy = ReconciliationSourceStrategy.determine_strategy("sample", "site")
+        assert strategy == SourceStrategyType.ANOTHER_ENTITY
+
+    def test_determine_strategy_for_custom_query(self):
+        """Test strategy determination for ReconciliationSourceDomain."""
+        source = ReconciliationSourceDomain(type="sql", data_source="test_db", query="SELECT * FROM sites")
+        strategy = ReconciliationSourceStrategy.determine_strategy("site", source)
+        assert strategy == SourceStrategyType.SQL_QUERY
+
+    def test_determine_strategy_invalid_source(self):
+        """Test strategy determination raises for invalid source."""
+        with pytest.raises(ValueError, match="Invalid source specification"):
+            ReconciliationSourceStrategy.determine_strategy("site", 123)  # type: ignore
+
+    def test_get_source_entity_name_target_entity(self):
+        """Test get_source_entity_name for target entity strategy."""
+        entity_mapping = EntityMappingDomain(
+            source=None,
+            remote=ReconciliationRemoteDomain(service_type="site"),
+            auto_accept_threshold=0.95,
+            review_threshold=0.70,
+        )
+        entity_name = ReconciliationSourceStrategy.get_source_entity_name("site", entity_mapping)
+        assert entity_name == "site"
+
+    def test_get_source_entity_name_another_entity(self):
+        """Test get_source_entity_name for another entity strategy."""
+        entity_mapping = EntityMappingDomain(
+            source="location",
+            remote=ReconciliationRemoteDomain(service_type="site"),
+            auto_accept_threshold=0.95,
+            review_threshold=0.70,
+        )
+        entity_name = ReconciliationSourceStrategy.get_source_entity_name("site", entity_mapping)
+        assert entity_name == "location"
+
+    def test_get_source_entity_name_sql_query(self):
+        """Test get_source_entity_name for SQL query strategy."""
+        entity_mapping = EntityMappingDomain(
+            source=ReconciliationSourceDomain(type="sql", data_source="test_db", query="SELECT * FROM custom"),
+            remote=ReconciliationRemoteDomain(service_type="site"),
+            auto_accept_threshold=0.95,
+            review_threshold=0.70,
+        )
+        entity_name = ReconciliationSourceStrategy.get_source_entity_name("site", entity_mapping)
+        assert entity_name == ""
+
+
 class TestReconciliationSourceResolver:
-    """Tests for ReconciliationSourceResolver base class."""
+    """Tests for ReconciliationSourceResolver application-layer implementations."""
 
-    def test_get_resolver_cls_for_none_source(self):
-        """Test resolver class selection for None source."""
-        resolver_cls = ReconciliationSourceResolver.get_resolver_cls_for_source("site", None)
+    def test_get_resolver_cls_for_target_entity_strategy(self):
+        """Test resolver class selection for target entity strategy."""
+        resolver_cls = ReconciliationSourceResolver.get_resolver_cls_for_strategy(SourceStrategyType.TARGET_ENTITY)
         assert resolver_cls == TargetEntityReconciliationSourceResolver
 
-    def test_get_resolver_cls_for_empty_source(self):
-        """Test resolver class selection for empty source."""
-        resolver_cls = ReconciliationSourceResolver.get_resolver_cls_for_source("site", "")
-        assert resolver_cls == TargetEntityReconciliationSourceResolver
-
-    def test_get_resolver_cls_for_same_entity(self):
-        """Test resolver class selection when source equals entity name."""
-        resolver_cls = ReconciliationSourceResolver.get_resolver_cls_for_source("site", "site")
-        assert resolver_cls == TargetEntityReconciliationSourceResolver
-
-    def test_get_resolver_cls_for_another_entity(self):
-        """Test resolver class selection for another entity."""
-        resolver_cls = ReconciliationSourceResolver.get_resolver_cls_for_source("sample", "site")
+    def test_get_resolver_cls_for_another_entity_strategy(self):
+        """Test resolver class selection for another entity strategy."""
+        resolver_cls = ReconciliationSourceResolver.get_resolver_cls_for_strategy(SourceStrategyType.ANOTHER_ENTITY)
         assert resolver_cls == AnotherEntityReconciliationSourceResolver
 
-    def test_get_resolver_cls_for_custom_query(self):
-        """Test resolver class selection for ReconciliationSourceDomain."""
-        source = ReconciliationSourceDomain(type="sql", data_source="test_db", query="SELECT * FROM sites")
-        resolver_cls = ReconciliationSourceResolver.get_resolver_cls_for_source("site", source)
+    def test_get_resolver_cls_for_sql_query_strategy(self):
+        """Test resolver class selection for SQL query strategy."""
+        resolver_cls = ReconciliationSourceResolver.get_resolver_cls_for_strategy(SourceStrategyType.SQL_QUERY)
         assert resolver_cls == SqlQueryReconciliationSourceResolver
-
-    def test_get_resolver_cls_invalid_source(self):
-        """Test resolver class selection raises for invalid source."""
-
-        with pytest.raises(BadRequestError, match="Invalid source specification"):
-            ReconciliationSourceResolver.get_resolver_cls_for_source("site", 123)  # type: ignore
 
 
 class TestTargetEntityReconciliationSourceResolver:
@@ -431,7 +486,7 @@ class TestReconciliationService:
 
     @pytest.mark.asyncio
     async def test_get_resolved_source_data_uses_correct_resolver(self, reconciliation_service, sample_entity_spec, mock_core_project):
-        """Test get_resolved_source_data selects and uses correct resolver."""
+        """Test get_resolved_source_data selects and uses correct resolver via domain strategy."""
         # Mock project loading to return a project
         with patch.object(reconciliation_service.project_service, "load_project") as mock_load:
             mock_api_project = MagicMock()
@@ -441,18 +496,26 @@ class TestReconciliationService:
             with patch("backend.app.services.reconciliation.service.ProjectMapper") as mock_mapper:
                 mock_mapper.to_core.return_value = mock_core_project
                 
-                # Mock the resolver
-                with patch("backend.app.services.reconciliation.service.TargetEntityReconciliationSourceResolver") as mock_resolver_cls:
-                    mock_resolver = AsyncMock()
-                    mock_resolver.resolve.return_value = [{"key": "value"}]
-                    mock_resolver_cls.return_value = mock_resolver
+                # Mock ReconciliationSourceStrategy to return target entity strategy
+                with patch("backend.app.services.reconciliation.service.ReconciliationSourceStrategy") as mock_strategy:
+                    mock_strategy.determine_strategy.return_value = SourceStrategyType.TARGET_ENTITY
+                    
+                    # Mock the resolver
+                    with patch("backend.app.services.reconciliation.service.TargetEntityReconciliationSourceResolver") as mock_resolver_cls:
+                        mock_resolver = AsyncMock()
+                        mock_resolver.resolve.return_value = [{"key": "value"}]
+                        mock_resolver_cls.return_value = mock_resolver
 
-                    result = await reconciliation_service.get_resolved_source_data("test_project", "site", sample_entity_spec)
+                        result = await reconciliation_service.get_resolved_source_data("test_project", "site", sample_entity_spec)
 
-                    assert result == [{"key": "value"}]
-                    mock_resolver.resolve.assert_called_once_with("site", sample_entity_spec)
-                    # Verify resolver was created with correct parameters
-                    mock_resolver_cls.assert_called_once_with("test_project", mock_core_project, reconciliation_service.project_service)
+                        assert result == [{"key": "value"}]
+                        
+                        # Verify domain strategy was used
+                        mock_strategy.determine_strategy.assert_called_once_with("site", sample_entity_spec.source)
+                        
+                        # Verify resolver was created with correct parameters
+                        mock_resolver_cls.assert_called_once_with("test_project", mock_core_project, reconciliation_service.project_service)
+                        mock_resolver.resolve.assert_called_once_with("site", sample_entity_spec)
 
     def test_extract_id_from_uri_success(self, reconciliation_service):
         """Test _extract_id_from_uri extracts ID correctly."""
