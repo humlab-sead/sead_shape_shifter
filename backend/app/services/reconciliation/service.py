@@ -31,15 +31,22 @@ if TYPE_CHECKING:
 
 
 class ReconciliationSourceResolver(abc.ABC):
+    """Base resolver for reconciliation source data.
+    
+    Operates on core domain objects (ShapeShiftProject) without framework dependencies.
+    """
 
-    def __init__(self, project_name: str, project_service: ProjectService):
-
+    def __init__(self, project_name: str, project: ShapeShiftProject, project_service: ProjectService):
+        """Initialize resolver with core project.
+        
+        Args:
+            project_name: Project name (for logging/preview service)
+            project: Core domain project (already loaded)
+            project_service: Project service (needed for preview service only)
+        """
         self.project_name: str = project_name
-        self.project_service: ProjectService = project_service
+        self.project: ShapeShiftProject = project
         self.preview_service: ShapeShiftService = ShapeShiftService(project_service)
-
-        self.api_config: Project = self.project_service.load_project(project_name)
-        self.config: ShapeShiftProject = ProjectMapper.to_core(self.api_config)
 
     @abc.abstractmethod
     async def resolve(self, entity_name: str, entity_mapping: EntityMappingDomain) -> list[dict]:
@@ -82,7 +89,7 @@ class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
 
         logger.info(f"Fetching preview data from entity '{source}' for reconciliation of '{entity_name}'")
 
-        if source not in self.config.tables:
+        if source not in self.project.tables:
             raise NotFoundError(f"Source entity '{source}' not found in project")
 
         preview_result: PreviewResult = await self.preview_service.preview_entity(self.project_name, source, limit=1000)
@@ -103,10 +110,10 @@ class SqlQueryReconciliationSourceResolver(ReconciliationSourceResolver):
         logger.info(f"Executing custom query for reconciliation of '{entity_name}'")
 
         # Get data source config from ShapeShiftProject
-        if source.data_source not in self.config.data_sources:
+        if source.data_source not in self.project.data_sources:
             raise NotFoundError(f"Data source '{source.data_source}' not found in project")
 
-        data_source_config: DataSourceConfig = self.config.get_data_source(source.data_source)
+        data_source_config: DataSourceConfig = self.project.get_data_source(source.data_source)
 
         loader: DataLoader = DataLoaders.get(data_source_config.driver)(data_source_config)
         sql_cfg_dict: dict[str, Any] = {
@@ -286,10 +293,14 @@ class ReconciliationService:
         Returns:
             Data to use for reconciliation (may be from different source)
         """
+        # Load project once and pass to resolver (eliminates redundant loading)
+        api_config: Project = self.project_service.load_project(project_name)
+        project: ShapeShiftProject = ProjectMapper.to_core(api_config)
+        
         resolver_cls: type[ReconciliationSourceResolver] = ReconciliationSourceResolver.get_resolver_cls_for_source(
             entity_name, entity_mapping.source
         )
-        resolver: ReconciliationSourceResolver = resolver_cls(project_name, self.project_service)
+        resolver: ReconciliationSourceResolver = resolver_cls(project_name, project, self.project_service)
         data = await resolver.resolve(entity_name, entity_mapping)
         return data
 
