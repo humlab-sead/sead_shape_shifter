@@ -149,13 +149,11 @@ class EntityMappingManager:
             Updated entity mapping registry
 
         Raises:
-            BadRequestError: If mapping specification already exists or entity doesn't exist
+            BadRequestError: If entity mapping already exists or entity doesn't exist
         """
         # Verify entity exists in project
         project: Project = self.project_service.load_project(project_name)
-        project_mapper = ProjectMapper()
-        core_project: ShapeShiftProject = project_mapper.to_core_config(project)
-        entity_exists: bool = entity_name in core_project.entities
+        entity_exists: bool = entity_name in project.entities
 
         if not entity_exists:
             raise BadRequestError(f"Entity '{entity_name}' does not exist in project '{project_name}'")
