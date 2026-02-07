@@ -178,7 +178,7 @@ class ReconciliationQueryService:
 
             # Build properties from property_mappings
             # Maps service property IDs to source column values
-            properties = []
+            properties: list[dict[str, str]] = []
             for property_id, source_column in entity_mapping.property_mappings.items():
                 value = row.get(source_column)
                 if value is not None:
@@ -349,31 +349,31 @@ class ReconciliationService:
             ValueError: If project has unsaved changes
         """
         # Load existing config and ensure thresholds from caller are honored.
-        recon_config: EntityMappingRegistry = self.mapping_manager.load_registry(project_name)
+        registry: EntityMappingRegistry = self.mapping_manager.load_registry(project_name)
 
         thresholds_updated: bool = False
-        if entity_name not in recon_config.entities:
-            recon_config.entities[entity_name] = {}
+        if entity_name not in registry.entities:
+            registry.entities[entity_name] = {}
 
-        existing_spec: EntityMapping | None = recon_config.entities[entity_name].get(target_field)
-        if existing_spec is None:
-            recon_config.entities[entity_name][target_field] = entity_mapping
-            existing_spec = entity_mapping
+        existing_mapping: EntityMapping | None = registry.entities[entity_name].get(target_field)
+        if existing_mapping is None:
+            registry.entities[entity_name][target_field] = entity_mapping
+            existing_mapping = entity_mapping
             thresholds_updated = True
         else:
-            if existing_spec.auto_accept_threshold != entity_mapping.auto_accept_threshold:
-                existing_spec.auto_accept_threshold = entity_mapping.auto_accept_threshold
+            if existing_mapping.auto_accept_threshold != entity_mapping.auto_accept_threshold:
+                existing_mapping.auto_accept_threshold = entity_mapping.auto_accept_threshold
                 thresholds_updated = True
-            if existing_spec.review_threshold != entity_mapping.review_threshold:
-                existing_spec.review_threshold = entity_mapping.review_threshold
+            if existing_mapping.review_threshold != entity_mapping.review_threshold:
+                existing_mapping.review_threshold = entity_mapping.review_threshold
                 thresholds_updated = True
 
-        entity_mapping = existing_spec
+        entity_mapping = existing_mapping
 
         service_type: str | None = entity_mapping.remote.service_type
         if not service_type:
             if thresholds_updated:
-                self.mapping_manager.save_registry(project_name, recon_config)
+                self.mapping_manager.save_registry(project_name, registry)
             logger.info(f"Reconciliation disabled for entity '{entity_name}' (no service_type configured)")
             return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
 
@@ -398,7 +398,7 @@ class ReconciliationService:
 
         if not query_data.queries:
             if thresholds_updated:
-                self.mapping_manager.save_registry(project_name, recon_config)
+                self.mapping_manager.save_registry(project_name, registry)
             logger.warning("No valid queries to reconcile")
             if operation_id:
                 operation_manager.complete_operation(operation_id, "No valid queries to reconcile")
@@ -462,7 +462,7 @@ class ReconciliationService:
         auto_accepted, needs_review, unmatched = self.auto_accept_candidates(entity_mapping, candidate_map)
 
         # Save updated config (mappings and/or updated thresholds)
-        self.mapping_manager.save_registry(project_name, recon_config)
+        self.mapping_manager.save_registry(project_name, registry)
 
         logger.info(f"Auto-reconciliation complete: {auto_accepted} auto-accepted, " f"{needs_review} need review, {unmatched} unmatched")
 
