@@ -1,6 +1,8 @@
 
 ### Bugs
 
+FIXME: Projects are sometimes stored with resolved values.
+FIXME: #219 Inline data source configurations raised an error.
 
 ### Tech debts:
 
@@ -208,4 +210,6 @@ Error Handling:
 Data source not connected → "Please test connection first"
 No tables found → "No tables available in this data source"
 Entity name conflict → "Entity 'X' already exists. Choose different name."
+
+### TODO: Save custom graph layout in separate file
 
