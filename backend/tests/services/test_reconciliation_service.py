@@ -264,7 +264,7 @@ class TestReconciliationQueryService:
 
         result = service.create(
             target_field="site_code",
-            entity_spec=sample_entity_spec,
+            entity_mapping=sample_entity_spec,
             max_candidates=3,
             source_data=source_data,
             service_type="site",
@@ -297,7 +297,7 @@ class TestReconciliationQueryService:
 
         result = service.create(
             target_field="site_code",
-            entity_spec=sample_entity_spec,
+            entity_mapping=sample_entity_spec,
             max_candidates=3,
             source_data=source_data,
             service_type="site",
@@ -320,7 +320,7 @@ class TestReconciliationQueryService:
 
         result = service.create(
             target_field="site_code",
-            entity_spec=sample_entity_spec,
+            entity_mapping=sample_entity_spec,
             max_candidates=3,
             source_data=source_data,
             service_type="site",
@@ -338,7 +338,7 @@ class TestReconciliationQueryService:
 
         result = service.create(
             target_field="site_code",
-            entity_spec=sample_entity_spec,
+            entity_mapping=sample_entity_spec,
             max_candidates=3,
             source_data=source_data,
             service_type="site",
