@@ -28,8 +28,8 @@ from backend.app.services.reconciliation.resolvers import (
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from backend.tests.test_reconciliation_client import RECONCILIATION_SERVICE_URL
 from src.reconciliation.model import (
-    EntityMappingDomain,
-    EntityMappingItemDomain,
+    EntityResolutionSet,
+    ResolvedEntityPair,
     ReconciliationRemoteDomain,
     ReconciliationSourceDomain,
 )
@@ -100,8 +100,8 @@ def reconciliation_service(tmp_path, mock_recon_client):
 
 @pytest.fixture
 def sample_entity_spec():
-    """Create sample EntityMappingDomain (domain model)."""
-    return EntityMappingDomain(
+    """Create sample EntityResolutionSet (domain model)."""
+    return EntityResolutionSet(
         source=None,
         property_mappings={"latitude": "latitude", "longitude": "longitude"},
         remote=ReconciliationRemoteDomain(service_type="site"),
@@ -170,7 +170,7 @@ class TestReconciliationSourceStrategy:
 
     def test_get_source_entity_name_target_entity(self):
         """Test get_source_entity_name for target entity strategy."""
-        entity_mapping = EntityMappingDomain(
+        entity_mapping = EntityResolutionSet(
             source=None,
             remote=ReconciliationRemoteDomain(service_type="site"),
             auto_accept_threshold=0.95,
@@ -181,7 +181,7 @@ class TestReconciliationSourceStrategy:
 
     def test_get_source_entity_name_another_entity(self):
         """Test get_source_entity_name for another entity strategy."""
-        entity_mapping = EntityMappingDomain(
+        entity_mapping = EntityResolutionSet(
             source="location",
             remote=ReconciliationRemoteDomain(service_type="site"),
             auto_accept_threshold=0.95,
@@ -192,7 +192,7 @@ class TestReconciliationSourceStrategy:
 
     def test_get_source_entity_name_sql_query(self):
         """Test get_source_entity_name for SQL query strategy."""
-        entity_mapping = EntityMappingDomain(
+        entity_mapping = EntityResolutionSet(
             source=ReconciliationSourceDomain(type="sql", data_source="test_db", query="SELECT * FROM custom"),
             remote=ReconciliationRemoteDomain(service_type="site"),
             auto_accept_threshold=0.95,
@@ -258,7 +258,7 @@ class TestAnotherEntityReconciliationSourceResolver:
         resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_core_project, mock_config_service)
 
         # Entity spec domain model with source pointing to another entity
-        entity_spec = EntityMappingDomain(
+        entity_spec = EntityResolutionSet(
             source="site",
             remote=ReconciliationRemoteDomain(service_type="sample"),
             auto_accept_threshold=0.95,
@@ -285,7 +285,7 @@ class TestAnotherEntityReconciliationSourceResolver:
         
         resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_core_project, mock_config_service)
 
-        entity_spec = EntityMappingDomain(
+        entity_spec = EntityResolutionSet(
             source="nonexistent",
             remote=ReconciliationRemoteDomain(service_type="test"),
             auto_accept_threshold=0.95,
@@ -315,7 +315,7 @@ class TestSqlQueryReconciliationSourceResolver:
             }
         }
 
-        entity_spec = EntityMappingDomain(
+        entity_spec = EntityResolutionSet(
             source=ReconciliationSourceDomain(type="sql", data_source="test_db", query="SELECT * FROM custom_view"),
             remote=ReconciliationRemoteDomain(service_type="test"),
             auto_accept_threshold=0.95,
@@ -337,7 +337,7 @@ class TestSqlQueryReconciliationSourceResolver:
         
         resolver = SqlQueryReconciliationSourceResolver("test_project", mock_core_project, mock_config_service)
 
-        entity_spec = EntityMappingDomain(
+        entity_spec = EntityResolutionSet(
             source=ReconciliationSourceDomain(type="sql", data_source="nonexistent_db", query="SELECT * FROM test"),
             remote=ReconciliationRemoteDomain(service_type="test"),
             auto_accept_threshold=0.95,

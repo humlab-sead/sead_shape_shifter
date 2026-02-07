@@ -15,7 +15,7 @@ from backend.app.services import ProjectService, ShapeShiftService
 from backend.app.utils.exceptions import NotFoundError
 from src.loaders import DataLoader, DataLoaders
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
-from src.reconciliation.model import EntityMappingDomain, ReconciliationSourceDomain
+from src.reconciliation.model import EntityResolutionSet, ReconciliationSourceDomain
 from src.reconciliation.source_strategy import SourceStrategyType
 
 
@@ -38,7 +38,7 @@ class ReconciliationSourceResolver(abc.ABC):
         self.preview_service: ShapeShiftService = ShapeShiftService(project_service)
 
     @abc.abstractmethod
-    async def resolve(self, entity_name: str, entity_mapping: EntityMappingDomain) -> list[dict]:
+    async def resolve(self, entity_name: str, entity_mapping: EntityResolutionSet) -> list[dict]:
         """Resolve source data based on entity spec source project."""
 
     @staticmethod
@@ -60,7 +60,7 @@ class ReconciliationSourceResolver(abc.ABC):
 class TargetEntityReconciliationSourceResolver(ReconciliationSourceResolver):
     """Loads data from the target entity itself (implements SourceStrategyType.TARGET_ENTITY)."""
 
-    async def resolve(self, entity_name: str, entity_mapping: EntityMappingDomain) -> list[dict]:
+    async def resolve(self, entity_name: str, entity_mapping: EntityResolutionSet) -> list[dict]:
         logger.debug(f"Using preview data from entity '{entity_name}'")
         preview_result: PreviewResult = await self.preview_service.preview_entity(self.project_name, entity_name, limit=1000)
         return preview_result.rows
@@ -69,7 +69,7 @@ class TargetEntityReconciliationSourceResolver(ReconciliationSourceResolver):
 class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
     """Loads data from a different entity (implements SourceStrategyType.ANOTHER_ENTITY)."""
 
-    async def resolve(self, entity_name: str, entity_mapping: EntityMappingDomain) -> list[dict]:
+    async def resolve(self, entity_name: str, entity_mapping: EntityResolutionSet) -> list[dict]:
 
         assert isinstance(entity_mapping.source, str)
 
@@ -90,7 +90,7 @@ class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
 class SqlQueryReconciliationSourceResolver(ReconciliationSourceResolver):
     """Executes custom SQL query (implements SourceStrategyType.SQL_QUERY)."""
 
-    async def resolve(self, entity_name: str, entity_mapping: EntityMappingDomain) -> list[dict]:
+    async def resolve(self, entity_name: str, entity_mapping: EntityResolutionSet) -> list[dict]:
 
         assert isinstance(entity_mapping.source, ReconciliationSourceDomain)
 

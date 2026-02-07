@@ -12,9 +12,9 @@ from backend.app.models.reconciliation import (
     ReconciliationSource,
 )
 from src.reconciliation.model import (
-    EntityMappingDomain,
-    EntityMappingItemDomain,
-    EntityMappingRegistryDomain,
+    EntityResolutionSet,
+    ResolvedEntityPair,
+    EntityResolutionCatalog,
     ReconciliationRemoteDomain,
     ReconciliationSourceDomain,
 )
@@ -58,9 +58,9 @@ class ReconciliationMapper:
         )
 
     @staticmethod
-    def mapping_item_to_domain(dto: EntityMappingItem) -> EntityMappingItemDomain:
+    def mapping_item_to_domain(dto: EntityMappingItem) -> ResolvedEntityPair:
         """Convert EntityMappingItem DTO to domain model."""
-        return EntityMappingItemDomain(
+        return ResolvedEntityPair(
             source_value=dto.source_value,
             sead_id=dto.sead_id,
             confidence=dto.confidence,
@@ -72,7 +72,7 @@ class ReconciliationMapper:
         )
 
     @staticmethod
-    def mapping_item_to_dto(domain: EntityMappingItemDomain) -> EntityMappingItem:
+    def mapping_item_to_dto(domain: ResolvedEntityPair) -> EntityMappingItem:
         """Convert EntityMappingItem domain to DTO."""
         return EntityMappingItem(
             source_value=domain.source_value,
@@ -86,7 +86,7 @@ class ReconciliationMapper:
         )
 
     @staticmethod
-    def entity_mapping_to_domain(dto: EntityMapping) -> EntityMappingDomain:
+    def entity_mapping_to_domain(dto: EntityMapping) -> EntityResolutionSet:
         """Convert EntityMapping DTO to domain model."""
         # Handle source which can be None, str, or ReconciliationSource
         source_domain: str | ReconciliationSourceDomain | None = None
@@ -96,7 +96,7 @@ class ReconciliationMapper:
             elif isinstance(dto.source, ReconciliationSource):
                 source_domain = ReconciliationMapper.source_to_domain(dto.source)
 
-        return EntityMappingDomain(
+        return EntityResolutionSet(
             source=source_domain,
             property_mappings=dto.property_mappings.copy() if dto.property_mappings else {},
             remote=ReconciliationMapper.remote_to_domain(dto.remote),
@@ -106,7 +106,7 @@ class ReconciliationMapper:
         )
 
     @staticmethod
-    def entity_mapping_to_dto(domain: EntityMappingDomain) -> EntityMapping:
+    def entity_mapping_to_dto(domain: EntityResolutionSet) -> EntityMapping:
         """Convert EntityMapping domain to DTO."""
         # Handle source which can be None, str, or ReconciliationSourceDomain
         source_dto: str | ReconciliationSource | None = None
@@ -126,23 +126,23 @@ class ReconciliationMapper:
         )
 
     @staticmethod
-    def registry_to_domain(dto: EntityMappingRegistry) -> EntityMappingRegistryDomain:
+    def registry_to_domain(dto: EntityMappingRegistry) -> EntityResolutionCatalog:
         """Convert EntityMappingRegistry DTO to domain model."""
-        entities_domain: dict[str, dict[str, EntityMappingDomain]] = {}
+        entities_domain: dict[str, dict[str, EntityResolutionSet]] = {}
         
         for entity_name, fields in dto.entities.items():
             entities_domain[entity_name] = {}
             for target_field, mapping_dto in fields.items():
                 entities_domain[entity_name][target_field] = ReconciliationMapper.entity_mapping_to_domain(mapping_dto)
 
-        return EntityMappingRegistryDomain(
+        return EntityResolutionCatalog(
             version=dto.version,
             service_url=dto.service_url,
             entities=entities_domain,
         )
 
     @staticmethod
-    def registry_to_dto(domain: EntityMappingRegistryDomain) -> EntityMappingRegistry:
+    def registry_to_dto(domain: EntityResolutionCatalog) -> EntityMappingRegistry:
         """Convert EntityMappingRegistry domain to DTO."""
         entities_dto: dict[str, dict[str, EntityMapping]] = {}
         

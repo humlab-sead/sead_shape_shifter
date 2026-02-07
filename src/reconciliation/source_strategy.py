@@ -7,7 +7,7 @@ for reconciliation, separated from infrastructure concerns.
 from enum import Enum
 from typing import Protocol
 
-from src.reconciliation.model import EntityMappingDomain, ReconciliationSourceDomain
+from src.reconciliation.model import EntityResolutionSet, ReconciliationSourceDomain
 
 
 class SourceStrategyType(Enum):
@@ -93,7 +93,7 @@ class ReconciliationSourceStrategy:
 
     @staticmethod
     def get_source_entity_name(
-        entity_name: str, entity_mapping: EntityMappingDomain
+        entity_name: str, entity_mapping: EntityResolutionSet
     ) -> str:
         """Get the entity name to use for data (business logic).
 
@@ -119,7 +119,7 @@ class ReconciliationSourceStrategy:
 
     @staticmethod
     def get_query_spec(
-        entity_mapping: EntityMappingDomain,
+        entity_mapping: EntityResolutionSet,
     ) -> ReconciliationSourceDomain | None:
         """Extract custom query specification if present.
 

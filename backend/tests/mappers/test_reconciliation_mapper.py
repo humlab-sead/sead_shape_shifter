@@ -11,9 +11,9 @@ from backend.app.models.reconciliation import (
     ReconciliationSource,
 )
 from src.reconciliation.model import (
-    EntityMappingDomain,
-    EntityMappingItemDomain,
-    EntityMappingRegistryDomain,
+    EntityResolutionSet,
+    ResolvedEntityPair,
+    EntityResolutionCatalog,
     ReconciliationRemoteDomain,
     ReconciliationSourceDomain,
 )
@@ -126,7 +126,7 @@ class TestEntityMappingItemMapper:
 
         domain = ReconciliationMapper.mapping_item_to_domain(dto)
 
-        assert isinstance(domain, EntityMappingItemDomain)
+        assert isinstance(domain, ResolvedEntityPair)
         assert domain.source_value == "Test Site"
         assert domain.sead_id == 123
         assert domain.confidence == 0.95
@@ -135,7 +135,7 @@ class TestEntityMappingItemMapper:
 
     def test_mapping_item_to_dto(self):
         """Test converting mapping item domain to DTO."""
-        domain = EntityMappingItemDomain(
+        domain = ResolvedEntityPair(
             source_value="Test Site",
             sead_id=123,
             confidence=0.95,
@@ -200,7 +200,7 @@ class TestEntityMappingMapper:
 
         domain = ReconciliationMapper.entity_mapping_to_domain(dto)
 
-        assert isinstance(domain, EntityMappingDomain)
+        assert isinstance(domain, EntityResolutionSet)
         assert domain.source == "another_entity"
         assert domain.property_mappings == {"lat": "latitude", "lon": "longitude"}
         assert domain.auto_accept_threshold == 0.95
@@ -222,19 +222,19 @@ class TestEntityMappingMapper:
 
         domain = ReconciliationMapper.entity_mapping_to_domain(dto)
 
-        assert isinstance(domain, EntityMappingDomain)
+        assert isinstance(domain, EntityResolutionSet)
         assert isinstance(domain.source, ReconciliationSourceDomain)
         assert domain.source.data_source == "test_db"
 
     def test_entity_mapping_to_dto(self):
         """Test converting entity mapping domain to DTO."""
-        domain = EntityMappingDomain(
+        domain = EntityResolutionSet(
             source="another_entity",
             property_mappings={"lat": "latitude"},
             remote=ReconciliationRemoteDomain(service_type="site"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
-            mapping=[EntityMappingItemDomain(source_value="Test", sead_id=123, confidence=0.98)],
+            mapping=[ResolvedEntityPair(source_value="Test", sead_id=123, confidence=0.98)],
         )
 
         dto = ReconciliationMapper.entity_mapping_to_dto(domain)
@@ -311,7 +311,7 @@ class TestEntityMappingRegistryMapper:
 
         domain = ReconciliationMapper.registry_to_domain(dto)
 
-        assert isinstance(domain, EntityMappingRegistryDomain)
+        assert isinstance(domain, EntityResolutionCatalog)
         assert domain.version == "2.0"
         assert domain.service_url == "http://localhost:8000"
         assert "site" in domain.entities
@@ -320,14 +320,14 @@ class TestEntityMappingRegistryMapper:
 
     def test_registry_to_dto(self):
         """Test converting registry domain to DTO."""
-        domain = EntityMappingRegistryDomain(
+        domain = EntityResolutionCatalog(
             version="2.0",
             service_url="http://localhost:8000",
             entities={
                 "site": {
-                    "site_name": EntityMappingDomain(
+                    "site_name": EntityResolutionSet(
                         remote=ReconciliationRemoteDomain(service_type="site"),
-                        mapping=[EntityMappingItemDomain(source_value="Test", sead_id=123)],
+                        mapping=[ResolvedEntityPair(source_value="Test", sead_id=123)],
                     )
                 }
             },
@@ -387,18 +387,18 @@ class TestDomainModelMethods:
 
     def test_entity_mapping_add_item(self):
         """Test adding mapping item to entity mapping."""
-        mapping = EntityMappingDomain(
+        mapping = EntityResolutionSet(
             remote=ReconciliationRemoteDomain(service_type="site"),
         )
 
-        item = EntityMappingItemDomain(source_value="Test", sead_id=123)
+        item = ResolvedEntityPair(source_value="Test", sead_id=123)
         mapping.add_mapping_item(item)
 
         assert len(mapping.mapping) == 1
         assert mapping.mapping[0].source_value == "Test"
 
         # Adding another item with same source_value should replace
-        item2 = EntityMappingItemDomain(source_value="Test", sead_id=456)
+        item2 = ResolvedEntityPair(source_value="Test", sead_id=456)
         mapping.add_mapping_item(item2)
 
         assert len(mapping.mapping) == 1
@@ -406,11 +406,11 @@ class TestDomainModelMethods:
 
     def test_entity_mapping_remove_item(self):
         """Test removing mapping item from entity mapping."""
-        mapping = EntityMappingDomain(
+        mapping = EntityResolutionSet(
             remote=ReconciliationRemoteDomain(service_type="site"),
             mapping=[
-                EntityMappingItemDomain(source_value="Test1", sead_id=123),
-                EntityMappingItemDomain(source_value="Test2", sead_id=456),
+                ResolvedEntityPair(source_value="Test1", sead_id=123),
+                ResolvedEntityPair(source_value="Test2", sead_id=456),
             ],
         )
 
@@ -426,10 +426,10 @@ class TestDomainModelMethods:
 
     def test_entity_mapping_get_item(self):
         """Test getting mapping item by source value."""
-        mapping = EntityMappingDomain(
+        mapping = EntityResolutionSet(
             remote=ReconciliationRemoteDomain(service_type="site"),
             mapping=[
-                EntityMappingItemDomain(source_value="Test1", sead_id=123),
+                ResolvedEntityPair(source_value="Test1", sead_id=123),
             ],
         )
 
@@ -442,12 +442,12 @@ class TestDomainModelMethods:
 
     def test_registry_add_mapping(self):
         """Test adding mapping to registry."""
-        registry = EntityMappingRegistryDomain(
+        registry = EntityResolutionCatalog(
             version="2.0",
             service_url="http://localhost:8000",
         )
 
-        mapping = EntityMappingDomain(
+        mapping = EntityResolutionSet(
             remote=ReconciliationRemoteDomain(service_type="site"),
         )
 
@@ -459,11 +459,11 @@ class TestDomainModelMethods:
 
     def test_registry_remove_mapping(self):
         """Test removing mapping from registry."""
-        mapping = EntityMappingDomain(
+        mapping = EntityResolutionSet(
             remote=ReconciliationRemoteDomain(service_type="site"),
         )
 
-        registry = EntityMappingRegistryDomain(
+        registry = EntityResolutionCatalog(
             version="2.0",
             service_url="http://localhost:8000",
             entities={"site": {"site_name": mapping}},

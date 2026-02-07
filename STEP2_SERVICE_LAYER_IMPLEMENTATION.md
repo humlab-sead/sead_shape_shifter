@@ -11,13 +11,13 @@ Successfully updated the reconciliation service layer to use domain models inter
 ## What Was Accomplished
 
 ### 1. EntityMappingManager (`backend/app/services/reconciliation/mapping_manager.py`)
-- ✅ `load_registry()` → Returns `EntityMappingRegistryDomain`
-- ✅ `save_registry()` → Accepts `EntityMappingRegistryDomain`
+- ✅ `load_registry()` → Returns `EntityResolutionCatalog`
+- ✅ `save_registry()` → Accepts `EntityResolutionCatalog`
 - ✅ All CRUD methods use domain models internally
 - ✅ Business logic uses domain model methods (`get_mapping()`, `has_mapping()`, `add_mapping()`, etc.)
 
 ### 2. ReconciliationService (`backend/app/services/reconciliation/service.py`)
-- ✅ All source resolvers accept `EntityMappingDomain`
+- ✅ All source resolvers accept `EntityResolutionSet`
 - ✅ `auto_reconcile_entity()` uses domain models
 - ✅ `update_mapping()` and `mark_as_unmatched()` use domain model methods
 - ✅ Business logic encapsulated in domain model methods
@@ -80,7 +80,7 @@ YAML Files (Persistence)
 
 ## Next Steps (Step 3 - Future)
 - Move more business logic from services into domain model methods
-- Extract `auto_accept_candidates()` logic into `EntityMappingDomain`
+- Extract `auto_accept_candidates()` logic into `EntityResolutionSet`
 - Services become thin orchestration layer
 
 ## Git Workflow
