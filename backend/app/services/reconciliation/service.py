@@ -49,7 +49,7 @@ class ReconciliationSourceResolver(abc.ABC):
         self.config: ShapeShiftProject = ProjectMapper.to_core(self.api_config)
 
     @abc.abstractmethod
-    async def resolve(self, entity_name: str, entity_spec: EntityMapping) -> list[dict]:
+    async def resolve(self, entity_name: str, entity_mapping: EntityMapping) -> list[dict]:
         """Resolve source data based on entity spec source project."""
 
     @staticmethod
@@ -70,7 +70,7 @@ class ReconciliationSourceResolver(abc.ABC):
 class TargetEntityReconciliationSourceResolver(ReconciliationSourceResolver):
     """Case 1: No source, empty, or same as entity name -> use entity pource == entity_name)"""
 
-    async def resolve(self, entity_name: str, entity_spec: EntityMapping) -> list[dict]:
+    async def resolve(self, entity_name: str, entity_mapping: EntityMapping) -> list[dict]:
         logger.debug(f"Using preview data from entity '{entity_name}'")
         preview_result: PreviewResult = await self.preview_service.preview_entity(self.project_name, entity_name, limit=1000)
         return preview_result.rows
@@ -79,11 +79,11 @@ class TargetEntityReconciliationSourceResolver(ReconciliationSourceResolver):
 class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
     """Case 2: Reconciliation source is the the result of another entity's data."""
 
-    async def resolve(self, entity_name: str, entity_spec: EntityMapping) -> list[dict]:
+    async def resolve(self, entity_name: str, entity_mapping: EntityMapping) -> list[dict]:
 
-        assert isinstance(entity_spec.source, str)
+        assert isinstance(entity_mapping.source, str)
 
-        source: str = entity_spec.source
+        source: str = entity_mapping.source
 
         logger.info(f"Fetching preview data from entity '{source}' for reconciliation of '{entity_name}'")
 
@@ -100,11 +100,11 @@ class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
 class SqlQueryReconciliationSourceResolver(ReconciliationSourceResolver):
     """Case 3: Reconciliation source is a custom SQL query."""
 
-    async def resolve(self, entity_name: str, entity_spec: EntityMapping) -> list[dict]:
+    async def resolve(self, entity_name: str, entity_mapping: EntityMapping) -> list[dict]:
 
-        assert isinstance(entity_spec.source, ReconciliationSource)
+        assert isinstance(entity_mapping.source, ReconciliationSource)
 
-        source: str | ReconciliationSource = entity_spec.source
+        source: str | ReconciliationSource = entity_mapping.source
         logger.info(f"Executing custom query for reconciliation of '{entity_name}'")
 
         # Get data source config from ShapeShiftProject
@@ -139,7 +139,7 @@ class ReconciliationQueryService:
     def create(
         self,
         target_field: str,
-        entity_spec: EntityMapping,
+        entity_mapping: EntityMapping,
         max_candidates: int,
         source_data: list[dict[str, Any]],
         service_type: str,
@@ -148,7 +148,7 @@ class ReconciliationQueryService:
 
         Args:
             target_field: Target field name for reconciliation
-            entity_spec: Entity mapping specification
+            entity_mapping: Entity mapping specification
             max_candidates: Max candidates per query
             source_data: Source data rows
             service_type: Reconciliation service entity type
@@ -179,7 +179,7 @@ class ReconciliationQueryService:
             # Build properties from property_mappings
             # Maps service property IDs to source column values
             properties = []
-            for property_id, source_column in entity_spec.property_mappings.items():
+            for property_id, source_column in entity_mapping.property_mappings.items():
                 value = row.get(source_column)
                 if value is not None:
                     properties.append({"pid": property_id, "v": str(value)})
@@ -252,10 +252,10 @@ class ReconciliationService:
         if target_field not in recon_config.entities[entity_name]:
             raise NotFoundError(f"No reconciliation spec for entity '{entity_name}' with target field '{target_field}'")
 
-        entity_spec: EntityMapping = recon_config.entities[entity_name][target_field]
+        entity_mapping: EntityMapping = recon_config.entities[entity_name][target_field]
 
         # Get source data
-        source_data: list[dict] = await self.get_resolved_source_data(project_name, entity_name, entity_spec)
+        source_data: list[dict] = await self.get_resolved_source_data(project_name, entity_name, entity_mapping)
 
         # Enrich with reconciliation mappings
         enriched_data: list[dict] = []
@@ -265,7 +265,7 @@ class ReconciliationService:
 
             # Find matching mapping
             mapping: EntityMappingItem | None = None
-            for m in entity_spec.mapping:
+            for m in entity_mapping.mapping:
                 if m.source_value == target_value:
                     mapping = m
                     break
@@ -283,7 +283,7 @@ class ReconciliationService:
         logger.info(f"Retrieved {len(enriched_data)} preview rows for entity '{entity_name}'")
         return enriched_data
 
-    async def get_resolved_source_data(self, project_name: str, entity_name: str, entity_spec: EntityMapping) -> list[dict]:
+    async def get_resolved_source_data(self, project_name: str, entity_name: str, entity_mapping: EntityMapping) -> list[dict]:
         """
         Resolve source data based on source in entity.
 
@@ -292,16 +292,16 @@ class ReconciliationService:
         Args:
             project_name: Project name
             entity_name: Entity to reconcile
-            entity_spec: Entity mapping specification
+            entity_mapping: Entity mapping specification
 
         Returns:
             Data to use for reconciliation (may be from different source)
         """
         resolver_cls: type[ReconciliationSourceResolver] = ReconciliationSourceResolver.get_resolver_cls_for_source(
-            entity_name, entity_spec.source
+            entity_name, entity_mapping.source
         )
         resolver: ReconciliationSourceResolver = resolver_cls(project_name, self.project_service)
-        data = await resolver.resolve(entity_name, entity_spec)
+        data = await resolver.resolve(entity_name, entity_mapping)
         return data
 
     def _extract_id_from_uri(self, uri: str) -> int:
@@ -338,7 +338,7 @@ class ReconciliationService:
             project_name: Project name
             entity_name: Entity to reconcile
             target_field: Target field for reconciliation
-            entity_spec: Entity mapping specification
+            entity_mapping: Entity mapping specification
             max_candidates: Max candidates per query
             operation_id: Optional operation ID for progress tracking
 
@@ -481,14 +481,14 @@ class ReconciliationService:
         )
 
     def auto_accept_candidates(
-        self, entity_spec: EntityMapping, candidate_map: dict[str, list[ReconciliationCandidate]]
+        self, entity_mapping: EntityMapping, candidate_map: dict[str, list[ReconciliationCandidate]]
     ) -> tuple[int, int, int]:
         auto_accepted: int = 0
         needs_review: int = 0
         unmatched: int = 0
 
-        threshold = entity_spec.auto_accept_threshold
-        review_threshold: float = entity_spec.review_threshold
+        threshold = entity_mapping.auto_accept_threshold
+        review_threshold: float = entity_mapping.review_threshold
 
         for key_str, candidates in candidate_map.items():
             # Convert back from string
@@ -507,7 +507,7 @@ class ReconciliationService:
                     sead_id: int = self._extract_id_from_uri(best_match.id)
 
                     # Remove existing mapping for this value
-                    entity_spec.mapping = [m for m in entity_spec.mapping if m.source_value != source_value]
+                    entity_mapping.mapping = [m for m in entity_mapping.mapping if m.source_value != source_value]
 
                     # Add new mapping
                     mapping = EntityMappingItem(
@@ -520,7 +520,7 @@ class ReconciliationService:
                         last_modified=datetime.now(timezone.utc).isoformat(),
                         will_not_match=False,
                     )
-                    entity_spec.mapping.append(mapping)
+                    entity_mapping.mapping.append(mapping)
                     auto_accepted += 1
                     logger.debug(f"Auto-accepted: {source_value} -> {sead_id} ({best_match.name}, score={best_match.score:.1f})")
                 except ValueError as e:
@@ -563,11 +563,11 @@ class ReconciliationService:
         if target_field not in recon_config.entities[entity_name]:
             raise NotFoundError(f"Target field '{target_field}' not in entity mapping registry for entity '{entity_name}'")
 
-        entity_spec = recon_config.entities[entity_name][target_field]
+        entity_mapping = recon_config.entities[entity_name][target_field]
 
         # Find existing mapping
         existing_idx = None
-        for idx, mapping in enumerate(entity_spec.mapping):
+        for idx, mapping in enumerate(entity_mapping.mapping):
             if mapping.source_value == source_value:
                 existing_idx = idx
                 break
@@ -575,7 +575,7 @@ class ReconciliationService:
         if sead_id is None:
             # Remove mapping
             if existing_idx is not None:
-                entity_spec.mapping.pop(existing_idx)
+                entity_mapping.mapping.pop(existing_idx)
                 logger.info(f"Removed mapping for {source_value}")
         else:
             # Update or create mapping
@@ -591,10 +591,10 @@ class ReconciliationService:
             )
 
             if existing_idx is not None:
-                entity_spec.mapping[existing_idx] = new_mapping
+                entity_mapping.mapping[existing_idx] = new_mapping
                 logger.info(f"Updated mapping: {source_value} -> {sead_id}")
             else:
-                entity_spec.mapping.append(new_mapping)
+                entity_mapping.mapping.append(new_mapping)
                 logger.info(f"Added new mapping: {source_value} -> {sead_id}")
 
         self.mapping_manager.save_registry(project_name, recon_config)
@@ -630,11 +630,11 @@ class ReconciliationService:
         if target_field not in recon_config.entities[entity_name]:
             raise NotFoundError(f"Target field '{target_field}' not in entity mapping registry for entity '{entity_name}'")
 
-        entity_spec = recon_config.entities[entity_name][target_field]
+        entity_mapping = recon_config.entities[entity_name][target_field]
 
         # Find existing mapping
         existing_idx = None
-        for idx, mapping in enumerate(entity_spec.mapping):
+        for idx, mapping in enumerate(entity_mapping.mapping):
             if mapping.source_value == source_value:
                 existing_idx = idx
                 break
@@ -652,10 +652,10 @@ class ReconciliationService:
         )
 
         if existing_idx is not None:
-            entity_spec.mapping[existing_idx] = new_mapping
+            entity_mapping.mapping[existing_idx] = new_mapping
             logger.info(f"Updated mapping to unmatched: {source_value}")
         else:
-            entity_spec.mapping.append(new_mapping)
+            entity_mapping.mapping.append(new_mapping)
             logger.info(f"Marked as unmatched: {source_value}")
 
         self.mapping_manager.save_registry(project_name, recon_config)
