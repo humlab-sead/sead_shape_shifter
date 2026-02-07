@@ -26,7 +26,7 @@ class ReconciliationRemoteDomain:
 
 
 @dataclass
-class EntityMappingItemDomain:
+class ResolvedEntityPair:
     """Single reconciliation mapping entry linking source value to SEAD ID."""
 
     source_value: Any
@@ -40,7 +40,7 @@ class EntityMappingItemDomain:
 
 
 @dataclass
-class EntityMappingDomain:
+class EntityResolutionSet:
     """Mapping specification for a single target field.
     
     Business logic for entity mapping operations.
@@ -55,9 +55,9 @@ class EntityMappingDomain:
     property_mappings: dict[str, str] = field(default_factory=dict)
     auto_accept_threshold: float = 0.95
     review_threshold: float = 0.70
-    mapping: list[EntityMappingItemDomain] = field(default_factory=list)
+    mapping: list[ResolvedEntityPair] = field(default_factory=list)
 
-    def add_mapping_item(self, item: EntityMappingItemDomain) -> None:
+    def add_mapping_item(self, item: ResolvedEntityPair) -> None:
         """Add or update a mapping item.
         
         If a mapping for the same source_value exists, it will be replaced.
@@ -77,7 +77,7 @@ class EntityMappingDomain:
         self.mapping = [m for m in self.mapping if m.source_value != source_value]
         return len(self.mapping) < original_len
 
-    def get_mapping_item(self, source_value: Any) -> EntityMappingItemDomain | None:
+    def get_mapping_item(self, source_value: Any) -> ResolvedEntityPair | None:
         """Get mapping item by source value."""
         for item in self.mapping:
             if item.source_value == source_value:
@@ -94,7 +94,7 @@ class EntityMappingDomain:
 
 
 @dataclass
-class EntityMappingRegistryDomain:
+class EntityResolutionCatalog:
     """Complete entity mapping registry for all entities.
     
     Top-level domain model for managing entity mappings across a project.
@@ -102,9 +102,9 @@ class EntityMappingRegistryDomain:
 
     version: str
     service_url: str
-    entities: dict[str, dict[str, EntityMappingDomain]] = field(default_factory=dict)
+    entities: dict[str, dict[str, EntityResolutionSet]] = field(default_factory=dict)
 
-    def get_mapping(self, entity_name: str, target_field: str) -> EntityMappingDomain | None:
+    def get_mapping(self, entity_name: str, target_field: str) -> EntityResolutionSet | None:
         """Get mapping for an entity and target field."""
         if entity_name not in self.entities:
             return None
@@ -115,7 +115,7 @@ class EntityMappingRegistryDomain:
         return self.get_mapping(entity_name, target_field) is not None
 
     def add_mapping(
-        self, entity_name: str, target_field: str, mapping: EntityMappingDomain
+        self, entity_name: str, target_field: str, mapping: EntityResolutionSet
     ) -> None:
         """Add or update an entity mapping."""
         if entity_name not in self.entities:
@@ -141,7 +141,7 @@ class EntityMappingRegistryDomain:
         
         return True
 
-    def list_mappings(self) -> list[tuple[str, str, EntityMappingDomain]]:
+    def list_mappings(self) -> list[tuple[str, str, EntityResolutionSet]]:
         """List all mappings as (entity_name, target_field, mapping) tuples."""
         result = []
         for entity_name, fields in self.entities.items():

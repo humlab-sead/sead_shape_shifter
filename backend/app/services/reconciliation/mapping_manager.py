@@ -16,8 +16,8 @@ from backend.app.models.project import Project
 from backend.app.services import ProjectService
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.reconciliation.model import (
-    EntityMappingRegistryDomain,
-    EntityMappingDomain,
+    EntityResolutionCatalog,
+    EntityResolutionSet,
     ReconciliationRemoteDomain,
     ReconciliationSourceDomain,
 )
@@ -57,7 +57,7 @@ class EntityMappingManager:
         """Get path to reconciliation YAML file."""
         return self.config_dir / f"{project_name}-reconciliation.yml"
 
-    def load_registry(self, project_name: str, filename: Path | None = None) -> EntityMappingRegistryDomain:
+    def load_registry(self, project_name: str, filename: Path | None = None) -> EntityResolutionCatalog:
         """
         Load entity mapping registry from YAML file.
 
@@ -86,7 +86,7 @@ class EntityMappingManager:
         return ReconciliationMapper.registry_to_domain(dto)
 
     def save_registry(
-        self, project_name: str, mapping_registry: EntityMappingRegistryDomain, filename: Path | None = None
+        self, project_name: str, mapping_registry: EntityResolutionCatalog, filename: Path | None = None
     ) -> None:
         """
         Save entity mapping registry to YAML file.
@@ -125,7 +125,7 @@ class EntityMappingManager:
         Returns:
             List of flattened entity mapping items (DTOs)
         """
-        mapping_registry_domain: EntityMappingRegistryDomain = self.load_registry(project_name)
+        mapping_registry_domain: EntityResolutionCatalog = self.load_registry(project_name)
         entity_mappings = []
 
         for entity_name, target_mappings in mapping_registry_domain.entities.items():
@@ -154,8 +154,8 @@ class EntityMappingManager:
         project_name: str,
         entity_name: str,
         target_field: str,
-        entity_mapping: EntityMappingDomain,
-    ) -> EntityMappingRegistryDomain:
+        entity_mapping: EntityResolutionSet,
+    ) -> EntityResolutionCatalog:
         """
         Create a new entity mapping registry.
 
@@ -181,7 +181,7 @@ class EntityMappingManager:
             raise BadRequestError(f"Entity '{entity_name}' does not exist in project '{project_name}'")
 
         # Load registry (now returns domain model)
-        mapping_registry: EntityMappingRegistryDomain = self.load_registry(project_name)
+        mapping_registry: EntityResolutionCatalog = self.load_registry(project_name)
 
         # Check if entity mapping already exists using domain model method
         if mapping_registry.has_mapping(entity_name, target_field):
@@ -208,7 +208,7 @@ class EntityMappingManager:
         remote: ReconciliationRemoteDomain,
         auto_accept_threshold: float,
         review_threshold: float,
-    ) -> EntityMappingRegistryDomain:
+    ) -> EntityResolutionCatalog:
         """
         Update an existing entity mapping registry.
 
@@ -230,7 +230,7 @@ class EntityMappingManager:
         Raises:
             NotFoundError: If entity mapping doesn't exist
         """
-        mapping_registry: EntityMappingRegistryDomain = self.load_registry(project_name)
+        mapping_registry: EntityResolutionCatalog = self.load_registry(project_name)
 
         # Check if entity mapping exists using domain model method
         existing_mapping = mapping_registry.get_mapping(entity_name, target_field)
@@ -255,7 +255,7 @@ class EntityMappingManager:
         entity_name: str,
         target_field: str,
         force: bool = False,
-    ) -> EntityMappingRegistryDomain:
+    ) -> EntityResolutionCatalog:
         """
         Delete an entity mapping registry.
 
@@ -274,7 +274,7 @@ class EntityMappingManager:
             NotFoundError: If mapping registry doesn't exist
             BadRequestError: If mapping registry has mappings and force=False
         """
-        mapping_registry: EntityMappingRegistryDomain = self.load_registry(project_name)
+        mapping_registry: EntityResolutionCatalog = self.load_registry(project_name)
 
         # Check if registry exists using domain model method
         existing_mapping = mapping_registry.get_mapping(entity_name, target_field)
