@@ -64,6 +64,21 @@ def mock_config_service():
 
 
 @pytest.fixture
+def mock_core_project():
+    """Mock ShapeShiftProject (core domain model)."""
+    project = MagicMock()
+    project.tables = {
+        "site": MagicMock(name="site"),
+        "sample": MagicMock(name="sample"),
+    }
+    project.data_sources = {
+        "test_db": MagicMock(driver="postgresql"),
+    }
+    project.get_data_source = MagicMock(return_value=MagicMock(driver="postgresql"))
+    return project
+
+
+@pytest.fixture
 def mock_recon_client():
     """Mock reconciliation client."""
     client = AsyncMock()
@@ -153,9 +168,9 @@ class TestTargetEntityReconciliationSourceResolver:
     """Tests for TargetEntityReconciliationSourceResolver."""
 
     @pytest.mark.asyncio
-    async def test_resolve_uses_entity_preview(self, mock_config_service, sample_entity_spec):
+    async def test_resolve_uses_entity_preview(self, mock_config_service, mock_core_project, sample_entity_spec):
         """Test resolve uses preview data from target entity."""
-        resolver = TargetEntityReconciliationSourceResolver("test_project", mock_config_service)
+        resolver = TargetEntityReconciliationSourceResolver("test_project", mock_core_project, mock_config_service)
 
         preview_data = [
             {"site_code": "SITE001", "site_name": "Test Site 1"},
@@ -181,9 +196,9 @@ class TestAnotherEntityReconciliationSourceResolver:
     """Tests for AnotherEntityReconciliationSourceResolver."""
 
     @pytest.mark.asyncio
-    async def test_resolve_uses_source_entity_preview(self, mock_config_service):
+    async def test_resolve_uses_source_entity_preview(self, mock_config_service, mock_core_project):
         """Test resolve uses preview data from source entity."""
-        resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_config_service)
+        resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_core_project, mock_config_service)
 
         # Entity spec domain model with source pointing to another entity
         entity_spec = EntityMappingDomain(
@@ -206,9 +221,12 @@ class TestAnotherEntityReconciliationSourceResolver:
             mock_preview.assert_called_once_with("test_project", "site", limit=1000)
 
     @pytest.mark.asyncio
-    async def test_resolve_raises_for_missing_source_entity(self, mock_config_service):
+    async def test_resolve_raises_for_missing_source_entity(self, mock_config_service, mock_core_project):
         """Test resolve raises if source entity not found."""
-        resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_config_service)
+        # Set up mock_core_project to only have 'site' table, not 'nonexistent'
+        mock_core_project.tables = {"site": MagicMock(name="site")}
+        
+        resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_core_project, mock_config_service)
 
         entity_spec = EntityMappingDomain(
             source="nonexistent",
@@ -225,7 +243,7 @@ class TestSqlQueryReconciliationSourceResolver:
     """Tests for SqlQueryReconciliationSourceResolver."""
 
     @pytest.mark.asyncio
-    async def test_resolve_executes_custom_query(self, mock_config_service):
+    async def test_resolve_executes_custom_query(self, mock_config_service, mock_core_project):
         """Test resolve attempts to execute custom SQL query (verifies code path)."""
         # This test is simplified to verify the code path without deep mocking
         # Full integration would require a real ShapeShiftProject with data sources
@@ -247,7 +265,7 @@ class TestSqlQueryReconciliationSourceResolver:
             review_threshold=0.70,
         )
 
-        resolver = SqlQueryReconciliationSourceResolver("test_project", mock_config_service)
+        resolver = SqlQueryReconciliationSourceResolver("test_project", mock_core_project, mock_config_service)
 
         # This will fail at TableConfig creation, but that's OK - we're just verifying
         # that the SQL query path is taken and data source validation happens
@@ -255,9 +273,12 @@ class TestSqlQueryReconciliationSourceResolver:
             await resolver.resolve("entity", entity_spec)
 
     @pytest.mark.asyncio
-    async def test_resolve_raises_for_missing_data_source(self, mock_config_service):
+    async def test_resolve_raises_for_missing_data_source(self, mock_config_service, mock_core_project):
         """Test resolve raises if data source not found."""
-        resolver = SqlQueryReconciliationSourceResolver("test_project", mock_config_service)
+        # Set up mock_core_project to have no data sources
+        mock_core_project.data_sources = {}
+        
+        resolver = SqlQueryReconciliationSourceResolver("test_project", mock_core_project, mock_config_service)
 
         entity_spec = EntityMappingDomain(
             source=ReconciliationSourceDomain(type="sql", data_source="nonexistent_db", query="SELECT * FROM test"),
@@ -409,17 +430,29 @@ class TestReconciliationService:
         assert "site" in data["entities"]
 
     @pytest.mark.asyncio
-    async def test_get_resolved_source_data_uses_correct_resolver(self, reconciliation_service, sample_entity_spec):
+    async def test_get_resolved_source_data_uses_correct_resolver(self, reconciliation_service, sample_entity_spec, mock_core_project):
         """Test get_resolved_source_data selects and uses correct resolver."""
-        with patch("backend.app.services.reconciliation.service.TargetEntityReconciliationSourceResolver") as mock_resolver_cls:
-            mock_resolver = AsyncMock()
-            mock_resolver.resolve.return_value = [{"key": "value"}]
-            mock_resolver_cls.return_value = mock_resolver
+        # Mock project loading to return a project
+        with patch.object(reconciliation_service.project_service, "load_project") as mock_load:
+            mock_api_project = MagicMock()
+            mock_load.return_value = mock_api_project
+            
+            # Mock ProjectMapper to return our mock core project
+            with patch("backend.app.services.reconciliation.service.ProjectMapper") as mock_mapper:
+                mock_mapper.to_core.return_value = mock_core_project
+                
+                # Mock the resolver
+                with patch("backend.app.services.reconciliation.service.TargetEntityReconciliationSourceResolver") as mock_resolver_cls:
+                    mock_resolver = AsyncMock()
+                    mock_resolver.resolve.return_value = [{"key": "value"}]
+                    mock_resolver_cls.return_value = mock_resolver
 
-            result = await reconciliation_service.get_resolved_source_data("test_project", "site", sample_entity_spec)
+                    result = await reconciliation_service.get_resolved_source_data("test_project", "site", sample_entity_spec)
 
-            assert result == [{"key": "value"}]
-            mock_resolver.resolve.assert_called_once_with("site", sample_entity_spec)
+                    assert result == [{"key": "value"}]
+                    mock_resolver.resolve.assert_called_once_with("site", sample_entity_spec)
+                    # Verify resolver was created with correct parameters
+                    mock_resolver_cls.assert_called_once_with("test_project", mock_core_project, reconciliation_service.project_service)
 
     def test_extract_id_from_uri_success(self, reconciliation_service):
         """Test _extract_id_from_uri extracts ID correctly."""
