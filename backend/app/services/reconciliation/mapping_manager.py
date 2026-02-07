@@ -100,30 +100,30 @@ class EntityMappingManager:
 
     def list_entity_mappings(self, project_name: str) -> list[EntityMappingListItem]:
         """
-        List all entity mapping specifications for a project (flattened view).
+        List all entity mappings for a project (flattened view).
 
         Args:
             project_name: Project name
 
         Returns:
-            List of flattened mapping specification items
+            List of flattened list of entity mapping items
         """
         mapping_registry: EntityMappingRegistry = self.load_registry(project_name)
         entity_mappings = []
 
-        for entity_name, target_specs in mapping_registry.entities.items():
-            for target_field, spec in target_specs.items():
+        for entity_name, target_mappings in mapping_registry.entities.items():
+            for target_field, mapping in target_mappings.items():
                 entity_mappings.append(
                     EntityMappingListItem(
                         entity_name=entity_name,
                         target_field=target_field,
-                        source=spec.source,
-                        property_mappings=spec.property_mappings,
-                        remote=spec.remote,
-                        auto_accept_threshold=spec.auto_accept_threshold,
-                        review_threshold=spec.review_threshold,
-                        mapping_count=len(spec.mapping),
-                        property_mapping_count=len(spec.property_mappings),
+                        source=mapping.source,
+                        property_mappings=mapping.property_mappings,
+                        remote=mapping.remote,
+                        auto_accept_threshold=mapping.auto_accept_threshold,
+                        review_threshold=mapping.review_threshold,
+                        mapping_count=len(mapping.mapping),
+                        property_mapping_count=len(mapping.property_mappings),
                     )
                 )
 
@@ -134,7 +134,7 @@ class EntityMappingManager:
         project_name: str,
         entity_name: str,
         target_field: str,
-        spec: EntityMapping,
+        entity_mapping: EntityMapping,
     ) -> EntityMappingRegistry:
         """
         Create a new entity mapping registry.
@@ -143,7 +143,7 @@ class EntityMappingManager:
             project_name: Project name
             entity_name: Entity name (must exist in project)
             target_field: Target field name
-            spec: Entity mapping specification
+            entity_mapping: Entity mapping specification
 
         Returns:
             Updated entity mapping registry
@@ -163,22 +163,22 @@ class EntityMappingManager:
         # Load registry
         mapping_registry: EntityMappingRegistry = self.load_registry(project_name)
 
-        # Check if specification already exists
+        # Check if entity mapping already exists
         if entity_name in mapping_registry.entities and target_field in mapping_registry.entities[entity_name]:
-            raise BadRequestError(f"Specification for entity '{entity_name}' and target field '{target_field}' already exists")
+            raise BadRequestError(f"Entity mapping for entity '{entity_name}' and target field '{target_field}' already exists")
 
-        # Ensure mapping is empty for new specification
-        spec.mapping = []
+        # Ensure mapping is empty for new entity mapping
+        entity_mapping.mapping = []
 
-        # Add specification
+        # Add entity mapping to registry
         if entity_name not in mapping_registry.entities:
             mapping_registry.entities[entity_name] = {}
 
-        mapping_registry.entities[entity_name][target_field] = spec
+        mapping_registry.entities[entity_name][target_field] = entity_mapping
 
         # Save and return
         self.save_registry(project_name, mapping_registry)
-        logger.info(f"Created specification for {entity_name}.{target_field}")
+        logger.info(f"Created entity mapping for {entity_name}.{target_field}")
         return mapping_registry
 
     def update_registry(
@@ -211,15 +211,15 @@ class EntityMappingManager:
             Updated entity mapping registry
 
         Raises:
-            NotFoundError: If mapping specification doesn't exist
+            NotFoundError: If entity mapping doesn't exist
         """
         mapping_registry: EntityMappingRegistry = self.load_registry(project_name)
 
-        # Check if specification exists
+        # Check if entity mapping exists
         if entity_name not in mapping_registry.entities or target_field not in mapping_registry.entities[entity_name]:
-            raise NotFoundError(f"Specification for entity '{entity_name}' and target field '{target_field}' not found")
+            raise NotFoundError(f"Entity mapping for entity '{entity_name}' and target field '{target_field}' not found")
 
-        # Get existing spec to preserve mapping
+        # Get existing entity mapping to preserve mapping
         mapping: EntityMapping = mapping_registry.entities[entity_name][target_field]
 
         # Update fields (preserve mapping)
@@ -231,7 +231,7 @@ class EntityMappingManager:
 
         # Save and return
         self.save_registry(project_name, mapping_registry)
-        logger.info(f"Updated specification for {entity_name}.{target_field}")
+        logger.info(f"Updated entity mapping for {entity_name}.{target_field}")
         return mapping_registry
 
     def delete_registry(
