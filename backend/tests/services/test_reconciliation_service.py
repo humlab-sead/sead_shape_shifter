@@ -91,12 +91,25 @@ def sample_entity_spec():
 
 
 @pytest.fixture
-def sample_recon_config(sample_entity_spec):
-    """Create sample EntityMappingRegistry (v2 format)."""
+def sample_entity_spec_dto():
+    """Create sample EntityMapping (DTO for YAML serialization tests)."""
+    return EntityMapping(
+        source=None,
+        property_mappings={"latitude": "latitude", "longitude": "longitude"},
+        remote=ReconciliationRemote(service_type="site"),
+        auto_accept_threshold=0.95,
+        review_threshold=0.70,
+        mapping=[],
+    )
+
+
+@pytest.fixture
+def sample_recon_config(sample_entity_spec_dto):
+    """Create sample EntityMappingRegistry (DTO for YAML serialization tests)."""
     return EntityMappingRegistry(
         version="2.0",
         service_url=RECONCILIATION_SERVICE_URL,
-        entities={"site": {"site_code": sample_entity_spec}},  # Nested: entity -> target -> spec
+        entities={"site": {"site_code": sample_entity_spec_dto}},  # Nested: entity -> target -> spec
     )
 
 
@@ -470,7 +483,7 @@ class TestReconciliationService:
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
             mock_source.return_value = source_data
 
-            reconciliation_service.recon_client.reconcile_batch.return_value = {"q0": candidates}
+            reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}
 
             # Create empty config file with v2 format
             config_file = tmp_path / "test-reconciliation.yml"
@@ -524,7 +537,7 @@ class TestReconciliationService:
 
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
             mock_source.return_value = source_data
-            reconciliation_service.recon_client.reconcile_batch.return_value = {"q0": candidates}
+            reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}
 
             config_file = tmp_path / "test-reconciliation.yml"
             config = {
@@ -569,7 +582,7 @@ class TestReconciliationService:
 
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
             mock_source.return_value = source_data
-            reconciliation_service.recon_client.reconcile_batch.return_value = {"q0": candidates}
+            reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}
 
             config_file = tmp_path / "test-reconciliation.yml"
             config = {
@@ -608,7 +621,7 @@ class TestReconciliationService:
 
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
             mock_source.return_value = source_data
-            reconciliation_service.recon_client.reconcile_batch.return_value = {"q0": []}
+            reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": []}
 
             config_file = tmp_path / "test-reconciliation.yml"
             config = {
@@ -795,14 +808,14 @@ class TestSpecificationManagement:
         specs = reconciliation_service.mapping_manager.list_entity_mappings("test")
         assert specs == []
 
-    def test_list_specifications_multiple(self, reconciliation_service, tmp_path, sample_entity_spec):
+    def test_list_specifications_multiple(self, reconciliation_service, tmp_path, sample_entity_spec_dto):
         """Test listing multiple specifications."""
         config = EntityMappingRegistry(
             version="2.0",
             service_url=RECONCILIATION_SERVICE_URL,
             entities={
                 "site": {
-                    "site_code": sample_entity_spec,
+                    "site_code": sample_entity_spec_dto,
                     "site_name": EntityMapping(
                         source="another_entity",
                         property_mappings={},
