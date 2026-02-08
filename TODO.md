@@ -213,3 +213,8 @@ Entity name conflict → "Entity 'X' already exists. Choose different name."
 
 ### TODO: Save custom graph layout in separate file
 
+
+
+I think this will be a common case for users. But I also see seperate problems in this example. It's actually a bit of a weird case, since the local FK key hasn't the same (which is a user's mistake). The bug in this case is then that we are pulling the
+
+ to  We can use the fact that we are the local FK key is the same (name) as the remote public key. I most other cases I think business keys will be used to "pull" remote public id into thelocal frame. In this case we explicitally stated that we want to use the local FK. We should in this case verify that all  local FK key values exisin remote tables "system_id" column. And if we are missing extra remote column, we need to merge and pull in those., We are linking  a lolocakl field to remote public_id, but pulling in values from "system_id", system_id

@@ -1,4 +1,5 @@
 import copy
+from dataclasses import dataclass
 from functools import cached_property
 from typing import Any, Generator, Literal, Self
 
@@ -87,6 +88,18 @@ class ForeignKeyConstraints:
         return self.allow_unmatched_left is not None or self.allow_unmatched_right is not None
 
 
+@dataclass
+class ForeignKeyMergeSetup:
+    """Setup configuration for foreign key merge operation.
+    
+    Attributes:
+        remote_columns: Filtered list of remote columns to select (excludes duplicate targets)
+        rename_map: Column renaming dictionary (source -> target)
+    """
+    remote_columns: list[str]
+    rename_map: dict[str, str]
+
+
 class ForeignKeyConfig:
     """Configuration for a foreign key. Read-Only. Wraps foreign key setting from table config."""
 
@@ -162,17 +175,61 @@ class ForeignKeyConfig:
     def has_constraints(self) -> bool:
         return self.constraints and self.constraints.has_constraints
 
-    def get_valid_remote_columns(self, df: pd.DataFrame) -> Any | list[str]:
+    def get_valid_remote_columns(self, candidate_columns: list[str]) -> list[str]:
+        """Get list of valid remote columns to select from the remote dataframe based on the
+        foreign key configuration and the dataframe's columns.
+        Valid remote columns include the remote keys and any extra columns that exist in the dataframe.
+        """
         extra_columns: dict[str, str] = self.resolved_extra_columns()
         columns: list[str] = unique(self.remote_keys + list(extra_columns.keys()))
-        missing_columns: list[str] = [col for col in columns if col not in df.columns]
+        missing_columns: list[str] = [col for col in columns if col not in candidate_columns]
         if missing_columns:
             logger.warning(
                 f"{self.local_entity}[linking]: Skipping extra link columns for entity "
                 f"'{self.local_entity}' to '{self.remote_entity}': missing remote columns {missing_columns} in remote table"
             )
-            columns = [col for col in columns if col in df.columns]
+            columns = [col for col in columns if col in candidate_columns]
         return columns
+
+    def generate_link_setup(self, remote_columns: list[str], remote_cfg: "TableConfig") -> "ForeignKeyMergeSetup":
+        """Generate the setup for linking based on the foreign key configuration.
+        
+        Determines which remote columns to select and how to rename them, avoiding duplicate
+        columns from non-identity renames.
+        
+        We need to rename remote `system_id` to value of remote `public_id` before the merge.
+        The local FK will hence be named after the remote public id, but it will contain the remote `system_id`s.
+
+        Edge case: When a fixed entity has its public_id as a column name (e.g., master_dataset
+        with public_id="master_dataset_id" AND columns=["master_dataset_id", ...]), we would
+        create duplicate columns if we select both system_id and master_dataset_id, then rename
+        system_id -> master_dataset_id. Solution: Filter out columns that will be created by
+        non-identity renames (allow identity renames like {'name': 'name'}).
+        
+        Args:
+            remote_columns: List of columns available in the remote dataframe
+            remote_cfg: Configuration of the remote table
+            
+        Returns:
+            ForeignKeyMergeSetup with columns to select and rename mappings
+        """
+        
+        # Generate default renames: remote system_id -> remote public_id and extra columns 
+        default_renames: dict[str, str] = {remote_cfg.system_id: remote_cfg.public_id} | self.resolved_extra_columns()
+        
+        # Identify rename targets that aren't identity renames
+        rename_targets: set[str] = {target for source, target in default_renames.items() if source != target}
+
+        # Filter remote columns to select based on configuration and avoid duplicates
+        remote_extra_cols: list[str] = self.get_valid_remote_columns(remote_columns)
+
+        # Build final list of remote columns to select, excluding those that would create duplicates
+        remote_cols_to_select: list[str] = [col for col in remote_extra_cols if col not in rename_targets]
+        
+        return ForeignKeyMergeSetup(
+            remote_columns=remote_cols_to_select,
+            rename_map=default_renames
+        )
 
     def has_foreign_key_link(self, remote_id: str, table: pd.DataFrame) -> bool:
         """Check if the foreign key linking has already been added to the table."""
