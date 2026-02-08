@@ -297,7 +297,7 @@ class TestForeignKeyConfig:
         fk = ForeignKeyConfig(local_entity="site", fk_cfg=fk_data)
         df = pd.DataFrame({"location_name": ["A", "B"], "latitude": [1.0, 2.0], "longitude": [3.0, 4.0]})
 
-        valid_cols = fk.get_valid_remote_columns(df)
+        valid_cols = fk.filter_remote_columns(df.columns.tolist())
 
         assert set(valid_cols) == {"location_name", "latitude", "longitude"}
 
@@ -313,7 +313,7 @@ class TestForeignKeyConfig:
         fk = ForeignKeyConfig(local_entity="site", fk_cfg=fk_data)
         df = pd.DataFrame({"location_name": ["A", "B"], "latitude": [1.0, 2.0]})
 
-        valid_cols = fk.get_valid_remote_columns(df)
+        valid_cols = fk.filter_remote_columns(df.columns.tolist())
 
         # Should only return columns that exist in df
         assert set(valid_cols) == {"location_name", "latitude"}

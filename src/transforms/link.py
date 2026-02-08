@@ -3,7 +3,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig
+from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig, ForeignKeyMergeSetup
 from src.process_state import DeferredLinkingTracker
 from src.specifications import ForeignKeyDataSpecification
 from src.specifications.constraints import ForeignKeyConstraintValidator
@@ -44,15 +44,11 @@ class ForeignKeyLinker:
         # Store validator to collect issues later
         self.validators.append(validator)
 
-        remote_extra_cols: list[str] = fk.get_valid_remote_columns(remote_df)
         remote_cfg: TableConfig = self.project.get_table(entity_name=fk.remote_entity)
 
-        # We need to rename remote system id to remote public id for the merge
-        # The local FK will be named after the remote public id, but contains the remote system ids
+        link_setup: ForeignKeyMergeSetup = fk.generate_link_setup(remote_df.columns.tolist(), remote_cfg)
 
-        renames: dict[str, str] = {remote_cfg.system_id: remote_cfg.public_id} | fk.resolved_extra_columns()
-
-        remote_df = remote_df[[remote_cfg.system_id] + remote_extra_cols].rename(columns=renames)
+        remote_df = remote_df[[remote_cfg.system_id] + link_setup.remote_columns].rename(columns=link_setup.rename_map)
 
         opts: dict[str, Any] = self._resolve_link_opts(fk, validator)
 
