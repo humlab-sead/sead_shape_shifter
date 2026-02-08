@@ -16,7 +16,7 @@ entities:
       review_threshold: 0.4
       mapping:
       - source_value: Göteborg 342
-        sead_id: 4420
+        target_id: 4420
         confidence: 0.6923
         notes: 'Auto-matched: Goteborg'
         will_not_match: false
@@ -45,42 +45,42 @@ entities:
       review_threshold: 0.75
       mapping:
       - source_value: Göteborg
-        sead_id: 1544
+        target_id: 1544
         confidence: 1.0
         notes: 'Auto-matched: Goteborg'
         will_not_match: false
         created_by: system
         last_modified: '2026-01-09T15:57:41.385463+00:00'
       - source_value: Göteborgs stad
-        sead_id: 5548
+        target_id: 5548
         confidence: 1.0
         notes: 'Auto-matched: Göteborgs stad'
         will_not_match: false
         created_by: system
         last_modified: '2026-01-09T15:57:41.385591+00:00'
       - source_value: Västra Götaland
-        sead_id: 4586
+        target_id: 4586
         confidence: 1.0
         notes: 'Auto-matched: Västra Götaland'
         will_not_match: false
         created_by: system
         last_modified: '2026-01-09T15:57:41.385690+00:00'
       - source_value: Bohuslän
-        sead_id: 910
+        target_id: 910
         confidence: 1.0
         notes: 'Auto-matched: Bohuslän'
         will_not_match: false
         created_by: system
         last_modified: '2026-01-09T15:57:41.385781+00:00'
       - source_value: Norway
-        sead_id: 162
+        target_id: 162
         confidence: 1.0
         notes: 'Auto-matched: Norway'
         will_not_match: false
         created_by: system
         last_modified: '2026-01-09T15:57:41.385866+00:00'
       - source_value: Sweden
-        sead_id: 205
+        target_id: 205
         confidence: 1.0
         notes: 'Auto-matched: Sweden'
         will_not_match: false
@@ -97,14 +97,14 @@ entities:
       review_threshold: 0.75
       mapping:
       - source_value: Local or unknown grid
-        sead_id: 105
+        target_id: 105
         confidence: 1.0
         notes: 'Auto-matched: Local or unknown grid'
         will_not_match: false
         created_by: system
         last_modified: '2026-01-09T11:51:22.065744+00:00'
       - source_value: Altitude above sea level
-        sead_id: 76
+        target_id: 76
         confidence: 1.0
         notes: 'Auto-matched: Altitude above sea level'
         will_not_match: false

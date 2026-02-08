@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class ReconciliationSource(BaseModel):
-    """Custom data source for reconciliation (alternative to entity preview data)."""
+    """Custom data source for entity resolution (alternative to entity preview data)."""
 
     data_source: str = Field(..., description="Data source name from main config")
     type: str = Field("sql", description="Query type (currently only 'sql' supported)")
@@ -14,19 +14,19 @@ class ReconciliationSource(BaseModel):
 
 
 class ReconciliationRemote(BaseModel):
-    """Remote SEAD entity specification for reconciliation."""
+    """Specification for target system for entity resolution."""
 
     service_type: str | None = Field(
-        None, description="Reconciliation service entity type (e.g., 'Site', 'Taxon'). If None, reconciliation is disabled."
+        None, description="Entity resolution service entity type (e.g., 'Site', 'Taxon'). If None, entity resolution is disabled."
     )
     columns: list[str] = Field(default_factory=list, description="Additional columns for display/matching")
 
 
-class EntityMappingItem(BaseModel):
-    """Single reconciliation mapping entry linking source value to SEAD ID."""
+class ResolvedEntityPair(BaseModel):
+    """Single entity resolution entry linking source identity to target identity."""
 
     source_value: Any = Field(..., description="Source field value")
-    sead_id: int | None = Field(None, description="SEAD entity ID (None if unmatched)")
+    target_id: int | None = Field(None, description="Target entity ID (None if unmatched)")
     confidence: float | None = Field(None, ge=0.0, le=1.0, description="Mapping confidence (0-1)")
     notes: str | None = Field(None, description="Manual notes or auto-match info")
     will_not_match: bool = Field(False, description="User marked as will not match (local-only identifier)")
@@ -35,11 +35,11 @@ class EntityMappingItem(BaseModel):
     last_modified: str | None = Field(None, description="Last modification timestamp")
 
 
-class EntityMapping(BaseModel):
-    """Reconciliation specification and mappings for a single target field within a project.
-    Source is the data used for reconciliation (either entity preview or custom query),
-    Property_mappings define how to map remote (OpenRefine) service properties to columns in `source`
-    Remote specifies the OpenRefine entity type and additional columns, and mapping contains the individual reconciled items.
+class EntityResolutionSet(BaseModel):
+    """Entity resolution specification and mappings for a single target field within a project.
+    - `source` is the data used for entity resolution (either entity preview or custom query),
+    - `property_mappings` define how to map remote (OpenRefine) service properties to columns in `source`
+    - `remote` specifies the OpenRefine entity type and additional columns, and mapping contains the individual resolved items.
     """
 
     source: str | ReconciliationSource | None = Field(
@@ -62,18 +62,20 @@ class EntityMapping(BaseModel):
         le=1.0,
         description="Score threshold for flagging review needed (default 70%)",
     )
-    mapping: list[EntityMappingItem] = Field(default_factory=list, description="Manual and auto-generated mappings")
+    mapping: list[ResolvedEntityPair] = Field(default_factory=list, description="Manual and auto-generated mappings")
 
 
-class EntityMappingRegistry(BaseModel):
-    """Complete entity mapping registry for all entities."""
+class EntityResolutionCatalog(BaseModel):
+    """Complete entity resolution catalog for all entities."""
 
     version: str = Field("2.0", description="Reconciliation format version")
     service_url: str = Field(..., description="Base URL of OpenRefine reconciliation service")
-    entities: dict[str, dict[str, EntityMapping]] = Field(default_factory=dict, description="Entity name -> target field -> mapping spec")
+    entities: dict[str, dict[str, EntityResolutionSet]] = Field(
+        default_factory=dict, description="Entity name -> target field -> mapping spec"
+    )
 
 
-class EntityMappingListItem(BaseModel):
+class EntityResolutionListItem(BaseModel):
     """Flattened specification for list view."""
 
     entity_name: str = Field(..., description="Entity name")
@@ -87,16 +89,16 @@ class EntityMappingListItem(BaseModel):
     property_mapping_count: int = Field(..., description="Number of property mappings")
 
 
-class EntityMappingCreateRequest(BaseModel):
-    """Request to create new specification."""
+class EntityResolutionCatalogCreateRequest(BaseModel):
+    """Request to create new resolution catalog entry."""
 
     entity_name: str = Field(..., description="Entity name (must exist in project)")
     target_field: str = Field(..., description="Target field name")
-    spec: EntityMapping = Field(..., description="Reconciliation specification")
+    spec: EntityResolutionSet = Field(..., description="Entity resolution specification")
 
 
-class EntityMappingUpdateRequest(BaseModel):
-    """Request to update specification (excludes entity/target/mapping)."""
+class EntityResolutionCatalogUpdateRequest(BaseModel):
+    """Request to update resolution catalog entry (excludes entity/target/mapping)."""
 
     source: str | ReconciliationSource | None = Field(None, description="Data source specification")
     property_mappings: dict[str, str] = Field(default_factory=dict, description="Property mappings")
@@ -125,7 +127,7 @@ class ReconciliationPreviewRow(BaseModel):
 
     # Dynamic fields for keys and columns
     # Plus reconciliation status fields
-    sead_id: int | None = None
+    target_id: int | None = None
     confidence: float | None = None
     notes: str | None = None
     candidates: list[ReconciliationCandidate] | None = None

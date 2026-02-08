@@ -13,7 +13,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from backend.app import models as api
+from backend.app import models as dto
 from backend.app import services as api_services
 from backend.app.core.config import Settings
 from backend.app.mappers.data_source_mapper import DataSourceMapper
@@ -55,7 +55,7 @@ def mock_config():
 async def test_debug_postgresql_connection(settings: Settings):
     """Debug PostgreSQL connection with detailed output."""
 
-    ds_config: api.DataSourceConfig = api.DataSourceConfig(
+    ds_config: dto.DataSourceConfig = dto.DataSourceConfig(
         name="debug_postgres",
         driver="postgresql",  # type: ignore
         host="localhost",
@@ -82,7 +82,7 @@ async def test_debug_postgresql_connection(settings: Settings):
     # Test connection
     print("\n--- Testing Connection ---")
     service = api_services.DataSourceService(settings.PROJECTS_DIR)
-    result: api.DataSourceTestResult = await service.test_connection(ds_config)
+    result: dto.DataSourceTestResult = await service.test_connection(ds_config)
 
     print(f"Success: {result.success}")
     print(f"Message: {result.message}")
@@ -109,7 +109,7 @@ async def test_debug_access_connection(settings: Settings):
     print(f"Size: {mdb_file.stat().st_size if mdb_file.exists() else 'N/A'} bytes")
 
     # Create config
-    ds_cfg: api.DataSourceConfig = api.DataSourceConfig(
+    ds_cfg: dto.DataSourceConfig = dto.DataSourceConfig(
         name="debug_access", driver="ucanaccess", filename=str(mdb_file), options={"ucanaccess_dir": "lib/ucanaccess"}, **{}  # type: ignore
     )
 
@@ -133,7 +133,7 @@ async def test_debug_access_connection(settings: Settings):
     # Test connection
     print("\n--- Testing Connection ---")
     service = api_services.DataSourceService(settings.PROJECTS_DIR)
-    result: api.DataSourceTestResult = await service.test_connection(ds_cfg)
+    result: dto.DataSourceTestResult = await service.test_connection(ds_cfg)
 
     print(f"Success: {result.success}")
     print(f"Message: {result.message}")
@@ -159,7 +159,7 @@ async def test_debug_existing_data_sources(settings: Settings):
 
         # Test connection
         try:
-            result: api.DataSourceTestResult = await service.test_connection(ds)
+            result: dto.DataSourceTestResult = await service.test_connection(ds)
             print(f"  Result: {'✓ SUCCESS' if result.success else '✗ FAILED'}")
             print(f"  Message: {result.message}")
             print(f"  Time: {result.connection_time_ms}ms")
@@ -189,7 +189,7 @@ async def test_debug_postgresql_with_env_vars(settings: Settings):
         print()
 
         # Create config with env var references (like in YAML)
-        config: api.DataSourceConfig = api.DataSourceConfig(
+        config: dto.DataSourceConfig = dto.DataSourceConfig(
             name="test_with_env_vars",
             driver="postgresql",  # type: ignore
             options={
@@ -237,7 +237,7 @@ async def test_debug_mapper_validation():
 
     # Test 1: PostgreSQL with all fields
     print("\nTest 1: PostgreSQL with all fields")
-    pg_full = api.DataSourceConfig(
+    pg_full = dto.DataSourceConfig(
         name="pg_full", driver="postgresql", host="localhost", port=5432, database="testdb", username="testuser", **{}  # type: ignore
     )
 
@@ -250,7 +250,7 @@ async def test_debug_mapper_validation():
 
     # Test 2: PostgreSQL with minimal fields (no port)
     print("\nTest 2: PostgreSQL without port")
-    pg_minimal: api.DataSourceConfig = api.DataSourceConfig(
+    pg_minimal: dto.DataSourceConfig = dto.DataSourceConfig(
         name="pg_minimal", driver="postgresql", host="localhost", database="testdb", username="testuser", **{}  # type: ignore
     )
 
@@ -264,7 +264,7 @@ async def test_debug_mapper_validation():
 
     # Test 3: Access with filename
     print("\nTest 3: Access with filename")
-    access = api.DataSourceConfig(
+    access = dto.DataSourceConfig(
         name="access_test",
         driver="ucanaccess",  # type: ignore
         filename="./projects/test.mdb",
@@ -281,7 +281,7 @@ async def test_debug_mapper_validation():
 
     # Test 4: CSV with filename
     print("\nTest 4: CSV with filename")
-    csv = api.DataSourceConfig(name="csv_test", driver="csv", filename="./projects/test.csv", **{})  # type: ignore
+    csv = dto.DataSourceConfig(name="csv_test", driver="csv", filename="./projects/test.csv", **{})  # type: ignore
 
     try:
         cfg_core = DataSourceMapper.to_core_config(csv)

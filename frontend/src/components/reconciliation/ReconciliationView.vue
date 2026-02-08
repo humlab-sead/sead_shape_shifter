@@ -254,7 +254,7 @@ async function handleAutoReconcile() {
   }
 }
 
-async function handleUpdateMapping(row: ReconciliationPreviewRow, seadId: number | null, notes?: string) {
+async function handleUpdateMapping(row: ReconciliationPreviewRow, targetId: number | null, notes?: string) {
   if (!selectedEntity.value || !selectedTarget.value || !entitySpec.value) return
 
   try {
@@ -265,7 +265,7 @@ async function handleUpdateMapping(row: ReconciliationPreviewRow, seadId: number
       selectedEntity.value,
       selectedTarget.value,
       sourceValue,
-      seadId,
+      targetId,
       notes
     )
   } catch (e: any) {
@@ -277,7 +277,7 @@ async function handleUpdateMapping(row: ReconciliationPreviewRow, seadId: number
 
 async function handleSaveChanges() {
   try {
-    await reconciliationStore.saveEntityMappingRegistry(props.projectName)
+    await reconciliationStore.saveEntityResolutionCatalog(props.projectName)
     resultMessage.value = 'Changes saved successfully'
     resultColor.value = 'success'
     showResultSnackbar.value = true
@@ -312,7 +312,7 @@ async function checkServiceHealth() {
 async function loadYamlContent() {
   try {
     if (!reconciliationStore.reconciliationConfig) {
-      await reconciliationStore.loadEntityMappingRegistry(props.projectName)
+      await reconciliationStore.loadEntityResolutionCatalog(props.projectName)
     }
     yamlContent.value = yaml.dump(reconciliationStore.reconciliationConfig, { indent: 2, lineWidth: 120 })
     yamlModified.value = false
@@ -333,10 +333,10 @@ async function saveYaml() {
   
   try {
     // Parse YAML to validate
-    const parsedConfig = yaml.load(yamlContent.value)
+    // const parsedConfig = yaml.load(yamlContent.value)
     
     // Save the config
-    await reconciliationStore.saveEntityMappingRegistryRaw(props.projectName, yamlContent.value)
+    await reconciliationStore.saveEntityResolutionCatalogRaw(props.projectName, yamlContent.value)
     
     // Reload specifications to reflect changes
     await reconciliationStore.loadSpecifications(props.projectName)
@@ -365,7 +365,7 @@ onMounted(async () => {
     await checkServiceHealth()
 
     // Load config and specifications
-    await reconciliationStore.loadEntityMappingRegistry(props.projectName)
+    await reconciliationStore.loadEntityResolutionCatalog(props.projectName)
     await reconciliationStore.loadSpecifications(props.projectName)
     
     // Load YAML content
@@ -391,7 +391,7 @@ watch(
   async (newProjectName) => {
     if (newProjectName) {
       selectedEntity.value = null
-      await reconciliationStore.loadEntityMappingRegistry(newProjectName)
+      await reconciliationStore.loadEntityResolutionCatalog(newProjectName)
       await loadYamlContent()
     }
   }

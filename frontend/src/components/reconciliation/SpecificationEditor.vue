@@ -319,8 +319,8 @@ import { ref, watch, onMounted } from 'vue'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { useProjectStore } from '@/stores/project'
 import type {
-  EntityMappingListItem,
-  EntityMapping,
+  EntityResolutionListItem,
+  EntityResolutionSet,
   ReconciliationSource,
 } from '@/types/reconciliation'
 import * as yaml from 'js-yaml'
@@ -329,7 +329,7 @@ import YamlEditor from '../common/YamlEditor.vue'
 interface Props {
   modelValue: boolean
   projectName: string
-  specification?: EntityMappingListItem | null
+  specification?: EntityResolutionListItem | null
   isNew: boolean
 }
 
@@ -372,7 +372,7 @@ const sqlQuery = ref('')
 const formData = ref<{
   entity_name: string
   target_field: string
-  spec: EntityMapping
+  spec: EntityResolutionSet
 }>({
   entity_name: '',
   target_field: '',

@@ -15,19 +15,19 @@ from backend.app.services import ProjectService, ShapeShiftService
 from backend.app.utils.exceptions import NotFoundError
 from src.loaders import DataLoader, DataLoaders
 from src.model import DataSourceConfig, ShapeShiftProject, TableConfig
-from src.reconciliation.model import EntityResolutionSet, ReconciliationSourceDomain
+from src.reconciliation.model import EntityResolutionSet, ResolutionSource
 from src.reconciliation.source_strategy import SourceStrategyType
 
 
 class ReconciliationSourceResolver(abc.ABC):
     """Base resolver for reconciliation source data.
-    
+
     Application-layer implementations of domain data loading strategy.
     """
 
     def __init__(self, project_name: str, project: ShapeShiftProject, project_service: ProjectService):
         """Initialize resolver with core project.
-        
+
         Args:
             project_name: Project name (for logging/preview service)
             project: Core domain project (already loaded)
@@ -46,7 +46,7 @@ class ReconciliationSourceResolver(abc.ABC):
         strategy: SourceStrategyType,
     ) -> "type[ReconciliationSourceResolver]":
         """Get resolver class for the given strategy type.
-        
+
         Maps domain strategy to application-layer resolver implementation.
         """
         resolver_map = {
@@ -92,9 +92,9 @@ class SqlQueryReconciliationSourceResolver(ReconciliationSourceResolver):
 
     async def resolve(self, entity_name: str, entity_mapping: EntityResolutionSet) -> list[dict]:
 
-        assert isinstance(entity_mapping.source, ReconciliationSourceDomain)
+        assert isinstance(entity_mapping.source, ResolutionSource)
 
-        source: str | ReconciliationSourceDomain = entity_mapping.source
+        source: str | ResolutionSource = entity_mapping.source
         logger.info(f"Executing custom query for reconciliation of '{entity_name}'")
 
         # Get data source config from ShapeShiftProject
