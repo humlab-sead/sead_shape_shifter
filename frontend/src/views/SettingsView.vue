@@ -322,7 +322,7 @@ import type { LogType, LogLevel } from '@/api/logs'
 const theme = useTheme()
 const appSettings = useSettings()
 
-const version = ref('0.1.0')
+const version = ref('loading...')
 const showResetDialog = ref(false)
 const showResetSettingsDialog = ref(false)
 
@@ -399,7 +399,16 @@ function toggleAutoRefresh(enabled: boolean | null) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Fetch version from backend
+  try {
+    const health = await api.health.getHealth()
+    version.value = health.version
+  } catch (err) {
+    console.error('Failed to fetch version:', err)
+    version.value = 'unknown'
+  }
+  
   refreshLogs()
 })
 
