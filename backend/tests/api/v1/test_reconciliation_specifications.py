@@ -328,7 +328,7 @@ class TestDeleteSpecification:
 
         assert response.status_code == 400
         assert "Cannot delete existing mapping" in response.json()["detail"]
-        assert "from registry" in response.json()["detail"]
+        assert "from catalog" in response.json()["detail"]
 
     def test_delete_specification_with_mappings_force(self, tmp_path, monkeypatch, reset_services, sample_project, sample_recon_config):
         """Test force deleting specification with mappings succeeds."""
