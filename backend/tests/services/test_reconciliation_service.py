@@ -23,7 +23,7 @@ from src.reconciliation.source_strategy import ReconciliationSourceStrategy, Sou
 
 
 @pytest.fixture
-def mock_config_service():
+def mock_config_service() -> MagicMock:
     """Mock configuration service."""
     service = MagicMock()
     service.load_project.return_value = MagicMock(
@@ -51,7 +51,7 @@ def mock_config_service():
 
 
 @pytest.fixture
-def mock_core_project():
+def mock_core_project() -> MagicMock:
     """Mock ShapeShiftProject (core domain model)."""
     project = MagicMock()
     project.tables = {
@@ -66,7 +66,7 @@ def mock_core_project():
 
 
 @pytest.fixture
-def mock_recon_client():
+def mock_recon_client() -> AsyncMock:
     """Mock reconciliation client."""
     client = AsyncMock()
     client.reconcile_batch.return_value = {}
@@ -108,7 +108,7 @@ def sample_entity_spec_dto() -> dto.EntityResolutionSet:
 
 
 @pytest.fixture
-def sample_recon_config(sample_entity_spec_dto) -> dto.EntityResolutionCatalog:
+def catalog(sample_entity_spec_dto) -> dto.EntityResolutionCatalog:
     """Create sample EntityMappingRegistry (DTO for YAML serialization tests)."""
     return dto.EntityResolutionCatalog(
         version="2.0",
@@ -462,28 +462,28 @@ class TestReconciliationService:
         assert config.service_url == "http://host.docker.internal:8000"
         assert config.entities == {}
 
-    def test_load_reconciliation_config_reads_yaml(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    def test_load_reconciliation_config_reads_yaml(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test load reads config from YAML file."""
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         loaded = reconciliation_service.catalog_manager.load_catalog("test", filename=config_file)
 
-        assert loaded.service_url == sample_recon_config.service_url
+        assert loaded.service_url == catalog.service_url
         assert "site" in loaded.entities
 
-    def test_save_reconciliation_config_writes_yaml(self, reconciliation_service, tmp_path, sample_recon_config):
+    def test_save_reconciliation_config_writes_yaml(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test save writes config to YAML file."""
         config_file = tmp_path / "test-reconciliation.yml"
 
-        reconciliation_service.catalog_manager.save_catalog("test", sample_recon_config, filename=config_file)
+        reconciliation_service.catalog_manager.save_catalog("test", catalog, filename=config_file)
 
         assert config_file.exists()
         with open(config_file, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
-        assert data["service_url"] == sample_recon_config.service_url
+        assert data["service_url"] == catalog.service_url
         assert "site" in data["entities"]
 
     @pytest.mark.asyncio
@@ -520,7 +520,7 @@ class TestReconciliationService:
                         assert result == [{"key": "value"}]
 
                         # Verify domain strategy was used
-                        mock_strategy.determine_strategy.assert_called_once_with("site", sample_entity_spec.source)
+                        mock_strategy.determine_strategy.assert_called_once_with("site", sample_entity_spec.metadata.source)
 
                         # Verify get_resolver_cls_for_strategy was called with correct strategy
                         mock_get_cls.assert_called_once_with(SourceStrategyType.TARGET_ENTITY)
@@ -549,10 +549,10 @@ class TestReconciliationService:
 
     @pytest.mark.asyncio
     async def test_auto_reconcile_entity_disabled_without_service_type(
-        self, reconciliation_service: ReconciliationService, sample_entity_spec
+        self, reconciliation_service: ReconciliationService, sample_entity_spec: core.EntityResolutionSet
     ):
         """Test auto_reconcile_entity returns empty result when service_type is None."""
-        sample_entity_spec.remote.service_type = None
+        sample_entity_spec.metadata.remote.service_type = None
 
         result = await reconciliation_service.auto_reconcile_entity("test_project", "site", "site_code", sample_entity_spec)
 
@@ -562,7 +562,7 @@ class TestReconciliationService:
 
     @pytest.mark.asyncio
     async def test_auto_reconcile_entity_no_queries(
-        self, reconciliation_service: ReconciliationService, sample_entity_spec, mock_recon_client
+        self, reconciliation_service: ReconciliationService, sample_entity_spec: core.EntityResolutionSet, mock_recon_client
     ):
         """Test auto_reconcile_entity handles empty query list."""
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
@@ -575,7 +575,7 @@ class TestReconciliationService:
 
     @pytest.mark.asyncio
     async def test_auto_reconcile_entity_auto_accepts_high_scores(
-        self, reconciliation_service: ReconciliationService, tmp_path, sample_entity_spec
+        self, reconciliation_service: ReconciliationService, tmp_path, sample_entity_spec: core.EntityResolutionSet
     ):
         """Test auto_reconcile_entity auto-accepts candidates with high scores."""
         # Setup source data
@@ -597,7 +597,7 @@ class TestReconciliationService:
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
             mock_source.return_value = source_data
 
-            reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}
+            reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}  # type: ignore
 
             # Create empty config file with v2 format
             config_file = tmp_path / "test-reconciliation.yml"
@@ -653,7 +653,7 @@ class TestReconciliationService:
 
         with patch.object(reconciliation_service, "get_resolved_source_data", new=AsyncMock()) as mock_source:
             mock_source.return_value = source_data
-            reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}
+            reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}  # type: ignore
 
             config_file = tmp_path / "test-reconciliation.yml"
             config = {
@@ -768,29 +768,29 @@ class TestReconciliationService:
             assert result.unmatched == 1
             assert result.total == 1
 
-    def test_update_mapping_adds_new_mapping(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    def test_update_mapping_adds_new_mapping(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test update_mapping adds new mapping entry."""
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        updated = reconciliation_service.update_mapping(
+        updated: core.EntityResolutionCatalog = reconciliation_service.update_mapping(
             "test",
             "site",
             "site_code",
             source_value="SITE001",
             target_id=123,
-            notes="Manual mapping",
+            notes="Manual link",
         )
 
         assert len(updated.entities["site"]["site_code"].links) == 1
         links = updated.entities["site"]["site_code"].links[0]
         assert links.target_id == 123
         assert links.source_value == "SITE001"
-        assert links.notes == "Manual links"
+        assert links.notes == "Manual link"
         assert links.confidence == 1.0
 
-    def test_update_mapping_updates_existing(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    def test_update_mapping_updates_existing(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test update_mapping updates existing mapping."""
         # Add existing mapping
         existing_mapping = core.ResolvedEntityPair(
@@ -803,11 +803,11 @@ class TestReconciliationService:
             will_not_match=False,
             last_modified="2024-01-02T00:00:00Z",
         )
-        sample_recon_config.entities["site"]["site_code"].mapping = [existing_mapping]
+        catalog.entities["site"]["site_code"].mapping = [existing_mapping]
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         updated: core.EntityResolutionCatalog = reconciliation_service.update_mapping(
             "test",
@@ -823,7 +823,7 @@ class TestReconciliationService:
         assert links.target_id == 200
         assert links.notes == "Updated mapping"
 
-    def test_update_mapping_removes_mapping(self, reconciliation_service, tmp_path, sample_recon_config):
+    def test_update_mapping_removes_mapping(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test update_mapping removes mapping when target_id is None."""
         existing_mapping = core.ResolvedEntityPair(
             source_value="SITE001",
@@ -835,15 +835,15 @@ class TestReconciliationService:
             will_not_match=False,
             last_modified="2024-01-02T00:00:00Z",
         )
-        sample_recon_config.entities["site"]["site_code"].mapping = [existing_mapping]
+        catalog.entities["site"]["site_code"] = [existing_mapping]
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        updated = reconciliation_service.update_mapping("test", "site", "site_code", source_value="SITE001", target_id=None)
+        updated: core.EntityResolutionCatalog = reconciliation_service.update_mapping("test", "site", "site_code", source_value="SITE001", target_id=None)
 
-        assert len(updated.entities["site"]["site_code"].mapping) == 0
+        assert len(updated.entities["site"]["site_code"].links) == 0
 
     def test_update_mapping_raises_for_missing_entity(self, reconciliation_service: ReconciliationService, tmp_path):
         """Test update_mapping raises if entity not in registry."""
@@ -853,11 +853,11 @@ class TestReconciliationService:
         with pytest.raises(NotFoundError, match="Entity mapping for entity 'nonexistent' and target field 'field' not found"):
             reconciliation_service.update_mapping("test", "nonexistent", "field", source_value="KEY", target_id=123)
 
-    def test_mark_as_unmatched(self, reconciliation_service, tmp_path, sample_recon_config):
+    def test_mark_as_unmatched(self, reconciliation_service, tmp_path, catalog):
         """Test mark_as_unmatched creates mapping with will_not_match=True."""
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         updated = reconciliation_service.mark_as_unmatched(
             "test",
@@ -867,16 +867,16 @@ class TestReconciliationService:
             notes="Local identifier only",
         )
 
-        assert len(updated.entities["site"]["site_code"].mapping) == 1
-        mapping = updated.entities["site"]["site_code"].mapping[0]
-        assert mapping.source_value == "LOCAL_SITE"
-        assert mapping.target_id is None
-        assert mapping.will_not_match is True
-        assert mapping.notes == "Local identifier only"
-        assert mapping.confidence is None
-        assert mapping.last_modified is not None
+        assert len(updated.entities["site"]["site_code"].links) == 1
+        link: core.ResolvedEntityPair = updated.entities["site"]["site_code"].links[0]
+        assert link.source_value == "LOCAL_SITE"
+        assert link.target_id is None
+        assert link.will_not_match is True
+        assert link.notes == "Local identifier only"
+        assert link.confidence is None
+        assert link.last_modified is not None
 
-    def test_mark_as_unmatched_updates_existing(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    def test_mark_as_unmatched_updates_existing(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test mark_as_unmatched can convert existing mapping to unmatched."""
         # Add existing matched mapping
         existing_mapping = core.ResolvedEntityPair(
@@ -889,13 +889,13 @@ class TestReconciliationService:
             will_not_match=False,
             last_modified="2024-01-02T00:00:00Z",
         )
-        sample_recon_config.entities["site"]["site_code"].mapping = [existing_mapping]
+        catalog.entities["site"]["site_code"].mapping = [existing_mapping]
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        updated = reconciliation_service.mark_as_unmatched(
+        updated: core.EntityResolutionCatalog = reconciliation_service.mark_as_unmatched(
             "test",
             "site",
             "site_code",
@@ -904,10 +904,10 @@ class TestReconciliationService:
         )
 
         assert len(updated.entities["site"]["site_code"].links) == 1
-        links = updated.entities["site"]["site_code"].links[0]
-        assert links.target_id is None
-        assert links.will_not_match is True
-        assert links.notes == "Changed to local-only"
+        link: core.ResolvedEntityPair = updated.entities["site"]["site_code"].links[0]
+        assert link.target_id is None
+        assert link.will_not_match is True
+        assert link.notes == "Changed to local-only"
 
 
 class TestSpecificationManagement:
@@ -1002,7 +1002,7 @@ class TestSpecificationManagement:
     @patch("backend.app.services.reconciliation.service.ProjectMapper")
     @patch("backend.app.services.reconciliation.service.ProjectService")
     def test_create_specification_success(
-        self, mock_project_service, mock_mapper, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config
+        self, mock_project_service, mock_mapper, reconciliation_service: ReconciliationService, tmp_path, catalog
     ):
         """Test creating new specification."""
         # Mock project service to return a project
@@ -1021,7 +1021,7 @@ class TestSpecificationManagement:
         # Save initial config
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         # Create new spec
         new_spec = core.EntityResolutionSet(
@@ -1044,7 +1044,7 @@ class TestSpecificationManagement:
     @patch("backend.app.services.reconciliation.service.ProjectMapper")
     @patch("backend.app.services.reconciliation.service.ProjectService")
     def test_create_specification_duplicate(
-        self, mock_project_service, mock_mapper, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config
+        self, mock_project_service, mock_mapper, reconciliation_service: ReconciliationService, tmp_path, catalog
     ):
         """Test creating duplicate specification raises error."""
         # Mock project service
@@ -1061,7 +1061,7 @@ class TestSpecificationManagement:
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         new_spec = core.EntityResolutionSet(
             metadata=core.EntityResolutionMetadata(
@@ -1080,7 +1080,7 @@ class TestSpecificationManagement:
     @patch("backend.app.services.reconciliation.service.ProjectMapper")
     @patch("backend.app.services.reconciliation.service.ProjectService")
     def test_create_specification_invalid_entity(
-        self, mock_project_service, mock_mapper, reconciliation_service, tmp_path, sample_recon_config
+        self, mock_project_service, mock_mapper, reconciliation_service, tmp_path, catalog
     ):
         """Test creating specification for non-existent entity raises error."""
         # Mock project service
@@ -1097,7 +1097,7 @@ class TestSpecificationManagement:
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         new_spec = dto.EntityResolutionSet(
             source=None,
@@ -1111,10 +1111,10 @@ class TestSpecificationManagement:
         with pytest.raises(BadRequestError, match="Entity 'invalid_entity' does not exist"):
             reconciliation_service.mapping_manager.create_registry("test", "invalid_entity", "some_field", new_spec)
 
-    def test_update_specification_success(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    def test_update_specification_success(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test updating specification preserves mapping."""
         # Add mapping to original spec
-        sample_recon_config.entities["site"]["site_code"].mapping = [
+        catalog.entities["site"]["site_code"].mapping = [
             core.ResolvedEntityPair(
                 source_value="SITE001",
                 target_id=100,
@@ -1129,7 +1129,7 @@ class TestSpecificationManagement:
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         # Update thresholds and property mappings
         updated_config: core.EntityResolutionCatalog = reconciliation_service.catalog_manager.update_entity_mapping(
@@ -1152,11 +1152,11 @@ class TestSpecificationManagement:
         assert len(mapping.links) == 1
         assert mapping.links[0].source_value == "SITE001"
 
-    def test_update_specification_not_found(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    def test_update_specification_not_found(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test updating non-existent specification raises error."""
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         with pytest.raises(NotFoundError, match="not found"):
             reconciliation_service.catalog_manager.update_entity_mapping(
@@ -1170,21 +1170,21 @@ class TestSpecificationManagement:
                 review_threshold=0.70,
             )
 
-    def test_delete_specification_success(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    def test_delete_specification_success(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test deleting specification without mappings."""
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         updated_config = reconciliation_service.catalog_manager.delete("test", "site", "site_code", force=False)
 
         assert "site_code" not in updated_config.entities.get("site", {})
 
     def test_delete_specification_with_mappings_no_force(
-        self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config
+        self, reconciliation_service: ReconciliationService, tmp_path, catalog
     ):
         """Test deleting specification with mappings raises error without force."""
-        sample_recon_config.entities["site"]["site_code"].mapping = [
+        catalog.entities["site"]["site_code"].mapping = [
             core.ResolvedEntityPair(
                 source_value="SITE001",
                 target_id=100,
@@ -1199,14 +1199,14 @@ class TestSpecificationManagement:
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         with pytest.raises(BadRequestError, match="Cannot delete existing mapping.*from registry"):
             reconciliation_service.catalog_manager.delete("test", "site", "site_code", force=False)
 
-    def test_delete_specification_with_mappings_force(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    def test_delete_specification_with_mappings_force(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test force deleting specification with mappings succeeds."""
-        sample_recon_config.entities["site"]["site_code"].mapping = [
+        catalog.entities["site"]["site_code"].mapping = [
             core.ResolvedEntityPair(
                 source_value="SITE001",
                 target_id=100,
@@ -1231,33 +1231,33 @@ class TestSpecificationManagement:
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         updated_config = reconciliation_service.catalog_manager.delete("test", "site", "site_code", force=True)
 
         assert "site_code" not in updated_config.entities.get("site", {})
 
-    def test_delete_specification_not_found(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    def test_delete_specification_not_found(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test deleting non-existent specification raises error."""
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         with pytest.raises(NotFoundError, match="not found"):
             reconciliation_service.catalog_manager.delete("test", "site", "nonexistent_field")
 
-    def test_delete_last_specification_removes_entity(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    def test_delete_last_specification_removes_entity(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test deleting last specification removes entity from config."""
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         updated_config = reconciliation_service.catalog_manager.delete("test", "site", "site_code")
 
         # Entity should be removed entirely
         assert "site" not in updated_config.entities
 
-    async def test_get_available_target_fields_success(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    async def test_get_available_target_fields_success(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test getting available target fields from preview."""
         # Mock preview result
         mock_preview_result = MagicMock()
@@ -1275,15 +1275,15 @@ class TestSpecificationManagement:
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         fields = await reconciliation_service.get_available_target_fields("test", "site")
 
         assert fields == ["site_code", "site_name", "latitude", "longitude"]
 
-    def test_get_mapping_count_success(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    def test_get_mapping_count_success(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test getting mapping count."""
-        sample_recon_config.entities["site"]["site_code"].mapping = [
+        catalog.entities["site"]["site_code"].mapping = [
             core.ResolvedEntityPair(
                 source_value="SITE001",
                 target_id=100,
@@ -1318,17 +1318,17 @@ class TestSpecificationManagement:
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         count: int = reconciliation_service.get_mapping_count("test", "site", "site_code")
 
         assert count == 3
 
-    def test_get_mapping_count_not_found(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
+    def test_get_mapping_count_not_found(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test getting mapping count for non-existent specification."""
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
+            yaml.dump(catalog.model_dump(exclude_none=True), f)
 
         with pytest.raises(NotFoundError, match="not found"):
             reconciliation_service.get_mapping_count("test", "site", "nonexistent_field")
