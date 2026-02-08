@@ -250,18 +250,21 @@ class YamlService:
 
     def _apply_flow_style(self, obj: Any, max_items: int) -> None:
         """
-            Recursively mark short lists to use flow style for compact formatting.
+        Recursively mark short lists to use flow style for compact formatting.
 
-            Lists with ≤ max_items will be formatted as [item1, item2] instead of:
-            - item1
-            - item2
+        Lists with ≤ max_items will be formatted as [item1, item2] instead of:
+        - item1
+        - item2
 
-        Special handling for 'values' key: Always formats as list of rows where
-        each row is a flow-style list on its own line, regardless of max_items.
+        Special handling:
+        - 'values' key: Always formatted as list of rows where each row is a
+          flow-style list on its own line, regardless of max_items.
+        - 'foreign_keys' and 'filters' keys: Always use block style for readability
+          since they contain complex nested structures.
 
-            Args:
-                obj: Object to process (dict, list, or other)
-                max_items: Maximum list length for flow style
+        Args:
+            obj: Object to process (dict, list, or other)
+            max_items: Maximum list length for flow style
         """
 
         def needs_flow_quote(value: str) -> bool:
@@ -299,6 +302,11 @@ class YamlService:
                             else:
                                 flow_seq = row
                             flow_seq.fa.set_flow_style()
+                # Exclude complex nested structures from flow style
+                elif key in ("foreign_keys", "filters"):
+                    # Always use block style for better readability
+                    if isinstance(value, (dict, list)):
+                        self._apply_flow_style(value, max_items)
                 # Regular handling for other keys
                 elif isinstance(value, list) and 0 < len(value) <= max_items:
                     # Convert to CommentedSeq and mark for flow style
