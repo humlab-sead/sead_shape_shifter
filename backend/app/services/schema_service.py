@@ -6,6 +6,7 @@ Discovers tables, columns, data types, and relationships.
 """
 
 import asyncio
+import math
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
@@ -22,6 +23,22 @@ from backend.app.services.data_source_service import DataSourceService
 from src.loaders.base_loader import DataLoaders
 from src.loaders.sql_loaders import CoreSchema, SqlLoader
 from src.model import DataSourceConfig as CoreDataSourceConfig
+
+
+def safe_str_or_none(value: Any) -> str | None:
+    """Convert value to string or None, handling pandas NaN.
+    
+    Args:
+        value: Value to convert (may be str, None, float NaN, etc.)
+        
+    Returns:
+        String value or None
+    """
+    if value is None:
+        return None
+    if isinstance(value, float) and math.isnan(value):
+        return None
+    return str(value) if value else None
 
 
 class SchemaCache:
@@ -128,8 +145,14 @@ class SchemaIntrospectionService:
 
             core_tables: dict[str, CoreSchema.TableMetadata] = await loader.get_tables(schema_name=schema)
 
+            # Convert core tables to API models, handling pandas NaN in optional fields
             tables: list[api.TableMetadata] = [
-                api.TableMetadata(name=table.name, schema_name=table.schema, comment=table.comment, row_count=table.row_count)
+                api.TableMetadata(
+                    name=table.name,
+                    schema_name=table.schema,
+                    comment=safe_str_or_none(table.comment),
+                    row_count=table.row_count
+                )
                 for table in core_tables.values()
             ]
 
