@@ -175,12 +175,12 @@ entities:
 #
 # mapping:
 #   - source_value: "Övre Långsjön"        # Single value (not array)
-#     sead_id: 12345
+#     target_id: 12345
 #     confidence: 0.98
 #     notes: "Auto-matched by reconciliation service"
 #     created_at: "2024-01-15T10:30:00"
 #     created_by: "reconciliation_service"
 #   - source_value: "Unknown Site X"
-#     sead_id: null
+#     target_id: null
 #     will_not_match: true
 #     notes: "Local-only site, not in SEAD"
