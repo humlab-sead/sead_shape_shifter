@@ -189,6 +189,7 @@ def main(
         service_url = settings.RECONCILIATION_SERVICE_URL
 
     logger.info(f"Auto-reconcile CLI started")
+    logger.info(f"Service URL: {service_url}")
     logger.info(f"Project: {project_name}")
     logger.info(f"Entity: {entity_name}")
 
