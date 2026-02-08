@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     LOG_ROTATION: str = "10 MB"
     LOG_RETENTION: str = "30 days"
     LOG_COMPRESSION: str = "zip"
+    LOG_FILTER_FRAMEWORK_FRAMES: bool = True  # Filter FastAPI/Uvicorn frames from console logs
 
     # Services
     RECONCILIATION_SERVICE_URL: str = "http://localhost:8000"

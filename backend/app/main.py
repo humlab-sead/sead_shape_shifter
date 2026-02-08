@@ -30,6 +30,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
         rotation=settings.LOG_ROTATION,
         retention=settings.LOG_RETENTION,
         compression=settings.LOG_COMPRESSION,
+        filter_framework_frames=settings.LOG_FILTER_FRAMEWORK_FRAMES,
     )
 
     logger.info("")
