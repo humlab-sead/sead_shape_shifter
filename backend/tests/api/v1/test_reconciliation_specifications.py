@@ -6,13 +6,9 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
+from backend.app import models as dto
 from backend.app.core.config import settings
 from backend.app.main import app
-from backend.app.models import (
-    EntityMapping,
-    EntityMappingRegistry,
-    EntityMappingItem,
-)
 from backend.app.models.reconciliation import ReconciliationRemote
 from backend.app.services import project_service, validation_service, yaml_service
 
@@ -72,12 +68,12 @@ def sample_project(tmp_path):
 @pytest.fixture
 def sample_recon_config(tmp_path):
     """Create sample reconciliation configuration."""
-    config = EntityMappingRegistry(
+    config = dto.EntityResolutionCatalog(
         version="2.0",
         service_url="http://localhost:8000",
         entities={
             "site": {
-                "site_code": EntityMapping(
+                "site_code": dto.EntityResolutionSet(
                     source=None,
                     property_mappings={"latitude": "latitude", "longitude": "longitude"},
                     remote=ReconciliationRemote(service_type="site"),
@@ -85,15 +81,15 @@ def sample_recon_config(tmp_path):
                     review_threshold=0.70,
                     mapping=[],
                 ),
-                "site_name": EntityMapping(
+                "site_name": dto.EntityResolutionSet(
                     source="another_entity",
                     property_mappings={},
                     remote=ReconciliationRemote(service_type="taxon"),
                     auto_accept_threshold=0.85,
                     review_threshold=0.60,
                     mapping=[
-                        EntityMappingItem(source_value="test1", sead_id=1, confidence=0.98, notes="Auto-matched", **{}),
-                        EntityMappingItem(source_value="test2", sead_id=2, confidence=0.85, notes="Auto-matched", **{}),
+                        dto.ResolvedEntityPair(source_value="test1", target_id=1, confidence=0.98, notes="Auto-matched", **{}),
+                        dto.ResolvedEntityPair(source_value="test2", target_id=2, confidence=0.85, notes="Auto-matched", **{}),
                     ],
                 ),
             }
@@ -137,7 +133,7 @@ class TestListSpecifications:
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
         # Create empty recon config
-        config = EntityMappingRegistry(version="2.0", service_url="http://localhost:8000", entities={})
+        config = dto.EntityResolutionCatalog(version="2.0", service_url="http://localhost:8000", entities={})
         config_file = tmp_path / "test_project-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)

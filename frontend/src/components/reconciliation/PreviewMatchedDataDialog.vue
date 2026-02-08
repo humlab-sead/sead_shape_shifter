@@ -77,12 +77,12 @@
               </td>
               <td>
                 <v-chip
-                  v-if="row.sead_id"
+                  v-if="row.target_id"
                   size="small"
                   color="primary"
                   variant="tonal"
                 >
-                  {{ row.sead_id }}
+                  {{ row.target_id }}
                 </v-chip>
                 <span v-else class="text-grey">—</span>
               </td>
@@ -146,12 +146,12 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { ReconciliationPreviewRow, EntityMapping } from '@/types'
+import type { ReconciliationPreviewRow, EntityResolutionSet } from '@/types'
 
 interface Props {
   modelValue: boolean
   previewData: ReconciliationPreviewRow[]
-  entitySpec: EntityMapping | null
+  entitySpec: EntityResolutionSet | null
 }
 
 const props = defineProps<Props>()
@@ -185,11 +185,11 @@ const filteredPreviewData = computed(() => {
   let filtered = props.previewData
 
   if (showOnlyMatched.value) {
-    filtered = filtered.filter(row => row.sead_id != null && !row.will_not_match)
+    filtered = filtered.filter(row => row.target_id != null && !row.will_not_match)
   }
 
   if (showOnlyChanged.value) {
-    filtered = filtered.filter(row => row.sead_id != null || row.will_not_match)
+    filtered = filtered.filter(row => row.target_id != null || row.will_not_match)
   }
 
   return filtered
@@ -197,7 +197,7 @@ const filteredPreviewData = computed(() => {
 
 // Statistics
 const stats = computed(() => {
-  const matched = props.previewData.filter(row => row.sead_id != null && !row.will_not_match).length
+  const matched = props.previewData.filter(row => row.target_id != null && !row.will_not_match).length
   const willNotMatch = props.previewData.filter(row => row.will_not_match).length
   const unmatched = props.previewData.length - matched - willNotMatch
 
@@ -217,7 +217,7 @@ function getRowClass(row: ReconciliationPreviewRow): string {
     return 'bg-grey-lighten-3 text-decoration-line-through'
   }
   
-  if (row.sead_id) {
+  if (row.target_id) {
     const autoAcceptThreshold = props.entitySpec?.auto_accept_threshold || 95
     if ((row.confidence ?? 0) >= autoAcceptThreshold) {
       return 'bg-green-lighten-5'
@@ -236,7 +236,7 @@ function getConfidenceColor(confidence: number): string {
 
 function getStatusColor(row: ReconciliationPreviewRow): string {
   if (row.will_not_match) return 'grey'
-  if (row.sead_id) {
+  if (row.target_id) {
     const autoAcceptThreshold = props.entitySpec?.auto_accept_threshold || 95
     if ((row.confidence ?? 0) >= autoAcceptThreshold) return 'success'
     return 'warning'
@@ -246,7 +246,7 @@ function getStatusColor(row: ReconciliationPreviewRow): string {
 
 function getStatusLabel(row: ReconciliationPreviewRow): string {
   if (row.will_not_match) return 'Won\'t Match'
-  if (row.sead_id) {
+  if (row.target_id) {
     const autoAcceptThreshold = props.entitySpec?.auto_accept_threshold || 95
     if ((row.confidence ?? 0) >= autoAcceptThreshold) return 'Auto-Matched'
     return 'Manual Match'
@@ -261,7 +261,7 @@ function exportPreview() {
   // Build CSV header
   const headers = [
     ...displayColumns.value,
-    'sead_id',
+    'target_id',
     'matched_name',
     'confidence',
     'status',
@@ -280,7 +280,7 @@ function exportPreview() {
       return str
     })
 
-    values.push(row.sead_id?.toString() || '')
+    values.push(row.target_id?.toString() || '')
     values.push(row.matched_name || '')
     values.push(row.confidence != null ? Math.round(row.confidence).toString() : '')
     values.push(getStatusLabel(row))

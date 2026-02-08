@@ -3,10 +3,10 @@
  */
 
 import type {
-  EntityMappingRegistry,
-  EntityMappingListItem,
-  EntityMappingCreateRequest,
-  EntityMappingUpdateRequest,
+  EntityResolutionCatalog,
+  EntityResolutionListItem,
+  EntityResolutionCatalogCreateRequest,
+  EntityResolutionCatalogUpdateRequest,
 } from '@/types/reconciliation'
 import { apiRequest } from './client'
 
@@ -17,8 +17,8 @@ export const reconciliationSpecApi = {
   /**
    * List all reconciliation specifications for a project
    */
-  listSpecifications: async (projectName: string): Promise<EntityMappingListItem[]> => {
-    return apiRequest<EntityMappingListItem[]>({
+  listSpecifications: async (projectName: string): Promise<EntityResolutionListItem[]> => {
+    return apiRequest<EntityResolutionListItem[]>({
       method: 'GET',
       url: `/projects/${projectName}/reconciliation/mapping-registry`,
     })
@@ -29,9 +29,9 @@ export const reconciliationSpecApi = {
    */
   createSpecification: async (
     projectName: string,
-    request: EntityMappingCreateRequest
-  ): Promise<EntityMappingRegistry> => {
-    return apiRequest<EntityMappingRegistry>({
+    request: EntityResolutionCatalogCreateRequest
+  ): Promise<EntityResolutionCatalog> => {
+    return apiRequest<EntityResolutionCatalog>({
       method: 'POST',
       url: `/projects/${projectName}/reconciliation/mapping-registry`,
       data: request,
@@ -45,9 +45,9 @@ export const reconciliationSpecApi = {
     projectName: string,
     entityName: string,
     targetField: string,
-    request: EntityMappingUpdateRequest
-  ): Promise<EntityMappingRegistry> => {
-    return apiRequest<EntityMappingRegistry>({
+    request: EntityResolutionCatalogUpdateRequest
+  ): Promise<EntityResolutionCatalog> => {
+    return apiRequest<EntityResolutionCatalog>({
       method: 'PUT',
       url: `/projects/${projectName}/reconciliation/mapping-registry/${entityName}/${targetField}`,
       data: request,
@@ -62,8 +62,8 @@ export const reconciliationSpecApi = {
     entityName: string,
     targetField: string,
     force: boolean = false
-  ): Promise<EntityMappingRegistry> => {
-    return apiRequest<EntityMappingRegistry>({
+  ): Promise<EntityResolutionCatalog> => {
+    return apiRequest<EntityResolutionCatalog>({
       method: 'DELETE',
       url: `/projects/${projectName}/reconciliation/mapping-registry/${entityName}/${targetField}`,
       params: { force },

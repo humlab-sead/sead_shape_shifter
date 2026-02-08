@@ -308,7 +308,7 @@
 import { ref, computed, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import type { GridApi, ColDef, CellValueChangedEvent } from 'ag-grid-community'
-import type { EntityMapping, ReconciliationPreviewRow, ReconciliationCandidate } from '@/types'
+import type { EntityResolutionSet, ReconciliationPreviewRow, ReconciliationCandidate } from '@/types'
 import AlternativeSearchDialog from './AlternativeSearchDialog.vue'
 import PreviewMatchedDataDialog from './PreviewMatchedDataDialog.vue'
 
@@ -317,7 +317,7 @@ import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-material.css'
 
 interface Props {
-  entitySpec: EntityMapping | null
+  entitySpec: EntityResolutionSet | null
   previewData: ReconciliationPreviewRow[]
   loading?: boolean
   projectName: string
@@ -330,7 +330,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update:mapping': [row: ReconciliationPreviewRow, seadId: number | null, notes?: string]
+  'update:mapping': [row: ReconciliationPreviewRow, targetId: number | null, notes?: string]
   save: []
 }>()
 
@@ -416,8 +416,8 @@ const columnDefs = computed<ColDef[]>(() => {
 
   // SEAD ID column (editable with autocomplete)
   cols.push({
-    field: 'sead_id',
-    headerName: 'SEAD ID',
+    field: 'target_id',
+    headerName: 'Target ID',
     width: 120,
     editable: true,
     cellRenderer: (params: any) => {
@@ -544,10 +544,10 @@ const enrichedPreviewData = computed(() => {
     // Find matched name from candidates if we have a SEAD ID
     let matched_name: string | undefined
     
-    if (row.sead_id && row.candidates) {
+    if (row.target_id && row.candidates) {
       const matchedCandidate = row.candidates.find(c => {
         const candidateId = extractIdFromUri(c.id)
-        return candidateId === row.sead_id
+        return candidateId === row.target_id
       })
       
       if (matchedCandidate) {
@@ -615,12 +615,12 @@ function onCellValueChanged(event: CellValueChangedEvent) {
   const row = event.data as ReconciliationPreviewRow
   const field = event.colDef.field
 
-  if (field === 'sead_id') {
-    const seadId = event.newValue ? parseInt(event.newValue) : null
-    emit('update:mapping', row, seadId, row.notes)
+  if (field === 'target_id') {
+    const targetId = event.newValue ? parseInt(event.newValue) : null
+    emit('update:mapping', row, targetId, row.notes)
     hasChanges.value = true
   } else if (field === 'notes') {
-    emit('update:mapping', row, row.sead_id ?? null, event.newValue)
+    emit('update:mapping', row, row.target_id ?? null, event.newValue)
     hasChanges.value = true
   }
 }
@@ -641,12 +641,12 @@ function selectCandidate(candidate: ReconciliationCandidate) {
 function acceptCandidate() {
   if (!selectedCandidate.value || !selectedRow.value) return
 
-  const seadId = extractIdFromUri(selectedCandidate.value.id)
-  if (seadId) {
-    selectedRow.value.sead_id = seadId
+  const targetId = extractIdFromUri(selectedCandidate.value.id)
+  if (targetId) {
+    selectedRow.value.target_id = targetId
     selectedRow.value.confidence = (selectedCandidate.value.score ?? 0) * 100
 
-    emit('update:mapping', selectedRow.value, seadId, selectedRow.value.notes)
+    emit('update:mapping', selectedRow.value, targetId, selectedRow.value.notes)
     hasChanges.value = true
 
     // Refresh grid
@@ -715,12 +715,12 @@ function openAlternativeSearch(row: ReconciliationPreviewRow) {
 function handleAlternativeAccept(candidate: ReconciliationCandidate) {
   if (!selectedRow.value) return
 
-  const seadId = extractIdFromUri(candidate.id)
-  if (seadId) {
-    selectedRow.value.sead_id = seadId
+  const targetId = extractIdFromUri(candidate.id)
+  if (targetId) {
+    selectedRow.value.target_id = targetId
     selectedRow.value.confidence = (candidate.score ?? 0) * 100
 
-    emit('update:mapping', selectedRow.value, seadId, selectedRow.value.notes)
+    emit('update:mapping', selectedRow.value, targetId, selectedRow.value.notes)
     hasChanges.value = true
 
     // Refresh grid
@@ -765,7 +765,7 @@ async function confirmMarkUnmatched() {
     }
 
     // Update local row data
-    selectedRow.value.sead_id = null as any
+    selectedRow.value.target_id = null as any
     selectedRow.value.confidence = null as any
     selectedRow.value.will_not_match = true
     selectedRow.value.notes = unmatchedNotes.value || 'Marked as local-only (will not match)'
@@ -810,11 +810,11 @@ function confirmBulkAccept() {
     if (row.candidates && row.candidates.length > 0) {
       const topCandidate = row.candidates[0]
       if (topCandidate) {
-        const seadId = extractIdFromUri(topCandidate.id)
-        if (seadId) {
-          row.sead_id = seadId
+        const targetId = extractIdFromUri(topCandidate.id)
+        if (targetId) {
+          row.target_id = targetId
           row.confidence = (topCandidate.score ?? 0) * 100
-          emit('update:mapping', row, seadId, row.notes)
+          emit('update:mapping', row, targetId, row.notes)
         }
       }
     }
@@ -834,7 +834,7 @@ function confirmBulkReject() {
 
   // Clear matches for each selected row
   selectedRows.value.forEach((row) => {
-    row.sead_id = undefined
+    row.target_id = undefined
     row.confidence = undefined
     row.candidates = []
     emit('update:mapping', row, null)

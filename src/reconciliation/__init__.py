@@ -1,17 +1,17 @@
 """Reconciliation domain models."""
 
 from src.reconciliation.model import (
-    ResolvedEntityPair,
-    EntityResolutionSet,
     EntityResolutionCatalog,
-    ReconciliationRemoteDomain,
-    ReconciliationSourceDomain,
+    EntityResolutionSet,
+    ResolutionSource,
+    ResolutionTarget,
+    ResolvedEntityPair,
 )
 
 __all__ = [
     "ResolvedEntityPair",
     "EntityResolutionSet",
     "EntityResolutionCatalog",
-    "ReconciliationRemoteDomain",
-    "ReconciliationSourceDomain",
+    "ResolutionTarget",
+    "ResolutionSource",
 ]

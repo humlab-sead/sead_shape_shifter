@@ -13,17 +13,17 @@ Classes:
     - AnotherEntityReconciliationSourceResolver: Resolver for another entity sources
 """
 
-from backend.app.services.reconciliation.service import (
-    ReconciliationQueryService,
-    ReconciliationService,
-)
+from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
 from backend.app.services.reconciliation.resolvers import (
     AnotherEntityReconciliationSourceResolver,
     ReconciliationSourceResolver,
     SqlQueryReconciliationSourceResolver,
     TargetEntityReconciliationSourceResolver,
 )
-from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
+from backend.app.services.reconciliation.service import (
+    ReconciliationQueryService,
+    ReconciliationService,
+)
 
 __all__ = [
     "ReconciliationService",

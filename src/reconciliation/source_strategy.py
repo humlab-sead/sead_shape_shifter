@@ -7,7 +7,7 @@ for reconciliation, separated from infrastructure concerns.
 from enum import Enum
 from typing import Protocol
 
-from src.reconciliation.model import EntityResolutionSet, ReconciliationSourceDomain
+from src.reconciliation.model import EntityResolutionSet, ResolutionSource
 
 
 class SourceStrategyType(Enum):
@@ -20,32 +20,30 @@ class SourceStrategyType(Enum):
 
 class ReconciliationDataProvider(Protocol):
     """Protocol for loading reconciliation source data (domain interface).
-    
+
     Application layer implements this protocol with actual I/O operations.
     """
 
     async def load_entity_data(self, entity_name: str, limit: int = 1000) -> list[dict]:
         """Load data from an entity.
-        
+
         Args:
             entity_name: Name of entity to load
             limit: Maximum rows to load
-            
+
         Returns:
             List of row dictionaries
         """
         ...
 
-    async def execute_query(
-        self, data_source: str, query: str, query_type: str = "sql"
-    ) -> list[dict]:
+    async def execute_query(self, data_source: str, query: str, query_type: str = "sql") -> list[dict]:
         """Execute a custom query against a data source.
-        
+
         Args:
             data_source: Data source identifier
             query: SQL query to execute
             query_type: Type of query (e.g., "sql")
-            
+
         Returns:
             List of row dictionaries
         """
@@ -54,15 +52,13 @@ class ReconciliationDataProvider(Protocol):
 
 class ReconciliationSourceStrategy:
     """Domain service for reconciliation source resolution strategy.
-    
+
     Contains pure business logic for determining which data source to use,
     without any infrastructure dependencies.
     """
 
     @staticmethod
-    def determine_strategy(
-        entity_name: str, source: str | ReconciliationSourceDomain | None
-    ) -> SourceStrategyType:
+    def determine_strategy(entity_name: str, source: str | ResolutionSource | None) -> SourceStrategyType:
         """Determine which source strategy to use (pure business logic).
 
         Business rules:
@@ -86,15 +82,13 @@ class ReconciliationSourceStrategy:
         if isinstance(source, str):
             return SourceStrategyType.ANOTHER_ENTITY
 
-        if isinstance(source, ReconciliationSourceDomain):
+        if isinstance(source, ResolutionSource):
             return SourceStrategyType.SQL_QUERY
 
         raise ValueError(f"Invalid source specification: {source}")
 
     @staticmethod
-    def get_source_entity_name(
-        entity_name: str, entity_mapping: EntityResolutionSet
-    ) -> str:
+    def get_source_entity_name(entity_name: str, entity_mapping: EntityResolutionSet) -> str:
         """Get the entity name to use for data (business logic).
 
         Args:
@@ -104,24 +98,18 @@ class ReconciliationSourceStrategy:
         Returns:
             Entity name to load data from
         """
-        strategy = ReconciliationSourceStrategy.determine_strategy(
-            entity_name, entity_mapping.source
-        )
+        strategy = ReconciliationSourceStrategy.determine_strategy(entity_name, entity_mapping.metadata.source)
 
         if strategy == SourceStrategyType.TARGET_ENTITY:
             return entity_name
-        elif strategy == SourceStrategyType.ANOTHER_ENTITY:
-            assert isinstance(entity_mapping.source, str)
-            return entity_mapping.source
-        else:
-            # SQL query doesn't use entity name
-            return ""
+        if strategy == SourceStrategyType.ANOTHER_ENTITY:
+            assert isinstance(entity_mapping.metadata.source, str)
+            return entity_mapping.metadata.source
+        return ""
 
     @staticmethod
-    def get_query_spec(
-        entity_mapping: EntityResolutionSet,
-    ) -> ReconciliationSourceDomain | None:
-        """Extract custom query specification if present.
+    def get_resolution_source(mapping: EntityResolutionSet) -> ResolutionSource | None:
+        """Extract resolution source if present.
 
         Args:
             entity_mapping: Entity mapping configuration
@@ -129,6 +117,6 @@ class ReconciliationSourceStrategy:
         Returns:
             Query specification or None
         """
-        if isinstance(entity_mapping.source, ReconciliationSourceDomain):
-            return entity_mapping.source
+        if isinstance(mapping.metadata.source, ResolutionSource):
+            return mapping.metadata.source
         return None

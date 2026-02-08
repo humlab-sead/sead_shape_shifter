@@ -5,20 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import yaml
 
-from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
-from backend.app.models import (
-    EntityMapping,
-    ReconciliationCandidate,
-    EntityMappingRegistry,
-    EntityMappingItem,
-    ReconciliationSource,
-)
-from backend.app.models.reconciliation import ReconciliationRemote
+from backend.app import models as dto
 from backend.app.models.shapeshift import PreviewResult
-from backend.app.services.reconciliation import (
-    ReconciliationQueryService,
-    ReconciliationService,
-)
+from backend.app.services.reconciliation import ReconciliationQueryService, ReconciliationService
 from backend.app.services.reconciliation.resolvers import (
     AnotherEntityReconciliationSourceResolver,
     ReconciliationSourceResolver,
@@ -27,16 +16,8 @@ from backend.app.services.reconciliation.resolvers import (
 )
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from backend.tests.test_reconciliation_client import RECONCILIATION_SERVICE_URL
-from src.reconciliation.model import (
-    EntityResolutionSet,
-    ResolvedEntityPair,
-    ReconciliationRemoteDomain,
-    ReconciliationSourceDomain,
-)
-from src.reconciliation.source_strategy import (
-    ReconciliationSourceStrategy,
-    SourceStrategyType,
-)
+from src.reconciliation import model as core
+from src.reconciliation.source_strategy import ReconciliationSourceStrategy, SourceStrategyType
 
 # pylint: disable=redefined-outer-name,unused-argument,protected-access
 
@@ -93,31 +74,33 @@ def mock_recon_client():
 
 
 @pytest.fixture
-def reconciliation_service(tmp_path, mock_recon_client):
+def reconciliation_service(tmp_path, mock_recon_client) -> ReconciliationService:
     """Create ReconciliationService instance."""
     return ReconciliationService(config_dir=tmp_path, reconciliation_client=mock_recon_client)
 
 
 @pytest.fixture
-def sample_entity_spec():
+def sample_entity_spec() -> core.EntityResolutionSet:
     """Create sample EntityResolutionSet (domain model)."""
-    return EntityResolutionSet(
-        source=None,
-        property_mappings={"latitude": "latitude", "longitude": "longitude"},
-        remote=ReconciliationRemoteDomain(service_type="site"),
-        auto_accept_threshold=0.95,
-        review_threshold=0.70,
-        mapping=[],
+    return core.EntityResolutionSet(
+        metadata=core.EntityResolutionMetadata(
+            source=None,
+            property_mappings={"latitude": "latitude", "longitude": "longitude"},
+            remote=core.ResolutionTarget(service_type="site"),
+            auto_accept_threshold=0.95,
+            review_threshold=0.70,
+        ),
+        links=[],
     )
 
 
 @pytest.fixture
-def sample_entity_spec_dto():
+def sample_entity_spec_dto() -> dto.EntityResolutionSet:
     """Create sample EntityMapping (DTO for YAML serialization tests)."""
-    return EntityMapping(
+    return dto.EntityResolutionSet(
         source=None,
         property_mappings={"latitude": "latitude", "longitude": "longitude"},
-        remote=ReconciliationRemote(service_type="site"),
+        remote=dto.ReconciliationRemote(service_type="site"),
         auto_accept_threshold=0.95,
         review_threshold=0.70,
         mapping=[],
@@ -125,9 +108,9 @@ def sample_entity_spec_dto():
 
 
 @pytest.fixture
-def sample_recon_config(sample_entity_spec_dto):
+def sample_recon_config(sample_entity_spec_dto) -> dto.EntityResolutionCatalog:
     """Create sample EntityMappingRegistry (DTO for YAML serialization tests)."""
-    return EntityMappingRegistry(
+    return dto.EntityResolutionCatalog(
         version="2.0",
         service_url=RECONCILIATION_SERVICE_URL,
         entities={"site": {"site_code": sample_entity_spec_dto}},  # Nested: entity -> target -> spec
@@ -159,7 +142,7 @@ class TestReconciliationSourceStrategy:
 
     def test_determine_strategy_for_custom_query(self):
         """Test strategy determination for ReconciliationSourceDomain."""
-        source = ReconciliationSourceDomain(type="sql", data_source="test_db", query="SELECT * FROM sites")
+        source = core.ResolutionSource(type="sql", data_source="test_db", query="SELECT * FROM sites")
         strategy = ReconciliationSourceStrategy.determine_strategy("site", source)
         assert strategy == SourceStrategyType.SQL_QUERY
 
@@ -170,35 +153,43 @@ class TestReconciliationSourceStrategy:
 
     def test_get_source_entity_name_target_entity(self):
         """Test get_source_entity_name for target entity strategy."""
-        entity_mapping = EntityResolutionSet(
-            source=None,
-            remote=ReconciliationRemoteDomain(service_type="site"),
-            auto_accept_threshold=0.95,
-            review_threshold=0.70,
+        entity_mapping = core.EntityResolutionSet(
+            metadata=core.EntityResolutionMetadata(
+                source=None,
+                property_mappings={"latitude": "latitude", "longitude": "longitude"},
+                remote=core.ResolutionTarget(service_type="site"),
+                auto_accept_threshold=0.95,
+                review_threshold=0.70,
+            )
         )
         entity_name = ReconciliationSourceStrategy.get_source_entity_name("site", entity_mapping)
         assert entity_name == "site"
 
     def test_get_source_entity_name_another_entity(self):
         """Test get_source_entity_name for another entity strategy."""
-        entity_mapping = EntityResolutionSet(
-            source="location",
-            remote=ReconciliationRemoteDomain(service_type="site"),
-            auto_accept_threshold=0.95,
-            review_threshold=0.70,
+        entity_mapping = core.EntityResolutionSet(
+            metadata=core.EntityResolutionMetadata(
+                source="location",
+                property_mappings={"latitude": "latitude", "longitude": "longitude"},
+                remote=core.ResolutionTarget(service_type="site"),
+                auto_accept_threshold=0.95,
+                review_threshold=0.70,
+            )
         )
         entity_name = ReconciliationSourceStrategy.get_source_entity_name("site", entity_mapping)
         assert entity_name == "location"
 
     def test_get_source_entity_name_sql_query(self):
         """Test get_source_entity_name for SQL query strategy."""
-        entity_mapping = EntityResolutionSet(
-            source=ReconciliationSourceDomain(type="sql", data_source="test_db", query="SELECT * FROM custom"),
-            remote=ReconciliationRemoteDomain(service_type="site"),
-            auto_accept_threshold=0.95,
-            review_threshold=0.70,
+        entity_mapping = core.EntityResolutionSet(
+            metadata=core.EntityResolutionMetadata(
+                source=core.ResolutionSource(type="sql", data_source="test_db", query="SELECT * FROM custom"),
+                remote=core.ResolutionTarget(service_type="site"),
+                auto_accept_threshold=0.95,
+                review_threshold=0.70,
+            )
         )
-        entity_name = ReconciliationSourceStrategy.get_source_entity_name("site", entity_mapping)
+        entity_name: str = ReconciliationSourceStrategy.get_source_entity_name("site", entity_mapping)
         assert entity_name == ""
 
 
@@ -258,11 +249,14 @@ class TestAnotherEntityReconciliationSourceResolver:
         resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_core_project, mock_config_service)
 
         # Entity spec domain model with source pointing to another entity
-        entity_spec = EntityResolutionSet(
-            source="site",
-            remote=ReconciliationRemoteDomain(service_type="sample"),
-            auto_accept_threshold=0.95,
-            review_threshold=0.70,
+        entity_spec = core.EntityResolutionSet(
+            metadata=core.EntityResolutionMetadata(
+                source="site",
+                property_mappings={"latitude": "latitude", "longitude": "longitude"},
+                remote=core.ResolutionTarget(service_type="sample"),
+                auto_accept_threshold=0.95,
+                review_threshold=0.70,
+            ),
         )
 
         source_data = [{"site_code": "SITE001", "sample_code": "SAMP001"}]
@@ -282,14 +276,16 @@ class TestAnotherEntityReconciliationSourceResolver:
         """Test resolve raises if source entity not found."""
         # Set up mock_core_project to only have 'site' table, not 'nonexistent'
         mock_core_project.tables = {"site": MagicMock(name="site")}
-        
+
         resolver = AnotherEntityReconciliationSourceResolver("test_project", mock_core_project, mock_config_service)
 
-        entity_spec = EntityResolutionSet(
-            source="nonexistent",
-            remote=ReconciliationRemoteDomain(service_type="test"),
-            auto_accept_threshold=0.95,
-            review_threshold=0.70,
+        entity_spec = core.EntityResolutionSet(
+            metadata=core.EntityResolutionMetadata(
+                source="nonexistent",
+                remote=core.ResolutionTarget(service_type="test"),
+                auto_accept_threshold=0.95,
+                review_threshold=0.70,
+            ),
         )
 
         with pytest.raises(NotFoundError, match="Source entity 'nonexistent' not found"):
@@ -315,11 +311,13 @@ class TestSqlQueryReconciliationSourceResolver:
             }
         }
 
-        entity_spec = EntityResolutionSet(
-            source=ReconciliationSourceDomain(type="sql", data_source="test_db", query="SELECT * FROM custom_view"),
-            remote=ReconciliationRemoteDomain(service_type="test"),
-            auto_accept_threshold=0.95,
-            review_threshold=0.70,
+        entity_spec = core.EntityResolutionSet(
+            metadata=core.EntityResolutionMetadata(
+                source=core.ResolutionSource(type="sql", data_source="test_db", query="SELECT * FROM custom_view"),
+                remote=core.ResolutionTarget(service_type="test"),
+                auto_accept_threshold=0.95,
+                review_threshold=0.70,
+            ),
         )
 
         resolver = SqlQueryReconciliationSourceResolver("test_project", mock_core_project, mock_config_service)
@@ -334,14 +332,16 @@ class TestSqlQueryReconciliationSourceResolver:
         """Test resolve raises if data source not found."""
         # Set up mock_core_project to have no data sources
         mock_core_project.data_sources = {}
-        
+
         resolver = SqlQueryReconciliationSourceResolver("test_project", mock_core_project, mock_config_service)
 
-        entity_spec = EntityResolutionSet(
-            source=ReconciliationSourceDomain(type="sql", data_source="nonexistent_db", query="SELECT * FROM test"),
-            remote=ReconciliationRemoteDomain(service_type="test"),
-            auto_accept_threshold=0.95,
-            review_threshold=0.70,
+        entity_spec = core.EntityResolutionSet(
+            metadata=core.EntityResolutionMetadata(
+                source=core.ResolutionSource(type="sql", data_source="nonexistent_db", query="SELECT * FROM test"),
+                remote=core.ResolutionTarget(service_type="test"),
+                auto_accept_threshold=0.95,
+                review_threshold=0.70,
+            ),
         )
 
         with pytest.raises(NotFoundError, match="Data source 'nonexistent_db' not found"):
@@ -493,34 +493,36 @@ class TestReconciliationService:
         with patch.object(reconciliation_service.project_service, "load_project") as mock_load:
             mock_api_project = MagicMock()
             mock_load.return_value = mock_api_project
-            
+
             # Mock ProjectMapper to return our mock core project
             with patch("backend.app.services.reconciliation.service.ProjectMapper") as mock_mapper:
                 mock_mapper.to_core.return_value = mock_core_project
-                
+
                 # Mock ReconciliationSourceStrategy to return target entity strategy
                 with patch("backend.app.services.reconciliation.service.ReconciliationSourceStrategy") as mock_strategy:
                     mock_strategy.determine_strategy.return_value = SourceStrategyType.TARGET_ENTITY
-                    
+
                     # Mock the resolver class and instance
                     mock_resolver = AsyncMock()
                     mock_resolver.resolve.return_value = [{"key": "value"}]
                     mock_resolver_cls = MagicMock(return_value=mock_resolver)
-                    
+
                     # Mock get_resolver_cls_for_strategy to return our mock class
-                    with patch("backend.app.services.reconciliation.service.ReconciliationSourceResolver.get_resolver_cls_for_strategy") as mock_get_cls:
+                    with patch(
+                        "backend.app.services.reconciliation.service.ReconciliationSourceResolver.get_resolver_cls_for_strategy"
+                    ) as mock_get_cls:
                         mock_get_cls.return_value = mock_resolver_cls
 
                         result = await reconciliation_service.get_resolved_source_data("test_project", "site", sample_entity_spec)
 
                         assert result == [{"key": "value"}]
-                        
+
                         # Verify domain strategy was used
                         mock_strategy.determine_strategy.assert_called_once_with("site", sample_entity_spec.source)
-                        
+
                         # Verify get_resolver_cls_for_strategy was called with correct strategy
                         mock_get_cls.assert_called_once_with(SourceStrategyType.TARGET_ENTITY)
-                        
+
                         # Verify resolver was created with correct parameters
                         mock_resolver_cls.assert_called_once_with("test_project", mock_core_project, reconciliation_service.project_service)
                         mock_resolver.resolve.assert_called_once_with("site", sample_entity_spec)
@@ -528,14 +530,14 @@ class TestReconciliationService:
     def test_extract_id_from_uri_success(self, reconciliation_service):
         """Test _extract_id_from_uri extracts ID correctly."""
         uri = "https://w3id.org/sead/id/site/12345"
-        sead_id = reconciliation_service._extract_id_from_uri(uri)
-        assert sead_id == 12345
+        target_id = reconciliation_service._extract_id_from_uri(uri)
+        assert target_id == 12345
 
     def test_extract_id_from_uri_with_trailing_slash(self, reconciliation_service):
         """Test _extract_id_from_uri handles trailing slash."""
         uri = "https://w3id.org/sead/id/site/12345/"
-        sead_id = reconciliation_service._extract_id_from_uri(uri)
-        assert sead_id == 12345
+        target_id = reconciliation_service._extract_id_from_uri(uri)
+        assert target_id == 12345
 
     def test_extract_id_from_uri_raises_on_invalid(self, reconciliation_service):
         """Test _extract_id_from_uri raises on invalid URI."""
@@ -573,7 +575,7 @@ class TestReconciliationService:
 
         # Setup reconciliation results
         candidates = [
-            ReconciliationCandidate(
+            dto.ReconciliationCandidate(
                 id="https://w3id.org/sead/id/site/123",
                 name="Test Site",
                 score=98.5,
@@ -625,7 +627,7 @@ class TestReconciliationService:
             loaded_config = reconciliation_service.mapping_manager.load_registry("test", filename=config_file)
             assert len(loaded_config.entities["site"]["site_code"].mapping) == 1
             mapping = loaded_config.entities["site"]["site_code"].mapping[0]
-            assert mapping.sead_id == 123
+            assert mapping.target_id == 123
             assert mapping.source_value == "SITE001"
 
     @pytest.mark.asyncio
@@ -634,7 +636,7 @@ class TestReconciliationService:
         source_data = [{"site_code": "SITE001"}]
 
         candidates = [
-            ReconciliationCandidate(
+            dto.ReconciliationCandidate(
                 id="https://w3id.org/sead/id/site/123", name="Test", score=80.0, match=False, type=[], distance_km=None, description=None
             )
         ]
@@ -679,7 +681,7 @@ class TestReconciliationService:
         source_data = [{"site_code": "SITE001"}]
 
         candidates = [
-            ReconciliationCandidate(
+            dto.ReconciliationCandidate(
                 id="https://w3id.org/sead/id/site/123", name="Test", score=50.0, match=False, type=[], distance_km=None, description=None
             )
         ]
@@ -767,13 +769,13 @@ class TestReconciliationService:
             "site",
             "site_code",
             source_value="SITE001",
-            sead_id=123,
+            target_id=123,
             notes="Manual mapping",
         )
 
         assert len(updated.entities["site"]["site_code"].mapping) == 1
         mapping = updated.entities["site"]["site_code"].mapping[0]
-        assert mapping.sead_id == 123
+        assert mapping.target_id == 123
         assert mapping.source_value == "SITE001"
         assert mapping.notes == "Manual mapping"
         assert mapping.confidence == 1.0
@@ -781,9 +783,9 @@ class TestReconciliationService:
     def test_update_mapping_updates_existing(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test update_mapping updates existing mapping."""
         # Add existing mapping
-        existing_mapping = EntityMappingItem(
+        existing_mapping = core.ResolvedEntityPair(
             source_value="SITE001",
-            sead_id=100,
+            target_id=100,
             confidence=0.8,
             notes="Old mapping",
             created_by="system",
@@ -802,20 +804,20 @@ class TestReconciliationService:
             "site",
             "site_code",
             source_value="SITE001",
-            sead_id=200,
+            target_id=200,
             notes="Updated mapping",
         )
 
         assert len(updated.entities["site"]["site_code"].mapping) == 1
         mapping = updated.entities["site"]["site_code"].mapping[0]
-        assert mapping.sead_id == 200
+        assert mapping.target_id == 200
         assert mapping.notes == "Updated mapping"
 
     def test_update_mapping_removes_mapping(self, reconciliation_service, tmp_path, sample_recon_config):
-        """Test update_mapping removes mapping when sead_id is None."""
-        existing_mapping = EntityMappingItem(
+        """Test update_mapping removes mapping when target_id is None."""
+        existing_mapping = core.ResolvedEntityPair(
             source_value="SITE001",
-            sead_id=100,
+            target_id=100,
             confidence=0.8,
             notes="To remove",
             created_by="user",
@@ -829,7 +831,7 @@ class TestReconciliationService:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
-        updated = reconciliation_service.update_mapping("test", "site", "site_code", source_value="SITE001", sead_id=None)
+        updated = reconciliation_service.update_mapping("test", "site", "site_code", source_value="SITE001", target_id=None)
 
         assert len(updated.entities["site"]["site_code"].mapping) == 0
 
@@ -839,7 +841,7 @@ class TestReconciliationService:
         config_file.write_text(yaml.dump({"version": "2.0", "service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
 
         with pytest.raises(NotFoundError, match="Entity mapping for entity 'nonexistent' and target field 'field' not found"):
-            reconciliation_service.update_mapping("test", "nonexistent", "field", source_value="KEY", sead_id=123)
+            reconciliation_service.update_mapping("test", "nonexistent", "field", source_value="KEY", target_id=123)
 
     def test_mark_as_unmatched(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test mark_as_unmatched creates mapping with will_not_match=True."""
@@ -858,7 +860,7 @@ class TestReconciliationService:
         assert len(updated.entities["site"]["site_code"].mapping) == 1
         mapping = updated.entities["site"]["site_code"].mapping[0]
         assert mapping.source_value == "LOCAL_SITE"
-        assert mapping.sead_id is None
+        assert mapping.target_id is None
         assert mapping.will_not_match is True
         assert mapping.notes == "Local identifier only"
         assert mapping.confidence is None
@@ -867,9 +869,9 @@ class TestReconciliationService:
     def test_mark_as_unmatched_updates_existing(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test mark_as_unmatched can convert existing mapping to unmatched."""
         # Add existing matched mapping
-        existing_mapping = EntityMappingItem(
+        existing_mapping = core.ResolvedEntityPair(
             source_value="SITE001",
-            sead_id=100,
+            target_id=100,
             confidence=0.8,
             notes="Was matched",
             created_by="system",
@@ -893,7 +895,7 @@ class TestReconciliationService:
 
         assert len(updated.entities["site"]["site_code"].mapping) == 1
         mapping = updated.entities["site"]["site_code"].mapping[0]
-        assert mapping.sead_id is None
+        assert mapping.target_id is None
         assert mapping.will_not_match is True
         assert mapping.notes == "Changed to local-only"
 
@@ -903,7 +905,7 @@ class TestSpecificationManagement:
 
     def test_list_specifications_empty(self, reconciliation_service, tmp_path):
         """Test listing specifications when config has no entities."""
-        config = EntityMappingRegistry(version="2.0", service_url=RECONCILIATION_SERVICE_URL, entities={})
+        config = dto.EntityResolutionCatalog(version="2.0", service_url=RECONCILIATION_SERVICE_URL, entities={})
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
@@ -914,22 +916,22 @@ class TestSpecificationManagement:
 
     def test_list_specifications_multiple(self, reconciliation_service, tmp_path, sample_entity_spec_dto):
         """Test listing multiple specifications."""
-        config = EntityMappingRegistry(
+        config = dto.EntityResolutionCatalog(
             version="2.0",
             service_url=RECONCILIATION_SERVICE_URL,
             entities={
                 "site": {
                     "site_code": sample_entity_spec_dto,
-                    "site_name": EntityMapping(
+                    "site_name": dto.EntityResolutionSet(
                         source="another_entity",
                         property_mappings={},
-                        remote=ReconciliationRemote(service_type="taxon"),
+                        remote=dto.ReconciliationRemote(service_type="taxon"),
                         auto_accept_threshold=0.85,
                         review_threshold=0.60,
                         mapping=[
-                            EntityMappingItem(
+                            dto.ResolvedEntityPair(
                                 source_value="test",
-                                sead_id=1,
+                                target_id=1,
                                 confidence=0.9,
                                 notes="Existing mapping",
                                 created_by="user",
@@ -937,9 +939,9 @@ class TestSpecificationManagement:
                                 will_not_match=False,
                                 last_modified="2024-01-02T00:00:00Z",
                             ),
-                            EntityMappingItem(
+                            dto.ResolvedEntityPair(
                                 source_value="test2",
-                                sead_id=2,
+                                target_id=2,
                                 confidence=0.8,
                                 notes="Another mapping",
                                 created_by="user",
@@ -951,10 +953,10 @@ class TestSpecificationManagement:
                     ),
                 },
                 "sample": {
-                    "sample_type": EntityMapping(
+                    "sample_type": dto.EntityResolutionSet(
                         source=None,
                         property_mappings={"name": "type_name"},
-                        remote=ReconciliationRemote(service_type="location"),
+                        remote=dto.ReconciliationRemote(service_type="location"),
                         auto_accept_threshold=0.90,
                         review_threshold=0.75,
                         mapping=[],
@@ -1010,10 +1012,10 @@ class TestSpecificationManagement:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
         # Create new spec
-        new_spec = EntityMapping(
+        new_spec = dto.EntityResolutionSet(
             source=None,
             property_mappings={"lat": "latitude"},
-            remote=ReconciliationRemote(service_type="location"),
+            remote=dto.ReconciliationRemote(service_type="location"),
             auto_accept_threshold=0.90,
             review_threshold=0.75,
             mapping=[],
@@ -1045,10 +1047,10 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
-        new_spec = EntityMapping(
+        new_spec = dto.EntityResolutionSet(
             source=None,
             property_mappings={},
-            remote=ReconciliationRemote(service_type="site"),
+            remote=dto.ReconciliationRemote(service_type="site"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
             mapping=[],
@@ -1079,10 +1081,10 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
-        new_spec = EntityMapping(
+        new_spec = dto.EntityResolutionSet(
             source=None,
             property_mappings={},
-            remote=ReconciliationRemote(service_type="site"),
+            remote=dto.ReconciliationRemote(service_type="site"),
             auto_accept_threshold=0.95,
             review_threshold=0.70,
             mapping=[],
@@ -1095,9 +1097,9 @@ class TestSpecificationManagement:
         """Test updating specification preserves mapping."""
         # Add mapping to original spec
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            EntityMappingItem(
+            core.ResolvedEntityPair(
                 source_value="SITE001",
-                sead_id=100,
+                target_id=100,
                 confidence=0.95,
                 notes="Existing mapping",
                 created_by="user",
@@ -1118,7 +1120,7 @@ class TestSpecificationManagement:
             target_field="site_code",
             source="another_entity",
             property_mappings={"lat": "latitude"},
-            remote=ReconciliationRemote(service_type="site"),
+            remote=dto.ReconciliationRemote(service_type="site"),
             auto_accept_threshold=0.80,
             review_threshold=0.60,
         )
@@ -1132,20 +1134,20 @@ class TestSpecificationManagement:
         assert len(spec.mapping) == 1
         assert spec.mapping[0].source_value == "SITE001"
 
-    def test_update_specification_not_found(self, reconciliation_service, tmp_path, sample_recon_config):
+    def test_update_specification_not_found(self, reconciliation_service: ReconciliationService, tmp_path, sample_recon_config):
         """Test updating non-existent specification raises error."""
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(sample_recon_config.model_dump(exclude_none=True), f)
 
         with pytest.raises(NotFoundError, match="not found"):
-            reconciliation_service.mapping_manager.update_registry(
+            reconciliation_service.catalog_manager.update_entity_mapping(
                 project_name="test",
                 entity_name="site",
                 target_field="nonexistent_field",
                 source=None,
                 property_mappings={},
-                remote=ReconciliationRemote(service_type="site"),
+                remote=core.ResolutionTarget(service_type="site"),
                 auto_accept_threshold=0.90,
                 review_threshold=0.70,
             )
@@ -1163,9 +1165,9 @@ class TestSpecificationManagement:
     def test_delete_specification_with_mappings_no_force(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test deleting specification with mappings raises error without force."""
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            EntityMappingItem(
+            core.ResolvedEntityPair(
                 source_value="SITE001",
-                sead_id=100,
+                target_id=100,
                 confidence=0.95,
                 notes="Existing mapping",
                 created_by="user",
@@ -1185,9 +1187,9 @@ class TestSpecificationManagement:
     def test_delete_specification_with_mappings_force(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test force deleting specification with mappings succeeds."""
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            EntityMappingItem(
+            core.ResolvedEntityPair(
                 source_value="SITE001",
-                sead_id=100,
+                target_id=100,
                 confidence=0.95,
                 notes="Existing mapping",
                 created_by="user",
@@ -1195,9 +1197,9 @@ class TestSpecificationManagement:
                 will_not_match=False,
                 last_modified="2024-01-02T00:00:00Z",
             ),
-            EntityMappingItem(
+            core.ResolvedEntityPair(
                 source_value="SITE002",
-                sead_id=101,
+                target_id=101,
                 confidence=0.90,
                 notes="Another mapping",
                 created_by="user",
@@ -1262,9 +1264,9 @@ class TestSpecificationManagement:
     def test_get_mapping_count_success(self, reconciliation_service, tmp_path, sample_recon_config):
         """Test getting mapping count."""
         sample_recon_config.entities["site"]["site_code"].mapping = [
-            EntityMappingItem(
+            core.ResolvedEntityPair(
                 source_value="SITE001",
-                sead_id=100,
+                target_id=100,
                 confidence=0.99,
                 notes="Test note",
                 will_not_match=False,
@@ -1272,9 +1274,9 @@ class TestSpecificationManagement:
                 created_at="2024-01-01T00:00:00Z",
                 last_modified="2024-01-02T00:00:00Z",
             ),
-            EntityMappingItem(
+            core.ResolvedEntityPair(
                 source_value="SITE002",
-                sead_id=101,
+                target_id=101,
                 confidence=0.95,
                 notes="Test note 2",
                 will_not_match=False,
@@ -1282,9 +1284,9 @@ class TestSpecificationManagement:
                 created_at="2024-01-03T00:00:00Z",
                 last_modified="2024-01-04T00:00:00Z",
             ),
-            EntityMappingItem(
+            core.ResolvedEntityPair(
                 source_value="SITE003",
-                sead_id=None,
+                target_id=None,
                 confidence=None,
                 notes="Local only",
                 will_not_match=True,

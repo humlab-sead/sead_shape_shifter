@@ -20,13 +20,13 @@ class TestEntityGeneratorService:
         service.get_table_schema = AsyncMock()
         service.data_source_service = MagicMock()
         service.data_source_service.load_data_source = MagicMock()
-        
+
         # Mock the loader with quote_name and qualify_name methods
         mock_loader = MagicMock()
         mock_loader.quote_name = MagicMock(side_effect=lambda name: name)  # Return name as-is for simplicity
         mock_loader.qualify_name = MagicMock(side_effect=lambda schema=None, table=None: f"{schema}.{table}" if schema else table)
         service.create_loader_for_data_source = MagicMock(return_value=mock_loader)
-        
+
         return service
 
     @pytest.fixture
@@ -162,7 +162,7 @@ class TestEntityGeneratorService:
     ):
         """Test entity generation with PostgreSQL schema prefix."""
         mock_project_service.load_project.return_value = mock_project
-        
+
         # Update mock_table_schema to include schema_name
         mock_table_schema.schema_name = "public"
         mock_schema_service.get_table_schema.return_value = mock_table_schema
@@ -179,7 +179,9 @@ class TestEntityGeneratorService:
         assert result["query"] == "SELECT user_id, username, email FROM public.users"
 
     @pytest.mark.asyncio
-    async def test_generate_from_table_no_primary_keys(self, generator_service: EntityGeneratorService, mock_project_service, mock_schema_service, mock_project):
+    async def test_generate_from_table_no_primary_keys(
+        self, generator_service: EntityGeneratorService, mock_project_service, mock_schema_service, mock_project
+    ):
         """Test entity generation for table without primary keys."""
         mock_project_service.load_project.return_value = mock_project
         mock_schema_service.data_source_service.load_data_source.return_value = MagicMock()  # Return a mock DataSourceConfig
@@ -249,7 +251,9 @@ class TestEntityGeneratorService:
         )
         mock_schema_service.get_table_schema.return_value = table_schema
 
-        result = await generator_service.generate_from_table(project_name="test_project", data_source_key="test_db", table_name="user_roles")
+        result = await generator_service.generate_from_table(
+            project_name="test_project", data_source_key="test_db", table_name="user_roles"
+        )
 
         # Both keys should be included
         assert result["keys"] == ["user_id", "role_id"]

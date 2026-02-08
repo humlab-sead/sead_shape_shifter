@@ -243,7 +243,7 @@ import { ref, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { useProjectStore } from '@/stores/project'
-import type { EntityMappingListItem } from '@/types/reconciliation'
+import type { EntityResolutionListItem } from '@/types/reconciliation'
 import SpecificationEditor from './SpecificationEditor.vue'
 
 interface Props {
@@ -263,8 +263,8 @@ const projectStore = useProjectStore()
 // State
 const editorDialog = ref(false)
 const deleteDialog = ref(false)
-const selectedSpec = ref<EntityMappingListItem | null>(null)
-const specToDelete = ref<EntityMappingListItem | null>(null)
+const selectedSpec = ref<EntityResolutionListItem | null>(null)
+const specToDelete = ref<EntityResolutionListItem | null>(null)
 const isNewSpec = ref(false)
 const deletingSpec = ref(false)
 const entityFieldsCache = ref<Record<string, string[]>>({}) // Cache for entity fields from API
@@ -283,7 +283,7 @@ const headers = [
 ]
 
 // Methods
-function isRemoteTypeValid(item: EntityMappingListItem): boolean {
+function isRemoteTypeValid(item: EntityResolutionListItem): boolean {
   // TODO: Validate against available remote types from service
   return item.remote.service_type != null
 }
@@ -294,17 +294,17 @@ function openAddDialog() {
   editorDialog.value = true
 }
 
-function editSpecification(item: EntityMappingListItem) {
+function editSpecification(item: EntityResolutionListItem) {
   selectedSpec.value = item
   isNewSpec.value = false
   editorDialog.value = true
 }
 
-function reconcileSpec(item: EntityMappingListItem) {
+function reconcileSpec(item: EntityResolutionListItem) {
   emit('reconcile', item.entity_name, item.target_field)
 }
 
-function confirmDelete(item: EntityMappingListItem) {
+function confirmDelete(item: EntityResolutionListItem) {
   specToDelete.value = item
   deleteDialog.value = true
 }
@@ -366,7 +366,7 @@ async function getEntityFields(entityName: string): Promise<string[]> {
   }
 }
 
-async function validateSpecification(spec: EntityMappingListItem): Promise<ValidationStatus> {
+async function validateSpecification(spec: EntityResolutionListItem): Promise<ValidationStatus> {
   const status: ValidationStatus = {
     hasErrors: false,
     hasWarnings: false,
@@ -419,7 +419,7 @@ async function validateSpecification(spec: EntityMappingListItem): Promise<Valid
   return status
 }
 
-function getValidationStatus(spec: EntityMappingListItem): ValidationStatus {
+function getValidationStatus(spec: EntityResolutionListItem): ValidationStatus {
   const cacheKey = `${spec.entity_name}.${spec.target_field}`
   
   // Return cached if available

@@ -5,13 +5,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type {
-  EntityMappingRegistry,
+  EntityResolutionCatalog,
   ReconciliationCandidate,
   AutoReconcileResult,
   ReconciliationPreviewRow,
-  EntityMappingListItem,
-  EntityMappingCreateRequest,
-  EntityMappingUpdateRequest,
+  EntityResolutionListItem,
+  EntityResolutionCatalogCreateRequest,
+  EntityResolutionCatalogUpdateRequest,
 } from '@/types/reconciliation'
 import { apiClient } from '@/api/client'
 import { reconciliationSpecApi, reconciliationServiceApi } from '@/api/reconciliation'
@@ -19,15 +19,15 @@ import { reconciliationSpecApi, reconciliationServiceApi } from '@/api/reconcili
 
 export const useReconciliationStore = defineStore('reconciliation', () => {
   // State
-  const reconciliationConfig = ref<EntityMappingRegistry | null>(null)
+  const reconciliationConfig = ref<EntityResolutionCatalog | null>(null)
   const previewData = ref<Record<string, ReconciliationPreviewRow[]>>({})
   const loading = ref(false)
   const error = ref<string | null>(null)
   const selectedTarget = ref<string | null>(null) // Currently selected target field
   
   // Specification management state
-  const specifications = ref<EntityMappingListItem[]>([])
-  const selectedSpec = ref<EntityMappingListItem | null>(null)
+  const specifications = ref<EntityResolutionListItem[]>([])
+  const selectedSpec = ref<EntityResolutionListItem | null>(null)
   const loadingSpecs = ref(false)
   const specsError = ref<string | null>(null)
 
@@ -58,7 +58,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
   const hasConfig = computed(() => reconciliationConfig.value !== null)
 
   // Actions
-  async function loadEntityMappingRegistry(projectName: string) {
+  async function loadEntityResolutionCatalog(projectName: string) {
     loading.value = true
     error.value = null
     try {
@@ -77,7 +77,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function saveEntityMappingRegistry(projectName: string) {
+  async function saveEntityResolutionCatalog(projectName: string) {
     if (!reconciliationConfig.value) {
       throw new Error('No config to save')
     }
@@ -96,7 +96,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     }
   }
 
-  async function saveEntityMappingRegistryRaw(projectName: string, yamlContent: string) {
+  async function saveEntityResolutionCatalogRaw(projectName: string, yamlContent: string) {
     loading.value = true
     error.value = null
     try {
@@ -130,7 +130,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
       )
 
       // Reload config to get updated mappings
-      await loadEntityMappingRegistry(projectName)
+      await loadEntityResolutionCatalog(projectName)
 
       return response.data
     } catch (e: any) {
@@ -173,7 +173,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     entityName: string,
     targetField: string,
     sourceValue: any,
-    seadId: number | null,
+    targetId: number | null,
     notes?: string
   ) {
     loading.value = true
@@ -181,7 +181,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     try {
       const response = await apiClient.post(`/projects/${projectName}/reconciliation/${entityName}/${targetField}/mapping`, {
         source_value: sourceValue,
-        sead_id: seadId,
+        target_id: targetId,
         notes,
       })
       reconciliationConfig.value = response.data
@@ -300,7 +300,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
 
   async function createSpecification(
     projectName: string,
-    request: EntityMappingCreateRequest
+    request: EntityResolutionCatalogCreateRequest
   ) {
     loadingSpecs.value = true
     specsError.value = null
@@ -325,7 +325,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     projectName: string,
     entityName: string,
     targetField: string,
-    request: EntityMappingUpdateRequest
+    request: EntityResolutionCatalogUpdateRequest
   ) {
     loadingSpecs.value = true
     specsError.value = null
@@ -423,9 +423,9 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     hasConfig,
 
     // Actions
-    loadEntityMappingRegistry,
-    saveEntityMappingRegistry,
-    saveEntityMappingRegistryRaw,
+    loadEntityResolutionCatalog,
+    saveEntityResolutionCatalog,
+    saveEntityResolutionCatalogRaw,
     autoReconcile,
     autoReconcileAsync,
     updateMapping,

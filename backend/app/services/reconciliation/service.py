@@ -1,13 +1,10 @@
 """Service for entity reconciliation against SEAD database."""
 
-import abc
 import re
-from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-import pandas as pd
 from loguru import logger
 
 from backend.app.clients.reconciliation_client import ReconciliationClient, ReconciliationQuery
@@ -19,15 +16,10 @@ from backend.app.services import ProjectService, ShapeShiftService
 from backend.app.services.reconciliation.resolvers import ReconciliationSourceResolver
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.model import ShapeShiftProject
-from src.reconciliation.model import (
-    EntityResolutionSet,
-    ResolvedEntityPair,
-    EntityResolutionCatalog,
-)
-from src.reconciliation.source_strategy import (
-    ReconciliationSourceStrategy,
-    SourceStrategyType,
-)
+from src.reconciliation import model as core
+
+from src.reconciliation.source_strategy import ReconciliationSourceStrategy, SourceStrategyType
+from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
 
 if TYPE_CHECKING:
     from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
@@ -44,7 +36,7 @@ class ReconciliationQueryService:
     def create(
         self,
         target_field: str,
-        entity_mapping: EntityResolutionSet,
+        entity_mapping: core.EntityResolutionSet,
         max_candidates: int,
         source_data: list[dict[str, Any]],
         service_type: str,
@@ -85,7 +77,7 @@ class ReconciliationQueryService:
             # Build properties from property_mappings
             # Maps service property IDs to source column values
             properties: list[dict[str, str]] = []
-            for property_id, source_column in entity_mapping.property_mappings.items():
+            for property_id, source_column in entity_mapping.metadata.property_mappings.items():
                 value = row.get(source_column)
                 if value is not None:
                     properties.append({"pid": property_id, "v": str(value)})
@@ -126,10 +118,9 @@ class ReconciliationService:
         self._mapping_manager: "EntityMappingManager | None" = None
 
     @property
-    def mapping_manager(self) -> "EntityMappingManager":
+    def catalog_manager(self) -> "EntityMappingManager":
         """Get entity mapping manager (lazy-loaded)."""
         if self._mapping_manager is None:
-            from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
 
             self._mapping_manager = EntityMappingManager(
                 project_service=self.project_service,
@@ -147,13 +138,13 @@ class ReconciliationService:
             target_field: Target field for reconciliation
 
         Returns:
-            List of rows with source data + reconciliation status (sead_id, confidence, etc.)
+            List of rows with source data + reconciliation status (target_id, confidence, etc.)
         """
         # Load entity mapping registry (now returns domain model)
-        registry: EntityResolutionCatalog = self.mapping_manager.load_registry(project_name)
+        registry: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
 
         # Use domain model method
-        entity_mapping: EntityResolutionSet | None = registry.get_mapping(entity_name, target_field)
+        entity_mapping: core.EntityResolutionSet | None = registry.get(entity_name, target_field)
         if entity_mapping is None:
             raise NotFoundError(f"No reconciliation spec for entity '{entity_name}' with target field '{target_field}'")
 
@@ -167,12 +158,12 @@ class ReconciliationService:
             target_value = row.get(target_field)
 
             # Find matching mapping using domain model method
-            mapping: ResolvedEntityPair | None = entity_mapping.get_mapping_item(target_value)
+            mapping: core.ResolvedEntityPair | None = entity_mapping.get(target_value)
 
             # Enrich row with mapping data
             enriched_row = {
                 **row,
-                "sead_id": mapping.sead_id if mapping else None,
+                "target_id": mapping.target_id if mapping else None,
                 "confidence": mapping.confidence if mapping else None,
                 "notes": mapping.notes if mapping else "",
                 "will_not_match": mapping.will_not_match if mapping else False,
@@ -182,7 +173,7 @@ class ReconciliationService:
         logger.info(f"Retrieved {len(enriched_data)} preview rows for entity '{entity_name}'")
         return enriched_data
 
-    async def get_resolved_source_data(self, project_name: str, entity_name: str, entity_mapping: EntityResolutionSet) -> list[dict]:
+    async def get_resolved_source_data(self, project_name: str, entity_name: str, entity_mapping: core.EntityResolutionSet) -> list[dict]:
         """
         Resolve source data based on source in entity.
 
@@ -199,12 +190,10 @@ class ReconciliationService:
         # Load project once and pass to resolver (eliminates redundant loading)
         api_config: Project = self.project_service.load_project(project_name)
         project: ShapeShiftProject = ProjectMapper.to_core(api_config)
-        
+
         # Use domain strategy to determine which resolver to use
-        strategy: SourceStrategyType = ReconciliationSourceStrategy.determine_strategy(
-            entity_name, entity_mapping.source
-        )
-        
+        strategy: SourceStrategyType = ReconciliationSourceStrategy.determine_strategy(entity_name, entity_mapping.metadata.source)
+
         resolver_cls: type[ReconciliationSourceResolver] = ReconciliationSourceResolver.get_resolver_cls_for_strategy(strategy)
         resolver: ReconciliationSourceResolver = resolver_cls(project_name, project, self.project_service)
         data = await resolver.resolve(entity_name, entity_mapping)
@@ -231,7 +220,7 @@ class ReconciliationService:
         project_name: str,
         entity_name: str,
         target_field: str,
-        entity_mapping: EntityResolutionSet,
+        entity_mapping: core.EntityResolutionSet,
         max_candidates: int = 3,
         operation_id: str | None = None,
     ) -> AutoReconcileResult:
@@ -255,31 +244,27 @@ class ReconciliationService:
             ValueError: If project has unsaved changes
         """
         # Load existing config and ensure thresholds from caller are honored.
-        registry: EntityResolutionCatalog = self.mapping_manager.load_registry(project_name)
+        registry: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
 
         thresholds_updated: bool = False
 
         # Get existing mapping using domain model method
-        existing_mapping: EntityResolutionSet | None = registry.get_mapping(entity_name, target_field)
+        existing_mapping: core.EntityResolutionSet | None = registry.get(entity_name, target_field)
         if existing_mapping is None:
             # Add new mapping using domain model method
-            registry.add_mapping(entity_name, target_field, entity_mapping)
+            registry.add(entity_name, target_field, entity_mapping)
             existing_mapping = entity_mapping
             thresholds_updated = True
         else:
-            if existing_mapping.auto_accept_threshold != entity_mapping.auto_accept_threshold:
-                existing_mapping.auto_accept_threshold = entity_mapping.auto_accept_threshold
-                thresholds_updated = True
-            if existing_mapping.review_threshold != entity_mapping.review_threshold:
-                existing_mapping.review_threshold = entity_mapping.review_threshold
-                thresholds_updated = True
+            thresholds_updated = existing_mapping.metadata.update_thresholds(
+                entity_mapping.metadata.auto_accept_threshold, entity_mapping.metadata.review_threshold
+            )
+            entity_mapping = existing_mapping
 
-        entity_mapping = existing_mapping
-
-        service_type: str | None = entity_mapping.remote.service_type
+        service_type: str | None = entity_mapping.metadata.remote.service_type
         if not service_type:
             if thresholds_updated:
-                self.mapping_manager.save_registry(project_name, registry)
+                self.catalog_manager.save_catalog(project_name, registry)
             logger.info(f"Reconciliation disabled for entity '{entity_name}' (no service_type configured)")
             return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
 
@@ -304,7 +289,7 @@ class ReconciliationService:
 
         if not query_data.queries:
             if thresholds_updated:
-                self.mapping_manager.save_registry(project_name, registry)
+                self.catalog_manager.save_catalog(project_name, registry)
             logger.warning("No valid queries to reconcile")
             if operation_id:
                 operation_manager.complete_operation(operation_id, "No valid queries to reconcile")
@@ -368,7 +353,7 @@ class ReconciliationService:
         auto_accepted, needs_review, unmatched = self.auto_accept_candidates(entity_mapping, candidate_map)
 
         # Save updated config (mappings and/or updated thresholds)
-        self.mapping_manager.save_registry(project_name, registry)
+        self.catalog_manager.save_catalog(project_name, registry)
 
         logger.info(f"Auto-reconciliation complete: {auto_accepted} auto-accepted, " f"{needs_review} need review, {unmatched} unmatched")
 
@@ -387,7 +372,7 @@ class ReconciliationService:
         )
 
     def auto_accept_candidates(
-        self, entity_mapping: EntityResolutionSet, candidate_map: dict[str, list[ReconciliationCandidate]]
+        self, entity_mapping: core.EntityResolutionSet, candidate_map: dict[str, list[ReconciliationCandidate]]
     ) -> tuple[int, int, int]:
         """
         Auto-accept high-confidence matches and add them to entity mapping.
@@ -405,8 +390,8 @@ class ReconciliationService:
         needs_review: int = 0
         unmatched: int = 0
 
-        threshold = entity_mapping.auto_accept_threshold
-        review_threshold: float = entity_mapping.review_threshold
+        threshold = entity_mapping.metadata.auto_accept_threshold
+        review_threshold: float = entity_mapping.metadata.review_threshold
 
         for key_str, candidates in candidate_map.items():
             # Convert back from string
@@ -422,15 +407,15 @@ class ReconciliationService:
             if score_normalized >= threshold:
                 # Auto-accept
                 try:
-                    sead_id: int = self._extract_id_from_uri(best_match.id)
+                    target_id: int = self._extract_id_from_uri(best_match.id)
 
                     # Remove existing mapping and add new one using domain method
-                    entity_mapping.remove_mapping_item(source_value)
+                    entity_mapping.remove(source_value)
 
                     # Add new mapping using domain model
-                    mapping = ResolvedEntityPair(
+                    mapping = core.ResolvedEntityPair(
                         source_value=source_value,
-                        sead_id=sead_id,
+                        target_id=target_id,
                         confidence=score_normalized,
                         notes=f"Auto-matched: {best_match.name}",
                         created_by="system",
@@ -438,9 +423,9 @@ class ReconciliationService:
                         last_modified=datetime.now(timezone.utc).isoformat(),
                         will_not_match=False,
                     )
-                    entity_mapping.add_mapping_item(mapping)
+                    entity_mapping.add(mapping)
                     auto_accepted += 1
-                    logger.debug(f"Auto-accepted: {source_value} -> {sead_id} ({best_match.name}, score={best_match.score:.1f})")
+                    logger.debug(f"Auto-accepted: {source_value} -> {target_id} ({best_match.name}, score={best_match.score:.1f})")
                 except ValueError as e:
                     logger.warning(f"Cannot extract ID from {best_match.id}: {e}")
                     needs_review += 1
@@ -456,9 +441,9 @@ class ReconciliationService:
         entity_name: str,
         target_field: str,
         source_value: Any,
-        sead_id: int | None,
+        target_id: int | None,
         notes: str | None = None,
-    ) -> EntityResolutionCatalog:
+    ) -> core.EntityResolutionCatalog:
         """
         Update or remove a single mapping entry.
 
@@ -469,28 +454,28 @@ class ReconciliationService:
             entity_name: Entity name
             target_field: Target field for reconciliation
             source_value: Source field value
-            sead_id: SEAD entity ID (None to remove mapping)
+            target_id: SEAD entity ID (None to remove mapping)
             notes: Optional notes
 
         Returns:
             Updated entity mapping registry (domain model)
         """
-        recon_config: EntityResolutionCatalog = self.mapping_manager.load_registry(project_name)
+        recon_config: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
 
         # Get entity mapping using domain model method
-        entity_mapping = recon_config.get_mapping(entity_name, target_field)
+        entity_mapping: core.EntityResolutionSet | None = recon_config.get(entity_name, target_field)
         if entity_mapping is None:
             raise NotFoundError(f"Entity mapping for entity '{entity_name}' and target field '{target_field}' not found")
 
-        if sead_id is None:
+        if target_id is None:
             # Remove mapping using domain model method
-            entity_mapping.remove_mapping_item(source_value)
+            entity_mapping.remove(source_value)
             logger.info(f"Removed mapping for {source_value}")
         else:
             # Update or create mapping using domain model
-            new_mapping = ResolvedEntityPair(
+            new_mapping = core.ResolvedEntityPair(
                 source_value=source_value,
-                sead_id=sead_id,
+                target_id=target_id,
                 confidence=1.0,  # Manual mapping = 100% confidence
                 notes=notes,
                 created_by="user",
@@ -500,11 +485,11 @@ class ReconciliationService:
             )
 
             # Remove old and add new (replaces if exists)
-            entity_mapping.remove_mapping_item(source_value)
-            entity_mapping.add_mapping_item(new_mapping)
-            logger.info(f"Updated mapping: {source_value} -> {sead_id}")
+            entity_mapping.remove(source_value)
+            entity_mapping.add(new_mapping)
+            logger.info(f"Updated mapping: {source_value} -> {target_id}")
 
-        self.mapping_manager.save_registry(project_name, recon_config)
+        self.catalog_manager.save_catalog(project_name, recon_config)
         return recon_config
 
     def mark_as_unmatched(
@@ -514,7 +499,7 @@ class ReconciliationService:
         target_field: str,
         source_value: Any,
         notes: str | None = None,
-    ) -> EntityResolutionCatalog:
+    ) -> core.EntityResolutionCatalog:
         """
         Mark an entity as "will not match" - local-only with no SEAD mapping.
 
@@ -531,17 +516,17 @@ class ReconciliationService:
             Updated entity mapping registry (domain model)
         """
 
-        recon_config: EntityResolutionCatalog = self.mapping_manager.load_registry(project_name)
+        recon_config: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
 
         # Get entity mapping using domain model method
-        entity_mapping = recon_config.get_mapping(entity_name, target_field)
+        entity_mapping = recon_config.get(entity_name, target_field)
         if entity_mapping is None:
             raise NotFoundError(f"Entity mapping for entity '{entity_name}' and target field '{target_field}' not found")
 
         # Create unmatched mapping
-        new_mapping = ResolvedEntityPair(
+        new_mapping = core.ResolvedEntityPair(
             source_value=source_value,
-            sead_id=None,  # No SEAD match
+            target_id=None,  # No SEAD match
             will_not_match=True,  # Mark as local-only
             confidence=None,  # Not applicable
             notes=notes or "Marked as local-only (will not match)",
@@ -551,11 +536,11 @@ class ReconciliationService:
         )
 
         # Remove old and add new using domain model methods
-        entity_mapping.remove_mapping_item(source_value)
-        entity_mapping.add_mapping_item(new_mapping)
+        entity_mapping.remove(source_value)
+        entity_mapping.add(new_mapping)
         logger.info(f"Marked as unmatched: {source_value}")
 
-        self.mapping_manager.save_registry(project_name, recon_config)
+        self.catalog_manager.save_catalog(project_name, recon_config)
         return recon_config
 
     async def get_available_target_fields(self, project_name: str, entity_name: str) -> list[str]:
@@ -614,11 +599,11 @@ class ReconciliationService:
         Raises:
             NotFoundError: If mapping specification doesn't exist
         """
-        recon_config: EntityResolutionCatalog = self.mapping_manager.load_registry(project_name)
+        recon_config: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
 
         # Use domain model method
-        entity_mapping = recon_config.get_mapping(entity_name, target_field)
+        entity_mapping: core.EntityResolutionSet | None = recon_config.get(entity_name, target_field)
         if entity_mapping is None:
             raise NotFoundError(f"Specification for entity '{entity_name}' and target field '{target_field}' not found")
 
-        return entity_mapping.mapping_count()
+        return entity_mapping.count()
