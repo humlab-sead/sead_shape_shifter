@@ -1,0 +1,609 @@
+"""Service for entity reconciliation against SEAD database."""
+
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+from loguru import logger
+
+from backend.app.clients.reconciliation_client import ReconciliationClient, ReconciliationQuery
+from backend.app.core.operation_manager import OperationStatus, operation_manager
+from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.models import AutoReconcileResult, Project, ReconciliationCandidate
+from backend.app.models.shapeshift import PreviewResult
+from backend.app.services import ProjectService, ShapeShiftService
+from backend.app.services.reconciliation.resolvers import ReconciliationSourceResolver
+from backend.app.utils.exceptions import BadRequestError, NotFoundError
+from src.model import ShapeShiftProject
+from src.reconciliation import model as core
+
+from src.reconciliation.source_strategy import ReconciliationSourceStrategy, SourceStrategyType
+from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
+
+if TYPE_CHECKING:
+    from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
+
+
+class ReconciliationQueryService:
+    """Service for building reconciliation queries."""
+
+    class QueryBuildResult:
+        def __init__(self, queries: dict[str, ReconciliationQuery], key_mapping: dict[str, tuple[Any, ...]]):
+            self.queries: dict[str, ReconciliationQuery] = queries
+            self.key_mapping: dict[str, tuple[Any, ...]] = key_mapping
+
+    def create(
+        self,
+        target_field: str,
+        entity_mapping: core.EntityResolutionSet,
+        max_candidates: int,
+        source_data: list[dict[str, Any]],
+        service_type: str,
+    ):
+        """Build reconciliation queries from source data based on entity spec.
+
+        Args:
+            target_field: Target field name for reconciliation
+            entity_mapping: Entity mapping specification (domain model)
+            max_candidates: Max candidates per query
+            source_data: Source data rows
+            service_type: Reconciliation service entity type
+
+        Returns:
+            dict of query_id -> ReconciliationQuery
+            dict of query_id -> source_value_mapping
+        """
+        queries: dict[str, ReconciliationQuery] = {}
+        key_mapping: dict[str, Any] = {}  # query_id -> source_value
+
+        for idx, row in enumerate(source_data):
+            # Extract target field value
+            target_value = row.get(target_field)
+
+            # Skip if target value is None
+            if target_value is None:
+                continue
+
+            # Build search query string from target field
+            query_string: str = str(target_value)
+
+            if not query_string.strip():
+                continue
+
+            query_id: str = f"q{idx}"
+            key_mapping[query_id] = target_value
+
+            # Build properties from property_mappings
+            # Maps service property IDs to source column values
+            properties: list[dict[str, str]] = []
+            for property_id, source_column in entity_mapping.metadata.property_mappings.items():
+                value = row.get(source_column)
+                if value is not None:
+                    properties.append({"pid": property_id, "v": str(value)})
+
+            queries[query_id] = ReconciliationQuery(
+                query=query_string,
+                entity_type=service_type,
+                limit=max_candidates,
+                properties=properties if properties else None,
+            )
+
+        return ReconciliationQueryService.QueryBuildResult(queries=queries, key_mapping=key_mapping)
+
+
+class ReconciliationService:
+    """
+    Service for managing entity reconciliation.
+
+    Uses read-only ShapeShiftProject from disk for reconciliation workflow.
+    Prevents reconciliation if project has unsaved changes.
+    """
+
+    def __init__(self, config_dir: Path, reconciliation_client: ReconciliationClient):
+        """
+        Initialize reconciliation service.
+
+        Args:
+            config_dir: Directory containing project files
+            reconciliation_client: Client for OpenRefine reconciliation API
+        """
+        self.config_dir = Path(config_dir)
+        self.reconciliation_client: ReconciliationClient = reconciliation_client
+        self.project_service: ProjectService = ProjectService()
+        self.query_builder: ReconciliationQueryService = ReconciliationQueryService()
+        self.shapeshift_service: ShapeShiftService | None = None
+
+        # Lazy-load mapping manager to avoid circular imports
+        self._mapping_manager: "EntityMappingManager | None" = None
+
+    @property
+    def catalog_manager(self) -> "EntityMappingManager":
+        """Get entity mapping manager (lazy-loaded)."""
+        if self._mapping_manager is None:
+
+            self._mapping_manager = EntityMappingManager(
+                project_service=self.project_service,
+                config_dir=self.config_dir,
+            )
+        return self._mapping_manager
+
+    async def get_reconciliation_preview(self, project_name: str, entity_name: str, target_field: str) -> list[dict]:
+        """
+        Get preview data for entity with reconciliation mappings applied.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            target_field: Target field for reconciliation
+
+        Returns:
+            List of rows with source data + reconciliation status (target_id, confidence, etc.)
+        """
+        # Load entity mapping registry (now returns domain model)
+        registry: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
+
+        # Use domain model method
+        entity_mapping: core.EntityResolutionSet | None = registry.get(entity_name, target_field)
+        if entity_mapping is None:
+            raise NotFoundError(f"No reconciliation spec for entity '{entity_name}' with target field '{target_field}'")
+
+        # Get source data
+        source_data: list[dict] = await self.get_resolved_source_data(project_name, entity_name, entity_mapping)
+
+        # Enrich with reconciliation mappings
+        enriched_data: list[dict] = []
+        for row in source_data:
+            # Extract target field value from row
+            target_value = row.get(target_field)
+
+            # Find matching mapping using domain model method
+            mapping: core.ResolvedEntityPair | None = entity_mapping.get(target_value)
+
+            # Enrich row with mapping data
+            enriched_row = {
+                **row,
+                "target_id": mapping.target_id if mapping else None,
+                "confidence": mapping.confidence if mapping else None,
+                "notes": mapping.notes if mapping else "",
+                "will_not_match": mapping.will_not_match if mapping else False,
+            }
+            enriched_data.append(enriched_row)
+
+        logger.info(f"Retrieved {len(enriched_data)} preview rows for entity '{entity_name}'")
+        return enriched_data
+
+    async def get_resolved_source_data(self, project_name: str, entity_name: str, entity_mapping: core.EntityResolutionSet) -> list[dict]:
+        """
+        Resolve source data based on source in entity.
+
+        Loads fresh ShapeShiftProject from disk (read-only for reconciliation).
+
+        Args:
+            project_name: Project name
+            entity_name: Entity to reconcile
+            entity_mapping: Entity mapping specification (domain model)
+
+        Returns:
+            Data to use for reconciliation (may be from different source)
+        """
+        # Load project once and pass to resolver (eliminates redundant loading)
+        api_config: Project = self.project_service.load_project(project_name)
+        project: ShapeShiftProject = ProjectMapper.to_core(api_config)
+
+        # Use domain strategy to determine which resolver to use
+        strategy: SourceStrategyType = ReconciliationSourceStrategy.determine_strategy(entity_name, entity_mapping.metadata.source)
+
+        resolver_cls: type[ReconciliationSourceResolver] = ReconciliationSourceResolver.get_resolver_cls_for_strategy(strategy)
+        resolver: ReconciliationSourceResolver = resolver_cls(project_name, project, self.project_service)
+        data = await resolver.resolve(entity_name, entity_mapping)
+        return data
+
+    def _extract_id_from_uri(self, uri: str) -> int:
+        """
+        Extract integer ID at the end of the SEAD URI
+
+        Args:
+            uri: Entity URI like 'https://w3id.org/sead/id/site/123'
+
+        Returns:
+            SEAD numeric ID
+        """
+        # Extract integer at the end of the URI
+        match: re.Match[str] | None = re.search(r"/(\d+)/?$", uri)
+        if match:
+            return int(match.group(1))
+        raise BadRequestError(f"Cannot extract numeric ID from URI: {uri}")
+
+    async def auto_reconcile_entity(
+        self,
+        project_name: str,
+        entity_name: str,
+        target_field: str,
+        entity_mapping: core.EntityResolutionSet,
+        max_candidates: int = 3,
+        operation_id: str | None = None,
+    ) -> AutoReconcileResult:
+        """
+        Perform automatic reconciliation for an entity.
+
+        Prevents reconciliation if project has unsaved changes.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity to reconcile
+            target_field: Target field for reconciliation
+            entity_mapping: Entity mapping specification (domain model)
+            max_candidates: Max candidates per query
+            operation_id: Optional operation ID for progress tracking
+
+        Returns:
+            AutoReconcileResult with counts and candidates
+
+        Raises:
+            ValueError: If project has unsaved changes
+        """
+        # Load existing config and ensure thresholds from caller are honored.
+        registry: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
+
+        thresholds_updated: bool = False
+
+        # Get existing mapping using domain model method
+        existing_mapping: core.EntityResolutionSet | None = registry.get(entity_name, target_field)
+        if existing_mapping is None:
+            # Add new mapping using domain model method
+            registry.add(entity_name, target_field, entity_mapping)
+            existing_mapping = entity_mapping
+            thresholds_updated = True
+        else:
+            thresholds_updated = existing_mapping.metadata.update_thresholds(
+                entity_mapping.metadata.auto_accept_threshold, entity_mapping.metadata.review_threshold
+            )
+            entity_mapping = existing_mapping
+
+        service_type: str | None = entity_mapping.metadata.remote.service_type
+        if not service_type:
+            if thresholds_updated:
+                self.catalog_manager.save_catalog(project_name, registry)
+            logger.info(f"Reconciliation disabled for entity '{entity_name}' (no service_type configured)")
+            return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
+
+        logger.info(f"Auto-reconciling entity '{entity_name}'")
+
+        # Update progress: Starting
+        if operation_id:
+            operation_manager.update_progress(
+                operation_id, status=OperationStatus.RUNNING, message=f"Loading source data for {entity_name}..."
+            )
+
+        source_data: list[dict] = await self.get_resolved_source_data(project_name, entity_name, entity_mapping)
+        logger.info(f"Using {len(source_data)} rows for reconciliation")
+
+        # Update progress: Building queries
+        if operation_id:
+            operation_manager.update_progress(operation_id, message=f"Building {len(source_data)} reconciliation queries...")
+
+        query_data: ReconciliationQueryService.QueryBuildResult = self.query_builder.create(
+            target_field, entity_mapping, max_candidates, source_data, service_type
+        )
+
+        if not query_data.queries:
+            if thresholds_updated:
+                self.catalog_manager.save_catalog(project_name, registry)
+            logger.warning("No valid queries to reconcile")
+            if operation_id:
+                operation_manager.complete_operation(operation_id, "No valid queries to reconcile")
+            return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
+
+        # Update progress: Total queries
+        if operation_id:
+            operation_manager.update_progress(
+                operation_id,
+                total=len(query_data.queries),
+                current=0,
+                message=f"Reconciling {len(query_data.queries)} queries...",
+            )
+
+        # Execute batch reconciliation with progress tracking
+        logger.debug(f"Executing batch reconciliation for {len(query_data.queries)} queries")
+
+        # For progress tracking, we'll process in smaller batches
+        batch_size = 50
+        all_results: dict[str, list[ReconciliationCandidate]] = {}
+
+        # Convert dict to list of items for batching
+        queries_items = list(query_data.queries.items())
+        total_queries = len(queries_items)
+
+        for i in range(0, total_queries, batch_size):
+            # Check for cancellation
+            if operation_id and operation_manager.is_cancelled(operation_id):
+                logger.warning(f"Reconciliation cancelled for {entity_name}")
+                return AutoReconcileResult(auto_accepted=0, needs_review=0, unmatched=0, total=0, candidates={})
+
+            # Create batch dict
+            batch_items = queries_items[i : i + batch_size]
+            batch_dict = dict(batch_items)
+
+            batch_results = await self.reconciliation_client.reconcile_batch(batch_dict)
+            all_results.update(batch_results)
+
+            # Update progress
+            if operation_id:
+                processed = min(i + batch_size, total_queries)
+                operation_manager.update_progress(
+                    operation_id, current=processed, message=f"Processed {processed}/{total_queries} queries..."
+                )
+
+        results = all_results
+
+        # Update progress: Processing results
+        if operation_id:
+            operation_manager.update_progress(operation_id, message="Processing reconciliation results...")
+
+        # Map back to source values
+        candidate_map: dict[str, list[ReconciliationCandidate]] = {}
+        for query_id, candidates in results.items():
+            source_value = query_data.key_mapping[query_id]
+            # Convert to string key for JSON serialization
+            key_str = str(source_value) if source_value is not None else ""
+            candidate_map[key_str] = candidates
+
+        # Auto-accept high confidence matches
+        auto_accepted, needs_review, unmatched = self.auto_accept_candidates(entity_mapping, candidate_map)
+
+        # Save updated config (mappings and/or updated thresholds)
+        self.catalog_manager.save_catalog(project_name, registry)
+
+        logger.info(f"Auto-reconciliation complete: {auto_accepted} auto-accepted, " f"{needs_review} need review, {unmatched} unmatched")
+
+        # Complete operation
+        if operation_id:
+            operation_manager.complete_operation(
+                operation_id, f"Complete: {auto_accepted} auto-accepted, {needs_review} need review, {unmatched} unmatched"
+            )
+
+        return AutoReconcileResult(
+            auto_accepted=auto_accepted,
+            needs_review=needs_review,
+            unmatched=unmatched,
+            total=len(candidate_map),
+            candidates=candidate_map,
+        )
+
+    def auto_accept_candidates(
+        self, entity_mapping: core.EntityResolutionSet, candidate_map: dict[str, list[ReconciliationCandidate]]
+    ) -> tuple[int, int, int]:
+        """
+        Auto-accept high-confidence matches and add them to entity mapping.
+
+        Uses domain model methods for manipulating mappings.
+
+        Args:
+            entity_mapping: Entity mapping domain model
+            candidate_map: Map of source values to candidate lists
+
+        Returns:
+            Tuple of (auto_accepted, needs_review, unmatched) counts
+        """
+        auto_accepted: int = 0
+        needs_review: int = 0
+        unmatched: int = 0
+
+        threshold = entity_mapping.metadata.auto_accept_threshold
+        review_threshold: float = entity_mapping.metadata.review_threshold
+
+        for key_str, candidates in candidate_map.items():
+            # Convert back from string
+            source_value = key_str if key_str != "" else None
+
+            if not candidates:
+                unmatched += 1
+                continue
+
+            best_match: ReconciliationCandidate = candidates[0]
+            score_normalized: float = best_match.score / 100.0 if best_match.score else 0.0
+
+            if score_normalized >= threshold:
+                # Auto-accept
+                try:
+                    target_id: int = self._extract_id_from_uri(best_match.id)
+
+                    # Remove existing mapping and add new one using domain method
+                    entity_mapping.remove(source_value)
+
+                    # Add new mapping using domain model
+                    mapping = core.ResolvedEntityPair(
+                        source_value=source_value,
+                        target_id=target_id,
+                        confidence=score_normalized,
+                        notes=f"Auto-matched: {best_match.name}",
+                        created_by="system",
+                        created_at=None,
+                        last_modified=datetime.now(timezone.utc).isoformat(),
+                        will_not_match=False,
+                    )
+                    entity_mapping.add(mapping)
+                    auto_accepted += 1
+                    logger.debug(f"Auto-accepted: {source_value} -> {target_id} ({best_match.name}, score={best_match.score:.1f})")
+                except ValueError as e:
+                    logger.warning(f"Cannot extract ID from {best_match.id}: {e}")
+                    needs_review += 1
+            elif score_normalized >= review_threshold:
+                needs_review += 1
+            else:
+                unmatched += 1
+        return auto_accepted, needs_review, unmatched
+
+    def update_mapping(
+        self,
+        project_name: str,
+        entity_name: str,
+        target_field: str,
+        source_value: Any,
+        target_id: int | None,
+        notes: str | None = None,
+    ) -> core.EntityResolutionCatalog:
+        """
+        Update or remove a single mapping entry.
+
+        Uses domain model methods for manipulating mappings.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            target_field: Target field for reconciliation
+            source_value: Source field value
+            target_id: SEAD entity ID (None to remove mapping)
+            notes: Optional notes
+
+        Returns:
+            Updated entity mapping registry (domain model)
+        """
+        recon_config: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
+
+        # Get entity mapping using domain model method
+        entity_mapping: core.EntityResolutionSet | None = recon_config.get(entity_name, target_field)
+        if entity_mapping is None:
+            raise NotFoundError(f"Entity mapping for entity '{entity_name}' and target field '{target_field}' not found")
+
+        if target_id is None:
+            # Remove mapping using domain model method
+            entity_mapping.remove(source_value)
+            logger.info(f"Removed mapping for {source_value}")
+        else:
+            # Update or create mapping using domain model
+            new_mapping = core.ResolvedEntityPair(
+                source_value=source_value,
+                target_id=target_id,
+                confidence=1.0,  # Manual mapping = 100% confidence
+                notes=notes,
+                created_by="user",
+                created_at=None,
+                last_modified=datetime.now(timezone.utc).isoformat(),
+                will_not_match=False,
+            )
+
+            # Remove old and add new (replaces if exists)
+            entity_mapping.remove(source_value)
+            entity_mapping.add(new_mapping)
+            logger.info(f"Updated mapping: {source_value} -> {target_id}")
+
+        self.catalog_manager.save_catalog(project_name, recon_config)
+        return recon_config
+
+    def mark_as_unmatched(
+        self,
+        project_name: str,
+        entity_name: str,
+        target_field: str,
+        source_value: Any,
+        notes: str | None = None,
+    ) -> core.EntityResolutionCatalog:
+        """
+        Mark an entity as "will not match" - local-only with no SEAD mapping.
+
+        Uses domain model methods for manipulating mappings.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            target_field: Target field for reconciliation
+            source_value: Source field value
+            notes: Optional reason for marking as unmatched
+
+        Returns:
+            Updated entity mapping registry (domain model)
+        """
+
+        recon_config: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
+
+        # Get entity mapping using domain model method
+        entity_mapping = recon_config.get(entity_name, target_field)
+        if entity_mapping is None:
+            raise NotFoundError(f"Entity mapping for entity '{entity_name}' and target field '{target_field}' not found")
+
+        # Create unmatched mapping
+        new_mapping = core.ResolvedEntityPair(
+            source_value=source_value,
+            target_id=None,  # No SEAD match
+            will_not_match=True,  # Mark as local-only
+            confidence=None,  # Not applicable
+            notes=notes or "Marked as local-only (will not match)",
+            created_by="user",
+            created_at=None,
+            last_modified=datetime.now(timezone.utc).isoformat(),
+        )
+
+        # Remove old and add new using domain model methods
+        entity_mapping.remove(source_value)
+        entity_mapping.add(new_mapping)
+        logger.info(f"Marked as unmatched: {source_value}")
+
+        self.catalog_manager.save_catalog(project_name, recon_config)
+        return recon_config
+
+    async def get_available_target_fields(self, project_name: str, entity_name: str) -> list[str]:
+        """
+        Get available target fields for an entity (from preview schema).
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+
+        Returns:
+            List of column names from entity preview
+
+        Raises:
+            NotFoundError: If entity doesn't exist
+        """
+        # Lazy-load ShapeShiftService if needed
+        if self.shapeshift_service is None:
+            self.shapeshift_service = ShapeShiftService(self.project_service)
+
+        try:
+            preview_result: PreviewResult = await self.shapeshift_service.preview_entity(project_name, entity_name, limit=1)
+            if isinstance(preview_result.rows, list) and preview_result.rows:
+                return list(preview_result.rows[0].keys())
+
+            if preview_result.columns:
+                fields: list[str] = []
+                for col in preview_result.columns:
+                    column_name = getattr(col, "name", None)
+                    if not isinstance(column_name, str):
+                        column_name = getattr(col, "_mock_name", None)
+                    if isinstance(column_name, str):
+                        fields.append(column_name)
+                return fields
+
+            return []
+
+        except Exception as e:
+            logger.error(f"Failed to get fields for entity '{entity_name}': {e}")
+            raise NotFoundError(f"Entity '{entity_name}' not found or failed to load") from e
+
+    def get_mapping_count(self, project_name: str, entity_name: str, target_field: str) -> int:
+        """
+        Get the number of mappings for an entity mapping specification.
+
+        Uses domain model method for querying.
+
+        Args:
+            project_name: Project name
+            entity_name: Entity name
+            target_field: Target field name
+
+        Returns:
+            Number of mappings
+
+        Raises:
+            NotFoundError: If mapping specification doesn't exist
+        """
+        recon_config: core.EntityResolutionCatalog = self.catalog_manager.load_catalog(project_name)
+
+        # Use domain model method
+        entity_mapping: core.EntityResolutionSet | None = recon_config.get(entity_name, target_field)
+        if entity_mapping is None:
+            raise NotFoundError(f"Specification for entity '{entity_name}' and target field '{target_field}' not found")
+
+        return entity_mapping.count()
