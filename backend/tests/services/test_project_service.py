@@ -1,5 +1,6 @@
 """Tests for ProjectService."""
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -554,14 +555,33 @@ options:
         (temp_config_dir / "test.yml").write_text(yaml.dump(sample_yaml_dict))
 
         mock_state = MagicMock()
-        mock_state.get.return_value = None
+        mock_state.get.return_value = None  # Cache miss - will load from disk
         service.state = mock_state
 
         config = service.activate_project("test")
 
-        mock_state.activate.assert_called_once()
+        # When cache misses, activate is called twice:
+        # 1. In load_project after loading from disk (for caching)
+        # 2. In activate_project (explicit activation)
+        assert mock_state.activate.call_count == 2
         assert config.metadata
         assert config.metadata.name.startswith("test")
+
+    def test_activate_project_from_cache(self, service: ProjectService, sample_config: Project):
+        """Test activating project that's already in cache."""
+        mock_state = MagicMock()
+        # Simulate cache hit - project already loaded
+        cached_project = deepcopy(sample_config)
+        cached_project.metadata.name = "test_cached"
+        mock_state.get.return_value = cached_project
+        service.state = mock_state
+
+        config = service.activate_project("test_cached")
+
+        # When cache hits, load_project returns early, so activate is only called once in activate_project
+        mock_state.activate.assert_called_once()
+        assert config.metadata
+        assert config.metadata.name == "test_cached"
 
     def test_activate_project_not_found(self, service: ProjectService):
         """Test activating non-existent configuration raises error."""

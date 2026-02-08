@@ -87,7 +87,8 @@ class ProjectService:
         """
         Load project by name.
 
-        Always reads from disk to ensure data freshness (YAML is source of truth).
+        Checks ApplicationState cache first (for active editing sessions).
+        Falls back to disk load if not in cache or not actively edited.
         Updates version tracking in ApplicationState for cache invalidation.
 
         Args:
@@ -100,7 +101,13 @@ class ProjectService:
             ResourceNotFoundError: If project not found
             ConfigurationError: If project is invalid
         """
-        # Always read from disk - YAML file is source of truth
+        # Check ApplicationState cache first (actively edited projects)
+        cached_project: Project | None = self.state.get(name)
+        if cached_project:
+            logger.debug(f"Loaded project '{name}' from ApplicationState cache")
+            return cached_project
+
+        # Load from disk - YAML file is source of truth
         filename: Path = self.projects_dir / (f"{name.removesuffix('.yml')}.yml")
         if not filename.exists():
             raise ResourceNotFoundError(resource_type="project", resource_id=name, message=f"Project not found: {name}")
@@ -123,10 +130,10 @@ class ProjectService:
             project.metadata.entity_count = len(project.entities or {})
             project.metadata.is_valid = True
 
-            # Update version tracking for cache invalidation (but don't cache the project)
-            self.state.update_version(name)
+            # Cache in ApplicationState for subsequent requests (multiple projects can be cached)
+            self.state.activate(project)
 
-            logger.info(f"Loaded project '{name}' with {len(project.entities)} entities")
+            logger.info(f"Loaded project '{name}' from disk with {len(project.entities)} entities")
             return project
 
         except ConfigurationError:
