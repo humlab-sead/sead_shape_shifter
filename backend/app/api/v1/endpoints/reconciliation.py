@@ -184,11 +184,7 @@ async def auto_reconcile_entity(
     if entity_mapping is None:
         raise NotFoundError(f"No entity resolution catalog entry for entity '{entity_name}' target '{target_field}'")
 
-    # Update threshold if provided
-    if threshold != entity_mapping.metadata.auto_accept_threshold:
-        entity_mapping.metadata.auto_accept_threshold = threshold
-    if review_threshold is not None and review_threshold != entity_mapping.metadata.review_threshold:
-        entity_mapping.metadata.review_threshold = review_threshold
+    entity_mapping.metadata.update_thresholds(threshold=threshold, review_threshold=review_threshold)
 
     # Persist updated thresholds even if reconciliation is blocked/fails.
     service.catalog_manager.save_catalog(project_name, catalog)
@@ -199,7 +195,7 @@ async def auto_reconcile_entity(
     # Create operation for progress tracking
     operation_id: str = operation_manager.create_operation(
         operation_type="auto_reconcile",
-        total=0,  # Will be updated once we know query count
+        total=0, 
         message=f"Starting reconciliation for {entity_name}...",
         metadata={"project": project_name, "entity": entity_name, "threshold": threshold},
     )
@@ -211,7 +207,7 @@ async def auto_reconcile_entity(
                 project_name=project_name,
                 entity_name=entity_name,
                 target_field=target_field,
-                entity_mapping=entity_mapping,  # Pass domain model
+                entity_mapping=entity_mapping,
                 operation_id=operation_id,
             )
         except Exception as e:  # pylint: disable=broad-except
