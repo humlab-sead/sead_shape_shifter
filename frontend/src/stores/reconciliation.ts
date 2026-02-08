@@ -37,6 +37,7 @@ export const useReconciliationStore = defineStore('reconciliation', () => {
     return Object.keys(reconciliationConfig.value.entities).filter(
       (entityName) => {
         const targetFields = reconciliationConfig.value!.entities[entityName]
+        if (!targetFields) return false
         // Entity is reconcilable if it has at least one target with a service_type
         return Object.values(targetFields).some(
           (spec) => spec?.remote?.service_type != null
