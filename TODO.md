@@ -216,3 +216,51 @@ Entity name conflict → "Entity 'X' already exists. Choose different name."
 
 ### TODO: #221 System fails to find ingesters folder
 The system currently fails to find the ingesters folder when running in Docker. Cause: the ingesters folder is not copied to the Docker image, we need to copy the ingesters folder to the Docker image in the Dockerfile, and set environment variables accordingly.
+
+### TODO: #222 Using columns added by a FK as local keys in a subsequent FK does not work
+
+When trying to link the dataset_contacts entity to the contact entity using the contact_name as the linking key this error is logged. The .
+The `_project_contact` is correctly normalized and contains the contact_name column, but the dataset_contacts entity cannot find the contact_name column in its local data when trying to link to the contact entity.
+
+The `contact_name` is added as an extra column in the foreign key from dataset_contacts to _project_contact, but it seems that this extra column is not being included in the local data of dataset_contacts when performing the link to contact.
+
+
+```
+2026-02-08 16:15:24.962 | ERROR    | src.transforms.link:link_entity:84 - dataset_contacts[linking]: ✗ Configuration has 1 error(s):
+  1. [ERROR] Entity 'dataset_contacts': dataset_contacts -> contact: local keys {'contact_name'} not found in local entity data 'dataset_contacts'
+```
+
+```yml
+dataset_contacts:
+  type: entity
+  source: dataset
+  public_id: dataset_contact_id
+  keys: [Projekt, Fraktion, contact_id]
+  columns: []
+  foreign_keys:
+  - entity: _project_contact
+    local_keys: [Projekt]
+    remote_keys: [Projekt]
+    extra_columns:
+      contact_name: contact_name
+  - entity: contact
+    local_keys: [contact_name]
+    remote_keys: [contact_name]
+  depends_on: [_project_contact, contact, dataset, project]
+  drop_duplicates: [Projekt, Fraktion, contact_id]
+
+_project_contact:
+  type: sql
+  source:
+  public_id: project_contact_id
+  keys: [Projekt, contact_type, contact_name]
+  columns: [Projekt, ArchAusg, ArchBear, BotBear]
+  drop_duplicates: [Projekt, contact_type, contact_name]
+  unnest:
+    id_vars: [Projekt]
+    value_vars: [ArchAusg, ArchBear, BotBear]
+    var_name: contact_type
+    value_name: contact_name
+  data_source: arbodat_data
+  query: "select distinct [Projekt], [ArchAusg], [ArchBear], [BotBear] from [Projekte] ;\n"
+
