@@ -163,6 +163,7 @@ COPY --from=python-builder /usr/local/bin /usr/local/bin
 COPY --from=source-resolver /source/src ./src/
 COPY --from=source-resolver /source/backend ./backend/
 COPY --from=source-resolver /source/scripts ./scripts/
+COPY --from=source-resolver /source/ingesters ./ingesters/
 
 # Copy lib directory from build context (not in git, must be provided separately)
 COPY lib/ ./lib/
