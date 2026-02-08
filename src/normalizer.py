@@ -65,11 +65,12 @@ class ShapeShifter:
         logger.info(f"Resolving source for entity '{table_cfg.entity_name}' with config: {table_cfg}")
         loader: DataLoader | None = self.resolve_loader(table_cfg=table_cfg)
         if loader:
-            # logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
+            logger.debug(f"{table_cfg.entity_name}[source]: Loading data using loader '{loader.__class__.__name__}'...")
             return await loader.load(entity_name=table_cfg.entity_name, table_cfg=table_cfg)
 
         source_table: str | None = table_cfg.source or self.default_entity
         if source_table and source_table in self.table_store:
+            logger.debug(f"{table_cfg.entity_name}[source]: Using source table '{source_table}' from table_store...")
             return self.table_store[source_table]
 
         raise ValueError(f"Unable to resolve source for entity '{table_cfg.entity_name}'")
