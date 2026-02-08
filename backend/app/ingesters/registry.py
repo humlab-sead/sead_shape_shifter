@@ -124,7 +124,9 @@ class IngesterRegistry(Registry[type[Ingester]]):
             ImportError: If ingester module cannot be imported
             ValueError: If ingester doesn't register itself properly
         """
-        module_path = f"{base_path}.{name}.ingester"
+        # Normalize base_path: strip leading ./ for absolute imports
+        normalized_path = base_path.lstrip("./")
+        module_path = f"{normalized_path}.{name}.ingester"
 
         logger.debug(f"Loading ingester module: {module_path}")
 
