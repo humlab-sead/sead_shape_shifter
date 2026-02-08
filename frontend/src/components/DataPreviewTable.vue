@@ -241,13 +241,15 @@ defineExpose({
 }
 
 .v-table {
-  background-color: #ffffff;
+  /* Use theme colors instead of hardcoded values */
+  background-color: rgb(var(--v-theme-surface));
 }
 
 .v-table thead th {
-  background-color: #f5f5f5;
+  background-color: rgb(var(--v-theme-surface-variant));
   font-weight: 600;
   white-space: nowrap;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .v-table tbody td {
@@ -257,18 +259,19 @@ defineExpose({
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .text-grey {
-  color: #9e9e9e;
+  color: rgb(var(--v-theme-on-surface-variant));
   font-style: italic;
 }
 
 .text-blue {
-  color: #1976d2;
+  color: rgb(var(--v-theme-primary));
 }
 
 .text-green {
-  color: #388e3c;
+  color: rgb(var(--v-theme-success));
 }
 </style>

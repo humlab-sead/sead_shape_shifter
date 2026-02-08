@@ -267,7 +267,7 @@ function formatValue(value: any): string {
 }
 
 :deep(.v-table) {
-  background: white;
+  background-color: rgb(var(--v-theme-surface));
 }
 
 .metadata-bar {
