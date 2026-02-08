@@ -477,7 +477,11 @@ class TestReconciliationService:
         """Test save writes config to YAML file."""
         config_file = tmp_path / "test-reconciliation.yml"
 
-        reconciliation_service.catalog_manager.save_catalog("test", catalog, filename=config_file)
+        # Convert DTO to domain for save_catalog
+        from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
+        domain_catalog = ReconciliationMapper.registry_to_domain(catalog)
+        
+        reconciliation_service.catalog_manager.save_catalog("test", domain_catalog, filename=config_file)
 
         assert config_file.exists()
         with open(config_file, "r", encoding="utf-8") as f:
@@ -823,9 +827,9 @@ class TestReconciliationService:
         assert links.target_id == 200
         assert links.notes == "Updated mapping"
 
-    def test_update_mapping_removes_mapping(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
+    def test_update_mapping_removes_mapping(self, reconciliation_service: ReconciliationService, tmp_path, catalog: dto.EntityResolutionCatalog):
         """Test update_mapping removes mapping when target_id is None."""
-        existing_mapping = core.ResolvedEntityPair(
+        existing_mapping = dto.ResolvedEntityPair(
             source_value="SITE001",
             target_id=100,
             confidence=0.8,
@@ -835,7 +839,7 @@ class TestReconciliationService:
             will_not_match=False,
             last_modified="2024-01-02T00:00:00Z",
         )
-        catalog.entities["site"]["site_code"] = [existing_mapping]
+        catalog.entities["site"]["site_code"].mapping = [existing_mapping]
 
         config_file = tmp_path / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
@@ -1099,17 +1103,19 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        new_spec = dto.EntityResolutionSet(
-            source=None,
-            property_mappings={},
-            remote=dto.ReconciliationRemote(service_type="site"),
-            auto_accept_threshold=0.95,
-            review_threshold=0.70,
-            mapping=[],
+        new_spec = core.EntityResolutionSet(
+            metadata=core.EntityResolutionMetadata(
+                source=None,
+                property_mappings={},
+                remote=core.ResolutionTarget(service_type="site"),
+                auto_accept_threshold=0.95,
+                review_threshold=0.70,
+            ),
+            links=[],
         )
 
         with pytest.raises(BadRequestError, match="Entity 'invalid_entity' does not exist"):
-            reconciliation_service.mapping_manager.create_registry("test", "invalid_entity", "some_field", new_spec)
+            reconciliation_service.catalog_manager.create_entity_mapping("test", "invalid_entity", "some_field", new_spec)
 
     def test_update_specification_success(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test updating specification preserves mapping."""
@@ -1201,7 +1207,7 @@ class TestSpecificationManagement:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        with pytest.raises(BadRequestError, match="Cannot delete existing mapping.*from registry"):
+        with pytest.raises(BadRequestError, match="Cannot delete existing mapping.*from catalog"):
             reconciliation_service.catalog_manager.delete("test", "site", "site_code", force=False)
 
     def test_delete_specification_with_mappings_force(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
