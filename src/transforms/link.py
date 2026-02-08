@@ -82,20 +82,23 @@ class ForeignKeyLinker:
 
             satisfied: bool | None = specification.is_satisfied_by(fk_cfg=fk)
 
-            if not satisfied:
-                logger.error(f"{entity_name}[linking]: {specification.get_report()}")
-                continue
-
+            # Check if FK should be deferred before treating as error
             if specification.deferred:
                 deferred = True
+                continue
+
+            if not satisfied:
+                logger.error(f"{entity_name}[linking]: {specification.get_report()}")
                 continue
 
             if specification.is_already_linked(fk_cfg=fk):
                 continue
 
             local_df = self.link_foreign_key(local_df, fk, self.table_store[fk.remote_entity])
-
-        self.table_store[entity_name] = local_df
+            
+            # Update table_store immediately after each FK link so subsequent FKs can
+            # see columns added via extra_columns from previous FKs
+            self.table_store[entity_name] = local_df
 
         self.deferred_tracker.track(entity_name=entity_name, deferred=deferred)
 
