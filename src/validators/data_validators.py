@@ -59,7 +59,7 @@ class ColumnExistsValidator:
 
         # Get unnest configuration if present
         unnest_config = entity_config.get("unnest", {}) if entity_config else {}
-        
+
         if unnest_config:
             # For unnested entities, check:
             # 1. id_vars (columns that survive melt)
@@ -69,14 +69,14 @@ class ColumnExistsValidator:
             var_name = unnest_config.get("var_name")
             value_name = unnest_config.get("value_name")
             value_vars = unnest_config.get("value_vars", [])
-            
+
             # Expected columns after unnest: id_vars + var_name + value_name
             expected_after_unnest = set(id_vars)
             if var_name:
                 expected_after_unnest.add(var_name)
             if value_name:
                 expected_after_unnest.add(value_name)
-            
+
             # Only validate columns that should exist after unnest
             # (exclude value_vars from configured_columns)
             columns_to_check = [col for col in configured_columns if col not in value_vars]
