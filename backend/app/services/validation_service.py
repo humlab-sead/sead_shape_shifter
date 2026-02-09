@@ -1,10 +1,11 @@
 """Validation service for project validation."""
 
-from typing import Any, Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable
 
 from loguru import logger
 
 from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.project import Project
 from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.project_service import ProjectService, get_project_service
@@ -12,48 +13,82 @@ from backend.app.services.shapeshift_service import ShapeShiftService
 from src.configuration.config import Config
 from src.model import ShapeShiftProject
 from src.specifications import CompositeProjectSpecification, SpecificationIssue
+from src.validators.data_validators import ValidationIssue
 
 if TYPE_CHECKING:
-    from backend.app.services.project_service import ProjectService
-    from backend.app.validators.data_validators import DataValidationService
-    
+    from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
+
+
 class ValidationService:
     """Service for validating projects using existing specifications."""
 
-    def __init__(self, data_validator_factory: Callable[[], "DataValidationService"] | None = None) -> None:
+    def __init__(
+        self,
+        data_orchestrator_factory: Callable[[], "DataValidationOrchestrator"] | None = None,
+    ) -> None:
         """
         Initialize validation service.
-        
-        Args:
-            data_validator_factory: Optional factory function to create DataValidationService.
-                                   If None, uses default factory (lazy import to avoid circular dependency).
-        """
-        self._data_validator_factory = data_validator_factory
 
-    async def validate_project_data(self, project_name: str, entity_names: list[str] | None = None) -> ValidationResult:
+        Args:
+            data_orchestrator_factory: Optional factory function to create DataValidationOrchestrator.
+                                      If None, uses default factory (lazy import to avoid circular dependency).
+        """
+        self._data_orchestrator_factory = data_orchestrator_factory
+
+    async def validate_project_data(
+        self,
+        project_name: str,
+        entity_names: list[str] | None = None,
+        use_full_data: bool = False,
+    ) -> ValidationResult:
         """
         Run data-aware validation on project.
 
         Args:
             project_name: Project name
             entity_names: Optional list of entity names to validate (None = all)
+            use_full_data: If True, validate against full normalized dataset instead of preview samples
 
         Returns:
             ValidationResult with data validation errors and warnings
         """
-        logger.debug(f"Running data validation for project: {project_name}")
+        logger.debug(f"Running data validation for project: {project_name} (full_data={use_full_data})")
+
+        # Load and resolve project (convert directives to concrete values)
+        project_service: ProjectService = get_project_service()
+        api_project: Project = project_service.load_project(project_name)
+        core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
 
         # Use injected factory or default factory
-        if self._data_validator_factory:
-            data_validator = self._data_validator_factory()
+        if self._data_orchestrator_factory:
+            orchestrator = self._data_orchestrator_factory()
         else:
             # Default factory - import here to avoid circular dependency
-            from backend.app.validators.data_validators import DataValidationService
-            project_service: ProjectService = get_project_service()
-            shapeshift_service: ShapeShiftService = ShapeShiftService(project_service)
-            data_validator = DataValidationService(shapeshift_service)
+            from backend.app.validators.data_validation_orchestrator import (  # pylint: disable=import-outside-toplevel
+                DataValidationOrchestrator,
+                FullDataFetchStrategy,
+                PreviewDataFetchStrategy,
+            )
 
-        errors_list: list[ValidationError] = await data_validator.validate_project(project_name, entity_names)
+            shapeshift_service: ShapeShiftService = ShapeShiftService(project_service)
+
+            # Create appropriate strategy based on use_full_data flag
+            if use_full_data:
+                fetch_strategy = FullDataFetchStrategy(project_service)
+            else:
+                fetch_strategy = PreviewDataFetchStrategy(shapeshift_service)
+
+            # Inject strategy into orchestrator
+            orchestrator = DataValidationOrchestrator(fetch_strategy=fetch_strategy)
+
+        # Orchestrator returns domain issues - convert to API errors
+        issues_list: list[ValidationIssue] = await orchestrator.validate_all_entities(
+            core_project=core_project,
+            project_name=project_name,
+            entity_names=entity_names,
+        )
+
+        errors_list: list[ValidationError] = [ValidationMapper.to_api_error(issue) for issue in issues_list]
 
         errors: list[ValidationError] = [e for e in errors_list if e.severity == "error"]
         warnings: list[ValidationError] = [e for e in errors_list if e.severity == "warning"]
@@ -68,7 +103,7 @@ class ValidationService:
             warning_count=len(warnings),
         )
 
-        logger.info(f"Data validation completed: {result.error_count} errors, " f"{result.warning_count} warnings")
+        logger.info(f"Data validation completed: {result.error_count} errors, {result.warning_count} warnings")
 
         return result
 
@@ -120,8 +155,8 @@ class ValidationService:
         if is_valid:
             logger.info("Configuration validation passed")
         else:
-            error_count = len(specification.errors)
-            warning_count = len(specification.warnings)
+            error_count: int = len(specification.errors)
+            warning_count: int = len(specification.warnings)
             parts = []
             if error_count > 0:
                 parts.append(f"{error_count} error(s)")

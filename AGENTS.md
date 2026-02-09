@@ -28,31 +28,32 @@
 **Problem:**
 ```python
 # ❌ WRONG: Module-level import causes circular dependency
-from backend.app.validators.data_validators import DataValidationService
+from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
 
 class ValidationService:
-    def validate_data(self):
-        validator = DataValidationService()  # Circular!
+    async def validate_data(self):
+        orchestrator = DataValidationOrchestrator(...)  # Circular!
 ```
 
 **Solution:**
 ```python
-# ✅ CORRECT: Inject factory via constructor
-from typing import Callable, TYPE_CHECKING
+# ✅ CORRECT: Inject dependencies via constructor
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from backend.app.validators.data_validators import DataValidationService
+    from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
 
 class ValidationService:
-    def __init__(self, data_validator_factory: Callable[[], "DataValidationService"] | None = None):
-        self._data_validator_factory = data_validator_factory
+    def __init__(self, orchestrator: "DataValidationOrchestrator" | None = None):
+        self._orchestrator = orchestrator
     
-    def validate_data(self):
-        if self._data_validator_factory:
-            validator = self._data_validator_factory()
+    async def validate_data(self, ...):
+        if self._orchestrator:
+            return await self._orchestrator.validate_all_entities(...)
         else:
-            from backend.app.validators.data_validators import DataValidationService
-            validator = DataValidationService()  # Default factory
+            from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
+            orchestrator = DataValidationOrchestrator(fetch_strategy=...)
+            return await orchestrator.validate_all_entities(...)
 ```
 
 **Benefits:** Explicit dependencies, easy testing with mocks, no circular imports, flexible implementations.
