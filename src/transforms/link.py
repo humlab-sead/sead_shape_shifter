@@ -60,7 +60,8 @@ class ForeignKeyLinker:
             linked_df = linked_df.drop(columns=[remote_cfg.public_id], errors="ignore")
 
         logger.debug(
-            f"{fk.local_entity}[linking]: Linked '{fk.remote_entity}' using keys {fk.local_keys} -> {fk.remote_keys} with method '{opts['how']}'"
+            f"{fk.local_entity}[linking]: Linked '{fk.remote_entity}' using keys {fk.local_keys}"
+            f" -> {fk.remote_keys} with method '{opts['how']}'"
         )
 
         return linked_df
