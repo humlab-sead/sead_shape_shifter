@@ -28,7 +28,7 @@ def test_root_endpoint():
 
     # If frontend is built, we get HTML; if not, we get JSON
     content_type = response.headers.get("content-type", "")
-    
+
     if "application/json" in content_type:
         # API-only mode (frontend not built)
         data = response.json()

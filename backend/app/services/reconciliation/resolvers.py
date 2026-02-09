@@ -72,7 +72,7 @@ class AnotherEntityReconciliationSourceResolver(ReconciliationSourceResolver):
     async def resolve(self, entity_name: str, entity_mapping: core.EntityResolutionSet) -> list[dict]:
 
         assert isinstance(entity_mapping.metadata.source, str)
-    
+
         source: str = entity_mapping.metadata.source
 
         logger.info(f"Fetching preview data from entity '{source}' for reconciliation of '{entity_name}'")

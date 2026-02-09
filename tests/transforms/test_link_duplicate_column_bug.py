@@ -2,7 +2,7 @@
 
 This reproduces the scenario from arbodat-copy project where:
 - dataset entity has master_set_id set via extra_columns
-- master_dataset is a fixed entity with public_id="master_dataset_id" 
+- master_dataset is a fixed entity with public_id="master_dataset_id"
 - master_dataset also has "master_dataset_id" in its columns list
 - The FK linking should not create duplicate columns
 """
@@ -118,9 +118,7 @@ class TestDuplicateColumnBug:
                     "method_name": ["Organic", "Dry"],
                 }
             ),
-            "project": pd.DataFrame(
-                {"system_id": [1], "Projekt": ["18_0025"], "project_name": ["Project 18_0025"]}
-            ),
+            "project": pd.DataFrame({"system_id": [1], "Projekt": ["18_0025"], "project_name": ["Project 18_0025"]}),
         }
 
     def test_bug_scenario_no_duplicate_columns(self, project_config, table_store):
