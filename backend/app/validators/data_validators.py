@@ -769,7 +769,6 @@ class DataValidationService:
         Returns:
             List of all validation errors found
         """
-        from backend.app.services.project_service import ProjectService
 
         project_service = ProjectService()
         project: Project = project_service.load_project(project_name)
@@ -784,20 +783,25 @@ class DataValidationService:
                     priority=ValidationPriority.CRITICAL,
                 )
             ]
+        # FIXME: #223 Validation should happen on RESOLVED project, not raw project
+        # Convert to Core and resolve directives (critical for data validation!)
+        core_project: ShapeShiftProject = ProjectMapper.to_core(api_project)
+        resolved_entities: dict[str, Any] = core_project.cfg.get("entities", {})
 
         # Determine which entities to validate
-        entities_to_validate = entity_names or list(project.entities.keys())
+        entities_to_validate = entity_names or list(resolved_entities.keys())
 
         # OPTIMIZATION: Warmup cache by processing all entities in one pass
         # This prevents each validator from triggering separate normalizations
         self._warm_table_store = await self._warmup_cache(project_name, entities_to_validate)
 
         # Run validators on each entity concurrently (now using warmed data/cache)
+        # Use RESOLVED entity configurations (directives expanded)
         results = await asyncio.gather(
             *[
-                self.validate_entity(project_name, entity_name, project.entities[entity_name])
+                self.validate_entity(project_name, entity_name, resolved_entities[entity_name])
                 for entity_name in entities_to_validate
-                if entity_name in project.entities
+                if entity_name in resolved_entities
             ],
             return_exceptions=True,
         )
