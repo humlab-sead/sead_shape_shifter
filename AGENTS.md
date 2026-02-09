@@ -73,27 +73,46 @@ class ColumnExistsValidator:
         missing = set(configured_columns) - set(df.columns)
         return [ValidationIssue(...) for col in missing]
 
-# backend/app/validators/data_validation_orchestrator.py - Infrastructure
+# backend/app/validators/data_validation_orchestrator.py - Infrastructure with DI
 class DataValidationOrchestrator:
-    def __init__(self, preview_service: ShapeShiftService, project_service: ProjectService):
-        """Inject services for data fetching."""
-        self.preview_service = preview_service
+    def __init__(self, fetch_strategy: DataFetchStrategy):
+        """Inject fetch strategy (preview, full, or table_store)."""
+        self.fetch_strategy = fetch_strategy
     
-    async def validate_all_entities(self, project_name: str, use_full_data: bool = False):
-        """Fetch data, call validators, convert to API models."""
-        # Fetch preview OR full normalized data
-        df = await self._fetch_preview_data(...) if not use_full_data else await self._fetch_full_data(...)
+    async def validate_all_entities(self, core_project: ShapeShiftProject, project_name: str) -> list[ValidationIssue]:
+        """Fetch data using injected strategy, call validators, return domain issues."""
+        # Get entity configurations from resolved core project
+        resolved_entities = core_project.cfg.get("entities", {})
+        
+        # Fetch data using injected strategy
+        df = await self.fetch_strategy.fetch(project_name, entity_name)
         
         # Call pure domain validator
         issues = ColumnExistsValidator.validate(df, columns, entity_name)
         
-        # Convert ValidationIssue → ValidationError (domain → API)
-        return [self._to_api_error(issue) for issue in issues]
+        # Return domain issues (consumer decides how to transform)
+        return issues
+
+# Three strategy implementations (preview, full, table_store)
+# Load and resolve project (ValidationService responsibility)
+api_project = project_service.load_project(project_name)
+core_project = ProjectMapper.to_core(api_project)
+
+if use_full_data:
+    strategy = FullDataFetchStrategy(project_service)
+else:
+    strategy = PreviewDataFetchStrategy(preview_service)
+
+orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+issues = await orchestrator.validate_all_entities(core_project, project_name)
+
+# Convert domain → API (ValidationService responsibility)
+errors = [ValidationMapper.to_api_error(issue) for issue in issues]
 ```
 
-**Benefits:** Testable without mocks (pure DataFrames), supports full dataset validation, reusable in CLI/scripts, clear separation of concerns.
+**Benefits:** Testable without mocks (pure DataFrames), supports full dataset validation, reusable in CLI/scripts, clear separation of concerns, strategy pattern enables extensibility, orchestrator can be used outside API context.
 
-**Never:** Put data fetching in validators, import infrastructure in domain layer, skip orchestrator pattern.
+**Never:** Put data fetching in validators, import infrastructure in domain layer, skip orchestrator pattern, hard-code data fetch logic (use strategy).
 
 ### Layer Boundary Architecture (Awesome Rule) ⭐
 

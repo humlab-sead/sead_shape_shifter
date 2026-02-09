@@ -323,11 +323,13 @@ api_project.task_list.mark_completed(entity)  # AttributeError!
 Domain Layer (src/validators/)      ← Pure validation logic, no dependencies
       ↓ ValidationIssue (domain)
 Backend Orchestrator (backend/app/validators/data_validation_orchestrator.py)
-      ↓ Fetch data (preview or full)
+      ↓ Fetch data (preview, full, or table_store)
       ↓ Call domain validators
-      ↓ Convert ValidationIssue → ValidationError (domain → API)
+      ↓ Return ValidationIssue (domain)
 Validation Service (backend/app/services/validation_service.py)
-      ↓ Coordinate validation types
+      ↓ ValidationMapper.to_api_error()
+Validation Mapper (backend/app/mappers/validation_mapper.py)
+      ↓ Convert ValidationIssue → ValidationError (domain → API)
 API Endpoints (backend/app/api/v1/endpoints/)
 ```
 
@@ -368,36 +370,98 @@ class ColumnExistsValidator:
         ]
 ```
 
-**Backend orchestrator** - handles infrastructure:
+**Backend orchestrator** - handles infrastructure with dependency injection:
 ```python
 # backend/app/validators/data_validation_orchestrator.py
-class DataValidationOrchestrator:
-    """Orchestrates data fetching and validation."""
-    
-    def __init__(self, preview_service: ShapeShiftService, project_service: ProjectService):
-        """Inject infrastructure services."""
+
+# Strategy pattern for data fetching
+class DataFetchStrategy(ABC):
+    @abstractmethod
+    async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
+        pass
+
+class PreviewDataFetchStrategy(DataFetchStrategy):
+    """Preview sample data (limit 1000 rows)."""
+    def __init__(self, preview_service: ShapeShiftService, limit: int = 1000):
         self.preview_service = preview_service
+        self.limit = limit
+    
+    async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
+        preview_result = await self.preview_service.preview_entity(...)
+        return pd.DataFrame(preview_result.rows)
+
+class FullDataFetchStrategy(DataFetchStrategy):
+    """Full normalization with per-project caching."""
+    def __init__(self, project_service: ProjectService):
         self.project_service = project_service
+        self._normalizer_cache: dict[str, ShapeShifter] = {}
+    
+    async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
+        if project_name not in self._normalizer_cache:
+            normalizer = ShapeShifter(core_project)
+            await normalizer.normalize()
+            self._normalizer_cache[project_name] = normalizer
+        return self._normalizer_cache[project_name].table_store[entity_name]
+
+class TableStoreDataFetchStrategy(DataFetchStrategy):
+    """Use pre-existing normalized data."""
+    def __init__(self, table_store: dict[str, pd.DataFrame]):
+        self.table_store = table_store
+    
+    async def fetch(self, project_name: str, entity_name: str) -> pd.DataFrame:
+        return self.table_store.get(entity_name, pd.DataFrame())
+
+class DataValidationOrchestrator:
+    """Orchestrates data fetching and validation with injected strategy."""
+    
+    def __init__(self, fetch_strategy: DataFetchStrategy) -> None:
+        """Inject fetch strategy (preview, full, or table_store)."""
+        self.fetch_strategy = fetch_strategy
     
     async def validate_all_entities(
         self,
+        core_project: ShapeShiftProject,  # ⭐ Receive resolved project
         project_name: str,
         entity_names: list[str] | None = None,
-        use_full_data: bool = False,  # ⭐ Preview OR full dataset
-    ) -> list[api.ValidationError]:
+    ) -> list[ValidationIssue]:  # ⭐ Return domain models
         """Fetch data and call pure validators."""
-        # 1. Load project and resolve directives
-        project = self.preview_service.project_service.load_project(project_name)
-        core_project = ProjectMapper.to_core(project)
+        # 1. Get entity configurations from resolved core project
+        resolved_entities = core_project.cfg.get("entities", {})
         
-        # 2. Fetch data (preview samples OR full normalized)
-        if use_full_data:
-            df = await self._fetch_full_data(project_name, entity_name)
-        else:
-            df = await self._fetch_preview_data(project_name, entity_name)
+        # 2. Fetch data using injected strategy
+        df = await self.fetch_strategy.fetch(project_name, entity_name)
         
         # 3. Call pure domain validator
         issues = ColumnExistsValidator.validate(df, columns, entity_name)
+        
+        # 4. Return domain issues (consumer decides how to transform)
+        return issues
+```
+
+**Usage in ValidationService:**
+```python
+# Load and resolve project (ValidationService responsibility)
+api_project = project_service.load_project(project_name)
+core_project = ProjectMapper.to_core(api_project)
+
+# Create strategy
+if use_full_data:
+    strategy = FullDataFetchStrategy(project_service)
+else:
+    strategy = PreviewDataFetchStrategy(preview_service)
+
+# Inject strategy, pass resolved project
+orchestrator = DataValidationOrchestrator(fetch_strategy=strategy)
+issues = await orchestrator.validate_all_entities(
+    core_project=core_project,
+    project_name=project_name,
+    entity_names=entity_names,
+)
+
+# Convert domain → API (ValidationService responsibility)
+from backend.app.mappers.validation_mapper import ValidationMapper
+errors = [ValidationMapper.to_api_error(issue) for issue in issues]
+```
         
         # 4. Convert domain → API
         return [self._to_api_error(issue) for issue in issues]
@@ -419,10 +483,25 @@ class DataValidationOrchestrator:
 - Environment variable resolution
 
 **✅ Backend orchestrator:**
-- Inject ShapeShiftService for data fetching
-- Support `use_full_data` parameter
-- Convert ValidationIssue → ValidationError
+- Inject DataFetchStrategy (DI pattern)
+- Strategy creates appropriate data source (preview, full, or table_store)
+- Return domain ValidationIssues (consumer transforms as needed)
 - Handle exceptions and infrastructure errors
+
+**Usage pattern:**
+```python
+# Create appropriate strategy
+if use_full_data:
+    strategy = FullDataFetchStrategy(project_service)
+else:
+    strategy = PreviewDataFetchStrategy(preview_service)
+
+# Inject strategy into orchestrator
+orchestrator = DataValidationOrchestrator(
+    fetch_strategy=strategy,
+    project_service=project_service,
+)
+```
 
 **Testing pattern:**
 ```python
@@ -433,12 +512,14 @@ def test_column_exists_validator():
     assert len(issues) == 1
     assert issues[0].code == "COLUMN_NOT_FOUND"
 
-# Orchestrator test - mock services
+# Orchestrator test - inject mock strategy
 @pytest.mark.asyncio
-async def test_orchestrator(mock_preview_service):
-    orchestrator = DataValidationOrchestrator(mock_preview_service, mock_project)
-    errors = await orchestrator.validate_all_entities("project", use_full_data=False)
-    # Verify data fetching and API conversion
+async def test_orchestrator_with_table_store():
+    table_store = {"entity": pd.DataFrame({"a": [1, 2]})}
+    strategy = TableStoreDataFetchStrategy(table_store)
+    orchestrator = DataValidationOrchestrator(strategy, mock_project_service)
+    errors = await orchestrator.validate_all_entities("project", ["entity"])
+    # Verify validation and API conversion
 ```
 
 **Benefits:**
