@@ -32,15 +32,6 @@
           </div>
 
           <div class="d-flex gap-2">
-            <v-btn
-              variant="outlined"
-              prepend-icon="mdi-check-circle-outline" color="success"
-              :loading="validationLoading"
-              @click="handleValidate"
-            >
-              Check Project
-              <v-tooltip activator="parent">Run validation checks on the entire project</v-tooltip>
-            </v-btn>
             <v-btn variant="outlined" prepend-icon="mdi-play-circle" color="success" @click="showExecuteDialog = true">
               Execute
               <v-tooltip activator="parent">Execute the full workflow and export data</v-tooltip>
