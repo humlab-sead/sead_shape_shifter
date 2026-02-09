@@ -3,7 +3,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.model import ForeignKeyConfig, ShapeShiftProject, TableConfig, ForeignKeyMergeSetup
+from src.model import ForeignKeyConfig, ForeignKeyMergeSetup, ShapeShiftProject, TableConfig
 from src.process_state import DeferredLinkingTracker
 from src.specifications import ForeignKeyDataSpecification
 from src.specifications.constraints import ForeignKeyConstraintValidator
@@ -59,7 +59,9 @@ class ForeignKeyLinker:
         if fk.extra_columns and fk.drop_remote_id:
             linked_df = linked_df.drop(columns=[remote_cfg.public_id], errors="ignore")
 
-        logger.debug(f"{fk.local_entity}[linking]: Linked '{fk.remote_entity}' using keys {fk.local_keys} -> {fk.remote_keys} with method '{opts['how']}'")
+        logger.debug(
+            f"{fk.local_entity}[linking]: Linked '{fk.remote_entity}' using keys {fk.local_keys} -> {fk.remote_keys} with method '{opts['how']}'"
+        )
 
         return linked_df
 
@@ -95,7 +97,7 @@ class ForeignKeyLinker:
                 continue
 
             local_df = self.link_foreign_key(local_df, fk, self.table_store[fk.remote_entity])
-            
+
             # Update table_store immediately after each FK link so subsequent FKs can
             # see columns added via extra_columns from previous FKs
             self.table_store[entity_name] = local_df

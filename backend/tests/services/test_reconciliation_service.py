@@ -479,8 +479,9 @@ class TestReconciliationService:
 
         # Convert DTO to domain for save_catalog
         from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
+
         domain_catalog = ReconciliationMapper.registry_to_domain(catalog)
-        
+
         reconciliation_service.catalog_manager.save_catalog("test", domain_catalog, filename=config_file)
 
         assert config_file.exists()
@@ -827,7 +828,9 @@ class TestReconciliationService:
         assert links.target_id == 200
         assert links.notes == "Updated mapping"
 
-    def test_update_mapping_removes_mapping(self, reconciliation_service: ReconciliationService, tmp_path, catalog: dto.EntityResolutionCatalog):
+    def test_update_mapping_removes_mapping(
+        self, reconciliation_service: ReconciliationService, tmp_path, catalog: dto.EntityResolutionCatalog
+    ):
         """Test update_mapping removes mapping when target_id is None."""
         existing_mapping = dto.ResolvedEntityPair(
             source_value="SITE001",
@@ -845,7 +848,9 @@ class TestReconciliationService:
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
-        updated: core.EntityResolutionCatalog = reconciliation_service.update_mapping("test", "site", "site_code", source_value="SITE001", target_id=None)
+        updated: core.EntityResolutionCatalog = reconciliation_service.update_mapping(
+            "test", "site", "site_code", source_value="SITE001", target_id=None
+        )
 
         assert len(updated.entities["site"]["site_code"].links) == 0
 
@@ -1030,12 +1035,12 @@ class TestSpecificationManagement:
         # Create new spec
         new_spec = core.EntityResolutionSet(
             metadata=core.EntityResolutionMetadata(
-            source=None,
-            property_mappings={"lat": "latitude"},
-            remote=core.ResolutionTarget(service_type="location"),
-            auto_accept_threshold=0.90,
-            review_threshold=0.75,
-        ),
+                source=None,
+                property_mappings={"lat": "latitude"},
+                remote=core.ResolutionTarget(service_type="location"),
+                auto_accept_threshold=0.90,
+                review_threshold=0.75,
+            ),
             links=[],
         )
 
@@ -1083,9 +1088,7 @@ class TestSpecificationManagement:
 
     @patch("backend.app.services.reconciliation.service.ProjectMapper")
     @patch("backend.app.services.reconciliation.service.ProjectService")
-    def test_create_specification_invalid_entity(
-        self, mock_project_service, mock_mapper, reconciliation_service, tmp_path, catalog
-    ):
+    def test_create_specification_invalid_entity(self, mock_project_service, mock_mapper, reconciliation_service, tmp_path, catalog):
         """Test creating specification for non-existent entity raises error."""
         # Mock project service
         mock_project = MagicMock()
@@ -1186,9 +1189,7 @@ class TestSpecificationManagement:
 
         assert "site_code" not in updated_config.entities.get("site", {})
 
-    def test_delete_specification_with_mappings_no_force(
-        self, reconciliation_service: ReconciliationService, tmp_path, catalog
-    ):
+    def test_delete_specification_with_mappings_no_force(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test deleting specification with mappings raises error without force."""
         catalog.entities["site"]["site_code"].mapping = [
             core.ResolvedEntityPair(

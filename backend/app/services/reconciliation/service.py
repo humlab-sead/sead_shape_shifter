@@ -13,13 +13,12 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models import AutoReconcileResult, Project, ReconciliationCandidate
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services import ProjectService, ShapeShiftService
+from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
 from backend.app.services.reconciliation.resolvers import ReconciliationSourceResolver
 from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.model import ShapeShiftProject
 from src.reconciliation import model as core
-
 from src.reconciliation.source_strategy import ReconciliationSourceStrategy, SourceStrategyType
-from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
 
 if TYPE_CHECKING:
     from backend.app.services.reconciliation.mapping_manager import EntityMappingManager

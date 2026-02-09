@@ -27,10 +27,10 @@ from src.model import DataSourceConfig as CoreDataSourceConfig
 
 def safe_str_or_none(value: Any) -> str | None:
     """Convert value to string or None, handling pandas NaN.
-    
+
     Args:
         value: Value to convert (may be str, None, float NaN, etc.)
-        
+
     Returns:
         String value or None
     """
@@ -148,10 +148,7 @@ class SchemaIntrospectionService:
             # Convert core tables to API models, handling pandas NaN in optional fields
             tables: list[api.TableMetadata] = [
                 api.TableMetadata(
-                    name=table.name,
-                    schema_name=table.schema,
-                    comment=safe_str_or_none(table.comment),
-                    row_count=table.row_count
+                    name=table.name, schema_name=table.schema, comment=safe_str_or_none(table.comment), row_count=table.row_count
                 )
                 for table in core_tables.values()
             ]

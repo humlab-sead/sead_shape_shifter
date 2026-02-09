@@ -7,10 +7,10 @@ from src.loaders.sql_loaders import CoreSchema
 
 def safe_str_or_none(value: Any) -> str | None:
     """Convert value to string or None, handling pandas NaN.
-    
+
     Args:
         value: Value to convert (may be str, None, float NaN, etc.)
-        
+
     Returns:
         String value or None
     """
@@ -23,10 +23,10 @@ def safe_str_or_none(value: Any) -> str | None:
 
 def safe_int_or_none(value: Any) -> int | None:
     """Convert value to int or None, handling pandas NaN.
-    
+
     Args:
         value: Value to convert (may be int, None, float NaN, etc.)
-        
+
     Returns:
         Integer value or None
     """

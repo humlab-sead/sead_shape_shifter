@@ -195,7 +195,7 @@ async def auto_reconcile_entity(
     # Create operation for progress tracking
     operation_id: str = operation_manager.create_operation(
         operation_type="auto_reconcile",
-        total=0, 
+        total=0,
         message=f"Starting reconciliation for {entity_name}...",
         metadata={"project": project_name, "entity": entity_name, "threshold": threshold},
     )

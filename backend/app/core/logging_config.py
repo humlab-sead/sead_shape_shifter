@@ -9,20 +9,20 @@ from loguru import logger
 
 def format_exception_with_filtered_frames(record: dict) -> str:
     """Format exception with filtered stack frames (removes framework noise).
-    
+
     Args:
         record: Loguru record dict
-        
+
     Returns:
         Formatted exception string
     """
     if not record.get("exception"):
         return ""
-    
+
     exception = record["exception"]
     if not exception:
         return ""
-    
+
     # Paths to filter out from stack traces
     noisy_paths = [
         "/site-packages/uvicorn/",
@@ -35,10 +35,10 @@ def format_exception_with_filtered_frames(record: dict) -> str:
         "/site-packages/pydantic_core/",
         "/_exception_handler.py",
     ]
-    
+
     # Extract traceback
     exc_type, exc_value, exc_tb = exception.type, exception.value, exception.traceback
-    
+
     # Filter frames
     filtered_tb = []
     while exc_tb:
@@ -47,11 +47,11 @@ def format_exception_with_filtered_frames(record: dict) -> str:
         if "/app/" in frame_file or not any(noisy in frame_file for noisy in noisy_paths):
             filtered_tb.append(exc_tb)
         exc_tb = exc_tb.tb_next
-    
+
     # If we filtered everything, keep original
     if not filtered_tb:
         return "".join(traceback.format_exception(exc_type, exc_value, exception.traceback))
-    
+
     # Format filtered traceback
     lines = ["Traceback (most recent call last):\n"]
     for tb in filtered_tb:
@@ -59,10 +59,11 @@ def format_exception_with_filtered_frames(record: dict) -> str:
         lines.append(f'  File "{frame.f_code.co_filename}", line {tb.tb_lineno}, in {frame.f_code.co_name}\n')
         # Add code line if available
         import linecache
+
         line = linecache.getline(frame.f_code.co_filename, tb.tb_lineno, frame.f_globals).strip()
         if line:
             lines.append(f"    {line}\n")
-    
+
     lines.append(f"{exc_type.__name__}: {exc_value}\n")
     return "".join(lines)
 
@@ -135,7 +136,9 @@ def configure_logging(
             enqueue=True,
         )
 
-    logger.info(f"Logging configured: level={log_level}, file_logging={enable_file_logging}, "
-                f"console_logging={enable_console_logging}, filter_frames={filter_framework_frames}")
+    logger.info(
+        f"Logging configured: level={log_level}, file_logging={enable_file_logging}, "
+        f"console_logging={enable_console_logging}, filter_frames={filter_framework_frames}"
+    )
     if enable_file_logging:
         logger.info(f"Log directory: {log_path.absolute()}")
