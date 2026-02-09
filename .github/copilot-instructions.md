@@ -163,6 +163,69 @@ from src.configuration.provider import ConfigStore  # Config singleton
 from backend.app.services.validation_service import ValidationService  # Backend
 ```
 
+### Dependency Injection for Circular Imports (Critical Pattern) ⭐
+
+**When services depend on each other, use dependency injection via factory functions instead of lazy imports.**
+
+**Problem - Circular Import:**
+```python
+# ❌ WRONG: Module-level import causes circular dependency
+from backend.app.validators.data_validators import DataValidationService
+
+class ValidationService:
+    def validate_data(self):
+        validator = DataValidationService()  # DataValidationService also imports ValidationService!
+```
+
+**Solution - Dependency Injection:**
+```python
+# ✅ CORRECT: Inject factory function via constructor
+from typing import Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.app.validators.data_validators import DataValidationService
+
+class ValidationService:
+    def __init__(self, data_validator_factory: Callable[[], "DataValidationService"] | None = None):
+        """Inject factory to avoid circular import."""
+        self._data_validator_factory = data_validator_factory
+    
+    def validate_data(self):
+        if self._data_validator_factory:
+            validator = self._data_validator_factory()
+        else:
+            # Default factory with lazy import (backward compatible)
+            from backend.app.validators.data_validators import DataValidationService
+            validator = DataValidationService()
+```
+
+**Benefits:**
+- **Explicit dependencies**: Constructor signature shows what service needs
+- **Testability**: Easy to inject mocks in tests
+- **No circular imports**: Factory is just a callable, not a module import
+- **Flexibility**: Different contexts can provide different implementations
+- **Backward compatible**: Optional parameter with default factory
+
+**Usage:**
+```python
+# Production (default factory)
+service = ValidationService()
+
+# Testing (inject mock)
+mock_factory = lambda: mock_validator
+service = ValidationService(data_validator_factory=mock_factory)
+```
+
+**When to use:**
+- Services that depend on each other (validation ↔ data validation)
+- Any circular dependency between backend modules
+- When you need different implementations in different contexts
+
+**Never:**
+- Use lazy imports at method level as permanent solution (use DI instead)
+- Import services at module level if they might cause circular dependencies
+- Skip TYPE_CHECKING imports (they prevent circular imports at runtime)
+
 ### Layer Boundary Architecture (Awesome Pattern) ⭐
 
 **Critical architectural principle: Strict separation between API and Core layers.**
