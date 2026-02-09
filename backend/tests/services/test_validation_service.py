@@ -1,12 +1,14 @@
 """Tests for validation service."""
 
+from unittest.mock import Mock, patch
+
 import pytest
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.project import Project, ProjectMetadata
-from backend.app.models.validation import ValidationError
 from backend.app.services import validation_service as validation_service_module
 from backend.app.services.validation_service import ValidationService, get_validation_service
+from src.validators.data_validators import ValidationIssue
 
 # pylint: disable=redefined-outer-name, unused-argument
 
@@ -322,31 +324,53 @@ class TestDataValidation:
         """Test data validation groups issues by severity using dependency injection."""
         captured: dict[str, object] = {}
 
-        class DummyDataValidationService:
-            async def validate_project(self, project_name: str, entity_names: list[str] | None):
-                captured["args"] = (project_name, entity_names)
+        class DummyDataValidationOrchestrator:
+            async def validate_all_entities(
+                self,
+                core_project,
+                project_name: str,
+                entity_names: list[str] | None = None,
+            ):
+
+                captured["args"] = (core_project, project_name, entity_names)
+                # Return domain ValidationIssues (not API models)
                 return [
-                    ValidationError(severity="error", entity="a", field=None, message="err", code="E1"),
-                    ValidationError(severity="warning", entity="b", field=None, message="warn", code="W1"),
-                    ValidationError(severity="info", entity="c", field=None, message="info", code="I1"),
+                    ValidationIssue(severity="error", entity="a", field=None, message="err", code="E1", category="data", priority="high"),
+                    ValidationIssue(
+                        severity="warning", entity="b", field=None, message="warn", code="W1", category="data", priority="medium"
+                    ),
+                    ValidationIssue(severity="info", entity="c", field=None, message="info", code="I1", category="data", priority="low"),
                 ]
 
-        # Create factory that returns our mock validator
-        def mock_validator_factory():
-            validator = DummyDataValidationService()
-            captured["validator"] = validator
-            return validator
+        # Create factory that returns our mock orchestrator
+        def mock_orchestrator_factory():
+            orchestrator = DummyDataValidationOrchestrator()
+            captured["orchestrator"] = orchestrator
+            return orchestrator
 
-        # Inject the factory via constructor
-        service = ValidationService(data_validator_factory=mock_validator_factory)  # type: ignore
-        result = await service.validate_project_data("cfg-name", ["entity1"])
+        # Mock project loading and resolution
+        mock_api_project = Mock(spec=Project)
+        mock_core_project = Mock()
+        mock_core_project.cfg = {"entities": {}}
+
+        with patch("backend.app.services.validation_service.get_project_service") as mock_get_service:
+            mock_project_service = Mock()
+            mock_project_service.load_project.return_value = mock_api_project
+            mock_get_service.return_value = mock_project_service
+
+            with patch("backend.app.services.validation_service.ProjectMapper.to_core", return_value=mock_core_project):
+                # Inject the factory via constructor
+                service = ValidationService(data_orchestrator_factory=mock_orchestrator_factory)  # type: ignore
+                result = await service.validate_project_data("cfg-name", ["entity1"])
 
         assert result.is_valid is False
         assert result.error_count == 1
         assert result.warning_count == 1
         assert len(result.info) == 1
-        assert captured["args"] == ("cfg-name", ["entity1"])
-        assert isinstance(captured["validator"], DummyDataValidationService)
+        # Verify captured arguments (core_project is Mock object, project_name, entity_names)
+        assert captured["args"][1] == "cfg-name"  # project_name # type: ignore
+        assert captured["args"][2] == ["entity1"]  # entity_names # type: ignore
+        assert isinstance(captured["orchestrator"], DummyDataValidationOrchestrator)
 
     def test_get_validation_service_singleton(self, reset_validation_singleton):
         """Test get_validation_service returns a singleton instance."""

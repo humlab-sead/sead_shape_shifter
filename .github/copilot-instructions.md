@@ -170,33 +170,34 @@ from backend.app.services.validation_service import ValidationService  # Backend
 **Problem - Circular Import:**
 ```python
 # ❌ WRONG: Module-level import causes circular dependency
-from backend.app.validators.data_validators import DataValidationService
+from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
 
 class ValidationService:
     def validate_data(self):
-        validator = DataValidationService()  # DataValidationService also imports ValidationService!
+        orchestrator = DataValidationOrchestrator(...)  # Orchestrator also imports ValidationService!
 ```
 
 **Solution - Dependency Injection:**
 ```python
-# ✅ CORRECT: Inject factory function via constructor
-from typing import Callable, TYPE_CHECKING
+# ✅ CORRECT: Inject dependencies via constructor
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from backend.app.validators.data_validators import DataValidationService
+    from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
 
 class ValidationService:
-    def __init__(self, data_validator_factory: Callable[[], "DataValidationService"] | None = None):
-        """Inject factory to avoid circular import."""
-        self._data_validator_factory = data_validator_factory
+    def __init__(self, orchestrator: "DataValidationOrchestrator" | None = None):
+        """Inject orchestrator to avoid circular import."""
+        self._orchestrator = orchestrator
     
-    def validate_data(self):
-        if self._data_validator_factory:
-            validator = self._data_validator_factory()
+    async def validate_data(self, project_name: str, entity_names: list[str]):
+        if self._orchestrator:
+            return await self._orchestrator.validate_all_entities(...)
         else:
-            # Default factory with lazy import (backward compatible)
-            from backend.app.validators.data_validators import DataValidationService
-            validator = DataValidationService()
+            # Create orchestrator with dependencies
+            from backend.app.validators.data_validation_orchestrator import DataValidationOrchestrator
+            orchestrator = DataValidationOrchestrator(fetch_strategy=...)
+            return await orchestrator.validate_all_entities(...)
 ```
 
 **Benefits:**
