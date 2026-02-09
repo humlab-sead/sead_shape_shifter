@@ -6,14 +6,11 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 from loguru import logger
 
-from backend.app.models.project import Project
-from backend.app.models.shapeshift import PreviewResult
-from backend.app.models.validation import (
-    ValidationCategory,
-    ValidationError,
-    ValidationPriority,
-)
-from backend.app.services.shapeshift_service import ShapeShiftService
+from backend.app import models as api
+
+from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.services.project_service import ProjectService
+from src.model import ShapeShiftProject
 
 if TYPE_CHECKING:
     from backend.app.services.shapeshift_service import ShapeShiftService
@@ -28,8 +25,8 @@ class ColumnExistsValidator:
     def __init__(self, preview_service: "ShapeShiftService"):
         """Initialize validator with preview service for data sampling."""
         self.preview_service: ShapeShiftService = preview_service
-
-    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
+    
+    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[api.ValidationError]:
         """
         Check that all configured columns exist in actual data.
 
@@ -41,7 +38,7 @@ class ColumnExistsValidator:
         Returns:
             List of validation errors for missing columns
         """
-        errors: list[ValidationError] = []
+        errors: list[api.ValidationError] = []
 
         # Only validate entities with column specifications
         columns: list[str] | None = entity_cfg.get("columns")
@@ -67,7 +64,7 @@ class ColumnExistsValidator:
 
             for col in missing_columns:
                 errors.append(
-                    ValidationError(
+                    api.ValidationError(
                         severity="error",
                         entity=entity_name,
                         field="columns",
@@ -75,8 +72,8 @@ class ColumnExistsValidator:
                         code="COLUMN_NOT_FOUND",
                         suggestion=f"Remove '{col}' from columns list or fix the data source. "
                         f"Available columns: {', '.join(sorted(actual_columns))}",
-                        category=ValidationCategory.DATA,
-                        priority=ValidationPriority.HIGH,
+                        category=api.ValidationCategory.DATA,
+                        priority=api.ValidationPriority.HIGH,
                         auto_fixable=False,
                     )
                 )
@@ -84,15 +81,15 @@ class ColumnExistsValidator:
         except Exception as e:
             logger.warning(f"Could not validate columns for {entity_name}: {e}")
             errors.append(
-                ValidationError(
+                api.ValidationError(
                     severity="warning",
                     entity=entity_name,
                     field="columns",
                     message=f"Could not validate columns: {str(e)}",
                     code="VALIDATION_FAILED",
                     suggestion="Check data source configuration and connectivity",
-                    category=ValidationCategory.DATA,
-                    priority=ValidationPriority.LOW,
+                    category=api.ValidationCategory.DATA,
+                    priority=api.ValidationPriority.LOW,
                     auto_fixable=False,
                 )
             )
@@ -107,7 +104,7 @@ class NaturalKeyUniquenessValidator:
         """Initialize validator with preview service for data sampling."""
         self.preview_service: ShapeShiftService = preview_service
 
-    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
+    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[api.ValidationError]:
         """
         Check that natural keys are unique in sample data.
 
@@ -119,7 +116,7 @@ class NaturalKeyUniquenessValidator:
         Returns:
             List of validation errors for non-unique keys
         """
-        errors: list[ValidationError] = []
+        errors: list[api.ValidationError] = []
 
         # Only validate entities with natural keys
         keys: list[str] | None = entity_cfg.get("keys")
@@ -128,7 +125,7 @@ class NaturalKeyUniquenessValidator:
 
         try:
             # Get larger sample for better uniqueness check
-            preview_result: PreviewResult = await self.preview_service.preview_entity(
+            preview_result: api.PreviewResult = await self.preview_service.preview_entity(
                 project_name=project_name, entity_name=entity_name, limit=1000
             )
 
@@ -156,7 +153,7 @@ class NaturalKeyUniquenessValidator:
                 example_str: str = ", ".join([f"{k}={v}" for k, v in example.items()])
 
                 errors.append(
-                    ValidationError(
+                    api.ValidationError(
                         severity="error",
                         entity=entity_name,
                         field="keys",
@@ -166,8 +163,8 @@ class NaturalKeyUniquenessValidator:
                         suggestion=f"Natural keys must uniquely identify rows. "
                         f"Example duplicate: {example_str}. "
                         f"Consider using a different key combination or add public_id.",
-                        category=ValidationCategory.DATA,
-                        priority=ValidationPriority.HIGH,
+                        category=api.ValidationCategory.DATA,
+                        priority=api.ValidationPriority.HIGH,
                         auto_fixable=False,
                     )
                 )
@@ -175,15 +172,15 @@ class NaturalKeyUniquenessValidator:
         except Exception as e:
             logger.warning(f"Could not validate key uniqueness for {entity_name}: {e}")
             errors.append(
-                ValidationError(
+                api.ValidationError(
                     severity="warning",
                     entity=entity_name,
                     field="keys",
                     message=f"Could not validate key uniqueness: {str(e)}",
                     code="VALIDATION_FAILED",
                     suggestion="Check data source configuration and connectivity",
-                    category=ValidationCategory.DATA,
-                    priority=ValidationPriority.LOW,
+                    category=api.ValidationCategory.DATA,
+                    priority=api.ValidationPriority.LOW,
                     auto_fixable=False,
                 )
             )
@@ -198,7 +195,7 @@ class NonEmptyResultValidator:
         """Initialize validator with preview service for data sampling."""
         self.preview_service = preview_service
 
-    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
+    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[api.ValidationError]:
         """
         Check that entity returns at least one row of data.
 
@@ -224,7 +221,7 @@ class NonEmptyResultValidator:
 
             if not preview_result.rows or len(preview_result.rows) == 0:
                 errors.append(
-                    ValidationError(
+                    api.ValidationError(
                         severity="warning",
                         entity=entity_name,
                         field="query" if entity_type == "sql" else "source",
@@ -233,8 +230,8 @@ class NonEmptyResultValidator:
                         suggestion="Check your SQL query or data source. "
                         "Entity should return at least one row. "
                         "If this is intentional, you can ignore this warning.",
-                        category=ValidationCategory.DATA,
-                        priority=ValidationPriority.MEDIUM,
+                        category=api.ValidationCategory.DATA,
+                        priority=api.ValidationPriority.MEDIUM,
                         auto_fixable=False,
                     )
                 )
@@ -242,15 +239,15 @@ class NonEmptyResultValidator:
         except Exception as e:
             logger.warning(f"Could not validate data for {entity_name}: {e}")
             errors.append(
-                ValidationError(
+                api.ValidationError(
                     severity="warning",
                     entity=entity_name,
                     field="source",
                     message=f"Could not load data: {str(e)}",
                     code="DATA_LOAD_FAILED",
                     suggestion="Check data source configuration, connectivity, and query syntax",
-                    category=ValidationCategory.DATA,
-                    priority=ValidationPriority.HIGH,
+                    category=api.ValidationCategory.DATA,
+                    priority=api.ValidationPriority.HIGH,
                     auto_fixable=False,
                 )
             )
@@ -272,7 +269,7 @@ class ForeignKeyDataValidator:
         """Use shared preview service to reuse warm cache."""
         self.preview_service = preview_service
 
-    async def validate(self, project_name: str, entity_name: str, entity_cfg: Any) -> list[ValidationError]:
+    async def validate(self, project_name: str, entity_name: str, entity_cfg: Any) -> list[api.ValidationError]:
         """Validate foreign key data integrity."""
 
         errors = []
@@ -299,14 +296,14 @@ class ForeignKeyDataValidator:
                 missing_local = [key for key in local_keys if key not in local_df.columns]
                 if missing_local:
                     errors.append(
-                        ValidationError(
+                        api.ValidationError(
                             severity="error",
                             entity=entity_name,
                             field=f"foreign_keys[{fk_index}].local_keys",
                             message=f"Local foreign key columns not found in data: {', '.join(missing_local)}",
                             code="FK_LOCAL_COLUMN_MISSING",
-                            category=ValidationCategory.DATA,
-                            priority=ValidationPriority.HIGH,
+                            category=api.ValidationCategory.DATA,
+                            priority=api.ValidationPriority.HIGH,
                             suggestion=f"Ensure columns {', '.join(missing_local)} are included in the entity's columns list",
                         )
                     )
@@ -317,14 +314,14 @@ class ForeignKeyDataValidator:
                     remote_result = await self.preview_service.preview_entity(project_name, remote_entity, limit=1000)  # type: ignore
                     if not remote_result.rows:
                         errors.append(
-                            ValidationError(
+                            api.ValidationError(
                                 severity="warning",
                                 entity=entity_name,
                                 field=f"foreign_keys[{fk_index}]",
                                 message=f"Remote entity '{remote_entity}' returns no data - cannot validate foreign key",
                                 code="FK_REMOTE_EMPTY",
-                                category=ValidationCategory.DATA,
-                                priority=ValidationPriority.MEDIUM,
+                                category=api.ValidationCategory.DATA,
+                                priority=api.ValidationPriority.MEDIUM,
                             )
                         )
                         continue
@@ -336,14 +333,14 @@ class ForeignKeyDataValidator:
                     missing_remote = [key for key in remote_keys_list if key not in remote_df.columns]
                     if missing_remote:
                         errors.append(
-                            ValidationError(
+                            api.ValidationError(
                                 severity="error",
                                 entity=entity_name,
                                 field=f"foreign_keys[{fk_index}].remote_keys",
                                 message=f"Remote foreign key columns not found in '{remote_entity}': {', '.join(missing_remote)}",
                                 code="FK_REMOTE_COLUMN_MISSING",
-                                category=ValidationCategory.DATA,
-                                priority=ValidationPriority.HIGH,
+                                category=api.ValidationCategory.DATA,
+                                priority=api.ValidationPriority.HIGH,
                             )
                         )
                         continue
@@ -365,18 +362,18 @@ class ForeignKeyDataValidator:
 
                         if match_percentage < 100:
                             severity = "error" if match_percentage < 90 else "warning"
-                            priority = ValidationPriority.HIGH if match_percentage < 90 else ValidationPriority.MEDIUM
+                            priority = api.ValidationPriority.HIGH if match_percentage < 90 else api.ValidationPriority.MEDIUM
 
                             sample_unmatched = unmatched[:3]
                             errors.append(
-                                ValidationError(
+                                api.ValidationError(
                                     severity=severity,  # type: ignore
                                     entity=entity_name,
                                     field=f"foreign_keys[{fk_index}]",
                                     message=f"Foreign key to '{remote_entity}': {len(unmatched)} values ({100 - match_percentage:.1f}%) "
                                     f"not found in remote entity. Sample: {sample_unmatched}",
                                     code="FK_DATA_INTEGRITY",
-                                    category=ValidationCategory.DATA,
+                                    category=api.ValidationCategory.DATA,
                                     priority=priority,
                                     suggestion="Check if remote entity data is loaded correctly, or adjust foreign key configuration",
                                 )
@@ -385,14 +382,14 @@ class ForeignKeyDataValidator:
                 except Exception as e:
                     logger.error(f"Failed to validate foreign key to '{remote_entity}': {e}")
                     errors.append(
-                        ValidationError(
+                        api.ValidationError(
                             severity="warning",
                             entity=entity_name,
                             field=f"foreign_keys[{fk_index}]",
                             message=f"Could not validate foreign key to '{remote_entity}': {str(e)}",
                             code="FK_VALIDATION_ERROR",
-                            category=ValidationCategory.DATA,
-                            priority=ValidationPriority.LOW,
+                            category=api.ValidationCategory.DATA,
+                            priority=api.ValidationPriority.LOW,
                         )
                     )
 
@@ -416,7 +413,7 @@ class DataTypeCompatibilityValidator:
         """Use shared preview service to reuse warm cache."""
         self.preview_service = preview_service
 
-    async def validate(self, project_name: str, entity_name: str, entity_cfg: Any) -> list[ValidationError]:
+    async def validate(self, project_name: str, entity_name: str, entity_cfg: Any) -> list[api.ValidationError]:
         """Validate foreign key column type compatibility."""
 
         errors = []
@@ -427,7 +424,7 @@ class DataTypeCompatibilityValidator:
 
         try:
             # Load sample data for this entity
-            local_result: PreviewResult = await self.preview_service.preview_entity(project_name, entity_name, limit=100)
+            local_result: api.PreviewResult = await self.preview_service.preview_entity(project_name, entity_name, limit=100)
             if not local_result.rows:
                 return errors
 
@@ -448,7 +445,7 @@ class DataTypeCompatibilityValidator:
                     if not remote_entity:
                         continue  # ForeignKeyDataValidator will catch this
 
-                    remote_result: PreviewResult = await self.preview_service.preview_entity(project_name, remote_entity, limit=100)
+                    remote_result: api.PreviewResult = await self.preview_service.preview_entity(project_name, remote_entity, limit=100)
                     if not remote_result.rows:
                         continue  # ForeignKeyDataValidator will catch this
 
@@ -480,15 +477,15 @@ class DataTypeCompatibilityValidator:
                             # Check for type compatibility
                             if not self._types_compatible(local_dtype, remote_dtype):
                                 errors.append(
-                                    ValidationError(
+                                    api.ValidationError(
                                         severity="warning",
                                         entity=entity_name,
                                         field=f"foreign_keys[{fk_index}]",
                                         message=f"Type mismatch: local column '{local_key}' ({local_dtype}) may not be compatible "
                                         f"with remote column '{remote_key}' ({remote_dtype}) in '{remote_entity}'",
                                         code="FK_TYPE_MISMATCH",
-                                        category=ValidationCategory.DATA,
-                                        priority=ValidationPriority.MEDIUM,
+                                        category=api.ValidationCategory.DATA,
+                                        priority=api.ValidationPriority.MEDIUM,
                                         suggestion="Consider converting column types or checking data extraction queries",
                                     )
                                 )
@@ -537,7 +534,7 @@ class DuplicateKeysValidator:
         """Initialize validator with preview service."""
         self.preview_service = preview_service
 
-    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
+    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[api.ValidationError]:
         """
         Check that natural keys are unique.
 
@@ -579,7 +576,7 @@ class DuplicateKeysValidator:
                 duplicate_examples = df[df.duplicated(subset=list(keys), keep=False)][keys].drop_duplicates().head(5)
 
                 errors.append(
-                    ValidationError(
+                    api.ValidationError(
                         severity="error",
                         entity=entity_name,
                         field="keys",
@@ -589,8 +586,8 @@ class DuplicateKeysValidator:
                         suggestion=f"Review the data and ensure keys {keys} are unique. "
                         f"Examples of duplicate key values: {duplicate_examples.to_dict('records')[:3]}. "
                         f"Consider adding more columns to the keys or using drop_duplicates configuration.",
-                        category=ValidationCategory.DATA,
-                        priority=ValidationPriority.CRITICAL,
+                        category=api.ValidationCategory.DATA,
+                        priority=api.ValidationPriority.CRITICAL,
                         auto_fixable=False,
                     )
                 )
@@ -608,7 +605,7 @@ class ForeignKeyIntegrityValidator:
         """Initialize validator with preview service."""
         self.preview_service = preview_service
 
-    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
+    async def validate(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[api.ValidationError]:
         """
         Check FK linking integrity by running normalization and collecting issues.
 
@@ -660,15 +657,15 @@ class ForeignKeyIntegrityValidator:
                     )
 
                 errors.append(
-                    ValidationError(
+                    api.ValidationError(
                         severity=severity,
                         entity=issue.get("local_entity", entity_name),
                         field="fks",
                         message=issue.get("message", "Foreign key integrity issue"),
                         code=code,
                         suggestion=suggestion,
-                        category=ValidationCategory.DATA,
-                        priority=ValidationPriority.HIGH if severity == "error" else ValidationPriority.MEDIUM,
+                        category=api.ValidationCategory.DATA,
+                        priority=api.ValidationPriority.HIGH if severity == "error" else api.ValidationPriority.MEDIUM,
                         auto_fixable=False,
                     )
                 )
@@ -697,7 +694,7 @@ class DataValidationService:
             ForeignKeyIntegrityValidator(preview_service),
         ]
 
-    async def validate_entity(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[ValidationError]:
+    async def validate_entity(self, project_name: str, entity_name: str, entity_cfg: dict[str, Any]) -> list[api.ValidationError]:
         """
         Run all data validators on an entity.
 
@@ -709,7 +706,7 @@ class DataValidationService:
         Returns:
             List of all validation errors found
         """
-        all_errors: list[ValidationError] = []
+        all_errors: list[api.ValidationError] = []
 
         # If warmup already produced this entity, reuse it to avoid re-normalization
         if self._warm_table_store and entity_name in self._warm_table_store:
@@ -744,13 +741,13 @@ class DataValidationService:
             if isinstance(result, Exception):
                 logger.error(f"Validator failed for {entity_name}: {result}")
                 all_errors.append(
-                    ValidationError(
+                    api.ValidationError(
                         severity="error",
                         entity=entity_name,
                         message=f"Data validation failed: {str(result)}",
                         code="VALIDATOR_ERROR",
-                        category=ValidationCategory.DATA,
-                        priority=ValidationPriority.LOW,
+                        category=api.ValidationCategory.DATA,
+                        priority=api.ValidationPriority.LOW,
                     )
                 )
             else:
@@ -758,7 +755,7 @@ class DataValidationService:
 
         return all_errors
 
-    async def validate_project(self, project_name: str, entity_names: list[str] | None = None) -> list[ValidationError]:
+    async def validate_project(self, project_name: str, entity_names: list[str] | None = None) -> list[api.ValidationError]:
         """
         Run data validators on multiple entities.
 
@@ -771,16 +768,16 @@ class DataValidationService:
         """
 
         project_service = ProjectService()
-        project: Project = project_service.load_project(project_name)
+        api_project: api.Project = project_service.load_project(project_name)
 
-        if not project:
+        if not api_project:
             return [
-                ValidationError(
+                api.ValidationError(
                     severity="error",
                     message=f"Project '{project_name}' not found",
                     code="CONFIG_NOT_FOUND",
-                    category=ValidationCategory.STRUCTURAL,
-                    priority=ValidationPriority.CRITICAL,
+                    category=api.ValidationCategory.STRUCTURAL,
+                    priority=api.ValidationPriority.CRITICAL,
                 )
             ]
         # FIXME: #223 Validation should happen on RESOLVED project, not raw project
