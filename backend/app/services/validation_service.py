@@ -7,7 +7,7 @@ from loguru import logger
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.project import Project
-from backend.app.models.validation import ValidationError, ValidationResult
+from backend.app.models.validation import DataValidationMode, ValidationError, ValidationResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
 from src.configuration.config import Config
@@ -39,7 +39,7 @@ class ValidationService:
         self,
         project_name: str,
         entity_names: list[str] | None = None,
-        use_full_data: bool = False,
+        validation_mode: DataValidationMode = DataValidationMode.SAMPLE,
     ) -> ValidationResult:
         """
         Run data-aware validation on project.
@@ -47,12 +47,13 @@ class ValidationService:
         Args:
             project_name: Project name
             entity_names: Optional list of entity names to validate (None = all)
-            use_full_data: If True, validate against full normalized dataset instead of preview samples
+            validation_mode: Validation mode (SAMPLE for preview data, COMPLETE for full normalization)
 
         Returns:
             ValidationResult with data validation errors and warnings
         """
-        logger.debug(f"Running data validation for project: {project_name} (full_data={use_full_data})")
+        use_full_data = validation_mode == DataValidationMode.COMPLETE
+        logger.debug(f"Running data validation for project: {project_name} (mode={validation_mode.value})")
 
         # Load and resolve project (convert directives to concrete values)
         project_service: ProjectService = get_project_service()
@@ -101,6 +102,7 @@ class ValidationService:
             info=info,
             error_count=len(errors),
             warning_count=len(warnings),
+            validation_mode=validation_mode,
         )
 
         logger.info(f"Data validation completed: {result.error_count} errors, {result.warning_count} warnings")

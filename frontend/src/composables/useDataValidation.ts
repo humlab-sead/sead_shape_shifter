@@ -72,9 +72,13 @@ export function useDataValidation() {
   /**
    * Run data validation on project
    */
-  async function validateData(projectName: string, entityNames?: string[]): Promise<ValidationResult | null> {
+  async function validateData(
+    projectName: string,
+    entityNames?: string[],
+    validationMode: 'sample' | 'complete' = 'sample'
+  ): Promise<ValidationResult | null> {
     // Check cache first
-    const cacheKey = `${projectName}:${entityNames?.join(',') || 'all'}`
+    const cacheKey = `${projectName}:${entityNames?.join(',') || 'all'}:${validationMode}`
     const cached = validationCache.get(cacheKey)
 
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -87,7 +91,10 @@ export function useDataValidation() {
     result.value = null
 
     try {
-      const params = entityNames && entityNames.length > 0 ? { entity_names: entityNames.join(',') } : {}
+      const params: Record<string, string> = { validation_mode: validationMode }
+      if (entityNames && entityNames.length > 0) {
+        params.entity_names = entityNames.join(',')
+      }
 
       const response = await apiClient.post<ValidationResult>(`/projects/${projectName}/validate/data`, null, {
         params,
