@@ -21,6 +21,44 @@
 - Decorate async tests with `@pytest.mark.asyncio` (Core) and use FastAPI `TestClient` for backend routes.
 - Import backend usages of Core with absolute paths only (e.g., `from src.model import ShapeShiftProject`).
 
+### Dependency Injection for Circular Imports ⭐
+
+**Use dependency injection via factory functions to avoid circular imports between services.**
+
+**Problem:**
+```python
+# ❌ WRONG: Module-level import causes circular dependency
+from backend.app.validators.data_validators import DataValidationService
+
+class ValidationService:
+    def validate_data(self):
+        validator = DataValidationService()  # Circular!
+```
+
+**Solution:**
+```python
+# ✅ CORRECT: Inject factory via constructor
+from typing import Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.app.validators.data_validators import DataValidationService
+
+class ValidationService:
+    def __init__(self, data_validator_factory: Callable[[], "DataValidationService"] | None = None):
+        self._data_validator_factory = data_validator_factory
+    
+    def validate_data(self):
+        if self._data_validator_factory:
+            validator = self._data_validator_factory()
+        else:
+            from backend.app.validators.data_validators import DataValidationService
+            validator = DataValidationService()  # Default factory
+```
+
+**Benefits:** Explicit dependencies, easy testing with mocks, no circular imports, flexible implementations.
+
+**When to use:** Services depending on each other, any circular dependency between backend modules.
+
 ### Layer Boundary Architecture (Awesome Rule) ⭐
 
 **Critical: Services must convert between API and Core layers using ProjectMapper.**
