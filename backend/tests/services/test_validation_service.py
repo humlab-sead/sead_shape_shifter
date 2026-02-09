@@ -318,18 +318,11 @@ class TestDataValidation:
     """Tests for data-aware validation that depends on preview and data validators."""
 
     @pytest.mark.asyncio
-    async def test_validate_project_data_groups_by_severity(self, monkeypatch: pytest.MonkeyPatch, reset_validation_singleton):
-        """Test data validation groups issues by severity and wires dependencies."""
+    async def test_validate_project_data_groups_by_severity(self, reset_validation_singleton):
+        """Test data validation groups issues by severity using dependency injection."""
         captured: dict[str, object] = {}
 
-        class DummyPreviewService:
-            def __init__(self, project_service: object) -> None:
-                captured["project_service"] = project_service
-
         class DummyDataValidationService:
-            def __init__(self, preview_service: object) -> None:
-                captured["preview_service"] = preview_service
-
             async def validate_project(self, project_name: str, entity_names: list[str] | None):
                 captured["args"] = (project_name, entity_names)
                 return [
@@ -338,19 +331,22 @@ class TestDataValidation:
                     ValidationError(severity="info", entity="c", field=None, message="info", code="I1"),
                 ]
 
-        monkeypatch.setattr(validation_service_module, "get_project_service", lambda: "config-service")
-        monkeypatch.setattr(validation_service_module, "ShapeShiftService", DummyPreviewService)
-        monkeypatch.setattr(validation_service_module, "DataValidationService", DummyDataValidationService)
+        # Create factory that returns our mock validator
+        def mock_validator_factory():
+            validator = DummyDataValidationService()
+            captured["validator"] = validator
+            return validator
 
-        result = await ValidationService().validate_project_data("cfg-name", ["entity1"])
+        # Inject the factory via constructor
+        service = ValidationService(data_validator_factory=mock_validator_factory)
+        result = await service.validate_project_data("cfg-name", ["entity1"])
 
         assert result.is_valid is False
         assert result.error_count == 1
         assert result.warning_count == 1
         assert len(result.info) == 1
         assert captured["args"] == ("cfg-name", ["entity1"])
-        assert captured["project_service"] == "config-service"
-        assert isinstance(captured["preview_service"], DummyPreviewService)
+        assert isinstance(captured["validator"], DummyDataValidationService)
 
     def test_get_validation_service_singleton(self, reset_validation_singleton):
         """Test get_validation_service returns a singleton instance."""
