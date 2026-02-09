@@ -6,6 +6,7 @@ import pytest
 import yaml
 
 from backend.app import models as dto
+from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
 from backend.app.models.shapeshift import PreviewResult
 from backend.app.services.reconciliation import ReconciliationQueryService, ReconciliationService
 from backend.app.services.reconciliation.resolvers import (
@@ -476,9 +477,6 @@ class TestReconciliationService:
     def test_save_reconciliation_config_writes_yaml(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test save writes config to YAML file."""
         config_file = tmp_path / "test-reconciliation.yml"
-
-        # Convert DTO to domain for save_catalog
-        from backend.app.mappers.reconciliation_mapper import ReconciliationMapper
 
         domain_catalog = ReconciliationMapper.registry_to_domain(catalog)
 
