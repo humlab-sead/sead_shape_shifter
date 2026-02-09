@@ -1,6 +1,6 @@
 """Validation service for project validation."""
 
-from typing import Any
+from typing import Any, Callable, TYPE_CHECKING
 
 from loguru import logger
 
@@ -9,32 +9,26 @@ from backend.app.models.project import Project
 from backend.app.models.validation import ValidationError, ValidationResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.shapeshift_service import ShapeShiftService
-from backend.app.validators.data_validators import DataValidationService
 from src.configuration.config import Config
 from src.model import ShapeShiftProject
 from src.specifications import CompositeProjectSpecification, SpecificationIssue
 
-
+if TYPE_CHECKING:
+    from backend.app.services.project_service import ProjectService
+    from backend.app.validators.data_validators import DataValidationService
+    
 class ValidationService:
     """Service for validating projects using existing specifications."""
 
-    def __init__(self) -> None:
-        """Initialize validation service."""
-        # Import here to avoid circular dependencies and ensure src is in path
-
-        # Get the project root (backend parent is project root)
-        # project_root = Path(__file__).parent.parent.parent.parent
-
-        # # Add both project root and src to path (for src.* imports within specifications.py)
-        # project_root_str = str(project_root)
-        # src_path = str(project_root / "src")
-
-        # if project_root_str not in sys.path:
-        #     sys.path.insert(0, project_root_str)
-        # if src_path not in sys.path:
-        #     sys.path.insert(0, src_path)
-
-        # Import after path is set
+    def __init__(self, data_validator_factory: Callable[[], "DataValidationService"] | None = None) -> None:
+        """
+        Initialize validation service.
+        
+        Args:
+            data_validator_factory: Optional factory function to create DataValidationService.
+                                   If None, uses default factory (lazy import to avoid circular dependency).
+        """
+        self._data_validator_factory = data_validator_factory
 
     async def validate_project_data(self, project_name: str, entity_names: list[str] | None = None) -> ValidationResult:
         """
@@ -47,12 +41,17 @@ class ValidationService:
         Returns:
             ValidationResult with data validation errors and warnings
         """
-
         logger.debug(f"Running data validation for project: {project_name}")
 
-        project_service: ProjectService = get_project_service()
-        shapeshift_service: ShapeShiftService = ShapeShiftService(project_service)
-        data_validator: DataValidationService = DataValidationService(shapeshift_service)
+        # Use injected factory or default factory
+        if self._data_validator_factory:
+            data_validator = self._data_validator_factory()
+        else:
+            # Default factory - import here to avoid circular dependency
+            from backend.app.validators.data_validators import DataValidationService
+            project_service: ProjectService = get_project_service()
+            shapeshift_service: ShapeShiftService = ShapeShiftService(project_service)
+            data_validator = DataValidationService(shapeshift_service)
 
         errors_list: list[ValidationError] = await data_validator.validate_project(project_name, entity_names)
 
