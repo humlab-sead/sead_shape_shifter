@@ -342,16 +342,27 @@ class TestDataValidationService:
         """Test that service validates all configured entities."""
         # Setup
         mock_preview_service.preview_entity.return_value = create_preview_result([{"id": 1, "name": "test"}])
+        mock_preview_service.preview_entities_batch = AsyncMock(return_value=None)
 
         service = DataValidationService(mock_preview_service)
 
-        with patch("backend.app.services.project_service.ProjectService") as mock_config_svc:
-            mock_config = Mock()
-            mock_config.entities = {
-                "entity1": {"columns": ["id"], "keys": ["id"], "foreign_keys": []},
-                "entity2": {"columns": ["name"], "keys": ["name"], "foreign_keys": []},
+        # Mock the entire chain: ProjectService -> Project -> ProjectMapper -> ShapeShiftProject
+        with patch("backend.app.validators.data_validators.ProjectService") as mock_project_svc_cls, \
+             patch("backend.app.validators.data_validators.ProjectMapper") as mock_mapper:
+            
+            # Mock API Project
+            mock_api_project = Mock()
+            mock_project_svc_cls.return_value.load_project.return_value = mock_api_project
+            
+            # Mock Core ShapeShiftProject with resolved entities
+            mock_core_project = Mock()
+            mock_core_project.cfg = {
+                "entities": {
+                    "entity1": {"columns": ["id"], "keys": ["id"], "foreign_keys": []},
+                    "entity2": {"columns": ["name"], "keys": ["name"], "foreign_keys": []},
+                }
             }
-            mock_config_svc.return_value.load_project.return_value = mock_config
+            mock_mapper.to_core.return_value = mock_core_project
 
             _ = await service.validate_project("test_project")
 
@@ -363,16 +374,27 @@ class TestDataValidationService:
         """Test that service can validate specific entities."""
         # Setup
         mock_preview_service.preview_entity.return_value = create_preview_result([{"id": 1}])
+        mock_preview_service.preview_entities_batch = AsyncMock(return_value=None)
 
         service = DataValidationService(mock_preview_service)
 
-        with patch("backend.app.services.project_service.ProjectService") as mock_config_svc:
-            mock_config = Mock()
-            mock_config.entities = {
-                "entity1": {"columns": ["id"], "keys": ["id"], "foreign_keys": []},
-                "entity2": {"columns": ["name"], "keys": ["name"], "foreign_keys": []},
+        # Mock the entire chain: ProjectService -> Project -> ProjectMapper -> ShapeShiftProject
+        with patch("backend.app.validators.data_validators.ProjectService") as mock_project_svc_cls, \
+             patch("backend.app.validators.data_validators.ProjectMapper") as mock_mapper:
+            
+            # Mock API Project
+            mock_api_project = Mock()
+            mock_project_svc_cls.return_value.load_project.return_value = mock_api_project
+            
+            # Mock Core ShapeShiftProject with resolved entities
+            mock_core_project = Mock()
+            mock_core_project.cfg = {
+                "entities": {
+                    "entity1": {"columns": ["id"], "keys": ["id"], "foreign_keys": []},
+                    "entity2": {"columns": ["name"], "keys": ["name"], "foreign_keys": []},
+                }
             }
-            mock_config_svc.return_value.load_project.return_value = mock_config
+            mock_mapper.to_core.return_value = mock_core_project
 
             # Execute - only validate entity1
             _ = await service.validate_project("test_project", ["entity1"])
