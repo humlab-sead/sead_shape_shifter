@@ -964,10 +964,11 @@ async function handleValidate() {
   }
 }
 
-async function handleDataValidate(project?: any) {
+async function handleDataValidate(config?: any) {
   try {
-    const entityNames = project?.entities
-    await validateData(projectName.value, entityNames)
+    const entityNames = config?.entities
+    const validationMode = config?.validationMode || 'sample'
+    await validateData(projectName.value, entityNames, validationMode)
     // Refresh task status after validation
     await taskStatusStore.refresh()
     successMessage.value = 'Data validation completed'
