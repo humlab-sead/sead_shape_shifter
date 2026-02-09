@@ -338,7 +338,7 @@ class TestDataValidation:
             return validator
 
         # Inject the factory via constructor
-        service = ValidationService(data_validator_factory=mock_validator_factory)
+        service = ValidationService(data_validator_factory=mock_validator_factory)  # type: ignore
         result = await service.validate_project_data("cfg-name", ["entity1"])
 
         assert result.is_valid is False
