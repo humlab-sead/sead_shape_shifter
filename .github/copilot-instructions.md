@@ -306,6 +306,147 @@ api_project.task_list.mark_completed(entity)  # AttributeError!
 - Put business logic in API models - keep them as DTOs
 - Skip mapper when needing domain logic - always convert properly
 
+### Pure Domain Validators (Awesome Pattern) ⭐
+
+**Critical: Validators are pure domain logic - they receive data, not fetch it.**
+
+**Why awesome:**
+- Validators are testable without mocking infrastructure (just pass DataFrames)
+- Can validate preview samples OR full normalized datasets
+- Reusable across Core, Backend, CLI, scripts without coupling
+- Single Responsibility: only validation logic, no data fetching
+- Backend orchestrator handles infrastructure concerns (data loading, API conversion)
+
+#### Architecture
+
+```
+Domain Layer (src/validators/)      ← Pure validation logic, no dependencies
+      ↓ ValidationIssue (domain)
+Backend Orchestrator (backend/app/validators/data_validation_orchestrator.py)
+      ↓ Fetch data (preview or full)
+      ↓ Call domain validators
+      ↓ Convert ValidationIssue → ValidationError (domain → API)
+Validation Service (backend/app/services/validation_service.py)
+      ↓ Coordinate validation types
+API Endpoints (backend/app/api/v1/endpoints/)
+```
+
+#### Domain Validator Pattern
+
+**Pure validators** - no infrastructure dependencies:
+```python
+# src/validators/data_validators.py
+from dataclasses import dataclass
+import pandas as pd
+
+@dataclass
+class ValidationIssue:
+    """Domain representation of a validation issue."""
+    severity: str  # "error", "warning", "info"
+    entity: str | None
+    field: str | None
+    message: str
+    code: str
+    suggestion: str | None = None
+
+class ColumnExistsValidator:
+    """Pure domain validator - receives data, returns issues."""
+    
+    @staticmethod
+    def validate(df: pd.DataFrame, configured_columns: list[str], entity_name: str) -> list[ValidationIssue]:
+        """Check configured columns exist - no external dependencies."""
+        missing = set(configured_columns) - set(df.columns)
+        return [
+            ValidationIssue(
+                severity="error",
+                entity=entity_name,
+                field="columns",
+                message=f"Column '{col}' not found in data",
+                code="COLUMN_NOT_FOUND",
+            )
+            for col in sorted(missing)
+        ]
+```
+
+**Backend orchestrator** - handles infrastructure:
+```python
+# backend/app/validators/data_validation_orchestrator.py
+class DataValidationOrchestrator:
+    """Orchestrates data fetching and validation."""
+    
+    def __init__(self, preview_service: ShapeShiftService, project_service: ProjectService):
+        """Inject infrastructure services."""
+        self.preview_service = preview_service
+        self.project_service = project_service
+    
+    async def validate_all_entities(
+        self,
+        project_name: str,
+        entity_names: list[str] | None = None,
+        use_full_data: bool = False,  # ⭐ Preview OR full dataset
+    ) -> list[api.ValidationError]:
+        """Fetch data and call pure validators."""
+        # 1. Load project and resolve directives
+        project = self.preview_service.project_service.load_project(project_name)
+        core_project = ProjectMapper.to_core(project)
+        
+        # 2. Fetch data (preview samples OR full normalized)
+        if use_full_data:
+            df = await self._fetch_full_data(project_name, entity_name)
+        else:
+            df = await self._fetch_preview_data(project_name, entity_name)
+        
+        # 3. Call pure domain validator
+        issues = ColumnExistsValidator.validate(df, columns, entity_name)
+        
+        # 4. Convert domain → API
+        return [self._to_api_error(issue) for issue in issues]
+```
+
+#### Key Principles
+
+**✅ Domain validators:**
+- Static methods receiving DataFrames + config
+- Return `ValidationIssue` (domain model)
+- No async (pure functions)
+- No service dependencies
+- Testable with mock DataFrames
+
+**❌ Never in domain validators:**
+- ShapeShiftService or preview service injection
+- Async data fetching
+- API model imports (ValidationError)
+- Environment variable resolution
+
+**✅ Backend orchestrator:**
+- Inject ShapeShiftService for data fetching
+- Support `use_full_data` parameter
+- Convert ValidationIssue → ValidationError
+- Handle exceptions and infrastructure errors
+
+**Testing pattern:**
+```python
+# Domain validator test - no mocking needed
+def test_column_exists_validator():
+    df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+    issues = ColumnExistsValidator.validate(df, ["a", "b", "missing"], "test")
+    assert len(issues) == 1
+    assert issues[0].code == "COLUMN_NOT_FOUND"
+
+# Orchestrator test - mock services
+@pytest.mark.asyncio
+async def test_orchestrator(mock_preview_service):
+    orchestrator = DataValidationOrchestrator(mock_preview_service, mock_project)
+    errors = await orchestrator.validate_all_entities("project", use_full_data=False)
+    # Verify data fetching and API conversion
+```
+
+**Benefits:**
+- Full dataset validation: Set `use_full_data=True` for post-normalization checks
+- Fast tests: Domain validators are synchronous, pure functions
+- Reusable: Use validators in CLI scripts, ingesters, backend
+- Clear SRP: Validators validate, orchestrators orchestrate
+
 ### Test Patterns
 ```python
 # Core tests - use decorator for config setup
