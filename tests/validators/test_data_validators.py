@@ -165,10 +165,10 @@ class TestColumnExistsValidator:
         # Should NOT report missing value_vars (FlSchn, okBefu, BestJa are excluded)
         assert len(issues) == 2
         assert all(issue.code == "COLUMN_NOT_FOUND" for issue in issues)
-        
+
         missing_column_names = {issue.message.split("'")[1] for issue in issues}
         assert missing_column_names == {"Projekt", "arbodat_code"}
-        
+
         # Verify value_vars are NOT in the error messages
         all_messages = " ".join(issue.message for issue in issues)
         assert "FlSchn" not in all_messages
