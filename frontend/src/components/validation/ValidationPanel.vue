@@ -30,6 +30,19 @@
             </v-btn>
           </template>
         </v-tooltip>
+        <v-tooltip text="Copy validation results to clipboard" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              size="small"
+              prepend-icon="mdi-content-copy"
+              :disabled="!validationResult || (errorCount === 0 && warningCount === 0)"
+              @click="copyToClipboard"
+            >
+              Copy
+            </v-btn>
+          </template>
+        </v-tooltip>
       </div>
     </v-card-title>
 
@@ -207,6 +220,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useNotification } from '@/composables/useNotification'
 import type { ValidationResult, ValidationError } from '@/types'
 import ValidationMessageList from './ValidationMessageList.vue'
 import ValidationSuggestion from './ValidationSuggestion.vue'
@@ -241,6 +255,8 @@ const emit = defineEmits<Emits>()
 const activeTab = ref('all')
 const showDataConfig = ref(false)
 const showSuggestions = ref(true)
+
+const { success, error } = useNotification()
 
 // Computed
 const errorCount = computed(() => props.validationResult?.error_count ?? 0)
@@ -310,5 +326,45 @@ function handleApplyFix(issue: ValidationError) {
 
 function handleApplyAll() {
   emit('apply-all-fixes')
+}
+
+async function copyToClipboard() {
+  if (!props.validationResult || allMessages.value.length === 0) {
+    return
+  }
+
+  try {
+    // Create tabular format with headers
+    const headers = ['Severity', 'Entity', 'Field', 'Category', 'Priority', 'Code', 'Message', 'Suggestion']
+    const separator = '\t'
+    const headerRow = headers.join(separator)
+
+    // Format each message as a row
+    const rows = allMessages.value.map((msg) => {
+      return [
+        msg.severity || '',
+        msg.entity || '',
+        msg.field || '',
+        msg.category || '',
+        msg.priority || '',
+        msg.code || '',
+        msg.message || '',
+        msg.suggestion || '',
+      ].join(separator)
+    })
+
+    // Combine header and rows
+    const tsvContent = [headerRow, ...rows].join('\n')
+
+    // Copy to clipboard
+    await navigator.clipboard.writeText(tsvContent)
+
+    success(
+      `Copied ${allMessages.value.length} validation ${allMessages.value.length === 1 ? 'issue' : 'issues'} to clipboard`
+    )
+  } catch (err) {
+    console.error('Failed to copy to clipboard:', err)
+    error('Failed to copy to clipboard')
+  }
 }
 </script>
