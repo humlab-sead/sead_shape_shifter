@@ -481,9 +481,9 @@ def test_link_foreign_key_avoids_duplicate_columns_when_public_id_in_remote_data
     """Test that linking doesn't create duplicate columns when remote entity has public_id as a data column."""
     # This simulates the case where a fixed entity has its public_id in the columns list
     # For example: master_dataset has public_id="master_dataset_id" AND a column "master_dataset_id"
-    
+
     from unittest.mock import MagicMock
-    
+
     project_cfg = {
         "entities": {
             "dataset": {
@@ -505,38 +505,42 @@ def test_link_foreign_key_avoids_duplicate_columns_when_public_id_in_remote_data
             },
         }
     }
-    
+
     project = ShapeShiftProject(cfg=project_cfg)
-    
+
     # Local entity with master_set_id from extra_columns
-    local_df = pd.DataFrame({
-        "system_id": [1, 2],
-        "name": ["Dataset A", "Dataset B"],
-        "master_set_id": [1, 1],
-    })
-    
+    local_df = pd.DataFrame(
+        {
+            "system_id": [1, 2],
+            "name": ["Dataset A", "Dataset B"],
+            "master_set_id": [1, 1],
+        }
+    )
+
     # Remote entity has both system_id AND master_dataset_id as a data column
-    remote_df = pd.DataFrame({
-        "system_id": [1],
-        "master_dataset_id": [1],
-        "master_name": ["Master Set 1"],
-    })
-    
+    remote_df = pd.DataFrame(
+        {
+            "system_id": [1],
+            "master_dataset_id": [1],
+            "master_name": ["Master Set 1"],
+        }
+    )
+
     fk_cfg = project.get_table("dataset").foreign_keys[0]
     table_store = {"dataset": local_df, "master_dataset": remote_df}
-    
+
     # Mock the validator
     mock_validator = MagicMock()
     mock_validator.merge_indicator_col = "_merge"
     mock_validator.validate_before_merge.return_value = mock_validator
     mock_validator.validate_merge_opts.return_value = {}
-    
+
     with patch("src.transforms.link.ForeignKeyConstraintValidator", return_value=mock_validator):
         linker = ForeignKeyLinker(project=project, table_store=table_store)
-        
+
         # This should not raise "ValueError: The column label 'master_dataset_id' is not unique"
         linked_df = linker.link_foreign_key(local_df, fk_cfg, remote_df)
-        
+
         # Verify the FK column was added
         assert "master_dataset_id" in linked_df.columns
         # Verify we have data from the local table

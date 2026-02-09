@@ -3,7 +3,7 @@
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from loguru import logger
 
@@ -19,9 +19,6 @@ from backend.app.utils.exceptions import BadRequestError, NotFoundError
 from src.model import ShapeShiftProject
 from src.reconciliation import model as core
 from src.reconciliation.source_strategy import ReconciliationSourceStrategy, SourceStrategyType
-
-if TYPE_CHECKING:
-    from backend.app.services.reconciliation.mapping_manager import EntityMappingManager
 
 
 class ReconciliationQueryService:

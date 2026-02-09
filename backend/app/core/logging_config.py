@@ -1,5 +1,6 @@
 """Logging configuration for the backend application."""
 
+import linecache
 import sys
 import traceback
 from pathlib import Path
@@ -58,7 +59,6 @@ def format_exception_with_filtered_frames(record: dict) -> str:
         frame = tb.tb_frame
         lines.append(f'  File "{frame.f_code.co_filename}", line {tb.tb_lineno}, in {frame.f_code.co_name}\n')
         # Add code line if available
-        import linecache
 
         line = linecache.getline(frame.f_code.co_filename, tb.tb_lineno, frame.f_globals).strip()
         if line:
