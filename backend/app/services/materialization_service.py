@@ -253,7 +253,7 @@ class MaterializationService:
             return UnmaterializationResult(success=True, entity_name=entity_name, unmaterialized_entities=unmaterialized_entities)
 
         except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"Failed to unmaterialize entity '{entity_name}': {e}")
+            logger.exception(f"Failed to unmaterialize entity '{entity_name}': {e}")
             return UnmaterializationResult(success=False, errors=[str(e)], entity_name=entity_name)
 
     def _find_materialized_dependents(self, core_project, table):
