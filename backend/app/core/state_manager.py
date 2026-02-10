@@ -304,6 +304,27 @@ class ApplicationStateManager:
             app_state.mark_saved(name)  # Freshly loaded is not dirty
             logger.info(f"Activated project '{name}' for editing")
 
+    def invalidate(self, name: str) -> None:
+        """
+        Invalidate (clear) a project from cache.
+        
+        Forces the next load_project() call to reload from disk.
+        Useful when the YAML file has been modified externally.
+        
+        Args:
+            name: Project name to invalidate
+        """
+        with contextlib.suppress(RuntimeError):
+            app_state: ApplicationState = get_app_state()
+            removed_project = app_state._active_projects.pop(name, None)
+            app_state._project_versions.pop(name, None)
+            app_state._project_dirty.pop(name, None)
+            
+            if removed_project:
+                logger.info(f"Invalidated project '{name}' from cache")
+            else:
+                logger.debug(f"Project '{name}' was not cached")
+
     def get_active_metadata(self) -> ProjectMetadata:
         with contextlib.suppress(RuntimeError):
 

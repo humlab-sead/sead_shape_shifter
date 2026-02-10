@@ -12,6 +12,17 @@
           <v-btn size="small" color="primary" :loading="loading" :disabled="!isModified" @click="handleSave">
             Save
           </v-btn>
+          <v-btn
+            size="small"
+            variant="outlined"
+            class="ml-2"
+            :loading="loading"
+            @click="handleRefresh"
+            title="Reload project from disk (force refresh cache)"
+          >
+            <v-icon start>mdi-refresh</v-icon>
+            Refresh
+          </v-btn>
           <v-btn size="small" variant="text" class="ml-2" @click="handleClose"> Close Session </v-btn>
         </v-col>
       </v-row>
@@ -157,6 +168,29 @@ async function handleSave() {
         await projectStore.selectProject(projectName.value!)
       }
     }
+  }
+}
+
+async function handleRefresh() {
+  if (!projectName.value) return
+
+  // Warn if there are unsaved changes
+  if (isModified.value) {
+    const shouldContinue = confirm(
+      'You have unsaved changes that will be lost. ' + 'Are you sure you want to reload from disk?'
+    )
+    if (!shouldContinue) {
+      return
+    }
+  }
+
+  try {
+    await projectStore.refreshProject(projectName.value)
+    console.log('Project refreshed from disk')
+  } catch (err: any) {
+    console.error('Failed to refresh project:', err)
+    const message = err.response?.data?.detail || err.message || 'Unknown error'
+    showError(`Failed to refresh project: ${message}`)
   }
 }
 

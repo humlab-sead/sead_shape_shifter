@@ -107,6 +107,27 @@ async def get_project(name: str) -> Project:
     return project
 
 
+@router.post("/projects/{name}/refresh", response_model=Project)
+@handle_endpoint_errors
+async def refresh_project(name: str) -> Project:
+    """
+    Force reload a project from disk, invalidating the server-side cache.
+    
+    Useful when the YAML file has been modified externally (manual edit, git pull, etc.)
+    and you need to reload the changes without restarting the server.
+    
+    Args:
+        name: Project name (without .yml extension)
+    
+    Returns:
+        Reloaded project with fresh data from disk
+    """
+    project_service: ProjectService = get_project_service()
+    project: Project = project_service.load_project(name, force_reload=True)
+    logger.info(f"Force reloaded project '{name}' from disk")
+    return project
+
+
 @router.post("/projects", response_model=Project, status_code=status.HTTP_201_CREATED)
 @handle_endpoint_errors
 async def create_project(request: ProjectCreateRequest) -> Project:

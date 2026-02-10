@@ -83,7 +83,7 @@ class ProjectService:
         logger.debug(f"Found {len(configs)} project(s) satisfying specification")
         return configs
 
-    def load_project(self, name: str) -> Project:
+    def load_project(self, name: str, force_reload: bool = False) -> Project:
         """
         Load project by name.
 
@@ -93,6 +93,7 @@ class ProjectService:
 
         Args:
             name: Project name (without .yml extension)
+            force_reload: If True, invalidate cache and reload from disk (default: False)
 
         Returns:
             Project object
@@ -101,6 +102,11 @@ class ProjectService:
             ResourceNotFoundError: If project not found
             ConfigurationError: If project is invalid
         """
+        # Force reload: invalidate cache before loading
+        if force_reload:
+            self.state.invalidate(name)
+            logger.info(f"Force reload requested for '{name}', cache invalidated")
+        
         # Check ApplicationState cache first (actively edited projects)
         cached_project: Project | None = self.state.get(name)
         if cached_project:
