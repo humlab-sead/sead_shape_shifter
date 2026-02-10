@@ -78,6 +78,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSession } from '@/composables'
+import { useNotification } from '@/composables/useNotification'
 import { useProjectStore } from '@/stores'
 
 const projectStore = useProjectStore()
@@ -106,8 +107,10 @@ const projectNames = computed(() => {
 onMounted(async () => {
   try {
     await projectStore.fetchProjects()
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to fetch projects:', err)
+    const message = err.response?.data?.detail || err.message || 'Unknown error'
+    showError(`Failed to load projects: ${message}`)
   }
 })
 

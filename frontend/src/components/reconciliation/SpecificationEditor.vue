@@ -318,6 +318,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { useProjectStore } from '@/stores/project'
+import { useNotification } from '@/composables/useNotification'
 import type {
   EntityResolutionListItem,
   EntityResolutionSet,
@@ -340,6 +341,8 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+const { success, error: showError } = useNotification()
 
 const reconciliationStore = useReconciliationStore()
 const projectStore = useProjectStore()
@@ -573,8 +576,11 @@ async function save() {
 
     emit('saved')
     resetForm()
-  } catch (error) {
-    console.error('Failed to save specification:', error)
+    success('Specification saved successfully')
+  } catch (err: any) {
+    console.error('Failed to save specification:', err)
+    const message = err.response?.data?.detail || err.message || 'Unknown error'
+    showError(`Failed to save specification: ${message}`)
   } finally {
     saving.value = false
   }

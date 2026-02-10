@@ -264,3 +264,4 @@ _project_contact:
   data_source: arbodat_data
   query: "select distinct [Projekt], [ArchAusg], [ArchBear], [BotBear] from [Projekte] ;\n"
 
+### FIXME: #228 Silent failures occurs when fetching Excel file metadata

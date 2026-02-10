@@ -243,6 +243,7 @@ import { ref, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useReconciliationStore } from '@/stores/reconciliation'
 import { useProjectStore } from '@/stores/project'
+import { useNotification } from '@/composables/useNotification'
 import type { EntityResolutionListItem } from '@/types/reconciliation'
 import SpecificationEditor from './SpecificationEditor.vue'
 
@@ -258,6 +259,8 @@ const emit = defineEmits<{
 
 const reconciliationStore = useReconciliationStore()
 const { specifications, loadingSpecs, specsError } = storeToRefs(reconciliationStore)
+
+const { success, error: showError } = useNotification()
 const projectStore = useProjectStore()
 
 // State
@@ -322,8 +325,11 @@ async function performDelete() {
     )
     deleteDialog.value = false
     specToDelete.value = null
-  } catch (error) {
-    console.error('Failed to delete specification:', error)
+    success('Specification deleted successfully')
+  } catch (err: any) {
+    console.error('Failed to delete specification:', err)
+    const message = err.response?.data?.detail || err.message || 'Unknown error'
+    showError(`Failed to delete specification: ${message}`)
   } finally {
     deletingSpec.value = false
   }
