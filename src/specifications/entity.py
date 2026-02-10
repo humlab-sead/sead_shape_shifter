@@ -498,15 +498,14 @@ class MaterializationSpecification(ProjectSpecification):
                 field="type",
             )
 
-        # Must have values or data_file
+        # Must have values (inline or @file: directive)
         has_values = bool(entity_cfg.get("values"))
-        has_data_file = bool(materialized_cfg.get("data_file"))
 
-        if not has_values and not has_data_file:
+        if not has_values:
             self.add_error(
-                "Materialized entity must have either 'values' or 'materialized.data_file'",
+                "Materialized entity must have 'values' field (inline data or @file: directive)",
                 entity=entity_name,
-                field="materialized",
+                field="values",
             )
 
         # Must have source_state (snapshot of original config)
@@ -518,13 +517,12 @@ class MaterializationSpecification(ProjectSpecification):
             )
 
         # Validate required metadata fields
-        for field in ["materialized_at", "materialized_by"]:
-            if not materialized_cfg.get(field):
-                self.add_warning(
-                    f"Materialized entity should have '{field}' metadata",
-                    entity=entity_name,
-                    field=f"materialized.{field}",
-                )
+        if not materialized_cfg.get("materialized_at"):
+            self.add_warning(
+                "Materialized entity should have 'materialized_at' metadata",
+                entity=entity_name,
+                field="materialized.materialized_at",
+            )
 
         return not self.has_errors()
 

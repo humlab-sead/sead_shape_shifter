@@ -261,16 +261,6 @@ class MaterializationConfig:
         """Get materialization timestamp (ISO format)."""
         return self.data.get("materialized_at")
 
-    @property
-    def materialized_by(self) -> str | None:
-        """Get user email who materialized the entity."""
-        return self.data.get("materialized_by")
-
-    @property
-    def data_file(self) -> str | None:
-        """Get relative path to materialized data file (parquet/csv)."""
-        return self.data.get("data_file")
-
 
 class TableConfig:
     """Configuration for a database table. Read-Only. Wraps table setting from entities config."""
