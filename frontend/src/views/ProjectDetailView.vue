@@ -40,6 +40,10 @@
               Backups
               <v-tooltip activator="parent">View and restore previous versions of this project</v-tooltip>
             </v-btn>
+            <v-btn variant="outlined" prepend-icon="mdi-refresh" @click="handleRefresh">
+              Refresh
+              <v-tooltip activator="parent">Reload project from disk (force refresh cache)</v-tooltip>
+            </v-btn>
             <v-btn variant="outlined" color="success" prepend-icon="mdi-content-save" :disabled="!hasUnsavedChanges" @click="handleSave">
               Save Changes
               <v-tooltip activator="parent">Save changes to the project configuration</v-tooltip>
@@ -610,6 +614,7 @@ import { useProjects, useEntities, useValidation, useDependencies, useCytoscape 
 import { useDataValidation } from '@/composables/useDataValidation'
 import { useSession } from '@/composables/useSession'
 import { useEntityStore } from '@/stores/entity'
+import { useProjectStore } from '@/stores'
 import { useTaskStatusStore } from '@/stores/taskStatus'
 import type { CustomGraphLayout } from '@/types'
 import type { TaskFilter } from '@/components/dependencies/TaskFilterDropdown.vue'
@@ -805,6 +810,7 @@ const isSelectedNodeDataSource = computed(() => {
 
 // Cytoscape integration
 const entityStore = useEntityStore()
+const projectStore = useProjectStore()
 const taskStatusStore = useTaskStatusStore()
 
 // Task completion stats
@@ -1069,7 +1075,14 @@ async function handleSave() {
 async function handleRefresh() {
   clearError()
   if (projectName.value) {
-    await select(projectName.value)
+    try {
+      await projectStore.refreshProject(projectName.value)
+      successMessage.value = 'Project refreshed from disk'
+      showSuccessSnackbar.value = true
+    } catch (err: any) {
+      // Error will be shown from projectStore.error
+      console.error('Failed to refresh project:', err)
+    }
   }
 }
 
