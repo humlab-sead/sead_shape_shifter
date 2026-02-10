@@ -6,7 +6,6 @@ import { apiClient } from './client'
 
 export interface MaterializeRequest {
   storage_format: 'parquet' | 'csv' | 'inline'
-  user_email?: string | null
 }
 
 export interface MaterializationResult {

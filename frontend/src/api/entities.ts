@@ -8,8 +8,6 @@ export interface MaterializedMetadata {
   enabled: boolean
   source_state?: Record<string, unknown>
   materialized_at?: string
-  materialized_by?: string
-  data_file?: string
 }
 
 export interface EntityResponse {
