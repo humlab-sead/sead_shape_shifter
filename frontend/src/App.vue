@@ -245,6 +245,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
 import { useSettings } from '@/composables/useSettings'
 import { useNotification } from '@/composables/useNotification'
+import { useProjectStore } from '@/stores'
 import ContextHelp from '@/components/ContextHelp.vue'
 import LogViewerOverlay from '@/components/LogViewerOverlay.vue'
 
@@ -252,7 +253,8 @@ const router = useRouter()
 const route = useRoute()
 const theme = useTheme()
 const settings = useSettings()
-const { snackbar } = useNotification()
+const { snackbar, success, error } = useNotification()
+const projectStore = useProjectStore()
 
 const drawer = ref(true)
 const rail = ref(false)
@@ -343,8 +345,20 @@ function handleNewProject() {
   router.push('/projects')
 }
 
-function handleRefresh() {
-  window.location.reload()
+async function handleRefresh() {
+  // If we're viewing a specific project, refresh it from disk
+  if (currentProject.value) {
+    try {
+      await projectStore.refreshProject(currentProject.value)
+      success(`Project '${currentProject.value}' refreshed from disk`)
+    } catch (err: any) {
+      const message = err.response?.data?.detail || err.message || 'Unknown error'
+      error(`Failed to refresh project: ${message}`)
+    }
+  } else {
+    // Otherwise, reload the entire page
+    window.location.reload()
+  }
 }
 
 // Sidebar resize functionality
