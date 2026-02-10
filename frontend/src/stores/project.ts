@@ -66,6 +66,22 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  async function refreshProject(name: string) {
+    loading.value = true
+    error.value = null
+    try {
+      // Force reload from disk (invalidates server-side cache)
+      selectedProject.value = await api.projects.refresh(name)
+      hasUnsavedChanges.value = false
+      return selectedProject.value
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to refresh project'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function createProject(data: ProjectCreateRequest) {
     loading.value = true
     error.value = null
@@ -404,6 +420,7 @@ export const useProjectStore = defineStore('project', () => {
     // Actions
     fetchProjects,
     selectProject,
+    refreshProject,
     createProject,
     updateProject,
     updateMetadata,

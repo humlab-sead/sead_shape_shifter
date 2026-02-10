@@ -57,6 +57,18 @@ export const projectsApi = {
   },
 
   /**
+   * Force reload project from disk, invalidating server-side cache
+   * 
+   * Useful when YAML file has been modified externally (manual edit, git pull, etc.)
+   */
+  refresh: async (name: string): Promise<Project> => {
+    return apiRequest<Project>({
+      method: 'POST',
+      url: `/projects/${name}/refresh`,
+    })
+  },
+
+  /**
    * Create new project
    */
   create: async (data: ProjectCreateRequest): Promise<Project> => {

@@ -265,3 +265,5 @@ _project_contact:
   query: "select distinct [Projekt], [ArchAusg], [ArchBear], [BotBear] from [Projekte] ;\n"
 
 ### FIXME: #228 Silent failures occurs when fetching Excel file metadata
+
+### TODO: #229 Add project refresh feature for reloading project from disk
