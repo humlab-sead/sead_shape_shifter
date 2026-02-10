@@ -97,6 +97,8 @@ const {
   checkConcurrentEditors,
 } = useSession()
 
+const { error: showError } = useNotification()
+
 const selectedProjectName = ref<string | null>(null)
 
 const projectNames = computed(() => {
