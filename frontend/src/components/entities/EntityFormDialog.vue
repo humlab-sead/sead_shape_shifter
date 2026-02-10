@@ -462,6 +462,7 @@
  */
 import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useEntities, useSuggestions, useEntityPreview, useSettings } from '@/composables'
+import { useNotification } from '@/composables/useNotification'
 import { useProjectStore, useEntityStore } from '@/stores'
 import type { EntityResponse } from '@/api/entities'
 import type { ForeignKeySuggestion, DependencySuggestion } from '@/composables'
@@ -513,6 +514,8 @@ const { getSuggestionsForEntity, loading: suggestionsLoading } = useSuggestions(
 
 const appSettings = useSettings()
 const fkSuggestionsEnabled = computed(() => appSettings.enableFkSuggestions.value)
+
+const { error: showError } = useNotification()
 
 const projectStore = useProjectStore()
 
@@ -936,8 +939,10 @@ async function fetchSheetOptions() {
     if (formData.value.options.sheet_name) {
       await fetchColumns()
     }
-  } catch (error) {
-    console.error('Failed to fetch sheet names', error)
+  } catch (err: any) {
+    console.error('Failed to fetch sheet names', err)
+    const message = err.response?.data?.detail || err.message || 'Unknown error'
+    showError(`Failed to load Excel metadata: ${message}`)
   } finally {
     sheetOptionsLoading.value = false
   }
@@ -961,8 +966,10 @@ async function fetchColumns() {
     if (columnsOptions.value.length > 0) {
       formData.value.columns = [...columnsOptions.value]
     }
-  } catch (error) {
-    console.error('Failed to fetch columns', error)
+  } catch (err: any) {
+    console.error('Failed to fetch columns', err)
+    const message = err.response?.data?.detail || err.message || 'Unknown error'
+    showError(`Failed to load Excel columns: ${message}`)
   } finally {
     columnsLoading.value = false
   }
