@@ -910,8 +910,10 @@ async function fetchProjectFiles() {
       const files = await response.json()
       availableProjectFiles.value = files.map((f: any) => f.path)
     }
-  } catch (error) {
-    console.error('Failed to fetch project files:', error)
+  } catch (err: any) {
+    console.error('Failed to fetch project files:', err)
+    const message = err.message || 'Unknown error'
+    showError(`Failed to load available files: ${message}`)
   } finally {
     filesLoading.value = false
   }
@@ -1460,7 +1462,11 @@ function handleMaterialized() {
         formData.value = buildFormDataFromEntity(freshEntity)
         yamlContent.value = formDataToYaml()
       })
-      .catch(err => console.error('Failed to reload after materialization:', err))
+      .catch(err => {
+        console.error('Failed to reload after materialization:', err)
+        const message = err.response?.data?.detail || err.message || 'Unknown error'
+        showError(`Failed to reload entity after materialization: ${message}`)
+      })
       .finally(() => loading.value = false)
   }
 
@@ -1481,7 +1487,11 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
         formData.value = buildFormDataFromEntity(freshEntity)
         yamlContent.value = formDataToYaml()
       })
-      .catch(err => console.error('Failed to reload after unmaterialization:', err))
+      .catch(err => {
+        console.error('Failed to reload after unmaterialization:', err)
+        const message = err.response?.data?.detail || err.message || 'Unknown error'
+        showError(`Failed to reload entity after unmaterialization: ${message}`)
+      })
       .finally(() => loading.value = false)
   }
 
