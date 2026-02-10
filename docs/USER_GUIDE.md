@@ -3,16 +3,12 @@
 ## Table of Contents
 
 1. [Introduction](#1-introduction)
-2. [Getting Started](#2-getting-started)
-3. [Working with Projects](#3-working-with-configurations)
-4. [Managing Entities](#4-managing-entities)
-5. [Validation](#5-validation)
-6. [Auto-Fix Features](#6-auto-fix-features)
-7. [Execute Workflow](#7-execute-workflow)
-8. [Quick Wins & Performance Features](#8-quick-wins--performance-features)
-9. [Tips & Best Practices](#9-tips--best-practices)
-10. [Troubleshooting](#10-troubleshooting)
-11. [FAQ](#11-faq)
+2. [Glossary](#2-glossary)
+3. [Interface Overview](#3-interface-overview)
+4. [Core Workflow](#4-core-workflow)
+5. [Working with Entities](#5-working-with-entities)
+6. [Validation](#6-validation)
+7. [Execute](#7-execute)
 
 ---
 
@@ -20,590 +16,839 @@
 
 ### What is Shape Shifter?
 
-Shape Shifter is a declarative data transformation framework that uses YAML configurations to harmonize diverse data sources into target schemas. The Project Editor provides a visual interface for creating and managing these transformation configurations.
+Shape Shifter is a declarative data transformation framework that transforms diverse data sources into standardized target schemas using YAML configurations. The Project Editor provides a visual interface for creating and managing these transformations.
 
-### Who Should Use This Guide?
+### Core Workflow
 
-This guide is for:
-- **Domain Data Managers** - Managing entitys
-- **Data Engineers** - Creating complex transformations
-- **Developers** - Integrating transformations into workflows
+The typical workflow has four main steps:
+
+1. **Create/Open Project** - Start with a project configuration
+2. **Configure Entities** - Define your data entities and relationships
+3. **Validate** - Check configuration and data integrity
+4. **Execute** - Run transformations and export results
+
+### Who Uses Shape Shifter?
+
+- **Data Managers** - Configure data entity mappings
+- **Data Engineers** - Build complex transformation pipelines
+- **Developers** - Integrate transformations into data workflows
 
 ### Key Features
 
-- **Visual Project Editor** - Monaco Editor for YAML editing
-- **Entity Tree Navigation** - Browse entities and dependencies
-- **Real-Time Validation** - Immediate feedback on errors
-- **Auto-Fix Capabilities** - Intelligent error resolution
-- **Data Preview** - See transformation results
-- **Performance Optimizations** - Fast, responsive interface
-- **Three-Tier Identity System** - Clear separation of local, source, and target identities
-
-### What's New: Three-Tier Identity System
-
-**Important Update:** Shape Shifter now uses a three-tier identity system for clearer entity identification:
-
-1. **System ID** (`system_id`) - Auto-managed local identity
-   - Always uses column name `system_id`
-   - Auto-incremented (1, 2, 3...)
-   - Scoped to your project only
-   - Read-only, cannot be changed
-
-2. **Business Keys** (`keys`) - Source domain identifiers
-   - Natural keys from your source data
-   - Used for deduplication and reconciliation
-   - Multi-column support for composite keys
-   - Example: `[site_code, year]` or `[sample_name]`
-
-3. **Public ID** (`public_id`) - Target system primary key
-   - Defines the column name for target database PK
-   - Used to name foreign key columns in child entities
-   - Must end with `_id` suffix
-   - Required field with validation
-   - Example: `site_id`, `sample_type_id`
-
-**Migration Note:** Legacy configurations using `surrogate_id` are automatically migrated to `public_id`. No manual changes required.
+- **Visual Editor** - Monaco-based YAML editing with syntax highlighting
+- **Entity Tree** - Visual navigation of entity dependencies
+- **Real-Time Validation** - Immediate feedback on configuration errors
+- **Data Validation** - Validate against actual data sources (Sample or Complete mode)
+- **Execution Pipeline** - Export to multiple formats (Excel, CSV, databases)
 
 ---
 
-## 2. Getting Started
+## 2. Glossary
 
-### System Requirements
+### Core Concepts
 
-**Browser:**
-- Chrome 120+ (recommended)
-- Firefox 115+
-- Safari 16+
-- Edge 120+
+**Project**
+: A YAML configuration file defining all entities, data sources, and transformations for a data harmonization workflow.
 
-**Hardware:**
-- Modern CPU (dual-core minimum)
-- 4GB RAM minimum
-- 1280x720 display minimum (1920x1080 recommended)
+**Entity**
+: A logical data table in your transformation pipeline. Can be derived from SQL queries, CSV files, Excel sheets, or other entities.
 
-### Launching the Editor
+**Data Source**
+: A connection configuration to a database (PostgreSQL, SQLite, MS Access) or file that provides source data.
 
-1. Start the backend server:
-   ```bash
-   cd backend
-   uv run uvicorn app.main:app --reload
-   ```
+**Dependency**
+: Relationship between entities where one entity (child) relies on another (parent) for data or foreign key relationships.
 
-2. Start the frontend:
-   ```bash
-   cd frontend
-   npm run dev
-   ```
+### Identity System
 
-3. Open your browser to `http://localhost:5173`
+Shape Shifter uses a three-tier identity system to separate concerns:
 
-### Interface Overview
+**System ID** (`system_id`)
+: Auto-managed local sequential identifier (1, 2, 3...). Always named `system_id`. Used internally by Shape Shifter for tracking and FK relationships. Read-only.
+
+**Business Keys** (`keys`)
+: Natural identifiers from your source data (e.g., `[site_code, year]`, `[sample_name]`). Used for deduplication and matching records across data sources.
+
+**Public ID** (`public_id`)
+: Target system primary key column name (e.g., `site_id`, `sample_type_id`). Must end with `_id`. Defines the FK column names in child entities. Required for entities with children or used in mappings.
+
+### Relationships
+
+**Foreign Key**
+: Relationship between two entities where one entity references another. Defined using `foreign_keys` section with join columns and constraints.
+
+**Cardinality**
+: The relationship multiplicity between entities:
+- `one_to_one`: Each record matches exactly one record
+- `many_to_one`: Multiple child records reference one parent record  
+- `one_to_many`: One parent record has multiple child records
+
+**Join Type**
+: How entities are merged:
+- `inner`: Keep only matching records  
+- `left`: Keep all child records, match parent where available
+- `outer`: Keep all records from both entities
+- `cross`: Cartesian product
+
+### Transformations
+
+**Unnest (Melt)**
+: Transform data from wide format (many columns) to long format (rows). Uses pandas `melt()` operation.
+
+**ID Variables** (`id_vars`)
+: Columns that stay unchanged during unnest. These become identifier columns in the long format.
+
+**Value Variables** (`value_vars`)
+: Columns that get "melted" into rows during unnest. Each value_var becomes a row in the output.
+
+**Variable Name** (`var_name`)
+: Column name for the attribute column in unnested output (e.g., "measurement_type").
+
+**Value Name** (`value_name`)
+: Column name for the value column in unnested output (e.g., "measurement_value").
+
+**Example:**
+```yaml
+# Wide format (before unnest):
+id | name  | height | weight | age
+1  | John  | 180    | 75     | 30
+
+# Unnest configuration:
+unnest:
+  id_vars: [id, name]
+  value_vars: [height, weight, age]
+  var_name: measurement_type
+  value_name: measurement_value
+
+# Long format (after unnest):
+id | name  | measurement_type | measurement_value
+1  | John  | height          | 180
+1  | John  | weight          | 75
+1  | John  | age             | 30
+```
+
+### Validation
+
+**Structural Validation**
+: Checks YAML syntax, entity definitions, references, and dependency structure. Does not access data sources.
+
+**Data Validation**
+: Validates against actual data from sources. Two modes:
+- **Sample Mode**: Fast validation using preview data (first 1000 rows)
+- **Complete Mode**: Comprehensive validation using full normalization pipeline
+
+**Validation Issue**
+: A problem found during validation, categorized by severity:
+- **Error** (🔴): Must fix before execution
+- **Warning** (⚠️): Should review, may cause issues
+- **Info** (ℹ️): Optional improvements or suggestions
+
+---
+
+## 3. Interface Overview
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  Project Editor                      [Save] [Validate]│
+│  Shape Shifter                   [Save] [Validate] [▶]   │
 ├─────────────┬────────────────────────┬────────────────────┤
 │             │                        │                    │
 │  Entity     │   Monaco Editor        │  Validation        │
-│  Tree       │   (YAML)               │  Panel             │
+│  Tree       │   (YAML)               │  Results           │
 │             │                        │                    │
 │  • entity_1 │  entities:             │  ✓ No errors       │
 │  • entity_2 │    entity_1:           │                    │
-│    - entity_3│      type: entity       │  📋 Properties     │
-│             │      columns: [...]    │                    │
+│   - entity_3│      type: entity      │  Structural ✓      │
+│             │      columns: [...]    │  Data ✓            │
 │             │                        │                    │
 └─────────────┴────────────────────────┴────────────────────┘
 ```
 
-**Three Main Panels:**
+### Three Main Panels
 
-1. **Left: Entity Tree** - Navigate entities and dependencies
-2. **Center: Monaco Editor** - Edit YAML configuration
-3. **Right: Validation/Properties** - View errors and entity details
+**Left: Entity Tree**
+- Navigate entity hierarchy
+- View dependencies (children indented under parents)
+- Click entity to jump to YAML definition
+- Expand/collapse dependency trees
 
-### First Steps
+**Center: Monaco Editor**
+- Edit YAML configuration
+- Syntax highlighting and validation
+- Auto-completion (`Ctrl+Space`)
+- Find/Replace (`Ctrl+F` / `Ctrl+H`)
 
-1. **Open a Project**
-   - Click "Open Project" in the toolbar
-   - Select from available configurations
-   - Project loads into editor
-
-2. **Explore the Entity Tree**
-   - Left panel shows all entities
-   - Click entity to jump to its definition
-   - Expand/collapse dependency trees
-
-3. **Run Validation**
-   - Click "Validate All" button
-   - Review results in right panel
-   - Fix any errors found
+**Right: Validation Panel**
+- View validation results
+- Filter by severity or entity
+- Click errors for details
+- Monitor validation status
 
 ---
 
-## 3. Working with Projects
+## 4. Core Workflow
 
-### Opening Projects
+---
 
-**Method 1: Project Selector**
-1. Click dropdown in toolbar
+## 4. Core Workflow
+
+### Step 1: Open or Create Project
+
+**Open Existing Project:**
+1. Click project dropdown in toolbar
 2. Select configuration name
-3. Project loads automatically
+3. Project loads into editor
+4. Entity tree populates with entities
 
-**Method 2: Recent Files**
-1. Recently opened configs appear at top
-2. Click to reopen instantly
-3. Access last 5 configurations quickly
+**Create New Project:**
+1. Click "New Project" button
+2. Enter project name
+3. Click "Create"
+4. Empty project opens in editor
 
-### Creating New Projects
+**Project File Location:**
+- Projects stored in configured directory (typically `projects/`)
+- Format: `project_name.yml`
+- YAML syntax with specific structure
+- Automatic backups created on save
 
-1. Click "New Project"
-2. Enter configuration name
-3. Choose template (optional):
-   - Empty configuration
-   - Basic entity setup
-   - From existing config
-4. Click "Create"
-5. Editor opens with template
+### Step 2: Configure Entities
 
-### Editing YAML
+#### Understanding Entity Structure
 
-The Monaco Editor provides:
+Every entity has these key properties:
 
-**Syntax Highlighting:**
-- Keywords in blue
-- Strings in green
-- Numbers in orange
-- Comments in gray
+```yaml
+entity_name:
+  # Identity (three-tier system)
+  system_id: system_id           # Auto-managed (always system_id)
+  keys: [business_key1, key2]    # Source identifiers
+  public_id: entity_name_id      # Target PK name (required)
+  
+  # Data source
+  type: entity | sql | csv | xlsx | fixed
+  source: parent_entity          # For derived entities
+  columns: [col1, col2, col3]    # Columns to extract
+  
+  # Relationships (optional)
+  foreign_keys: [...]            # FK to other entities
+  depends_on: [other_entity]     # Processing dependencies
+  
+  # Transformations (optional)
+  unnest: {...}                  # Wide-to-long transformation
+  filters: [...]                 # Post-load data filters
+```
 
-**Auto-Completion:**
-- Start typing entity name
-- Press `Ctrl+Space` for suggestions
-- Select from dropdown
-- Press `Tab` to insert
+#### Entity Types
 
-**Validation:**
-- Red underlines for syntax errors
-- Yellow underlines for warnings
-- Hover for error details
-- Click to see fix suggestions
+**Derived Entity** (from another entity):
+```yaml
+sample:
+  type: entity
+  source: raw_sample_data
+  columns: [sample_id, site_id, depth]
+  public_id: sample_id
+  keys: [sample_id]
+```
 
-**Keyboard Shortcuts:**
-- `Ctrl/Cmd + S` - Save configuration
-- `Ctrl/Cmd + F` - Find in file
-- `Ctrl/Cmd + H` - Find and replace
-- `Ctrl/Cmd + Z` - Undo
-- `Ctrl/Cmd + Shift + Z` - Redo
-- `Ctrl/Cmd + /` - Toggle comment
-- `Ctrl/Cmd + D` - Duplicate line
-- `Alt + Up/Down` - Move line up/down
+**SQL Entity** (from database):
+```yaml
+species:
+  type: sql
+  data_source: postgres_db
+  query: "SELECT species_id, name FROM species"
+  public_id: species_id
+  keys: [name]
+```
 
-### Saving Projects
+**CSV Entity**:
+```yaml
+measurements:
+  type: csv
+  options:
+    filename: projects/measurements.csv
+    sep: ","
+    encoding: utf-8
+  columns: [id, value, unit]
+  public_id: measurement_id
+  keys: [id]
+```
 
-**Manual Save:**
-1. Make your changes
-2. Click "Save" button
-3. Success message confirms save
-4. Backup created automatically
+**Excel Entity**:
+```yaml
+locations:
+  type: xlsx
+  options:
+    filename: projects/locations.xlsx
+    sheet_name: Sheet1
+  columns: [loc_id, name, latitude, longitude]
+  public_id: location_id
+  keys: [name]
+```
 
-**Auto-Save:**
-- Saves after 30 seconds of inactivity
-- Indicated by "Auto-saved" message
-- Can be disabled in settings
+**Fixed Entity** (static data):
+```yaml
+sample_types:
+  type: fixed
+  values:
+    - [1, "Soil"]
+    - [2, "Water"]
+    - [3, "Sediment"]
+  columns: [id, type_name]
+  public_id: sample_type_id
+  keys: [type_name]
+```
 
-**Save Indicators:**
-- Asterisk (*) in title = unsaved changes
-- "Saved" badge = all changes saved
-- Timestamp shows last save time
+#### Adding Entities with the Form Editor
 
-### Project Backups
+The form editor provides a visual interface for adding/editing entities:
 
-Every save creates a timestamped backup:
+1. **Select entity in tree** (or position cursor in YAML)
+2. **Click "Form" tab** in right panel
+3. **Fill in fields:**
+   - **Entity Name**: Unique identifier (snake_case)
+   - **Type**: Choose entity type (entity, sql, csv, xlsx, fixed)
+   - **System ID**: Auto-managed (read-only: `system_id`)
+   - **Business Keys**: Multi-select columns for deduplication
+   - **Public ID**: Target PK column name (must end with `_id`)
+   - **Columns**: Comma-separated list of columns to extract
+   - **Source Entity**: Parent entity (for derived entities)
+   - **Additional Dependencies**: Other required entities
 
-**Location:** `/backups/`  
-**Format:** `project_name.backup.YYYYMMDD_HHMMSS.yml`  
-**Example:** `arbodat.backup.20251214_143022.yml`
+4. **Click "Save"** to add to configuration
 
-**To Restore from Backup:**
-1. Navigate to `/backups/` directory
-2. Find desired backup by timestamp
-3. Copy to main config directory
-4. Rename to remove `.backup` suffix
-5. Reload in editor
+**Form vs YAML Editing:**
+- **Form Editor**: Guided field-by-field editing, prevents syntax errors
+- **YAML Editor**: Direct YAML editing, for advanced users and bulk changes
+- **Auto-sync**: Changes sync automatically when switching tabs
+
+#### Defining Foreign Keys
+
+Foreign keys create relationships between entities:
+
+```yaml
+sample:
+  public_id: sample_id
+  foreign_keys:
+    - entity: site                 # Parent entity
+      local_keys: [site_name]      # Join column in this entity
+      remote_keys: [site_name]     # Join column in parent
+      how: inner                   # Join type (inner/left/outer)
+      constraints:
+        cardinality: many_to_one   # Relationship type
+        require_unique_left: false # Allow duplicate local values
+        allow_null_keys: false     # Reject null join keys
+```
+
+**Key Points:**
+- `entity`: Must reference existing entity with `public_id` defined
+- `local_keys` / `remote_keys`: Join columns (usually business keys)
+- `how`: Join strategy (inner=strict matching, left=keep all children)
+- `cardinality`: Enforces relationship rules
+- FK column name in output: Uses parent's `public_id` as column name
+- FK column values: References parent's `system_id` (local sequential IDs)
+
+**Common Cardinalities:**
+- `many_to_one`: Multiple children → one parent (e.g., samples → site)
+- `one_to_one`: Strict 1:1 relationship
+- `one_to_many`: One parent → many children (rare in child entity config)
+
+#### Defining Unnest Operations
+
+Unnest transforms wide data (many columns) to long format (rows):
+
+```yaml
+measurements:
+  unnest:
+    id_vars: [sample_id, date]         # Columns to preserve
+    value_vars: [pH, temp, depth]      # Columns to melt into rows
+    var_name: measurement_type         # Column name for attribute
+    value_name: measurement_value      # Column name for value
+```
+
+**Before unnest (wide):**
+```
+sample_id | date       | pH  | temp | depth
+S001      | 2024-01-01 | 7.2 | 15   | 10
+```
+
+**After unnest (long):**
+```
+sample_id | date       | measurement_type | measurement_value
+S001      | 2024-01-01 | pH              | 7.2
+S001      | 2024-01-01 | temp            | 15
+S001      | 2024-01-01 | depth           | 10
+```
+
+**Important:** Data validation knows about unnest and only validates `id_vars` columns (not `value_vars`, which get melted away).
+
+### Step 3: Validate Configuration
+
+Validation ensures your configuration is correct before execution.
+
+#### Validation Types
+
+**Structural Validation** (Fast):
+- YAML syntax correctness
+- Required fields present
+- Entity references valid
+- No circular dependencies
+- No data source access needed
+
+**Data Validation** (Requires data sources):
+- Columns exist in data
+- Foreign keys joinable
+- Business keys unique
+- Data types compatible
+
+**Two Modes:**
+- **Sample Mode** (Fast): Validates using preview data (first 1000 rows)
+- **Complete Mode** (Comprehensive): Runs full normalization, validates all data
+
+#### Running Validation
+
+**Validate All Entities:**
+1. Click "Validate All" button
+2. Choose mode:
+   - **Sample Data (Fast)**: Quick validation using preview
+   - **Complete Data (Comprehensive)**: Full normalization and validation
+3. Wait for results (seconds for sample, minutes for complete)
+4. Review results in validation panel
+
+**Validate Single Entity:**
+1. Select entity in tree
+2. Click "Validate Entity"
+3. Choose validation mode
+4. Faster than full validation for iterative editing
+
+**Validate Structural Only:**
+1. Click "Structural" tab in validation panel
+2. Click "Validate" button
+3. Instant results (no data access)
+4. Use for quick syntax checks
+
+**Validate Data Only:**
+1. Click "Data" tab in validation panel
+2. Click "Validate" button
+3. Choose Sample or Complete mode
+4. Checks against actual data sources
+
+#### Understanding Results
+
+**Severity Levels:**
+- 🔴 **Error**: Must fix before execution
+- ⚠️ **Warning**: Should review, may cause issues
+- ℹ️ **Info**: Optional improvements
+
+**Each issue shows:**
+- **Message**: Description of problem
+- **Entity**: Which entity has the issue
+- **Field**: Which configuration field
+- **Code**: Error code for reference
+
+**Example Issues:**
+
+*Error - Column Not Found:*
+```
+Column 'old_column' not found in data source
+Entity: sample
+Field: columns
+Code: COLUMN_NOT_FOUND
+```
+
+*Warning - Duplicate Keys:*
+```
+Found 5 duplicate business keys
+Entity: site
+Field: keys
+Code: DUPLICATE_BUSINESS_KEYS
+```
+
+*Info - Missing Public ID:*
+```
+Entity is missing public_id field
+Entity: measurement
+Code: MISSING_PUBLIC_ID
+```
+
+#### Filtering Results
+
+**By Severity:**
+- Click severity badge (Error/Warning/Info)
+- Filter to specific severity
+- Multiple selections allowed
+
+**By Entity:**
+- Select entity in tree
+- Shows only issues for that entity
+- Click "All" to show all entities
+
+**Search:**
+- Type in search box
+- Filters by message text
+- Real-time filtering as you type
+
+#### Validation Cache
+
+Results are cached for 5 minutes for performance:
+
+**Cache Benefits:**
+- Repeat validations are instant (5ms vs 200ms)
+- Reduces server load during editing
+- Enables rapid iteration
+
+**Cache Invalidation:**
+- Automatic when project modified
+- Automatic after 5 minutes
+- Manual via browser refresh
+
+See [Appendix: Validation Caching](USER_GUIDE_APPENDIX.md#validation-caching) for technical details.
+
+### Step 4: Execute Workflow
+
+Once validation passes, execute the transformation pipeline.
+
+#### Opening Execute Dialog
+
+1. Ensure validation passes (no errors)
+2. Click "Execute" button (green play icon)
+3. Execute dialog opens with configuration options
+
+#### Selecting Output Format
+
+**File Formats:**
+- **Excel (xlsx)**: Single workbook with entity sheets
+- **CSV**: Single combined CSV file  
+- **CSV  ZIP**: Multiple CSV files in compressed archive
+
+**Database Formats:**
+- **PostgreSQL**: Write to PostgreSQL database
+- **SQLite**: Write to SQLite file
+
+**Folder Formats:**
+- **CSV Folder**: Directory with separate CSV files per entity
+
+**Selection:**
+1. Click "Output Format" dropdown
+2. Select desired format
+3. Form updates with format-specific options
+
+#### Configuring Output
+
+**For File Outputs (Excel, CSV):**
+```
+Output Path: ./output/my_project.xlsx
+```
+- Optional (defaults to `./output/{project_name}.{ext}`)
+- Must match file extension
+- File will be created/overwritten
+
+**For Folder Outputs:**
+```
+Folder Path: ./output/my_project/
+```
+- Directory path (created if needed)
+- Each entity becomes separate file
+- Example: `./output/my_project/entity_1.csv`
+
+**For Database Outputs:**
+- Select pre-configured data source from dropdown
+- Data source must exist in configuration
+- Entities written as database tables
+- Requires write permissions
+
+#### Execution Options
+
+**Run Validation Before Execution:**
+- **Default**: Enabled
+- **Purpose**: Ensure configuration valid
+- **Behavior**: Stops execution if validation fails
+- **Recommendation**: Always enabled
+
+**Apply Translations:**
+- **Default**: Disabled  
+- **Purpose**: Translate column names using mappings
+- **Use When**: Target schema differs from source
+- **Example**: `sample_id` → `sampleId`
+
+**Drop Foreign Key Columns:**
+- **Default**: Disabled
+- **Purpose**: Remove FK columns from output
+- **Use When**: Want only natural keys
+- **Effect**: Cleaner output, fewer columns
+
+#### Running Execution
+
+1. Configure format and options
+2. Click "Execute" button
+3. Progress indicator shows status
+4. Wait for completion (may take minutes for large datasets)
+5. Success/error message displayed
+
+**What Happens:**
+1. Optional validation runs
+2. Entities loaded in dependency order
+3. Foreign keys linked (using parent `system_id`)
+4. Unnest operations applied
+5. Transformations executed
+6. Data exported to target format
+
+#### Download Results
+
+**For File Outputs:**
+1. Execution completes successfully
+2. Success message shows: "Successfully executed workflow. Processed 12 entities."
+3. "Download result file" button appears
+4. Click to download to browser's download folder
+
+**Not Available For:**
+- Database outputs (data already in database)
+- Folder outputs (access folder directly on filesystem)
+
+#### Handling Errors
+
+**Validation Errors:**
+- Execution stops before processing
+- Validation errors displayed
+
+- Fix errors and retry
+- Or disable "Run validation" (not recommended)
+
+**Execution Errors:**
+- Error message with details
+- Check backend logs for full trace
+- Common causes:
+  - Data source unavailable
+  - Disk space full
+  - Permission denied
+  - Invalid SQL in entity
+
+**Recovery:**
+1. Read error message carefully
+2. Fix underlying issue (data source, permissions, SQL)
+3. Close and reopen dialog
+4. Retry execution
 
 ---
 
-## 4. Managing Entities
+## 5. Working with Entities
 
 ### Entity Tree Navigation
 
-The left panel shows your configuration's entity structure:
+The entity tree shows your project's structure:
 
 **Root Entities** (no dependencies):
 ```
-• sample_type
 • species
+• sample_type
+• location
 ```
 
 **Dependent Entities** (indented under parent):
 ```
-• sample
-  - sample_measurement
-  - sample_analysis
+• site
+  - sample
+    - measurement
+    - analysis
 ```
 
 **Navigation:**
-- Click entity → jump to definition
-- Double-click → expand/collapse
-- Right-click → context menu (future)
+- **Click entity** → Jump to YAML definition
+- **Double-click** → Expand/collapse children
+- **View hierarchy** → Understand processing order
 
-### Entity Types
+**Processing Order:**
+Shape Shifter automatically processes entities in dependency order:
+1. Root entities first (no dependencies)
+2. First-level dependents
+3. Second-level dependents
+4. Continues until all processed
 
-**Entity (Derived):**
-```yaml
-entity_name:
-  type: entity
-  source: null  # Root entity or name of another entity
-  columns: [col1, col2, col3]
-```
+### Editing Entities: Form vs YAML
 
-**SQL Entity:**
-```yaml
-entity_name:
-  type: sql
-  data_source: database_name
-  query: "SELECT * FROM table"
-```
+Shape Shifter provides two editing modes:
 
-**Fixed Entity:**
-```yaml
-entity_name:
-  type: fixed
-  values:
-    - [val1, val2]
-    - [val3, val4]
-```
+**Form Editor** (Visual):
+- Structured input fields
+- Guided configuration
+- Prevents syntax errors
+- Best for: Learning, specific field edits
 
-**CSV Entity:**
-```yaml
-entity_name:
-  type: csv
-  columns: [col1, col2]
-  options:
-    filename: projects/my-file.csv
-    sep: ","           # optional, defaults to comma
-    encoding: utf-8     # optional
-```
+**YAML Editor** (Code):
+- Direct YAML editing
+- Monaco editor with syntax highlighting
+- Full control over configuration
+- Best for: Advanced users, bulk edits, copy/paste
 
-**Excel Entity (Pandas):**
-```yaml
-entity_name:
-  type: xlsx
-  columns: [col1, col2]
-  options:
-    filename: projects/my-file.xlsx
-    sheet_name: Sheet1   # optional; defaults to first sheet
-```
+**Switching Modes:**
+- Click **Form** tab for visual editing
+- Click **YAML** tab for code editing  
+- Changes auto-sync when switching
+- Must save to persist changes
 
-**Excel Entity (OpenPyXL):**
-```yaml
-entity_name:
-  type: openpyxl
-  columns: [col1, col2]
-  options:
-    filename: projects/my-file.xlsx
-    sheet_name: Sheet1
-    range: A1:D50        # optional
-```
+### Form Editor Fields
 
-### Adding Entities
+**Identity Section:**
+- **System ID**: Auto-managed (read-only: `system_id`)
+- **Business Keys**: Multi-select columns for deduplication
+- **Public ID**: Target PK name (must end with `_id`)
 
-**Method 1: Direct YAML Editing**
-1. Position cursor in `entities:` section
-2. Type new entity name
-3. Add required fields
-4. Save configuration
+**Data Section:**
+- **Type**: Entity type (entity, sql, csv, xlsx, fixed)
+- **Columns**: Comma-separated list to extract
+- **Source Entity**: Parent entity name (for derived entities)
+- **Data Source**: Database connection (for SQL entities)
 
-**Method 2: Properties Panel (Future)**
-1. Click "Add Entity" button
-2. Fill in entity details
-3. Click "Create"
-4. Entity added to YAML
+**Dependencies Section:**
+- **Additional Dependencies**: Other required entities
+- **Foreign Keys**: Configured separately (see below)
 
-### Editing Entity Properties
+**Transformations:**
+- **Unnest**: Configure via form or YAML
 
-#### Form Editor vs. YAML Editor
+### YAML Editor Features
 
-Shape Shifter provides **two ways to edit entities**, similar to VS Code's settings editor:
+**Syntax Highlighting:**
+- Keywords (blue), strings (green), numbers (orange)
+- Clear visual structure
+- Easy to spot errors
 
-1. **Form Editor** (Default) - Visual form with input fields
-2. **YAML Editor** - Raw YAML code with syntax highlighting
+**Auto-Completion:**
+- Press `Ctrl+Space` for suggestions
+- Entity name completion
+- Column name hints (when available)
 
-**Switching Between Editors:**
-- Click the **Form** tab for visual editing
-- Click the **YAML** tab for code editing
-- Changes sync automatically when switching tabs
+**Real-Time Validation:**
+- Red underlines for syntax errors
+- Hover for error details
+- Immediate feedback
 
-#### Using the Form Editor
-
-The form editor provides a structured interface for editing entity properties:
-
-**Identity Configuration (Three-Tier System):**
-
-Shape Shifter uses a three-tier identity system to manage entity identification:
-
-1. **System ID Column** (Auto-managed)
-   - **Field**: System ID
-   - **Description**: Local project-scoped identity, auto-incremented (1, 2, 3...)
-   - **Default**: `system_id` (read-only, cannot be changed)
-   - **Purpose**: Internal tracking within the transformation pipeline
-   - **Scope**: Local to this project only
-
-2. **Business Keys** (Source Identifiers)
-   - **Field**: Business Keys
-   - **Description**: Natural/domain keys from source data for deduplication and reconciliation
-   - **Format**: Multi-select list of column names
-   - **Example**: `[site_code, year]` or `[sample_name]`
-   - **Purpose**: Identify unique records in source data, detect duplicates
-   - **Scope**: Source system domain
-
-3. **Public ID** (Target System Identity)
-   - **Field**: Public ID Column
-   - **Description**: Target system primary key name that defines FK column naming in child entities
-   - **Format**: Single column name ending in `_id`
-   - **Example**: `site_id`, `sample_type_id`
-   - **Required**: Yes (validation enforces `_id` suffix)
-   - **Purpose**: Maps to remote system, determines foreign key column names
-   - **Scope**: Target database or external system
-
-**Column Selection:**
-- **Field**: Columns
-- **Description**: Columns to extract from source
-- **Format**: Comma-separated list
-- **Example**: `col1, col2, col3`
-
-**Dependencies:**
-- **Field**: Source Entity
-- **Description**: Parent entity this depends on
-- **Format**: Entity name from configuration
-
-- **Field**: Additional Dependencies
-- **Description**: Other entities required for processing
-- **Format**: Comma-separated list of entity names
-
-#### Using the YAML Editor
-
-The YAML editor provides direct access to the entity's YAML definition:
-
-**Features:**
-- **Monaco Editor** - Same editor as VS Code
-- **Syntax Highlighting** - YAML syntax coloring
-- **Real-Time Validation** - Immediate syntax error detection
-- **Error Display** - Clear error messages with line numbers
-
-**Example YAML:**
-```yaml
-entity_name:
-  system_id: system_id  # Auto-managed local identity (default, cannot change)
-  keys: [key1, key2]  # Business keys from source data for deduplication
-  public_id: entity_name_id  # Target system PK (defines FK column names in children)
-  columns: [col1, col2, col3]  # Columns to extract
-  source: parent_entity  # Depends on parent_entity
-  depends_on: [other_entity]  # Additional dependencies
-```
-
-**Legacy Format (Backward Compatible):**
-```yaml
-entity_name:
-  surrogate_id: entity_name_id  # Automatically migrated to public_id
-  keys: [key1, key2]
-  # ... rest of config
-```
-
-**When to Use YAML Editor:**
-- Complex nested configurations
-- Copying/pasting entire entity definitions
-- Bulk editing multiple fields
-- Advanced users comfortable with YAML syntax
-
-**When to Use Form Editor:**
-- Learning the configuration structure
-- Editing specific fields
-- Preventing syntax errors
-- Guided field-by-field editing
-
-**YAML Validation:**
-- Invalid YAML shows **red error banner**
-- Error message includes line number and description
-- Cannot switch back to Form until YAML is valid
-- Validation happens automatically as you type
-
-**Auto-Synchronization:**
-- **Form → YAML**: Switching to YAML tab converts form data to YAML
-- **YAML → Form**: Switching from YAML tab (with valid YAML) updates form fields
-- Changes are **not saved** until you click Save/OK button
-
-### Foreign Key Relationships
-
-Define relationships between entities:
-
-```yaml
-entity_name:
-  foreign_keys:
-    - entity: remote_entity
-      local_keys: [local_col]
-      remote_keys: [remote_col]
-      how: inner  # inner, left, outer, cross
-      constraints:
-        cardinality: many_to_one
-        require_unique_left: true
-        allow_null_keys: false
-```
-
-**Cardinality Options:**
-- `one_to_one` - Each left row matches exactly one right row
-- `many_to_one` - Multiple left rows match one right row
-- `one_to_many` - One left row matches multiple right rows
-
-**Join Types:**
-- `inner` - Keep only matching rows
-- `left` - Keep all left rows, match or not
-- `outer` - Keep all rows from both sides
-- `cross` - Cartesian product
-
-### Unnesting (Melt Operations)
-
-Transform wide data to long format:
-
-```yaml
-entity_name:
-  unnest:
-    id_vars: [id, name]
-    value_vars: [col1, col2, col3]
-    var_name: attribute
-    value_name: measurement
-```
-
-**Before (Wide):**
-```
-id | name  | col1 | col2 | col3
-1  | Item1 | 10   | 20   | 30
-```
-
-**After (Long):**
-```
-id | name  | attribute | measurement
-1  | Item1 | col1      | 10
-1  | Item1 | col2      | 20
-1  | Item1 | col3      | 30
-```
+**Validation Errors:**
+- Invalid YAML shows red error banner
+- Error message with line number
+- Cannot switch to Form tab until valid
+- Auto-validates as you type
 
 ### Deleting Entities
 
-**Manual Deletion:**
+**Method 1: YAML Deletion**
 1. Select entity definition in YAML
 2. Delete all lines for that entity
 3. Save configuration
-4. Validation will check for orphaned references
+4. Validation checks for orphaned references
 
-**Important:** Check dependent entities before deleting!
+**Method 2: Form Editor** (Future)
+- Right-click entity in tree → Delete
+- Confirmation dialog
+- Automatic reference cleanup
 
-### Reordering Entities
+**⚠️ Important**: Check dependent entities before deleting!
+- Deleting a parent breaks child FK references
+- Validation will show errors after deletion
+- Fix child entities or delete them too
 
-The system automatically orders entities by dependencies. Manual YAML order doesn't affect processing order.
+### Managing Dependencies
 
-**Processing Order:**
-1. Root entities (no dependencies)
-2. First-level dependents
-3. Second-level dependents
-4. And so on...
+**Viewing Dependencies:**
+- Entity tree shows parent-child relationships
+- Indentation indicates dependency depth
+- Hover shows dependency count
+
+**Adding Dependencies:**
+```yaml
+entity_name:
+  source: parent_entity          # Derives from parent
+  depends_on: [other_entity]     # Also requires other_entity
+```
+
+**Circular Dependencies:**
+- Not allowed (validation error)
+- Example: A → B → C → A (circular!)
+- Fix: Break the cycle by removing one dependency
 
 ---
 
-## 5. Validation
+## 6. Validation
 
-### Validation Types
+### Quick Start
 
-**Structural Validation:**
-- YAML syntax correctness
-- Entity definitions complete
-- References resolve correctly
-- No circular dependencies
-
-**Data Validation:**
-- Columns exist in data sources
-- Foreign key relationships valid
-- Data types compatible
-- Constraint satisfaction
-
-**Comprehensive (All):**
-- Runs both structural and data validation
-- Recommended before processing
-
-### Running Validation
-
-**Validate All:**
 1. Click "Validate All" button
-2. Comprehensive check runs
-3. Results appear in right panel
-4. Issues grouped by severity
+2. Choose validation mode:
+   - **Sample Data (Fast)**: Preview-based (recommended for development)
+   - **Complete Data (Comprehensive)**: Full normalization (recommended before production)
+3. Review results in right panel
+4. Fix errors (red) first, then warnings (yellow)
+5. Revalidate after changes
 
-**Validate Entity:**
-1. Select entity in tree
-2. Click "Validate Entity"
-3. Focused validation on selected entity
-4. Faster for iterative editing
+### Validation Modes
 
-**Validate Structural:**
-1. Click "Structural" tab
-2. Click "Validate" button
-3. Quick syntax and structure check
-4. No data source access needed
+**Sample Mode** (Default):
+- ✅ Fast (seconds)
+- ✅ Uses preview data (first 1000 rows)
+- ✅ Good for iterative development
+- ❌ May miss issues in later data
+- **Use when**: Developing configuration, quick checks
 
-**Validate Data:**
-1. Click "Data" tab
-2. Click "Validate" button
-3. Checks against actual data
-4. Requires data source access
+**Complete Mode**:
+- ✅ Comprehensive (validates all data)
+- ✅ Runs full normalization pipeline
+- ✅ Catches all data issues
+- ❌ Slower (minutes for large datasets)
+- **Use when**: Pre-production validation, final check
 
-### Understanding Validation Results
+### Understanding Results
 
-**Severity Levels:**
+**Result Summary:**
+- Total issues count
+- Breakdown by severity (Error/Warning/Info)
+- Entity-level grouping
+- Validation mode indicator
 
-🔴 **Error** - Must fix before processing
-- Structural errors
-- Missing required fields
-- Invalid references
+**Issue Details:**
+Each issue shows:
+```
+🔴 Column 'old_column' not found in data source
+  Entity: sample
+  Field: columns
+  Code: COLUMN_NOT_FOUND
+```
+
+**Severity Guidelines:**
+- **Errors** 🔴: Fix before execution (will fail)
+- **Warnings** ⚠️: Review carefully (may cause issues)
+- **Info** ℹ️: Optional improvements (won't affect execution)
+
+### Common Validation Issues
+
+**Structural Errors:**
+- Missing required fields (public_id, type, columns)
+- Invalid entity references
+- Circular dependencies
+- YAML syntax errors
+
+**Data Errors:**
+- Column not found in data source
+- Duplicate business keys
+- Foreign key columns missing
+- Type mismatches
 - Constraint violations
 
-⚠️ **Warning** - Should review
-- Performance concerns
-- Potential issues
-- Best practice violations
+**Resolution:**
+1. Read error message carefully
+2. Navigate to entity (click entity name)
+3. Fix issue in Form or YAML editor
+4. Save changes
+5. Revalidate
 
-ℹ️ **Info** - Optional improvements
-- Suggestions
-- Optimization tips
-- Documentation reminders
-
-**Result Details:**
-
-Each issue shows:
-- **Message** - What's wrong
-- **Entity** - Which entity has the issue
-- **Location** - Line number in YAML
-- **Fix Available** - Auto-fix available?
-- **Suggestion** - How to resolve
-
-### Validation Filtering
+### Filtering and Search
 
 **Filter by Severity:**
-- Click severity badge to filter
-- Show only errors, warnings, or info
-- Multiple selections allowed
+- Click severity badge (Error/Warning/Info)
+- Shows only selected severity
+- Multi-selection allowed
 
 **Filter by Entity:**
 - Select entity in tree
-- Shows issues for that entity only
+- Shows only that entity's issues
 - Click "All" to clear filter
 
 **Search Issues:**
@@ -611,1002 +856,251 @@ Each issue shows:
 - Filters by message text
 - Real-time filtering
 
-### Validation Cache
-
-Results are cached for 5 minutes:
-
-**Cache Hit (instant):**
-- Same configuration
-- Same validation type
-- Within 5-minute window
-- No changes made
-
-**Cache Miss (calls API):**
-- Different configuration
-- First validation
-- Cache expired (>5 min)
-- Project changed
-
-**Benefits:**
-- 97% faster repeat validations
-- Reduced server load
-- Better offline resilience
-
----
-
-## 6. Auto-Fix Features
-
-### What is Auto-Fix?
-
-Auto-fix analyzes validation errors and provides:
-- **Automated solutions** for fixable issues
-- **Guided recommendations** for complex problems
-- **Safe application** with automatic backups
-- **Preview capabilities** before applying changes
-
-### Accessing Auto-Fix
-
-**Step 1: Run Validation**
-1. Click "Validate All" or "Validate Entity"
-2. Review validation results
-3. Look for issues with fix suggestions
-
-**Step 2: Identify Fixable Issues**
-- Green "Auto-Fix Available" badge
-- Green "Apply Fix" button
-- Click issue for details
-
-**Step 3: Preview Fix**
-1. Click "Preview Fix" button
-2. Review before/after comparison
-3. Check changes are correct
-4. Verify no unintended side effects
-
-**Step 4: Apply Fix**
-1. Click "Apply Fix" button
-2. Automatic backup created
-3. Fix applied to configuration
-4. Editor updates with corrected YAML
-5. Success message confirms
-
-### Common Fixable Issues
-
-#### Missing Columns
-
-**Problem:** Project references non-existent columns
-
-**Example Error:**
-```
-Column 'old_column' not found in data
-Entity: sample_entity
-```
-
-**Auto-Fix Action:**
-- Removes the missing column from config
-- Updates `columns` list
-- Preserves all other settings
-
-**Before:**
-```yaml
-entity_name:
-  columns: [id, name, old_column, value]
-```
-
-**After:**
-```yaml
-entity_name:
-  columns: [id, name, value]
-```
-
-#### Invalid Foreign Key References
-
-**Problem:** Foreign key references non-existent entity
-
-**Example Error:**
-```
-Referenced entity 'old_entity' not found
-Entity: sample_entity
-Field: foreign_keys
-```
-
-**Auto-Fix Recommendation:**
-- Provides guidance on fixing reference
-- Suggests checking entity names
-- May require manual intervention
-
-#### Duplicate Business Keys
-
-**Problem:** Data has duplicate values for business keys (natural identifiers)
-
-**Example Error:**
-```
-Found 5 duplicate business keys
-Entity: sample_entity
-Keys: name, code
-```
-
-**Auto-Fix:**
-- Not automatically fixable (data quality issue)
-- Manual review required
-- Options:
-  1. Add more columns to keys for uniqueness
-  2. Clean source data to remove duplicates
-  3. Use system_id as temporary identifier
-  4. Investigate root cause in source system
-
-**Best Practice:**
-- Business keys should uniquely identify records in source data
-- Used for deduplication and reconciliation
-- Consider composite keys if single column insufficient
-
-**Auto-Fix Recommendation:**
-- Guidance on resolving duplicates
-- Suggests reviewing data or key definition
-- Requires manual data cleaning
-
-### Fix Types Explained
-
-**Automatic Fixes (Green Badge):**
-
-✅ **Remove Column** - Safely removes non-existent column
-✅ **Update Reference** - Updates entity references (coming soon)
-✅ **Add Column** - Adds missing required column (coming soon)
-
-**Manual Fixes (Yellow Badge):**
-
-⚠️ **Unresolved Reference** - Check entity names
-⚠️ **Duplicate Keys** - Review data or change keys
-⚠️ **Type Mismatch** - Verify data types
-
-**Complex Issues (Red Badge):**
-
-🔴 **Circular Dependencies** - Restructure relationships
-🔴 **Data Quality** - Clean source data
-🔴 **Schema Conflicts** - Resolve structural issues
-
-### Safety Features
-
-#### Automatic Backups
-
-Every fix application creates a backup:
-
-**Format:** `config.backup.YYYYMMDD_HHMMSS.yml`  
-**Location:** `/backups/` directory  
-**Example:** `my_config.backup.20251214_143022.yml`
-
-#### Preview Before Apply
-
-Preview shows:
-- **Exact changes** to your configuration
-- **Reason** for the fix
-- **Impact** on data processing
-- **Warnings** about potential side effects
-
-#### Validation After Fix
-
-After applying:
-1. Project automatically revalidated
-2. New results show if issue resolved
-3. Remaining issues displayed
-4. Additional fixes can be applied
-
-### Best Practices
-
-**✅ Do:**
-- Validate regularly after edits
-- Review fix previews carefully
-- Test after applying fixes
-- Keep backups for one processing cycle
-- Document significant changes
-
-**❌ Don't:**
-- Apply fixes without previewing
-- Skip revalidation after fixes
-- Delete backups immediately
-- Apply multiple fixes without testing
-- Ignore fix recommendations
-
-### Keyboard Shortcuts
-
-- `Ctrl/Cmd + V` - Validate configuration
-- `Ctrl/Cmd + P` - Preview selected fix
-- `Ctrl/Cmd + A` - Apply selected fix
-- `Escape` - Close preview/fix dialog
-
----
-
-## 7. Quick Wins & Performance Features
-
-### Feature Overview
-
-| Feature | Benefit | Impact |
-|---------|---------|--------|
-| Validation Caching | 97% faster repeat validations | Instant results |
-| Contextual Tooltips | Learn features in-context | Reduced learning curve |
-| Loading Skeleton | Clear loading feedback | Better perceived performance |
-| Success Animations | Clear action confirmation | Professional polish |
-| Debounced Validation | Smooth typing | No lag while editing |
-
-### 1. Validation Result Caching
-
-**What It Does:**
-Caches validation results for 5 minutes, making repeat validations nearly instant.
-
-**How It Works:**
-
-First validation:
-```
-Click "Validate" → API call (200ms) → Cache result (5 min)
-```
-
-Subsequent validations:
-```
-Click "Validate" → Return cached (5ms) → 40x faster!
-```
-
-**Cache Behavior:**
-
-✅ **Cache Used When:**
-- Same configuration
-- Same validation type
-- Within 5-minute window
-- No modifications made
-
-❌ **Cache Cleared When:**
-- 5 minutes elapsed
-- Project modified
-- Page refreshed
-- Different config opened
-
-**Benefits:**
-- 70% reduction in API calls
-- Faster iterative workflow
-- Reduced server load
-- Better offline resilience
-
-### 2. Contextual Tooltips
-
-**What It Does:**
-Shows helpful information when hovering over buttons and controls.
-
-**Available Tooltips:**
-
-**Validation Panel:**
-- "Validate All" → "Validate entire configuration against all rules"
-- "Structural" tab → "Check configuration file structure and syntax"
-- "Data" tab → "Validate against actual data sources"
-- "Validate Entity" → "Validate only selected entity"
-
-**Fix Buttons:**
-- "Apply Fix" → "Preview and apply automated fix with backup"
-- "Preview Fix" → "See changes before applying"
-
-**How to Use:**
-1. Hover over any button
-2. Wait 500ms for tooltip
-3. Read contextual help
-4. Move away to dismiss
-
-**Benefits:**
-- Reduced learning curve
-- Contextual help without leaving page
-- No documentation lookup needed
-- Consistent behavior
-
-### 3. Loading Skeleton Animation
-
-**What It Does:**
-Shows animated placeholder while validation runs.
-
-**Visual Design:**
-- Realistic content layout
-- Pulsing animation
-- Professional appearance
-- Smooth transition to results
-
-**When It Appears:**
-- Validation taking > 100ms
-- Backend processing
-- Network latency
-- Data source access
-
-**Benefits:**
-- Better perceived performance
-- Clear loading state
-- Reduced user anxiety
-- Professional polish
-
-### 4. Success Animations
-
-**What It Does:**
-Smoothly animates success messages for clear feedback.
-
-**Animation Details:**
-- Scale from 80% to 100%
-- 300ms duration
-- Smooth easing curve
-- GPU-accelerated
-
-**When You'll See It:**
-- Project saved
-- Auto-fix applied
-- Entity created
-- Settings updated
-
-**Visual Design:**
-- Green color for success
-- White text for contrast
-- Stays visible 3 seconds
-- Smooth fade-out
-
-**Benefits:**
-- Clear action confirmation
-- Professional appearance
-- Non-intrusive notifications
-- Smooth user experience
-
-### 5. Debounced Validation
-
-**What It Does:**
-Delays automatic validation while typing to avoid interrupting workflow.
-
-**How It Works:**
-
-Without debouncing:
-```
-Type "e" → Validate
-Type "n" → Validate
-Type "t" → Validate
-...
-= 6 validations, choppy typing
-```
-
-With debouncing:
-```
-Type "entity"
-Wait 500ms
-→ Single validation
-= Smooth typing!
-```
-
-**Settings:**
-- **Delay:** 500ms after last keystroke
-- **Applies to:** YAML editor changes
-- **Bypassed for:** Manual validation clicks
-
-**Benefits:**
-- Smoother typing experience
-- Fewer unnecessary validations
-- Reduced API load
-- Better performance
-
-### Performance Metrics
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Repeat Validation | 200ms | 5ms | 97% faster |
-| Typing Lag | Frequent | None | Eliminated |
-| API Calls (editing) | Many | Few | 70% less |
-| Perceived Speed | Slow | Fast | Much better |
-
-**Memory Overhead:** < 100KB total
-
----
-
-## 7. Execute Workflow
-
-### Overview
-
-The Execute feature runs the complete Shape Shifter normalization pipeline on your project and exports the results to your chosen format. This is the final step after validation and testing.
-
-**Workflow Steps:**
-1. Optional validation
-2. Load and normalize all entities
-3. Apply optional transformations
-4. Export to selected format
-
-### Opening Execute Dialog
-
-**From Project Detail View:**
-1. Open your project
-2. Click "Execute" button in toolbar (green play icon)
-3. Execute dialog opens
-
-### Selecting Output Format
-
-**Available Dispatchers:**
-
-**File Formats:**
-- **Excel Workbook (xlsx)** - Single Excel file with sheets per entity
-- **CSV (csv)** - Single CSV file (combined data)
-- **CSV in ZIP (csv_zip)** - Folder of CSV files compressed as ZIP
-
-**Database Formats:**
-- **PostgreSQL** - Export to PostgreSQL database
-- **SQLite** - Export to SQLite database file
-
-**Folder Formats:**
-- **CSV Folder** - Directory of separate CSV files per entity
-
-**How to Select:**
-1. Click "Output Format" dropdown
-2. Review available dispatchers
-3. Select desired format
-4. Form updates for selected type
-
-### Configuring File Output
-
-**For File Dispatchers (Excel, CSV):**
-
-1. Select file dispatcher
-2. Enter output path (optional)
-   - Default: `./output/{project_name}.{extension}`
-   - Custom: `./custom/path/output.xlsx`
-3. Path must match file extension
-4. File will be created/overwritten
-
-**Example Paths:**
-```
-./output/my_project.xlsx       ✅ Valid
-./data/export.csv              ✅ Valid
-./output/wrong.txt             ❌ Wrong extension
-```
-
-### Configuring Folder Output
-
-**For Folder Dispatchers:**
-
-1. Select folder dispatcher
-2. Enter folder path (optional)
-   - Default: `./output/{project_name}/`
-   - Custom: `./custom/output/`
-3. Folder will be created if needed
-4. Each entity becomes separate file
-
-**Output Structure:**
-```
-output/my_project/
-  ├── entity_1.csv
-  ├── entity_2.csv
-  └── entity_3.csv
-```
-
-### Configuring Database Output
-
-**For Database Dispatchers:**
-
-1. Select database dispatcher
-2. Choose target data source from dropdown
-3. Data source must be pre-configured
-4. Entities written as database tables
-
-**Requirements:**
-- Data source configured in Data Sources
-- Database must exist
-- Write permissions required
-- Connection tested
-
-### Execution Options
-
-**Run Validation Before Execution:**
-- **Default:** Enabled
-- **Purpose:** Ensure configuration valid
-- **Behavior:** Stops execution if validation fails
-- **Tip:** Disable to force execution of invalid config (not recommended)
-
-**Apply Translations:**
-- **Default:** Disabled
-- **Purpose:** Translate column names using configured mappings
-- **Use When:** Target schema differs from source
-- **Example:** `sample_id` → `sampleId`
-
-**Drop Foreign Key Columns:**
-- **Default:** Disabled
-- **Purpose:** Remove foreign key columns from output
-- **Use When:** Want only natural keys
-- **Effect:** Cleaner output, fewer columns
-
-### Running Execution
-
-**Steps:**
-1. Configure all settings
-2. Click "Execute" button
-3. Progress indicator appears
-4. Wait for completion (may take minutes)
-5. Success or error message displayed
-
-**What Happens:**
-1. Validation runs (if enabled)
-2. Entities processed in dependency order
-3. Transformations applied
-4. Data exported to target
-5. Result confirmation shown
-
-### Download Results
-
-**For File Outputs:**
-
-1. Execution completes successfully
-2. Success message shows entity count
-3. "Download result file" button appears
-4. Click to download file
-5. File downloads to browser's download folder
-
-**Download Features:**
-- Works for all file dispatchers
-- Direct browser download
-- Original filename preserved
-- Can download multiple times
-- Link remains until dialog closed
-
-**Not Available For:**
-- Database outputs (data already in database)
-- Folder outputs (access folder directly)
-
-### Understanding Results
-
-**Success Message Shows:**
-- ✅ Success indicator
-- Number of entities processed
-- Output location/path
-- Download button (if applicable)
-- Execution time (implied)
-
-**Example Success:**
-```
-Successfully executed workflow
-Processed 12 entities to ./output/my_project.xlsx
-[Download result file]
-```
-
-### Handling Errors
-
-**Validation Errors:**
-- Execution stops before processing
-- Validation errors displayed
-- Fix errors and retry
-- Or disable "Run validation" (risky)
-
-**Execution Errors:**
-- Error message shown
-- Details included when available
-- Check logs for full trace
-- Common causes:
-  - Data source unavailable
-  - Disk space full
-  - Write permission denied
-  - Invalid SQL in entity
-
-**Error Recovery:**
-1. Read error message
-2. Fix underlying issue
-3. Close and reopen dialog
-4. Configure again
-5. Retry execution
-
-### Best Practices
-
-**Before Execution:**
-- ✅ Run full validation
-- ✅ Fix all errors
-- ✅ Preview entity data to verify transformations
-- ✅ Verify data sources connected
-- ✅ Check disk space available
-- ✅ Backup existing output files
-
-**Choosing Format:**
-- **Excel** - Best for sharing, manual review
-- **CSV** - Simple, universal compatibility
-- **CSV in ZIP** - Many entities, organized
-- **Database** - Integration, queries, large data
-- **Folder** - Programmatic access, scripting
-
-**Performance Tips:**
-- Large datasets take longer
-- Database output fastest for large data
-- File outputs easier for small datasets
-- Use entity preview to validate transformations before full execution
-
-**Troubleshooting:**
-- Check backend logs if execution fails
-- Verify output path writable
-- Test data source connections
-- Review entity SQL for errors
-- Try with validation disabled to see specific error
-
----
-
-## 8. Quick Wins & Performance Features
-
-### Workflow Tips
-
-**1. Start with Validation**
-- Always validate before processing
-- Fix errors top-down (by severity)
-- Revalidate after each fix
-
-**2. Use Entity Tree for Navigation**
-- Click entities to jump to definitions
-- Understand dependency relationships
-- Check impact before deleting
-
-**3. Leverage Auto-Fix**
-- Preview all fixes before applying
-- Apply automatic fixes confidently
-- Document manual fixes needed
-
-**4. Take Advantage of Caching**
-- Validate frequently without worry
-- Iterate quickly on changes
-- Trust automatic cache invalidation
-
-**5. Learn Keyboard Shortcuts**
-- Speed up common operations
-- Reduce mouse usage
-- More efficient editing
-
-### Project Best Practices
-
-**Entity Design:**
-- ✅ Use descriptive entity names
-- ✅ Define business keys carefully (for source data deduplication)
-- ✅ Set public_id to match target system naming (defines FK columns)
-- ✅ Keep system_id as default (`system_id`) for internal tracking
-- ✅ Document complex relationships
-- ✅ Keep entity scope focused
-
-**Identity Fields:**
-- ✅ **System ID**: Always use default `system_id` (auto-managed)
-- ✅ **Business Keys**: Choose columns that uniquely identify source records
-- ✅ **Public ID**: Must end with `_id`, matches target system PK name
-- ✅ **FK Naming**: Child entities use parent's public_id as FK column name
-- ✅ Test for duplicate business keys before processing
-
-**Foreign Keys:**
-- ✅ Always specify constraints
-- ✅ Use appropriate cardinality
-- ✅ Test join results
-- ✅ Handle null keys explicitly
-- ✅ Ensure FK column names match parent's public_id
-
-**Column Selection:**
-- ✅ Include only needed columns
-- ✅ Use consistent naming
-- ✅ Document column purposes
-- ✅ Verify column availability
-
-**Dependencies:**
-- ✅ Keep dependency chains short
-- ✅ Avoid circular dependencies
-- ✅ Document complex dependencies
-- ✅ Test processing order
-
 ### Validation Best Practices
 
-**Regular Validation:**
-- Validate after editing
-- Validate before processing
-- Validate when data changes
-- Validate after applying fixes
+✅ **Do:**
+- Validate frequently during development
+- Use Sample mode for quick iteration
+- Run Complete mode before production
+- Fix errors immediately
+- Review warnings carefully
+- Revalidate after all changes
 
-**Fix Strategy:**
-- Apply automatic fixes first
-- Preview manual fixes carefully
-- Test after each batch
-- Document changes made
-
-**Error Resolution:**
-- Start with errors (red)
-- Then warnings (yellow)
-- Finally info items (blue)
-- Don't ignore warnings
-
-### Performance Best Practices
-
-**Editor Usage:**
-- Let debouncing work (don't wait)
-- Use keyboard shortcuts
-- Collapse unused entity trees
-- Close unused tabs
-
-**Validation:**
-- Use entity-level validation when possible
-- Leverage caching
-- Don't spam validate button
-- Clear old cache if needed
-
-### Collaboration Best Practices
-
-**Version Control:**
-- Commit configurations regularly
-- Write meaningful commit messages
-- Review changes before committing
-- Tag stable versions
-
-**Documentation:**
-- Document complex transformations
-- Explain business logic
-- Note known issues
-- Keep README updated
-
-**Communication:**
-- Share configuration changes with team
-- Document breaking changes
-- Review each other's configurations
-- Establish naming conventions
+❌ **Don't:**
+- Skip validation before execution
+- Ignore warnings
+- Apply multiple untested changes
+- Assume Sample catches everything
 
 ---
 
-## 10. Troubleshooting
+## 7. Execute
 
-### Common Issues
+### Quick Start
 
-#### Editor Won't Load Project
+1. Ensure validation passes (no errors)
+2. Click "Execute" button (green play icon ▶)
+3. Select output format
+4. Configure output path/destination
+5. Click "Execute"
+6. Wait for completion
+7. Download result file (if applicable)
 
-**Symptoms:** Blank editor or error message
+### Output Formats
 
-**Solutions:**
-1. Check file exists in config directory
-2. Verify YAML syntax is valid
-3. Check file permissions (read access)
-4. Review browser console for errors
-5. Try refreshing page
+**Excel Workbook (xlsx)**:
+- Single `.xlsx` file
+- Each entity as separate sheet
+- Best for: Manual review, sharing, small-medium datasets
+- Path example: `./output/project.xlsx`
 
-#### Validation Fails Immediately
+**CSV Files**:
+- **Single CSV**: Combined data in one file
+- **CSV in ZIP**: Multiple CSVs compressed
+- Best for: Universal compatibility, scripting
+- Path example: `./output/project.csv` or `./output/project.zip`
 
-**Symptoms:** Error message without results
+**CSV Folder**:
+- Directory with separate CSV per entity
+- Best for: Programmatic access, large datasets
+- Path example: `./output/project/`
 
-**Solutions:**
-1. Check backend server is running
-2. Verify network connectivity
-3. Check CORS configuration
-4. Review backend logs
-5. Try different browser
+**PostgreSQL Database**:
+- Write directly to PostgreSQL
+- Each entity as database table
+- Requires pre-configured data source
+- Best for: Integration, large datasets, SQL queries
 
-#### Auto-Fix Not Available
+**SQLite Database**:
+- Single `.db` file with all entities as tables
+- Best for: Portable database, local analysis
+- Path example: `./output/project.db`
 
-**Symptoms:** No "Apply Fix" button on errors
+### Configuration Options
 
-**Solutions:**
-1. Not all errors are auto-fixable
-2. Check issue type (only some types)
-3. Verify backend supports auto-fix
-4. Update to latest version
-5. Contact support if expected
+**Run Validation Before Execution**:
+- **Default**: ✅ Enabled
+- **Recommendation**: Always enabled
+- **Purpose**: Catch errors before processing
+- **Disable only if**: Re-running after successful validation
 
-#### Changes Not Saving
+**Apply Translations**:
+- **Default**: ❌ Disabled
+- **Purpose**: Rename columns using mapping config
+- **Use when**: Target schema requires different column names
+- **Example**: `sample_id` → `sampleId`
 
-**Symptoms:** Save fails or reverts
+**Drop Foreign Key Columns**:
+- **Default**: ❌ Disabled
+- **Purpose**: Remove FK columns from output
+- **Use when**: Want only natural keys
+- **Effect**: Cleaner output, fewer columns
+- **Note**: Drops system_id columns used for FK linking
 
-**Solutions:**
-1. Check file write permissions
-2. Verify disk space available
-3. Check backup directory exists
-4. Review backend logs for errors
-5. Try saving to different location
+### Execution Process
 
-#### Validation Cache Not Working
+**What Happens:**
+1. **Validation** (if enabled): Checks configuration
+2. **Load Entities**: Processes in dependency order (roots first)
+3. **Link Foreign Keys**: Joins entities using parent `system_id`
+4. **Apply Unnest**: Transforms wide → long data
+5. **Filter Data**: Applies post-load filters
+6. **Export**: Writes to selected format
 
-**Symptoms:** Every validation makes network request
+**Processing Order:**
+```
+Root entities (no dependencies)
+  ↓
+First-level children (depend on roots)
+  ↓
+Second-level children
+  ↓
+Continue until all processed
+```
 
-**Solutions:**
-1. Check browser cache not disabled
-2. Verify < 5 minutes since last validation
-3. Ensure config hasn't been modified
-4. Try refreshing page
-5. Check browser console for errors
+**Timing:**
+- Small projects (< 10 entities, < 10K rows): Seconds
+- Medium projects (10-50 entities, 10K-100K rows): Minutes
+- Large projects (> 50 entities, > 100K rows): 10+ minutes
 
-### Performance Issues
+### Downloading Results
 
-#### Slow Editor Response
+**For File Outputs** (Excel, CSV, SQLite):
+1. Execution completes successfully  
+2. Success message: "Successfully executed workflow. Processed X entities."
+3. "Download result file" button appears
+4. Click to download to browser's download folder
 
-**Causes:**
-- Large project files (> 10MB)
-- Too many entities (> 100)
-- Complex dependency trees
-- Low system resources
+**For Database Outputs** (PostgreSQL):
+- Data written directly to database
+- No download (access via database client)
+- Tables named by entity names
 
-**Solutions:**
-1. Split large configs into modules
-2. Reduce number of entities
-3. Close other applications
-4. Increase system RAM
-5. Use faster computer
+**For Folder Outputs** (CSV Folder):
+- No download button
+- Access folder directly on filesystem
+- Each entity is `entity_name.csv`
 
-#### Validation Takes Too Long
+### Error Handling
 
-**Causes:**
-- Large data sources
-- Complex validation rules
-- Slow network
-- Server under load
+**Validation Errors**:
+```
+✗ Validation failed, cannot execute
+  - Column 'old_col' not found in sample
+  - Missing public_id in measurement
+```
+**Resolution**: Fix errors in configuration, revalidate, retry
 
-**Solutions:**
-1. Use entity-level validation
-2. Optimize data source queries
-3. Check network latency
-4. Scale backend resources
-5. Enable caching
+**Data Source Errors**:
+```
+✗ Cannot connect to data source 'postgres_db'
+```
+**Resolution**: Check data source configuration, verify network/credentials
 
-#### UI Freezes or Stutters
+**Permission Errors**:
+```
+✗ Permission denied writing to ./output/project.xlsx
+```
+**Resolution**: Check file/folder permissions, verify path writable
 
-**Causes:**
-- Browser resource limits
-- Too many browser tabs
-- Graphics driver issues
-- JavaScript errors
+**SQL Errors**:
+```
+✗ SQL query failed in entity 'measurements'
+  Syntax error near 'FROM'
+```
+**Resolution**: Check SQL syntax in entity configuration
 
-**Solutions:**
-1. Close unused tabs
-2. Update browser
-3. Update graphics drivers
-4. Check console for errors
-5. Try different browser
+### Best Practices
 
-### Error Messages
+✅ **Before Execute:**
+- Run Complete data validation
+- Fix all errors
+- Review warnings
+- Verify data sources connected
+- Check output path writable
+- Backup existing output files
 
-#### "Project not found"
+✅ **Choosing Format:**
+- **Excel**: Best for manual review, sharing
+- **CSV**: Universal compatibility, simple
+- **Database**: Best for large data, integration, queries
+- **Folder**: Best for programmatic access
 
-**Cause:** Config file doesn't exist or not in config directory
+✅ **After Execute:**
+- Verify entity count matches expected
+- Spot-check output data
+- Confirm FK relationships correct
+- Validate against target system (if applicable)
 
-**Fix:** Check file path and location, verify file name
+---
 
-#### "Invalid YAML syntax"
+## Additional Resources
 
-**Cause:** Syntax error in YAML
+### Documentation
 
-**Fix:** Check indentation, quotes, brackets; use YAML validator
-
-#### "Circular dependency detected"
-
-**Cause:** Entity dependency loop
-
-**Fix:** Review dependency graph, break circular reference
-
-#### "Column 'X' not found"
-
-**Cause:** Config references non-existent column
-
-**Fix:** Remove column or add to data source; use auto-fix
-
-#### "Entity 'X' not defined"
-
-**Cause:** Reference to undefined entity
-
-**Fix:** Define missing entity or fix reference
+- **[User Guide Appendix](other/USER_GUIDE_APPENDIX.md)** - System requirements, installation, performance, troubleshooting
+- **[Configuration Guide](CONFIGURATION_GUIDE.md)** - Complete YAML configuration reference
+- **[Architecture](ARCHITECTURE.md)** - System architecture and components
+- **[Developer Guide](DEVELOPER_GUIDE.md)** - Development setup and contribution
+- **[Testing Guide](TESTING_GUIDE.md)** - Testing procedures
 
 ### Getting Help
 
-**In-App Help:**
-1. Hover tooltips on buttons
-2. Click error for details
-3. Check validation messages
-4. Review auto-fix suggestions
+**Tooltips:**
+- Hover over buttons for contextual help
+- Wait 500ms for tooltip to appear
 
-**Documentation:**
-1. This user guide
-2. Project reference
-3. API documentation
-4. Developer guide
+**Error Messages:**
+- Click errors for detailed information
+- Error codes help identify issue type
+
+**Validation Results:**
+- Read messages carefully for resolution guidance
+- Check field and entity for context
+
+**Backend Logs:**
+- Check backend console for detailed errors
+- Useful for debugging execution failures
 
 **Support:**
-1. Check GitHub issues
-2. Contact administrator
-3. Submit bug report
-4. Request feature
+- Check GitHub issues for known problems
+- Submit bug reports with reproducible steps
+- Contact administrator for help
+
+### Quick Reference
+
+**Keyboard Shortcuts:**
+- `Ctrl/Cmd + S` - Save project
+- `Ctrl/Cmd + V` - Validate
+- `Ctrl/Cmd + E` - Execute
+- `Ctrl/Cmd + F` - Find in editor
+- See [Appendix: Keyboard Shortcuts](USER_GUIDE_APPENDIX.md#keyboard-shortcuts) for full list
+
+**Identity System:**
+- **system_id**: Auto-managed local ID (always `system_id`)
+- **keys**: Business identifiers for deduplication
+- **public_id**: Target PK name (defines FK columns, must end with `_id`)
+
+**Common Entity Types:**
+- `entity`: Derived from another entity
+- `sql`: From database query
+- `csv`: From CSV file
+- `xlsx`: From Excel file
+- `fixed`: Static values
+
+**Join Types:**
+- `inner`: Strict matching only
+- `left`: Keep all children
+- `outer`: Keep all records
+- `cross`: Cartesian product
+
+**Cardinality:**
+- `many_to_one`: Multiple children → one parent
+- `one_to_one`: Strict 1:1
+- `one_to_many`: One parent → many children
 
 ---
 
-## 11. FAQ
-
-### General Questions
-
-**Q: What browsers are supported?**  
-A: Chrome 120+, Firefox 115+, Safari 16+, Edge 120+. Chrome recommended.
-
-**Q: Can I use offline?**  
-A: Editor works offline for loaded configs. Validation requires backend connection.
-
-**Q: Where are configurations stored?**  
-A: In the configured directory, typically `projects/` or similar.
-
-**Q: Are my changes auto-saved?**  
-A: Yes, after 30 seconds of inactivity. Manual save recommended for important changes.
-
-**Q: Can multiple users edit simultaneously?**  
-A: Not currently. Last save wins. Future version will add collaboration features.
-
-### Validation Questions
-
-**Q: How long does validation take?**  
-A: Typically 100-500ms. Data validation takes longer with large datasets.
-
-**Q: What's the difference between structural and data validation?**  
-A: Structural checks YAML syntax and references. Data checks against actual data sources.
-
-**Q: Why validate if I'm not changing anything?**  
-A: Data sources may change, or new validation rules may be added.
-
-**Q: Can I skip validation?**  
-A: Not recommended. Validation catches errors before processing fails.
-
-### Auto-Fix Questions
-
-**Q: Are auto-fixes safe?**  
-A: Yes! Every fix creates an automatic backup.
-
-**Q: Can I undo a fix?**  
-A: Yes, restore from the automatic backup in `/backups/`.
-
-**Q: Will fixes modify my data?**  
-A: No, fixes only modify configuration, never source data.
-
-**Q: Can I apply multiple fixes at once?**  
-A: Not currently. Batch fix application planned for future release.
-
-**Q: What if I disagree with a fix?**  
-A: Skip it and fix manually in YAML editor.
-
-### Performance Questions
-
-**Q: Why is caching important?**  
-A: Makes repeat validations 97% faster (from 200ms to 5ms).
-
-**Q: How long are results cached?**  
-A: 5 minutes. Clears automatically when configuration changes.
-
-**Q: Can I disable caching?**  
-A: Not recommended. Caching is automatic and transparent.
-
-**Q: Why does typing feel slow sometimes?**  
-A: Shouldn't with debouncing (500ms delay). Check system resources.
-
-### Feature Questions
-
-**Q: Can I customize keyboard shortcuts?**  
-A: Not currently. Standard shortcuts follow VS Code conventions.
-
-**Q: Can I change the editor theme?**  
-A: Future feature. Currently uses VS Code Light theme.
-
-**Q: Can I export configurations?**  
-A: Yes, they're YAML files you can copy from config directory.
-
-**Q: Can I import from other formats?**  
-A: Not currently. YAML only.
-
-**Q: Is there an API for automation?**  
-A: Yes, backend REST API documented in API guide.
-
-### Troubleshooting Questions
-
-**Q: Why won't my configuration save?**  
-A: Check file permissions, disk space, and backup directory exists.
-
-**Q: Why do I see outdated validation results?**  
-A: Cache may be stale. Edit config to invalidate cache, or wait 5 minutes.
-
-**Q: Why is the editor slow?**  
-A: Large configs (>10MB) or many entities (>100) can slow performance.
-
-**Q: Why doesn't auto-fix work?**  
-A: Not all errors are fixable. Check if fix badge appears on error.
-
-**Q: Where are backups stored?**  
-A: In `/backups/` directory with timestamp in filename.
-
----
-
-## Related Documentation
-
-- [Requirements](REQUIREMENTS.md) - Feature specifications
-- [Architecture](ARCHITECTURE.md) - Technical architecture
-- [Project Guide](CONFIGURATION_GUIDE.md) - YAML syntax guide
-- [Developer Guide](DEVELOPER_GUIDE.md) - Development information
-- [Testing Guide](TESTING_GUIDE.md) - Testing procedures
-
----
-
-**Document Version**: 1.0  
-**Last Updated**: December 14, 2025  
+**Document Version**: 2.0 (Streamlined)  
+**Last Updated**: January 29, 2026  
 **For**: Shape Shifter Project Editor v0.1.0
