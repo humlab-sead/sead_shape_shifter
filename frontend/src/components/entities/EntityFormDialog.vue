@@ -425,15 +425,12 @@
         </v-fade-transition>
 
         <v-spacer />
-        <v-btn variant="text" @click="handleCancel" :disabled="loading"> Close </v-btn>
-        <v-btn v-if="mode === 'edit'" color="primary" variant="flat" :loading="loading" :disabled="!formValid" @click="handleSubmit">
+        <v-btn variant="text" @click="handleCancel" :disabled="loading"> Cancel </v-btn>
+        <v-btn color="primary" variant="flat" :loading="loading" :disabled="!formValid" @click="handleSubmit">
           <v-icon start>mdi-content-save</v-icon>
           Save
         </v-btn>
-        <v-btn v-if="mode === 'create'" color="primary" variant="flat" :loading="loading" :disabled="!formValid" @click="handleSubmit">
-          Create
-        </v-btn>
-        <v-btn v-if="mode === 'edit'" color="primary" variant="outlined" :loading="loading" :disabled="!formValid" @click="handleSubmitAndClose">
+        <v-btn color="primary" variant="outlined" :loading="loading" :disabled="!formValid" @click="handleSubmitAndClose">
           Save & Close
         </v-btn>
       </v-card-actions>
@@ -1393,9 +1390,14 @@ async function handleSubmit() {
         name: formData.value.name,
         entity_data: entityData,
       })
-      // Close dialog after creating
       emit('saved')
-      handleClose()
+      // Keep dialog open after creating (user can choose "Save & Close" if they want to close)
+      // Show success indicator
+      showSaveSuccess.value = true
+      if (saveSuccessTimeout) clearTimeout(saveSuccessTimeout)
+      saveSuccessTimeout = setTimeout(() => {
+        showSaveSuccess.value = false
+      }, 3000)
     } else {
       await update(formData.value.name, {
         entity_data: entityData,
@@ -1423,9 +1425,18 @@ async function handleSubmitAndClose() {
 
   try {
     const entityData = buildEntityConfigFromFormData()
-    await update(formData.value.name, {
-      entity_data: entityData,
-    })
+    
+    if (props.mode === 'create') {
+      await create({
+        name: formData.value.name,
+        entity_data: entityData,
+      })
+    } else {
+      await update(formData.value.name, {
+        entity_data: entityData,
+      })
+    }
+    
     emit('saved')
     handleClose()
   } catch (err) {
