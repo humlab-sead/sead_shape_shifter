@@ -75,6 +75,10 @@ class PandasLoader(ExcelLoader):
         df: pd.DataFrame | dict[str, pd.DataFrame] = pd.read_excel(file_path, sheet_name=sheet_name, **clean_opts)
         if not isinstance(df, pd.DataFrame):
             raise ValueError("ExcelLoader currently supports loading a single sheet only.")
+        
+        # Clean up column names: ensure all are strings to avoid NaN/float column names
+        df.columns = [str(col) if isinstance(col, str) else f"Unnamed_{i}" for i, col in enumerate(df.columns)]
+        
         return df
 
     async def test_connection(self) -> ConnectTestResult:
@@ -147,6 +151,11 @@ class OpenPyxlLoader(ExcelLoader):
         header: bool = opts.get("header", True)
 
         columns = next(data) if header else None
+        
+        # Clean up column names: convert None/NaN to string to avoid issues downstream
+        if columns is not None:
+            columns = [str(col) if col is not None else f"Unnamed_{i}" for i, col in enumerate(columns)]
+        
         df = pd.DataFrame(data, columns=columns)
         if isinstance(header, list):
             if len(header) != len(df.columns):
