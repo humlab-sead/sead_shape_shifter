@@ -441,9 +441,18 @@ class TableConfig:
                         break
 
                 # Check append sources
-                append_cfgs: list[dict[str, Any]] = entity_cfg.get("append", []) or []
+                append_raw = entity_cfg.get("append", []) or []
+                # Normalize to list (append can be: string, dict, or list of dicts)
+                if isinstance(append_raw, str):
+                    # Skip string format - not a valid dependency check
+                    continue
+                elif isinstance(append_raw, dict):
+                    append_cfgs = [append_raw]
+                else:
+                    append_cfgs = append_raw
+                
                 for append_cfg in append_cfgs:
-                    if append_cfg.get("source") == self.entity_name:
+                    if isinstance(append_cfg, dict) and append_cfg.get("source") == self.entity_name:
                         yield entity_name
                         break
             except KeyError:
