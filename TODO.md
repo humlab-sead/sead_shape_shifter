@@ -267,3 +267,5 @@ _project_contact:
 ### FIXME: #228 Silent failures occurs when fetching Excel file metadata
 
 ### TODO: #229 Add project refresh feature for reloading project from disk
+
+### TODO: #231 Pressing "CREATE" when adding a new entity doesn't save the entity. It only adds the entity to the project in memory, but does not save the project to disk. This can lead to confusion for users who expect their changes to be saved immediately. We should have the same buttons when creating a new entity as for editing an existing entity .
