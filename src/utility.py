@@ -36,8 +36,8 @@ def sanitize_column_name(col: Any, index: int) -> str:
     if col is None or (isinstance(col, float) and pd.isna(col)) or str(col).strip() == "":
         return f"unnamed_{index}"
     
-    # Convert to string
-    name = str(col)
+    # Convert to string and trim whitespace
+    name = str(col).strip()
     
     # Special character replacements (order matters - do specific ones first)
     replacements = {
