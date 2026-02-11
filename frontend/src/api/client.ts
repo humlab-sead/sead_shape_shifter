@@ -4,6 +4,50 @@
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 
+/**
+ * Retry a promise-based operation with exponential backoff
+ * Useful for handling transient failures like file system sync delays
+ */
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  options: {
+    maxRetries?: number
+    initialDelay?: number
+    maxDelay?: number
+    shouldRetry?: (error: any) => boolean
+  } = {}
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    initialDelay = 100,
+    maxDelay = 1000,
+    shouldRetry = (err) => err?.response?.status === 404
+  } = options
+
+  let lastError: any
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+      
+      // Don't retry if this is the last attempt or if error shouldn't be retried
+      if (attempt === maxRetries || !shouldRetry(error)) {
+        throw error
+      }
+      
+      // Calculate delay with exponential backoff
+      const delay = Math.min(initialDelay * Math.pow(2, attempt), maxDelay)
+      console.debug(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`)
+      
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+  
+  throw lastError
+}
+
 // In production (served by backend), VITE_API_BASE_URL should be empty (same origin)
 // In development (served by Vite dev server), it should point to the backend
 // Use ?? (nullish coalescing) instead of || to preserve empty string from .env.production

@@ -1619,7 +1619,17 @@ watch(
         console.log('[EntityFormDialog] Fetching entity from API:', entityName)
         try {
           // Fetch fresh entity data from API (source of truth)
-          const freshEntity = await api.entities.get(props.projectName, entityName)
+          // Use retry mechanism to handle file system sync delays after entity creation
+          const { retryWithBackoff } = await import('@/api/client')
+          const freshEntity = await retryWithBackoff(
+            () => api.entities.get(props.projectName, entityName),
+            {
+              maxRetries: 3,
+              initialDelay: 100,
+              maxDelay: 500,
+              shouldRetry: (err) => err?.response?.status === 404
+            }
+          )
           console.log('[EntityFormDialog] API response received for:', freshEntity.name)
           currentEntity.value = freshEntity  // Store complete entity for materialized checks
           console.log('[EntityFormDialog] Loaded entity:', {
