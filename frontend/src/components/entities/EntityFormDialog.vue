@@ -371,7 +371,21 @@
 
               <v-alert v-if="previewError" type="error" density="compact" closable class="ma-2"
                 @click:close="previewError = null">
-                {{ previewError }}
+                <div v-if="typeof previewError === 'string'">{{ previewError }}</div>
+                <div v-else-if="previewError?.detail?.message">
+                  <div class="font-weight-bold mb-1">{{ previewError.detail.error_type || 'Error' }}</div>
+                  <div class="text-caption" style="white-space: pre-wrap">{{ previewError.detail.message }}</div>
+                  <div v-if="previewError.detail.tips?.length" class="mt-2">
+                    <div class="text-caption font-weight-bold">Suggestions:</div>
+                    <ul class="text-caption mt-1">
+                      <li v-for="(tip, idx) in previewError.detail.tips" :key="idx">{{ tip }}</li>
+                    </ul>
+                  </div>
+                </div>
+                <div v-else-if="previewError?.message">
+                  {{ previewError.message }}
+                </div>
+                <div v-else>{{ previewError }}</div>
               </v-alert>
 
               <v-alert v-if="!canPreview" type="info" density="compact" class="ma-2">
@@ -688,15 +702,28 @@ const delimiterOptions = [
   { title: 'Space', value: ' ' },
 ]
 
-// Important: `values` is a positional 2D array, so the grid column order must match `formData.columns` exactly.
-// Keys are metadata and may already be included in `columns` (common after materialization).
+// Important: `values` is a positional 2D array, so the grid column order must match the three-tier identity model.
+// Fixed values grid must include: system_id, public_id (if defined), keys, and columns
 const fixedValuesColumns = computed(() => {
-  const columns = (formData.value.columns || []).filter((c) => typeof c === 'string' && c.trim().length > 0)
-  if (columns.length > 0) return columns
-
-  // Fallback for incomplete configs (avoid duplicating keys + columns).
-  const keys = (formData.value.keys || []).filter((k) => typeof k === 'string' && k.trim().length > 0)
-  return keys
+  const result: string[] = []
+  
+  // Always include system_id first (required for three-tier identity)
+  result.push('system_id')
+  
+  // Include public_id if defined (required for entities with FK children or mappings)
+  if (formData.value.public_id && formData.value.public_id.trim().length > 0) {
+    result.push(formData.value.public_id)
+  }
+  
+  // Include keys (business keys)
+  const keys = (formData.value.keys || []).filter((k: string) => typeof k === 'string' && k.trim().length > 0)
+  result.push(...keys)
+  
+  // Include columns (data columns)
+  const columns = (formData.value.columns || []).filter((c: string) => typeof c === 'string' && c.trim().length > 0)
+  result.push(...columns)
+  
+  return result
 })
 
 // Can preview only in edit mode
@@ -770,8 +797,9 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
     entityData.surrogate_id = formData.value.surrogate_id
   }
 
-  if (formData.value.type === 'fixed' && formData.value.values.length > 0) {
-    entityData.values = formData.value.values
+  // Always include values field for fixed type (required by backend validation)
+  if (formData.value.type === 'fixed') {
+    entityData.values = formData.value.values || []
   }
 
   if (formData.value.source) {
