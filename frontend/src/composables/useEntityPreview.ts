@@ -71,11 +71,12 @@ export function useEntityPreview() {
       lastRefresh.value = new Date()
       return response.data
     } catch (err: any) {
-      // Preserve full error object for better error display
+      // Extract and format error message properly
       if (err.response?.data) {
+        // Backend returns structured error with detail.message
         error.value = err.response.data
       } else if (err.message) {
-        error.value = { message: err.message, type: err.name || 'Error' }
+        error.value = err.message
       } else {
         error.value = 'Failed to load preview'
       }
@@ -122,11 +123,11 @@ export function useEntityPreview() {
       previewData.value = response.data
       return response.data
     } catch (err: any) {
-      // Preserve full error object for better error display
+      // Extract and format error message properly
       if (err.response?.data) {
         error.value = err.response.data
       } else if (err.message) {
-        error.value = { message: err.message, type: err.name || 'Error' }
+        error.value = err.message
       } else {
         error.value = 'Failed to load sample'
       }
