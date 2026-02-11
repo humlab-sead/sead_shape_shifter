@@ -615,11 +615,11 @@ async def get_custom_layout(name: str) -> CustomLayoutResponse:
     # Get layout from project options
     layout_data = project.options.get("layout", {}).get("custom", {})
 
-    # Convert to response model
+    # Convert to response model (skip only the _metadata key, not entities starting with _)
     layout_positions = {
         entity_name: LayoutPositionResponse(x=pos["x"], y=pos["y"])
         for entity_name, pos in layout_data.items()
-        if not entity_name.startswith("_")  # Skip metadata
+        if entity_name != "_metadata"  # Skip only the metadata key
     }
 
     logger.info(f"Retrieved custom layout for project '{name}': {len(layout_positions)} entities")
