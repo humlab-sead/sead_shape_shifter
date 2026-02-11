@@ -16,6 +16,7 @@ from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
 from backend.app.utils.exceptions import BadRequestError
+from src.utility import sanitize_columns
 
 
 class ProjectServiceError(Exception):
@@ -884,7 +885,8 @@ class ProjectService:
                     if target_sheet not in sheets:
                         raise BadRequestError(f"Sheet '{target_sheet}' not found in {resolved_path.name}")
                     df = pd.read_excel(xls, sheet_name=target_sheet, nrows=0)
-                    columns = [str(col) for col in df.columns]
+                    # Sanitize column names to match what the loader will produce
+                    columns = sanitize_columns(list(df.columns))
 
                 return sheets, columns
         except BadRequestError:
