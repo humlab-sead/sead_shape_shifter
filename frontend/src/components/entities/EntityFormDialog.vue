@@ -1593,11 +1593,14 @@ function buildDefaultFormData(): FormData {
 
 // Reset form and fetch fresh entity data when dialog opens or entity changes
 watch(
-  [() => props.modelValue, () => props.entity?.name],
-  async ([isOpen, entityName]) => {
-    if (isOpen && entityName) {
+  [() => props.modelValue, () => props.entity?.name, () => props.mode],
+  async ([isOpen, entityName, mode]) => {
+    // Trigger reset when dialog opens in either mode:
+    // - Create mode: always reset (no entity name required)
+    // - Edit mode: reset when entity name is available
+    if (isOpen && (mode === 'create' || entityName)) {
       console.log('[EntityFormDialog] Dialog opening/entity changed, props:', {
-        mode: props.mode,
+        mode: mode,
         entityName: entityName,
         hasEntity: !!props.entity,
         projectName: props.projectName
@@ -1611,10 +1614,10 @@ watch(
       yamlError.value = null
       clearPreview()
       previewError.value = null
-      viewMode.value = 'form'
+      viewMode.value = 'form'  // Always reset to form view
 
       // Load entity data - ALWAYS fetch fresh from API for edit mode
-      if (props.mode === 'edit') {
+      if (mode === 'edit' && entityName) {
         loading.value = true
         console.log('[EntityFormDialog] Fetching entity from API:', entityName)
         try {
@@ -1662,7 +1665,7 @@ watch(
         } finally {
           loading.value = false
         }
-      } else if (props.mode === 'create') {
+      } else if (mode === 'create') {
         // Create mode: use default form data
         currentEntity.value = null
         formData.value = buildDefaultFormData()
