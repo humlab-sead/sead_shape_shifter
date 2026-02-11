@@ -12,7 +12,7 @@ import yaml
 from loguru import logger
 
 
-def sanitize_column_name(col: Any, index: int) -> str:
+def sanitize_column_name(col: Any, index: int, max_length: int = 48) -> str:
     """Convert column name to YAML-friendly format.
     
     Rules:
@@ -23,11 +23,14 @@ def sanitize_column_name(col: Any, index: int) -> str:
     - Handle parentheses by replacing with underscores
     - Avoid consecutive underscores
     - Handle None/NaN as "unnamed_N"
+    - Skip Excel formulas (starting with "=")
+    - Truncate very long names to max_length
     - Final safety: only keep a-z, 0-9, underscore
     
     Args:
         col: Column name (can be str, None, or any type)
         index: Column index for fallback naming
+        max_length: Maximum length for column names (default: 48)
         
     Returns:
         Sanitized column name
@@ -37,10 +40,15 @@ def sanitize_column_name(col: Any, index: int) -> str:
         return f"unnamed_{index}"
     
     # Convert to string and trim whitespace
-    name = str(col).strip()
+    name: str = str(col).strip()
+    
+    # Skip Excel formulas (starting with "=") or very long strings (likely formulas)
+    # Use a generous threshold - anything over 200 chars is probably a formula
+    if name.startswith("=") or len(name) > 200:
+        return f"unnamed_{index}"
     
     # Special character replacements (order matters - do specific ones first)
-    replacements = {
+    replacements: dict[str, str] = {
         "±": "plus_minus",
         "δ": "delta",
         "σ": "sigma",
@@ -85,6 +93,10 @@ def sanitize_column_name(col: Any, index: int) -> str:
     name = re.sub(r"_+", "_", name)
     name = name.strip("_")
     
+    # Truncate to maximum length if needed
+    if len(name) > max_length:
+        name = name[:max_length].rstrip("_")
+    
     # If name is empty after sanitization, use index
     if not name:
         name = f"unnamed_{index}"
@@ -105,7 +117,7 @@ def sanitize_columns(columns: list[Any]) -> list[str]:
     Returns:
         List of sanitized, unique column names
     """
-    sanitized = [sanitize_column_name(col, i) for i, col in enumerate(columns)]
+    sanitized: list[str] = [sanitize_column_name(col, i) for i, col in enumerate(columns)]
     
     # Handle duplicates by adding suffixes
     seen: dict[str, int] = {}
