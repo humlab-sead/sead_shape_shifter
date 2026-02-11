@@ -88,6 +88,10 @@ class CsvLoader(FileLoader):
         except KeyError as exc:
             raise ValueError("Missing 'filename' in options for CSV loader") from exc
         df: pd.DataFrame = pd.read_csv(filename, **clean_opts)
+        
+        # Clean up column names: ensure all are strings to avoid NaN/float column names
+        df.columns = [str(col) if isinstance(col, str) else f"Unnamed_{i}" for i, col in enumerate(df.columns)]
+        
         return df
 
     async def test_connection(self) -> ConnectTestResult:

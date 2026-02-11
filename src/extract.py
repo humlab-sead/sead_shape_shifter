@@ -183,7 +183,10 @@ class SubsetService:
         """Split extra columns into those that copy existing source columns and those that are constants."""
         source_columns: dict[str, str]
         if not case_sensitive:
-            source_columns_lower: dict[str, str] = {col.lower(): col for col in source.columns}
+            # Convert column names to strings to handle NaN/float columns from Excel
+            source_columns_lower: dict[str, str] = {
+                str(col).lower(): col for col in source.columns if isinstance(col, str)
+            }
             source_columns = {
                 k: source_columns_lower[v.lower()]
                 for k, v in extra_columns.items()
