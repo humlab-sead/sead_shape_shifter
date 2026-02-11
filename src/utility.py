@@ -1,6 +1,7 @@
 import importlib
 import os
 import pkgutil
+import re
 import sys
 import unicodedata
 from pathlib import Path
@@ -9,6 +10,116 @@ from typing import Any, Callable, Generic, Literal, Self, TypeVar
 import pandas as pd
 import yaml
 from loguru import logger
+
+
+def sanitize_column_name(col: Any, index: int) -> str:
+    """Convert column name to YAML-friendly format.
+    
+    Rules:
+    - Convert to lowercase
+    - Replace spaces with underscores
+    - Replace special characters with meaningful names (±, σ, δ, etc.)
+    - Remove punctuation (., , ; : etc.)
+    - Handle parentheses by replacing with underscores
+    - Avoid consecutive underscores
+    - Handle None/NaN as "unnamed_N"
+    - Final safety: only keep a-z, 0-9, underscore
+    
+    Args:
+        col: Column name (can be str, None, or any type)
+        index: Column index for fallback naming
+        
+    Returns:
+        Sanitized column name
+    """
+    # Handle None, NaN, or empty strings
+    if col is None or (isinstance(col, float) and pd.isna(col)) or str(col).strip() == "":
+        return f"unnamed_{index}"
+    
+    # Convert to string
+    name = str(col)
+    
+    # Special character replacements (order matters - do specific ones first)
+    replacements = {
+        "±": "plus_minus",
+        "δ": "delta",
+        "σ": "sigma",
+        "μ": "mu",
+        "α": "alpha",
+        "β": "beta",
+        "γ": "gamma",
+        "Δ": "delta",
+        "Σ": "sigma",
+        "π": "pi",
+        "°": "degree",
+        "º": "degree",
+        "%": "percent",
+        "#": "num",
+        "&": "and",
+        "@": "at",
+        "$": "dollar",
+        "€": "euro",
+        "£": "pound",
+    }
+    
+    for char, replacement in replacements.items():
+        name = name.replace(char, f"_{replacement}_")
+    
+    # Replace parentheses and brackets with underscores
+    name = re.sub(r"[\(\)\[\]\{\}]", "_", name)
+    
+    # Remove punctuation (., , ; : ! ? ' " etc.)
+    name = re.sub(r"[.,;:!?'\"\\\|\-/]", "", name)
+    
+    # Replace any remaining whitespace with underscores
+    name = re.sub(r"\s+", "_", name)
+    
+    # Convert to lowercase
+    name = name.lower()
+    
+    # Final safety: remove any remaining non-safe characters
+    # Only keep: a-z, 0-9, underscore
+    name = re.sub(r"[^a-z0-9_]", "", name)
+    
+    # Remove consecutive underscores and trim
+    name = re.sub(r"_+", "_", name)
+    name = name.strip("_")
+    
+    # If name is empty after sanitization, use index
+    if not name:
+        name = f"unnamed_{index}"
+    
+    # Ensure it doesn't start with a number (YAML key requirement)
+    if name[0].isdigit():
+        name = f"col_{name}"
+    
+    return name
+
+
+def sanitize_columns(columns: list[Any]) -> list[str]:
+    """Sanitize a list of column names, ensuring uniqueness.
+    
+    Args:
+        columns: List of column names (can contain None, duplicates, etc.)
+        
+    Returns:
+        List of sanitized, unique column names
+    """
+    sanitized = [sanitize_column_name(col, i) for i, col in enumerate(columns)]
+    
+    # Handle duplicates by adding suffixes
+    seen: dict[str, int] = {}
+    result = []
+    
+    for col in sanitized:
+        if col in seen:
+            seen[col] += 1
+            result.append(f"{col}_{seen[col]}")
+        else:
+            seen[col] = 0
+            result.append(col)
+    
+    return result
 
 
 def rename_last_occurence(data: pd.DataFrame, rename_map: dict[str, str]) -> list[str]:
