@@ -904,8 +904,9 @@ async function fetchProjectFiles() {
   filesLoading.value = true
   try {
     const extensions = getFileExtensions()
-    // Use existing data source files endpoint
-    const response = await fetch(`/api/v1/data-sources/files?extensions=${extensions.join(',')}`)
+    // Build query params - backend expects 'ext' parameter for each extension
+    const queryParams = extensions.map(ext => `ext=${ext}`).join('&')
+    const response = await fetch(`/api/v1/data-sources/files?${queryParams}`)
     if (response.ok) {
       const files = await response.json()
       availableProjectFiles.value = files.map((f: any) => f.path)
