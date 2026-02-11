@@ -6,6 +6,7 @@ import pandas as pd
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.loaders.file_loaders import FileLoader
+from src.utility import sanitize_columns
 
 from .base_loader import ConnectTestResult, DataLoaders, LoaderType
 
@@ -76,8 +77,8 @@ class PandasLoader(ExcelLoader):
         if not isinstance(df, pd.DataFrame):
             raise ValueError("ExcelLoader currently supports loading a single sheet only.")
         
-        # Clean up column names: ensure all are strings to avoid NaN/float column names
-        df.columns = [str(col) if isinstance(col, str) else f"Unnamed_{i}" for i, col in enumerate(df.columns)]
+        # Sanitize column names to be YAML-friendly
+        df.columns = sanitize_columns(list(df.columns))
         
         return df
 
@@ -152,17 +153,15 @@ class OpenPyxlLoader(ExcelLoader):
 
         columns = next(data) if header else None
         
-        # Clean up column names: convert None/NaN to string to avoid issues downstream
-        if columns is not None:
-            columns = [str(col) if col is not None else f"Unnamed_{i}" for i, col in enumerate(columns)]
-        
         df = pd.DataFrame(data, columns=columns)
         if isinstance(header, list):
             if len(header) != len(df.columns):
                 raise ValueError("Length of provided header does not match number of columns in data")
-            df.columns = header
-        elif not header:
-            df.columns = [f"C_{i+1}" for i in range(len(df.columns))]
+            # Sanitize provided header names
+            df.columns = sanitize_columns(header)
+        else:
+            # Sanitize column names to be YAML-friendly
+            df.columns = sanitize_columns(list(df.columns) if header else [f"C_{i+1}" for i in range(len(df.columns))])
 
         return df
 

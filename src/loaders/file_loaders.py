@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import pandas as pd
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
+from src.utility import sanitize_columns
 
 from .base_loader import ConnectTestResult, DataLoader, DataLoaders, LoaderType
 
@@ -89,8 +90,8 @@ class CsvLoader(FileLoader):
             raise ValueError("Missing 'filename' in options for CSV loader") from exc
         df: pd.DataFrame = pd.read_csv(filename, **clean_opts)
         
-        # Clean up column names: ensure all are strings to avoid NaN/float column names
-        df.columns = [str(col) if isinstance(col, str) else f"Unnamed_{i}" for i, col in enumerate(df.columns)]
+        # Sanitize column names to be YAML-friendly
+        df.columns = sanitize_columns(list(df.columns))
         
         return df
 
