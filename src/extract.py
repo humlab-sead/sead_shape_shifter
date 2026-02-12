@@ -1,10 +1,12 @@
-from collections.abc import Mapping
+from __future__ import annotations
+
 from typing import Any
 
 import pandas as pd
 from loguru import logger
 
 from src.model import TableConfig
+from src.transforms.replace import apply_replacements
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
 from src.utility import unique
 
@@ -164,16 +166,7 @@ class SubsetService:
             result = drop_empty_rows(data=result, entity_name=entity_name, subset=None if drop_empty is True else drop_empty)
 
         if replacements:
-            for col, replacement_map in replacements.items():
-                if col in result.columns:
-                    # `Series.replace(to_replace=<scalar/list>)` previously defaulted to `method="pad"` when `value` was omitted,
-                    # but that behavior is deprecated. Support both:
-                    # - Mapping: explicit old->new replacements
-                    # - Scalar/list: treat as "values to blank out", then forward-fill (legacy pad behavior)
-                    if isinstance(replacement_map, Mapping):
-                        result[col] = result[col].replace(to_replace=replacement_map)
-                    else:
-                        result[col] = result[col].replace(to_replace=replacement_map, value=pd.NA).ffill()
+            result = apply_replacements(result, replacements=replacements, entity_name=entity_name)
 
         return result
 
@@ -184,9 +177,7 @@ class SubsetService:
         source_columns: dict[str, str]
         if not case_sensitive:
             # Convert column names to strings to handle NaN/float columns from Excel
-            source_columns_lower: dict[str, str] = {
-                str(col).lower(): col for col in source.columns if isinstance(col, str)
-            }
+            source_columns_lower: dict[str, str] = {str(col).lower(): col for col in source.columns if isinstance(col, str)}
             source_columns = {
                 k: source_columns_lower[v.lower()]
                 for k, v in extra_columns.items()
