@@ -3,7 +3,6 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vuetify from 'vite-plugin-vuetify'
 import Components from 'unplugin-vue-components/vite'
-import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -19,16 +18,22 @@ export default defineConfig({
       dirs: ['src/components'],
       dts: 'src/components.d.ts',
     }),
-    monacoEditorPlugin({
-      languageWorkers: ['editorWorkerService'],
-      customWorkers: [
-        {
-          label: 'yaml',
-          entry: 'monaco-yaml/yaml.worker',
-        },
-      ],
-    }),
   ],
+  worker: {
+    format: 'es',
+  },
+  optimizeDeps: {
+    exclude: ['monaco-editor', 'monaco-yaml'],
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          monaco: ['monaco-editor'],
+        },
+      },
+    },
+  },
   css: {
     preprocessorOptions: {
       scss: {
