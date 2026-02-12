@@ -1657,54 +1657,41 @@ watch(
       previewError.value = null
       viewMode.value = 'form'  // Always reset to form view
 
-      // Load entity data - ALWAYS fetch fresh from API for edit mode
+      // Load entity data for edit mode
       if (mode === 'edit' && entityName) {
-        loading.value = true
-        console.log('[EntityFormDialog] Fetching entity from API:', entityName)
-        try {
-          // Fetch fresh entity data from API (source of truth)
-          // Use retry mechanism to handle file system sync delays after entity creation
-          const { retryWithBackoff } = await import('@/api/client')
-          const freshEntity = await retryWithBackoff(
-            () => api.entities.get(props.projectName, entityName),
-            {
-              maxRetries: 3,
-              initialDelay: 100,
-              maxDelay: 500,
-              shouldRetry: (err) => err?.response?.status === 404
-            }
-          )
-          console.log('[EntityFormDialog] API response received for:', freshEntity.name)
-          currentEntity.value = freshEntity  // Store complete entity for materialized checks
-          console.log('[EntityFormDialog] Loaded entity:', {
-            name: freshEntity.name,
-            hasMaterialized: !!freshEntity.materialized,
-            materializedEnabled: freshEntity.materialized?.enabled,
-            type: freshEntity.entity_data?.type
-          })
-          formData.value = buildFormDataFromEntity(freshEntity)
+        // Use entity from props (already fresh from reactive store)
+        // Only fetch from API if props.entity is missing (defensive coding)
+        if (props.entity) {
+          console.log('[EntityFormDialog] Using entity from props (reactive store):', entityName)
+          currentEntity.value = props.entity
+          formData.value = buildFormDataFromEntity(props.entity)
           yamlContent.value = formDataToYaml()
 
           // Hydrate columns for entity type after form data is loaded
           if (formData.value.type === 'entity') {
             hydrateColumnsFromSource()
           }
-        } catch (err) {
-          error.value = err instanceof Error ? err.message : 'Failed to load entity data'
-          console.error('Failed to fetch fresh entity data:', err)
-          // Fallback to prop data if API fails
-          if (props.entity) {
-            currentEntity.value = props.entity
-            formData.value = buildFormDataFromEntity(props.entity)
+        } else {
+          // Fallback: fetch from API if entity not provided (shouldn't happen in normal flow)
+          loading.value = true
+          console.warn('[EntityFormDialog] Entity not in props, fetching from API:', entityName)
+          try {
+            const freshEntity = await api.entities.get(props.projectName, entityName)
+            console.log('[EntityFormDialog] API response received for:', freshEntity.name)
+            currentEntity.value = freshEntity
+            formData.value = buildFormDataFromEntity(freshEntity)
             yamlContent.value = formDataToYaml()
 
             // Hydrate columns for entity type after form data is loaded
             if (formData.value.type === 'entity') {
               hydrateColumnsFromSource()
             }
+          } catch (err) {
+            error.value = err instanceof Error ? err.message : 'Failed to load entity data'
+            console.error('Failed to fetch entity data:', err)
+          } finally {
+            loading.value = false
           }
-        } finally {
-          loading.value = false
         }
       } else if (mode === 'create') {
         // Create mode: use default form data
