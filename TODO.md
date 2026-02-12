@@ -269,3 +269,19 @@ _project_contact:
 ### TODO: #229 Add project refresh feature for reloading project from disk
 
 ### TODO: #231 Pressing "CREATE" when adding a new entity doesn't save the entity. It only adds the entity to the project in memory, but does not save the project to disk. This can lead to confusion for users who expect their changes to be saved immediately. We should have the same buttons when creating a new entity as for editing an existing entity .
+
+### FIXED: #234 Sync issue after new entity creation ✅
+~~The following steps can be taken to reproduce the issue:
+  1. (Refresh project)
+  2. Click "Add entity"
+  3. Click enter entity name, select XLSX, sheet name, public id, click "Create"
+  4. Click "Save" in entity editor
+  5. Entity editor mode changes to "Edit".
+     Project "SAVE CHANGES" becomes enabled. (This should not happen since entity was saved)
+     New entity is visible in project view's entity list.
+  6. Close entity editor.
+     Open file on disk (outside of application) shows that new entity has been written to disk.
+     Open YAML in project's view shows that the new entity is NOT present, i.e. project in memory is NOT updated with the new entity, so the project in memory is out of sync with the project on disk.~~
+
+**Fixed in commit 3c3ca82**: Entity store now refreshes project from disk after create/update/delete operations, ensuring in-memory state matches saved state. 
+
