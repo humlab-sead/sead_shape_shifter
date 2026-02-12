@@ -190,6 +190,39 @@ const dialogMode = ref<'create' | 'edit'>('create')
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
 
+// Debug watchers to track what's changing dialog state
+watch(showFormDialog, (newVal, oldVal) => {
+  if (newVal !== oldVal) {
+    console.log('[EntityListCard] showFormDialog changed:', { 
+      from: oldVal, 
+      to: newVal,
+      selectedEntity: selectedEntity.value?.name,
+      mode: dialogMode.value,
+      stack: new Error().stack 
+    })
+  }
+})
+
+watch(selectedEntity, (newVal, oldVal) => {
+  console.log('[EntityListCard] selectedEntity changed:', { 
+    from: oldVal?.name, 
+    to: newVal?.name,
+    showFormDialog: showFormDialog.value,
+    mode: dialogMode.value
+  })
+})
+
+watch(dialogMode, (newVal, oldVal) => {
+  if (newVal !== oldVal) {
+    console.log('[EntityListCard] dialogMode changed:', { 
+      from: oldVal, 
+      to: newVal,
+      selectedEntity: selectedEntity.value?.name,
+      showFormDialog: showFormDialog.value
+    })
+  }
+})
+
 // Computed
 const entityTypes = computed(() => {
   const types = new Set<string>()
