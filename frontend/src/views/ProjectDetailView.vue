@@ -1079,6 +1079,8 @@ async function handleRefresh() {
       await projectStore.refreshProject(projectName.value)
       // Also refresh entity list to sync with updated project
       await fetchEntities()
+      // Also refresh dependency graph to sync FK relationships
+      await fetchDependencies(projectName.value)
       successMessage.value = 'Project refreshed from disk'
       showSuccessSnackbar.value = true
     } catch (err: any) {
