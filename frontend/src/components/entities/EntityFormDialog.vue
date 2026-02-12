@@ -1213,13 +1213,8 @@ onUnmounted(() => {
 
 // Computed
 const dialogModel = computed({
-  get: () => {
-    return props.modelValue
-  },
-  set: (value: boolean) => {
-    console.log('[EntityFormDialog] dialogModel.set called:', { value, mode: props.mode, entity: props.entity?.name, stack: new Error().stack })
-    emit('update:modelValue', value)
-  },
+  get: () => props.modelValue,
+  set: (value: boolean) => emit('update:modelValue', value),
 })
 
 const entityTypeOptions = [
@@ -1640,16 +1635,7 @@ function buildDefaultFormData(): FormData {
 // Reset form and fetch fresh entity data when dialog opens or entity changes
 watch(
   [() => props.modelValue, () => props.entity?.name, () => props.mode],
-  async ([isOpen, entityName, mode], [wasOpen, oldEntityName, oldMode]) => {
-    console.log('[EntityFormDialog] Watcher triggered:', {
-      isOpen, wasOpen,
-      entityName, oldEntityName,
-      mode, oldMode,
-      entityChanged: entityName !== oldEntityName,
-      modeChanged: mode !== oldMode,
-      openChanged: isOpen !== wasOpen
-    })
-    
+  async ([isOpen, entityName, mode]) => {
     // Trigger reset when dialog opens in either mode:
     // - Create mode: always reset (no entity name required)
     // - Edit mode: reset when entity name is available

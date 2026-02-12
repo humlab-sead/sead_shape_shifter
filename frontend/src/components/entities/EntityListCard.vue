@@ -142,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useEntities } from '@/composables'
 import type { EntityResponse } from '@/api/entities'
 import EntityFormDialog from './EntityFormDialog.vue'
@@ -159,16 +159,6 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
-
-console.log('[EntityListCard] Component setup called for project:', props.projectName)
-
-onMounted(() => {
-  console.log('[EntityListCard] Component MOUNTED for project:', props.projectName)
-})
-
-onUnmounted(() => {
-  console.log('[EntityListCard] Component  UNMOUNTED for project:', props.projectName)
-})
 
 const { entities, loading, error, remove } = useEntities({
   projectName: props.projectName,
@@ -199,39 +189,6 @@ const entityToDelete = ref<EntityResponse | null>(null)
 const dialogMode = ref<'create' | 'edit'>('create')
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
-
-// Debug watchers to track what's changing dialog state
-watch(showFormDialog, (newVal, oldVal) => {
-  if (newVal !== oldVal) {
-    console.log('[EntityListCard] showFormDialog changed:', { 
-      from: oldVal, 
-      to: newVal,
-      selectedEntity: selectedEntity.value?.name,
-      mode: dialogMode.value,
-      stack: new Error().stack 
-    })
-  }
-})
-
-watch(selectedEntity, (newVal, oldVal) => {
-  console.log('[EntityListCard] selectedEntity changed:', { 
-    from: oldVal?.name, 
-    to: newVal?.name,
-    showFormDialog: showFormDialog.value,
-    mode: dialogMode.value
-  })
-})
-
-watch(dialogMode, (newVal, oldVal) => {
-  if (newVal !== oldVal) {
-    console.log('[EntityListCard] dialogMode changed:', { 
-      from: oldVal, 
-      to: newVal,
-      selectedEntity: selectedEntity.value?.name,
-      showFormDialog: showFormDialog.value
-    })
-  }
-})
 
 // Computed
 const entityTypes = computed(() => {
@@ -312,14 +269,6 @@ async function handleDeleteConfirm() {
 
 async function handleEntitySaved(entityName: string) {
   const wasCreate = dialogMode.value === 'create'
-  console.log('[EntityListCard] handleEntitySaved called:', {
-    entityName,
-    wasCreate,
-    mode: dialogMode.value,
-    showFormDialog: showFormDialog.value,
-    selectedEntity: selectedEntity.value?.name
-  })
-  
   successMessage.value = wasCreate ? 'Entity created' : 'Entity updated'
   showSuccessSnackbar.value = true
   emit('entity-updated')
@@ -330,22 +279,10 @@ async function handleEntitySaved(entityName: string) {
     await new Promise(resolve => setTimeout(resolve, 100))
     const entity = entities.value?.find((e) => e.name === entityName)
     if (entity) {
-      console.log('[EntityListCard] Switching from create to edit mode:', {
-        oldEntity: selectedEntity.value?.name,
-        newEntity: entity.name,
-        oldMode: dialogMode.value
-      })
       selectedEntity.value = entity
       dialogMode.value = 'edit'
-      console.log('[EntityListCard] After mode switch:', {
-        selectedEntity: selectedEntity.value?.name,
-        mode: dialogMode.value,
-        showFormDialog: showFormDialog.value
-      })
     }
   }
-  
-  console.log('[EntityListCard] handleEntitySaved complete, dialog still open:', showFormDialog.value)
 }
 
 // Watch for create dialog trigger

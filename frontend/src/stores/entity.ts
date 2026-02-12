@@ -71,13 +71,11 @@ export const useEntityStore = defineStore('entity', () => {
 
   // Actions
   async function fetchEntities(projectName: string) {
-    console.log('[EntityStore] fetchEntities called:', { projectName, stack: new Error().stack })
     loading.value = true
     error.value = null
     currentProjectName.value = projectName
     try {
       entities.value = await api.entities.list(projectName)
-      console.log('[EntityStore] fetchEntities complete:', { count: entities.value.length })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch entities'
       throw err
@@ -110,8 +108,8 @@ export const useEntityStore = defineStore('entity', () => {
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
       
-      // Refresh project from disk to sync in-memory state
-      await refreshProjectState(projectName)
+      // Note: Backend already persists entity to disk.
+      // Don't call refreshProjectState() here as it causes component recreation.
       
       return entity
     } catch (err) {
@@ -123,24 +121,15 @@ export const useEntityStore = defineStore('entity', () => {
   }
 
   async function updateEntity(projectName: string, entityName: string, data: EntityUpdateRequest) {
-    console.log('[EntityStore] updateEntity called:', { projectName, entityName, hasData: !!data })
     loading.value = true
     error.value = null
     try {
       const entity = await api.entities.update(projectName, entityName, data)
-      console.log('[EntityStore] Update API call complete:', { entityName: entity.name })
 
       // Update entity in list
       const index = entities.value.findIndex((e: EntityResponse) => e.name === entityName)
       if (index !== -1) {
-        const oldEntity = entities.value[index]
         entities.value[index] = entity
-        console.log('[EntityStore] Entity replaced in list:', {
-          index,
-          oldEntity: oldEntity.name,
-          newEntity: entity.name,
-          sameReference: oldEntity === entity
-        })
       }
 
       selectedEntity.value = entity
@@ -150,7 +139,6 @@ export const useEntityStore = defineStore('entity', () => {
       // Don't call refreshProjectState() here as it causes component recreation
       // which resets dialog state (closes the entity editor).
       
-      console.log('[EntityStore] updateEntity complete')
       return entity
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update entity'

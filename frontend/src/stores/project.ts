@@ -67,20 +67,12 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function refreshProject(name: string) {
-    console.log('[ProjectStore] refreshProject called:', { name })
     loading.value = true
     error.value = null
     try {
-      const oldProject = selectedProject.value
       // Force reload from disk (invalidates server-side cache)
       selectedProject.value = await api.projects.refresh(name)
       hasUnsavedChanges.value = false
-      console.log('[ProjectStore] refreshProject complete:', {
-        name: selectedProject.value?.metadata?.name,
-        sameReference: oldProject === selectedProject.value,
-        oldVersion: oldProject?.metadata?.version,
-        newVersion: selectedProject.value?.metadata?.version
-      })
       return selectedProject.value
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to refresh project'
