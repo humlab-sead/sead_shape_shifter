@@ -655,7 +655,7 @@ const {
   markAsChanged,
 } = useProjects({ autoFetch: false })
 
-const { entityCount, entities } = useEntities({
+const { entityCount, entities, fetch: fetchEntities } = useEntities({
   projectName: projectName.value,
   autoFetch: true,
 })
@@ -1077,6 +1077,8 @@ async function handleRefresh() {
   if (projectName.value) {
     try {
       await projectStore.refreshProject(projectName.value)
+      // Also refresh entity list to sync with updated project
+      await fetchEntities()
       successMessage.value = 'Project refreshed from disk'
       showSuccessSnackbar.value = true
     } catch (err: any) {
