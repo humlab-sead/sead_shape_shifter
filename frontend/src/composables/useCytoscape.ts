@@ -130,7 +130,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
         style: getCytoscapeStyles(isDark.value),
         minZoom: 0.3,
         maxZoom: 3,
-        wheelSensitivity: 0.3,
+        // Use default wheelSensitivity (1.0) for cross-platform consistency
         boxSelectionEnabled: false,
         autounselectify: false,
       })
