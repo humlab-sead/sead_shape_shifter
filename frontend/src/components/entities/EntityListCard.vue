@@ -267,10 +267,22 @@ async function handleDeleteConfirm() {
   }
 }
 
-function handleEntitySaved() {
-  successMessage.value = dialogMode.value === 'create' ? 'Entity created' : 'Entity updated'
+async function handleEntitySaved(entityName: string) {
+  const wasCreate = dialogMode.value === 'create'
+  successMessage.value = wasCreate ? 'Entity created' : 'Entity updated'
   showSuccessSnackbar.value = true
   emit('entity-updated')
+  
+  // If we just created an entity, switch to edit mode so tabs become available
+  if (wasCreate) {
+    // Wait a brief moment for the entity list to refresh
+    await new Promise(resolve => setTimeout(resolve, 100))
+    const entity = entities.value?.find((e) => e.name === entityName)
+    if (entity) {
+      selectedEntity.value = entity
+      dialogMode.value = 'edit'
+    }
+  }
 }
 
 // Watch for create dialog trigger

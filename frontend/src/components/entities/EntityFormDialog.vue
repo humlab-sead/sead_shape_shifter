@@ -510,7 +510,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
-  (e: 'saved'): void
+  (e: 'saved', entityName: string): void
 }
 
 const props = defineProps<Props>()
@@ -1418,7 +1418,7 @@ async function handleSubmit() {
         name: formData.value.name,
         entity_data: entityData,
       })
-      emit('saved')
+      emit('saved', formData.value.name)
       // Keep dialog open after creating (user can choose "Save & Close" if they want to close)
       // Show success indicator
       showSaveSuccess.value = true
@@ -1431,7 +1431,7 @@ async function handleSubmit() {
         entity_data: entityData,
       })
       // Keep dialog open after saving in edit mode
-      emit('saved')
+      emit('saved', formData.value.name)
       
       // Show success indicator
       showSaveSuccess.value = true
@@ -1465,7 +1465,7 @@ async function handleSubmitAndClose() {
       })
     }
     
-    emit('saved')
+    emit('saved', formData.value.name)
     handleClose()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to save entity'
