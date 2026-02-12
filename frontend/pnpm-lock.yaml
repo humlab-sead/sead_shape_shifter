@@ -138,6 +138,9 @@ importers:
       vite:
         specifier: ^6.0.5
         version: 6.4.1(@types/node@22.19.2)(sass-embedded@1.96.0)(sass@1.96.0)(yaml@2.8.2)
+      vite-plugin-monaco-editor:
+        specifier: ^1.1.0
+        version: 1.1.0(monaco-editor@0.52.2)
       vite-plugin-vuetify:
         specifier: ^2.1.2
         version: 2.1.2(vite@6.4.1(@types/node@22.19.2)(sass-embedded@1.96.0)(sass@1.96.0)(yaml@2.8.2))(vue@3.5.25(typescript@5.6.3))(vuetify@3.11.4)
@@ -2870,6 +2873,11 @@ packages:
     resolution: {integrity: sha512-DkFsiTwEKau8VIxyZBGdO6tOudD+QoUBPuHj3e6QFqmbfCRj1ArmYWue9lEp6jLSWBIw4XPlDLjFIZNLdRAMSg==}
     peerDependencies:
       vue: ^3.4.26
+
+  vite-plugin-monaco-editor@1.1.0:
+    resolution: {integrity: sha512-IvtUqZotrRoVqwT0PBBDIZPNraya3BxN/bfcNfnxZ5rkJiGcNtO5eAOWWSgT7zullIAEqQwxMU83yL9J5k7gww==}
+    peerDependencies:
+      monaco-editor: '>=0.33.0'
 
   vite-plugin-vuetify@2.1.2:
     resolution: {integrity: sha512-I/wd6QS+DO6lHmuGoi1UTyvvBTQ2KDzQZ9oowJQEJ6OcjWfJnscYXx2ptm6S7fJSASuZT8jGRBL3LV4oS3LpaA==}
@@ -5898,6 +5906,10 @@ snapshots:
       '@vue/devtools-api': 7.7.9
       type-fest: 4.41.0
       vue: 3.5.25(typescript@5.6.3)
+
+  vite-plugin-monaco-editor@1.1.0(monaco-editor@0.52.2):
+    dependencies:
+      monaco-editor: 0.52.2
 
   vite-plugin-vuetify@2.1.2(vite@6.4.1(@types/node@22.19.2)(sass-embedded@1.96.0)(sass@1.96.0)(yaml@2.8.2))(vue@3.5.25(typescript@5.6.3))(vuetify@3.11.4):
     dependencies:
