@@ -21,31 +21,10 @@ export const useEntityStore = defineStore('entity', () => {
   // Cross-store access
   const projectStore = useProjectStore()
 
-  function syncProjectEntity(projectName: string, entity: EntityResponse) {
-    if (projectStore.selectedProject?.metadata?.name !== projectName) return
-
-    const nextEntities: Record<string, Record<string, unknown>> = {
-      ...(projectStore.selectedProject.entities || {}),
-      [entity.name]: entity.entity_data,
-    }
-
-    projectStore.selectedProject = {
-      ...projectStore.selectedProject,
-      entities: nextEntities,
-    }
-  }
-
-  function removeProjectEntity(projectName: string, entityName: string) {
-    if (projectStore.selectedProject?.metadata?.name !== projectName) return
-
-    const currentEntities = projectStore.selectedProject.entities || {}
-    if (!(entityName in currentEntities)) return
-
-    const { [entityName]: _removed, ...rest } = currentEntities
-
-    projectStore.selectedProject = {
-      ...projectStore.selectedProject,
-      entities: rest,
+  // Refresh project from disk to ensure in-memory state matches saved state
+  async function refreshProjectState(projectName: string) {
+    if (projectStore.selectedProject?.metadata?.name === projectName) {
+      await projectStore.refreshProject(projectName)
     }
   }
 
@@ -128,7 +107,10 @@ export const useEntityStore = defineStore('entity', () => {
       entities.value.push(entity)
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
-      syncProjectEntity(projectName, entity)
+      
+      // Refresh project from disk to sync in-memory state
+      await refreshProjectState(projectName)
+      
       return entity
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to create entity'
@@ -152,7 +134,10 @@ export const useEntityStore = defineStore('entity', () => {
 
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
-      syncProjectEntity(projectName, entity)
+      
+      // Refresh project from disk to sync in-memory state
+      await refreshProjectState(projectName)
+      
       return entity
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update entity'
@@ -171,7 +156,9 @@ export const useEntityStore = defineStore('entity', () => {
       if (selectedEntity.value?.name === entityName) {
         selectedEntity.value = null
       }
-      removeProjectEntity(projectName, entityName)
+      
+      // Refresh project from disk to sync in-memory state
+      await refreshProjectState(projectName)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete entity'
       throw err
