@@ -1401,7 +1401,7 @@ function handleYamlChange(value: string) {
 
 // Methods
 async function handleSubmit() {
-  if (!formValid.value) return
+  if (!formValid.value || loading.value) return  // Prevent double-submission
 
   const { valid } = await formRef.value.validate()
   if (!valid) return
@@ -1448,6 +1448,8 @@ async function handleSubmit() {
 }
 
 async function handleSubmitAndClose() {
+  if (loading.value) return  // Prevent double-submission
+  
   loading.value = true
   error.value = null
 
