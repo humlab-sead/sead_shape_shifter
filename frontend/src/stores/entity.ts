@@ -71,11 +71,13 @@ export const useEntityStore = defineStore('entity', () => {
 
   // Actions
   async function fetchEntities(projectName: string) {
+    console.log('[EntityStore] fetchEntities called:', { projectName, stack: new Error().stack })
     loading.value = true
     error.value = null
     currentProjectName.value = projectName
     try {
       entities.value = await api.entities.list(projectName)
+      console.log('[EntityStore] fetchEntities complete:', { count: entities.value.length })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch entities'
       throw err

@@ -34,6 +34,7 @@ export function useEntities(options: UseEntitiesOptions) {
 
   // Actions
   async function fetch() {
+    console.log('[useEntities] fetch called for project:', projectName)
     try {
       await store.fetchEntities(projectName)
       initialized.value = true
@@ -108,6 +109,11 @@ export function useEntities(options: UseEntitiesOptions) {
   watch(
     () => projectName,
     async (newProjectName, oldProjectName) => {
+      console.log('[useEntities] projectName watcher triggered:', { 
+        newProjectName, 
+        oldProjectName,
+        changed: newProjectName !== oldProjectName 
+      })
       if (newProjectName !== oldProjectName && newProjectName) {
         initialized.value = false
         await fetch()
