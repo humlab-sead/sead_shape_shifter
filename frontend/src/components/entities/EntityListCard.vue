@@ -142,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useEntities } from '@/composables'
 import type { EntityResponse } from '@/api/entities'
 import EntityFormDialog from './EntityFormDialog.vue'
@@ -159,6 +159,16 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+console.log('[EntityListCard] Component setup called for project:', props.projectName)
+
+onMounted(() => {
+  console.log('[EntityListCard] Component MOUNTED for project:', props.projectName)
+})
+
+onUnmounted(() => {
+  console.log('[EntityListCard] Component  UNMOUNTED for project:', props.projectName)
+})
 
 const { entities, loading, error, remove } = useEntities({
   projectName: props.projectName,
