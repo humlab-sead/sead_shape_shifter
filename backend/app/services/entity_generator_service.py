@@ -102,6 +102,8 @@ class EntityGeneratorService:
 
         loader: SqlLoader = self.schema_service.create_loader_for_data_source(data_source)
         columns: str = ", ".join(loader.quote_name(col.name) for col in table_schema.columns)
+        if not columns.strip():
+            columns = "*"  # Fallback to SELECT * if no columns detected
         query: str = f"SELECT {columns} FROM {loader.qualify_name(schema=table_schema.schema_name, table=table_schema.table_name)}"
         return query
 
