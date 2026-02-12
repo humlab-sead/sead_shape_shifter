@@ -1673,6 +1673,28 @@ watch(activeTab, async (newTab) => {
   }
 })
 
+// Watch for project changes to reload YAML when project is externally refreshed
+// This keeps YAML in sync when entities are created/updated/deleted
+watch(
+  () => projectStore.selectedProject,
+  async (newProject, oldProject) => {
+    // Only reload if:
+    // 1. On YAML tab
+    // 2. No local unsaved changes
+    // 3. Project actually changed (not just initial load)
+    if (
+      activeTab.value === 'yaml' &&
+      !yamlHasChanges.value &&
+      oldProject !== null &&
+      newProject !== null &&
+      newProject !== oldProject
+    ) {
+      await handleLoadYaml()
+    }
+  },
+  { deep: false } // Shallow watch - we only care if the project object reference changes
+)
+
 // Watch for entity query parameter (from dependency graph deep links)
 watch(
   () => route.query.entity,
