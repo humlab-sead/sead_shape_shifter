@@ -269,6 +269,14 @@ async function handleDeleteConfirm() {
 
 async function handleEntitySaved(entityName: string) {
   const wasCreate = dialogMode.value === 'create'
+  console.log('[EntityListCard] handleEntitySaved called:', {
+    entityName,
+    wasCreate,
+    mode: dialogMode.value,
+    showFormDialog: showFormDialog.value,
+    selectedEntity: selectedEntity.value?.name
+  })
+  
   successMessage.value = wasCreate ? 'Entity created' : 'Entity updated'
   showSuccessSnackbar.value = true
   emit('entity-updated')
@@ -279,10 +287,22 @@ async function handleEntitySaved(entityName: string) {
     await new Promise(resolve => setTimeout(resolve, 100))
     const entity = entities.value?.find((e) => e.name === entityName)
     if (entity) {
+      console.log('[EntityListCard] Switching from create to edit mode:', {
+        oldEntity: selectedEntity.value?.name,
+        newEntity: entity.name,
+        oldMode: dialogMode.value
+      })
       selectedEntity.value = entity
       dialogMode.value = 'edit'
+      console.log('[EntityListCard] After mode switch:', {
+        selectedEntity: selectedEntity.value?.name,
+        mode: dialogMode.value,
+        showFormDialog: showFormDialog.value
+      })
     }
   }
+  
+  console.log('[EntityListCard] handleEntitySaved complete, dialog still open:', showFormDialog.value)
 }
 
 // Watch for create dialog trigger

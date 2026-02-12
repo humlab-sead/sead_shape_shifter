@@ -121,23 +121,34 @@ export const useEntityStore = defineStore('entity', () => {
   }
 
   async function updateEntity(projectName: string, entityName: string, data: EntityUpdateRequest) {
+    console.log('[EntityStore] updateEntity called:', { projectName, entityName, hasData: !!data })
     loading.value = true
     error.value = null
     try {
       const entity = await api.entities.update(projectName, entityName, data)
+      console.log('[EntityStore] Update API call complete:', { entityName: entity.name })
 
       // Update entity in list
       const index = entities.value.findIndex((e: EntityResponse) => e.name === entityName)
       if (index !== -1) {
+        const oldEntity = entities.value[index]
         entities.value[index] = entity
+        console.log('[EntityStore] Entity replaced in list:', {
+          index,
+          oldEntity: oldEntity.name,
+          newEntity: entity.name,
+          sameReference: oldEntity === entity
+        })
       }
 
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
+      console.log('[EntityStore] Calling refreshProjectState...')
       
       // Refresh project from disk to sync in-memory state
       await refreshProjectState(projectName)
       
+      console.log('[EntityStore] updateEntity complete')
       return entity
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update entity'
