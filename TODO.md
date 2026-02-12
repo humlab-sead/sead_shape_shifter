@@ -263,6 +263,7 @@ _project_contact:
     value_name: contact_name
   data_source: arbodat_data
   query: "select distinct [Projekt], [ArchAusg], [ArchBear], [BotBear] from [Projekte] ;\n"
+```
 
 ### FIXME: #228 Silent failures occurs when fetching Excel file metadata
 
@@ -271,7 +272,7 @@ _project_contact:
 ### TODO: #231 Pressing "CREATE" when adding a new entity doesn't save the entity. It only adds the entity to the project in memory, but does not save the project to disk. This can lead to confusion for users who expect their changes to be saved immediately. We should have the same buttons when creating a new entity as for editing an existing entity .
 
 ### FIXED: #234 Sync issue after new entity creation ✅
-~~The following steps can be taken to reproduce the issue:
+The following steps can be taken to reproduce the issue:
   1. (Refresh project)
   2. Click "Add entity"
   3. Click enter entity name, select XLSX, sheet name, public id, click "Create"
@@ -285,3 +286,30 @@ _project_contact:
 
 **Fixed in commit 3c3ca82**: Entity store now refreshes project from disk after create/update/delete operations, ensuring in-memory state matches saved state. 
 
+### TODO: Add feature to edit value replacements in Entity Editor
+
+The normalization process, more specifically the subset/extract part can replace columnar values in an entity
+using a map specified in the project config. Currently this mapping resides in the "options.replacements" part
+of the project YAML file. The actual replacement logic reside in extract.py, lines 166 to 176.
+
+The replacement map for an entity looks like this:
+
+```yaml
+entity-name:
+  column-name:
+    from-value_1: to-value_1
+    from-value_2: to-value_2
+    from-value_3: to-value_3
+    from-value_4: to-value_4
+```
+This is the core logic:
+```python
+  for col, replacement_map in replacements.items():
+      if col in result.columns:
+          # - Mapping: explicit old->new replacements
+          # - Scalar/list: treat as "values to blank out", then forward-fill (legacy pad behavior)
+          if isinstance(replacement_map, Mapping):
+              result[col] = result[col].replace(to_replace=replacement_map)
+          else:
+              result[col] = result[col].replace(to_replace=replacement_map, value=pd.NA).ffill()
+```
