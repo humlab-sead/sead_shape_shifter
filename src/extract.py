@@ -6,8 +6,8 @@ import pandas as pd
 from loguru import logger
 
 from src.model import TableConfig
-from src.transforms.replace import apply_replacements
 from src.transforms.drop import drop_duplicate_rows, drop_empty_rows
+from src.transforms.replace import apply_replacements
 from src.utility import unique
 
 # pylint: disable=line-too-long

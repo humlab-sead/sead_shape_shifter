@@ -14,7 +14,7 @@ from loguru import logger
 
 def sanitize_column_name(col: Any, index: int, max_length: int = 48) -> str:
     """Convert column name to YAML-friendly format.
-    
+
     Rules:
     - Convert to lowercase
     - Replace spaces with underscores
@@ -26,27 +26,27 @@ def sanitize_column_name(col: Any, index: int, max_length: int = 48) -> str:
     - Skip Excel formulas (starting with "=")
     - Truncate very long names to max_length
     - Final safety: only keep a-z, 0-9, underscore
-    
+
     Args:
         col: Column name (can be str, None, or any type)
         index: Column index for fallback naming
         max_length: Maximum length for column names (default: 48)
-        
+
     Returns:
         Sanitized column name
     """
     # Handle None, NaN, or empty strings
     if col is None or (isinstance(col, float) and pd.isna(col)) or str(col).strip() == "":
         return f"unnamed_{index}"
-    
+
     # Convert to string and trim whitespace
     name: str = str(col).strip()
-    
+
     # Skip Excel formulas (starting with "=") or very long strings (likely formulas)
     # Use a generous threshold - anything over 200 chars is probably a formula
     if name.startswith("=") or len(name) > 200:
         return f"unnamed_{index}"
-    
+
     # Special character replacements (order matters - do specific ones first)
     replacements: dict[str, str] = {
         "±": "plus_minus",
@@ -69,60 +69,60 @@ def sanitize_column_name(col: Any, index: int, max_length: int = 48) -> str:
         "€": "euro",
         "£": "pound",
     }
-    
+
     for char, replacement in replacements.items():
         name = name.replace(char, f"_{replacement}_")
-    
+
     # Replace parentheses and brackets with underscores
     name = re.sub(r"[\(\)\[\]\{\}]", "_", name)
-    
+
     # Remove punctuation (., , ; : ! ? ' " etc.)
     name = re.sub(r"[.,;:!?'\"\\\|\-/]", "", name)
-    
+
     # Replace any remaining whitespace with underscores
     name = re.sub(r"\s+", "_", name)
-    
+
     # Convert to lowercase
     name = name.lower()
-    
+
     # Final safety: remove any remaining non-safe characters
     # Only keep: a-z, 0-9, underscore
     name = re.sub(r"[^a-z0-9_]", "", name)
-    
+
     # Remove consecutive underscores and trim
     name = re.sub(r"_+", "_", name)
     name = name.strip("_")
-    
+
     # Truncate to maximum length if needed
     if len(name) > max_length:
         name = name[:max_length].rstrip("_")
-    
+
     # If name is empty after sanitization, use index
     if not name:
         name = f"unnamed_{index}"
-    
+
     # Ensure it doesn't start with a number (YAML key requirement)
     if name[0].isdigit():
         name = f"col_{name}"
-    
+
     return name
 
 
 def sanitize_columns(columns: list[Any]) -> list[str]:
     """Sanitize a list of column names, ensuring uniqueness.
-    
+
     Args:
         columns: List of column names (can contain None, duplicates, etc.)
-        
+
     Returns:
         List of sanitized, unique column names
     """
     sanitized: list[str] = [sanitize_column_name(col, i) for i, col in enumerate(columns)]
-    
+
     # Handle duplicates by adding suffixes
     seen: dict[str, int] = {}
     result = []
-    
+
     for col in sanitized:
         if col in seen:
             seen[col] += 1
@@ -130,7 +130,7 @@ def sanitize_columns(columns: list[Any]) -> list[str]:
         else:
             seen[col] = 0
             result.append(col)
-    
+
     return result
 
 

@@ -98,6 +98,7 @@ async def test_excel_openpyxl_load_subset_with_explicit_header():
     assert list(df.columns) == ["X", "Y", "Z"]
     assert len(df) == 2
 
+
 async def test_excel_openpyxl_load_subset_with_sanitize_header():
     loader_cls = DataLoaders.get("openpyxl")
     loader = loader_cls()
