@@ -108,8 +108,8 @@ export const useEntityStore = defineStore('entity', () => {
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
       
-      // Refresh project from disk to sync in-memory state
-      await refreshProjectState(projectName)
+      // Note: Backend already persists entity to disk.
+      // Don't call refreshProjectState() here as it causes component recreation.
       
       return entity
     } catch (err) {
@@ -135,8 +135,9 @@ export const useEntityStore = defineStore('entity', () => {
       selectedEntity.value = entity
       hasUnsavedChanges.value = false
       
-      // Refresh project from disk to sync in-memory state
-      await refreshProjectState(projectName)
+      // Note: Backend already persists entity to disk.
+      // Don't call refreshProjectState() here as it causes component recreation
+      // which resets dialog state (closes the entity editor).
       
       return entity
     } catch (err) {
@@ -157,8 +158,8 @@ export const useEntityStore = defineStore('entity', () => {
         selectedEntity.value = null
       }
       
-      // Refresh project from disk to sync in-memory state
-      await refreshProjectState(projectName)
+      // Note: Backend already persists deletion to disk.
+      // Don't call refreshProjectState() here as it causes unnecessary component recreation.
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete entity'
       throw err

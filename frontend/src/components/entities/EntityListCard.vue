@@ -275,12 +275,14 @@ async function handleEntitySaved(entityName: string) {
   
   // If we just created an entity, switch to edit mode so tabs become available
   if (wasCreate) {
-    // Wait a brief moment for the entity list to refresh
-    await new Promise(resolve => setTimeout(resolve, 100))
+    // Entity is already in the list via reactive computed from store.createEntity()
+    // Backend returned entity data, store added it to entities array, computed updated automatically
     const entity = entities.value?.find((e) => e.name === entityName)
     if (entity) {
       selectedEntity.value = entity
       dialogMode.value = 'edit'
+    } else {
+      console.warn(`Entity "${entityName}" not found in list - store sync issue`)
     }
   }
 }
