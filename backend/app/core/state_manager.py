@@ -268,8 +268,7 @@ class ApplicationStateManager:
                     entity_names,
                 )
                 return project
-            else:
-                logger.debug("[{}] state.get: project='{}' MISS", corr, name)
+            logger.debug("[{}] state.get: project='{}' MISS", corr, name)
         return None
 
     def get_active(self) -> Project | None:
