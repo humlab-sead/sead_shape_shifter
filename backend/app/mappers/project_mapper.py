@@ -26,6 +26,7 @@ from typing import Any
 
 from loguru import logger
 
+from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models import (
     Entity,
     Project,
@@ -122,6 +123,22 @@ class ProjectMapper:
         # Map entities (preserve sparse structure)
         for entity_name, api_entity in api_config.entities.items():
             cfg_dict["entities"][entity_name] = ProjectMapper._api_entity_to_dict(api_entity)
+
+        # Defensive: verify entity count survived serialization
+        input_count = len(api_config.entities)
+        output_count = len(cfg_dict["entities"])
+        if output_count != input_count:
+            corr = get_correlation_id()
+            input_names = sorted(api_config.entities.keys())
+            output_names = sorted(cfg_dict["entities"].keys())
+            logger.error(
+                "[{}] ProjectMapper.to_core_dict ENTITY COUNT MISMATCH: " "input={} input_names={} output={} output_names={}",
+                corr,
+                input_count,
+                input_names,
+                output_count,
+                output_names,
+            )
 
         unresolved: list[str] = Config.find_unresolved_directives(cfg_dict)
         if unresolved:
