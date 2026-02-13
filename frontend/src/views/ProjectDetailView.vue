@@ -1079,8 +1079,19 @@ async function handleRefresh() {
       await projectStore.refreshProject(projectName.value)
       // Also refresh entity list to sync with updated project
       await fetchEntities()
-      // Also refresh dependency graph to sync FK relationships
-      await fetchDependencies(projectName.value)
+
+      // Keep dependency graph in sync with refreshed project.
+      // If the graph tab is visible, re-render after data refresh.
+      try {
+        await fetchDependencies(projectName.value)
+        if (activeTab.value === 'dependencies') {
+          await nextTick()
+          renderGraph()
+        }
+      } catch (depErr) {
+        console.warn('Project refreshed but failed to refresh dependencies:', depErr)
+      }
+
       successMessage.value = 'Project refreshed from disk'
       showSuccessSnackbar.value = true
     } catch (err: any) {
