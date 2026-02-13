@@ -356,6 +356,7 @@ function deepClone<T>(value: T): T {
 const rawReplacements = ref<Record<string, any>>(deepClone(props.modelValue || {}))
 const rules = ref<UiRule[]>([])
 const showConversionWarning = ref(false)
+const isLoadingColumn = ref(false)  // Prevent infinite loop between watchers
 
 function supportsNegate(op: RuleOp): boolean {
   return ['equals', 'contains', 'startswith', 'endswith', 'in', 'regex'].includes(op)
@@ -383,6 +384,8 @@ function selectColumn(col: string) {
 }
 
 function loadColumn(col: string) {
+  isLoadingColumn.value = true  // Prevent rules watcher from triggering persist
+  
   const spec = rawReplacements.value?.[col]
 
   showConversionWarning.value = false
@@ -393,6 +396,7 @@ function loadColumn(col: string) {
       .filter((r: any) => r && typeof r === 'object')
       .map((r: any) => fromRuleDict(r))
       .filter((r) => r !== null) as UiRule[]
+    isLoadingColumn.value = false  // Done loading
     return
   }
 
@@ -401,6 +405,7 @@ function loadColumn(col: string) {
     showConversionWarning.value = true
   }
   rules.value = []
+  isLoadingColumn.value = false  // Done loading
 }
 
 function fromRuleDict(rule: Record<string, any>): UiRule | null {
@@ -651,6 +656,11 @@ watch(
 watch(
   rules,
   () => {
+    // Skip persist if we're loading column data (prevents infinite loop)
+    if (isLoadingColumn.value) {
+      return
+    }
+    
     // Persist whenever rules change through v-model bindings.
     // (Operations like add/move/delete already call persist, but edits do not.)
     if (selectedColumn.value) {
