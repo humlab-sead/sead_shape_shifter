@@ -163,7 +163,11 @@ async def update_project(name: str, request: ProjectUpdateRequest) -> Project:
         Updated project with new metadata
     """
     project_service: ProjectService = get_project_service()
-    project: Project = project_service.load_project(name)
+    # CRITICAL: Force reload from disk to get the latest entities.
+    # The cache may be stale (e.g., entity CRUD updates disk but cache
+    # holds an older version). Without force_reload, saving would
+    # overwrite disk entities with the stale cache version.
+    project: Project = project_service.load_project(name, force_reload=True)
     project.options = request.options
 
     logger.debug(f"Updating project '{name}': preserving {len(project.entities)} entities from disk, " f"updating options only")
