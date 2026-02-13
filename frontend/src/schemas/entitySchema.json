@@ -236,8 +236,79 @@
       "type": "object",
       "description": "Value replacement rules",
       "additionalProperties": {
-        "type": "object",
-        "description": "Map of old values to new values for a column"
+        "description": "Per-column replacement specification (legacy mapping/blank-out forms, or advanced ordered rule list)",
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Legacy mapping: {old_value: new_value}",
+            "additionalProperties": true
+          },
+          {
+            "type": "array",
+            "description": "Advanced ordered rules: list of rule objects",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "match": {
+                  "type": "string",
+                  "description": "Match operator (e.g., equals, contains, startswith, endswith, regex, not_*)"
+                },
+                "from": {
+                  "description": "Match value (for match-based rules)",
+                  "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }]
+                },
+                "to": {
+                  "description": "Replacement value",
+                  "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }]
+                },
+                "normalize": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Normalization operations (e.g., strip, lower, upper, collapse_ws)"
+                },
+                "flags": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Rule flags (e.g., ignorecase/i for regex or string matches)"
+                },
+                "coerce": {
+                  "type": "string",
+                  "description": "Coercion mode (string/int/float)"
+                },
+                "blank_out": {
+                  "description": "Blank out scalar or list of values",
+                  "oneOf": [
+                    { "type": "string" },
+                    { "type": "number" },
+                    { "type": "boolean" },
+                    { "type": "null" },
+                    {
+                      "type": "array",
+                      "items": { "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }] }
+                    }
+                  ]
+                },
+                "map": {
+                  "type": "object",
+                  "description": "Rule-local mapping",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          {
+            "description": "Legacy blank-out (scalar)",
+            "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }]
+          },
+          {
+            "type": "array",
+            "description": "Legacy blank-out (list of scalar values)",
+            "items": {
+              "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }]
+            }
+          }
+        ]
       }
     }
   }

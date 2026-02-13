@@ -53,6 +53,7 @@ declare module 'vue' {
     ReconciliationProgressDialog: typeof import('./components/reconciliation/ReconciliationProgressDialog.vue')['default']
     ReconciliationStatsCard: typeof import('./components/reconciliation/ReconciliationStatsCard.vue')['default']
     ReconciliationView: typeof import('./components/reconciliation/ReconciliationView.vue')['default']
+    ReplacementsEditor: typeof import('./components/entities/ReplacementsEditor.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SchemaTreeView: typeof import('./components/SchemaTreeView.vue')['default']

@@ -172,7 +172,7 @@ entities:
     filters: [...]                          # Post-load data filters
     
     # Value Transformations
-    replacements: {string: {any: any}}      # Value replacement mappings
+    replacements: {string: any}             # Value replacement rules (mapping/legacy/rule-list)
     
     # Relationships
     foreign_keys: [...]                     # Foreign key definitions
@@ -793,7 +793,7 @@ entities:
   - Validate column existence before runtime
 
 #### `replacements`
-- **Type**: `dict[string, dict[any, any]]`
+- **Type**: `dict[string, any]`
 - **Required**: No
 - **Description**: Defines value replacement mappings for specified columns. Each key is a column name, and each value is a dictionary mapping old values to new values. This is useful for normalizing data values, converting codes to standardized formats, or correcting inconsistent data.
 - **Use Cases**:
@@ -801,7 +801,18 @@ entities:
   - Standardizing status codes or category names
   - Mapping legacy identifiers to new ones
   - Correcting typos or inconsistent values in source data
-- **Note**: Replacements are applied after column extraction but before other operations. Values not in the mapping remain unchanged.
+- **Application Order**: Replacements are applied after column extraction and after duplicate/empty-row handling in the subsetting step.
+- **Supported Forms**:
+  - **Mapping**: `{old: new, ...}` (fast exact match)
+  - **Legacy blank-out + forward fill**: scalar/list/set/tuple → treat as values to blank out, then forward-fill
+  - **Advanced ordered rules**: `list[dict]` (regex, normalization, explicit fill policies)
+- **Advanced rule operators** (via `match:`):
+  - Positive: `equals`, `contains`, `startswith`, `endswith`, `in`, `regex`, `regex_sub`
+  - Negated (optional): `not_equals`, `not_contains`, `not_startswith`, `not_endswith`, `not_in`, `not_regex`
+- **Type coercion** (optional): `coerce: string|int|float`
+  - Most useful for `equals`, `in`, and `map` when source columns are strings like `"1"` but config uses numeric keys.
+  - If `normalize:` is provided, matching is performed in normalized string space (numeric `coerce` is ignored).
+- **Note**: Values not matched by any replacement remain unchanged.
 - **Example**:
   ```yaml
   site:
@@ -822,6 +833,65 @@ entities:
       type:
         "A": "Type_A"
         "B": "Type_B"
+
+  # Legacy blank-out + forward-fill (useful for "pad"-style inputs)
+  sample:
+    replacements:
+      status: ["drop", "deleted"]
+
+  # Advanced ordered rules
+  site:
+    replacements:
+      coordinate_system:
+        - match: regex
+          from: "^dhdn\\s+zone\\s+3$"
+          to: "EPSG:31467"
+          flags: [ignorecase]
+          normalize: [collapse_ws, lower]
+          report_replaced: true
+          report_unmatched: true
+          report_top: 10
+        - map:
+            "RGF93 Lambert 93": "EPSG:2154"
+          normalize: [strip]
+        - match: regex_sub
+          from: "\\bZone\\s+(\\d+)\\b"
+          to: "Z\\1"
+        # If `to` is null, matching cells are set to NA
+        - match: regex_sub
+          from: "^N/A$"
+          to: null
+      status:
+        - blank_out: ["drop"]
+          fill: none          # forward | backward | none | {constant: "UNKNOWN"}
+          report_replaced: true
+
+  # Replace whole cell if it contains a substring
+  sample:
+    replacements:
+      note:
+        - match: contains
+          from: "foo"
+          to: "HAS_FOO"
+          flags: [ignorecase]
+
+  # Starts/ends-with operators
+  sample:
+    replacements:
+      filename:
+        - match: endswith
+          from: ".txt"
+          to: "TEXT_FILE"
+          flags: [ignorecase]
+
+  # Set-membership ("in") with optional coercion
+  sample:
+    replacements:
+      status_code:
+        - match: in
+          from: [1, 2, 3]
+          to: "KNOWN"
+          coerce: int
   
   # Replacements can reference external project files
   site:
@@ -830,8 +900,10 @@ entities:
   ```
 - **Validation Rules**:
   - **Type**: Must be `dict` if provided
-  - **Structure**: Keys must be column names (strings), values must be dicts
-  - **Mapping**: Each replacement dict maps old values to new values
+  - **Structure**: Keys must be column names (strings)
+  - **Mapping form**: column value must be a dict mapping old values to new values
+  - **Legacy blank-out form**: column value can be a scalar or sequence of values to blank out (then forward-fill)
+  - **Rule list form**: column value can be a list of dict rules (ordered)
   - **Column Existence**: Column names should exist in entity (suggested validation)
 - **Common Issues**:
   - Replacement column doesn't exist in entity
@@ -841,6 +913,7 @@ entities:
   - Warn if replacement column doesn't exist
   - Validate replacement values match column data types
   - Check for unmapped values (suggested warning)
+  - Use `report_unmatched: true` for rule-list replacements to log common unmatched values
 - **See**: Filters section below for detailed filter documentation
 
 ---
