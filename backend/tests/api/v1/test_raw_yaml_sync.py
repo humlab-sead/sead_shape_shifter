@@ -26,9 +26,9 @@ def reset_services_and_state():
 
     with contextlib.suppress(RuntimeError):
         app_state = get_app_state()
-        app_state._active_projects.clear()  # pylint: disable=protected-access
-        app_state._project_versions.clear()  # pylint: disable=protected-access
-        app_state._project_dirty.clear()  # pylint: disable=protected-access
+        app_state._active_projects.clear()
+        app_state._project_versions.clear()
+        app_state._project_dirty.clear()
 
     yield
 
@@ -39,9 +39,9 @@ def reset_services_and_state():
 
     with contextlib.suppress(RuntimeError):
         app_state = get_app_state()
-        app_state._active_projects.clear()  # pylint: disable=protected-access
-        app_state._project_versions.clear()  # pylint: disable=protected-access
-        app_state._project_dirty.clear()  # pylint: disable=protected-access
+        app_state._active_projects.clear()
+        app_state._project_versions.clear()
+        app_state._project_dirty.clear()
 
 
 def test_update_raw_yaml_forces_reload(tmp_path, monkeypatch, reset_services_and_state):
