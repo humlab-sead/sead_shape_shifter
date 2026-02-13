@@ -446,7 +446,8 @@ class TableConfig:
                 if isinstance(append_raw, str):
                     # Skip string format - not a valid dependency check
                     continue
-                elif isinstance(append_raw, dict):
+
+                if isinstance(append_raw, dict):
                     append_cfgs = [append_raw]
                 else:
                     append_cfgs = append_raw
