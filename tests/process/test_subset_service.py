@@ -289,6 +289,71 @@ def test_get_subset_applies_advanced_replacements_contains_rule() -> None:
     assert result["note"].tolist() == ["HAS_FOO", "no match", "HAS_FOO"]
 
 
+def test_get_subset_applies_transform_rule_normalize_all_values() -> None:
+    """Test transform rule that applies normalize operations to all values (no match filter)."""
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "name": ["  Alice  ", "BOB", " charlie "]})
+    table_cfg = build_table_config(
+        columns=["id", "name"],
+        replacements={
+            "name": [
+                {
+                    "normalize": ["strip", "lower"],
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # All values normalized without any filtering
+    assert result["name"].tolist() == ["alice", "bob", "charlie"]
+
+
+def test_get_subset_applies_transform_rule_coerce_all_values() -> None:
+    """Test transform rule that coerces all values (no match filter)."""
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "value": ["42", "100", "999"]})
+    table_cfg = build_table_config(
+        columns=["id", "value"],
+        replacements={
+            "value": [
+                {
+                    "coerce": "int",
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # All values coerced to int
+    assert result["value"].dtype == "Int64"
+    assert result["value"].tolist() == [42, 100, 999]
+
+
+def test_get_subset_applies_transform_rule_normalize_and_coerce() -> None:
+    """Test transform rule that applies both normalize and coerce to all values."""
+    service = SubsetService()
+    df = pd.DataFrame({"id": [1, 2, 3], "amount": ["  3.14  ", "2.71", " 1.41 "]})
+    table_cfg = build_table_config(
+        columns=["id", "amount"],
+        replacements={
+            "amount": [
+                {
+                    "normalize": ["strip"],
+                    "coerce": "float",
+                }
+            ]
+        },
+    )
+
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+
+    # All values normalized and coerced
+    assert result["amount"].tolist() == [3.14, 2.71, 1.41]
+
+
 def test_get_subset_applies_advanced_replacements_startswith_rule() -> None:
     service = SubsetService()
     df = pd.DataFrame({"id": [1, 2, 3], "code": ["ABC123", "abC999", "XABC"]})
