@@ -33,7 +33,7 @@
         <v-tab value="unnest" :disabled="mode === 'create'">Unnest</v-tab>
         <v-tab value="append" :disabled="mode === 'create'">Append</v-tab>
         <v-tab value="extra_columns" :disabled="mode === 'create'">Extra Columns</v-tab>
-        <v-tab value="replacements" :disabled="mode === 'create'">Replacements</v-tab>
+        <v-tab value="replacements" :disabled="mode === 'create'">Replace</v-tab>
         <v-tab value="yaml" :disabled="mode === 'create'">
           <v-icon icon="mdi-code-braces" class="mr-1" size="small" />
           YAML
