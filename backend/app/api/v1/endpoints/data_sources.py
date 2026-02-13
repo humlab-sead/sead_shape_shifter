@@ -151,11 +151,12 @@ async def list_data_source_files(ext: list[str] | None = Query(default=None, des
 async def get_excel_metadata(
     file: str = Query(..., description="Path to Excel file (absolute or relative to project root)"),
     sheet_name: str | None = Query(default=None, description="Optional sheet name to inspect for columns"),
+    range: str | None = Query(default=None, description="Optional cell range (e.g., A1:H30) to limit columns"),
 ) -> ExcelMetadataResponse:
     """Return available sheets and columns for a given Excel file."""
 
     project_service: ProjectService = get_project_service()
-    sheets, columns = project_service.get_excel_metadata(file_path=file, sheet_name=sheet_name)
+    sheets, columns = project_service.get_excel_metadata(file_path=file, sheet_name=sheet_name, cell_range=range)
     return ExcelMetadataResponse(sheets=sheets, columns=columns)
 
 

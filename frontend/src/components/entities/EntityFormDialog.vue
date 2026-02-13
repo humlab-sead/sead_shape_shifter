@@ -1008,13 +1008,14 @@ async function fetchColumns() {
 
   const filename = formData.value.options.filename
   const sheet = formData.value.options.sheet_name
+  const range = formData.value.options.range
   if (!isExcelType.value || !filename || !sheet) {
     columnsLoading.value = false
     return
   }
 
   try {
-    const meta = await api.excelMetadata.fetch(filename, sheet)
+    const meta = await api.excelMetadata.fetch(filename, sheet, range)
     columnsOptions.value = meta.columns || []
     if (columnsOptions.value.length > 0) {
       formData.value.columns = [...columnsOptions.value]
