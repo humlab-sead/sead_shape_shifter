@@ -33,6 +33,7 @@
         <v-tab value="unnest" :disabled="mode === 'create'">Unnest</v-tab>
         <v-tab value="append" :disabled="mode === 'create'">Append</v-tab>
         <v-tab value="extra_columns" :disabled="mode === 'create'">Extra Columns</v-tab>
+        <v-tab value="replacements" :disabled="mode === 'create'">Replacements</v-tab>
         <v-tab value="yaml" :disabled="mode === 'create'">
           <v-icon icon="mdi-code-braces" class="mr-1" size="small" />
           YAML
@@ -322,6 +323,10 @@
                 <extra-columns-editor v-model="formData.advanced.extra_columns" />
               </v-window-item>
 
+              <v-window-item value="replacements">
+                <replacements-editor v-model="formData.advanced.replacements" :available-columns="formData.columns" />
+              </v-window-item>
+
               <v-window-item value="yaml">
                 <v-alert type="info" variant="tonal" density="compact" class="mb-4">
                   <div class="text-caption">
@@ -487,6 +492,7 @@ import FiltersEditor from './FiltersEditor.vue'
 import UnnestEditor from './UnnestEditor.vue'
 import AppendEditor from './AppendEditor.vue'
 import ExtraColumnsEditor from './ExtraColumnsEditor.vue'
+import ReplacementsEditor from './ReplacementsEditor.vue'
 import SuggestionsPanel from './SuggestionsPanel.vue'
 // import EntityPreviewPanel from './EntityPreviewPanel.vue'
 import YamlEditor from '../common/YamlEditor.vue'
@@ -615,6 +621,7 @@ interface FormData {
     unnest?: any | null
     append?: any[]
     extra_columns?: Record<string, string | null>
+    replacements?: Record<string, any>
   }
 }
 
@@ -653,6 +660,7 @@ const formData = ref<FormData>({
     unnest: null,
     append: [],
     extra_columns: undefined,
+    replacements: undefined,
   },
 })
 
@@ -890,6 +898,10 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
   }
   if (formData.value.advanced.extra_columns) {
     entityData.extra_columns = formData.value.advanced.extra_columns
+  }
+
+  if (formData.value.advanced.replacements) {
+    entityData.replacements = formData.value.advanced.replacements
   }
 
   return entityData
@@ -1374,6 +1386,7 @@ function yamlToFormData(yamlString: string): boolean {
         unnest: data.unnest || null,
         append: Array.isArray(data.append) ? data.append : [],
         extra_columns: data.extra_columns || undefined,
+        replacements: data.replacements || undefined,
       },
     }
 

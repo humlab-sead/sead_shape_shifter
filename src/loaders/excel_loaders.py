@@ -64,6 +64,13 @@ class PandasLoader(ExcelLoader):
                 description="Sheet name to load",
                 placeholder="Sheet1",
             ),
+            FieldMetadata(
+                name="sanitize_header",
+                type="boolean",
+                required=False,
+                description="Whether to sanitize column headers to be YAML-friendly",
+                default=True,
+            ),
         ],
     )
 
@@ -72,13 +79,14 @@ class PandasLoader(ExcelLoader):
         clean_opts: dict[str, Any] = dict(opts)
         filename: str = clean_opts.pop("filename")
         sheet_name: str | None = clean_opts.pop("sheet_name", None)
+        sanitize_header: bool = clean_opts.pop("sanitize_header", True)
         file_path = Path(filename)
         df: pd.DataFrame | dict[str, pd.DataFrame] = pd.read_excel(file_path, sheet_name=sheet_name, **clean_opts)
         if not isinstance(df, pd.DataFrame):
             raise ValueError("ExcelLoader currently supports loading a single sheet only.")
         
-        # Sanitize column names to be YAML-friendly
-        df.columns = sanitize_columns(list(df.columns))
+        if sanitize_header:
+            df.columns = sanitize_columns(list(df.columns))
         
         return df
 
@@ -120,6 +128,13 @@ class OpenPyxlLoader(ExcelLoader):
                 description="Cell range to load (e.g., A1:D10)",
                 placeholder="A1:D10",
             ),
+            FieldMetadata(
+                name="sanitize_header",
+                type="boolean",
+                required=False,
+                description="Whether to sanitize column headers to be YAML-friendly",
+                default=True,
+            ),
         ],
     )
 
@@ -149,19 +164,21 @@ class OpenPyxlLoader(ExcelLoader):
         else:
             data = ([cell.value for cell in row] for row in worksheet[cell_range])
 
-        header: bool = opts.get("header", True)
-
-        columns = next(data) if header else None
+        header_opt: bool | list[str] = opts.get("header", True)
+        data_header: list[str] | None = next(data) if header_opt else None
+        sanitize_header: bool = opts.get("sanitize_header", True)
         
-        df = pd.DataFrame(data, columns=columns)
-        if isinstance(header, list):
-            if len(header) != len(df.columns):
+        df = pd.DataFrame(data, columns=data_header)
+        if isinstance(header_opt, list):
+            # Header provided as list of column names, use it instead of the first row of data
+            if len(header_opt) != len(df.columns):
                 raise ValueError("Length of provided header does not match number of columns in data")
-            # Sanitize provided header names
-            df.columns = sanitize_columns(header)
+            headers: list[str] = header_opt
         else:
-            # Sanitize column names to be YAML-friendly
-            df.columns = sanitize_columns(list(df.columns) if header else [f"C_{i+1}" for i in range(len(df.columns))])
+            # If header is True, the first row of data is used as header. If False, generate default column names.
+            headers = list(df.columns) if header_opt else [f"C_{i+1}" for i in range(len(df.columns))]
+
+        df.columns = sanitize_columns(headers) if sanitize_header else headers
 
         return df
 
