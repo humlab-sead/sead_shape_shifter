@@ -14,6 +14,8 @@ from backend.app.services import dependency_service, project_service, validation
 
 client = TestClient(app)
 
+# pylint: disable=redefined-outer-name, unused-argument, protected-access
+
 
 @pytest.fixture
 def reset_services_and_state():
