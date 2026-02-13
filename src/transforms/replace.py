@@ -109,10 +109,23 @@ def _apply_replacement_rule(series: pd.Series, *, rule: Mapping[str, Any], entit
 
 
 def _infer_rule_key(rule: Mapping[str, Any]) -> tuple[str, bool]:
+    """Infer the rule type from the rule dictionary.
+    
+    Returns:
+        tuple of (rule_key, negate_flag)
+    """
     if "blank_out" in rule:
         return "blank_out", False
     if "map" in rule:
         return "map", False
+    
+    # Check if this is a transform-only rule (no match/from condition)
+    # Transform rules only have normalize/coerce/to without match/from/map/blank_out
+    has_match_condition = "match" in rule or "from" in rule
+    has_transform = "normalize" in rule or "coerce" in rule
+    
+    if not has_match_condition and has_transform:
+        return "transform", False
 
     match_type = str(rule.get("match", "equals")).lower()
     if match_type == "not_in":
@@ -313,6 +326,46 @@ class MapRule(ReplacementRule):
 
         if ctx.report_replaced:
             logger.info(f"{ctx.entity_name}[replacements]: {ctx.column_name}: map(normalized) replaced {changed_total} value(s)")
+        return out
+
+
+@ReplacementRules.register(key="transform")
+class TransformRule(ReplacementRule):
+    """Apply normalize and/or coerce operations to all values without filtering."""
+
+    @classmethod
+    def apply(cls, series: pd.Series, *, rule: Mapping[str, Any], ctx: RuleContext) -> pd.Series:
+        """Transform all values with normalize/coerce operations.
+        
+        This rule doesn't require a match condition - it applies to all values.
+        Useful for operations like: strip whitespace, convert to lowercase, coerce types.
+        """
+        # Apply normalization operations if specified
+        if ctx.normalize_ops:
+            out = _normalize_for_match(series, ops=ctx.normalize_ops)
+            if ctx.report_replaced:
+                changed = int((series.astype("string").fillna("") != out.astype("string").fillna("")).sum())
+                logger.info(
+                    f"{ctx.entity_name}[replacements]: {ctx.column_name}: "
+                    f"transform(normalize={ctx.normalize_ops}) changed {changed} value(s)"
+                )
+        else:
+            out = series
+        
+        # Apply coercion if specified
+        if ctx.coerce:
+            before = out
+            out = _coerce_series_for_match(out, coerce=ctx.coerce)
+            if ctx.report_replaced:
+                # Count non-null values that changed
+                before_str = before.astype("string").fillna("")
+                after_str = out.astype("string").fillna("")
+                changed = int((before_str != after_str).sum())
+                logger.info(
+                    f"{ctx.entity_name}[replacements]: {ctx.column_name}: "
+                    f"transform(coerce={ctx.coerce}) changed {changed} value(s)"
+                )
+        
         return out
 
 

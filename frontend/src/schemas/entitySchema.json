@@ -245,17 +245,17 @@
           },
           {
             "type": "array",
-            "description": "Advanced ordered rules: list of rule objects",
+            "description": "Advanced ordered rules: list of rule objects. Rules can be: (1) match-based (requires 'match' and/or 'from'), (2) transform-only (only 'normalize' and/or 'coerce' - applies to all values), (3) mapping ('map'), or (4) blank-out ('blank_out')",
             "items": {
               "type": "object",
               "additionalProperties": true,
               "properties": {
                 "match": {
                   "type": "string",
-                  "description": "Match operator (e.g., equals, contains, startswith, endswith, regex, not_*)"
+                  "description": "Match operator (e.g., equals, contains, startswith, endswith, regex, not_*). Optional - omit for transform-only rules that apply to all values."
                 },
                 "from": {
-                  "description": "Match value (for match-based rules)",
+                  "description": "Match value (for match-based rules). Optional - not needed for transform-only rules.",
                   "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }]
                 },
                 "to": {
@@ -265,7 +265,7 @@
                 "normalize": {
                   "type": "array",
                   "items": { "type": "string" },
-                  "description": "Normalization operations (e.g., strip, lower, upper, collapse_ws)"
+                  "description": "Normalization operations (e.g., strip, lower, upper, collapse_ws). Can be used without match/from to apply to all values."
                 },
                 "flags": {
                   "type": "array",
@@ -274,7 +274,7 @@
                 },
                 "coerce": {
                   "type": "string",
-                  "description": "Coercion mode (string/int/float)"
+                  "description": "Coercion mode (string/int/float). Can be used without match/from to apply to all values."
                 },
                 "blank_out": {
                   "description": "Blank out scalar or list of values",
