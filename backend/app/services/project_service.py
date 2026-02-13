@@ -276,7 +276,7 @@ class ProjectService:
             return  # Nothing to verify for empty projects
 
         try:
-            with open(file_path, "r") as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 written_data = yaml.safe_load(f)
 
             actual_entities = sorted((written_data or {}).get("entities", {}).keys())
@@ -284,7 +284,7 @@ class ProjectService:
 
             if actual_count != expected_count:
                 logger.error(
-                    "[{}] SAVE VERIFICATION FAILED: project='{}' " "expected={} expected_names={} actual={} on_disk={}",
+                    "[{}] SAVE VERIFICATION FAILED: project='{}'" + " expected={} expected_names={} actual={} on_disk={}",
                     corr,
                     name,
                     expected_count,
