@@ -560,10 +560,10 @@ options:
 
         config = service.activate_project("test")
 
-        # When cache misses, activate is called twice:
-        # 1. In load_project after loading from disk (for caching)
-        # 2. In activate_project (explicit activation)
-        assert mock_state.activate.call_count == 2
+        # load_project calls state.activate (cache miss => disk load)
+        mock_state.activate.assert_called_once()
+        # activate_project calls state.mark_active (set active name only)
+        mock_state.mark_active.assert_called_once_with("test")
         assert config.metadata
         assert config.metadata.name.startswith("test")
 
@@ -578,8 +578,10 @@ options:
 
         config = service.activate_project("test_cached")
 
-        # When cache hits, load_project returns early, so activate is only called once in activate_project
-        mock_state.activate.assert_called_once()
+        # Cache hit: load_project returns early without calling state.activate
+        mock_state.activate.assert_not_called()
+        # activate_project calls mark_active to set the active project name
+        mock_state.mark_active.assert_called_once_with("test_cached")
         assert config.metadata
         assert config.metadata.name == "test_cached"
 

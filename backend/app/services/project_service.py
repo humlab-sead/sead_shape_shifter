@@ -858,6 +858,9 @@ class ProjectService:
         Activate a project for editing.
 
         Loads the project into ApplicationState as the active editing session.
+        Uses mark_active() instead of state.activate() to avoid overwriting
+        cached project data with a stale deep copy — load_project() already
+        handles caching (activate on disk load, deep copy on cache hit).
 
         Args:
             name: Project name to activate
@@ -871,7 +874,11 @@ class ProjectService:
 
         project: Project = self.load_project(name)
 
-        self.state.activate(project)
+        # Only set active project name; do NOT overwrite _active_projects[name]
+        # because load_project() already stored the project when loading from
+        # disk, and for cached projects a redundant state.activate() would
+        # replace the up-to-date cached version with a stale deep copy.
+        self.state.mark_active(name)
 
         return project
 

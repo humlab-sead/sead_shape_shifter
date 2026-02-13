@@ -380,6 +380,23 @@ class ApplicationStateManager:
             name="", description="", created_at=0, modified_at=0, entity_count=0, version=None, file_path=None, is_valid=True
         )
 
+    def mark_active(self, name: str) -> None:
+        """Set the active project name without overwriting cached project data.
+
+        Unlike activate(), this does NOT replace _active_projects[name].
+        Use when the project is already cached and we just need to mark it
+        as the current editing target (e.g., project selection).
+        """
+        corr = get_correlation_id()
+        with contextlib.suppress(RuntimeError):
+            app_state: ApplicationState = get_app_state()
+            app_state._active_project_name = name
+            logger.info(
+                "[{}] state.mark_active: project='{}'",
+                corr,
+                name,
+            )
+
     @staticmethod
     def is_dirty(name: str) -> bool:
         """Check if project is dirty in ApplicationState if initialized."""
