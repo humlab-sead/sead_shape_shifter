@@ -132,7 +132,7 @@ class ProjectMapper:
             input_names = sorted(api_config.entities.keys())
             output_names = sorted(cfg_dict["entities"].keys())
             logger.error(
-                "[{}] ProjectMapper.to_core_dict ENTITY COUNT MISMATCH: " "input={} input_names={} output={} output_names={}",
+                "[{}] ProjectMapper.to_core_dict ENTITY COUNT MISMATCH: input={}" + " input_names={} output={} output_names={}",
                 corr,
                 input_count,
                 input_names,
