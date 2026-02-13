@@ -70,7 +70,7 @@
                           <v-select
                             v-model="rule.op"
                             :items="opItems"
-                            label="Match"
+                            :label="rule.op === 'transform' ? 'Operation' : 'Match'"
                             variant="outlined"
                             density="compact"
                             hide-details
@@ -210,6 +210,15 @@
                           </v-col>
                         </template>
 
+                        <template v-else-if="rule.op === 'transform'">
+                          <v-col cols="12">
+                            <v-alert type="info" variant="tonal" density="compact">
+                              Transform rule applies normalize/coerce operations to <strong>all values</strong> without filtering.
+                              Configure normalize and/or coerce options below.
+                            </v-alert>
+                          </v-col>
+                        </template>
+
                         <template v-else>
                           <v-col cols="12" md="6">
                             <v-text-field
@@ -282,7 +291,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-type RuleOp = 'equals' | 'contains' | 'startswith' | 'endswith' | 'regex' | 'in' | 'blank_out' | 'map'
+type RuleOp = 'equals' | 'contains' | 'startswith' | 'endswith' | 'regex' | 'in' | 'blank_out' | 'map' | 'transform'
 type BlankFill = 'forward' | 'backward' | 'none' | 'constant'
 
 interface UiRule {
@@ -316,6 +325,7 @@ const emit = defineEmits<{
 }>()
 
 const opItems = [
+  { title: 'transform (all values)', value: 'transform' },
   { title: 'equals', value: 'equals' },
   { title: 'contains', value: 'contains' },
   { title: 'startswith', value: 'startswith' },
@@ -467,6 +477,27 @@ function fromRuleDict(rule: Record<string, any>): UiRule | null {
     }
   }
 
+  // Transform rule: has normalize/coerce but no match/from/map/blank_out
+  const hasTransformOps = (Array.isArray(rule.normalize) && rule.normalize.length > 0) || rule.coerce
+  const hasMatchCondition = 'match' in rule || 'from' in rule
+  if (hasTransformOps && !hasMatchCondition) {
+    return {
+      id: newId(),
+      op: 'transform',
+      negate: false,
+      from: '',
+      fromList: [],
+      to: '',
+      blankValues: [],
+      fill: 'forward',
+      fillConstant: '',
+      mapPairs: [],
+      normalize: Array.isArray(rule.normalize) ? rule.normalize.map((x: any) => String(x)) : [],
+      ignorecase: false,
+      coerce: rule.coerce != null ? String(rule.coerce).toLowerCase() : null,
+    }
+  }
+
   const match = String(rule.match || 'equals').toLowerCase()
 
   const negate = match.startsWith('not_')
@@ -538,6 +569,18 @@ function toRuleDict(rule: UiRule): Record<string, any> {
     return out
   }
 
+  if (rule.op === 'transform') {
+    const out: Record<string, any> = {}
+    // Transform rules only have normalize/coerce, no match/from
+    if (rule.normalize && rule.normalize.length > 0) {
+      out.normalize = rule.normalize
+    }
+    if (rule.coerce) {
+      out.coerce = rule.coerce
+    }
+    return out
+  }
+
   const match = rule.negate ? (`not_${rule.op}` as const) : rule.op
   const out: Record<string, any> = {
     match,
@@ -565,9 +608,10 @@ function toRuleDict(rule: UiRule): Record<string, any> {
 function addRule() {
   if (!selectedColumn.value) return
 
+  // Default to transform rule (applies to all values)
   const rule: UiRule = {
     id: newId(),
-    op: 'equals',
+    op: 'transform',
     negate: false,
     from: '',
     fromList: [],
