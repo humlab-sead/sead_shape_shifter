@@ -5,8 +5,8 @@
   "type": "object",
   "properties": {
     "type": {
-      "enum": ["sql", "fixed"],
-      "description": "Entity source type: sql (database query) or fixed (hardcoded values)"
+      "enum": ["sql", "fixed", "entity", "xlsx", "csv", "openpyxl"],
+      "description": "Entity source type: sql (database query), fixed (hardcoded values), entity (derived from another entity), xlsx (Excel file), csv (CSV file), or openpyxl (Excel file using openpyxl)"
     },
     "data_source": {
       "type": "string",
