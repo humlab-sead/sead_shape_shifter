@@ -97,6 +97,196 @@ class TestDependencyGraphAnalysis:
         assert any(e["source"] == "child" and e["target"] == "parent" for e in fk_edges)
 
 
+class TestSourceNodeExtraction:
+    """Tests for source node extraction from file and SQL entities."""
+
+    def test_excel_entity_with_sheet_creates_file_and_sheet_nodes(self):
+        """Excel entity with sheet_name creates file->sheet->entity chain."""
+        project = Project(
+            entities={
+                "my_data": {
+                    "type": "xlsx",
+                    "options": {
+                        "filename": "projects/data.xlsx",
+                        "sheet_name": "Sheet1",
+                    },
+                },
+            },
+            options={},
+        )
+
+        service = DependencyService()
+        graph = service.analyze_dependencies(project)
+
+        # Should have 2 source nodes: file and sheet
+        assert len(graph["source_nodes"]) == 2
+
+        # Find file and sheet nodes
+        file_node = next((n for n in graph["source_nodes"] if n["type"] == "file"), None)
+        sheet_node = next((n for n in graph["source_nodes"] if n["type"] == "sheet"), None)
+
+        assert file_node is not None
+        assert file_node["name"] == "file:data"
+        assert file_node["metadata"]["filename"] == "projects/data.xlsx"
+
+        assert sheet_node is not None
+        assert sheet_node["name"] == "sheet:data:Sheet1"
+        assert sheet_node["metadata"]["sheet_name"] == "Sheet1"
+
+        # Should have 2 source edges: file->sheet and sheet->entity
+        assert len(graph["source_edges"]) == 2
+
+        # Verify file->sheet edge
+        file_to_sheet = next(
+            (e for e in graph["source_edges"] if e["source"] == "file:data" and e["target"] == "sheet:data:Sheet1"), None
+        )
+        assert file_to_sheet is not None
+        assert file_to_sheet["label"] == "contains"
+
+        # Verify sheet->entity edge
+        sheet_to_entity = next(
+            (e for e in graph["source_edges"] if e["source"] == "sheet:data:Sheet1" and e["target"] == "my_data"), None
+        )
+        assert sheet_to_entity is not None
+        assert sheet_to_entity["label"] == "provides"
+
+    def test_excel_entity_without_sheet_creates_file_node_only(self):
+        """Excel entity without sheet_name creates direct file->entity edge."""
+        project = Project(
+            entities={
+                "my_data": {
+                    "type": "xlsx",
+                    "options": {
+                        "filename": "projects/data.xlsx",
+                    },
+                },
+            },
+            options={},
+        )
+
+        service = DependencyService()
+        graph = service.analyze_dependencies(project)
+
+        # Should have 1 source node: file only
+        assert len(graph["source_nodes"]) == 1
+        file_node = graph["source_nodes"][0]
+        assert file_node["type"] == "file"
+        assert file_node["name"] == "file:data"
+
+        # Should have 1 source edge: file->entity
+        assert len(graph["source_edges"]) == 1
+        assert graph["source_edges"][0]["source"] == "file:data"
+        assert graph["source_edges"][0]["target"] == "my_data"
+        assert graph["source_edges"][0]["label"] == "provides"
+
+    def test_csv_entity_creates_file_node_only(self):
+        """CSV entity creates direct file->entity edge (no sheet)."""
+        project = Project(
+            entities={
+                "my_csv": {
+                    "type": "csv",
+                    "options": {
+                        "filename": "projects/data.csv",
+                        "sep": ",",
+                    },
+                },
+            },
+            options={},
+        )
+
+        service = DependencyService()
+        graph = service.analyze_dependencies(project)
+
+        # Should have 1 source node: file only
+        assert len(graph["source_nodes"]) == 1
+        file_node = graph["source_nodes"][0]
+        assert file_node["type"] == "file"
+        assert file_node["name"] == "file:data"
+
+        # Should have 1 source edge: file->entity
+        assert len(graph["source_edges"]) == 1
+        assert graph["source_edges"][0]["source"] == "file:data"
+        assert graph["source_edges"][0]["target"] == "my_csv"
+
+    def test_multiple_entities_from_same_excel_sheet_reuse_nodes(self):
+        """Multiple entities from same Excel sheet reuse file and sheet nodes."""
+        project = Project(
+            entities={
+                "entity1": {
+                    "type": "xlsx",
+                    "options": {
+                        "filename": "projects/data.xlsx",
+                        "sheet_name": "Sheet1",
+                    },
+                },
+                "entity2": {
+                    "type": "xlsx",
+                    "options": {
+                        "filename": "projects/data.xlsx",
+                        "sheet_name": "Sheet1",
+                    },
+                },
+            },
+            options={},
+        )
+
+        service = DependencyService()
+        graph = service.analyze_dependencies(project)
+
+        # Should have 2 source nodes (file and sheet), not 4
+        assert len(graph["source_nodes"]) == 2
+
+        # Should have 3 edges: file->sheet, sheet->entity1, sheet->entity2
+        assert len(graph["source_edges"]) == 3
+
+        # Verify both entities share the same sheet
+        entity1_edge = next((e for e in graph["source_edges"] if e["target"] == "entity1"), None)
+        entity2_edge = next((e for e in graph["source_edges"] if e["target"] == "entity2"), None)
+        assert entity1_edge["source"] == entity2_edge["source"] == "sheet:data:Sheet1"
+
+    def test_multiple_sheets_from_same_file_create_separate_sheet_nodes(self):
+        """Multiple entities from different sheets of same file create separate sheet nodes."""
+        project = Project(
+            entities={
+                "sheet1_data": {
+                    "type": "openpyxl",
+                    "options": {
+                        "filename": "projects/data.xlsx",
+                        "sheet_name": "Sheet1",
+                    },
+                },
+                "sheet2_data": {
+                    "type": "openpyxl",
+                    "options": {
+                        "filename": "projects/data.xlsx",
+                        "sheet_name": "Sheet2",
+                    },
+                },
+            },
+            options={},
+        )
+
+        service = DependencyService()
+        graph = service.analyze_dependencies(project)
+
+        # Should have 3 source nodes: 1 file + 2 sheets
+        assert len(graph["source_nodes"]) == 3
+
+        file_nodes = [n for n in graph["source_nodes"] if n["type"] == "file"]
+        sheet_nodes = [n for n in graph["source_nodes"] if n["type"] == "sheet"]
+
+        assert len(file_nodes) == 1
+        assert len(sheet_nodes) == 2
+        assert file_nodes[0]["name"] == "file:data"
+
+        # Verify sheet names
+        sheet_names = sorted([n["name"] for n in sheet_nodes])
+        assert sheet_names == ["sheet:data:Sheet1", "sheet:data:Sheet2"]
+
+        # Should have 4 edges: file->sheet1, file->sheet2, sheet1->entity1, sheet2->entity2
+        assert len(graph["source_edges"]) == 4
+
+
 class TestCircularDependencyDetection:
     """Tests for circular dependency detection."""
 

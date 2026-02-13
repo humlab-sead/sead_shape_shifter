@@ -251,8 +251,10 @@ class SourceNodeService:
         """Factory method to get appropriate extractor based on entity type."""
         if entity_type == "sql":
             return SqlSourceNodeExtractor(self.seen_sources)
-        if entity_type in ("csv", "xlsx", "openpyxl"):
-            return FileSourceNodeExtractor(self.seen_sources)
+        if entity_type == "csv":
+            return CsvFileSourceNodeExtractor(self.seen_sources)
+        if entity_type in ("xlsx", "openpyxl"):
+            return ExcelFileSourceNodeExtractor(self.seen_sources)
         return NullSourceNodeExtractor(self.seen_sources)
 
 
@@ -277,38 +279,161 @@ class NullSourceNodeExtractor(BaseSourceNodeExtractor):
         return [], []
 
 
-class FileSourceNodeExtractor(BaseSourceNodeExtractor):
-    """Utility class for extracting file source nodes."""
+class BaseFileSourceNodeExtractor(BaseSourceNodeExtractor):
+    """Base class for file-based source node extractors."""
 
-    def extract(self, entity_name: str, entity_cfg: dict[str, Any]) -> tuple[list[SourceNode], list[dict[str, Any]]]:
+    def extract(
+        self, entity_name: str, entity_cfg: dict[str, Any]
+    ) -> tuple[list[SourceNode], list[dict[str, Any]]]:
+        """Extract source nodes and edges for a file entity.
+
+        Subclasses must implement this method.
+        """
+        raise NotImplementedError("Subclasses must implement extract method.")
+
+    def _create_file_node(
+        self, filename: str, entity_type: str
+    ) -> tuple[str, SourceNode | None]:
+        """Create file node if it doesn't exist.
+
+        Args:
+            filename: Path to the file
+            entity_type: Type of entity (csv, xlsx, openpyxl)
+
+        Returns:
+            Tuple of (file_node_id, SourceNode or None if already exists)
+        """
+        file_node_id: str = f"file:{Path(filename).stem}"
+
+        if file_node_id in self.seen_sources:
+            return file_node_id, None
+
+        file_metadata: dict[str, Any] = {"filename": filename, "type": entity_type}
+        node = SourceNode(
+            name=file_node_id,
+            source_type=entity_type,
+            node_type="file",
+            metadata=file_metadata
+        )
+        self.seen_sources.add(file_node_id)
+
+        return file_node_id, node
+
+    def _get_filename_from_options(self, entity_cfg: dict[str, Any]) -> str | None:
+        """Extract filename from entity configuration."""
         options: dict[str, Any] = entity_cfg.get("options") or {}
-        filename: str | None = options.get("filename")
-        entity_type: str = entity_cfg.get("type", "csv")
+        return options.get("filename")
 
+
+class CsvFileSourceNodeExtractor(BaseFileSourceNodeExtractor):
+    """Extractor for CSV file entities (simple file -> entity)."""
+
+    def extract(
+        self, entity_name: str, entity_cfg: dict[str, Any]
+    ) -> tuple[list[SourceNode], list[dict[str, Any]]]:
+        """Extract source nodes for CSV entities.
+
+        Creates simple file -> entity dependency chain.
+        """
+        filename = self._get_filename_from_options(entity_cfg)
         if not filename:
             return [], []
 
+        entity_type: str = entity_cfg.get("type", "csv")
         source_nodes: list[SourceNode] = []
         source_edges: list[dict[str, Any]] = []
 
-        source_node_id: str = f"file:{Path(filename).stem}"
-        if source_node_id not in self.seen_sources:
-            metadata: dict[str, Any] = {"filename": filename, "type": entity_type}
-            sheet_name: str | None = options.get("sheet_name")  # For Excel files
-            if sheet_name:
-                metadata["sheet_name"] = sheet_name
-
-            source_nodes.append(SourceNode(name=source_node_id, source_type=entity_type, node_type="file", metadata=metadata))
-            self.seen_sources.add(source_node_id)
+        # Create file node
+        file_node_id, file_node = self._create_file_node(filename, entity_type)
+        if file_node:
+            source_nodes.append(file_node)
 
         # Edge: file -> entity
         source_edges.append(
             {
-                "source": source_node_id,
+                "source": file_node_id,
                 "target": entity_name,
                 "label": "provides",
             }
         )
+
+        return source_nodes, source_edges
+
+
+class ExcelFileSourceNodeExtractor(BaseFileSourceNodeExtractor):
+    """Extractor for Excel file entities (file -> sheet -> entity when sheet specified)."""
+
+    def extract(
+        self, entity_name: str, entity_cfg: dict[str, Any]
+    ) -> tuple[list[SourceNode], list[dict[str, Any]]]:
+        """Extract source nodes for Excel entities.
+
+        Creates file -> sheet -> entity chain when sheet_name is specified,
+        otherwise creates simple file -> entity chain.
+        """
+        filename = self._get_filename_from_options(entity_cfg)
+        if not filename:
+            return [], []
+
+        options: dict[str, Any] = entity_cfg.get("options") or {}
+        sheet_name: str | None = options.get("sheet_name")
+        entity_type: str = entity_cfg.get("type", "xlsx")
+
+        source_nodes: list[SourceNode] = []
+        source_edges: list[dict[str, Any]] = []
+
+        # Create file node
+        file_node_id, file_node = self._create_file_node(filename, entity_type)
+        if file_node:
+            source_nodes.append(file_node)
+
+        # If sheet_name is specified, create sheet node
+        if sheet_name:
+            sheet_node_id: str = f"sheet:{Path(filename).stem}:{sheet_name}"
+            sheet_node_created: bool = sheet_node_id not in self.seen_sources
+
+            if sheet_node_created:
+                sheet_metadata: dict[str, Any] = {
+                    "filename": filename,
+                    "sheet_name": sheet_name,
+                    "type": entity_type,
+                }
+                sheet_node = SourceNode(
+                    name=sheet_node_id,
+                    source_type=f"{entity_type}_sheet",
+                    node_type="sheet",
+                    metadata=sheet_metadata
+                )
+                source_nodes.append(sheet_node)
+                self.seen_sources.add(sheet_node_id)
+
+                # Edge: file -> sheet (only when sheet node is first created)
+                source_edges.append(
+                    {
+                        "source": file_node_id,
+                        "target": sheet_node_id,
+                        "label": "contains",
+                    }
+                )
+
+            # Edge: sheet -> entity (always, for each entity using this sheet)
+            source_edges.append(
+                {
+                    "source": sheet_node_id,
+                    "target": entity_name,
+                    "label": "provides",
+                }
+            )
+        else:
+            # No sheet_name specified: file -> entity
+            source_edges.append(
+                {
+                    "source": file_node_id,
+                    "target": entity_name,
+                    "label": "provides",
+                }
+            )
+
         return source_nodes, source_edges
 
 
