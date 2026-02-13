@@ -519,6 +519,19 @@ interface Emits {
   (e: 'saved', entityName: string): void
 }
 
+// Error type that can be a string, an API error response, or null
+type PreviewError =
+  | string
+  | {
+      detail?: {
+        message: string
+        error_type?: string
+        tips?: string[]
+      }
+      message?: string
+    }
+  | null
+
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
@@ -564,7 +577,7 @@ const previewLimitOptions = [
   { title: 'All rows', value: null },
 ]
 
-const previewError = ref<string | null>(null)
+const previewError = ref<PreviewError>(null)
 
 // Form state
 const formRef = ref()
@@ -1535,7 +1548,9 @@ function handleMaterialized() {
   }
 
   // Notify parent to refresh entity list
-  emit('saved')
+  if (props.entity?.name) {
+    emit('saved', props.entity.name)
+  }
 }
 
 function handleUnmaterialized(unmaterializedEntities: string[]) {
@@ -1560,7 +1575,9 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
   }
 
   // Notify parent to refresh entity list
-  emit('saved')
+  if (props.entity?.name) {
+    emit('saved', props.entity.name)
+  }
 
   // Log unmaterialized entities
   if (unmaterializedEntities.length > 1) {
