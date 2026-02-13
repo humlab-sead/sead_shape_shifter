@@ -357,6 +357,7 @@ const rawReplacements = ref<Record<string, any>>(deepClone(props.modelValue || {
 const rules = ref<UiRule[]>([])
 const showConversionWarning = ref(false)
 const isLoadingColumn = ref(false)  // Prevent infinite loop between watchers
+const isPersisting = ref(false)  // Track when we're persisting to prevent reload loop
 
 function supportsNegate(op: RuleOp): boolean {
   return ['equals', 'contains', 'startswith', 'endswith', 'in', 'regex'].includes(op)
@@ -619,6 +620,8 @@ function removeMapPair(rule: UiRule, index: number) {
 function persist() {
   if (!selectedColumn.value) return
 
+  isPersisting.value = true  // Set flag before emitting
+  
   // Convert to rule-list format (advanced rules)
   rawReplacements.value[selectedColumn.value] = rules.value.map(toRuleDict)
 
@@ -629,11 +632,21 @@ function persist() {
   } else {
     emit('update:modelValue', rawReplacements.value)
   }
+  
+  // Clear flag on next tick after parent has processed the update
+  setTimeout(() => {
+    isPersisting.value = false
+  }, 0)
 }
 
 watch(
   () => props.modelValue,
   (newValue) => {
+    // If we just persisted, skip reload to prevent infinite loop
+    if (isPersisting.value) {
+      return
+    }
+    
     rawReplacements.value = deepClone(newValue || {})
 
     // Keep current column selection if still present
