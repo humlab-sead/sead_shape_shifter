@@ -89,11 +89,11 @@ class CsvLoader(FileLoader):
         except KeyError as exc:
             raise ValueError("Missing 'filename' in options for CSV loader") from exc
         df: pd.DataFrame = pd.read_csv(filename, **clean_opts)
-        
+
         if opts.get("sanitize_header", True):
             # Sanitize column names to be YAML-friendly
             df.columns = sanitize_columns(list(df.columns))
-        
+
         return df
 
     async def test_connection(self) -> ConnectTestResult:

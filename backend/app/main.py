@@ -15,6 +15,7 @@ from backend.app.core.config import settings
 from backend.app.core.logging_config import configure_logging
 from backend.app.core.state_manager import ApplicationState, init_app_state
 from backend.app.ingesters.registry import Ingesters
+from backend.app.middleware.correlation import CorrelationMiddleware
 from src.loaders.sql_loaders import init_jvm_for_ucanaccess
 
 
@@ -98,6 +99,9 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         },
     )
 
+
+# Correlation ID middleware (outermost — wraps all requests for tracing)
+app.add_middleware(CorrelationMiddleware)
 
 # Configure CORS
 app.add_middleware(

@@ -112,13 +112,13 @@ async def get_project(name: str) -> Project:
 async def refresh_project(name: str) -> Project:
     """
     Force reload a project from disk, invalidating the server-side cache.
-    
+
     Useful when the YAML file has been modified externally (manual edit, git pull, etc.)
     and you need to reload the changes without restarting the server.
-    
+
     Args:
         name: Project name (without .yml extension)
-    
+
     Returns:
         Reloaded project with fresh data from disk
     """
