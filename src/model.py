@@ -450,7 +450,7 @@ class TableConfig:
                     append_cfgs = [append_raw]
                 else:
                     append_cfgs = append_raw
-                
+
                 for append_cfg in append_cfgs:
                     if isinstance(append_cfg, dict) and append_cfg.get("source") == self.entity_name:
                         yield entity_name
