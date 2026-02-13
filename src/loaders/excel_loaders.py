@@ -84,10 +84,10 @@ class PandasLoader(ExcelLoader):
         df: pd.DataFrame | dict[str, pd.DataFrame] = pd.read_excel(file_path, sheet_name=sheet_name, **clean_opts)
         if not isinstance(df, pd.DataFrame):
             raise ValueError("ExcelLoader currently supports loading a single sheet only.")
-        
+
         if sanitize_header:
             df.columns = sanitize_columns(list(df.columns))
-        
+
         return df
 
     async def test_connection(self) -> ConnectTestResult:
@@ -167,7 +167,7 @@ class OpenPyxlLoader(ExcelLoader):
         header_opt: bool | list[str] = opts.get("header", True)
         data_header: list[str] | None = next(data) if header_opt else None
         sanitize_header: bool = opts.get("sanitize_header", True)
-        
+
         df = pd.DataFrame(data, columns=data_header)
         if isinstance(header_opt, list):
             # Header provided as list of column names, use it instead of the first row of data

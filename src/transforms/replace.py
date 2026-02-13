@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, cast
 
 import pandas as pd
@@ -181,12 +181,12 @@ def _coerce_scalar_for_match(value: Any, *, coerce: str | None) -> Any:
             if f.is_integer():
                 return int(f)
             return pd.NA
-        except Exception:
+        except Exception:  #  pylint: disable=broad-except
             return pd.NA
     if coerce in ("float", "double", "number"):
         try:
             return float(value)
-        except Exception:
+        except Exception:  #  pylint: disable=broad-except
             return pd.NA
     return value
 
@@ -268,8 +268,10 @@ class MapRule(ReplacementRule):
 
             if bool(unmatched_mask.any()):
                 top: pd.Series[int] = series[unmatched_mask].astype("string").value_counts(dropna=True).head(ctx.report_top)
+                n_unmatched = int(unmatched_mask.sum())
                 logger.info(
-                    f"{ctx.entity_name}[replacements]: {ctx.column_name}: {int(unmatched_mask.sum())} unmatched value(s) (top {len(top)}): {top.to_dict()}"
+                    f"{ctx.entity_name}[replacements]: {ctx.column_name}: "
+                    f"{n_unmatched} unmatched value(s) (top {len(top)}): {top.to_dict()}"
                 )
 
         if not ctx.normalize_ops and not ctx.coerce:
@@ -369,7 +371,8 @@ class EqualsRule(ReplacementRule):
                 if ctx.report_unmatched:
                     op = "not_equals" if ctx.negate else "equals"
                     logger.info(
-                        f"{ctx.entity_name}[replacements]: {ctx.column_name}: {op}(coerced={ctx.coerce}) matched 0 value(s) for {from_value!r}"
+                        f"{ctx.entity_name}[replacements]: {ctx.column_name}: "
+                        f"{op}(coerced={ctx.coerce}) matched 0 value(s) for {from_value!r}"
                     )
                 return series
             if ctx.report_replaced:

@@ -117,6 +117,7 @@ disable = [
     "protected-access",
     "f-string-without-interpolation",
     "unnecessary-ellipsis",
+    "cyclic-import",  # Lazy imports in method bodies are safe (e.g. _invalidate_all_caches)
 ]
 
 [tool.black]

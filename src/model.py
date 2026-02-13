@@ -446,11 +446,12 @@ class TableConfig:
                 if isinstance(append_raw, str):
                     # Skip string format - not a valid dependency check
                     continue
-                elif isinstance(append_raw, dict):
+
+                if isinstance(append_raw, dict):
                     append_cfgs = [append_raw]
                 else:
                     append_cfgs = append_raw
-                
+
                 for append_cfg in append_cfgs:
                     if isinstance(append_cfg, dict) and append_cfg.get("source") == self.entity_name:
                         yield entity_name

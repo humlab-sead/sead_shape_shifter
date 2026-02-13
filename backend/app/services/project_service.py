@@ -1,6 +1,7 @@
 """Project service for managing entities."""
 
 import shutil
+import threading
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -12,6 +13,7 @@ from backend.app.core.config import settings
 from backend.app.core.state_manager import ApplicationStateManager, get_app_state_manager
 from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError
 from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
@@ -36,7 +38,35 @@ class ProjectYamlSpecification:
 
 
 class ProjectService:
-    """Service for managing project files and entities."""
+    """Service for managing project files and entities.
+
+    Thread safety:
+        All mutating operations (add/update/delete entity, save/delete project)
+        are serialized per-project using threading.Lock to prevent lost-update
+        race conditions when concurrent requests modify the same project.
+
+    Cache consistency:
+        load_project() returns deep copies of cached projects to prevent
+        mutation-through-reference bugs.
+    """
+
+    # Class-level locks for per-project serialization
+    _project_locks: dict[str, threading.Lock] = {}
+    _locks_lock: threading.Lock = threading.Lock()
+
+    @classmethod
+    def _get_lock(cls, project_name: str) -> threading.Lock:
+        """Get or create a per-project lock. Thread-safe."""
+        with cls._locks_lock:
+            if project_name not in cls._project_locks:
+                cls._project_locks[project_name] = threading.Lock()
+            return cls._project_locks[project_name]
+
+    @classmethod
+    def _remove_lock(cls, project_name: str) -> None:
+        """Remove a project's lock (called after project deletion)."""
+        with cls._locks_lock:
+            cls._project_locks.pop(project_name, None)
 
     def __init__(self, projects_dir: Path | None = None, state: ApplicationStateManager | None = None) -> None:
         """Initialize project service."""
@@ -107,12 +137,26 @@ class ProjectService:
         if force_reload:
             self.state.invalidate(name)
             logger.info(f"Force reload requested for '{name}', cache invalidated")
-        
+
+        corr = get_correlation_id()
+
         # Check ApplicationState cache first (actively edited projects)
         cached_project: Project | None = self.state.get(name)
         if cached_project:
-            logger.debug(f"Loaded project '{name}' from ApplicationState cache")
-            return cached_project
+            # CRITICAL FIX: Return deep copy to prevent mutation-through-reference.
+            # Without this, two concurrent callers mutating the same cached object
+            # cause lost-update race conditions.
+            copy: Project = cached_project.model_copy(deep=True)
+            entity_count: int = len(copy.entities or {})
+            entity_names: list[str] = sorted((copy.entities or {}).keys())
+            logger.info(
+                "[{}] load_project: '{}' from CACHE (deep copy) entities={} names={}",
+                corr,
+                name,
+                entity_count,
+                entity_names,
+            )
+            return copy
 
         # Load from disk - YAML file is source of truth
         filename: Path = self.projects_dir / (f"{name.removesuffix('.yml')}.yml")
@@ -140,7 +184,14 @@ class ProjectService:
             # Cache in ApplicationState for subsequent requests (multiple projects can be cached)
             self.state.activate(project)
 
-            logger.info(f"Loaded project '{name}' from disk with {len(project.entities)} entities")
+            entity_names = sorted((project.entities or {}).keys())
+            logger.info(
+                "[{}] load_project: '{}' from DISK entities={} names={}",
+                corr,
+                name,
+                len(project.entities),
+                entity_names,
+            )
             return project
 
         except ConfigurationError:
@@ -173,18 +224,32 @@ class ProjectService:
         # Use original file path if provided, otherwise derive from metadata.name
         file_path: Path = original_file_path or (self.projects_dir / f"{project.metadata.name.removesuffix('.yml')}.yml")
 
+        corr: str = get_correlation_id()
+        name: str = project.metadata.name
+        entity_count: int = len(project.entities or {})
+        entity_names: list[str] = sorted((project.entities or {}).keys())
+
         try:
             # Convert to core dict for saving (sparse structure)
             cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(project)
 
-            logger.debug(f"Saving project '{project.metadata.name}' with {len(project.entities)} entities: {list(project.entities.keys())}")
+            logger.info(
+                "[{}] save_project: '{}' writing entities={} names={}",
+                corr,
+                name,
+                entity_count,
+                entity_names,
+            )
 
             self.yaml_service.save(cfg_dict, file_path, create_backup=create_backup)
+
+            # DEFENSIVE: Verify what was actually written to disk
+            self._verify_save(name, entity_names, file_path, corr)
 
             project.metadata.modified_at = file_path.stat().st_mtime
             project.metadata.entity_count = len(project.entities)
 
-            logger.info(f"Saved project '{project.metadata.name}'")
+            logger.info("[{}] save_project: '{}' saved and verified OK", corr, name)
 
             self.state.update(project)
 
@@ -197,6 +262,80 @@ class ProjectService:
         except Exception as e:
             logger.error(f"Failed to save project: {e}")
             raise ConfigurationError(message=f"Failed to save project: {e}") from e
+
+    def _verify_save(self, name: str, expected_entities: list[str], file_path: Path, corr: str) -> None:
+        """Read back the saved file and verify entity count matches.
+
+        This is a defensive measure to detect silent data loss during
+        serialization (e.g., if ProjectMapper.to_core_dict drops entities).
+        """
+        import yaml  # pylint: disable=import-outside-toplevel
+
+        expected_count = len(expected_entities)
+        if expected_count == 0:
+            return  # Nothing to verify for empty projects
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                written_data = yaml.safe_load(f)
+
+            actual_entities = sorted((written_data or {}).get("entities", {}).keys())
+            actual_count = len(actual_entities)
+
+            if actual_count != expected_count:
+                logger.error(
+                    "[{}] SAVE VERIFICATION FAILED: project='{}'" + " expected={} expected_names={} actual={} on_disk={}",
+                    corr,
+                    name,
+                    expected_count,
+                    expected_entities,
+                    actual_count,
+                    actual_entities,
+                )
+            else:
+                logger.debug(
+                    "[{}] save_project: verification OK for '{}' ({} entities)",
+                    corr,
+                    name,
+                    actual_count,
+                )
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error(
+                "[{}] save_project: verification read-back failed for '{}': {}",
+                corr,
+                name,
+                str(e),
+            )
+
+    def _invalidate_all_caches(self, project_name: str, corr: str) -> None:
+        """Invalidate ALL caches for a project.
+
+        This MUST be called on project deletion to prevent ghost entities
+        when a new project is created with the same name.
+        Clears: ApplicationState, ShapeShiftCache, ShapeShiftProjectCache.
+        """
+        # ApplicationState
+        self.state.invalidate(project_name)
+
+        # ShapeShift caches (lazy import to avoid circular dependency)
+        try:
+            from backend.app.services.shapeshift_service import get_shapeshift_service  # pylint: disable=import-outside-toplevel
+
+            shapeshift_service = get_shapeshift_service()
+            shapeshift_service.cache.invalidate_project(project_name)
+            shapeshift_service.project_cache.invalidate_project(project_name)
+            logger.info(
+                "[{}] _invalidate_all_caches: all caches invalidated for '{}'",
+                corr,
+                project_name,
+            )
+        except Exception as e:  # pylint: disable=broad-except
+            logger.warning(
+                "[{}] _invalidate_all_caches: failed to access ShapeShift caches for '{}': {}",
+                corr,
+                project_name,
+                str(e),
+            )
 
     def create_project(self, name: str, entities: dict[str, Any] | None = None, task_list: dict[str, Any] | None = None) -> Project:
         """
@@ -213,10 +352,15 @@ class ProjectService:
         Raises:
             ResourceConflictError: If project already exists
         """
+        corr = get_correlation_id()
         file_path: Path = self.projects_dir / f"{name}.yml"
 
         if file_path.exists():
             raise ResourceConflictError(resource_type="project", resource_id=name, message=f"Project '{name}' already exists")
+
+        # Defensive: clear any stale caches for this name (e.g. after delete+recreate)
+        self._invalidate_all_caches(name, corr)
+        logger.info("[{}] create_project: '{}'", corr, name)
 
         metadata: ProjectMetadata = ProjectMetadata(
             name=name,
@@ -238,25 +382,41 @@ class ProjectService:
         """
         Delete project file.
 
+        Clears ALL caches (ApplicationState, ShapeShiftCache, ShapeShiftProjectCache)
+        to prevent ghost entities when a new project is created with the same name.
+
         Args:
             name: Project name
 
         Raises:
             ResourceNotFoundError: If project not found
         """
+        corr = get_correlation_id()
         file_path: Path = self.projects_dir / f"{name}.yml"
 
         if not file_path.exists():
             raise ResourceNotFoundError(resource_type="project", resource_id=name, message=f"Project not found: {name}")
 
-        try:
-            self.yaml_service.create_backup(file_path)
-            file_path.unlink()
-            logger.info(f"Deleted project '{name}'")
+        lock = self._get_lock(name)
+        logger.info("[{}] delete_project: ACQUIRING lock for '{}'", corr, name)
 
-        except Exception as e:
-            logger.error(f"Failed to delete project '{name}': {e}")
-            raise ProjectServiceError(f"Failed to delete project: {e}") from e
+        with lock:
+            logger.info("[{}] delete_project: ACQUIRED lock for '{}'", corr, name)
+            try:
+                self.yaml_service.create_backup(file_path)
+                file_path.unlink()
+                logger.info("[{}] delete_project: file deleted for '{}'", corr, name)
+
+            except Exception as e:
+                logger.error("[{}] delete_project: failed to delete file for '{}': {}", corr, name, e)
+                raise ProjectServiceError(f"Failed to delete project: {e}") from e
+
+            # CRITICAL FIX: Clear ALL caches to prevent ghost entities
+            self._invalidate_all_caches(name, corr)
+
+        # Clean up the lock after releasing it
+        self._remove_lock(name)
+        logger.info("[{}] delete_project: completed for '{}'", corr, name)
 
     def copy_project(self, source_name: str, target_name: str) -> Project:
         """
@@ -518,6 +678,8 @@ class ProjectService:
         """
         Add entity to project by project name.
 
+        Serialized per-project to prevent lost-update race conditions.
+
         Args:
             project_name: Project name
             entity_name: Entity name
@@ -527,19 +689,52 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceConflictError: If entity already exists
         """
-        project: Project = self.load_project(project_name)
+        corr = get_correlation_id()
+        lock = self._get_lock(project_name)
+        logger.info(
+            "[{}] add_entity_by_name: ACQUIRING lock project='{}' entity='{}'",
+            corr,
+            project_name,
+            entity_name,
+        )
 
-        if entity_name in project.entities:
-            raise ResourceConflictError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists")
+        with lock:
+            project: Project = self.load_project(project_name)
 
-        # Use the model's add_entity method to ensure proper handling
-        project.add_entity(entity_name, entity_data)
-        self.save_project(project)
-        logger.info(f"Added entity '{entity_name}' to project '{project_name}'")
+            before_names = sorted((project.entities or {}).keys())
+            logger.info(
+                "[{}] add_entity_by_name: project='{}' BEFORE add: count={} names={} adding='{}'",
+                corr,
+                project_name,
+                len(before_names),
+                before_names,
+                entity_name,
+            )
+
+            if entity_name in project.entities:
+                raise ResourceConflictError(
+                    resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists"
+                )
+
+            # Use the model's add_entity method to ensure proper handling
+            project.add_entity(entity_name, entity_data)
+
+            after_names = sorted((project.entities or {}).keys())
+            logger.info(
+                "[{}] add_entity_by_name: project='{}' AFTER add: count={} names={}",
+                corr,
+                project_name,
+                len(after_names),
+                after_names,
+            )
+
+            self.save_project(project)
 
     def update_entity_by_name(self, project_name: str, entity_name: str, entity_data: dict[str, Any]) -> None:
         """
         Update entity in project by project name.
+
+        Serialized per-project to prevent lost-update race conditions.
 
         Args:
             project_name: Project name
@@ -550,24 +745,45 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
         """
-        project: Project = self.load_project(project_name)
+        corr = get_correlation_id()
+        lock = self._get_lock(project_name)
+        logger.info(
+            "[{}] update_entity_by_name: ACQUIRING lock project='{}' entity='{}'",
+            corr,
+            project_name,
+            entity_name,
+        )
 
-        if entity_name not in project.entities:
-            raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
+        with lock:
+            project: Project = self.load_project(project_name)
 
-        # Ensure public_id is preserved (three-tier identity model)
-        # If not in incoming data, keep existing value (even if None)
-        if "public_id" not in entity_data and "public_id" in project.entities[entity_name]:
-            entity_data["public_id"] = project.entities[entity_name]["public_id"]
+            entity_names = sorted((project.entities or {}).keys())
+            logger.info(
+                "[{}] update_entity_by_name: project='{}' current entities={} names={} updating='{}'",
+                corr,
+                project_name,
+                len(entity_names),
+                entity_names,
+                entity_name,
+            )
 
-        # Use the model's add_entity method to ensure proper handling
-        project.add_entity(entity_name, entity_data)
-        self.save_project(project)
-        logger.info(f"Updated entity '{entity_name}' in project '{project_name}'")
+            if entity_name not in project.entities:
+                raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
+
+            # Ensure public_id is preserved (three-tier identity model)
+            # If not in incoming data, keep existing value (even if None)
+            if "public_id" not in entity_data and "public_id" in project.entities[entity_name]:
+                entity_data["public_id"] = project.entities[entity_name]["public_id"]
+
+            # Use the model's add_entity method to ensure proper handling
+            project.add_entity(entity_name, entity_data)
+            self.save_project(project)
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:
         """
         Delete entity from project by project name.
+
+        Serialized per-project to prevent lost-update race conditions.
 
         Args:
             project_name: Project name
@@ -577,14 +793,43 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
         """
-        project: Project = self.load_project(project_name)
+        corr = get_correlation_id()
+        lock = self._get_lock(project_name)
+        logger.info(
+            "[{}] delete_entity_by_name: ACQUIRING lock project='{}' entity='{}'",
+            corr,
+            project_name,
+            entity_name,
+        )
 
-        if entity_name not in project.entities:
-            raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
+        with lock:
+            project: Project = self.load_project(project_name)
 
-        del project.entities[entity_name]
-        self.save_project(project)
-        logger.info(f"Deleted entity '{entity_name}' from project '{project_name}'")
+            before_names = sorted((project.entities or {}).keys())
+            logger.info(
+                "[{}] delete_entity_by_name: project='{}' BEFORE delete: count={} names={} removing='{}'",
+                corr,
+                project_name,
+                len(before_names),
+                before_names,
+                entity_name,
+            )
+
+            if entity_name not in project.entities:
+                raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
+
+            del project.entities[entity_name]
+
+            after_names = sorted((project.entities or {}).keys())
+            logger.info(
+                "[{}] delete_entity_by_name: project='{}' AFTER delete: count={} names={}",
+                corr,
+                project_name,
+                len(after_names),
+                after_names,
+            )
+
+            self.save_project(project)
 
     def get_entity_by_name(self, project_name: str, entity_name: str) -> dict[str, Any]:
         """
