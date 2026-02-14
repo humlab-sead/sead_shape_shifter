@@ -365,3 +365,138 @@ class TestCircularDependencyDetection:
         order = graph["topological_order"]
         assert order.index("base") > order.index("middle")
         assert order.index("middle") > order.index("top")
+
+
+class TestMaterializedEntitySourceExtraction:
+    """Tests for source node extraction from materialized fixed entities."""
+
+    def test_materialized_sql_entity_shows_frozen_dependencies(self):
+        """Materialized entity from SQL source shows frozen dependency edges."""
+        project = Project(
+            entities={
+                "my_data": {
+                    "type": "fixed",
+                    "values": [[1, "test"], [2, "demo"]],
+                    "columns": ["id", "name"],
+                    "materialized": {
+                        "enabled": True,
+                        "source_state": {
+                            "type": "sql",
+                            "data_source": "my_db",
+                            "query": "SELECT id, name FROM users",
+                        },
+                        "materialized_at": "2024-01-01T00:00:00",
+                    },
+                },
+            },
+            options={},
+        )
+
+        service = DependencyService()
+        graph = service.analyze_dependencies(project)
+
+        # Should have source nodes for the database and table
+        assert len(graph["source_nodes"]) > 0
+
+        # Should have source edges marked as frozen
+        assert len(graph["source_edges"]) > 0
+        
+        # All source edges should be frozen
+        for edge in graph["source_edges"]:
+            assert edge.get("frozen") is True
+            assert "frozen" in edge.get("label", "").lower()
+
+    def test_materialized_csv_entity_shows_frozen_dependencies(self):
+        """Materialized entity from CSV file shows frozen file dependency."""
+        project = Project(
+            entities={
+                "my_data": {
+                    "type": "fixed",
+                    "values": [[1, "test"]],
+                    "columns": ["id", "name"],
+                    "materialized": {
+                        "enabled": True,
+                        "source_state": {
+                            "type": "csv",
+                            "options": {
+                                "filename": "data/input.csv",
+                            },
+                        },
+                        "materialized_at": "2024-01-01T00:00:00",
+                    },
+                },
+            },
+            options={},
+        )
+
+        service = DependencyService()
+        graph = service.analyze_dependencies(project)
+
+        # Should have file source node
+        assert len(graph["source_nodes"]) == 1
+        file_node = graph["source_nodes"][0]
+        assert file_node["type"] == "file"
+        assert file_node["source_type"] == "csv"
+
+        # Should have frozen edge from file to entity
+        assert len(graph["source_edges"]) == 1
+        edge = graph["source_edges"][0]
+        assert edge["frozen"] is True
+        assert "frozen" in edge["label"].lower()
+        assert edge["target"] == "my_data"
+
+    def test_materialized_excel_entity_shows_frozen_sheet_dependencies(self):
+        """Materialized entity from Excel sheet shows frozen file->sheet chain."""
+        project = Project(
+            entities={
+                "my_data": {
+                    "type": "fixed",
+                    "values": [[1, "test"]],
+                    "columns": ["id", "name"],
+                    "materialized": {
+                        "enabled": True,
+                        "source_state": {
+                            "type": "xlsx",
+                            "options": {
+                                "filename": "data/workbook.xlsx",
+                                "sheet_name": "Sheet1",
+                            },
+                        },
+                        "materialized_at": "2024-01-01T00:00:00",
+                    },
+                },
+            },
+            options={},
+        )
+
+        service = DependencyService()
+        graph = service.analyze_dependencies(project)
+
+        # Should have file and sheet nodes
+        assert len(graph["source_nodes"]) == 2
+        
+        # All source edges should be frozen
+        assert len(graph["source_edges"]) == 2
+        for edge in graph["source_edges"]:
+            assert edge.get("frozen") is True
+
+    def test_non_materialized_fixed_entity_has_no_sources(self):
+        """Regular fixed entity without materialization has no source nodes."""
+        project = Project(
+            entities={
+                "my_data": {
+                    "type": "fixed",
+                    "values": [[1, "test"]],
+                    "columns": ["id", "name"],
+                },
+            },
+            options={},
+        )
+
+        service = DependencyService()
+        graph = service.analyze_dependencies(project)
+
+        # No source nodes or edges for non-materialized fixed entity
+        assert len(graph["source_nodes"]) == 0
+        assert len(graph["source_edges"]) == 0
+
