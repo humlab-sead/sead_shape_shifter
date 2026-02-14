@@ -726,7 +726,8 @@ const savingLayout = ref(false)
 const displayOptions = ref<GraphDisplayOptions>({
   nodeLabels: true,
   edgeLabels: true,
-  sourceNodes: false,
+  showSources: false,
+  showSourceEntities: false,
 })
 const highlightCycles = ref(true)
 const showDetailsDrawer = ref(false)
@@ -851,7 +852,8 @@ const { cy, fit, zoomIn, zoomOut, reset, render: renderGraph, exportPNG, getCurr
   showNodeLabels: computed(() => displayOptions.value.nodeLabels),
   showEdgeLabels: computed(() => displayOptions.value.edgeLabels),
   highlightCycles,
-  showSourceNodes: computed(() => displayOptions.value.sourceNodes),
+  showSources: computed(() => displayOptions.value.showSources),
+  showSourceEntities: computed(() => displayOptions.value.showSourceEntities),
   cycles,
   isDark,
   onNodeClick: async (nodeId: string) => {

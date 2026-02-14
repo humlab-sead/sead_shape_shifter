@@ -27,9 +27,14 @@ export interface GraphAdapterOptions {
   highlightCycles?: boolean
 
   /**
-   * Whether to show source nodes (data sources, tables)
+   * Whether to show source nodes (databases, files)
    */
-  showSourceNodes?: boolean
+  showSources?: boolean
+
+  /**
+   * Whether to show source entity nodes (tables, sheets)
+   */
+  showSourceEntities?: boolean
 }
 
 /**
@@ -71,7 +76,17 @@ export function toCytoscapeElements(
 ): ElementDefinition[] {
   if (!graph) return []
 
-  const { cycles = [], showNodeLabels = true, showEdgeLabels = true, highlightCycles = false, showSourceNodes = false } = options
+  const { 
+    cycles = [], 
+    showNodeLabels = true, 
+    showEdgeLabels = true, 
+    highlightCycles = false, 
+    showSources = false,
+    showSourceEntities = false 
+  } = options
+
+  // Determine if we should show any source-related content
+  const showAnySourceContent = showSources || showSourceEntities
 
   // Convert entity nodes
   const nodes: ElementDefinition[] = graph.nodes.map((node) => {
@@ -103,9 +118,20 @@ export function toCytoscapeElements(
     }
   })
 
-  // Convert source nodes (conditionally)
-  const sourceNodes: ElementDefinition[] = showSourceNodes && graph.source_nodes
-    ? graph.source_nodes.map((sourceNode) => {
+  // Convert source nodes (with filtering based on options)
+  const sourceNodes: ElementDefinition[] = showAnySourceContent && graph.source_nodes
+    ? graph.source_nodes
+        .filter((sourceNode) => {
+          // Filter based on node type
+          const isSource = sourceNode.type === 'datasource' || sourceNode.type === 'file'
+          const isSourceEntity = sourceNode.type === 'table' || sourceNode.type === 'sheet'
+          
+          // Show node if:
+          // - It's a source (db/file) and showSources is true
+          // - It's a source entity (table/sheet) and showSourceEntities is true
+          return (isSource && showSources) || (isSourceEntity && showSourceEntities)
+        })
+        .map((sourceNode) => {
         const classes = ['source-node', `source-${sourceNode.type}`]
 
         if (!showNodeLabels) {
@@ -180,9 +206,40 @@ export function toCytoscapeElements(
     }
   })
 
-  // Convert source edges (conditionally)
-  const sourceEdges: ElementDefinition[] = showSourceNodes && graph.source_edges
-    ? graph.source_edges.map((edge, index) => {
+  // Convert source edges (with filtering based on options)
+  const sourceEdges: ElementDefinition[] = showAnySourceContent && graph.source_edges
+    ? graph.source_edges
+        .filter((edge) => {
+          const viaSourceEntity = edge.via_source_entity === true
+          
+          // Rule 1: Both checked - show all edges
+          if (showSources && showSourceEntities) {
+            return true
+          }
+          
+          // Rule 2: Only showSources - show direct edges (via_source_entity=false)
+          if (showSources && !showSourceEntities) {
+            return !viaSourceEntity
+          }
+          
+          // Rule 3: Only showSourceEntities - show edges through source entities
+          // but exclude source->source_entity edges (those should be hidden when source is hidden)
+          if (!showSources && showSourceEntities) {
+            // Include edges that go through source entities
+            // Exclude edges where source is a datasource/file (source->table or file->sheet)
+            if (!viaSourceEntity) return false
+            
+            // Get source node if exists
+            const sourceNode = graph.source_nodes?.find(n => n.name === edge.source)
+            const isSourceToEntity = sourceNode && (sourceNode.type === 'datasource' || sourceNode.type === 'file')
+            
+            // Exclude source->source_entity edges, include source_entity->entity edges
+            return !isSourceToEntity
+          }
+          
+          return false
+        })
+        .map((edge, index) => {
         const classes = ['source-edge']
 
         if (!showEdgeLabels) {
@@ -201,6 +258,7 @@ export function toCytoscapeElements(
             target: edge.target,
             label: edge.label || '',
             frozen: edge.frozen || false,
+            viaSourceEntity: edge.via_source_entity || false,
           },
           classes,
         }

@@ -41,6 +41,7 @@ export interface DependencyEdge {
   type?: 'dependency' | 'foreign_key' | 'provides'
   label?: string
   frozen?: boolean  // True for edges from materialized entities showing historical dependencies
+  via_source_entity?: boolean  // True for edges that go through source entities (table/sheet), false for direct source->entity
 }
 
 export interface DependencyGraph {
