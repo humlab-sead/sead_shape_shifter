@@ -198,6 +198,20 @@ const baseStyles: StylesheetCSS[] = [
     },
   },
 
+  // Frozen edges - from materialized entities showing historical dependencies
+  {
+    selector: 'edge.frozen-edge',
+    css: {
+      'line-style': 'dashed',
+      'line-color': '#4CAF50', // Green to match materialized nodes
+      'target-arrow-color': '#4CAF50',
+      width: 1.5,
+      opacity: 0.6,
+      'arrow-scale': 1,
+      'line-dash-pattern': [8, 4], // Dashed pattern: 8px line, 4px gap
+    },
+  },
+
   // Materialized entities - multi-indicator strategy
   {
     selector: 'node.materialized',

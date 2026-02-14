@@ -1,7 +1,7 @@
 """Service for analyzing entity dependencies in projects."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from loguru import logger
 
@@ -13,6 +13,54 @@ from backend.app.models.project import Project
 from backend.app.utils.graph import calculate_depths, find_cycles, topological_sort
 from backend.app.utils.sql import extract_tables
 from src.model import ShapeShiftProject
+
+# Type variable for registry
+T = TypeVar("T")
+
+
+class SourceNodeExtractorRegistry(Generic[T]):
+    """Registry for SourceNodeExtractor classes indexed by entity type."""
+
+    items: dict[str, type["BaseSourceNodeExtractor"]] = {}
+
+    @classmethod
+    def register(cls, entity_types: str | list[str]):
+        """Decorator to register a SourceNodeExtractor for specific entity types.
+
+        Args:
+            entity_types: Single entity type or list of entity types this extractor handles
+
+        Example:
+            @SourceNodeExtractors.register(["csv", "tsv"])
+            class CsvFileSourceNodeExtractor(BaseSourceNodeExtractor):
+                ...
+        """
+
+        def decorator(extractor_class: type["BaseSourceNodeExtractor"]):
+            types = [entity_types] if isinstance(entity_types, str) else entity_types
+            for entity_type in types:
+                cls.items[entity_type] = extractor_class
+            return extractor_class
+
+        return decorator
+
+    @classmethod
+    def get(cls, entity_type: str, seen_sources: set[str]) -> "BaseSourceNodeExtractor":
+        """Get extractor instance for entity type.
+
+        Args:
+            entity_type: Entity type to get extractor for
+            seen_sources: Set of already-seen source node IDs
+
+        Returns:
+            Extractor instance, or NullSourceNodeExtractor if type not registered
+        """
+        extractor_class = cls.items.get(entity_type, NullSourceNodeExtractor)
+        return extractor_class(seen_sources)
+
+
+# Global registry instance
+SourceNodeExtractors = SourceNodeExtractorRegistry()
 
 
 class DependencyNode(dict):
@@ -241,6 +289,7 @@ class SourceNodeService:
         """Extract source nodes and edges from project entities."""
 
         for entity_name, entity_cfg in api_project.entities.items():
+            # Pass full entity_cfg for materialized fixed entities to access source_state
             source_nodes, source_edges = self.get_extractor(entity_cfg.get("type", "")).extract(entity_name, entity_cfg)
             self.source_nodes.extend(source_nodes)
             self.source_edges.extend(source_edges)
@@ -249,13 +298,7 @@ class SourceNodeService:
 
     def get_extractor(self, entity_type: str) -> "BaseSourceNodeExtractor":
         """Factory method to get appropriate extractor based on entity type."""
-        if entity_type == "sql":
-            return SqlSourceNodeExtractor(self.seen_sources)
-        if entity_type == "csv":
-            return CsvFileSourceNodeExtractor(self.seen_sources)
-        if entity_type in ("xlsx", "openpyxl"):
-            return ExcelFileSourceNodeExtractor(self.seen_sources)
-        return NullSourceNodeExtractor(self.seen_sources)
+        return SourceNodeExtractors.get(entity_type, self.seen_sources)
 
 
 class BaseSourceNodeExtractor:
@@ -270,7 +313,7 @@ class BaseSourceNodeExtractor:
 
 
 class NullSourceNodeExtractor(BaseSourceNodeExtractor):
-    """No-op extractor for unsupported entity types."""
+    """No-op extractor for unsupported entity types (default fallback)."""
 
     def extract(
         self, entity_name: str, entity_cfg: dict[str, Any]
@@ -282,18 +325,14 @@ class NullSourceNodeExtractor(BaseSourceNodeExtractor):
 class BaseFileSourceNodeExtractor(BaseSourceNodeExtractor):
     """Base class for file-based source node extractors."""
 
-    def extract(
-        self, entity_name: str, entity_cfg: dict[str, Any]
-    ) -> tuple[list[SourceNode], list[dict[str, Any]]]:
+    def extract(self, entity_name: str, entity_cfg: dict[str, Any]) -> tuple[list[SourceNode], list[dict[str, Any]]]:
         """Extract source nodes and edges for a file entity.
 
         Subclasses must implement this method.
         """
         raise NotImplementedError("Subclasses must implement extract method.")
 
-    def _create_file_node(
-        self, filename: str, entity_type: str
-    ) -> tuple[str, SourceNode | None]:
+    def _create_file_node(self, filename: str, entity_type: str) -> tuple[str, SourceNode | None]:
         """Create file node if it doesn't exist.
 
         Args:
@@ -309,12 +348,7 @@ class BaseFileSourceNodeExtractor(BaseSourceNodeExtractor):
             return file_node_id, None
 
         file_metadata: dict[str, Any] = {"filename": filename, "type": entity_type}
-        node = SourceNode(
-            name=file_node_id,
-            source_type=entity_type,
-            node_type="file",
-            metadata=file_metadata
-        )
+        node = SourceNode(name=file_node_id, source_type=entity_type, node_type="file", metadata=file_metadata)
         self.seen_sources.add(file_node_id)
 
         return file_node_id, node
@@ -325,12 +359,11 @@ class BaseFileSourceNodeExtractor(BaseSourceNodeExtractor):
         return options.get("filename")
 
 
+@SourceNodeExtractors.register("csv")
 class CsvFileSourceNodeExtractor(BaseFileSourceNodeExtractor):
     """Extractor for CSV file entities (simple file -> entity)."""
 
-    def extract(
-        self, entity_name: str, entity_cfg: dict[str, Any]
-    ) -> tuple[list[SourceNode], list[dict[str, Any]]]:
+    def extract(self, entity_name: str, entity_cfg: dict[str, Any]) -> tuple[list[SourceNode], list[dict[str, Any]]]:
         """Extract source nodes for CSV entities.
 
         Creates simple file -> entity dependency chain.
@@ -360,12 +393,11 @@ class CsvFileSourceNodeExtractor(BaseFileSourceNodeExtractor):
         return source_nodes, source_edges
 
 
+@SourceNodeExtractors.register(["xlsx", "openpyxl"])
 class ExcelFileSourceNodeExtractor(BaseFileSourceNodeExtractor):
     """Extractor for Excel file entities (file -> sheet -> entity when sheet specified)."""
 
-    def extract(
-        self, entity_name: str, entity_cfg: dict[str, Any]
-    ) -> tuple[list[SourceNode], list[dict[str, Any]]]:
+    def extract(self, entity_name: str, entity_cfg: dict[str, Any]) -> tuple[list[SourceNode], list[dict[str, Any]]]:
         """Extract source nodes for Excel entities.
 
         Creates file -> sheet -> entity chain when sheet_name is specified,
@@ -398,12 +430,7 @@ class ExcelFileSourceNodeExtractor(BaseFileSourceNodeExtractor):
                     "sheet_name": sheet_name,
                     "type": entity_type,
                 }
-                sheet_node = SourceNode(
-                    name=sheet_node_id,
-                    source_type=f"{entity_type}_sheet",
-                    node_type="sheet",
-                    metadata=sheet_metadata
-                )
+                sheet_node = SourceNode(name=sheet_node_id, source_type=f"{entity_type}_sheet", node_type="sheet", metadata=sheet_metadata)
                 source_nodes.append(sheet_node)
                 self.seen_sources.add(sheet_node_id)
 
@@ -437,8 +464,58 @@ class ExcelFileSourceNodeExtractor(BaseFileSourceNodeExtractor):
         return source_nodes, source_edges
 
 
+@SourceNodeExtractors.register("fixed")
+class MaterializedFixedSourceNodeExtractor(BaseSourceNodeExtractor):
+    """Extractor for materialized fixed entities - shows frozen source dependencies."""
+
+    def extract(self, entity_name: str, entity_cfg: dict[str, Any]) -> tuple[list[SourceNode], list[dict[str, Any]]]:
+        """Extract source nodes from materialized.source_state.
+
+        For materialized entities, we show the dependencies that existed
+        when the entity was frozen. These are marked as 'frozen' edges
+        to distinguish them from active dependencies.
+        """
+        # Check if entity is materialized
+        materialized_data = entity_cfg.get("materialized")
+        if not isinstance(materialized_data, dict):
+            return [], []
+
+        if not materialized_data.get("enabled", False):
+            return [], []
+
+        # Get saved source configuration
+        source_state = materialized_data.get("source_state")
+        if not isinstance(source_state, dict):
+            return [], []
+
+        # Determine original entity type and delegate to appropriate extractor
+        source_type = source_state.get("type")
+        if not source_type:
+            return [], []
+
+        # Get appropriate extractor for the source type from registry
+        extractor = SourceNodeExtractors.get(source_type, self.seen_sources)
+
+        # If we got the null extractor, there's nothing to extract
+        if isinstance(extractor, NullSourceNodeExtractor):
+            return [], []
+
+        # Extract nodes and edges from source_state
+        source_nodes, source_edges = extractor.extract(entity_name, source_state)
+
+        # Mark all edges as frozen
+        for edge in source_edges:
+            edge["frozen"] = True
+            # Add frozen indicator to label
+            original_label = edge.get("label", "")
+            edge["label"] = f"{original_label} (frozen)" if original_label else "frozen"
+
+        return source_nodes, source_edges
+
+
+@SourceNodeExtractors.register("sql")
 class SqlSourceNodeExtractor(BaseSourceNodeExtractor):
-    """Utility class for extracting SQL source nodes."""
+    """Extractor for SQL entities - shows database and table dependencies."""
 
     def extract(self, entity_name: str, entity_cfg: dict[str, Any]) -> tuple[list[SourceNode], list[dict[str, Any]]]:
         data_source: str | None = entity_cfg.get("data_source")

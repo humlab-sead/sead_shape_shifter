@@ -40,6 +40,7 @@ export interface DependencyEdge {
   remote_keys?: string[]
   type?: 'dependency' | 'foreign_key' | 'provides'
   label?: string
+  frozen?: boolean  // True for edges from materialized entities showing historical dependencies
 }
 
 export interface DependencyGraph {

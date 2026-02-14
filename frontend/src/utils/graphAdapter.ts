@@ -163,12 +163,18 @@ export function toCytoscapeElements(
           classes.push('hide-label')
         }
 
+        // Add frozen-edge class for edges from materialized entities
+        if (edge.frozen) {
+          classes.push('frozen-edge')
+        }
+
         return {
           data: {
             id: `source-edge-${edge.source}-${edge.target}-${index}`,
             source: edge.source,
             target: edge.target,
             label: edge.label || '',
+            frozen: edge.frozen || false,
           },
           classes,
         }
