@@ -19,6 +19,7 @@ from src.utility import dget, dotexists, dotset, env2dict, replace_env_vars
 
 from .interface import ConfigLike
 from .utility import replace_references
+from .path_utils import PathResolver
 
 # pylint: disable=too-many-arguments
 
@@ -365,9 +366,24 @@ class SubConfigResolver(BaseResolver):
         super().__init__(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path)
 
     def resolve_directive(self, directive_argument: str, base_path: Path | None) -> dict[str, Any]:
-        filename: str = directive_argument
-        if not Path(filename).is_absolute() and base_path is not None:
-            filename = str(base_path / filename)
+        """Resolve @include: directive with environment variable expansion.
+
+        Supports:
+        - Environment variables: @include: ${GLOBAL_DATA_SOURCE_DIR}/sead-options.yml
+        - Relative paths: @include: ./reconciliation.yml
+        - Absolute paths: @include: /abs/path/config.yml
+
+        Args:
+            directive_argument: Path after @include: prefix
+            base_path: Directory of current file for resolving relative paths
+
+        Returns:
+            Loaded configuration dict
+        """
+        # Resolve environment variables and paths
+
+        filename: str = PathResolver.resolve(directive_argument, base_path=base_path, raise_if_missing=False)
+
         loaded_data: dict[str, Any] = (
             ConfigFactory().load(source=filename, context=self.context, env_filename=self.env_filename, env_prefix=None).data
         )
@@ -384,6 +400,19 @@ class LoadResolver(BaseResolver):
         super().__init__(context=context, env_filename=env_filename, env_prefix=env_prefix, source_path=source_path)
 
     def resolve_directive(self, directive_argument: str, base_path: Path | None) -> Any:
+        """Resolve @load: directive with environment variable expansion.
+
+        Supports loading CSV/TSV data from files with env var paths:
+        - @load: ${GLOBAL_DATA_DIR}/lookup.csv
+        - @load: ./data/local.csv
+
+        Args:
+            directive_argument: Either a file path or a dotted config path to load options
+            base_path: Directory of current file for resolving relative paths
+
+        Returns:
+            Loaded data as list of dicts, or directive_argument if load fails
+        """
 
         filename: str
         sep: str
@@ -404,8 +433,8 @@ class LoadResolver(BaseResolver):
         else:
             filename, sep = directive_argument, ","
 
-        if not Path(filename).is_absolute() and base_path is not None:
-            filename = str(base_path / filename)
+        # Resolve environment variables and relative paths
+        filename = PathResolver.resolve(filename, base_path=base_path, raise_if_missing=False)
 
         if not is_path_to_existing_file(filename):
             logger.warning(f"ignoring load directive for path '{directive_argument}' since file '{filename}' does not exist")
