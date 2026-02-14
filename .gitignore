@@ -125,3 +125,4 @@ projects/*.xlsx
 output/*.xlsx
 **/test-results
 sead-tools
+docs/projects
