@@ -223,7 +223,7 @@
                           <v-col cols="12" md="6">
                             <v-text-field
                               v-model="rule.from"
-                              :label="rule.op === 'regex' ? 'Pattern' : 'From'"
+                              :label="rule.op === 'regex' || rule.op === 'regex_sub' ? 'Pattern' : 'From'"
                               variant="outlined"
                               density="compact"
                               hide-details
@@ -291,7 +291,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-type RuleOp = 'equals' | 'contains' | 'startswith' | 'endswith' | 'regex' | 'in' | 'blank_out' | 'map' | 'transform'
+type RuleOp = 'equals' | 'contains' | 'startswith' | 'endswith' | 'regex' | 'regex_sub' | 'in' | 'blank_out' | 'map' | 'transform'
 type BlankFill = 'forward' | 'backward' | 'none' | 'constant'
 
 interface UiRule {
@@ -332,6 +332,7 @@ const opItems = [
   { title: 'endswith', value: 'endswith' },
   { title: 'in', value: 'in' },
   { title: 'regex', value: 'regex' },
+  { title: 'regex_sub (substitution)', value: 'regex_sub' },
   { title: 'blank_out', value: 'blank_out' },
   { title: 'map', value: 'map' },
 ]
@@ -373,7 +374,7 @@ function supportsNegate(op: RuleOp): boolean {
 }
 
 function supportsIgnoreCase(op: RuleOp): boolean {
-  return ['equals', 'contains', 'startswith', 'endswith', 'in', 'regex'].includes(op)
+  return ['equals', 'contains', 'startswith', 'endswith', 'in', 'regex', 'regex_sub'].includes(op)
 }
 
 function newId(): string {
@@ -501,7 +502,7 @@ function fromRuleDict(rule: Record<string, any>): UiRule | null {
 
   const negate = match.startsWith('not_')
   const base = (negate ? match.slice(4) : match) as RuleOp
-  if (!['equals', 'contains', 'startswith', 'endswith', 'in', 'regex'].includes(base)) {
+  if (!['equals', 'contains', 'startswith', 'endswith', 'in', 'regex', 'regex_sub'].includes(base)) {
     return null
   }
 
