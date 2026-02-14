@@ -117,44 +117,82 @@ const baseStyles: StylesheetCSS[] = [
   {
     selector: 'node.source-node',
     css: {
-      'background-opacity': 0.85,
-      'border-style': 'dashed',
+      'background-opacity': 0.9,
       'border-width': 2,
-      'border-color': '#999',
+      'border-style': 'solid',
       'font-size': '18px',
     },
   },
 
-  // Datasource nodes - database cylinder shape
+  // Datasource nodes - database with icon
   {
     selector: 'node.source-datasource',
     css: {
       shape: 'barrel',
-      'background-color': '#00796B', // Teal
+      'background-color': '#1565C0', // Deep blue (database color)
+      'border-color': '#42A5F5', // Light blue
       width: 40,
       height: 40,
     },
   },
 
-  // Table nodes - rectangles
+  // Table nodes - data table with icon
   {
     selector: 'node.source-table',
     css: {
       shape: 'rectangle',
-      'background-color': '#0097A7', // Cyan
-      width: 35,
-      height: 35,
+      'background-color': '#00838F', // Teal/cyan (data color)
+      'border-color': '#26C6DA', // Light cyan
+      width: 36,
+      height: 36,
     },
   },
 
-  // File source nodes
+  // CSV file nodes - chart/data with icon
+  {
+    selector: 'node.source-file[sourceCategory="csv"]',
+    css: {
+      shape: 'round-rectangle',
+      'background-color': '#C62828', // Red (CSV distinctive)
+      'border-color': '#EF5350', // Light red
+      width: 38,
+      height: 38,
+    },
+  },
+
+  // Excel file nodes - spreadsheet with icon
+  {
+    selector: 'node.source-file[sourceCategory="xlsx"], node.source-file[sourceCategory="openpyxl"]',
+    css: {
+      shape: 'round-rectangle',
+      'background-color': '#2E7D32', // Green (Excel brand)
+      'border-color': '#66BB6A', // Light green
+      width: 38,
+      height: 38,
+    },
+  },
+
+  // Generic file nodes - fallback for other file types
   {
     selector: 'node.source-file',
     css: {
       shape: 'round-rectangle',
-      'background-color': '#5E35B1', // Deep purple
+      'background-color': '#5E35B1', // Purple (generic file)
+      'border-color': '#9575CD', // Light purple
       width: 38,
       height: 38,
+    },
+  },
+
+  // Sheet nodes - Excel/spreadsheet sheets with icon
+  {
+    selector: 'node.source-sheet',
+    css: {
+      shape: 'round-rectangle',
+      'background-color': '#1B5E20', // Excel dark green
+      'border-color': '#4CAF50', // Excel light green
+      width: 36,
+      height: 36,
     },
   },
 

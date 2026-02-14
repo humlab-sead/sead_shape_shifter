@@ -112,10 +112,36 @@ export function toCytoscapeElements(
           classes.push('hide-label')
         }
 
+        // Add icon prefix based on node type
+        const baseLabel = extractSourceLabel(sourceNode.name)
+        let label = baseLabel
+        
+        switch (sourceNode.type) {
+          case 'datasource':
+            label = `🗄️ ${baseLabel}`
+            break
+          case 'table':
+            label = `📋 ${baseLabel}`
+            break
+          case 'sheet':
+            label = `📄 ${baseLabel}`
+            break
+          case 'file':
+            // Different icons for different file types
+            if (sourceNode.source_type === 'csv') {
+              label = `📊 ${baseLabel}`
+            } else if (sourceNode.source_type === 'xlsx' || sourceNode.source_type === 'openpyxl') {
+              label = `📗 ${baseLabel}`
+            } else {
+              label = `📁 ${baseLabel}` // Generic file folder
+            }
+            break
+        }
+
         return {
           data: {
             id: sourceNode.name,
-            label: extractSourceLabel(sourceNode.name),
+            label: label,
             nodeCategory: 'source',
             sourceType: sourceNode.type,
             sourceCategory: sourceNode.source_type,

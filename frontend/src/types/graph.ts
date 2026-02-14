@@ -56,7 +56,7 @@ export interface DependencyGraph {
 export interface SourceNode {
   name: string
   source_type: string
-  type: 'datasource' | 'table' | 'file'
+  type: 'datasource' | 'table' | 'file' | 'sheet'
   metadata?: Record<string, any>
 }
 
