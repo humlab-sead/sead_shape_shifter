@@ -178,10 +178,11 @@ class YamlService:
         2. Business keys: keys
         3. Schema: columns
         4. Data: values
-        5. Relationships: foreign_keys, depends_on
-        6. Operations: drop_duplicates, drop_empty_rows, check_functional_dependency
-        7. Transformations: filters, unnest, append, extra_columns
-        8. All other keys (preserved in alphabetical order)
+        5. Materialization: materialized
+        6. Relationships: foreign_keys, depends_on
+        7. Operations: drop_duplicates, drop_empty_rows, check_functional_dependency
+        8. Transformations: filters, unnest, append, extra_columns
+        9. All other keys (preserved in alphabetical order)
 
         Args:
             data: Configuration dictionary (may contain 'entities')
@@ -202,6 +203,8 @@ class YamlService:
             "columns",
             # Data
             "values",
+            # Materialization metadata
+            "materialized",
             # Relationships
             "foreign_keys",
             "depends_on",
