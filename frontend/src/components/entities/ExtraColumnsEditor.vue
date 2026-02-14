@@ -1,41 +1,37 @@
 <template>
   <div class="pa-4">
-    <v-list>
-      <v-list-item v-for="(item, index) in extraColumns" :key="index" class="px-0 mb-2">
-        <v-card variant="outlined">
-          <v-card-text>
-            <v-row dense>
-              <v-col cols="12" md="5">
-                <v-text-field
-                  v-model="item.column"
-                  label="New Column Name"
-                  variant="outlined"
-                  density="compact"
-                  placeholder="e.g., new_column"
-                />
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="item.source"
-                  label="Source Column (or leave empty for null)"
-                  variant="outlined"
-                  density="compact"
-                  placeholder="e.g., existing_column"
-                  clearable
-                />
-              </v-col>
-              <v-col cols="12" md="1" class="d-flex align-center">
-                <v-btn
-                  icon="mdi-delete"
-                  variant="text"
-                  size="small"
-                  color="error"
-                  @click="handleRemoveExtraColumn(index)"
-                />
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
+    <v-list density="compact" class="py-0">
+      <v-list-item v-for="(item, index) in extraColumns" :key="index" class="px-0 py-1">
+        <v-row dense>
+          <v-col cols="12" md="5">
+            <v-text-field
+              v-model="item.column"
+              label="New Column Name"
+              variant="outlined"
+              density="compact"
+              placeholder="e.g., new_column"
+            />
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model="item.source"
+              label="Source Column (or leave empty for null)"
+              variant="outlined"
+              density="compact"
+              placeholder="e.g., existing_column"
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" md="1" class="d-flex align-center">
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              size="small"
+              color="error"
+              @click="handleRemoveExtraColumn(index)"
+            />
+          </v-col>
+        </v-row>
       </v-list-item>
     </v-list>
 
