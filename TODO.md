@@ -1,4 +1,21 @@
 
+### Resources
+
+**GitHub Copilot Chat - Prompt Engineering:**
+- [Asking GitHub Copilot Questions in Your IDE](https://docs.github.com/en/copilot/using-github-copilot/asking-github-copilot-questions-in-your-ide) - Official guide on asking questions in VS Code
+- [Prompt Engineering for GitHub Copilot](https://docs.github.com/en/copilot/using-github-copilot/prompt-engineering-for-github-copilot) - Best practices for writing effective prompts
+- [VS Code Copilot Chat Documentation](https://code.visualstudio.com/docs/copilot/copilot-chat) - Guide covering slash commands (`/explain`, `/fix`, `/tests`) and context participants (`#file`, `#selection`, `@workspace`)
+- [How to write better prompts for GitHub Copilot - The GitHub Blog](https://github.blog/developer-skills/github/how-to-write-better-prompts-for-github-copilot/?ref_product=copilot&ref_type=engagement&ref_style=text)
+
+**Quick Tips:**
+
+- Use `/help` in Copilot Chat to see all available commands
+- Reference files with `#file:path/to/file.ts`
+- Use `@workspace` to search across the entire workspace
+- Structure prompts: [Context] + [Specific Task] + [Constraints/Format]
+
+---
+
 ### Bugs
 
 FIXME: Projects are sometimes stored with resolved values.
@@ -313,3 +330,29 @@ This is the core logic:
           else:
               result[col] = result[col].replace(to_replace=replacement_map, value=pd.NA).ffill()
 ```
+
+### FIXME: Materializion bugg
+
+entities:
+  project_datasheet:
+    type: openpyxl
+    public_id: project_datasheet_id
+    keys: []
+    columns:
+    - project_name
+    - project_id
+    - project_description
+    - project_date
+    - customer
+    - site_name
+    - national_site_id
+    - latitude
+    - longitude
+    - coordinate_system
+    - position_accuracy
+    - methods_metadata_download_link
+    options:
+      filename: projects/SEAD_aDNA_data_20241114_RM.xlsx
+      sheet_name: Project data sheet
+
+### TODO
