@@ -113,8 +113,10 @@ const helpContentMap: Record<string, HelpContent> = {
       '<span style="color: #2196F3; font-weight: 600;">Blue</span> entities are source from another entity',
       '<span style="color: #f44336; font-weight: 600;">Red</span> nodes/edges indicate circular dependencies',
       'Entity shapes: Ellipse (CSV/file), Rectangle (SQL), Diamond (Fixed values)',
-      'Source shapes: Barrel (Database), Small rectangle (Table)',
-      'Solid edges show entity dependencies, dotted edges show source relationships'
+      'Source node icons: 🗄️ Database, 📋 Table, 📊 CSV, 📗 Excel, 📄 Sheet, 📁 File',
+      'Source colors: Blue (database), Teal (table), Red (CSV), Green (Excel), Purple (generic)',
+      'Solid edges show entity dependencies, dotted edges show source relationships',
+      '<span style="color: #4CAF50; font-weight: 600;">Dashed green</span> edges indicate frozen dependencies from materialized entities'
     ],
     shortcuts: [
       { keys: 'Click', action: 'Open YAML editor' },
