@@ -184,11 +184,16 @@ class YamlService:
         8. Transformations: filters, unnest, append, extra_columns
         9. All other keys (preserved in alphabetical order)
 
+        **Defensive Programming:**
+        Keys not in ENTITY_KEY_ORDER are ALWAYS preserved and appended at the end
+        in alphabetical order. This prevents data loss when new entity configuration
+        keys are added in the future.
+
         Args:
             data: Configuration dictionary (may contain 'entities')
 
         Returns:
-            New dictionary with ordered keys
+            New dictionary with ordered keys (ALL keys preserved)
         """
         # Canonical order for entity configuration keys
         ENTITY_KEY_ORDER = [  # pylint: disable=invalid-name
@@ -223,12 +228,17 @@ class YamlService:
             """
             Reorder dictionary keys according to specified order.
 
+            **Defensive Programming:**
+            ALL keys from the input dictionary are ALWAYS preserved, even if not in key_order.
+            Unknown keys are appended at the end in alphabetical order.
+            This prevents data loss when new entity keys are added in the future.
+
             Args:
                 d: Dictionary to reorder
                 key_order: Preferred key order (None = preserve original order)
 
             Returns:
-                New dictionary with ordered keys
+                New dictionary with ALL input keys preserved and ordered
             """
             if key_order is None:
                 return d
@@ -236,9 +246,12 @@ class YamlService:
             # Start with ordered keys that exist in dict
             ordered = {k: d[k] for k in key_order if k in d}
 
-            # Append remaining keys in alphabetical order
+            # CRITICAL: Preserve ALL remaining keys (defensive programming)
+            # Append keys not in key_order list in alphabetical order
+            # This ensures no data loss when new entity keys are added
             remaining = {k: d[k] for k in sorted(d.keys()) if k not in ordered}
 
+            # Merge: ordered keys first, then remaining keys
             return {**ordered, **remaining}
 
         # If root level has 'entities', order each entity config
