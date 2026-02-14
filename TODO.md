@@ -332,3 +332,21 @@ This is the core logic:
 ```
 
 ### TODO
+
+I have cleaned up and migrated all relevant existing projects. The result is in folder ./docs/projects.
+
+1. File "reconciliation.yml" has replaced "mappings.yml"
+2. I think it would be good if we can allow projects to be organized in an almost arbitrary folder structure, each project in some sense "self-contained" except for references to shared data. Folders _examples and _tests, is ok, but data can be organized in various ways, so flexibility would be good.
+3. Translations is project specific, or possibly provider specific. Translations are loaded using a "@load: filename" directive so it's a bit project specific how to store the data. ShouldFor the time being, let's keep it as as in-project data.
+4. Ignore for now. How to organize data per provider might be solved by a folder structure, and it's up to the users.
+5. This can be done manually. See proposed migrated structure in ./docs/projects.
+6. Please ignore backup retention. All existing projects are test projects, so migration is no problem.
+7. Please ignore .env, this is an application configuration detail.
+8. I think we should add business logic validation - not migration validation, i.e. update existing validation to include adherence to new structure.
+9. Ignore. Migration is no problem. See migrated projects in ./docs/projects
+10. We need to allow use of both shared-data or local-data. Similarly we need to allow local data sources and shared data sources.
+
+Please review ./docs/projects file structure. Note that I have probably not fixed all references. I have introduced env. variables  ${GLOBAL_DATA_DIR} and ${GLOBAL_DATA_SOURCE_DIR} for shared data.
+
+It would be very good if the project folders could be moved without breaking file references. This necessitated that file references always are relative shapeshifter.yml, or is an absolute path (which  environment variables GLOBAL_DATA_DIR and GLOBAL_DATA_SOURCE_DIR must be used for shared data). I have not tested this, but I think it should work. Please test this before finalizing the migration.
+
