@@ -209,7 +209,10 @@ class ProjectMapper:
         """
         Convert API Entity to core entity dict.
 
-        Uses Pydantic model_dump() to eliminate hardcoded field lists.
+        Uses Pydantic model_dump(mode="json") to automatically serialize ALL fields,
+        including nested Pydantic models, recursively. This eliminates brittleness -
+        adding new nested models to Entity won't require manual handling here.
+
         The Entity model schema is the single source of truth.
         """
         # If already a dict, deep convert ruamel types and remove 'name' (API-only field)
@@ -219,26 +222,16 @@ class ProjectMapper:
             entity_dict.pop("name", None)
             return entity_dict
 
-        # Use Pydantic's model_dump to automatically serialize all fields
+        # Use mode="json" to recursively serialize ALL nested Pydantic models to dicts
+        # This is NOT brittle - new nested models are automatically handled!
+        #
+        # mode="json": Recursively converts everything to JSON-compatible types
+        # (dict, list, str, int, float, bool, None). Perfect for YAML serialization.
+        #
         # exclude_none: Don't include fields that are None
         # exclude_unset: Don't include fields that weren't explicitly set
         # exclude={'name'}: name is API metadata, not part of core entity structure
-        entity_dict = api_entity.model_dump(exclude_none=True, exclude_unset=True, exclude={"name"}, mode="python")
-
-        # Special handling for nested Pydantic models - serialize them explicitly
-        # This ensures proper dict format instead of model instances
-
-        if api_entity.foreign_keys:
-            entity_dict["foreign_keys"] = [fk.model_dump(exclude_none=True, exclude_unset=True) for fk in api_entity.foreign_keys]
-
-        if api_entity.filters:
-            entity_dict["filters"] = [filter_cfg.model_dump(exclude_none=True, exclude_unset=True) for filter_cfg in api_entity.filters]
-
-        if api_entity.unnest:
-            entity_dict["unnest"] = api_entity.unnest.model_dump(exclude_none=True, exclude_unset=True)
-
-        if api_entity.append:
-            entity_dict["append"] = [append_cfg.model_dump(exclude_none=True, exclude_unset=True) for append_cfg in api_entity.append]
+        entity_dict = api_entity.model_dump(exclude_none=True, exclude_unset=True, exclude={"name"}, mode="json")
 
         # Handle check_column_names default: only include if explicitly False
         # (Pydantic includes default=True values, we want sparse YAML)
