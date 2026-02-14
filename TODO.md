@@ -331,28 +331,4 @@ This is the core logic:
               result[col] = result[col].replace(to_replace=replacement_map, value=pd.NA).ffill()
 ```
 
-### FIXME: Materializion bugg
-
-entities:
-  project_datasheet:
-    type: openpyxl
-    public_id: project_datasheet_id
-    keys: []
-    columns:
-    - project_name
-    - project_id
-    - project_description
-    - project_date
-    - customer
-    - site_name
-    - national_site_id
-    - latitude
-    - longitude
-    - coordinate_system
-    - position_accuracy
-    - methods_metadata_download_link
-    options:
-      filename: projects/SEAD_aDNA_data_20241114_RM.xlsx
-      sheet_name: Project data sheet
-
 ### TODO
