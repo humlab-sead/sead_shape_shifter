@@ -356,7 +356,6 @@ const availableColumnsList = computed(() => (props.availableColumns || []).filte
 const selectedColumn = ref<string | null>(null)
 function deepClone<T>(value: T): T {
   try {
-    // @ts-expect-error - structuredClone may not exist in some TS lib configs.
     return structuredClone(value)
   } catch {
     return JSON.parse(JSON.stringify(value))
@@ -637,7 +636,8 @@ function removeRule(index: number) {
 function duplicateRule(index: number) {
   const r = rules.value[index]
   if (!r) return
-  rules.value.splice(index + 1, 0, { ...deepClone(r), id: newId() })
+  const cloned = deepClone(r) as UiRule
+  rules.value.splice(index + 1, 0, { ...cloned, id: newId() })
   persist()
 }
 
@@ -646,6 +646,7 @@ function moveRule(index: number, delta: number) {
   if (next < 0 || next >= rules.value.length) return
   const copy = [...rules.value]
   const [item] = copy.splice(index, 1)
+  if (!item) return
   copy.splice(next, 0, item)
   rules.value = copy
   persist()
