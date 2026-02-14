@@ -1,25 +1,38 @@
 <template>
   <div class="pa-4">
+    <!-- Header Row -->
+    <v-row dense class="mb-2">
+      <v-col cols="12" md="5">
+        <div class="text-caption text-medium-emphasis font-weight-medium">New Column Name</div>
+      </v-col>
+      <v-col cols="12" md="6">
+        <div class="text-caption text-medium-emphasis font-weight-medium">Source Column (or leave empty for null)</div>
+      </v-col>
+      <v-col cols="12" md="1">
+        <div class="text-caption text-medium-emphasis font-weight-medium"></div>
+      </v-col>
+    </v-row>
+
     <v-list density="compact" class="py-0">
       <v-list-item v-for="(item, index) in extraColumns" :key="index" class="px-0 py-1">
         <v-row dense>
           <v-col cols="12" md="5">
             <v-text-field
               v-model="item.column"
-              label="New Column Name"
               variant="outlined"
               density="compact"
               placeholder="e.g., new_column"
+              hide-details
             />
           </v-col>
           <v-col cols="12" md="6">
             <v-text-field
               v-model="item.source"
-              label="Source Column (or leave empty for null)"
               variant="outlined"
               density="compact"
               placeholder="e.g., existing_column"
               clearable
+              hide-details
             />
           </v-col>
           <v-col cols="12" md="1" class="d-flex align-center">
