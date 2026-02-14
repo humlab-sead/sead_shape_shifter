@@ -1,315 +1,559 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ShapeShifter Entity Definition",
-  "description": "Schema for a single entity definition (without project wrapper)",
-  "type": "object",
-  "properties": {
-    "type": {
-      "enum": ["sql", "fixed", "entity", "xlsx", "csv", "openpyxl"],
-      "description": "Entity source type: sql (database query), fixed (hardcoded values), entity (derived from another entity), xlsx (Excel file), csv (CSV file), or openpyxl (Excel file using openpyxl)"
+  "$defs": {
+    "AppendConfig": {
+      "description": "Configuration for appending data to an entity.",
+      "properties": {
+        "type": {
+          "description": "Type of data to append",
+          "enum": [
+            "fixed",
+            "sql"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "items": {},
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Fixed values to append",
+          "title": "Values"
+        },
+        "data_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Data source name for SQL",
+          "title": "Data Source"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SQL query for appending data",
+          "title": "Query"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "AppendConfig",
+      "type": "object"
     },
-    "data_source": {
-      "type": "string",
-      "description": "Reference to data source in options.data_sources"
+    "FilterConfig": {
+      "description": "Configuration for post-extraction filters.",
+      "properties": {
+        "type": {
+          "description": "Filter type (e.g., 'exists_in')",
+          "title": "Type",
+          "type": "string"
+        },
+        "entity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Related entity for filter",
+          "title": "Entity"
+        },
+        "column": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Column to filter on",
+          "title": "Column"
+        },
+        "remote_column": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Remote column for comparison",
+          "title": "Remote Column"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "FilterConfig",
+      "type": "object"
+    },
+    "ForeignKeyConfig": {
+      "description": "Configuration for a foreign key relationship.",
+      "properties": {
+        "entity": {
+          "description": "Remote entity name",
+          "title": "Entity",
+          "type": "string"
+        },
+        "local_keys": {
+          "description": "Local key columns",
+          "items": {
+            "type": "string"
+          },
+          "title": "Local Keys",
+          "type": "array"
+        },
+        "remote_keys": {
+          "description": "Remote key columns",
+          "items": {
+            "type": "string"
+          },
+          "title": "Remote Keys",
+          "type": "array"
+        },
+        "how": {
+          "default": "inner",
+          "description": "Join type",
+          "enum": [
+            "left",
+            "inner",
+            "outer",
+            "right",
+            "cross"
+          ],
+          "title": "How",
+          "type": "string"
+        },
+        "extra_columns": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Additional columns to include from remote entity",
+          "title": "Extra Columns"
+        },
+        "drop_remote_id": {
+          "default": false,
+          "description": "Drop remote surrogate ID after merge",
+          "title": "Drop Remote Id",
+          "type": "boolean"
+        },
+        "constraints": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ForeignKeyConstraints"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Foreign key constraints"
+        }
+      },
+      "required": [
+        "entity"
+      ],
+      "title": "ForeignKeyConfig",
+      "type": "object"
+    },
+    "ForeignKeyConstraints": {
+      "description": "Constraints for foreign key relationships.",
+      "properties": {
+        "cardinality": {
+          "anyOf": [
+            {
+              "enum": [
+                "one_to_one",
+                "many_to_one",
+                "one_to_many",
+                "many_to_many"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cardinality"
+        },
+        "allow_unmatched_left": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allow Unmatched Left"
+        },
+        "allow_unmatched_right": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allow Unmatched Right"
+        },
+        "allow_row_decrease": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allow Row Decrease"
+        },
+        "require_unique_left": {
+          "default": false,
+          "title": "Require Unique Left",
+          "type": "boolean"
+        },
+        "require_unique_right": {
+          "default": false,
+          "title": "Require Unique Right",
+          "type": "boolean"
+        },
+        "allow_null_keys": {
+          "default": true,
+          "title": "Allow Null Keys",
+          "type": "boolean"
+        }
+      },
+      "title": "ForeignKeyConstraints",
+      "type": "object"
+    },
+    "UnnestConfig": {
+      "description": "Configuration for unnesting (melting) wide data to long format.",
+      "properties": {
+        "id_vars": {
+          "description": "Identifier columns to keep",
+          "items": {
+            "type": "string"
+          },
+          "title": "Id Vars",
+          "type": "array"
+        },
+        "value_vars": {
+          "description": "Columns to melt",
+          "items": {
+            "type": "string"
+          },
+          "title": "Value Vars",
+          "type": "array"
+        },
+        "var_name": {
+          "description": "Name for the variable column",
+          "title": "Var Name",
+          "type": "string"
+        },
+        "value_name": {
+          "description": "Name for the value column",
+          "title": "Value Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id_vars",
+        "value_vars",
+        "var_name",
+        "value_name"
+      ],
+      "title": "UnnestConfig",
+      "type": "object"
+    }
+  },
+  "description": "Schema for a single entity definition (table/view/query configuration)",
+  "properties": {
+    "name": {
+      "description": "Entity name (snake_case)",
+      "title": "Name",
+      "type": "string"
+    },
+    "type": {
+      "anyOf": [
+        {
+          "enum": [
+            "entity",
+            "sql",
+            "fixed",
+            "csv",
+            "xlsx",
+            "openpyxl"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Data source type",
+      "title": "Type"
     },
     "source": {
-      "oneOf": [
-        { "type": "string" },
-        { "type": "object" },
-        { "type": "null" }
-      ],
-      "description": "Source entity or data source reference"
-    },
-    "surrogate_id": {
-      "type": "string",
-      "description": "Surrogate key column name (must end with _id)",
-      "pattern": ".*_id$"
-    },
-    "surrogate_name": {
-      "type": "string",
-      "description": "Surrogate name column"
-    },
-    "keys": {
-      "oneOf": [
+      "anyOf": [
         {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Array of key column names"
+          "type": "string"
         },
         {
-          "type": "string",
-          "description": "Expression or @value reference"
+          "type": "null"
         }
       ],
-      "description": "Natural key columns"
+      "default": null,
+      "description": "Source entity name",
+      "title": "Source"
     },
-    "columns": {
-      "oneOf": [
+    "data_source": {
+      "anyOf": [
         {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Array of column names"
+          "type": "string"
         },
         {
-          "type": "string",
-          "description": "Expression or @value reference"
+          "type": "null"
         }
       ],
-      "description": "Columns to select"
+      "default": null,
+      "description": "Data source name for SQL type",
+      "title": "Data Source"
     },
     "query": {
-      "type": "string",
-      "description": "SQL query to execute (for sql type entities)"
-    },
-    "values": {
-      "type": "array",
-      "description": "Fixed values (for fixed type entities)",
-      "items": {
-        "type": "array"
-      }
-    },
-    "depends_on": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "List of entity names this entity depends on"
-    },
-    "foreign_keys": {
-      "type": "array",
-      "description": "Foreign key relationships to other entities",
-      "items": {
-        "type": "object",
-        "required": ["entity"],
-        "properties": {
-          "entity": {
-            "type": "string",
-            "description": "Referenced entity name"
-          },
-          "local_keys": {
-            "oneOf": [
-              {
-                "type": "array",
-                "items": { "type": "string" },
-                "description": "Array of local key column names"
-              },
-              {
-                "type": "string",
-                "description": "Expression or @value reference"
-              }
-            ],
-            "description": "Local key columns"
-          },
-          "remote_keys": {
-            "oneOf": [
-              {
-                "type": "array",
-                "items": { "type": "string" },
-                "description": "Array of remote key column names"
-              },
-              {
-                "type": "string",
-                "description": "Expression or @value reference"
-              }
-            ],
-            "description": "Remote key columns in referenced entity"
-          },
-          "how": {
-            "enum": ["left", "inner", "outer"],
-            "default": "left",
-            "description": "Join type: left (keep all local), inner (matching only), outer (all from both)"
-          },
-          "constraints": {
-            "type": "object",
-            "description": "Foreign key constraint validations",
-            "properties": {
-              "cardinality": {
-                "enum": ["many-to-one", "one-to-many", "one-to-one", "many-to-many"],
-                "description": "Expected relationship cardinality"
-              },
-              "allow_unmatched_left": {
-                "type": "boolean",
-                "default": false,
-                "description": "Allow records in local entity with no match in remote"
-              },
-              "allow_null_keys": {
-                "type": "boolean",
-                "default": false,
-                "description": "Allow NULL values in key columns"
-              }
-            }
-          }
-        }
-      }
-    },
-    "filters": {
-      "type": "object",
-      "description": "Post-load data filters",
-      "properties": {
-        "exists_in": {
-          "type": "object",
-          "description": "Filter records that exist in another entity",
-          "required": ["entity", "keys"],
-          "properties": {
-            "entity": {
-              "type": "string",
-              "description": "Entity to check existence against"
-            },
-            "keys": {
-              "oneOf": [
-                { "type": "array", "items": { "type": "string" } },
-                { "type": "string" }
-              ],
-              "description": "Key columns to match"
-            }
-          }
-        }
-      }
-    },
-    "unnest": {
-      "type": "object",
-      "description": "Configuration for wide-to-long transformation (melt operation)",
-      "required": ["value_column", "category_column", "columns"],
-      "properties": {
-        "value_column": {
-          "type": "string",
-          "description": "Name for the new column containing values"
+      "anyOf": [
+        {
+          "type": "string"
         },
-        "category_column": {
-          "type": "string",
-          "description": "Name for the new column containing category labels"
-        },
-        "columns": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Columns to unnest into rows"
+        {
+          "type": "null"
         }
-      }
+      ],
+      "default": null,
+      "description": "SQL query for SQL type",
+      "title": "Query"
     },
-    "append": {
-      "type": "array",
-      "description": "List of entity names to append (union operation)",
-      "items": { "type": "string" }
+    "system_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "system_id",
+      "description": "Local auto-incrementing identifier (always 'system_id')",
+      "title": "System Id"
+    },
+    "public_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Public identifier for target system and FK column naming (e.g., 'sample_type_id')",
+      "title": "Public Id",
+      "pattern": ".*_id$",
+      "examples": [
+        "sample_type_id",
+        "location_id"
+      ]
+    },
+    "surrogate_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "DEPRECATED: Use system_id/public_id instead. Kept for backward compatibility.",
+      "title": "Surrogate Id"
+    },
+    "keys": {
+      "description": "Business/natural key columns from source data",
+      "items": {
+        "type": "string"
+      },
+      "title": "Keys",
+      "type": "array"
+    },
+    "columns": {
+      "description": "Columns to extract",
+      "items": {
+        "type": "string"
+      },
+      "title": "Columns",
+      "type": "array"
     },
     "extra_columns": {
-      "type": "object",
-      "description": "Additional computed columns to add",
-      "additionalProperties": {
-        "type": "string",
-        "description": "Expression to compute column value"
-      }
+      "additionalProperties": true,
+      "description": "Additional computed columns",
+      "title": "Extra Columns",
+      "type": "object"
+    },
+    "foreign_keys": {
+      "description": "Foreign key relationships",
+      "items": {
+        "$ref": "#/$defs/ForeignKeyConfig"
+      },
+      "title": "Foreign Keys",
+      "type": "array"
+    },
+    "unnest": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/UnnestConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Unnest configuration"
+    },
+    "filters": {
+      "description": "Post-extraction filters",
+      "items": {
+        "$ref": "#/$defs/FilterConfig"
+      },
+      "title": "Filters",
+      "type": "array"
+    },
+    "append": {
+      "description": "Data to append",
+      "items": {
+        "$ref": "#/$defs/AppendConfig"
+      },
+      "title": "Append",
+      "type": "array"
+    },
+    "depends_on": {
+      "description": "Processing dependencies",
+      "items": {
+        "type": "string"
+      },
+      "title": "Depends On",
+      "type": "array"
     },
     "drop_duplicates": {
-      "type": "object",
-      "description": "Configuration for removing duplicate rows",
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "default": false
+      "anyOf": [
+        {
+          "type": "boolean"
         },
-        "columns": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Columns to consider for duplicate detection"
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
-      }
+      ],
+      "default": false,
+      "description": "Drop duplicate rows",
+      "title": "Drop Duplicates"
     },
     "drop_empty_rows": {
-      "type": "object",
-      "description": "Configuration for removing rows with empty values",
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "default": false
+      "anyOf": [
+        {
+          "type": "boolean"
         },
-        "columns": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Columns to check for empty values"
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
-      }
-    },
-    "check_functional_dependency": {
-      "type": "boolean",
+      ],
       "default": false,
-      "description": "Validate that keys determine all other columns (functional dependency)"
+      "description": "Drop empty rows",
+      "title": "Drop Empty Rows"
     },
-    "replacements": {
-      "type": "object",
-      "description": "Value replacement rules",
-      "additionalProperties": {
-        "description": "Per-column replacement specification (legacy mapping/blank-out forms, or advanced ordered rule list)",
-        "oneOf": [
-          {
-            "type": "object",
-            "description": "Legacy mapping: {old_value: new_value}",
-            "additionalProperties": true
+    "check_column_names": {
+      "default": true,
+      "description": "Validate column names",
+      "title": "Check Column Names",
+      "type": "boolean"
+    },
+    "values": {
+      "anyOf": [
+        {
+          "items": {
+            "items": {},
+            "type": "array"
           },
-          {
-            "type": "array",
-            "description": "Advanced ordered rules: list of rule objects. Rules can be: (1) match-based (requires 'match' and/or 'from'), (2) transform-only (only 'normalize' and/or 'coerce' - applies to all values), (3) mapping ('map'), or (4) blank-out ('blank_out')",
-            "items": {
-              "type": "object",
-              "additionalProperties": true,
-              "properties": {
-                "match": {
-                  "type": "string",
-                  "description": "Match operator (e.g., equals, contains, startswith, endswith, regex, not_*). Optional - omit for transform-only rules that apply to all values."
-                },
-                "from": {
-                  "description": "Match value (for match-based rules). Optional - not needed for transform-only rules.",
-                  "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }]
-                },
-                "to": {
-                  "description": "Replacement value",
-                  "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }]
-                },
-                "normalize": {
-                  "type": "array",
-                  "items": { "type": "string" },
-                  "description": "Normalization operations (e.g., strip, lower, upper, collapse_ws). Can be used without match/from to apply to all values."
-                },
-                "flags": {
-                  "type": "array",
-                  "items": { "type": "string" },
-                  "description": "Rule flags (e.g., ignorecase/i for regex or string matches)"
-                },
-                "coerce": {
-                  "type": "string",
-                  "description": "Coercion mode (string/int/float). Can be used without match/from to apply to all values."
-                },
-                "blank_out": {
-                  "description": "Blank out scalar or list of values",
-                  "oneOf": [
-                    { "type": "string" },
-                    { "type": "number" },
-                    { "type": "boolean" },
-                    { "type": "null" },
-                    {
-                      "type": "array",
-                      "items": { "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }] }
-                    }
-                  ]
-                },
-                "map": {
-                  "type": "object",
-                  "description": "Rule-local mapping",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          {
-            "description": "Legacy blank-out (scalar)",
-            "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }]
-          },
-          {
-            "type": "array",
-            "description": "Legacy blank-out (list of scalar values)",
-            "items": {
-              "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "null" }]
-            }
-          }
-        ]
-      }
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Fixed values for 'fixed' type entities",
+      "title": "Values"
     }
-  }
+  },
+  "required": [],
+  "title": "ShapeShifter Entity Definition",
+  "type": "object",
+  "$schema": "http://json-schema.org/draft-07/schema#"
 }

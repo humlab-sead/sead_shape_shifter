@@ -87,6 +87,20 @@ check-imports:
 	@python scripts/check_imports.py
 
 ################################################################################
+# JSON Schema generation (for frontend Monaco editor autocomplete)
+################################################################################
+
+.PHONY: generate-schemas
+generate-schemas:
+	@echo "Generating JSON schemas from Pydantic models..."
+	@PYTHONPATH=.:backend uv run python scripts/generate_schemas.py
+
+.PHONY: check-schemas
+check-schemas:
+	@echo "Checking if JSON schemas are in sync with Pydantic models..."
+	@PYTHONPATH=.:backend uv run python scripts/generate_schemas.py --check
+
+################################################################################
 # Backend & frontend recipes
 ################################################################################
 
