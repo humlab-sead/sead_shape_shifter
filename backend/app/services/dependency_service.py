@@ -387,6 +387,7 @@ class CsvFileSourceNodeExtractor(BaseFileSourceNodeExtractor):
                 "source": file_node_id,
                 "target": entity_name,
                 "label": "provides",
+                "via_source_entity": False,  # CSV has no intermediate entity
             }
         )
 
@@ -440,24 +441,37 @@ class ExcelFileSourceNodeExtractor(BaseFileSourceNodeExtractor):
                         "source": file_node_id,
                         "target": sheet_node_id,
                         "label": "contains",
+                        "via_source_entity": True,
                     }
                 )
 
-            # Edge: sheet -> entity (always, for each entity using this sheet)
+            # Edge: sheet -> entity (via intermediate)
             source_edges.append(
                 {
                     "source": sheet_node_id,
                     "target": entity_name,
                     "label": "provides",
+                    "via_source_entity": True,
                 }
             )
-        else:
-            # No sheet_name specified: file -> entity
+
+            # Direct edge: file -> entity (for when source entities hidden)
             source_edges.append(
                 {
                     "source": file_node_id,
                     "target": entity_name,
                     "label": "provides",
+                    "via_source_entity": False,
+                }
+            )
+        else:
+            # No sheet_name specified: file -> entity (direct, no intermediate)
+            source_edges.append(
+                {
+                    "source": file_node_id,
+                    "target": entity_name,
+                    "label": "provides",
+                    "via_source_entity": False,
                 }
             )
 
@@ -551,10 +565,15 @@ class SqlSourceNodeExtractor(BaseSourceNodeExtractor):
                 )
 
                 # Edge: datasource -> table
-                source_edges.append({"source": f"source:{data_source}", "target": table_node_id, "label": "contains"})
+                source_edges.append(
+                    {"source": f"source:{data_source}", "target": table_node_id, "label": "contains", "via_source_entity": True}
+                )
 
-                # Edge: table -> entity
-            source_edges.append({"source": table_node_id, "target": entity_name, "label": "used_in"})
+            # Edge: table -> entity (via intermediate)
+            source_edges.append({"source": table_node_id, "target": entity_name, "label": "used_in", "via_source_entity": True})
+
+            # Direct edge: datasource -> entity (for when source entities hidden)
+            source_edges.append({"source": f"source:{data_source}", "target": entity_name, "label": "provides", "via_source_entity": False})
 
         return source_nodes, source_edges
 

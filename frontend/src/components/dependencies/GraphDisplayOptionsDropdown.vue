@@ -48,16 +48,32 @@
         <v-list-item-title>Edge Labels</v-list-item-title>
       </v-list-item>
 
-      <!-- Source Nodes -->
-      <v-list-item @click="toggleOption('sourceNodes')">
+      <v-divider class="my-2" />
+
+      <!-- Show Sources (databases, files) -->
+      <v-list-item @click="toggleOption('showSources')">
         <template #prepend>
           <v-checkbox-btn
-            :model-value="options.sourceNodes"
+            :model-value="options.showSources"
             hide-details
             density="compact"
           />
         </template>
-        <v-list-item-title>Source Nodes</v-list-item-title>
+        <v-list-item-title>Show Sources</v-list-item-title>
+        <v-list-item-subtitle class="text-caption">Databases, Files</v-list-item-subtitle>
+      </v-list-item>
+
+      <!-- Show Source Entities (tables, sheets) -->
+      <v-list-item @click="toggleOption('showSourceEntities')">
+        <template #prepend>
+          <v-checkbox-btn
+            :model-value="options.showSourceEntities"
+            hide-details
+            density="compact"
+          />
+        </template>
+        <v-list-item-title>Show Source Entities</v-list-item-title>
+        <v-list-item-subtitle class="text-caption">Tables, Sheets</v-list-item-subtitle>
       </v-list-item>
 
       <v-divider class="my-2" />
@@ -79,7 +95,8 @@ import { computed } from 'vue'
 export interface GraphDisplayOptions {
   nodeLabels: boolean
   edgeLabels: boolean
-  sourceNodes: boolean
+  showSources: boolean  // Show top-level sources (databases, files)
+  showSourceEntities: boolean  // Show intermediate source entities (tables, sheets)
 }
 
 interface Props {
@@ -93,14 +110,15 @@ const emit = defineEmits<{
 }>()
 
 const hasActiveOptions = computed(() => {
-  return props.options.nodeLabels || props.options.edgeLabels || props.options.sourceNodes
+  return props.options.nodeLabels || props.options.edgeLabels || props.options.showSources || props.options.showSourceEntities
 })
 
 const activeOptionsCount = computed(() => {
   let count = 0
   if (props.options.nodeLabels) count++
   if (props.options.edgeLabels) count++
-  if (props.options.sourceNodes) count++
+  if (props.options.showSources) count++
+  if (props.options.showSourceEntities) count++
   return count
 })
 
@@ -114,7 +132,8 @@ function resetToDefaults() {
   emit('update:options', {
     nodeLabels: true,
     edgeLabels: true,
-    sourceNodes: false,
+    showSources: false,
+    showSourceEntities: false,
   })
 }
 </script>

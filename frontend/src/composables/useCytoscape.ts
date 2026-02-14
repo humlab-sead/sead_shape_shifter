@@ -54,9 +54,14 @@ export interface UseCytoscapeOptions {
   highlightCycles?: Ref<boolean>
 
   /**
-   * Whether to show source nodes
+   * Whether to show source nodes (databases, files)
    */
-  showSourceNodes?: Ref<boolean>
+  showSources?: Ref<boolean>
+
+  /**
+   * Whether to show source entity nodes (tables, sheets)
+   */
+  showSourceEntities?: Ref<boolean>
 
   /**
    * Cycles to highlight
@@ -100,7 +105,8 @@ export function useCytoscape(options: UseCytoscapeOptions) {
     showNodeLabels = ref(true),
     showEdgeLabels = ref(true),
     highlightCycles = ref(false),
-    showSourceNodes = ref(false),
+    showSources = ref(false),
+    showSourceEntities = ref(false),
     cycles = ref([]),
     isDark = ref(false),
     onNodeClick,
@@ -231,7 +237,8 @@ export function useCytoscape(options: UseCytoscapeOptions) {
       showNodeLabels: showNodeLabels.value,
       showEdgeLabels: showEdgeLabels.value,
       highlightCycles: highlightCycles.value,
-      showSourceNodes: showSourceNodes.value,
+      showSources: showSources.value,
+      showSourceEntities: showSourceEntities.value,
     })
 
     const currentElements = cy.value.elements()
@@ -519,7 +526,7 @@ export function useCytoscape(options: UseCytoscapeOptions) {
   })
 
   // Watch for source node visibility changes
-  watch(showSourceNodes, () => {
+  watch([showSources, showSourceEntities], () => {
     updateElements()
     applyLayout(false) // Re-apply layout without animation
   })

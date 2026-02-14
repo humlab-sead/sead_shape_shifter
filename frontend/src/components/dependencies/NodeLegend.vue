@@ -83,9 +83,9 @@
 
       <v-divider class="my-3" />
 
-      <div class="legend-section mb-4" v-if="showSourceNodes">
+      <div class="legend-section mb-4" v-if="showSources || showSourceEntities">
         <h4 class="text-subtitle-2 font-weight-bold mb-3">Source Nodes</h4>
-        <div class="legend-item mb-2">
+        <div class="legend-item mb-2" v-if="showSources">
           <div class="node-preview">
             <div class="node-shape barrel datasource" />
           </div>
@@ -97,14 +97,14 @@
           </div>
         </div>
 
-        <div class="legend-item">
+        <div class="legend-item" v-if="showSourceEntities">
           <div class="node-preview">
             <div class="node-shape small-rectangle table" />
           </div>
           <div class="legend-text">
-            <span class="font-weight-medium">Database Table</span>
+            <span class="font-weight-medium">Database Table / Sheet</span>
             <div class="text-caption text-medium-emphasis">
-              A specific table used in SQL queries
+              A specific table or Excel sheet
             </div>
           </div>
         </div>
@@ -124,7 +124,7 @@
           </div>
         </div>
 
-        <div class="legend-item" v-if="showSourceNodes">
+        <div class="legend-item" v-if="showSources || showSourceEntities">
           <div class="edge-preview dotted" />
           <div class="legend-text">
             <span class="font-weight-medium">Source Relationship</span>
@@ -169,7 +169,8 @@
 
 <script setup lang="ts">
 defineProps<{
-  showSourceNodes?: boolean
+  showSources?: boolean
+  showSourceEntities?: boolean
 }>()
 
 const emit = defineEmits<{
