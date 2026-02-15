@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
-
 from importer.metadata import SeadSchema, Table
 from importer.policies import (
     AddIdentityMappingSystemIdToPublicIdPolicy,
@@ -15,6 +14,7 @@ from importer.policies import (
     UpdateTypesBasedOnSeadSchema,
 )
 from importer.submission import Submission
+
 from tests.builders import build_column, build_schema, build_table
 
 
@@ -209,9 +209,7 @@ def test_if_foreign_key_value_is_missing_add_identity_mapping_to_foreign_key_tab
     # Mock service to return empty set for get_primary_key_values
     mock_service.get_primary_key_values.return_value = set()
 
-    policy = IfForeignKeyValueIsMissingAddIdentityMappingToForeignKeyTable(
-        schema=schema, submission=submission, service=mock_service
-    )
+    policy = IfForeignKeyValueIsMissingAddIdentityMappingToForeignKeyTable(schema=schema, submission=submission, service=mock_service)
     policy.apply()
 
     # Should have added rows for system_ids 2 and 3
@@ -227,9 +225,7 @@ def test_if_lookup_with_no_new_data_then_keep_only_system_id_public_id__not_look
     table.is_lookup = False
     schema.__getitem__.return_value = table
     submission.data_tables = {"table1": pd.DataFrame(columns=["system_id", "public_id", "col1", "col2"])}
-    policy: PolicyBase = IfLookupWithNoNewDataThenKeepOnlySystemIdPublicId(
-        schema=schema, submission=submission, service=mock_service
-    )
+    policy: PolicyBase = IfLookupWithNoNewDataThenKeepOnlySystemIdPublicId(schema=schema, submission=submission, service=mock_service)
     policy.update()
 
     assert "col1" in submission.data_tables["table1"].columns
@@ -245,9 +241,7 @@ def test_if_lookup_with_no_new_data_then_keep_only_system_id_public_id__pk_not_i
     schema.__getitem__.return_value = table
     submission.data_tables = {"table1": pd.DataFrame(columns=["system_id", "col1", "col2"])}
 
-    policy: PolicyBase = IfLookupWithNoNewDataThenKeepOnlySystemIdPublicId(
-        schema=schema, submission=submission, service=mock_service
-    )
+    policy: PolicyBase = IfLookupWithNoNewDataThenKeepOnlySystemIdPublicId(schema=schema, submission=submission, service=mock_service)
     policy.update()
 
     assert "col1" in submission.data_tables["table1"].columns
@@ -262,14 +256,10 @@ def test_if_lookup_with_no_new_data_then_keep_only_system_id_public_id__all_pk_v
     table.pk_name = "public_id"
     schema.__getitem__.return_value = table
     submission.data_tables = {
-        "table1": pd.DataFrame(
-            {"system_id": [1, 2, 3], "public_id": [None, None, None], "col1": [4, 5, 6], "col2": [7, 8, 9]}
-        )
+        "table1": pd.DataFrame({"system_id": [1, 2, 3], "public_id": [None, None, None], "col1": [4, 5, 6], "col2": [7, 8, 9]})
     }
 
-    policy: PolicyBase = IfLookupWithNoNewDataThenKeepOnlySystemIdPublicId(
-        schema=schema, submission=submission, service=mock_service
-    )
+    policy: PolicyBase = IfLookupWithNoNewDataThenKeepOnlySystemIdPublicId(schema=schema, submission=submission, service=mock_service)
     policy.update()
 
     assert "col1" in submission.data_tables["table1"].columns
@@ -284,14 +274,10 @@ def test_not_all_pk_values_null(mock_service):
     table.pk_name = "public_id"
     schema.__getitem__.return_value = table
     submission.data_tables = {
-        "table1": pd.DataFrame(
-            {"system_id": [1, 2, 3], "public_id": [None, 2, None], "col1": [4, 5, 6], "col2": [7, 8, 9]}
-        )
+        "table1": pd.DataFrame({"system_id": [1, 2, 3], "public_id": [None, 2, None], "col1": [4, 5, 6], "col2": [7, 8, 9]})
     }
 
-    policy: PolicyBase = IfLookupWithNoNewDataThenKeepOnlySystemIdPublicId(
-        schema=schema, submission=submission, service=mock_service
-    )
+    policy: PolicyBase = IfLookupWithNoNewDataThenKeepOnlySystemIdPublicId(schema=schema, submission=submission, service=mock_service)
     policy.update()
 
     assert "col1" in submission.data_tables["table1"].columns

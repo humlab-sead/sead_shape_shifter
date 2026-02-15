@@ -4,9 +4,9 @@ import tempfile
 from pathlib import Path
 
 import pandas as pd
-
 from importer.dispatchers.to_csv import CsvProcessor
 from importer.submission import Submission
+
 from tests.builders import build_column, build_schema, build_table
 
 
@@ -22,9 +22,7 @@ def test_csv_processor_creates_four_files(tmp_path):
                 columns={
                     "test_id": build_column("tbl_test", "test_id", is_pk=True, class_name="java.lang.Integer"),
                     "name": build_column("tbl_test", "name", data_type="varchar", class_name="java.lang.String"),
-                    "system_id": build_column(
-                        "tbl_test", "system_id", data_type="integer", class_name="java.lang.Integer"
-                    ),
+                    "system_id": build_column("tbl_test", "system_id", data_type="integer", class_name="java.lang.Integer"),
                 },
             )
         ]
@@ -80,9 +78,7 @@ def test_csv_processor_handles_foreign_keys(tmp_path):
                         class_name="TblLookup",
                         data_type="integer",
                     ),
-                    "system_id": build_column(
-                        "tbl_main", "system_id", data_type="integer", class_name="java.lang.Integer"
-                    ),
+                    "system_id": build_column("tbl_main", "system_id", data_type="integer", class_name="java.lang.Integer"),
                 },
             ),
             build_table(
@@ -93,9 +89,7 @@ def test_csv_processor_handles_foreign_keys(tmp_path):
                 columns={
                     "lookup_id": build_column("tbl_lookup", "lookup_id", is_pk=True, class_name="java.lang.Integer"),
                     "value": build_column("tbl_lookup", "value", data_type="varchar", class_name="java.lang.String"),
-                    "system_id": build_column(
-                        "tbl_lookup", "system_id", data_type="integer", class_name="java.lang.Integer"
-                    ),
+                    "system_id": build_column("tbl_lookup", "system_id", data_type="integer", class_name="java.lang.Integer"),
                 },
             ),
         ]
@@ -104,9 +98,7 @@ def test_csv_processor_handles_foreign_keys(tmp_path):
     # Create submission with FK reference
     lookup_data = pd.DataFrame({"system_id": [100], "lookup_id": [1], "value": ["Lookup Value"]})
 
-    main_data = pd.DataFrame(
-        {"system_id": [1], "main_id": [None], "lookup_id": [100]}  # References system_id in lookup table
-    )
+    main_data = pd.DataFrame({"system_id": [1], "main_id": [None], "lookup_id": [100]})  # References system_id in lookup table
 
     submission = Submission(
         data_tables={"tbl_main": main_data, "tbl_lookup": lookup_data},
@@ -160,9 +152,7 @@ def test_csv_processor_format_compatibility():
                 java_class="TblTest",
                 columns={
                     "test_id": build_column("tbl_test", "test_id", is_pk=True, class_name="java.lang.Integer"),
-                    "system_id": build_column(
-                        "tbl_test", "system_id", data_type="integer", class_name="java.lang.Integer"
-                    ),
+                    "system_id": build_column("tbl_test", "system_id", data_type="integer", class_name="java.lang.Integer"),
                 },
             )
         ]
@@ -188,6 +178,4 @@ def test_csv_processor_format_compatibility():
             assert csv_file.exists(), f"{csv_file} was not created"
 
             df = pd.read_csv(csv_file, sep="\t", nrows=0)  # Just read headers
-            assert (
-                list(df.columns) == expected_cols
-            ), f"{file_type}.csv has incorrect columns: {list(df.columns)} != {expected_cols}"
+            assert list(df.columns) == expected_cols, f"{file_type}.csv has incorrect columns: {list(df.columns)} != {expected_cols}"

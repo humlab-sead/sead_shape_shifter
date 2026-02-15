@@ -1,5 +1,4 @@
 import pytest
-
 from importer.configuration.config import Config
 from importer.metadata import SchemaService, SeadSchema
 from importer.process import ImportService, Options

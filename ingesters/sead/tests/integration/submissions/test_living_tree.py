@@ -4,7 +4,6 @@ from typing import Any
 
 import pandas as pd
 import pytest
-
 from importer import policies
 from importer.configuration.config import Config
 from importer.metadata import SchemaService, SeadSchema
@@ -91,9 +90,7 @@ class TestLivingTreeSubmission:
         with pd.ExcelFile(source) as reader:
             # Verify that all excel sheet names are in the submission data tables
             excel_sheet_names: set[int | str] = set(reader.sheet_names)
-            excel_table_names: set[str] = {
-                n for n, t in submission.schema.items() if t.excel_sheet in excel_sheet_names
-            }
+            excel_table_names: set[str] = {n for n, t in submission.schema.items() if t.excel_sheet in excel_sheet_names}
 
             assert all(table_name in submission.data_tables for table_name in excel_table_names)
 
@@ -153,10 +150,8 @@ class TestLivingTreeSubmission:
         assert not policy.logs
 
     def test_if_table_is_missing_add_table_using_system_id_as_public_id(self, unprocessed_submission: Submission):
-        policy: policies.AddIdentityMappingSystemIdToPublicIdPolicy = (
-            policies.AddIdentityMappingSystemIdToPublicIdPolicy(
-                schema=unprocessed_submission.schema, submission=unprocessed_submission
-            )
+        policy: policies.AddIdentityMappingSystemIdToPublicIdPolicy = policies.AddIdentityMappingSystemIdToPublicIdPolicy(
+            schema=unprocessed_submission.schema, submission=unprocessed_submission
         )
         policy.apply()
         assert len(policy.logs) > 0
@@ -178,9 +173,7 @@ class TestLivingTreeSubmission:
 
                     statistics.append((fk_table_name, fk_column_name, fk_table_exists, table_name, column.column_name))
 
-        df = pd.DataFrame(
-            statistics, columns=["fk_table_name", "fk_column_name", "fk_table_exists", "table_name", "column_name"]
-        )
+        df = pd.DataFrame(statistics, columns=["fk_table_name", "fk_column_name", "fk_table_exists", "table_name", "column_name"])
         df.to_csv("living_tree_statistics.csv", index=False)
 
         assert True

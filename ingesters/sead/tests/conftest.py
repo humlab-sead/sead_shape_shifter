@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 from dotenv import load_dotenv
-
 from importer.configuration import ConfigStore
 from importer.configuration.interface import ConfigLike
 from importer.metadata import MockSchemaService, SchemaService, SeadSchema
@@ -30,9 +29,7 @@ load_dotenv(DOTENV_FILENAME)
 @pytest.fixture(scope="session")
 def cfg() -> ConfigLike:
     """Load test configuration - session scoped for integration tests."""
-    ConfigStore.get_instance().configure_context(
-        source=CONFIG_FILENAME, env_filename=DOTENV_FILENAME, env_prefix=ENV_PREFIX
-    )
+    ConfigStore.get_instance().configure_context(source=CONFIG_FILENAME, env_filename=DOTENV_FILENAME, env_prefix=ENV_PREFIX)
     return ConfigStore.get_instance().config()  # type: ignore[return-value]
 
 
@@ -70,13 +67,9 @@ def full_schema(
 
 
 @pytest.fixture(scope="session")
-def full_submission(
-    full_schema: SeadSchema, cfg: ConfigLike, full_schema_service: SchemaService
-) -> Iterator[Submission]:
+def full_submission(full_schema: SeadSchema, cfg: ConfigLike, full_schema_service: SchemaService) -> Iterator[Submission]:
     """Full submission loaded from Excel - session scoped, use for integration tests only."""
-    yield Submission.load(
-        schema=full_schema, source=cfg.get("test:reduced_excel_filename"), service=full_schema_service
-    )
+    yield Submission.load(schema=full_schema, source=cfg.get("test:reduced_excel_filename"), service=full_schema_service)
 
 
 # ============================================================================
