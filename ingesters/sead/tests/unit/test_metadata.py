@@ -32,9 +32,7 @@ def test_tables_specifications():
                 "location_id",
                 columns={
                     "location_id": build_column("tbl_locations", "location_id", is_pk=True),
-                    "location_type_id": build_column(
-                        "tbl_locations", "location_type_id", is_fk=True, fk_table_name="tbl_location_types"
-                    ),
+                    "location_type_id": build_column("tbl_locations", "location_type_id", is_fk=True, fk_table_name="tbl_location_types"),
                 },
             ),
         ]
@@ -102,9 +100,7 @@ def test_is_fk():
                 "location_id",
                 columns={
                     "location_id": build_column("tbl_locations", "location_id", is_pk=True),
-                    "location_type_id": build_column(
-                        "tbl_locations", "location_type_id", is_fk=True, fk_table_name="tbl_location_types"
-                    ),
+                    "location_type_id": build_column("tbl_locations", "location_type_id", is_fk=True, fk_table_name="tbl_location_types"),
                 },
             ),
         ]
@@ -160,19 +156,13 @@ def test_foreign_keys(table_name: str, fk_column: str, fk_table: str, fk_class: 
             build_table(
                 fk_table,
                 f"{fk_table.replace('tbl_', '')}_id",
-                columns={
-                    f"{fk_table.replace('tbl_', '')}_id": build_column(
-                        fk_table, f"{fk_table.replace('tbl_', '')}_id", is_pk=True
-                    )
-                },
+                columns={f"{fk_table.replace('tbl_', '')}_id": build_column(fk_table, f"{fk_table.replace('tbl_', '')}_id", is_pk=True)},
             ),
             build_table(
                 table_name,
                 f"{table_name.replace('tbl_', '')}_id",
                 columns={
-                    f"{table_name.replace('tbl_', '')}_id": build_column(
-                        table_name, f"{table_name.replace('tbl_', '')}_id", is_pk=True
-                    ),
+                    f"{table_name.replace('tbl_', '')}_id": build_column(table_name, f"{table_name.replace('tbl_', '')}_id", is_pk=True),
                     fk_column: build_column(
                         table_name,
                         fk_column,
@@ -191,9 +181,7 @@ def test_foreign_keys(table_name: str, fk_column: str, fk_table: str, fk_class: 
     assert len(schema._foreign_keys) > 0
 
     # Verify this specific FK relationship exists
-    fk_row = schema._foreign_keys[
-        (schema._foreign_keys["table_name"] == table_name) & (schema._foreign_keys["column_name"] == fk_column)
-    ]
+    fk_row = schema._foreign_keys[(schema._foreign_keys["table_name"] == table_name) & (schema._foreign_keys["column_name"] == fk_column)]
     assert len(fk_row) > 0
     assert fk_row.iloc[0]["fk_table_name"] == fk_table
     assert fk_row.iloc[0]["class_name"] == fk_class

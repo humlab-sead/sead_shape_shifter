@@ -2,7 +2,6 @@
 
 import pandas as pd
 import pytest
-
 from importer.specification import (
     ColumnTypesSpecification,
     ForeignKeyColumnsHasValuesSpecification,
@@ -14,6 +13,7 @@ from importer.specification import (
     SubmissionSpecification,
 )
 from importer.submission import Submission
+
 from tests.builders import build_column, build_schema, build_table
 
 
@@ -64,9 +64,7 @@ class TestSpecificationEdgeCases:
                     "main_id",
                     columns={
                         "main_id": build_column("tbl_main", "main_id", is_pk=True),
-                        "nullable_fk": build_column(
-                            "tbl_main", "nullable_fk", is_fk=True, is_nullable=True, fk_table_name="tbl_lookup"
-                        ),
+                        "nullable_fk": build_column("tbl_main", "nullable_fk", is_fk=True, is_nullable=True, fk_table_name="tbl_lookup"),
                         "system_id": build_column("tbl_main", "system_id"),
                     },
                 ),
@@ -134,9 +132,7 @@ class TestSpecificationEdgeCases:
             ]
         )
 
-        data = pd.DataFrame(
-            {"system_id": [1], "test_id": [None], "required_col": [None]}  # New record  # NULL in non-nullable column
-        )
+        data = pd.DataFrame({"system_id": [1], "test_id": [None], "required_col": [None]})  # New record  # NULL in non-nullable column
         submission = Submission(data_tables={"tbl_test": data}, schema=schema)
 
         spec = NonNullableColumnHasValueSpecification(schema=schema)
@@ -179,9 +175,7 @@ class TestSpecificationEdgeCases:
                     "main_id",
                     columns={
                         "main_id": build_column("tbl_main", "main_id", is_pk=True),
-                        "lookup_id": build_column(
-                            "tbl_main", "lookup_id", is_fk=True, is_nullable=False, fk_table_name="tbl_lookup"
-                        ),
+                        "lookup_id": build_column("tbl_main", "lookup_id", is_fk=True, is_nullable=False, fk_table_name="tbl_lookup"),
                         "system_id": build_column("tbl_main", "system_id"),
                     },
                 ),

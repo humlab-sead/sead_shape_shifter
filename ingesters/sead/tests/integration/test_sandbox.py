@@ -3,7 +3,6 @@ from os.path import isfile
 
 import pandas as pd
 import pytest
-
 from importer.configuration.config import Config
 from importer.metadata import SchemaService, SeadSchema
 from importer.utility import create_db_uri
@@ -48,9 +47,7 @@ def test_load_metadata_from_postgres(cfg: Config):
         json.dump(data, outfile, indent=4)
 
     with open("tests/test_data/sead_columns.json", "w", encoding="utf-8") as outfile:
-        data: list[dict] = schema.source_columns.fillna(0)[schema.source_columns.table_name.isin(test_tables)].to_dict(
-            "records"
-        )
+        data: list[dict] = schema.source_columns.fillna(0)[schema.source_columns.table_name.isin(test_tables)].to_dict("records")
         json.dump(data, outfile, indent=4)
 
     assert isinstance(schema, SeadSchema)

@@ -1,9 +1,9 @@
 """Test edge cases and error handling in CSV dispatcher."""
 
 import pandas as pd
-
 from importer.dispatchers.to_csv import CsvProcessor, _format_value, _to_int_or_none, _to_none
 from importer.submission import Submission
+
 from tests.builders import build_column, build_schema, build_table
 
 
@@ -104,9 +104,7 @@ class TestCsvProcessorEdgeCases:
                     java_class="TblTest",
                     columns={
                         "test_id": build_column("tbl_test", "test_id", is_pk=True, class_name="java.lang.Integer"),
-                        "nullable_int": build_column(
-                            "tbl_test", "nullable_int", is_nullable=True, class_name="java.lang.Integer"
-                        ),
+                        "nullable_int": build_column("tbl_test", "nullable_int", is_nullable=True, class_name="java.lang.Integer"),
                         "nullable_str": build_column(
                             "tbl_test",
                             "nullable_str",

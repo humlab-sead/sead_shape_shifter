@@ -1,7 +1,6 @@
 from typing import Any
 
 import pytest
-
 from importer import utility
 
 

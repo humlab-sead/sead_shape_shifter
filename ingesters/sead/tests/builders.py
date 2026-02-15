@@ -5,7 +5,6 @@ large CSV fixtures. Use these for unit tests that don't need the full schema.
 """
 
 import pandas as pd
-
 from importer.metadata import Column, MockSchemaService, SeadSchema, SeadSchemaFactory, Table
 
 
@@ -156,9 +155,7 @@ def build_schema(
     service.db_uri = ""
     service.ignore_columns = ["date_updated", "*_uuid", "(*"]
     service._sead_tables = service._load_sead_data(tables_data, ["table_name"], ["table_name"])
-    service._sead_columns = service._load_sead_data(
-        columns_data, ["table_name", "column_name"], ["table_name", "position"]
-    )
+    service._sead_columns = service._load_sead_data(columns_data, ["table_name", "column_name"], ["table_name", "position"])
 
     return SeadSchemaFactory().create(service._sead_tables, service._sead_columns)
 

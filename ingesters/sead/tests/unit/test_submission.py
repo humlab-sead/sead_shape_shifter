@@ -1,5 +1,4 @@
 import pandas as pd
-
 from importer.metadata import SeadSchema
 from importer.specification import SubmissionSpecification
 from importer.submission import Submission
