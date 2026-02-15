@@ -5,10 +5,10 @@ import struct
 from typing import Any
 
 import pandas as pd
-from importer.configuration import ConfigValue
-from importer.metadata import SchemaService, SeadSchema
-from importer.submission import Submission
-from importer.utility import create_db_uri
+from src.configuration import ConfigValue
+from ingesters.sead.metadata import SchemaService, SeadSchema
+from ingesters.sead.submission import Submission
+from ingesters.sead.utility import create_db_uri
 
 # @deprecated('table_name_index data sheet has been removed')
 # def load_excel_by_regression(filename: str) -> dict[str, pd.DataFrame]:

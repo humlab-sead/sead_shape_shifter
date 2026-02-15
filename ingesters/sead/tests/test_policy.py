@@ -2,8 +2,8 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
-from importer.metadata import SeadSchema, Table
-from importer.policies import (
+from ingesters.sead.metadata import SeadSchema, Table
+from ingesters.sead.policies import (
     AddIdentityMappingSystemIdToPublicIdPolicy,
     AddPrimaryKeyColumnIfMissingPolicy,
     IfForeignKeyValueIsMissingAddIdentityMappingToForeignKeyTable,
@@ -13,7 +13,7 @@ from importer.policies import (
     UpdateMissingForeignKeyPolicy,
     UpdateTypesBasedOnSeadSchema,
 )
-from importer.submission import Submission
+from ingesters.sead.submission import Submission
 
 from tests.builders import build_column, build_schema, build_table
 

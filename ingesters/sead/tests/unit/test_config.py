@@ -1,4 +1,4 @@
-from importer.configuration import ConfigStore
+from src.configuration import ConfigStore
 
 
 def test_config_store():

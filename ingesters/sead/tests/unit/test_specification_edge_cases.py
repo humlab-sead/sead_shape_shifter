@@ -2,7 +2,7 @@
 
 import pandas as pd
 import pytest
-from importer.specification import (
+from ingesters.sead.specification import (
     ColumnTypesSpecification,
     ForeignKeyColumnsHasValuesSpecification,
     ForeignKeyExistsAsPrimaryKeySpecification,
@@ -12,7 +12,7 @@ from importer.specification import (
     SpecificationError,
     SubmissionSpecification,
 )
-from importer.submission import Submission
+from ingesters.sead.submission import Submission
 
 from tests.builders import build_column, build_schema, build_table
 

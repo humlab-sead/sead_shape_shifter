@@ -1,7 +1,7 @@
 import pandas as pd
-from importer.metadata import SeadSchema
-from importer.specification import SubmissionSpecification
-from importer.submission import Submission
+from ingesters.sead.metadata import SeadSchema
+from ingesters.sead.specification import SubmissionSpecification
+from ingesters.sead.submission import Submission
 
 # pylint: disable=too-many-statements,unused-argument,redefined-outer-name
 
