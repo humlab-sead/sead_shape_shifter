@@ -411,15 +411,105 @@ def _ensure_key_property(cls):
 R = TypeVar("R", dict[str, Any], list[Any], str)
 
 
-def replace_env_vars(data: R) -> R:
-    """Replaces recursively values in `data` that match `${ENV_VAR}` with os.getenv("ENV_VAR", "")"""
+def _resolve_env_var(env_var_name: str, env_prefix: str, try_without_prefix: bool) -> str:
+    """Resolve a single environment variable with optional prefix fallback.
+    
+    Args:
+        env_var_name: The environment variable name (without ${})
+        env_prefix: Optional prefix to try
+        try_without_prefix: If True, try both with and without prefix
+        
+    Returns:
+        Resolved value or empty string if not found
+    """
+    # If prefix is set but try_without_prefix is False, ONLY accept prefixed version
+    if env_prefix and not try_without_prefix:
+        # If var doesn't have prefix, add it
+        if not env_var_name.startswith(f"{env_prefix}_"):
+            prefixed_name = f"{env_prefix}_{env_var_name}"
+            return os.getenv(prefixed_name, "")
+        # If var already has prefix, use as-is
+        return os.getenv(env_var_name, "")
+    
+    # Try exact name first (when no prefix or try_without_prefix is True)
+    value: str | None = os.getenv(env_var_name)
+    if value is not None:
+        return value
+    
+    # If prefix is set and try_without_prefix is enabled, try with/without prefix
+    if env_prefix and try_without_prefix:
+        # If var doesn't have prefix, try with prefix
+        if not env_var_name.startswith(f"{env_prefix}_"):
+            prefixed_name = f"{env_prefix}_{env_var_name}"
+            value = os.getenv(prefixed_name)
+            if value is not None:
+                return value
+        # If var has prefix, try without prefix
+        else:
+            unprefixed_name = env_var_name[len(env_prefix) + 1:]
+            value = os.getenv(unprefixed_name)
+            if value is not None:
+                return value
+    
+    return ""
+
+
+def replace_env_vars(data: R, env_prefix: str = "", try_without_prefix: bool = True, raise_if_unresolved: bool = False) -> R:
+    """Recursively replaces environment variables in data.
+    
+    Replaces all occurrences of ${ENV_VAR} with os.getenv("ENV_VAR", "").
+    Works on strings, lists, and dicts recursively.
+    
+    Args:
+        data: Data structure to process (dict, list, or str)
+        env_prefix: Optional prefix for environment variables
+        try_without_prefix: If True, try both with and without prefix
+        raise_if_unresolved: If True, raise ValueError if any ${...} patterns remain unresolved
+        
+    Returns:
+        Data with environment variables replaced
+        
+    Raises:
+        ValueError: If raise_if_unresolved=True and unresolved variables remain
+        
+    Examples:
+        >>> os.environ['MY_VAR'] = 'value'
+        >>> replace_env_vars("path/to/${MY_VAR}/file")
+        'path/to/value/file'
+        >>> replace_env_vars("${MY_VAR}", env_prefix="APP")  # tries APP_MY_VAR too
+        'value'
+        >>> replace_env_vars("${MISSING}", raise_if_unresolved=True)
+        ValueError: Unresolved environment variables: ${MISSING}
+    """
     if isinstance(data, dict):
-        return {k: replace_env_vars(v) for k, v in data.items()}  # type: ignore[return-value]
+        result = {k: replace_env_vars(v, env_prefix, try_without_prefix, raise_if_unresolved) for k, v in data.items()}
+        return result  # type: ignore[return-value]
     if isinstance(data, list):
-        return [replace_env_vars(i) for i in data]  # type: ignore[return-value]
-    if isinstance(data, str) and data.startswith("${") and data.endswith("}"):
-        env_var: str = data[2:-1]
-        return os.getenv(env_var, "")  # type: ignore[return-value]
+        result = [replace_env_vars(i, env_prefix, try_without_prefix, raise_if_unresolved) for i in data]
+        return result  # type: ignore[return-value]
+    if isinstance(data, str):
+        # Find all ${...} patterns and replace them
+        def replacer(match):
+            env_var_name = match.group(1)
+            resolved_value = _resolve_env_var(env_var_name, env_prefix, try_without_prefix)
+            
+            # If raise_if_unresolved is True and we got empty string, leave the pattern unreplaced
+            # so we can detect it later
+            if raise_if_unresolved and resolved_value == "":
+                return match.group(0)  # Return the original ${VAR} pattern
+            
+            return resolved_value
+        
+        result = re.sub(r'\$\{([^}]+)\}', replacer, data)
+        
+        # Check for unresolved variables if requested
+        if raise_if_unresolved:
+            unresolved = re.findall(r'\$\{([^}]+)\}', result)
+            if unresolved:
+                unresolved_vars = ', '.join(f"${{{var}}}" for var in unresolved)
+                raise ValueError(f"Unresolved environment variables: {unresolved_vars}")
+        
+        return result  # type: ignore[return-value]
     return data
 
 
