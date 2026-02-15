@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     LOGS_DIR: Path = Path("./logs")
     LOG_DIR: Path = LOGS_DIR  # Alias for backward compatibility
 
+    # Shared data paths for project portability
+    GLOBAL_DATA_DIR: Path = Path("./shared/shared-data").absolute()
+    GLOBAL_DATA_SOURCE_DIR: Path = Path("./shared/data-sources").absolute()
+
     # Logging configuration
     LOG_LEVEL: str = "INFO"
     LOG_FILE_ENABLED: bool = True
@@ -72,9 +76,11 @@ class Settings(BaseSettings):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Ensure directories exist
-        self.PROJECTS_DIR.mkdir(exist_ok=True)
-        self.BACKUPS_DIR.mkdir(exist_ok=True)
-        self.LOGS_DIR.mkdir(exist_ok=True)
+        self.PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
+        self.BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
+        self.LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        self.GLOBAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        self.GLOBAL_DATA_SOURCE_DIR.mkdir(parents=True, exist_ok=True)
 
     @property
     def env_prefix(self) -> str:

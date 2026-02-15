@@ -205,7 +205,7 @@ class TestYamlServiceEntityKeyOrdering:
     def test_order_entity_keys_preserves_all_keys(self, yaml_service, tmp_path):
         """
         Test that _order_entity_keys preserves ALL keys, including unknown ones.
-        
+
         This is critical defensive programming - adding new entity configuration
         keys in the future should never result in data loss.
         """
@@ -286,10 +286,10 @@ class TestYamlServiceEntityKeyOrdering:
         # Save and reload
         file_path = tmp_path / "test_order.yml"
         yaml_service.save(data, file_path, create_backup=False)
-        
+
         # Read raw YAML to check actual ordering
         content = file_path.read_text()
-        
+
         # Known keys should appear in canonical order
         # Find indices of each key in the file content
         type_idx = content.index("type:")
@@ -301,7 +301,7 @@ class TestYamlServiceEntityKeyOrdering:
         values_idx = content.index("values:")
         materialized_idx = content.index("materialized:")
         foreign_keys_idx = content.index("foreign_keys:")
-        
+
         # Verify ordering: type < source < system_id < public_id < keys < columns < values < materialized < foreign_keys
         assert type_idx < source_idx < system_id_idx < public_id_idx
         assert public_id_idx < keys_idx < columns_idx < values_idx
