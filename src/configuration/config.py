@@ -18,7 +18,6 @@ from loguru import logger
 from src.utility import dget, dotexists, dotset, env2dict, replace_env_vars
 
 from .interface import ConfigLike
-from .path_utils import PathResolver
 from .utility import replace_references
 
 # pylint: disable=too-many-arguments
@@ -219,10 +218,10 @@ class Config(ConfigLike):
         data = replace_references(data)  # type: ignore
 
         if strict:
-            unresolved = Config.find_unresolved_directives(data)
+            unresolved: list[str] = Config.find_unresolved_directives(data)
             if unresolved:
-                paths = ", ".join(unresolved[:5])
-                extra = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
+                paths: str = ", ".join(unresolved[:5])
+                extra: str = "" if len(unresolved) <= 5 else f" (and {len(unresolved) - 5} more)"
                 raise ValueError(f"Unresolved configuration directives at: {paths}{extra}")
 
         return data
