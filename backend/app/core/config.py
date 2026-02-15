@@ -72,8 +72,12 @@ class Settings(BaseSettings):
     INGESTER_PATHS: list[str] = ["ingesters"]
     ENABLED_INGESTERS: list[str] | None = None  # None = all discovered ingesters
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def model_post_init(self, __context) -> None:
+        """Convert paths to absolute and ensure directories exist."""
+        # Convert to absolute paths (required for @load: directive resolution)
+        self.GLOBAL_DATA_DIR = self.GLOBAL_DATA_DIR.absolute()
+        self.GLOBAL_DATA_SOURCE_DIR = self.GLOBAL_DATA_SOURCE_DIR.absolute()
+        
         # Ensure directories exist
         self.PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
         self.LOGS_DIR.mkdir(parents=True, exist_ok=True)
