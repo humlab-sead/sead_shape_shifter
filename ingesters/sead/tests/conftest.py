@@ -15,8 +15,8 @@ from src.configuration.interface import ConfigLike
 
 # pylint: disable=redefined-outer-name
 
-DOTENV_FILENAME = "tests/test_data/.env"
-CONFIG_FILENAME = "tests/test_data/config.yml"
+DOTENV_FILENAME = "ingesters/sead/tests/test_data/.env"
+CONFIG_FILENAME = "ingesters/sead/tests/test_data/config.yml"
 ENV_PREFIX = "SEAD_IMPORT"
 
 load_dotenv(DOTENV_FILENAME)

@@ -35,6 +35,9 @@ def reset_services():
 @pytest.fixture
 def sample_project(tmp_path):
     """Create sample project configuration."""
+    project_dir = tmp_path / "test_project"
+    project_dir.mkdir(exist_ok=True)
+
     project_data = {
         "metadata": {
             "type": "shapeshifter-project",
@@ -58,7 +61,7 @@ def sample_project(tmp_path):
         },
     }
 
-    project_file = tmp_path / "test_project.yml"
+    project_file = project_dir / "shapeshifter.yml"
     with open(project_file, "w", encoding="utf-8") as f:
         yaml.dump(project_data, f)
 
@@ -68,6 +71,9 @@ def sample_project(tmp_path):
 @pytest.fixture
 def sample_recon_config(tmp_path):
     """Create sample reconciliation configuration."""
+    project_dir = tmp_path / "test_project"
+    project_dir.mkdir(exist_ok=True)
+
     config = dto.EntityResolutionCatalog(
         version="2.0",
         service_url="http://localhost:8000",
@@ -96,7 +102,7 @@ def sample_recon_config(tmp_path):
         },
     )
 
-    config_file = tmp_path / "test_project-reconciliation.yml"
+    config_file = project_dir / "test_project-reconciliation.yml"
     with open(config_file, "w", encoding="utf-8") as f:
         yaml.dump(config.model_dump(exclude_none=True), f)
 
@@ -132,9 +138,9 @@ class TestListSpecifications:
         """Test listing when no specifications exist."""
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
 
-        # Create empty recon config
+        # Create empty recon config in nested project structure
         config = dto.EntityResolutionCatalog(version="2.0", service_url="http://localhost:8000", entities={})
-        config_file = tmp_path / "test_project-reconciliation.yml"
+        config_file = tmp_path / "test_project" / "test_project-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)
 

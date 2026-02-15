@@ -73,7 +73,7 @@ def test_add_default_foreign_key_policy(mock_service):
     submission.__contains__.side_effect = lambda x: x in submission.data_tables
     submission.__getitem__.side_effect = lambda x: table
 
-    with patch("importer.policies.ConfigValue", return_value=config_value):
+    with patch("ingesters.sead.policies.ConfigValue", return_value=config_value):
         policy = UpdateMissingForeignKeyPolicy(schema=schema, submission=submission, service=mock_service)
         policy.apply()
 
@@ -105,7 +105,7 @@ def test_if_lookup_table_is_missing_add_table_using_system_id_as_public_id(mock_
 
     config_value.resolve.side_effect = config_resolve
 
-    with patch("importer.policies.ConfigValue", return_value=config_value):
+    with patch("ingesters.sead.policies.ConfigValue", return_value=config_value):
         policy = AddIdentityMappingSystemIdToPublicIdPolicy(schema=schema, submission=submission, service=mock_service)
         policy.apply()
 
