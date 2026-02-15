@@ -246,12 +246,12 @@ class TestFileManager:
         # First file might be renamed if it already exists from another test
         assert result1.name.startswith("test_shared_dup")
         assert result1.name.endswith(".xlsx")
-        
+
         # Second file should have a higher counter than first
         assert result2.name.startswith("test_shared_dup")
         assert result2.name.endswith(".xlsx")
         assert result2.name != result1.name  # Must be different
-        
+
         # Verify both files exist with correct content
         assert (temp_config_dir / result1.name).read_bytes() == b"v1"
         assert (temp_config_dir / result2.name).read_bytes() == b"v2"
@@ -271,18 +271,19 @@ class TestFileManager:
         # Create a clean temp directory for this specific test
         clean_dir = temp_config_dir.parent / "list_empty_test"
         clean_dir.mkdir(exist_ok=True)
-        
+
         def sanitize(name: str) -> str:
             return name.strip()
+
         def ensure_exists(name: str) -> Path:
             return clean_dir / name / "shapeshifter.yml"
-        
+
         clean_manager = FileManager(
             projects_dir=clean_dir,
             sanitize_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
-        
+
         # Create only project directory, no files
         (clean_dir / "project1").mkdir(exist_ok=True)
 
@@ -294,18 +295,19 @@ class TestFileManager:
         # Create isolated directory to avoid interference
         test_dir = temp_config_dir.parent / "list_all_test"
         test_dir.mkdir(exist_ok=True)
-        
+
         def sanitize(name: str) -> str:
             return name.strip()
+
         def ensure_exists(name: str) -> Path:
             return test_dir / name / "shapeshifter.yml"
-        
+
         test_manager = FileManager(
             projects_dir=test_dir,
             sanitize_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
-        
+
         # Create test files
         (test_dir / "list_all1.xlsx").write_text("data1")
         (test_dir / "list_all2.csv").write_text("data2")
@@ -321,18 +323,19 @@ class TestFileManager:
         # Create isolated directory
         test_dir = temp_config_dir.parent / "list_ext_test"
         test_dir.mkdir(exist_ok=True)
-        
+
         def sanitize(name: str) -> str:
             return name.strip()
+
         def ensure_exists(name: str) -> Path:
             return test_dir / name / "shapeshifter.yml"
-        
+
         test_manager = FileManager(
             projects_dir=test_dir,
             sanitize_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
-        
+
         (test_dir / "filter_ext1.xlsx").write_text("excel")
         (test_dir / "filter_ext2.csv").write_text("csv")
         (test_dir / "filter_ext3.txt").write_text("text")
@@ -351,18 +354,19 @@ class TestFileManager:
         # Create isolated directory
         test_dir = temp_config_dir.parent / "list_skip_test"
         test_dir.mkdir(exist_ok=True)
-        
+
         def sanitize(name: str) -> str:
             return name.strip()
+
         def ensure_exists(name: str) -> Path:
             return test_dir / name / "shapeshifter.yml"
-        
+
         test_manager = FileManager(
             projects_dir=test_dir,
             sanitize_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
-        
+
         (test_dir / "skip_dirs1.xlsx").write_text("file")
         (test_dir / "project_dir").mkdir()
 
