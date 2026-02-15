@@ -238,7 +238,7 @@ options:
         """Test loading valid configuration with multiple entities."""
         config = simple_service.load_project("test_project")
 
-        assert config.metadata.name == "test_project"
+        assert config.metadata.name == "test_project"  # type: ignore
         assert len(config.entities) == 2
         assert "sample" in config.entities
         assert "site" in config.entities
@@ -641,7 +641,7 @@ options:
         mock_state = MagicMock()
         # Simulate cache hit - project already loaded
         cached_project = deepcopy(sample_config)
-        cached_project.metadata.name = "test_cached"
+        cached_project.metadata.name = "test_cached" # type: ignore
         mock_state.get.return_value = cached_project
         service.state = mock_state
 
