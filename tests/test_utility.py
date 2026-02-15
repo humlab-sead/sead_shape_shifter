@@ -1,5 +1,6 @@
 """Additional unit tests for utility functions in src/utility.py."""
 
+from math import e
 import os
 from typing import Any
 from unittest.mock import MagicMock, mock_open, patch
@@ -338,71 +339,194 @@ class TestEnv2dict:
 class TestReplaceEnvVars:
     """Tests for replace_env_vars function."""
 
-    def test_replace_env_var_in_string(self):
-        """Test replacing environment variable in string."""
+    def test_replace_env_var_whole_string(self):
+        """Test replacing environment variable when it's the whole string."""
         with patch.dict(os.environ, {"TEST_VAR": "replaced_value"}):
-            result = replace_env_vars("${TEST_VAR}")
-
+            result: str = replace_env_vars("${TEST_VAR}")
             assert result == "replaced_value"
 
-    def test_replace_env_var_not_set(self):
-        """Test replacing environment variable that is not set."""
-        with patch.dict(os.environ, {}, clear=True):
-            result = replace_env_vars("${NONEXISTENT}")
+    def test_replace_env_var_in_middle_of_string(self):
+        """Test replacing environment variable in the middle of a string."""
+        with patch.dict(os.environ, {"MY_VAR": "value"}):
+            result = replace_env_vars("path/to/${MY_VAR}/file")
+            assert result == "path/to/value/file"
 
-            assert result == ""
+    def test_replace_multiple_env_vars_in_string(self):
+        """Test replacing multiple environment variables in one string."""
+        with patch.dict(os.environ, {"VAR1": "first", "VAR2": "second"}):
+            result = replace_env_vars("${VAR1}/middle/${VAR2}")
+            assert result == "first/middle/second"
+
+    def test_replace_adjacent_env_vars(self):
+        """Test replacing adjacent environment variables."""
+        with patch.dict(os.environ, {"A": "hello", "B": "world"}):
+            result = replace_env_vars("${A}${B}")
+            assert result == "helloworld"
+
+    def test_replace_env_var_with_prefix_flexible_mode(self):
+        """Test replacing with prefix when try_without_prefix=True (default)."""
+        with patch.dict(os.environ, {"PREFIX_VAR": "value"}):
+            # Should try VAR first, then PREFIX_VAR
+            result = replace_env_vars("${VAR}", env_prefix="PREFIX")
+            assert result == "value"
+
+    def test_replace_env_var_with_prefix_strict_mode(self):
+        """Test replacing with prefix when try_without_prefix=False."""
+        with patch.dict(os.environ, {"PREFIX_VAR": "value", "VAR": "wrong"}):
+            # Should ONLY accept PREFIX_VAR, not bare VAR
+            result = replace_env_vars("${VAR}", env_prefix="PREFIX", try_without_prefix=False)
+            assert result == "value"
+            
+            # Bare VAR should not be accepted even though it exists
+            assert os.environ.get("VAR") == "wrong"  # Verify VAR exists
+            result = replace_env_vars("${VAR}", env_prefix="PREFIX", try_without_prefix=False)
+            assert result == "value"  # Should use PREFIX_VAR, not VAR
+
+    def test_prefix_strict_mode_rejects_bare_vars(self):
+        """Test that strict prefix mode rejects bare environment variables."""
+        with patch.dict(os.environ, {"BARE_VAR": "should_not_use"}):
+            # With strict mode, should NOT use BARE_VAR when prefix is set
+            result = replace_env_vars("${BARE_VAR}", env_prefix="APP", try_without_prefix=False)
+            assert result == ""  # Should be empty since APP_BARE_VAR doesn't exist
+
+    def test_prefix_flexible_mode_accepts_bare_vars(self):
+        """Test that flexible prefix mode accepts bare environment variables."""
+        with patch.dict(os.environ, {"BARE_VAR": "value"}):
+            # With flexible mode (default), should use BARE_VAR
+            result = replace_env_vars("${BARE_VAR}", env_prefix="APP", try_without_prefix=True)
+            assert result == "value"
+
+    def test_prefix_flexible_tries_prefixed_first(self):
+        """Test that flexible mode prefers exact match over prefixed."""
+        with patch.dict(os.environ, {"VAR": "exact", "APP_VAR": "prefixed"}):
+            # Should try VAR first (exact match)
+            result = replace_env_vars("${VAR}", env_prefix="APP", try_without_prefix=True)
+            assert result == "exact"
+
+    def test_prefix_flexible_falls_back_to_prefixed(self):
+        """Test that flexible mode falls back to prefixed version."""
+        with patch.dict(os.environ, {"APP_VAR": "prefixed"}):
+            # VAR doesn't exist, should try APP_VAR
+            result = replace_env_vars("${VAR}", env_prefix="APP", try_without_prefix=True)
+            assert result == "prefixed"
+
+    def test_prefix_flexible_tries_unprefixed_fallback(self):
+        """Test that flexible mode tries unprefixed for prefixed vars."""
+        with patch.dict(os.environ, {"VAR": "unprefixed"}):
+            # APP_VAR doesn't exist, should try VAR when given APP_VAR
+            result = replace_env_vars("${APP_VAR}", env_prefix="APP", try_without_prefix=True)
+            assert result == "unprefixed"
+
+    def test_no_prefix_ignores_prefix_settings(self):
+        """Test that no prefix ignores try_without_prefix setting."""
+        with patch.dict(os.environ, {"TEST_VAR": "value"}):
+            result = replace_env_vars("${TEST_VAR}", env_prefix="", try_without_prefix=False)
+            assert result == "value"
+            
+            result = replace_env_vars("${TEST_VAR}", env_prefix="", try_without_prefix=True)
+            assert result == "value"
 
     def test_replace_in_dict(self):
         """Test replacing environment variables in dict."""
         with patch.dict(os.environ, {"DB_HOST": "localhost", "DB_PORT": "5432"}):
             data = {"host": "${DB_HOST}", "port": "${DB_PORT}", "name": "testdb"}
-
             result = replace_env_vars(data)
-
             assert result == {"host": "localhost", "port": "5432", "name": "testdb"}
 
     def test_replace_in_nested_dict(self):
         """Test replacing in nested dict."""
         with patch.dict(os.environ, {"API_KEY": "secret123"}):
             data = {"config": {"api": {"key": "${API_KEY}"}}}
-
             result = replace_env_vars(data)
-
             assert result["config"]["api"]["key"] == "secret123"
 
     def test_replace_in_list(self):
         """Test replacing environment variables in list."""
         with patch.dict(os.environ, {"VAR1": "value1", "VAR2": "value2"}):
             data = ["${VAR1}", "${VAR2}", "static"]
-
             result = replace_env_vars(data)
-
             assert result == ["value1", "value2", "static"]
 
     def test_replace_mixed_structure(self):
         """Test replacing in mixed dict/list structure."""
         with patch.dict(os.environ, {"HOST": "localhost"}):
             data = {"servers": [{"host": "${HOST}", "port": 8080}]}
-
             result = replace_env_vars(data)
-
             assert result["servers"][0]["host"] == "localhost"
+
+    def test_replace_in_paths_within_dict(self):
+        """Test replacing environment variables in path strings within dict."""
+        with patch.dict(os.environ, {"DATA_DIR": "data", "CONFIG_FILE": "config.yml"}):
+            data = {
+                "data_path": "/base/${DATA_DIR}/output",
+                "config_path": "/etc/${CONFIG_FILE}",
+            }
+            result = replace_env_vars(data)
+            assert result == {
+                "data_path": "/base/data/output",
+                "config_path": "/etc/config.yml",
+            }
 
     def test_non_env_var_strings_unchanged(self):
         """Test that regular strings are not modified."""
         data = {"key": "normal_value", "another": "value${incomplete"}
-
         result = replace_env_vars(data)
-
         assert result == data
 
     def test_partial_env_var_syntax_unchanged(self):
         """Test that partial env var syntax is not replaced."""
         data = "${incomplete"
-
         result = replace_env_vars(data)
-
         assert result == "${incomplete"
+
+    def test_missing_env_var_returns_empty(self):
+        """Test that missing environment variables are replaced with empty string."""
+        result = replace_env_vars("${NONEXISTENT_VAR}")
+        assert result == ""
+        
+    def test_missing_env_var_in_path(self):
+        """Test that missing environment variables in paths are replaced with empty."""
+        result = replace_env_vars("path/${MISSING}/file")
+        assert result == "path//file"
+
+    def test_raise_if_unresolved_with_missing_var(self):
+        """Test that raise_if_unresolved raises ValueError for missing env vars."""
+        with pytest.raises(ValueError, match="Unresolved environment variables.*MISSING_VAR"):
+            replace_env_vars("${MISSING_VAR}", raise_if_unresolved=True)
+
+    def test_raise_if_unresolved_with_multiple_missing_vars(self):
+        """Test that raise_if_unresolved reports all missing variables."""
+        with pytest.raises(ValueError, match="Unresolved environment variables.*MISSING1.*MISSING2"):
+            replace_env_vars("${MISSING1}/path/${MISSING2}", raise_if_unresolved=True)
+
+    def test_raise_if_unresolved_in_path(self):
+        """Test that raise_if_unresolved raises for missing vars in paths."""
+        with pytest.raises(ValueError, match="Unresolved environment variables.*NONEXISTENT"):
+            replace_env_vars("/path/to/${NONEXISTENT}/file", raise_if_unresolved=True)
+
+    def test_raise_if_unresolved_with_resolved_vars(self):
+        """Test that raise_if_unresolved doesn't raise when all vars are resolved."""
+        with patch.dict(os.environ, {"RESOLVED_VAR": "value"}):
+            result = replace_env_vars("${RESOLVED_VAR}/file", raise_if_unresolved=True)
+            assert result == "value/file"
+
+    def test_raise_if_unresolved_in_dict(self):
+        """Test that raise_if_unresolved works with dict structures."""
+        with pytest.raises(ValueError, match="Unresolved environment variables.*MISSING"):
+            replace_env_vars({"path": "${MISSING}/file"}, raise_if_unresolved=True)
+
+    def test_raise_if_unresolved_in_nested_dict(self):
+        """Test that raise_if_unresolved works with nested dict structures."""
+        with pytest.raises(ValueError, match="Unresolved environment variables.*MISSING"):
+            replace_env_vars(
+                {"outer": {"inner": "${MISSING}"}},
+                raise_if_unresolved=True
+            )
+
+    def test_raise_if_unresolved_false_allows_missing(self):
+        """Test that raise_if_unresolved=False (default) allows missing vars."""
+        result = replace_env_vars("${MISSING}", raise_if_unresolved=False)
+        assert result == ""
 
 
 class TestRegistry:
