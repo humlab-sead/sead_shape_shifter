@@ -7,7 +7,6 @@ import io
 import os
 import pkgutil
 import re
-import sys
 import zlib
 from datetime import datetime
 from os.path import abspath, basename, dirname, join, splitext

@@ -18,8 +18,8 @@ Usage:
 from typing import Callable
 
 import pandas as pd
-from importer.metadata import SeadSchema
-from importer.submission import Submission
+from ingesters.sead.metadata import SeadSchema
+from ingesters.sead.submission import Submission
 
 from tests.builders import build_column, build_schema, build_table
 

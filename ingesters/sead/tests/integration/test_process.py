@@ -1,8 +1,8 @@
 import pytest
-from importer.configuration.config import Config
-from importer.metadata import SchemaService, SeadSchema
-from importer.process import ImportService, Options
-from importer.submission import Submission
+from src.configuration.config import Config
+from ingesters.sead.metadata import SchemaService, SeadSchema
+from ingesters.sead.process import ImportService, Options
+from ingesters.sead.submission import Submission
 
 
 def test_create_options(cfg: Config):

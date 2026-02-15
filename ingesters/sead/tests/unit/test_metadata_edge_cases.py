@@ -1,7 +1,7 @@
 """Tests for metadata edge cases and utilities."""
 
 import pytest
-from importer.metadata import Column, Table
+from ingesters.sead.metadata import Column, Table
 
 from tests.builders import build_column, build_schema, build_table
 

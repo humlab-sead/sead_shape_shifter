@@ -4,8 +4,8 @@ import tempfile
 from pathlib import Path
 
 import pandas as pd
-from importer.dispatchers.to_csv import CsvProcessor
-from importer.submission import Submission
+from ingesters.sead.dispatchers.to_csv import CsvProcessor
+from ingesters.sead.submission import Submission
 
 from tests.builders import build_column, build_schema, build_table
 

@@ -1,7 +1,7 @@
 from typing import Any
 
 import pytest
-from importer import utility
+from ingesters.sead import utility
 
 
 @pytest.mark.parametrize(

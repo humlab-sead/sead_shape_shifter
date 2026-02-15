@@ -1,6 +1,6 @@
 from typing import Any
 
-from importer import utility
+from ingesters.sead import utility
 
 
 def test_flatten_empty_list_returns_empty_list():
