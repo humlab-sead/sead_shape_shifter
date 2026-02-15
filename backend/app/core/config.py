@@ -49,9 +49,9 @@ class Settings(BaseSettings):
     LOGS_DIR: Path = Path("./logs")
     LOG_DIR: Path = LOGS_DIR  # Alias for backward compatibility
 
-    # Shared data paths for project portability
-    GLOBAL_DATA_DIR: Path = Path("./shared/shared-data").absolute()
-    GLOBAL_DATA_SOURCE_DIR: Path = Path("./shared/data-sources").absolute()
+    # Shared data paths for project portability (converted to absolute in model_post_init)
+    GLOBAL_DATA_DIR: Path = Path("./shared/shared-data")
+    GLOBAL_DATA_SOURCE_DIR: Path = Path("./shared/data-sources")
 
     # Logging configuration
     LOG_LEVEL: str = "INFO"
