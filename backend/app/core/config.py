@@ -77,7 +77,7 @@ class Settings(BaseSettings):
         # Convert to absolute paths (required for @load: directive resolution)
         self.GLOBAL_DATA_DIR = self.GLOBAL_DATA_DIR.absolute()
         self.GLOBAL_DATA_SOURCE_DIR = self.GLOBAL_DATA_SOURCE_DIR.absolute()
-        
+
         # Ensure directories exist
         self.PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
         self.LOGS_DIR.mkdir(parents=True, exist_ok=True)

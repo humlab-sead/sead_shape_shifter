@@ -3,12 +3,13 @@ from tempfile import TemporaryDirectory
 
 import pandas as pd
 import pytest
-from src.configuration.config import Config
+
 from ingesters.sead.metadata import SchemaService, SeadSchema
 from ingesters.sead.process import ImportService, Options
 from ingesters.sead.specification import SubmissionSpecification
 from ingesters.sead.submission import Submission
 from ingesters.sead.utility import create_db_uri
+from src.configuration.config import Config
 
 
 @pytest.mark.integration

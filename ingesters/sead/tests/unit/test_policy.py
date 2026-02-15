@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
+
 from ingesters.sead.metadata import SeadSchema, Table
 from ingesters.sead.policies import (
     AddIdentityMappingSystemIdToPublicIdPolicy,
@@ -14,7 +15,6 @@ from ingesters.sead.policies import (
     UpdateTypesBasedOnSeadSchema,
 )
 from ingesters.sead.submission import Submission
-
 from ingesters.sead.tests.builders import build_column, build_schema, build_table
 
 

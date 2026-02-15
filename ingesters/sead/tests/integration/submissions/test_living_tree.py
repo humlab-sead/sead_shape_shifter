@@ -4,8 +4,8 @@ from typing import Any
 
 import pandas as pd
 import pytest
+
 from ingesters.sead import policies
-from src.configuration.config import Config
 from ingesters.sead.metadata import SchemaService, SeadSchema
 from ingesters.sead.process import ImportService, Options
 from ingesters.sead.specification import (
@@ -15,6 +15,7 @@ from ingesters.sead.specification import (
 )
 from ingesters.sead.submission import Submission
 from ingesters.sead.utility import create_db_uri
+from src.configuration.config import Config
 
 
 @pytest.mark.integration

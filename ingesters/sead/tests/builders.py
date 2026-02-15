@@ -5,6 +5,7 @@ large CSV fixtures. Use these for unit tests that don't need the full schema.
 """
 
 import pandas as pd
+
 from ingesters.sead.metadata import Column, MockSchemaService, SeadSchema, SeadSchemaFactory, Table
 
 

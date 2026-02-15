@@ -1,6 +1,5 @@
 """Additional unit tests for utility functions in src/utility.py."""
 
-from math import e
 import os
 from typing import Any
 from unittest.mock import MagicMock, mock_open, patch
@@ -376,7 +375,7 @@ class TestReplaceEnvVars:
             # Should ONLY accept PREFIX_VAR, not bare VAR
             result = replace_env_vars("${VAR}", env_prefix="PREFIX", try_without_prefix=False)
             assert result == "value"
-            
+
             # Bare VAR should not be accepted even though it exists
             assert os.environ.get("VAR") == "wrong"  # Verify VAR exists
             result = replace_env_vars("${VAR}", env_prefix="PREFIX", try_without_prefix=False)
@@ -422,7 +421,7 @@ class TestReplaceEnvVars:
         with patch.dict(os.environ, {"TEST_VAR": "value"}):
             result = replace_env_vars("${TEST_VAR}", env_prefix="", try_without_prefix=False)
             assert result == "value"
-            
+
             result = replace_env_vars("${TEST_VAR}", env_prefix="", try_without_prefix=True)
             assert result == "value"
 
@@ -483,7 +482,7 @@ class TestReplaceEnvVars:
         """Test that missing environment variables are replaced with empty string."""
         result = replace_env_vars("${NONEXISTENT_VAR}")
         assert result == ""
-        
+
     def test_missing_env_var_in_path(self):
         """Test that missing environment variables in paths are replaced with empty."""
         result = replace_env_vars("path/${MISSING}/file")
@@ -518,10 +517,7 @@ class TestReplaceEnvVars:
     def test_raise_if_unresolved_in_nested_dict(self):
         """Test that raise_if_unresolved works with nested dict structures."""
         with pytest.raises(ValueError, match="Unresolved environment variables.*MISSING"):
-            replace_env_vars(
-                {"outer": {"inner": "${MISSING}"}},
-                raise_if_unresolved=True
-            )
+            replace_env_vars({"outer": {"inner": "${MISSING}"}}, raise_if_unresolved=True)
 
     def test_raise_if_unresolved_false_allows_missing(self):
         """Test that raise_if_unresolved=False (default) allows missing vars."""

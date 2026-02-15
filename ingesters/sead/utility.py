@@ -19,7 +19,6 @@ from loguru import logger
 from sqlalchemy import Engine, create_engine
 
 # Import centralized logging setup from src.utility
-from src.utility import setup_logging
 
 if TYPE_CHECKING:
     from .submission import Submission

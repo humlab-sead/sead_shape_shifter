@@ -32,8 +32,6 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
 from ruamel.yaml.scalarstring import SingleQuotedScalarString
 
-from backend.app.core.config import settings
-
 
 class YamlServiceError(Exception):
     """Base exception for YAML service errors."""
