@@ -42,7 +42,7 @@ install-api:
 
 .PHONY: test
 test:
-	@uv run pytest tests backend/tests -v
+	@uv run pytest tests backend/tests ingesters/sead/tests -v
 
 .PHONY: profile
 profile:
@@ -278,14 +278,14 @@ fix-imports:
 	@python scripts/fix_imports.py
 
 isort:
-	@uv run isort src tests backend/app backend/tests
+	@uv run isort src tests backend/app backend/tests ingesters
 
 requirements.txt: pyproject.toml
 	@uv export -o requirements.txt
 
 .PHONY: test-coverage
 test-coverage:
-	@uv run pytest tests backend/tests --cov=src --cov=backend/app --cov-report=html --cov-report=term
+	@uv run pytest tests backend/tests ingesters/sead/tests --cov=src --cov=backend/app --cov-report=html --cov-report=term
 
 .PHONY: dead-code
 dead-code:
