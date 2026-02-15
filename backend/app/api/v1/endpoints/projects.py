@@ -301,7 +301,7 @@ async def list_backups(name: str) -> list[BackupInfo]:
     """
     yaml_service: YamlService = get_yaml_service()
     project_dir = settings.PROJECTS_DIR / name
-    backups: list[Path] = yaml_service.list_backups(original_name="shapeshifter.yml", project_dir=project_dir)
+    backups: list[Path] = yaml_service.list_backups(project_dir=project_dir)
     backup_infos: list[BackupInfo] = [
         BackupInfo(
             file_name=backup.name,
@@ -504,9 +504,9 @@ async def get_project_raw_yaml(name: str) -> dict[str, str]:
 
     project_service.load_project(name)
 
-    project_path = settings.PROJECTS_DIR / f"{name}.yml"
+    project_path = settings.PROJECTS_DIR / name / "shapeshifter.yml"
     if not project_path.exists():
-        raise NotFoundError(f"Project file not found: {name}.yml")
+        raise NotFoundError(f"Project file not found: {project_path}")
 
     yaml_content = project_path.read_text(encoding="utf-8")
 
@@ -550,9 +550,9 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
         raise BadRequestError("YAML must be a dictionary")
 
     # Write to file
-    project_path = settings.PROJECTS_DIR / f"{name}.yml"
+    project_path = settings.PROJECTS_DIR / name / "shapeshifter.yml"
     if not project_path.exists():
-        raise NotFoundError(f"Project file not found: {name}.yml")
+        raise NotFoundError(f"Project file not found: {project_path}")
 
     # Create backup before update
     yaml_service.create_backup(project_path)
