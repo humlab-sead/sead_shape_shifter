@@ -38,7 +38,7 @@ class FileManager:
             sanitize_project_name_callback: Function to sanitize project names
             ensure_project_exists_callback: Function to ensure project exists
         """
-        self.projects_dir = projects_dir
+        self.projects_dir: Path = projects_dir
         self._sanitize_project_name = sanitize_project_name_callback
         self._ensure_project_exists = ensure_project_exists_callback
 
