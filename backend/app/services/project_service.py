@@ -1121,54 +1121,16 @@ class ProjectService:
             sheet_name: Optional sheet to inspect for columns
             cell_range: Optional cell range (e.g., 'A1:H30') to limit columns
 
+        Returns:
+            Tuple of (sheet_names, column_names)
+
         Raises:
             BadRequestError: If file is missing/unsupported or sheet is not found
         """
+        from backend.app.utils.excel_utils import get_excel_metadata as extract_excel_metadata
 
-        resolved_path = self._resolve_path(file_path)
-        if resolved_path.suffix.lower() not in {".xlsx", ".xls"}:
-            raise BadRequestError("Only .xlsx and .xls files are supported for metadata probing")
-
-        try:
-            # If range specified, extract max column index (e.g., "A1:H30" -> "H" -> 7)
-            max_col_index: int | None = None
-            if cell_range:
-                import re
-                # Match patterns like "A1:H30" or "A:H"
-                match = re.search(r':([A-Z]+)', cell_range.upper())
-                if match:
-                    col_letter = match.group(1)
-                    # Convert column letter to 0-based index (A=0, B=1, ..., Z=25, AA=26, etc.)
-                    max_col_index = 0
-                    for char in col_letter:
-                        max_col_index = max_col_index * 26 + (ord(char) - ord('A') + 1)
-                    max_col_index -= 1  # Convert to 0-based
-
-            with pd.ExcelFile(resolved_path) as xls:
-                sheets: list[str] = list(xls.sheet_names)  # type: ignore
-
-                target_sheet = sheet_name or (sheets[0] if sheets else None)
-                columns: list[str] = []
-
-                if target_sheet:
-                    if target_sheet not in sheets:
-                        raise BadRequestError(f"Sheet '{target_sheet}' not found in {resolved_path.name}")
-                    df = pd.read_excel(xls, sheet_name=target_sheet, nrows=0)
-                    # Sanitize column names to match what the loader will produce
-                    all_columns = sanitize_columns(list(df.columns))
-                    
-                    # If range specified, limit to columns within range
-                    if max_col_index is not None:
-                        columns = all_columns[:max_col_index + 1]
-                    else:
-                        columns = all_columns
-
-                return sheets, columns
-        except BadRequestError:
-            raise
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.error(f"Failed to read Excel metadata for {resolved_path}: {exc}")
-            raise BadRequestError(f"Failed to read Excel metadata: {exc}") from exc
+        resolved_path: Path = self._resolve_path(file_path)
+        return extract_excel_metadata(resolved_path, sheet_name=sheet_name, cell_range=cell_range)
 
     def save_data_source_file(
         self,
@@ -1181,10 +1143,10 @@ class ProjectService:
 
         allowed: set[str] = allowed_extensions or set()
 
-        filename = self._sanitize_filename(upload.filename)
-        ext = Path(filename).suffix.lower()
+        filename: str = self._sanitize_filename(upload.filename)
+        ext: str = Path(filename).suffix.lower()
         if allowed and ext not in allowed:
-            allowed_list = ", ".join(sorted(allowed))
+            allowed_list: str = ", ".join(sorted(allowed))
             raise BadRequestError(f"Unsupported file type '{ext}'. Allowed: {allowed_list}")
 
         upload_dir: Path = settings.PROJECTS_DIR
