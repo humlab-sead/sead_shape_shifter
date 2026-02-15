@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     INGESTER_PATHS: list[str] = ["ingesters"]
     ENABLED_INGESTERS: list[str] | None = None  # None = all discovered ingesters
 
-    def model_post_init(self, __context) -> None:
+    def model_post_init(self, __context) -> None:  # pylint: disable=arguments-differ
         """Convert paths to absolute and ensure directories exist."""
         # Convert to absolute paths (required for @load: directive resolution)
         self.GLOBAL_DATA_DIR = self.GLOBAL_DATA_DIR.absolute()

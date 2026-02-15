@@ -151,7 +151,7 @@ async def list_data_source_files(ext: list[str] | None = Query(default=None, des
 async def get_excel_metadata(
     file: str = Query(..., description="Path to Excel file (absolute or relative to project root)"),
     sheet_name: str | None = Query(default=None, description="Optional sheet name to inspect for columns"),
-    range: str | None = Query(default=None, description="Optional cell range (e.g., A1:H30) to limit columns"),
+    range: str | None = Query(default=None, description="Optional cell range (e.g., A1:H30) to limit columns"),  # pylint: disable=redefined-builtin
 ) -> ExcelMetadataResponse:
     """Return available sheets and columns for a given Excel file."""
 
