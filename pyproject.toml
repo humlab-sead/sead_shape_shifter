@@ -162,7 +162,7 @@ warn_return_any = false
 # --------------------
 [tool.pytest.ini_options]
 addopts = "-q -ra --strict-markers"
-testpaths = ["tests", "backend/tests"]
+testpaths = ["tests", "backend/tests", "ingesters/tests"]
 python_classes = "Test*"
 python_functions = "test_*"
 asyncio_mode = "auto"

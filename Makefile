@@ -64,20 +64,20 @@ publish:
 
 .PHONY: black
 black:
-	@uv run black src tests backend/app backend/tests
+	@uv run black src tests backend/app backend/tests ingesters
 
 .PHONY: pylint
 pylint:
-	@uv run pylint src tests backend/app backend/tests
+	@uv run pylint src tests backend/app backend/tests ingesters
 
 .PHONY: ruff
 ruff:
-	@uv run ruff check --fix --output-format concise src tests backend
+	@uv run ruff check --fix --output-format concise src tests backend ingesters
 
 .PHONY: tidy
 tidy:
-	@uv run isort src tests backend/app backend/tests
-	@uv run black src tests backend/app backend/tests
+	@uv run isort src tests backend/app backend/tests ingesters
+	@uv run black src tests backend/app backend/tests ingesters
 
 .PHONY: lint
 lint: tidy ruff pylint
