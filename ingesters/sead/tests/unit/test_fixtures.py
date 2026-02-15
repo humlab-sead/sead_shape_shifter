@@ -4,7 +4,7 @@ import pandas as pd
 from ingesters.sead.metadata import Column, SeadSchema
 from ingesters.sead.submission import Submission
 
-from tests.fixtures import (
+from ingesters.sead.tests.fixtures import (
     COMPLEX_SCHEMA,
     EMPTY_SUBMISSION,
     FK_DATAFRAME,

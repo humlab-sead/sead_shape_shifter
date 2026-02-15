@@ -4,17 +4,17 @@ from typing import Any
 
 import pandas as pd
 import pytest
-from importer import policies
-from importer.configuration.config import Config
-from importer.metadata import SchemaService, SeadSchema
-from importer.process import ImportService, Options
-from importer.specification import (
+from ingesters.sead import policies
+from src.configuration.config import Config
+from ingesters.sead.metadata import SchemaService, SeadSchema
+from ingesters.sead.process import ImportService, Options
+from ingesters.sead.specification import (
     ForeignKeyColumnsHasValuesSpecification,
     SpecificationMessages,
     SubmissionSpecification,
 )
-from importer.submission import Submission
-from importer.utility import create_db_uri
+from ingesters.sead.submission import Submission
+from ingesters.sead.utility import create_db_uri
 
 
 @pytest.mark.integration
