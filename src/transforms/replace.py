@@ -110,7 +110,7 @@ def _apply_replacement_rule(series: pd.Series, *, rule: Mapping[str, Any], entit
 
 def _infer_rule_key(rule: Mapping[str, Any]) -> tuple[str, bool]:
     """Infer the rule type from the rule dictionary.
-    
+
     Returns:
         tuple of (rule_key, negate_flag)
     """
@@ -118,12 +118,12 @@ def _infer_rule_key(rule: Mapping[str, Any]) -> tuple[str, bool]:
         return "blank_out", False
     if "map" in rule:
         return "map", False
-    
+
     # Check if this is a transform-only rule (no match/from condition)
     # Transform rules only have normalize/coerce/to without match/from/map/blank_out
     has_match_condition = "match" in rule or "from" in rule
     has_transform = "normalize" in rule or "coerce" in rule
-    
+
     if not has_match_condition and has_transform:
         return "transform", False
 
@@ -336,7 +336,7 @@ class TransformRule(ReplacementRule):
     @classmethod
     def apply(cls, series: pd.Series, *, rule: Mapping[str, Any], ctx: RuleContext) -> pd.Series:
         """Transform all values with normalize/coerce operations.
-        
+
         This rule doesn't require a match condition - it applies to all values.
         Useful for operations like: strip whitespace, convert to lowercase, coerce types.
         """
@@ -351,7 +351,7 @@ class TransformRule(ReplacementRule):
                 )
         else:
             out = series
-        
+
         # Apply coercion if specified
         if ctx.coerce:
             before = out
@@ -362,10 +362,9 @@ class TransformRule(ReplacementRule):
                 after_str = out.astype("string").fillna("")
                 changed = int((before_str != after_str).sum())
                 logger.info(
-                    f"{ctx.entity_name}[replacements]: {ctx.column_name}: "
-                    f"transform(coerce={ctx.coerce}) changed {changed} value(s)"
+                    f"{ctx.entity_name}[replacements]: {ctx.column_name}: " f"transform(coerce={ctx.coerce}) changed {changed} value(s)"
                 )
-        
+
         return out
 
 
