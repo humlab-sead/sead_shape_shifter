@@ -356,8 +356,8 @@ class YamlService:
             raise YamlServiceError(f"Cannot backup non-existent file: {path}")
 
         # Create backup directory in project folder: project_dir/backups/
-        project_dir = path.parent
-        backup_dir = project_dir / "backups"
+        project_dir: Path = path.parent
+        backup_dir: Path = project_dir / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate timestamp with microseconds to avoid collisions

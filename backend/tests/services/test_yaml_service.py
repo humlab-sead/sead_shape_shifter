@@ -22,7 +22,7 @@ def yaml_service():
 @pytest.fixture
 def temp_yaml_file(tmp_path):
     """Create a temporary YAML file."""
-    file_path = tmp_path / "test.yml"
+    file_path = tmp_path / "shapeshifter.yml"
     content = """
 # Test configuration
 entities:
@@ -106,7 +106,7 @@ class TestYamlServiceSave:
         assert file_path.exists()
         assert file_path.parent.exists()
 
-    def test_save_with_backup(self, yaml_service, temp_yaml_file):
+    def test_save_with_backup(self, yaml_service: YamlService, temp_yaml_file):
         """Test saving creates backup of existing file."""
         _ = temp_yaml_file.read_text()
         new_data = {"modified": True}
