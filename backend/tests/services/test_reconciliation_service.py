@@ -602,8 +602,10 @@ class TestReconciliationService:
 
             reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}  # type: ignore
 
-            # Create empty config file with v2 format
-            config_file = tmp_path / "test-reconciliation.yml"
+            # Create empty config file with v2 format in nested project structure
+            project_dir = tmp_path / "test"
+            project_dir.mkdir(exist_ok=True)
+            config_file = project_dir / "test-reconciliation.yml"
             config = {
                 "version": "2.0",
                 "service_url": RECONCILIATION_SERVICE_URL,
@@ -634,8 +636,8 @@ class TestReconciliationService:
             assert result.unmatched == 0
             assert result.total == 1
 
-            # Check mapping was created in nested structure
-            loaded_config = reconciliation_service.catalog_manager.load_catalog("test", filename=config_file)
+            # Check mapping was created by loading from the nested location
+            loaded_config = reconciliation_service.catalog_manager.load_catalog("test")
             assert len(loaded_config.entities["site"]["site_code"].links) == 1
             mapping = loaded_config.entities["site"]["site_code"].links[0]
             assert mapping.target_id == 123
@@ -658,7 +660,10 @@ class TestReconciliationService:
             mock_source.return_value = source_data
             reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}  # type: ignore
 
-            config_file = tmp_path / "test-reconciliation.yml"
+            # Create config in nested structure
+            project_dir = tmp_path / "test"
+            project_dir.mkdir(exist_ok=True)
+            config_file = project_dir / "test-reconciliation.yml"
             config = {
                 "version": "2.0",
                 "service_url": RECONCILIATION_SERVICE_URL,
@@ -703,7 +708,10 @@ class TestReconciliationService:
             mock_source.return_value = source_data
             reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": candidates}
 
-            config_file = tmp_path / "test-reconciliation.yml"
+            # Create config in nested structure
+            project_dir = tmp_path / "test"
+            project_dir.mkdir(exist_ok=True)
+            config_file = project_dir / "test-reconciliation.yml"
             config = {
                 "version": "2.0",
                 "service_url": RECONCILIATION_SERVICE_URL,
@@ -742,7 +750,10 @@ class TestReconciliationService:
             mock_source.return_value = source_data
             reconciliation_service.reconciliation_client.reconcile_batch.return_value = {"q0": []}
 
-            config_file = tmp_path / "test-reconciliation.yml"
+            # Create config in nested structure
+            project_dir = tmp_path / "test"
+            project_dir.mkdir(exist_ok=True)
+            config_file = project_dir / "test-reconciliation.yml"
             config = {
                 "version": "2.0",
                 "service_url": RECONCILIATION_SERVICE_URL,
@@ -773,7 +784,10 @@ class TestReconciliationService:
 
     def test_update_mapping_adds_new_mapping(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test update_mapping adds new mapping entry."""
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -808,7 +822,10 @@ class TestReconciliationService:
         )
         catalog.entities["site"]["site_code"].mapping = [existing_mapping]
 
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -842,7 +859,10 @@ class TestReconciliationService:
         )
         catalog.entities["site"]["site_code"].mapping = [existing_mapping]
 
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -854,7 +874,10 @@ class TestReconciliationService:
 
     def test_update_mapping_raises_for_missing_entity(self, reconciliation_service: ReconciliationService, tmp_path):
         """Test update_mapping raises if entity not in registry."""
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         config_file.write_text(yaml.dump({"version": "2.0", "service_url": RECONCILIATION_SERVICE_URL, "entities": {}}))
 
         with pytest.raises(NotFoundError, match="Entity mapping for entity 'nonexistent' and target field 'field' not found"):
@@ -862,7 +885,10 @@ class TestReconciliationService:
 
     def test_mark_as_unmatched(self, reconciliation_service, tmp_path, catalog):
         """Test mark_as_unmatched creates mapping with will_not_match=True."""
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -898,7 +924,10 @@ class TestReconciliationService:
         )
         catalog.entities["site"]["site_code"].mapping = [existing_mapping]
 
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -924,7 +953,10 @@ class TestSpecificationManagement:
         """Test listing specifications when config has no entities."""
         config = dto.EntityResolutionCatalog(version="2.0", service_url=RECONCILIATION_SERVICE_URL, entities={})
 
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)
 
@@ -982,7 +1014,10 @@ class TestSpecificationManagement:
             },
         )
 
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(exclude_none=True), f)
 
@@ -1025,8 +1060,10 @@ class TestSpecificationManagement:
         mock_mapper_instance.to_core_config.return_value = MagicMock(entities={"site": MagicMock(), "sample": MagicMock()})
         mock_mapper.return_value = mock_mapper_instance
 
-        # Save initial config
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Save initial config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1066,7 +1103,10 @@ class TestSpecificationManagement:
         mock_mapper_instance.to_core_config.return_value = MagicMock(entities={"site": MagicMock()})
         mock_mapper.return_value = mock_mapper_instance
 
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1134,7 +1174,10 @@ class TestSpecificationManagement:
             )
         ]
 
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1161,7 +1204,10 @@ class TestSpecificationManagement:
 
     def test_update_specification_not_found(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test updating non-existent specification raises error."""
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1179,7 +1225,10 @@ class TestSpecificationManagement:
 
     def test_delete_specification_success(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test deleting specification without mappings."""
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1202,7 +1251,10 @@ class TestSpecificationManagement:
             )
         ]
 
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1234,7 +1286,10 @@ class TestSpecificationManagement:
             ),
         ]
 
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1244,7 +1299,10 @@ class TestSpecificationManagement:
 
     def test_delete_specification_not_found(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test deleting non-existent specification raises error."""
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1253,7 +1311,10 @@ class TestSpecificationManagement:
 
     def test_delete_last_specification_removes_entity(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test deleting last specification removes entity from config."""
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1321,7 +1382,10 @@ class TestSpecificationManagement:
             ),
         ]
 
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
@@ -1331,7 +1395,10 @@ class TestSpecificationManagement:
 
     def test_get_mapping_count_not_found(self, reconciliation_service: ReconciliationService, tmp_path, catalog):
         """Test getting mapping count for non-existent specification."""
-        config_file = tmp_path / "test-reconciliation.yml"
+        # Create config in nested structure
+        project_dir = tmp_path / "test"
+        project_dir.mkdir(exist_ok=True)
+        config_file = project_dir / "test-reconciliation.yml"
         with open(config_file, "w", encoding="utf-8") as f:
             yaml.dump(catalog.model_dump(exclude_none=True), f)
 
