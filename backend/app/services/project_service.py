@@ -1,6 +1,5 @@
 """Project service for managing entities."""
 
-import shutil
 import threading
 from pathlib import Path
 from typing import Any, Iterable
@@ -20,7 +19,6 @@ from backend.app.services.project.file_manager import FileManager
 from backend.app.services.project.project_operations import ProjectOperations
 from backend.app.services.project.project_utils import ProjectUtils
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
-from backend.app.utils.excel_utils import get_excel_metadata
 
 
 class ProjectYamlSpecification:
@@ -68,10 +66,10 @@ class ProjectService:
         self.projects_dir: Path = Path(projects_dir or settings.PROJECTS_DIR)
         self.specification = ProjectYamlSpecification()
         self.state: ApplicationStateManager = state or get_app_state_manager()
-        
+
         # Initialize project utilities component
         self.utils = ProjectUtils(projects_dir=self.projects_dir)
-        
+
         # Initialize project operations component
         self.operations = ProjectOperations(
             yaml_service=self.yaml_service,
@@ -83,14 +81,14 @@ class ProjectService:
             load_project_callback=self.load_project,
             cache_invalidator=self._invalidate_all_caches,
         )
-        
+
         # Initialize entity operations component
         self.entities = EntityOperations(
             project_lock_getter=self._get_lock,
             load_project_callback=self.load_project,
             save_project_callback=self.save_project,
         )
-        
+
         # Initialize file manager component
         self.files = FileManager(
             projects_dir=self.projects_dir,
@@ -701,7 +699,7 @@ class ProjectService:
 
     def _ensure_project_exists(self, name: str) -> Path:
         """Ensure project exists in new directory structure.
-        
+
         Returns:
             Path to the project's shapeshifter.yml file
         """
@@ -725,11 +723,11 @@ class ProjectService:
 
     def list_project_files(self, project_name: str, extensions: Iterable[str] | None = None) -> list[ProjectFileInfo]:
         """List files stored under a project's uploads directory.
-        
+
         Args:
             project_name: Project name
             extensions: Optional file extensions to filter
-            
+
         Returns:
             List of file information
         """
@@ -744,13 +742,13 @@ class ProjectService:
         max_size_mb: int = 50,  # FileManager.MAX_PROJECT_UPLOAD_SIZE_MB
     ) -> ProjectFileInfo:
         """Save an uploaded file into the project's uploads directory.
-        
+
         Args:
             project_name: Project name
             upload: Uploaded file
             allowed_extensions: Allowed file extensions
             max_size_mb: Maximum file size in megabytes
-            
+
         Returns:
             File information for the saved file
         """
@@ -760,10 +758,10 @@ class ProjectService:
 
     def list_data_source_files(self, extensions: Iterable[str] | None = None) -> list[ProjectFileInfo]:
         """List files available for data source configuration in the projects directory.
-        
+
         Args:
             extensions: Optional file extensions to filter
-            
+
         Returns:
             List of file information
         """
@@ -795,12 +793,12 @@ class ProjectService:
         max_size_mb: int = 50,  # FileManager.MAX_PROJECT_UPLOAD_SIZE_MB
     ) -> ProjectFileInfo:
         """Save an uploaded file into the projects directory (global data source).
-        
+
         Args:
             upload: Uploaded file
             allowed_extensions: Allowed file extensions
             max_size_mb: Maximum file size in megabytes
-            
+
         Returns:
             File information for the saved file
         """

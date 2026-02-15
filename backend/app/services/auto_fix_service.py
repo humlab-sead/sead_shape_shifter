@@ -234,14 +234,15 @@ class AutoFixService:
     def _create_backup(self, project_name: str) -> Path:
         """Create backup of project before applying fixes."""
 
-        project_dir = settings.PROJECTS_DIR
-        project_path = project_dir / f"{project_name}.yml"
+        # New structure: projects_dir/project_name/shapeshifter.yml
+        project_dir = settings.PROJECTS_DIR / project_name
+        project_path = project_dir / "shapeshifter.yml"
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_dir = project_dir / "backups"
         backup_dir.mkdir(exist_ok=True)
 
-        backup_path = backup_dir / f"{project_name}.backup.{timestamp}.yml"
+        backup_path = backup_dir / f"shapeshifter.backup.{timestamp}.yml"
         shutil.copy2(project_path, backup_path)
 
         logger.info(f"Created backup at {backup_path}")
@@ -250,8 +251,9 @@ class AutoFixService:
     def _rollback(self, project_name: str, backup_path: Path):
         """Rollback project to backup."""
 
-        project_dir = settings.PROJECTS_DIR
-        project_path = project_dir / f"{project_name}.yml"
+        # New structure: projects_dir/project_name/shapeshifter.yml
+        project_dir = settings.PROJECTS_DIR / project_name
+        project_path = project_dir / "shapeshifter.yml"
 
         shutil.copy2(backup_path, project_path)
         logger.info(f"Rolled back project from {backup_path}")

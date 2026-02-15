@@ -7,8 +7,8 @@ from fastapi import UploadFile
 
 from backend.app.core.config import settings
 from backend.app.models.project import ProjectFileInfo
-from backend.app.utils.exceptions import BadRequestError
 from backend.app.utils.excel_utils import get_excel_metadata as extract_excel_metadata
+from backend.app.utils.exceptions import BadRequestError
 
 if TYPE_CHECKING:
     pass
@@ -20,7 +20,7 @@ MAX_PROJECT_UPLOAD_SIZE_MB: int = 50
 
 class FileManager:
     """Handles file operations for projects and data sources.
-    
+
     This component manages file uploads, listings, and metadata extraction
     for both project-specific files and global data source files.
     """
@@ -32,7 +32,7 @@ class FileManager:
         ensure_project_exists_callback,  # Callable[[str], Path]
     ):
         """Initialize file manager.
-        
+
         Args:
             projects_dir: Base directory for all projects
             sanitize_project_name_callback: Function to sanitize project names
@@ -46,7 +46,7 @@ class FileManager:
 
     def _get_project_upload_dir(self, project_name: str) -> Path:  # pylint: disable=unused-argument
         """Get upload directory for a project.
-        
+
         Currently returns projects_dir for backward compatibility.
         Future: could return projects_dir/project_name/uploads/
         """
@@ -55,7 +55,7 @@ class FileManager:
 
     def _to_public_path(self, path: Path) -> str:
         """Convert absolute path to public relative path.
-        
+
         Tries to make path relative to PROJECT_ROOT, then PROJECTS_DIR parent,
         otherwise returns absolute path as string.
         """
@@ -69,13 +69,13 @@ class FileManager:
 
     def _resolve_path(self, path_str: str) -> Path:
         """Resolve a user-supplied path relative to project root (or projects dir) and validate existence.
-        
+
         Args:
             path_str: Path string (absolute or relative)
-            
+
         Returns:
             Resolved absolute path
-            
+
         Raises:
             BadRequestError: If file not found
         """
@@ -89,7 +89,7 @@ class FileManager:
             # Relative to repo root
             candidates.append((settings.PROJECT_ROOT / raw).resolve())
             # Relative to projects dir
-            candidates.append((settings.PROJECTS_DIR / raw.name).resolve())
+            candidates.append((self.projects_dir / raw.name).resolve())
 
         for candidate in candidates:
             if candidate.exists():
@@ -99,13 +99,13 @@ class FileManager:
 
     def _sanitize_filename(self, filename: str | None) -> str:
         """Sanitize uploaded filename to prevent path traversal.
-        
+
         Args:
             filename: User-supplied filename
-            
+
         Returns:
             Safe filename (basename only)
-            
+
         Raises:
             BadRequestError: If filename is empty or invalid
         """
@@ -120,11 +120,11 @@ class FileManager:
 
     def list_project_files(self, project_name: str, extensions: Iterable[str] | None = None) -> list[ProjectFileInfo]:
         """List files stored under a project's uploads directory.
-        
+
         Args:
             project_name: Project name
             extensions: Optional file extensions to filter (e.g., ['xlsx', 'csv'])
-            
+
         Returns:
             List of file information
         """
@@ -167,16 +167,16 @@ class FileManager:
         max_size_mb: int = MAX_PROJECT_UPLOAD_SIZE_MB,
     ) -> ProjectFileInfo:
         """Save an uploaded file into the project's uploads directory.
-        
+
         Args:
             project_name: Project name
             upload: Uploaded file
             allowed_extensions: Allowed file extensions (e.g., {'.xlsx', '.xls'})
             max_size_mb: Maximum file size in megabytes
-            
+
         Returns:
             File information for the saved file
-            
+
         Raises:
             BadRequestError: If file type or size is invalid
         """
@@ -233,14 +233,14 @@ class FileManager:
 
     def list_data_source_files(self, extensions: Iterable[str] | None = None) -> list[ProjectFileInfo]:
         """List files available for data source configuration in the projects directory.
-        
+
         Args:
             extensions: Optional file extensions to filter
-            
+
         Returns:
             List of file information
         """
-        upload_dir: Path = settings.PROJECTS_DIR
+        upload_dir: Path = self.projects_dir
 
         if not upload_dir.exists():
             return []
@@ -277,19 +277,19 @@ class FileManager:
         max_size_mb: int = MAX_PROJECT_UPLOAD_SIZE_MB,
     ) -> ProjectFileInfo:
         """Save an uploaded file into the projects directory (global data source).
-        
+
         Args:
             upload: Uploaded file
             allowed_extensions: Allowed file extensions
             max_size_mb: Maximum file size in megabytes
-            
+
         Returns:
             File information for the saved file
-            
+
         Raises:
             BadRequestError: If file type or size is invalid
         """
-        allowed: set[str] = allowed_extensions or set()
+        allowed: set[str] = allowed_extensions or DEFAULT_ALLOWED_UPLOAD_EXTENSIONS
 
         filename: str = self._sanitize_filename(upload.filename)
         ext: str = Path(filename).suffix.lower()
@@ -297,7 +297,7 @@ class FileManager:
             allowed_list: str = ", ".join(sorted(allowed))
             raise BadRequestError(f"Unsupported file type '{ext}'. Allowed: {allowed_list}")
 
-        upload_dir: Path = settings.PROJECTS_DIR
+        upload_dir: Path = self.projects_dir
         upload_dir.mkdir(parents=True, exist_ok=True)
 
         target_path: Path = upload_dir / filename

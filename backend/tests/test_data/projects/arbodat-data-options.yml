@@ -1,4 +1,0 @@
-driver: ucanaccess
-options:
-  filename: ./projects/ArchBotDaten.mdb
-  ucanaccess_dir: lib/ucanaccess

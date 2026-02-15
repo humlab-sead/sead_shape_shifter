@@ -369,7 +369,6 @@ class TestConfigurationsBackups:
         """Test listing backups."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        monkeypatch.setattr(settings, "BACKUPS_DIR", tmp_path / "backups")
 
         # Create config
         client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]})
@@ -383,13 +382,12 @@ class TestConfigurationsBackups:
         assert response.status_code == 200
         backups = response.json()
         assert len(backups) >= 1
-        assert "test_project" in backups[0]["file_name"]
+        assert "shapeshifter" in backups[0]["file_name"]
 
     def test_restore_backup(self, reset_services, tmp_path, monkeypatch, sample_config_data):
         """Test restoring from backup."""
 
         monkeypatch.setattr(settings, "PROJECTS_DIR", tmp_path)
-        monkeypatch.setattr(settings, "BACKUPS_DIR", tmp_path / "backups")
 
         # Create config
         create_response = client.post("/api/v1/projects", json={"name": "test_project", "entities": sample_config_data["entities"]})

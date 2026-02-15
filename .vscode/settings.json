@@ -52,7 +52,9 @@
         "**/.git",
         "**/.pytest_cache",
         "**/.mypy_cache",
-        "**/htmlcov"
+        "**/htmlcov",
+        "**/shape_shifter.egg-info",
+        "**/.git/**"
     ],
     "python.analysis.aiHoverSummaries": true,
     "python.analysis.autoFormatStrings": true,
@@ -67,21 +69,24 @@
     ],
     "python.analysis.generateWithTypeAnnotation": true,
     "python.analysis.ignore": [
-        "**/node_modules/**",
         "**/__pycache__/**",
+        "**/.git/**",
+        "**/.mypy_cache/**",
+        "**/.pytest_cache/**",
         "**/.venv/**",
-        "**/venv/**",
-        "**/frontend/**",
-        "**/dist/**",
-        "**/build/**",
-        "**/output/**",
         "**/backups/**",
-        "**/tmp/**",
+        "**/build/**",
         "**/data/**",
         "**/deprecated/**",
-        "**/.pytest_cache/**",
-        "**/.mypy_cache/**",
-        "**/htmlcov/**"
+        "**/dist/**",
+        "**/frontend/**",
+        "**/htmlcov/**",
+        "**/lib/**",
+        "**/node_modules/**",
+        "**/output/**",
+        "**/shape_shifter.egg-info/**",
+        "**/tmp/**",
+        "**/venv/**",
     ],
     "python.analysis.include": [
         "src/**",
@@ -111,7 +116,9 @@
         "**/__pycache__/**": true,
         "**/.pytest_cache/**": true,
         "**/.mypy_cache/**": true,
-        "**/htmlcov/**": true
+        "**/htmlcov/**": true,
+        "**/shape_shifter.egg-info/**": true,
+        "**/data/**": true
     },
     "search.exclude": {
         "**/node_modules": true,
@@ -125,7 +132,9 @@
         "**/__pycache__": true,
         "**/.pytest_cache": true,
         "**/.mypy_cache": true,
-        "**/htmlcov": true
+        "**/htmlcov": true,
+        "**/shape_shifter.egg-info": true,
+        "**/data/**": true
     },
     "remote.autoForwardPorts": true,
         "remote.portsAttributes": {

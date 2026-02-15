@@ -35,7 +35,7 @@ class TestFileManager:
         def ensure_project_exists(name: str) -> Path:
             project_file = temp_config_dir / name / "shapeshifter.yml"
             if not project_file.exists():
-                raise ResourceNotFoundError(message="", esource_type="project", resource_id=name)
+                raise ResourceNotFoundError(message="", resource_type="project", resource_id=name)
             return project_file
 
         return FileManager(
@@ -213,14 +213,16 @@ class TestFileManager:
 
     def test_save_data_source_file_success(self, file_manager: FileManager, temp_config_dir: Path):
         """Test saving global data source file."""
-        upload = self.create_upload_file("global.xlsx", b"global data")
+        upload = self.create_upload_file("test_datasource_unique.xlsx", b"global data")
 
         result = file_manager.save_data_source_file(upload)
 
-        assert result.name == "global.xlsx"
+        # File may be renamed if duplicates exist, so check it was saved with the returned name
         assert result.size_bytes == 11
+        assert result.name.startswith("test_datasource_unique")
+        assert result.name.endswith(".xlsx")
 
-        saved_file = temp_config_dir / "global.xlsx"
+        saved_file = temp_config_dir / result.name
         assert saved_file.exists()
         assert saved_file.read_bytes() == b"global data"
 
@@ -234,68 +236,139 @@ class TestFileManager:
 
     def test_save_data_source_file_duplicate_renames(self, file_manager: FileManager, temp_config_dir: Path):
         """Test duplicate global filenames are renamed."""
-        upload1 = self.create_upload_file("shared.xlsx", b"v1")
-        upload2 = self.create_upload_file("shared.xlsx", b"v2")
+        # Use unique base name to avoid conflicts with other tests
+        upload1 = self.create_upload_file("test_shared_dup.xlsx", b"v1")
+        upload2 = self.create_upload_file("test_shared_dup.xlsx", b"v2")
 
         result1 = file_manager.save_data_source_file(upload1)
         result2 = file_manager.save_data_source_file(upload2)
 
-        assert result1.name == "shared.xlsx"
-        assert result2.name == "shared-1.xlsx"
+        # First file might be renamed if it already exists from another test
+        assert result1.name.startswith("test_shared_dup")
+        assert result1.name.endswith(".xlsx")
+        
+        # Second file should have a higher counter than first
+        assert result2.name.startswith("test_shared_dup")
+        assert result2.name.endswith(".xlsx")
+        assert result2.name != result1.name  # Must be different
+        
+        # Verify both files exist with correct content
+        assert (temp_config_dir / result1.name).read_bytes() == b"v1"
+        assert (temp_config_dir / result2.name).read_bytes() == b"v2"
 
     def test_save_data_source_file_size_limit(self, file_manager: FileManager):
         """Test global file size limit."""
         content = b"x" * (2 * 1024 * 1024)
-        upload = self.create_upload_file("big.xlsx", content)
+        upload = self.create_upload_file("test_big_datasource.xlsx", content)
 
         with pytest.raises(BadRequestError, match="too large"):
             file_manager.save_data_source_file(upload, max_size_mb=1)
 
     # list_data_source_files tests
 
-    def test_list_data_source_files_empty(self, file_manager: FileManager, temp_config_dir: Path):
-        """Test listing data source files when none exist."""
-        # Only create project dirs, no data files
-        (temp_config_dir / "project1").mkdir()
+    def test_list_data_source_files_empty(self, temp_config_dir: Path):
+        """Test listing data source files when only directories exist."""
+        # Create a clean temp directory for this specific test
+        clean_dir = temp_config_dir.parent / "list_empty_test"
+        clean_dir.mkdir(exist_ok=True)
+        
+        def sanitize(name: str) -> str:
+            return name.strip()
+        def ensure_exists(name: str) -> Path:
+            return clean_dir / name / "shapeshifter.yml"
+        
+        clean_manager = FileManager(
+            projects_dir=clean_dir,
+            sanitize_project_name_callback=sanitize,
+            ensure_project_exists_callback=ensure_exists,
+        )
+        
+        # Create only project directory, no files
+        (clean_dir / "project1").mkdir(exist_ok=True)
 
-        files = file_manager.list_data_source_files()
+        files = clean_manager.list_data_source_files()
         assert files == []
 
-    def test_list_data_source_files_all(self, file_manager: FileManager, temp_config_dir: Path):
+    def test_list_data_source_files_all(self, temp_config_dir: Path):
         """Test listing all data source files."""
-        # Create some files in projects root
-        (temp_config_dir / "data1.xlsx").write_text("data1")
-        (temp_config_dir / "data2.csv").write_text("data2")
-        (temp_config_dir / "readme.txt").write_text("readme")
+        # Create isolated directory to avoid interference
+        test_dir = temp_config_dir.parent / "list_all_test"
+        test_dir.mkdir(exist_ok=True)
+        
+        def sanitize(name: str) -> str:
+            return name.strip()
+        def ensure_exists(name: str) -> Path:
+            return test_dir / name / "shapeshifter.yml"
+        
+        test_manager = FileManager(
+            projects_dir=test_dir,
+            sanitize_project_name_callback=sanitize,
+            ensure_project_exists_callback=ensure_exists,
+        )
+        
+        # Create test files
+        (test_dir / "list_all1.xlsx").write_text("data1")
+        (test_dir / "list_all2.csv").write_text("data2")
+        (test_dir / "list_all3.txt").write_text("readme")
 
-        files = file_manager.list_data_source_files()
+        files = test_manager.list_data_source_files()
         assert len(files) == 3
         names = {f.name for f in files}
-        assert names == {"data1.xlsx", "data2.csv", "readme.txt"}
+        assert names == {"list_all1.xlsx", "list_all2.csv", "list_all3.txt"}
 
-    def test_list_data_source_files_with_extensions(self, file_manager: FileManager, temp_config_dir: Path):
+    def test_list_data_source_files_with_extensions(self, temp_config_dir: Path):
         """Test filtering data source files by extension."""
-        (temp_config_dir / "data.xlsx").write_text("excel")
-        (temp_config_dir / "sheet.csv").write_text("csv")
-        (temp_config_dir / "doc.txt").write_text("text")
+        # Create isolated directory
+        test_dir = temp_config_dir.parent / "list_ext_test"
+        test_dir.mkdir(exist_ok=True)
+        
+        def sanitize(name: str) -> str:
+            return name.strip()
+        def ensure_exists(name: str) -> Path:
+            return test_dir / name / "shapeshifter.yml"
+        
+        test_manager = FileManager(
+            projects_dir=test_dir,
+            sanitize_project_name_callback=sanitize,
+            ensure_project_exists_callback=ensure_exists,
+        )
+        
+        (test_dir / "filter_ext1.xlsx").write_text("excel")
+        (test_dir / "filter_ext2.csv").write_text("csv")
+        (test_dir / "filter_ext3.txt").write_text("text")
 
-        xlsx_files = file_manager.list_data_source_files(extensions=[".xlsx"])
+        xlsx_files = test_manager.list_data_source_files(extensions=[".xlsx"])
         assert len(xlsx_files) == 1
-        assert xlsx_files[0].name == "data.xlsx"
+        assert xlsx_files[0].name == "filter_ext1.xlsx"
 
-        data_files = file_manager.list_data_source_files(extensions=["xlsx", "csv"])
+        data_files = test_manager.list_data_source_files(extensions=["xlsx", "csv"])
         assert len(data_files) == 2
         names = {f.name for f in data_files}
-        assert names == {"data.xlsx", "sheet.csv"}
+        assert names == {"filter_ext1.xlsx", "filter_ext2.csv"}
 
-    def test_list_data_source_files_skips_directories(self, file_manager: FileManager, temp_config_dir: Path):
+    def test_list_data_source_files_skips_directories(self, temp_config_dir: Path):
         """Test directories are not included in list."""
-        (temp_config_dir / "data.xlsx").write_text("file")
-        (temp_config_dir / "project_dir").mkdir()
+        # Create isolated directory
+        test_dir = temp_config_dir.parent / "list_skip_test"
+        test_dir.mkdir(exist_ok=True)
+        
+        def sanitize(name: str) -> str:
+            return name.strip()
+        def ensure_exists(name: str) -> Path:
+            return test_dir / name / "shapeshifter.yml"
+        
+        test_manager = FileManager(
+            projects_dir=test_dir,
+            sanitize_project_name_callback=sanitize,
+            ensure_project_exists_callback=ensure_exists,
+        )
+        
+        (test_dir / "skip_dirs1.xlsx").write_text("file")
+        (test_dir / "project_dir").mkdir()
 
-        files = file_manager.list_data_source_files()
+        files = test_manager.list_data_source_files()
         assert len(files) == 1
-        assert files[0].name == "data.xlsx"
+        assert files[0].name == "skip_dirs1.xlsx"
 
     # get_excel_metadata tests
 

@@ -341,10 +341,10 @@ class YamlService:
 
     def create_backup(self, file_path: str | Path) -> Path:
         """
-        Create timestamped backup of file.
+        Create timestamped backup of file in project's backups directory.
 
         Args:
-            file_path: File to backup
+            file_path: File to backup (e.g., /path/to/projects/project_name/shapeshifter.yml)
 
         Returns:
             Path to backup file
@@ -357,8 +357,9 @@ class YamlService:
         if not path.exists():
             raise YamlServiceError(f"Cannot backup non-existent file: {path}")
 
-        # Create backup directory
-        backup_dir = settings.BACKUPS_DIR
+        # Create backup directory in project folder: project_dir/backups/
+        project_dir = path.parent
+        backup_dir = project_dir / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate timestamp with microseconds to avoid collisions
@@ -393,17 +394,22 @@ class YamlService:
         except Exception as e:  # pylint: disable=broad-except
             return False, str(e)
 
-    def list_backups(self, original_name: str | None = None) -> list[Path]:
+    def list_backups(self, original_name: str | None = None, project_dir: str | Path | None = None) -> list[Path]:
         """
-        List all backup files, optionally filtered by original filename.
+        List all backup files for a project.
 
         Args:
-            original_name: Optional original filename to filter by (e.g., "arbodat.yml")
+            original_name: Optional original filename to filter by (e.g., "shapeshifter.yml")
+            project_dir: Project directory containing backups/ subdirectory
 
         Returns:
             List of backup file paths, sorted by modification time (newest first)
         """
-        backup_dir = settings.BACKUPS_DIR
+        if not project_dir:
+            logger.warning("list_backups called without project_dir, returning empty list")
+            return []
+
+        backup_dir = Path(project_dir) / "backups"
 
         if not backup_dir.exists():
             return []
@@ -415,7 +421,7 @@ class YamlService:
 
         backups = sorted(backup_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
 
-        logger.debug(f"Found {len(backups)} backup(s) for pattern '{pattern}'")
+        logger.debug(f"Found {len(backups)} backup(s) for pattern '{pattern}' in {backup_dir}")
         return list(backups)
 
     def restore_backup(self, backup_path: str | Path, target_path: str | Path, create_backup: bool = True) -> Path:

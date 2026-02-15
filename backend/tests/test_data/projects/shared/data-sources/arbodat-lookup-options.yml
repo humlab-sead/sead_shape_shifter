@@ -1,4 +1,4 @@
 driver: ucanaccess
 options:
-  filename: ./projects/ArchBotStrukDat.mdb
+  filename: ${GLOBAL_DATA_DIR}/ArchBotStrukDat.mdb
   ucanaccess_dir: lib/ucanaccess

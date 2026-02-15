@@ -1,4 +1,0 @@
-driver: ucanaccess
-options:
-  filename: ./projects/digidiggie_dev.accdb
-  ucanaccess_dir: lib/ucanaccess

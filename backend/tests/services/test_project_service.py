@@ -641,7 +641,7 @@ options:
         mock_state = MagicMock()
         # Simulate cache hit - project already loaded
         cached_project = deepcopy(sample_config)
-        cached_project.metadata.name = "test_cached" # type: ignore
+        cached_project.metadata.name = "test_cached"  # type: ignore
         mock_state.get.return_value = cached_project
         service.state = mock_state
 
@@ -971,19 +971,20 @@ options: {}
         # Should be empty (shapeshifter.yml not included in project files list)
         assert files == []
 
-    def test_list_project_files_with_extensions(self, service: ProjectService, sample_project_with_files: Path):
+    def test_list_project_files_with_extensions(self, service: ProjectService, sample_project_with_files: Path, temp_config_dir: Path):
         """Test listing files with specific extensions."""
-        # Add some data files
-        (sample_project_with_files / "data.xlsx").touch()
-        (sample_project_with_files / "data.csv").touch()
-        (sample_project_with_files / "notes.txt").touch()
+        # Add some data files to projects_dir root (backward compatibility mode)
+        # Files are stored in configurations root, not in project subdirectory
+        (temp_config_dir / "data.xlsx").touch()
+        (temp_config_dir / "data.csv").touch()
+        (temp_config_dir / "notes.txt").touch()
 
         files = service.list_project_files("test_project", extensions=[".xlsx", ".csv"])
 
-        # Note: list_project_files may filter out certain files or require specific conditions
-        # The exact behavior depends on implementation details
-        file_names = [f.name for f in sample_project_with_files.iterdir() if f.suffix in [".xlsx", ".csv"]]
-        assert len(file_names) == 2  # Verify files were created
+        # Should return only files matching the extensions
+        assert len(files) == 2
+        file_names = {f.name for f in files}
+        assert file_names == {"data.xlsx", "data.csv"}
 
     def test_get_project_upload_dir(self, service: ProjectService, sample_project_with_files: Path):
         """Test getting project upload directory."""

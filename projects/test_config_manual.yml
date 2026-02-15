@@ -1,8 +1,0 @@
-metadata:
-  name: test_config_manual
-  type: shapeshifter-project
-  description: Project for saving the world
-  version: 1.0.0
-  default_entity:
-entities: {}
-options: {}
