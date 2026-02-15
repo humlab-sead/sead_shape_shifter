@@ -60,7 +60,7 @@ class SourceNodeExtractorRegistry(Generic[T]):
 
 
 # Global registry instance
-SourceNodeExtractors = SourceNodeExtractorRegistry()
+SourceNodeExtractors = SourceNodeExtractorRegistry()  # pylint: disable=invalid-name
 
 
 class DependencyNode(dict):
