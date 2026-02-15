@@ -341,6 +341,40 @@ class BaseResolver:
             return self.resolve_directive(directive_argument, base_path)
         return value
 
+    def _resolve_path(self, path: str, base_path: Path | None = None, raise_if_missing: bool = False) -> str:
+        """Resolve a file path with environment variable expansion and relative path support.
+
+        Supports partial replacement in paths (e.g., ${DATA_DIR}/subfolder/file.xlsx).
+
+        Args:
+            path: Path string potentially containing ${VAR} references
+            base_path: Base directory for resolving relative paths
+            raise_if_missing: If True, raise ValueError for unresolved env vars
+
+        Returns:
+            Resolved absolute path string
+
+        Raises:
+            ValueError: If raise_if_missing=True and env var cannot be resolved
+        """
+        if not path:
+            return path
+
+        # Step 1: Expand environment variables
+        resolved_path: str = replace_env_vars(path, raise_if_unresolved=raise_if_missing)
+
+        # Step 2: Handle absolute vs relative paths
+        path_obj = Path(resolved_path)
+
+        if path_obj.is_absolute():
+            return str(path_obj)
+
+        # Step 3: Resolve relative paths
+        if base_path is not None:
+            return str(base_path / resolved_path)
+
+        return resolved_path
+
     @abstractmethod
     def resolve_directive(self, directive_argument: str, base_path: Path | None) -> dict[str, Any]:
         pass
@@ -381,8 +415,7 @@ class SubConfigResolver(BaseResolver):
             Loaded configuration dict
         """
         # Resolve environment variables and paths
-
-        filename: str = PathResolver.resolve(directive_argument, base_path=base_path, raise_if_missing=False)
+        filename: str = self._resolve_path(directive_argument, base_path=base_path, raise_if_missing=False)
 
         loaded_data: dict[str, Any] = (
             ConfigFactory().load(source=filename, context=self.context, env_filename=self.env_filename, env_prefix=None).data
@@ -434,7 +467,7 @@ class LoadResolver(BaseResolver):
             filename, sep = directive_argument, ","
 
         # Resolve environment variables and relative paths
-        filename = PathResolver.resolve(filename, base_path=base_path, raise_if_missing=False)
+        filename = self._resolve_path(filename, base_path=base_path, raise_if_missing=False)
 
         if not is_path_to_existing_file(filename):
             logger.warning(f"ignoring load directive for path '{directive_argument}' since file '{filename}' does not exist")
