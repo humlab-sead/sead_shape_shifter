@@ -7,7 +7,7 @@ import pandas as pd
 from ingesters.sead.dispatchers.to_csv import CsvProcessor
 from ingesters.sead.submission import Submission
 
-from tests.builders import build_column, build_schema, build_table
+from ingesters.sead.tests.builders import build_column, build_schema, build_table
 
 
 def test_csv_processor_creates_four_files(tmp_path):
