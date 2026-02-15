@@ -91,7 +91,7 @@ options: {}
 
     # ensure_project_exists tests
 
-    def test_ensure_project_exists_valid(self, utils: ProjectUtils, sample_project_dir: Path):
+    def test_ensure_project_exists_valid(self, utils: ProjectUtils, sample_project_dir: Path):  # pylint: disable=unused-argument
         """Test ensuring project exists returns correct path."""
         project_file = utils.ensure_project_exists("test_project")
         assert project_file.exists()

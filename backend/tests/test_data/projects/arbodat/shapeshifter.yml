@@ -1152,9 +1152,9 @@ options:
     filename: translations.tsv
     delimiter: "\t"
   data_sources:
-    sead: '@include: ${GLOBAL_DATA_SOURCE_DIR}/sead-options.yml'
-    arbodat_data: '@include: ${GLOBAL_DATA_SOURCE_DIR}/arbodat-data-options.yml'
-    arbodat_lookup: '@include: ${GLOBAL_DATA_SOURCE_DIR}/arbodat-lookup-options.yml'
+    sead: '@include: data-sources/sead-options.yml'
+    arbodat_data: '@include: data-sources/arbodat-data-options.yml'
+    arbodat_lookup: '@include: data-sources/arbodat-lookup-options.yml'
   translation: '@load: options.translations'
   reconciliation: '@include: reconciliation.yml'
   finally:

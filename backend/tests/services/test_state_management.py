@@ -228,10 +228,10 @@ class TestVerifySave:
         file_path = _write_project_yaml(temp_dir, "bad", {"a": {}})
 
         # Should log error but not raise (it's a defensive check)
-        with patch("backend.app.services.project_service.logger") as mock_logger:
+        with patch("backend.app.services.project_service.logger.error") as mock_error:
             service._verify_save("bad", ["a", "b", "c"], file_path, "test-corr")
-            mock_logger.error.assert_called_once()
-            call_args = mock_logger.error.call_args
+            mock_error.assert_called_once()
+            call_args = mock_error.call_args
             assert "SAVE VERIFICATION FAILED" in call_args[0][0]
 
     def test_verify_save_skips_empty_projects(self, service, temp_dir):

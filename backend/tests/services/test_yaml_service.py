@@ -1,5 +1,6 @@
 """Tests for YAML service."""
 
+from pathlib import Path
 import time
 
 import pytest
@@ -118,7 +119,7 @@ class TestYamlServiceSave:
         assert loaded == new_data
 
         # Check backup exists
-        backups = yaml_service.list_backups("test.yml")
+        backups = yaml_service.list_backups(project_dir=temp_yaml_file.parent)
         assert len(backups) > 0
 
     def test_load_save_roundtrip(self, yaml_service, temp_yaml_file):
@@ -152,12 +153,12 @@ class TestYamlServiceBackup:
         assert "backup" in backup_path.name
         assert backup_path.suffix == temp_yaml_file.suffix
 
-    def test_backup_nonexistent_file_raises_error(self, yaml_service, tmp_path):
+    def test_backup_nonexistent_file_raises_error(self, yaml_service: YamlService, tmp_path: Path):
         """Test backing up non-existent file raises error."""
         with pytest.raises(YamlServiceError, match="non-existent"):
             yaml_service.create_backup(tmp_path / "nonexistent.yml")
 
-    def test_list_backups(self, yaml_service, temp_yaml_file):
+    def test_list_backups(self, yaml_service: YamlService, temp_yaml_file: Path):
         """Test listing backups."""
 
         # Create multiple backups with time separation to avoid same timestamp
@@ -165,15 +166,16 @@ class TestYamlServiceBackup:
         time.sleep(1.1)  # Ensure different second in timestamp
         yaml_service.create_backup(temp_yaml_file)
 
-        backups = yaml_service.list_backups("test.yml")
+        backups = yaml_service.list_backups(project_dir=temp_yaml_file.parent)
         assert len(backups) >= 2
 
-    def test_list_backups_empty(self, yaml_service):
+    def test_list_backups_empty(self, yaml_service: YamlService):
         """Test listing backups when none exist."""
-        backups = yaml_service.list_backups("nonexistent.yml")
+        backups = yaml_service.list_backups(project_dir=Path("/nonexistent"))
+
         assert backups == []
 
-    def test_restore_backup(self, yaml_service, temp_yaml_file, tmp_path):
+    def test_restore_backup(self, yaml_service: YamlService, temp_yaml_file: Path, tmp_path: Path):
         """Test restoring backup."""
         # Load and create backup
         original_content = yaml_service.load(temp_yaml_file)
