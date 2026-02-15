@@ -225,8 +225,7 @@ class TestVerifySave:
 
     def test_verify_save_detects_missing_entities(self, service, temp_dir):
         """_verify_save logs an error when disk has fewer entities than expected."""
-        _write_project_yaml(temp_dir, "bad", {"a": {}})
-        file_path = temp_dir / "bad.yml"
+        file_path = _write_project_yaml(temp_dir, "bad", {"a": {}})
 
         # Should log error but not raise (it's a defensive check)
         with patch("backend.app.services.project_service.logger") as mock_logger:
