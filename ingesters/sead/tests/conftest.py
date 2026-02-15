@@ -4,13 +4,14 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 from dotenv import load_dotenv
-from src.configuration import ConfigStore
-from src.configuration.interface import ConfigLike
+
 from ingesters.sead.metadata import MockSchemaService, SchemaService, SeadSchema
 from ingesters.sead.submission import Submission
 
 # Import test builders for easy access in tests
 from ingesters.sead.tests.builders import build_column, build_schema, build_table
+from src.configuration import ConfigStore
+from src.configuration.interface import ConfigLike
 
 # pylint: disable=redefined-outer-name
 

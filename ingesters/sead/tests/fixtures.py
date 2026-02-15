@@ -18,9 +18,9 @@ Usage:
 from typing import Callable
 
 import pandas as pd
+
 from ingesters.sead.metadata import SeadSchema
 from ingesters.sead.submission import Submission
-
 from ingesters.sead.tests.builders import build_column, build_schema, build_table
 
 # ============================================================================

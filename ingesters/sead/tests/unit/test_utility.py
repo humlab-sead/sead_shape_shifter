@@ -1,6 +1,7 @@
 from typing import Any
 
 import pytest
+
 from ingesters.sead import utility
 
 
@@ -91,7 +92,6 @@ def test_recursive_update_duplicate_basic():
     assert result == {"a": 1}
 
 
-
 def test_pascal_to_snake_case():
     assert utility.pascal_to_snake_case("PascalCase") == "pascal_case"
     assert utility.pascal_to_snake_case("TestString") == "test_string"
@@ -104,6 +104,7 @@ def test_pascal_to_snake_case():
     assert utility.pascal_to_snake_case("PascalCaseWithNumbers123") == "pascal_case_with_numbers123"
     assert utility.pascal_to_snake_case("PascalCaseWith123Numbers") == "pascal_case_with123_numbers"
 
+
 def test_flatten_empty_list_returns_empty_list():
     results = utility.flatten([])
     assert [] == results
@@ -112,6 +113,7 @@ def test_flatten_empty_list_returns_empty_list():
 def test_flatten_one_empty_list_list_returns_the_list():
     results = utility.flatten([[]])
     assert [] == results
+
 
 def test_recursive_filter_dict_keep_mode():
     d = {

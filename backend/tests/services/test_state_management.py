@@ -64,7 +64,7 @@ def reset_locks():
 
 def _write_project_yaml(project_dir: Path, name: str, entities: dict[str, Any]) -> Path:
     """Write a project YAML file to disk."""
-    file_path = project_dir / name / f"shapeshifter.yml"
+    file_path = project_dir / name / "shapeshifter.yml"
     data = {
         "metadata": {
             "type": "shapeshifter-project",

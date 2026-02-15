@@ -1,9 +1,9 @@
 """Test edge cases and error handling in CSV dispatcher."""
 
 import pandas as pd
+
 from ingesters.sead.dispatchers.to_csv import CsvProcessor, _format_value, _to_int_or_none, _to_none
 from ingesters.sead.submission import Submission
-
 from ingesters.sead.tests.builders import build_column, build_schema, build_table
 
 

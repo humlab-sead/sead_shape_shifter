@@ -1,9 +1,9 @@
 """Tests for reusable fixtures module."""
 
 import pandas as pd
+
 from ingesters.sead.metadata import Column, SeadSchema
 from ingesters.sead.submission import Submission
-
 from ingesters.sead.tests.fixtures import (
     COMPLEX_SCHEMA,
     EMPTY_SUBMISSION,

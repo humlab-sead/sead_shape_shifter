@@ -4,9 +4,10 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
+from backend.app.core.config import Settings, get_settings
 from src.loaders.base_loader import ConnectTestResult
 from src.utility import replace_env_vars
-from backend.app.core.config import get_settings, Settings
+
 
 class DataSourceConfig(BaseModel):
     """Configuration for a data source connection.
@@ -66,7 +67,9 @@ class DataSourceConfig(BaseModel):
 
     def resolve_config_env_vars(self) -> "DataSourceConfig":
         settings: Settings = get_settings()
-        return DataSourceConfig(**replace_env_vars(self.model_dump(exclude_none=True), env_prefix=settings.env_prefix, try_without_prefix=True))
+        return DataSourceConfig(
+            **replace_env_vars(self.model_dump(exclude_none=True), env_prefix=settings.env_prefix, try_without_prefix=True)
+        )
 
 
 class DataSourceTestResult(BaseModel):

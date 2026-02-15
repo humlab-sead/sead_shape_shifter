@@ -3,9 +3,10 @@ from os.path import isfile
 
 import pandas as pd
 import pytest
-from src.configuration.config import Config
+
 from ingesters.sead.metadata import SchemaService, SeadSchema
 from ingesters.sead.utility import create_db_uri
+from src.configuration.config import Config
 
 # @pytest.mark.skip(reason="sandbox test")
 # def test_download_sead_comments():
