@@ -137,25 +137,19 @@ class TestSourceNodeExtraction:
         assert len(graph["source_edges"]) == 3
 
         # Verify file->sheet edge (via source entity)
-        file_to_sheet = next(
-            (e for e in graph["source_edges"] if e["source"] == "file:data" and e["target"] == "sheet:data:Sheet1"), None
-        )
+        file_to_sheet = next((e for e in graph["source_edges"] if e["source"] == "file:data" and e["target"] == "sheet:data:Sheet1"), None)
         assert file_to_sheet is not None
         assert file_to_sheet["label"] == "contains"
         assert file_to_sheet["via_source_entity"] is True
 
         # Verify sheet->entity edge (via source entity)
-        sheet_to_entity = next(
-            (e for e in graph["source_edges"] if e["source"] == "sheet:data:Sheet1" and e["target"] == "my_data"), None
-        )
+        sheet_to_entity = next((e for e in graph["source_edges"] if e["source"] == "sheet:data:Sheet1" and e["target"] == "my_data"), None)
         assert sheet_to_entity is not None
         assert sheet_to_entity["label"] == "provides"
         assert sheet_to_entity["via_source_entity"] is True
 
         # Verify direct file->entity edge (for when source entities hidden)
-        file_to_entity = next(
-            (e for e in graph["source_edges"] if e["source"] == "file:data" and e["target"] == "my_data"), None
-        )
+        file_to_entity = next((e for e in graph["source_edges"] if e["source"] == "file:data" and e["target"] == "my_data"), None)
         assert file_to_entity is not None
         assert file_to_entity["label"] == "provides"
         assert file_to_entity["via_source_entity"] is False
@@ -246,7 +240,7 @@ class TestSourceNodeExtraction:
         # Should have 2 source nodes (file and sheet), not 4
         assert len(graph["source_nodes"]) == 2
 
-        # Should have 5 edges: file->sheet (via), sheet->entity1 (via), sheet->entity2 (via), 
+        # Should have 5 edges: file->sheet (via), sheet->entity1 (via), sheet->entity2 (via),
         # file->entity1 (direct), file->entity2 (direct)
         assert len(graph["source_edges"]) == 5
 
@@ -294,7 +288,7 @@ class TestSourceNodeExtraction:
         sheet_names = sorted([n["name"] for n in sheet_nodes])
         assert sheet_names == ["sheet:data:Sheet1", "sheet:data:Sheet2"]
 
-        # Should have 6 edges: file->sheet1 (via), file->sheet2 (via), 
+        # Should have 6 edges: file->sheet1 (via), file->sheet2 (via),
         # sheet1->entity1 (via), sheet2->entity2 (via),
         # file->entity1 (direct), file->entity2 (direct)
         assert len(graph["source_edges"]) == 6
@@ -413,7 +407,7 @@ class TestMaterializedEntitySourceExtraction:
 
         # Should have source edges marked as frozen
         assert len(graph["source_edges"]) > 0
-        
+
         # All source edges should be frozen
         for edge in graph["source_edges"]:
             assert edge.get("frozen") is True
@@ -487,7 +481,7 @@ class TestMaterializedEntitySourceExtraction:
 
         # Should have file and sheet nodes
         assert len(graph["source_nodes"]) == 2
-        
+
         # All source edges should be frozen (3 edges: file->sheet, sheet->entity, file->entity)
         assert len(graph["source_edges"]) == 3
         for edge in graph["source_edges"]:
@@ -513,4 +507,3 @@ class TestMaterializedEntitySourceExtraction:
         # No source nodes or edges for non-materialized fixed entity
         assert len(graph["source_nodes"]) == 0
         assert len(graph["source_edges"]) == 0
-
