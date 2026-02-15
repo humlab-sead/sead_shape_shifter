@@ -392,12 +392,11 @@ class YamlService:
         except Exception as e:  # pylint: disable=broad-except
             return False, str(e)
 
-    def list_backups(self, original_name: str | None = None, project_dir: str | Path | None = None) -> list[Path]:
+    def list_backups(self, *, project_dir: str | Path | None = None) -> list[Path]:
         """
         List all backup files for a project.
 
         Args:
-            original_name: Optional original filename to filter by (e.g., "shapeshifter.yml")
             project_dir: Project directory containing backups/ subdirectory
 
         Returns:
@@ -407,17 +406,13 @@ class YamlService:
             logger.warning("list_backups called without project_dir, returning empty list")
             return []
 
-        backup_dir = Path(project_dir) / "backups"
+        backup_dir: Path = Path(project_dir) / "backups"
 
         if not backup_dir.exists():
             return []
 
-        pattern = "*.backup.*"
-        if original_name:
-            stem = Path(original_name).stem
-            pattern = f"{stem}.backup.*"
-
-        backups = sorted(backup_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
+        pattern: str = "*.backup.*"
+        backups: list[Path] = sorted(backup_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
 
         logger.debug(f"Found {len(backups)} backup(s) for pattern '{pattern}' in {backup_dir}")
         return list(backups)
