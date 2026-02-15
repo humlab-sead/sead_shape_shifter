@@ -5,7 +5,6 @@ import threading
 from pathlib import Path
 from typing import Any, Iterable
 
-import pandas as pd
 from fastapi import UploadFile
 from loguru import logger
 
@@ -18,7 +17,6 @@ from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
 from backend.app.utils.exceptions import BadRequestError
-from src.utility import sanitize_columns
 
 
 class ProjectServiceError(Exception):
@@ -138,7 +136,7 @@ class ProjectService:
             self.state.invalidate(name)
             logger.info(f"Force reload requested for '{name}', cache invalidated")
 
-        corr = get_correlation_id()
+        corr: str = get_correlation_id()
 
         # Check ApplicationState cache first (actively edited projects)
         cached_project: Project | None = self.state.get(name)
