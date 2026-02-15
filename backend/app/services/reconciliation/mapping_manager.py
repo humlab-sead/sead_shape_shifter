@@ -84,6 +84,9 @@ class EntityMappingManager:
         """
         filename = filename or self._get_default_catalog_filename(project_name)
 
+        # Ensure parent directory exists
+        filename.parent.mkdir(parents=True, exist_ok=True)
+
         # Map: Domain → DTO → YAML dict
         dto_catalog: dto.EntityResolutionCatalog = ReconciliationMapper.registry_to_dto(catalog)
 
