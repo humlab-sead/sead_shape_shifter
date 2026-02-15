@@ -15,16 +15,13 @@ from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
+from backend.app.services.project.entity_operations import EntityOperations
+from backend.app.services.project.file_manager import FileManager
+from backend.app.services.project.project_operations import ProjectOperations, ProjectServiceError
+from backend.app.services.project.project_utils import ProjectUtils
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
+from backend.app.utils.excel_utils import get_excel_metadata
 from backend.app.utils.exceptions import BadRequestError
-
-
-class ProjectServiceError(Exception):
-    """Generic exception for unexpected project service errors."""
-
-
-DEFAULT_ALLOWED_UPLOAD_EXTENSIONS: set[str] = {".xlsx", ".xls"}
-MAX_PROJECT_UPLOAD_SIZE_MB: int = 50
 
 
 class ProjectYamlSpecification:
@@ -72,10 +69,42 @@ class ProjectService:
         self.projects_dir: Path = Path(projects_dir or settings.PROJECTS_DIR)
         self.specification = ProjectYamlSpecification()
         self.state: ApplicationStateManager = state or get_app_state_manager()
+        
+        # Initialize project utilities component
+        self.utils = ProjectUtils(projects_dir=self.projects_dir)
+        
+        # Initialize project operations component
+        self.operations = ProjectOperations(
+            yaml_service=self.yaml_service,
+            projects_dir=self.projects_dir,
+            state=self.state,
+            project_lock_getter=self._get_lock,
+            project_lock_remover=self._remove_lock,
+            save_project_callback=self.save_project,
+            load_project_callback=self.load_project,
+            cache_invalidator=self._invalidate_all_caches,
+        )
+        
+        # Initialize entity operations component
+        self.entities = EntityOperations(
+            project_lock_getter=self._get_lock,
+            load_project_callback=self.load_project,
+            save_project_callback=self.save_project,
+        )
+        
+        # Initialize file manager component
+        self.files = FileManager(
+            projects_dir=self.projects_dir,
+            sanitize_project_name_callback=self.utils.sanitize_project_name,
+            ensure_project_exists_callback=self.utils.ensure_project_exists,
+        )
 
     def list_projects(self) -> list[ProjectMetadata]:
         """
         List all available project files.
+
+        Recursively discovers shapeshifter.yml files in the projects directory.
+        Project names are derived from relative paths (e.g., 'arbodat/arbodat-test').
 
         Returns:
             List of project metadata
@@ -86,18 +115,23 @@ class ProjectService:
 
         configs: list[ProjectMetadata] = []
 
-        for yaml_file in self.projects_dir.glob("*.yml"):
+        # Recursively find all shapeshifter.yml files
+        for yaml_file in self.projects_dir.rglob("shapeshifter.yml"):
             try:
                 data: dict[str, Any] = self.yaml_service.load(yaml_file)
 
                 if not self.specification.is_satisfied_by(data):
-                    logger.debug(f"Skipping {yaml_file.name} - does not satisfy project specification")
+                    logger.debug(f"Skipping {yaml_file} - does not satisfy project specification")
                     continue
 
-                entity_count = len(data.get("entities", {}))
+                entity_count: int = len(data.get("entities", {}))
+
+                # Derive project name from relative path (e.g., "arbodat/arbodat-test")
+                relative_path: Path = yaml_file.relative_to(self.projects_dir)
+                project_name: str = str(relative_path.parent) if relative_path.parent != Path(".") else yaml_file.parent.name
 
                 metadata = ProjectMetadata(
-                    name=yaml_file.stem,
+                    name=project_name,
                     file_path=str(yaml_file),
                     entity_count=entity_count,
                     created_at=yaml_file.stat().st_ctime,
@@ -121,7 +155,8 @@ class ProjectService:
         Updates version tracking in ApplicationState for cache invalidation.
 
         Args:
-            name: Project name (without .yml extension)
+            name: Project name - either simple name (e.g., 'aDNA-pilot') or
+                  nested path (e.g., 'arbodat/arbodat-test')
             force_reload: If True, invalidate cache and reload from disk (default: False)
 
         Returns:
@@ -156,8 +191,9 @@ class ProjectService:
             )
             return copy
 
-        # Load from disk - YAML file is source of truth
-        filename: Path = self.projects_dir / (f"{name.removesuffix('.yml')}.yml")
+        # Load from disk - shapeshifter.yml is the fixed filename, could be nested paths (arbodat/arbodat-test)
+        filename: Path = self.projects_dir / name / "shapeshifter.yml"
+
         if not filename.exists():
             raise ResourceNotFoundError(resource_type="project", resource_id=name, message=f"Project not found: {name}")
 
@@ -183,13 +219,7 @@ class ProjectService:
             self.state.activate(project)
 
             entity_names = sorted((project.entities or {}).keys())
-            logger.info(
-                "[{}] load_project: '{}' from DISK entities={} names={}",
-                corr,
-                name,
-                len(project.entities),
-                entity_names,
-            )
+            logger.info("[{}] load_project: '{}' from DISK entities={} names={}", corr, name, len(project.entities), entity_names)
             return project
 
         except ConfigurationError:
@@ -219,8 +249,13 @@ class ProjectService:
         """
         if not project.metadata or not project.metadata.name:
             raise ConfigurationError(message="Project must have metadata with name")
+
         # Use original file path if provided, otherwise derive from metadata.name
-        file_path: Path = original_file_path or (self.projects_dir / f"{project.metadata.name.removesuffix('.yml')}.yml")
+        # Example: projects_dir/project-name/shapeshifter.yml
+        file_path: Path = original_file_path or (self.projects_dir / project.metadata.name / "shapeshifter.yml")
+
+        # Ensure project directory exists
+        file_path.parent.mkdir(parents=True, exist_ok=True)
 
         corr: str = get_correlation_id()
         name: str = project.metadata.name
@@ -340,7 +375,7 @@ class ProjectService:
         Create new project.
 
         Args:
-            name: Project name
+            name: Project name (can include path separators for nested projects, e.g., 'arbodat/new-test')
             entities: Optional initial entities
             task_list: Optional task list configuration
 
@@ -350,85 +385,37 @@ class ProjectService:
         Raises:
             ResourceConflictError: If project already exists
         """
-        corr: str = get_correlation_id()
-        # New structure: projects_dir/name/shapeshifter.yml
-        file_path: Path = self.projects_dir / name / "shapeshifter.yml"
-
-        if file_path.exists():
-            raise ResourceConflictError(resource_type="project", resource_id=name, message=f"Project '{name}' already exists")
-
-        # Defensive: clear any stale caches for this name (e.g. after delete+recreate)
-        self._invalidate_all_caches(name, corr)
-        logger.info("[{}] create_project: '{}'", corr, name)
-
-        metadata: ProjectMetadata = ProjectMetadata(
-            name=name,
-            description=f"Project for {name}",
-            version="1.0.0",
-            file_path=str(file_path),
-            entity_count=len(entities) if entities else 0,
-            created_at=0,
-            modified_at=0,
-            is_valid=True,
-            type="shapeshifter-project",
-        )
-
-        project: Project = Project(entities=entities or {}, options={}, task_list=task_list, metadata=metadata)
-
-        return self.save_project(project, create_backup=False)
+        return self.operations.create_project(name, entities, task_list)
 
     def delete_project(self, name: str) -> None:
         """
-        Delete project file.
+        Delete project directory and all its contents.
 
         Clears ALL caches (ApplicationState, ShapeShiftCache, ShapeShiftProjectCache)
         to prevent ghost entities when a new project is created with the same name.
 
         Args:
-            name: Project name
+            name: Project name (can include path separators for nested projects)
 
         Raises:
             ResourceNotFoundError: If project not found
         """
-        corr = get_correlation_id()
-        file_path: Path = self.projects_dir / f"{name}.yml"
-
-        if not file_path.exists():
-            raise ResourceNotFoundError(resource_type="project", resource_id=name, message=f"Project not found: {name}")
-
-        lock = self._get_lock(name)
-        logger.info("[{}] delete_project: ACQUIRING lock for '{}'", corr, name)
-
-        with lock:
-            logger.info("[{}] delete_project: ACQUIRED lock for '{}'", corr, name)
-            try:
-                self.yaml_service.create_backup(file_path)
-                file_path.unlink()
-                logger.info("[{}] delete_project: file deleted for '{}'", corr, name)
-
-            except Exception as e:
-                logger.error("[{}] delete_project: failed to delete file for '{}': {}", corr, name, e)
-                raise ProjectServiceError(f"Failed to delete project: {e}") from e
-
-            # CRITICAL FIX: Clear ALL caches to prevent ghost entities
-            self._invalidate_all_caches(name, corr)
-
-        # Clean up the lock after releasing it
-        self._remove_lock(name)
-        logger.info("[{}] delete_project: completed for '{}'", corr, name)
+        return self.operations.delete_project(name)
 
     def copy_project(self, source_name: str, target_name: str) -> Project:
         """
-        Copy a project and its associated files to a new name.
+        Copy a project and its entire directory to a new name.
 
-        Copies:
-        - Project YAML file with updated metadata.name
-        - Materialized files directory (if exists)
-        - Reconciliation file (if exists)
+        Copies entire project directory including:
+        - shapeshifter.yml with updated metadata.name
+        - reconciliation.yml (if exists)
+        - translations.tsv (if exists)
+        - backups/ (if exists)
+        - Any other project-specific files
 
         Args:
-            source_name: Source project name (without .yml extension)
-            target_name: Target project name (without .yml extension)
+            source_name: Source project name (can include path separators)
+            target_name: Target project name (can include path separators)
 
         Returns:
             New project with updated metadata
@@ -438,78 +425,7 @@ class ProjectService:
             ResourceConflictError: If target project already exists
             ProjectServiceError: If copy fails
         """
-        # Normalize names (remove .yml if present)
-        source_name = source_name.removesuffix(".yml")
-        target_name = target_name.removesuffix(".yml")
-
-        source_file: Path = self.projects_dir / f"{source_name}.yml"
-        target_file: Path = self.projects_dir / f"{target_name}.yml"
-
-        # Validate source exists
-        if not source_file.exists():
-            raise ResourceNotFoundError(
-                resource_type="project", resource_id=source_name, message=f"Source project not found: {source_name}"
-            )
-
-        # Validate target doesn't exist
-        if target_file.exists():
-            raise ResourceConflictError(
-                resource_type="project", resource_id=target_name, message=f"Target project already exists: {target_name}"
-            )
-
-        # Define paths for cleanup
-        source_materialized_dir: Path = self.projects_dir / f"projects/{source_name}/materialized"
-        target_materialized_dir: Path = self.projects_dir / f"projects/{target_name}/materialized"
-        source_recon_file: Path = self.projects_dir / f"{source_name}-reconciliation.yml"
-        target_recon_file: Path = self.projects_dir / f"{target_name}-reconciliation.yml"
-
-        try:
-            # Load source project
-            source_project: Project = self.load_project(source_name)
-
-            # Update metadata for target
-            if source_project.metadata:
-                updated_description = (
-                    source_project.metadata.description.replace(source_name, target_name) if source_project.metadata.description else None
-                )
-                source_project.metadata = source_project.metadata.model_copy(
-                    update={"name": target_name, "description": updated_description}
-                )
-
-            # Copy materialized files directory if exists
-            if source_materialized_dir.exists():
-                logger.info(f"Copying materialized directory from {source_materialized_dir} to {target_materialized_dir}")
-                shutil.copytree(source_materialized_dir, target_materialized_dir)
-
-            # Copy reconciliation file if exists
-            if source_recon_file.exists():
-                logger.info(f"Copying reconciliation file from {source_recon_file} to {target_recon_file}")
-                shutil.copy2(source_recon_file, target_recon_file)
-
-            # Save target project (this creates the new YAML file)
-            logger.info(f"Saving copied project '{target_name}'")
-            new_project: Project = self.save_project(source_project, create_backup=False)
-
-            logger.info(f"Successfully copied project '{source_name}' to '{target_name}'")
-            return new_project
-
-        except (ResourceNotFoundError, ResourceConflictError, ConfigurationError):
-            # Re-raise domain exceptions as-is
-            raise
-        except Exception as e:
-            # Clean up partial copies on failure
-            logger.error(f"Failed to copy project '{source_name}' to '{target_name}': {e}")
-
-            if target_file.exists():
-                target_file.unlink()
-
-            if target_materialized_dir.exists():
-                shutil.rmtree(target_materialized_dir)
-
-            if target_recon_file.exists():
-                target_recon_file.unlink()
-
-            raise ProjectServiceError(f"Failed to copy project: {e}") from e
+        return self.operations.copy_project(source_name, target_name)
 
     def update_metadata(
         self,
@@ -538,30 +454,7 @@ class ProjectService:
         Raises:
             ProjectNotFoundError: If project not found
         """
-        # Load current project
-        project: Project = self.load_project(name)
-
-        if not project.metadata:
-            raise ConfigurationError(message=f"Project '{name}' has no metadata")
-
-        # Determine original file path to preserve filename
-        original_file_path: Path = self.projects_dir / f"{name}.yml"
-
-        # Update metadata fields (only if provided, ignore new_name)
-        if description is not None:
-            project.metadata.description = description
-        if version is not None:
-            project.metadata.version = version
-        if default_entity is not None:
-            project.metadata.default_entity = default_entity
-
-        # Ensure metadata.name matches filename (filename is source of truth)
-        project.metadata.name = name
-
-        # Save project using original file path to prevent duplicate files
-        saved_config: Project = self.save_project(project, create_backup=True, original_file_path=original_file_path)
-
-        return saved_config
+        return self.operations.update_metadata(name, new_name, description, version, default_entity)
 
     @staticmethod
     def _serialize_entity(entity: Entity) -> dict[str, Any]:
@@ -577,14 +470,7 @@ class ProjectService:
         Returns:
             Entity dict with public_id preserved
         """
-        # Exclude None fields to avoid YAML bloat, but preserve public_id separately
-        entity_dict: dict[str, Any] = entity.model_dump(exclude_none=True, exclude={"surrogate_id"}, mode="json")  # Exclude deprecated field
-
-        # Ensure public_id is always present (even if None) for three-tier identity model
-        if "public_id" not in entity_dict:
-            entity_dict["public_id"] = entity.public_id
-
-        return entity_dict
+        return EntityOperations._serialize_entity(entity)
 
     def add_entity(self, project: Project, entity_name: str, entity: Entity) -> Project:
         """
@@ -601,12 +487,7 @@ class ProjectService:
         Raises:
             ResourceConflictError: If entity already exists
         """
-        if entity_name in project.entities:
-            raise ResourceConflictError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists")
-
-        project.entities[entity_name] = self._serialize_entity(entity)
-        logger.debug(f"Added entity '{entity_name}'")
-        return project
+        return self.entities.add_entity(project, entity_name, entity)
 
     def update_entity(self, project: Project, entity_name: str, entity: Entity) -> Project:
         """
@@ -623,12 +504,7 @@ class ProjectService:
         Raises:
             ResourceNotFoundError: If entity not found
         """
-        if entity_name not in project.entities:
-            raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
-
-        project.entities[entity_name] = self._serialize_entity(entity)
-        logger.debug(f"Updated entity '{entity_name}'")
-        return project
+        return self.entities.update_entity(project, entity_name, entity)
 
     def delete_entity(self, project: Project, entity_name: str) -> Project:
         """
@@ -644,13 +520,7 @@ class ProjectService:
         Raises:
             ResourceNotFoundError: If entity not found
         """
-        if entity_name not in project.entities:
-            raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
-
-        del project.entities[entity_name]
-
-        logger.debug(f"Deleted entity '{entity_name}'")
-        return project
+        return self.entities.delete_entity(project, entity_name)
 
     def get_entity(self, project: Project, entity_name: str) -> dict[str, Any]:
         """
@@ -666,10 +536,7 @@ class ProjectService:
         Raises:
             ResourceNotFoundError: If entity not found
         """
-        if entity_name not in project.entities:
-            raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
-
-        return project.entities[entity_name]
+        return self.entities.get_entity(project, entity_name)
 
     # Convenience wrapper methods for entity operations by project name
 
@@ -688,46 +555,7 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceConflictError: If entity already exists
         """
-        corr: str = get_correlation_id()
-        lock = self._get_lock(project_name)
-        logger.info(
-            "[{}] add_entity_by_name: ACQUIRING lock project='{}' entity='{}'",
-            corr,
-            project_name,
-            entity_name,
-        )
-
-        with lock:
-            project: Project = self.load_project(project_name)
-
-            before_names: list[str] = sorted((project.entities or {}).keys())
-            logger.info(
-                "[{}] add_entity_by_name: project='{}' BEFORE add: count={} names={} adding='{}'",
-                corr,
-                project_name,
-                len(before_names),
-                before_names,
-                entity_name,
-            )
-
-            if entity_name in project.entities:
-                raise ResourceConflictError(
-                    resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' already exists"
-                )
-
-            # Use the model's add_entity method to ensure proper handling
-            project.add_entity(entity_name, entity_data)
-
-            after_names: list[str] = sorted((project.entities or {}).keys())
-            logger.info(
-                "[{}] add_entity_by_name: project='{}' AFTER add: count={} names={}",
-                corr,
-                project_name,
-                len(after_names),
-                after_names,
-            )
-
-            self.save_project(project)
+        return self.entities.add_entity_by_name(project_name, entity_name, entity_data)
 
     def update_entity_by_name(self, project_name: str, entity_name: str, entity_data: dict[str, Any]) -> None:
         """
@@ -744,39 +572,7 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
         """
-        corr: str = get_correlation_id()
-        lock = self._get_lock(project_name)
-        logger.info(
-            "[{}] update_entity_by_name: ACQUIRING lock project='{}' entity='{}'",
-            corr,
-            project_name,
-            entity_name,
-        )
-
-        with lock:
-            project: Project = self.load_project(project_name)
-
-            entity_names: list[str] = sorted((project.entities or {}).keys())
-            logger.info(
-                "[{}] update_entity_by_name: project='{}' current entities={} names={} updating='{}'",
-                corr,
-                project_name,
-                len(entity_names),
-                entity_names,
-                entity_name,
-            )
-
-            if entity_name not in project.entities:
-                raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
-
-            # Ensure public_id is preserved (three-tier identity model)
-            # If not in incoming data, keep existing value (even if None)
-            if "public_id" not in entity_data and "public_id" in project.entities[entity_name]:
-                entity_data["public_id"] = project.entities[entity_name]["public_id"]
-
-            # Use the model's add_entity method to ensure proper handling
-            project.add_entity(entity_name, entity_data)
-            self.save_project(project)
+        return self.entities.update_entity_by_name(project_name, entity_name, entity_data)
 
     def delete_entity_by_name(self, project_name: str, entity_name: str) -> None:
         """
@@ -792,43 +588,7 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
         """
-        corr: str = get_correlation_id()
-        lock = self._get_lock(project_name)
-        logger.info(
-            "[{}] delete_entity_by_name: ACQUIRING lock project='{}' entity='{}'",
-            corr,
-            project_name,
-            entity_name,
-        )
-
-        with lock:
-            project: Project = self.load_project(project_name)
-
-            before_names: list[str] = sorted((project.entities or {}).keys())
-            logger.info(
-                "[{}] delete_entity_by_name: project='{}' BEFORE delete: count={} names={} removing='{}'",
-                corr,
-                project_name,
-                len(before_names),
-                before_names,
-                entity_name,
-            )
-
-            if entity_name not in project.entities:
-                raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
-
-            del project.entities[entity_name]
-
-            after_names: list[str] = sorted((project.entities or {}).keys())
-            logger.info(
-                "[{}] delete_entity_by_name: project='{}' AFTER delete: count={} names={}",
-                corr,
-                project_name,
-                len(after_names),
-                after_names,
-            )
-
-            self.save_project(project)
+        return self.entities.delete_entity_by_name(project_name, entity_name)
 
     def get_entity_by_name(self, project_name: str, entity_name: str) -> dict[str, Any]:
         """
@@ -845,12 +605,7 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
         """
-        project: Project = self.load_project(project_name)
-
-        if entity_name not in project.entities:
-            raise ResourceNotFoundError(resource_type="entity", resource_id=entity_name, message=f"Entity '{entity_name}' not found")
-
-        return project.entities[entity_name]
+        return self.entities.get_entity_by_name(project_name, entity_name)
 
     def activate_project(self, name: str) -> Project:
         """
@@ -943,97 +698,43 @@ class ProjectService:
         Raises:
             BadRequestError: If name is invalid or contains directory traversal
         """
-        safe_name: str = name.strip()
-        if not safe_name or Path(safe_name).name != safe_name:
-            raise BadRequestError("Invalid project name")
-        return safe_name
+        return self.utils.sanitize_project_name(name)
 
     def _ensure_project_exists(self, name: str) -> Path:
-        """Ensure project exists in new directory structure."""
-        safe_name: str = self._sanitize_project_name(name)
-        project_file: Path = self.projects_dir / safe_name / "shapeshifter.yml"
-
-        if not project_file.exists():
-            raise ResourceNotFoundError(
-                resource_type="project", resource_id=name, message=f"Project not found: {name} (expected: {project_file})"
-            )
-
-        return project_file
+        """Ensure project exists in new directory structure.
+        
+        Returns:
+            Path to the project's shapeshifter.yml file
+        """
+        return self.utils.ensure_project_exists(name)
 
     def _get_project_upload_dir(self, project_name: str) -> Path:  # pylint: disable=unused-argument
-        # safe_name = self._sanitize_project_name(project_name)
-        return self.projects_dir
+        """Get upload directory for a project."""
+        return self.files._get_project_upload_dir(project_name)
 
     def _to_public_path(self, path: Path) -> str:
-        try:
-            return str(path.relative_to(settings.PROJECT_ROOT))
-        except ValueError:
-            try:
-                return str(path.relative_to(settings.PROJECTS_DIR.parent))
-            except ValueError:
-                return str(path)
+        """Convert absolute path to public relative path."""
+        return self.files._to_public_path(path)
 
     def _resolve_path(self, path_str: str) -> Path:
         """Resolve a user-supplied path relative to project root (or projects dir) and validate existence."""
-
-        raw = Path(path_str)
-        candidates: list[Path] = []
-
-        # Absolute path as-is
-        if raw.is_absolute():
-            candidates.append(raw)
-        else:
-            # Relative to repo root
-            candidates.append((settings.PROJECT_ROOT / raw).resolve())
-            # Relative to projects dir
-            candidates.append((settings.PROJECTS_DIR / raw.name).resolve())
-
-        for candidate in candidates:
-            if candidate.exists():
-                return candidate
-
-        raise BadRequestError(f"File not found: {path_str}")
+        return self.files._resolve_path(path_str)
 
     def _sanitize_filename(self, filename: str | None) -> str:
-        if not filename:
-            raise BadRequestError("Filename is required")
-        safe_name: str = Path(filename).name
-        if not safe_name:
-            raise BadRequestError("Invalid filename")
-        return safe_name
+        """Sanitize uploaded filename to prevent path traversal."""
+        return self.files._sanitize_filename(filename)
 
     def list_project_files(self, project_name: str, extensions: Iterable[str] | None = None) -> list[ProjectFileInfo]:
-        """List files stored under a project's uploads directory."""
-
-        self._ensure_project_exists(project_name)
-        upload_dir: Path = self._get_project_upload_dir(project_name)
-
-        if not upload_dir.exists():
-            return []
-
-        ext_set: set[str] | None = None
-        if extensions:
-            ext_set = {f".{ext.lstrip('.').lower()}" for ext in extensions if ext}
-
-        files: list[ProjectFileInfo] = []
-        for file_path in sorted(upload_dir.glob("*")):
-            if not file_path.is_file():
-                continue
-
-            if ext_set and file_path.suffix.lower() not in ext_set:
-                continue
-
-            stat = file_path.stat()
-            files.append(
-                ProjectFileInfo(
-                    name=file_path.name,
-                    path=self._to_public_path(file_path),
-                    size_bytes=stat.st_size,
-                    modified_at=stat.st_mtime,
-                )
-            )
-
-        return files
+        """List files stored under a project's uploads directory.
+        
+        Args:
+            project_name: Project name
+            extensions: Optional file extensions to filter
+            
+        Returns:
+            List of file information
+        """
+        return self.files.list_project_files(project_name, extensions)
 
     def save_project_file(
         self,
@@ -1041,92 +742,33 @@ class ProjectService:
         upload: UploadFile,
         *,
         allowed_extensions: set[str] | None = None,
-        max_size_mb: int = MAX_PROJECT_UPLOAD_SIZE_MB,
+        max_size_mb: int = 50,  # FileManager.MAX_PROJECT_UPLOAD_SIZE_MB
     ) -> ProjectFileInfo:
-        """Save an uploaded file into the project's uploads directory."""
-
-        self._ensure_project_exists(project_name)
-        allowed: set[str] = allowed_extensions or DEFAULT_ALLOWED_UPLOAD_EXTENSIONS
-
-        filename: str = self._sanitize_filename(upload.filename)
-        ext: str = Path(filename).suffix.lower()
-        if allowed and ext not in allowed:
-            allowed_list: str = ", ".join(sorted(allowed))
-            raise BadRequestError(f"Unsupported file type '{ext}'. Allowed: {allowed_list}")
-
-        upload_dir: Path = self._get_project_upload_dir(project_name)
-        upload_dir.mkdir(parents=True, exist_ok=True)
-
-        target_path: Path = upload_dir / filename
-        counter = 1
-        while target_path.exists():
-            target_path = upload_dir / f"{Path(filename).stem}-{counter}{ext}"
-            counter += 1
-
-        max_bytes: int = max_size_mb * 1024 * 1024
-        total_bytes = 0
-
-        try:
-            with target_path.open("wb") as buffer:
-                while True:
-                    chunk: bytes = upload.file.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    total_bytes += len(chunk)
-                    if max_bytes and total_bytes > max_bytes:
-                        raise BadRequestError(f"File is too large ({total_bytes} bytes). Maximum allowed is {max_bytes} bytes")
-                    buffer.write(chunk)
-        except Exception as exc:  # pylint: disable=broad-except
-            target_path.unlink(missing_ok=True)
-            raise exc
-        finally:
-            try:
-                upload.file.close()
-            except Exception:  # pylint: disable=broad-except
-                pass
-
-        stat = target_path.stat()
-
-        return ProjectFileInfo(
-            name=target_path.name,
-            path=self._to_public_path(target_path),
-            size_bytes=stat.st_size,
-            modified_at=stat.st_mtime,
-        )
+        """Save an uploaded file into the project's uploads directory.
+        
+        Args:
+            project_name: Project name
+            upload: Uploaded file
+            allowed_extensions: Allowed file extensions
+            max_size_mb: Maximum file size in megabytes
+            
+        Returns:
+            File information for the saved file
+        """
+        return self.files.save_project_file(project_name, upload, allowed_extensions=allowed_extensions, max_size_mb=max_size_mb)
 
     # Global data source file management
 
     def list_data_source_files(self, extensions: Iterable[str] | None = None) -> list[ProjectFileInfo]:
-        """List files available for data source configuration in the projects directory."""
-
-        upload_dir: Path = settings.PROJECTS_DIR
-
-        if not upload_dir.exists():
-            return []
-
-        ext_set: set[str] | None = None
-        if extensions:
-            ext_set = {f".{ext.lstrip('.').lower()}" for ext in extensions if ext}
-
-        files: list[ProjectFileInfo] = []
-        for file_path in sorted(upload_dir.glob("*")):
-            if not file_path.is_file():
-                continue
-
-            if ext_set and file_path.suffix.lower() not in ext_set:
-                continue
-
-            stat = file_path.stat()
-            files.append(
-                ProjectFileInfo(
-                    name=file_path.name,
-                    path=self._to_public_path(file_path),
-                    size_bytes=stat.st_size,
-                    modified_at=stat.st_mtime,
-                )
-            )
-
-        return files
+        """List files available for data source configuration in the projects directory.
+        
+        Args:
+            extensions: Optional file extensions to filter
+            
+        Returns:
+            List of file information
+        """
+        return self.files.list_data_source_files(extensions)
 
     def get_excel_metadata(
         self, file_path: str, sheet_name: str | None = None, cell_range: str | None = None
@@ -1144,66 +786,26 @@ class ProjectService:
         Raises:
             BadRequestError: If file is missing/unsupported or sheet is not found
         """
-
-        resolved_path: Path = self._resolve_path(file_path)
-        return extract_excel_metadata(resolved_path, sheet_name=sheet_name, cell_range=cell_range)
+        return self.files.get_excel_metadata(file_path, sheet_name, cell_range)
 
     def save_data_source_file(
         self,
         upload: UploadFile,
         *,
         allowed_extensions: set[str] | None = None,
-        max_size_mb: int = MAX_PROJECT_UPLOAD_SIZE_MB,
+        max_size_mb: int = 50,  # FileManager.MAX_PROJECT_UPLOAD_SIZE_MB
     ) -> ProjectFileInfo:
-        """Save an uploaded file into the projects directory."""
-
-        allowed: set[str] = allowed_extensions or set()
-
-        filename: str = self._sanitize_filename(upload.filename)
-        ext: str = Path(filename).suffix.lower()
-        if allowed and ext not in allowed:
-            allowed_list: str = ", ".join(sorted(allowed))
-            raise BadRequestError(f"Unsupported file type '{ext}'. Allowed: {allowed_list}")
-
-        upload_dir: Path = settings.PROJECTS_DIR
-        upload_dir.mkdir(parents=True, exist_ok=True)
-
-        target_path: Path = upload_dir / filename
-        counter = 1
-        while target_path.exists():
-            target_path = upload_dir / f"{Path(filename).stem}-{counter}{ext}"
-            counter += 1
-
-        max_bytes: int = max_size_mb * 1024 * 1024
-        total_bytes = 0
-
-        try:
-            with target_path.open("wb") as buffer:
-                while True:
-                    chunk = upload.file.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    total_bytes += len(chunk)
-                    if max_bytes and total_bytes > max_bytes:
-                        raise BadRequestError(f"File is too large ({total_bytes} bytes). Maximum allowed is {max_bytes} bytes")
-                    buffer.write(chunk)
-        except Exception as exc:  # pylint: disable=broad-except
-            target_path.unlink(missing_ok=True)
-            raise exc
-        finally:
-            try:
-                upload.file.close()
-            except Exception:  # pylint: disable=broad-except
-                pass
-
-        stat = target_path.stat()
-
-        return ProjectFileInfo(
-            name=target_path.name,
-            path=self._to_public_path(target_path),
-            size_bytes=stat.st_size,
-            modified_at=stat.st_mtime,
-        )
+        """Save an uploaded file into the projects directory (global data source).
+        
+        Args:
+            upload: Uploaded file
+            allowed_extensions: Allowed file extensions
+            max_size_mb: Maximum file size in megabytes
+            
+        Returns:
+            File information for the saved file
+        """
+        return self.files.save_data_source_file(upload, allowed_extensions=allowed_extensions, max_size_mb=max_size_mb)
 
 
 # Singleton instance

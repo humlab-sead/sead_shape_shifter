@@ -4,7 +4,6 @@ This test ensures that the mapper is not brittle - adding new nested Pydantic
 models to the Entity class should not require manual handling in the mapper.
 """
 
-import pytest
 
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.entity import (
@@ -22,7 +21,7 @@ class TestProjectMapperNestedModels:
 
     def test_all_nested_models_become_dicts(self):
         """Verify that ALL nested Pydantic models are converted to plain dicts.
-        
+
         This is critical for YAML serialization and ensures the mapper is not brittle.
         If someone adds a new nested Pydantic model field to Entity, this test
         will verify it's automatically handled without explicit code changes.
@@ -71,7 +70,7 @@ class TestProjectMapperNestedModels:
 
         # CRITICAL: All nested structures must be plain dicts/lists, not Pydantic models
         # This ensures YAML serialization works and the code is not brittle
-        
+
         # Check foreign_keys
         assert "foreign_keys" in entity_dict
         assert isinstance(entity_dict["foreign_keys"], list)
@@ -79,7 +78,7 @@ class TestProjectMapperNestedModels:
         fk = entity_dict["foreign_keys"][0]
         assert isinstance(fk, dict), f"ForeignKeyConfig should be dict, got {type(fk)}"
         assert fk["entity"] == "parent"
-        
+
         # Check nested constraints
         assert "constraints" in fk
         constraints = fk["constraints"]
