@@ -64,7 +64,7 @@ def reset_locks():
 
 def _write_project_yaml(project_dir: Path, name: str, entities: dict[str, Any]) -> Path:
     """Write a project YAML file to disk."""
-    file_path = project_dir / f"{name}.yml"
+    file_path = project_dir / name / f"shapeshifter.yml"
     data = {
         "metadata": {
             "type": "shapeshifter-project",
@@ -75,6 +75,7 @@ def _write_project_yaml(project_dir: Path, name: str, entities: dict[str, Any]) 
         "entities": entities,
         "options": {},
     }
+    file_path.parent.mkdir(parents=True, exist_ok=True)
     with open(file_path, "w", encoding="utf-8") as f:
         yaml.dump(data, f)
     return file_path
@@ -188,7 +189,7 @@ class TestCopyOnRead:
                 "foreign_keys": [{"entity": "parent", "local_keys": ["parent_id"], "remote_keys": ["id"]}],
             }
         }
-        cached = _make_project("test", entities)
+        cached: Project = _make_project("test", entities)
         mock_state.get.return_value = cached
 
         loaded = service.load_project("test")
@@ -197,9 +198,10 @@ class TestCopyOnRead:
         assert loaded.entities["sample"]["columns"] == ["id", "name", "value"]
         assert loaded.entities["sample"]["foreign_keys"][0]["entity"] == "parent"
 
-    def test_disk_load_not_affected_by_copy_on_read(self, service, mock_state, temp_dir):
+    def test_disk_load_not_affected_by_copy_on_read(self, service, mock_state, temp_dir: Path):
         """When loading from disk (cache miss), returns original load."""
-        _write_project_yaml(temp_dir, "from_disk", {"entity_x": {"source": "table_x"}})
+        name: str = "from_disk"
+        _write_project_yaml(temp_dir, name, {"entity_x": {"source": "table_x"}})
         mock_state.get.return_value = None  # Cache miss
 
         project = service.load_project("from_disk")
@@ -321,7 +323,7 @@ class TestConcurrencyRegressions:
         service.add_entity_by_name("test", "entity_c", {"source": "table_c"})
 
         # Verify all 3 entities persisted to disk
-        file_path = temp_dir / "test.yml"
+        file_path = temp_dir / "test" / "shapeshifter.yml"
         with open(file_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
@@ -358,7 +360,7 @@ class TestConcurrencyRegressions:
         assert not errors, f"Errors during concurrent creation: {errors}"
 
         # Verify all 3 entities on disk
-        file_path = temp_dir / "concurrent_test.yml"
+        file_path = temp_dir / "concurrent_test" / "shapeshifter.yml"
         with open(file_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
@@ -388,7 +390,7 @@ class TestConcurrencyRegressions:
         assert len(project.entities) == 0
 
         # Verify disk is clean
-        file_path = temp_dir / "ghost_test.yml"
+        file_path = temp_dir / "ghost_test" / "shapeshifter.yml"
         with open(file_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
@@ -418,16 +420,16 @@ class TestConcurrencyRegressions:
 class TestDeleteProjectCacheCleanup:
     """Test that delete_project properly clears all caches."""
 
-    def test_delete_calls_invalidate_all_caches(self, service, mock_state, temp_dir):
+    def test_delete_calls_invalidate_all_caches(self, service: ProjectService, mock_state, temp_dir):
         """delete_project must call _invalidate_all_caches."""
         _write_project_yaml(temp_dir, "to_delete", {"e1": {}})
 
-        with patch.object(service, "_invalidate_all_caches") as mock_invalidate:
+        with patch.object(service.operations, "_invalidate_all_caches") as mock_invalidate:
             service.delete_project("to_delete")
             mock_invalidate.assert_called_once()
             assert mock_invalidate.call_args[0][0] == "to_delete"
 
-    def test_delete_removes_lock(self, service, mock_state, temp_dir):
+    def test_delete_removes_lock(self, service: ProjectService, mock_state, temp_dir):
         """delete_project removes the per-project lock after completion."""
         _write_project_yaml(temp_dir, "locktest", {"e1": {}})
 
@@ -439,9 +441,9 @@ class TestDeleteProjectCacheCleanup:
 
         assert "locktest" not in ProjectService._project_locks
 
-    def test_create_after_delete_clears_stale_caches(self, service, mock_state, temp_dir):
+    def test_create_after_delete_clears_stale_caches(self, service: ProjectService, mock_state, temp_dir):
         """create_project defensively clears caches (handles delete+recreate race)."""
-        with patch.object(service, "_invalidate_all_caches") as mock_invalidate:
+        with patch.object(service.operations, "_invalidate_all_caches") as mock_invalidate:
             service.create_project("fresh")
             mock_invalidate.assert_called_once()
             assert mock_invalidate.call_args[0][0] == "fresh"

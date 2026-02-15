@@ -21,7 +21,7 @@ class ProjectServiceError(Exception):
 
 class ProjectOperations:
     """Handles project-level operations: create, delete, copy, update metadata.
-    
+
     This component is responsible for managing the lifecycle of entire projects,
     as opposed to individual entities within projects.
     """
@@ -38,7 +38,7 @@ class ProjectOperations:
         cache_invalidator,  # Callable[[str, str], None]
     ):
         """Initialize project operations.
-        
+
         Args:
             yaml_service: YAML service for config management
             projects_dir: Base directory for all projects
@@ -58,9 +58,7 @@ class ProjectOperations:
         self._load_project = load_project_callback
         self._invalidate_all_caches = cache_invalidator
 
-    def create_project(
-        self, name: str, entities: dict[str, Any] | None = None, task_list: dict[str, Any] | None = None
-    ) -> Project:
+    def create_project(self, name: str, entities: dict[str, Any] | None = None, task_list: dict[str, Any] | None = None) -> Project:
         """
         Create new project.
 

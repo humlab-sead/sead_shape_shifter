@@ -18,7 +18,6 @@ def test_health_check():
     assert "environment" in data
     assert "timestamp" in data
     assert "projects_dir" in data
-    assert "backups_dir" in data
 
 
 def test_root_endpoint():

@@ -1,0 +1,45 @@
+sample_datasheet:
+  x: -930.6639842568641
+  y: 52.30626703567866
+library_datasheet:
+  x: -881.4836996299115
+  y: 177.75612664167778
+value_class:
+  x: -43.34112227581848
+  y: -65.15811914803291
+value_type:
+  x: -19.012723630972694
+  y: -236.86672505979186
+value_type_item:
+  x: 282.6063090263574
+  y: -175.2518670484331
+site:
+  x: -473.5638483705145
+  y: 25.53567827781051
+site2:
+  x: -1110.5930295222922
+  y: -78.7470635240325
+project_datasheet:
+  x: -969.3193104780181
+  y: -303.29507557100146
+file:SEAD_aDNA_data_20241114_RM:
+  x: -693.932542263759
+  y: -585.6029777221668
+sheet:SEAD_aDNA_data_20241114_RM:Sample data sheet:
+  x: -831.6701242863536
+  y: -140.59093843873012
+sheet:SEAD_aDNA_data_20241114_RM:Library data sheet:
+  x: -646.9522307692155
+  y: 136.76609147585444
+sheet:SEAD_aDNA_data_20241114_RM:tbl_value_classes:
+  x: -236.65153005408567
+  y: -136.70758510275934
+sheet:SEAD_aDNA_data_20241114_RM:tbl_value_types:
+  x: -257.9577018596149
+  y: -378.4970606423793
+sheet:SEAD_aDNA_data_20241114_RM:tbl_value_type_items:
+  x: 2.542359227338011
+  y: -550.4273418882287
+sheet:SEAD_aDNA_data_20241114_RM:tbl_sites:
+  x: -518.9283217151822
+  y: -167.8172174469494

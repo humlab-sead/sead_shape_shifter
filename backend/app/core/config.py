@@ -46,7 +46,6 @@ class Settings(BaseSettings):
 
     # File paths
     PROJECTS_DIR: Path = Path("./projects")
-    BACKUPS_DIR: Path = Path("./backups")
     LOGS_DIR: Path = Path("./logs")
     LOG_DIR: Path = LOGS_DIR  # Alias for backward compatibility
 
@@ -77,7 +76,6 @@ class Settings(BaseSettings):
         super().__init__(**kwargs)
         # Ensure directories exist
         self.PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
-        self.BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
         self.LOGS_DIR.mkdir(parents=True, exist_ok=True)
         self.GLOBAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.GLOBAL_DATA_SOURCE_DIR.mkdir(parents=True, exist_ok=True)

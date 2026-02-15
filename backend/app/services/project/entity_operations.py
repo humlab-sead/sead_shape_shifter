@@ -10,12 +10,12 @@ from backend.app.models.entity import Entity
 from backend.app.models.project import Project
 
 if TYPE_CHECKING:
-    import threading
+    pass
 
 
 class EntityOperations:
     """Handles entity CRUD operations within projects.
-    
+
     This component manages individual entities within projects, both via
     Project object manipulation and via project name (load/save pattern).
     """
@@ -27,7 +27,7 @@ class EntityOperations:
         save_project_callback,  # Callable[[Project], Project]
     ):
         """Initialize entity operations.
-        
+
         Args:
             project_lock_getter: Function to get per-project lock
             load_project_callback: Function to load project by name

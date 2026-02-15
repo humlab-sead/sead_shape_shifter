@@ -4,7 +4,6 @@ This test ensures that the mapper is not brittle - adding new nested Pydantic
 models to the Entity class should not require manual handling in the mapper.
 """
 
-
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.models.entity import (
     AppendConfig,

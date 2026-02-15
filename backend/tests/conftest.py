@@ -24,7 +24,6 @@ def settings(monkeypatch):
     monkeypatch.setenv("SHAPE_SHIFTER_API_V1_PREFIX", "/api/v1")
 
     monkeypatch.setenv("SHAPE_SHIFTER_PROJECTS_DIR", "backend/tests/test_data/projects")
-    monkeypatch.setenv("SHAPE_SHIFTER_BACKUPS_DIR", "backend/tests/test_data/backups")
 
     get_settings.cache_clear()  # reset the lru_cache
     cfg = get_settings()

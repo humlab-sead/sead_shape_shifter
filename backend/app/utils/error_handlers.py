@@ -15,9 +15,7 @@ from backend.app.exceptions import (
     ResourceNotFoundError,
     ValidationError,
 )
-from backend.app.services.project_service import (
-    ProjectServiceError,
-)
+from backend.app.services.project import ProjectServiceError
 from backend.app.services.yaml_service import YamlServiceError
 from backend.app.utils.exceptions import BaseAPIException
 

@@ -30,7 +30,8 @@ Data Classes:
 from backend.app.services.auto_fix_service import AutoFixService
 from backend.app.services.data_source_service import DataSourceService
 from backend.app.services.dependency_service import DependencyGraph, DependencyNode, DependencyService, SourceNode
-from backend.app.services.project_service import ProjectService, ProjectServiceError
+from backend.app.services.project import ProjectServiceError
+from backend.app.services.project_service import ProjectService
 from backend.app.services.query_service import QueryService
 from backend.app.services.schema_service import SchemaCache, SchemaIntrospectionService
 

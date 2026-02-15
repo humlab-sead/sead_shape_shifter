@@ -300,7 +300,8 @@ async def list_backups(name: str) -> list[BackupInfo]:
         List of backup file information
     """
     yaml_service: YamlService = get_yaml_service()
-    backups: list[Path] = yaml_service.list_backups(f"{name}.yml")
+    project_dir = settings.PROJECTS_DIR / name
+    backups: list[Path] = yaml_service.list_backups(original_name="shapeshifter.yml", project_dir=project_dir)
     backup_infos: list[BackupInfo] = [
         BackupInfo(
             file_name=backup.name,
