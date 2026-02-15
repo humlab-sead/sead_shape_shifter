@@ -23,7 +23,11 @@ def settings(monkeypatch):
     monkeypatch.setenv("SHAPE_SHIFTER_ENVIRONMENT", "development")
     monkeypatch.setenv("SHAPE_SHIFTER_API_V1_PREFIX", "/api/v1")
 
-    monkeypatch.setenv("SHAPE_SHIFTER_PROJECTS_DIR", "backend/tests/test_data/projects")
+    monkeypatch.setenv("SHAPE_SHIFTER_PROJECTS_DIR", "tests/test_data/projects")
+    monkeypatch.setenv("SHAPE_SHIFTER_GLOBAL_DATA_DIR", "tests/test_data/projects/shared/shared-data")
+    monkeypatch.setenv("SHAPE_SHIFTER_GLOBAL_DATA_SOURCE_DIR", "tests/test_data/projects/shared/data-sources")
+    monkeypatch.setenv("GLOBAL_DATA_DIR", "tests/test_data/projects/shared/shared-data")    
+    monkeypatch.setenv("GLOBAL_DATA_SOURCE_DIR", "tests/test_data/projects/shared/data-sources")
 
     get_settings.cache_clear()  # reset the lru_cache
     cfg = get_settings()
