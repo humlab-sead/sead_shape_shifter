@@ -810,9 +810,7 @@ options: {}
         assert (target_dir / "backups" / "old.backup.yml").exists()
 
         # Verify metadata was updated
-        with open(target_dir / "shapeshifter.yml") as f:
-            import yaml
-
+        with open(target_dir / "shapeshifter.yml", encoding="utf-8") as f:
             config = yaml.safe_load(f)
             assert config["metadata"]["name"] == "copied_project"
 

@@ -12,7 +12,7 @@ from backend.app.models.project import ProjectFileInfo
 from backend.app.services.project.file_manager import FileManager
 from backend.app.utils.exceptions import BadRequestError
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name,unused-argument
 
 
 class TestFileManager:
@@ -288,7 +288,7 @@ class TestFileManager:
         (clean_dir / "project1").mkdir(exist_ok=True)
 
         files = clean_manager.list_data_source_files()
-        assert files == []
+        assert not files
 
     def test_list_data_source_files_all(self, temp_config_dir: Path):
         """Test listing all data source files."""
@@ -412,7 +412,7 @@ class TestFileManager:
         with patch("backend.app.services.project.file_manager.extract_excel_metadata") as mock_extract:
             mock_extract.return_value = (["Data"], ["A", "B", "C"])
 
-            sheets, columns = file_manager.get_excel_metadata(str(excel_file), sheet_name="Data", cell_range="A1:C10")
+            _, columns = file_manager.get_excel_metadata(str(excel_file), sheet_name="Data", cell_range="A1:C10")
 
             assert columns == ["A", "B", "C"]
             mock_extract.assert_called_once_with(excel_file, sheet_name="Data", cell_range="A1:C10")
@@ -432,7 +432,7 @@ class TestFileManager:
             mock_extract.return_value = (["Sheet1"], ["col1"])
 
             # Relative path should be resolved
-            sheets, cols = file_manager.get_excel_metadata("data.xlsx")
+            sheets, _ = file_manager.get_excel_metadata("data.xlsx")
 
             assert sheets == ["Sheet1"]
             # Verify it resolved the path correctly
