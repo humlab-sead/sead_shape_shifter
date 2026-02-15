@@ -41,7 +41,7 @@ class EntityMappingManager:
 
     def _get_default_catalog_filename(self, project_name: str) -> Path:
         """Get path to reconciliation YAML file."""
-        return self.config_dir / f"{project_name}-reconciliation.yml"
+        return self.config_dir / project_name / f"{project_name}-reconciliation.yml"
 
     def load_catalog(self, project_name: str, filename: Path | None = None) -> core.EntityResolutionCatalog:
         """
