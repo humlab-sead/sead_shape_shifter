@@ -192,6 +192,7 @@ class Config(ConfigLike):
         source_path: str | None = None,
         inplace: bool = False,
         strict: bool = False,
+        try_without_prefix: bool = True,
     ) -> dict[str, Any]:
         """Resolve configuration directives in the provided data dictionary.
 
@@ -214,7 +215,7 @@ class Config(ConfigLike):
             data = env2dict(env_prefix, data)
 
         # Do a recursive replace of values with pattern "${ENV_NAME}" with value of environment
-        data = replace_env_vars(data)  # type: ignore
+        data = replace_env_vars(data, env_prefix=env_prefix, try_without_prefix=try_without_prefix)  # type: ignore
         data = replace_references(data)  # type: ignore
 
         if strict:
@@ -435,7 +436,7 @@ class LoadResolver(BaseResolver):
         """Resolve @load: directive with environment variable expansion.
 
         Supports loading CSV/TSV data from files with env var paths:
-        - @load: ${GLOBAL_DATA_DIR}/lookup.csv
+        - @load: ${DATA_DIR}/lookup.csv
         - @load: ./data/local.csv
 
         Args:
