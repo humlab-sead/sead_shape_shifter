@@ -17,11 +17,10 @@ from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
 from backend.app.services.project.entity_operations import EntityOperations
 from backend.app.services.project.file_manager import FileManager
-from backend.app.services.project.project_operations import ProjectOperations, ProjectServiceError
+from backend.app.services.project.project_operations import ProjectOperations
 from backend.app.services.project.project_utils import ProjectUtils
 from backend.app.services.yaml_service import YamlLoadError, YamlSaveError, YamlService, get_yaml_service
 from backend.app.utils.excel_utils import get_excel_metadata
-from backend.app.utils.exceptions import BadRequestError
 
 
 class ProjectYamlSpecification:
