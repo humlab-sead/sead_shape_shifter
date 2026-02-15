@@ -271,7 +271,7 @@ class ProjectService:
         """
         import yaml  # pylint: disable=import-outside-toplevel
 
-        expected_count = len(expected_entities)
+        expected_count: int = len(expected_entities)
         if expected_count == 0:
             return  # Nothing to verify for empty projects
 
@@ -280,7 +280,7 @@ class ProjectService:
                 written_data = yaml.safe_load(f)
 
             actual_entities = sorted((written_data or {}).get("entities", {}).keys())
-            actual_count = len(actual_entities)
+            actual_count: int = len(actual_entities)
 
             if actual_count != expected_count:
                 logger.error(
@@ -352,8 +352,9 @@ class ProjectService:
         Raises:
             ResourceConflictError: If project already exists
         """
-        corr = get_correlation_id()
-        file_path: Path = self.projects_dir / f"{name}.yml"
+        corr: str = get_correlation_id()
+        # New structure: projects_dir/name/shapeshifter.yml
+        file_path: Path = self.projects_dir / name / "shapeshifter.yml"
 
         if file_path.exists():
             raise ResourceConflictError(resource_type="project", resource_id=name, message=f"Project '{name}' already exists")
@@ -579,7 +580,7 @@ class ProjectService:
             Entity dict with public_id preserved
         """
         # Exclude None fields to avoid YAML bloat, but preserve public_id separately
-        entity_dict = entity.model_dump(exclude_none=True, exclude={"surrogate_id"}, mode="json")  # Exclude deprecated field
+        entity_dict: dict[str, Any] = entity.model_dump(exclude_none=True, exclude={"surrogate_id"}, mode="json")  # Exclude deprecated field
 
         # Ensure public_id is always present (even if None) for three-tier identity model
         if "public_id" not in entity_dict:
@@ -689,7 +690,7 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceConflictError: If entity already exists
         """
-        corr = get_correlation_id()
+        corr: str = get_correlation_id()
         lock = self._get_lock(project_name)
         logger.info(
             "[{}] add_entity_by_name: ACQUIRING lock project='{}' entity='{}'",
@@ -701,7 +702,7 @@ class ProjectService:
         with lock:
             project: Project = self.load_project(project_name)
 
-            before_names = sorted((project.entities or {}).keys())
+            before_names: list[str] = sorted((project.entities or {}).keys())
             logger.info(
                 "[{}] add_entity_by_name: project='{}' BEFORE add: count={} names={} adding='{}'",
                 corr,
@@ -719,7 +720,7 @@ class ProjectService:
             # Use the model's add_entity method to ensure proper handling
             project.add_entity(entity_name, entity_data)
 
-            after_names = sorted((project.entities or {}).keys())
+            after_names: list[str] = sorted((project.entities or {}).keys())
             logger.info(
                 "[{}] add_entity_by_name: project='{}' AFTER add: count={} names={}",
                 corr,
@@ -745,7 +746,7 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
         """
-        corr = get_correlation_id()
+        corr: str = get_correlation_id()
         lock = self._get_lock(project_name)
         logger.info(
             "[{}] update_entity_by_name: ACQUIRING lock project='{}' entity='{}'",
@@ -757,7 +758,7 @@ class ProjectService:
         with lock:
             project: Project = self.load_project(project_name)
 
-            entity_names = sorted((project.entities or {}).keys())
+            entity_names: list[str] = sorted((project.entities or {}).keys())
             logger.info(
                 "[{}] update_entity_by_name: project='{}' current entities={} names={} updating='{}'",
                 corr,
@@ -793,7 +794,7 @@ class ProjectService:
             ProjectNotFoundError: If project not found
             ResourceNotFoundError: If entity not found
         """
-        corr = get_correlation_id()
+        corr: str = get_correlation_id()
         lock = self._get_lock(project_name)
         logger.info(
             "[{}] delete_entity_by_name: ACQUIRING lock project='{}' entity='{}'",
@@ -805,7 +806,7 @@ class ProjectService:
         with lock:
             project: Project = self.load_project(project_name)
 
-            before_names = sorted((project.entities or {}).keys())
+            before_names: list[str] = sorted((project.entities or {}).keys())
             logger.info(
                 "[{}] delete_entity_by_name: project='{}' BEFORE delete: count={} names={} removing='{}'",
                 corr,
@@ -820,7 +821,7 @@ class ProjectService:
 
             del project.entities[entity_name]
 
-            after_names = sorted((project.entities or {}).keys())
+            after_names: list[str] = sorted((project.entities or {}).keys())
             logger.info(
                 "[{}] delete_entity_by_name: project='{}' AFTER delete: count={} names={}",
                 corr,
@@ -931,16 +932,34 @@ class ProjectService:
     # File management helpers
 
     def _sanitize_project_name(self, name: str) -> str:
+        """Validate project name for new directory structure.
+
+        Allows nested paths like 'arbodat/arbodat-test' but prevents directory traversal.
+
+        Args:
+            name: Project name (can be nested path like 'parent/child')
+
+        Returns:
+            Sanitized project name
+
+        Raises:
+            BadRequestError: If name is invalid or contains directory traversal
+        """
         safe_name: str = name.strip()
         if not safe_name or Path(safe_name).name != safe_name:
             raise BadRequestError("Invalid project name")
         return safe_name
 
     def _ensure_project_exists(self, name: str) -> Path:
-        safe_name = self._sanitize_project_name(name)
-        project_file = self.projects_dir / f"{safe_name}.yml"
+        """Ensure project exists in new directory structure."""
+        safe_name: str = self._sanitize_project_name(name)
+        project_file: Path = self.projects_dir / safe_name / "shapeshifter.yml"
+
         if not project_file.exists():
-            raise ResourceNotFoundError(resource_type="project", resource_id=name, message=f"Project not found: {name}")
+            raise ResourceNotFoundError(
+                resource_type="project", resource_id=name, message=f"Project not found: {name} (expected: {project_file})"
+            )
+
         return project_file
 
     def _get_project_upload_dir(self, project_name: str) -> Path:  # pylint: disable=unused-argument
@@ -980,7 +999,7 @@ class ProjectService:
     def _sanitize_filename(self, filename: str | None) -> str:
         if not filename:
             raise BadRequestError("Filename is required")
-        safe_name = Path(filename).name
+        safe_name: str = Path(filename).name
         if not safe_name:
             raise BadRequestError("Invalid filename")
         return safe_name
@@ -1031,13 +1050,13 @@ class ProjectService:
         self._ensure_project_exists(project_name)
         allowed: set[str] = allowed_extensions or DEFAULT_ALLOWED_UPLOAD_EXTENSIONS
 
-        filename = self._sanitize_filename(upload.filename)
-        ext = Path(filename).suffix.lower()
+        filename: str = self._sanitize_filename(upload.filename)
+        ext: str = Path(filename).suffix.lower()
         if allowed and ext not in allowed:
-            allowed_list = ", ".join(sorted(allowed))
+            allowed_list: str = ", ".join(sorted(allowed))
             raise BadRequestError(f"Unsupported file type '{ext}'. Allowed: {allowed_list}")
 
-        upload_dir = self._get_project_upload_dir(project_name)
+        upload_dir: Path = self._get_project_upload_dir(project_name)
         upload_dir.mkdir(parents=True, exist_ok=True)
 
         target_path: Path = upload_dir / filename
@@ -1052,7 +1071,7 @@ class ProjectService:
         try:
             with target_path.open("wb") as buffer:
                 while True:
-                    chunk = upload.file.read(1024 * 1024)
+                    chunk: bytes = upload.file.read(1024 * 1024)
                     if not chunk:
                         break
                     total_bytes += len(chunk)
@@ -1127,7 +1146,6 @@ class ProjectService:
         Raises:
             BadRequestError: If file is missing/unsupported or sheet is not found
         """
-        from backend.app.utils.excel_utils import get_excel_metadata as extract_excel_metadata
 
         resolved_path: Path = self._resolve_path(file_path)
         return extract_excel_metadata(resolved_path, sheet_name=sheet_name, cell_range=cell_range)
