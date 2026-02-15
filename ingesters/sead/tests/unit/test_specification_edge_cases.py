@@ -14,7 +14,7 @@ from ingesters.sead.specification import (
 )
 from ingesters.sead.submission import Submission
 
-from tests.builders import build_column, build_schema, build_table
+from ingesters.sead.tests.builders import build_column, build_schema, build_table
 
 
 class TestSpecificationEdgeCases:

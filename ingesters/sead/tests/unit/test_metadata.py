@@ -1,6 +1,6 @@
 import pytest
 
-from tests.builders import build_column, build_schema, build_table
+from ingesters.sead.tests.builders import build_column, build_schema, build_table
 
 # pylint: disable=redefined-outer-name,no-member
 
