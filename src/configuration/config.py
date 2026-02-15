@@ -18,8 +18,8 @@ from loguru import logger
 from src.utility import dget, dotexists, dotset, env2dict, replace_env_vars
 
 from .interface import ConfigLike
-from .utility import replace_references
 from .path_utils import PathResolver
+from .utility import replace_references
 
 # pylint: disable=too-many-arguments
 

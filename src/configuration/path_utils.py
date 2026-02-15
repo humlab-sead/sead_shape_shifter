@@ -31,7 +31,7 @@ class PathResolver:
 
         Returns:
             Path with environment variables expanded
-            
+
         Raises:
             ValueError: If raise_if_missing=True and env var is not set
         """
