@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from src.loaders.base_loader import ConnectTestResult
 from src.utility import replace_env_vars
-
+from backend.app.core.config import get_settings, Settings
 
 class DataSourceConfig(BaseModel):
     """Configuration for a data source connection.
@@ -65,8 +65,8 @@ class DataSourceConfig(BaseModel):
         return self.filename or self.file_path
 
     def resolve_config_env_vars(self) -> "DataSourceConfig":
-
-        return DataSourceConfig(**replace_env_vars(self.model_dump(exclude_none=True)))
+        settings: Settings = get_settings()
+        return DataSourceConfig(**replace_env_vars(self.model_dump(exclude_none=True), env_prefix=settings.env_prefix, try_without_prefix=True))
 
 
 class DataSourceTestResult(BaseModel):
