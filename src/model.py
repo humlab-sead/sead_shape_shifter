@@ -1202,7 +1202,7 @@ class ShapeShiftProject:
         return table
 
     @staticmethod
-    def from_file(filename: str, env_file: str = ".env", env_prefix: str = "SEAD_NORMALIZER") -> "ShapeShiftProject":
+    def from_file(filename: str, env_file: str = ".env", env_prefix: str = "SHAPE_SHIFTER") -> "ShapeShiftProject":
         """Load ShapeShiftProject from a YAML project file."""
 
         cfg: ConfigLike = ConfigFactory().load(

@@ -361,7 +361,16 @@ class BaseResolver:
             return path
 
         # Step 1: Expand environment variables
-        resolved_path: str = replace_env_vars(path, raise_if_unresolved=raise_if_missing)
+        resolved_path: str = replace_env_vars(
+            path,
+            raise_if_unresolved=raise_if_missing,
+            env_prefix=self.env_prefix,  # type: ignore
+            try_without_prefix=True,
+        )
+        if path != resolved_path:
+            # If the path was changed by env var replacement = treat it as an absolute path
+            # (env vars are typically used for absolute paths), otherwise resolve relative to base_path
+            resolved_path = str(Path(resolved_path).absolute())
 
         # Step 2: Handle absolute vs relative paths
         path_obj = Path(resolved_path)
@@ -418,7 +427,7 @@ class SubConfigResolver(BaseResolver):
         filename: str = self._resolve_path(directive_argument, base_path=base_path, raise_if_missing=False)
 
         loaded_data: dict[str, Any] = (
-            ConfigFactory().load(source=filename, context=self.context, env_filename=self.env_filename, env_prefix=None).data
+            ConfigFactory().load(source=filename, context=self.context, env_filename=self.env_filename, env_prefix=self.env_prefix).data
         )
         return self._resolve(loaded_data, Path(filename).parent)
 
