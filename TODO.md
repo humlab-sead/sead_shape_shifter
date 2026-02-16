@@ -180,11 +180,7 @@ A special case is if the user wants to use a "@value"-directive to point to e.g.
 One could also for flexibility allow the user to enter arbitrary YAML-path i.e. a åath that doesn't exist in the picklist.
 If a "@value" is used, that can be the only value, and should be a string (not a list). This will be resolved at runtime to the actual column(s).
 
-The "auto_detect_columns", i believe, is the only attibute in the entity workflow that is changed during the normalization. 
-
-### FIXME: Data Source in Schema Explorer is empty
-Data Source in Schema Explorer is empty unless Data Sources tab is visited first. This is because the data sources are only loaded into the store when visiting the Data Sources tab. We should consider loading data sources on app startup to avoid this issue.
-
+The "
 ### TODO: #213 Copy SQL feature from Schema Explorer.
 Add a convenience function for copying an SQL select statement to the clipboard for selected entity in schema explorer. This is useful when a user want to create an SQL select in the entity editor based on a table in the specified data source. This could also possibly be extended to a "picker" in the entity editor that allows users to select a table from the data source and automatically generate a select statement for that table.
 
@@ -195,113 +191,12 @@ Should open a modal with a Monaco Editor for SQL editing, allowing users to test
 
 Consider not closing the entity editor modal when clicking "Save" to allow users to make multiple edits without having to reopen the editor each time. This could be implemented as a user preference or a toggle in the UI.
 
-### TODO: #217 Allow a user to create an entity of type "sql" by specifying a data source, a table in that data source, and an entity name. The new entity would be initialized with:
-- type: sql
-- data_source: data-source
-- query: select * from table-name
-- keys: tables PKs in data source (as is seen in schema explorer)
-- public_id: table-name + "_id"
-
-I guess one option is to add the feature to Schema Explorer, where we have all the information when data source, a table and a columns are displayed. But this feature is outside of a project. We could allow for opening be opening schema explorer from within the project (e.g. from the "data sources" tab), or ask for which project to put it in (and add data source to project if missing). Another option whould be a button next to each data source in the "data source" tab, thet would show a create dialog with asking for name and a table picker.
-
-What do you think, would this feature be worthwhile?
-
-Auto-Detection Logic:
-
-Table name → entity name (with sanitization: my_table ✓, my-table → my_table)
-Primary keys → keys field
-If no PKs → empty keys: [] (user can add manually)
-public_id = {table_name}_id (follows convention)
-Smart Defaults:
-
-Query: SELECT * FROM {table_name} (user can customize later)
-If table has composite PK → all PK columns in keys
-Preserve schema prefix if present: public.sites → SELECT * FROM public.sites
-Validation:
-
-Entity name uniqueness in project
-Data source connectivity (test before showing tables)
-Table existence (cached from schema service)
-Error Handling:
-
-Data source not connected → "Please test connection first"
-No tables found → "No tables available in this data source"
-Entity name conflict → "Entity 'X' already exists. Choose different name."
-
 ### TODO: Save custom graph layout in separate file
 
 
 ### TODO: #221 System fails to find ingesters folder
 The system currently fails to find the ingesters folder when running in Docker. Cause: the ingesters folder is not copied to the Docker image, we need to copy the ingesters folder to the Docker image in the Dockerfile, and set environment variables accordingly.
 
-### TODO: #222 Using columns added by a FK as local keys in a subsequent FK does not work
-
-When trying to link the dataset_contacts entity to the contact entity using the contact_name as the linking key this error is logged. The .
-The `_project_contact` is correctly normalized and contains the contact_name column, but the dataset_contacts entity cannot find the contact_name column in its local data when trying to link to the contact entity.
-
-The `contact_name` is added as an extra column in the foreign key from dataset_contacts to _project_contact, but it seems that this extra column is not being included in the local data of dataset_contacts when performing the link to contact.
-
-
-```
-2026-02-08 16:15:24.962 | ERROR    | src.transforms.link:link_entity:84 - dataset_contacts[linking]: ✗ Configuration has 1 error(s):
-  1. [ERROR] Entity 'dataset_contacts': dataset_contacts -> contact: local keys {'contact_name'} not found in local entity data 'dataset_contacts'
-```
-
-```yml
-dataset_contacts:
-  type: entity
-  source: dataset
-  public_id: dataset_contact_id
-  keys: [Projekt, Fraktion, contact_id]
-  columns: []
-  foreign_keys:
-  - entity: _project_contact
-    local_keys: [Projekt]
-    remote_keys: [Projekt]
-    extra_columns:
-      contact_name: contact_name
-  - entity: contact
-    local_keys: [contact_name]
-    remote_keys: [contact_name]
-  depends_on: [_project_contact, contact, dataset, project]
-  drop_duplicates: [Projekt, Fraktion, contact_id]
-
-_project_contact:
-  type: sql
-  source:
-  public_id: project_contact_id
-  keys: [Projekt, contact_type, contact_name]
-  columns: [Projekt, ArchAusg, ArchBear, BotBear]
-  drop_duplicates: [Projekt, contact_type, contact_name]
-  unnest:
-    id_vars: [Projekt]
-    value_vars: [ArchAusg, ArchBear, BotBear]
-    var_name: contact_type
-    value_name: contact_name
-  data_source: arbodat_data
-  query: "select distinct [Projekt], [ArchAusg], [ArchBear], [BotBear] from [Projekte] ;\n"
-```
-
-### FIXME: #228 Silent failures occurs when fetching Excel file metadata
-
-### TODO: #229 Add project refresh feature for reloading project from disk
-
-### TODO: #231 Pressing "CREATE" when adding a new entity doesn't save the entity. It only adds the entity to the project in memory, but does not save the project to disk. This can lead to confusion for users who expect their changes to be saved immediately. We should have the same buttons when creating a new entity as for editing an existing entity .
-
-### FIXED: #234 Sync issue after new entity creation ✅
-The following steps can be taken to reproduce the issue:
-  1. (Refresh project)
-  2. Click "Add entity"
-  3. Click enter entity name, select XLSX, sheet name, public id, click "Create"
-  4. Click "Save" in entity editor
-  5. Entity editor mode changes to "Edit".
-     Project "SAVE CHANGES" becomes enabled. (This should not happen since entity was saved)
-     New entity is visible in project view's entity list.
-  6. Close entity editor.
-     Open file on disk (outside of application) shows that new entity has been written to disk.
-     Open YAML in project's view shows that the new entity is NOT present, i.e. project in memory is NOT updated with the new entity, so the project in memory is out of sync with the project on disk.~~
-
-**Fixed in commit 3c3ca82**: Entity store now refreshes project from disk after create/update/delete operations, ensuring in-memory state matches saved state. 
 
 ### TODO: Add feature to edit value replacements in Entity Editor
 
@@ -330,23 +225,3 @@ This is the core logic:
           else:
               result[col] = result[col].replace(to_replace=replacement_map, value=pd.NA).ffill()
 ```
-
-### TODO
-
-I have cleaned up and migrated all relevant existing projects. The result is in folder ./docs/projects.
-
-1. File "reconciliation.yml" has replaced "mappings.yml"
-2. I think it would be good if we can allow projects to be organized in an almost arbitrary folder structure, each project in some sense "self-contained" except for references to shared data. Folders _examples and _tests, is ok, but data can be organized in various ways, so flexibility would be good.
-3. Translations is project specific, or possibly provider specific. Translations are loaded using a "@load: filename" directive so it's a bit project specific how to store the data. ShouldFor the time being, let's keep it as as in-project data.
-4. Ignore for now. How to organize data per provider might be solved by a folder structure, and it's up to the users.
-5. This can be done manually. See proposed migrated structure in ./docs/projects.
-6. Please ignore backup retention. All existing projects are test projects, so migration is no problem.
-7. Please ignore .env, this is an application configuration detail.
-8. I think we should add business logic validation - not migration validation, i.e. update existing validation to include adherence to new structure.
-9. Ignore. Migration is no problem. See migrated projects in ./docs/projects
-10. We need to allow use of both shared-data or local-data. Similarly we need to allow local data sources and shared data sources.
-
-Please review ./docs/projects file structure. Note that I have probably not fixed all references. I have introduced env. variables  ${GLOBAL_DATA_DIR} and ${GLOBAL_DATA_SOURCE_DIR} for shared data.
-
-It would be very good if the project folders could be moved without breaking file references. This necessitated that file references always are relative shapeshifter.yml, or is an absolute path (which  environment variables GLOBAL_DATA_DIR and GLOBAL_DATA_SOURCE_DIR must be used for shared data). I have not tested this, but I think it should work. Please test this before finalizing the migration.
-

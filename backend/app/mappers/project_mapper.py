@@ -26,6 +26,7 @@ from typing import Any
 
 from loguru import logger
 
+from backend.app.core.config import settings
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models import (
     Entity,
@@ -160,7 +161,12 @@ class ProjectMapper:
 
         # Only resolve if there are unresolved directives
         if not project.is_resolved():
-            project = project.resolve(filename=api_config.filename)
+            # Pass env_prefix and env_file from settings for proper env var resolution
+            project = project.resolve(
+                filename=api_config.filename,
+                env_prefix=settings.env_prefix,
+                env_filename=settings.env_file,
+            )
 
         return project
 
