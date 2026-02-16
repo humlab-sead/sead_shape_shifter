@@ -759,24 +759,26 @@ class ProjectService:
 
     # Global data source file management
 
-    def list_data_source_files(self, extensions: Iterable[str] | None = None) -> list[ProjectFileInfo]:
-        """List files available for data source configuration in the projects directory.
+    def list_data_source_files(self, extensions: Iterable[str] | None = None, project_name: str | None = None) -> list[ProjectFileInfo]:
+        """List files available for data source configuration.
 
         Args:
             extensions: Optional file extensions to filter
+            project_name: Optional project name to also include project-specific files
 
         Returns:
-            List of file information
+            List of file information from global and optionally local stores
         """
-        return self.files.list_data_source_files(extensions)
+        return self.files.list_data_source_files(extensions, project_name)
 
     def get_excel_metadata(
-        self, file_path: str, sheet_name: str | None = None, cell_range: str | None = None
+        self, file_path: str, location: str = "global", sheet_name: str | None = None, cell_range: str | None = None
     ) -> tuple[list[str], list[str]]:
         """Return available sheets and columns for an Excel file.
 
         Args:
-            file_path: Path (absolute or relative to project root) to the Excel file
+            file_path: Filename or relative path to the Excel file
+            location: File location - "global" (shared data) or "local" (project-specific)
             sheet_name: Optional sheet to inspect for columns
             cell_range: Optional cell range (e.g., 'A1:H30') to limit columns
 
@@ -786,7 +788,7 @@ class ProjectService:
         Raises:
             BadRequestError: If file is missing/unsupported or sheet is not found
         """
-        return self.files.get_excel_metadata(file_path, sheet_name, cell_range)
+        return self.files.get_excel_metadata(file_path, location, sheet_name, cell_range)
 
     def save_data_source_file(
         self,

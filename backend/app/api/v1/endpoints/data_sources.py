@@ -139,17 +139,25 @@ async def list_data_sources(
 
 @router.get("/files", response_model=list[ProjectFileInfo], summary="List available data source files")
 @handle_endpoint_errors
-async def list_data_source_files(ext: list[str] | None = Query(default=None, description="Filter by extension")) -> list[ProjectFileInfo]:
-    """List Excel/CSV files available for data source configuration."""
+async def list_data_source_files(
+    ext: list[str] | None = Query(default=None, description="Filter by extension"),
+    project_name: str | None = Query(default=None, description="Project name to include project-specific files")
+) -> list[ProjectFileInfo]:
+    """List Excel/CSV files available for data source configuration.
+    
+    Returns files from global shared-data directory. If project_name is provided,
+    also includes files from that project's upload directory.
+    """
 
     project_service: ProjectService = get_project_service()
-    return project_service.list_data_source_files(extensions=ext)
+    return project_service.list_data_source_files(extensions=ext, project_name=project_name)
 
 
 @router.get("/excel/metadata", response_model=ExcelMetadataResponse, summary="Get Excel sheets and columns")
 @handle_endpoint_errors
 async def get_excel_metadata(
-    file: str = Query(..., description="Path to Excel file (absolute or relative to project root)"),
+    file: str = Query(..., description="Filename or relative path to Excel file"),
+    location: str = Query(default="global", description="File location: 'global' (shared) or 'local' (project-specific)"),
     sheet_name: str | None = Query(default=None, description="Optional sheet name to inspect for columns"),
     range: str | None = Query(  # pylint: disable=redefined-builtin
         default=None, description="Optional cell range (e.g., A1:H30) to limit columns"
@@ -158,7 +166,7 @@ async def get_excel_metadata(
     """Return available sheets and columns for a given Excel file."""
 
     project_service: ProjectService = get_project_service()
-    sheets, columns = project_service.get_excel_metadata(file_path=file, sheet_name=sheet_name, cell_range=range)
+    sheets, columns = project_service.get_excel_metadata(file_path=file, location=location, sheet_name=sheet_name, cell_range=range)
     return ExcelMetadataResponse(sheets=sheets, columns=columns)
 
 

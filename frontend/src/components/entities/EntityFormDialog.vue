@@ -115,8 +115,29 @@
                       <v-row no-gutters>
                         <!-- Filename -->
                         <v-col :cols="formData.type === 'csv' ? 8 : 12" :class="formData.type === 'csv' ? 'pr-2' : ''">
-                          <v-autocomplete v-model="formData.options.filename" :items="availableProjectFiles"
-                            label="File *" :rules="requiredRule" variant="outlined" clearable :loading="filesLoading" />
+                          <v-autocomplete 
+                            v-model="formData.options.filename" 
+                            :items="availableProjectFiles"
+                            item-title="name"
+                            item-value="name"
+                            label="File *" 
+                            :rules="requiredRule" 
+                            variant="outlined" 
+                            clearable 
+                            :loading="filesLoading">
+                            <template v-slot:item="{ props, item }">
+                              <v-list-item v-bind="props">
+                                <template v-slot:append>
+                                  <v-chip 
+                                    :color="item.raw.location === 'global' ? 'primary' : 'secondary'" 
+                                    size="x-small" 
+                                    variant="flat">
+                                    {{ item.raw.location === 'global' ? 'Global' : 'Project' }}
+                                  </v-chip>
+                                </template>
+                              </v-list-item>
+                            </template>
+                          </v-autocomplete>
                         </v-col>
 
                         <!-- CSV Delimiter -->
@@ -707,7 +728,15 @@ watch(
 )
 
 // File handling state
-const availableProjectFiles = ref<string[]>([])
+interface FileInfo {
+  name: string
+  path: string
+  location: 'global' | 'local'
+  size_bytes: number
+  modified_at: string | number
+}
+
+const availableProjectFiles = ref<FileInfo[]>([])
 const filesLoading = ref(false)
 const sheetOptions = ref<string[]>([])
 const sheetOptionsLoading = ref(false)
@@ -956,10 +985,17 @@ async function fetchProjectFiles() {
     const extensions = getFileExtensions()
     // Build query params - backend expects 'ext' parameter for each extension
     const queryParams = extensions.map(ext => `ext=${ext}`).join('&')
-    const response = await fetch(`/api/v1/data-sources/files?${queryParams}`)
+    
+    // Include project-specific files if we have a current project
+    let url = `/api/v1/data-sources/files?${queryParams}`
+    if (projectStore.currentProjectName) {
+      url += `&project_name=${encodeURIComponent(projectStore.currentProjectName)}`
+    }
+    
+    const response = await fetch(url)
     if (response.ok) {
-      const files = await response.json()
-      availableProjectFiles.value = files.map((f: any) => f.path)
+      const files: FileInfo[] = await response.json()
+      availableProjectFiles.value = files
     }
   } catch (err: any) {
     console.error('Failed to fetch project files:', err)
@@ -982,7 +1018,11 @@ async function fetchSheetOptions() {
   }
 
   try {
-    const meta = await api.excelMetadata.fetch(filename)
+    // Find the file to get its location
+    const fileInfo = availableProjectFiles.value.find(f => f.name === filename)
+    const location = fileInfo?.location || 'global'
+    
+    const meta = await api.excelMetadata.fetch(filename, location)
     sheetOptions.value = meta.sheets || []
 
     if (!formData.value.options.sheet_name && sheetOptions.value.length > 0) {
@@ -1015,7 +1055,11 @@ async function fetchColumns() {
   }
 
   try {
-    const meta = await api.excelMetadata.fetch(filename, sheet, range)
+    // Find the file to get its location
+    const fileInfo = availableProjectFiles.value.find(f => f.name === filename)
+    const location = fileInfo?.location || 'global'
+    
+    const meta = await api.excelMetadata.fetch(filename, location, sheet, range)
     columnsOptions.value = meta.columns || []
     if (columnsOptions.value.length > 0) {
       formData.value.columns = [...columnsOptions.value]
