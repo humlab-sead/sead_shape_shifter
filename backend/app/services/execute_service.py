@@ -81,7 +81,7 @@ class ExecuteService:
             core_project: ShapeShiftProject = ShapeShiftProject.from_file(
                 filename=project.filename,
                 env_file=".env",  # Config provider handles env file loading
-                env_prefix="SEAD_NORMALIZER",
+                env_prefix="SHAPE_SHIFTER",  # Use global prefix for execution context
             )
 
             dispatcher_meta: DispatcherMetadata = next(d for d in self.get_dispatchers() if d.key == request.dispatcher_key)

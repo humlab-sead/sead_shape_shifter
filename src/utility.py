@@ -422,11 +422,13 @@ def _resolve_env_var(env_var_name: str, env_prefix: str, try_without_prefix: boo
     Returns:
         Resolved value or empty string if not found
     """
+    env_prefix = (env_prefix or "").rstrip("_")
+
     # If prefix is set but try_without_prefix is False, ONLY accept prefixed version
     if env_prefix and not try_without_prefix:
         # If var doesn't have prefix, add it
         if not env_var_name.startswith(f"{env_prefix}_"):
-            prefixed_name = f"{env_prefix}_{env_var_name}"
+            prefixed_name: str = f"{env_prefix}_{env_var_name}"
             return os.getenv(prefixed_name, "")
         # If var already has prefix, use as-is
         return os.getenv(env_var_name, "")
@@ -454,7 +456,12 @@ def _resolve_env_var(env_var_name: str, env_prefix: str, try_without_prefix: boo
     return ""
 
 
-def replace_env_vars(data: R, env_prefix: str = "", try_without_prefix: bool = True, raise_if_unresolved: bool = False) -> R:
+def replace_env_vars(
+    data: R,
+    env_prefix: str = "",
+    try_without_prefix: bool = True,
+    raise_if_unresolved: bool = False,
+) -> R:
     """Recursively replaces environment variables in data.
 
     Replaces all occurrences of ${ENV_VAR} with os.getenv("ENV_VAR", "").
