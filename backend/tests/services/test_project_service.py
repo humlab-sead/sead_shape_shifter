@@ -971,11 +971,10 @@ options: {}
 
     def test_list_project_files_with_extensions(self, service: ProjectService, sample_project_with_files: Path, temp_config_dir: Path):
         """Test listing files with specific extensions."""
-        # Add some data files to projects_dir root (backward compatibility mode)
-        # Files are stored in configurations root, not in project subdirectory
-        (temp_config_dir / "data.xlsx").touch()
-        (temp_config_dir / "data.csv").touch()
-        (temp_config_dir / "notes.txt").touch()
+        # Add some data files to project directory
+        (sample_project_with_files / "data.xlsx").touch()
+        (sample_project_with_files / "data.csv").touch()
+        (sample_project_with_files / "notes.txt").touch()
 
         files = service.list_project_files("test_project", extensions=[".xlsx", ".csv"])
 
@@ -988,8 +987,8 @@ options: {}
         """Test getting project upload directory."""
         result = service._get_project_upload_dir("test_project")
 
-        # The upload dir should be the base projects_dir, not the specific project dir
-        expected = service.projects_dir
+        # The upload dir is the project subdirectory
+        expected = service.projects_dir / "test_project"
         assert result == expected
 
     def test_sanitize_filename_valid(self, service: ProjectService):
