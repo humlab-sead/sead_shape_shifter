@@ -59,11 +59,10 @@ class TestFileManager:
         project_dir.mkdir()
         (project_dir / "shapeshifter.yml").write_text("metadata:\n  name: test_project\n")
 
-        # Files are stored in projects_dir root for backward compatibility
-        # (not in project_dir/uploads/)
-        (temp_config_dir / "data.xlsx").write_text("mock excel data")
-        (temp_config_dir / "sheet.csv").write_text("col1,col2\n1,2\n")
-        (temp_config_dir / "file.txt").write_text("text file")
+        # Files are stored in the project directory
+        (project_dir / "data.xlsx").write_text("mock excel data")
+        (project_dir / "sheet.csv").write_text("col1,col2\n1,2\n")
+        (project_dir / "file.txt").write_text("text file")
 
         return project_dir
 
@@ -123,8 +122,8 @@ class TestFileManager:
         assert result.name == "test.xlsx"
         assert result.size_bytes == 12  # len(b"test content")
 
-        # Verify file was created (files stored in projects_dir root for backward compatibility)
-        saved_file = temp_config_dir / "test.xlsx"
+        # Verify file was created in the project directory
+        saved_file = sample_project / "test.xlsx"
         assert saved_file.exists()
         assert saved_file.read_bytes() == b"test content"
 
@@ -133,7 +132,7 @@ class TestFileManager:
         # .xlsx should be allowed
         upload = self.create_upload_file("data.xlsx", b"excel data")
         file_manager.save_project_file("test_project", upload)
-        assert (temp_config_dir / "data.xlsx").exists()
+        assert (sample_project / "data.xlsx").exists()
 
         # .csv should be rejected (not in defaults)
         csv_upload = self.create_upload_file("data.csv", b"a,b,c")
@@ -155,7 +154,7 @@ class TestFileManager:
         result = file_manager.save_project_file("test_project", upload, allowed_extensions={".csv"})
 
         assert result.name == "data.csv"
-        assert (temp_config_dir / "data.csv").exists()
+        assert (sample_project / "data.csv").exists()
 
     def test_save_project_file_duplicate_renames(self, file_manager: FileManager, sample_project: Path, temp_config_dir: Path):
         """Test duplicate filenames are renamed with counter."""
@@ -171,10 +170,10 @@ class TestFileManager:
         assert result2.name == "data-1.xlsx"
         assert result3.name == "data-2.xlsx"
 
-        # Files stored in projects_dir root
-        assert (temp_config_dir / "data.xlsx").read_bytes() == b"content1"
-        assert (temp_config_dir / "data-1.xlsx").read_bytes() == b"content2"
-        assert (temp_config_dir / "data-2.xlsx").read_bytes() == b"content3"
+        # Files stored in project directory
+        assert (sample_project / "data.xlsx").read_bytes() == b"content1"
+        assert (sample_project / "data-1.xlsx").read_bytes() == b"content2"
+        assert (sample_project / "data-2.xlsx").read_bytes() == b"content3"
 
     def test_save_project_file_size_limit_ok(self, file_manager: FileManager, sample_project: Path):
         """Test file within size limit is saved."""
@@ -194,8 +193,8 @@ class TestFileManager:
         with pytest.raises(BadRequestError, match="too large"):
             file_manager.save_project_file("test_project", upload, max_size_mb=1)
 
-        # Verify file was not saved
-        assert not (temp_config_dir / "large.xlsx").exists()
+        # Verify file was not saved in project directory
+        assert not (sample_project / "large.xlsx").exists()
 
     def test_save_project_file_chunked_upload(self, file_manager: FileManager, sample_project: Path, temp_config_dir: Path):
         """Test large file uploaded in chunks."""
@@ -206,7 +205,7 @@ class TestFileManager:
         result = file_manager.save_project_file("test_project", upload, max_size_mb=5)
 
         assert result.size_bytes == 3 * 1024 * 1024
-        saved_file = temp_config_dir / "chunked.xlsx"
+        saved_file = sample_project / "chunked.xlsx"
         assert saved_file.read_bytes() == content
 
     # save_data_source_file tests
@@ -427,12 +426,12 @@ class TestFileManager:
         excel_file = temp_config_dir / "data.xlsx"
         excel_file.write_text("dummy")
 
-        # Use relative path from projects_dir
+        # Use relative path from projects_dir with location="local"
         with patch("backend.app.services.project.file_manager.extract_excel_metadata") as mock_extract:
             mock_extract.return_value = (["Sheet1"], ["col1"])
 
-            # Relative path should be resolved
-            sheets, _ = file_manager.get_excel_metadata("data.xlsx")
+            # Relative path should be resolved from local (projects_dir)
+            sheets, _ = file_manager.get_excel_metadata("data.xlsx", location="local")
 
             assert sheets == ["Sheet1"]
             # Verify it resolved the path correctly
@@ -442,10 +441,10 @@ class TestFileManager:
     # Helper method tests
 
     def test_get_project_upload_dir(self, file_manager: FileManager, temp_config_dir: Path):
-        """Test getting project upload directory (currently returns projects_dir for backward compatibility)."""
+        """Test getting project upload directory."""
         upload_dir = file_manager._get_project_upload_dir("test_project")
-        # Currently returns projects_dir root (backward compatibility)
-        assert upload_dir == temp_config_dir
+        # Returns the project directory
+        assert upload_dir == temp_config_dir / "test_project"
 
     def test_sanitize_filename_valid(self, file_manager: FileManager):
         """Test sanitizing valid filenames."""
@@ -493,12 +492,13 @@ class TestFileManager:
         public_path = file_manager._to_public_path(external_file)
         assert public_path  # Should return something, even if not relative
 
-    def test_resolve_path_absolute(self, file_manager: FileManager, temp_config_dir: Path):
-        """Test resolving absolute path."""
-        test_file = temp_config_dir / "test.xlsx"
+    def test_resolve_path_global_location(self, file_manager: FileManager):
+        """Test resolving file from global location."""
+        # Create a test file in global_data_dir
+        test_file = file_manager.global_data_dir / "test.xlsx"
         test_file.write_text("content")
 
-        resolved = file_manager._resolve_path(str(test_file))
+        resolved = file_manager._resolve_path("test.xlsx", location="global")
         assert resolved == test_file
         assert resolved.exists()
 
@@ -507,7 +507,8 @@ class TestFileManager:
         test_file = temp_config_dir / "data.xlsx"
         test_file.write_text("content")
 
-        resolved = file_manager._resolve_path("data.xlsx")
+        # Use location="local" to search in projects_dir
+        resolved = file_manager._resolve_path("data.xlsx", location="local")
         assert resolved == test_file
 
     def test_resolve_path_not_found(self, file_manager: FileManager):

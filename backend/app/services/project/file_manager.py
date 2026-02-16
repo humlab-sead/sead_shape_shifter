@@ -95,7 +95,7 @@ class FileManager:
             BadRequestError: If file not found or invalid location
         """
         if location == "global":
-            resolved = settings.GLOBAL_DATA_DIR / path_str
+            resolved = self.global_data_dir / path_str
         elif location == "local":
             resolved = self.projects_dir / path_str
         else:
@@ -150,6 +150,10 @@ class FileManager:
         files: list[ProjectFileInfo] = []
         for file_path in sorted(upload_dir.glob("*")):
             if not file_path.is_file():
+                continue
+
+            # Exclude project configuration file
+            if file_path.name == "shapeshifter.yml":
                 continue
 
             if ext_set and file_path.suffix.lower() not in ext_set:
