@@ -75,6 +75,8 @@ class Settings(BaseSettings):
     def model_post_init(self, __context) -> None:  # pylint: disable=arguments-differ
         """Convert paths to absolute and ensure directories exist."""
         # Convert to absolute paths (required for @load: directive resolution)
+        self.PROJECTS_DIR = self.PROJECTS_DIR.absolute()
+        self.LOGS_DIR = self.LOGS_DIR.absolute()
         self.GLOBAL_DATA_DIR = self.GLOBAL_DATA_DIR.absolute()
         self.GLOBAL_DATA_SOURCE_DIR = self.GLOBAL_DATA_SOURCE_DIR.absolute()
 
