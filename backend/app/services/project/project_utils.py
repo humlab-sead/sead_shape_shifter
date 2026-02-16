@@ -23,10 +23,11 @@ class ProjectUtils:
     def sanitize_project_name(self, name: str) -> str:
         """Validate project name for new directory structure.
 
-        Allows nested paths like 'arbodat/arbodat-test' but prevents directory traversal.
+        Allows nested paths like 'arbodat:arbodat-test' but prevents directory traversal.
+        Uses ':' as separator to avoid URL path parsing issues.
 
         Args:
-            name: Project name (can be nested path like 'parent/child')
+            name: Project name (can be nested path like 'parent:child')
 
         Returns:
             Sanitized project name
@@ -42,9 +43,11 @@ class ProjectUtils:
         if ".." in safe_name:
             raise BadRequestError("Invalid project name: directory traversal not allowed")
 
-        # Normalize path separators and validate no absolute paths
-        path = Path(safe_name)
-        if path.is_absolute():
+        # Prevent forward slash in project names (use colon for nesting)
+        if "/" in safe_name:
+            raise BadRequestError("Invalid project name: use ':' for nested projects, not '/'")
+
+        if Path(safe_name.replace(":", "/")).is_absolute():
             raise BadRequestError("Project name cannot be an absolute path")
 
         return safe_name
@@ -53,7 +56,7 @@ class ProjectUtils:
         """Ensure project exists in new directory structure.
 
         Args:
-            name: Project name to validate
+            name: Project name to validate (uses ':' for nested paths)
 
         Returns:
             Path to the project's shapeshifter.yml file
@@ -63,7 +66,8 @@ class ProjectUtils:
             ResourceNotFoundError: If project does not exist
         """
         safe_name: str = self.sanitize_project_name(name)
-        project_file: Path = self.projects_dir / safe_name / "shapeshifter.yml"
+        # Convert API name to filesystem path (: -> /)
+        project_file: Path = self.projects_dir / safe_name.replace(":", "/") / "shapeshifter.yml"
 
         if not project_file.exists():
             raise ResourceNotFoundError(

@@ -74,8 +74,9 @@ class ProjectOperations:
             ResourceConflictError: If project already exists
         """
         corr: str = get_correlation_id()
-        # New structure: projects_dir/name/shapeshifter.yml
-        file_path: Path = self.projects_dir / name / "shapeshifter.yml"
+        # New structure: projects_dir/name/shapeshifter.yml (convert : to /)
+        path_name: str = name.replace(":", "/")
+        file_path: Path = self.projects_dir / path_name / "shapeshifter.yml"
 
         if file_path.exists():
             raise ResourceConflictError(resource_type="project", resource_id=name, message=f"Project '{name}' already exists")
@@ -114,8 +115,8 @@ class ProjectOperations:
             ResourceNotFoundError: If project not found
         """
         corr: str = get_correlation_id()
-        # Structure: projects_dir/name/shapeshifter.yml
-        project_dir: Path = self.projects_dir / name
+        # Structure: projects_dir/name/shapeshifter.yml (convert : to /)
+        project_dir: Path = self.projects_dir / name.replace(":", "/")
         file_path: Path = project_dir / "shapeshifter.yml"
 
         if not file_path.exists():
@@ -167,9 +168,9 @@ class ProjectOperations:
             ResourceConflictError: If target project already exists
             ProjectServiceError: If copy fails
         """
-        # New structure: projects_dir/name/shapeshifter.yml
-        source_dir: Path = self.projects_dir / source_name
-        target_dir: Path = self.projects_dir / target_name
+        # New structure: projects_dir/name/shapeshifter.yml (convert : to /)
+        source_dir: Path = self.projects_dir / source_name.replace(":", "/")
+        target_dir: Path = self.projects_dir / target_name.replace(":", "/")
         source_file: Path = source_dir / "shapeshifter.yml"
         target_file: Path = target_dir / "shapeshifter.yml"
 
@@ -259,8 +260,8 @@ class ProjectOperations:
         if not project.metadata:
             raise ConfigurationError(message=f"Project '{name}' has no metadata")
 
-        # Determine original file path to preserve filename
-        original_file_path: Path = self.projects_dir / name / "shapeshifter.yml"
+        # Determine original file path to preserve filename (convert : to /)
+        original_file_path: Path = self.projects_dir / name.replace(":", "/") / "shapeshifter.yml"
 
         # Update metadata fields (only if provided, ignore new_name)
         if description is not None:
