@@ -49,8 +49,8 @@ async def create_session(
     optimistic concurrency control is used to prevent conflicts when saving.
     """
 
-    # Verify project file exists
-    project_path: Path = app_state.projects_dir / f"{request.project_name}.yml"
+    # Verify project file exists (nested structure: projects/<name>/shapeshifter.yml)
+    project_path: Path = app_state.projects_dir / request.project_name / "shapeshifter.yml"
     if not project_path.exists():
         raise HTTPException(404, f"Project '{request.project_name}' not found")
 
