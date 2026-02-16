@@ -76,43 +76,30 @@ class FileManager:
                 except ValueError:
                     return str(path)
 
-    def _resolve_path(self, path_str: str) -> Path:
-        """Resolve a user-supplied path relative to project root (or projects dir) and validate existence.
+    def _resolve_path(self, path_str: str, location: str = "global") -> Path:
+        """Resolve a file path using explicit location - no candidate searching needed.
 
         Args:
-            path_str: Path string (absolute or relative)
+            path_str: Filename or relative path
+            location: File location - "global" (GLOBAL_DATA_DIR) or "local" (projects_dir)
 
         Returns:
             Resolved absolute path
 
         Raises:
-            BadRequestError: If file not found
+            BadRequestError: If file not found or invalid location
         """
-        raw = Path(path_str)
-        candidates: list[Path] = []
-
-        # Absolute path as-is
-        if raw.is_absolute():
-            candidates.append(raw)
+        if location == "global":
+            resolved = settings.GLOBAL_DATA_DIR / path_str
+        elif location == "local":
+            resolved = self.projects_dir / path_str
         else:
-            # Relative to current working directory (handles "shared/shared-data/file.xlsx")
-            candidates.append(Path.cwd() / raw)
-            # Relative to repo root
-            candidates.append((settings.PROJECT_ROOT / raw).resolve())
-            # If path starts with "shared/shared-data", try GLOBAL_DATA_DIR
-            if str(raw).startswith("shared/shared-data/"):
-                filename = Path(str(raw).replace("shared/shared-data/", ""))
-                candidates.append(settings.GLOBAL_DATA_DIR / filename)
-            # Relative to projects dir (full path)
-            candidates.append((self.projects_dir / raw).resolve())
-            # Relative to projects dir (just filename)
-            candidates.append((self.projects_dir / raw.name).resolve())
+            raise BadRequestError(f"Invalid location: {location}. Must be 'global' or 'local'")
 
-        for candidate in candidates:
-            if candidate.exists():
-                return candidate
+        if not resolved.exists():
+            raise BadRequestError(f"File not found: {path_str} (location: {location})")
 
-        raise BadRequestError(f"File not found: {path_str}")
+        return resolved
 
     def _sanitize_filename(self, filename: str | None) -> str:
         """Sanitize uploaded filename to prevent path traversal.
@@ -167,7 +154,8 @@ class FileManager:
             files.append(
                 ProjectFileInfo(
                     name=file_path.name,
-                    path=self._to_public_path(file_path),
+                    path=file_path.name,
+                    location="local",
                     size_bytes=stat.st_size,
                     modified_at=stat.st_mtime,
                 )
@@ -241,48 +229,59 @@ class FileManager:
 
         return ProjectFileInfo(
             name=target_path.name,
-            path=self._to_public_path(target_path),
+            path=target_path.name,
+            location="local",
             size_bytes=stat.st_size,
             modified_at=stat.st_mtime,
         )
 
     # Global data source file operations
 
-    def list_data_source_files(self, extensions: Iterable[str] | None = None) -> list[ProjectFileInfo]:
-        """List files available for data source configuration in the global data directory.
+    def list_data_source_files(self, extensions: Iterable[str] | None = None, project_name: str | None = None) -> list[ProjectFileInfo]:
+        """List files available for data source configuration.
 
         Args:
             extensions: Optional file extensions to filter
+            project_name: Optional project name to also include project-specific files
 
         Returns:
-            List of file information
+            List of file information from global store (and local store if project_name provided)
         """
-        upload_dir: Path = self.global_data_dir
-
-        if not upload_dir.exists():
-            return []
-
-        ext_set: set[str] | None = None
-        if extensions:
-            ext_set = {f".{ext.lstrip('.').lower()}" for ext in extensions if ext}
-
         files: list[ProjectFileInfo] = []
-        for file_path in sorted(upload_dir.glob("*")):
-            if not file_path.is_file():
-                continue
+        
+        # Always include global files
+        upload_dir: Path = self.global_data_dir
+        if upload_dir.exists():
+            ext_set: set[str] | None = None
+            if extensions:
+                ext_set = {f".{ext.lstrip('.').lower()}" for ext in extensions if ext}
 
-            if ext_set and file_path.suffix.lower() not in ext_set:
-                continue
+            for file_path in sorted(upload_dir.glob("*")):
+                if not file_path.is_file():
+                    continue
 
-            stat = file_path.stat()
-            files.append(
-                ProjectFileInfo(
-                    name=file_path.name,
-                    path=self._to_public_path(file_path),
-                    size_bytes=stat.st_size,
-                    modified_at=stat.st_mtime,
+                if ext_set and file_path.suffix.lower() not in ext_set:
+                    continue
+
+                stat = file_path.stat()
+                files.append(
+                    ProjectFileInfo(
+                        name=file_path.name,
+                        path=file_path.name,
+                        location="global",
+                        size_bytes=stat.st_size,
+                        modified_at=stat.st_mtime,
+                    )
                 )
-            )
+        
+        # Add project-specific files if project_name provided
+        if project_name:
+            try:
+                local_files = self.list_project_files(project_name, extensions)
+                files.extend(local_files)
+            except FileNotFoundError:
+                # Project doesn't exist yet, only return global files
+                pass
 
         return files
 
@@ -349,7 +348,8 @@ class FileManager:
 
         return ProjectFileInfo(
             name=target_path.name,
-            path=self._to_public_path(target_path),
+            path=target_path.name,
+            location="global",
             size_bytes=stat.st_size,
             modified_at=stat.st_mtime,
         )
@@ -357,12 +357,13 @@ class FileManager:
     # Excel metadata extraction
 
     def get_excel_metadata(
-        self, file_path: str, sheet_name: str | None = None, cell_range: str | None = None
+        self, file_path: str, location: str = "global", sheet_name: str | None = None, cell_range: str | None = None
     ) -> tuple[list[str], list[str]]:
         """Return available sheets and columns for an Excel file.
 
         Args:
-            file_path: Path (absolute or relative to project root) to the Excel file
+            file_path: Filename or relative path to the Excel file
+            location: File location - "global" (shared data) or "local" (project-specific)
             sheet_name: Optional sheet to inspect for columns
             cell_range: Optional cell range (e.g., 'A1:H30') to limit columns
 
@@ -372,5 +373,5 @@ class FileManager:
         Raises:
             BadRequestError: If file is missing/unsupported or sheet is not found
         """
-        resolved_path: Path = self._resolve_path(file_path)
+        resolved_path: Path = self._resolve_path(file_path, location=location)
         return extract_excel_metadata(resolved_path, sheet_name=sheet_name, cell_range=cell_range)
