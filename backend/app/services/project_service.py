@@ -95,6 +95,7 @@ class ProjectService:
             projects_dir=self.projects_dir,
             sanitize_project_name_callback=self.utils.sanitize_project_name,
             ensure_project_exists_callback=self.utils.ensure_project_exists,
+            global_data_dir=settings.GLOBAL_DATA_DIR,
         )
 
     def list_projects(self) -> list[ProjectMetadata]:
