@@ -39,6 +39,7 @@ FIXME: #219 Inline data source configurations raised an error.
           (e.g., string, integer, date) and support type conversions in extra_columns.
  - [] TODO: Improve multiuser support (working on same project)
  - [] TODO: Add more reconciliation entity types, and non-SEAD types (e.g. Geonames, RAÄ-lämningsnummer)
+ - [] TODO: NOT WORTH THE EFFORT! Improve user experience (Add new edge/relationship in dependency graph)
  - [] TODO: Improve in-system help (full User Guide, more context sensitive help)
  - [] TODO: Improve UX suggestions when editing entity (awareness of availiable tables, columns etc)
  - [] TODO: Auto-save feature in YAML editing mode (trigger after 2 seconds of inactivity)
@@ -164,3 +165,7 @@ Should open a modal with a Monaco Editor for SQL editing, allowing users to test
 
 ### TODO: #221 System fails to find ingesters folder
 The system currently fails to find the ingesters folder when running in Docker. Cause: the ingesters folder is not copied to the Docker image, we need to copy the ingesters folder to the Docker image in the Dockerfile, and set environment variables accordingly.
+
+
+
+Wouldn't the simple solution be to only have resolved path in core layer? I code think a rule if "location" in "options", "filename" = strip_filenames_path(filename). Or is that do hacky? I could think adding a  simple mechanism for adding type specific mappings. 
