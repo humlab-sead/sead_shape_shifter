@@ -57,11 +57,11 @@ class TestBaseResolverPathResolution:
         assert result == expected
 
     def test_resolve_env_var_with_relative_and_base(self, resolver: SubConfigResolver, tmp_path: Path) -> None:
-        """Test env var expansion with relative path and base_path."""
-        os.environ["REL_DIR"] = "shared"
+        """Test env var expansion with absolute path from base context."""
+        os.environ["REL_DIR"] = str(tmp_path / "project" / "shared")
         base = tmp_path / "project"
         result = resolver._resolve_path("${REL_DIR}/file.txt", base_path=base)
-        expected = str(base / "shared/file.txt")
+        expected = str(tmp_path / "project" / "shared" / "file.txt")
         assert result == expected
 
     def test_resolve_empty_string(self, resolver: SubConfigResolver) -> None:

@@ -23,7 +23,7 @@ def initialize_jvm():
 
 def test_validate_project_file():
 
-    config_file: str = "./dat a/projects/arbodat/arbodat-copy/shapeshifter.yml"
+    config_file: str = "./data/projects/arbodat/arbodat-copy/shapeshifter.yml"
     project: ShapeShiftProject = ShapeShiftProject.from_file(
         config_file,
         env_prefix="SHAPE_SHIFTER",
