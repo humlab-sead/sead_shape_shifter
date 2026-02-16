@@ -95,9 +95,17 @@ class FileManager:
         if raw.is_absolute():
             candidates.append(raw)
         else:
+            # Relative to current working directory (handles "shared/shared-data/file.xlsx")
+            candidates.append(Path.cwd() / raw)
             # Relative to repo root
             candidates.append((settings.PROJECT_ROOT / raw).resolve())
-            # Relative to projects dir
+            # If path starts with "shared/shared-data", try GLOBAL_DATA_DIR
+            if str(raw).startswith("shared/shared-data/"):
+                filename = Path(str(raw).replace("shared/shared-data/", ""))
+                candidates.append(settings.GLOBAL_DATA_DIR / filename)
+            # Relative to projects dir (full path)
+            candidates.append((self.projects_dir / raw).resolve())
+            # Relative to projects dir (just filename)
             candidates.append((self.projects_dir / raw.name).resolve())
 
         for candidate in candidates:
