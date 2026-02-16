@@ -21,7 +21,7 @@ class ProjectUtils:
         """
         self.projects_dir = projects_dir
 
-    def sanitize_project_name(self, name: str) -> str:
+    def validate_project_name(self, name: str) -> str:
         """Validate project name for new directory structure.
 
         Allows nested paths like 'arbodat:arbodat-test' but prevents directory traversal.
@@ -31,7 +31,7 @@ class ProjectUtils:
             name: Project name (can be nested path like 'parent:child')
 
         Returns:
-            Sanitized project name
+            Validated project name
 
         Raises:
             BadRequestError: If name is invalid or contains directory traversal
@@ -66,7 +66,7 @@ class ProjectUtils:
             BadRequestError: If project name is invalid
             ResourceNotFoundError: If project does not exist
         """
-        safe_name: str = self.sanitize_project_name(name)
+        safe_name: str = self.validate_project_name(name)
         # Convert API name to filesystem path (: -> /)
         project_file: Path = self.projects_dir / ProjectNameMapper.to_path(safe_name) / "shapeshifter.yml"
 

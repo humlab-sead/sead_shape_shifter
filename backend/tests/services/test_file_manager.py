@@ -29,7 +29,7 @@ class TestFileManager:
     def file_manager(self, temp_config_dir: Path) -> FileManager:
         """Create FileManager instance."""
 
-        def sanitize_project_name(name: str) -> str:
+        def validate_project_name(name: str) -> str:
             return name.strip()
 
         def ensure_project_exists(name: str) -> Path:
@@ -40,7 +40,7 @@ class TestFileManager:
 
         return FileManager(
             projects_dir=temp_config_dir,
-            sanitize_project_name_callback=sanitize_project_name,
+            validate_project_name_callback=validate_project_name,
             ensure_project_exists_callback=ensure_project_exists,
         )
 
@@ -280,7 +280,7 @@ class TestFileManager:
 
         clean_manager = FileManager(
             projects_dir=clean_dir,
-            sanitize_project_name_callback=sanitize,
+            validate_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
 
@@ -304,7 +304,7 @@ class TestFileManager:
 
         test_manager = FileManager(
             projects_dir=test_dir,
-            sanitize_project_name_callback=sanitize,
+            validate_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
 
@@ -332,7 +332,7 @@ class TestFileManager:
 
         test_manager = FileManager(
             projects_dir=test_dir,
-            sanitize_project_name_callback=sanitize,
+            validate_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
 
@@ -363,7 +363,7 @@ class TestFileManager:
 
         test_manager = FileManager(
             projects_dir=test_dir,
-            sanitize_project_name_callback=sanitize,
+            validate_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
 

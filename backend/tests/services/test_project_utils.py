@@ -51,43 +51,48 @@ options: {}
         (project_dir / "shapeshifter.yml").write_text(config_content)
         return project_dir
 
-    # sanitize_project_name tests
+    # validate_project_name tests
 
-    def test_sanitize_project_name_valid_simple(self, utils: ProjectUtils):
-        """Test sanitizing a simple project name."""
-        assert utils.sanitize_project_name("test") == "test"
+    def test_validate_project_name_valid_simple(self, utils: ProjectUtils):
+        """Test validating a simple project name."""
+        assert utils.validate_project_name("test") == "test"
 
-    def test_sanitize_project_name_valid_nested(self, utils: ProjectUtils):
-        """Test sanitizing nested path."""
-        assert utils.sanitize_project_name("parent/child") == "parent/child"
+    def test_validate_project_name_valid_nested(self, utils: ProjectUtils):
+        """Test validating nested path with colon separator."""
+        assert utils.validate_project_name("parent:child") == "parent:child"
 
-    def test_sanitize_project_name_empty(self, utils: ProjectUtils):
-        """Test sanitizing empty name raises error."""
+    def test_validate_project_name_empty(self, utils: ProjectUtils):
+        """Test validating empty name raises error."""
         with pytest.raises(BadRequestError, match="cannot be empty"):
-            utils.sanitize_project_name("")
+            utils.validate_project_name("")
 
-    def test_sanitize_project_name_whitespace_only(self, utils: ProjectUtils):
-        """Test sanitizing whitespace-only name raises error."""
+    def test_validate_project_name_whitespace_only(self, utils: ProjectUtils):
+        """Test validating whitespace-only name raises error."""
         with pytest.raises(BadRequestError, match="cannot be empty"):
-            utils.sanitize_project_name("   ")
+            utils.validate_project_name("   ")
 
-    def test_sanitize_project_name_directory_traversal(self, utils: ProjectUtils):
+    def test_validate_project_name_directory_traversal(self, utils: ProjectUtils):
         """Test directory traversal is prevented."""
         with pytest.raises(BadRequestError, match="directory traversal"):
-            utils.sanitize_project_name("parent/../sibling")
+            utils.validate_project_name("parent:..:sibling")
 
         with pytest.raises(BadRequestError, match="directory traversal"):
-            utils.sanitize_project_name("../parent")
+            utils.validate_project_name("..:parent")
 
-    def test_sanitize_project_name_absolute_path(self, utils: ProjectUtils):
-        """Test absolute paths are rejected."""
-        with pytest.raises(BadRequestError, match="absolute path"):
-            utils.sanitize_project_name("/absolute/path")
+    def test_validate_project_name_forward_slash(self, utils: ProjectUtils):
+        """Test forward slashes are rejected (use colon instead)."""
+        with pytest.raises(BadRequestError, match="use ':' for nested projects"):
+            utils.validate_project_name("parent/child")
 
-    def test_sanitize_project_name_strips_whitespace(self, utils: ProjectUtils):
+    def test_validate_project_name_absolute_path(self, utils: ProjectUtils):
+        """Test absolute paths with slash are rejected."""
+        with pytest.raises(BadRequestError, match="use ':' for nested projects"):
+            utils.validate_project_name("/absolute/path")
+            
+    def test_validate_project_name_strips_whitespace(self, utils: ProjectUtils):
         """Test whitespace is stripped."""
-        assert utils.sanitize_project_name("  test  ") == "test"
-        assert utils.sanitize_project_name("  parent/child  ") == "parent/child"
+        assert utils.validate_project_name("  test  ") == "test"
+        assert utils.validate_project_name("  parent:child  ") == "parent:child"
 
     # ensure_project_exists tests
 
@@ -104,13 +109,13 @@ options: {}
             utils.ensure_project_exists("nonexistent")
 
     def test_ensure_project_exists_nested(self, utils: ProjectUtils, temp_config_dir: Path):
-        """Test ensuring nested project exists."""
+        """Test ensuring nested project exists (using colon separator)."""
         # Create nested project
         nested_dir = temp_config_dir / "parent" / "child"
         nested_dir.mkdir(parents=True)
         (nested_dir / "shapeshifter.yml").write_text("metadata:\n  name: child\n")
 
-        # Should succeed
-        project_file = utils.ensure_project_exists("parent/child")
+        # Should succeed with colon separator
+        project_file = utils.ensure_project_exists("parent:child")
         assert project_file.exists()
         assert project_file.parent.name == "child"
