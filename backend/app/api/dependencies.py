@@ -36,7 +36,7 @@ def get_schema_service() -> Generator[services.SchemaIntrospectionService, None,
     Creates service with current configuration.
     Used as FastAPI dependency for schema introspection endpoints.
     """
-    service = services.SchemaIntrospectionService(settings.PROJECTS_DIR)
+    service = services.SchemaIntrospectionService(settings.GLOBAL_DATA_SOURCE_DIR)
     try:
         yield service
     finally:
