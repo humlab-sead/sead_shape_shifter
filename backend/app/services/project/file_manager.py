@@ -30,6 +30,7 @@ class FileManager:
         projects_dir: Path,
         sanitize_project_name_callback,  # Callable[[str], str]
         ensure_project_exists_callback,  # Callable[[str], Path]
+        global_data_dir: Path | None = None,
     ):
         """Initialize file manager.
 
@@ -37,8 +38,10 @@ class FileManager:
             projects_dir: Base directory for all projects
             sanitize_project_name_callback: Function to sanitize project names
             ensure_project_exists_callback: Function to ensure project exists
+            global_data_dir: Directory for global shared data files (default: projects_dir)
         """
         self.projects_dir: Path = projects_dir
+        self.global_data_dir: Path = global_data_dir or projects_dir
         self._sanitize_project_name = sanitize_project_name_callback
         self._ensure_project_exists = ensure_project_exists_callback
 
@@ -232,7 +235,7 @@ class FileManager:
     # Global data source file operations
 
     def list_data_source_files(self, extensions: Iterable[str] | None = None) -> list[ProjectFileInfo]:
-        """List files available for data source configuration in the projects directory.
+        """List files available for data source configuration in the global data directory.
 
         Args:
             extensions: Optional file extensions to filter
@@ -240,7 +243,7 @@ class FileManager:
         Returns:
             List of file information
         """
-        upload_dir: Path = self.projects_dir
+        upload_dir: Path = self.global_data_dir
 
         if not upload_dir.exists():
             return []
@@ -276,7 +279,7 @@ class FileManager:
         allowed_extensions: set[str] | None = None,
         max_size_mb: int = MAX_PROJECT_UPLOAD_SIZE_MB,
     ) -> ProjectFileInfo:
-        """Save an uploaded file into the projects directory (global data source).
+        """Save an uploaded file into the global data directory (global data source).
 
         Args:
             upload: Uploaded file
@@ -297,7 +300,7 @@ class FileManager:
             allowed_list: str = ", ".join(sorted(allowed))
             raise BadRequestError(f"Unsupported file type '{ext}'. Allowed: {allowed_list}")
 
-        upload_dir: Path = self.projects_dir
+        upload_dir: Path = self.global_data_dir
         upload_dir.mkdir(parents=True, exist_ok=True)
 
         target_path: Path = upload_dir / filename
