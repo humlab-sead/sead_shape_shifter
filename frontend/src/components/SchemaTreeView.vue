@@ -114,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
 import type { TableMetadata } from '@/types/schema'
 import { getTableIcon, formatRowCount } from '@/types/schema'
@@ -240,10 +240,21 @@ watch(schemaFilter, () => {
   }
 })
 
-// Initialize
-if (props.autoLoad && databaseSources.value.length > 0) {
-  selectedDataSourceName.value = databaseSources.value[0]?.name ?? null
-}
+// Initialize - Fetch data sources on mount if autoLoad is true
+onMounted(async () => {
+  if (props.autoLoad && databaseSources.value.length === 0) {
+    try {
+      await dataSourceStore.fetchDataSources()
+      if (databaseSources.value.length > 0) {
+        selectedDataSourceName.value = databaseSources.value[0]?.name ?? null
+      }
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to load data sources'
+    }
+  } else if (props.autoLoad && databaseSources.value.length > 0 && !selectedDataSourceName.value) {
+    selectedDataSourceName.value = databaseSources.value[0]?.name ?? null
+  }
+})
 </script>
 
 <style scoped>
