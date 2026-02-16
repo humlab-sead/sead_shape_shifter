@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from backend.app.api.dependencies import require_session
 from backend.app.core.state_manager import ApplicationState, ProjectSession, get_app_state
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 
 router = APIRouter(prefix="/sessions")
 
@@ -49,8 +50,11 @@ async def create_session(
     optimistic concurrency control is used to prevent conflicts when saving.
     """
 
+    # Convert API project name to filesystem path (: -> /)
+    project_path_name: str = ProjectNameMapper.to_path(request.project_name)
+    
     # Verify project file exists (nested structure: projects/<name>/shapeshifter.yml)
-    project_path: Path = app_state.projects_dir / request.project_name / "shapeshifter.yml"
+    project_path: Path = app_state.projects_dir / project_path_name / "shapeshifter.yml"
     if not project_path.exists():
         raise HTTPException(404, f"Project '{request.project_name}' not found")
 
