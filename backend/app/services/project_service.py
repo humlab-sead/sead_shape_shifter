@@ -96,6 +96,27 @@ class ProjectService:
             ensure_project_exists_callback=self.utils.ensure_project_exists,
         )
 
+    @staticmethod
+    def _name_to_path(name: str) -> str:
+        """Convert API project name to filesystem path.
+
+        Replaces ':' with '/' to support nested projects in API while
+        using standard directory separators on disk.
+
+        Example: 'arbodat:arbodat-copy' -> 'arbodat/arbodat-copy'
+        """
+        return name.replace(":", "/")
+
+    @staticmethod
+    def _path_to_name(path: str) -> str:
+        """Convert filesystem path to API project name.
+
+        Replaces '/' with ':' to avoid URL path parsing issues.
+
+        Example: 'arbodat/arbodat-copy' -> 'arbodat:arbodat-copy'
+        """
+        return path.replace("/", ":")
+
     def list_projects(self) -> list[ProjectMetadata]:
         """
         List all available project files.
@@ -123,9 +144,10 @@ class ProjectService:
 
                 entity_count: int = len(data.get("entities", {}))
 
-                # Derive project name from relative path (e.g., "arbodat/arbodat-test")
+                # Derive project name from relative path, converting / to : (e.g., "arbodat:arbodat-test")
                 relative_path: Path = yaml_file.relative_to(self.projects_dir)
-                project_name: str = str(relative_path.parent) if relative_path.parent != Path(".") else yaml_file.parent.name
+                path_str: str = str(relative_path.parent) if relative_path.parent != Path(".") else yaml_file.parent.name
+                project_name: str = self._path_to_name(path_str)
 
                 metadata = ProjectMetadata(
                     name=project_name,
@@ -188,8 +210,8 @@ class ProjectService:
             )
             return copy
 
-        # Load from disk - shapeshifter.yml is the fixed filename, could be nested paths (arbodat/arbodat-test)
-        filename: Path = self.projects_dir / name / "shapeshifter.yml"
+        # Load from disk - convert API name to path (arbodat:arbodat-test -> arbodat/arbodat-test)
+        filename: Path = self.projects_dir / self._name_to_path(name) / "shapeshifter.yml"
 
         if not filename.exists():
             raise ResourceNotFoundError(resource_type="project", resource_id=name, message=f"Project not found: {name}")
