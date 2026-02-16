@@ -36,11 +36,11 @@ services:
     volumes:
       # Mount local data directories from docker/data/
       - ./data/projects:/app/projects
+      - ./data/shared:/app/shared
       - ./data/logs:/app/logs
       - ./data/output:/app/output
       - ./data/backups:/app/backups
       - ./data/tmp:/app/tmp
-      - ./data/shared:/app/shared
 
       # Mount .pgpass for PostgreSQL authentication (if exists)
       - ./data/.pgpass/.pgpass:/app/.pgpass:ro
