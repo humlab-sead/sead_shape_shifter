@@ -10,11 +10,12 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.models.validation import ValidationResult
 from backend.app.services.project_service import (
     ProjectService,
-    get_project_service,
+    get_project_service
 )
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from backend.app.services.yaml_service import YamlService, get_yaml_service
@@ -500,11 +501,14 @@ async def get_project_raw_yaml(name: str) -> dict[str, str]:
     Returns:
         Dictionary containing yaml_content
     """
+    
     project_service: ProjectService = get_project_service()
 
     project_service.load_project(name)
 
-    project_path = settings.PROJECTS_DIR / name / "shapeshifter.yml"
+    # Convert API name to filesystem path (: -> /)
+    path_name = ProjectNameMapper.to_path(name)
+    project_path = settings.PROJECTS_DIR / path_name / "shapeshifter.yml"
     if not project_path.exists():
         raise NotFoundError(f"Project file not found: {project_path}")
 
@@ -549,8 +553,10 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
     if not isinstance(parsed_yaml, dict):
         raise BadRequestError("YAML must be a dictionary")
 
-    # Write to file
-    project_path = settings.PROJECTS_DIR / name / "shapeshifter.yml"
+    
+    # Write to file (convert API name to filesystem path: : -> /)
+    path_name = ProjectNameMapper.to_path(name)
+    project_path = settings.PROJECTS_DIR / path_name / "shapeshifter.yml"
     if not project_path.exists():
         raise NotFoundError(f"Project file not found: {project_path}")
 

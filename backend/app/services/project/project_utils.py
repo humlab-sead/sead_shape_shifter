@@ -6,6 +6,7 @@ This module provides core project validation utilities used by all project compo
 from pathlib import Path
 
 from backend.app.exceptions import ResourceNotFoundError
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.utils.exceptions import BadRequestError
 
 
@@ -67,7 +68,7 @@ class ProjectUtils:
         """
         safe_name: str = self.sanitize_project_name(name)
         # Convert API name to filesystem path (: -> /)
-        project_file: Path = self.projects_dir / safe_name.replace(":", "/") / "shapeshifter.yml"
+        project_file: Path = self.projects_dir / ProjectNameMapper.to_path(safe_name) / "shapeshifter.yml"
 
         if not project_file.exists():
             raise ResourceNotFoundError(

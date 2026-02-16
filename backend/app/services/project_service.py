@@ -11,6 +11,7 @@ from backend.app.core.config import settings
 from backend.app.core.state_manager import ApplicationStateManager, get_app_state_manager
 from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError
 from backend.app.mappers.project_mapper import ProjectMapper
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.entity import Entity
 from backend.app.models.project import Project, ProjectFileInfo, ProjectMetadata
@@ -96,27 +97,6 @@ class ProjectService:
             ensure_project_exists_callback=self.utils.ensure_project_exists,
         )
 
-    @staticmethod
-    def _name_to_path(name: str) -> str:
-        """Convert API project name to filesystem path.
-
-        Replaces ':' with '/' to support nested projects in API while
-        using standard directory separators on disk.
-
-        Example: 'arbodat:arbodat-copy' -> 'arbodat/arbodat-copy'
-        """
-        return name.replace(":", "/")
-
-    @staticmethod
-    def _path_to_name(path: str) -> str:
-        """Convert filesystem path to API project name.
-
-        Replaces '/' with ':' to avoid URL path parsing issues.
-
-        Example: 'arbodat/arbodat-copy' -> 'arbodat:arbodat-copy'
-        """
-        return path.replace("/", ":")
-
     def list_projects(self) -> list[ProjectMetadata]:
         """
         List all available project files.
@@ -147,7 +127,7 @@ class ProjectService:
                 # Derive project name from relative path, converting / to : (e.g., "arbodat:arbodat-test")
                 relative_path: Path = yaml_file.relative_to(self.projects_dir)
                 path_str: str = str(relative_path.parent) if relative_path.parent != Path(".") else yaml_file.parent.name
-                project_name: str = self._path_to_name(path_str)
+                project_name: str = ProjectNameMapper.to_api_name(path_str)
 
                 metadata = ProjectMetadata(
                     name=project_name,
@@ -211,7 +191,7 @@ class ProjectService:
             return copy
 
         # Load from disk - convert API name to path (arbodat:arbodat-test -> arbodat/arbodat-test)
-        filename: Path = self.projects_dir / self._name_to_path(name) / "shapeshifter.yml"
+        filename: Path = self.projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
 
         if not filename.exists():
             raise ResourceNotFoundError(resource_type="project", resource_id=name, message=f"Project not found: {name}")
@@ -270,8 +250,8 @@ class ProjectService:
             raise ConfigurationError(message="Project must have metadata with name")
 
         # Use original file path if provided, otherwise derive from metadata.name
-        # Example: projects_dir/project-name/shapeshifter.yml
-        file_path: Path = original_file_path or (self.projects_dir / project.metadata.name / "shapeshifter.yml")
+        # Example: projects_dir/arbodat/arbodat-test/shapeshifter.yml (API name "arbodat:arbodat-test")
+        file_path: Path = original_file_path or (self.projects_dir / ProjectNameMapper.to_path(project.metadata.name) / "shapeshifter.yml")
 
         # Ensure project directory exists
         file_path.parent.mkdir(parents=True, exist_ok=True)

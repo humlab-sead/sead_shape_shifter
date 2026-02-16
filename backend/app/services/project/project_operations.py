@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 from backend.app.exceptions import ConfigurationError, ResourceConflictError, ResourceNotFoundError
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models.project import Project, ProjectMetadata
 
@@ -75,7 +76,7 @@ class ProjectOperations:
         """
         corr: str = get_correlation_id()
         # New structure: projects_dir/name/shapeshifter.yml (convert : to /)
-        path_name: str = name.replace(":", "/")
+        path_name: str = ProjectNameMapper.to_path(name)
         file_path: Path = self.projects_dir / path_name / "shapeshifter.yml"
 
         if file_path.exists():
@@ -116,7 +117,7 @@ class ProjectOperations:
         """
         corr: str = get_correlation_id()
         # Structure: projects_dir/name/shapeshifter.yml (convert : to /)
-        project_dir: Path = self.projects_dir / name.replace(":", "/")
+        project_dir: Path = self.projects_dir / ProjectNameMapper.to_path(name)
         file_path: Path = project_dir / "shapeshifter.yml"
 
         if not file_path.exists():
@@ -169,8 +170,8 @@ class ProjectOperations:
             ProjectServiceError: If copy fails
         """
         # New structure: projects_dir/name/shapeshifter.yml (convert : to /)
-        source_dir: Path = self.projects_dir / source_name.replace(":", "/")
-        target_dir: Path = self.projects_dir / target_name.replace(":", "/")
+        source_dir: Path = self.projects_dir / ProjectNameMapper.to_path(source_name)
+        target_dir: Path = self.projects_dir / ProjectNameMapper.to_path(target_name)
         source_file: Path = source_dir / "shapeshifter.yml"
         target_file: Path = target_dir / "shapeshifter.yml"
 
@@ -261,7 +262,7 @@ class ProjectOperations:
             raise ConfigurationError(message=f"Project '{name}' has no metadata")
 
         # Determine original file path to preserve filename (convert : to /)
-        original_file_path: Path = self.projects_dir / name.replace(":", "/") / "shapeshifter.yml"
+        original_file_path: Path = self.projects_dir / ProjectNameMapper.to_path(name) / "shapeshifter.yml"
 
         # Update metadata fields (only if provided, ignore new_name)
         if description is not None:
