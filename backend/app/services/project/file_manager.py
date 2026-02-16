@@ -1,7 +1,7 @@
 """File management operations: upload, list, and inspect files for projects."""
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable
+from typing import Iterable
 
 from fastapi import UploadFile
 
@@ -9,9 +9,7 @@ from backend.app.core.config import settings
 from backend.app.models.project import ProjectFileInfo
 from backend.app.utils.excel_utils import get_excel_metadata as extract_excel_metadata
 from backend.app.utils.exceptions import BadRequestError
-
-if TYPE_CHECKING:
-    pass
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 
 
 DEFAULT_ALLOWED_UPLOAD_EXTENSIONS: set[str] = {".xlsx", ".xls"}
@@ -47,14 +45,21 @@ class FileManager:
 
     # Helper methods
 
-    def _get_project_upload_dir(self, project_name: str) -> Path:  # pylint: disable=unused-argument
+    def _get_project_upload_dir(self, project_name: str) -> Path:
         """Get upload directory for a project.
 
-        Currently returns projects_dir for backward compatibility.
-        Future: could return projects_dir/project_name/uploads/
+        Returns the project's directory where uploaded files are stored.
+        Files are stored directly in the project directory alongside shapeshifter.yml.
+
+        Args:
+            project_name: Project name
+
+        Returns:
+            Path to project directory
         """
-        # safe_name = self._sanitize_project_name(project_name)
-        return self.projects_dir
+
+        safe_path = ProjectNameMapper.to_path(project_name)
+        return self.projects_dir / safe_path
 
     def _to_public_path(self, path: Path) -> str:
         """Convert absolute path to public relative path.
@@ -248,7 +253,7 @@ class FileManager:
             List of file information from global store (and local store if project_name provided)
         """
         files: list[ProjectFileInfo] = []
-        
+
         # Always include global files
         upload_dir: Path = self.global_data_dir
         if upload_dir.exists():
@@ -273,7 +278,7 @@ class FileManager:
                         modified_at=stat.st_mtime,
                     )
                 )
-        
+
         # Add project-specific files if project_name provided
         if project_name:
             try:

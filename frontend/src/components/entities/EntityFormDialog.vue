@@ -867,6 +867,15 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
       filename: formData.value.options.filename,
     }
 
+    // Add location field to indicate where file is stored
+    const selectedFile = availableProjectFiles.value.find(f => f.name === formData.value.options.filename)
+    if (selectedFile) {
+      options.location = selectedFile.location
+    } else {
+      // Default to global for backwards compatibility
+      options.location = 'global'
+    }
+
     if (formData.value.type === 'csv') {
       if (formData.value.options.sep) {
         options.sep = formData.value.options.sep
