@@ -153,8 +153,40 @@ class ProjectMapper:
         """Convert API Project to core ShapeShiftProject.
 
         Conditionally resolves @include: and @value: directives only if needed.
+        Resolves file paths based on location field at the API → Core boundary.
         """
         cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_config=api_config)
+
+        # Resolve file paths in entity options based on location field
+        # This gives Core fully resolved absolute paths without storing them in YAML
+        entities = cfg_dict.get("entities", {})
+        for entity_dict in entities.values():
+            options = entity_dict.get("options")
+            if not options or not isinstance(options, dict):
+                continue
+            
+            filename = options.get("filename")
+            location = options.get("location", "global")  # Default to global
+            
+            if filename and location:
+                from pathlib import Path
+                from backend.app.core.config import settings
+                from backend.app.mappers.project_name_mapper import ProjectNameMapper
+                
+                # Resolve to absolute path based on location
+                if location == "global":
+                    resolved_path = str(settings.GLOBAL_DATA_DIR / filename)
+                elif location == "local":
+                    # Convert project name to path and resolve relative to projects dir
+                    project_path = ProjectNameMapper.to_path(api_config.filename or "")
+                    resolved_path = str(settings.PROJECTS_DIR / project_path / filename)
+                else:
+                    logger.warning(f"Unknown location '{location}' for file '{filename}', using global")
+                    resolved_path = str(settings.GLOBAL_DATA_DIR / filename)
+                
+                # Update to absolute path for Core (Core doesn't need to know about location)
+                options["filename"] = resolved_path
+                logger.debug(f"Resolved {location} file: {filename} -> {resolved_path}")
 
         # Create project
         project = ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
