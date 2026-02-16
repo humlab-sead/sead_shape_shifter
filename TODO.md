@@ -39,7 +39,6 @@ FIXME: #219 Inline data source configurations raised an error.
           (e.g., string, integer, date) and support type conversions in extra_columns.
  - [] TODO: Improve multiuser support (working on same project)
  - [] TODO: Add more reconciliation entity types, and non-SEAD types (e.g. Geonames, RAÄ-lämningsnummer)
- - [] TODO: NOT WORTH THE EFFORT! Improve user experience (Add new edge/relationship in dependency graph)
  - [] TODO: Improve in-system help (full User Guide, more context sensitive help)
  - [] TODO: Improve UX suggestions when editing entity (awareness of availiable tables, columns etc)
  - [] TODO: Auto-save feature in YAML editing mode (trigger after 2 seconds of inactivity)
@@ -103,67 +102,40 @@ Keep helper mappings simple so non-technical users can combine columns with stri
 ### TODO: #124 Reconciliation editor extra_columns complaint - **Easy Fix**
 - The reconciliation editor validation is likely too strict
 - Simple fix: Update schema/validation to allow `extra_columns` property
-- **Effort: 1-2 hours** | **Value: High** (removes user friction)
 ---
 
 ### TODO: Generate default reconciliation YAML from manifest - **Smart Feature**
 - Calls `/reconcile` endpoint and scaffolds YAML
-- **Effort: 6-8 hours** | **Value: High** (user productivity)
 - Reconciliation system already exists with full implementation
 
 ### TODO: #68 Add "finally" cleanup step - **Pipeline Feature**
 - Drops intermediate tables/columns after processing
-- **Effort: 8-12 hours** | **Value: Medium** (clean output)
 - Fits naturally after Store phase
 
 ### TODO: #108 Tiny DSL for extra_columns - **HIGH VALUE but Complex**
 - Detailed spec already exists in TODO.md
 - Two-tier approach is smart: `=concat(...)` for users, `expr:...` for power users
-- **Effort: 2-3 weeks** | **Value: Very High** (major feature)
-- **Recommendation: Phase 1 = Just `expr:` support (1 week), Phase 2 = DSL compiler (2 weeks)**
 
 ### TODO: #66 Transformations section (toWGS84, etc.) - **Data Quality Feature**
 - Coordinate transformations, case normalization, etc.
-- **Effort: 2-3 weeks** | **Value: High for geo data**
 - Consider using existing libraries (pyproj for coords)
 
-### TODO: #69 Add "parent" property to entities - **Hierarchical Data**
-- Useful for nested structures (site → feature → sample)
-- **Effort: 1-2 weeks** | **Value: Medium** (depends on use cases)
-
 ### TODO: #67 String concatenation in extra_columns - **Subset of #108**
-- **Recommendation: Skip if doing #108 DSL, otherwise quick win**
-- **Effort: 2-3 days** | **Value: Medium**
-
-### TODO: Duplicate existing configuration - **User Convenience**
-- Copy project with new name
-- **Effort: 2-3 hours** | **Value: Medium**
 
 ### TODO: Add optional types for entity fields - **Type Safety**
 - Schema validation + conversions in extra_columns
-- **Effort: 1-2 weeks** | **Value: Medium** (better error messages)
 
 ### TODO: Improve multiuser support - **Complex Feature**
 - Requires conflict resolution, locking, real-time sync
-- **Effort: 4-6 weeks** | **Value: Low** (unless multiple concurrent users)
-- **Recommendation: Defer unless actual need arises**
 
 ### TODO: Add more reconciliation entity types - **Domain-Specific**
 - Geonames, RAÄ, etc.
-- **Effort: Varies** | **Value: Depends on user base**
-- **Recommendation: Add on demand, not preemptively**
 
 ### TODO: Improve UX suggestions when editing entity - **Context-Aware Editor**
 - Show available tables/columns from data source
-- **Effort: 2-3 weeks** | **Value: High for new users**
 - Could integrate with existing YAML intelligence
 
-
-**Bottom line:** Focus on Phase 1 (bugs), then tackle #108 DSL in two phases. The extra_columns DSL is your highest-value unimplemented feature based on the detailed spec you've already written.
-
 Add capability to upload Excel files (.xls, .xlsx) to the data source files directory defined by SHAPE_SHIFTER_DATA_SOURCE_FILES_DIR in the .env file. The uploaded Excel files should be accessible for use in entity configurations within the Shape Shifter application.
-
-### TODO: #181 Drop duplicates of "site" entity fails FD validation
 
 ### TODO: Introduce entity type "file" for entities based on files,
 Type of files could be csv, excel, json, xml etc, and specified in e.g a "file_type" field.
@@ -187,41 +159,8 @@ Add a convenience function for copying an SQL select statement to the clipboard 
 ### TODO: Add a "Test Query" button in the entity editor.
 Should open a modal with a Monaco Editor for SQL editing, allowing users to test SQL queries against the data source directly from the entity editor. This would provide a more integrated experience for users working with SQL entities.
 
-### TODO: Do not close Entity Editor on Save
-
-Consider not closing the entity editor modal when clicking "Save" to allow users to make multiple edits without having to reopen the editor each time. This could be implemented as a user preference or a toggle in the UI.
-
 ### TODO: Save custom graph layout in separate file
 
 
 ### TODO: #221 System fails to find ingesters folder
 The system currently fails to find the ingesters folder when running in Docker. Cause: the ingesters folder is not copied to the Docker image, we need to copy the ingesters folder to the Docker image in the Dockerfile, and set environment variables accordingly.
-
-
-### TODO: Add feature to edit value replacements in Entity Editor
-
-The normalization process, more specifically the subset/extract part can replace columnar values in an entity
-using a map specified in the project config. Currently this mapping resides in the "options.replacements" part
-of the project YAML file. The actual replacement logic reside in extract.py, lines 166 to 176.
-
-The replacement map for an entity looks like this:
-
-```yaml
-entity-name:
-  column-name:
-    from-value_1: to-value_1
-    from-value_2: to-value_2
-    from-value_3: to-value_3
-    from-value_4: to-value_4
-```
-This is the core logic:
-```python
-  for col, replacement_map in replacements.items():
-      if col in result.columns:
-          # - Mapping: explicit old->new replacements
-          # - Scalar/list: treat as "values to blank out", then forward-fill (legacy pad behavior)
-          if isinstance(replacement_map, Mapping):
-              result[col] = result[col].replace(to_replace=replacement_map)
-          else:
-              result[col] = result[col].replace(to_replace=replacement_map, value=pd.NA).ffill()
-```

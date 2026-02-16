@@ -80,7 +80,7 @@ const nameRules = [
   (v: string) => !!v || 'Project name is required',
   (v: string) => v.length >= 3 || 'Name must be at least 3 characters',
   (v: string) => v.length <= 100 || 'Name must be less than 100 characters',
-  (v: string) => /^[a-zA-Z0-9_\-./]+$/.test(v) || 'Name can only contain letters, numbers, hyphens, underscores, and forward slashes',
+  (v: string) => /^[a-zåäöA-ZÅÄÖ0-9_\-./]+$/.test(v) || 'Name can only contain letters, numbers, hyphens, underscores, and forward slashes',
   (v: string) => !v.includes('..') || 'Name cannot contain ".." for security reasons',
   (v: string) => !projects.value.some((c) => c.name === v) || 'A project with this name already exists',
 ]
