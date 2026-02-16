@@ -59,16 +59,22 @@ class FileManager:
     def _to_public_path(self, path: Path) -> str:
         """Convert absolute path to public relative path.
 
-        Tries to make path relative to PROJECT_ROOT, then PROJECTS_DIR parent,
+        Tries to make path relative to PROJECT_ROOT, GLOBAL_DATA_DIR, or PROJECTS_DIR,
         otherwise returns absolute path as string.
         """
         try:
             return str(path.relative_to(settings.PROJECT_ROOT))
         except ValueError:
             try:
-                return str(path.relative_to(settings.PROJECTS_DIR.parent))
+                # For global data files, make relative to GLOBAL_DATA_DIR to get just filename
+                rel_path = path.relative_to(settings.GLOBAL_DATA_DIR)
+                # Return as "shared/shared-data/filename.xlsx" for portability
+                return str(Path("shared/shared-data") / rel_path)
             except ValueError:
-                return str(path)
+                try:
+                    return str(path.relative_to(settings.PROJECTS_DIR))
+                except ValueError:
+                    return str(path)
 
     def _resolve_path(self, path_str: str) -> Path:
         """Resolve a user-supplied path relative to project root (or projects dir) and validate existence.
