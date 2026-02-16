@@ -26,7 +26,7 @@ class FileManager:
     def __init__(
         self,
         projects_dir: Path,
-        sanitize_project_name_callback,  # Callable[[str], str]
+        validate_project_name_callback,  # Callable[[str], str]
         ensure_project_exists_callback,  # Callable[[str], Path]
         global_data_dir: Path | None = None,
     ):
@@ -34,13 +34,13 @@ class FileManager:
 
         Args:
             projects_dir: Base directory for all projects
-            sanitize_project_name_callback: Function to sanitize project names
+            validate_project_name_callback: Function to validate project names
             ensure_project_exists_callback: Function to ensure project exists
             global_data_dir: Directory for global shared data files (default: projects_dir)
         """
         self.projects_dir: Path = projects_dir
         self.global_data_dir: Path = global_data_dir or projects_dir
-        self._sanitize_project_name = sanitize_project_name_callback
+        self._validate_project_name = validate_project_name_callback
         self._ensure_project_exists = ensure_project_exists_callback
 
     # Helper methods

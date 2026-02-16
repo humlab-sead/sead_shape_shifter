@@ -889,44 +889,44 @@ options: {}
         with pytest.raises(ResourceNotFoundError):
             service.update_metadata("nonexistent", description="Test")
 
-    # _sanitize_project_name tests
+    # _validate_project_name tests
 
-    def test_sanitize_project_name_valid_simple(self, service: ProjectService):
-        """Test sanitizing valid simple project name."""
-        result = service._sanitize_project_name("my_project")
+    def test_validate_project_name_valid_simple(self, service: ProjectService):
+        """Test validating valid simple project name."""
+        result = service._validate_project_name("my_project")
         assert result == "my_project"
 
-    def test_sanitize_project_name_valid_nested(self, service: ProjectService):
-        """Test sanitizing valid nested project name."""
-        result = service._sanitize_project_name("category/sub/project")
-        assert result == "category/sub/project"
+    def test_validate_project_name_valid_nested(self, service: ProjectService):
+        """Test validating valid nested project name with colon separator."""
+        result = service._validate_project_name("category:sub:project")
+        assert result == "category:sub:project"
 
-    def test_sanitize_project_name_empty(self, service: ProjectService):
+    def test_validate_project_name_empty(self, service: ProjectService):
         """Test empty project name raises error."""
         with pytest.raises(BadRequestError, match="cannot be empty"):
-            service._sanitize_project_name("")
+            service._validate_project_name("")
 
-    def test_sanitize_project_name_whitespace_only(self, service: ProjectService):
+    def test_validate_project_name_whitespace_only(self, service: ProjectService):
         """Test whitespace-only project name raises error."""
         with pytest.raises(BadRequestError, match="cannot be empty"):
-            service._sanitize_project_name("   ")
+            service._validate_project_name("   ")
 
-    def test_sanitize_project_name_directory_traversal(self, service: ProjectService):
+    def test_validate_project_name_directory_traversal(self, service: ProjectService):
         """Test directory traversal attempts are blocked."""
         with pytest.raises(BadRequestError, match="traversal not allowed"):
-            service._sanitize_project_name("../escape")
+            service._validate_project_name("../escape")
 
         with pytest.raises(BadRequestError, match="traversal not allowed"):
-            service._sanitize_project_name("category/../escape")
+            service._validate_project_name("category/../escape")
 
-    def test_sanitize_project_name_absolute_path(self, service: ProjectService):
-        """Test absolute paths are rejected."""
-        with pytest.raises(BadRequestError, match="absolute path"):
-            service._sanitize_project_name("/absolute/path")
+    def test_validate_project_name_absolute_path(self, service: ProjectService):
+        """Test absolute paths with slash are rejected."""
+        with pytest.raises(BadRequestError, match="use ':' for nested projects"):
+            service._validate_project_name("/absolute/path")
 
-    def test_sanitize_project_name_strips_whitespace(self, service: ProjectService):
+    def test_validate_project_name_strips_whitespace(self, service: ProjectService):
         """Test that leading/trailing whitespace is stripped."""
-        result = service._sanitize_project_name("  my_project  ")
+        result = service._validate_project_name("  my_project  ")
         assert result == "my_project"
 
     # _ensure_project_exists tests
@@ -951,7 +951,7 @@ options: {}
         nested_dir.mkdir(parents=True)
         (nested_dir / "shapeshifter.yml").touch()
 
-        result = service._ensure_project_exists("cat1/cat2/project")
+        result = service._ensure_project_exists("cat1:cat2:project")
 
         expected = service.projects_dir / "cat1" / "cat2" / "project" / "shapeshifter.yml"
         assert result == expected

@@ -93,7 +93,7 @@ class ProjectService:
         # Initialize file manager component
         self.files = FileManager(
             projects_dir=self.projects_dir,
-            sanitize_project_name_callback=self.utils.sanitize_project_name,
+            validate_project_name_callback=self.utils.validate_project_name,
             ensure_project_exists_callback=self.utils.ensure_project_exists,
             global_data_dir=settings.GLOBAL_DATA_DIR,
         )
@@ -684,21 +684,22 @@ class ProjectService:
 
     # File management helpers
 
-    def _sanitize_project_name(self, name: str) -> str:
+    def _validate_project_name(self, name: str) -> str:
         """Validate project name for new directory structure.
 
-        Allows nested paths like 'arbodat/arbodat-test' but prevents directory traversal.
+        Allows nested paths like 'arbodat:arbodat-test' but prevents directory traversal.
+        Uses ':' as separator to avoid URL path parsing issues.
 
         Args:
-            name: Project name (can be nested path like 'parent/child')
+            name: Project name (can be nested path like 'parent:child')
 
         Returns:
-            Sanitized project name
+            Validated project name
 
         Raises:
             BadRequestError: If name is invalid or contains directory traversal
         """
-        return self.utils.sanitize_project_name(name)
+        return self.utils.validate_project_name(name)
 
     def _ensure_project_exists(self, name: str) -> Path:
         """Ensure project exists in new directory structure.
