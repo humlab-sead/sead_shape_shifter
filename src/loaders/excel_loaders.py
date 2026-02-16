@@ -1,8 +1,10 @@
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import openpyxl
 import pandas as pd
+from openpyxl.utils import column_index_from_string
 
 from src.loaders.driver_metadata import DriverSchema, FieldMetadata
 from src.loaders.file_loaders import FileLoader
@@ -138,6 +140,20 @@ class OpenPyxlLoader(ExcelLoader):
         ],
     )
 
+    @staticmethod
+    def _parse_column_range(cell_range: str) -> tuple[int, int] | None:
+        """Parse a column range like 'A:I' or 'B:Z' and return (min_col, max_col).
+        
+        Returns None if not a column range.
+        """
+        # Match column-only ranges like 'A:I', 'AA:ZZ'
+        match = re.match(r'^([A-Z]+):([A-Z]+)$', cell_range.strip().upper())
+        if match:
+            min_col = column_index_from_string(match.group(1))
+            max_col = column_index_from_string(match.group(2))
+            return (min_col, max_col)
+        return None
+
     async def load_file(self, opts: dict[str, Any]) -> pd.DataFrame:  # type: ignore[unused-argument]
         """Load data from a sheet in an Excel file into a DataFrame."""
         filename: str | None = opts.get("filename")
@@ -162,7 +178,19 @@ class OpenPyxlLoader(ExcelLoader):
         if cell_range is None:
             data = worksheet.values
         else:
-            data = ([cell.value for cell in row] for row in worksheet[cell_range])
+            # Check if it's a column range (e.g., 'A:I')
+            # ReadOnlyWorksheet doesn't support iter_cols, so we need to use iter_rows
+            col_range = self._parse_column_range(cell_range)
+            if col_range:
+                min_col, max_col = col_range
+                # Use iter_rows with column filtering for read-only compatibility
+                data = (
+                    [cell.value for cell in row[min_col - 1:max_col]]
+                    for row in worksheet.iter_rows()
+                )
+            else:
+                # Normal cell range like 'A1:I100' works fine with worksheet[]
+                data = ([cell.value for cell in row] for row in worksheet[cell_range])
 
         header_opt: bool | list[str] = opts.get("header", True)
         data_header: list[str] | None = next(data) if header_opt else None
