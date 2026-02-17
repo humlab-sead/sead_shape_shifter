@@ -127,13 +127,10 @@ class ValidationService:
 
         try:
             settings = get_settings()
-            # Construct absolute path to .env file (settings.env_file is relative)
-            env_file_path = str(settings.PROJECT_ROOT / settings.env_file)
             
             project_cfg = Config.resolve_references(
                 project_cfg,
                 source_path=source_path,
-                env_filename=env_file_path,
                 env_prefix=settings.env_prefix,
                 try_without_prefix=True,
             )

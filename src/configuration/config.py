@@ -12,7 +12,6 @@ from typing import Any
 
 import pandas as pd
 import yaml
-from dotenv import load_dotenv
 from loguru import logger
 
 from src.utility import dget, dotexists, dotset, env2dict, replace_env_vars
@@ -198,11 +197,10 @@ class Config(ConfigLike):
 
         Note: This method does NOT mutate the input data parameter.
         It creates a deep copy to ensure the original remains unchanged.
-        """
-        # Load environment variables from .env file if provided
-        if env_filename:
-            load_dotenv(dotenv_path=env_filename)
         
+        Environment variables are expected to already be loaded in os.environ.
+        The env_filename parameter is kept for backward compatibility but not used.
+        """
         if not inplace:
             data = copy.deepcopy(data)
 
