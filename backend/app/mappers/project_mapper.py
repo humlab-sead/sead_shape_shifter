@@ -22,11 +22,13 @@ The API layer is the editing/persistence boundary. Core is the execution/process
 No hardcoded field lists - all field handling is derived from Pydantic schemas.
 """
 
+from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
 from backend.app.core.config import settings
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models import (
     Entity,
@@ -169,10 +171,6 @@ class ProjectMapper:
             location = options.get("location", "global")  # Default to global
             
             if filename and location:
-                from pathlib import Path
-                from backend.app.core.config import settings
-                from backend.app.mappers.project_name_mapper import ProjectNameMapper
-                
                 # Resolve to absolute path based on location
                 if location == "global":
                     resolved_path = str(settings.GLOBAL_DATA_DIR / filename)
