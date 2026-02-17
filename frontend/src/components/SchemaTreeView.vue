@@ -54,7 +54,7 @@
       </v-alert>
 
       <!-- Table Selector (Combobox) -->
-      <v-autocomplete
+      <v-select
         v-model="selectedTableName"
         :items="tables"
         item-title="name"
@@ -62,7 +62,6 @@
         label="Select table"
         density="compact"
         variant="outlined"
-        clearable
         :loading="loading"
         :disabled="!selectedDataSourceName || loading"
         :no-data-text="!selectedDataSourceName ? 'Select a data source first' : 'No tables found'"
@@ -85,7 +84,7 @@
             </template>
           </v-list-item>
         </template>
-      </v-autocomplete>
+      </v-select>
       
       <!-- Slot for additional content (e.g., column details) -->
       <slot name="details" />

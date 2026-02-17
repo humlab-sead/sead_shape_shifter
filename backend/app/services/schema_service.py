@@ -254,7 +254,7 @@ class SchemaIntrospectionService:
             return {
                 "columns": data.columns.tolist(),
                 "rows": data.to_dict(orient="records"),  # type: ignore
-                "total_rows": row_count,
+                "total_rows": row_count or 0,  # Use 0 if row count unavailable
                 "limit": limit,
                 "offset": offset,
             }
