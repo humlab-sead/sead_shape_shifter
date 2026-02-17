@@ -33,82 +33,12 @@
 
       <!-- Schema Details -->
       <div v-else>
-        <!-- Table Info -->
-        <v-list density="compact" class="mb-4">
-          <v-list-item>
-            <template #prepend>
-              <v-icon icon="mdi-table" size="small" />
-            </template>
-            <v-list-item-title>Table Name</v-list-item-title>
-            <v-list-item-subtitle>{{ tableSchema.table_name }}</v-list-item-subtitle>
-          </v-list-item>
-
-          <v-list-item v-if="tableSchema.schema_name">
-            <template #prepend>
-              <v-icon icon="mdi-folder-outline" size="small" />
-            </template>
-            <v-list-item-title>Schema</v-list-item-title>
-            <v-list-item-subtitle>{{ tableSchema.schema_name }}</v-list-item-subtitle>
-          </v-list-item>
-
-          <v-list-item v-if="tableSchema.row_count !== null && tableSchema.row_count !== undefined">
-            <template #prepend>
-              <v-icon icon="mdi-counter" size="small" />
-            </template>
-            <v-list-item-title>Row Count</v-list-item-title>
-            <v-list-item-subtitle>{{ tableSchema.row_count.toLocaleString() }}</v-list-item-subtitle>
-          </v-list-item>
-
-          <v-list-item v-if="tableSchema.comment">
-            <template #prepend>
-              <v-icon icon="mdi-comment-text-outline" size="small" />
-            </template>
-            <v-list-item-title>Comment</v-list-item-title>
-            <v-list-item-subtitle>{{ tableSchema.comment }}</v-list-item-subtitle>
-          </v-list-item>
-        </v-list>
-
-        <!-- Primary Keys -->
-        <v-card v-if="tableSchema.primary_keys.length > 0" variant="outlined" class="mb-4">
-          <v-card-title class="text-subtitle-1">
-            <v-icon icon="mdi-key" size="small" class="mr-2" />
-            Primary Keys
-          </v-card-title>
-          <v-card-text>
-            <v-chip v-for="pk in tableSchema.primary_keys" :key="pk" size="small" color="amber" class="mr-1 mb-1">
-              {{ pk }}
-            </v-chip>
-          </v-card-text>
-        </v-card>
-
         <!-- Columns -->
         <v-card variant="outlined">
           <v-card-title class="text-subtitle-1 d-flex align-center flex-wrap">
             <v-icon icon="mdi-table-column" size="small" class="mr-2" />
             Columns ({{ tableSchema.columns.length }})
             <v-spacer />
-            <v-btn
-              v-if="!showTypeMappings"
-              prepend-icon="mdi-account-convert"
-              size="small"
-              variant="outlined"
-              color="primary"
-              :loading="loadingTypeMappings"
-              @click="loadTypeMappings"
-              class="mr-2"
-            >
-              Show Type Suggestions
-            </v-btn>
-            <v-btn
-              v-else
-              prepend-icon="mdi-close"
-              size="small"
-              variant="text"
-              @click="showTypeMappings = false"
-              class="mr-2"
-            >
-              Hide Suggestions
-            </v-btn>
             <v-text-field
               v-model="columnSearchQuery"
               label="Search columns"
@@ -134,12 +64,12 @@
 
               <v-list-item-title>
                 <span class="font-weight-medium">{{ column.name }}</span>
+                <span class="text-monospace text-caption ml-2 text-grey">{{ formatDataType(column) }}</span>
                 <v-chip v-if="column.is_primary_key" size="x-small" color="amber" class="ml-2"> PK </v-chip>
               </v-list-item-title>
 
               <v-list-item-subtitle>
                 <div class="d-flex align-center flex-wrap">
-                  <span class="text-monospace mr-2">{{ formatDataType(column) }}</span>
                   <v-chip v-if="column.default" size="x-small" variant="outlined" class="mr-1">
                     default: {{ column.default }}
                   </v-chip>
