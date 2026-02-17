@@ -40,7 +40,7 @@ class TestFileManager:
 
         return FileManager(
             projects_dir=temp_config_dir,
-            validate_project_name_callback=validate_project_name,
+            sanitize_project_name_callback=validate_project_name,
             ensure_project_exists_callback=ensure_project_exists,
         )
 
@@ -279,7 +279,7 @@ class TestFileManager:
 
         clean_manager = FileManager(
             projects_dir=clean_dir,
-            validate_project_name_callback=sanitize,
+            sanitize_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
 
@@ -303,7 +303,7 @@ class TestFileManager:
 
         test_manager = FileManager(
             projects_dir=test_dir,
-            validate_project_name_callback=sanitize,
+            sanitize_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
 
@@ -331,7 +331,7 @@ class TestFileManager:
 
         test_manager = FileManager(
             projects_dir=test_dir,
-            validate_project_name_callback=sanitize,
+            sanitize_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
 
@@ -362,7 +362,7 @@ class TestFileManager:
 
         test_manager = FileManager(
             projects_dir=test_dir,
-            validate_project_name_callback=sanitize,
+            sanitize_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
 
