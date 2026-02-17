@@ -258,7 +258,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
 import schemaApi from '@/api/schema'
 import type { TableSchema, TypeMapping } from '@/types/schema'
@@ -285,6 +285,7 @@ const dataSourceStore = useDataSourceStore()
 const tableSchema = ref<TableSchema | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const isMounted = ref(true)
 
 // Type mappings state
 const typeMappings = ref<Record<string, TypeMapping>>({})
@@ -293,18 +294,27 @@ const loadingTypeMappings = ref(false)
 
 // Computed
 async function loadSchema() {
-  if (!props.dataSource || !props.tableName) return
+  if (!props.dataSource || !props.tableName || !isMounted.value) return
 
   loading.value = true
   error.value = null
 
   try {
-    tableSchema.value = await dataSourceStore.fetchTableSchema(props.dataSource, props.tableName, props.schema)
+    const result = await dataSourceStore.fetchTableSchema(props.dataSource, props.tableName, props.schema)
+    
+    // Only update if still mounted
+    if (isMounted.value) {
+      tableSchema.value = result
+    }
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load table schema'
-    tableSchema.value = null
+    if (isMounted.value) {
+      error.value = e instanceof Error ? e.message : 'Failed to load table schema'
+      tableSchema.value = null
+    }
   } finally {
-    loading.value = false
+    if (isMounted.value) {
+      loading.value = false
+    }
   }
 }
 
@@ -350,12 +360,21 @@ function getConfidenceColor(confidence: number): string {
 watch(
   () => [props.dataSource, props.tableName, props.schema],
   () => {
-    if (props.autoLoad) {
+    // Clear existing data immediately
+    tableSchema.value = null
+    error.value = null
+    
+    if (props.autoLoad && isMounted.value) {
       loadSchema()
     }
   },
   { immediate: props.autoLoad }
 )
+
+// Lifecycle
+onBeforeUnmount(() => {
+  isMounted.value = false
+})
 
 // Expose methods for parent components
 defineExpose({
