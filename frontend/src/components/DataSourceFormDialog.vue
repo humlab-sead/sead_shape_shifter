@@ -27,7 +27,7 @@
           <!-- Driver Type -->
           <v-select
             v-model="form.driver"
-            :items="availableDrivers"
+            :items="availableDriversFiltered"
             label="Type *"
             :rules="[rules.required]"
             item-title="title"
@@ -237,6 +237,11 @@ const fileUploadInProgress = ref(false)
 const isEditing = computed(() => !!props.dataSource)
 const currentSchema = computed(() => (form.value.driver ? getSchema(form.value.driver) : null))
 const hasFileField = computed(() => currentSchema.value?.fields.some((field) => field.type === 'file_path') ?? false)
+const availableDriversFiltered = computed(() => {
+  // Hide file-based data sources (xlsx, openpyxl, csv) since users can specify them in Entity editor
+  const fileBasedDrivers = ['xlsx', 'openpyxl', 'csv']
+  return availableDrivers.value.filter((driver) => !fileBasedDrivers.includes(driver.value))
+})
 const projectFileItems = computed(() =>
   projectFiles.value.map((file) => ({
     title: file.name,
