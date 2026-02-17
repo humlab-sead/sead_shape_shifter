@@ -35,48 +35,31 @@
       <div v-else>
         <!-- Columns -->
         <v-card variant="outlined">
-          <v-card-title class="text-subtitle-1 d-flex align-center flex-wrap">
+          <v-card-title class="text-subtitle-1">
             <v-icon icon="mdi-table-column" size="small" class="mr-2" />
             Columns ({{ tableSchema.columns.length }})
-            <v-spacer />
-            <v-text-field
-              v-model="columnSearchQuery"
-              label="Search columns"
-              density="compact"
-              variant="outlined"
-              clearable
-              hide-details
-              style="max-width: 250px"
-            >
-              <template #prepend-inner>
-                <v-icon icon="mdi-magnify" size="small" />
-              </template>
-            </v-text-field>
           </v-card-title>
 
           <v-divider />
 
           <v-list density="compact">
-            <v-list-item v-for="column in filteredColumns" :key="column.name" class="column-item">
+            <v-list-item v-for="column in tableSchema?.columns ?? []" :key="column.name" class="column-item">
               <template #prepend>
                 <v-icon :icon="getColumnIcon(column)" :color="getColumnColor(column)" size="small" />
               </template>
 
-              <v-list-item-title>
+              <v-list-item-title class="d-flex align-center flex-wrap">
                 <span class="font-weight-medium">{{ column.name }}</span>
                 <span class="text-monospace text-caption ml-2 text-grey">{{ formatDataType(column) }}</span>
-                <v-chip v-if="column.is_primary_key" size="x-small" color="amber" class="ml-2"> PK </v-chip>
+                <v-chip v-if="column.default" size="x-small" variant="outlined" class="ml-2 mr-1">
+                  default: {{ column.default }}
+                </v-chip>
+                <v-chip v-if="column.comment" size="x-small" variant="text" class="ml-1">
+                  {{ column.comment }}
+                </v-chip>
               </v-list-item-title>
 
               <v-list-item-subtitle>
-                <div class="d-flex align-center flex-wrap">
-                  <v-chip v-if="column.default" size="x-small" variant="outlined" class="mr-1">
-                    default: {{ column.default }}
-                  </v-chip>
-                  <v-chip v-if="column.comment" size="x-small" variant="text">
-                    {{ column.comment }}
-                  </v-chip>
-                </div>
                 <!-- Type Mapping Suggestion -->
                 <div v-if="showTypeMappings && typeMappings[column.name]" class="mt-2">
                   <v-chip
@@ -176,7 +159,6 @@ const dataSourceStore = useDataSourceStore()
 
 // State
 const tableSchema = ref<TableSchema | null>(null)
-const columnSearchQuery = ref('')
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -186,20 +168,6 @@ const showTypeMappings = ref(false)
 const loadingTypeMappings = ref(false)
 
 // Computed
-const filteredColumns = computed(() => {
-  if (!tableSchema.value) return []
-  if (!columnSearchQuery.value) return tableSchema.value.columns
-
-  const query = columnSearchQuery.value.toLowerCase()
-  return tableSchema.value.columns.filter(
-    (column) =>
-      column.name.toLowerCase().includes(query) ||
-      column.data_type.toLowerCase().includes(query) ||
-      (column.comment && column.comment.toLowerCase().includes(query))
-  )
-})
-
-// Methods
 async function loadSchema() {
   if (!props.dataSource || !props.tableName) return
 
