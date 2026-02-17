@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from loguru import logger
 
+from backend.app.core.config import get_settings
 from backend.app.mappers.project_mapper import ProjectMapper
 from backend.app.mappers.validation_mapper import ValidationMapper
 from backend.app.models.project import Project
@@ -125,7 +126,17 @@ class ValidationService:
         # Specifications expect fully resolved config
 
         try:
-            project_cfg = Config.resolve_references(project_cfg, source_path=source_path)
+            settings = get_settings()
+            # Construct absolute path to .env file (settings.env_file is relative)
+            env_file_path = str(settings.PROJECT_ROOT / settings.env_file)
+            
+            project_cfg = Config.resolve_references(
+                project_cfg,
+                source_path=source_path,
+                env_filename=env_file_path,
+                env_prefix=settings.env_prefix,
+                try_without_prefix=True,
+            )
         except FileNotFoundError as e:
             # Missing @include file should be reported as a normal validation error,
             # not as a 500 internal server error.

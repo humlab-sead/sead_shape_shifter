@@ -199,6 +199,10 @@ class Config(ConfigLike):
         Note: This method does NOT mutate the input data parameter.
         It creates a deep copy to ensure the original remains unchanged.
         """
+        # Load environment variables from .env file if provided
+        if env_filename:
+            load_dotenv(dotenv_path=env_filename)
+        
         if not inplace:
             data = copy.deepcopy(data)
 
