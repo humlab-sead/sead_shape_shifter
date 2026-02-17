@@ -190,7 +190,8 @@ function formatTableSubtitle(table: TableMetadata): string {
     parts.push(table.comment)
   }
 
-  return parts.join(' • ')
+  const subtitle = parts.join(' • ')
+  return subtitle.length > 49 ? subtitle.substring(0, 46) + '...' : subtitle
 }
 
 function clearError() {
