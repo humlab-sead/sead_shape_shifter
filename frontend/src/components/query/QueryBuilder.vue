@@ -24,8 +24,8 @@
       <v-select
         v-model="selectedTable"
         :items="tables"
-        item-title="table_name"
-        item-value="table_name"
+        item-title="name"
+        item-value="name"
         label="Select Table"
         prepend-icon="mdi-table"
         density="comfortable"
