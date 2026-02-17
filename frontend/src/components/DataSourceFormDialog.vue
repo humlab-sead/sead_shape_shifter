@@ -91,7 +91,7 @@
                   >
                     <template #item="{ props, item }">
                       <v-list-item v-bind="props">
-                        <v-list-item-title>{{ item.title }}</v-list-item-title>
+                        <v-list-item-title>{{ item.raw.title }}</v-list-item-title>
                         <v-list-item-subtitle class="text-caption">{{ item.raw.subtitle }}</v-list-item-subtitle>
                       </v-list-item>
                     </template>
@@ -281,7 +281,8 @@ async function fetchProjectFiles() {
   projectFilesError.value = null
 
   try {
-    const extensions = getExtensionsForDriver(form.value.driver)
+    const fileField = currentSchema.value?.fields.find((field) => field.type === 'file_path')
+    const extensions = fileField?.extensions?.length ? fileField.extensions : getExtensionsForDriver(form.value.driver)
     projectFiles.value = await dataSourceFilesApi.listFiles(extensions)
   } catch (e) {
     projectFilesError.value = e instanceof Error ? e.message : 'Failed to load data source files'
