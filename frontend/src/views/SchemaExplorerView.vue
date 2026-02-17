@@ -10,17 +10,20 @@
     </div>
 
     <v-row>
-      <!-- Left Panel: Table Selector and Details -->
+      <!-- Left Panel: Table Selector with Embedded Details -->
       <v-col cols="12" md="3">
-        <SchemaTreeView :auto-load="true" @table-selected="onTableSelected" class="mb-4" />
-        
-        <TableDetailsPanel
-          ref="detailsPanel"
-          :data-source="selectedDataSource ?? undefined"
-          :table-name="selectedTable ?? undefined"
-          :schema="selectedSchema"
-          :auto-load="true"
-        />
+        <SchemaTreeView :auto-load="true" @table-selected="onTableSelected">
+          <template #details>
+            <TableDetailsPanel
+              ref="detailsPanel"
+              :data-source="selectedDataSource ?? undefined"
+              :table-name="selectedTable ?? undefined"
+              :schema="selectedSchema"
+              :auto-load="true"
+              embedded
+            />
+          </template>
+        </SchemaTreeView>
       </v-col>
 
       <!-- Right Panel: Data Preview (Expanded) -->

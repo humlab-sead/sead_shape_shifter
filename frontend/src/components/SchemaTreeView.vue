@@ -86,6 +86,9 @@
           </v-list-item>
         </template>
       </v-autocomplete>
+      
+      <!-- Slot for additional content (e.g., column details) -->
+      <slot name="details" />
     </v-card-text>
 
     <v-card-actions v-if="tables.length > 0">
