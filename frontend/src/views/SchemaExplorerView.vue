@@ -39,25 +39,6 @@
       </v-col>
     </v-row>
 
-    <!-- Info Bar -->
-    <v-row v-if="selectedTable">
-      <v-col>
-        <v-card variant="outlined">
-          <v-card-text class="d-flex align-center">
-            <v-icon icon="mdi-information-outline" class="mr-2" />
-            <span class="text-body-2">
-              Selected:
-              <strong>{{ selectedDataSource }}</strong>
-              <span v-if="selectedSchema && selectedSchema !== 'public'"> / {{ selectedSchema }} </span>
-              / {{ selectedTable }}
-            </span>
-            <v-spacer />
-            <v-btn size="small" variant="text" @click="clearSelection"> Clear Selection </v-btn>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
     <!-- Help Dialog -->
     <v-dialog v-model="showHelp" max-width="600">
       <template #activator="{ props: activatorProps }">
@@ -204,12 +185,6 @@ async function refreshAll() {
   } finally {
     refreshing.value = false
   }
-}
-
-function clearSelection() {
-  selectedDataSource.value = null
-  selectedTable.value = null
-  selectedSchema.value = undefined
 }
 </script>
 
