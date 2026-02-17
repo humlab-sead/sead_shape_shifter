@@ -523,6 +523,7 @@ import UnmaterializeDialog from './UnmaterializeDialog.vue'
 import type { ValidationContext } from '@/utils/projectYamlValidator'
 import { defineAsyncComponent, nextTick } from 'vue'
 import { api } from '@/api'
+import { dataSourceFilesApi } from '@/api/data-source-files'
 
 // Lazy load FixedValuesGrid to avoid ag-grid loading unless needed
 const FixedValuesGrid = defineAsyncComponent(() => import('./FixedValuesGrid.vue'))
@@ -992,20 +993,9 @@ async function fetchProjectFiles() {
   filesLoading.value = true
   try {
     const extensions = getFileExtensions()
-    // Build query params - backend expects 'ext' parameter for each extension
-    const queryParams = extensions.map(ext => `ext=${ext}`).join('&')
-    
-    // Include project-specific files if we have a current project
-    let url = `/api/v1/data-sources/files?${queryParams}`
-    if (projectStore.currentProjectName) {
-      url += `&project_name=${encodeURIComponent(projectStore.currentProjectName)}`
-    }
-    
-    const response = await fetch(url)
-    if (response.ok) {
-      const files: FileInfo[] = await response.json()
-      availableProjectFiles.value = files
-    }
+    const projectName = projectStore.currentProjectName || undefined
+    const files = await dataSourceFilesApi.listFiles(extensions, projectName)
+    availableProjectFiles.value = files as FileInfo[]
   } catch (err: any) {
     console.error('Failed to fetch project files:', err)
     const message = err.message || 'Unknown error'
