@@ -10,13 +10,10 @@
     </div>
 
     <v-row>
-      <!-- Left Panel: Table Tree -->
+      <!-- Left Panel: Table Selector and Details -->
       <v-col cols="12" md="3">
-        <SchemaTreeView :auto-load="true" @table-selected="onTableSelected" />
-      </v-col>
-
-      <!-- Middle Panel: Table Details -->
-      <v-col cols="12" md="4">
+        <SchemaTreeView :auto-load="true" @table-selected="onTableSelected" class="mb-4" />
+        
         <TableDetailsPanel
           ref="detailsPanel"
           :data-source="selectedDataSource ?? undefined"
@@ -26,8 +23,8 @@
         />
       </v-col>
 
-      <!-- Right Panel: Data Preview -->
-      <v-col cols="12" md="5">
+      <!-- Right Panel: Data Preview (Expanded) -->
+      <v-col cols="12" md="9">
         <DataPreviewTable
           ref="previewTable"
           :data-source="selectedDataSource ?? undefined"
@@ -79,7 +76,7 @@
           <div class="mb-4">
             <p class="font-weight-medium mb-1">3. View Table Details</p>
             <p class="text-body-2 text-grey-darken-1">
-              Click a table to automatically view its schema in the middle panel and preview data in the right panel. You'll see:
+              Select a table to automatically view its column details below the table selector and preview data in the right panel. You'll see:
             </p>
             <ul class="text-body-2 text-grey-darken-1 ml-4">
               <li>Column names and data types</li>
