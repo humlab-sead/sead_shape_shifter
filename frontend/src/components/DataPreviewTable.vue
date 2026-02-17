@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
 import type { PreviewData } from '@/types/schema'
 
@@ -125,6 +125,7 @@ const limit = ref(props.defaultLimit)
 const offset = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const isMounted = ref(true)
 
 // Computed
 const totalPages = computed(() => {
@@ -134,22 +135,31 @@ const totalPages = computed(() => {
 
 // Methods
 async function loadPreview() {
-  if (!props.dataSource || !props.tableName) return
+  if (!props.dataSource || !props.tableName || !isMounted.value) return
 
   loading.value = true
   error.value = null
 
   try {
-    previewData.value = await dataSourceStore.previewTable(props.dataSource, props.tableName, {
+    const result = await dataSourceStore.previewTable(props.dataSource, props.tableName, {
       schema: props.schema,
       limit: limit.value,
       offset: offset.value,
     })
+    
+    // Only update if still mounted
+    if (isMounted.value) {
+      previewData.value = result
+    }
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to load table data'
-    previewData.value = null
+    if (isMounted.value) {
+      error.value = e instanceof Error ? e.message : 'Failed to load table data'
+      previewData.value = null
+    }
   } finally {
-    loading.value = false
+    if (isMounted.value) {
+      loading.value = false
+    }
   }
 }
 
@@ -216,13 +226,22 @@ function getCellClass(value: any): string {
 watch(
   () => [props.dataSource, props.tableName, props.schema],
   () => {
+    // Clear existing data immediately to prevent stale data display
+    previewData.value = null
+    error.value = null
     offset.value = 0
-    if (props.autoLoad) {
+    
+    if (props.autoLoad && isMounted.value) {
       loadPreview()
     }
   },
   { immediate: props.autoLoad }
 )
+
+// Lifecycle
+onBeforeUnmount(() => {
+  isMounted.value = false
+})
 
 // Expose methods for parent components
 defineExpose({
