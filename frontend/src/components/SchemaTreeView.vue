@@ -100,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useDataSourceStore } from '@/stores/data-source'
 import type { TableMetadata } from '@/types/schema'
 import { getTableIcon, formatRowCount } from '@/types/schema'
@@ -216,9 +216,14 @@ watch(schemaFilter, () => {
 })
 
 watch(selectedTableName, () => {
-  if (selectedTableName.value && selectedTable.value && selectedDataSourceName.value) {
-    const schema = isPostgreSQL.value ? schemaFilter.value : undefined
-    emit('table-selected', selectedTable.value, selectedDataSourceName.value, schema)
+  if (selectedTableName.value && selectedDataSourceName.value) {
+    // Wait a tick to ensure computed selectedTable is updated
+    nextTick(() => {
+      if (selectedTable.value) {
+        const schema = isPostgreSQL.value ? schemaFilter.value : undefined
+        emit('table-selected', selectedTable.value, selectedDataSourceName.value!, schema)
+      }
+    })
   }
 })
 
