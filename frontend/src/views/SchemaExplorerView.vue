@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid class="pa-4">
+  <v-container fluid class="pa-4 schema-explorer-container">
     <div class="d-flex align-center mb-4">
       <v-icon icon="mdi-database-search" size="large" class="mr-3" />
       <h1 class="text-h4">Schema Explorer</h1>
@@ -189,11 +189,24 @@ async function refreshAll() {
 </script>
 
 <style scoped>
-.v-container {
+.schema-explorer-container {
   max-width: 100%;
+  height: calc(100vh - 100px); /* Subtract app bar height + margin */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .v-row {
-  min-height: 500px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.v-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 </style>

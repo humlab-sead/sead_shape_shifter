@@ -1,6 +1,6 @@
 <template>
-  <v-card>
-    <v-card-title class="d-flex align-center">
+  <v-card class="d-flex flex-column fill-height">
+    <v-card-title class="d-flex align-center flex-shrink-0">
       <v-icon icon="mdi-table-eye" class="mr-2" />
       Data Preview
       <v-spacer />
@@ -14,7 +14,7 @@
       />
     </v-card-title>
 
-    <v-card-text>
+    <v-card-text class="d-flex flex-column flex-grow-1 pa-0" style="overflow: hidden;">
       <!-- Loading State -->
       <div v-if="loading" class="text-center py-4">
         <v-progress-circular indeterminate color="primary" />
@@ -22,21 +22,21 @@
       </div>
 
       <!-- Error Display -->
-      <v-alert v-else-if="error" type="error" variant="tonal" density="compact" closable @click:close="clearError">
+      <v-alert v-else-if="error" type="error" variant="tonal" density="compact" closable class="ma-4" @click:close="clearError">
         {{ error }}
       </v-alert>
 
       <!-- Empty State -->
-      <v-alert v-else-if="!previewData" type="info" variant="tonal" density="compact">
+      <v-alert v-else-if="!previewData" type="info" variant="tonal" density="compact" class="ma-4">
         Select a table to preview its data
       </v-alert>
 
-      <!-- Data Table -->
-      <div v-else>
+      <!-- Data Table - use v-show to avoid unmount/remount race conditions -->
+      <div v-show="!loading && !error && previewData" class="d-flex flex-column flex-grow-1" style="min-height: 0; max-height: 100%; overflow: hidden;">
         <!-- Info Bar -->
-        <div class="d-flex align-center mb-3">
-          <v-chip size="small" variant="text"> {{ previewData.total_rows.toLocaleString() }} total rows </v-chip>
-          <v-chip size="small" variant="text"> Showing {{ previewData.rows.length }} rows </v-chip>
+        <div class="d-flex align-center mb-3 flex-shrink-0 px-4 pt-4">
+          <v-chip size="small" variant="text"> {{ previewData?.total_rows?.toLocaleString() ?? 0 }} total rows </v-chip>
+          <v-chip size="small" variant="text"> Showing {{ previewData?.rows?.length ?? 0 }} rows </v-chip>
           <v-spacer />
           <v-select
             v-model="limit"
@@ -46,23 +46,23 @@
             variant="outlined"
             hide-details
             style="max-width: 150px"
-            @update:model-value="loadPreview"
+            @update:model-value="() => { offset = 0; loadPreview(); }"
           />
         </div>
 
         <!-- Table -->
-        <div class="data-table-container">
-          <v-table density="compact" fixed-header height="400px">
+        <div class="table-scroll-wrapper mx-4">
+          <v-table density="compact" fixed-header>
             <thead>
               <tr>
-                <th v-for="column in previewData.columns" :key="column" class="text-left">
+                <th v-for="column in previewData?.columns ?? []" :key="column" class="text-left">
                   {{ column }}
                 </th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(row, index) in previewData.rows" :key="index">
-                <td v-for="column in previewData.columns" :key="column">
+              <tr v-for="(row, index) in previewData?.rows ?? []" :key="index">
+                <td v-for="column in previewData?.columns ?? []" :key="column">
                   <span :class="getCellClass(row[column])">
                     {{ formatCellValue(row[column]) }}
                   </span>
@@ -73,7 +73,7 @@
         </div>
 
         <!-- Pagination -->
-        <div class="d-flex align-center justify-center mt-3">
+        <div class="d-flex align-center justify-center my-3 flex-shrink-0">
           <v-btn
             icon="mdi-chevron-left"
             size="small"
@@ -88,7 +88,7 @@
             icon="mdi-chevron-right"
             size="small"
             variant="text"
-            :disabled="offset + limit >= previewData.total_rows || loading"
+            :disabled="offset + limit >= (previewData?.total_rows ?? 0) || loading"
             @click="nextPage"
           />
         </div>
@@ -169,7 +169,7 @@ function refreshData() {
 }
 
 function nextPage() {
-  if (previewData.value && offset.value + limit.value < previewData.value.total_rows) {
+  if (previewData.value?.total_rows && offset.value + limit.value < previewData.value.total_rows) {
     offset.value += limit.value
     loadPreview()
   }
@@ -226,13 +226,24 @@ function getCellClass(value: any): string {
 watch(
   () => [props.dataSource, props.tableName, props.schema],
   () => {
-    // Clear existing data immediately to prevent stale data display
-    previewData.value = null
+    // Reset state
     error.value = null
     offset.value = 0
     
-    if (props.autoLoad && isMounted.value) {
-      loadPreview()
+    // Only set loading if we have a valid table to load
+    if (props.dataSource && props.tableName) {
+      // Set loading state first to prevent component unmounting during transition
+      loading.value = true
+      
+      if (props.autoLoad && isMounted.value) {
+        // Don't clear previewData immediately - let loading state take precedence
+        // and new data will replace it
+        loadPreview()
+      }
+    } else {
+      // No table selected - clear everything
+      previewData.value = null
+      loading.value = false
     }
   },
   { immediate: props.autoLoad }
@@ -253,10 +264,21 @@ defineExpose({
 </script>
 
 <style scoped>
-.data-table-container {
+.table-scroll-wrapper {
+  flex: 1 1 0;
+  min-height: 0;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 4px;
-  overflow: hidden;
+  overflow: auto;
+  display: block;
+}
+
+.table-scroll-wrapper :deep(.v-table) {
+  background-color: rgb(var(--v-theme-surface));
+}
+
+.table-scroll-wrapper :deep(.v-table__wrapper) {
+  overflow: visible !important;
 }
 
 .v-table {

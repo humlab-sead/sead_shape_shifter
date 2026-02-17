@@ -247,7 +247,11 @@ class SqlLoader(DataLoader):
     async def get_table_row_count(self, table_name: str, schema: Optional[str] = None) -> Optional[int]:
         """Get approximate row count for a table."""
         try:
-            qualified_table: str = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
+            if schema:
+                # For databases that support schemas, qualify the table name
+                qualified_table: str = f'{self.quote_name(schema)}.{self.quote_name(table_name)}'
+            else:
+                qualified_table: str = self.quote_name(table_name)
             query: str = f"SELECT COUNT(*) as count FROM {qualified_table}"
             return await self.execute_scalar_sql(query)
         except Exception as e:  # pylint: disable=broad-except
