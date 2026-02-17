@@ -93,7 +93,7 @@ class ProjectService:
         # Initialize file manager component
         self.files = FileManager(
             projects_dir=self.projects_dir,
-            validate_project_name_callback=self.utils.validate_project_name,
+            sanitize_project_name_callback=self.utils.validate_project_name,
             ensure_project_exists_callback=self.utils.ensure_project_exists,
             global_data_dir=settings.GLOBAL_DATA_DIR,
         )
