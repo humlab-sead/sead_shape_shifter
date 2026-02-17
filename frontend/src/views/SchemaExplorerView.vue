@@ -71,7 +71,7 @@
           <div class="mb-4">
             <p class="font-weight-medium mb-1">2. Browse Tables</p>
             <p class="text-body-2 text-grey-darken-1">
-              Tables will load automatically. Use the search box to filter tables by name. For PostgreSQL, you can
+              Tables will load automatically. Select a table from the dropdown to view its details. For PostgreSQL, you can
               specify a schema (defaults to 'public').
             </p>
           </div>
