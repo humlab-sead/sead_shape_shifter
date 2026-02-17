@@ -23,7 +23,47 @@ router = APIRouter()
 
 
 # Helper Functions
-# (File path resolution happens at mapper layer, not here)
+
+
+def _resolve_file_paths_in_entity(entity_data: dict[str, Any], project_name: str) -> None:
+    """Resolve file paths in entity options based on location field.
+    
+    Modifies entity_data in-place to set filename with appropriate path format:
+    - Global files: ${GLOBAL_DATA_DIR}/filename.xlsx (env var reference for portability)
+    - Local files: filename.xlsx (just the filename, relative to project directory)
+    
+    Args:
+        entity_data: Entity configuration dictionary
+        project_name: Project name (for logging context)
+    """
+    options = entity_data.get("options")
+    if not options or not isinstance(options, dict):
+        return
+    
+    filename = options.get("filename")
+    location = options.get("location", "global")  # Default to global for backwards compatibility
+    
+    if not filename:
+        return
+    
+    # Store path based on location
+    if location == "global":
+        # Use environment variable reference for portability across environments
+        stored_path = f"${{GLOBAL_DATA_DIR}}/{filename}"
+    elif location == "local":
+        # Use just the filename - Core will resolve relative to project directory
+        stored_path = filename
+    else:
+        logger.warning(f"Unknown location '{location}' for file '{filename}', defaulting to global")
+        stored_path = f"${{GLOBAL_DATA_DIR}}/{filename}"
+    
+    # Update filename with appropriate path format
+    options["filename"] = stored_path
+    
+    # Remove location field as it's no longer needed (path format indicates location)
+    options.pop("location", None)
+    
+    logger.debug(f"Stored file path: {filename} ({location}) -> {stored_path}")
 
 
 # Request/Response Models
@@ -121,6 +161,10 @@ async def create_entity(project_name: str, request: EntityCreateRequest) -> Enti
         Created entity data
     """
     project_service: ProjectService = get_project_service()
+    
+    # Resolve file paths before saving
+    _resolve_file_paths_in_entity(request.entity_data, project_name)
+    
     project_service.add_entity_by_name(project_name, request.name, request.entity_data)
     logger.info(f"Added entity '{request.name}' to '{project_name}'")
     return EntityResponse(name=request.name, entity_data=request.entity_data)
@@ -141,6 +185,10 @@ async def update_entity(project_name: str, entity_name: str, request: EntityUpda
         Updated entity data
     """
     project_service: ProjectService = get_project_service()
+    
+    # Resolve file paths before saving
+    _resolve_file_paths_in_entity(request.entity_data, project_name)
+    
     project_service.update_entity_by_name(project_name, entity_name, request.entity_data)
     logger.info(f"Updated entity '{entity_name}' in '{project_name}'")
     return EntityResponse(name=entity_name, entity_data=request.entity_data)
