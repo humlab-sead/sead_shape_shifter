@@ -26,7 +26,7 @@ class FileManager:
     def __init__(
         self,
         projects_dir: Path,
-        validate_project_name_callback,  # Callable[[str], str]
+        sanitize_project_name_callback,  # Callable[[str], str]
         ensure_project_exists_callback,  # Callable[[str], Path]
         global_data_dir: Path | None = None,
     ):
@@ -34,13 +34,13 @@ class FileManager:
 
         Args:
             projects_dir: Base directory for all projects
-            validate_project_name_callback: Function to validate project names
+            sanitize_project_name_callback: Function to sanitize project names
             ensure_project_exists_callback: Function to ensure project exists
             global_data_dir: Directory for global shared data files (default: projects_dir)
         """
         self.projects_dir: Path = projects_dir
         self.global_data_dir: Path = global_data_dir or projects_dir
-        self._validate_project_name = validate_project_name_callback
+        self._sanitize_project_name = sanitize_project_name_callback
         self._ensure_project_exists = ensure_project_exists_callback
 
     # Helper methods
@@ -95,7 +95,7 @@ class FileManager:
             BadRequestError: If file not found or invalid location
         """
         if location == "global":
-            resolved = self.global_data_dir / path_str
+            resolved = settings.GLOBAL_DATA_DIR / path_str
         elif location == "local":
             resolved = self.projects_dir / path_str
         else:
@@ -150,10 +150,6 @@ class FileManager:
         files: list[ProjectFileInfo] = []
         for file_path in sorted(upload_dir.glob("*")):
             if not file_path.is_file():
-                continue
-
-            # Exclude project configuration file
-            if file_path.name == "shapeshifter.yml":
                 continue
 
             if ext_set and file_path.suffix.lower() not in ext_set:
