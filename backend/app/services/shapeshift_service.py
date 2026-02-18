@@ -10,13 +10,13 @@ from loguru import logger
 from backend.app.core.config import Settings, settings
 from backend.app.core.state_manager import ApplicationState, get_app_state
 from backend.app.core.utility import friendly_dtype
+from backend.app.mappers.entity_config_mapper import EntityConfigMapperFactory
 from backend.app.models.shapeshift import ColumnInfo, PreviewResult
 from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.utils.caches import ShapeShiftCache, ShapeShiftProjectCache
 from src.model import ShapeShiftProject, TableConfig
 from src.normalizer import ShapeShifter
 from src.specifications.constraints import ValidationIssue
-from backend.app.mappers.project_name_mapper import ProjectNameMapper
 
 
 class ShapeShiftService:
@@ -29,41 +29,25 @@ class ShapeShiftService:
         self.settings: Settings = settings
         # Optional warm table_store populated by batch preview to short-circuit later preview calls
         self._warm_table_store: dict[str, pd.DataFrame] | None = None
+        # Initialize entity config mapper factory for type-specific transformations
+        self._mapper_factory = EntityConfigMapperFactory(self.settings)
 
-    def _resolve_file_paths_in_config(self, entity_config: dict[str, Any], project_name: str) -> None:
-        """Resolve file paths in entity config based on location field.
+    def _resolve_entity_config(self, entity_config: dict[str, Any], project_name: str) -> None:
+        """Apply type-specific transformations to entity config using strategy pattern.
 
-        Modifies entity_config in-place to convert filename to absolute path.
+        For file-based entities: resolves (filename, location) to absolute path.
+        For other entities: no-op (returns config unchanged).
+
         This is needed when override_config bypasses ProjectMapper.to_core().
 
         Args:
             entity_config: Entity configuration dictionary (modified in-place)
             project_name: Project name for resolving local paths
         """
-        options = entity_config.get("options")
-        if not options or not isinstance(options, dict):
-            return
-
-        filename = options.get("filename")
-        location = options.get("location", "global")  # Default to global
-
-        if not filename:
-            return
-
-        # Resolve to absolute path based on location
-        if location == "global":
-            resolved_path = str(self.settings.GLOBAL_DATA_DIR / filename)
-        elif location == "local":
-            # Convert project name to path and resolve relative to projects dir
-            project_path: str = ProjectNameMapper.to_path(project_name)
-            resolved_path = str(self.settings.PROJECTS_DIR / project_path / filename)
-        else:
-            logger.warning(f"Unknown location '{location}' for file '{filename}', using global")
-            resolved_path = str(self.settings.GLOBAL_DATA_DIR / filename)
-
-        # Update to absolute path for Core
-        options["filename"] = resolved_path
-        logger.debug(f"Resolved {location} file for preview: {filename} -> {resolved_path}")
+        # Get appropriate mapper based on entity type
+        mapper = self._mapper_factory.get_mapper_for_entity(entity_config)
+        # Apply transformation (API → Core: resolve paths)
+        entity_config.update(mapper.to_core(entity_config, project_name))
 
     async def preview_entity(
         self, project_name: str, entity_name: str, limit: int | None = 50, override_config: dict[str, Any] | None = None
@@ -95,9 +79,9 @@ class ShapeShiftService:
         # If override_config provided, temporarily replace entity config
         using_override: bool = override_config is not None
         if using_override:
-            # Resolve file paths in override_config based on location field
-            # (override bypasses ProjectMapper.to_core(), so we must resolve here)
-            self._resolve_file_paths_in_config(override_config, project_name)
+            # Apply type-specific transformation to override_config
+            # (override bypasses ProjectMapper.to_core(), so we must transform here)
+            self._resolve_entity_config(override_config, project_name)
 
             # Clone project and replace entity config
             project = project.clone()

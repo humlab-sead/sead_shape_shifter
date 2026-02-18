@@ -39,7 +39,9 @@ class TestFileManager:
             return project_file
 
         return FileManager(
-            projects_dir=temp_config_dir,
+            projects_root=temp_config_dir,
+            global_data_dir=temp_config_dir,
+            application_root=temp_config_dir.parent,
             sanitize_project_name_callback=validate_project_name,
             ensure_project_exists_callback=ensure_project_exists,
         )
@@ -278,7 +280,9 @@ class TestFileManager:
             return clean_dir / name / "shapeshifter.yml"
 
         clean_manager = FileManager(
-            projects_dir=clean_dir,
+            projects_root=clean_dir,
+            global_data_dir=clean_dir,
+            application_root=clean_dir.parent,
             sanitize_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
@@ -302,7 +306,9 @@ class TestFileManager:
             return test_dir / name / "shapeshifter.yml"
 
         test_manager = FileManager(
-            projects_dir=test_dir,
+            projects_root=test_dir,
+            global_data_dir=test_dir,
+            application_root=test_dir.parent,
             sanitize_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
@@ -330,7 +336,9 @@ class TestFileManager:
             return test_dir / name / "shapeshifter.yml"
 
         test_manager = FileManager(
-            projects_dir=test_dir,
+            projects_root=test_dir,
+            global_data_dir=test_dir,
+            application_root=test_dir.parent,
             sanitize_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
@@ -361,7 +369,9 @@ class TestFileManager:
             return test_dir / name / "shapeshifter.yml"
 
         test_manager = FileManager(
-            projects_dir=test_dir,
+            projects_root=test_dir,
+            global_data_dir=test_dir,
+            application_root=test_dir.parent,
             sanitize_project_name_callback=sanitize,
             ensure_project_exists_callback=ensure_exists,
         )
