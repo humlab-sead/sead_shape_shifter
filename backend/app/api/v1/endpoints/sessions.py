@@ -52,7 +52,7 @@ async def create_session(
 
     # Convert API project name to filesystem path (: -> /)
     project_path_name: str = ProjectNameMapper.to_path(request.project_name)
-    
+
     # Verify project file exists (nested structure: projects/<name>/shapeshifter.yml)
     project_path: Path = app_state.projects_dir / project_path_name / "shapeshifter.yml"
     if not project_path.exists():

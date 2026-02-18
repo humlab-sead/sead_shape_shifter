@@ -26,15 +26,15 @@ from backend.app.mappers.project_name_mapper import ProjectNameMapper
 
 class FilePathResolver:
     """Centralized file path resolution for entity file handling.
-    
+
     This class is the single source of truth for all file path resolution in the application.
-    It provides bidirectional conversion between API layer (location + filename) and 
+    It provides bidirectional conversion between API layer (location + filename) and
     Core layer (absolute paths).
     """
 
     def __init__(self, settings: Settings) -> None:
         """Initialize resolver with application settings.
-        
+
         Args:
             settings: Application settings containing data directory paths
         """
@@ -47,25 +47,25 @@ class FilePathResolver:
         project_name: str | None = None,
     ) -> Path:
         """Resolve filename to absolute path based on location.
-        
+
         This is the primary method for API → Core resolution. It converts a location
         field and relative filename into an absolute path that Core can use directly.
-        
+
         Args:
             filename: Relative filename (e.g., "data.xlsx" or "subdir/data.xlsx")
             location: File location - "global" (GLOBAL_DATA_DIR) or "local" (project-specific)
             project_name: Project name required for location="local" (e.g., "dendro:sites")
-        
+
         Returns:
             Absolute path to the file
-        
+
         Raises:
             ValueError: If location is invalid or project_name missing for local files
-        
+
         Examples:
             >>> resolver.resolve("specimens.csv", "global")
             Path("/app/shared/shared-data/specimens.csv")
-            
+
             >>> resolver.resolve("data/sites.xlsx", "local", "dendro:sites")
             Path("/app/projects/dendro/sites/data/sites.xlsx")
         """
@@ -92,25 +92,25 @@ class FilePathResolver:
 
     def decompose(self, absolute_path: Path, project_name: str | None = None) -> tuple[str, Literal["global", "local"]] | None:
         """Decompose absolute path into (filename, location) for API layer.
-        
+
         This is the reverse operation of resolve() - it takes an absolute path from Core
         and extracts the location semantics for the API layer. This enables round-tripping
         Core → API → Core without losing information.
-        
+
         Args:
             absolute_path: Absolute file path from Core layer
             project_name: Project name for local path resolution (e.g., "dendro:sites")
-        
+
         Returns:
             Tuple of (relative_filename, location) or None if path is outside managed directories
-        
+
         Examples:
             >>> resolver.decompose(Path("/app/shared/shared-data/specimens.csv"))
             ("specimens.csv", "global")
-            
+
             >>> resolver.decompose(Path("/app/projects/dendro/sites/data.xlsx"), "dendro:sites")
             ("data.xlsx", "local")
-            
+
             >>> resolver.decompose(Path("/external/file.csv"))
             None  # Outside managed directories
         """
@@ -137,21 +137,21 @@ class FilePathResolver:
 
     def extract_location(self, filename: str) -> tuple[str, Literal["global", "local"]]:
         """Extract location from legacy filename format.
-        
+
         Supports backward compatibility with old YAML files using the ${GLOBAL_DATA_DIR}/
         prefix format. This allows gradual migration from legacy format to explicit
         location field.
-        
+
         Args:
             filename: Filename that may contain ${GLOBAL_DATA_DIR}/ prefix
-        
+
         Returns:
             Tuple of (clean_filename, location)
-        
+
         Examples:
             >>> resolver.extract_location("${GLOBAL_DATA_DIR}/data.xlsx")
             ("data.xlsx", "global")
-            
+
             >>> resolver.extract_location("data.xlsx")
             ("data.xlsx", "local")
         """
@@ -164,21 +164,21 @@ class FilePathResolver:
 
     def to_legacy_format(self, filename: str, location: Literal["global", "local"]) -> str:
         """Convert filename + location to legacy format for YAML storage.
-        
+
         This provides backward compatibility when saving YAML files, allowing older
         versions of the application to read the files.
-        
+
         Args:
             filename: Relative filename
             location: File location
-        
+
         Returns:
             Filename in legacy format (with ${GLOBAL_DATA_DIR}/ prefix for global files)
-        
+
         Examples:
             >>> resolver.to_legacy_format("data.xlsx", "global")
             "${GLOBAL_DATA_DIR}/data.xlsx"
-            
+
             >>> resolver.to_legacy_format("data.xlsx", "local")
             "data.xlsx"
         """
@@ -188,15 +188,15 @@ class FilePathResolver:
 
     def resolve_in_entity_config(self, entity_config: dict[str, Any], project_name: str) -> None:
         """Resolve file paths in entity config dictionary.
-        
+
         Modifies entity_config in-place to convert filename to absolute path.
         This is useful when processing entity configurations that bypass the
         normal ProjectMapper.to_core() flow (e.g., preview overrides).
-        
+
         Args:
             entity_config: Entity configuration dictionary (modified in-place)
             project_name: Project name for resolving local paths
-        
+
         Examples:
             >>> config = {"options": {"filename": "data.csv", "location": "global"}}
             >>> resolver.resolve_in_entity_config(config, "my_project")

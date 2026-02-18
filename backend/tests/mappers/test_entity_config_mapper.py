@@ -8,7 +8,6 @@ import pytest
 from backend.app.core.config import Settings
 from backend.app.mappers.entity_config_mapper import (
     DefaultEntityConfigMapper,
-    EntityConfigMapper,
     EntityConfigMapperFactory,
     FileBasedEntityConfigMapper,
 )
@@ -52,6 +51,7 @@ class TestEntityConfigMapperFactory:
         """Test that fixed values driver returns default (no-op) mapper."""
         mapper = factory.get_mapper("fixed")
         assert isinstance(mapper, DefaultEntityConfigMapper)
+
 
 class TestDefaultEntityConfigMapper:
     """Test default (no-op) entity config mapper."""

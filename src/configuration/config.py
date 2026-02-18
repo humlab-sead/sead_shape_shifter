@@ -198,7 +198,7 @@ class Config(ConfigLike):
 
         Note: This method does NOT mutate the input data parameter.
         It creates a deep copy to ensure the original remains unchanged.
-        
+
         Environment variables are expected to already be loaded in os.environ.
         The env_filename parameter is kept for backward compatibility but not used.
         """
