@@ -18,17 +18,19 @@ class TestProjectMapperFilePathIntegration:
         """Create mock Settings with temporary directories."""
         settings = MagicMock(spec=Settings)
         settings.GLOBAL_DATA_DIR = tmp_path / "shared" / "shared-data"
+        settings.global_data_dir = settings.GLOBAL_DATA_DIR  # For property access
         settings.PROJECTS_DIR = tmp_path / "projects"
+        settings.projects_root = settings.PROJECTS_DIR  # For property access
         settings.env_prefix = "SHAPE_SHIFTER_"
         settings.env_file = ".env"
 
         # Create directories
-        settings.GLOBAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
-        settings.PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
+        settings.global_data_dir.mkdir(parents=True, exist_ok=True)
+        settings.projects_root.mkdir(parents=True, exist_ok=True)
 
         # Create test files
-        (settings.GLOBAL_DATA_DIR / "global_data.csv").write_text("test")
-        project_dir = settings.PROJECTS_DIR / "test_project"
+        (settings.global_data_dir / "global_data.csv").write_text("test")
+        project_dir = settings.projects_root / "test_project"
         project_dir.mkdir(parents=True, exist_ok=True)
         (project_dir / "local_data.csv").write_text("test")
 
@@ -59,7 +61,7 @@ class TestProjectMapperFilePathIntegration:
 
             # Verify absolute path resolution
             entity_options = core_project.cfg["entities"]["entity1"]["options"]
-            expected_path = str(mock_settings.GLOBAL_DATA_DIR / "global_data.csv")
+            expected_path = str(mock_settings.global_data_dir / "global_data.csv")
             assert entity_options["filename"] == expected_path
             # Location should be removed from Core
             assert "location" not in entity_options
@@ -89,7 +91,7 @@ class TestProjectMapperFilePathIntegration:
 
             # Verify absolute path resolution
             entity_options = core_project.cfg["entities"]["entity1"]["options"]
-            expected_path = str(mock_settings.PROJECTS_DIR / "test_project" / "local_data.csv")
+            expected_path = str(mock_settings.projects_root / "test_project" / "local_data.csv")
             assert entity_options["filename"] == expected_path
             # Location should be removed from Core
             assert "location" not in entity_options
@@ -120,7 +122,7 @@ class TestProjectMapperFilePathIntegration:
 
             # Verify absolute path resolution
             entity_options = core_project.cfg["entities"]["entity1"]["options"]
-            expected_path = str(mock_settings.GLOBAL_DATA_DIR / "global_data.csv")
+            expected_path = str(mock_settings.global_data_dir / "global_data.csv")
             assert entity_options["filename"] == expected_path
 
     def test_to_api_config_restores_location_for_global_file(self, mock_settings: Settings) -> None:
@@ -136,7 +138,7 @@ class TestProjectMapperFilePathIntegration:
                 "entities": {
                     "entity1": {
                         "type": "csv",
-                        "options": {"filename": str(mock_settings.GLOBAL_DATA_DIR / "global_data.csv")},
+                        "options": {"filename": str(mock_settings.global_data_dir / "global_data.csv")},
                     }
                 },
                 "options": {},
@@ -162,7 +164,7 @@ class TestProjectMapperFilePathIntegration:
                 "entities": {
                     "entity1": {
                         "type": "csv",
-                        "options": {"filename": str(mock_settings.PROJECTS_DIR / "test_project" / "local_data.csv")},
+                        "options": {"filename": str(mock_settings.projects_root / "test_project" / "local_data.csv")},
                     }
                 },
                 "options": {},
@@ -207,8 +209,8 @@ class TestProjectMapperFilePathIntegration:
             # Verify Core has absolute paths
             global_options = core_project.cfg["entities"]["global_entity"]["options"]
             local_options = core_project.cfg["entities"]["local_entity"]["options"]
-            assert global_options["filename"] == str(mock_settings.GLOBAL_DATA_DIR / "global_data.csv")
-            assert local_options["filename"] == str(mock_settings.PROJECTS_DIR / "test_project" / "local_data.csv")
+            assert global_options["filename"] == str(mock_settings.global_data_dir / "global_data.csv")
+            assert local_options["filename"] == str(mock_settings.projects_root / "test_project" / "local_data.csv")
 
             # Core → API
             restored_api = ProjectMapper.to_api_config(core_project.cfg, "test_project")

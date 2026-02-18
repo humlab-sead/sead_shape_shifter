@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:  # pylint: disable=unused-ar
 
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title=settings.APPLICATION_NAME,
     version=settings.VERSION,
     description="REST API for editing Shape Shifter YAML projects",
     openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
