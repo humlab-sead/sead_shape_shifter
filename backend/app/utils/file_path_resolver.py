@@ -73,7 +73,7 @@ class FilePathResolver:
             raise ValueError(f"Invalid location: {location}. Must be 'global' or 'local'")
 
         if location == "global":
-            resolved_path = self.settings.GLOBAL_DATA_DIR / filename
+            resolved_path = self.settings.global_data_dir / filename
             logger.debug(f"Resolved global file: {filename} -> {resolved_path}")
             return resolved_path
 
@@ -83,7 +83,7 @@ class FilePathResolver:
 
             # Convert project name (e.g., "dendro:sites") to path ("dendro/sites")
             project_path = ProjectNameMapper.to_path(project_name)
-            resolved_path = self.settings.PROJECTS_DIR / project_path / filename
+            resolved_path = self.settings.projects_root / project_path / filename
             logger.debug(f"Resolved local file: {filename} ({project_name}) -> {resolved_path}")
             return resolved_path
 
@@ -116,7 +116,7 @@ class FilePathResolver:
         """
         # Try global directory first
         try:
-            relative_path = absolute_path.relative_to(self.settings.GLOBAL_DATA_DIR)
+            relative_path = absolute_path.relative_to(self.settings.global_data_dir)
             return (str(relative_path), "global")
         except ValueError:
             pass  # Not in global directory
@@ -125,7 +125,7 @@ class FilePathResolver:
         if project_name:
             try:
                 project_path = ProjectNameMapper.to_path(project_name)
-                project_dir = self.settings.PROJECTS_DIR / project_path
+                project_dir = self.settings.projects_root / project_path
                 relative_path = absolute_path.relative_to(project_dir)
                 return (str(relative_path), "local")
             except ValueError:

@@ -1,6 +1,7 @@
 """Tests for centralized file path resolution."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,11 +18,15 @@ class TestFilePathResolver:
         """Create mock Settings with temporary directories."""
         settings = MagicMock(spec=Settings)
         settings.GLOBAL_DATA_DIR = tmp_path / "shared" / "shared-data"
+        settings.global_data_dir = settings.GLOBAL_DATA_DIR  # For property access
         settings.PROJECTS_DIR = tmp_path / "projects"
+        settings.projects_root = settings.PROJECTS_DIR  # For property access
+        settings.APPLICATION_ROOT = tmp_path
+        settings.application_root = settings.APPLICATION_ROOT  # For property access
 
         # Create directories
-        settings.GLOBAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
-        settings.PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
+        settings.global_data_dir.mkdir(parents=True, exist_ok=True)
+        settings.projects_root.mkdir(parents=True, exist_ok=True)
 
         return settings
 
@@ -35,25 +40,25 @@ class TestFilePathResolver:
     def test_resolve_global_file(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test resolving global file path."""
         result = resolver.resolve("specimens.csv", "global")
-        expected = mock_settings.GLOBAL_DATA_DIR / "specimens.csv"
+        expected = mock_settings.global_data_dir / "specimens.csv"
         assert result == expected
 
     def test_resolve_global_file_with_subdirectory(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test resolving global file with subdirectory."""
         result = resolver.resolve("data/specimens.csv", "global")
-        expected = mock_settings.GLOBAL_DATA_DIR / "data" / "specimens.csv"
+        expected = mock_settings.global_data_dir / "data" / "specimens.csv"
         assert result == expected
 
     def test_resolve_local_file(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test resolving local (project-specific) file path."""
         result = resolver.resolve("sites.xlsx", "local", "dendro:sites")
-        expected = mock_settings.PROJECTS_DIR / "dendro" / "sites" / "sites.xlsx"
+        expected = mock_settings.projects_root / "dendro" / "sites" / "sites.xlsx"
         assert result == expected
 
     def test_resolve_local_file_with_subdirectory(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test resolving local file with subdirectory."""
         result = resolver.resolve("data/sites.xlsx", "local", "dendro:sites")
-        expected = mock_settings.PROJECTS_DIR / "dendro" / "sites" / "data" / "sites.xlsx"
+        expected = mock_settings.projects_root / "dendro" / "sites" / "data" / "sites.xlsx"
         assert result == expected
 
     def test_resolve_local_file_without_project_name_raises(self, resolver: FilePathResolver) -> None:
@@ -70,25 +75,25 @@ class TestFilePathResolver:
 
     def test_decompose_global_file(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test decomposing global file path."""
-        absolute_path = mock_settings.GLOBAL_DATA_DIR / "specimens.csv"
+        absolute_path = mock_settings.global_data_dir / "specimens.csv"
         result = resolver.decompose(absolute_path)
         assert result == ("specimens.csv", "global")
 
     def test_decompose_global_file_with_subdirectory(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test decomposing global file with subdirectory."""
-        absolute_path = mock_settings.GLOBAL_DATA_DIR / "data" / "specimens.csv"
+        absolute_path = mock_settings.global_data_dir / "data" / "specimens.csv"
         result = resolver.decompose(absolute_path)
         assert result == ("data/specimens.csv", "global")
 
     def test_decompose_local_file(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test decomposing local (project-specific) file path."""
-        absolute_path = mock_settings.PROJECTS_DIR / "dendro" / "sites" / "sites.xlsx"
+        absolute_path = mock_settings.projects_root / "dendro" / "sites" / "sites.xlsx"
         result = resolver.decompose(absolute_path, "dendro:sites")
         assert result == ("sites.xlsx", "local")
 
     def test_decompose_local_file_with_subdirectory(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test decomposing local file with subdirectory."""
-        absolute_path = mock_settings.PROJECTS_DIR / "dendro" / "sites" / "data" / "sites.xlsx"
+        absolute_path = mock_settings.projects_root / "dendro" / "sites" / "data" / "sites.xlsx"
         result = resolver.decompose(absolute_path, "dendro:sites")
         assert result == ("data/sites.xlsx", "local")
 
@@ -102,7 +107,7 @@ class TestFilePathResolver:
         self, resolver: FilePathResolver, mock_settings: Settings
     ) -> None:
         """Test that decompose without project_name cannot detect local files."""
-        absolute_path = mock_settings.PROJECTS_DIR / "dendro" / "sites" / "sites.xlsx"
+        absolute_path = mock_settings.projects_root / "dendro" / "sites" / "sites.xlsx"
         result = resolver.decompose(absolute_path)  # No project_name
         # Without project_name, we can't determine it's local, returns None
         assert result is None
@@ -199,18 +204,18 @@ class TestFilePathResolver:
     def test_resolve_empty_filename(self, resolver: FilePathResolver) -> None:
         """Test resolving empty filename still returns valid path."""
         result = resolver.resolve("", "global")
-        assert result == resolver.settings.GLOBAL_DATA_DIR
+        assert result == resolver.settings.global_data_dir
 
     def test_decompose_directory_path(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test decomposing directory (not file) path."""
-        dir_path = mock_settings.GLOBAL_DATA_DIR / "data"
+        dir_path = mock_settings.global_data_dir / "data"
         result = resolver.decompose(dir_path)
         assert result == ("data", "global")
 
     def test_project_name_with_multiple_colons(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test project name with multiple colons converts to nested path."""
         result = resolver.resolve("file.csv", "local", "parent:child:grandchild")
-        expected = mock_settings.PROJECTS_DIR / "parent" / "child" / "grandchild" / "file.csv"
+        expected = mock_settings.projects_root / "parent" / "child" / "grandchild" / "file.csv"
         assert result == expected
 
     # Test: resolve_in_entity_config()
@@ -226,7 +231,7 @@ class TestFilePathResolver:
         
         resolver.resolve_in_entity_config(config, "test_project")
         
-        expected_path = str(mock_settings.GLOBAL_DATA_DIR / "data.csv")
+        expected_path = str(mock_settings.global_data_dir / "data.csv")
         assert config["options"]["filename"] == expected_path
         # Location should be removed for Core
         assert "location" not in config["options"]
@@ -242,7 +247,7 @@ class TestFilePathResolver:
         
         resolver.resolve_in_entity_config(config, "my:project")
         
-        expected_path = str(mock_settings.PROJECTS_DIR / "my" / "project" / "data.csv")
+        expected_path = str(mock_settings.projects_root / "my" / "project" / "data.csv")
         assert config["options"]["filename"] == expected_path
         assert "location" not in config["options"]
 
@@ -257,7 +262,7 @@ class TestFilePathResolver:
         
         resolver.resolve_in_entity_config(config, "test_project")
         
-        expected_path = str(mock_settings.GLOBAL_DATA_DIR / "legacy_data.csv")
+        expected_path = str(mock_settings.global_data_dir / "legacy_data.csv")
         assert config["options"]["filename"] == expected_path
         assert "location" not in config["options"]
 
@@ -296,5 +301,5 @@ class TestFilePathResolver:
         resolver.resolve_in_entity_config(config, "test_project")
         
         # Should use global as fallback
-        expected_path = str(mock_settings.GLOBAL_DATA_DIR / "data.csv")
+        expected_path = str(mock_settings.global_data_dir / "data.csv")
         assert config["options"]["filename"] == expected_path

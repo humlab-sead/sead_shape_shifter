@@ -22,8 +22,8 @@ class Settings(BaseSettings):
         extra="ignore",
         env_prefix="SHAPE_SHIFTER_",
     )
-    PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
-    PROJECT_NAME: str = "Shape Shifter Project Editor"
+    APPLICATION_ROOT: Path = Path(__file__).parent.parent.parent
+    APPLICATION_NAME: str = "Shape Shifter Project Editor"
     VERSION: str = __version__
     ENVIRONMENT: Literal["development", "production", "test"] = "development"
     API_V1_PREFIX: str = "/api/v1"
@@ -97,14 +97,24 @@ class Settings(BaseSettings):
         return str(self.model_config.get("env_file", ""))
 
     @property
-    def projects_dir(self) -> Path:
-        """Get configurations directory path."""
+    def projects_root(self) -> Path:
+        """Get projects root directory path."""
         return self.PROJECTS_DIR
 
     @property
-    def project_root(self) -> Path:
-        """Get project root directory path."""
-        return self.PROJECT_ROOT
+    def application_root(self) -> Path:
+        """Get application root directory path."""
+        return self.APPLICATION_ROOT
+
+    @property
+    def global_data_dir(self) -> Path:
+        """Get global data directory path."""
+        return self.GLOBAL_DATA_DIR
+    
+    @property
+    def global_data_source_dir(self) -> Path:
+        """Get global data source directory path."""
+        return self.GLOBAL_DATA_SOURCE_DIR
 
     @property
     def env_opts(self) -> dict[str, str]:

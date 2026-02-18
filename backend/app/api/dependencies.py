@@ -21,7 +21,7 @@ def get_data_source_service() -> Generator[services.DataSourceService, None, Non
     Creates service for managing global data source files.
     Used as FastAPI dependency for data source endpoints.
     """
-    service = services.DataSourceService(settings.GLOBAL_DATA_SOURCE_DIR)
+    service = services.DataSourceService(settings.global_data_source_dir)
     try:
         yield service
     finally:
