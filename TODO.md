@@ -165,7 +165,26 @@ Should open a modal with a Monaco Editor for SQL editing, allowing users to test
 
 ### TODO: #221 System fails to find ingesters folder
 The system currently fails to find the ingesters folder when running in Docker. Cause: the ingesters folder is not copied to the Docker image, we need to copy the ingesters folder to the Docker image in the Dockerfile, and set environment variables accordingly.
-
-
-
 Wouldn't the simple solution be to only have resolved path in core layer? I code think a rule if "location" in "options", "filename" = strip_filenames_path(filename). Or is that do hacky? I could think adding a  simple mechanism for adding type specific mappings. 
+
+### FIXME:
+
+
+We need to review how **"filename"** entity's "options" dict id handled. This value holds the filename of of the source file for file based entities (csv, xlsx).
+Currently, this file can be in two places: in a **global store** or **locally** in the project's folder.
+- The location to the global store is defined in GLOBAL_DATA_DIR, which is a path relative to the **application root**.
+- The project's local folder is the project root folder + project's path given by it's name (nested folders separated by ":")
+Note that the "filename" and "location" information is used by the file based data loaders.
+
+Initially, we encoded the local/public location by prepending "${GLOBAL_DATA_DIR}/" to the value in "filename".
+The filename was the supposed to be resolved in the I/O-layer (read/write). This didn't work well, so it was changed to
+a more straightforward approach by adding a "location" key next to "filename" indicating storage location
+and that can take values "local" or "global". The problem is that the codebase now contains hacks in
+several places which mixes the two approaches. We don't need to store "${GLOBAL_DATA_DIR}/" anymore but
+that happens still in e.g. _resolve_file_paths_in_entity in backend/app/api/v1/endpoints/entities.py.
+The resolve logic also exists in several places. I'm also unsure if the location property 
+survives the mapping "API => core => API"
+
+Please review this and propose a more robust handling.  We could e.g. consider centralizing the logic to the file based loader class
+but somehow still various parts of the system need's a resolved filename.
+
