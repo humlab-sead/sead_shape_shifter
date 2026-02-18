@@ -3,8 +3,8 @@ from typing import Any
 import pytest
 
 from src.loaders.base_loader import DataLoaders
+from src.loaders.excel_loaders import OpenPyxlLoader
 from src.loaders.file_loaders import FileLoader
-
 
 @pytest.mark.parametrize("key", ["xlsx", "xls", "openpyxl"])
 def test_excel_xlsx_loader_registration(key: str):
@@ -119,7 +119,6 @@ async def test_excel_openpyxl_load_subset_with_sanitize_header():
 @pytest.mark.asyncio
 async def test_excel_openpyxl_column_range_parsing():
     """Test that column ranges like 'A:C' are parsed correctly."""
-    from src.loaders.excel_loaders import OpenPyxlLoader
 
     # Test valid column ranges
     assert OpenPyxlLoader._parse_column_range("A:C") == (1, 3)
