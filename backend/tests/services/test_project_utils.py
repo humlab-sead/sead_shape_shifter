@@ -88,7 +88,7 @@ options: {}
         """Test absolute paths with slash are rejected."""
         with pytest.raises(BadRequestError, match="use ':' for nested projects"):
             utils.validate_project_name("/absolute/path")
-            
+
     def test_validate_project_name_strips_whitespace(self, utils: ProjectUtils):
         """Test whitespace is stripped."""
         assert utils.validate_project_name("  test  ") == "test"

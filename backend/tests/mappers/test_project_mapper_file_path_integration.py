@@ -200,7 +200,7 @@ class TestProjectMapperFilePathIntegration:
                         "type": "csv",
                         "options": {"filename": "local_data.csv", "location": "local"},
                     },
-                }
+                },
             )
 
             # API → Core

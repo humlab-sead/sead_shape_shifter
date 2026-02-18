@@ -143,11 +143,11 @@ class OpenPyxlLoader(ExcelLoader):
     @staticmethod
     def _parse_column_range(cell_range: str) -> tuple[int, int] | None:
         """Parse a column range like 'A:I' or 'B:Z' and return (min_col, max_col).
-        
+
         Returns None if not a column range.
         """
         # Match column-only ranges like 'A:I', 'AA:ZZ'
-        match = re.match(r'^([A-Z]+):([A-Z]+)$', cell_range.strip().upper())
+        match = re.match(r"^([A-Z]+):([A-Z]+)$", cell_range.strip().upper())
         if match:
             min_col = column_index_from_string(match.group(1))
             max_col = column_index_from_string(match.group(2))
@@ -184,10 +184,7 @@ class OpenPyxlLoader(ExcelLoader):
             if col_range:
                 min_col, max_col = col_range
                 # Use iter_rows with column filtering for read-only compatibility
-                data = (
-                    [cell.value for cell in row[min_col - 1:max_col]]
-                    for row in worksheet.iter_rows()
-                )
+                data = ([cell.value for cell in row[min_col - 1 : max_col]] for row in worksheet.iter_rows())
             else:
                 # Normal cell range like 'A1:I100' works fine with worksheet[]
                 data = ([cell.value for cell in row] for row in worksheet[cell_range])

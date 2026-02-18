@@ -5,11 +5,10 @@ from typing import Iterable
 
 from fastapi import UploadFile
 
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import ProjectFileInfo
 from backend.app.utils.excel_utils import get_excel_metadata as extract_excel_metadata
 from backend.app.utils.exceptions import BadRequestError
-from backend.app.mappers.project_name_mapper import ProjectNameMapper
-
 
 DEFAULT_ALLOWED_UPLOAD_EXTENSIONS: set[str] = {".xlsx", ".xls"}
 MAX_PROJECT_UPLOAD_SIZE_MB: int = 50

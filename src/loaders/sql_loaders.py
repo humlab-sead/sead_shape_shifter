@@ -249,7 +249,7 @@ class SqlLoader(DataLoader):
         try:
             if schema:
                 # For databases that support schemas, qualify the table name
-                qualified_table: str = f'{self.quote_name(schema)}.{self.quote_name(table_name)}'
+                qualified_table: str = f"{self.quote_name(schema)}.{self.quote_name(table_name)}"
             else:
                 qualified_table: str = self.quote_name(table_name)
             query: str = f"SELECT COUNT(*) as count FROM {qualified_table}"

@@ -110,7 +110,7 @@ class Settings(BaseSettings):
     def global_data_dir(self) -> Path:
         """Get global data directory path."""
         return self.GLOBAL_DATA_DIR
-    
+
     @property
     def global_data_source_dir(self) -> Path:
         """Get global data source directory path."""

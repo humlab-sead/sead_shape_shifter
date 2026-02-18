@@ -103,9 +103,7 @@ class TestFilePathResolver:
         result = resolver.decompose(external_path)
         assert result is None
 
-    def test_decompose_without_project_name_prefers_global(
-        self, resolver: FilePathResolver, mock_settings: Settings
-    ) -> None:
+    def test_decompose_without_project_name_prefers_global(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test that decompose without project_name cannot detect local files."""
         absolute_path = mock_settings.projects_root / "dendro" / "sites" / "sites.xlsx"
         result = resolver.decompose(absolute_path)  # No project_name
@@ -146,9 +144,7 @@ class TestFilePathResolver:
 
     # Test: Round-trip conversions
 
-    def test_roundtrip_global_via_resolve_and_decompose(
-        self, resolver: FilePathResolver, mock_settings: Settings
-    ) -> None:
+    def test_roundtrip_global_via_resolve_and_decompose(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test round-trip conversion: (filename, location) → absolute → (filename, location)."""
         original_filename = "specimens.csv"
         original_location = "global"
@@ -162,9 +158,7 @@ class TestFilePathResolver:
         assert filename == original_filename
         assert location == original_location
 
-    def test_roundtrip_local_via_resolve_and_decompose(
-        self, resolver: FilePathResolver, mock_settings: Settings
-    ) -> None:
+    def test_roundtrip_local_via_resolve_and_decompose(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test round-trip conversion for local file."""
         original_filename = "data/sites.xlsx"
         original_location = "local"
@@ -222,15 +216,10 @@ class TestFilePathResolver:
 
     def test_resolve_in_entity_config_global(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test resolving file paths in entity config dictionary for global file."""
-        config = {
-            "options": {
-                "filename": "data.csv",
-                "location": "global"
-            }
-        }
-        
+        config = {"options": {"filename": "data.csv", "location": "global"}}
+
         resolver.resolve_in_entity_config(config, "test_project")
-        
+
         expected_path = str(mock_settings.global_data_dir / "data.csv")
         assert config["options"]["filename"] == expected_path
         # Location should be removed for Core
@@ -238,15 +227,10 @@ class TestFilePathResolver:
 
     def test_resolve_in_entity_config_local(self, resolver: FilePathResolver, mock_settings: Settings) -> None:
         """Test resolving file paths in entity config dictionary for local file."""
-        config = {
-            "options": {
-                "filename": "data.csv",
-                "location": "local"
-            }
-        }
-        
+        config = {"options": {"filename": "data.csv", "location": "local"}}
+
         resolver.resolve_in_entity_config(config, "my:project")
-        
+
         expected_path = str(mock_settings.projects_root / "my" / "project" / "data.csv")
         assert config["options"]["filename"] == expected_path
         assert "location" not in config["options"]
@@ -259,9 +243,9 @@ class TestFilePathResolver:
                 # No location field - should be extracted
             }
         }
-        
+
         resolver.resolve_in_entity_config(config, "test_project")
-        
+
         expected_path = str(mock_settings.global_data_dir / "legacy_data.csv")
         assert config["options"]["filename"] == expected_path
         assert "location" not in config["options"]
@@ -269,37 +253,28 @@ class TestFilePathResolver:
     def test_resolve_in_entity_config_no_options(self, resolver: FilePathResolver) -> None:
         """Test resolve_in_entity_config with config missing options."""
         config: dict[str, Any] = {"other_field": "value"}
-        
+
         # Should not raise error, just return early
         resolver.resolve_in_entity_config(config, "test_project")
-        
+
         assert config == {"other_field": "value"}
 
     def test_resolve_in_entity_config_no_filename(self, resolver: FilePathResolver) -> None:
         """Test resolve_in_entity_config with options but no filename."""
-        config = {
-            "options": {
-                "other_option": "value"
-            }
-        }
-        
+        config = {"options": {"other_option": "value"}}
+
         resolver.resolve_in_entity_config(config, "test_project")
-        
+
         assert config["options"] == {"other_option": "value"}
 
     def test_resolve_in_entity_config_invalid_location_defaults_to_global(
         self, resolver: FilePathResolver, mock_settings: Settings
     ) -> None:
         """Test that invalid location defaults to global."""
-        config = {
-            "options": {
-                "filename": "data.csv",
-                "location": "invalid_location"
-            }
-        }
-        
+        config = {"options": {"filename": "data.csv", "location": "invalid_location"}}
+
         resolver.resolve_in_entity_config(config, "test_project")
-        
+
         # Should use global as fallback
         expected_path = str(mock_settings.global_data_dir / "data.csv")
         assert config["options"]["filename"] == expected_path

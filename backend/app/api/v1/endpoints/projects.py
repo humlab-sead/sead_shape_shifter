@@ -13,10 +13,7 @@ from backend.app.core.config import settings
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.models.project import Project, ProjectMetadata
 from backend.app.models.validation import ValidationResult
-from backend.app.services.project_service import (
-    ProjectService,
-    get_project_service
-)
+from backend.app.services.project_service import ProjectService, get_project_service
 from backend.app.services.validation_service import ValidationService, get_validation_service
 from backend.app.services.yaml_service import YamlService, get_yaml_service
 from backend.app.utils.error_handlers import handle_endpoint_errors
@@ -501,7 +498,7 @@ async def get_project_raw_yaml(name: str) -> dict[str, str]:
     Returns:
         Dictionary containing yaml_content
     """
-    
+
     project_service: ProjectService = get_project_service()
 
     project_service.load_project(name)
@@ -553,7 +550,6 @@ async def update_project_raw_yaml(name: str, request: RawYamlUpdateRequest) -> P
     if not isinstance(parsed_yaml, dict):
         raise BadRequestError("YAML must be a dictionary")
 
-    
     # Write to file (convert API name to filesystem path: : -> /)
     path_name = ProjectNameMapper.to_path(name)
     project_path = settings.PROJECTS_DIR / path_name / "shapeshifter.yml"

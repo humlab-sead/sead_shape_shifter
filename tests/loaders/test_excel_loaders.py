@@ -120,12 +120,12 @@ async def test_excel_openpyxl_load_subset_with_sanitize_header():
 async def test_excel_openpyxl_column_range_parsing():
     """Test that column ranges like 'A:C' are parsed correctly."""
     from src.loaders.excel_loaders import OpenPyxlLoader
-    
+
     # Test valid column ranges
     assert OpenPyxlLoader._parse_column_range("A:C") == (1, 3)
     assert OpenPyxlLoader._parse_column_range("B:Z") == (2, 26)
     assert OpenPyxlLoader._parse_column_range("AA:AB") == (27, 28)
-    
+
     # Test invalid ranges (should return None)
     assert OpenPyxlLoader._parse_column_range("A1:C5") is None
     assert OpenPyxlLoader._parse_column_range("A1") is None
@@ -144,7 +144,7 @@ async def test_excel_openpyxl_load_with_column_range():
         "range": "A:C",  # Column range - should work in read-only mode
         "sanitize_header": False,
     }
-    
+
     df = await loader.load_file(cfg)
     assert not df.empty
     assert list(df.columns) == ["A", "B", "C"]

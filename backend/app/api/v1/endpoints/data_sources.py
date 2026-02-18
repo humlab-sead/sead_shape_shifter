@@ -141,10 +141,10 @@ async def list_data_sources(
 @handle_endpoint_errors
 async def list_data_source_files(
     ext: list[str] | None = Query(default=None, description="Filter by extension"),
-    project_name: str | None = Query(default=None, description="Project name to include project-specific files")
+    project_name: str | None = Query(default=None, description="Project name to include project-specific files"),
 ) -> list[ProjectFileInfo]:
     """List Excel/CSV files available for data source configuration.
-    
+
     Returns files from global shared-data directory. If project_name is provided,
     also includes files from that project's upload directory.
     """
