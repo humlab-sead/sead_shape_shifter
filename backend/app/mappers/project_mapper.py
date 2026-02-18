@@ -22,8 +22,7 @@ The API layer is the editing/persistence boundary. Core is the execution/process
 No hardcoded field lists - all field handling is derived from Pydantic schemas.
 """
 
-from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from loguru import logger
 
@@ -167,26 +166,25 @@ class ProjectMapper:
             if not options or not isinstance(options, dict):
                 continue
             
-            filename = options.get("filename")
-            location = options.get("location", "global")  # Default to global
-            
-            if filename and location:
-                # Resolve to absolute path based on location
-                if location == "global":
-                    resolved_path = str(settings.GLOBAL_DATA_DIR / filename)
-                elif location == "local":
-                    # Convert project name to path and resolve relative to projects dir
-                    project_path = ProjectNameMapper.to_path(api_config.filename or "")
-                    resolved_path = str(settings.PROJECTS_DIR / project_path / filename)
-                else:
-                    logger.warning(f"Unknown location '{location}' for file '{filename}', using global")
-                    resolved_path = str(settings.GLOBAL_DATA_DIR / filename)
-                
-                # Update to absolute path for Core (Core doesn't need to know about location)
-                options["filename"] = resolved_path
-                logger.debug(f"Resolved {location} file: {filename} -> {resolved_path}")
+            filename: str = options.get("filename") or ""
 
-        # Create project
+            if not filename:
+                continue
+
+            location: str = options.get("location", "global") or "global"
+            if location not in ["global", "local"]:
+                logger.warning(f"Unknown location '{location}' for file '{filename}', defaulting to global")
+                location = "global"
+
+            # Resolve to absolute path based on location
+            resolved_path: str = ProjectMapper.resolve_file_path(api_config.filename, filename, location)
+            
+            # Update to absolute path for Core (Core doesn't need to know about location)
+            options["filename"] = resolved_path
+            options["location"] = location
+            
+            logger.debug(f"Resolved {location} file: {filename} -> {resolved_path}")
+
         project = ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
 
         # Only resolve if there are unresolved directives
@@ -199,6 +197,20 @@ class ProjectMapper:
             )
 
         return project
+
+    @staticmethod
+    def resolve_file_path(project_name: str|None, filename: str, location: Literal["global", "local"]) -> str:
+        
+        if location == "global":
+            return str(settings.GLOBAL_DATA_DIR / filename)
+        
+        if location == "local":
+            # Convert project name with ":" instead of "/" to path and resolve relative to projects dir
+            project_path: str = ProjectNameMapper.to_path(project_name or "")
+            return str(settings.PROJECTS_DIR / project_path / filename)
+        
+        logger.warning(f"Unknown location '{location}' for file '{filename}', using global")
+        return str(settings.GLOBAL_DATA_DIR / filename)
 
     @staticmethod
     def to_core_config(api_config: Project) -> ShapeShiftProject:
