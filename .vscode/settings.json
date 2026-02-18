@@ -152,5 +152,9 @@
             "8484": { "onAutoForward": "ignore" },
             "8485": { "onAutoForward": "ignore" },
         },
-        "peacock.remoteColor": "#445740"
+        "peacock.remoteColor": "#445740",
+        "cSpell.words": [
+            "arbodat",
+            "shapeshifter"
+        ]
 }
