@@ -92,10 +92,11 @@ class ProjectService:
 
         # Initialize file manager component
         self.files = FileManager(
-            projects_dir=self.projects_dir,
+            projects_root=self.projects_dir,
+            global_data_dir=settings.GLOBAL_DATA_DIR,
+            application_root=settings.PROJECT_ROOT,
             sanitize_project_name_callback=self.utils.validate_project_name,
             ensure_project_exists_callback=self.utils.ensure_project_exists,
-            global_data_dir=settings.GLOBAL_DATA_DIR,
         )
 
     def list_projects(self) -> list[ProjectMetadata]:

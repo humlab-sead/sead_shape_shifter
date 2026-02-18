@@ -22,11 +22,12 @@ The API layer is the editing/persistence boundary. Core is the execution/process
 No hardcoded field lists - all field handling is derived from Pydantic schemas.
 """
 
-from typing import Any, Literal
+from typing import Any
 
 from loguru import logger
 
 from backend.app.core.config import settings
+from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityConfigMapperFactory
 from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models import (
@@ -78,6 +79,14 @@ class ProjectMapper:
         entities: dict[str, dict[str, Any]] = {}
         for entity_name, entity_dict in cfg_dict.get("entities", {}).items():
             entities[entity_name] = ProjectMapper._dict_to_api_entity(entity_name, entity_dict)
+
+        # Apply type-specific transformations (Core → API) using strategy pattern
+        # File-based entities: decompose absolute paths to (filename, location)
+        # Other entities: no-op transformation
+        mapper_factory = EntityConfigMapperFactory(settings)
+        for entity_dict in entities.values():
+            mapper: EntityConfigMapper = mapper_factory.get_mapper_for_entity(entity_dict)
+            entity_dict.update(mapper.to_api(entity_dict, name))
 
         # Map options (preserve as-is)
         options = cfg_dict.get("options", {})
@@ -154,36 +163,20 @@ class ProjectMapper:
         """Convert API Project to core ShapeShiftProject.
 
         Conditionally resolves @include: and @value: directives only if needed.
-        Resolves file paths based on location field at the API → Core boundary.
+        Resolves file paths based on location field at the API → Core boundary using strategy pattern.
         """
         cfg_dict: dict[str, Any] = ProjectMapper.to_core_dict(api_config=api_config)
 
-        # Resolve file paths in entity options based on location field
-        # This gives Core fully resolved absolute paths without storing them in YAML
+        # Apply type-specific transformations (API → Core) using strategy pattern
+        # File-based entities: resolve (filename, location) to absolute paths
+        # Other entities: no-op transformation
+        project_name = api_config.metadata.name if api_config.metadata else api_config.filename
+        mapper_factory = EntityConfigMapperFactory(settings)
+        
         entities = cfg_dict.get("entities", {})
         for entity_dict in entities.values():
-            options = entity_dict.get("options")
-            if not options or not isinstance(options, dict):
-                continue
-            
-            filename: str = options.get("filename") or ""
-
-            if not filename:
-                continue
-
-            location: str = options.get("location", "global") or "global"
-            if location not in ["global", "local"]:
-                logger.warning(f"Unknown location '{location}' for file '{filename}', defaulting to global")
-                location = "global"
-
-            # Resolve to absolute path based on location
-            resolved_path: str = ProjectMapper.resolve_file_path(api_config.filename, filename, location)
-            
-            # Update to absolute path for Core (Core doesn't need to know about location)
-            options["filename"] = resolved_path
-            options["location"] = location
-            
-            logger.debug(f"Resolved {location} file: {filename} -> {resolved_path}")
+            mapper = mapper_factory.get_mapper_for_entity(entity_dict)
+            entity_dict.update(mapper.to_core(entity_dict, project_name))  # type: ignore
 
         project = ShapeShiftProject(cfg=cfg_dict, filename=api_config.filename or "")
 
@@ -197,20 +190,6 @@ class ProjectMapper:
             )
 
         return project
-
-    @staticmethod
-    def resolve_file_path(project_name: str|None, filename: str, location: Literal["global", "local"]) -> str:
-        
-        if location == "global":
-            return str(settings.GLOBAL_DATA_DIR / filename)
-        
-        if location == "local":
-            # Convert project name with ":" instead of "/" to path and resolve relative to projects dir
-            project_path: str = ProjectNameMapper.to_path(project_name or "")
-            return str(settings.PROJECTS_DIR / project_path / filename)
-        
-        logger.warning(f"Unknown location '{location}' for file '{filename}', using global")
-        return str(settings.GLOBAL_DATA_DIR / filename)
 
     @staticmethod
     def to_core_config(api_config: Project) -> ShapeShiftProject:

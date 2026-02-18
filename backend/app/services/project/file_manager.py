@@ -5,7 +5,6 @@ from typing import Iterable
 
 from fastapi import UploadFile
 
-from backend.app.core.config import settings
 from backend.app.models.project import ProjectFileInfo
 from backend.app.utils.excel_utils import get_excel_metadata as extract_excel_metadata
 from backend.app.utils.exceptions import BadRequestError
@@ -25,21 +24,24 @@ class FileManager:
 
     def __init__(
         self,
-        projects_dir: Path,
+        projects_root: Path,
+        global_data_dir: Path,
+        application_root: Path,
         sanitize_project_name_callback,  # Callable[[str], str]
         ensure_project_exists_callback,  # Callable[[str], Path]
-        global_data_dir: Path | None = None,
     ):
         """Initialize file manager.
 
         Args:
-            projects_dir: Base directory for all projects
+            projects_root: Base directory for all projects
+            global_data_dir: Directory for global shared data files
+            application_root: Application root directory for relative path display
             sanitize_project_name_callback: Function to sanitize project names
             ensure_project_exists_callback: Function to ensure project exists
-            global_data_dir: Directory for global shared data files (default: projects_dir)
         """
-        self.projects_dir: Path = projects_dir
-        self.global_data_dir: Path = global_data_dir or projects_dir
+        self.projects_root: Path = projects_root
+        self.global_data_dir: Path = global_data_dir
+        self.application_root: Path = application_root
         self._sanitize_project_name = sanitize_project_name_callback
         self._ensure_project_exists = ensure_project_exists_callback
 
@@ -59,34 +61,46 @@ class FileManager:
         """
 
         safe_path = ProjectNameMapper.to_path(project_name)
-        return self.projects_dir / safe_path
+        return self.projects_root / safe_path
 
     def _to_public_path(self, path: Path) -> str:
-        """Convert absolute path to public relative path.
+        """Convert absolute path to public relative path for API responses.
 
-        Tries to make path relative to PROJECT_ROOT, GLOBAL_DATA_DIR, or PROJECTS_DIR,
+        This is for display/API purposes and differs from FilePathResolver.decompose()
+        which returns (filename, location) tuples for entity configuration.
+
+        Tries to make path relative to application_root, global_data_dir, or projects_dir,
         otherwise returns absolute path as string.
+
+        Returns:
+            Relative path string for API display (e.g., "shared/shared-data/file.xlsx")
         """
         try:
-            return str(path.relative_to(settings.PROJECT_ROOT))
+            return str(path.relative_to(self.application_root))
         except ValueError:
             try:
-                # For global data files, make relative to GLOBAL_DATA_DIR to get just filename
-                rel_path = path.relative_to(settings.GLOBAL_DATA_DIR)
+                # For global data files, make relative to global_data_dir to get just filename
+                rel_path = path.relative_to(self.global_data_dir)
                 # Return as "shared/shared-data/filename.xlsx" for portability
                 return str(Path("shared/shared-data") / rel_path)
             except ValueError:
                 try:
-                    return str(path.relative_to(settings.PROJECTS_DIR))
+                    return str(path.relative_to(self.projects_root))
                 except ValueError:
                     return str(path)
 
     def _resolve_path(self, path_str: str, location: str = "global") -> Path:
-        """Resolve a file path using explicit location - no candidate searching needed.
+        """Resolve a file path for file browsing operations with existence validation.
+
+        This method is for file browsing/inspection and differs from FilePathResolver.resolve()
+        which is for entity file resolution within specific projects.
+
+        Note: location="local" means base projects directory (for browsing), not a specific
+        project directory. Use FilePathResolver for project-specific entity file resolution.
 
         Args:
             path_str: Filename or relative path
-            location: File location - "global" (GLOBAL_DATA_DIR) or "local" (projects_dir)
+            location: File location - "global" (GLOBAL_DATA_DIR) or "local" (base projects_dir)
 
         Returns:
             Resolved absolute path
@@ -95,12 +109,15 @@ class FileManager:
             BadRequestError: If file not found or invalid location
         """
         if location == "global":
-            resolved = settings.GLOBAL_DATA_DIR / path_str
+            resolved = self.global_data_dir / path_str
         elif location == "local":
-            resolved = self.projects_dir / path_str
+            # "local" here means base projects directory for file browsing,
+            # not a specific project (that's what FilePathResolver handles)
+            resolved = self.projects_root / path_str
         else:
             raise BadRequestError(f"Invalid location: {location}. Must be 'global' or 'local'")
 
+        # Validate file existence
         if not resolved.exists():
             raise BadRequestError(f"File not found: {path_str} (location: {location})")
 
@@ -150,6 +167,9 @@ class FileManager:
         files: list[ProjectFileInfo] = []
         for file_path in sorted(upload_dir.glob("*")):
             if not file_path.is_file():
+                continue
+
+            if file_path.name == "shapeshifter.yml":
                 continue
 
             if ext_set and file_path.suffix.lower() not in ext_set:
