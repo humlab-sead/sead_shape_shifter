@@ -12,6 +12,7 @@ from typing import Any
 
 import pandas as pd
 import yaml
+from dotenv import load_dotenv
 from loguru import logger
 
 from src.utility import dget, dotexists, dotset, env2dict, replace_env_vars
