@@ -48,9 +48,17 @@ class ForeignKeyLinker:
 
         link_setup: ForeignKeyMergeSetup = fk.generate_link_setup(remote_df.columns.tolist(), remote_cfg)
 
-        remote_df = remote_df[[remote_cfg.system_id] + link_setup.remote_columns].rename(columns=link_setup.rename_map)
+        # Build column list: system_id + remote_columns (avoid duplicates)
+        cols_to_select: list[str] = [remote_cfg.system_id]
+        cols_to_select.extend([col for col in link_setup.remote_columns if col != remote_cfg.system_id])
+        
+        remote_df = remote_df[cols_to_select].rename(columns=link_setup.rename_map)
 
         opts: dict[str, Any] = self._resolve_link_opts(fk, validator)
+
+        # Map remote_keys through rename_map since columns were renamed
+        if "right_on" in opts:
+            opts["right_on"] = [link_setup.rename_map.get(key, key) for key in opts["right_on"]]
 
         linked_df: pd.DataFrame = local_df.merge(remote_df, **opts)
 
