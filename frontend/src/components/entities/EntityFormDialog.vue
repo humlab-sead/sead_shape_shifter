@@ -1,6 +1,11 @@
 <template>
-  <v-dialog v-model="dialogModel" :max-width="viewMode !== 'form' ? '95vw' : '900'"
-    :height="viewMode !== 'form' ? '90vh' : '800'" persistent scrollable>
+  <v-dialog
+    v-model="dialogModel"
+    :max-width="viewMode !== 'form' ? '95vw' : '900'"
+    :height="viewMode !== 'form' ? '90vh' : '800'"
+    persistent
+    scrollable
+  >
     <v-card style="height: 100%">
       <v-toolbar color="primary" density="compact">
         <v-toolbar-title>
@@ -49,24 +54,34 @@
 
         <div :class="viewMode !== 'form' ? 'split-layout' : ''" :data-view-mode="viewMode">
           <!-- Left: Entity Form -->
-          <div v-show="viewMode === 'form' || viewMode === 'both'"
-            :class="viewMode === 'both' ? 'form-panel' : 'pt-6 px-4 form-content'">
+          <div
+            v-show="viewMode === 'form' || viewMode === 'both'"
+            :class="viewMode === 'both' ? 'form-panel' : 'pt-6 px-4 form-content'"
+          >
             <v-window v-model="activeTab">
               <v-window-item value="basic">
-                <v-defaults-provider :defaults="{
-                  VTextField: { density: 'compact', variant: 'outlined', },
-                  VSelect: { density: 'compact', variant: 'outlined', },
-                  VAutocomplete: { density: 'compact', variant: 'outlined', },
-                  VCombobox: { density: 'compact', variant: 'outlined', },
-                  VCheckbox: { density: 'compact', hideDetails: true },
-                }">
+                <v-defaults-provider
+                  :defaults="{
+                    VTextField: { density: 'compact', variant: 'outlined' },
+                    VSelect: { density: 'compact', variant: 'outlined' },
+                    VAutocomplete: { density: 'compact', variant: 'outlined' },
+                    VCombobox: { density: 'compact', variant: 'outlined' },
+                    VCheckbox: { density: 'compact', hideDetails: true },
+                  }"
+                >
                   <v-form ref="formRef" v-model="formValid" class="compact-form">
                     <!-- Entity Name, Type, and Source/Data Source on same row -->
                     <div class="form-row">
                       <v-row no-gutters>
                         <v-col cols="4" class="pr-2">
-                          <v-text-field v-model="formData.name" label="Entity Name *" :rules="nameRules"
-                            variant="outlined" :disabled="mode === 'edit'" required>
+                          <v-text-field
+                            v-model="formData.name"
+                            label="Entity Name *"
+                            :rules="nameRules"
+                            variant="outlined"
+                            :disabled="mode === 'edit'"
+                            required
+                          >
                             <template #message>
                               <span class="text-caption">Unique identifier for this entity</span>
                             </template>
@@ -75,13 +90,25 @@
 
                         <v-col cols="4" class="px-1">
                           <!-- Entity Type -->
-                          <v-select v-model="formData.type" :items="entityTypeOptions" label="Type *"
-                            :rules="requiredRule" variant="outlined" required hide-details="auto">
+                          <v-select
+                            v-model="formData.type"
+                            :items="entityTypeOptions"
+                            label="Type *"
+                            :rules="requiredRule"
+                            variant="outlined"
+                            required
+                            hide-details="auto"
+                          >
                             <template #append-inner>
                               <v-tooltip location="top" text="How this entity gets its data">
                                 <template #activator="{ props }">
-                                  <v-icon v-bind="props" icon="mdi-help-circle-outline" size="small"
-                                    class="text-medium-emphasis" tabindex="0" />
+                                  <v-icon
+                                    v-bind="props"
+                                    icon="mdi-help-circle-outline"
+                                    size="small"
+                                    class="text-medium-emphasis"
+                                    tabindex="0"
+                                  />
                                 </template>
                               </v-tooltip>
                             </template>
@@ -90,18 +117,31 @@
 
                         <v-col cols="4" class="pl-2">
                           <!-- Source Entity (only for 'entity' type) -->
-                          <v-autocomplete v-if="formData.type === 'entity'" v-model="formData.source"
-                            :items="availableSourceEntities" label="Source Entity" variant="outlined"
-                            :disabled="mode === 'edit'" clearable persistent-placeholder>
+                          <v-autocomplete
+                            v-if="formData.type === 'entity'"
+                            v-model="formData.source"
+                            :items="availableSourceEntities"
+                            label="Source Entity"
+                            variant="outlined"
+                            :disabled="mode === 'edit'"
+                            clearable
+                            persistent-placeholder
+                          >
                             <template #message>
                               <span class="text-caption">Parent entity to derive this entity from</span>
                             </template>
                           </v-autocomplete>
 
                           <!-- Data Source (only for 'sql' type) -->
-                          <v-autocomplete v-if="formData.type === 'sql'" v-model="formData.data_source"
-                            :items="availableDataSources" label="Data Source *"
-                            :rules="formData.type === 'sql' ? requiredRule : []" variant="outlined" clearable>
+                          <v-autocomplete
+                            v-if="formData.type === 'sql'"
+                            v-model="formData.data_source"
+                            :items="availableDataSources"
+                            label="Data Source *"
+                            :rules="formData.type === 'sql' ? requiredRule : []"
+                            variant="outlined"
+                            clearable
+                          >
                             <template #message>
                               <span class="text-caption">Name of the data source connection</span>
                             </template>
@@ -115,23 +155,25 @@
                       <v-row no-gutters>
                         <!-- Filename -->
                         <v-col :cols="formData.type === 'csv' ? 8 : 12" :class="formData.type === 'csv' ? 'pr-2' : ''">
-                          <v-autocomplete 
-                            v-model="formData.options.filename" 
+                          <v-autocomplete
+                            v-model="formData.options.filename"
                             :items="availableProjectFiles"
                             item-title="name"
                             item-value="name"
-                            label="File *" 
-                            :rules="requiredRule" 
-                            variant="outlined" 
-                            clearable 
-                            :loading="filesLoading">
+                            label="File *"
+                            :rules="requiredRule"
+                            variant="outlined"
+                            clearable
+                            :loading="filesLoading"
+                          >
                             <template v-slot:item="{ props, item }">
                               <v-list-item v-bind="props">
                                 <template v-slot:append>
-                                  <v-chip 
-                                    :color="item.raw.location === 'global' ? 'primary' : 'secondary'" 
-                                    size="x-small" 
-                                    variant="flat">
+                                  <v-chip
+                                    :color="item.raw.location === 'global' ? 'primary' : 'secondary'"
+                                    size="x-small"
+                                    variant="flat"
+                                  >
                                     {{ item.raw.location === 'global' ? 'Global' : 'Project' }}
                                   </v-chip>
                                 </template>
@@ -142,25 +184,43 @@
 
                         <!-- CSV Delimiter -->
                         <v-col v-if="formData.type === 'csv'" cols="4" class="pl-2">
-                          <v-select v-model="formData.options.sep" :items="delimiterOptions" label="Delimiter *"
-                            :rules="requiredRule" variant="outlined" />
+                          <v-select
+                            v-model="formData.options.sep"
+                            :items="delimiterOptions"
+                            label="Delimiter *"
+                            :rules="requiredRule"
+                            variant="outlined"
+                          />
                         </v-col>
                       </v-row>
 
                       <!-- Excel Options (sheet name and range) -->
                       <v-row no-gutters v-if="isExcelType" class="mt-2">
                         <!-- Sheet Name -->
-                        <v-col :cols="formData.type === 'openpyxl' ? 6 : 12"
-                          :class="formData.type === 'openpyxl' ? 'pr-2' : ''">
-                          <v-autocomplete v-model="formData.options.sheet_name" :items="sheetOptions" label="Sheet Name"
-                            variant="outlined" placeholder="Sheet1" clearable :loading="sheetOptionsLoading"
-                            @update:model-value="handleSheetSelection" />
+                        <v-col
+                          :cols="formData.type === 'openpyxl' ? 6 : 12"
+                          :class="formData.type === 'openpyxl' ? 'pr-2' : ''"
+                        >
+                          <v-autocomplete
+                            v-model="formData.options.sheet_name"
+                            :items="sheetOptions"
+                            label="Sheet Name"
+                            variant="outlined"
+                            placeholder="Sheet1"
+                            clearable
+                            :loading="sheetOptionsLoading"
+                            @update:model-value="handleSheetSelection"
+                          />
                         </v-col>
 
                         <!-- Range (OpenPyxl only) -->
                         <v-col v-if="formData.type === 'openpyxl'" cols="6" class="pl-2">
-                          <v-text-field v-model="formData.options.range" label="Cell Range" variant="outlined"
-                            placeholder="A1:G99" />
+                          <v-text-field
+                            v-model="formData.options.range"
+                            label="Cell Range"
+                            variant="outlined"
+                            placeholder="A1:G99"
+                          />
                         </v-col>
                       </v-row>
                     </div>
@@ -170,13 +230,22 @@
                       <v-row no-gutters>
                         <!-- System ID (info only - always "system_id") -->
                         <v-col cols="4" class="pr-2">
-                          <v-text-field model-value="system_id" label="System ID" variant="outlined" readonly
-                            class="system-id-field">
+                          <v-text-field
+                            model-value="system_id"
+                            label="System ID"
+                            variant="outlined"
+                            readonly
+                            class="system-id-field"
+                          >
                             <template #append-inner>
                               <v-tooltip location="top" max-width="400">
                                 <template #activator="{ props }">
-                                  <v-icon v-bind="props" icon="mdi-information-outline" size="small"
-                                    class="text-medium-emphasis" />
+                                  <v-icon
+                                    v-bind="props"
+                                    icon="mdi-information-outline"
+                                    size="small"
+                                    class="text-medium-emphasis"
+                                  />
                                 </template>
                                 <div class="text-body-2">
                                   <strong>System ID (Local Scope)</strong><br />
@@ -193,13 +262,23 @@
 
                         <!-- Public ID (target system PK, defines FK columns) -->
                         <v-col cols="4" class="px-1">
-                          <v-text-field v-model="formData.public_id" label="Public ID *" variant="outlined"
-                            placeholder="e.g., sample_type_id" :rules="publicIdRules" required>
+                          <v-text-field
+                            v-model="formData.public_id"
+                            label="Public ID *"
+                            variant="outlined"
+                            placeholder="e.g., sample_type_id"
+                            :rules="publicIdRules"
+                            required
+                          >
                             <template #append-inner>
                               <v-tooltip location="top" max-width="400">
                                 <template #activator="{ props }">
-                                  <v-icon v-bind="props" icon="mdi-information-outline" size="small"
-                                    class="text-medium-emphasis" />
+                                  <v-icon
+                                    v-bind="props"
+                                    icon="mdi-information-outline"
+                                    size="small"
+                                    class="text-medium-emphasis"
+                                  />
                                 </template>
                                 <div class="text-body-2">
                                   <strong>Public ID (Global Scope)</strong><br />
@@ -217,8 +296,15 @@
 
                         <v-col cols="4" class="pl-2">
                           <!-- Keys (business keys) -->
-                          <v-combobox v-model="formData.keys" label="Business Keys *" variant="outlined" multiple chips
-                            closable-chips persistent-placeholder>
+                          <v-combobox
+                            v-model="formData.keys"
+                            label="Business Keys *"
+                            variant="outlined"
+                            multiple
+                            chips
+                            closable-chips
+                            persistent-placeholder
+                          >
                             <template #message>
                               <span class="text-caption">Natural key columns that uniquely identify records</span>
                             </template>
@@ -229,17 +315,34 @@
 
                     <!-- Columns (for entity/fixed types) -->
                     <div class="form-row" v-if="formData.type === 'entity' || formData.type === 'fixed' || isFileType">
-                      <v-combobox v-model="formData.columns" :items="availableColumns" label="Columns"
-                        variant="outlined" multiple chips closable-chips persistent-placeholder>
+                      <v-combobox
+                        v-model="formData.columns"
+                        :items="availableColumns"
+                        label="Columns"
+                        variant="outlined"
+                        multiple
+                        chips
+                        closable-chips
+                        persistent-placeholder
+                        :rules="formData.type === 'fixed' ? columnsRules : []"
+                      >
                         <template #message>
-                          <span class="text-caption">Column names to extract or create</span>
+                          <span class="text-caption" v-if="formData.type === 'fixed'">
+                            Column names to extract or create (system_id and Public ID are auto-managed)
+                          </span>
+                          <span class="text-caption" v-else>Column names to extract or create</span>
                         </template>
                       </v-combobox>
                     </div>
                     <!-- Fixed Values Grid (only for fixed type) -->
                     <div class="form-row" v-if="formData.type === 'fixed'">
-                      <FixedValuesGrid v-if="fixedValuesColumns.length > 0" v-model="formData.values" :columns="fixedValuesColumns"
-                        :public-id="formData.public_id" height="400px" />
+                      <FixedValuesGrid
+                        v-if="fixedValuesColumns.length > 0"
+                        v-model="formData.values"
+                        :columns="fixedValuesColumns"
+                        :public-id="formData.public_id"
+                        height="400px"
+                      />
                       <v-alert v-else type="info" variant="tonal" density="compact" class="mb-2">
                         <v-alert-title>No Columns Defined</v-alert-title>
                         Add keys and/or columns above to define the grid structure for fixed values.
@@ -248,8 +351,16 @@
 
                     <!-- Depends On -->
                     <div class="form-row">
-                      <v-combobox v-model="formData.depends_on" label="Depends On" :items="availableSourceEntities"
-                        variant="outlined" multiple chips closable-chips persistent-placeholder>
+                      <v-combobox
+                        v-model="formData.depends_on"
+                        label="Depends On"
+                        :items="availableSourceEntities"
+                        variant="outlined"
+                        multiple
+                        chips
+                        closable-chips
+                        persistent-placeholder
+                      >
                         <template #message>
                           <span class="text-caption">Entities that must be processed before this entity</span>
                         </template>
@@ -263,18 +374,32 @@
                         <v-col cols="6" class="pr-2">
                           <v-row no-gutters class="mb-2">
                             <v-col cols="4">
-                              <v-checkbox v-model="formData.drop_duplicates.enabled" label="Drop Duplicates"
-                                hide-details />
+                              <v-checkbox
+                                v-model="formData.drop_duplicates.enabled"
+                                label="Drop Duplicates"
+                                hide-details
+                              />
                             </v-col>
                             <v-col cols="8" class="pl-1">
-                              <v-checkbox v-model="formData.check_functional_dependency"
-                                label="Check Functional Dependency" hide-details
-                                :disabled="!formData.drop_duplicates.enabled" />
-                            </v-col> </v-row>
+                              <v-checkbox
+                                v-model="formData.check_functional_dependency"
+                                label="Check Functional Dependency"
+                                hide-details
+                                :disabled="!formData.drop_duplicates.enabled"
+                              />
+                            </v-col>
+                          </v-row>
 
-                          <v-combobox v-model="formData.drop_duplicates.columns" label="Deduplication Columns"
-                            variant="outlined" multiple chips closable-chips persistent-placeholder
-                            :disabled="!formData.drop_duplicates.enabled">
+                          <v-combobox
+                            v-model="formData.drop_duplicates.columns"
+                            label="Deduplication Columns"
+                            variant="outlined"
+                            multiple
+                            chips
+                            closable-chips
+                            persistent-placeholder
+                            :disabled="!formData.drop_duplicates.enabled"
+                          >
                             <template #message>
                               <span class="text-caption">Columns to use for deduplication (empty = all columns)</span>
                             </template>
@@ -285,13 +410,23 @@
                         <v-col cols="6" class="pl-2">
                           <v-row no-gutters class="mb-2">
                             <v-col cols="12" class="pr-1">
-                              <v-checkbox v-model="formData.drop_empty_rows.enabled" label="Drop Empty Rows"
-                                hide-details />
+                              <v-checkbox
+                                v-model="formData.drop_empty_rows.enabled"
+                                label="Drop Empty Rows"
+                                hide-details
+                              />
                             </v-col>
                           </v-row>
-                          <v-combobox v-model="formData.drop_empty_rows.columns"
-                            label="Columns to Check for Empty Values" variant="outlined" multiple chips closable-chips
-                            persistent-placeholder :disabled="!formData.drop_empty_rows.enabled">
+                          <v-combobox
+                            v-model="formData.drop_empty_rows.columns"
+                            label="Columns to Check for Empty Values"
+                            variant="outlined"
+                            multiple
+                            chips
+                            closable-chips
+                            persistent-placeholder
+                            :disabled="!formData.drop_empty_rows.enabled"
+                          >
                             <template #message>
                               <span class="text-caption">Columns to check for empty values (empty = all columns)</span>
                             </template>
@@ -304,16 +439,24 @@
                     <div class="form-row" v-if="(showSuggestions || suggestionsLoading) && fkSuggestionsEnabled">
                       <v-progress-linear v-if="suggestionsLoading" indeterminate color="primary" class="mb-2" />
 
-                      <SuggestionsPanel v-if="suggestions && !suggestionsLoading" :suggestions="suggestions"
-                        @accept-foreign-key="handleAcceptForeignKey" @reject-foreign-key="handleRejectForeignKey"
-                        @accept-dependency="handleAcceptDependency" @reject-dependency="handleRejectDependency" />
+                      <SuggestionsPanel
+                        v-if="suggestions && !suggestionsLoading"
+                        :suggestions="suggestions"
+                        @accept-foreign-key="handleAcceptForeignKey"
+                        @reject-foreign-key="handleRejectForeignKey"
+                        @accept-dependency="handleAcceptDependency"
+                        @reject-dependency="handleRejectDependency"
+                      />
                     </div>
 
                     <!-- SQL Query (for sql type) -->
                     <div class="form-row" v-if="formData.type === 'sql'">
-                      <SqlEditor v-model="formData.query" height="250px"
+                      <SqlEditor
+                        v-model="formData.query"
+                        height="250px"
                         help-text="SQL query to execute against the selected data source"
-                        :error="formValid === false && !formData.query ? 'SQL query is required' : ''" />
+                        :error="formValid === false && !formData.query ? 'SQL query is required' : ''"
+                      />
                     </div>
 
                     <v-alert v-if="error" type="error" variant="tonal" class="mt-4">
@@ -324,8 +467,13 @@
               </v-window-item>
 
               <v-window-item value="relationships">
-                <foreign-key-editor v-model="formData.foreign_keys" :available-entities="availableSourceEntities"
-                  :project-name="projectName" :entity-name="formData.name" :is-entity-saved="mode === 'edit'" />
+                <foreign-key-editor
+                  v-model="formData.foreign_keys"
+                  :available-entities="availableSourceEntities"
+                  :project-name="projectName"
+                  :entity-name="formData.name"
+                  :is-entity-saved="mode === 'edit'"
+                />
               </v-window-item>
 
               <v-window-item value="filters">
@@ -356,8 +504,15 @@
                   </div>
                 </v-alert>
 
-                <yaml-editor v-model="yamlContent" height="500px" mode="entity" :validation-context="validationContext"
-                  :validate-on-change="true" @validate="handleYamlValidation" @change="handleYamlChange" />
+                <yaml-editor
+                  v-model="yamlContent"
+                  height="500px"
+                  mode="entity"
+                  :validation-context="validationContext"
+                  :validate-on-change="true"
+                  @validate="handleYamlValidation"
+                  @change="handleYamlChange"
+                />
 
                 <v-alert v-if="yamlError" type="error" density="compact" variant="tonal" class="mt-2">
                   {{ yamlError }}
@@ -371,12 +526,26 @@
             <div class="preview-header">
               <div class="d-flex align-center justify-space-between pa-2">
                 <div class="d-flex align-center gap-2">
-                  <v-select v-model="previewLimit" :items="previewLimitOptions" item-title="title" item-value="value"
-                    label="Rows" density="compact" variant="outlined" style="max-width: 150px" hide-details
-                    @update:model-value="refreshPreview" />
+                  <v-select
+                    v-model="previewLimit"
+                    :items="previewLimitOptions"
+                    item-title="title"
+                    item-value="value"
+                    label="Rows"
+                    density="compact"
+                    variant="outlined"
+                    style="max-width: 150px"
+                    hide-details
+                    @update:model-value="refreshPreview"
+                  />
 
-                  <v-btn size="small" variant="tonal" @click="refreshPreview" :loading="previewLoading"
-                    :disabled="!canPreview">
+                  <v-btn
+                    size="small"
+                    variant="tonal"
+                    @click="refreshPreview"
+                    :loading="previewLoading"
+                    :disabled="!canPreview"
+                  >
                     <v-icon start size="small">mdi-refresh</v-icon>
                     Refresh
                   </v-btn>
@@ -391,12 +560,23 @@
                   </v-chip>
                 </div>
 
-                <v-checkbox v-model="autoRefreshEnabled" label="Auto-refresh" density="compact" hide-details
-                  class="mt-0" />
+                <v-checkbox
+                  v-model="autoRefreshEnabled"
+                  label="Auto-refresh"
+                  density="compact"
+                  hide-details
+                  class="mt-0"
+                />
               </div>
 
-              <v-alert v-if="previewError" type="error" density="compact" closable class="ma-2"
-                @click:close="previewError = null">
+              <v-alert
+                v-if="previewError"
+                type="error"
+                density="compact"
+                closable
+                class="ma-2"
+                @click:close="previewError = null"
+              >
                 <div v-if="typeof previewError === 'string'">{{ previewError }}</div>
                 <div v-else-if="previewError?.detail?.message">
                   <div class="font-weight-bold mb-1">{{ previewError.detail.error_type || 'Error' }}</div>
@@ -424,14 +604,24 @@
 
               <div v-if="livePreviewData && !previewLoading" class="preview-table-container">
                 <div class="preview-grid-wrapper">
-                  <ag-grid-vue class="ag-theme-alpine preview-ag-grid" :style="{ height: '100%', width: '100%' }"
-                    :columnDefs="previewColumnDefs" :rowData="previewRowData" :defaultColDef="previewDefaultColDef"
-                    :animateRows="true" :suppressCellFocus="true" :headerHeight="32" :rowHeight="28" />
+                  <ag-grid-vue
+                    class="ag-theme-alpine preview-ag-grid"
+                    :style="{ height: '100%', width: '100%' }"
+                    :columnDefs="previewColumnDefs"
+                    :rowData="previewRowData"
+                    :defaultColDef="previewDefaultColDef"
+                    :animateRows="true"
+                    :suppressCellFocus="true"
+                    :headerHeight="32"
+                    :rowHeight="28"
+                  />
                 </div>
               </div>
 
-              <div v-else-if="!previewLoading && !livePreviewData"
-                class="d-flex align-center justify-center pa-8 text-disabled">
+              <div
+                v-else-if="!previewLoading && !livePreviewData"
+                class="d-flex align-center justify-center pa-8 text-disabled"
+              >
                 <div class="text-center">
                   <v-icon size="64" color="disabled">mdi-table-off</v-icon>
                   <div class="mt-2">No preview data</div>
@@ -447,12 +637,24 @@
         <!-- Materialization buttons (edit mode only, not create) -->
         <!-- DEBUG: mode={{ mode }}, currentEntity={{ !!currentEntity }}, materialized={{ currentEntity?.materialized?.enabled }} -->
         <template v-if="mode === 'edit' && currentEntity">
-          <v-btn v-if="currentEntity.materialized?.enabled" color="warning" variant="text"
-            prepend-icon="mdi-database-arrow-up" @click="showUnmaterializeDialog = true" :disabled="loading">
+          <v-btn
+            v-if="currentEntity.materialized?.enabled"
+            color="warning"
+            variant="text"
+            prepend-icon="mdi-database-arrow-up"
+            @click="showUnmaterializeDialog = true"
+            :disabled="loading"
+          >
             Unmaterialize
           </v-btn>
-          <v-btn v-else-if="currentEntity.entity_data.type !== 'fixed'" color="primary" variant="text"
-            prepend-icon="mdi-database-arrow-down" @click="showMaterializeDialog = true" :disabled="loading">
+          <v-btn
+            v-else-if="currentEntity.entity_data.type !== 'fixed'"
+            color="primary"
+            variant="text"
+            prepend-icon="mdi-database-arrow-down"
+            @click="showMaterializeDialog = true"
+            :disabled="loading"
+          >
             Materialize
           </v-btn>
         </template>
@@ -470,16 +672,30 @@
           <v-icon start>mdi-content-save</v-icon>
           Save
         </v-btn>
-        <v-btn color="primary" variant="outlined" :loading="loading" :disabled="!formValid" @click="handleSubmitAndClose">
+        <v-btn
+          color="primary"
+          variant="outlined"
+          :loading="loading"
+          :disabled="!formValid"
+          @click="handleSubmitAndClose"
+        >
           Save & Close
         </v-btn>
       </v-card-actions>
 
       <!-- Materialization Dialogs -->
-      <MaterializeDialog v-model="showMaterializeDialog" :project-name="projectName" :entity-name="entity?.name || ''"
-        @materialized="handleMaterialized" />
-      <UnmaterializeDialog v-model="showUnmaterializeDialog" :project-name="projectName"
-        :entity-name="entity?.name || ''" @unmaterialized="handleUnmaterialized" />
+      <MaterializeDialog
+        v-model="showMaterializeDialog"
+        :project-name="projectName"
+        :entity-name="entity?.name || ''"
+        @materialized="handleMaterialized"
+      />
+      <UnmaterializeDialog
+        v-model="showUnmaterializeDialog"
+        :project-name="projectName"
+        :entity-name="entity?.name || ''"
+        @unmaterialized="handleUnmaterialized"
+      />
     </v-card>
   </v-dialog>
 </template>
@@ -490,7 +706,7 @@
  *
  * Supports dual-mode editing: visual form and raw YAML
  * Includes live preview panel for saved entities
- * 
+ *
  * STATE MANAGEMENT STRATEGY:
  * - On dialog open, ALWAYS fetches fresh entity data from API (edit mode)
  * - This ensures we display the latest data from the YAML file (source of truth)
@@ -623,9 +839,9 @@ const currentEntity = ref<EntityResponse | null>(null)
 interface FormData {
   name: string
   type: string
-  system_id: string  // Always "system_id"
-  public_id: string  // Target system PK name and FK column pattern
-  surrogate_id: string  // Deprecated - for backward compatibility
+  system_id: string // Always "system_id"
+  public_id: string // Target system PK name and FK column pattern
+  surrogate_id: string // Deprecated - for backward compatibility
   keys: string[]
   columns: string[]
   values: any[][] // For fixed type entities
@@ -662,9 +878,9 @@ interface FormData {
 const formData = ref<FormData>({
   name: '',
   type: 'entity',
-  system_id: 'system_id',  // Always "system_id"
-  public_id: '',  // Required field
-  surrogate_id: '',  // Deprecated - kept for backward compat
+  system_id: 'system_id', // Always "system_id"
+  public_id: '', // Required field
+  surrogate_id: '', // Deprecated - kept for backward compat
   keys: [],
   columns: [],
   values: [],
@@ -756,23 +972,23 @@ const delimiterOptions = [
 // Fixed values grid must include: system_id, public_id (if defined), keys, and columns
 const fixedValuesColumns = computed(() => {
   const result: string[] = []
-  
+
   // Always include system_id first (required for three-tier identity)
   result.push('system_id')
-  
+
   // Include public_id if defined (required for entities with FK children or mappings)
   if (formData.value.public_id && formData.value.public_id.trim().length > 0) {
     result.push(formData.value.public_id)
   }
-  
+
   // Include keys (business keys)
   const keys = (formData.value.keys || []).filter((k: string) => typeof k === 'string' && k.trim().length > 0)
   result.push(...keys)
-  
+
   // Include columns (data columns)
   const columns = (formData.value.columns || []).filter((c: string) => typeof c === 'string' && c.trim().length > 0)
   result.push(...columns)
-  
+
   return result
 })
 
@@ -868,7 +1084,7 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
     }
 
     // Add location field to indicate where file is stored
-    const selectedFile = availableProjectFiles.value.find(f => f.name === formData.value.options.filename)
+    const selectedFile = availableProjectFiles.value.find((f) => f.name === formData.value.options.filename)
     if (selectedFile) {
       options.location = selectedFile.location
     } else {
@@ -901,10 +1117,10 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
     entityData.foreign_keys = formData.value.foreign_keys.map((fk: any) => ({
       entity: fk.entity,
       local_keys: Array.isArray(fk.local_keys)
-        ? fk.local_keys.map((col: any) => typeof col === 'string' ? col : col.value)
+        ? fk.local_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
         : [],
       remote_keys: Array.isArray(fk.remote_keys)
-        ? fk.remote_keys.map((col: any) => typeof col === 'string' ? col : col.value)
+        ? fk.remote_keys.map((col: any) => (typeof col === 'string' ? col : col.value))
         : [],
     }))
   }
@@ -962,10 +1178,10 @@ async function refreshPreview() {
   if (!canPreview.value) return
 
   previewError.value = null
-  
+
   // Convert form data to entity config format (same as handleSubmit)
   const entityConfig = buildEntityConfigFromFormData()
-  
+
   // Pass converted entity config to preview unsaved changes
   await previewEntity(props.projectName, formData.value.name, previewLimit.value, entityConfig)
 
@@ -993,14 +1209,14 @@ async function fetchProjectFiles() {
   try {
     const extensions = getFileExtensions()
     // Build query params - backend expects 'ext' parameter for each extension
-    const queryParams = extensions.map(ext => `ext=${ext}`).join('&')
-    
+    const queryParams = extensions.map((ext) => `ext=${ext}`).join('&')
+
     // Include project-specific files if we have a current project
     let url = `/api/v1/data-sources/files?${queryParams}`
     if (projectStore.currentProjectName) {
       url += `&project_name=${encodeURIComponent(projectStore.currentProjectName)}`
     }
-    
+
     const response = await fetch(url)
     if (response.ok) {
       const files: FileInfo[] = await response.json()
@@ -1028,9 +1244,9 @@ async function fetchSheetOptions() {
 
   try {
     // Find the file to get its location
-    const fileInfo = availableProjectFiles.value.find(f => f.name === filename)
+    const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
     const location = fileInfo?.location || 'global'
-    
+
     const meta = await api.excelMetadata.fetch(filename, location)
     sheetOptions.value = meta.sheets || []
 
@@ -1065,9 +1281,9 @@ async function fetchColumns() {
 
   try {
     // Find the file to get its location
-    const fileInfo = availableProjectFiles.value.find(f => f.name === filename)
+    const fileInfo = availableProjectFiles.value.find((f) => f.name === filename)
     const location = fileInfo?.location || 'global'
-    
+
     const meta = await api.excelMetadata.fetch(filename, location, sheet, range)
     columnsOptions.value = meta.columns || []
     if (columnsOptions.value.length > 0) {
@@ -1114,7 +1330,7 @@ function hydrateColumnsFromSource() {
     source: formData.value.source,
     colsFromSource,
     existing,
-    columnsOptions: columnsOptions.value
+    columnsOptions: columnsOptions.value,
   })
 }
 
@@ -1223,47 +1439,86 @@ watch(
 )
 
 // Watch for entity type changes to fetch appropriate files
-watch(() => formData.value.type, async (newType, oldType) => {
-  // Clear data source and query when switching away from SQL
-  if (newType !== 'sql') {
-    formData.value.data_source = ''
-    formData.value.query = ''
-  }
+watch(
+  () => formData.value.type,
+  async (newType, oldType) => {
+    // Clear data source and query when switching away from SQL
+    if (newType !== 'sql') {
+      formData.value.data_source = ''
+      formData.value.query = ''
+    }
 
-  // Clear source when switching away from entity
-  if (newType !== 'entity') {
-    formData.value.source = null
-  }
+    // Clear source when switching away from entity
+    if (newType !== 'entity') {
+      formData.value.source = null
+    }
 
-  // Clear or initialize options based on type
-  if (!isFileType.value) {
-    formData.value.options = {
-      filename: '',
-      sep: ',',
-      encoding: 'utf-8',
-      sheet_name: '',
-      range: '',
+    // Clear or initialize options based on type
+    if (!isFileType.value) {
+      formData.value.options = {
+        filename: '',
+        sep: ',',
+        encoding: 'utf-8',
+        sheet_name: '',
+        range: '',
+      }
+    }
+
+    // Fetch files when switching to a file type
+    const wasFileType = oldType && ['csv', 'xlsx', 'openpyxl'].includes(oldType)
+    if (isFileType.value && !wasFileType) {
+      await fetchProjectFiles()
+    }
+
+    // Hydrate columns from source entity when switching to entity type
+    if (newType === 'entity') {
+      hydrateColumnsFromSource()
+    }
+
+    if (isExcelType.value && formData.value.options.filename) {
+      await fetchSheetOptions()
+    } else {
+      sheetOptions.value = []
+      columnsOptions.value = []
     }
   }
+)
 
-  // Fetch files when switching to a file type
-  const wasFileType = oldType && ['csv', 'xlsx', 'openpyxl'].includes(oldType)
-  if (isFileType.value && !wasFileType) {
-    await fetchProjectFiles()
-  }
+// Watch columns to automatically remove forbidden values for fixed entities
+watch(
+  () => formData.value.columns,
+  (newColumns) => {
+    if (formData.value.type === 'fixed' && Array.isArray(newColumns)) {
+      const publicId = formData.value.public_id
+      const forbidden = new Set(['system_id'])
+      if (publicId) forbidden.add(publicId)
 
-  // Hydrate columns from source entity when switching to entity type
-  if (newType === 'entity') {
-    hydrateColumnsFromSource()
-  }
+      const filtered = newColumns.filter((col) => !forbidden.has(col))
+      if (filtered.length !== newColumns.length) {
+        // Auto-remove forbidden columns
+        formData.value.columns = filtered
+      }
+    }
+  },
+  { deep: true }
+)
 
-  if (isExcelType.value && formData.value.options.filename) {
-    await fetchSheetOptions()
-  } else {
-    sheetOptions.value = []
-    columnsOptions.value = []
+// Watch public_id changes to remove it from columns if it was added
+watch(
+  () => formData.value.public_id,
+  (newPublicId, oldPublicId) => {
+    if (formData.value.type === 'fixed' && Array.isArray(formData.value.columns)) {
+      // Remove old public_id if it was in columns (shouldn't be, but defensive)
+      if (oldPublicId) {
+        formData.value.columns = formData.value.columns.filter((col) => col !== oldPublicId)
+      }
+      // Remove new public_id if somehow added to columns
+      if (newPublicId) {
+        formData.value.columns = formData.value.columns.filter((col) => col !== newPublicId)
+      }
+    }
   }
-})
+)
 
 // Keyboard shortcut for split view toggle (Ctrl+Shift+P)
 function handleKeyPress(e: KeyboardEvent) {
@@ -1377,29 +1632,51 @@ const publicIdRules = [
   (v: string) => /^[a-z][a-z0-9_]*_id$/.test(v) || 'Public ID must be lowercase snake_case ending with _id',
 ]
 
+// Validation for columns field (for fixed entities)
+const columnsRules = computed(() => [
+  (v: string[] | null) => {
+    // Only validate for fixed entities
+    if (formData.value.type !== 'fixed') return true
+    if (!v || !Array.isArray(v)) return true
+
+    // Check for "system_id" literal
+    if (v.includes('system_id')) {
+      return 'Cannot include "system_id" - it is automatically managed'
+    }
+
+    // Check for public_id value
+    const publicId = formData.value.public_id
+    if (publicId && v.includes(publicId)) {
+      return `Cannot include "${publicId}" (Public ID) - it is automatically managed`
+    }
+
+    return true
+  },
+])
+
 // YAML Editor Functions
 function formDataToYaml(): string {
   // Reuse the shared conversion logic
   const entityData = buildEntityConfigFromFormData()
-  
+
   // Add fields that are needed for YAML display but not API calls
   const yamlData: Record<string, any> = {
     name: formData.value.name,
     ...entityData,
   }
-  
+
   // Always show system_id in YAML for user visibility (even though it's implicit in backend)
   yamlData.system_id = 'system_id'
-  
+
   // Move name to the top for better YAML readability
   const orderedData: Record<string, any> = {
     name: yamlData.name,
     type: yamlData.type,
     system_id: yamlData.system_id,
   }
-  
+
   // Copy remaining fields
-  Object.keys(yamlData).forEach(key => {
+  Object.keys(yamlData).forEach((key) => {
     if (key !== 'name' && key !== 'type' && key !== 'system_id') {
       orderedData[key] = yamlData[key]
     }
@@ -1427,9 +1704,9 @@ function yamlToFormData(yamlString: string): boolean {
     formData.value = {
       name: data.name || formData.value.name,
       type: data.type || 'entity',
-      system_id: 'system_id',  // Always standardized
-      public_id: data.public_id || data.surrogate_id || '',  // Migrate surrogate_id → public_id
-      surrogate_id: data.surrogate_id || '',  // Keep for backward compat
+      system_id: 'system_id', // Always standardized
+      public_id: data.public_id || data.surrogate_id || '', // Migrate surrogate_id → public_id
+      surrogate_id: data.surrogate_id || '', // Keep for backward compat
       keys: Array.isArray(data.keys) ? data.keys : [],
       columns: Array.isArray(data.columns) ? data.columns : [],
       values: Array.isArray(data.values) ? data.values : [],
@@ -1490,7 +1767,7 @@ async function handleYamlChange(value: string) {
 
 // Methods
 async function handleSubmit() {
-  if (!formValid.value || loading.value) return  // Prevent double-submission
+  if (!formValid.value || loading.value) return // Prevent double-submission
 
   const { valid } = await formRef.value.validate()
   if (!valid) return
@@ -1521,7 +1798,7 @@ async function handleSubmit() {
       })
       // Keep dialog open after saving in edit mode
       emit('saved', formData.value.name)
-      
+
       // Show success indicator
       showSaveSuccess.value = true
       if (saveSuccessTimeout) clearTimeout(saveSuccessTimeout)
@@ -1537,14 +1814,14 @@ async function handleSubmit() {
 }
 
 async function handleSubmitAndClose() {
-  if (loading.value) return  // Prevent double-submission
-  
+  if (loading.value) return // Prevent double-submission
+
   loading.value = true
   error.value = null
 
   try {
     const entityData = buildEntityConfigFromFormData()
-    
+
     if (props.mode === 'create') {
       await create({
         name: formData.value.name,
@@ -1555,7 +1832,7 @@ async function handleSubmitAndClose() {
         entity_data: entityData,
       })
     }
-    
+
     emit('saved', formData.value.name)
     handleClose()
   } catch (err) {
@@ -1587,18 +1864,19 @@ function handleMaterialized() {
   // Reload entity to update currentEntity with materialized flag
   if (props.entity?.name) {
     loading.value = true
-    api.entities.get(props.projectName, props.entity.name)
-      .then(freshEntity => {
+    api.entities
+      .get(props.projectName, props.entity.name)
+      .then((freshEntity) => {
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
         yamlContent.value = formDataToYaml()
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to reload after materialization:', err)
         const message = err.response?.data?.detail || err.message || 'Unknown error'
         showError(`Failed to reload entity after materialization: ${message}`)
       })
-      .finally(() => loading.value = false)
+      .finally(() => (loading.value = false))
   }
 
   // Notify parent to refresh entity list
@@ -1614,18 +1892,19 @@ function handleUnmaterialized(unmaterializedEntities: string[]) {
   // Reload entity to update currentEntity (remove materialized flag)
   if (props.entity?.name) {
     loading.value = true
-    api.entities.get(props.projectName, props.entity.name)
-      .then(freshEntity => {
+    api.entities
+      .get(props.projectName, props.entity.name)
+      .then((freshEntity) => {
         currentEntity.value = freshEntity
         formData.value = buildFormDataFromEntity(freshEntity)
         yamlContent.value = formDataToYaml()
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to reload after unmaterialization:', err)
         const message = err.response?.data?.detail || err.message || 'Unknown error'
         showError(`Failed to reload entity after unmaterialization: ${message}`)
       })
-      .finally(() => loading.value = false)
+      .finally(() => (loading.value = false))
   }
 
   // Notify parent to refresh entity list
@@ -1646,9 +1925,9 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   return {
     name: entity.name,
     type: (entity.entity_data.type as string) || 'entity',
-    system_id: 'system_id',  // Always standardized
-    public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '',  // Migrate
-    surrogate_id: (entity.entity_data.surrogate_id as string) || '',  // Backward compat
+    system_id: 'system_id', // Always standardized
+    public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '', // Migrate
+    surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
     keys: (entity.entity_data.keys as string[]) || [],
     columns: (entity.entity_data.columns as string[]) || [],
     values: (entity.entity_data.values as any[][]) || [],
@@ -1686,9 +1965,9 @@ function buildDefaultFormData(): FormData {
   return {
     name: '',
     type: 'entity',
-    system_id: 'system_id',  // Always standardized
+    system_id: 'system_id', // Always standardized
     public_id: '',
-    surrogate_id: '',  // Backward compat
+    surrogate_id: '', // Backward compat
     keys: [],
     columns: [],
     values: [],
@@ -1737,7 +2016,7 @@ watch(
         mode: mode,
         entityName: entityName,
         hasEntity: !!props.entity,
-        projectName: props.projectName
+        projectName: props.projectName,
       })
 
       // Reset UI state
@@ -1748,7 +2027,7 @@ watch(
       yamlError.value = null
       clearPreview()
       previewError.value = null
-      viewMode.value = 'form'  // Always reset to form view
+      viewMode.value = 'form' // Always reset to form view
 
       // Load entity data for edit mode
       if (mode === 'edit' && entityName) {
@@ -1936,11 +2215,11 @@ function handleRejectDependency(dep: DependencySuggestion) {
 }
 
 /* When in preview-only mode, hide form panel and make preview 100% */
-.split-layout[data-view-mode="preview"] .form-panel {
+.split-layout[data-view-mode='preview'] .form-panel {
   display: none;
 }
 
-.split-layout[data-view-mode="preview"] .preview-panel {
+.split-layout[data-view-mode='preview'] .preview-panel {
   flex: 1 1 100%;
 }
 
