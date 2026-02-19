@@ -28,7 +28,6 @@ from loguru import logger
 
 from backend.app.core.config import settings
 from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityConfigMapperFactory
-from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models import (
     Entity,
