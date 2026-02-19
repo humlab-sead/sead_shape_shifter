@@ -21,7 +21,6 @@ from loguru import logger
 from backend.app.core.config import Settings
 from backend.app.utils.file_path_resolver import FilePathResolver
 
-
 # p pylint: disable=too-few-public-methods
 
 

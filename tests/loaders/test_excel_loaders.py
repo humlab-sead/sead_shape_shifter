@@ -6,6 +6,7 @@ from src.loaders.base_loader import DataLoaders
 from src.loaders.excel_loaders import OpenPyxlLoader
 from src.loaders.file_loaders import FileLoader
 
+
 @pytest.mark.parametrize("key", ["xlsx", "xls", "openpyxl"])
 def test_excel_xlsx_loader_registration(key: str):
 
