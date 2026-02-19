@@ -218,6 +218,13 @@ This architecture separates concerns between:
   - Column name is always "system_id" during processing
   - Renamed to `public_id` value during export/dispatch
   - Read-only in UI (cannot be edited)
+  - **Fixed Entity Preservation**: For `type: fixed` entities, existing `system_id` values in the `values` array are **preserved** across edits. Only null values are filled with sequential IDs starting from max(existing) + 1. This ensures FK relationship stability when rows are added, deleted, or reordered.
+- **Fixed Entity System ID Requirements**:
+  - Must be positive integers (error if ≤ 0)
+  - Must be unique (error if duplicates)
+  - No null values allowed (error if null)
+  - Validation: `FixedEntitySystemIdSpecification`
+  - Auto-fix available: Backend provides automatic repair strategies
 - **Example**: Not configured directly - automatically managed
 
 #### `public_id`
@@ -3308,6 +3315,23 @@ This section provides a comprehensive overview of all validation rules implement
     - Must reference existing entity (error)
     - `columns` should exist (warning)
 
+#### FixedEntitySystemIdSpecification
+- **Purpose**: Validates `system_id` integrity for fixed entities
+- **Rules**:
+  - Applies only to `type: fixed` entities
+  - If `system_id` column exists in `values`:
+    - **No null values**: All `system_id` values must be present (error code: `SYSTEM_ID_NULL_VALUES`)
+    - **Positive integers only**: All values must be positive integers > 0 (error code: `SYSTEM_ID_INVALID_VALUE` or `SYSTEM_ID_INVALID_TYPE`)
+    - **Uniqueness**: All `system_id` values must be unique (error code: `SYSTEM_ID_DUPLICATE_VALUES`)
+- **Error Codes**:
+  - `SYSTEM_ID_NULL_VALUES`: system_id column contains null/NaN values
+  - `SYSTEM_ID_INVALID_VALUE`: system_id value is ≤ 0
+  - `SYSTEM_ID_INVALID_TYPE`: system_id value is not a valid integer
+  - `SYSTEM_ID_DUPLICATE_VALUES`: system_id column contains duplicate values
+- **Auto-Fix Available**: The backend provides automatic repair strategies for all system_id errors (see Auto-Fix section)
+- **Purpose**: Critical for FK relationship stability - prevents broken relationships when rows are added, deleted, or reordered
+- **Note**: If `system_id` column is not present in values, it will be auto-generated during loading (not an error)
+
 #### DependsOnSpecification
 - **Purpose**: Validates dependency declarations
 - **Rules**:
@@ -3397,6 +3421,62 @@ This section provides a comprehensive overview of all validation rules implement
 - **Requires**: `categories` kwarg as list
 - **Implementation**: value in categories
 - **Fails with**: Error if value not in categories
+
+### Auto-Fix Strategies
+
+The backend provides automatic repair strategies for common configuration issues, particularly for fixed entity `system_id` problems:
+
+#### System ID Auto-Fix Strategies
+
+**Purpose**: Automatically repair `system_id` integrity issues in fixed entities to maintain FK relationship stability.
+
+**Available Strategies**:
+
+1. **SystemIdNullValuesAutoFixStrategy**
+   - **Triggered by**: `SYSTEM_ID_NULL_VALUES` error code
+   - **Action**: `UPDATE_VALUES` - Fills null system_id values with sequential integers starting from max(existing) + 1
+   - **Confirmation**: Required (user must approve changes)
+   - **Warning**: May affect dependent entities if used in foreign key relationships
+   - **Example**: `[1, 2, null, null]` → `[1, 2, 3, 4]`
+
+2. **SystemIdDuplicateValuesAutoFixStrategy**
+   - **Triggered by**: `SYSTEM_ID_DUPLICATE_VALUES` error code
+   - **Action**: `UPDATE_VALUES` - Preserves first occurrence of each duplicate, reassigns remaining duplicates with unique sequential values
+   - **Confirmation**: Required
+   - **Warning**: May affect dependent entities if used in foreign key relationships
+   - **Example**: `[1, 2, 2, 3, 2]` → `[1, 2, 4, 3, 5]` (first 2 preserved, others reassigned)
+
+3. **SystemIdInvalidValueAutoFixStrategy**
+   - **Triggered by**: `SYSTEM_ID_INVALID_VALUE` or `SYSTEM_ID_INVALID_TYPE` error codes
+   - **Action**: `UPDATE_VALUES` - Replaces invalid values (non-integers, zero, negatives) with valid positive integers
+   - **Confirmation**: Required
+   - **Warning**: May affect dependent entities if used in foreign key relationships
+   - **Strategy**: Preserves valid values, replaces invalid ones with sequential IDs starting from max(valid) + 1
+   - **Example**: `[1, "abc", -5, 2, 0]` → `[1, 3, 4, 2, 5]` (valid 1,2 preserved, others fixed)
+
+**Usage Flow**:
+1. Validation detects system_id integrity issue (FixedEntitySystemIdSpecification)
+2. Backend identifies applicable auto-fix strategy
+3. Auto-fix service generates `FixSuggestion` with:
+   - Clear description of the problem
+   - Proposed changes (before/after preview)
+   - Warning about potential FK impacts
+   - Confirmation requirement
+4. User reviews and approves fix
+5. Backend applies fix via `UPDATE_VALUES` action
+6. Configuration is backed up before modification
+7. Validation is re-run to confirm fix was successful
+
+**API Integration**:
+- Auto-fix suggestions available via `/api/v1/auto-fix/suggestions` endpoint
+- Apply fixes via `/api/v1/auto-fix/apply` endpoint
+- All fixes support rollback via backup mechanism
+
+**Safety Features**:
+- **Requires confirmation**: All system_id fixes require explicit user approval
+- **Backup before modification**: Original configuration is backed up
+- **Clear warnings**: Users are warned about potential FK relationship impacts
+- **Audit trail**: All fixes are logged with timestamps and details
 
 ### Suggested Additional Validations
 
