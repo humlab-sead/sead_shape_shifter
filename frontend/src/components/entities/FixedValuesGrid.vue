@@ -135,9 +135,8 @@ const rowData = computed(() => {
       const columnName = props.columns[colIndex]
       // Auto-populate system_id with sequential numbers (1-based) as integer
       if (columnName === 'system_id') {
-        // Parse existing value as integer, or use rowIndex + 1
-        const existingValue = value !== null && value !== undefined ? parseInt(String(value), 10) : null
-        rowObj[`col_${colIndex}`] = !isNaN(existingValue!) ? existingValue : rowIndex + 1
+        // Always use rowIndex + 1 for display (system_id is auto-managed)
+        rowObj[`col_${colIndex}`] = rowIndex + 1
       } else {
         rowObj[`col_${colIndex}`] = value
       }
@@ -167,7 +166,8 @@ function getAllRows(): any[][] {
   const rows: any[][] = []
   gridApi.value.forEachNode((node) => {
     const row: any[] = []
-    // Include all columns (system_id values are auto-generated, so we save them too)
+    // Save ALL column values including system_id and public_id
+    // The columns field in YAML includes all columns, values must match
     for (let i = 0; i < props.columns.length; i++) {
       const value = node.data[`col_${i}`]
       row.push(value ?? null)

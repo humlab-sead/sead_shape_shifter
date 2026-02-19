@@ -836,8 +836,9 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
   const entityData: Record<string, unknown> = {
     type: formData.value.type,
     keys: formData.value.keys,
-    // Always include columns so new entities default to an empty list instead of omitting the field
-    columns: formData.value.columns,
+    // For fixed entities, include ALL columns (system_id, public_id, keys, columns)
+    // For other entities, just use the user-defined columns
+    columns: formData.value.type === 'fixed' ? fixedValuesColumns.value : formData.value.columns,
   }
 
   // Always include public_id (even if null) to prevent field from being omitted
@@ -1424,6 +1425,20 @@ function yamlToFormData(yamlString: string): boolean {
       columns: Array.isArray(dropEmptyRows) ? dropEmptyRows : [],
     }
 
+    // For fixed entities, extract user columns from full column list
+    // The YAML columns includes [system_id, public_id, keys, user_columns]
+    // We need to extract just the user_columns for the form
+    let userColumns = Array.isArray(data.columns) ? data.columns : []
+    if (data.type === 'fixed' && Array.isArray(data.columns)) {
+      const publicId = data.public_id || data.surrogate_id || ''
+      const keys = Array.isArray(data.keys) ? data.keys : []
+      userColumns = data.columns.filter((col: string) => 
+        col !== 'system_id' && 
+        col !== publicId && 
+        !keys.includes(col)
+      )
+    }
+
     formData.value = {
       name: data.name || formData.value.name,
       type: data.type || 'entity',
@@ -1431,7 +1446,7 @@ function yamlToFormData(yamlString: string): boolean {
       public_id: data.public_id || data.surrogate_id || '',  // Migrate surrogate_id → public_id
       surrogate_id: data.surrogate_id || '',  // Keep for backward compat
       keys: Array.isArray(data.keys) ? data.keys : [],
-      columns: Array.isArray(data.columns) ? data.columns : [],
+      columns: userColumns,
       values: Array.isArray(data.values) ? data.values : [],
       source: data.source || null,
       data_source: data.data_source || '',
@@ -1643,6 +1658,20 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   const dropDuplicates = entity.entity_data.drop_duplicates
   const dropEmptyRows = entity.entity_data.drop_empty_rows
 
+  // For fixed entities, extract user columns from full column list
+  // The stored columns includes [system_id, public_id, keys, user_columns]
+  // We need to extract just the user_columns for the form
+  let userColumns = (entity.entity_data.columns as string[]) || []
+  if (entity.entity_data.type === 'fixed' && Array.isArray(entity.entity_data.columns)) {
+    const publicId = (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || ''
+    const keys = (entity.entity_data.keys as string[]) || []
+    userColumns = entity.entity_data.columns.filter((col: string) => 
+      col !== 'system_id' && 
+      col !== publicId && 
+      !keys.includes(col)
+    )
+  }
+
   return {
     name: entity.name,
     type: (entity.entity_data.type as string) || 'entity',
@@ -1650,7 +1679,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '',  // Migrate
     surrogate_id: (entity.entity_data.surrogate_id as string) || '',  // Backward compat
     keys: (entity.entity_data.keys as string[]) || [],
-    columns: (entity.entity_data.columns as string[]) || [],
+    columns: userColumns,
     values: (entity.entity_data.values as any[][]) || [],
     source: (entity.entity_data.source as string) || null,
     data_source: (entity.entity_data.data_source as string) || '',
