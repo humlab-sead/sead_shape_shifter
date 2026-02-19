@@ -53,6 +53,7 @@ class TestEntityConfigMapperFactory:
         mapper = factory.get_mapper("fixed")
         assert isinstance(mapper, DefaultEntityConfigMapper)
 
+
 class TestDefaultEntityConfigMapper:
     """Test default (no-op) entity config mapper."""
 

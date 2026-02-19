@@ -105,10 +105,101 @@ class DuplicateKeysAutoFixStrategy(AutoFixStrategy):
         )
 
 
+class SystemIdNullValuesAutoFixStrategy(AutoFixStrategy):
+    """Auto-fix strategy for null system_id values in fixed entities."""
+
+    def resolve(self, error: ValidationError) -> FixSuggestion | None:
+        """Generate fix for null system_id values."""
+        if not error.entity or error.code != "SYSTEM_ID_NULL_VALUES":
+            return None
+
+        return FixSuggestion(
+            issue_code="SYSTEM_ID_NULL_VALUES",
+            entity=error.entity,
+            field="values",
+            suggestion="Fill null system_id values with sequential numbers starting from max(system_id) + 1",
+            actions=[
+                FixAction(
+                    type=FixActionType.UPDATE_VALUES,
+                    entity=error.entity,
+                    field="values",
+                    old_value=None,
+                    new_value="fill_null_system_ids",  # Signal for special handling
+                    description="Fill null system_id values with sequential IDs",
+                )
+            ],
+            auto_fixable=True,
+            requires_confirmation=True,
+            warnings=["This will assign new system_id values to rows with null values"],
+        )
+
+
+class SystemIdDuplicateValuesAutoFixStrategy(AutoFixStrategy):
+    """Auto-fix strategy for duplicate system_id values in fixed entities."""
+
+    def resolve(self, error: ValidationError) -> FixSuggestion | None:
+        """Generate fix for duplicate system_id values."""
+        if not error.entity or error.code != "SYSTEM_ID_DUPLICATE_VALUES":
+            return None
+
+        return FixSuggestion(
+            issue_code="SYSTEM_ID_DUPLICATE_VALUES",
+            entity=error.entity,
+            field="values",
+            suggestion="Reassign duplicate system_id values to make them unique (preserving first occurrence, updating duplicates)",
+            actions=[
+                FixAction(
+                    type=FixActionType.UPDATE_VALUES,
+                    entity=error.entity,
+                    field="values",
+                    old_value=None,
+                    new_value="fix_duplicate_system_ids",  # Signal for special handling
+                    description="Reassign duplicate system_id values",
+                )
+            ],
+            auto_fixable=True,
+            requires_confirmation=True,
+            warnings=["This will reassign system_id values for duplicate rows, which may affect FK relationships"],
+        )
+
+
+class SystemIdInvalidValueAutoFixStrategy(AutoFixStrategy):
+    """Auto-fix strategy for invalid system_id values (non-integer, negative, zero)."""
+
+    def resolve(self, error: ValidationError) -> FixSuggestion | None:
+        """Generate fix for invalid system_id values."""
+        if not error.entity or error.code not in ("SYSTEM_ID_INVALID_TYPE", "SYSTEM_ID_INVALID_VALUE"):
+            return None
+
+        return FixSuggestion(
+            issue_code=error.code,
+            entity=error.entity,
+            field="values",
+            suggestion="Replace invalid system_id values with sequential positive integers",
+            actions=[
+                FixAction(
+                    type=FixActionType.UPDATE_VALUES,
+                    entity=error.entity,
+                    field="values",
+                    old_value=None,
+                    new_value="fix_invalid_system_ids",  # Signal for special handling
+                    description="Replace invalid system_id values",
+                )
+            ],
+            auto_fixable=True,
+            requires_confirmation=True,
+            warnings=["This will replace invalid system_id values, which may affect FK relationships"],
+        )
+
+
 AutoFixStrategies: dict[str, AutoFixStrategy] = {  # pylint: disable=invalid-name
     "COLUMN_NOT_FOUND": ColumnNotFoundAutoFixStrategy(),
     "UNRESOLVED_REFERENCE": UnresolvedReferenceAutoFixStrategy(),
     "DUPLICATE_NATURAL_KEYS": DuplicateKeysAutoFixStrategy(),
+    "SYSTEM_ID_NULL_VALUES": SystemIdNullValuesAutoFixStrategy(),
+    "SYSTEM_ID_DUPLICATE_VALUES": SystemIdDuplicateValuesAutoFixStrategy(),
+    "SYSTEM_ID_INVALID_TYPE": SystemIdInvalidValueAutoFixStrategy(),
+    "SYSTEM_ID_INVALID_VALUE": SystemIdInvalidValueAutoFixStrategy(),
 }
 
 
@@ -266,6 +357,8 @@ class AutoFixService:
             self._add_column(project, action)
         elif action.type == FixActionType.UPDATE_REFERENCE:
             self._update_reference(project, action)
+        elif action.type == FixActionType.UPDATE_VALUES:
+            self._update_values(project, action)
         else:
             raise ValueError(f"Unsupported action type: {action.type}")
 
@@ -327,3 +420,154 @@ class AutoFixService:
         # This is complex and may require deep inspection of config
         # For now, just log it
         logger.warning(f"Reference update not yet implemented for entity '{action.entity}'")
+
+    def _update_values(self, project: Any, action: FixAction):
+        """Update values array for fixed entity (system_id repair)."""
+        # Handle both dict and object config
+        entities = project.get("entities") if isinstance(project, dict) else project.entities
+        if not entities:
+            return
+
+        entity = entities.get(action.entity)
+        if not entity:
+            return
+
+        # Get entity data
+        entity_type = entity.get("type") if isinstance(entity, dict) else getattr(entity, "type", None)
+        if entity_type != "fixed":
+            logger.warning(f"Entity '{action.entity}' is not a fixed entity, cannot update values")
+            return
+
+        columns = entity.get("columns") if isinstance(entity, dict) else getattr(entity, "columns", None)
+        values = entity.get("values") if isinstance(entity, dict) else getattr(entity, "values", None)
+
+        if not columns or not isinstance(values, list):
+            logger.warning(f"Entity '{action.entity}' has invalid columns or values structure")
+            return
+
+        # Find system_id column index
+        try:
+            system_id_index = columns.index("system_id")
+        except ValueError:
+            logger.warning(f"Entity '{action.entity}' does not have a system_id column")
+            return
+
+        # Apply the appropriate fix based on new_value signal
+        if action.new_value == "fill_null_system_ids":
+            self._fill_null_system_ids(values, system_id_index, action.entity)
+        elif action.new_value == "fix_duplicate_system_ids":
+            self._fix_duplicate_system_ids(values, system_id_index, action.entity)
+        elif action.new_value == "fix_invalid_system_ids":
+            self._fix_invalid_system_ids(values, system_id_index, action.entity)
+
+    def _fill_null_system_ids(self, values: list[list[Any]], system_id_index: int, entity_name: str):
+        """Fill null system_id values with sequential numbers."""
+        # Find max existing system_id
+        max_id = 0
+        for row in values:
+            if len(row) > system_id_index:
+                val = row[system_id_index]
+                if val is not None:
+                    try:
+                        id_num = int(val)
+                        if id_num > max_id:
+                            max_id = id_num
+                    except (ValueError, TypeError):
+                        pass
+
+        # Fill nulls
+        next_id = max_id + 1
+        filled_count = 0
+        for row in values:
+            if len(row) > system_id_index:
+                if row[system_id_index] is None:
+                    row[system_id_index] = next_id
+                    next_id += 1
+                    filled_count += 1
+
+        logger.info(f"Filled {filled_count} null system_id values in entity '{entity_name}'")
+
+    def _fix_duplicate_system_ids(self, values: list[list[Any]], system_id_index: int, entity_name: str):
+        """Fix duplicate system_id values by reassigning duplicates."""
+        # Find max existing system_id and track seen IDs
+        max_id = 0
+        seen_ids = set()
+
+        for row in values:
+            if len(row) > system_id_index:
+                val = row[system_id_index]
+                if val is not None:
+                    try:
+                        id_num = int(val)
+                        seen_ids.add(id_num)
+                        if id_num > max_id:
+                            max_id = id_num
+                    except (ValueError, TypeError):
+                        pass
+
+        # Reassign duplicates
+        next_id = max_id + 1
+        seen_in_pass = set()
+        fixed_count = 0
+
+        for row in values:
+            if len(row) > system_id_index:
+                val = row[system_id_index]
+                if val is not None:
+                    try:
+                        id_num = int(val)
+                        # If we've seen this ID in this pass, it's a duplicate - reassign
+                        if id_num in seen_in_pass:
+                            # Find next unused ID
+                            while next_id in seen_ids:
+                                next_id += 1
+                            row[system_id_index] = next_id
+                            seen_ids.add(next_id)
+                            next_id += 1
+                            fixed_count += 1
+                        else:
+                            seen_in_pass.add(id_num)
+                    except (ValueError, TypeError):
+                        pass
+
+        logger.info(f"Fixed {fixed_count} duplicate system_id values in entity '{entity_name}'")
+
+    def _fix_invalid_system_ids(self, values: list[list[Any]], system_id_index: int, entity_name: str):
+        """Fix invalid system_id values (non-integer, negative, zero)."""
+        # Find max valid system_id
+        max_id = 0
+        for row in values:
+            if len(row) > system_id_index:
+                val = row[system_id_index]
+                if val is not None:
+                    try:
+                        id_num = int(val)
+                        if id_num > 0 and id_num > max_id:
+                            max_id = id_num
+                    except (ValueError, TypeError):
+                        pass
+
+        # Fix invalid values
+        next_id = max_id + 1
+        fixed_count = 0
+        for row in values:
+            if len(row) > system_id_index:
+                val = row[system_id_index]
+                is_invalid = False
+
+                if val is None:
+                    is_invalid = True
+                else:
+                    try:
+                        id_num = int(val)
+                        if id_num <= 0:
+                            is_invalid = True
+                    except (ValueError, TypeError):
+                        is_invalid = True
+
+                if is_invalid:
+                    row[system_id_index] = next_id
+                    next_id += 1
+                    fixed_count += 1
+
+        logger.info(f"Fixed {fixed_count} invalid system_id values in entity '{entity_name}'")
