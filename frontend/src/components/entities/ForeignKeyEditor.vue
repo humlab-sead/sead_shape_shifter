@@ -15,21 +15,39 @@
               <span class="text-caption">
                 {{ getForeignKeyLabel(fk) }}
               </span>
-              <v-btn icon="mdi-delete" variant="text" size="x-small" color="error"
-                @click.stop="handleRemoveForeignKey(index)" />
+              <v-btn
+                icon="mdi-delete"
+                variant="text"
+                size="x-small"
+                color="error"
+                @click.stop="handleRemoveForeignKey(index)"
+              />
             </div>
           </v-expansion-panel-title>
 
           <v-expansion-panel-text class="pt-2">
             <v-row class="mb-2">
               <v-col cols="12" md="5">
-                <v-autocomplete v-model="fk.entity" :items="availableEntities" label="Target Entity" variant="outlined"
-                  density="compact" hide-details prepend-inner-icon="mdi-link-variant" />
+                <v-autocomplete
+                  v-model="fk.entity"
+                  :items="availableEntities"
+                  label="Target Entity"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  prepend-inner-icon="mdi-link-variant"
+                />
               </v-col>
 
               <v-col cols="12" md="2">
-                <v-select v-model="fk.how" :items="joinTypes" label="Join Type" variant="outlined" density="compact"
-                  hide-details />
+                <v-select
+                  v-model="fk.how"
+                  :items="joinTypes"
+                  label="Join Type"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                />
               </v-col>
 
               <v-col cols="12" md="5" v-if="fk.constraints">
@@ -37,14 +55,28 @@
                   <v-expansion-panel>
                     <v-expansion-panel-title class="py-1 text-caption"> Constraints </v-expansion-panel-title>
                     <v-expansion-panel-text class="pt-1">
-                      <v-select v-model="fk.constraints.cardinality" :items="cardinalityTypes" label="Cardinality"
-                        variant="outlined" density="compact" class="mb-1" />
+                      <v-select
+                        v-model="fk.constraints.cardinality"
+                        :items="cardinalityTypes"
+                        label="Cardinality"
+                        variant="outlined"
+                        density="compact"
+                        class="mb-1"
+                      />
 
-                      <v-checkbox v-model="fk.constraints.require_unique_left" label="Require Unique Left"
-                        density="compact" hide-details />
+                      <v-checkbox
+                        v-model="fk.constraints.require_unique_left"
+                        label="Require Unique Left"
+                        density="compact"
+                        hide-details
+                      />
 
-                      <v-checkbox v-model="fk.constraints.allow_null_keys" label="Allow Null Keys" density="compact"
-                        hide-details />
+                      <v-checkbox
+                        v-model="fk.constraints.allow_null_keys"
+                        label="Allow Null Keys"
+                        density="compact"
+                        hide-details
+                      />
                     </v-expansion-panel-text>
                   </v-expansion-panel>
                 </v-expansion-panels>
@@ -53,15 +85,16 @@
 
             <v-row dense class="mb-2">
               <v-col cols="12" md="5">
-                <v-combobox 
-                  v-model="fk.local_keys" 
-                  label="Local Keys" 
-                  chips 
-                  multiple 
+                <v-combobox
+                  v-model="fk.local_keys"
+                  label="Local Keys"
+                  chips
+                  multiple
                   variant="outlined"
-                  density="compact" 
+                  density="compact"
                   :items="localColumnItems[index]"
                   item-value="value"
+                  :return-object="false"
                   :error="localKeyErrors[index] !== undefined"
                   :messages="localKeyErrors[index]"
                   @focus="loadLocalColumns(index)"
@@ -90,15 +123,16 @@
               </v-col>
 
               <v-col cols="12" md="5">
-                <v-combobox 
-                  v-model="fk.remote_keys" 
-                  label="Remote Keys" 
-                  chips 
-                  multiple 
+                <v-combobox
+                  v-model="fk.remote_keys"
+                  label="Remote Keys"
+                  chips
+                  multiple
                   variant="outlined"
-                  density="compact" 
+                  density="compact"
                   :items="remoteColumnItems[index]"
                   item-value="value"
+                  :return-object="false"
                   :error="remoteKeyErrors[index] !== undefined"
                   :messages="remoteKeyErrors[index]"
                   @focus="loadRemoteColumns(index)"
@@ -212,8 +246,13 @@
             <!-- Test Join Button -->
             <v-row dense>
               <v-col cols="12">
-                <ForeignKeyTester :project-name="projectName" :entity-name="entityName" :foreign-key="fk"
-                  :foreign-key-index="index" :disabled="!isEntitySaved" />
+                <ForeignKeyTester
+                  :project-name="projectName"
+                  :entity-name="entityName"
+                  :foreign-key="fk"
+                  :foreign-key-index="index"
+                  :disabled="!isEntitySaved"
+                />
               </v-col>
             </v-row>
           </v-expansion-panel-text>
@@ -262,7 +301,9 @@ function cloneForeignKey(fk: ForeignKeyConfig): ForeignKeyConfig {
       allow_null_keys: false,
     },
     extra_columns: fk.extra_columns
-      ? (Array.isArray(fk.extra_columns) ? [...fk.extra_columns] : { ...(fk.extra_columns as Record<string, string>) })
+      ? Array.isArray(fk.extra_columns)
+        ? [...fk.extra_columns]
+        : { ...(fk.extra_columns as Record<string, string>) }
       : undefined,
   }
 }
@@ -283,18 +324,38 @@ const localKeyErrors = ref<Array<string | undefined>>([])
 const remoteKeyErrors = ref<Array<string | undefined>>([])
 
 /**
+ * Normalize keys array to always contain strings.
+ * Handles case where v-combobox might store objects instead of string values.
+ */
+function normalizeKeysArray(keys: any): string[] {
+  if (!Array.isArray(keys)) return []
+
+  return keys
+    .map((key) => {
+      if (typeof key === 'string') return key
+      if (typeof key === 'object' && key !== null && 'value' in key) return key.value
+      return String(key)
+    })
+    .filter((k) => k && k.trim().length > 0)
+}
+
+/**
  * Validate local keys for directive references.
  */
 async function validateLocalKeys(fkIndex: number) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
+
+  // Normalize keys to strings
+  fk.local_keys = normalizeKeysArray(fk.local_keys)
+
   if (!fk.local_keys || fk.local_keys.length === 0) {
     localKeyErrors.value[fkIndex] = undefined
     return
   }
 
   // Check if any key is a directive
-  const directiveKey = fk.local_keys.find(key => isDirective(key))
+  const directiveKey = fk.local_keys.find((key) => isDirective(key))
   if (!directiveKey) {
     localKeyErrors.value[fkIndex] = undefined
     return
@@ -324,13 +385,17 @@ async function validateLocalKeys(fkIndex: number) {
 async function validateRemoteKeys(fkIndex: number) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
+
+  // Normalize keys to strings
+  fk.remote_keys = normalizeKeysArray(fk.remote_keys)
+
   if (!fk.remote_keys || fk.remote_keys.length === 0) {
     remoteKeyErrors.value[fkIndex] = undefined
     return
   }
 
   // Check if any key is a directive
-  const directiveKey = fk.remote_keys.find(key => isDirective(key))
+  const directiveKey = fk.remote_keys.find((key) => isDirective(key))
   if (!directiveKey) {
     remoteKeyErrors.value[fkIndex] = undefined
     return
@@ -382,7 +447,7 @@ async function loadLocalColumns(fkIndex: number) {
   }
 
   const suggestions = await getColumnSuggestions(props.entityName)
-  localColumnItems.value[fkIndex] = suggestions.map(s => ({
+  localColumnItems.value[fkIndex] = suggestions.map((s) => ({
     title: s.value,
     value: s.value,
     category: s.category,
@@ -406,7 +471,7 @@ async function loadRemoteColumns(fkIndex: number) {
   }
 
   const suggestions = await getColumnSuggestions(fk.entity)
-  remoteColumnItems.value[fkIndex] = suggestions.map(s => ({
+  remoteColumnItems.value[fkIndex] = suggestions.map((s) => ({
     title: s.value,
     value: s.value,
     category: s.category,
@@ -415,7 +480,7 @@ async function loadRemoteColumns(fkIndex: number) {
 
 // Watch for entity changes to reload remote columns
 watch(
-  () => foreignKeys.value.map(fk => fk.entity),
+  () => foreignKeys.value.map((fk) => fk.entity),
   (newEntities, oldEntities) => {
     newEntities.forEach((entity, index) => {
       if (entity !== oldEntities[index]) {
@@ -443,12 +508,25 @@ const cardinalityTypes = [
 
 function getForeignKeyLabel(fk: ForeignKeyConfig): string {
   const entity = fk.entity || 'Unnamed Entity'
-  const localKeys = Array.isArray(fk.local_keys) && fk.local_keys.length > 0
-    ? fk.local_keys.join(', ')
-    : '?'
-  const remoteKeys = Array.isArray(fk.remote_keys) && fk.remote_keys.length > 0
-    ? fk.remote_keys.join(', ')
-    : '?'
+
+  // Normalize keys to strings (handle both string[] and object arrays)
+  const normalizeKeys = (keys: any): string => {
+    if (!keys) return '?'
+    if (!Array.isArray(keys)) return '?'
+    if (keys.length === 0) return '?'
+
+    // Map objects to their value property, or keep strings as-is
+    const stringKeys = keys.map((key) => {
+      if (typeof key === 'string') return key
+      if (typeof key === 'object' && key !== null && 'value' in key) return key.value
+      return String(key)
+    })
+
+    return stringKeys.join(', ')
+  }
+
+  const localKeys = normalizeKeys(fk.local_keys)
+  const remoteKeys = normalizeKeys(fk.remote_keys)
 
   return `${entity}: ${localKeys} → ${remoteKeys}`
 }
@@ -486,12 +564,12 @@ function getExtraColumnsCount(fk: ForeignKeyConfig): number {
  */
 function getExtraColumnsArray(fk: ForeignKeyConfig): Array<{ local: string; remote: string }> {
   if (!fk.extra_columns) return []
-  
+
   if (Array.isArray(fk.extra_columns)) {
     // If it's an array of strings, assume they map to themselves
-    return fk.extra_columns.map(col => ({ local: col, remote: col }))
+    return fk.extra_columns.map((col) => ({ local: col, remote: col }))
   }
-  
+
   if (typeof fk.extra_columns === 'object' && fk.extra_columns !== null) {
     // Convert object to array of { local, remote } pairs
     return Object.entries(fk.extra_columns).map(([local, remote]) => ({
@@ -499,7 +577,7 @@ function getExtraColumnsArray(fk: ForeignKeyConfig): Array<{ local: string; remo
       remote: remote as string,
     }))
   }
-  
+
   return []
 }
 
@@ -509,12 +587,12 @@ function getExtraColumnsArray(fk: ForeignKeyConfig): Array<{ local: string; remo
 function addExtraColumn(fkIndex: number) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
-  
+
   // Initialize as object if not exists
   if (!fk.extra_columns || typeof fk.extra_columns !== 'object' || Array.isArray(fk.extra_columns)) {
     fk.extra_columns = {}
   }
-  
+
   // Add new empty entry
   const newKey = `column_${Object.keys(fk.extra_columns).length + 1}`
   fk.extra_columns[newKey] = ''
@@ -526,26 +604,26 @@ function addExtraColumn(fkIndex: number) {
 function updateExtraColumn(fkIndex: number, colIndex: number, localName: string, remoteName: string) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
-  
+
   // Ensure extra_columns is an object
   if (!fk.extra_columns || typeof fk.extra_columns !== 'object' || Array.isArray(fk.extra_columns)) {
     fk.extra_columns = {}
   }
-  
+
   // Get current entries
   const entries = Object.entries(fk.extra_columns)
-  
+
   if (colIndex >= 0 && colIndex < entries.length) {
     const entry = entries[colIndex]
     if (!entry) return
-    
+
     const [oldKey] = entry
-    
+
     // If local name changed, remove old key and add new one
     if (oldKey !== localName) {
       delete fk.extra_columns[oldKey]
     }
-    
+
     // Set new/updated mapping
     if (localName && remoteName) {
       fk.extra_columns[localName] = remoteName
@@ -559,18 +637,18 @@ function updateExtraColumn(fkIndex: number, colIndex: number, localName: string,
 function removeExtraColumn(fkIndex: number, colIndex: number) {
   const fk = foreignKeys.value[fkIndex]
   if (!fk) return
-  
+
   if (!fk.extra_columns || typeof fk.extra_columns !== 'object' || Array.isArray(fk.extra_columns)) return
-  
+
   const entries = Object.entries(fk.extra_columns)
-  
+
   if (colIndex >= 0 && colIndex < entries.length) {
     const entry = entries[colIndex]
     if (!entry) return
-    
+
     const [key] = entry
     delete fk.extra_columns[key]
-    
+
     // Clean up if empty
     if (Object.keys(fk.extra_columns).length === 0) {
       fk.extra_columns = undefined
