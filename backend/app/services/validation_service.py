@@ -127,7 +127,7 @@ class ValidationService:
 
         try:
             settings = get_settings()
-
+            
             project_cfg = Config.resolve_references(
                 project_cfg,
                 source_path=source_path,
