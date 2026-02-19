@@ -328,7 +328,7 @@
                       >
                         <template #message>
                           <span class="text-caption" v-if="formData.type === 'fixed'">
-                            Column names to extract or create (system_id and Public ID are auto-managed)
+                            Additional columns beyond system_id/public_id (which are auto-added to saved config)
                           </span>
                           <span class="text-caption" v-else>Column names to extract or create</span>
                         </template>
@@ -1052,8 +1052,9 @@ function buildEntityConfigFromFormData(): Record<string, unknown> {
   const entityData: Record<string, unknown> = {
     type: formData.value.type,
     keys: formData.value.keys,
-    // Always include columns so new entities default to an empty list instead of omitting the field
-    columns: formData.value.columns,
+    // For fixed entities, explicitly include system_id and public_id in columns list
+    // This ensures the columns match the fixedValuesColumns order used by the grid
+    columns: formData.value.type === 'fixed' ? fixedValuesColumns.value : formData.value.columns,
   }
 
   // Always include public_id (even if null) to prevent field from being omitted
@@ -1922,6 +1923,14 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
   const dropDuplicates = entity.entity_data.drop_duplicates
   const dropEmptyRows = entity.entity_data.drop_empty_rows
 
+  // For fixed entities, strip system_id and public_id from columns
+  // since they're auto-managed and will be auto-added on save
+  let columns = (entity.entity_data.columns as string[]) || []
+  if (entity.entity_data.type === 'fixed') {
+    const publicId = (entity.entity_data.public_id as string) || ''
+    columns = columns.filter(col => col !== 'system_id' && col !== publicId)
+  }
+
   return {
     name: entity.name,
     type: (entity.entity_data.type as string) || 'entity',
@@ -1929,7 +1938,7 @@ function buildFormDataFromEntity(entity: EntityResponse): FormData {
     public_id: (entity.entity_data.public_id as string) || (entity.entity_data.surrogate_id as string) || '', // Migrate
     surrogate_id: (entity.entity_data.surrogate_id as string) || '', // Backward compat
     keys: (entity.entity_data.keys as string[]) || [],
-    columns: (entity.entity_data.columns as string[]) || [],
+    columns: columns,
     values: (entity.entity_data.values as any[][]) || [],
     source: (entity.entity_data.source as string) || null,
     data_source: (entity.entity_data.data_source as string) || '',
