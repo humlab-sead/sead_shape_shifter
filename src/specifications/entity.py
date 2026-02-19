@@ -78,16 +78,20 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         if table.type != "fixed":
             self.add_error(f"Entity '{entity_name}' is not of type 'fixed'", entity=entity_name, field="type")
 
-        # Check for public_id or surrogate_id (backward compatibility)
+        # Validate required identity fields
         entity_cfg = self.get_entity_cfg(entity_name)
-        has_id = entity_cfg.get("public_id") or entity_cfg.get("surrogate_id")
-        if not has_id:
+        
+        # Check for public_id (required for fixed entities)
+        public_id = entity_cfg.get("public_id") or entity_cfg.get("surrogate_id")
+        if not public_id:
             self.add_error(f"Entity '{entity_name}': Field 'public_id' is required but missing.", entity=entity_name, field="public_id")
+            return not self.has_errors()  # Can't proceed without public_id
+        
+        # Note: system_id is always "system_id" (standardized name, auto-generated)
 
         self.check_fields(entity_name, ["values"], "exists/E,not_empty/W")
         self.check_fields(entity_name, ["type"], "has_value/E", expected_value="fixed")
         self.check_fields(entity_name, ["source", "data_source", "query"], "is_empty/W")
-
         self.check_fields(entity_name, ["values"], "of_type/E", expected_types=(list,))
 
         columns: str | list[Any] = table.safe_columns
@@ -96,40 +100,32 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         if not all(isinstance(row, list) for row in values):
             self.add_error(f"Fixed data entity '{entity_name}' must have values as a list of lists", entity=entity_name, field="values")
 
-        # Handle two possible formats for values array:
-        # 1. Old format: values match columns exactly (no identity columns)
-        # 2. New format: values include system_id and/or public_id columns not in columns list
+        # Validate values array length
+        # Two valid formats:
+        # 1. Old format: values match columns exactly (backward compatibility)
+        # 2. New format: values include identity columns (system_id, public_id)
+        #    Using set union elegantly deduplicates if identity columns are mistakenly in columns
         if values:
-            values_length = len(values[0]) if values else 0
-            columns_length = len(columns)
+            expected_with_identity: int = len(set(columns) | {public_id, "system_id"})
+            expected_without_identity: int = len(columns)
+            values_length: int = len(values[0]) if values else 0
             
-            # Calculate expected length for new format (with identity columns)
-            expected_with_identity = columns_length
-            if entity_cfg.get("system_id"):
-                expected_with_identity += 1
-            if entity_cfg.get("public_id") or entity_cfg.get("surrogate_id"):
-                expected_with_identity += 1
-            
-            # Check if values match either old format (exact match) or new format (with identity)
-            is_old_format = values_length == columns_length
-            is_new_format = values_length == expected_with_identity
-            
-            if not (is_old_format or is_new_format):
-                # Check if all rows have consistent length (even if wrong)
-                if not all(len(row) == values_length for row in values):
-                    self.add_error(
-                        f"Fixed data entity '{entity_name}' has inconsistent row lengths in values",
-                        entity=entity_name,
-                        field="values",
-                    )
-                else:
-                    self.add_error(
-                        f"Fixed data entity '{entity_name}' has mismatched number of columns and values "
-                        f"(got {values_length} values per row, expected either {columns_length} for data-only "
-                        f"or {expected_with_identity} including identity columns)",
-                        entity=entity_name,
-                        field="values",
-                    )
+            # Check all rows have consistent length
+            if not all(len(row) == values_length for row in values):
+                self.add_error(
+                    f"Fixed data entity '{entity_name}' has inconsistent row lengths in values",
+                    entity=entity_name,
+                    field="values",
+                )
+            # Accept either old format (data only) or new format (with identity columns)
+            elif values_length not in (expected_without_identity, expected_with_identity):
+                self.add_error(
+                    f"Fixed data entity '{entity_name}' has mismatched number of columns and values "
+                    f"(got {values_length} values per row, expected {expected_without_identity} for data-only "
+                    f"or {expected_with_identity} with identity columns)",
+                    entity=entity_name,
+                    field="values",
+                )
 
         return not self.has_errors()
 
