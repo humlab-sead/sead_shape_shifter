@@ -6,7 +6,7 @@
         <div class="text-caption text-medium-emphasis font-weight-medium">New Column Name</div>
       </v-col>
       <v-col cols="12" md="6">
-        <div class="text-caption text-medium-emphasis font-weight-medium">Source Column (or leave empty for null)</div>
+        <div class="text-caption text-medium-emphasis font-weight-medium">Source Column or Constant Value(or leave empty for null)</div>
       </v-col>
       <v-col cols="12" md="1">
         <div class="text-caption text-medium-emphasis font-weight-medium"></div>
