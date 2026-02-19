@@ -28,8 +28,11 @@
       :animateRows="true"
       :headerHeight="28"
       :rowHeight="26"
+      :singleClickEdit="true"
+      :stopEditingWhenCellsLoseFocus="true"
       @grid-ready="onGridReady"
       @cell-value-changed="onCellValueChanged"
+      @cell-editing-stopped="onCellEditingStopped"
       @selection-changed="onSelectionChanged"
     />
   </div>
@@ -147,7 +150,15 @@ function onGridReady(params: GridReadyEvent) {
 }
 
 function onCellValueChanged(event: CellValueChangedEvent) {
-  // Convert row objects back to 2D array
+  // Cell value has changed - emit update
+  // No need to stop editing here as the change has already been committed
+  const allRows = getAllRows()
+  emit('update:modelValue', allRows)
+}
+
+function onCellEditingStopped() {
+  // Additional handler to ensure changes are captured when editing stops
+  // This catches cases where cell-value-changed might not fire
   const allRows = getAllRows()
   emit('update:modelValue', allRows)
 }
@@ -159,6 +170,11 @@ function onSelectionChanged() {
 
 function getAllRows(): any[][] {
   if (!gridApi.value) return []
+
+  // CRITICAL: Stop any active cell editing to commit pending changes
+  // This ensures that if a cell is currently being edited, those changes
+  // are saved before we read the data
+  gridApi.value.stopEditing()
 
   const rows: any[][] = []
   gridApi.value.forEachNode((node) => {
@@ -202,6 +218,9 @@ function getMaxSystemId(): number {
 function addRow() {
   if (!gridApi.value) return
 
+  // Stop any active editing before adding a new row
+  gridApi.value.stopEditing()
+
   // Get max system_id and increment (critical for FK stability)
   const maxSystemId = getMaxSystemId()
   const nextSystemId = maxSystemId + 1
@@ -228,6 +247,9 @@ function addRow() {
 
 function deleteSelectedRows() {
   if (!gridApi.value) return
+
+  // Stop any active editing before deleting rows
+  gridApi.value.stopEditing()
 
   const selectedRows = gridApi.value.getSelectedRows()
   if (selectedRows.length === 0) return
