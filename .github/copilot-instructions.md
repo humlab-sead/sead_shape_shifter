@@ -10,6 +10,7 @@ When referencing project documentation, **ignore all files in `docs/archive/`**.
 - **USER_GUIDE.md** - End-user documentation
 - **REQUIREMENTS.md** - Feature specifications
 - **TESTING_GUIDE.md** - Concise functional testing procedures (core workflows only)
+- **AI_VALIDATION_GUIDE.md** - Concise AI-focused validation rules for shapeshifter.yml files
 - **testing/** - Testing resources subfolder:
   - **ERROR_SCENARIO_TESTING.md** - Error handling and recovery tests
   - **TEST_RESULTS_TEMPLATE.md** - Templates and quick test checklists
@@ -939,6 +940,24 @@ mcp_gitkraken_git_add_or_commit(
 4. Ingester will be auto-discovered at application startup from `ingesters/` directory
 5. Add tests in `backend/tests/ingesters/test_<name>.py`
 6. See `ingesters/sead/` for reference implementation and `backend/app/ingesters/README.md` for protocol details
+
+### Validating shapeshifter.yml Projects
+When validating or analyzing shapeshifter.yml project files, refer to [docs/AI_VALIDATION_GUIDE.md](docs/AI_VALIDATION_GUIDE.md) for:
+- **Quick validation checklist** - Systematic checks for structure, identity, FK, dependencies
+- **Common error patterns** - Known issues and how to identify them
+- **Valid configuration examples** - Reference patterns that are intentional, not errors
+- **Entity type requirements** - Required/optional fields per type
+
+**Key principle**: Not all patterns that look unusual are errors. The guide documents valid patterns like:
+- `extra_columns` with FK references (intentional lookup table pattern)
+- Business key joins (FK on non-ID columns)
+- Hierarchical fixed entities
+
+**When to use**:
+- User asks "Can you see anything wrong with this project?"
+- Analyzing validation errors or warnings
+- Assisting with YAML file editing
+- Reviewing entity configurations
 
 ## Frontend Conventions
 

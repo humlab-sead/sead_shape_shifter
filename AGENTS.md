@@ -388,6 +388,7 @@ Then use with `--config ingest_config.json`. CLI options override config file va
 - Manage frontend state under `frontend/src/stores/` and related composables.
 - Consult docs: `docs/CONFIGURATION_GUIDE.md`, `docs/SYSTEM_DOCUMENTATION.md`, `docs/BACKEND_API.md`, `docs/DEVELOPMENT_GUIDE.md` before major changes.
 - For testing: `docs/TESTING_GUIDE.md` (concise functional testing), `docs/testing/` subfolder (error scenarios, templates, non-functional, accessibility).
+- **For YAML validation**: `docs/AI_VALIDATION_GUIDE.md` (concise AI-focused validation rules, common patterns, error detection).
 
 ## External Dependencies
 - Install UCanAccess via `scripts/install-uncanccess.sh` when Access support is required.
