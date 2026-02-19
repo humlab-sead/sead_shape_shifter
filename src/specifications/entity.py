@@ -115,6 +115,92 @@ class SqlEntityFieldsSpecification(EntityFieldsBaseSpecification):
         return not self.has_errors()
 
 
+@ENTITY_SPECIFICATION.register(key="fixed_entity_system_id")
+class FixedEntitySystemIdSpecification(ProjectSpecification):
+    """Validates system_id integrity for fixed entities.
+
+    Ensures that fixed entities have valid, stable system_id values:
+    - All system_id values must be present (no nulls)
+    - All system_id values must be unique
+    - All system_id values must be positive integers
+
+    This is critical for FK relationship stability when rows are added/deleted/reordered.
+    """
+
+    def is_satisfied_by(self, *, entity_name: str = "unknown", **kwargs) -> bool:
+        """Check that system_id values are valid for fixed entity."""
+        self.clear()
+
+        table: TableConfig = self.get_entity(entity_name)
+
+        # Only validate fixed entities
+        if table.type != "fixed":
+            return True
+
+        columns: list[str] = table.safe_columns
+        values: list[list[Any]] = table.safe_values
+
+        # Check if system_id column exists
+        if "system_id" not in columns:
+            # system_id is optional, but if missing it will be auto-generated
+            return True
+
+        system_id_index = columns.index("system_id")
+        system_id_values = [row[system_id_index] for row in values]
+
+        # Validate: No null/None values
+        null_count = sum(1 for val in system_id_values if val is None or (isinstance(val, float) and val != val))
+        if null_count > 0:
+            self.add_error(
+                f"Entity '{entity_name}': system_id column has {null_count} null value(s). All system_id values must be present.",
+                entity=entity_name,
+                field="values",
+                code="SYSTEM_ID_NULL_VALUES",
+            )
+
+        # Filter out nulls for uniqueness/type checks
+        non_null_values = [val for val in system_id_values if val is not None and not (isinstance(val, float) and val != val)]
+
+        if non_null_values:
+            # Validate: All values are positive integers
+            for i, val in enumerate(non_null_values):
+                try:
+                    int_val = int(val)
+                    if int_val <= 0:
+                        self.add_error(
+                            f"Entity '{entity_name}': system_id value '{val}' at row {i} must be a positive integer.",
+                            entity=entity_name,
+                            field="values",
+                            code="SYSTEM_ID_INVALID_VALUE",
+                        )
+                except (ValueError, TypeError):
+                    self.add_error(
+                        f"Entity '{entity_name}': system_id value '{val}' at row {i} is not a valid integer.",
+                        entity=entity_name,
+                        field="values",
+                        code="SYSTEM_ID_INVALID_TYPE",
+                    )
+
+            # Validate: All values are unique
+            seen = set()
+            duplicates = set()
+            for val in non_null_values:
+                if val in seen:
+                    duplicates.add(val)
+                seen.add(val)
+
+            if duplicates:
+                dup_list = ", ".join(str(d) for d in sorted(duplicates))
+                self.add_error(
+                    f"Entity '{entity_name}': system_id has duplicate values: {dup_list}. All system_id values must be unique.",
+                    entity=entity_name,
+                    field="values",
+                    code="SYSTEM_ID_DUPLICATE_VALUES",
+                )
+
+        return not self.has_errors()
+
+
 @ENTITY_SPECIFICATION.register(key="entity_fields")
 class EntityFieldsSpecification(ProjectSpecification):
     """Validates that all required fields are present in all entities."""
