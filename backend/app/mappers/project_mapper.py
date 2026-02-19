@@ -172,7 +172,7 @@ class ProjectMapper:
         # Other entities: no-op transformation
         project_name = api_config.metadata.name if api_config.metadata else api_config.filename
         mapper_factory = EntityConfigMapperFactory(settings)
-        
+
         entities = cfg_dict.get("entities", {})
         for entity_dict in entities.values():
             mapper = mapper_factory.get_mapper_for_entity(entity_dict)
