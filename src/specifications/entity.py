@@ -96,10 +96,40 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         if not all(isinstance(row, list) for row in values):
             self.add_error(f"Fixed data entity '{entity_name}' must have values as a list of lists", entity=entity_name, field="values")
 
-        if not all(len(row) == len(columns) for row in values):
-            self.add_error(
-                f"Fixed data entity '{entity_name}' has mismatched number of columns and values", entity=entity_name, field="values"
-            )
+        # Handle two possible formats for values array:
+        # 1. Old format: values match columns exactly (no identity columns)
+        # 2. New format: values include system_id and/or public_id columns not in columns list
+        if values:
+            values_length = len(values[0]) if values else 0
+            columns_length = len(columns)
+            
+            # Calculate expected length for new format (with identity columns)
+            expected_with_identity = columns_length
+            if entity_cfg.get("system_id"):
+                expected_with_identity += 1
+            if entity_cfg.get("public_id") or entity_cfg.get("surrogate_id"):
+                expected_with_identity += 1
+            
+            # Check if values match either old format (exact match) or new format (with identity)
+            is_old_format = values_length == columns_length
+            is_new_format = values_length == expected_with_identity
+            
+            if not (is_old_format or is_new_format):
+                # Check if all rows have consistent length (even if wrong)
+                if not all(len(row) == values_length for row in values):
+                    self.add_error(
+                        f"Fixed data entity '{entity_name}' has inconsistent row lengths in values",
+                        entity=entity_name,
+                        field="values",
+                    )
+                else:
+                    self.add_error(
+                        f"Fixed data entity '{entity_name}' has mismatched number of columns and values "
+                        f"(got {values_length} values per row, expected either {columns_length} for data-only "
+                        f"or {expected_with_identity} including identity columns)",
+                        entity=entity_name,
+                        field="values",
+                    )
 
         return not self.has_errors()
 
