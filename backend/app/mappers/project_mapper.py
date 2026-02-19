@@ -28,6 +28,7 @@ from loguru import logger
 
 from backend.app.core.config import settings
 from backend.app.mappers.entity_config_mapper import EntityConfigMapper, EntityConfigMapperFactory
+from backend.app.mappers.project_name_mapper import ProjectNameMapper
 from backend.app.middleware.correlation import get_correlation_id
 from backend.app.models import (
     Entity,
@@ -171,7 +172,7 @@ class ProjectMapper:
         # Other entities: no-op transformation
         project_name = api_config.metadata.name if api_config.metadata else api_config.filename
         mapper_factory = EntityConfigMapperFactory(settings)
-
+        
         entities = cfg_dict.get("entities", {})
         for entity_dict in entities.values():
             mapper = mapper_factory.get_mapper_for_entity(entity_dict)
