@@ -22,7 +22,7 @@ class TestEntityConfigMapperFactory:
         settings = Mock(spec=Settings)
         settings.GLOBAL_DATA_DIR = tmp_path / "shared/shared-data"
         settings.PROJECTS_DIR = tmp_path / "projects"
-        settings.APPLICATION_ROOT = tmp_path
+        settings.PROJECT_ROOT = tmp_path
         settings.GLOBAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
         settings.PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
         return settings
@@ -39,7 +39,12 @@ class TestEntityConfigMapperFactory:
 
     def test_get_mapper_for_excel_returns_file_based_mapper(self, factory: EntityConfigMapperFactory) -> None:
         """Test that Excel driver returns file-based mapper."""
-        mapper = factory.get_mapper("xlsx")
+        mapper = factory.get_mapper("excel")
+        assert isinstance(mapper, FileBasedEntityConfigMapper)
+
+    def test_get_mapper_for_fixed_width_returns_file_based_mapper(self, factory: EntityConfigMapperFactory) -> None:
+        """Test that fixed_width driver returns file-based mapper."""
+        mapper = factory.get_mapper("fixed_width")
         assert isinstance(mapper, FileBasedEntityConfigMapper)
 
     def test_get_mapper_for_postgresql_returns_default_mapper(self, factory: EntityConfigMapperFactory) -> None:
@@ -52,6 +57,24 @@ class TestEntityConfigMapperFactory:
         mapper = factory.get_mapper("fixed")
         assert isinstance(mapper, DefaultEntityConfigMapper)
 
+    def test_get_mapper_for_entity_with_driver(self, factory: EntityConfigMapperFactory) -> None:
+        """Test mapper selection based on entity with driver field."""
+        config = {"data_source": {"driver": "csv"}, "options": {"filename": "data.csv"}}
+        mapper = factory.get_mapper_for_entity(config)
+        assert isinstance(mapper, FileBasedEntityConfigMapper)
+
+    def test_get_mapper_for_entity_without_driver_but_with_filename(self, factory: EntityConfigMapperFactory) -> None:
+        """Test fallback detection of file-based entity from filename presence."""
+        config = {"options": {"filename": "data.csv", "location": "global"}}
+        mapper = factory.get_mapper_for_entity(config)
+        assert isinstance(mapper, FileBasedEntityConfigMapper)
+
+    def test_get_mapper_for_entity_without_driver_or_filename(self, factory: EntityConfigMapperFactory) -> None:
+        """Test default mapper for entities without file indicators."""
+        config = {"data_source": {"fixed_values": {"column1": ["value1", "value2"]}}}
+        mapper = factory.get_mapper_for_entity(config)
+        assert isinstance(mapper, DefaultEntityConfigMapper)
+
 
 class TestDefaultEntityConfigMapper:
     """Test default (no-op) entity config mapper."""
@@ -59,8 +82,7 @@ class TestDefaultEntityConfigMapper:
     @pytest.fixture
     def mapper(self) -> DefaultEntityConfigMapper:
         """Create default mapper."""
-        settings = Mock(spec=Settings)
-        return DefaultEntityConfigMapper(settings)
+        return DefaultEntityConfigMapper()
 
     def test_to_api_returns_unchanged_config(self, mapper: DefaultEntityConfigMapper) -> None:
         """Test that to_api returns config unchanged."""
@@ -85,13 +107,10 @@ class TestFileBasedEntityConfigMapper:
         """Create mock settings."""
         settings = Mock(spec=Settings)
         settings.GLOBAL_DATA_DIR = tmp_path / "shared/shared-data"
-        settings.global_data_dir = settings.GLOBAL_DATA_DIR  # For property access
         settings.PROJECTS_DIR = tmp_path / "projects"
-        settings.projects_root = settings.PROJECTS_DIR  # For property access
-        settings.APPLICATION_ROOT = tmp_path
-        settings.application_root = settings.APPLICATION_ROOT  # For property access
-        settings.global_data_dir.mkdir(parents=True, exist_ok=True)
-        settings.projects_root.mkdir(parents=True, exist_ok=True)
+        settings.PROJECT_ROOT = tmp_path
+        settings.GLOBAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        settings.PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
         return settings
 
     @pytest.fixture
@@ -106,7 +125,7 @@ class TestFileBasedEntityConfigMapper:
 
         result = mapper.to_core(config, "test_project")
 
-        expected_path = str(mock_settings.global_data_dir / "data.csv")
+        expected_path = str(mock_settings.GLOBAL_DATA_DIR / "data.csv")
         assert result["options"]["filename"] == expected_path
         assert "location" not in result["options"]  # Removed for Core
 
@@ -117,13 +136,13 @@ class TestFileBasedEntityConfigMapper:
 
         result = mapper.to_core(config, "test_project")
 
-        expected_path = str(mock_settings.projects_root / "test_project" / "data.csv")
+        expected_path = str(mock_settings.PROJECTS_DIR / "test_project" / "data.csv")
         assert result["options"]["filename"] == expected_path
         assert "location" not in result["options"]  # Removed for Core
 
     def test_to_api_decomposes_global_path(self, factory: EntityConfigMapperFactory, mock_settings: Settings) -> None:
         """Test that to_api decomposes global absolute paths."""
-        absolute_path = str(mock_settings.global_data_dir / "data.csv")
+        absolute_path = str(mock_settings.GLOBAL_DATA_DIR / "data.csv")
         config = {"options": {"filename": absolute_path}}
         mapper = factory.get_mapper("csv")
 
@@ -134,7 +153,7 @@ class TestFileBasedEntityConfigMapper:
 
     def test_to_api_decomposes_local_path(self, factory: EntityConfigMapperFactory, mock_settings: Settings) -> None:
         """Test that to_api decomposes local absolute paths."""
-        absolute_path = str(mock_settings.projects_root / "test_project" / "data.csv")
+        absolute_path = str(mock_settings.PROJECTS_DIR / "test_project" / "data.csv")
         config = {"options": {"filename": absolute_path}}
         mapper = factory.get_mapper("csv")
 
@@ -150,7 +169,7 @@ class TestFileBasedEntityConfigMapper:
 
         result = mapper.to_core(config, "test_project")
 
-        expected_path = str(mock_settings.global_data_dir / "data.csv")
+        expected_path = str(mock_settings.GLOBAL_DATA_DIR / "data.csv")
         assert result["options"]["filename"] == expected_path
         assert "location" not in result["options"]  # Removed for Core
 
