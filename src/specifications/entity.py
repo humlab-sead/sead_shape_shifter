@@ -100,6 +100,16 @@ class FixedEntityFieldsSpecification(DataEntityFieldsSpecification):
         if not all(isinstance(row, list) for row in values):
             self.add_error(f"Fixed data entity '{entity_name}' must have values as a list of lists", entity=entity_name, field="values")
 
+        # Check for empty columns with non-empty values (mixed format error)
+        if not columns and values:
+            self.add_error(
+                f"Fixed data entity '{entity_name}' has values but no columns defined. "
+                f"Either specify column names in 'columns' field or use dict-style values.",
+                entity=entity_name,
+                field="columns",
+            )
+            return not self.has_errors()  # Cannot proceed with further validation
+
         # Validate values array length
         # Two valid formats:
         # 1. Old format: values match columns exactly (backward compatibility)
