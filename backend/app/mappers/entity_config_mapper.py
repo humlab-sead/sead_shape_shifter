@@ -14,7 +14,7 @@ Architecture:
 
 import abc
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 from loguru import logger
 

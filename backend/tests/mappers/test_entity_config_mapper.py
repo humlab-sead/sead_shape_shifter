@@ -8,7 +8,6 @@ import pytest
 from backend.app.core.config import Settings
 from backend.app.mappers.entity_config_mapper import (
     DefaultEntityConfigMapper,
-    EntityConfigMapper,
     EntityConfigMapperFactory,
     FileBasedEntityConfigMapper,
 )

@@ -1,8 +1,6 @@
 """Unit tests for add_system_id and add_surrogate_id functions."""
 
-import numpy as np
 import pandas as pd
-import pytest
 
 from src.transforms.utility import add_surrogate_id, add_system_id
 
