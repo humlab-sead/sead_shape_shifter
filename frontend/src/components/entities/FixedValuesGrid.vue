@@ -123,7 +123,7 @@ const columnDefs = computed<ColDef[]>(() => {
 })
 
 // Convert 2D array to row objects for ag-grid
-// Auto-populate system_id column with sequence numbers
+// Preserve actual system_id values from YAML (critical for FK relationship stability)
 const rowData = computed(() => {
   if (!props.modelValue || props.modelValue.length === 0) {
     return []
@@ -133,13 +133,10 @@ const rowData = computed(() => {
     const rowObj: any = { id: rowIndex }
     row.forEach((value, colIndex) => {
       const columnName = props.columns[colIndex]
-      // Auto-populate system_id with sequential numbers (1-based) as integer
-      if (columnName === 'system_id') {
-        // Always use rowIndex + 1 for display (system_id is auto-managed)
-        rowObj[`col_${colIndex}`] = rowIndex + 1
-      } else {
-        rowObj[`col_${colIndex}`] = value
-      }
+      // CRITICAL: Use actual system_id values from YAML, not rowIndex+1
+      // system_id must remain stable when rows are added/deleted/reordered
+      // to maintain FK relationship integrity
+      rowObj[`col_${colIndex}`] = value
     })
     return rowObj
   })
@@ -177,20 +174,46 @@ function getAllRows(): any[][] {
   return rows
 }
 
+function getMaxSystemId(): number {
+  /**
+   * Get the maximum system_id value from current rows.
+   * Critical for maintaining stable identity when adding new rows.
+   * Returns 0 if no rows exist or system_id column not found.
+   */
+  if (!gridApi.value) return 0
+
+  const systemIdIndex = props.columns.findIndex(col => col === 'system_id')
+  if (systemIdIndex === -1) return 0
+
+  let maxId = 0
+  gridApi.value.forEachNode((node) => {
+    const systemIdValue = node.data[`col_${systemIdIndex}`]
+    if (systemIdValue !== null && systemIdValue !== undefined) {
+      const idNum = parseInt(String(systemIdValue), 10)
+      if (!isNaN(idNum) && idNum > maxId) {
+        maxId = idNum
+      }
+    }
+  })
+  
+  return maxId
+}
+
 function addRow() {
   if (!gridApi.value) return
 
-  // Get current row count to calculate next system_id
-  let rowCount = 0
-  gridApi.value.forEachNode(() => rowCount++)
+  // Get max system_id and increment (critical for FK stability)
+  const maxSystemId = getMaxSystemId()
+  const nextSystemId = maxSystemId + 1
 
   // Create a new row with null values for all columns
   const newRow: any = { id: Date.now() }
   for (let i = 0; i < props.columns.length; i++) {
     const columnName = props.columns[i]
-    // Auto-populate system_id with next sequential number as integer
+    // CRITICAL: Use max(system_id) + 1, not rowCount + 1
+    // This maintains stable identity even when rows are deleted
     if (columnName === 'system_id') {
-      newRow[`col_${i}`] = parseInt(String(rowCount + 1), 10)
+      newRow[`col_${i}`] = nextSystemId
     } else {
       newRow[`col_${i}`] = null
     }
