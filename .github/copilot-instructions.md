@@ -735,6 +735,177 @@ This project uses **semantic-release** configured in `.releaserc.json`:
 - **Use `[skip ci]`** in commit message to skip CI builds when appropriate
 - **Check release impact**: `feat` = minor, `fix`/`refactor`/`style` = patch, breaking = major
 
+### Creating GitHub Issues and Committing Changes - Best Practices
+
+**When a user asks to create an issue and commit changes, follow this streamlined workflow:**
+
+#### Preferred MCP Tools (Use These First)
+
+**Git Operations (GitKraken MCP):**
+1. **Check Status**: `mcp_gitkraken_git_status` - Shows unstaged/staged changes
+2. **View Changes**: `mcp_gitkraken_git_log_or_diff` with `action: "diff"` - Shows detailed diff
+3. **Commit**: `mcp_gitkraken_git_add_or_commit` - Stage files and create commit
+4. **Compose Commits**: `mcp_gitkraken_gitlens_commit_composer` - Organize large changes into well-formed commits
+
+**GitHub Operations (GitHub MCP - Requires GITHUB_TOKEN):**
+1. **Create Issue**: `github-pull-request_issue_fetch` with create operation - Create issues with labels, assignees
+2. **Fetch Issue**: `github-pull-request_issue_fetch` - Get issue details by number
+3. **Search Issues**: `github-pull-request_formSearchQuery` + `github-pull-request_doSearch` - Query issues/PRs
+4. **PR Operations**: `github-pull-request_activePullRequest`, `github-pull-request_openPullRequest` - Manage PRs
+5. **Suggest Fixes**: `github-pull-request_suggest-fix` - AI-powered fix suggestions
+
+**Fallback**: If GitHub MCP tools are unavailable, use GitHub CLI (`gh issue create`) via `run_in_terminal` tool.
+
+#### Complete Workflow
+
+```bash
+# 1. Check status (GitKraken MCP)
+mcp_gitkraken_git_status(directory="/home/roger/source/sead_shape_shifter")
+
+# 2. View diff (GitKraken MCP)
+mcp_gitkraken_git_log_or_diff(
+  directory="/home/roger/source/sead_shape_shifter",
+  action="diff"
+)
+
+# 3. Create GitHub issue (GitHub MCP - preferred)
+github-pull-request_issue_fetch({
+  owner: "humlab-sead",
+  repo: "sead_shape_shifter",
+  title: "fix(frontend): brief description",
+  body: "Detailed description...",
+  labels: ["bug", "frontend"]
+})
+
+# Fallback: Use GitHub CLI if MCP unavailable
+gh issue create \
+  --title "fix(frontend): brief description" \
+  --body "Detailed description..." \
+  --label "bug" \
+  --label "frontend"
+
+# 4. Commit changes (GitKraken MCP)
+mcp_gitkraken_git_add_or_commit(
+  directory="/home/roger/source/sead_shape_shifter",
+  action="add",
+  files=["path/to/file.vue"]
+)
+
+mcp_gitkraken_git_add_or_commit(
+  directory="/home/roger/source/sead_shape_shifter",
+  action="commit",
+  message="fix(frontend): brief description\n\n- Change 1\n- Change 2\n\nCloses #XXX"
+)
+```
+
+#### User Request Patterns to Recognize
+
+When users say these phrases, execute the complete workflow:
+- "Create a GH issue and commit changes"
+- "Create GitHub issue for my changes and commit them"
+- "Commit with issue" / "Issue + commit"
+- "Document and commit my work"
+
+#### What to Include in the Issue Description
+
+**Always structure issue body with**:
+- **Description**: What was changed and why
+- **Changes**: Bullet list of specific modifications
+- **Technical Details**: Root cause or implementation notes
+- **Related Components**: File paths affected
+- **Type**: Bug fix, feature, refactor, etc.
+
+#### Commit Message Format
+
+```
+<type>(<scope>): <description>
+
+- Bullet point describing change 1
+- Bullet point describing change 2
+- Bullet point describing change 3
+
+Additional context explaining the why (optional).
+
+Closes #<issue-number>
+```
+
+**Critical**: Always include `Closes #XXX` or `Fixes #XXX` to auto-link the commit to the issue.
+
+#### Large Change Handling
+
+For complex changes with multiple files, use:
+```bash
+mcp_gitkraken_gitlens_commit_composer(
+  directory="/home/roger/source/sead_shape_shifter",
+  instructions="Break into logical commits: 1) bug fix, 2) refactor, 3) tests"
+)
+```
+
+This organizes changes into well-formed, atomic commits with clear messages.
+
+#### Error Handling
+
+**If GitHub MCP tools are unavailable:**
+1. Check `GITHUB_TOKEN` environment variable: `echo $GITHUB_TOKEN`
+2. Verify mcp.json configuration in `~/.vscode-server/data/User/mcp.json`
+3. Reload VS Code window: `Ctrl+Shift+P` → "Developer: Reload Window"
+4. Fallback to GitHub CLI if needed
+
+**If `gh` CLI is not available (fallback only):**
+1. Check with `which gh` or `gh --version`
+2. Guide user to install: `brew install gh` (macOS) or `apt install gh` (Linux)
+3. Verify authentication: `gh auth status`
+
+#### Example Complete Flow
+
+```typescript
+// User: "Create a GH issue and commit my ForeignKeyEditor changes"
+
+// Step 1: Check what changed (GitKraken MCP)
+mcp_gitkraken_git_status(directory="...")
+mcp_gitkraken_git_log_or_diff(directory="...", action="diff")
+
+// Step 2: Analyze changes (AI determines issue content)
+
+// Step 3: Create issue (GitHub MCP - preferred)
+github-pull-request_issue_fetch({
+  owner: "humlab-sead",
+  repo: "sead_shape_shifter",
+  title: "fix(frontend): normalize v-combobox keys",
+  body: "Detailed description...",
+  labels: ["bug", "frontend"]
+})
+// Returns: Issue #265 created
+
+// Fallback if MCP unavailable:
+run_in_terminal: gh issue create --title "fix(frontend): normalize v-combobox keys" ...
+
+// Step 4: Stage and commit (GitKraken MCP)
+mcp_gitkraken_git_add_or_commit(action="add", files=["frontend/src/..."])
+mcp_gitkraken_git_add_or_commit(
+  action="commit",
+  message="fix(frontend): normalize v-combobox keys\n\n...\n\nCloses #265"
+)
+
+// Step 5: Confirm to user
+"✅ Created issue #265 and committed changes (9e16898)"
+```
+
+#### Quick Reference
+
+| Task | Tool | Priority |
+|------|------|----------|
+| Check status | `mcp_gitkraken_git_status` | ⭐ Use first |
+| View diff | `mcp_gitkraken_git_log_or_diff` | ⭐ Use first |
+| Stage files | `mcp_gitkraken_git_add_or_commit` (action="add") | ⭐ Use first |
+| Commit | `mcp_gitkraken_git_add_or_commit` (action="commit") | ⭐ Use first |
+| Organize commits | `mcp_gitkraken_gitlens_commit_composer` | For complex changes |
+| Create issue | `github-pull-request_issue_fetch` (GitHub MCP) | ⭐ Use first |
+| Fetch issue | `github-pull-request_issue_fetch` (GitHub MCP) | ⭐ Use first |
+| Search issues | `github-pull-request_doSearch` (GitHub MCP) | ⭐ Use first |
+| Create issue (fallback) | `run_in_terminal` with `gh issue create` | If MCP unavailable |
+| Start work from issue | `mcp_gitkraken_gitlens_start_work` | Creates branch + links issue |
+
 ## Common Tasks
 
 ### Adding a Backend Endpoint
