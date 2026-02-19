@@ -298,6 +298,7 @@
                           <!-- Keys (business keys) -->
                           <v-combobox
                             v-model="formData.keys"
+                            :items="availableColumns"
                             label="Business Keys *"
                             variant="outlined"
                             multiple
@@ -329,6 +330,12 @@
                         <template #message>
                           <span class="text-caption" v-if="formData.type === 'fixed'">
                             Additional columns beyond system_id/public_id (which are auto-added to saved config)
+                          </span>
+                          <span class="text-caption" v-else-if="formData.type === 'entity'">
+                            Select from source columns or add new names (type to filter suggestions)
+                          </span>
+                          <span class="text-caption" v-else-if="isExcelType">
+                            Select from sheet columns (auto-detected from file)
                           </span>
                           <span class="text-caption" v-else>Column names to extract or create</span>
                         </template>
