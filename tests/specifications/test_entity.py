@@ -102,6 +102,13 @@ class TestFixedEntityFieldsSpecification:
                     "keys": ["id"],
                 },
                 "empty_fixed": {"type": "fixed", "columns": [], "keys": [], "public_id": "entity_id", "values": []},
+                "empty_columns_with_values": {
+                    "type": "fixed",
+                    "columns": [],
+                    "keys": [],
+                    "public_id": "entity_id",
+                    "values": [[1, None]],
+                },
             }
         }
 
@@ -167,6 +174,22 @@ class TestFixedEntityFieldsSpecification:
 
         assert result is True, spec.get_report()
         assert len(spec.errors) == 0, spec.get_report()
+
+    def test_empty_columns_with_values_fails(self, project_cfg):
+        """Test validation fails when columns is empty but values are provided.
+        
+        This prevents the error: "0 columns passed, passed data had 2 columns"
+        that occurs when trying to create a DataFrame with data but no column names.
+        
+        Regression test for issue #266.
+        """
+        spec = FixedEntityFieldsSpecification(project_cfg)
+
+        result = spec.is_satisfied_by(entity_name="empty_columns_with_values")
+
+        assert result is False, spec.get_report()
+        assert len(spec.errors) > 0, spec.get_report()
+        assert any("no columns defined" in str(e).lower() for e in spec.errors), spec.get_report()
 
 
 class TestSqlEntityFieldsSpecification:
