@@ -1,10 +1,34 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { AxiosError } from 'axios'
 import { api } from '@/api'
 import { useSessionStore } from '@/stores/session'
 import { useEntityStore } from '@/stores/entity'
 import type { Project, ProjectMetadata, ValidationResult } from '@/types'
 import type { ProjectCreateRequest, ProjectUpdateRequest, BackupInfo, MetadataUpdateRequest } from '@/api/projects'
+
+/**
+ * Extract error message from axios error response
+ */
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof AxiosError) {
+    // Try to extract structured error message
+    if (err.response?.data) {
+      const data = err.response.data
+      // Handle structured domain exception responses
+      if (typeof data === 'object' && 'message' in data) {
+        return data.message as string
+      }
+      // Handle plain string responses
+      if (typeof data === 'string') {
+        return data
+      }
+    }
+    // Fallback to axios error message
+    return err.message || fallback
+  }
+  return err instanceof Error ? err.message : fallback
+}
 
 export const useProjectStore = defineStore('project', () => {
   // State
@@ -203,7 +227,7 @@ export const useProjectStore = defineStore('project', () => {
   async function deleteProject(name: string) {
     logState('deleteProject:before', { name })
     loading.value = true
-    error.value = null
+    // Don't clear global error - operation errors should be handled by caller
     try {
       // CRITICAL FIX: Reset entity store BEFORE API call to prevent
       // ghost entities when recreating project with same name
@@ -220,8 +244,12 @@ export const useProjectStore = defineStore('project', () => {
       entityStore.reset()
       logState('deleteProject:after', { name })
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to delete project'
-      throw err
+      // Extract detailed error message and re-throw with better message
+      const errorMessage = extractErrorMessage(err, 'Failed to delete project')
+      const enhancedError = new Error(errorMessage)
+      // Preserve original error for debugging
+      ;(enhancedError as any).originalError = err
+      throw enhancedError
     } finally {
       loading.value = false
     }
