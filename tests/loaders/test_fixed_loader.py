@@ -253,7 +253,7 @@ class TestCreateFixedTable:
         }  # Missing one value
         table_cfg = TableConfig(entities_cfg=config, entity_name=entity)
 
-        with pytest.raises(ValueError, match="mismatched"):
+        with pytest.raises(ValueError, match="inconsistent row lengths"):
             await FixedLoader(data_source=None).load(entity, table_cfg)
 
     @pytest.mark.asyncio
