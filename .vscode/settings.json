@@ -55,7 +55,8 @@
         "**/.mypy_cache",
         "**/htmlcov",
         "**/shape_shifter.egg-info",
-        "**/.git/**"
+        "**/.git/**",
+        "**/.*",
     ],
     "python.analysis.aiHoverSummaries": true,
     "python.analysis.autoFormatStrings": true,
