@@ -177,7 +177,7 @@ import DeleteConfirmationDialog from '@/components/common/DeleteConfirmationDial
 const router = useRouter()
 
 // Composables
-const { projects, loading, error, isEmpty, select, remove, validate, fetch, clearError } = useProjects({
+const { projects, loading, error, isEmpty, remove, validate, fetch, clearError } = useProjects({
   autoFetch: true,
 })
 
