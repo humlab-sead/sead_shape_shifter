@@ -2,7 +2,7 @@ from collections.abc import ItemsView, Iterator, KeysView, ValuesView
 from dataclasses import asdict, dataclass, field
 from fnmatch import fnmatch
 from functools import cached_property
-from typing import Any
+from typing import Any, cast
 
 # pylint: disable=no-member
 import pandas as pd
@@ -211,7 +211,7 @@ class SeadSchema:
     @cached_property
     def sead_column_dtypes(self) -> dict[str, Dtype]:
         """Returns a dict of table to datatype mappings."""
-        column_types: dict[str, str] = self.source_columns.set_index("column_name")["data_type"].to_dict()
+        column_types: dict[str, Any] = cast(dict[str, Any], self.source_columns.set_index("column_name")["data_type"].to_dict())
         dtypes: dict[str, Dtype] = {k: DTYPE_MAPPING[v] for k, v in column_types.items() if v in DTYPE_MAPPING}
         return dtypes
 
