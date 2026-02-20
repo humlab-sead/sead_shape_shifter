@@ -9,6 +9,10 @@ Reusable prompt templates for common development tasks. Copy and customize as ne
 - [Dependency Check](analysis/dependency-check.md) - Analyze entity dependencies
 - [YAML Review](analysis/yaml-review.md) - Review shapeshifter.yml files
 
+**Reference Materials**:
+- [SEAD Database](../../prompts/reference/sead-database.md) - SEAD schema reference and query patterns
+- [SEAD Quick Reference](../../prompts/reference/sead-quick-ref.md) - Ultra-concise SEAD lookup card
+
 **Implementation Prompts**:
 - [Add Backend Endpoint](implementation/add-endpoint.md) - Create new API endpoint
 - [Add Validator](implementation/add-validator.md) - Create constraint validator
@@ -56,6 +60,7 @@ All prompts reference:
 - **docs/AI_VALIDATION_GUIDE.md** - Entity validation rules
 - **docs/CONFIGURATION_GUIDE.md** - Complete YAML reference
 - **docs/TESTING_GUIDE.md** - Testing procedures
+- **prompts/reference/sead-database.md** - SEAD database schema reference
 
 ## Contributing
 
