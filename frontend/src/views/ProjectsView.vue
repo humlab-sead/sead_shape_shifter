@@ -152,6 +152,16 @@
         </template>
       </v-snackbar>
     </v-scale-transition>
+
+    <!-- Error Snackbar for operation failures -->
+    <v-scale-transition>
+      <v-snackbar v-if="showErrorSnackbar" v-model="showErrorSnackbar" color="error" timeout="6000">
+        {{ errorMessage }}
+        <template #actions>
+          <v-btn variant="text" @click="showErrorSnackbar = false"> Close </v-btn>
+        </template>
+      </v-snackbar>
+    </v-scale-transition>
   </v-container>
 </template>
 
@@ -181,6 +191,8 @@ const projectToCopy = ref<ProjectMetadata | null>(null)
 const projectToDelete = ref<ProjectMetadata | null>(null)
 const showSuccessSnackbar = ref(false)
 const successMessage = ref('')
+const showErrorSnackbar = ref(false)
+const errorMessage = ref('')
 
 // Sort options
 const sortOptions = [
@@ -282,13 +294,18 @@ function handleDeleteClick(project: ProjectMetadata) {
 async function handleDeleteConfirm() {
   if (!projectToDelete.value) return
 
+  const projectName = projectToDelete.value.name
   try {
-    await remove(projectToDelete.value.name)
-    successMessage.value = `Project "${projectToDelete.value.name}" deleted`
+    await remove(projectName)
+    successMessage.value = `Project "${projectName}" deleted`
     showSuccessSnackbar.value = true
     projectToDelete.value = null
   } catch (err) {
     console.error('Failed to delete project:', err)
+    // Show error in snackbar without affecting project list
+    errorMessage.value = err instanceof Error ? err.message : `Failed to delete project "${projectName}"`
+    showErrorSnackbar.value = true
+    // Keep dialog open so user can try again or cancel
   }
 }
 
