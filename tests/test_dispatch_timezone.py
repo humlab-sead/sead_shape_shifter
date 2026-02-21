@@ -14,6 +14,8 @@ from openpyxl import load_workbook
 
 from src.dispatch import ExcelDispatcher, OpenpyxlExcelDispatcher
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def sample_data_with_timezones():
@@ -103,22 +105,22 @@ def test_sanitize_timezones_method():
     )
 
     # Verify input has timezone (tz_aware column)
-    assert hasattr(df["tz_aware"].dtype, "tz") and df["tz_aware"].dtype.tz is not None
+    assert getattr(df["tz_aware"].dtype, "tz", None) is not None
     # Verify naive column has no timezone (may not have .tz attribute)
-    assert not (hasattr(df["tz_naive"].dtype, "tz") and df["tz_naive"].dtype.tz is not None)
+    assert getattr(df["tz_naive"].dtype, "tz", None) is None
 
     # Sanitize
     sanitized = OpenpyxlExcelDispatcher._sanitize_timezones(df)
 
     # Verify timezone removed from tz_aware column
-    assert not (hasattr(sanitized["tz_aware"].dtype, "tz") and sanitized["tz_aware"].dtype.tz is not None)
+    assert getattr(sanitized["tz_aware"].dtype, "tz", None) is None
     # Verify naive column unchanged
-    assert not (hasattr(sanitized["tz_naive"].dtype, "tz") and sanitized["tz_naive"].dtype.tz is not None)
+    assert getattr(sanitized["tz_naive"].dtype, "tz", None) is None
     # Verify regular column unchanged
     assert sanitized["regular_col"].dtype == object
 
     # Verify original DataFrame unchanged
-    assert hasattr(df["tz_aware"].dtype, "tz") and df["tz_aware"].dtype.tz is not None
+    assert getattr(df["tz_aware"].dtype, "tz", None) is not None
 
 
 def test_sanitize_preserves_datetime_values():
