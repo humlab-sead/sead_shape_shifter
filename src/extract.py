@@ -72,7 +72,6 @@ class SubsetService:
             replacements=replacements,
             raise_if_missing=raise_if_missing,
             drop_empty=drop_empty,
-            deferred_output=deferred_output,
         )
 
     def get_subset2(
@@ -88,7 +87,6 @@ class SubsetService:
         replacements: dict[str, Any] | None = None,
         raise_if_missing: bool = True,
         drop_empty: bool | list[str] | dict[str, Any] = False,
-        deferred_output: dict[str, dict[str, Any]] | None = None,
     ) -> pd.DataFrame:
         """Return a subset of the source DataFrame with specified columns, optional extra columns, and duplicate handling.
         Args:
@@ -115,10 +113,6 @@ class SubsetService:
                 - If list[str]: drop rows where all specified columns are empty
                 - If dict[str, Any]: drop rows where specified columns contain the given values
                   (keys are column names, values are lists of values to treat as empty)
-            deferred_output: Optional dict to receive deferred extra_columns.
-                When provided and extra_columns contain interpolations that reference missing columns,
-                those deferred columns are stored here (by entity_name) instead of raising an error.
-                Useful for multi-stage evaluation (e.g., columns added by FK linking).
 
         Returns:
             pd.DataFrame: Resulting DataFrame with requested columns and modifications.
@@ -157,29 +151,18 @@ class SubsetService:
 
         # Use ExtraColumnEvaluator to add extra columns (supports constants, copies, and interpolations)
         if extra_columns:
-            # If deferred_output is provided, allow deferring columns that reference missing columns
-            defer_missing: bool = deferred_output is not None
-            
             result, deferred = self.extra_col_evaluator.evaluate_extra_columns(
                 df=result,
                 extra_columns=extra_columns,
                 entity_name=entity_name,
-                defer_missing=defer_missing
+                defer_missing=True  # Allow deferring columns that reference missing columns
             )
             
-            # Handle deferred columns based on whether deferred_output is provided
+            # Log deferred columns (they'll be re-evaluated later by normalizer)
             if deferred:
-                if deferred_output is not None:
-                    # Store deferred columns for later evaluation (typically after FK linking)
-                    deferred_output[entity_name] = deferred
-                    logger.debug(
-                        f"{entity_name}[extract]: Deferred extra_columns evaluation for: {list(deferred.keys())}"
-                    )
-                else:
-                    # No deferred_output provided, but we have deferred columns (shouldn't happen with defer_missing=False)
-                    logger.warning(
-                        f"{entity_name}[extract]: Unexpected deferred extra_columns: {list(deferred.keys())}"
-                    )
+                logger.debug(
+                    f"{entity_name}[extract]: Deferred extra_columns evaluation for: {list(deferred.keys())}"
+                )
 
         # Drop helper source columns that weren't explicitly requested
         helper_cols: set[str] = set(extra_source_columns.values()) - set(columns)

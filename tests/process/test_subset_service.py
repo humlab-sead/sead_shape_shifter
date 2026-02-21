@@ -948,8 +948,8 @@ def test_get_subset_mixed_extra_columns() -> None:
     assert result["interp"].iloc[0] == "1-2"
 
 
-def test_get_subset_interpolation_missing_column_raises() -> None:
-    """Test that interpolation with missing column raises error."""
+def test_get_subset_interpolation_defers_missing_column() -> None:
+    """Test that interpolation with missing column is deferred (not an error)."""
     service = SubsetService()
     df = pd.DataFrame({"a": [1]})
     table_cfg = build_table_config(
@@ -957,12 +957,16 @@ def test_get_subset_interpolation_missing_column_raises() -> None:
         extra_columns={"bad": "{missing}"}
     )
 
-    with pytest.raises(ValueError, match="columns not found"):
-        service.get_subset(source=df, table_cfg=table_cfg)
+    result = service.get_subset(source=df, table_cfg=table_cfg)
+    
+    # Column with missing dependency should be deferred (not added)
+    assert "bad" not in result.columns
+    # Source column should be present
+    assert "a" in result.columns
 
 
-def test_get_subset_deferred_output_captures_missing() -> None:
-    """Test deferred_output parameter captures columns referencing missing columns."""
+def test_get_subset_defers_columns_with_missing_dependencies() -> None:
+    """Test that columns with missing dependencies are silently deferred (logged but not added)."""
     service = SubsetService()
     df = pd.DataFrame({"first": ["John"], "last": ["Doe"]})
     table_cfg = build_table_config(
@@ -973,22 +977,18 @@ def test_get_subset_deferred_output_captures_missing() -> None:
         }
     )
 
-    deferred: dict[str, dict[str, Any]] = {}
-    result = service.get_subset(source=df, table_cfg=table_cfg, deferred_output=deferred)
+    result = service.get_subset(source=df, table_cfg=table_cfg)
 
     # full_name should be evaluated
     assert "full_name" in result.columns
     assert result["full_name"].iloc[0] == "John Doe"
 
-    # profile should be deferred (missing column)
+    # profile should be deferred (missing column) - not added to result
     assert "profile" not in result.columns
-    assert "test_entity" in deferred  # ENTITY_NAME = "test_entity"
-    assert "profile" in deferred["test_entity"]
-    assert deferred["test_entity"]["profile"] == "{first} - {missing_col}"
 
 
-def test_get_subset_deferred_output_all_succeed() -> None:
-    """Test deferred_output when all columns can be evaluated."""
+def test_get_subset_evaluates_all_when_dependencies_present() -> None:
+    """Test that all columns are evaluated when dependencies are present."""
     service = SubsetService()
     df = pd.DataFrame({"first": ["John"], "last": ["Doe"]})
     table_cfg = build_table_config(
@@ -999,8 +999,7 @@ def test_get_subset_deferred_output_all_succeed() -> None:
         }
     )
 
-    deferred: dict[str, dict[str, Any]] = {}
-    result = service.get_subset(source=df, table_cfg=table_cfg, deferred_output=deferred)
+    result = service.get_subset(source=df, table_cfg=table_cfg)
 
     # Both columns should be evaluated
     assert "full_name" in result.columns
@@ -1008,21 +1007,3 @@ def test_get_subset_deferred_output_all_succeed() -> None:
     assert result["full_name"].iloc[0] == "John Doe"
     assert result["greeting"].iloc[0] == "Hello John"
 
-    # Nothing should be deferred
-    assert len(deferred) == 0
-
-
-def test_get_subset_no_deferred_output_raises_on_missing() -> None:
-    """Test that missing columns raise error when deferred_output not provided."""
-    service = SubsetService()
-    df = pd.DataFrame({"first": ["John"]})
-    table_cfg = build_table_config(
-        columns=["first"],
-        extra_columns={
-            "profile": "{first} - {missing_col}",  # Missing column
-        }
-    )
-
-    # Without deferred_output, should raise ValueError
-    with pytest.raises(ValueError, match="columns not found"):
-        service.get_subset(source=df, table_cfg=table_cfg)
