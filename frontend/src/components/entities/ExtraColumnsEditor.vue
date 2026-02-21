@@ -6,7 +6,7 @@
         <div class="text-caption text-medium-emphasis font-weight-medium">New Column Name</div>
       </v-col>
       <v-col cols="12" md="6">
-        <div class="text-caption text-medium-emphasis font-weight-medium">Source Column or Constant Value(or leave empty for null)</div>
+        <div class="text-caption text-medium-emphasis font-weight-medium">Expression (or leave empty for null)</div>
       </v-col>
       <v-col cols="12" md="1">
         <div class="text-caption text-medium-emphasis font-weight-medium"></div>
@@ -51,6 +51,22 @@
     <v-btn variant="outlined" prepend-icon="mdi-plus" size="small" block @click="handleAddExtraColumn">
       Add Extra Column
     </v-btn>
+
+    <v-alert
+      type="info"
+      variant="tonal"
+      density="compact"
+      class="mt-3 text-caption"
+    >
+      <strong>Extra columns</strong> allow you to add new columns to the output entity using:
+      <ul class="mt-2 mb-0 pl-4">
+        <li><strong>Template strings:</strong> <code>"{first_name} {last_name}"</code> - Combine multiple columns</li>
+        <li><strong>Column copy:</strong> <code>existing_column</code> - Copy values from a source column</li>
+        <li><strong>Constants:</strong> <code>"literal_value"</code> or <code>123</code> - Set fixed values</li>
+        <li><strong>Null values:</strong> Leave empty for null</li>
+      </ul>
+      Template strings are null-safe and can reference FK columns added during linking.
+    </v-alert>
   </div>
 </template>
 
